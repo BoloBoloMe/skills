@@ -1,0 +1,4 @@
+interface:
+  display_name: "CZ SDK Windows Build"
+  short_description: "Build and diagnose cz_sdk on Windows with strict JDK 8 enforcement."
+  emoji: "🛠️"
