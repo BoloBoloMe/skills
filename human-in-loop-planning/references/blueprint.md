@@ -2,7 +2,7 @@
 
 ## 模块元信息
 - internal_module: `hilp-blueprint`
-- 原触发描述：用于把已明确 已批准的 Stage 3 设计资产转成实施蓝图，明确改动切片、依赖顺序、风险检查点和实现约束。只有在存在完整 asset_ref、owner_skill=hilp-design-approval、last_decision 为 人工批准授予（Human Approval Granted） 决策、且不存在未解决 必须人工裁决的决策时才应触发。若当前设计仅为 ready-for-approval、方案选择未定、缺少批准资产引用或上游前提失效，不要触发本 Skill。
+- 原触发描述：用于把已明确 已批准的 Stage 3 设计资产转成实施蓝图，明确改动切片、依赖顺序、风险检查点和实现约束。只有在存在完整 asset_ref、owner_skill=hilp-design-approval、last_decision 为 人工批准授予（Human Approval Granted） 决策、且不存在未解决 必须人工裁决的决策时才应触发。若当前设计仅为 ready-for-approval（待审批）、方案选择未定、缺少批准资产引用或上游前提失效，不要触发本 Skill。
 
 # 概览
 
@@ -33,7 +33,7 @@
 进入本模块前必须存在完整资产引用：
 
 ```text
-asset_ref: stage-3/design-choice@vN [state=approved]
+asset_ref: stage-3/design-choice@vN [state=approved｜中文状态=已批准]
 owner_skill: hilp-design-approval
 last_decision: <human approval decision-id>
 ```
@@ -55,9 +55,19 @@ lean / standard / strict 的详细差异见 `references/routing-matrix.md`。
 
 ## 输出模板
 
-# 实施蓝图
+# 实施蓝图阶段
 
-## Stage 4：改动拓扑
+## 这个阶段要做什么
+- 用一句话说明：把已批准的方案转成可执行的改动切片、顺序、约束和验证检查点。
+
+## 已保存资产
+- 文件路径：`项目根目录/hilp/变更概述/03-实施蓝图_<审批标记>_implementation-blueprint@vN.md`
+- asset_ref：`stage-4-5/implementation-blueprint@vN [state=<state>｜中文状态=<state_label>]`
+- 上游设计：`stage-3/design-choice@vM [state=approved｜中文状态=已批准]`
+- 当前状态：必须写中文状态名，必要时附内部状态值。
+- 当前是否需要审批：说明需要先补蓝图、待人工裁决、待审批或已批准。
+
+## 改动拓扑
 - 改动切片：
 - 依赖顺序：
 - 风险检查点：
@@ -65,7 +75,7 @@ lean / standard / strict 的详细差异见 `references/routing-matrix.md`。
 - 验证检查点：
 - 涉及模块 / 子系统 / 文件范围：
 
-## Stage 5：实现约束
+## 实现约束
 - 数据形状：
 - 接口约束：
 - 局部算法骨架：
@@ -73,36 +83,37 @@ lean / standard / strict 的详细差异见 `references/routing-matrix.md`。
 - 测试承诺：
 - 必要的代码草图：
 
-## 蓝图资产状态
-- asset_ref：`stage-4-5/implementation-blueprint@vN [state=draft | ready-for-human-decision | ready-for-approval | approved | needs-revision | archived]`
-- owner_skill：`hilp-blueprint`
-- upstream_design_ref：`stage-3/design-choice@vM [state=approved]`
-- last_decision：
-- 当前是否可交接到执行层：仅当蓝图资产为 `approved` 且上游设计仍有效时才写“是”
-- 当前阻断项：
+## 当前判断
+- 当前是否可交接到执行层：仅当蓝图资产为 `approved`（已批准）且上游设计仍有效时才写“是”。
+- 当前阻断项：写“无阻断项 / 有阻断项”。
 - 是否依赖未决上游问题：
 - 是否存在兼容 / 回滚约束：
+- 当前状态：写中文状态名，必要时附内部状态值。
+
+## 下一步需要用户做什么
+- 若蓝图可审批，要求用户明确批准当前资产版本。
+- 若蓝图已批准，说明可进入执行交接阶段。
 
 ## Stage 4/5 蓝图审批门槛
 
-只有同时满足以下条件时，蓝图才能进入 `ready-for-approval`：
+只有同时满足以下条件时，蓝图才能进入 `ready-for-approval`（待审批）：
 
 1. 改动切片已覆盖推荐设计的全部必要改动。
 2. 依赖顺序足以支持安全实施。
 3. 风险检查点与发布 / 验证检查点已明确。
 4. 接口约束、数据形状、错误处理要求与测试承诺已明确。
-5. 不存在未解决的 `human_decision_required`。
+5. 不存在未解决的 `human_decision_required`（必须人工裁决）。
 6. 蓝图未改写 Stage 3 已批准设计 的边界或取舍。
-7. 上游设计资产 仍为 `approved`，未被标记为 `needs-revision` 或 `archived`。
+7. 上游设计资产 仍为 `approved`（已批准），未被标记为 `needs-revision`（待修订）或 `archived`（已归档）。
 
-若存在 必须人工裁决的决策，进入 `ready-for-human-decision`。
-若缺少关键蓝图内容，保持 `draft`。
+若存在 必须人工裁决的决策，进入 `ready-for-human-decision`（待人工裁决）。
+若缺少关键蓝图内容，保持 `draft`（草稿）。
 
-进入 `hilp-execution-handoff` 的蓝图必须是 `approved`。lean 模式下，批准可以是显式轻量批准，例如“确认按此蓝图执行”，但仍必须明确绑定当前蓝图资产版本。
+进入 `hilp-execution-handoff` 的蓝图必须是 `approved`（已批准）。lean 模式下，批准可以是显式轻量批准，例如“确认按此蓝图执行”，但仍必须明确绑定当前蓝图资产版本。
 
 ## 硬约束
 
-- `human_decision_required` 未解决时，不得形成绑定性蓝图。
+- `human_decision_required`（必须人工裁决）未解决时，不得形成绑定性蓝图。
 - 不得改写上游批准边界。
 - 不得把实现约束扩张成新的设计讨论。
 - 不得省略风险检查点与验证检查点。
@@ -110,6 +121,6 @@ lean / standard / strict 的详细差异见 `references/routing-matrix.md`。
 
 ## 交接规则
 
-- 只有蓝图资产为 `stage-4-5/implementation-blueprint@vN [state=approved]`、`owner_skill=hilp-blueprint`、存在 `last_decision`，且上游设计资产仍为 `approved` 时，才能交给 `hilp-execution-handoff`。
+- 只有蓝图资产为 `stage-4-5/implementation-blueprint@vN [state=approved｜中文状态=已批准]`、`owner_skill=hilp-blueprint`、存在 `last_decision`，且上游设计资产仍为 `approved`（已批准）时，才能交给 `hilp-execution-handoff`。
 - 蓝图建立在已失效的需求、事实或设计之上时，交给 `hilp-reapproval`。
 - 发现问题本质是设计并未真正收敛时，回交 `hilp-design-approval`。

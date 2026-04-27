@@ -7,9 +7,9 @@ description: 面向人在回路规划协议的总入口。用于把复杂变更�
 
 ## 概览
 
-将本 Skill 作为一个整体规划协议使用，而不是 7 个独立 Skill 使用。`hilp-router`、`hilp-requirements-facts`、`hilp-design-approval`、`hilp-blueprint`、`hilp-reapproval`、`hilp-execution-handoff` 和 `hilp-skill-pressure-test` 都是本 Skill 内部模块，详细规则放在 `references/` 下。
+将本 Skill 作为一个整体规划协议使用，而不是 7 个独立 Skill 使用。`hilp-router`、`hilp-requirements-facts`、`hilp-design-approval`、`hilp-blueprint`、`hilp-reapproval`、`hilp-execution-handoff` 和 `hilp-skill-pressure-test` 是协议内部的执行单元，详细规则放在 `references/` 下。
 
-本 Skill 的职责是在处理用户任务时，保持阶段门控、资产状态、审批边界和重审行为一致，并把当前任务路由到正确的内部模块。
+本 Skill 的职责是在处理用户任务时，保持阶段门控、资产状态、审批边界和重审行为一致。对普通用户输出时，应优先使用中文阶段名称和任务相关内容，不默认暴露内部执行单元、事件名、状态机推导细节。
 
 ## 资源加载顺序
 
@@ -29,6 +29,57 @@ description: 面向人在回路规划协议的总入口。用于把复杂变更�
 
 参考文件优先级固定为：`event-action-rules.md` > `handoff-contracts.md` > `routing-matrix.md` > 当前模块参考文件。
 
+## 用户可见阶段名称
+
+普通用户默认只需要知道“现在处于哪个阶段、这个阶段要解决什么、需要自己做什么”。因此输出时使用以下中文阶段名作为主表达：
+
+- `hilp-router` → 初始分流阶段
+- `hilp-requirements-facts` → 需求对齐与事实求证阶段
+- `hilp-design-approval` → 方案设计与审批阶段
+- `hilp-blueprint` → 实施蓝图阶段
+- `hilp-reapproval` → 变更重审阶段
+- `hilp-execution-handoff` → 执行交接阶段
+- `hilp-skill-pressure-test` → 协议压力测试阶段
+
+内部模块名、事件名、`owner_skill`、`last_event`、`last_decision` 等字段默认只写入资产元数据或审计说明。只有用户要求调试协议、审查协议本身、追踪资产状态，或交接契约要求精确引用时，才在用户可见回答中展示这些内部字段。
+
+## 资产落盘规则
+
+所有阶段都必须产出 Markdown 资产，并保存到当前项目目录下：
+
+```text
+项目根目录/hilp/变更概述/
+```
+
+其中“变更概述”应使用本次任务的简短中文概括，例如 `改进HILP中文交互与资产落盘`。若无法确认项目根目录，必须先向用户确认保存位置；若写入失败，必须明确告知失败，不得声称资产已保存。
+
+文件名必须同时体现阶段和审批状态，推荐格式：
+
+```text
+<阶段前缀>-<阶段中文名>_<审批标记>_<artifact>@vN.md
+```
+
+阶段前缀：
+
+- `00`：初始分流阶段
+- `01`：需求对齐与事实求证阶段
+- `02`：方案设计与审批阶段
+- `03`：实施蓝图阶段
+- `04`：变更重审阶段
+- `05`：执行交接阶段
+- `90`：协议压力测试阶段
+
+审批标记：
+
+- `no-approval`：无需审批，仅作为过程记录
+- `needs-decision`：需要用户先做裁决
+- `needs-approval`：可提交审批，但尚未批准
+- `approved`：已明确批准
+- `needs-revision`：需要修订
+- `archived`：已归档
+
+旧资产不迁移；本规则只影响新产生的资产。
+
 ## 路由决策树
 
 1. 如果用户是在测试、审查、验证或压力测试本协议本身，使用 `hilp-skill-pressure-test`。
@@ -43,16 +94,25 @@ description: 面向人在回路规划协议的总入口。用于把复杂变更�
 
 ## 资产与审批纪律
 
-资产状态只允许以下六种：
+资产状态只允许以下六种，所有落盘文档和用户交互都必须给出对应中文状态名：
 
-- `draft`
-- `ready-for-human-decision`
-- `ready-for-approval`
-- `approved`
-- `needs-revision`
-- `archived`
+- `draft` → 草稿
+- `ready-for-human-decision` → 待人工裁决
+- `ready-for-approval` → 待审批
+- `approved` → 已批准
+- `needs-revision` → 待修订
+- `archived` → 已归档
 
-`ready-for-approval` 不是 `approved`。只有明确的人工批准授予（Human Approval Granted） 才能把某个带版本的资产推进为 `approved`。只有 `approved` 资产可以作为下游规划的绑定性输入。
+审批标记必须给出对应中文状态名：
+
+- `no-approval` → 无需审批
+- `needs-decision` → 待裁决
+- `needs-approval` → 需审批
+- `approved` → 已批准
+- `needs-revision` → 待修订
+- `archived` → 已归档
+
+`ready-for-approval`（待审批）不是 `approved`（已批准）。只有明确的人工批准授予（Human Approval Granted） 才能把某个带版本的资产推进为 `approved`（已批准）。只有 `approved`（已批准）资产可以作为下游规划的绑定性输入。
 
 人工批准授予（Human Approval Granted）必须明确批准当前具体资产版本。泛泛的“可以执行了”“差不多了”或“按这个来”不足以构成批准，除非上下文已经明确绑定到当前 `asset_ref`。
 
@@ -60,11 +120,13 @@ description: 面向人在回路规划协议的总入口。用于把复杂变更�
 
 在本协议下输出任何响应时，必须：
 
-1. 使用所选内部模块参考文件中的输出模板。
-2. 标明当前内部模块。
-3. 标明任何阻断事件、必须人工裁决的人类决策、缺失输入或已失效资产。
-4. 只有交接契约允许时，才标明下一内部模块。
-5. 若输出会驱动下游工作，必须包含带版本和状态的资产引用。
+1. 使用所选阶段参考文件中的输出模板，但用户可见标题应使用中文阶段名称。
+2. 先说明当前阶段目的、已保存资产、当前结论和需要用户做什么。
+3. 不默认展示内部模块名、事件推导、状态机计算过程或完整交接细节。
+4. 若存在会影响用户行动的阻断项，必须用自然中文说明“缺什么、为什么不能继续、用户需要决定什么”。
+5. 所有用户可见状态都必须优先给出中文状态名；涉及精确资产引用、审计或交接时，采用“内部值｜中文状态=中文名”的双写格式。
+6. 只有交接契约允许时，才说明下一阶段；对普通用户写中文阶段名，对资产元数据保留内部标识。
+7. 若输出会驱动下游工作，必须包含带版本、内部状态和中文状态名的资产引用，并写入项目目录下的阶段资产文件。
 
 当必须人工裁决的决策、证据缺失、上游资产失效或审批缺失阻断转移时，不得写实现代码、最终执行步骤或绑定性下游计划。
 

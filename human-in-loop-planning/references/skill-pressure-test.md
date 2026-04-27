@@ -23,12 +23,13 @@
 ## 极简工作流
 
 1. 选择压力场景。
-2. 写出预期路由。
-3. 写出预期阻断点。
-4. 写出预期资产状态变化。
-5. 审查当前内部模块包在此场景下的表现。
-6. 对比实际与预期。
-7. 输出偏差与修订建议。
+2. 写出测试模式：`static-rule-inference`（静态规则推演）、`interactive-dry-run`（交互干跑）或 `regression-replay`（回归重放）。
+3. 写出预期路由。
+4. 写出预期阻断点。
+5. 写出预期资产状态变化，必须同时包含内部状态值和中文状态名。
+6. 审查当前阶段规则包在此场景下的表现。
+7. 对比实际与预期。
+8. 输出偏差与修订建议。
 
 路由矩阵见 `references/routing-matrix.md`。
 交接契约见 `references/handoff-contracts.md`。
@@ -41,8 +42,8 @@
 - standard 行为保持型重构
 - strict 兼容性过渡
 - 新事实推翻旧批准
-- `human_decision_required` 是否阻断绑定性推进
-- `human_decision_recommended` 下默认路径是否足够保守
+- `human_decision_required`（必须人工裁决）是否阻断绑定性推进
+- `human_decision_recommended`（建议人工裁决）下默认路径是否足够保守
 - 治理升级 / 降级是否正确影响资产生命周期
 - 主原型升格后是否正确重算下一跳
 
@@ -52,29 +53,40 @@
 - router 与 reapproval：含“重新看 / 之前方案 / 新发现”的模糊输入必须优先进入 `hilp-reapproval`。
 - requirements-facts 与 design-approval：事实部分缺失但用户要求直接给方案时，必须优先补 `hilp-requirements-facts`。
 - design-approval 与 reapproval：首次在当前阶段发现 必须人工裁决的决策 由当前阶段处理；既有资产被 必须人工裁决的决策 推翻或阻断时进入 `hilp-reapproval`。
-- blueprint 与 design-approval：用户说“方案定了”但没有 `stage-3/design-choice@vN [state=approved]` 与 `last_decision` 时，不得进入 `hilp-blueprint`。
+- blueprint 与 design-approval：用户说“方案定了”但没有 `stage-3/design-choice@vN [state=approved｜中文状态=已批准]` 与 `last_decision` 时，不得进入 `hilp-blueprint`。
 - execution-handoff 与 reapproval：执行中发现上游假设错误时，必须进入 `hilp-reapproval`，不得继续交接。
 
 ## 输出模板
 
-# 压力测试报告
+# 协议压力测试阶段
+
+## 这个阶段要做什么
+- 用一句话说明：验证本规划协议是否会正确分流、阻断、审批、重审和保存资产。
+
+## 已保存资产
+- 文件路径：`项目根目录/hilp/变更概述/90-协议压力测试_<审批标记>_pressure-test@vN.md`
+- asset_ref：`stage-test/skill-pressure-test@vN [state=<state>｜中文状态=<state_label>]`
+- 当前状态：必须写中文状态名，必要时附内部状态值。
+- 当前是否需要审批：通常不需要，应写“无需审批”；若测试结论要驱动规则修改，应另建方案设计资产进入“待审批”。
 
 ## 测试场景
 - 名称：
+- 测试模式：静态规则推演 / 交互干跑 / 回归重放。
 - 输入：
 - 预期目的：
 
 ## 预期行为
-- 预期路由：
+- 预期阶段：
 - 预期治理模式：
-- 预期阻断点：
-- 预期资产状态变化：
+- 预期阻断点：写“无阻断项 / 有阻断项”。
+- 预期资产状态变化：必须同时写内部状态值和中文状态名。
 
 ## 实际行为
-- 实际路由：
+- 取证方式：静态规则推演 / 交互干跑 / 回归重放。
+- 实际阶段：
 - 实际治理模式：
-- 实际阻断点：
-- 实际资产状态变化：
+- 实际阻断点：写“无阻断项 / 有阻断项”。
+- 实际资产状态变化：必须同时写内部状态值和中文状态名。
 
 ## 偏差分析
 - 偏差 1：
@@ -82,14 +94,14 @@
 - 根因：
 
 ## 修订建议
-- 建议修改的内部模块：
+- 建议修改的位置：
 - 建议补充或删减的规则：
 - 建议新增的测试样例：
 
 ## 硬约束
 
 - 不能把测试结果写成业务规划结论。
-- 不能忽略资产状态变化。
+- 不能忽略资产状态变化，也不能只写内部状态值而不写中文状态名。
 - 不能只测轻量任务，不测升级与失效路径。
 - 不能跳过 必须人工裁决的决策相关测试。
 - 不能把压力测试写成泛泛的 review。

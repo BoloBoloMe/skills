@@ -14,13 +14,13 @@
 - 证据触发器
 - 失效触发器
 - 回滚 / 兼容安全要求
-- `human_decision_required`
+- `human_decision_required`（必须人工裁决）
 
 ### 规则 B：新事实优先于旧批准
 新事实优先于旧批准。
 只要新证据足以推翻此前边界、假设或设计前提：
 - 原批准可以失效
-- 相关下游资产进入 `needs-revision`
+- 相关下游资产进入 `needs-revision`（待修订）
 - 不允许以“已经批准过”为由跳过回看
 
 ### 规则 C：主规划原型拥有主流程
@@ -28,6 +28,13 @@
 - 主原型决定主路线
 - 次原型只追加检查项、验证要求与风险控制
 - 不允许通过原型叠加创建新的阶段体系
+
+### 规则 D：阶段资产必须持久化
+所有阶段输出都必须先写入项目目录下的阶段资产文件，再在用户可见回答中给出摘要和保存路径。
+- 默认保存目录：`项目根目录/hilp/变更概述/`
+- 旧资产不迁移；本规则只影响新资产
+- 状态变化、人工批准、重审、归档和版本递增都必须反映到资产文件
+- 若无法确认项目根目录或写入失败，必须明确告知用户，不得声称资产已保存
 
 ---
 
@@ -43,10 +50,10 @@
 - 证据触发器
 - 失效
 - 回滚 / 兼容安全要求
-- `human_decision_required`
+- `human_decision_required`（必须人工裁决）
 
 非阻断性事件包括：
-- `human_decision_recommended`
+- `human_decision_recommended`（建议人工裁决）
 - 治理降级
 - 折叠与归档类动作
 
@@ -57,12 +64,13 @@
 ### 事件 0：人工批准授予（Human Approval Granted）
 
 **触发器**
-- 人类明确批准 `ready-for-approval` 资产
+- 人类明确批准 `ready-for-approval`（待审批）资产
 
 **必需动作**
-- 将该资产状态从 `ready-for-approval` 改为 `approved`
+- 将该资产状态从 `ready-for-approval`（待审批）改为 `approved`（已批准）
 - 保留同一内容版本
 - 记录 `last_decision=<decision-id>`
+- 将批准后的状态同步写入落盘资产；可生成带 `approved`（已批准）审批标记的新文件，或更新同一资产索引
 - 按批准对象所属阶段重新计算下一跳
 
 **被阻断的转移**
@@ -76,7 +84,8 @@
 - lean 模式允许轻量批准，但轻量批准仍必须明确绑定当前 Stage 3 设计资产或 Stage 4/5 蓝图资产版本。
 
 **资产状态变化**
-- 同一版本, `state=approved`, `last_decision=<decision-id>`
+- 同一版本, `state=approved`（已批准）, `last_decision=<decision-id>`
+- 资产文件名或资产索引必须体现 `approved`（已批准）
 - 若批准对象是 `stage-3/design-choice@vN` 且 `owner_skill=hilp-design-approval`，下一步为 `hilp-blueprint`
 - 若批准对象是 `stage-4-5/implementation-blueprint@vN` 且 `owner_skill=hilp-blueprint`，下一步为 `hilp-execution-handoff`
 - 若批准对象不是 Stage 3 设计资产或 Stage 4/5 蓝图资产，不得自动进入 `hilp-blueprint` 或 `hilp-execution-handoff`，必须按 `handoff-contracts.md` 重算下一跳
@@ -98,7 +107,7 @@
 - 禁止把未证实结论写入 Stage 4 / Stage 5
 
 **资产状态变化**
-- 基于未证实前提写出的 Stage 3 / 4 / 5 内容改为 `needs-revision`
+- 基于未证实前提写出的 Stage 3 / 4 / 5 内容改为 `needs-revision`（待修订）
 
 ---
 
@@ -115,12 +124,12 @@
 - 暂停相关绑定性推进
 
 **被阻断的转移**
-- 禁止把相关结论标记为 `approved`
+- 禁止把相关结论标记为 `approved`（已批准）
 - 禁止依赖该决策继续产出绑定性 Stage 4 / Stage 5 内容
 
 **资产状态变化**
-- 当前阶段进入 `ready-for-human-decision`
-- 未决项不得进入 `ready-for-approval` 或 `approved`
+- 当前阶段进入 `ready-for-human-decision`（待人工裁决）
+- 未决项不得进入 `ready-for-approval`（待审批）或 `approved`（已批准）
 
 ---
 
@@ -134,13 +143,14 @@
 **必需动作**
 - 显式写出建议裁决点
 - 标注默认路径
+- 标注用户是否已选择，并列出不得写成既定事实的内容
 
 **被阻断的转移**
-- 不阻断当前阶段进入 `ready-for-approval`
+- 不阻断当前阶段进入 `ready-for-approval`（待审批）
 - 仅阻断将“人未选的优先选项”写成既定事实
 
 **资产状态变化**
-- 资产可进入 `ready-for-approval`
+- 资产可进入 `ready-for-approval`（待审批）
 
 ---
 
@@ -157,7 +167,7 @@
 - 禁止继续依赖旧版本进入后续审批
 
 **资产状态变化**
-- 被影响的下游资产全部变为 `needs-revision`
+- 被影响的下游资产全部变为 `needs-revision`（待修订）
 
 ---
 
@@ -178,7 +188,7 @@
 
 **资产状态变化**
 - 已有资产保持原状态
-- 新增资产以 `draft` 创建
+- 新增资产以 `draft`（草稿）创建
 
 ---
 
@@ -199,41 +209,60 @@
 - 但不得丢失仍有判断价值的历史依据
 
 **资产状态变化**
-- 不再活跃维护的控制件改为 `archived`
+- 不再活跃维护的控制件改为 `archived`（已归档）
 
 ---
 
 ## 四、资产状态规则
 
-只保留以下六种资产状态：
-- `draft`
-- `ready-for-human-decision`
-- `ready-for-approval`
-- `approved`
-- `needs-revision`
-- `archived`
+只保留以下六种资产状态。所有落盘文档和用户交互必须同时给出内部状态值与中文状态名；普通用户可见内容应优先使用中文状态名。
 
-状态语义：
-- `draft`：内容未达到当前阶段门槛，不能提交审批或绑定推进。
-- `ready-for-human-decision`：存在 必须人工裁决的决策，等待人类裁决；不能进入蓝图或执行交接。
-- `ready-for-approval`：内容可提交人工审批；仍不是批准状态，不能被下游当作已批准资产引用。
-- `approved`：人类明确批准后产生；只有该状态允许绑定性下游推进。
-- `needs-revision`：上游变化、证据触发或失效事件导致不可继续依赖。
-- `archived`：不再活跃参与判断，但保留历史依据。
+| 内部状态值 | 中文状态名 | 状态语义 |
+|---|---|---|
+| `draft` | 草稿 | 内容未达到当前阶段门槛，不能提交审批或绑定推进。 |
+| `ready-for-human-decision` | 待人工裁决 | 存在 必须人工裁决的决策，等待人类裁决；不能进入蓝图或执行交接。 |
+| `ready-for-approval` | 待审批 | 内容可提交人工审批；仍不是批准状态，不能被下游当作已批准资产引用。 |
+| `approved` | 已批准 | 人类明确批准后产生；只有该状态允许绑定性下游推进。 |
+| `needs-revision` | 待修订 | 上游变化、证据触发或失效事件导致不可继续依赖。 |
+| `archived` | 已归档 | 不再活跃参与判断，但保留历史依据。 |
+
+审批标记也必须给出中文状态名：
+
+| 内部审批标记 | 中文状态名 | 状态语义 |
+|---|---|---|
+| `no-approval` | 无需审批 | 仅作为过程记录或审计材料，不请求用户批准。 |
+| `needs-decision` | 待裁决 | 需要用户先做选择或裁决。 |
+| `needs-approval` | 需审批 | 可提交审批，但尚未批准。 |
+| `approved` | 已批准 | 用户已明确批准。 |
+| `needs-revision` | 待修订 | 需要修订后再继续。 |
+| `archived` | 已归档 | 已归档保留。 |
+
+裁决和阻断状态在落盘文档与用户交互中也必须中文化：
+
+| 内部概念 | 中文状态名 | 状态语义 |
+|---|---|---|
+| `human_decision_required` | 必须人工裁决 | 不裁决就不能继续绑定推进。 |
+| `human_decision_recommended` | 建议人工裁决 | 可以按默认路径提交审批，但不能把未选择项写成既定事实。 |
+| blocking item | 有阻断项 | 缺少事实、批准或裁决，当前不能继续到下游。 |
+| no blocking item | 无阻断项 | 当前没有阻止进入下一阶段的条件。 |
 
 规则：
-- 不单列 `stale`，上游变化导致不可直接继续依赖的资产，一律归入 `needs-revision`。
-- 不把 `ready-for-approval` 当作 `approved`。
-- 不再参与活跃判断但仍保留历史价值的资产，一律归入 `archived`。
+- 不单列 `stale`，上游变化导致不可直接继续依赖的资产，一律归入 `needs-revision`（待修订）。
+- 不把 `ready-for-approval`（待审批）当作 `approved`（已批准）。
+- 不再参与活跃判断但仍保留历史价值的资产，一律归入 `archived`（已归档）。
+- `approval_marker=no-approval`（无需审批）不得被解释为 `approved`（已批准）。
+- 无需审批的过程记录正在形成时，使用 `state=draft`（草稿）与 `approval_marker=no-approval`（无需审批）。
+- 无需审批的过程记录完成且不再活跃推进时，使用 `state=archived`（已归档）与 `approval_marker=no-approval`（无需审批）。
+- 若无需审批的过程记录产生需要采纳的规则修改建议，不直接将该过程记录改为待审批；必须创建新的设计资产，并由新资产进入 `ready-for-approval`（待审批）。
 
 ---
 
 ## 五、允许状态转移 重算规则
 
 每次事件处理后，必须重新判断：
-- 当前阶段是否还能进入 `ready-for-human-decision`
-- 当前阶段是否还能进入 `ready-for-approval`
-- 当前阶段是否还能进入 `approved`
+- 当前阶段是否还能进入 `ready-for-human-decision`（待人工裁决）
+- 当前阶段是否还能进入 `ready-for-approval`（待审批）
+- 当前阶段是否还能进入 `approved`（已批准）
 - 是否允许进入下一个内部模块
 - 是否必须回退到更早阶段
 
@@ -254,17 +283,21 @@ asset_id: <stable-id>
 artifact_name: <stage>/<artifact-name>
 version: v<number>
 state: draft | ready-for-human-decision | ready-for-approval | approved | needs-revision | archived
+state_label: 草稿 | 待人工裁决 | 待审批 | 已批准 | 待修订 | 已归档
 owner_skill: <skill-name>
 created_from: <asset_ref | original-task>
 last_event: <none | event-name>
 last_decision: <none | decision-id>
+approval_marker: no-approval | needs-decision | needs-approval | approved | needs-revision | archived
+approval_marker_label: 无需审批 | 待裁决 | 需审批 | 已批准 | 待修订 | 已归档
+asset_path: <project-root>/hilp/<change-summary>/<file-name>.md
 ```
 
 版本递增规则：
 - 内容性修订必须递增版本号。
-- 单纯状态变化可以保留版本号，但必须记录 `last_event`。
-- 从 `ready-for-approval` 变为 `approved` 只能通过 `人工批准授予（Human Approval Granted）` 事件发生；这是状态变化，不自动改变内容版本。
-- 从 `approved` 变为 `needs-revision` 必须记录触发事件，并阻断所有依赖该资产的下游绑定推进。
+- 单纯状态变化可以保留版本号，但必须记录 `last_event`，并同步更新落盘资产或生成同版本状态文件。
+- 从 `ready-for-approval`（待审批）变为 `approved`（已批准）只能通过 `人工批准授予（Human Approval Granted）` 事件发生；这是状态变化，不自动改变内容版本。
+- 从 `approved`（已批准）变为 `needs-revision`（待修订）必须记录触发事件，并阻断所有依赖该资产的下游绑定推进。
 
 ---
 
@@ -287,4 +320,4 @@ last_decision: <none | decision-id>
 
 规则：
 - 活跃集只保留仍会改变后续判断的内容
-- 其余内容进入 `archived`
+- 其余内容进入 `archived`（已归档）

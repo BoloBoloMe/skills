@@ -148,10 +148,10 @@
 - 最小验证说明
 
 允许：
-- Stage 1 + Stage 2 合并
+- Stage 1 + Stage 2 合并，但合并资产必须包含“初始分流摘要”和“事实求证摘要”两个小节，文件名可使用 `00-初始分流阶段_no-approval_router-and-facts@vN.md`，且 asset_ref 摘要必须说明该资产同时承载事实基础。
 - 不跳过 Stage 3；无设计分叉时由 Stage 3 输出极简单路径设计选择
-- Stage 4/5 蓝图可在满足完整性检查且无 必须人工裁决的决策时进入 `ready-for-approval`
-- 进入执行交接的蓝图仍必须为 `approved`；lean 模式下 批准可以是显式轻量批准，例如“确认按此蓝图执行”
+- Stage 4/5 蓝图可在满足完整性检查且无 必须人工裁决的决策时进入 `ready-for-approval`（待审批）
+- 进入执行交接的蓝图仍必须为 `approved`（已批准）；lean 模式下 批准可以是显式轻量批准，例如“确认按此蓝图执行”
 - Stage 4 + Stage 5 合并
 
 ### standard
@@ -182,6 +182,16 @@
 - 更显式的影响登记
 - 更强的阶段间重审纪律
 
+strict 模式最小控制件清单：
+- 兼容窗口：说明新旧行为、协议、schema 或依赖的共存边界。
+- 回滚条件与回滚边界：说明何时回滚、回滚到哪里、哪些数据或接口不可逆。
+- 影响登记：列出受影响模块、调用方、数据路径和人工操作点。
+- 切换顺序或发布顺序：说明上线、切换、清理和停止旧路径的顺序。
+- 验证清单：覆盖集成验证、回滚验证和必要人工验证。
+- 仍影响后续判断的未决问题：保留会改变方案、蓝图或交接的开放问题。
+
+升级到 strict 后，以上控制件未补齐时，不得将相关设计或蓝图推进到 `ready-for-approval`（待审批）。
+
 ---
 
 ## 四、治理升级触发器
@@ -207,7 +217,7 @@
 
 降级动作：
 - 停止活跃维护多余控制件
-- 将其转为 `archived`
+- 将其转为 `archived`（已归档）
 - 不删除历史依据
 
 ---
@@ -225,11 +235,23 @@
 
 ---
 
-## 七、下一跳默认映射
+## 七、用户可见阶段名称
 
-- 需求不稳 / 事实不足 → `hilp-requirements-facts`
-- 设计需要比较与拍板 → `hilp-design-approval`
-- 存在 `approved` 的 Stage 3 design asset，且无 必须人工裁决的决策或上游失效事件 → `hilp-blueprint`
-- 上游资产失效 / 模式升级 / 需要回退 → `hilp-reapproval`
-- 存在 `approved` 蓝图资产且上游批准资产仍有效，需要交接执行 → `hilp-execution-handoff`
-- 需要验证整个 skill 包行为 → `hilp-skill-pressure-test`
+路由内部仍使用模块标识，普通用户可见输出默认使用中文阶段名称：
+
+- `hilp-router` → 初始分流阶段
+- `hilp-requirements-facts` → 需求对齐与事实求证阶段
+- `hilp-design-approval` → 方案设计与审批阶段
+- `hilp-blueprint` → 实施蓝图阶段
+- `hilp-reapproval` → 变更重审阶段
+- `hilp-execution-handoff` → 执行交接阶段
+- `hilp-skill-pressure-test` → 协议压力测试阶段
+
+## 八、下一跳默认映射
+
+- 需求不稳 / 事实不足 → `hilp-requirements-facts`（需求对齐与事实求证阶段）
+- 设计需要比较与拍板 → `hilp-design-approval`（方案设计与审批阶段）
+- 存在 `approved`（已批准）的 Stage 3 design asset，且无 必须人工裁决的决策或上游失效事件 → `hilp-blueprint`（实施蓝图阶段）
+- 上游资产失效 / 模式升级 / 需要回退 → `hilp-reapproval`（变更重审阶段）
+- 存在 `approved`（已批准）蓝图资产且上游批准资产仍有效，需要交接执行 → `hilp-execution-handoff`（执行交接阶段）
+- 需要验证整个 skill 包行为 → `hilp-skill-pressure-test`（协议压力测试阶段）
