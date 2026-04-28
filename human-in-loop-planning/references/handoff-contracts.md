@@ -18,6 +18,7 @@
 7. 交接契约不得覆盖事件动作规则；若事件规则判定阻断，交接必须暂停。
 8. 交接时必须引用资产 ID、版本、内部状态和中文状态名，不能只写“上游已批准”。
 9. 每个阶段交接前都必须先完成当前阶段资产落盘；若落盘失败，不得声称该阶段已完成。
+10. 从实施蓝图阶段开始，正式落盘资产必须通过确定性检查；存在待定、可选、后续确认、执行时再判断或需要执行者自行裁量的内容时，不得生成实施蓝图或执行交接资产。
 
 ---
 
@@ -73,8 +74,9 @@
 - `hilp-design-approval`
 
 条件：
-- 只有当蓝图资产为 `stage-4-5/implementation-blueprint@vN [state=approved｜中文状态=已批准]`、`owner_skill=hilp-blueprint`、存在 `last_decision`，且不存在未解决的 必须人工裁决的决策和上游失效事件时，才能交给 `hilp-execution-handoff`。
+- 只有当蓝图资产为 `stage-4-5/implementation-blueprint@vN [state=approved｜中文状态=已批准]`、`owner_skill=hilp-blueprint`、存在 `last_decision`、确定性检查通过，且不存在未解决的 必须人工裁决的决策和上游失效事件时，才能交给 `hilp-execution-handoff`。
 - 蓝图资产为 `draft`（草稿）、`ready-for-human-decision`（待人工裁决）、`ready-for-approval`（待审批）、`needs-revision`（待修订）或 `archived`（已归档）时，不得交给 `hilp-execution-handoff`。
+- 蓝图仍含未确定项、模糊项、待选分支或需要执行者自行补做规划判断时，不得交给 `hilp-execution-handoff`。
 
 ---
 
@@ -97,7 +99,8 @@
 - `hilp-reapproval`
 
 规则：
-- 入口必须绑定 `approved`（已批准）蓝图资产，而不是自然语言“蓝图完成”的判断。
+- 入口必须绑定 `approved`（已批准）且通过确定性检查的蓝图资产，而不是自然语言“蓝图完成”的判断。
+- 执行交接只能引用、摘录和封装已批准蓝图，不得新增、修订、补齐或解释性扩展规划内容。
 - 只要发现上游不稳，不得继续交接给执行层。
 
 ---
@@ -119,7 +122,7 @@
 所有阶段资产都必须保存到当前项目目录下：
 
 ```text
-项目根目录/hilp/变更概述/
+项目根目录/docs/hilp/变更概述/
 ```
 
 “变更概述”使用本次任务的简短中文概括，便于用户在项目目录中直接找到相关文档。旧资产不迁移；本规则只约束新产生的资产。
@@ -264,6 +267,7 @@ summary: choose adapter-based 迁移（migration） with rollback checkpoint
 - 关键 trade-off
 - required / recommended 决策点状态
 - `人工批准授予（Human Approval Granted）` 对应的 `last_decision`
+- 足以唯一确定改动切片、文件范围、接口、数据形状、算法骨架、错误处理、风险处理、发布 / 验证顺序和测试承诺的输入
 
 ### 给 `hilp-reapproval`
 最低入口输入：
@@ -285,7 +289,9 @@ summary: choose adapter-based 迁移（migration） with rollback checkpoint
 - `stage-4-5/implementation-blueprint@vN [state=approved｜中文状态=已批准]` 的完整蓝图资产引用
 - `owner_skill=hilp-blueprint`
 - 蓝图 `last_decision=<human approval decision-id>`
+- 蓝图确定性检查结果为“已通过”
 - 仍有效的上游 `stage-3/design-choice@vM [state=approved｜中文状态=已批准]` 引用
+- 已确定的执行模式
 - 当前阻断项状态为“无”
 
 ### 给 `hilp-skill-pressure-test`
@@ -351,7 +357,10 @@ summary: choose adapter-based 迁移（migration） with rollback checkpoint
 - 接口约束
 - 数据形状
 - 测试承诺
+- 确定性检查结果
 - 当前是否需要用户批准
+
+若确定性检查未通过，不得输出正式蓝图资产；只能输出回退说明并指出需要回到哪个前置阶段。
 
 ### `hilp-reapproval` 输出
 必须包含：
@@ -377,7 +386,12 @@ summary: choose adapter-based 迁移（migration） with rollback checkpoint
 - 必守实现约束
 - 风险与验证检查点
 - 执行模式
-- 当前阻断项
+- 执行入口检查
+- 禁止越界项
+- 停止并回退条件
+- 当前阻断项必须为“无阻断项”
+
+若执行入口检查未通过，不得输出正式执行交接资产；只能输出回退说明。
 
 ### `hilp-skill-pressure-test` 输出
 必须包含：
@@ -400,12 +414,15 @@ summary: choose adapter-based 迁移（migration） with rollback checkpoint
 - 绕过 `hilp-reapproval`
 - 把 必须人工裁决的决策未解决的状态交给绑定性下游步骤
 - 在交接时偷偷补写本不属于自己职责的内容
+- 从实施蓝图阶段开始，把未确定项、模糊项、待选分支或执行者自行裁量事项写入正式阶段资产
 
 ### 特别禁止
 - `hilp-router` 不得直接交给 `hilp-blueprint`
 - `hilp-requirements-facts` 不得直接交给 `hilp-execution-handoff`
 - `hilp-design-approval` 在 `draft`（草稿）状态下不得交给 `hilp-blueprint`
 - `hilp-blueprint` 在存在 必须人工裁决阻断时不得交给 `hilp-execution-handoff`
+- `hilp-blueprint` 在确定性检查未通过时不得交给 `hilp-execution-handoff`
+- `hilp-execution-handoff` 不得补写或扩展蓝图内容
 
 ---
 
@@ -413,6 +430,6 @@ summary: choose adapter-based 迁移（migration） with rollback checkpoint
 
 - 事实问题 → 回到 `hilp-requirements-facts`
 - 设计问题 → 回到 `hilp-design-approval`
-- 蓝图问题 → 回到 `hilp-blueprint`
+- 蓝图问题 / 确定性检查未通过 → 回到 `hilp-blueprint`
 - 路由前提变化 → 回到 `hilp-router`
 - 失效 / 升级 / 必须人工裁决阻断 → 先到 `hilp-reapproval`
