@@ -19,6 +19,7 @@
 8. 交接时必须引用资产 ID、版本、内部状态和中文状态名，不能只写“上游已批准”。
 9. 每个阶段交接前都必须先完成当前阶段资产落盘；若落盘失败，不得声称该阶段已完成。
 10. 从实施蓝图阶段开始，正式落盘资产必须通过确定性检查；存在待定、可选、后续确认、执行时再判断或需要执行者自行裁量的内容时，不得生成实施蓝图或执行交接资产。
+11. 大范围修改可使用分层蓝图包组织内容；分层只改变资产组织形式，不降低确定性、审批绑定、交接入口或重审纪律。
 
 ---
 
@@ -75,7 +76,8 @@
 
 条件：
 - 只有当蓝图资产为 `stage-4-5/implementation-blueprint@vN [state=approved｜中文状态=已批准]`、`owner_skill=hilp-blueprint`、存在 `last_decision`、确定性检查通过，且不存在未解决的 必须人工裁决的决策和上游失效事件时，才能交给 `hilp-execution-handoff`。
-- 蓝图资产为 `draft`（草稿）、`ready-for-human-decision`（待人工裁决）、`ready-for-approval`（待审批）、`needs-revision`（待修订）或 `archived`（已归档）时，不得交给 `hilp-execution-handoff`。
+- 若蓝图形式为分层蓝图包，`implementation-blueprint@vN` 是主蓝图 / manifest；manifest 绑定的全部子蓝图与覆盖矩阵也必须为 `approved`（已批准）、版本固定、确定性检查通过。
+- 蓝图资产或蓝图包任一成员为 `draft`（草稿）、`ready-for-human-decision`（待人工裁决）、`ready-for-approval`（待审批）、`needs-revision`（待修订）或 `archived`（已归档）时，不得交给 `hilp-execution-handoff`。
 - 蓝图仍含未确定项、模糊项、待选分支或需要执行者自行补做规划判断时，不得交给 `hilp-execution-handoff`。
 
 ---
@@ -100,6 +102,7 @@
 
 规则：
 - 入口必须绑定 `approved`（已批准）且通过确定性检查的蓝图资产，而不是自然语言“蓝图完成”的判断。
+- 分层蓝图包入口必须绑定主蓝图 / manifest 及其固定版本包内资产清单；可整包交接，也可按 manifest 已定义的波次或切片交接。
 - 执行交接只能引用、摘录和封装已批准蓝图，不得新增、修订、补齐或解释性扩展规划内容。
 - 只要发现上游不稳，不得继续交接给执行层。
 
@@ -238,6 +241,27 @@ summary: choose adapter-based 迁移（migration） with rollback checkpoint
 - 每次重审导致内容变化时必须递增版本号。
 - 所有跨阶段资产引用必须同时包含内部状态值和中文状态名。
 
+### 蓝图包 manifest 引用
+
+大范围修改使用分层蓝图包时，`stage-4-5/implementation-blueprint@vN` 仍是对外绑定的主资产引用，但其语义变为主蓝图 / manifest。manifest 必须显式列出包内成员：
+
+```text
+asset_ref: stage-4-5/implementation-blueprint@vN [state=<state>｜中文状态=<state_label>]
+blueprint_form: package
+package_members:
+  - asset_ref: stage-4-5/blueprint-slice-<slice-id>@vA [state=<state>｜中文状态=<state_label>]
+    role: slice
+  - asset_ref: stage-4-5/coverage-matrix@vB [state=<state>｜中文状态=<state_label>]
+    role: coverage-matrix
+approval_scope: manifest-and-all-listed-members
+```
+
+引用规则：
+- manifest 绑定的每个成员都必须写明 `asset_ref`、版本、内部状态和中文状态名。
+- 分层蓝图包进入执行交接时，manifest 和全部成员必须为 `approved`（已批准）。
+- manifest 的成员清单发生内容性变化时，manifest 必须递增版本，旧批准不自动覆盖新集合。
+- 交接到执行层时可选择整包交接或按 manifest 已定义的波次 / 切片交接；不得交接 manifest 未列出的资产或切片。
+
 ---
 
 ## 四、最小输入契约
@@ -268,6 +292,7 @@ summary: choose adapter-based 迁移（migration） with rollback checkpoint
 - required / recommended 决策点状态
 - `人工批准授予（Human Approval Granted）` 对应的 `last_decision`
 - 足以唯一确定改动切片、文件范围、接口、数据形状、算法骨架、错误处理、风险处理、发布 / 验证顺序和测试承诺的输入
+- 足以判断应使用单体蓝图还是分层蓝图包的范围、耦合、切片数量、发布波次和审查边界信息
 
 ### 给 `hilp-reapproval`
 最低入口输入：
@@ -290,8 +315,10 @@ summary: choose adapter-based 迁移（migration） with rollback checkpoint
 - `owner_skill=hilp-blueprint`
 - 蓝图 `last_decision=<human approval decision-id>`
 - 蓝图确定性检查结果为“已通过”
+- 若为分层蓝图包，必须提供主蓝图 / manifest 的固定版本包内资产清单，且全部成员为 `approved`（已批准）并通过确定性检查
 - 仍有效的上游 `stage-3/design-choice@vM [state=approved｜中文状态=已批准]` 引用
 - 已确定的执行模式
+- 已确定的执行范围：整包、某个发布波次或 manifest 中已定义的切片集合
 - 当前阻断项状态为“无”
 
 ### 给 `hilp-skill-pressure-test`
@@ -350,6 +377,7 @@ summary: choose adapter-based 迁移（migration） with rollback checkpoint
 - 阶段目的
 - 已保存资产路径
 - 内部状态值和中文状态名
+- 蓝图形式：单体蓝图或分层蓝图包
 - 改动切片
 - 依赖顺序
 - 风险检查点
@@ -358,6 +386,7 @@ summary: choose adapter-based 迁移（migration） with rollback checkpoint
 - 数据形状
 - 测试承诺
 - 确定性检查结果
+- 分层蓝图包的包内资产清单、覆盖矩阵引用和审批边界；单体蓝图写“无”
 - 当前是否需要用户批准
 
 若确定性检查未通过，不得输出正式蓝图资产；只能输出回退说明并指出需要回到哪个前置阶段。
@@ -382,7 +411,8 @@ summary: choose adapter-based 迁移（migration） with rollback checkpoint
 - 已保存资产路径
 - 内部状态值和中文状态名
 - 上游资产引用
-- 执行范围
+- 已批准蓝图或蓝图包 manifest 引用
+- 执行范围：整包、发布波次或 manifest 中已定义的切片集合
 - 必守实现约束
 - 风险与验证检查点
 - 执行模式
@@ -415,6 +445,7 @@ summary: choose adapter-based 迁移（migration） with rollback checkpoint
 - 把 必须人工裁决的决策未解决的状态交给绑定性下游步骤
 - 在交接时偷偷补写本不属于自己职责的内容
 - 从实施蓝图阶段开始，把未确定项、模糊项、待选分支或执行者自行裁量事项写入正式阶段资产
+- 用分层蓝图包隐藏缺失细节、绕过未批准子蓝图或扩大执行交接范围
 
 ### 特别禁止
 - `hilp-router` 不得直接交给 `hilp-blueprint`
@@ -422,7 +453,9 @@ summary: choose adapter-based 迁移（migration） with rollback checkpoint
 - `hilp-design-approval` 在 `draft`（草稿）状态下不得交给 `hilp-blueprint`
 - `hilp-blueprint` 在存在 必须人工裁决阻断时不得交给 `hilp-execution-handoff`
 - `hilp-blueprint` 在确定性检查未通过时不得交给 `hilp-execution-handoff`
+- `hilp-blueprint` 不得把成员未批准或版本未绑定的分层蓝图包交给 `hilp-execution-handoff`
 - `hilp-execution-handoff` 不得补写或扩展蓝图内容
+- `hilp-execution-handoff` 不得交接蓝图包 manifest 未列出的切片、波次或资产
 
 ---
 

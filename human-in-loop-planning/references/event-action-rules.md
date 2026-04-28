@@ -39,7 +39,8 @@
 ### 规则 E：蓝图后必须确定
 从实施蓝图阶段开始，正式资产必须通过确定性检查。
 - `stage-4-5/implementation-blueprint` 不得包含待定、可选、后续确认、执行时再判断、占位符或执行者自行裁量事项
-- `stage-6/execution-handoff` 只能引用、摘录和封装已批准且通过确定性检查的蓝图
+- 大范围修改可使用分层蓝图包，但主蓝图 / manifest、全部子蓝图和覆盖矩阵都必须通过确定性检查并绑定固定版本集合
+- `stage-6/execution-handoff` 只能引用、摘录和封装已批准且通过确定性检查的蓝图或蓝图包
 - 确定性检查未通过时，不得产出实施蓝图或执行交接资产，必须回退到能消除不确定性的前置阶段
 
 ---
@@ -75,6 +76,7 @@
 
 **必需动作**
 - 将该资产状态从 `ready-for-approval`（待审批）改为 `approved`（已批准）
+- 若批准对象是分层蓝图包，批准必须绑定主蓝图 / manifest 中列出的固定版本集合，并将批准状态同步到 manifest 和全部包内成员
 - 保留同一内容版本
 - 记录 `last_decision=<decision-id>`
 - 将批准后的状态同步写入落盘资产；可生成带 `approved`（已批准）审批标记的新文件，或更新同一资产索引
@@ -94,7 +96,7 @@
 - 同一版本, `state=approved`（已批准）, `last_decision=<decision-id>`
 - 资产文件名或资产索引必须体现 `approved`（已批准）
 - 若批准对象是 `stage-3/design-choice@vN` 且 `owner_skill=hilp-design-approval`，下一步为 `hilp-blueprint`
-- 若批准对象是 `stage-4-5/implementation-blueprint@vN` 且 `owner_skill=hilp-blueprint`，下一步为 `hilp-execution-handoff`
+- 若批准对象是 `stage-4-5/implementation-blueprint@vN` 且 `owner_skill=hilp-blueprint`，下一步为 `hilp-execution-handoff`；分层蓝图包必须同时明确批准 manifest 绑定的包内成员版本集合
 - 若批准对象不是 Stage 3 设计资产或 Stage 4/5 蓝图资产，不得自动进入 `hilp-blueprint` 或 `hilp-execution-handoff`，必须按 `handoff-contracts.md` 重算下一跳
 
 ### 事件 1：证据触发器命中
@@ -225,6 +227,7 @@
 **触发器**
 - 实施蓝图或执行交接准备输出中出现待定、可能、视情况、后续确认、执行时再判断、可选 A/B、暂按、大概、原则上、TODO、TBD、问号、空字段或占位符
 - 文件范围、接口形态、数据形状、算法骨架、错误处理、风险处理、验证口径、发布顺序、执行模式或禁止越界项未确定
+- 分层蓝图包缺少主蓝图 / manifest、子蓝图、覆盖矩阵、固定版本包内资产清单，或任一成员未通过确定性检查
 - 执行交接阶段需要新增、修订、补齐或解释性扩展蓝图内容
 
 **必需动作**
@@ -240,6 +243,7 @@
 **资产状态变化**
 - 尚未形成正式蓝图或交接资产时，不创建对应正式资产
 - 已存在且受影响的 Stage 4 / 5 / 6 资产改为 `needs-revision`（待修订）
+- 分层蓝图包任一成员受影响时，必须同步判断主蓝图 / manifest 和覆盖矩阵是否也应改为 `needs-revision`（待修订）
 
 ---
 
