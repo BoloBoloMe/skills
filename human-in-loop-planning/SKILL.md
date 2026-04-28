@@ -1,13 +1,13 @@
 ---
 name: human-in-loop-planning
-description: 面向人在回路规划协议的总入口。用于把复杂变更、重构、迁移、调查、设计审批、蓝图编制、重审和执行交接纳入同一状态机。适用于用户要求按 hilp 或人在回路流程规划任务、比较方案、补齐需求事实、处理旧批准被新事实推翻、生成已批准设计后的实施蓝图、交接已批准蓝图到执行层，或压测该协议本身。不要用于直接写代码或绕过人工决策；若只是普通问答且不需要阶段门控，不触发。
+description: 面向人在回路规划协议的总入口。用于把复杂变更、重构、迁移、调查、设计审批、蓝图编制、重审、执行交接和规划资产归档纳入同一状态机。适用于用户要求按 hilp 或人在回路流程规划任务、比较方案、补齐需求事实、处理旧批准被新事实推翻、生成已批准设计后的实施蓝图、交接已批准蓝图到执行层、整理已交接规划资产归档，或压测该协议本身。不要用于直接写代码或绕过人工决策；若只是普通问答且不需要阶段门控，不触发。
 ---
 
 # 人在回路规划
 
 ## 概览
 
-将本 Skill 作为一个整体规划协议使用，而不是 7 个独立 Skill 使用。`hilp-router`、`hilp-requirements-facts`、`hilp-design-approval`、`hilp-blueprint`、`hilp-reapproval`、`hilp-execution-handoff` 和 `hilp-skill-pressure-test` 是协议内部的执行单元，详细规则放在 `references/` 下。
+将本 Skill 作为一个整体规划协议使用，而不是 8 个独立 Skill 使用。`hilp-router`、`hilp-requirements-facts`、`hilp-design-approval`、`hilp-blueprint`、`hilp-reapproval`、`hilp-execution-handoff`、`hilp-archive` 和 `hilp-skill-pressure-test` 是协议内部的执行单元，详细规则放在 `references/` 下。
 
 本 Skill 的职责是在处理用户任务时，保持阶段门控、资产状态、审批边界和重审行为一致。对普通用户输出时，应优先使用中文阶段名称和任务相关内容，不默认暴露内部执行单元、事件名、状态机推导细节。
 
@@ -25,6 +25,7 @@ description: 面向人在回路规划协议的总入口。用于把复杂变更�
    - `references/blueprint.md`
    - `references/reapproval.md`
    - `references/execution-handoff.md`
+   - `references/archive.md`
    - `references/skill-pressure-test.md`
 
 参考文件优先级固定为：`event-action-rules.md` > `handoff-contracts.md` > `routing-matrix.md` > 当前模块参考文件。
@@ -39,6 +40,7 @@ description: 面向人在回路规划协议的总入口。用于把复杂变更�
 - `hilp-blueprint` → 实施蓝图阶段
 - `hilp-reapproval` → 变更重审阶段
 - `hilp-execution-handoff` → 执行交接阶段
+- `hilp-archive` → 规划资产归档阶段
 - `hilp-skill-pressure-test` → 协议压力测试阶段
 
 内部模块名、事件名、`owner_skill`、`last_event`、`last_decision` 等字段默认只写入资产元数据或审计说明。只有用户要求调试协议、审查协议本身、追踪资产状态，或交接契约要求精确引用时，才在用户可见回答中展示这些内部字段。
@@ -67,6 +69,7 @@ description: 面向人在回路规划协议的总入口。用于把复杂变更�
 - `03`：实施蓝图阶段
 - `04`：变更重审阶段
 - `05`：执行交接阶段
+- `06`：规划资产归档阶段
 - `90`：协议压力测试阶段
 
 审批标记：
@@ -83,12 +86,14 @@ description: 面向人在回路规划协议的总入口。用于把复杂变更�
 ## 路由决策树
 
 1. 如果用户是在测试、审查、验证或压力测试本协议本身，使用 `hilp-skill-pressure-test`。
-2. 如果输入提到之前方案、旧判断、已批准结论、返工、重新看、推翻、新证据、运行中、已交接、已进入执行、治理变化、回滚、兼容窗口，或必须人工裁决阻断既有路径，先使用 `hilp-reapproval`。即使资产引用不完整，也按重审入口处理。
-3. 如果这是没有既有资产、旧判断、当前阶段或重审语义的新规划任务，先使用 `hilp-router`。
-4. 如果需求、范围、成功标准、当前行为、根因或影响面不清楚，使用 `hilp-requirements-facts`。
-5. 如果目标、范围 / 非目标、成功标准、当前行为或证据基础、至少有界的影响面，以及不阻断方案比较的核心未知项都已建立，使用 `hilp-design-approval`。
-6. 只有存在已批准的 Stage 3 设计资产，并且具备完整资产引用、owner_skill、人工批准授予（Human Approval Granted） 决策，且所有会影响实施蓝图的变量已经确定时，才使用 `hilp-blueprint`。若文件范围、接口、数据形状、验证口径、风险处理或执行边界仍未确定，必须先回到 `hilp-requirements-facts`、`hilp-design-approval` 或 `hilp-reapproval`。
-7. 只有存在已批准的 Stage 4/5 蓝图资产或分层蓝图包、owner_skill、人工批准授予（Human Approval Granted） 决策、仍有效的上游已批准设计资产、确定性检查已通过，且没有未解决阻断项时，才使用 `hilp-execution-handoff`。执行模式、执行范围和禁止越界项未确定时，不得进入执行交接；分层蓝图包还要求主蓝图 / manifest 绑定的全部成员版本固定且已批准。
+2. 如果用户要求为已完成执行交接的规划链生成或重新生成规划资产归档，且没有新事实、失效、回滚、兼容窗口或必须人工裁决阻断既有路径，使用 `hilp-archive`。
+3. 如果输入提到之前方案、旧判断、已批准结论、返工、重新看、推翻、新证据、运行中、已交接、已进入执行、治理变化、回滚、兼容窗口，或必须人工裁决阻断既有路径，先使用 `hilp-reapproval`。即使资产引用不完整，也按重审入口处理。
+4. 如果这是没有既有资产、旧判断、当前阶段或重审语义的新规划任务，先使用 `hilp-router`。
+5. 如果需求、范围、成功标准、当前行为、根因或影响面不清楚，使用 `hilp-requirements-facts`。
+6. 如果目标、范围 / 非目标、成功标准、当前行为或证据基础、至少有界的影响面，以及不阻断方案比较的核心未知项都已建立，使用 `hilp-design-approval`。
+7. 只有存在已批准的 Stage 3 设计资产，并且具备完整资产引用、owner_skill、人工批准授予（Human Approval Granted） 决策，且所有会影响实施蓝图的变量已经确定时，才使用 `hilp-blueprint`。若文件范围、接口、数据形状、验证口径、风险处理或执行边界仍未确定，必须先回到 `hilp-requirements-facts`、`hilp-design-approval` 或 `hilp-reapproval`。
+8. 只有存在已批准的 Stage 4/5 蓝图资产或分层蓝图包、owner_skill、人工批准授予（Human Approval Granted） 决策、仍有效的上游已批准设计资产、确定性检查已通过，且没有未解决阻断项时，才使用 `hilp-execution-handoff`。执行模式、执行范围和禁止越界项未确定时，不得进入执行交接；分层蓝图包还要求主蓝图 / manifest 绑定的全部成员版本固定且已批准。
+9. 执行交接成功落盘且入口检查为无阻断项后，自动尝试使用 `hilp-archive` 生成规划资产归档索引。归档失败不阻断执行交接，但必须报告失败原因。
 
 不要把内部模块名当作真实的独立 Skill 调用。应在本 Skill 内部读取相应参考文件，并按该模块的输出模板完成响应。
 
@@ -153,4 +158,5 @@ description: 面向人在回路规划协议的总入口。用于把复杂变更�
 - `references/blueprint.md`
 - `references/reapproval.md`
 - `references/execution-handoff.md`
+- `references/archive.md`
 - `references/skill-pressure-test.md`

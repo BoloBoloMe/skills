@@ -46,6 +46,9 @@
 - `human_decision_recommended`（建议人工裁决）下默认路径是否足够保守
 - 治理升级 / 降级是否正确影响资产生命周期
 - 主原型升格后是否正确重算下一跳
+- 执行交接成功后是否自动生成规划资产归档索引
+- 归档失败是否只报告失败且不阻断执行交接
+- 手动重新归档是否要求有效执行交接资产
 
 ## 触发器互斥测试矩阵
 
@@ -55,6 +58,9 @@
 - design-approval 与 reapproval：首次在当前阶段发现 必须人工裁决的决策 由当前阶段处理；既有资产被 必须人工裁决的决策 推翻或阻断时进入 `hilp-reapproval`。
 - blueprint 与 design-approval：用户说“方案定了”但没有 `stage-3/design-choice@vN [state=approved｜中文状态=已批准]` 与 `last_decision` 时，不得进入 `hilp-blueprint`。
 - execution-handoff 与 reapproval：执行中发现上游假设错误时，必须进入 `hilp-reapproval`，不得继续交接。
+- execution-handoff 与 archive：执行交接成功落盘且入口检查为“无阻断项”后，必须自动尝试进入 `hilp-archive`；归档失败不得反向推翻执行交接。
+- archive 与 reapproval：用户要求重新归档但同时提供新事实、失效、回滚或必须人工裁决阻断时，必须优先进入 `hilp-reapproval`，不得生成归档 manifest。
+- archive 多候选链路：存在多个候选执行交接资产且无法唯一确定最终链时，必须归档失败并报告原因，不得猜测最终入口。
 
 ## 输出模板
 

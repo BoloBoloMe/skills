@@ -263,6 +263,7 @@ strict 模式最小控制件清单：
 - `hilp-blueprint` → 实施蓝图阶段
 - `hilp-reapproval` → 变更重审阶段
 - `hilp-execution-handoff` → 执行交接阶段
+- `hilp-archive` → 规划资产归档阶段
 - `hilp-skill-pressure-test` → 协议压力测试阶段
 
 ## 八、下一跳默认映射
@@ -272,4 +273,5 @@ strict 模式最小控制件清单：
 - 存在 `approved`（已批准）的 Stage 3 design asset，且无 必须人工裁决的决策、上游失效事件或会影响蓝图的未确定项 → `hilp-blueprint`（实施蓝图阶段）
 - 上游资产失效 / 模式升级 / 需要回退 / 蓝图确定性检查未通过 → `hilp-reapproval`（变更重审阶段）
 - 存在 `approved`（已批准）且通过确定性检查的蓝图资产或分层蓝图包，上游批准资产仍有效，执行模式和执行范围已确定，需要交接执行 → `hilp-execution-handoff`（执行交接阶段）
+- 执行交接成功落盘且入口检查为“无阻断项”，或用户要求基于有效执行交接资产重新生成归档索引且无重审触发 → `hilp-archive`（规划资产归档阶段）
 - 需要验证整个 skill 包行为 → `hilp-skill-pressure-test`（协议压力测试阶段）
