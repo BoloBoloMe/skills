@@ -325,7 +325,7 @@ last_event: <none | event-name>
 last_decision: <none | decision-id>
 approval_marker: no-approval | needs-decision | needs-approval | approved | needs-revision | archived
 approval_marker_label: 无需审批 | 待裁决 | 需审批 | 已批准 | 待修订 | 已归档
-asset_path: <project-root>/hilp/<change-summary>/<file-name>.md
+asset_path: <project-root>/docs/hilp/<change-summary>/<file-name>.md
 ```
 
 版本递增规则：

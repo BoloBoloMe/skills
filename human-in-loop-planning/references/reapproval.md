@@ -49,7 +49,7 @@
 - 用一句话说明：当旧结论、已批准方案或执行路径被新事实影响时，先判断哪些内容还能继续用，哪些必须回退修订。
 
 ## 已保存资产
-- 文件路径：`项目根目录/hilp/变更概述/04-变更重审_<审批标记>_reapproval@vN.md`
+- 文件路径：`项目根目录/docs/hilp/变更概述/04-变更重审_<审批标记>_reapproval@vN.md`
 - asset_ref：`stage-reapproval/reapproval-decision@vN [state=<state>｜中文状态=<state_label>]`
 - 当前状态：必须写中文状态名，必要时附内部状态值。
 - 当前是否需要审批：说明是否需要用户补资产、待人工裁决、待审批或已批准。
