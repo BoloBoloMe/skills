@@ -51,15 +51,25 @@ description: 面向人在回路规划协议的总入口。用于把复杂变更�
 
 ```text
 项目根目录/docs/hilp/变更概述/
+  manifest.md
+  _current/
+    当前待审.md
+    当前已批准.md
+  review-pack/
+    <阶段前缀>-<artifact>@vN-review.md
+  assets/
+    <阶段前缀>-<阶段中文名>_<artifact>@vN.md
 ```
 
 其中“变更概述”应使用本次任务的简短中文概括，例如 `改进HILP中文交互与资产落盘`。若无法确认项目根目录，必须先向用户确认保存位置；若写入失败，必须明确告知失败，不得声称资产已保存。
 
-文件名必须同时体现阶段和审批状态，推荐格式：
+新产生的正式阶段资产必须写入 `assets/`，文件名推荐格式：
 
 ```text
-<阶段前缀>-<阶段中文名>_<审批标记>_<artifact>@vN.md
+<阶段前缀>-<阶段中文名>_<artifact>@vN.md
 ```
+
+审批标记和当前状态不再写入新资产文件名；必须由资产元数据、根目录 `manifest.md`、`review-pack/` 和 `_current/` 表达。旧命名资产不迁移、不重命名，仍可作为历史输入读取；兼容旧资产时可从资产元数据和文件名解析状态。
 
 阶段前缀：
 
@@ -72,16 +82,27 @@ description: 面向人在回路规划协议的总入口。用于把复杂变更�
 - `06`：规划资产归档阶段
 - `90`：协议压力测试阶段
 
-审批标记：
+根目录 `manifest.md` 是当前变更目录的 live manifest，是状态权威。它可以随资产状态变化更新，最小字段为：
 
-- `no-approval`：无需审批，仅作为过程记录
-- `needs-decision`：需要用户先做裁决
-- `needs-approval`：可提交审批，但尚未批准
-- `approved`：已明确批准
-- `needs-revision`：需要修订
-- `archived`：已归档
+```text
+asset_id | artifact_name | version | asset_path | created_state | current_state | current_state_label | approval_marker | approval_marker_label | role | current_review_pack | supersedes | superseded_by | last_event | last_decision
+```
 
-旧资产不迁移；本规则只影响新产生的资产。
+待审批资产必须同时生成审核包和当前待审入口：
+
+- 正式资产：`项目根目录/docs/hilp/变更概述/assets/<阶段前缀>-<阶段中文名>_<artifact>@vN.md`
+- 审核包：`review-pack/<阶段前缀>-<artifact>@vN-review.md`
+- 当前入口：`_current/当前待审.md`
+
+审核包必须保留审核尝试记录，最小字段为：
+
+```text
+review_pack_id | target_asset_ref | target_asset_path | target_version | previous_asset_ref | review_status | opened_at | closed_at | close_result | close_decision | change_summary | reviewer_action_required
+```
+
+审核完成后不得删除审核包；必须将其关闭并保留。批准通过时，更新 `manifest.md` 中对应版本的 `current_state=approved｜中文状态=已批准`，关闭审核包，将 `_current/当前待审.md` 改为当前无待审资产，并更新 `_current/当前已批准.md` 指向当前有效批准集合。审核不通过时，更新 `manifest.md` 中对应版本的 `current_state=needs-revision｜中文状态=待修订`，关闭审核包；内容修订必须生成下一版本正式资产和新的审核包。
+
+`_current/当前待审.md` 是唯一待审入口；`_current/当前已批准.md` 是当前有效批准集合入口。归档阶段不生成根目录 `CURRENT.md`，不移动正式资产，不覆盖 `_current/`；`_current/` 是资产管理工作入口，不属于归档阶段产出的 archive manifest。
 
 ## 路由决策树
 

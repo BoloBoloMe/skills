@@ -96,9 +96,9 @@ stage-4-5/coverage-matrix@vN                # 覆盖矩阵
 推荐文件名：
 
 ```text
-03-实施蓝图_<审批标记>_implementation-blueprint@vN.md
-03-实施蓝图_<审批标记>_blueprint-slice-<slice-id>@vN.md
-03-实施蓝图_<审批标记>_coverage-matrix@vN.md
+assets/03-实施蓝图_implementation-blueprint@vN.md
+assets/03-实施蓝图_blueprint-slice-<slice-id>@vN.md
+assets/03-实施蓝图_coverage-matrix@vN.md
 ```
 
 主蓝图 / manifest 必须包含：
@@ -166,12 +166,13 @@ package_members:
 - 用一句话说明：把已批准的方案转成可执行的改动切片、顺序、约束和验证检查点。
 
 ## 已保存资产
-- 文件路径：`项目根目录/docs/hilp/变更概述/03-实施蓝图_<审批标记>_implementation-blueprint@vN.md`
+- 文件路径：`项目根目录/docs/hilp/变更概述/assets/03-实施蓝图_implementation-blueprint@vN.md`
 - asset_ref：`stage-4-5/implementation-blueprint@vN [state=<state>｜中文状态=<state_label>]`
 - 蓝图形式：单体蓝图 / 分层蓝图包。
 - 上游设计：`stage-3/design-choice@vM [state=approved｜中文状态=已批准]`
 - 当前状态：必须写中文状态名，必要时附内部状态值。
 - 当前是否需要审批：只能说明待审批或已批准；若仍需要补蓝图或人工裁决，不得产出正式蓝图资产。
+- 若当前状态为 `ready-for-approval｜中文状态=待审批`：同时列出审核包路径 `项目根目录/docs/hilp/变更概述/review-pack/03-implementation-blueprint@vN-review.md` 和当前待审入口 `项目根目录/docs/hilp/变更概述/_current/当前待审.md`；分层蓝图包还必须说明审核范围覆盖主蓝图 / manifest 绑定的固定版本集合。
 
 ## 改动拓扑
 - 改动切片：

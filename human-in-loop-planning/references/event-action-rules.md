@@ -32,8 +32,11 @@
 ### 规则 D：阶段资产必须持久化
 所有阶段输出都必须先写入项目目录下的阶段资产文件，再在用户可见回答中给出摘要和保存路径。
 - 默认保存目录：`项目根目录/docs/hilp/变更概述/`
-- 旧资产不迁移；本规则只影响新资产
-- 状态变化、人工批准、重审、归档和版本递增都必须反映到资产文件
+- 新正式阶段资产必须写入 `assets/`，文件名使用 `<阶段前缀>-<阶段中文名>_<artifact>@vN.md`
+- 根目录 `manifest.md` 是 live manifest，是当前状态和审批标记的权威索引
+- 待审批资产必须同时写入正式资产、`review-pack/<阶段前缀>-<artifact>@vN-review.md` 和 `_current/当前待审.md`
+- 旧资产不迁移、不重命名；旧命名资产仍可作为历史输入读取
+- 状态变化、人工批准、重审、归档和版本递增都必须反映到 live manifest；必要时同步更新审核包和 `_current/` 入口
 - 若无法确认项目根目录或写入失败，必须明确告知用户，不得声称资产已保存
 
 ### 规则 E：蓝图后必须确定
@@ -79,7 +82,8 @@
 - 若批准对象是分层蓝图包，批准必须绑定主蓝图 / manifest 中列出的固定版本集合，并将批准状态同步到 manifest 和全部包内成员
 - 保留同一内容版本
 - 记录 `last_decision=<decision-id>`
-- 将批准后的状态同步写入落盘资产；可生成带 `approved`（已批准）审批标记的新文件，或更新同一资产索引
+- 将批准后的状态同步写入根目录 `manifest.md`；不因状态变化改写新正式资产文件名
+- 关闭对应审核包，将 `_current/当前待审.md` 改为当前无待审资产，并更新 `_current/当前已批准.md`
 - 按批准对象所属阶段重新计算下一跳
 
 **被阻断的转移**
@@ -94,7 +98,7 @@
 
 **资产状态变化**
 - 同一版本, `state=approved`（已批准）, `last_decision=<decision-id>`
-- 资产文件名或资产索引必须体现 `approved`（已批准）
+- live manifest 必须体现 `approved`（已批准），新正式资产文件名不写审批状态
 - 若批准对象是 `stage-3/design-choice@vN` 且 `owner_skill=hilp-design-approval`，下一步为 `hilp-blueprint`
 - 若批准对象是 `stage-4-5/implementation-blueprint@vN` 且 `owner_skill=hilp-blueprint`，下一步为 `hilp-execution-handoff`；分层蓝图包必须同时明确批准 manifest 绑定的包内成员版本集合
 - 若批准对象不是 Stage 3 设计资产或 Stage 4/5 蓝图资产，不得自动进入 `hilp-blueprint` 或 `hilp-execution-handoff`，必须按 `handoff-contracts.md` 重算下一跳
@@ -261,7 +265,7 @@
 - 外部引用资产只记录为 `external-reference`，不纳入当前目录治理
 - 以最终执行交接资产的引用链判定阅读角色，而不是简单按最高版本判定
 - 将 `needs-revision`（待修订）资产优先标为 `needs-revision-history`
-- 不移动文件，不生成 `CURRENT.md`，不覆盖旧 manifest
+- 不移动文件，不生成根目录 `CURRENT.md`，不覆盖 live manifest，不覆盖 `_current/` 文件
 - 不修改任何上游资产状态，不把 `approved`（已批准）资产改为 `archived`（已归档）
 - 成功时在用户可见输出中简短说明归档文件路径、asset_ref、状态和用途
 - 失败时说明失败原因、影响和恢复方式
@@ -272,9 +276,9 @@
 - 不允许归档阶段新增、修订、补齐或解释性扩展规划内容
 
 **资产状态变化**
-- 新增归档 manifest：`state=archived`（已归档），`approval_marker=no-approval`（无需审批）
+- 新增归档正式资产：`assets/06-规划资产归档_archive-manifest@vN.md`，`state=archived`（已归档），`approval_marker=no-approval`（无需审批）
 - 已批准设计、已批准蓝图和执行交接资产状态保持不变
-- 旧归档 manifest 不回写；在新 manifest 中标为 `superseded`
+- 旧 archive manifest 不回写；在新 archive manifest 中标为 `superseded`
 - 归档失败时不创建正式归档资产，不改变任何既有资产状态
 
 ---
@@ -321,6 +325,12 @@
 - 无需审批的过程记录完成且不再活跃推进时，使用 `state=archived`（已归档）与 `approval_marker=no-approval`（无需审批）。
 - 若无需审批的过程记录产生需要采纳的规则修改建议，不直接将该过程记录改为待审批；必须创建新的设计资产，并由新资产进入 `ready-for-approval`（待审批）。
 
+审核包生命周期规则：
+- 进入 `ready-for-approval`（待审批）时，必须创建或更新审核包，并让 `_current/当前待审.md` 指向该审核包和目标资产。
+- 审核通过时，审核包状态变为 `closed`，`close_result=approved`，live manifest 中目标资产当前状态变为 `approved｜已批准`。
+- 审核不通过时，审核包状态变为 `closed`，`close_result=needs-revision`，live manifest 中目标资产当前状态变为 `needs-revision｜待修订`；内容修订必须生成下一版本和新的审核包。
+- `_current/当前已批准.md` 只列当前仍有效的已批准资产集合，不改变正式资产正文。
+
 ---
 
 ## 五、允许状态转移 重算规则
@@ -357,13 +367,13 @@ last_event: <none | event-name>
 last_decision: <none | decision-id>
 approval_marker: no-approval | needs-decision | needs-approval | approved | needs-revision | archived
 approval_marker_label: 无需审批 | 待裁决 | 需审批 | 已批准 | 待修订 | 已归档
-asset_path: <project-root>/docs/hilp/<change-summary>/<file-name>.md
+asset_path: <project-root>/docs/hilp/<change-summary>/assets/<file-name>.md
 ```
 
 版本递增规则：
 - 内容性修订必须递增版本号。
-- 单纯状态变化可以保留版本号，但必须记录 `last_event`，并同步更新落盘资产或生成同版本状态文件。
-- 从 `ready-for-approval`（待审批）变为 `approved`（已批准）只能通过 `人工批准授予（Human Approval Granted）` 事件发生；这是状态变化，不自动改变内容版本。
+- 单纯状态变化可以保留版本号，但必须记录 `last_event`，并同步更新根目录 `manifest.md`；新正式资产文件名不得因状态变化改名。
+- 从 `ready-for-approval`（待审批）变为 `approved`（已批准）只能通过 `人工批准授予（Human Approval Granted）` 事件发生；这是状态变化，不自动改变内容版本，必须关闭审核包并更新 `_current/` 入口。
 - 从 `approved`（已批准）变为 `needs-revision`（待修订）必须记录触发事件，并阻断所有依赖该资产的下游绑定推进。
 
 ---

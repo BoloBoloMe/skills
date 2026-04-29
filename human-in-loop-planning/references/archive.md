@@ -6,10 +6,10 @@
 
 # 概览
 
-你负责规划链闭环后的文档阅读治理。
+你负责规划链闭环后的文档阅读治理。根目录 `manifest.md` 是可更新的 live manifest；本模块生成的 `assets/06-规划资产归档_archive-manifest@vN.md` 是版本化归档正式资产，二者不得混淆。
 
 你的职责是：
-- 枚举当前变更目录内的 HILP 资产
+- 枚举当前变更目录内 `assets/` 中的正式阶段资产和根目录 `manifest.md` 中的状态记录
 - 识别最终执行交接资产及其引用链
 - 生成版本化归档索引
 - 标注最终阅读入口、当前基线、支撑上下文、历史过程资产和外部引用
@@ -17,7 +17,8 @@
 
 你不负责：
 - 不移动文件
-- 不生成 `CURRENT.md`
+- 不生成根目录 `CURRENT.md`
+- 不覆盖 `_current/当前待审.md` 或 `_current/当前已批准.md`
 - 不修改上游资产状态
 - 不把 `approved`（已批准）资产改为 `archived`（已归档）
 - 不新增设计判断
@@ -39,7 +40,7 @@
 4. 执行交接资产绑定仍有效的 `stage-3/design-choice@vM [state=approved｜中文状态=已批准]`。
 5. 执行交接阶段没有新增、修订、补齐或解释性扩展蓝图内容。
 6. 当前没有新的变更重审触发事件。
-7. 当前变更目录可枚举且可写入新归档 manifest。
+7. 当前变更目录可枚举，且可写入新的 `assets/06-规划资产归档_archive-manifest@vN.md`。
 
 ### 手动重新归档入口
 
@@ -48,7 +49,7 @@
 1. 用户明确指定一个有效执行交接资产。
 2. 当前变更目录中存在且只存在一个可唯一识别最终链的有效执行交接资产。
 
-手动重新归档必须生成更高版本 `archive-manifest@vN`，不得覆盖旧 manifest。
+手动重新归档必须生成更高版本 `assets/06-规划资产归档_archive-manifest@vN.md`，不得覆盖旧 archive manifest 或根目录 live manifest。
 
 ## 有效执行交接资产判定
 
@@ -66,14 +67,14 @@
 
 ## 失败条件
 
-命中以下任一条件时，不生成正式归档 manifest：
+命中以下任一条件时，不生成正式 archive manifest：
 - 找不到有效执行交接资产。
 - 执行交接资产显示有阻断项。
 - 执行交接资产没有引用已批准蓝图。
 - 执行交接资产没有引用仍有效的已批准设计。
 - 多个候选执行交接资产无法唯一确定最终链。
 - 当前变更目录无法枚举。
-- 归档 manifest 写入失败。
+- `assets/06-规划资产归档_archive-manifest@vN.md` 写入失败。
 - 发现新的重审触发事件。
 
 归档失败不阻断执行交接。失败时必须说明原因、影响和恢复方式，不得声称归档已经完成。
@@ -88,18 +89,18 @@ owner_skill: hilp-archive
 approval_marker: no-approval｜中文状态=无需审批
 ```
 
-归档文件名使用：
+归档正式资产文件名使用：
 
 ```text
-06-规划资产归档_no-approval_archive-manifest@vN.md
+assets/06-规划资产归档_archive-manifest@vN.md
 ```
 
 规则：
 - `06` 服务目录阅读排序。
 - `stage-7` 服务资产语义，表示该资产位于执行交接之后。
-- 同一变更目录下，版本号最高的 `archive-manifest@vN` 是当前阅读入口。
-- 新归档 manifest 不覆盖旧 manifest。
-- 旧 manifest 在新 manifest 中标为 `superseded`。
+- 同一变更目录下，版本号最高的 `assets/06-规划资产归档_archive-manifest@vN.md` 是当前阅读入口。
+- 新 archive manifest 不覆盖旧 archive manifest，不覆盖根目录 live manifest，不覆盖 `_current/` 文件。
+- 旧 archive manifest 在新 archive manifest 中标为 `superseded`。
 
 ## 阅读角色
 
@@ -140,7 +141,7 @@ approval_marker: no-approval｜中文状态=无需审批
 5. 从最终执行交接资产提取引用链。
 6. 按阅读角色判定顺序标注当前目录资产。
 7. 将目录外资产列入“外部引用资产”。
-8. 生成下一个版本的 `archive-manifest@vN`。
+8. 生成下一个版本的 `assets/06-规划资产归档_archive-manifest@vN.md`。
 9. 用户可见输出中，成功时简短展示；失败时详细说明。
 
 ## 输出模板
@@ -151,7 +152,7 @@ approval_marker: no-approval｜中文状态=无需审批
 整理当前变更目录下的 HILP 资产，生成最终阅读入口和历史资产索引；不改变任何上游资产状态。
 
 ## 已保存资产
-- 文件路径：`项目根目录/docs/hilp/变更概述/06-规划资产归档_no-approval_archive-manifest@vN.md`
+- 文件路径：`项目根目录/docs/hilp/变更概述/assets/06-规划资产归档_archive-manifest@vN.md`
 - asset_ref：`stage-7/archive-manifest@vN [state=archived｜中文状态=已归档]`
 - 当前状态：已归档（内部状态值：`archived`）。
 - 当前是否需要审批：无需审批。
@@ -187,7 +188,8 @@ approval_marker: no-approval｜中文状态=无需审批
 
 ## 归档边界
 - 不移动文件。
-- 不生成 `CURRENT.md`。
+- 不生成根目录 `CURRENT.md`。
+- 不覆盖 `_current/当前待审.md` 或 `_current/当前已批准.md`。
 - 不改变上游资产状态。
 - 不修改设计、蓝图或交接内容。
 - 不需要审批。
@@ -200,7 +202,7 @@ approval_marker: no-approval｜中文状态=无需审批
 ## 规划资产归档
 
 已自动生成归档索引：
-- 文件路径：`项目根目录/docs/hilp/变更概述/06-规划资产归档_no-approval_archive-manifest@vN.md`
+- 文件路径：`项目根目录/docs/hilp/变更概述/assets/06-规划资产归档_archive-manifest@vN.md`
 - asset_ref：`stage-7/archive-manifest@vN [state=archived｜中文状态=已归档]`
 - 当前是否需要审批：无需审批
 
@@ -234,7 +236,7 @@ approval_marker: no-approval｜中文状态=无需审批
 - 不得在归档阶段新增、修订、补齐或解释性扩展蓝图内容。
 - 不得修改任何上游资产状态。
 - 不得把 `approved`（已批准）资产改为 `archived`（已归档）。
-- 不得移动文件或生成 `CURRENT.md`。
+- 不得移动文件或生成根目录 `CURRENT.md`，不得覆盖 `_current/` 文件。
 - 不得治理当前变更目录之外的资产。
 - 多个候选执行交接资产无法唯一确定最终链时，不得猜测最终入口。
 - 归档失败不得阻断执行交接，也不得声称归档完成。

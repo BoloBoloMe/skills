@@ -50,10 +50,11 @@
 - 用一句话说明：先把“想达到什么”和“现在真实情况是什么”分开，避免基于猜测做设计。
 
 ## 已保存资产
-- 文件路径：`项目根目录/docs/hilp/变更概述/01-需求事实_<审批标记>_requirements-and-facts@vN.md`
+- 文件路径：`项目根目录/docs/hilp/变更概述/assets/01-需求事实_requirements-and-facts@vN.md`
 - asset_ref：`stage-1-2/requirements-and-facts@vN [state=<state>｜中文状态=<state_label>]`
 - 当前状态：必须写中文状态名，必要时附内部状态值。
 - 当前是否需要审批：说明无需审批、需要补充事实、待人工裁决或待审批。
+- 若当前状态为 `ready-for-approval｜中文状态=待审批`：同时列出审核包路径 `项目根目录/docs/hilp/变更概述/review-pack/01-requirements-and-facts@vN-review.md` 和当前待审入口 `项目根目录/docs/hilp/变更概述/_current/当前待审.md`。
 
 ## 需求对齐
 - 目标：
