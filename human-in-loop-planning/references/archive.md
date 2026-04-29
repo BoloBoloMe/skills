@@ -152,19 +152,19 @@ assets/06-规划资产归档_archive-manifest@vN.md
 整理当前变更目录下的 HILP 资产，生成最终阅读入口和历史资产索引；不改变任何上游资产状态。
 
 ## 已保存资产
-- 文件路径：`项目根目录/docs/hilp/变更概述/assets/06-规划资产归档_archive-manifest@vN.md`
+- 文件链接：[06-规划资产归档_archive-manifest@vN.md](相对路径到assets/06-规划资产归档_archive-manifest@vN.md)
 - asset_ref：`stage-7/archive-manifest@vN [state=archived｜中文状态=已归档]`
 - 当前状态：已归档（内部状态值：`archived`）。
 - 当前是否需要审批：无需审批。
 
 ## 最终阅读入口
-- 推荐入口：
-- 推荐阅读顺序：
+- 推荐入口：必须写为 Markdown 文件链接。
+- 推荐阅读顺序：每个本地文件都必须写为 Markdown 文件链接。
 
 ## 最终有效资产
-- 最终设计：
-- 最终蓝图：
-- 最终执行交接：
+- 最终设计：同时给出 `asset_ref` 和 Markdown 文件链接。
+- 最终蓝图：同时给出 `asset_ref` 和 Markdown 文件链接。
+- 最终执行交接：同时给出 `asset_ref` 和 Markdown 文件链接。
 
 ## 支撑上下文资产
 - 需求事实：
@@ -202,7 +202,7 @@ assets/06-规划资产归档_archive-manifest@vN.md
 ## 规划资产归档
 
 已自动生成归档索引：
-- 文件路径：`项目根目录/docs/hilp/变更概述/assets/06-规划资产归档_archive-manifest@vN.md`
+- 文件链接：[06-规划资产归档_archive-manifest@vN.md](相对路径到assets/06-规划资产归档_archive-manifest@vN.md)
 - asset_ref：`stage-7/archive-manifest@vN [state=archived｜中文状态=已归档]`
 - 当前是否需要审批：无需审批
 

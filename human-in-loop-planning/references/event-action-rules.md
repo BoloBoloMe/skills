@@ -30,11 +30,12 @@
 - 不允许通过原型叠加创建新的阶段体系
 
 ### 规则 D：阶段资产必须持久化
-所有阶段输出都必须先写入项目目录下的阶段资产文件，再在用户可见回答中给出摘要和保存路径。
+所有阶段输出都必须先写入项目目录下的阶段资产文件，再在用户可见回答中给出摘要和保存链接。
 - 默认保存目录：`项目根目录/docs/hilp/变更概述/`
 - 新正式阶段资产必须写入 `assets/`，文件名使用 `<阶段前缀>-<阶段中文名>_<artifact>@vN.md`
 - 根目录 `manifest.md` 是 live manifest，是当前状态和审批标记的权威索引
-- 待审批资产必须同时写入正式资产、`review-pack/<阶段前缀>-<artifact>@vN-review.md` 和 `_current/当前待审.md`
+- 所有文件引用必须写成 Markdown 超链接 [显示文本](相对或绝对路径)；优先使用相对当前 Markdown 文件的相对路径，确保预览视图可点击跳转
+- 待审批资产必须同时写入正式资产、`review-pack/<阶段前缀>-<artifact>@vN-review.md` 和 `_current/当前待审.md`，并在可见引用处提供对应 Markdown 链接
 - 旧资产不迁移、不重命名；旧命名资产仍可作为历史输入读取
 - 状态变化、人工批准、重审、归档和版本递增都必须反映到 live manifest；必要时同步更新审核包和 `_current/` 入口
 - 若无法确认项目根目录或写入失败，必须明确告知用户，不得声称资产已保存
@@ -267,7 +268,7 @@
 - 将 `needs-revision`（待修订）资产优先标为 `needs-revision-history`
 - 不移动文件，不生成根目录 `CURRENT.md`，不覆盖 live manifest，不覆盖 `_current/` 文件
 - 不修改任何上游资产状态，不把 `approved`（已批准）资产改为 `archived`（已归档）
-- 成功时在用户可见输出中简短说明归档文件路径、asset_ref、状态和用途
+- 成功时在用户可见输出中简短说明归档文件链接、asset_ref、状态和用途
 - 失败时说明失败原因、影响和恢复方式
 
 **被阻断的转移**
@@ -368,6 +369,7 @@ last_decision: <none | decision-id>
 approval_marker: no-approval | needs-decision | needs-approval | approved | needs-revision | archived
 approval_marker_label: 无需审批 | 待裁决 | 需审批 | 已批准 | 待修订 | 已归档
 asset_path: <project-root>/docs/hilp/<change-summary>/assets/<file-name>.md
+asset_link: [<file-name>.md](<relative-path-from-this-markdown>)
 ```
 
 版本递增规则：

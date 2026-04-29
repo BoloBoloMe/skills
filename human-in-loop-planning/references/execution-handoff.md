@@ -68,15 +68,15 @@ execution_mode: <人类开发者 | 单代理 | 多代理 | 暂不执行>
 - 用一句话说明：把已批准且通过确定性检查的蓝图封装成执行者可以遵守的边界、顺序、约束和验证承诺。
 
 ## 已保存资产
-- 文件路径：`项目根目录/docs/hilp/变更概述/assets/05-执行交接_execution-handoff@vN.md`
+- 文件链接：[05-执行交接_execution-handoff@vN.md](相对路径到assets/05-执行交接_execution-handoff@vN.md)
 - asset_ref：`stage-6/execution-handoff@vN [state=<state>｜中文状态=<state_label>]`
 - 当前状态：必须写中文状态名，必要时附内部状态值。
 - 当前是否需要审批：执行交接绑定已批准蓝图，通常不重新审批；若存在阻断项，不得产出执行交接资产。
 
 ## 上游资产
 - 已批准需求边界：
-- 已批准设计：必须使用 `stage-3/design-choice@vM [state=approved｜中文状态=已批准]` 格式。
-- 已批准蓝图资产：`stage-4-5/implementation-blueprint@vN [state=approved｜中文状态=已批准]`
+- 已批准设计：必须使用 `stage-3/design-choice@vM [state=approved｜中文状态=已批准]` 格式，并给出文件链接 [02-方案设计_design-choice@vM.md](相对路径到assets/02-方案设计_design-choice@vM.md)。
+- 已批准蓝图资产：`stage-4-5/implementation-blueprint@vN [state=approved｜中文状态=已批准]`；文件链接：[03-实施蓝图_implementation-blueprint@vN.md](相对路径到assets/03-实施蓝图_implementation-blueprint@vN.md)
 - 蓝图形式：单体蓝图 / 分层蓝图包。
 - 分层蓝图包 manifest：单体蓝图写“无”；分层蓝图包列出主蓝图和包内资产清单。
 - 当前蓝图版本：
@@ -110,7 +110,7 @@ execution_mode: <人类开发者 | 单代理 | 多代理 | 暂不执行>
 ## 规划资产归档
 - 自动归档结果：已完成 / 未完成。
 - 成功时填写：
-  - 文件路径：`项目根目录/docs/hilp/变更概述/assets/06-规划资产归档_archive-manifest@vN.md`
+  - 文件链接：[06-规划资产归档_archive-manifest@vN.md](相对路径到assets/06-规划资产归档_archive-manifest@vN.md)
   - asset_ref：`stage-7/archive-manifest@vN [state=archived｜中文状态=已归档]`
   - 当前是否需要审批：无需审批
   - 作用：标明本次变更的最终阅读入口、最终有效资产、历史过程资产和后续重审入口；不改变任何已批准资产状态。

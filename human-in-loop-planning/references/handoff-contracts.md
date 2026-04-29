@@ -153,6 +153,26 @@
 
 “变更概述”使用本次任务的简短中文概括，便于用户在项目目录中直接找到相关文档。旧资产不迁移、不重命名；旧命名资产仍可作为历史输入读取。新产生的正式阶段资产必须写入 `assets/`。
 
+### Markdown 超链接引用规则
+
+所有落盘 Markdown 文档和用户可见回答中的文件引用都必须使用 Markdown 链接，不得只写裸路径。
+
+推荐格式：
+
+```text
+[显示文本](相对或绝对路径)
+```
+
+规则：
+- 优先使用相对当前 Markdown 文件的相对路径，确保在该文件的预览视图中点击可跳转。
+- 同一变更目录根部的 `manifest.md` 引用正式资产时使用 `assets/<file>.md`；引用审核包时使用 `review-pack/<file>.md`；引用当前入口时使用 `_current/<file>.md`。
+- `assets/` 内的正式资产引用同目录资产时使用 `./<file>.md`，引用根部 `manifest.md` 时使用 `../manifest.md`，引用审核包或当前入口时分别使用 `../review-pack/<file>.md`、`../_current/<file>.md`。
+- `review-pack/` 内的审核包引用正式资产时使用 `../assets/<file>.md`，引用当前入口时使用 `../_current/<file>.md`，引用根部 `manifest.md` 时使用 `../manifest.md`。
+- `_current/` 内的入口文件引用正式资产时使用 `../assets/<file>.md`，引用审核包时使用 `../review-pack/<file>.md`，引用根部 `manifest.md` 时使用 `../manifest.md`。
+- 目录外资产若有确定路径，使用绝对路径或可点击的项目相对路径；若没有确定文件路径，只能记录 `asset_ref`，不得伪造文件链接。
+- 表格列 `asset_path`、`target_asset_path`、`current_review_pack`、`previous_asset_ref`、`supersedes`、`superseded_by` 中凡是表示本地文件的位置，都必须填写 Markdown 链接；`asset_ref` 仍保留版本和状态语义，并与文件链接并列展示。
+- 不要把文件引用只放在代码块中；如果元数据或机器可读字段必须保留原始路径，必须在相邻字段或正文中补充同一文件的 Markdown 链接。
+
 ### 文件命名规则
 
 新正式阶段资产推荐文件名格式：
@@ -193,21 +213,21 @@ assets/03-实施蓝图_implementation-blueprint@v1.md
 asset_id | artifact_name | version | asset_path | created_state | current_state | current_state_label | approval_marker | approval_marker_label | role | current_review_pack | supersedes | superseded_by | last_event | last_decision
 ```
 
+其中 `asset_path`、`current_review_pack`、`supersedes`、`superseded_by` 中凡表示本地文件的位置，值必须是 Markdown 链接。
+
 规则：
 - 写入正式资产成功后，必须新增或更新对应版本行。
 - 人工批准、审核不通过、重审、归档和版本递增都必须反映到 `manifest.md`。
-- 写入 `manifest.md` 失败时，不得声称状态索引已更新；必须报告正式资产路径和索引失败原因。
+- 写入 `manifest.md` 失败时，不得声称状态索引已更新；必须报告正式资产链接和索引失败原因。
 - 兼容旧资产时，缺少 live manifest 不作为错误；按旧资产元数据和文件名解析状态。
 
 ### 审核包与当前入口
 
-待审批资产必须同时生成以下三个输出：
+待审批资产必须同时生成以下三个输出，并在所有可见位置以 Markdown 链接呈现：
 
-```text
-正式资产：项目根目录/docs/hilp/变更概述/assets/<阶段前缀>-<阶段中文名>_<artifact>@vN.md
-审核包：项目根目录/docs/hilp/变更概述/review-pack/<阶段前缀>-<artifact>@vN-review.md
-当前待审入口：项目根目录/docs/hilp/变更概述/_current/当前待审.md
-```
+- 正式资产：[阶段前缀-阶段中文名_artifact@vN.md](assets/阶段前缀-阶段中文名_artifact@vN.md)（从变更目录根部引用时）
+- 审核包：[阶段前缀-artifact@vN-review.md](review-pack/阶段前缀-artifact@vN-review.md)（从变更目录根部引用时）
+- 当前待审入口：[当前待审.md](_current/当前待审.md)（从变更目录根部引用时）
 
 审核包最小字段：
 
@@ -215,14 +235,16 @@ asset_id | artifact_name | version | asset_path | created_state | current_state 
 review_pack_id | target_asset_ref | target_asset_path | target_version | previous_asset_ref | review_status | opened_at | closed_at | close_result | close_decision | change_summary | reviewer_action_required
 ```
 
+其中 `target_asset_path` 中的本地文件位置必须是 Markdown 链接。
+
 `_current/当前待审.md` 内容结构：
 
 ```text
 # 当前待审资产
 
 当前待审状态：<存在一个待审资产 | 当前无待审资产>
-当前审核包：<review-pack path 或 无>
-当前待审资产：<asset_ref 或 无>
+当前审核包：<review-pack Markdown 链接 或 无>
+当前待审资产：<asset_ref 或 无>；文件链接：<Markdown 链接 或 无>
 审核者需要做什么：<批准当前版本 | 要求修订并说明原因 | 无>
 ```
 
@@ -232,6 +254,8 @@ review_pack_id | target_asset_ref | target_asset_path | target_version | previou
 # 当前已批准资产
 
 | 阶段 | asset_ref | asset_path | last_decision | 用途 |
+|---|---|---|---|---|
+| <阶段中文名> | <asset_ref> | <Markdown 文件链接> | <last_decision> | <用途> |
 ```
 
 审核生命周期：
@@ -239,7 +263,7 @@ review_pack_id | target_asset_ref | target_asset_path | target_version | previou
 - 人工批准通过时，关闭审核包，`manifest.md` 将对应版本标为 `approved｜已批准`，`_current/当前待审.md` 改为当前无待审资产，`_current/当前已批准.md` 指向当前有效批准集合。
 - 审核不通过时，关闭审核包，`manifest.md` 将对应版本标为 `needs-revision｜待修订`；内容修订必须产生下一个版本和新的审核包。
 - 写入审核包失败时，不得声称资产已提交审核。
-- 写入 `_current/当前待审.md` 失败时，必须报告审核入口更新失败，并直接给出审核包路径。
+- 写入 `_current/当前待审.md` 失败时，必须报告审核入口更新失败，并直接给出审核包链接。
 
 ### 归档资产与 live manifest 分工
 
@@ -267,6 +291,7 @@ last_decision: <none | decision-id>
 approval_marker: no-approval | needs-decision | needs-approval | approved | needs-revision | archived
 approval_marker_label: 无需审批 | 待裁决 | 需审批 | 已批准 | 待修订 | 已归档
 asset_path: <project-root>/docs/hilp/<change-summary>/assets/<file-name>.md
+asset_link: [<file-name>.md](<relative-path-from-this-markdown>)
 ```
 
 这些字段用于追踪和重审。普通用户回答默认只展示“文件已保存到哪里、当前中文状态是什么、当前是否需要审批、下一步要做什么”。
@@ -304,6 +329,7 @@ asset_path: <project-root>/docs/hilp/<change-summary>/assets/<file-name>.md
 
 ```text
 asset_ref: <stage>/<artifact-name>@v<version> [state=<state>｜中文状态=<state_label>]
+asset_link: [<file-name>.md](<relative-path-from-this-markdown>)
 owner_skill: <skill-name>
 source_event: <none | 触发器-name | decision-id>
 last_decision: <none | decision-id>
@@ -314,6 +340,7 @@ summary: <one-line summary>
 
 ```text
 asset_ref: stage-3/design-choice@v2 [state=approved｜中文状态=已批准]
+asset_link: [02-方案设计_design-choice@v2.md](./02-方案设计_design-choice@v2.md)
 owner_skill: hilp-design-approval
 source_event: human-approval-2026-04-27-a
 last_decision: decision-api-compatibility-window
@@ -326,7 +353,7 @@ summary: choose adapter-based 迁移（migration） with rollback checkpoint
 - `ready-for-human-decision`（待人工裁决）资产只能作为待裁决输入，不能前推。
 - `needs-revision`（待修订）和 `archived`（已归档）资产不得作为新的绑定依据。
 - 每次重审导致内容变化时必须递增版本号。
-- 所有跨阶段资产引用必须同时包含内部状态值和中文状态名。
+- 所有跨阶段资产引用必须同时包含内部状态值、中文状态名和可点击文件链接。
 - `asset_ref` 中的状态优先从根目录 `manifest.md` 读取；兼容旧资产时从资产元数据和文件名读取。
 
 ### 蓝图包 manifest 引用
@@ -335,17 +362,20 @@ summary: choose adapter-based 迁移（migration） with rollback checkpoint
 
 ```text
 asset_ref: stage-4-5/implementation-blueprint@vN [state=<state>｜中文状态=<state_label>]
+asset_link: [03-实施蓝图_implementation-blueprint@vN.md](<relative-path-from-this-markdown>)
 blueprint_form: package
 package_members:
   - asset_ref: stage-4-5/blueprint-slice-<slice-id>@vA [state=<state>｜中文状态=<state_label>]
+    asset_link: [03-实施蓝图_blueprint-slice-<slice-id>@vA.md](<relative-path-from-this-markdown>)
     role: slice
   - asset_ref: stage-4-5/coverage-matrix@vB [state=<state>｜中文状态=<state_label>]
+    asset_link: [03-实施蓝图_coverage-matrix@vB.md](<relative-path-from-this-markdown>)
     role: coverage-matrix
 approval_scope: manifest-and-all-listed-members
 ```
 
 引用规则：
-- manifest 绑定的每个成员都必须写明 `asset_ref`、版本、内部状态和中文状态名。
+- manifest 绑定的每个成员都必须写明 `asset_ref`、版本、内部状态、中文状态名和可点击文件链接。
 - 分层蓝图包进入执行交接时，manifest 和全部成员必须为 `approved`（已批准）。
 - manifest 的成员清单发生内容性变化时，manifest 必须递增版本，旧批准不自动覆盖新集合。
 - 交接到执行层时可选择整包交接或按 manifest 已定义的波次 / 切片交接；不得交接 manifest 未列出的资产或切片。
@@ -431,7 +461,7 @@ approval_scope: manifest-and-all-listed-members
 必须包含：
 - 中文阶段名称
 - 阶段目的
-- 已保存资产路径
+- 已保存资产链接
 - 内部状态值和中文状态名
 - 主 / 次规划原型
 - 治理模式
@@ -444,7 +474,7 @@ approval_scope: manifest-and-all-listed-members
 必须包含：
 - 中文阶段名称
 - 阶段目的
-- 已保存资产路径
+- 已保存资产链接
 - 内部状态值和中文状态名
 - 目标
 - 范围 / 非目标
@@ -459,7 +489,7 @@ approval_scope: manifest-and-all-listed-members
 必须包含：
 - 中文阶段名称
 - 阶段目的
-- 已保存资产路径
+- 已保存资产链接
 - 内部状态值和中文状态名
 - 推荐方案
 - 备选方案
@@ -471,7 +501,7 @@ approval_scope: manifest-and-all-listed-members
 必须包含：
 - 中文阶段名称
 - 阶段目的
-- 已保存资产路径
+- 已保存资产链接
 - 内部状态值和中文状态名
 - 蓝图形式：单体蓝图或分层蓝图包
 - 改动切片
@@ -482,7 +512,7 @@ approval_scope: manifest-and-all-listed-members
 - 数据形状
 - 测试承诺
 - 确定性检查结果
-- 分层蓝图包的包内资产清单、覆盖矩阵引用和审批边界；单体蓝图写“无”
+- 分层蓝图包的包内资产清单、覆盖矩阵引用、对应文件链接和审批边界；单体蓝图写“无”
 - 当前是否需要用户批准
 
 若确定性检查未通过，不得输出正式蓝图资产；只能输出回退说明并指出需要回到哪个前置阶段。
@@ -491,7 +521,7 @@ approval_scope: manifest-and-all-listed-members
 必须包含：
 - 中文阶段名称
 - 阶段目的
-- 已保存资产路径
+- 已保存资产链接
 - 内部状态值和中文状态名
 - 用自然中文说明发生了什么变化
 - 受影响资产
@@ -504,10 +534,10 @@ approval_scope: manifest-and-all-listed-members
 必须包含：
 - 中文阶段名称
 - 阶段目的
-- 已保存资产路径
+- 已保存资产链接
 - 内部状态值和中文状态名
-- 上游资产引用
-- 已批准蓝图或蓝图包 manifest 引用
+- 上游资产引用和对应文件链接
+- 已批准蓝图或蓝图包 manifest 引用和对应文件链接
 - 执行范围：整包、发布波次或 manifest 中已定义的切片集合
 - 必守实现约束
 - 风险与验证检查点
@@ -523,8 +553,8 @@ approval_scope: manifest-and-all-listed-members
 必须包含：
 - 中文阶段名称
 - 阶段目的
-- 已保存资产路径
-- `stage-7/archive-manifest@vN [state=archived｜中文状态=已归档]`
+- 已保存资产链接
+- `stage-7/archive-manifest@vN [state=archived｜中文状态=已归档]` 和对应文件链接
 - 最终阅读入口
 - 最终有效资产
 - 支撑上下文资产
@@ -539,7 +569,7 @@ approval_scope: manifest-and-all-listed-members
 必须包含：
 - 中文阶段名称
 - 阶段目的
-- 已保存资产路径
+- 已保存资产链接
 - 内部状态值和中文状态名
 - 测试场景
 - 预期行为

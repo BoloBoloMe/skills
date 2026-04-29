@@ -50,11 +50,11 @@
 - 用一句话说明：比较可行方案，给出推荐路径，并明确哪些内容需要用户决定或批准。
 
 ## 已保存资产
-- 文件路径：`项目根目录/docs/hilp/变更概述/assets/02-方案设计_design-choice@vN.md`
+- 文件链接：[02-方案设计_design-choice@vN.md](相对路径到assets/02-方案设计_design-choice@vN.md)
 - asset_ref：`stage-3/design-choice@vN [state=<state>｜中文状态=<state_label>]`
 - 当前状态：必须写中文状态名，必要时附内部状态值。
 - 当前是否需要审批：说明无需审批、待人工裁决、待审批或已批准。
-- 若当前状态为 `ready-for-approval｜中文状态=待审批`：同时列出审核包路径 `项目根目录/docs/hilp/变更概述/review-pack/02-design-choice@vN-review.md` 和当前待审入口 `项目根目录/docs/hilp/变更概述/_current/当前待审.md`。
+- 若当前状态为 `ready-for-approval｜中文状态=待审批`：同时列出审核包链接 [02-design-choice@vN-review.md](相对路径到review-pack/02-design-choice@vN-review.md) 和当前待审入口 [当前待审.md](相对路径到_current/当前待审.md)。
 
 ## 推荐方案
 - 名称：

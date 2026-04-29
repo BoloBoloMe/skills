@@ -63,6 +63,8 @@ description: 面向人在回路规划协议的总入口。用于把复杂变更�
 
 其中“变更概述”应使用本次任务的简短中文概括，例如 `改进HILP中文交互与资产落盘`。若无法确认项目根目录，必须先向用户确认保存位置；若写入失败，必须明确告知失败，不得声称资产已保存。
 
+所有落盘 Markdown 资产、审核包、`manifest.md`、`_current/` 入口和用户可见回答中的文件引用，必须使用 Markdown 超链接格式 [显示文本](相对或绝对路径)，确保在 Markdown 预览视图中可点击跳转。优先使用相对当前 Markdown 文件的相对路径；无法确定相对路径时使用绝对路径。不得只给裸文件路径；若元数据或机器字段必须保留原始路径，必须在相邻字段或正文中补充同一文件的可点击链接。
+
 新产生的正式阶段资产必须写入 `assets/`，文件名推荐格式：
 
 ```text
@@ -88,17 +90,21 @@ description: 面向人在回路规划协议的总入口。用于把复杂变更�
 asset_id | artifact_name | version | asset_path | created_state | current_state | current_state_label | approval_marker | approval_marker_label | role | current_review_pack | supersedes | superseded_by | last_event | last_decision
 ```
 
-待审批资产必须同时生成审核包和当前待审入口：
+其中 `asset_path`、`current_review_pack`、`supersedes`、`superseded_by` 中凡表示本地文件的位置，值必须是 Markdown 链接。
 
-- 正式资产：`项目根目录/docs/hilp/变更概述/assets/<阶段前缀>-<阶段中文名>_<artifact>@vN.md`
-- 审核包：`review-pack/<阶段前缀>-<artifact>@vN-review.md`
-- 当前入口：`_current/当前待审.md`
+待审批资产必须同时生成审核包和当前待审入口，且三者在所有可见引用处都必须写成可点击链接：
+
+- 正式资产：[阶段前缀-阶段中文名_artifact@vN.md](assets/阶段前缀-阶段中文名_artifact@vN.md)（示例为从变更目录根部引用）
+- 审核包：[阶段前缀-artifact@vN-review.md](review-pack/阶段前缀-artifact@vN-review.md)（示例为从变更目录根部引用）
+- 当前入口：[当前待审.md](_current/当前待审.md)（示例为从变更目录根部引用）
 
 审核包必须保留审核尝试记录，最小字段为：
 
 ```text
 review_pack_id | target_asset_ref | target_asset_path | target_version | previous_asset_ref | review_status | opened_at | closed_at | close_result | close_decision | change_summary | reviewer_action_required
 ```
+
+其中 `target_asset_path` 中的本地文件位置必须是 Markdown 链接。
 
 审核完成后不得删除审核包；必须将其关闭并保留。批准通过时，更新 `manifest.md` 中对应版本的 `current_state=approved｜中文状态=已批准`，关闭审核包，将 `_current/当前待审.md` 改为当前无待审资产，并更新 `_current/当前已批准.md` 指向当前有效批准集合。审核不通过时，更新 `manifest.md` 中对应版本的 `current_state=needs-revision｜中文状态=待修订`，关闭审核包；内容修订必须生成下一版本正式资产和新的审核包。
 
@@ -165,6 +171,7 @@ review_pack_id | target_asset_ref | target_asset_path | target_version | previou
 5. 所有用户可见状态都必须优先给出中文状态名；涉及精确资产引用、审计或交接时，采用“内部值｜中文状态=中文名”的双写格式。
 6. 只有交接契约允许时，才说明下一阶段；对普通用户写中文阶段名，对资产元数据保留内部标识。
 7. 若输出会驱动下游工作，必须包含带版本、内部状态和中文状态名的资产引用，并写入项目目录下的阶段资产文件。
+8. 所有用户可见文件引用必须是 Markdown 超链接；展示资产引用时同时给出 `asset_ref` 和对应文件链接。
 
 当必须人工裁决的决策、证据缺失、上游资产失效或审批缺失阻断转移时，不得写实现代码、最终执行步骤或绑定性下游计划。
 
