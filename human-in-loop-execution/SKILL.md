@@ -1,6 +1,6 @@
 ---
 name: human-in-loop-execution
-description: Use when HILP execution handoff has been approved and implementation, testing, review, debugging, or branch finishing needs execution discipline
+description: Use when HILP execution handoff has completed intake with no blocking items and implementation, testing, review, debugging, or branch finishing needs execution discipline
 ---
 
 # 人在回路执行
@@ -17,11 +17,16 @@ description: Use when HILP execution handoff has been approved and implementatio
 
 - `stage-3/design-choice@vN [state=approved｜中文状态=已批准]`
 - `stage-4-5/implementation-blueprint@vM [state=approved｜中文状态=已批准]`
-- `stage-6/execution-handoff@vK [state=<state>｜中文状态=<state_label>]`
-- 执行入口检查：无阻断项。
+- 有效的 `stage-6/execution-handoff@vK [state=<state>｜中文状态=<state_label>]`
+  - `owner_skill=hilp-execution-handoff`
+  - 已成功落盘
+  - 执行入口检查：无阻断项
+  - 执行范围、禁止越界项、停止并回退条件齐备
 - 当前工作区：用户指定的执行工作区。
 
-缺少任一项时，停止执行并要求回到 HILP 方案设计、实施蓝图、执行交接或变更重审阶段。
+执行交接资产自身不要求已批准；它是规划出口记录，按有效性检查判定。不得用执行交接资产的 `archived｜中文状态=已归档` 状态否定其入口有效性。
+
+缺少已批准设计时，回到 HILP 方案设计阶段；缺少已批准蓝图时，回到实施蓝图阶段；缺少有效执行交接、执行范围、禁止越界项或停止条件时，回到执行交接阶段；发现新事实或上游失效时，回到变更重审阶段。
 
 ## 阶段名称
 
@@ -66,7 +71,7 @@ description: Use when HILP execution handoff has been approved and implementatio
 
 - 所有执行计划、subagent prompt、审查请求和完成声明都必须引用 HILP 设计、蓝图与执行交接 asset_ref。
 - 执行者只能按执行交接资产中的范围、顺序、禁止越界项和停止条件工作。
-- 不得把 HILP 的待审批、草稿、待修订或已归档规划资产当作已批准输入。
+- 不得把待审批、草稿、待修订或已归档的设计资产或蓝图资产当作已批准输入；执行交接资产按 owner、落盘、无阻断项、执行范围、禁止越界项和停止条件做有效性检查。
 - 不得用执行阶段补齐需求、设计、蓝图、接口、数据形状或验证口径缺口。
 - 执行中发现前提变化时，输出“停止执行，回到 HILP 变更重审”，并列出触发原因。
 
