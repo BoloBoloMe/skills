@@ -107,7 +107,7 @@ HILP 执行交接完成后的执行纪律技能包，用于把已批准设计、
 - `docs/changes/<变更概述>/planning/`：HILP 规划链落盘资产，保存阶段文件、审批状态、`manifest.md`、`_current/`、`review-pack/` 和归档 manifest。
 - `docs/changes/<变更概述>/execution/`：HILP 执行计划和执行层资产。
 - `docs/changes/<变更概述>/review/`：代码审查、协议审查或执行审查结果文档。
-- 历史兼容：旧 `docs/hilp/...`、旧 `docs/review/...` 和旧的人在回路执行计划目录资产不迁移、不删除，仅作为历史兼容读取来源。
+- 历史资产已按最新结构整理到 `docs/changes/`；旧路径仅可能出现在历史文档正文中作为当时方案或审查上下文。
 - `裁剪superpowers.md`：裁剪 Superpowers 能力并对接 HILP 的原则性分析。
 
 ## 使用方式
