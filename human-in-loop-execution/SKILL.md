@@ -32,6 +32,7 @@ description: Use when HILP execution handoff has completed intake with no blocki
 
 - 执行入口检查阶段
 - 执行计划阶段
+- 执行计划确认阶段
 - subagent 执行阶段
 - inline 执行阶段
 - TDD 实现阶段
@@ -59,8 +60,9 @@ description: Use when HILP execution handoff has completed intake with no blocki
 - 执行范围、禁止越界项、停止并回退条件缺失：停止，回到 HILP 执行交接或变更重审。
 - 发现新事实、审批缺失、蓝图错误、回滚风险或蓝图外文件需求：HILP 重审回退优先于任何执行动作。
 - 没有执行计划时进入执行计划阶段。
-- 有独立任务、无共享文件、平台支持 subagent 时进入 subagent 执行阶段。
-- 无 subagent、任务强耦合或平台限制时进入 inline 执行阶段。
+- 执行计划已保存但用户未明确确认当前计划文件时进入执行计划确认阶段，只输出计划链接、自检结果、推荐执行方式和确认请求。
+- 用户明确确认当前计划文件后，有独立任务、无共享文件、平台支持 subagent 时进入 subagent 执行阶段。
+- 用户明确确认当前计划文件后，无 subagent、任务强耦合或平台限制时进入 inline 执行阶段。
 - 任何生产代码或行为变更进入 TDD 实现阶段。
 - 任何失败或异常进入系统化调试纪律。
 - 完成一个任务或一组任务后进入代码审查阶段。
@@ -78,7 +80,8 @@ description: Use when HILP execution handoff has completed intake with no blocki
 ## 输出纪律
 
 - 开始执行前说明当前引用的 HILP 资产、执行范围、禁止越界项和当前阶段。
-- 计划文件保存到 `docs/human-in-loop-execution/plans/<yyyy-mm-dd>-<任务概括>.md`。
+- 计划文件保存到 `docs/changes/<变更概述>/execution/plans/<yyyy-mm-dd>-<任务概括>.md`。
+- 执行计划写入后必须停止，等待用户明确确认当前计划文件后才允许执行任务。
 - 每次完成声明必须包含新鲜验证命令、退出结果和输出摘要。
 - 审查结果按 Critical、Important、Minor 分类；Critical 阻断继续推进，Important 修完再继续，Minor 可记录但不得掩盖阻断。
 - 若不能继续，明确写出缺少什么、为什么不能继续、应回到哪个 HILP 阶段。

@@ -140,7 +140,7 @@
 所有阶段资产都必须保存到当前项目目录下：
 
 ```text
-项目根目录/docs/hilp/变更概述/
+项目根目录/docs/changes/变更概述/planning/
   manifest.md
   _current/
     当前待审.md
@@ -151,7 +151,7 @@
     <阶段前缀>-<阶段中文名>_<artifact>@vN.md
 ```
 
-“变更概述”使用本次任务的简短中文概括，便于用户在项目目录中直接找到相关文档。旧资产不迁移、不重命名；旧命名资产仍可作为历史输入读取。新产生的正式阶段资产必须写入 `assets/`。
+“变更概述”使用本次任务的简短中文概括，便于用户在项目目录中直接找到相关文档。旧资产不迁移、不重命名；历史兼容：旧 `docs/hilp/<变更概述>/` 历史资产、旧 `docs/hilp/planning/<变更概述>/` 历史资产和旧命名资产仍可作为历史输入读取。新产生的正式阶段资产必须写入 `assets/`。
 
 ### Markdown 超链接引用规则
 
@@ -290,7 +290,7 @@ last_event: <none | event-name>
 last_decision: <none | decision-id>
 approval_marker: no-approval | needs-decision | needs-approval | approved | needs-revision | archived
 approval_marker_label: 无需审批 | 待裁决 | 需审批 | 已批准 | 待修订 | 已归档
-asset_path: <project-root>/docs/hilp/<change-summary>/assets/<file-name>.md
+asset_path: <project-root>/docs/changes/<change-summary>/planning/assets/<file-name>.md
 asset_link: [<file-name>.md](<relative-path-from-this-markdown>)
 ```
 

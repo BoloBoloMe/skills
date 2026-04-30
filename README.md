@@ -25,8 +25,11 @@
 │       ├── *.md
 │       └── prompt-templates/*.md
 ├── docs/
-│   ├── hilp/
-│   └── review/
+│   └── changes/
+│       └── <变更概述>/
+│           ├── planning/
+│           ├── execution/
+│           └── review/
 └── 裁剪superpowers.md
 ```
 
@@ -55,7 +58,7 @@
 - 初始分流、需求事实对齐、方案设计与审批。
 - 实施蓝图、变更重审、执行交接与规划资产归档。
 - 阶段门控、资产状态、人工批准、确定性检查和重审规则。
-- 将规划资产落盘到 `docs/hilp/<变更概述>/`，并用版本化文件名保留审批状态。
+- 将新产生的规划资产落盘到 `docs/changes/<变更概述>/planning/`，并用版本化文件名保留审批状态。
 
 核心约束：
 
@@ -75,7 +78,7 @@ HILP 执行交接完成后的执行纪律技能包，用于把已批准设计、
 保留能力：
 
 - 执行入口检查与路由。
-- 将已批准蓝图机械拆分为执行计划。
+- 将已批准蓝图机械拆分为执行计划，计划保存后等待用户确认再执行。
 - subagent 执行与 inline fallback。
 - TDD、系统化调试、代码审查与审查反馈处理。
 - 完成前验证、分支收尾、并行 agent 判定和技能编写元纪律。
@@ -100,8 +103,11 @@ HILP 执行交接完成后的执行纪律技能包，用于把已批准设计、
 
 ## 资料与资产目录
 
-- `docs/hilp/`：HILP 规划链落盘资产，按变更主题分目录保存阶段文件、审批状态和归档 manifest。
-- `docs/review/`：代码审查、协议审查或能力对比报告。
+- `docs/changes/`：新产生的 HILP 规划、执行和审查资产共同父目录，按 `<变更概述>/planning|execution|review` 聚合完整交付链路。
+- `docs/changes/<变更概述>/planning/`：HILP 规划链落盘资产，保存阶段文件、审批状态、`manifest.md`、`_current/`、`review-pack/` 和归档 manifest。
+- `docs/changes/<变更概述>/execution/`：HILP 执行计划和执行层资产。
+- `docs/changes/<变更概述>/review/`：代码审查、协议审查或执行审查结果文档。
+- 历史兼容：旧 `docs/hilp/...`、旧 `docs/review/...` 和旧的人在回路执行计划目录资产不迁移、不删除，仅作为历史兼容读取来源。
 - `裁剪superpowers.md`：裁剪 Superpowers 能力并对接 HILP 的原则性分析。
 
 ## 使用方式
@@ -118,4 +124,4 @@ HILP 执行交接完成后的执行纪律技能包，用于把已批准设计、
 - 技能目录应区分入口协议、参考资料、脚本、prompt 模板和资产文件。
 - 根 `README.md` 负责登记仓库级目录与技能概览；除非内容不能由 `SKILL.md` 和根 `README.md` 承载，否则避免新增重复的技能包 README。
 - 涉及构建、诊断、规划或执行纪律的强约束应写入技能文档，避免只存在于脚本或对话中。
-- 审查报告保存到 `docs/review/`；HILP 规划资产保存到 `docs/hilp/<变更概述>/`。
+- 审查报告保存到 `docs/changes/<变更概述>/review/`；HILP 规划资产保存到 `docs/changes/<变更概述>/planning/`；执行计划保存到 `docs/changes/<变更概述>/execution/plans/`。

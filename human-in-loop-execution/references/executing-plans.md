@@ -7,6 +7,7 @@
 ## 输入契约
 
 - 已保存执行计划路径。
+- 用户已明确确认当前执行计划路径。
 - HILP design asset_ref、blueprint asset_ref、execution handoff asset_ref。
 - 执行入口检查为无阻断项。
 - 禁止越界项与停止并回退条件。
@@ -14,12 +15,13 @@
 
 ## 执行规则
 
-1. 先审查计划再执行：确认计划覆盖已批准蓝图、无占位符、无蓝图外文件、每步有验证命令。
-2. 建立任务清单，状态只允许 `pending`、`in_progress`、`completed`、`blocked`。
-3. 每次只把一个任务设为 `in_progress`，逐步执行，不跳步。
-4. 每项完成后运行该项验证命令；验证失败时任务进入 `blocked`，停止继续执行。
-5. 计划存在关键缺口、指令不清、验证失败、主分支风险或蓝图外文件需求时停止，并说明应回到 HILP 执行交接、实施蓝图或变更重审。
-6. 全部任务完成后进入 code-review 和 verification-before-completion，再进入 finishing-branch。
+1. 若用户未明确确认当前执行计划路径，停止在执行计划确认阶段。
+2. 先审查计划再执行：确认计划覆盖已批准蓝图、无占位符、无蓝图外文件、每步有验证命令。
+3. 建立任务清单，状态只允许 `pending`、`in_progress`、`completed`、`blocked`。
+4. 每次只把一个任务设为 `in_progress`，逐步执行，不跳步。
+5. 每项完成后运行该项验证命令；验证失败时任务进入 `blocked`，停止继续执行。
+6. 计划存在关键缺口、指令不清、验证失败、主分支风险或蓝图外文件需求时停止，并说明应回到 HILP 执行交接、实施蓝图或变更重审。
+7. 全部任务完成后进入 code-review 和 verification-before-completion，再进入 finishing-branch。
 
 ## 禁止事项
 
@@ -35,6 +37,7 @@
 
 ## 检查清单
 
+- [ ] 用户已明确确认当前执行计划路径。
 - [ ] 已审查执行计划。
 - [ ] 已核对 HILP asset_ref 和禁止越界项。
 - [ ] 任务状态为 pending、in_progress、completed 或 blocked。
