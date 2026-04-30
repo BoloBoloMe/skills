@@ -81,9 +81,11 @@
 **必需动作**
 - 将该资产状态从 `ready-for-approval`（待审批）改为 `approved`（已批准）
 - 若批准对象是分层蓝图包，批准必须绑定主蓝图 / manifest 中列出的固定版本集合，并将批准状态同步到 manifest 和全部包内成员
-- 保留同一内容版本
+- 保留同一内容版本；审批状态变化不递增内容版本
 - 记录 `last_decision=<decision-id>`
-- 将批准后的状态同步写入根目录 `manifest.md`；不因状态变化改写新正式资产文件名
+- 将批准后的状态原子同步写入目标正式资产 front matter、目标正式资产正文 `asset_ref`、正文“当前状态”、正文“当前是否需要审批”、根目录 `manifest.md`、对应 review-pack、`_current/当前待审.md` 和 `_current/当前已批准.md`
+- 不因状态变化改写新正式资产文件名
+- 任一同步对象写入失败时，不得声称审批状态已完成，不得按批准状态进入蓝图或执行交接
 - 关闭对应审核包，将 `_current/当前待审.md` 改为当前无待审资产，并更新 `_current/当前已批准.md`
 - 按批准对象所属阶段重新计算下一跳
 
@@ -99,6 +101,7 @@
 
 **资产状态变化**
 - 同一版本, `state=approved`（已批准）, `last_decision=<decision-id>`
+- 审批状态变化不递增内容版本，但必须同步同一版本资产自身 front matter 状态元数据、正文 `asset_ref` 和正文状态摘要
 - live manifest 必须体现 `approved`（已批准），新正式资产文件名不写审批状态
 - 若批准对象是 `stage-3/design-choice@vN` 且 `owner_skill=hilp-design-approval`，下一步为 `hilp-blueprint`
 - 若批准对象是 `stage-4-5/implementation-blueprint@vN` 且 `owner_skill=hilp-blueprint`，下一步为 `hilp-execution-handoff`；分层蓝图包必须同时明确批准 manifest 绑定的包内成员版本集合
@@ -328,9 +331,10 @@
 
 审核包生命周期规则：
 - 进入 `ready-for-approval`（待审批）时，必须创建或更新审核包，并让 `_current/当前待审.md` 指向该审核包和目标资产。
-- 审核通过时，审核包状态变为 `closed`，`close_result=approved`，live manifest 中目标资产当前状态变为 `approved｜已批准`。
-- 审核不通过时，审核包状态变为 `closed`，`close_result=needs-revision`，live manifest 中目标资产当前状态变为 `needs-revision｜待修订`；内容修订必须生成下一版本和新的审核包。
-- `_current/当前已批准.md` 只列当前仍有效的已批准资产集合，不改变正式资产正文。
+- 审核通过时，审核包状态变为 `closed`，`close_result=approved`，目标正式资产 front matter、正文 `asset_ref`、正文“当前状态”、正文“当前是否需要审批”和 live manifest 中目标资产当前状态均变为 `approved｜已批准`。
+- 审核通过时任一同步对象写入失败，不得声称审批状态已完成，不得进入蓝图或执行交接。
+- 审核不通过时，审核包状态变为 `closed`，`close_result=needs-revision`，目标正式资产状态摘要和 live manifest 中目标资产当前状态均变为 `needs-revision｜待修订`；内容修订必须生成下一版本和新的审核包。
+- `_current/当前已批准.md` 只列当前仍有效的已批准资产集合；该入口不能替代目标正式资产正文状态同步，批准通过仍必须更新同一版本正式资产正文状态摘要。
 
 ---
 

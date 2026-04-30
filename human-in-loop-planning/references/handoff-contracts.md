@@ -260,8 +260,9 @@ review_pack_id | target_asset_ref | target_asset_path | target_version | previou
 
 审核生命周期：
 - 资产进入 `ready-for-approval`（待审批）时，必须打开审核包并更新 `_current/当前待审.md`。
-- 人工批准通过时，关闭审核包，`manifest.md` 将对应版本标为 `approved｜已批准`，`_current/当前待审.md` 改为当前无待审资产，`_current/当前已批准.md` 指向当前有效批准集合。
-- 审核不通过时，关闭审核包，`manifest.md` 将对应版本标为 `needs-revision｜待修订`；内容修订必须产生下一个版本和新的审核包。
+- 人工批准通过时，必须同步同一版本目标正式资产 front matter、目标正式资产正文 `asset_ref`、正文“当前状态”、正文“当前是否需要审批”、`manifest.md`、审核包、`_current/当前待审.md` 和 `_current/当前已批准.md`；关闭审核包，`manifest.md` 将对应版本标为 `approved｜已批准`，`_current/当前待审.md` 改为当前无待审资产，`_current/当前已批准.md` 指向当前有效批准集合。
+- 任一同步对象写入失败时，不得声称审批状态已完成；manifest 与目标正式资产自身状态不一致时，不得进入蓝图或执行交接。
+- 审核不通过时，关闭审核包，同步目标正式资产状态摘要，`manifest.md` 将对应版本标为 `needs-revision｜待修订`；内容修订必须产生下一个版本和新的审核包。
 - 写入审核包失败时，不得声称资产已提交审核。
 - 写入 `_current/当前待审.md` 失败时，必须报告审核入口更新失败，并直接给出审核包链接。
 
@@ -354,7 +355,8 @@ summary: choose adapter-based 迁移（migration） with rollback checkpoint
 - `needs-revision`（待修订）和 `archived`（已归档）资产不得作为新的绑定依据。
 - 每次重审导致内容变化时必须递增版本号。
 - 所有跨阶段资产引用必须同时包含内部状态值、中文状态名和可点击文件链接。
-- `asset_ref` 中的状态优先从根目录 `manifest.md` 读取；兼容旧资产时从资产元数据和文件名读取。
+- `asset_ref` 中的状态先用根目录 `manifest.md` 定位当前资产和索引状态，再读取目标正式资产文件核对 front matter、正文 `asset_ref` 与正文状态摘要；绑定性下游只有在 manifest 与目标资产自身状态一致且均为 `approved｜已批准` 时才能推进。
+- 兼容旧资产时可从资产元数据和文件名读取状态，但不得跳过实际文件状态核对。
 
 ### 蓝图包 manifest 引用
 

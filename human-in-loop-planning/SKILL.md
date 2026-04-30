@@ -106,7 +106,7 @@ review_pack_id | target_asset_ref | target_asset_path | target_version | previou
 
 其中 `target_asset_path` 中的本地文件位置必须是 Markdown 链接。
 
-审核完成后不得删除审核包；必须将其关闭并保留。批准通过时，更新 `manifest.md` 中对应版本的 `current_state=approved｜中文状态=已批准`，关闭审核包，将 `_current/当前待审.md` 改为当前无待审资产，并更新 `_current/当前已批准.md` 指向当前有效批准集合。审核不通过时，更新 `manifest.md` 中对应版本的 `current_state=needs-revision｜中文状态=待修订`，关闭审核包；内容修订必须生成下一版本正式资产和新的审核包。
+审核完成后不得删除审核包；必须将其关闭并保留。批准通过时，必须同步同一版本正式资产的 front matter 状态字段、正文 `asset_ref`、正文“当前状态”、正文“当前是否需要审批”、根目录 `manifest.md`、对应 review-pack、`_current/当前待审.md` 和 `_current/当前已批准.md`；审批状态变化不递增内容版本，也不得因状态变化改写新正式资产文件名。任一同步对象写入失败时，不得声称审批状态已完成，不得进入蓝图或执行交接。审核不通过时，更新同一版本正式资产自身状态摘要和 `manifest.md` 中对应版本的 `current_state=needs-revision｜中文状态=待修订`，关闭审核包；内容修订必须生成下一版本正式资产和新的审核包。
 
 `_current/当前待审.md` 是唯一待审入口；`_current/当前已批准.md` 是当前有效批准集合入口。归档阶段不生成根目录 `CURRENT.md`，不移动正式资产，不覆盖 `_current/`；`_current/` 是资产管理工作入口，不属于归档阶段产出的 archive manifest。
 
