@@ -20,6 +20,7 @@
 - HILP asset_ref：design、blueprint、execution handoff 三类引用。
 - `unit_id` 与标题。
 - 文件变更：允许修改文件、实际修改文件、越界结论。
+- 并行与集成：`parallel_group`、执行模式、文件冲突检查、共享状态检查、验证资源检查、integration verification 和 spot check。
 - 验证：命令、退出码、输出摘要、覆盖的 `must_haves`。
 - 偏差：新事实、未覆盖风险、停止条件命中情况。
 - 重审结论：`no-reapproval-needed` 或 `requires-reapproval`，并写明依据。
@@ -53,6 +54,16 @@
 - 实际修改文件：
 - 越界结论：无越界 / 已阻断。
 
+## 并行与集成检查
+
+- parallel_group：
+- 执行模式：inline / subagent-worker。
+- 文件冲突检查：pass / fail / not-applicable。
+- 共享状态检查：pass / fail / not-applicable。
+- 验证资源检查：pass / fail / not-applicable。
+- integration verification：pass / fail / not-applicable。
+- spot check：pass / fail / not-applicable。
+
 ## must_haves 结果
 
 | must_have_id | Truths | Artifacts | Key Links | 验证层级 | 结果 | 未覆盖风险 |
@@ -80,6 +91,8 @@
 
 - 状态：`completed`。
 - Summary 路径：<path>。
+- parallel_group：<group-id>。
+- integration verification：pass / fail / not-applicable。
 - 重审标记：`no-reapproval-needed` / `requires-reapproval`。
 ```
 
@@ -108,6 +121,16 @@
 - 允许修改文件：
 - 实际修改文件：
 - 越界结论：无越界 / 已阻断。
+
+## 并行与集成检查
+
+- parallel_group：
+- 执行模式：inline / subagent-worker。
+- 文件冲突检查：pass / fail / not-applicable。
+- 共享状态检查：pass / fail / not-applicable。
+- 验证资源检查：pass / fail / not-applicable。
+- integration verification：pass / fail / not-applicable。
+- spot check：pass / fail / not-applicable。
 
 ## must_haves 影响
 
@@ -142,6 +165,7 @@
 - [ ] HILP asset_ref、`unit_id`、允许文件和实际文件完整。
 - [ ] `must_haves` 逐项记录 Truths / Artifacts / Key Links。
 - [ ] 验证命令、退出码和输出摘要完整。
+- [ ] parallel_group、文件冲突检查、共享状态检查、验证资源检查、integration verification 和 spot check 已记录。
 - [ ] 偏差、未覆盖风险和停止条件命中情况已记录。
 - [ ] 重审结论明确，且不是 `unchecked`。
 - [ ] summary 路径、状态和重审标记已写回 execution ledger。

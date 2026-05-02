@@ -12,7 +12,7 @@
 你必须整理：
 - 上游已批准资产
 - 已批准蓝图版本；若是分层蓝图包，必须整理主蓝图 / manifest 和固定版本包内资产清单
-- 从蓝图摘录的改动切片、实现约束、风险检查点和验证承诺
+- 从蓝图摘录的 Execution Plan Contract、改动切片、实现约束、风险检查点和验证承诺
 - 执行范围：整包、发布波次或 manifest 中已定义的切片集合
 - 执行模式
 - 开始前合法性检查
@@ -87,8 +87,16 @@ execution_mode: <人类开发者 | 单代理 | 多代理 | 暂不执行>
 - 依赖顺序：
 - 禁止越界项：
 
+## Execution Plan Contract
+- 适用条件：当已批准蓝图包含 `execution_plan_contract` 时填写；否则写“无”。
+- 摘录规则：只能摘录已批准蓝图中的 `execution_plan_contract`，不得在交接阶段新增、修订、补齐或解释性扩展。
+- 顶层字段：必须保留 `execution_plan_contract`，并保留 `execution_scope`、`execution_mode`、`parallelization` 和 `units`。
+- 并行字段：必须逐项摘录 `parallel_group`、`parallel_eligible`、`file_domain`、`shared_state` 和 `verification_resources`。
+- HILE 边界：执行交接不得要求 HILE 补齐并行资格、推断独立性、改变 unit 顺序或改变验证资源。
+- 阻断规则：任一 `execution_plan_contract` 并行字段无法从已批准蓝图确定时，停止并回到实施蓝图阶段或变更重审阶段。
+
 ## Execution Units 交接包
-- 适用条件：当已批准蓝图包含 `execution_unit` 时填写；否则写“无”。
+- 适用条件：当已批准蓝图包含 `execution_unit` 或 `execution_plan_contract.units[]` 时填写；否则写“无”。
 - 摘录规则：只能摘录已批准蓝图中的单元契约，不得在交接阶段新增、修订或解释性扩展。
 - 每个单元必须摘录：`unit_id`、标题、`context_packet`、允许修改文件、`verification` 和 `stop_conditions`。
 - 每个 `execution_unit` 必须携带 `context_packet`；交接阶段不得省略、合并或用整包历史资产替代当前单元上下文。
@@ -97,7 +105,8 @@ execution_mode: <人类开发者 | 单代理 | 多代理 | 暂不执行>
 - `handoff_ref` 必须指向当前有效执行交接；执行交接资产可为已归档出口记录，但不得替代已批准设计或已批准蓝图。
 - `required_sections` 只列当前单元必读章节；`relevant_decisions` 只列当前单元必须遵守的已批准决策；`prior_summaries` 只列依赖顺序要求的前序摘要；`explicitly_ignore` 必须排除待审批资产、待修订资产、草稿资产、已废弃方案和未绑定材料。
 - `context_packet` 禁止引用未批准设计、未批准蓝图、已失效资产或旧方案作为绑定性输入；发现此类引用时不得交接到执行层。
-- 允许修改文件必须与蓝图中的 `allowed_files` 一致，不得扩大到额外目录或文件。
+- 允许修改文件必须与蓝图中的 `allowed_files` 一致，不得扩大到额外目录或文件；`forbidden_files` 必须一并保留。
+- `parallel_group`、`parallel_eligible`、`file_domain`、`shared_state` 和 `verification_resources` 必须与蓝图中的 `execution_plan_contract` 一致，不得交给 HILE 补齐。
 - `verification` 必须包含执行层要运行的命令、期望退出码和输出摘要。
 - `stop_conditions` 必须包含越界文件、runtime 需求、验证口径变化、新事实推翻资产，以及需要执行层补做蓝图判断的情形。
 
@@ -111,7 +120,7 @@ execution_mode: <人类开发者 | 单代理 | 多代理 | 暂不执行>
 
 ## 必须遵守的实现约束
 - 接口约束：
-- 数据形状：
+- 数据形状：必须保留已批准蓝图中的 `execution_plan_contract`，包含 `parallelization`、`parallel_group`、`parallel_eligible`、`file_domain`、`shared_state` 和 `verification_resources`。
 - 错误处理：
 - 测试承诺：
 
@@ -153,6 +162,7 @@ execution_mode: <人类开发者 | 单代理 | 多代理 | 暂不执行>
 - 不得把交接说明写成实现代码。
 - 不得把交接阶段变成新的设计阶段。
 - 不得在交接阶段新增、修订、补齐或解释性扩展蓝图内容。
+- 不得把并行资格、文件域、共享状态或验证资源交给 HILE 临场判断。
 - 不得默认“规划完成就必须立刻执行”。
 
 ## 交接规则

@@ -2,14 +2,14 @@
 asset_id: hilp-hile-boundary-correction-design-choice-v1
 artifact_name: stage-3/design-choice
 version: v1
-state: approved
-state_label: 已批准
+state: needs-revision
+state_label: 待修订
 owner_skill: hilp-design-approval
 created_from: stage-reapproval/reapproval-decision@v1
-last_event: human-approval-granted
+last_event: reapproval-required
 last_decision: human-approval-boundary-correction-design-choice-v1-2026-05-02
-approval_marker: approved
-approval_marker_label: 已批准
+approval_marker: needs-revision
+approval_marker_label: 待修订
 asset_path: docs/changes/修正HILP-HILE执行边界/planning/assets/02-方案设计_design-choice@v1.md
 asset_link: [02-方案设计_design-choice@v1.md](./02-方案设计_design-choice@v1.md)
 ---
@@ -18,15 +18,15 @@ asset_link: [02-方案设计_design-choice@v1.md](./02-方案设计_design-choic
 
 ## asset_ref
 
-`stage-3/design-choice@v1 [state=approved｜中文状态=已批准]`
+`stage-3/design-choice@v1 [state=needs-revision｜中文状态=待修订]`
 
 ## 当前状态
 
-已批准。
+待修订。
 
 ## 当前是否需要审批
 
-已批准，无需继续审批；可进入实施蓝图阶段。
+该版本已被新需求影响，不再作为当前有效设计输入；新设计见 `stage-3/design-choice@v2`。
 
 ## 设计目标
 
@@ -114,15 +114,15 @@ execution_plan_contract:
 
 ## 当前状态
 
-- 中文状态名：已批准。
-- 内部状态值：`approved`。
-- 进入该状态的理由：用户明确批准 `stage-3/design-choice@v1`，采用方案 C：Contract / Runbook 二分修正方案。
+- 中文状态名：待修订。
+- 内部状态值：`needs-revision`。
+- 进入该状态的理由：用户新增“子代理模式下可按 HILP 定义的并行资格调度无依赖 EU”的需求，改变了 v1 中 `single-agent-serial` 的设计前提。
 
 ## 下一步
 
-- 下一阶段：实施蓝图阶段。
-- 继续前提：基于本已批准设计生成确定、唯一、可审批的实施蓝图。
-- 当前阻断项：无阻断项。
+- 下一阶段：方案设计与审批阶段。
+- 继续前提：审批 `stage-3/design-choice@v2`。
+- 当前阻断项：有阻断项；v1 不再允许作为实施蓝图输入。
 
 ## 批准记录
 

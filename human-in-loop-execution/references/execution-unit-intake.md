@@ -14,6 +14,8 @@ HILE 已收到执行计划确认，准备执行某一个 `execution_unit` 前使
 - HILP execution handoff asset_ref，且为当前执行入口。
 - `context_packet`，且包含 `approved_design_ref`、`approved_blueprint_ref`、`handoff_ref`、`required_sections`、`relevant_decisions`、`prior_summaries`、`explicitly_ignore`。
 - `allowed_files`。
+- `forbidden_files`。
+- `parallel_group`、`parallel_eligible`、`file_domain`、`shared_state`、`verification_resources`，或 runbook 中对应的 copied 字段。
 - `must_haves`。
 - `verification`。
 - `stop_conditions`。
@@ -28,10 +30,11 @@ HILE 已收到执行计划确认，准备执行某一个 `execution_unit` 前使
 3. relevant_decisions：`context_packet.relevant_decisions` 只能包含当前单元必须遵守的已批准决策；不得引用旧方案、草稿、待审批或待修订材料来决定实现路线。
 4. prior_summaries：`context_packet.prior_summaries` 与单元级 `prior_summaries` 必须一致；列出的摘要必须存在且与依赖顺序一致，空列表或 `none` 表示当前单元无前序摘要输入。
 5. explicitly_ignore：`context_packet.explicitly_ignore` 必须列出待审批资产、待修订资产、已废弃方案和其他未绑定材料；执行中遇到这些材料时只记录并忽略，不得作为实现依据。
-6. 允许文件：所有计划修改必须落在 `allowed_files` 内；需要修改清单外产品文件时停止。
-7. 上下文读取：只读取 `context_packet` 指定的必读章节、相关决策、前序摘要和明确允许的参考材料；不重读全部历史规划资产。
-8. 验证：`verification` 必须包含当前单元完成前要运行的命令、期望退出码和输出摘要。
-9. 停止条件：`stop_conditions` 必须覆盖执行阶段补做规划判断、runtime 需求、越界文件、新事实推翻资产和验证口径变化。
+6. 允许文件：所有计划修改必须落在 `allowed_files` 内，并且不得命中 `forbidden_files`；需要修改清单外产品文件时停止。
+7. 调度字段：`parallel_group`、`parallel_eligible`、`file_domain`、`shared_state` 和 `verification_resources` 必须来自执行交接或已确认 runbook；缺失时不得由 HILE 推断并行资格。
+8. 上下文读取：只读取 `context_packet` 指定的必读章节、相关决策、前序摘要和明确允许的参考材料；不重读全部历史规划资产。
+9. 验证：`verification` 必须包含当前单元完成前要运行的命令、期望退出码和输出摘要。
+10. 停止条件：`stop_conditions` 必须覆盖执行阶段补做规划判断、runtime 需求、越界文件、新事实推翻资产和验证口径变化。
 
 ## 禁止事项
 
@@ -45,7 +48,7 @@ HILE 已收到执行计划确认，准备执行某一个 `execution_unit` 前使
 
 ## 输出契约
 
-接收通过时，在执行记录中保留当前 `unit_id`、资产引用、`context_packet` 核验结论、`allowed_files`、验证命令和停止条件。接收不通过时，停止当前单元，记录缺失项或越界项，并回到 HILP 变更重审或执行计划修正入口；不得边执行边补规划判断。
+接收通过时，在执行记录中保留当前 `unit_id`、资产引用、`context_packet` 核验结论、`allowed_files`、`forbidden_files`、`parallel_group`、`parallel_eligible`、`file_domain`、`shared_state`、`verification_resources`、验证命令和停止条件。接收不通过时，停止当前单元，记录缺失项或越界项，并回到 HILP 变更重审或执行计划修正入口；不得边执行边补规划判断。
 
 ## 失效资产回退规则
 
@@ -66,6 +69,8 @@ HILE 已收到执行计划确认，准备执行某一个 `execution_unit` 前使
 - [ ] `prior_summaries` 已存在且符合依赖顺序，或明确为 `none`。
 - [ ] `explicitly_ignore` 已排除待审批资产、待修订资产、已废弃方案和未绑定材料。
 - [ ] `allowed_files` 覆盖所有拟修改文件且无额外文件。
+- [ ] 拟修改文件未命中 `forbidden_files`。
+- [ ] `parallel_group`、`parallel_eligible`、`file_domain`、`shared_state` 和 `verification_resources` 来自执行交接或已确认 runbook。
 - [ ] `verification` 可直接运行或明确记录为人工检查。
 - [ ] `stop_conditions` 已复制到当前执行上下文。
 - [ ] 未要求 HILE 在执行阶段补做 HILP 蓝图判断。

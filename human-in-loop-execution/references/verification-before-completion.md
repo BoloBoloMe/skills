@@ -13,6 +13,7 @@
 - 禁止越界项。
 - 当前 execution ledger 路径和对应 unit summary 路径。
 - 当前 execution_unit 的 Failure Note 状态。
+- 并行组或全包的 conflict check、integration verification、spot check 和 execution ledger 更新结果。
 
 ## 执行规则
 
@@ -23,7 +24,7 @@ Gate function：
 2. 运行完整命令，不用旧结果或片段输出替代。
 3. 读取退出码、完整输出和失败数量。
 4. 核对输出是否证明声明。
-5. 核对 execution ledger 与 unit summary：当前 execution_unit 的 summary 已落盘，ledger 状态、summary 路径、验证命令、退出码和重审标记与实际证据一致。
+5. 核对 execution ledger 与 unit summary：当前 execution_unit 的 summary 已落盘，ledger 状态、summary 路径、验证命令、退出码、parallel_group、conflict check、integration verification、spot check 和重审标记与实际证据一致。
 6. 核对 Failure Note：确认不存在未关闭 Failure Note；若存在未关闭 Failure Note，则不得声明完成，只能报告阻断、证据、分类和 HILP 回退出口。
 7. 再声明；如果不一致，只报告实际状态。
 
@@ -58,7 +59,7 @@ must_haves 对照：
 3. 行为测试：用测试或复现路径证明用户可观察行为或治理行为满足 Truth。
 4. 人工检查：记录自动化无法覆盖的审批语义、风险边界或证据链完整性；人工检查不得替代已指定命令。
 
-完成门槛：所有 `must_haves` 均为 pass，验证命令退出码与预期一致，未覆盖风险和重审结论已写入 unit summary，execution ledger 已指向该 summary 且状态、退出码和重审标记一致；不存在未关闭 Failure Note；任一项 blocked、存在未关闭 Failure Note 或需要 HILE 补做蓝图判断时，不得声明完成。
+完成门槛：所有 `must_haves` 均为 pass，验证命令退出码与预期一致，未覆盖风险和重审结论已写入 unit summary，execution ledger 已指向该 summary 且状态、退出码、parallel_group、conflict check、integration verification、spot check 和重审标记一致；不存在未关闭 Failure Note；任一项 blocked、存在未关闭 Failure Note 或需要 HILE 补做蓝图判断时，不得声明完成。
 
 ## 禁止事项
 
@@ -67,6 +68,7 @@ must_haves 对照：
 - 不得相信 agent 报告而不检查实际产物。
 - 不得在失败命令后继续宣称成功。
 - 不得省略退出码和输出摘要。
+- 不得跳过并行组返回后的 conflict check、integration verification、spot check、unit summary 和 execution ledger 更新。
 - 不得在缺少 execution ledger 或 unit summary 核对时声明 execution_unit 完成。
 - 不得在存在未关闭 Failure Note 时声明完成。
 
@@ -81,5 +83,5 @@ must_haves 对照：
 - [ ] 已读取完整输出。
 - [ ] 结论与证据一致。
 - [ ] agent 委派结果已独立验证。
-- [ ] execution ledger 与 unit summary 已核对，状态、路径、验证命令、退出码和重审标记一致。
+- [ ] execution ledger 与 unit summary 已核对，状态、路径、验证命令、退出码、parallel_group、conflict check、integration verification、spot check 和重审标记一致。
 - [ ] 已确认不存在未关闭 Failure Note；如存在，已停止完成声明并回到 Failure Forensics 输出。

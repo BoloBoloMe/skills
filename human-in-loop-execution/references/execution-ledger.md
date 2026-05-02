@@ -11,6 +11,7 @@
 - 当前有效的 HILP execution handoff asset_ref。
 - 执行计划路径。
 - 每个 `execution_unit` 的 `unit_id`、标题、依赖、允许修改文件、验证命令和停止条件。
+- 每个 `execution_unit` 的 `parallel_group`、执行模式、冲突检查、集成验证、spot check 和验证资源结果。
 - 对应 unit summary 路径。
 
 ## 状态定义
@@ -33,6 +34,10 @@ ledger 至少包含以下字段：
 | `Unit` | `unit_id`，与执行计划和 unit summary 一致。 |
 | `状态` | 使用状态定义中的固定值。 |
 | `执行方式` | inline、subagent-worker 或执行交接指定的方式；不得据此绕过计划确认门。 |
+| `parallel_group` | 当前 unit 所属并行组；串行执行也必须保留 contract 中复制的分组。 |
+| `冲突检查` | 文件冲突、共享状态冲突和验证资源冲突结论；无并行时写 `not-applicable`。 |
+| `集成验证` | 并行组返回后的 integration verification 结论；无并行时写 `not-applicable`。 |
+| `spot check` | 并行组或全包完成前的抽查结论；未执行时写明原因。 |
 | `Summary` | unit summary 相对路径；阻断时也必须填写阻断类 summary 路径。 |
 | `验证命令` | 本单元完成或阻断前实际运行的关键命令；无命令时写明人工检查依据。 |
 | `退出码` | 实际退出码；未运行命令时写 `n/a` 并说明原因。 |
@@ -42,7 +47,7 @@ ledger 至少包含以下字段：
 
 1. 初始化执行记录时写入绑定资产、禁止越界项摘要和所有单元的 `not-started` 行。
 2. 单元开始执行时可追加事件记录，或将状态改为 `in-progress`；不得提前写 `completed`。
-3. 单元完成后，先写完成类 unit summary，再把状态更新为 `completed`，填写 summary 路径、验证命令、退出码和重审标记。
+3. 单元完成后，先写完成类 unit summary，再把状态更新为 `completed`，填写 summary 路径、验证命令、退出码、`parallel_group`、冲突检查、integration verification、spot check 和重审标记。
 4. 单元阻断后，先写阻断类 unit summary，再把状态更新为 `blocked`，填写阻断证据、失败命令或人工检查依据以及重审标记。
 5. 回退、替代或进入 HILP 重审时追加事件记录，保留原始完成或阻断证据。
 
@@ -78,5 +83,6 @@ ledger 至少包含以下字段：
 - [ ] 每个 execution_unit 都有一行 ledger 状态。
 - [ ] `completed` 或 `blocked` 行均指向已落盘 unit summary。
 - [ ] 验证命令、退出码和输出摘要可在 summary 中追溯。
+- [ ] `parallel_group`、冲突检查、integration verification 和 spot check 结果可在 summary 中追溯。
 - [ ] 重审标记不是 `unchecked`。
 - [ ] 事件记录保留历史，没有删除失败或阻断证据。

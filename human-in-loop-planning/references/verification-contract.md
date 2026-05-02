@@ -30,6 +30,7 @@ Key Links 是 Truths 与 Artifacts 之间的证据链。每条 Key Link 必须�
 - `must_haves` 不得包含待审批、草稿、待修订或已归档资产中的绑定性设计或蓝图内容。
 - `must_haves` 不得留给 HILE 在执行阶段临场定义验收口径。
 - 每个必须满足项至少有一条 Key Link；无法建立 Key Link 时，蓝图不得交接执行。
+- 涉及 `execution_plan_contract` 时，Key Links 必须覆盖 `parallelization`、`parallel_group`、`parallel_eligible`、`file_domain`、`shared_state` 和 `verification_resources` 的静态证据，证明并行资格和验证资源不是由 HILE 临场补齐。
 
 ## Must-haves Verification Ladder
 
@@ -53,4 +54,5 @@ Key Links 是 Truths 与 Artifacts 之间的证据链。每条 Key Link 必须�
 - 已运行蓝图或 execution_unit 指定的验证命令，并记录退出码与输出摘要。
 - 未覆盖风险已记录；若风险改变接口、数据形状、验证口径、发布顺序或禁止越界项，必须停止并进入重审。
 - HILE 只核验已批准蓝图和执行交接摘录的验证承诺，不在执行阶段补做蓝图判断。
+- 涉及并行调度时，完成证据必须能追溯到已批准 `execution_plan_contract` 中的 `parallelization`、`parallel_group`、`parallel_eligible` 和 `verification_resources`。
 - 完成声明包含重审结论：`no-reapproval-needed` 或 `requires-reapproval`。

@@ -21,6 +21,10 @@ context_packet:
     - <当前 execution_unit 依赖的前序 unit summary 路径或标识；无则写 none>
   explicitly_ignore:
     - <不得作为执行依据的资产、旧方案或材料类别>
+  contract_sections:
+    - execution_plan_contract.units[].parallel_group
+    - execution_plan_contract.units[].parallel_eligible
+    - execution_plan_contract.units[].verification_resources
 ```
 
 ## 字段说明
@@ -32,6 +36,7 @@ context_packet:
 - `relevant_decisions`：列出当前单元必须遵守的已批准决策和约束；只摘录与当前单元实现、验证、停止条件直接相关的内容。
 - `prior_summaries`：列出当前单元依赖的前序执行摘要；无依赖时写 `none` 或空列表，并说明当前单元无前序摘要输入。
 - `explicitly_ignore`：列出执行阶段必须忽略的材料类别或具体资产，例如待审批资产、待修订资产、草稿资产、已废弃方案、旧方案分支和未绑定参考材料。
+- `contract_sections`：列出当前单元需要复制或核验的 `execution_plan_contract` 字段；涉及并行调度时必须覆盖 `parallel_group`、`parallel_eligible`、`file_domain`、`shared_state` 和 `verification_resources`。
 
 ## 校验规则
 
@@ -42,6 +47,7 @@ context_packet:
 5. `prior_summaries` 中列出的路径或标识必须存在且符合依赖顺序；缺失时停止当前单元，不得跳过前序结果继续执行。
 6. `explicitly_ignore` 必须覆盖已知的待审批资产、待修订资产和已废弃方案；执行者发现此类材料时只记录并忽略，不得作为实现依据。
 7. Context Packet 只允许收窄执行阅读面，不得扩大 `allowed_files`、改变接口、数据形状、验证口径、发布顺序或禁止越界项。
+8. Context Packet 不得要求 HILE 自行判断 EU 是否存在、是否独立或是否可并行；并行资格必须来自已批准 `execution_plan_contract`。
 
 ## 输出检查清单
 
@@ -52,3 +58,4 @@ context_packet:
 - [ ] `relevant_decisions` 均来自已批准或有效交接资产。
 - [ ] `prior_summaries` 已列出且可读取，或明确为 `none`。
 - [ ] `explicitly_ignore` 明确排除待审批资产、待修订资产、已废弃方案和未绑定材料。
+- [ ] 涉及并行调度时，`contract_sections` 覆盖 `parallel_group`、`parallel_eligible`、`file_domain`、`shared_state` 和 `verification_resources`。

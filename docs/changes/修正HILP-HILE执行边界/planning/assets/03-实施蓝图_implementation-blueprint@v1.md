@@ -2,14 +2,14 @@
 asset_id: hilp-hile-boundary-correction-implementation-blueprint-v1
 artifact_name: stage-4-5/implementation-blueprint
 version: v1
-state: ready-for-approval
-state_label: 待审批
+state: needs-revision
+state_label: 待修订
 owner_skill: hilp-blueprint
 created_from: stage-3/design-choice@v1
-last_event: blueprint-ready-for-approval
+last_event: reapproval-required
 last_decision: none
-approval_marker: needs-approval
-approval_marker_label: 需审批
+approval_marker: needs-revision
+approval_marker_label: 待修订
 asset_path: docs/changes/修正HILP-HILE执行边界/planning/assets/03-实施蓝图_implementation-blueprint@v1.md
 asset_link: [03-实施蓝图_implementation-blueprint@v1.md](./03-实施蓝图_implementation-blueprint@v1.md)
 ---
@@ -18,11 +18,11 @@ asset_link: [03-实施蓝图_implementation-blueprint@v1.md](./03-实施蓝图_i
 
 ## asset_ref
 
-`stage-4-5/implementation-blueprint@v1 [state=ready-for-approval｜中文状态=待审批]`
+`stage-4-5/implementation-blueprint@v1 [state=needs-revision｜中文状态=待修订]`
 
 ## 上游设计
 
-`stage-3/design-choice@v1 [state=approved｜中文状态=已批准]`；文件链接：[02-方案设计_design-choice@v1.md](./02-方案设计_design-choice@v1.md)
+`stage-3/design-choice@v1 [state=needs-revision｜中文状态=待修订]`；文件链接：[02-方案设计_design-choice@v1.md](./02-方案设计_design-choice@v1.md)
 
 ## 蓝图形式
 
@@ -512,11 +512,11 @@ completion_outputs:
 
 ## 当前判断
 
-- 当前是否可交接到执行层：否。蓝图当前为待审批，不是已批准。
-- 当前阻断项：无阻断项。
+- 当前是否可交接到执行层：否。蓝图已被新需求影响，当前为待修订。
+- 当前阻断项：有阻断项；必须先审批新的 `stage-3/design-choice@v2`，再生成新版实施蓝图。
 - 是否存在兼容 / 回滚约束：无。本轮为 Markdown Skill 协议修正。
-- 当前状态：`ready-for-approval｜中文状态=待审批`。
+- 当前状态：`needs-revision｜中文状态=待修订`。
 
 ## 下一步需要用户做什么
 
-请明确批准或要求修订当前蓝图资产：`stage-4-5/implementation-blueprint@v1 [state=ready-for-approval｜中文状态=待审批]`；文件链接：[03-实施蓝图_implementation-blueprint@v1.md](./03-实施蓝图_implementation-blueprint@v1.md)。
+该蓝图版本已停止审批。请先审批新版设计资产 `stage-3/design-choice@v2 [state=ready-for-approval｜中文状态=待审批]`，批准后再生成新的实施蓝图。

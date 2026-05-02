@@ -25,13 +25,16 @@ description: 面向人在回路规划协议的总入口。用于把复杂变更�
    - `references/blueprint.md`
    - `references/reapproval.md`
    - `references/execution-handoff.md`
+   - `references/execution-plan-contract.md`
    - `references/execution-unit-schema.md`
    - `references/verification-contract.md`
    - `references/context-packet.md`
    - `references/archive.md`
    - `references/skill-pressure-test.md`
 
-蓝图或执行交接涉及 `execution_unit`、逐单元允许文件、验证或停止条件时，必须同时读取 `references/execution-unit-schema.md`，并以该契约约束蓝图输出和交接摘录。
+蓝图或执行交接涉及 `execution_plan_contract`、并行资格、调度分组、文件域、共享状态或验证资源时，必须同时读取 `references/execution-plan-contract.md`，并以该契约约束蓝图输出、执行交接摘录和 HILE 只读复制边界。
+
+蓝图或执行交接涉及 `execution_unit`、逐单元允许文件、验证或停止条件时，必须同时读取 `references/execution-unit-schema.md`，并以该契约约束蓝图输出和交接摘录；若同时存在 `execution_plan_contract`，`execution_unit` 只作为 `units[]` 内的单元字段来源，不作为顶层 contract。
 
 蓝图或执行交接涉及 `must_haves`、Truths / Artifacts / Key Links、验证梯度或完成门槛时，必须同时读取 `references/verification-contract.md`；涉及 `context_packet`、当前单元上下文裁剪、前序摘要或明确忽略项时，必须同时读取 `references/context-packet.md`。
 
@@ -193,6 +196,7 @@ review_pack_id | target_asset_ref | target_asset_path | target_version | previou
 - `references/blueprint.md`
 - `references/reapproval.md`
 - `references/execution-handoff.md`
+- `references/execution-plan-contract.md`
 - `references/execution-unit-schema.md`
 - `references/verification-contract.md`
 - `references/context-packet.md`

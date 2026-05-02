@@ -19,6 +19,7 @@
 你必须明确：
 - 改动切片（change slices）
 - 依赖顺序（dependency order）
+- Execution Plan Contract（包含 `execution_plan_contract`、`parallelization`、`parallel_group`、`parallel_eligible`、`file_domain`、`shared_state`、`verification_resources`）
 - 风险检查点（risk checkpoints）
 - 发布 / 验证检查点（rollout / verification checkpoints）
 - 数据形状（data shape）
@@ -182,9 +183,17 @@ package_members:
 - 验证检查点：
 - 涉及模块 / 子系统 / 文件范围：
 
+## Execution Plan Contract
+- 适用条件：当蓝图需要交接为一个或多个执行单元、发布波次或整包执行任务时填写；不拆分时写“无”。
+- 契约来源：读取并遵守 `references/execution-plan-contract.md`。
+- 顶层字段：必须使用 `execution_plan_contract`，不得把 `execution_unit` 写成顶层 contract。
+- `parallelization`：必须固定 `strategy`、`user_opt_in_required`、`conflict_policy` 和 `integration_required_after_parallel_group`。
+- 单元调度字段：每个 `units[]` 必须固定 `order`、`depends_on`、`parallel_group`、`parallel_eligible`、`allowed_files`、`forbidden_files`、`file_domain`、`shared_state` 和 `verification_resources`。
+- HILE 边界：不得让 HILE 临场决定 EU 是否存在、是否独立、是否可并行；缺少任一调度字段时不得交接执行。
+
 ## Execution Unit Contract
 - 适用条件：当蓝图需要交接为一个或多个 `execution_unit` 时填写；不拆分时写“无”。
-- 契约来源：读取并遵守 `references/execution-unit-schema.md`。
+- 契约来源：读取并遵守 `references/execution-unit-schema.md`；若存在 `execution_plan_contract`，该契约只定义 `units[]` 的单元字段。
 - 每个 `execution_unit` 必须固定：`unit_id`、标题、依赖、`allowed_files`、`context_packet`、`must_haves`、验证命令、停止条件和前序摘要。
 - 允许文件：`allowed_files` 必须是精确文件路径，不得写成目录级模糊范围或执行时按需扩展。
 - 依赖：逐单元列出前置 `execution_unit` 或资产条件；依赖顺序不得留给执行层判断。
@@ -241,11 +250,12 @@ package_members:
 3. 风险检查点与发布 / 验证检查点已明确且没有待选分支。
 4. 接口约束、数据形状、局部算法骨架、错误处理要求与测试承诺已明确。
 5. 文件范围、模块范围、执行边界和禁止越界项已明确。
-6. 不存在未解决的 `human_decision_required`（必须人工裁决）。
-7. 不存在待定、可能、视情况、后续确认、执行时再判断、可选 A/B、暂按、大概、原则上、TODO、TBD、问号、空字段或占位符。
-8. 蓝图未改写 Stage 3 已批准设计 的边界或取舍。
-9. 上游设计资产 仍为 `approved`（已批准），未被标记为 `needs-revision`（待修订）或 `archived`（已归档）。
-10. 若使用分层蓝图包，主蓝图 / manifest、全部子蓝图和覆盖矩阵均已保存、版本固定、相互引用一致、确定性检查通过，且覆盖矩阵证明设计决策、切片、验证项和风险检查点没有遗漏。
+6. 需要执行单元时，`execution_plan_contract`、`parallelization`、`parallel_group`、`parallel_eligible`、`file_domain`、`shared_state` 和 `verification_resources` 已明确。
+7. 不存在未解决的 `human_decision_required`（必须人工裁决）。
+8. 不存在待定、可能、视情况、后续确认、执行时再判断、可选 A/B、暂按、大概、原则上、TODO、TBD、问号、空字段或占位符。
+9. 蓝图未改写 Stage 3 已批准设计 的边界或取舍。
+10. 上游设计资产 仍为 `approved`（已批准），未被标记为 `needs-revision`（待修订）或 `archived`（已归档）。
+11. 若使用分层蓝图包，主蓝图 / manifest、全部子蓝图和覆盖矩阵均已保存、版本固定、相互引用一致、确定性检查通过，且覆盖矩阵证明设计决策、切片、验证项和风险检查点没有遗漏。
 
 若存在 必须人工裁决的决策，不得产出正式蓝图资产，必须回到可裁决该问题的前置阶段。
 若缺少关键蓝图内容，不得以 `draft`（草稿）形式承载缺口；必须回到 `hilp-requirements-facts`、`hilp-design-approval` 或 `hilp-reapproval` 消除不确定性。
@@ -260,6 +270,7 @@ package_members:
 - 不得把实现约束扩张成新的设计讨论。
 - 不得省略风险检查点与验证检查点。
 - 不得把蓝图直接写成最终代码。
+- 不得把并行资格、文件域、共享状态或验证资源留给 HILE 执行阶段补齐。
 - 不得用分层蓝图包把必需细节从主蓝图移走后不落入任何子蓝图或覆盖矩阵。
 - 不得批准未绑定固定版本集合的分层蓝图包。
 
