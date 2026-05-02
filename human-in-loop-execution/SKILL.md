@@ -46,13 +46,14 @@ description: Use when HILP execution handoff has completed intake with no blocki
 1. 所有执行请求先读取 `references/hilp-handoff-intake.md`，确认 HILP 资产、执行交接、执行范围和禁止越界项。
 2. 需要判断执行路径时读取 `references/execution-routing.md`。
 3. 需要把蓝图拆为执行任务时读取 `references/writing-plans.md`。
-4. 生产代码、bug 修复或行为变更前先读取 `references/test-driven-development.md`。
-5. 测试失败、构建失败或异常行为出现时先读取 `references/systematic-debugging.md`；涉及异步或污染时再按需读取根因追踪、防御式验证、条件式等待和测试反模式参考。
-6. 平台支持 subagent 且任务独立时读取 `references/subagent-driven-development.md`、`references/dispatching-parallel-agents.md` 和相应 prompt template。
-7. 平台不支持 subagent、任务强耦合或用户要求单会话时读取 `references/executing-plans.md`。
-8. 请求审查、处理反馈或准备最终审查前先读取 `references/code-review.md` 与相应审查 prompt。
-9. 任何完成声明、提交、合并或交付前先读取 `references/verification-before-completion.md`；收尾动作再读取 `references/finishing-branch.md`。
-10. 只有创建或修改技能时读取 `references/writing-skills.md`。
+4. 执行单个 `execution_unit` 前先读取 `references/execution-unit-intake.md`，校验 context_packet、allowed_files、verification 和 stop_conditions；接收通过后读取 `references/execution-ledger.md` 与 `references/unit-summary.md` 记录单元结果。
+5. 生产代码、bug 修复或行为变更前先读取 `references/test-driven-development.md`。
+6. 测试失败、构建失败或异常行为出现时先读取 `references/systematic-debugging.md`；命中重复同类失败、越界需求或新事实时读取 `references/failure-forensics.md`，停止执行并进入 Failure Forensics；涉及异步或污染时再按需读取根因追踪、防御式验证、条件式等待和测试反模式参考。
+7. 平台支持 subagent 且任务独立时读取 `references/subagent-driven-development.md`、`references/dispatching-parallel-agents.md` 和相应 prompt template。
+8. 平台不支持 subagent、任务强耦合或用户要求单会话时读取 `references/executing-plans.md`。
+9. 请求审查、处理反馈或准备最终审查前先读取 `references/code-review.md` 与相应审查 prompt。
+10. 任何完成声明、提交、合并或交付前先读取 `references/verification-before-completion.md`；收尾动作再读取 `references/finishing-branch.md`。
+11. 只有创建或修改技能时读取 `references/writing-skills.md`。
 
 ## 路由规则
 
@@ -65,6 +66,7 @@ description: Use when HILP execution handoff has completed intake with no blocki
 - 用户明确确认当前计划文件后，无 subagent、任务强耦合或平台限制时进入 inline 执行阶段。
 - 任何生产代码或行为变更进入 TDD 实现阶段。
 - 任何失败或异常进入系统化调试纪律。
+- 第二次同类失败、需要修改允许范围之外文件、接口或验证口径变化、越界需求或新事实推翻已批准资产时，立即停止执行，进入 Failure Forensics，完成取证、分类和回退；failure forensics 不负责继续修复。
 - 完成一个任务或一组任务后进入代码审查阶段。
 - 收到审查反馈后进入 review 反馈处理阶段。
 - 准备声明完成、提交、合并或交付前进入完成前验证与分支收尾阶段。
@@ -82,6 +84,7 @@ description: Use when HILP execution handoff has completed intake with no blocki
 - 开始执行前说明当前引用的 HILP 资产、执行范围、禁止越界项和当前阶段。
 - 计划文件保存到 `docs/changes/<变更概述>/execution/plans/<yyyy-mm-dd>-<任务概括>.md`。
 - 执行计划写入后必须停止，等待用户明确确认当前计划文件后才允许执行任务。
+- 每个 `execution_unit` 完成或阻断后，必须先写入 unit summary，再更新 execution ledger；缺少任一记录不得声明该单元完成或阻断已处理。
 - 每次完成声明必须包含新鲜验证命令、退出结果和输出摘要。
 - 审查结果按 Critical、Important、Minor 分类；Critical 阻断继续推进，Important 修完再继续，Minor 可记录但不得掩盖阻断。
 - 若不能继续，明确写出缺少什么、为什么不能继续、应回到哪个 HILP 阶段。
@@ -91,12 +94,16 @@ description: Use when HILP execution handoff has completed intake with no blocki
 - `references/execution-routing.md`
 - `references/hilp-handoff-intake.md`
 - `references/writing-plans.md`
+- `references/execution-unit-intake.md`
+- `references/execution-ledger.md`
+- `references/unit-summary.md`
 - `references/subagent-driven-development.md`
 - `references/executing-plans.md`
 - `references/test-driven-development.md`
 - `references/code-review.md`
 - `references/finishing-branch.md`
 - `references/systematic-debugging.md`
+- `references/failure-forensics.md`
 - `references/verification-before-completion.md`
 - `references/dispatching-parallel-agents.md`
 - `references/writing-skills.md`

@@ -10,7 +10,9 @@
 - HILP blueprint asset_ref。
 - HILP execution handoff asset_ref。
 - 执行范围：整包、发布波次或 manifest 中已定义的切片集合。
+- 已批准蓝图或执行交接中的 `execution_unit` 契约。
 - 禁止越界项、目标、执行约束和验证承诺。
+- execution ledger 目标路径与每个 unit summary 目标路径。
 
 ## 执行规则
 
@@ -26,9 +28,11 @@ HILP execution handoff asset_ref:
 禁止越界项:
 目标:
 执行约束:
+execution ledger 路径:
+unit summary 路径:
 ```
 
-先列文件结构和文件职责，再拆任务。每个任务的每步目标 2-5 分钟，包含精确文件路径、失败测试或验证命令、预期输出、最小实现、回归验证、提交或变更记录。计划保存后必须停止，不得执行任务、修改目标文件、派发 agent 或运行实现步骤。
+先列文件结构和文件职责，再按 `execution_unit` 逐单元拆任务；每个单元必须保留来自交接包的 `unit_id`、允许修改文件、context_packet、verification、stop_conditions、前序摘要、execution ledger 更新要求和 unit summary 输出路径。每个任务的每步目标 2-5 分钟，包含精确文件路径、失败测试或验证命令、预期输出、最小实现、回归验证、提交或变更记录。计划保存后必须停止，不得执行任务、修改目标文件、派发 agent 或运行实现步骤。
 
 No placeholders：禁止 TODO、TBD、后续再定、类似上一步、写适当测试、补齐错误处理、按需实现等占位符。每一步都必须可直接执行。
 
@@ -50,5 +54,6 @@ No placeholders：禁止 TODO、TBD、后续再定、类似上一步、写适当
 - [ ] 计划头包含三类 HILP asset_ref。
 - [ ] 已先列文件职责。
 - [ ] 每个任务都有文件路径、验证命令和预期输出。
+- [ ] 已列出 execution ledger 路径和每个 unit summary 路径。
 - [ ] No placeholders 扫描通过。
 - [ ] 禁止越界项已检查。

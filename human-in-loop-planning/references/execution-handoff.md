@@ -87,6 +87,28 @@ execution_mode: <人类开发者 | 单代理 | 多代理 | 暂不执行>
 - 依赖顺序：
 - 禁止越界项：
 
+## Execution Units 交接包
+- 适用条件：当已批准蓝图包含 `execution_unit` 时填写；否则写“无”。
+- 摘录规则：只能摘录已批准蓝图中的单元契约，不得在交接阶段新增、修订或解释性扩展。
+- 每个单元必须摘录：`unit_id`、标题、`context_packet`、允许修改文件、`verification` 和 `stop_conditions`。
+- 每个 `execution_unit` 必须携带 `context_packet`；交接阶段不得省略、合并或用整包历史资产替代当前单元上下文。
+- `context_packet` 必须包含：`approved_design_ref`、`approved_blueprint_ref`、`handoff_ref`、`required_sections`、`relevant_decisions`、`prior_summaries`、`explicitly_ignore`。
+- `approved_design_ref` 必须是 `stage-3/design-choice@vN [state=approved｜中文状态=已批准]`；`approved_blueprint_ref` 必须是 `stage-4-5/implementation-blueprint@vM [state=approved｜中文状态=已批准]`。
+- `handoff_ref` 必须指向当前有效执行交接；执行交接资产可为已归档出口记录，但不得替代已批准设计或已批准蓝图。
+- `required_sections` 只列当前单元必读章节；`relevant_decisions` 只列当前单元必须遵守的已批准决策；`prior_summaries` 只列依赖顺序要求的前序摘要；`explicitly_ignore` 必须排除待审批资产、待修订资产、草稿资产、已废弃方案和未绑定材料。
+- `context_packet` 禁止引用未批准设计、未批准蓝图、已失效资产或旧方案作为绑定性输入；发现此类引用时不得交接到执行层。
+- 允许修改文件必须与蓝图中的 `allowed_files` 一致，不得扩大到额外目录或文件。
+- `verification` 必须包含执行层要运行的命令、期望退出码和输出摘要。
+- `stop_conditions` 必须包含越界文件、runtime 需求、验证口径变化、新事实推翻资产，以及需要执行层补做蓝图判断的情形。
+
+## Must-haves Verification Ladder
+- 适用条件：当已批准蓝图包含 `must_haves` 或测试承诺时填写；否则写“无”。
+- 摘录规则：只能摘录已批准蓝图中的 Must-haves Verification Ladder、`must_haves`、验证梯度和完成门槛，不得在交接阶段新增、修订、补齐或解释性扩展。
+- `must_haves`：逐项摘录 must_have_id、Truths、Artifacts、Key Links、验证层级、完成标准和未覆盖风险。
+- 验证梯度：按静态检查、命令执行、行为测试、人工检查列出执行层需要完成的证据；每项必须来自已批准蓝图。
+- 完成门槛：摘录蓝图中要求的命令、期望退出码、输出摘要、人工检查依据和重审触发条件。
+- 测试承诺：只承接已批准蓝图中的测试承诺；缺失或模糊时停止并回交蓝图阶段，不得由 HILE 临场定义验收口径。
+
 ## 必须遵守的实现约束
 - 接口约束：
 - 数据形状：

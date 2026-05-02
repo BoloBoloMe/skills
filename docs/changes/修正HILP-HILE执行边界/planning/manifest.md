@@ -1,0 +1,7 @@
+# Manifest：修正HILP-HILE执行边界
+
+| asset_id | artifact_name | version | asset_path | created_state | current_state | current_state_label | approval_marker | approval_marker_label | role | current_review_pack | supersedes | superseded_by | last_event | last_decision |
+|---|---|---:|---|---|---|---|---|---|---|---|---|---|---|---|
+| hilp-hile-boundary-correction-reapproval-v1 | stage-reapproval/reapproval-decision | v1 | [04-变更重审_reapproval@v1.md](assets/04-变更重审_reapproval@v1.md) | archived | archived | 已归档 | no-approval | 无需审批 | reapproval-record | 无 | 无 | 无 | reapproval-completed | none |
+| hilp-hile-boundary-correction-design-choice-v1 | stage-3/design-choice | v1 | [02-方案设计_design-choice@v1.md](assets/02-方案设计_design-choice@v1.md) | ready-for-approval | approved | 已批准 | approved | 已批准 | approved-design | [02-design-choice@v1-review.md](review-pack/02-design-choice@v1-review.md) | 无 | 无 | human-approval-granted | human-approval-boundary-correction-design-choice-v1-2026-05-02 |
+| hilp-hile-boundary-correction-implementation-blueprint-v1 | stage-4-5/implementation-blueprint | v1 | [03-实施蓝图_implementation-blueprint@v1.md](assets/03-实施蓝图_implementation-blueprint@v1.md) | ready-for-approval | ready-for-approval | 待审批 | needs-approval | 需审批 | pending-blueprint | [03-implementation-blueprint@v1-review.md](review-pack/03-implementation-blueprint@v1-review.md) | 无 | 无 | blueprint-ready-for-approval | none |

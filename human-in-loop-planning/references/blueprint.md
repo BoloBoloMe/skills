@@ -182,6 +182,24 @@ package_members:
 - 验证检查点：
 - 涉及模块 / 子系统 / 文件范围：
 
+## Execution Unit Contract
+- 适用条件：当蓝图需要交接为一个或多个 `execution_unit` 时填写；不拆分时写“无”。
+- 契约来源：读取并遵守 `references/execution-unit-schema.md`。
+- 每个 `execution_unit` 必须固定：`unit_id`、标题、依赖、`allowed_files`、`context_packet`、`must_haves`、验证命令、停止条件和前序摘要。
+- 允许文件：`allowed_files` 必须是精确文件路径，不得写成目录级模糊范围或执行时按需扩展。
+- 依赖：逐单元列出前置 `execution_unit` 或资产条件；依赖顺序不得留给执行层判断。
+- 验证：逐单元列出必须运行的命令、期望退出码和输出摘要。
+- 停止条件：逐单元列出命中后停止并回退的条件，不得写成继续修复策略。
+- 上下文包：逐单元列出 `context_packet`，只包含当前单元所需的已批准设计、已批准蓝图、有效交接、必读章节、相关决策、前序摘要和明确忽略项。
+
+## Must-haves Verification Ladder
+- 适用条件：当蓝图包含测试承诺、验收口径或 execution_unit 完成条件时填写；无额外 must-have 时写“无”。
+- 契约来源：读取并遵守 `references/verification-contract.md`。
+- `must_haves`：逐项列出 must_have_id、Truths、Artifacts、Key Links、验证层级、完成标准和未覆盖风险。
+- 验证梯度：每个 `must_haves` 项必须绑定静态检查、命令执行、行为测试或人工检查之一；自动化证据不足时必须说明人工检查依据。
+- 完成门槛：声明蓝图可执行前，所有 `must_haves` 都必须有可复核证据链、明确验证命令或人工检查方式、期望退出码 / 通过标准和重审触发条件。
+- 测试承诺：`测试承诺` 必须引用对应 `must_haves`，不得只写笼统的“运行测试”或“人工确认”。
+
 ## 分层蓝图包 manifest
 - 使用条件：仅当蓝图形式为分层蓝图包时填写；单体蓝图写“无”。
 - 包内资产清单：
