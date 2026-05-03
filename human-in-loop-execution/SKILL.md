@@ -86,7 +86,7 @@ description: Use when HILP execution handoff has completed intake with no blocki
 
 - 开始执行前说明当前引用的 HILP 资产、执行范围、禁止越界项和当前阶段。
 - 计划文件保存到 `docs/changes/<变更概述>/execution/plans/<yyyy-mm-dd>-<任务概括>.md`；Execution Runbook 保存到同目录，文件名包含 `runbook`。
-- 执行计划或 Execution Runbook 写入后必须停止，等待用户明确确认当前文件后才允许执行任务。
+- 执行计划或 Execution Runbook 写入后必须停止，等待用户明确确认当前文件后才允许执行任务；Execution Runbook 必须先呈现人类审核视图，agent 专用 `execution_runbook` 只能放在附录。
 - 每个 `execution_unit` 完成或阻断后，必须先写入 unit summary，再更新 execution ledger；缺少任一记录不得声明该单元完成或阻断已处理。
 - 每次完成声明必须包含新鲜验证命令、退出结果和输出摘要。
 - 审查结果按 Critical、Important、Minor 分类；Critical 阻断继续推进，Important 修完再继续，Minor 可记录但不得掩盖阻断。

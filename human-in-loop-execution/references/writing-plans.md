@@ -32,7 +32,7 @@ execution ledger 路径:
 unit summary 路径:
 ```
 
-先列文件结构和文件职责，再按 `execution_unit` 逐单元拆任务；每个单元必须保留来自交接包或已确认 runbook 的 `unit_id`、允许修改文件、context_packet、verification、stop_conditions、前序摘要、execution ledger 更新要求和 unit summary 输出路径。存在 runbook 时，不得改变 `copied_order`、`copied_depends_on`、`copied_parallel_group`、`copied_parallel_eligible`、`copied_file_domain`、`copied_shared_state` 或 `copied_verification_resources`。每个任务的每步目标 2-5 分钟，包含精确文件路径、失败测试或验证命令、预期输出、最小实现、回归验证、提交或变更记录。计划保存后必须停止，不得执行任务、修改目标文件、派发 agent 或运行实现步骤。
+先列文件结构和文件职责，再按 `execution_unit` 逐单元拆任务；每个单元必须保留来自交接包或已确认 runbook 的 `unit_id`、允许修改文件、context_packet、verification、stop_conditions、前序摘要、execution ledger 更新要求和 unit summary 输出路径。存在 runbook 时，普通计划引用前半部分的人类审核视图解释范围、顺序、并行和风险，引用 Appendix A 的 agent contract 执行调度；不得改变 `copied_order`、`copied_depends_on`、`copied_parallel_group`、`copied_parallel_eligible`、`copied_file_domain`、`copied_shared_state` 或 `copied_verification_resources`。每个任务的每步目标 2-5 分钟，包含精确文件路径、失败测试或验证命令、预期输出、最小实现、回归验证、提交或变更记录。计划保存后必须停止，不得执行任务、修改目标文件、派发 agent 或运行实现步骤。
 
 No placeholders：禁止 TODO、TBD、后续再定、类似上一步、写适当测试、补齐错误处理、按需实现等占位符。每一步都必须可直接执行。
 
