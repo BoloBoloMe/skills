@@ -83,7 +83,7 @@
 
 ## lean / standard / strict 输出差异
 
-- lean：允许将 Stage 1 与 Stage 2 合并为简短 `scope-and-facts note`；合并资产必须包含“初始分流摘要”和“事实求证摘要”两个小节，并在 asset_ref 摘要中说明该资产同时承载事实基础。
+- lean：允许将初始分流阶段与需求对齐与事实求证阶段合并为一个简短正式资产；该资产必须写入 `assets/00-初始分流_router-and-facts@vN.md`，并同时满足初始分流与事实求证的最小输出契约。合并资产必须包含“初始分流摘要”和“事实求证摘要”两个小节，并在 asset_ref 摘要中说明该资产同时承载事实基础。不得在没有该合并资产或对应独立资产的情况下进入方案设计阶段。
 - standard：显式分开需求对齐与现状分析，并保留少量 `assumption log` 与 `open questions`。
 - strict：补充更清晰的证据链、影响面、兼容边界和升级建议。
 
