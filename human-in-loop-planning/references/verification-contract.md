@@ -20,7 +20,7 @@ Key Links 是 Truths 与 Artifacts 之间的证据链。每条 Key Link 必须�
 
 ## must_haves 对照表
 
-每个蓝图或 execution_unit 的 `must_haves` 必须使用下表结构记录：
+每个蓝图或 execution_unit 的 `must_haves` 必须使用下表结构记录。为保证 Markdown 预览能正确渲染，表格前后各保留一个空行，分隔行固定为 `|---|---|---|---|---|---|---|`，单元格内禁止出现未转义 `|`；需要列多项时用 `<br>`，不要在单元格里写 Markdown 列表。
 
 | must_have_id | Truths | Artifacts | Key Links | 验证层级 | 完成标准 | 未覆盖风险 |
 |---|---|---|---|---|---|---|

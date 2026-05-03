@@ -19,7 +19,8 @@
 你必须明确：
 - 改动切片（change slices）
 - 依赖顺序（dependency order）
-- Execution Plan Contract（包含 `execution_plan_contract`、`parallelization`、`parallel_group`、`parallel_eligible`、`file_domain`、`shared_state`、`verification_resources`）
+- 人类审核视图中的执行拓扑摘要
+- Agent-only Execution Plan Contract（包含 `execution_plan_contract`、`parallelization`、`parallel_group`、`parallel_eligible`、`file_domain`、`shared_state`、`verification_resources`）
 - 风险检查点（risk checkpoints）
 - 发布 / 验证检查点（rollout / verification checkpoints）
 - 数据形状（data shape）
@@ -98,13 +99,14 @@ stage-4-5/coverage-matrix@vN                # 覆盖矩阵
 
 ```text
 assets/03-实施蓝图_implementation-blueprint@vN.md
+assets/03-实施蓝图_execution-plan-contract@vN.agent.md
 assets/03-实施蓝图_blueprint-slice-<slice-id>@vN.md
 assets/03-实施蓝图_coverage-matrix@vN.md
 ```
 
 主蓝图 / manifest 必须包含：
 - `blueprint_form: package`
-- 包内资产清单，逐项绑定 `asset_ref`、版本、状态和中文状态名。
+- 包内资产清单，逐项绑定 `asset_ref`、版本、状态和中文状态名；存在执行单元时必须绑定同版本 agent-only contract 资产。
 - 切片索引，说明每个切片的职责、风险等级、依赖、发布波次和子蓝图引用。
 - 跨切片依赖图或波次顺序。
 - 全局不变量、全局接口 / 数据边界、全局风险与回滚边界。
@@ -173,6 +175,7 @@ package_members:
 - 上游设计：`stage-3/design-choice@vM [state=approved｜中文状态=已批准]`；文件链接：[02-方案设计_design-choice@vM.md](相对路径到assets/02-方案设计_design-choice@vM.md)
 - 当前状态：必须写中文状态名，必要时附内部状态值。
 - 当前是否需要审批：只能说明待审批或已批准；若仍需要补蓝图或人工裁决，不得产出正式蓝图资产。
+- Agent-only contract 资产：若存在 `execution_plan_contract`，只在资产元数据、manifest 或执行交接输入中记录 `agent_contract_ref`；不得在实施蓝图正文审核视图或人类审核包中展开内容或要求审核者打开它理解执行顺序。
 - 若当前状态为 `ready-for-approval｜中文状态=待审批`：同时列出审核包链接 [03-implementation-blueprint@vN-review.md](相对路径到review-pack/03-implementation-blueprint@vN-review.md) 和当前待审入口 [当前待审.md](相对路径到_current/当前待审.md)；分层蓝图包还必须说明审核范围覆盖主蓝图 / manifest 绑定的固定版本集合。
 
 ## 改动拓扑
@@ -195,14 +198,16 @@ package_members:
 - 禁止内容：不得在正文审核视图中展开完整 `execution_plan_contract`、大段 `allowed_files`、`verification_resources`、`context_packet`、`must_haves`、`stop_conditions` 或其他 agent 专用字段。
 - 一致性要求：人类审核视图必须与机器执行契约语义一致；若二者冲突，不得提交审批，必须先修订蓝图。
 
-## Execution Plan Contract
+## Agent-only Execution Plan Contract
 - 适用条件：当蓝图需要交接为一个或多个执行单元、发布波次或整包执行任务时填写；不拆分时写“无”。
 - 契约来源：读取并遵守 `references/execution-plan-contract.md`。
-- 表达位置：完整 `execution_plan_contract` 应放入附录、折叠区或独立 contract 资产；蓝图正文优先展示“人类审核视图”。
-- 顶层字段：必须使用 `execution_plan_contract`，不得把 `execution_unit` 写成顶层 contract。
+- 表达位置：完整 `execution_plan_contract` 必须抽离到独立 agent-only contract 资产，不得在实施蓝图正文或人类审核包中展开完整 YAML。
+- 资产命名：`assets/03-实施蓝图_execution-plan-contract@vN.agent.md`；该资产与同版本 `implementation-blueprint@vN` 绑定，供 HILE / agent 执行交接读取。
+- 人类可读要求：实施蓝图正文只保留“蓝图审核摘要”和 contract 文件链接；审核者必须能仅凭摘要理解执行拓扑、关键依赖、并行边界和风险检查点。
+- 顶层字段：agent-only 资产必须使用 `execution_plan_contract`，不得把 `execution_unit` 写成顶层 contract。
 - `parallelization`：必须固定 `strategy`、`user_opt_in_required`、`conflict_policy` 和 `integration_required_after_parallel_group`。
 - 单元调度字段：每个 `units[]` 必须固定 `order`、`depends_on`、`parallel_group`、`parallel_eligible`、`allowed_files`、`forbidden_files`、`file_domain`、`shared_state` 和 `verification_resources`。
-- HILE 边界：执行交接只能摘录已批准机器执行契约，不得从人类审核摘要中推断、补齐或改写执行顺序与依赖关系；不得让 HILE 临场决定 EU 是否存在、是否独立、是否可并行。缺少任一调度字段时不得交接执行。
+- HILE 边界：执行交接只能摘录已批准 agent-only contract 资产，不得从人类审核摘要中推断、补齐或改写执行顺序与依赖关系；不得让 HILE 临场决定 EU 是否存在、是否独立、是否可并行。缺少任一调度字段时不得交接执行。
 
 ## Execution Unit Contract
 - 适用条件：当蓝图需要交接为一个或多个 `execution_unit` 时填写；不拆分时写“无”。
@@ -217,6 +222,12 @@ package_members:
 ## Must-haves Verification Ladder
 - 适用条件：当蓝图包含测试承诺、验收口径或 execution_unit 完成条件时填写；无额外 must-have 时写“无”。
 - 契约来源：读取并遵守 `references/verification-contract.md`。
+- Markdown 表格要求：必须使用标准 Markdown 表格；表格前后各保留一个空行；分隔行必须为 `|---|---|---|---|---|---|---|`；单元格内禁止使用未转义 `|`，需要换行时使用 `<br>`。
+
+| must_have_id | Truths | Artifacts | Key Links | 验证层级 | 完成标准 | 未覆盖风险 |
+|---|---|---|---|---|---|---|
+| MH-001 | 已批准设计或蓝图中的必须满足项 | 证明该项的文件、测试或记录 | Truth 与 Artifact 的映射说明 | 静态检查 / 命令执行 / 行为测试 / 人工检查 | 可复核的通过条件 | 无覆盖时必须写明并进入重审判断 |
+
 - `must_haves`：逐项列出 must_have_id、Truths、Artifacts、Key Links、验证层级、完成标准和未覆盖风险。
 - 验证梯度：每个 `must_haves` 项必须绑定静态检查、命令执行、行为测试或人工检查之一；自动化证据不足时必须说明人工检查依据。
 - 完成门槛：声明蓝图可执行前，所有 `must_haves` 都必须有可复核证据链、明确验证命令或人工检查方式、期望退出码 / 通过标准和重审触发条件。
@@ -263,7 +274,7 @@ package_members:
 3. 风险检查点与发布 / 验证检查点已明确且没有待选分支。
 4. 接口约束、数据形状、局部算法骨架、错误处理要求与测试承诺已明确。
 5. 文件范围、模块范围、执行边界和禁止越界项已明确。
-6. 需要执行单元时，`execution_plan_contract`、`parallelization`、`parallel_group`、`parallel_eligible`、`file_domain`、`shared_state` 和 `verification_resources` 已明确。
+6. 需要执行单元时，agent-only contract 资产中的 `execution_plan_contract`、`parallelization`、`parallel_group`、`parallel_eligible`、`file_domain`、`shared_state` 和 `verification_resources` 已明确，且蓝图正文的人类审核摘要与该契约一致。
 7. 不存在未解决的 `human_decision_required`（必须人工裁决）。
 8. 不存在待定、可能、视情况、后续确认、执行时再判断、可选 A/B、暂按、大概、原则上、TODO、TBD、问号、空字段或占位符。
 9. 蓝图未改写 Stage 3 已批准设计 的边界或取舍。

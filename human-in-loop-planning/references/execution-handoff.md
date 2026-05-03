@@ -12,7 +12,7 @@
 你必须整理：
 - 上游已批准资产
 - 已批准蓝图版本；若是分层蓝图包，必须整理主蓝图 / manifest 和固定版本包内资产清单
-- 从蓝图摘录的 Execution Plan Contract、改动切片、实现约束、风险检查点和验证承诺
+- 从已批准蓝图和绑定的 agent-only contract 资产摘录的 Execution Plan Contract、改动切片、实现约束、风险检查点和验证承诺
 - 执行范围：整包、发布波次或 manifest 中已定义的切片集合
 - 执行模式
 - 开始前合法性检查
@@ -98,8 +98,8 @@ execution_mode: <人类开发者 | 单代理 | 多代理 | 暂不执行>
 - 禁止越界项：
 
 ## Execution Plan Contract
-- 适用条件：当已批准蓝图包含 `execution_plan_contract` 时填写；否则写“无”。
-- 摘录规则：只能摘录已批准蓝图中的机器执行契约，不得从人类审核摘要中推断、补齐或改写执行顺序与依赖关系，不得在交接阶段新增、修订、补齐或解释性扩展。
+- 适用条件：当已批准蓝图绑定 agent-only `execution_plan_contract` 资产时填写；否则写“无”。
+- 摘录规则：只能摘录已批准蓝图绑定的 agent-only contract 资产，不得从人类审核摘要中推断、补齐或改写执行顺序与依赖关系，不得在交接阶段新增、修订、补齐或解释性扩展。
 - 顶层字段：必须保留 `execution_plan_contract`，并保留 `execution_scope`、`execution_mode`、`parallelization` 和 `units`。
 - 并行字段：必须逐项摘录 `parallel_group`、`parallel_eligible`、`file_domain`、`shared_state` 和 `verification_resources`。
 - HILE 边界：执行交接不得要求 HILE 补齐并行资格、推断独立性、改变 unit 顺序或改变验证资源。
@@ -130,7 +130,7 @@ execution_mode: <人类开发者 | 单代理 | 多代理 | 暂不执行>
 
 ## 必须遵守的实现约束
 - 接口约束：
-- 数据形状：必须保留已批准蓝图中的 `execution_plan_contract`，包含 `parallelization`、`parallel_group`、`parallel_eligible`、`file_domain`、`shared_state` 和 `verification_resources`。
+- 数据形状：必须保留已批准蓝图绑定的 agent-only contract 资产中的 `execution_plan_contract`，包含 `parallelization`、`parallel_group`、`parallel_eligible`、`file_domain`、`shared_state` 和 `verification_resources`。
 - 错误处理：
 - 测试承诺：
 
