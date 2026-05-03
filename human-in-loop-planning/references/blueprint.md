@@ -183,13 +183,26 @@ package_members:
 - 验证检查点：
 - 涉及模块 / 子系统 / 文件范围：
 
+## 蓝图审核摘要
+- 本蓝图要实现什么：
+- 执行拓扑：用一行或短列表说明波次 / 主链路，不展开完整 YAML。
+- 关键依赖：只列影响审核判断的前置关系。
+- 禁止越界项：
+- 主要风险检查点：
+- 验证承诺：
+- 当前是否可提交审批：是 / 否；若否，说明阻断项。
+- 表达原则：必须清爽、精炼，只展示审核者判断蓝图是否合理所需的信息，不得要求审核者阅读完整 YAML 才能理解执行顺序。
+- 禁止内容：不得在正文审核视图中展开完整 `execution_plan_contract`、大段 `allowed_files`、`verification_resources`、`context_packet`、`must_haves`、`stop_conditions` 或其他 agent 专用字段。
+- 一致性要求：人类审核视图必须与机器执行契约语义一致；若二者冲突，不得提交审批，必须先修订蓝图。
+
 ## Execution Plan Contract
 - 适用条件：当蓝图需要交接为一个或多个执行单元、发布波次或整包执行任务时填写；不拆分时写“无”。
 - 契约来源：读取并遵守 `references/execution-plan-contract.md`。
+- 表达位置：完整 `execution_plan_contract` 应放入附录、折叠区或独立 contract 资产；蓝图正文优先展示“人类审核视图”。
 - 顶层字段：必须使用 `execution_plan_contract`，不得把 `execution_unit` 写成顶层 contract。
 - `parallelization`：必须固定 `strategy`、`user_opt_in_required`、`conflict_policy` 和 `integration_required_after_parallel_group`。
 - 单元调度字段：每个 `units[]` 必须固定 `order`、`depends_on`、`parallel_group`、`parallel_eligible`、`allowed_files`、`forbidden_files`、`file_domain`、`shared_state` 和 `verification_resources`。
-- HILE 边界：不得让 HILE 临场决定 EU 是否存在、是否独立、是否可并行；缺少任一调度字段时不得交接执行。
+- HILE 边界：执行交接只能摘录已批准机器执行契约，不得从人类审核摘要中推断、补齐或改写执行顺序与依赖关系；不得让 HILE 临场决定 EU 是否存在、是否独立、是否可并行。缺少任一调度字段时不得交接执行。
 
 ## Execution Unit Contract
 - 适用条件：当蓝图需要交接为一个或多个 `execution_unit` 时填写；不拆分时写“无”。

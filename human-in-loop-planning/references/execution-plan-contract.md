@@ -14,6 +14,10 @@
 
 任一字段无法从已批准设计或已批准蓝图确定时，不得生成执行交接，不得把缺口交给 HILE。
 
+## 人类审核视图与机器执行契约
+
+实施蓝图必须区分人类审核视图与机器执行契约。人类审核视图必须清爽、精炼，只展示执行拓扑摘要、波次、关键依赖、并行判断和审核关注点，不得要求审核者阅读完整 YAML 才能理解执行顺序。完整 `execution_plan_contract` 应放入附录、折叠区或独立 contract 资产，且仍必须完整保留 `units[].order`、`units[].depends_on`、`parallel_group`、`parallel_eligible`、文件边界、验证资源、上下文包和停止条件。执行交接只能摘录已批准机器执行契约，不得从人类审核摘要中推断、补齐或改写执行顺序与依赖关系。
+
 ## 顶层数据形状
 
 `execution_plan_contract` 是 HILP 交给 HILE 的唯一结构化执行 contract 顶层。`execution_unit` 只作为 `units[]` 内的单元字段来源，不再作为顶层 contract。

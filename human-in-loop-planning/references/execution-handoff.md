@@ -73,6 +73,16 @@ execution_mode: <人类开发者 | 单代理 | 多代理 | 暂不执行>
 - 当前状态：必须写中文状态名，必要时附内部状态值。
 - 当前是否需要审批：执行交接绑定已批准蓝图，通常不重新审批；若存在阻断项，不得产出执行交接资产。
 
+## 执行交接摘要
+- 执行范围：
+- 执行模式：人类开发者 / 单代理 / 多代理 / 暂不执行。
+- 是否满足入口条件：是 / 否。
+- 依赖的已批准设计：给出 `asset_ref` 和 Markdown 文件链接。
+- 依赖的已批准蓝图：给出 `asset_ref` 和 Markdown 文件链接。
+- 禁止越界项：
+- 停止并回退条件：
+- 当前阻断项：必须为“无阻断项”；否则不得产出正式执行交接资产。
+
 ## 上游资产
 - 已批准需求边界：
 - 已批准设计：必须使用 `stage-3/design-choice@vM [state=approved｜中文状态=已批准]` 格式，并给出文件链接 [02-方案设计_design-choice@vM.md](相对路径到assets/02-方案设计_design-choice@vM.md)。
@@ -89,7 +99,7 @@ execution_mode: <人类开发者 | 单代理 | 多代理 | 暂不执行>
 
 ## Execution Plan Contract
 - 适用条件：当已批准蓝图包含 `execution_plan_contract` 时填写；否则写“无”。
-- 摘录规则：只能摘录已批准蓝图中的 `execution_plan_contract`，不得在交接阶段新增、修订、补齐或解释性扩展。
+- 摘录规则：只能摘录已批准蓝图中的机器执行契约，不得从人类审核摘要中推断、补齐或改写执行顺序与依赖关系，不得在交接阶段新增、修订、补齐或解释性扩展。
 - 顶层字段：必须保留 `execution_plan_contract`，并保留 `execution_scope`、`execution_mode`、`parallelization` 和 `units`。
 - 并行字段：必须逐项摘录 `parallel_group`、`parallel_eligible`、`file_domain`、`shared_state` 和 `verification_resources`。
 - HILE 边界：执行交接不得要求 HILE 补齐并行资格、推断独立性、改变 unit 顺序或改变验证资源。
