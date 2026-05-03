@@ -1,9 +1,0 @@
-interface:
-  display_name: "\u4EBA\u5728\u56DE\u8DEF\u89C4\u5212"
-policy:
-  products:
-  - chatgpt
-  - codex
-  - api
-  - atlas
-  allow_implicit_invocation: true
