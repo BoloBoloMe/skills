@@ -16,21 +16,24 @@
 ├── human-in-loop-planning/
 │   ├── SKILL.md
 │   ├── agents/openai.yaml
-│   ├── references/*.md
-│   ├── 人在回路-概念设计稿.md
-│   └── 工作流程.png
+│   └── references/*.md
 ├── human-in-loop-execution/
 │   ├── SKILL.md
 │   └── references/
 │       ├── *.md
 │       └── prompt-templates/*.md
 ├── docs/
+│   ├── 人在回路-概念设计稿.md
+│   ├── 工作流程.png
+│   ├── HILP_StateMachine.png
+│   ├── HILP_Workflow.png
+│   ├── HILE_StateMachine.png
+│   ├── HILE_Workflow.png
 │   └── changes/
 │       └── <变更概述>/
 │           ├── planning/
 │           ├── execution/
 │           └── review/
-└── 裁剪superpowers.md
 ```
 
 ## 技能一览
@@ -67,7 +70,13 @@
 - 从实施蓝图开始，正式资产必须确定、唯一、可执行，不得把待定项留给执行者临场判断。
 
 入口文档：[`human-in-loop-planning/SKILL.md`](human-in-loop-planning/SKILL.md)  
-概念资料：[`human-in-loop-planning/人在回路-概念设计稿.md`](human-in-loop-planning/人在回路-概念设计稿.md)
+最初构想说明：[`docs/人在回路-概念设计稿.md`](docs/人在回路-概念设计稿.md)
+
+#### HILP 流程图
+
+![HILP 状态机](docs/HILP_StateMachine.png)
+
+![HILP 工作流](docs/HILP_Workflow.png)
 
 ### human-in-loop-execution
 
@@ -101,6 +110,12 @@ HILP 执行交接完成后的执行纪律技能包，用于把已批准设计、
 
 入口文档：[`human-in-loop-execution/SKILL.md`](human-in-loop-execution/SKILL.md)
 
+#### HILE 流程图
+
+![HILE 状态机](docs/HILE_StateMachine.png)
+
+![HILE 工作流](docs/HILE_Workflow.png)
+
 ## 资料与资产目录
 
 - `docs/changes/`：新产生的 HILP 规划、执行和审查资产共同父目录，按 `<变更概述>/planning|execution|review` 聚合完整交付链路。
@@ -108,7 +123,7 @@ HILP 执行交接完成后的执行纪律技能包，用于把已批准设计、
 - `docs/changes/<变更概述>/execution/`：HILP 执行计划和执行层资产。
 - `docs/changes/<变更概述>/review/`：代码审查、协议审查或执行审查结果文档。
 - 历史资产已按最新结构整理到 `docs/changes/`；旧路径仅可能出现在历史文档正文中作为当时方案或审查上下文。
-- `裁剪superpowers.md`：裁剪 Superpowers 能力并对接 HILP 的原则性分析。
+- `docs/人在回路-概念设计稿.md`：HILP 的最初构想说明。
 
 ## 使用方式
 
