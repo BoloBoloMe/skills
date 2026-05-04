@@ -22,6 +22,10 @@
 │   └── references/
 │       ├── *.md
 │       └── prompt-templates/*.md
+├── prd-writer/
+│   ├── SKILL.md
+│   ├── agents/openai.yaml
+│   └── references/*.md
 ├── docs/
 │   ├── 人在回路-概念设计稿.md
 │   ├── 工作流程.png
@@ -115,6 +119,30 @@ HILP 执行交接完成后的执行纪律技能包，用于把已批准设计、
 ![HILE 状态机](docs/HILE_StateMachine.png)
 
 ![HILE 工作流](docs/HILE_Workflow.png)
+
+### prd-writer
+
+面向产品需求文档（PRD）的专业写作、改写、审查与标准化技能，用于把产品想法、业务诉求、会议纪要或既有 PRD 转化为可评审、可开发、可测试、可发布和可复盘的需求资产。
+
+核心能力：
+
+- 从零生成 PRD、改进既有 PRD、审查 PRD 或生成指定章节。
+- 根据输入自动路由到 Lite PRD、Standard PRD、Complex PRD、PRD Review、Single Section 或 Product Strategy Clarification Brief。
+- 管理事实、假设、开放问题、占位符和追问，避免把不确定信息写成事实。
+- 适配中文和英文输出，并保留 `FR-001`、`AC-001`、`EVT-001` 等稳定 ID。
+- 提供需求、验收标准、埋点、指标、风险、NFR、权限、数据治理和追溯矩阵等 PRD 结构。
+- 使用质量清单、审查模板和 Ready / Needs revision / Not ready 阈值进行决策型审查。
+
+核心约束：
+
+- 默认匹配用户语言；中文输出使用专业产品术语，评审枚举保持英文并在首次出现时补充中文含义。
+- 先处理来源材料，再选择输出路线；不得跳过事实、决策、假设、矛盾和开放问题提取。
+- 不把稀薄想法强行扩写成长篇占位 PRD；输入不足时输出可草拟内容、关键假设和高影响问题。
+- 不编造精确业务数据、研究结论、合规要求、安全约束、模型行为或系统约束。
+- Lite PRD 和快速审查控制篇幅与表格数量；Complex PRD 仅在满足高风险升级规则或用户明确要求时使用。
+- 最终输出前必须移除空表格行、括号占位符和未解释的 `TBD`。
+
+入口文档：[`prd-writer/SKILL.md`](prd-writer/SKILL.md)
 
 ## 资料与资产目录
 
