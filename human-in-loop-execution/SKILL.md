@@ -1,122 +1,136 @@
 ---
 name: human-in-loop-execution
-description: Use when HILP execution handoff has completed intake with no blocking items and implementation, testing, review, debugging, or branch finishing needs execution discipline
+description: "use for two cases only: suggestion-only preflight when a request provides an approved v2.24 hilp execution handoff or explicitly asks to execute an approved hilp handoff with scope gate, audit trail, verification gate, or multi-agent execution; formal hile protocol mode only after the user explicitly asks to use hile or confirms the suggestion and after a current hilp handoff plus workspace are available. if the user asks for controlled execution without an approved hilp handoff, route them to hilp instead of starting hile. do not suggest for ordinary coding, debugging, test explanation, or lightweight implementation unless the user explicitly asks to execute an approved hilp handoff."
 ---
 
 # 人在回路执行
 
-## 概览
+## 启动规则
 
-本技能是 HILP 规划链完成执行交接之后的执行纪律入口。它只把已批准设计、已批准蓝图和执行交接资产转化为受约束的计划、实现、测试、审查、调试与收尾行为，不补做规划、不替代审批、不扩大执行范围。
+This Skill is the HILE control entrypoint. It has two layers:
 
-本技能补回的是执行强制门和抗误用细节，不接管 HILP 规划审批。
+1. Suggestion layer: when the user provides an approved v2.24 HILP execution handoff, or explicitly asks to execute an approved HILP handoff with scope gate, audit trail, verification gate, or multi-agent execution, briefly suggest HILE and ask for confirmation. Do not suggest HILE for ordinary coding, debugging, test explanation, lightweight implementation, or controlled execution requests that do not include an approved HILP handoff; route those requests to HILP instead.
+2. Execution layer: enter formal HILE only after the user explicitly asks to use HILE / human-in-loop execution / this skill, or confirms the suggestion.
+
+Before confirmation, do not run intake, create an execution package, run file-scope gates, modify files, or claim that HILE has started. After confirmation, first read [agent directory](references/agent/00-directory.md), then load only the shortest path needed for intake, tiering, runbook/plan, verification, debugging, review, or finish.
+
+HILE executes only within the scope of a current HILP handoff. It does not perform planning, replace approvals, expand file scope, or hide failures as blueprint changes.
+
+If the user asks for controlled execution but does not provide or reference a current approved HILP handoff, do not start formal HILE intake. Explain that HILE requires an approved HILP execution handoff and route the user to HILP phase-02/phase-03/phase-05 as appropriate. Do not create an execution package, run intake, run file-scope gates, or modify files.
+
+Assets from earlier pilot protocols are intentionally unsupported in v2.24. If a user provides an older handoff, ask them to regenerate a v2.24 HILP handoff.
+
+## Runtime Preconditions
+
+正式 HILE 执行依赖可确认、可读取、可写入的 repo/worktree workspace，并依赖随附 Python 脚本完成 intake、allowed-files、manifest 和验证记录门禁。无法确认 workspace、不能读取 HILP handoff/manifest、不能写文件、不能运行脚本、或无法取得实际 changed files 时，只能输出草案、阻塞说明或人工检查清单；不得声称已完成 intake pass、已执行修改、allowed-files 已通过、验证已通过或 execution manifest 已完成。
 
 ## 入口前提
 
-进入本技能前必须同时具备：
+Formal HILE intake requires all of the following:
 
-- `stage-3/design-choice@vN [state=approved｜中文状态=已批准]`
-- `stage-4-5/implementation-blueprint@vM [state=approved｜中文状态=已批准]`
-- 有效的 `stage-6/execution-handoff@vK [state=<state>｜中文状态=<state_label>]`
-  - `owner_skill=hilp-execution-handoff`
-  - 已成功落盘
-  - 执行入口检查：无阻断项
-  - 执行范围、禁止越界项、停止并回退条件齐备
-- 当前工作区：用户指定的执行工作区。
+- Approved design: `phase-02/design-choice@vN` with `lifecycle_state=approved`.
+- Approved blueprint: `phase-03/implementation-blueprint@vM` with `lifecycle_state=approved`.
+- Current execution handoff: `phase-05/execution-handoff@vK` with `lifecycle_state=closed-record` and `record_role=handoff-record`.
+- Explicit execution workspace / repo / worktree root.
 
-执行交接资产自身不要求已批准；它是规划出口记录，按有效性检查判定。不得用执行交接资产的 `archived｜中文状态=已归档` 状态否定其入口有效性。
+Missing design approval returns to HILP phase-02. Missing blueprint approval returns to phase-03. Missing valid handoff, scope, prohibited files, stop conditions, verification contract, or workspace returns to phase-05. New facts that invalidate approval return to HILP phase-04.
 
-缺少已批准设计时，回到 HILP 方案设计阶段；缺少已批准蓝图时，回到实施蓝图阶段；缺少有效执行交接、执行范围、禁止越界项或停止条件时，回到执行交接阶段；发现新事实或上游失效时，回到变更重审阶段。
+Do not accept non-canonical handoff formats as a full intake pass.
 
-## 阶段名称
+## 双视图原则
 
-- 执行入口检查阶段
-- 执行计划阶段
-- Execution Runbook 生成阶段
-- 执行计划确认阶段
-- subagent 执行阶段
-- inline 执行阶段
-- TDD 实现阶段
-- 代码审查阶段
-- review 反馈处理阶段
-- 分支收尾阶段
-- HILP 重审回退
+所有正式执行资产都必须拆成两套视图：
 
-## 资源加载顺序
+- **人类审核视图**：自然语言说明本次会做什么、不会做什么、如何确认执行、失败后发生了什么、验证证据是什么。
+- **agent 执行视图**：结构化记录 runbook、plan、execution_unit、allowed_files、stop_conditions、ledger、unit_summary、verification evidence。
 
-1. 所有执行请求先读取 `references/hilp-handoff-intake.md`，确认 HILP 资产、执行交接、执行范围和禁止越界项。
-2. 需要判断执行路径时读取 `references/execution-routing.md`。
-3. 执行交接包含 `execution_plan_contract` 时读取 `references/writing-runbooks.md`，生成 Execution Runbook 并保存后停止等待用户确认。
-4. 需要把蓝图拆为普通执行任务时读取 `references/writing-plans.md`；存在 `execution_plan_contract` 时，执行计划必须服从 runbook 纪律。
-5. 执行单个 `execution_unit` 前先读取 `references/execution-unit-intake.md`，校验 context_packet、allowed_files、verification 和 stop_conditions；接收通过后读取 `references/execution-ledger.md` 与 `references/unit-summary.md` 记录单元结果。
-6. 生产代码、bug 修复或行为变更前先读取 `references/test-driven-development.md`。
-7. 测试失败、构建失败或异常行为出现时先读取 `references/systematic-debugging.md`；命中重复同类失败、越界需求或新事实时读取 `references/failure-forensics.md`，停止执行并进入 Failure Forensics；涉及异步或污染时再按需读取根因追踪、防御式验证、条件式等待和测试反模式参考。
-8. 平台支持 subagent 且任务独立时读取 `references/subagent-driven-development.md`、`references/dispatching-parallel-agents.md` 和相应 prompt template。
-9. 平台不支持 subagent、任务强耦合或用户要求单会话时读取 `references/executing-plans.md`。
-10. 请求审查、处理反馈或准备最终审查前先读取 `references/code-review.md` 与相应审查 prompt。
-11. 任何完成声明、提交、合并或交付前先读取 `references/verification-before-completion.md`；收尾动作再读取 `references/finishing-branch.md`。
-12. 只有创建或修改技能时读取 `references/writing-skills.md`。
+布局见 [共享资产布局](references/shared/execution-asset-layout.md)。人类视图不得被 `allowed_files`、`parallel_group`、`shared_state` 等字段淹没；agent 视图不得缺少约束字段。
 
-## 路由规则
+## 执行规模分级
 
-- HILP 资产或执行交接缺失：停止，回到 HILP。
-- 执行范围、禁止越界项、停止并回退条件缺失：停止，回到 HILP 执行交接或变更重审。
-- 发现新事实、审批缺失、蓝图错误、回滚风险或蓝图外文件需求：HILP 重审回退优先于任何执行动作。
-- 执行交接包含 `execution_plan_contract` 且没有 runbook 时进入 Execution Runbook 生成阶段。
-- 没有执行计划且执行交接不包含 `execution_plan_contract` 时进入执行计划阶段。
-- runbook 或执行计划已保存但用户未明确确认当前文件时进入执行计划确认阶段，只输出文件链接、自检结果、推荐执行方式和确认请求。
-- 用户明确确认当前计划文件后，有独立任务、无共享文件、平台支持 subagent 时进入 subagent 执行阶段。
-- 用户明确确认当前计划文件后，无 subagent、任务强耦合或平台限制时进入 inline 执行阶段。
-- 任何生产代码或行为变更进入 TDD 实现阶段。
-- 任何失败或异常进入系统化调试纪律。
-- 第二次同类失败、需要修改允许范围之外文件、接口或验证口径变化、越界需求或新事实推翻已批准资产时，立即停止执行，进入 Failure Forensics，完成取证、分类和回退；failure forensics 不负责继续修复。
-- 完成一个任务或一组任务后进入代码审查阶段。
-- 收到审查反馈后进入 review 反馈处理阶段。
-- 准备声明完成、提交、合并或交付前进入完成前验证与分支收尾阶段。
+先按 [执行分级](references/agent/02-execution-tiers.md) 分类：
 
-## HILP 绑定纪律
+- **tiny**：单文件、小修复、低风险；需要入口检查和验证记录，不强制 runbook、ledger、unit summary。
+- **standard**：多步骤或多文件常规执行；需要 plan、验证记录，必要时记录简化 ledger。
+- **strict**：高风险、并行、迁移、共享状态、复杂验证或 HILP handoff 包含 `execution_plan_contract`；需要 runbook、用户确认、unit summary、ledger、review、failure forensics 纪律。
 
-- 所有执行计划、subagent prompt、审查请求和完成声明都必须引用 HILP 设计、蓝图与执行交接 asset_ref。
-- 执行者只能按执行交接资产中的范围、顺序、禁止越界项和停止条件工作。
-- 不得把待审批、草稿、待修订或已归档的设计资产或蓝图资产当作已批准输入；执行交接资产按 owner、落盘、无阻断项、执行范围、禁止越界项和停止条件做有效性检查。
-- 不得用执行阶段补齐需求、设计、蓝图、接口、数据形状或验证口径缺口。
-- 执行中发现前提变化时，输出“停止执行，回到 HILP 变更重审”，并列出触发原因。
+分级可以升级；不能用 tiny 规避蓝图约束或验证证据。
 
-## 输出纪律
 
-- 开始执行前说明当前引用的 HILP 资产、执行范围、禁止越界项和当前阶段。
-- 计划文件保存到 `docs/changes/<变更概述>/execution/plans/<yyyy-mm-dd>-<任务概括>.md`；Execution Runbook 保存到同目录，文件名包含 `runbook`。
-- 执行计划或 Execution Runbook 写入后必须停止，等待用户明确确认当前文件后才允许执行任务；Execution Runbook 必须先呈现人类审核视图，agent 专用 `execution_runbook` 只能放在附录。
-- 每个 `execution_unit` 完成或阻断后，必须先写入 unit summary，再更新 execution ledger；缺少任一记录不得声明该单元完成或阻断已处理。
-- 每次完成声明必须包含新鲜验证命令、退出结果和输出摘要。
-- 审查结果按 Critical、Important、Minor 分类；Critical 阻断继续推进，Important 修完再继续，Minor 可记录但不得掩盖阻断。
-- 若不能继续，明确写出缺少什么、为什么不能继续、应回到哪个 HILP 阶段。
 
-## 参考文件
+## Repo-aware Plan / Runbook 强制门
 
-- `references/execution-routing.md`
-- `references/hilp-handoff-intake.md`
-- `references/writing-plans.md`
-- `references/writing-runbooks.md`
-- `references/execution-unit-intake.md`
-- `references/execution-ledger.md`
-- `references/unit-summary.md`
-- `references/subagent-driven-development.md`
-- `references/executing-plans.md`
-- `references/test-driven-development.md`
-- `references/code-review.md`
-- `references/finishing-branch.md`
-- `references/systematic-debugging.md`
-- `references/failure-forensics.md`
-- `references/verification-before-completion.md`
-- `references/dispatching-parallel-agents.md`
-- `references/writing-skills.md`
-- `references/prompt-templates/implementer-prompt.md`
-- `references/prompt-templates/spec-reviewer-prompt.md`
-- `references/prompt-templates/code-quality-reviewer-prompt.md`
-- `references/prompt-templates/code-reviewer.md`
-- `references/prompt-templates/plan-document-reviewer-prompt.md`
-- `references/testing-anti-patterns.md`
-- `references/root-cause-tracing.md`
-- `references/defense-in-depth.md`
-- `references/condition-based-waiting.md`
+HILE must not modify files directly from HILP execution units. Before any file modification, HILE must inspect the actual repo/worktree and generate a repository-aware Plan or Runbook that maps each source execution unit to concrete planned files, repo observations, implementation steps, verification plan, risk checks, and stop conditions.
+
+If a valid Plan or Runbook cannot be generated, execution must stop and route to human review, HILP phase-04, or failure forensics. Standard execution requires a Plan; strict execution requires a Runbook. For standard and strict execution, file modification is forbidden until the Plan or Runbook is generated, validated, and explicitly confirmed with the fixed command. There is no standard no-confirmation path. Any execution that skips separate confirmation must qualify under the tiny exception rules; otherwise it must wait for the fixed Plan or Runbook confirmation command.
+
+Tiny execution may skip a separate confirmation review only when all tiny exception conditions are true: exactly one execution unit, a very small planned file set, no high-risk or prohibited scope, verification available, no repo observation contradicting HILP assumptions, and an explicit same-context user instruction to execute. If any condition fails, tiny must also generate and confirm a Plan.
+
+## 用户确认语义
+
+HILE 只接受执行确认，不接受设计或蓝图批准。需要确认时，必须使用固定命令：
+
+```text
+确认执行：确认执行 Runbook <path>
+确认执行：确认执行 Plan <path>
+```
+
+“继续”“可以了”“执行吧”不能直接授权 runbook/plan；只能触发 agent 回显唯一确认命令并等待用户回复。确认执行只授权当前 runbook/plan 的执行，不会批准上游设计或蓝图。若上游批准缺失或失效，停止并回到 HILP.
+
+## 最短执行路径
+
+Use [agent directory](references/agent/00-directory.md) for routing:
+
+- Existing handoff, start execution: directory -> intake -> tiers -> routing -> runbook/plan -> confirmation decision.
+- Tiny execution: directory -> intake -> tiering -> tiny plan -> scope gate -> verification -> completion record.
+- Strict runbook: directory -> intake -> runbook/plan contract -> confirmation -> execution units -> ledger/unit summaries -> verification -> review -> finish.
+- Failure or abnormal evidence: directory -> verification/debugging/review -> failure forensics -> return to HILP if planning scope changed.
+- Parallel work: directory -> execution unit contract -> subagent/dispatch contract -> ledger summary.
+
+Do not infer behavior from older pilot prompt templates or obsolete handoff shapes. If current v2.24 rules do not cover a supplied handoff, stop and request a regenerated v2.24 HILP handoff.
+
+## Manifest 与版本纪律
+
+正式执行资产每次进入待确认、执行中、完成、失败、阻塞或回交 HILP 状态时，都要更新 execution manifest。manifest schema、`_current/` 指针和版本规则见 [canonical protocol schema](references/shared/canonical-protocol-schema.yaml)、[执行资产布局](references/shared/execution-asset-layout.md) 与 [manifest 与版本规则](references/shared/manifest-and-versioning.md)。
+
+## 完成声明纪律
+
+任何完成声明、提交、合并或交付前，必须有新鲜验证证据。不能说“应该通过”“看起来没问题”。必须说明验证命令、执行时间、结果、未验证项和残余风险。若验证无法运行，说明原因并给出替代证据；不能伪造通过。
+
+
+## 工程化门禁
+
+HILE 执行不是纯文本纪律；必须把随附脚本作为执行门禁：
+
+1. 正式落盘 execution package 前运行 `scripts/init_execution_package.py <change_slug> --root docs/changes --source-handoff <handoff-ref-or-path> --planning-manifest <planning-manifest-path> --tier tiny|standard|strict`。
+2. 声明完整 intake pass 前运行 `scripts/validate_handoff_intake.py <handoff.md> --planning-manifest <planning/manifest.md> --workspace <repo-or-worktree-root>`。没有 `--planning-manifest` 时只能使用 `--allow-partial`，且不得声明完整 intake pass。
+3. 修改文件前，先生成 repo-aware Plan/Runbook，提取 planned files，并运行：`scripts/check_allowed_files.py --handoff <handoff.md> --planned-file <planned-files.txt> --workspace <repo-or-worktree-root>`。把 planned-files gate 的 pass/fail 结果写回 Plan/Runbook 的 `pre_modify_gate.planned_files_check`。
+4. planned-files gate 通过并写回 Plan/Runbook 后，再运行 `scripts/validate_plan_or_runbook.py <plan-or-runbook.md> --handoff <handoff.md> --execution-manifest <execution/manifest.md> --workspace <repo-or-worktree-root>`；该 validator 会校验 `pre_modify_gate` 记录并重新检查 planned files 是否仍在 scope 内。
+5. 修改后、完成声明前，对实际变更文件运行：`scripts/check_allowed_files.py --handoff <handoff.md> --changed-file <actual-changed-files.txt> --workspace <repo-or-worktree-root>`。
+6. 记录验证证据时优先运行 `scripts/write_verification_record.py`。
+7. completion review 或打包前运行 `scripts/validate_execution_manifest.py <execution/manifest.md> --check-paths --planning-manifest <planning/manifest.md>`，并运行 `scripts/validate_yaml_blocks.py <skill-or-package-root> --shape`，发布打包前运行 `scripts/clean_build_artifacts.py <skill-root>` 清理构建产物。
+8. 生成确认命令或 review-pack 前运行 `scripts/validate_placeholders.py <execution-root>`，确保没有 `@vN`、任何 `<...>`、`TODO` 等未替换占位。
+9. 生成或更新 review-pack 后运行 `scripts/validate_review_pack.py <review-pack.md> --manifest <execution/manifest.md> --kind hile --check-links --check-command`。
+
+脚本失败时必须停止执行并报告阻塞项；不得用人工解释覆盖脚本失败。固定确认命令中的 `<path>` 必须替换为被执行的 canonical agent Plan/Runbook 文件路径；在生成的 review-pack 中，该值必须等于 `review_target.agent_view`，不是 review-pack 文件路径。默认对用户使用中文自然语言，agent 字段和 YAML schema 保持 canonical English。
+
+
+## 路径引用说明
+
+Markdown 正文中的文件引用必须使用可点击链接。YAML/code block 中的路径字段是 machine-readable contract，允许保持纯字符串；若同一信息面向人类导航，应在正文附近提供可点击链接。
+
+## v2.24 allowed-file double gate
+
+Before modifying files, run:
+
+```bash
+scripts/check_allowed_files.py --handoff <handoff.md> --planned-file <planned-files.txt> --workspace <repo-or-worktree-root>
+```
+
+After modification and before completion, run:
+
+```bash
+scripts/check_allowed_files.py --handoff <handoff.md> --changed-file <actual-changed-files.txt> --workspace <repo-or-worktree-root>
+```
+
+Do not claim completion unless both checks pass or the inability to run a check is explicitly recorded and routed to a human/HILP decision.

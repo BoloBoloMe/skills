@@ -1,0 +1,38 @@
+protocol: HILE
+registry_version: "2.24"
+commands:
+  init_execution_package:
+    command: scripts/init_execution_package.py <change_slug> --root docs/changes --source-handoff <handoff-ref-or-path> --planning-manifest <planning/manifest.md> --tier tiny|standard|strict
+    required_options: [--root, --source-handoff, --planning-manifest, --tier]
+  validate_handoff_intake:
+    command: scripts/validate_handoff_intake.py <handoff.md> --planning-manifest <planning/manifest.md> --workspace <repo-or-worktree-root>
+    required_options: [--planning-manifest, --workspace]
+  validate_plan_or_runbook:
+    command: scripts/validate_plan_or_runbook.py <plan-or-runbook.md> --handoff <handoff.md> --execution-manifest <execution/manifest.md> --workspace <repo-or-worktree-root>
+    required_options: [--handoff, --execution-manifest, --workspace]
+  check_allowed_files_planned:
+    command: scripts/check_allowed_files.py --handoff <handoff.md> --planned-file <planned-files.txt> --workspace <repo-or-worktree-root>
+    required_options: [--handoff, --planned-file, --workspace]
+  check_allowed_files_changed:
+    command: scripts/check_allowed_files.py --handoff <handoff.md> --changed-file <actual-changed-files.txt> --workspace <repo-or-worktree-root>
+    required_options: [--handoff, --changed-file, --workspace]
+  validate_execution_manifest:
+    command: scripts/validate_execution_manifest.py <execution/manifest.md> --check-paths --planning-manifest <planning/manifest.md>
+    required_options: [--check-paths, --planning-manifest]
+  write_verification_record:
+    command: scripts/write_verification_record.py --out <record.md> --command '<cmd>' --result pass|fail|blocked --notes '<notes>'
+    required_options: [--out, --command, --result, --notes]
+  validate_yaml_blocks:
+    command: scripts/validate_yaml_blocks.py <path> --shape
+    required_options: [--shape]
+
+  validate_review_pack:
+    command: scripts/validate_review_pack.py <review-pack.md> --manifest <execution/manifest.md> --kind hile --check-links --check-command
+    required_options: [--manifest, --kind, --check-links, --check-command]
+  validate_placeholders:
+    command: scripts/validate_placeholders.py <execution-root>
+    required_options: []
+
+  clean_build_artifacts:
+    command: scripts/clean_build_artifacts.py <skill-root>
+    required_options: []

@@ -1,0 +1,134 @@
+protocol: HILE
+schema_version: "2.24"
+protocol_version: "2.24"
+execution_tier_values:
+  - tiny
+  - standard
+  - strict
+package_stage_values:
+  - initialized
+  - intake-pending
+  - intake-passed
+  - planned
+  - confirmed
+  - in-progress
+  - blocked
+  - failed
+  - completed
+intake_status_values:
+  - draft
+  - partial
+  - pass
+  - blocked
+lifecycle_state_values:
+  - draft
+  - ready-for-confirmation
+  - confirmed
+  - in-progress
+  - blocked
+  - completed
+  - failed
+  - superseded
+  - closed-record
+record_role_values:
+  - intake-record
+  - runbook
+  - plan
+  - inline-execution-record
+  - ledger
+  - unit-summary
+  - verification-evidence
+  - failure-forensics
+  - completion-record
+role_state_matrix:
+  intake-record:
+    - closed-record
+    - completed
+    - blocked
+  runbook:
+    - draft
+    - ready-for-confirmation
+    - confirmed
+    - in-progress
+    - blocked
+    - completed
+    - failed
+    - superseded
+  plan:
+    - draft
+    - ready-for-confirmation
+    - confirmed
+    - in-progress
+    - blocked
+    - completed
+    - failed
+    - superseded
+  inline-execution-record:
+    - completed
+    - closed-record
+    - blocked
+    - failed
+  ledger:
+    - in-progress
+    - blocked
+    - completed
+    - failed
+    - closed-record
+  unit-summary:
+    - completed
+    - failed
+    - blocked
+    - closed-record
+  verification-evidence:
+    - completed
+    - failed
+    - blocked
+    - closed-record
+  failure-forensics:
+    - blocked
+    - failed
+    - closed-record
+  completion-record:
+    - completed
+    - closed-record
+owner_skill_values:
+  - human-in-loop-execution
+owner_protocol_values:
+  - HILE
+current_assets_required_fields:
+  - intake_summary
+  - current_runbook
+  - current_plan
+  - tiny_inline_record
+  - ledger
+  - unit_summaries
+  - verification_evidence
+  - failure_forensics
+  - completion_review
+current_pointers_required_fields:
+  - human_status
+  - agent_directory
+  - active_runbook_or_plan
+  - latest_runbook_or_plan
+  - latest_verification
+  - latest_completion_review
+asset_registry_required_fields:
+  - asset_ref
+  - path
+  - human_view
+  - agent_view
+  - lifecycle_state
+  - record_role
+  - version
+  - owner_skill
+  - owner_protocol
+  - created_at
+  - last_state_change_at
+fixed_human_commands:
+  confirm_execution_runbook: "确认执行：确认执行 Runbook <path>"
+  confirm_execution_plan: "确认执行：确认执行 Plan <path>"
+file_scope_policy:
+  reject_absolute_paths: true
+  reject_parent_traversal: true
+  enforce_workspace_realpath_boundary: true
+  path_format: posix_relative

@@ -1,0 +1,12 @@
+interface:
+  display_name: Rigorous Contrarian Answers
+  short_description: Direct, critical, confidence-rated analysis that prioritizes
+    accuracy over agreement.
+  icon: brain
+policy:
+  products:
+  - chatgpt
+  - codex
+  - api
+  - atlas
+  allow_implicit_invocation: true
