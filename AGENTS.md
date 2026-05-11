@@ -17,7 +17,7 @@
 ## 2 环境
 
 - Windows11.
-- 默PowerShell7.
+- PowerShell7.
 - Python托管于uv.
 - 如非用户明令,行事循既定之器
 
