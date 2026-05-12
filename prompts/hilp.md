@@ -1,5 +1,5 @@
 ---
-description: 计划模式
+description: 运用 hilp 制定计划
 argument-hint: <需求描述>
 ---
 
