@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Validate a canonical HILE execution manifest.
 
-Hardening added after v2.24 audit:
+Hardening added after v2.24.1 audit:
 - load enums and required fields from references/shared/canonical-protocol-schema.yaml
 - require dual-view and owner fields on asset_registry entries
 - preserve package_stage / asset-state coherence checks
@@ -19,6 +19,7 @@ except Exception as exc:
 
 ROOT = Path(__file__).resolve().parents[1]
 CANON_PATH = ROOT / "references/shared/canonical-protocol-schema.yaml"
+COMPAT_PATH = ROOT / "references/shared/compatibility-contract.yaml"
 FENCE_RE = re.compile(r"```(?:yaml|yml)\s*\n(.*?)\n```", re.DOTALL | re.IGNORECASE)
 ASSET_REF_RE = re.compile(r"^hile/([A-Za-z0-9_-]+)@v(\d+)$")
 HILP_HANDOFF_REF_RE = re.compile(r"^phase-05/execution-handoff@v\d+$")
@@ -49,7 +50,17 @@ def load_canonical():
         return yaml.safe_load(CANON_PATH.read_text(encoding="utf-8")) or {}
     return {}
 
+def load_compat():
+    if COMPAT_PATH.exists():
+        return yaml.safe_load(COMPAT_PATH.read_text(encoding="utf-8")) or {}
+    return {}
+
+def major_minor(version):
+    parts = str(version or "").split(".")
+    return ".".join(parts[:2]) if len(parts) >= 2 else str(version or "")
+
 CANON = load_canonical()
+COMPAT = load_compat()
 VALID_STAGES = set(CANON.get("package_stage_values", [])) or {"initialized", "intake-pending", "intake-passed", "planned", "confirmed", "in-progress", "blocked", "failed", "completed"}
 VALID_INTAKE = set(CANON.get("intake_status_values", [])) or {"draft", "partial", "pass", "blocked"}
 VALID_TIERS = set(CANON.get("execution_tier_values", [])) or {"tiny", "standard", "strict"}
@@ -143,8 +154,15 @@ def validate_hilp_manifest_contract(planning_manifest, errors):
     claim a valid source handoff from incomplete planning provenance.
     """
     require(planning_manifest.get("protocol") == "HILP", "planning manifest protocol must be HILP", errors)
-    require(str(planning_manifest.get("schema_version")) == str(CANON.get("schema_version", "2.24")), "planning manifest schema_version must match HILE compatible schema", errors)
-    require(str(planning_manifest.get("protocol_version")) == str(CANON.get("protocol_version", "2.24")), "planning manifest protocol_version must match HILE compatible protocol", errors)
+    compatible_versions = {str(v) for v in (COMPAT.get("compatible_schema_versions") or [])}
+    expected_hilp = str(COMPAT.get("hilp_version", "2.24.0"))
+    if not compatible_versions:
+        compatible_versions = {expected_hilp}
+    schema_version = str(planning_manifest.get("schema_version"))
+    protocol_version = str(planning_manifest.get("protocol_version"))
+    require(schema_version in compatible_versions, f"planning manifest schema_version must be one of compatible HILP versions {sorted(compatible_versions)}", errors)
+    require(protocol_version in compatible_versions, f"planning manifest protocol_version must be one of compatible HILP versions {sorted(compatible_versions)}", errors)
+    require(major_minor(schema_version) == major_minor(CANON.get("schema_version", "2.24.1")), "planning manifest schema_version must share HILP/HILE major.minor line", errors)
     require(planning_manifest.get("mode") in {"standard", "strict"}, "planning manifest mode must be standard or strict for execution provenance", errors)
     require(bool(planning_manifest.get("change_slug")), "planning manifest change_slug required", errors)
     ca = planning_manifest.get("current_assets")

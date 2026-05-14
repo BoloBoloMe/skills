@@ -15,7 +15,7 @@
 
 下一页：[术语和阅读方式](01-glossary-and-reading.md)
 
-## v2.24 审核辅助材料
+## v2.24.0 审核辅助材料
 
 - 设计批准前使用 [设计审批检查表](checklists/design-approval-checklist.md)。
 - 蓝图批准前使用 [蓝图审批检查表](checklists/blueprint-approval-checklist.md)。

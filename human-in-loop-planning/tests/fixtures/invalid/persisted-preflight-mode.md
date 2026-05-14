@@ -2,8 +2,8 @@
 
 ```yaml
 manifest:
-  schema_version: "2.24"
-  protocol_version: "2.24"
+  schema_version: "2.24.0"
+  protocol_version: "2.24.0"
   change_slug: fixture
   protocol: HILP
   mode: preflight

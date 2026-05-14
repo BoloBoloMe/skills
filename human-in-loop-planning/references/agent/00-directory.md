@@ -1,4 +1,4 @@
-# Agent Directory: HILP v2.24
+# Agent Directory: HILP v2.24.0
 
 Read this file only after the user explicitly asks to use HILP or confirms a suggestion to use it.
 
@@ -75,4 +75,4 @@ If a complex request appears suitable for HILP but the user has not opted in, gi
 
 ## Unsupported prior-asset rule
 
-v2.24 does not support migration of assets from earlier pilot protocols. Regenerate older assets under the current protocol.
+v2.24.0 does not support migration of assets from earlier pilot protocols. Regenerate older assets under the current protocol.

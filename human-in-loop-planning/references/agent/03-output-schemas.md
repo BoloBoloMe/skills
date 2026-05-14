@@ -102,8 +102,8 @@ Phase-05 handoff must pass both manifest validation and HILP asset content valid
 
 ```yaml
 execution_handoff:
-  schema_version: "2.24"
-  protocol_version: "2.24"
+  schema_version: "2.24.0"
+  protocol_version: "2.24.0"
   owner_skill: human-in-loop-execution  # consuming/executing owner, not the authoring skill
   owner_protocol: HILE
   source_design_ref: phase-02/design-choice@vN
@@ -226,8 +226,8 @@ Use this schema for `planning/manifest.md`. Keep it stable and update it wheneve
 
 ```yaml
 manifest:
-  schema_version: "2.24"
-  protocol_version: "2.24"
+  schema_version: "2.24.0"
+  protocol_version: "2.24.0"
   change_slug: string
   protocol: HILP
   mode: preflight-scaffold|standard|strict
@@ -273,8 +273,8 @@ Required in strict mode. Write the canonical record at `planning/audit/audit-tra
 
 ```yaml
 audit_trail:
-  schema_version: "2.24"
-  protocol_version: "2.24"
+  schema_version: "2.24.0"
+  protocol_version: "2.24.0"
   protocol: HILP
   change_slug: string
   entries:

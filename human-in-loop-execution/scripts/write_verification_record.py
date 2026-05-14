@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Write a manifest-compatible HILE v2.24 verification evidence asset."""
+"""Write a manifest-compatible HILE v2.24.1 verification evidence asset."""
 import argparse
 from pathlib import Path
 from datetime import datetime, timezone
@@ -41,8 +41,8 @@ def main():
         f"created_at: {now}",
         f"last_state_change_at: {now}",
         "verification_record:",
-        '  schema_version: "2.24"',
-        '  protocol_version: "2.24"',
+        '  schema_version: "2.24.1"',
+        '  protocol_version: "2.24.1"',
         "  protocol: HILE",
         f"  created_at: {now}",
         f"  command: {q(args.command)}",

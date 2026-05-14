@@ -1,5 +1,0 @@
-interface:
-  display_name: "Human-in-Loop Planning"
-  short_description: "Plans gated changes with human approval and dual-view assets."
-  icon: "🧭"
-  brand_color: "#4F46E5"

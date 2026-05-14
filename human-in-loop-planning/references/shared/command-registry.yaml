@@ -1,5 +1,5 @@
 protocol: HILP
-registry_version: "2.24"
+registry_version: "2.24.0"
 commands:
   validate_manifest:
     command: scripts/validate_manifest.py <planning/manifest.md> --check-paths

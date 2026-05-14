@@ -1,5 +1,5 @@
-/mnt/data/hilp_hile_work/human-in-loop-execution/generated-file-index.md
-o not treat it as protocol rules. Canonical references, scripts, examples, and tests are listed in runtime-first order.
+/mnt/data/hile_layout_work/human-in-loop-execution/generated-file-index.md
+not treat it as protocol rules. Canonical references, scripts, examples, and tests are listed in runtime-first order.
 
 ```text
 README.md
@@ -32,6 +32,7 @@ references/human/02-execution-tiers.md
 references/human/03-runbook-plan-confirmation.md
 references/human/04-failure-and-reapproval.md
 references/human/05-verification-and-finish.md
+references/human/06-strict-runbook.md
 references/human/98-reviewer-journey.md
 references/human/99-canonical-summary.md
 references/human/checklists/completion-review-checklist.md
@@ -74,6 +75,7 @@ tests/fixtures/invalid/completed-without-plan.md
 tests/fixtures/invalid/current-plan-role-mismatch.md
 tests/fixtures/invalid/initialized-with-completed-assets.md
 tests/fixtures/invalid/malformed-hilp-planning-manifest.md
+tests/fixtures/invalid/missing-hile-planning-requirement.md
 tests/fixtures/invalid/no-execution-units.md
 tests/fixtures/invalid/old-schema-handoff.md
 tests/fixtures/invalid/plan-placeholder-confirmation.md
@@ -108,5 +110,6 @@ tests/fixtures/valid/src-nested-file.txt
 tests/fixtures/valid/strict-runbook-manifest.md
 tests/fixtures/valid/tiny-inline-completed-manifest.md
 tests/transcripts/confirmation-semantics.md
+assets/icon.svg
 generated-file-index.md
 ```

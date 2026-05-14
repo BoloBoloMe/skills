@@ -39,6 +39,8 @@
 ├── rigorous-contrarian-answers/
 │   ├── SKILL.md
 │   └── agents/openai.yaml
+├── springboot-hcurl-generator/
+│   └── SKILL.md
 ├── prompts/
 │   ├── hilb.md
 │   ├── hile.md
@@ -176,6 +178,26 @@
 - 语气直接、精确，但不做人身攻击。
 
 入口文档：[`rigorous-contrarian-answers/SKILL.md`](rigorous-contrarian-answers/SKILL.md)
+
+### springboot-hcurl-generator
+
+Spring Boot Controller 到 Hurl/.hcurl 接口测试脚本包的生成技能，用于从 Controller 类或源码目录批量生成可执行的接口测试样例、环境文件和 README 说明。
+
+核心能力：
+
+- 识别 `@RestController`、`@Controller` 以及 Spring MVC 映射注解。
+- 按类级映射和方法级映射拼接 URL，并推断 HTTP method。
+- 根据 `@RequestBody`、`@RequestParam`、`@PathVariable`、`@RequestHeader`、`MultipartFile` / `@RequestPart` 生成示例请求。
+- 生成固定结构的 `.hcurl` 脚本包：`_env/local.properties`、`_env/test.properties`、按 Controller 分目录的脚本和 README。
+
+核心约束：
+
+- 生成前先列出将新增/覆盖的文件清单。
+- 默认不覆盖已有 `.hcurl`，覆盖必须得到用户确认。
+- 不写入真实 token、密钥或生产域名。
+- 每个 Controller 一个目录，每个 Controller 方法一个 `.hcurl` 文件。
+
+入口文档：[`springboot-hcurl-generator/SKILL.md`](springboot-hcurl-generator/SKILL.md)
 
 ## 资料与资产目录
 

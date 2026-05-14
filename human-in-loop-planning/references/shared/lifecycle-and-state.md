@@ -23,7 +23,7 @@ The machine-readable source of truth is [canonical-protocol-schema.yaml](canonic
 
 ## Removed pilot-asset state handling
 
-v2.24 rejects old pilot assets that use removed state semantics. Regenerate those assets under the current protocol instead of normalizing them in place.
+v2.24.0 rejects old pilot assets that use removed state semantics. Regenerate those assets under the current protocol instead of normalizing them in place.
 
 ## State gates
 

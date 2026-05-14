@@ -8,7 +8,7 @@
 - Validation expectations
 
 
-Canonical in v2.24. Use this file whenever HILP creates or updates `review-pack/` entries.
+Canonical in v2.24.0. Use this file whenever HILP creates or updates `review-pack/` entries.
 
 ## Universal review-pack contract
 

@@ -1,6 +1,6 @@
 # Runbook / Plan 审核与确认
 
-Runbook 或 Plan 应回答：会改哪些文件，哪些文件不改，步骤怎么走，失败时停在哪里，验证通过的标准是什么。
+Runbook 或 Plan 应回答：会改哪些文件，哪些文件不改，步骤怎么走，源码级修改意图是什么，失败时停在哪里，验证通过的标准是什么。
 
 确认执行只能使用明确命令：
 
@@ -22,4 +22,9 @@ Runbook 或 Plan 应回答：会改哪些文件，哪些文件不改，步骤怎
 
 ## 审核重点：repo-aware 具体计划
 
-确认 Plan/Runbook 时，不要只看 HILP EU 的一句目标。应检查 HILE 是否已经读取真实 repo，并列出目标文件是否存在、相关符号/anchor、具体修改顺序、每步验证、风险检查、停止条件、planned-files gate 结果，以及固定确认命令。standard 必须确认 Plan；strict 必须确认 Runbook。
+确认 Plan/Runbook 时，不要只看 HILP EU 的一句目标。应检查 HILE 是否已经读取真实 repo，并列出目标文件是否存在、相关符号/anchor、具体修改顺序、源码级修改意图、每步验证、风险检查、停止条件、planned-files gate 结果，以及固定确认命令。standard 必须确认 Plan；strict 必须确认 Runbook。源码级修改意图应说明每个 planned file 将影响哪些类、函数、枚举、字段、配置键、路由、测试或其他稳定 anchor；如果只有文件名而没有符号级意图，应视为审核信息不足。
+
+
+## Strict Runbook 的人类审核版
+
+strict 执行不能只让审核员阅读 `agent/03-runbook.yaml.md`。生成 strict Runbook 时，必须同步生成 `human/02-strict-runbook.md`，并把它作为 runbook 的主要人类视图。源码级修改意图必须放在每个 execution unit 的详细 Runbook 内，紧跟计划步骤；不能做成独立的全局“源码级修改意图”章节。确认页可以保留简短摘要，但必须链接到完整人类版 Runbook。完整结构和覆盖要求见 [HILE Strict Runbook（人类审核版）](06-strict-runbook.md)。

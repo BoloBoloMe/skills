@@ -1,9 +1,9 @@
 protocol_pair: HILP-HILE
-schema_version: "2.24"
-hilp_version: "2.24"
-hile_version: "2.24"
+schema_version: "2.24.0"
+hilp_version: "2.24.0"
+hile_version: "2.24.1"
 compatible_schema_versions:
-  - "2.24"
+  - "2.24.0"
 producer_skill: human-in-loop-planning
 consumer_skill: human-in-loop-execution
 handoff_record:

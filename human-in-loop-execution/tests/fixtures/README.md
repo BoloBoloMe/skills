@@ -1,4 +1,4 @@
-# HILE v2.24 fixtures
+# HILE v2.24.1 fixtures
 
 Real self-test fixtures live under `valid/` and `invalid/`.
 

@@ -38,6 +38,29 @@ runbook:
           anchors:
             - test_value
           expected_result: test asserts the approved value
+      source_level_change_intent:
+        - file: src/e2e.py
+          symbol_or_anchor: value
+          change_type: modify_function
+          intent: update the fixture value implementation to return the approved value
+          intended_operations:
+            - adjust the value function or equivalent anchor to return the approved fixture value
+          review_focus:
+            - confirm the change is limited to the fixture value behavior
+            - confirm no unrelated e2e helper behavior changes
+          related_implementation_steps:
+            - P1
+        - file: tests/e2e_test.py
+          symbol_or_anchor: test_value
+          change_type: modify_test
+          intent: align the fixture test expectation with the approved value
+          intended_operations:
+            - update the test expectation for the fixture value
+          review_focus:
+            - confirm the test covers the approved behavior
+            - confirm the test does not broaden fixture scope
+          related_implementation_steps:
+            - P2
       verification_plan:
         commands:
           - pytest tests/e2e_test.py

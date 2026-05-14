@@ -6,8 +6,8 @@ This example is designed to pass `scripts/validate_handoff_intake.py <handoff.md
 
 ```yaml
 manifest:
-  schema_version: "2.24"
-  protocol_version: "2.24"
+  schema_version: "2.24.0"
+  protocol_version: "2.24.0"
   change_slug: sample-change
   protocol: HILP
   mode: standard
@@ -82,8 +82,8 @@ phase_id: phase-05
 lifecycle_state: closed-record
 record_role: handoff-record
 execution_handoff:
-  schema_version: "2.24"
-  protocol_version: "2.24"
+  schema_version: "2.24.0"
+  protocol_version: "2.24.0"
   owner_skill: human-in-loop-execution
   owner_protocol: HILE
   source_design_ref: phase-02/design-choice@v1

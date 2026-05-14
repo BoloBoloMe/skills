@@ -4,8 +4,8 @@ This example is a minimal complete package shape. It is not a real implementatio
 
 ```yaml
 manifest:
-  schema_version: "2.24"
-  protocol_version: "2.24"
+  schema_version: "2.24.0"
+  protocol_version: "2.24.0"
   change_slug: example-auth-refactor
   protocol: HILP
   mode: standard

@@ -1,4 +1,4 @@
-# HILP v2.24 fixtures
+# HILP v2.24.0 fixtures
 
 Real self-test fixtures live under `valid/` and `invalid/`.
 

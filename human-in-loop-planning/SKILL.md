@@ -16,7 +16,11 @@ Before confirmation, stay in ordinary chat or preflight analysis only. Do not cr
 
 Default user-facing prose should be concise Chinese unless the user asks otherwise. Machine fields such as phase_id, lifecycle_state, asset_ref, schema, and contract fields belong in agent-facing assets or debug explanations.
 
-Assets from earlier pilot protocols are intentionally unsupported in v2.24. If a user provides an older asset, explain that it must be regenerated under the current v2.24 protocol rather than migrated.
+Assets from earlier pilot protocols are intentionally unsupported in v2.24.0. If a user provides an older asset, explain that it must be regenerated under the current v2.24.0 protocol rather than migrated.
+
+## 协议版本号规范
+
+HILP 使用三段版本号 `x.y.z`。`x.y` 是 HILP/HILE 共享的大协议线，当前为 `2.24`；`z` 是各协议自己的小版本迭代号，可以不一致。当前 HILP 版本为 `v2.24.0`。跨协议兼容性以 `references/shared/compatibility-contract.yaml` 为准，不要求 HILP 与 HILE 三段版本完全相等。
 
 ## Runtime Preconditions
 
@@ -55,7 +59,7 @@ Use only the canonical `phase-*` identifiers below for new assets:
 | phase-06 | planning archive index |
 | phase-99 | protocol pressure test |
 
-Use only canonical phase identifiers in new assets. If a supplied asset uses non-canonical identifiers, do not migrate it in place; ask to regenerate the package under the current v2.24 protocol.
+Use only canonical phase identifiers in new assets. If a supplied asset uses non-canonical identifiers, do not migrate it in place; ask to regenerate the package under the current v2.24.0 protocol.
 
 
 
@@ -69,7 +73,7 @@ Concrete repository-aware implementation steps belong to HILE Plan or Runbook af
 
 ## 用户动作语义
 
-v2.24 起，正式批准与确认一律使用固定命令；自然语言不能直接落为批准或执行确认。
+v2.24.0 起，正式批准与确认一律使用固定命令；自然语言不能直接落为批准或执行确认。
 
 - `批准设计：批准 phase-02/design-choice@vN`
 - `批准蓝图：批准 phase-03/implementation-blueprint@vN`
@@ -81,7 +85,7 @@ v2.24 起，正式批准与确认一律使用固定命令；自然语言不能�
 
 Use `lifecycle_state` and `record_role` as separate canonical fields. The single source of truth for enums, fixed commands, required fields, and role/state matrix is [canonical protocol schema](references/shared/canonical-protocol-schema.yaml). [Lifecycle and state](references/shared/lifecycle-and-state.md) is a human-readable projection and must not define divergent enums.
 
-Execution handoff records must use `lifecycle_state=closed-record` and `record_role=handoff-record`. Archive indexes must use `lifecycle_state=closed-record` and `record_role=archive-index`. Reapproval records use `record_role=reapproval-record`. Removed pilot state aliases are not supported in v2.24 assets.
+Execution handoff records must use `lifecycle_state=closed-record` and `record_role=handoff-record`. Archive indexes must use `lifecycle_state=closed-record` and `record_role=archive-index`. Reapproval records use `record_role=reapproval-record`. Removed pilot state aliases are not supported in v2.24.0 assets.
 
 ## 规划最短路径
 
@@ -93,7 +97,7 @@ Route through [agent directory](references/agent/00-directory.md). Common paths:
 - Execution handoff: directory -> core contracts -> phase-05 handoff -> output schemas -> HILE handoff contract.
 - Planning archive: directory -> lifecycle rules -> phase-06 archive -> human archive summary and agent archive-index.
 
-Do not infer semantics from older pilot material. If current v2.24 rules do not cover a user-supplied asset, stop and request regeneration under v2.24 instead of guessing.
+Do not infer semantics from older pilot material. If current v2.24.0 rules do not cover a user-supplied asset, stop and request regeneration under v2.24.0 instead of guessing.
 
 ## 落盘与交付纪律
 

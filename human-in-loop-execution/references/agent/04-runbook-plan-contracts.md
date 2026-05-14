@@ -20,7 +20,10 @@ Runbook/Plan 的人类审核视图必须回答：
 3. 哪些步骤可以并行，为什么安全？
 4. 失败时停在哪里？
 5. 验证通过的标准是什么？
-6. 用户需要输入哪条确认命令？
+6. 源码级修改意图是否清楚到文件、符号、计划操作和审核重点？
+7. 用户需要输入哪条确认命令？
+
+Strict Runbook 还必须生成完整的人类审核版，默认路径为 `human/02-strict-runbook.md`，并让 manifest 中该 runbook 的 `human_view` 指向这份完整人类版文档。该文档不是摘要；它必须覆盖 agent Runbook 的全部信息，包括 source refs、repo context、execution units、unit plans、planned files、repo observations、implementation steps、source-level change intent、verification plan、risk checks、stop conditions、pre-modify gate 和 confirmation command。source-level change intent 必须嵌入对应 execution unit 的详细 Runbook 小节，并紧跟该单元的 implementation steps；不要作为独立全局章节集中展示。结构参考 [HILE Strict Runbook（人类审核版）](../human/06-strict-runbook.md)。
 
 ## agent contract
 
@@ -113,6 +116,30 @@ plan:
           files:
             - tests/plugin-init.test.ts
           expected_result: test captures expected override precedence
+      source_level_change_intent:
+        - file: src/config/merge.ts
+          symbol_or_anchor: mergeRuntimeConfig
+          change_type: modify_function
+          intent: make extension config override default config without changing fallback behavior
+          intended_operations:
+            - adjust merge order so extension config values are applied after defaults
+            - keep fallback defaults when extension config omits a key
+          review_focus:
+            - confirm override precedence changes only the approved merge path
+            - confirm missing extension keys still fall back to defaults
+          related_implementation_steps:
+            - P2
+        - file: tests/plugin-init.test.ts
+          symbol_or_anchor: test override precedence
+          change_type: add_or_update_test
+          intent: prove the approved override precedence and fallback behavior
+          intended_operations:
+            - add or update a test case for extension-over-default precedence
+            - keep or add coverage for fallback behavior
+          review_focus:
+            - confirm the test fails on old precedence and passes after the intended change
+          related_implementation_steps:
+            - P3
       verification_plan:
         commands:
           - npm test -- plugin-init
@@ -141,8 +168,8 @@ plan:
     required_command: 确认执行：确认执行 Plan agent/03-plan.yaml.md
 ```
 
-Required fields: `source_handoff_ref`, `source_execution_units`, `repo_context`, `unit_plans`, `planned_files`, `repo_observations`, `implementation_steps`, `verification_plan`, `risk_checks`, `stop_conditions`, `pre_modify_gate`, and `confirmation`.
+Required fields: `source_handoff_ref`, `source_execution_units`, `repo_context`, `unit_plans`, `planned_files`, `repo_observations`, `implementation_steps`, `source_level_change_intent`, `verification_plan`, `risk_checks`, `stop_conditions`, `pre_modify_gate`, and `confirmation`.
 
-Each `source_execution_unit` must have a corresponding `unit_plan`. Each `implementation_steps[].files` entry must be included in that unit's `planned_files`. `planned_files` must be within HILP handoff and execution-unit `allowed_files`. For standard and strict tiers, `confirmation.required` must be true and `required_command` must be concrete, not a placeholder.
+Each `source_execution_unit` must have a corresponding `unit_plan`. Each `implementation_steps[].files` entry and each `source_level_change_intent[].file` entry must be included in that unit's `planned_files`. `source_level_change_intent` must identify the affected source symbol or anchor, change type, intended operations, and human review focus; it must not contain a fabricated unified diff or final patch. `planned_files` must be within HILP handoff and execution-unit `allowed_files`. For standard and strict tiers, `confirmation.required` must be true and `required_command` must be concrete, not a placeholder.
 
 Before running the Plan/Runbook validator, extract the Plan/Runbook `planned_files`, run `scripts/check_allowed_files.py --handoff <handoff.md> --planned-file <planned-files.txt> --workspace <repo-or-worktree-root>`, and write the result back into `pre_modify_gate.planned_files_check`. Then run `scripts/validate_plan_or_runbook.py <plan-or-runbook.md> --handoff <handoff.md> --execution-manifest <execution/manifest.md> --workspace <repo-or-worktree-root>` before any file modification; the validator checks the recorded gate result and re-validates planned-files scope.

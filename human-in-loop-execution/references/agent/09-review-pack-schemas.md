@@ -1,6 +1,6 @@
 # HILE Review-Pack Schemas
 
-Canonical in v2.24. Use this file whenever HILE creates or updates `review-pack/` entries.
+Canonical in v2.24.1. Use this file whenever HILE creates or updates `review-pack/` entries.
 
 ## Universal HILE review-pack contract
 

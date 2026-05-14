@@ -27,4 +27,4 @@ prompt_must_not_include:
   - vague_instruction_to_fix_anything
 ```
 
-Use only prompt content generated from the current v2.24 contract.
+Use only prompt content generated from the current v2.24.1 contract.

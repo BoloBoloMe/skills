@@ -226,6 +226,30 @@ def main():
                         for f in files:
                             require(f in planned_files, f"{sp}.files entry not in planned_files: {f}", errors)
                         require(nonempty(step.get("anchors")) or nonempty(step.get("expected_result")), f"{sp} requires anchors or expected_result", errors)
+            source_intent = unit.get("source_level_change_intent")
+            require(isinstance(source_intent, list) and bool(source_intent), f"{prefix}.source_level_change_intent non-empty list required", errors)
+            valid_step_ids = {str(step.get("step_id")) for step in steps if isinstance(step, dict) and step.get("step_id")} if isinstance(steps, list) else set()
+            if isinstance(source_intent, list):
+                for ci, item in enumerate(source_intent):
+                    cp = f"{prefix}.source_level_change_intent[{ci}]"
+                    require(isinstance(item, dict), f"{cp} must be mapping", errors)
+                    if isinstance(item, dict):
+                        file_value = str(item.get("file") or "")
+                        require(nonempty(file_value), f"{cp}.file required", errors)
+                        if file_value:
+                            require(file_value in planned_files, f"{cp}.file entry not in planned_files: {file_value}", errors)
+                        require(nonempty(item.get("symbol_or_anchor")) or nonempty(item.get("location")), f"{cp} requires symbol_or_anchor or location", errors)
+                        require(nonempty(item.get("change_type")), f"{cp}.change_type required", errors)
+                        require(nonempty(item.get("intent")), f"{cp}.intent required", errors)
+                        require(isinstance(item.get("intended_operations"), list) and bool(item.get("intended_operations")), f"{cp}.intended_operations non-empty list required", errors)
+                        require(isinstance(item.get("review_focus"), list) and bool(item.get("review_focus")), f"{cp}.review_focus non-empty list required", errors)
+                        for field in ["intent", "intended_operations"]:
+                            values = item.get(field) if isinstance(item.get(field), list) else [item.get(field)]
+                            text = "\n".join(str(v) for v in values if v is not None)
+                            require(not re.search(r"(?m)^(@@ |\+\+\+ |--- |[+-]\s*[^\s-])", text), f"{cp}.{field} must describe intent, not embed a unified diff or patch hunk", errors)
+                        related = norm_list(item.get("related_implementation_steps"))
+                        for sid in related:
+                            require(sid in valid_step_ids, f"{cp}.related_implementation_steps entry not found in implementation_steps: {sid}", errors)
             verification_plan = unit.get("verification_plan")
             require(isinstance(verification_plan, dict), f"{prefix}.verification_plan mapping required", errors)
             if isinstance(verification_plan, dict):

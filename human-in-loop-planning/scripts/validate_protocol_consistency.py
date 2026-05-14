@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Fast protocol consistency and schema parity checks for v2.24."""
+"""Fast protocol consistency and schema parity checks for v2.24.0."""
 import argparse, sys, os, re
 from pathlib import Path
 EXCLUDE = {'__pycache__'}
@@ -29,7 +29,7 @@ def main():
         errors.append('missing shared compatibility-contract.yaml')
     else:
         ct = compat.read_text(encoding='utf-8', errors='ignore')
-        for token in ['schema_version: "2.24"', 'hilp_version: "2.24"', 'hile_version: "2.24"', 'producer_skill: human-in-loop-planning', 'consumer_skill: human-in-loop-execution']:
+        for token in ['schema_version: "2.24.0"', 'hilp_version: "2.24.0"', 'hile_version: "2.24.1"', 'producer_skill: human-in-loop-planning', 'consumer_skill: human-in-loop-execution']:
             if token not in ct:
                 errors.append(f'compatibility contract missing {token}')
 

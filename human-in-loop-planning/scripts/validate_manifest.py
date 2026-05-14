@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Validate a canonical HILP planning manifest.
 
-Hardening added after v2.24 audit:
+Hardening added after v2.24.0 audit:
 - load enum/required-field truth from references/shared/canonical-protocol-schema.yaml
 - require owner fields on registry entries
 - require current_assets.reapproval_log key and enforce phase-04 invalidation semantics

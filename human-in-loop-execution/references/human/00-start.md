@@ -14,12 +14,18 @@ HILE 是执行层。它只在用户明确要求使用 HILE / human-in-loop execu
 
 下一页：[入口检查](01-intake.md)
 
-## v2.24 审核辅助材料
+## v2.24.1 审核辅助材料
 
 - 执行前确认 runbook/plan：使用 [Runbook/Plan 确认检查表](checklists/runbook-confirmation-checklist.md)。
 - 完成后审核交付：使用 [完成审核检查表](checklists/completion-review-checklist.md)。
 - 失败后判断是否回到 HILP：使用 [失败取证审核检查表](checklists/failure-forensics-review-checklist.md)。
 - 示例：[tiny flow](../examples/tiny-flow/README.md) 与 [strict runbook flow](../examples/strict-runbook-change/README.md)。
+
+## 生成资产入口要求
+
+正式执行包中的 `execution/human/00-start.md` 必须是具体变更的审核入口，不能是 “HILE Human Status Start” 这类占位文件。它至少要包含：change slug、来源 HILP manifest、来源 handoff、执行分级、HILE manifest、当前状态指针、阅读顺序、当前需要审核什么、固定确认命令说明和阻塞/回退判断。
+
+strict 执行必须在人类入口或 Runbook 确认页链接到完整的 [HILE Strict Runbook（人类审核版）](06-strict-runbook.md) 生成规范；实际资产默认路径为 `execution/human/02-strict-runbook.md`。
 
 ## HILE 不是普通代码修改入口
 

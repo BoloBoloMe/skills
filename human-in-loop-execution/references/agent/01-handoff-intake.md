@@ -2,7 +2,7 @@
 
 ## No-handoff bridge rule
 
-Do not run intake when there is no candidate v2.24 HILP execution handoff. A controlled-execution request without an approved HILP handoff is not a partial HILE intake; it is a route back to HILP. Do not create `execution/`, do not run `init_execution_package.py`, and do not claim HILE has started.
+Do not run intake when there is no candidate v2.24.0 HILP execution handoff. A controlled-execution request without an approved HILP handoff is not a partial HILE intake; it is a route back to HILP. Do not create `execution/`, do not run `init_execution_package.py`, and do not claim HILE has started.
 
 ```yaml
 required_inputs:
@@ -13,8 +13,8 @@ required_inputs:
     preferred_ref: phase-03/implementation-blueprint@vM
     required_state: approved
   execution_handoff:
-    schema_version: "2.24"
-    protocol_version: "2.24"
+    schema_version: "2.24.1"
+    protocol_version: "2.24.1"
     preferred_ref: phase-05/execution-handoff@vK
     required:
       owner_skill: human-in-loop-execution
@@ -57,9 +57,9 @@ Handoffs must use `owner_skill: human-in-loop-execution` and `owner_protocol: HI
 
 ## Removed pilot-asset rule
 
-v2.24 does not normalize old pilot handoff formats. If a handoff is missing canonical lifecycle, role, owner, scope, stop, or verification fields, stop and request a regenerated HILP handoff.
+v2.24.1 does not normalize old pilot handoff formats. If a handoff is missing canonical lifecycle, role, owner, scope, stop, or verification fields, stop and request a regenerated HILP handoff.
 
 
 ## Planning requirement intake
 
-A valid v2.24 handoff must include `hile_planning_requirement.required: true` and a rule requiring HILE to generate a repo-aware Plan or Runbook before modifying files. If the field is absent or the rule is missing, intake fails; route back to HILP phase-05 for a corrected handoff before proceeding beyond intake.
+A valid v2.24.0 HILP handoff must include `hile_planning_requirement.required: true` and a rule requiring HILE to generate a repo-aware Plan or Runbook before modifying files. If the field is absent or the rule is missing, intake fails; route back to HILP phase-05 for a corrected handoff before proceeding beyond intake.

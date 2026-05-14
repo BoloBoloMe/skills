@@ -1,5 +1,20 @@
 # Manifest 与版本规则
 
+## 协议版本号规范
+
+HILP/HILE 协议版本号必须使用 `x.y.z` 三段格式：
+
+- `x.y` 是 HILP 与 HILE 共享的大协议线，必须保持一致；当前大协议线是 `2.24`。
+- `z` 是同一大协议线下各协议自己的小版本迭代号，可以不一致。
+- HILP 当前版本是 `v2.24.0`；其 `schema_version` 与 `protocol_version` 均应写为 `"2.24.0"`。
+- HILE 当前兼容版本由 `references/shared/compatibility-contract.yaml` 记录；当前 HILE 版本是 `v2.24.1`。
+- 若只修改 HILP 资产契约、状态语义、schema、validator 或固定命令，递增 HILP 的第三段版本号，不强制递增 HILE。
+- 若只修改 HILE 资产契约、runbook/plan schema、validator、执行门禁或人类执行视图，递增 HILE 的第三段版本号，不强制递增 HILP。
+- 若改变 HILP/HILE 的跨协议兼容边界、phase 语义或 handoff 基本契约，必须评估是否递增 `x.y` 大协议线。
+
+版本兼容判断优先使用兼容合同，而不是要求 HILP 与 HILE 三段版本完全相等。
+
+
 > Scope guard: machine-readable canonical schema is [canonical-protocol-schema.yaml](canonical-protocol-schema.yaml). This file is the HILP human-readable manifest guide. Do not apply this lifecycle enum or manifest schema to the other protocol.
 
 
@@ -9,8 +24,8 @@
 
 ```yaml
 manifest:
-  schema_version: "2.24"
-  protocol_version: "2.24"
+  schema_version: "2.24.0"
+  protocol_version: "2.24.0"
   change_slug: string
   protocol: HILP
   mode: preflight-scaffold|standard|strict

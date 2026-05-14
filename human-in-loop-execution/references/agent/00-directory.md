@@ -1,4 +1,4 @@
-# Agent Directory: HILE v2.24
+# Agent Directory: HILE v2.24.1
 
 Read this file only after the user explicitly asks to use HILE or confirms a suggestion to use it.
 
@@ -98,4 +98,4 @@ If a request appears suitable for HILE but the user has not opted in, give one s
 
 ## Unsupported prior-handoff rule
 
-v2.24 does not support migration of handoffs from earlier pilot protocols. Regenerate older handoffs under the current HILP protocol.
+v2.24.1 does not support migration of handoffs from earlier pilot protocols. Regenerate older handoffs under the current HILP protocol.

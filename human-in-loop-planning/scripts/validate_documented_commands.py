@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate documented script commands in Markdown for v2.24."""
+"""Validate documented script commands in Markdown for v2.24.0."""
 from pathlib import Path
 import argparse
 import re

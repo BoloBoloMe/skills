@@ -11,7 +11,7 @@ Canonical command source: [canonical protocol schema](canonical-protocol-schema.
 | 变更重审裁决 | `批准重审：批准 phase-04/reapproval@vN` / `批准重审：重做设计 phase-04/reapproval@vN` / `批准重审：重做蓝图 phase-04/reapproval@vN` / `批准重审：重做交接 phase-04/reapproval@vN` / `批准重审：阻断执行 phase-04/reapproval@vN` / `批准重审：维持原批准 phase-04/reapproval@vN` | 固定 phase-04 裁决并决定是否回到 phase-02/03/05 或继续沿原批准执行 | 不自动批准新设计、新蓝图或执行 runbook/plan |
 | 确认执行 | `确认执行：确认执行 Runbook <path>` 或 `确认执行：确认执行 Plan <path>` | 允许 HILE 执行该 runbook/plan | 不补齐任何上游批准 |
 
-## v2.24 解释规则
+## v2.24.0 解释规则
 
 ```yaml
 approval_interpretation:

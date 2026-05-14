@@ -1,6 +1,6 @@
 ---
 name: human-in-loop-execution
-description: "use for two cases only: suggestion-only preflight when a request provides an approved v2.24 hilp execution handoff or explicitly asks to execute an approved hilp handoff with scope gate, audit trail, verification gate, or multi-agent execution; formal hile protocol mode only after the user explicitly asks to use hile or confirms the suggestion and after a current hilp handoff plus workspace are available. if the user asks for controlled execution without an approved hilp handoff, route them to hilp instead of starting hile. do not suggest for ordinary coding, debugging, test explanation, or lightweight implementation unless the user explicitly asks to execute an approved hilp handoff."
+description: "use for two cases only: suggestion-only preflight when a request provides an approved v2.24.1 hilp execution handoff or explicitly asks to execute an approved hilp handoff with scope gate, audit trail, verification gate, or multi-agent execution; formal hile protocol mode only after the user explicitly asks to use hile or confirms the suggestion and after a current hilp handoff plus workspace are available. if the user asks for controlled execution without an approved hilp handoff, route them to hilp instead of starting hile. do not suggest for ordinary coding, debugging, test explanation, or lightweight implementation unless the user explicitly asks to execute an approved hilp handoff."
 ---
 
 # 人在回路执行
@@ -9,7 +9,7 @@ description: "use for two cases only: suggestion-only preflight when a request p
 
 This Skill is the HILE control entrypoint. It has two layers:
 
-1. Suggestion layer: when the user provides an approved v2.24 HILP execution handoff, or explicitly asks to execute an approved HILP handoff with scope gate, audit trail, verification gate, or multi-agent execution, briefly suggest HILE and ask for confirmation. Do not suggest HILE for ordinary coding, debugging, test explanation, lightweight implementation, or controlled execution requests that do not include an approved HILP handoff; route those requests to HILP instead.
+1. Suggestion layer: when the user provides an approved v2.24.0 HILP execution handoff, or explicitly asks to execute an approved HILP handoff with scope gate, audit trail, verification gate, or multi-agent execution, briefly suggest HILE and ask for confirmation. Do not suggest HILE for ordinary coding, debugging, test explanation, lightweight implementation, or controlled execution requests that do not include an approved HILP handoff; route those requests to HILP instead.
 2. Execution layer: enter formal HILE only after the user explicitly asks to use HILE / human-in-loop execution / this skill, or confirms the suggestion.
 
 Before confirmation, do not run intake, create an execution package, run file-scope gates, modify files, or claim that HILE has started. After confirmation, first read [agent directory](references/agent/00-directory.md), then load only the shortest path needed for intake, tiering, runbook/plan, verification, debugging, review, or finish.
@@ -18,7 +18,11 @@ HILE executes only within the scope of a current HILP handoff. It does not perfo
 
 If the user asks for controlled execution but does not provide or reference a current approved HILP handoff, do not start formal HILE intake. Explain that HILE requires an approved HILP execution handoff and route the user to HILP phase-02/phase-03/phase-05 as appropriate. Do not create an execution package, run intake, run file-scope gates, or modify files.
 
-Assets from earlier pilot protocols are intentionally unsupported in v2.24. If a user provides an older handoff, ask them to regenerate a v2.24 HILP handoff.
+Assets from earlier pilot protocols are intentionally unsupported in v2.24.1. If a user provides an older handoff, ask them to regenerate a v2.24.0 HILP handoff.
+
+## 协议版本号规范
+
+HILE 使用三段版本号 `x.y.z`。`x.y` 是 HILP/HILE 共享的大协议线，当前为 `2.24`；`z` 是各协议自己的小版本迭代号，可以不一致。当前 HILE 版本为 `v2.24.1`。跨协议兼容性以 `references/shared/compatibility-contract.yaml` 为准，不要求 HILP 与 HILE 三段版本完全相等。
 
 ## Runtime Preconditions
 
@@ -44,7 +48,13 @@ Do not accept non-canonical handoff formats as a full intake pass.
 - **人类审核视图**：自然语言说明本次会做什么、不会做什么、如何确认执行、失败后发生了什么、验证证据是什么。
 - **agent 执行视图**：结构化记录 runbook、plan、execution_unit、allowed_files、stop_conditions、ledger、unit_summary、verification evidence。
 
+Plan/Runbook 在任何文件修改前必须同时记录“源码级修改意图”（`source_level_change_intent`）：它描述每个 planned file 中计划影响的类、函数、枚举、字段、配置键、路由、测试或其他符号级位置，以及计划新增、修改、删除或保留的源码行为。它不是最终 patch 或 diff，不得伪造尚未执行的实际代码变更；但必须足够让人类在执行前判断是否会改错位置、漏掉路径或破坏关键行为。人类视图必须用中文展示同一信息，作为代码审查入口；在 strict 人类版 Runbook 中，源码级修改意图必须嵌入对应 execution unit 的“分单元详细 Runbook”小节，不能生成独立的全局章节。
+
 布局见 [共享资产布局](references/shared/execution-asset-layout.md)。人类视图不得被 `allowed_files`、`parallel_group`、`shared_state` 等字段淹没；agent 视图不得缺少约束字段。
+
+`execution/human/00-start.md` 是人类审核员入口，不能是占位空文件。正式执行包必须让审核员从这里看到：本包执行什么变更、来自哪个 HILP handoff、当前执行分级、当前状态、阅读顺序、当前需要审核或确认的 review target、固定确认/审查命令、失败时回到哪里。
+
+strict 执行生成 `agent/03-runbook.yaml.md` 时，必须同时生成完整的人类版 Strict Runbook（默认 `human/02-strict-runbook.md`）。该文档面向审核员组织内容，但不得丢失 agent runbook 信息：source refs、repo context、execution units、allowed/prohibited files、dependencies、repo observations、implementation steps、verification plan、risk checks、stop conditions、pre-modify gate 和 confirmation command 都必须可追溯呈现。不要要求人类直接审核 agent YAML 作为主入口。
 
 ## 执行规模分级
 
@@ -60,9 +70,9 @@ Do not accept non-canonical handoff formats as a full intake pass.
 
 ## Repo-aware Plan / Runbook 强制门
 
-HILE must not modify files directly from HILP execution units. Before any file modification, HILE must inspect the actual repo/worktree and generate a repository-aware Plan or Runbook that maps each source execution unit to concrete planned files, repo observations, implementation steps, verification plan, risk checks, and stop conditions.
+HILE must not modify files directly from HILP execution units. Before any file modification, HILE must inspect the actual repo/worktree and generate a repository-aware Plan or Runbook that maps each source execution unit to concrete planned files, repo observations, implementation steps, source-level change intent, verification plan, risk checks, and stop conditions.
 
-If a valid Plan or Runbook cannot be generated, execution must stop and route to human review, HILP phase-04, or failure forensics. Standard execution requires a Plan; strict execution requires a Runbook. For standard and strict execution, file modification is forbidden until the Plan or Runbook is generated, validated, and explicitly confirmed with the fixed command. There is no standard no-confirmation path. Any execution that skips separate confirmation must qualify under the tiny exception rules; otherwise it must wait for the fixed Plan or Runbook confirmation command.
+If a valid Plan or Runbook cannot be generated, execution must stop and route to human review, HILP phase-04, or failure forensics. Standard execution requires a Plan; strict execution requires a Runbook. Strict execution also requires a complete human-readable Strict Runbook view before asking for confirmation. For standard and strict execution, file modification is forbidden until the Plan or Runbook is generated, validated, rendered into the required human review view, and explicitly confirmed with the fixed command. There is no standard no-confirmation path. Any execution that skips separate confirmation must qualify under the tiny exception rules; otherwise it must wait for the fixed Plan or Runbook confirmation command.
 
 Tiny execution may skip a separate confirmation review only when all tiny exception conditions are true: exactly one execution unit, a very small planned file set, no high-risk or prohibited scope, verification available, no repo observation contradicting HILP assumptions, and an explicit same-context user instruction to execute. If any condition fails, tiny must also generate and confirm a Plan.
 
@@ -87,7 +97,7 @@ Use [agent directory](references/agent/00-directory.md) for routing:
 - Failure or abnormal evidence: directory -> verification/debugging/review -> failure forensics -> return to HILP if planning scope changed.
 - Parallel work: directory -> execution unit contract -> subagent/dispatch contract -> ledger summary.
 
-Do not infer behavior from older pilot prompt templates or obsolete handoff shapes. If current v2.24 rules do not cover a supplied handoff, stop and request a regenerated v2.24 HILP handoff.
+Do not infer behavior from older pilot prompt templates or obsolete handoff shapes. If current v2.24.1 rules do not cover a supplied handoff, stop and request a regenerated v2.24.0 HILP handoff.
 
 ## Manifest 与版本纪律
 
@@ -104,7 +114,7 @@ HILE 执行不是纯文本纪律；必须把随附脚本作为执行门禁：
 
 1. 正式落盘 execution package 前运行 `scripts/init_execution_package.py <change_slug> --root docs/changes --source-handoff <handoff-ref-or-path> --planning-manifest <planning-manifest-path> --tier tiny|standard|strict`。
 2. 声明完整 intake pass 前运行 `scripts/validate_handoff_intake.py <handoff.md> --planning-manifest <planning/manifest.md> --workspace <repo-or-worktree-root>`。没有 `--planning-manifest` 时只能使用 `--allow-partial`，且不得声明完整 intake pass。
-3. 修改文件前，先生成 repo-aware Plan/Runbook，提取 planned files，并运行：`scripts/check_allowed_files.py --handoff <handoff.md> --planned-file <planned-files.txt> --workspace <repo-or-worktree-root>`。把 planned-files gate 的 pass/fail 结果写回 Plan/Runbook 的 `pre_modify_gate.planned_files_check`。
+3. 修改文件前，先生成 repo-aware Plan/Runbook，其中每个 unit plan 必须包含 `source_level_change_intent`；提取 planned files，并运行：`scripts/check_allowed_files.py --handoff <handoff.md> --planned-file <planned-files.txt> --workspace <repo-or-worktree-root>`。把 planned-files gate 的 pass/fail 结果写回 Plan/Runbook 的 `pre_modify_gate.planned_files_check`。
 4. planned-files gate 通过并写回 Plan/Runbook 后，再运行 `scripts/validate_plan_or_runbook.py <plan-or-runbook.md> --handoff <handoff.md> --execution-manifest <execution/manifest.md> --workspace <repo-or-worktree-root>`；该 validator 会校验 `pre_modify_gate` 记录并重新检查 planned files 是否仍在 scope 内。
 5. 修改后、完成声明前，对实际变更文件运行：`scripts/check_allowed_files.py --handoff <handoff.md> --changed-file <actual-changed-files.txt> --workspace <repo-or-worktree-root>`。
 6. 记录验证证据时优先运行 `scripts/write_verification_record.py`。
@@ -119,7 +129,7 @@ HILE 执行不是纯文本纪律；必须把随附脚本作为执行门禁：
 
 Markdown 正文中的文件引用必须使用可点击链接。YAML/code block 中的路径字段是 machine-readable contract，允许保持纯字符串；若同一信息面向人类导航，应在正文附近提供可点击链接。
 
-## v2.24 allowed-file double gate
+## v2.24.1 allowed-file double gate
 
 Before modifying files, run:
 

@@ -2,8 +2,8 @@
 
 ```yaml
 protocol: HILP
-protocol_version: "2.24"
-schema_version: "2.24"
+protocol_version: "2.24.0"
+schema_version: "2.24.0"
 modes:
   preflight:
     persist_assets: false
@@ -83,7 +83,7 @@ fallback:
 7. `closed-record` handoff and archive records remain valid references even though they are no longer editable.
 8. Earlier pilot assets are not interpreted or migrated in place; regenerate them under this protocol before use.
 
-## v2.24 engineering hardening
+## v2.24.0 engineering hardening
 
 ```yaml
 handoff_contract:

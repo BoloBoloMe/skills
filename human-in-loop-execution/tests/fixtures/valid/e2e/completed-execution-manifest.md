@@ -2,8 +2,8 @@
 
 ```yaml
 manifest:
-  schema_version: "2.24"
-  protocol_version: "2.24"
+  schema_version: "2.24.1"
+  protocol_version: "2.24.1"
   change_slug: e2e-controlled-change
   protocol: HILE
   source_hilp_manifest: tests/fixtures/valid/e2e/hilp-planning-manifest.md

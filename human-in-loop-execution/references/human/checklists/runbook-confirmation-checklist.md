@@ -17,9 +17,17 @@
 - 需要执行层补规划决定。
 - 计划扩展了蓝图范围。
 
-## v2.24 新增必查项
+## v2.24.1 新增必查项
 
 7. Plan/Runbook 是否包含 `repo_context`、`unit_plans`、`repo_observations`、`implementation_steps`、`verification_plan`、`risk_checks`、`stop_conditions`、`pre_modify_gate` 和 `confirmation`？
 8. 每个 HILP EU 是否都有对应 `unit_plan`？
 9. `planned_files` 是否是 handoff/EU allowed files 的子集，并已通过 pre-modify gate？
 10. standard 是否等待 `确认执行：确认执行 Plan <path>`，strict 是否等待 `确认执行：确认执行 Runbook <path>`？
+
+
+## 源码级修改意图
+
+- [ ] 每个 planned file 都能追溯到一个或多个源码级修改意图。
+- [ ] 每条意图都说明符号/位置、修改类型、计划操作、审核重点和对应 implementation step。
+- [ ] 文档没有把执行前意图伪装成已完成 patch 或最终 diff。
+- [ ] 若某文件无法定位具体符号，文档说明了原因并提供稳定 anchor。

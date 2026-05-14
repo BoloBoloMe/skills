@@ -2,8 +2,8 @@
 
 ```yaml
 execution_handoff:
-  schema_version: "2.24"
-  protocol_version: "2.24"
+  schema_version: "2.24.0"
+  protocol_version: "2.24.0"
   asset_ref: phase-05/execution-handoff@v1
   phase_id: phase-05
   lifecycle_state: closed-record

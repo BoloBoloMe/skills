@@ -48,7 +48,7 @@ with tempfile.TemporaryDirectory() as td:
     root = Path(td) / "docs/changes"
     planning = root / "safe-demo/planning/manifest.md"
     planning.parent.mkdir(parents=True, exist_ok=True)
-    planning.write_text("# Planning Manifest\n\n```yaml\nmanifest:\n  schema_version: \"2.24\"\n  protocol_version: \"2.24\"\n  change_slug: safe-demo\n  protocol: HILP\n  mode: standard\n  current_assets: {}\n  asset_registry: []\n  current_pointers: {}\n  last_updated_at: '2026-05-04T00:00:00Z'\n```\n", encoding="utf-8")
+    planning.write_text("# Planning Manifest\n\n```yaml\nmanifest:\n  schema_version: \"2.24.0\"\n  protocol_version: \"2.24.0\"\n  change_slug: safe-demo\n  protocol: HILP\n  mode: standard\n  current_assets: {}\n  asset_registry: []\n  current_pointers: {}\n  last_updated_at: '2026-05-04T00:00:00Z'\n```\n", encoding="utf-8")
     run(["scripts/init_execution_package.py", "safe-demo", "--root", str(root), "--source-handoff", "phase-05/execution-handoff@v1", "--planning-manifest", str(planning), "--tier", "standard"])
     run(["scripts/init_execution_package.py", "../escaped", "--root", str(root), "--source-handoff", "phase-05/execution-handoff@v1", "--planning-manifest", str(planning), "--tier", "standard"], expect_ok=False)
 with tempfile.TemporaryDirectory() as td:
@@ -166,7 +166,7 @@ with tempfile.TemporaryDirectory() as td:
     root = Path(td) / "docs/changes"
     planning = root / "init-demo/planning/manifest.md"
     planning.parent.mkdir(parents=True, exist_ok=True)
-    planning.write_text("# Planning Manifest\n\n```yaml\nmanifest:\n  schema_version: \"2.24\"\n  protocol_version: \"2.24\"\n  change_slug: init-demo\n  protocol: HILP\n  mode: standard\n  current_assets: {}\n  asset_registry: []\n  current_pointers: {}\n  last_updated_at: '2026-05-04T00:00:00Z'\n```\n", encoding="utf-8")
+    planning.write_text("# Planning Manifest\n\n```yaml\nmanifest:\n  schema_version: \"2.24.0\"\n  protocol_version: \"2.24.0\"\n  change_slug: init-demo\n  protocol: HILP\n  mode: standard\n  current_assets: {}\n  asset_registry: []\n  current_pointers: {}\n  last_updated_at: '2026-05-04T00:00:00Z'\n```\n", encoding="utf-8")
     run(["scripts/init_execution_package.py", "init-demo", "--root", str(root), "--source-handoff", "phase-05/execution-handoff@v1", "--planning-manifest", str(planning), "--tier", "standard"])
     manifest = root / "init-demo/execution/manifest.md"
     run(["scripts/validate_execution_manifest.py", str(manifest), "--check-paths"])
@@ -238,7 +238,7 @@ with tempfile.TemporaryDirectory() as td:
     (bad_root / "references/shared").mkdir(parents=True, exist_ok=True)
     (bad_root / "references/agent").mkdir(parents=True, exist_ok=True)
     (bad_root / "references/shared/compatibility-contract.yaml").write_text(
-        'schema_version: "2.24"\nhilp_version: "2.24"\nhile_version: "2.24"\nproducer_skill: human-in-loop-planning\nconsumer_skill: human-in-loop-execution\n',
+        'schema_version: "2.24.0"\nhilp_version: "2.24.0"\nhile_version: "2.24.1"\nproducer_skill: human-in-loop-planning\nconsumer_skill: human-in-loop-execution\n',
         encoding="utf-8",
     )
     (bad_root / "references/agent/02-execution-tiers.md").write_text(

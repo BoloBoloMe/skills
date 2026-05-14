@@ -1,5 +1,5 @@
 protocol: HILE
-registry_version: "2.24"
+registry_version: "2.24.1"
 commands:
   init_execution_package:
     command: scripts/init_execution_package.py <change_slug> --root docs/changes --source-handoff <handoff-ref-or-path> --planning-manifest <planning/manifest.md> --tier tiny|standard|strict

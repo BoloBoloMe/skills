@@ -1,6 +1,6 @@
 protocol: HILP
-schema_version: "2.24"
-protocol_version: "2.24"
+schema_version: "2.24.0"
+protocol_version: "2.24.0"
 mode_values:
   - preflight-scaffold
   - standard

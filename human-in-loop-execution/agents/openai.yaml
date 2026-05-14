@@ -1,5 +1,0 @@
-interface:
-  display_name: "Human-in-Loop Execution"
-  short_description: "Executes approved HILP handoffs with tiered runbook discipline."
-  icon: "🛠️"
-  brand_color: "#4F46E5"

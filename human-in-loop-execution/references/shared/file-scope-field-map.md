@@ -35,7 +35,7 @@ HILE file checks use POSIX-style repository-relative paths. `allowed_files` and 
 
 ## Glob grammar
 
-HILE v2.24 uses segment-aware POSIX glob matching, not Python `fnmatch` path-wide matching:
+HILE v2.24.1 uses segment-aware POSIX glob matching, not Python `fnmatch` path-wide matching:
 
 - `*`, `?`, and character classes match within one path segment only.
 - `src/*` matches `src/a.py` but does not match `src/a/b.py`.

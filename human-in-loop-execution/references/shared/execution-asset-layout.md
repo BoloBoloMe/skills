@@ -13,6 +13,7 @@ docs/changes/<change_slug>/execution/
     00-start.md
     01-intake-summary.md
     02-runbook-or-plan-review.md
+    02-strict-runbook.md              # strict only: full human-readable runbook
     03-progress-and-failures.md
     04-verification-and-finish.md
   agent/
@@ -34,6 +35,14 @@ docs/changes/<change_slug>/execution/
 
 Pointer value rule: use `asset_ref` when the target exists in `asset_registry`; use repo-relative `path` only for `_current` files or scaffold records that have not yet been registered. Validators accept both forms and resolve `asset_ref` through the registry.
 
+## Human status start
+
+`human/00-start.md` is the canonical human entrypoint, not a placeholder. It must identify the change slug, source HILP manifest, source handoff, execution tier, current manifest, current human-status pointer, reading order, current review target, fixed confirmation-command semantics, and stop/return-to-HILP conditions. `_current/human-status.md` may summarize the latest state, but it must link back to `human/00-start.md`.
+
+## Strict human runbook
+
+For strict execution, `human/02-strict-runbook.md` is required when `agent/03-runbook.yaml.md` exists. It should be the runbook asset's primary `human_view` in the manifest. `human/02-runbook-or-plan-review.md` may remain as a shorter confirmation page, but it must link to the full strict human runbook. The strict human runbook must preserve all agent Runbook information in human-readable order, including `source_level_change_intent`.
+
 ## 人类视图
 
 写清楚：本次执行来自哪个 HILP 交接、准备做什么、不做什么、如何确认执行、当前进度、失败原因、验证结果和剩余风险。
@@ -52,8 +61,8 @@ Pointer value rule: use `asset_ref` when the target exists in `asset_registry`; 
 
 ```yaml
 manifest:
-  schema_version: "2.24"
-  protocol_version: "2.24"
+  schema_version: "2.24.1"
+  protocol_version: "2.24.1"
   change_slug: string
   protocol: HILE
   source_hilp_manifest: path
@@ -114,7 +123,7 @@ The initializer persists `source_hilp_manifest` as a relative path from `executi
 
 `current_assets.current_plan` and `current_assets.current_runbook` are stable manifest slots for the most recent plan/runbook asset known to the package. They may point to a completed asset after completion. `current_pointers.active_runbook_or_plan` is the only active-execution pointer and must be null after `package_stage=completed` or `package_stage=failed`. `current_pointers.latest_runbook_or_plan` preserves the most recent runbook/plan record for audit and completion checks.
 
-## v2.24 completion review pointer
+## v2.24.1 completion review pointer
 
 `current_assets.completion_review` and `current_pointers.latest_completion_review` record the human completion gate. Completed execution packages MUST point to a `completion-record`.
 
@@ -136,6 +145,6 @@ For tiny inline completion, `latest_runbook_or_plan` may remain null; `current_a
 
 ## Repo-aware Plan / Runbook pre-modify gate
 
-Before any file modification, HILE must write a Plan or Runbook under `agent/03-plan.yaml.md` or `agent/03-runbook.yaml.md`, validate it, and only then run the planned-files allowed-file gate. Standard and strict execution must not enter `package_stage=confirmed` or `package_stage=in-progress` unless the current Plan/Runbook is present and confirmed.
+Before any file modification, HILE must write a Plan or Runbook under `agent/03-plan.yaml.md` or `agent/03-runbook.yaml.md`, including per-unit `source_level_change_intent`; validate it; and only then run the planned-files allowed-file gate. Standard and strict execution must not enter `package_stage=confirmed` or `package_stage=in-progress` unless the current Plan/Runbook is present and confirmed. For human review, the same source-level intent must be rendered in the Plan/Runbook human view, especially in `human/02-strict-runbook.md` for strict execution.
 
 The execution manifest must keep `current_assets.current_plan` for standard packages and `current_assets.current_runbook` for strict packages once `package_stage` reaches `planned`. Completed standard/strict packages must keep `latest_runbook_or_plan`, `verification_evidence`, and `completion_review`.

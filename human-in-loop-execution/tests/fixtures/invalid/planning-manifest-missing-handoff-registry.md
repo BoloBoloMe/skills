@@ -2,8 +2,8 @@
 
 ```yaml
 manifest:
-  schema_version: "2.24"
-  protocol_version: "2.24"
+  schema_version: "2.24.0"
+  protocol_version: "2.24.0"
   protocol: HILP
   mode: standard
   asset_registry:

@@ -1,4 +1,4 @@
-# HILE v2.24 一页速查
+# HILE v2.24.1 一页速查
 
 - HILE 只消费已批准、已关闭的 HILP handoff，不补规划、不扩大范围。
 - 没有 approved HILP handoff 的 controlled execution 请求必须回到 HILP，不进入 partial HILE intake。
