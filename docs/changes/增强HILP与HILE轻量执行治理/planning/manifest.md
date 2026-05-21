@@ -1,8 +1,0 @@
-# Manifest：增强HILP与HILE轻量执行治理
-
-| asset_id | artifact_name | version | asset_path | created_state | current_state | current_state_label | approval_marker | approval_marker_label | role | current_review_pack | supersedes | superseded_by | last_event | last_decision |
-|---|---|---:|---|---|---|---|---|---|---|---|---|---|---|---|
-| hilp-hile-gsd-lite-design-choice-v1 | stage-3/design-choice | v1 | [02-方案设计_design-choice@v1.md](assets/02-方案设计_design-choice@v1.md) | ready-for-approval | approved | 已批准 | approved | 已批准 | approved-design | [02-design-choice@v1-review.md](review-pack/02-design-choice@v1-review.md) | 无 | 无 | human-approval-granted | human-approval-gsd-lite-hilp-hile-2026-05-02 |
-| hilp-hile-gsd-lite-implementation-blueprint-v1 | stage-4-5/implementation-blueprint | v1 | [03-实施蓝图_implementation-blueprint@v1.md](assets/03-实施蓝图_implementation-blueprint@v1.md) | ready-for-approval | approved | 已批准 | approved | 已批准 | approved-blueprint | [03-implementation-blueprint@v1-review.md](review-pack/03-implementation-blueprint@v1-review.md) | 无 | 无 | human-approval-granted | human-approval-implementation-blueprint-v1-2026-05-02 |
-| hilp-hile-gsd-lite-execution-handoff-v1 | stage-6/execution-handoff | v1 | [05-执行交接_execution-handoff@v1.md](assets/05-执行交接_execution-handoff@v1.md) | archived | archived | 已归档 | no-approval | 无需审批 | execution-handoff | 无 | 无 | 无 | execution-handoff-completed | human-approval-implementation-blueprint-v1-2026-05-02 |
-| hilp-hile-gsd-lite-archive-manifest-v1 | stage-7/archive-manifest | v1 | [06-规划资产归档_archive-manifest@v1.md](assets/06-规划资产归档_archive-manifest@v1.md) | archived | archived | 已归档 | no-approval | 无需审批 | archive-index | 无 | 无 | 无 | archive-generated | none |

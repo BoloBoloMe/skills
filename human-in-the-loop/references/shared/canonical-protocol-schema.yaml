@@ -1,0 +1,17 @@
+protocol: HITL
+schema_version: "0.0.1"
+protocol_version: "0.0.1"
+tiers: [tiny, standard, strict]
+asset_kind_values: [agent-asset, derived-human-view]
+lifecycle_state_values: [draft, ready-for-approval, approved, ready-for-confirmation, confirmed, in-progress, blocked, completed, failed, superseded, retired, closed]
+record_role_values: [content-asset, approval-target, confirmation-target, check-record, execution-record, evidence-record, close-record, audit-record, derived-human-view]
+role_state_matrix:
+  derived-human-view: [completed, blocked]
+  approval-target: [draft, ready-for-approval, approved, blocked, superseded, retired, failed, closed]
+  confirmation-target: [draft, ready-for-confirmation, confirmed, blocked, superseded, retired, failed, closed]
+  content-asset: [draft, ready-for-approval, approved, blocked, completed, superseded, retired, failed, closed]
+  check-record: [draft, completed, blocked, superseded, retired, failed, closed]
+  execution-record: [draft, in-progress, completed, blocked, superseded, retired, failed, closed]
+  evidence-record: [draft, completed, blocked, superseded, retired, failed, closed]
+  close-record: [draft, completed, blocked, superseded, retired, failed, closed]
+  audit-record: [draft, completed, blocked, superseded, retired, failed, closed]

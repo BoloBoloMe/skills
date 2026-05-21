@@ -1,0 +1,16 @@
+interrogation:
+  pre_design: "关闭盘问: pre_design planning/design@vN"
+  pre_blueprint: "关闭盘问: pre_blueprint planning/blueprint@vN"
+  pre_execution_plan: "关闭盘问: pre_execution_plan execution/plan@vN"
+  pre_execution_runbook: "关闭盘问: pre_execution_plan execution/runbook@vN"
+approval:
+  package: "批准方案: planning/implementation-package@vN"
+  strict_design: "批准设计: planning/design@vN"
+  strict_blueprint: "批准蓝图: planning/blueprint@vN"
+confirmation:
+  plan: "执行计划: execution/plan@vN"
+  runbook: "执行计划: execution/runbook@vN"
+invalid_natural_language:
+  - "继续"
+  - "可以了"
+  - "执行吧"

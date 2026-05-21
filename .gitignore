@@ -9,3 +9,5 @@
 /dataSources/
 /dataSources.local.xml
 /.idea/
+__pycache__/
+*.py[cod]
