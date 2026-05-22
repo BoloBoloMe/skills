@@ -11,6 +11,19 @@ description: 当用户明确要求 HITL / human-in-the-loop，或确认启用受
 
 正式启用前只能进行聊天级建议和澄清，不得创建资产目录、写入 manifest、生成 HTML 人类视图、运行门禁脚本或声称 HITL 已启动。
 
+## 强制盘问红线
+
+HITL 正式启用后，除读取本技能和 runtime-router、读取既有 manifest以判断阶段外，第一条业务响应必须进入盘问环节。
+新建资产包或进入任一未关闭 gate 时，必须先向用户提出盘问问题；不得直接写facts/design/blueprint/implementation-package，不得直接关闭 gate，不得请求批准命令。
+
+盘问规则:
+- 每次只问一个问题。
+- 问题必须包含推荐答案和备选答案。
+- 用户明确回答前，不得把任何决策项记录为 human-confirmed。
+- evidence-closed 只能关闭客观仓库事实，不能替代目标、范围、方案、风险、验证、批准边界、执行分级等决策确认。
+- 任何 gate 至少必须包含一个来自真实问答的 human-confirmed resolution_item；否则禁止关闭 gate。
+
+
 ## 始终生效的不变量
 
 - 协议固定为 `HITL`，`schema_version: "0.0.1"`，`protocol_version: "0.0.1"`。
