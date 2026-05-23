@@ -1,6 +1,6 @@
 ---
 name: to-issues
-description: 使用tracer bullets式垂直切片,将计划/规格说明或 PRD 拆分为可独立领取的项目议题跟踪器议题.当用户想把计划转换为议题/创建实现工单,或将工作拆分为议题时使用.
+description: 使用 tracer bullets 式垂直切片,将已有计划、规格说明或 PRD 批量拆分为可独立领取的实现工单并发布到项目议题跟踪器.当用户想把已成形计划/PRD 转换为多个执行议题或拆分工作时使用;单个 issue 的创建、标签、状态流转或分流管理改用 triage.
 ---
 
 # To Issues

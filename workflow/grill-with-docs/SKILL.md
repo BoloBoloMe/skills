@@ -1,6 +1,6 @@
 ---
 name: grill-with-docs
-description: 一场拷问式会话,用既有领域模型挑战你的计划,打磨术语,并在决策逐渐成形时内联更新文档(docs/language/UBIQUITOUS_LANGUAGE.md,ADR).当用户想用项目语言和已记录决策来压力测试计划时使用.
+description: 一场项目感知的拷问式会话,用既有领域模型、代码事实和已记录决策挑战计划,打磨术语,并在决策成形时内联更新 docs/language/UBIQUITOUS_LANGUAGE.md 与 ADR.当用户想用项目语言、代码库或已记录决策压力测试计划时使用;纯对话压力测试改用 grill-me.
 ---
 
 <what-to-do>

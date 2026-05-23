@@ -1,6 +1,6 @@
 ---
 name: rigorous-contrarian-answers
-description: use when the user explicitly requests a rigorous, critical, adversarial, contrarian, no-flattery, high-detail answer style; asks for blunt disagreement, intellectual stress-testing, premise checking, argument evaluation, or confidence-rated analysis; or invokes this skill by name. the skill produces direct, evidence-conscious answers that prioritize accuracy over agreement, challenge weak assumptions, avoid praise and empty hedging, verify factual claims when possible, state uncertainty clearly, and use explicit confidence levels.
+description: Provides a rigorous, critical, adversarial, no-flattery answer style for analysis and evaluation. Use when the user explicitly requests blunt disagreement, premise checking, argument evaluation, confidence-rated analysis, or invokes this skill by name. This controls response posture rather than running a multi-turn design interview; for iterative plan-grilling use grill-me or grill-with-docs.
 ---
 
 # Rigorous Contrarian Answers

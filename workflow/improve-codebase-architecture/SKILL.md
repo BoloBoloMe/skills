@@ -1,6 +1,6 @@
 ---
 name: improve-codebase-architecture
-description: 在代码库中寻找深化机会,并结合 docs/language/UBIQUITOUS_LANGUAGE.md 中的领域语言和 docs/adr/ 中的决策.当用户想改进架构,寻找重构机会,合并紧耦合模块,或让代码库更易测试,更易由 AI 导航时使用.
+description: 对代码库做架构评审,寻找深化模块、重构候选和可测试性/AI 可导航性改进机会,并结合 docs/language/UBIQUITOUS_LANGUAGE.md 与 docs/adr/ 中的约束.当用户想要架构改进建议、重构候选报告、合并紧耦合模块或深化接缝时使用;只想理解代码地图改用 zoom-out.
 ---
 
 # 改进代码库架构
