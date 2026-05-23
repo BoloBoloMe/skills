@@ -24,6 +24,7 @@
 │   ├── triage/
 │   ├── improve-codebase-architecture/
 │   ├── prototype/
+│   ├── use-worktree/
 │   └── zoom-out/
 ├── hitl/                            # HITL 0.0.1 协议与简报技能
 │   ├── human-in-the-loop/
@@ -131,6 +132,12 @@ project-root/
 构建一次性原型，用于验证业务状态机、数据模型、终端交互或 UI 方案。
 
 入口文档：[`workflow/prototype/SKILL.md`](workflow/prototype/SKILL.md)
+
+### workflow/use-worktree
+
+管理本地 Git worktree 标准布局，创建、检查、删除或迁移 worktree，并在修改前检查目标 worktree 状态以避免误改分支。
+
+入口文档：[`workflow/use-worktree/SKILL.md`](workflow/use-worktree/SKILL.md)
 
 ### hitl/human-in-the-loop
 
