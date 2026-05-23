@@ -7,7 +7,7 @@
 - 执行阶段/测试反馈/代码审查/小范围修复/批量机械任务中,使用 `/telegraphic-style`。
 
 ## 工具说明
-- python: 必须以 `uv python` 执行
+- python: 必须以 `uv run python` 执行
 
 ## 工作流 Skill 使用说明
 
