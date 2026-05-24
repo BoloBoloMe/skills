@@ -85,7 +85,7 @@ return (
 行为:
 
 - 点击箭头会更新 URL 查询参数(使用框架的路由器(router)--Next 中用 `router.replace`,React Router 中用 `navigate` 等),让变体可分享且刷新后稳定.
-- 键盘:`←` 和 `→` 方向键也会循环.不要在 `<input>`,`<textarea>` 或 `[contenteditable]` 获得焦点时拦截方向键.
+- 键盘:`<-` 和 `->` 方向键也会循环.不要在 `<input>`,`<textarea>` 或 `[contenteditable]` 获得焦点时拦截方向键.
 - 视觉上与页面区分开(例如高对比度胶囊,轻微阴影),让人明显看出它不是正在评估的设计的一部分.
 - 在生产构建中隐藏--通过 `process.env.NODE_ENV !== 'production'` 或等价检查做门控(gate),这样即使原型意外合并,也不会把底栏发给用户.
 

@@ -1,6 +1,6 @@
 ---
 name: grill-with-docs
-description: 一场项目感知的拷问式会话,用既有领域模型、代码事实和已记录决策挑战计划,打磨术语,并在决策成形时内联更新 docs/language/UBIQUITOUS_LANGUAGE.md 与 ADR.通常由 orchestrate 路由;仅当用户明确点名 grill-with-docs 或已处于该流程时直接使用.需求边界不清但工程路由清楚时走本 skill;纯路由澄清改用 grill-me.
+description: 一场项目感知的拷问式会话,用既有领域模型,代码事实和已记录决策挑战计划,打磨术语,并在决策成形时内联更新 docs/language/UBIQUITOUS_LANGUAGE.md 与 ADR.通常由 orchestrate 路由;仅当用户明确点名 grill-with-docs 或已处于该流程时直接使用.需求边界不清但工程路由清楚时走本 skill;纯路由澄清改用 grill-me.
 ---
 
 <what-to-do>

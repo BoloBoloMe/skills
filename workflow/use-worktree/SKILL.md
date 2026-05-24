@@ -1,6 +1,6 @@
 ---
 name: use-worktree
-description: 管理符合用户习惯的本地 Git worktree 布局:识别标准目录,选择/创建/删除/迁移 worktree,检查 dirty 状态并避免误改仓库.通常由 orchestrate 路由;仅当用户明确点名 use-worktree 或已处于 worktree 流程时直接使用.用户明确要求操作本地 git repo、创建/清理 worktree、整理 repo 布局、分支隔离或避免改错分支时走本 skill.
+description: 管理符合用户习惯的本地 Git worktree 布局:识别标准目录,选择/创建/删除/迁移 worktree,检查 dirty 状态并避免误改仓库.通常由 orchestrate 路由;仅当用户明确点名 use-worktree 或已处于 worktree 流程时直接使用.用户明确要求操作本地 git repo,创建/清理 worktree,整理 repo 布局,分支隔离或避免改错分支时走本 skill.
 ---
 
 # use-worktree
@@ -23,8 +23,8 @@ description: 管理符合用户习惯的本地 Git worktree 布局:识别标准�
 
 使用 `scripts/slug.py` 预览.
 
-- `/ \ : * ? " < > |` 与控制字符 → `-`
-- 空格 → `_`
+- `/ \ : * ? " < > |` 与控制字符 -> `-`
+- 空格 -> `_`
 - 连续 `-` 压缩为单个 `-`
 - 首尾空格/点号去除
 - 保留中文/Unicode

@@ -15,6 +15,7 @@
 │   ├── telegraphic-style/
 │   └── write-a-skill/
 ├── workflow/                        # 面向代码库工作的流程技能
+│   ├── orchestrate/
 │   ├── setup-workspace/
 │   ├── grill-with-docs/
 │   ├── diagnose/
@@ -42,7 +43,9 @@
 
 ## Workflow 工作区约定
 
-`workflow/` 下的技能预期在目标项目仓库根目录工作。首次使用 `to-prd`、`to-issues`、`triage`、`diagnose`、`tdd`、`improve-codebase-architecture` 或 `zoom-out` 前，先运行/安装 `setup-workspace` 生成约定文档。
+`workflow/orchestrate` 是 workflow skills 的默认入口，负责在 `workflow/` 下的代码理解、诊断、需求澄清、原型、TDD、PRD、工单、triage、架构评审和 worktree 管理技能之间做路由与顺序编排。
+
+`workflow/` 下的技能预期在目标项目仓库根目录工作。首次使用 `to-prd`、`to-issues`、`triage`、`diagnose`、`tdd`、`improve-codebase-architecture` 或 `zoom-out` 前，由 `orchestrate` 按需路由到 `setup-workspace` 生成约定文档。
 
 目标项目推荐结构：
 
@@ -80,6 +83,12 @@ project-root/
 入口文档：[`workflow/setup-workspace/SKILL.md`](workflow/setup-workspace/SKILL.md)
 
 ## 技能一览
+
+### workflow/orchestrate
+
+workflow skills 的默认入口和元编排器：接收工程类用户任务，按静态决策树在 `workflow/` skills 间路由，处理前置 `setup-workspace`，并支持多阶段顺序编排。
+
+入口文档：[`workflow/orchestrate/SKILL.md`](workflow/orchestrate/SKILL.md)
 
 ### workflow/setup-workspace
 
@@ -185,7 +194,7 @@ docs/changes/<中文变更>/
 1. 根据任务场景选择技能目录。
 2. 先读取对应 `SKILL.md`，再按需读取 `references/`、脚本、测试夹具或 prompt 模板。
 3. 若目标 agent 不会自动发现本仓库目录，按目标 agent 的安装方式安装或链接对应技能目录。
-4. workflow 类任务优先运行 `workflow/setup-workspace` 建立目标项目约定。
+4. workflow 类任务优先进入 `workflow/orchestrate`；由它按需运行 `workflow/setup-workspace` 建立目标项目约定。
 5. 高风险或需要人工批准的任务使用 `hitl/human-in-the-loop`；最终会议材料或方案摘要使用 `hitl/human-in-loop-brief`。
 
 ## 维护约定

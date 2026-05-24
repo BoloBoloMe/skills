@@ -1,6 +1,6 @@
 ---
 name: triage
-description: 通过由分流(triage)角色驱动的状态机管理项目议题:创建单个 issue、打标签、变更状态、审查新进入的 bug/功能请求、生成 AFK agent brief.通常由 orchestrate 路由;仅当用户明确点名 triage 或已处于分流流程时直接使用.issue tracker 的分流/状态/标签/评论/brief 走本 skill;从 PRD/计划批量拆实现工单用 to-issues,未知根因 bug 用 diagnose.
+description: 通过由分流(triage)角色驱动的状态机管理项目议题:创建单个 issue,打标签,变更状态,审查新进入的 bug/功能请求,生成 AFK agent brief.通常由 orchestrate 路由;仅当用户明确点名 triage 或已处于分流流程时直接使用.issue tracker 的分流/状态/标签/评论/brief 走本 skill;从 PRD/计划批量拆实现工单用 to-issues,未知根因 bug 用 diagnose.
 ---
 
 # 分流(Triage)

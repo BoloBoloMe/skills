@@ -1,6 +1,6 @@
 ---
 name: to-issues
-description: 使用 tracer bullets 式垂直切片,将已有计划、规格说明或 PRD 批量拆分为可独立领取的实现工单并发布到项目议题跟踪器.通常由 orchestrate 路由;仅当用户明确点名 to-issues 或已处于拆工单流程时直接使用.已成形计划/PRD 批量拆执行议题走本 skill;单个 issue 创建/标签/状态/brief 用 triage.
+description: 使用 tracer bullets 式垂直切片,将已有计划,规格说明或 PRD 批量拆分为可独立领取的实现工单并发布到项目议题跟踪器.通常由 orchestrate 路由;仅当用户明确点名 to-issues 或已处于拆工单流程时直接使用.已成形计划/PRD 批量拆执行议题走本 skill;单个 issue 创建/标签/状态/brief 用 triage.
 ---
 
 # To Issues

@@ -49,9 +49,9 @@ _避免_: Client, buyer, account
 
 ## 关系
 
-- **Ordering → Fulfillment**: Ordering 发出 `OrderPlaced` 事件;Fulfillment 消费它们以开始拣货
-- **Fulfillment → Billing**: Fulfillment 发出 `ShipmentDispatched` 事件;Billing 消费它们以生成发票
-- **Ordering ↔ Billing**: 共享 `CustomerId` 和 `Money` 类型
+- **Ordering -> Fulfillment**: Ordering 发出 `OrderPlaced` 事件;Fulfillment 消费它们以开始拣货
+- **Fulfillment -> Billing**: Fulfillment 发出 `ShipmentDispatched` 事件;Billing 消费它们以生成发票
+- **Ordering <-> Billing**: 共享 `CustomerId` 和 `Money` 类型
 ```
 
 此技能会推断适用哪种结构:

@@ -26,7 +26,7 @@ description: 使用红-绿-重构(red-green-refactor)循环进行测试驱动开
 - 测试会对真实变化不敏感--行为坏了仍通过,行为没问题却失败
 - 你会跑到车灯照亮范围之外,在理解实现之前就承诺测试结构
 
-**正确方式**:通过曳光弹(tracer bullets)做纵向切片.一个测试 → 一个实现 → 重复.每个测试都回应你从上一轮学到的东西.因为代码刚刚由你写出,你清楚知道哪些行为重要,以及如何验证它.
+**正确方式**:通过曳光弹(tracer bullets)做纵向切片.一个测试 -> 一个实现 -> 重复.每个测试都回应你从上一轮学到的东西.因为代码刚刚由你写出,你清楚知道哪些行为重要,以及如何验证它.
 
 ```
 错误(横向):
@@ -34,9 +34,9 @@ description: 使用红-绿-重构(red-green-refactor)循环进行测试驱动开
   GREEN: impl1, impl2, impl3, impl4, impl5
 
 正确(纵向):
-  RED→GREEN: test1→impl1
-  RED→GREEN: test2→impl2
-  RED→GREEN: test3→impl3
+  RED->GREEN: test1->impl1
+  RED->GREEN: test2->impl2
+  RED->GREEN: test3->impl3
   ...
 ```
 
@@ -64,8 +64,8 @@ description: 使用红-绿-重构(red-green-refactor)循环进行测试驱动开
 编写一个只确认系统中一件事的测试:
 
 ```
-RED:   为第一个行为写测试 → 测试失败
-GREEN: 编写最小代码让它通过 → 测试通过
+RED:   为第一个行为写测试 -> 测试失败
+GREEN: 编写最小代码让它通过 -> 测试通过
 ```
 
 这是你的曳光弹(tracer bullet)--证明路径能够端到端工作.
@@ -75,8 +75,8 @@ GREEN: 编写最小代码让它通过 → 测试通过
 对每个剩余行为:
 
 ```
-RED:   编写下一个测试 → 失败
-GREEN: 编写最小代码让它通过 → 通过
+RED:   编写下一个测试 -> 失败
+GREEN: 编写最小代码让它通过 -> 通过
 ```
 
 规则:
