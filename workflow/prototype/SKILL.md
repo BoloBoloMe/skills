@@ -1,6 +1,6 @@
 ---
 name: prototype
-description: 构建可运行的一次性原型,用代码在正式投入前验证设计问题.会在两个分支间路由--用于状态/业务逻辑问题的交互式终端应用,或在一个路由上可切换的多个差异显著 UI 变体.当用户想做可交互原型、校验数据模型/状态机、模拟 UI、试用设计选项,或说 "prototype this"/"let me play with it"/"try a few designs" 时使用;只需对话压力测试改用 grill-me 或 grill-with-docs.
+description: 构建可运行的一次性原型,用代码在正式投入前验证设计问题.会在两个分支间路由--用于状态/业务逻辑问题的交互式终端应用,或在一个路由上可切换的多个差异显著 UI 变体.通常由 orchestrate 路由;仅当用户明确点名 prototype 或已处于原型流程时直接使用.要验证状态机/数据模型/UI 方案走本 skill;只需对话压力测试用 grill-me 或 grill-with-docs.
 ---
 
 # 原型

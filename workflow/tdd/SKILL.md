@@ -1,6 +1,6 @@
 ---
 name: tdd
-description: 使用红-绿-重构(red-green-refactor)循环进行测试驱动开发.当用户明确要求 TDD/测试先行/red-green-refactor/集成测试,或需求与可验证行为已经明确并要用测试驱动实现时使用;未知根因的 bug/失败先用 diagnose.
+description: 使用红-绿-重构(red-green-refactor)循环进行测试驱动开发.通常由 orchestrate 路由;仅当用户明确点名 tdd/TDD 或已处于 TDD 流程时直接使用.需求与可验证行为已经明确并要用测试驱动实现时走本 skill;未知根因的 bug/失败先用 diagnose.
 ---
 
 # 测试驱动开发
