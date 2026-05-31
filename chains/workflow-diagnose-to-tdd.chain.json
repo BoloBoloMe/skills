@@ -1,0 +1,20 @@
+{
+  "name": "workflow-diagnose-to-tdd",
+  "description": "在任何实现前诊断未知根因失败. 除非另行批准执行, 否则停在修复建议.",
+  "chain": [
+    {
+      "agent": "context-builder",
+      "as": "diagnosis",
+      "task": "诊断未知根因问题: {task}. 遵循 reproduce, minimize, hypothesize, instrument, verify 循环. 不做大范围实现改动. 返回复现证据, 可能根因, 置信度, 最小修复方向, 验证计划, 以及是否适合 TDD 修复.",
+      "output": "diagnose-to-tdd/diagnosis.md",
+      "outputMode": "file-only"
+    },
+    {
+      "agent": "planner",
+      "as": "repairPlan",
+      "task": "基于此诊断创建 TDD 修复计划. 不要实现. 包含应先添加的 failing test, 最小生产代码改动, 回归检查和停止条件.\n\nDiagnosis:\n{outputs.diagnosis}",
+      "output": "diagnose-to-tdd/tdd-repair-plan.md",
+      "outputMode": "file-only"
+    }
+  ]
+}
