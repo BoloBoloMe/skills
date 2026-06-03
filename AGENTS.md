@@ -15,7 +15,7 @@
 ## 工具说明
 - python: 必须以 `uv run python` 执行
 
-## 工作流子代理路由
+## workflow skills 路由指引
 - 工程类任务先使用 `orchestrate` 判断 workflow 类型.
 - 当任务需要 subagent 编排, 多阶段计划, 并行审查, 长任务 async, 或标准化实现流程时, 读取 `workflow-subagent-router` skill.
 - `orchestrate` 负责判断任务类型, `workflow-subagent-router` 负责判断是否调用 saved chain 以及调用哪条 chain.
