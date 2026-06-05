@@ -1,6 +1,6 @@
 ---
 name: orchestrate
-description: workflow skills 的默认入口和元编排器,接收工程类用户任务并在 setup-workspace/use-worktree/diagnose/zoom-out/improve-codebase-architecture/grill-with-docs/prototype/tdd/to-prd/to-issues/triage 间做静态路由/前置检查/顺序编排.当用户提出任何可能涉及代码理解/诊断/需求澄清/原型/TDD/PRD/工单/triage/架构评审或 worktree 管理的工程任务时优先使用本 skill;仅当用户明确点名某个下游 skill 或已处于该流程中时直接使用下游 skill.
+description: workflow skills 的默认入口和元编排器,接收工程类用户任务并在 setup-workspace/use-worktree/diagnose/zoom-out/improve-codebase-architecture/grill-with-docs/prototype/tdd/to-prd/to-issues/to-plan/triage 间做静态路由/前置检查/顺序编排.当用户提出任何可能涉及代码理解/诊断/需求澄清/原型/TDD/PRD/工单/执行计划/triage/架构评审或 worktree 管理的工程任务时优先使用本 skill;仅当用户明确点名某个下游 skill 或已处于该流程中时直接使用下游 skill.
 ---
 
 # Orchestrate
@@ -21,6 +21,7 @@ description: workflow skills 的默认入口和元编排器,接收工程类用�
 - `tdd`--在行为明确时用 red-green-refactor 测试驱动实现或修复.
 - `to-prd`--把当前上下文沉淀为 PRD.
 - `to-issues`--把已成形计划/PRD 拆为 tracer bullets 式执行工单.
+- `to-plan`--为 to-issues 产出的所有 issues 生成合并源码级执行计划,供人类审核后由 AFK agent 执行. 由 to-issues 完成后 orchestrate 主动询问; 也可显式点名.
 - `triage`--创建,分流,推进,审查单个 issue,管理状态,标签和 brief.
 
 `grill-me` 不是 workflow skill,但可作为路由不确定时的澄清工具;澄清后必须回到本决策树.
@@ -53,7 +54,7 @@ description: workflow skills 的默认入口和元编排器,接收工程类用�
 如果用户明确要求使用某个 workflow skill,直接读取并执行它:
 
 - `orchestrate` / 编排 / 选 workflow -> 留在本 skill
-- `setup-workspace`/`use-worktree`/`diagnose`/`zoom-out`/`improve-codebase-architecture`/`grill-with-docs`/`prototype`/`tdd`/`to-prd`/`to-issues`/`triage` -> 读取对应 skill 的 `SKILL.md`
+- `setup-workspace`/`use-worktree`/`diagnose`/`zoom-out`/`improve-codebase-architecture`/`grill-with-docs`/`prototype`/`tdd`/`to-prd`/`to-issues`/`to-plan`/`triage` -> 读取对应 skill 的 `SKILL.md`
 
 若显式指定与任务性质强冲突,先指出冲突并问一个问题.例:未知根因线上报错却要求直接 `tdd`,建议先 `diagnose`.
 
@@ -63,7 +64,7 @@ description: workflow skills 的默认入口和元编排器,接收工程类用�
 
 ### 3. setup-workspace 前置
 
-当将要使用 `to-prd` / `to-issues` / `triage` / `diagnose` / `tdd` / `improve-codebase-architecture` / `zoom-out`,且目标仓库缺少 `docs/agents/*`/`docs/changes/`/`docs/language/` 等 workflow 约定时,先执行 `setup-workspace`.
+当将要使用 `to-prd` / `to-issues` / `to-plan` / `triage` / `diagnose` / `tdd` / `improve-codebase-architecture` / `zoom-out`,且目标仓库缺少 `docs/agents/*`/`docs/changes/`/`docs/language/` 等 workflow 约定时,先执行 `setup-workspace`.
 
 不要对所有任务无脑 setup:`prototype`/`use-worktree`/纯路由澄清/以及无需仓库约定的小任务不强制 setup.
 
@@ -98,13 +99,16 @@ description: workflow skills 的默认入口和元编排器,接收工程类用�
 9. **要把已成形计划 / PRD 拆为执行工单** -> `to-issues`  
    使用 tracer bullets 式垂直切片拆分.
 
-10. **要创建,分流,推进,审查单个 issue,或管理标签/状态/brief** -> `triage`  
+10. **to-issues 已完成, 要生成源码级执行计划** -> `to-plan`  
+   当 `to-issues` 阶段完成后, orchestrate 主动询问用户是否需要生成执行计划.
+
+11. **要创建,分流,推进,审查单个 issue,或管理标签/状态/brief** -> `triage`  
    issue tracker 状态机和 agent brief 由该 skill 处理.
 
-11. **路由仍不确定** -> `grill-me`  
+12. **路由仍不确定** -> `grill-me`  
    只用于缩小路由空间.一次问一个问题,提供推荐答案;确认后回到本决策树.
 
-12. **无 workflow 匹配且任务清楚** -> 不启动 workflow  
+13. **无 workflow 匹配且任务清楚** -> 不启动 workflow  
    用规定格式说明原因,然后继续直接处理用户任务.
 
 ## 多阶段编排
@@ -113,7 +117,7 @@ description: workflow skills 的默认入口和元编排器,接收工程类用�
 
 - `use-worktree` -> 回到本 skill -> `diagnose` / `tdd`
 - `zoom-out` -> 回到本 skill -> `grill-with-docs` / `to-issues` / `tdd`
-- `grill-with-docs` -> 回到本 skill -> `to-prd` -> `to-issues` -> `tdd`
+- `grill-with-docs` -> 回到本 skill -> `to-prd` -> `to-issues` -> (可选) `to-plan` -> `tdd`
 - `prototype` -> 用户确认 -> 回到本 skill -> `to-prd` / `tdd`
 - `diagnose` -> 根因明确 + 回归接缝存在 -> `tdd` 或继续按 `diagnose` 的修复/回归阶段执行
 
