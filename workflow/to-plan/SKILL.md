@@ -23,7 +23,7 @@ description: 为 to-issues 产出的所有 issues 生成合并源码级执行计
 
 按下方模板生成 PLAN.md
 
-输出后向用户展示 PLAN.md 路径和内容摘要 (涉及文件总数, 风险概览).
+输出后向用户展示 PLAN.md 路径和内容摘要 (涉及的代码层,文件总数,风险概览).
 
 ## PLAN.md 模板
 
