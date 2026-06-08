@@ -1,0 +1,62 @@
+{
+  "subagents": {
+    "agentOverrides": {
+      "oracle": {
+        "model": "ai-work-openai/gpt-5.5",
+        "thinking": "xhigh",
+        "defaultContext": "fork",
+        "fallbackModels": [
+          "ai-work-deepseek/deepseek-v4-pro"
+        ]
+      },
+      "planner": {
+        "model": "ai-work-deepseek/deepseek-v4-pro",
+        "thinking": "high",
+        "defaultContext": "fork",
+        "fallbackModels": [
+          "ai-work-openai/gpt-5.5"
+        ]
+      },
+      "worker": {
+        "model": "ai-work-deepseek/deepseek-v4-pro",
+        "thinking": "high",
+        "defaultContext": "fork",
+        "fallbackModels": [
+          "ai-work-openai/gpt-5.5"
+        ]
+      },
+      "reviewer": {
+        "model": "ai-work-openai/gpt-5.5",
+        "thinking": "high",
+        "defaultContext": "fresh",
+        "fallbackModels": [
+          "ai-work-deepseek/deepseek-v4-pro"
+        ]
+      },
+      "context-builder": {
+        "model": "ai-work-deepseek/deepseek-v4-flash",
+        "thinking": "high",
+        "defaultContext": "fresh",
+        "fallbackModels": [
+          "ai-work-minimax/MiniMax-M3"
+        ]
+      },
+      "scout": {
+        "model": "ai-work-deepseek/deepseek-v4-flash",
+        "thinking": "high",
+        "defaultContext": "fresh",
+        "fallbackModels": [
+          "ai-work-minimax/MiniMax-M3"
+        ]
+      },
+      "researcher": {
+        "model": "ai-work-moonshot/kimi-k2.6",
+        "thinking": "medium",
+        "defaultContext": "fresh",
+        "fallbackModels": [
+          "ai-work-openai/gpt-5.5"
+        ]
+      }
+    }
+  }
+}

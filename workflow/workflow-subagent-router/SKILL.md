@@ -24,3 +24,18 @@ description: 为工作流技能选择少量已保存子代理链. 当父会话�
 | 计划已批准, 行为/范围/验收标准明确, 用户允许离线编码, 执行子代理不需要代做产品/架构/API/范围决策 | `workflow-afk-implement-review` |
 | 其他场景 | 不用链. 父会话直接处理或使用对应工作流技能 |
 
+## 调用约束
+
+### `workflow-context-scout`
+
+- 父会话调用时设置 `timeoutMs: 240000` 到 `300000`, 不依赖默认 120s.
+- 只读探索. 提示中必须区分: 禁止修改项目源码/配置/文档, 但允许写 chain 指定 output artifact.
+- 若需要更深 handoff, 先运行本链拿快速事实, 再由父会话决定是否另行调用 `context-builder`, 不在子代理内自行升级.
+
+### `workflow-afk-implement-review`
+
+- 仅在计划, 范围, 验收标准已获批准后调用.
+- 默认单写入者. 若当前仓库可能已有 unrelated dirty 文件, 先由父会话检查或使用 worktree 隔离.
+- 子链内 reviewer 是只读, fixes 只处理 review synthesis 的 `accepted_now`.
+- 若出现 `needs_parent_decision`, 未批准范围变化, 关键验证无证据, 父会话接回决策, 不让子代理继续猜.
+

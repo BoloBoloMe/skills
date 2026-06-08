@@ -1,34 +1,42 @@
 {
   "name": "workflow-afk-implement-review",
-  "description": "仅用于用户已批准实现计划, 行为/范围/验收标准明确, 且可 AFK 执行的编码任务. 单写入者默认按 TDD 红-绿-重构实现, 新上下文审查差异, 再做已接受修复. 不适合 TDD 时必须报告原因和替代验证. 遇到未批准决策, 验收不清, 需要扩大范围, 关键验证无证据, 或疑似循环失控时停止并交回父会话.",
+  "description": "仅用于用户已批准实现计划, 行为/范围/验收标准明确, 且可 AFK 执行的编码任务. 单写入者先做 preflight 和 diff baseline, 默认按 TDD 红-绿-重构实现. 新上下文 reviewer 直接检查实际 diff 并按统一 finding schema 输出. 只读 synthesis 归并 accepted/deferred/decision/rejected, worker 仅修复 accepted_now, final auditor 汇总最终 diff, 验证和剩余风险. 遇到 dirty worktree 冲突, 未批准决策, 验收不清, 需要扩大范围, 关键验证无证据, 或疑似循环失控时停止并交回父会话.",
   "chain": [
     {
       "agent": "worker",
       "as": "implementation",
+      "phase": "Implementation",
+      "label": "实现已批准计划",
       "skill": "tdd",
-      "task": "AFK 实现已批准计划: {task}.\n\n你是当前工作树的唯一写入者. 默认使用 `tdd` 技能按红-绿-重构执行: 一次一个行为测试, 先看到失败, 再写最小实现, 全部通过后再重构. 测试应通过公共接口验证行为, 不测试实现细节. 如果任务不适合 TDD, 说明原因并提供替代验证证据. 只实现已批准范围. 不自行决定产品, 架构, API 或范围问题. 如果发现未批准决策, 验收标准不清, 需要扩大范围, 关键验证无法运行且没有可接受替代证据, 或疑似工具调用/修复循环失控, 立即停止并报告父会话决策点. 返回变更文件, 实现摘要, TDD 轮次或跳过原因, 验证命令及退出码, 证据, 风险和需要批准的决策.",
+      "task": "AFK 实现已批准计划: {task}.\n\n你是当前工作树的唯一写入者.\n\nPreflight 必做:\n1. 运行 `git status --short` 和 `git branch --show-current`, 记录结果作为 diff baseline.\n2. 若存在非本任务明确允许的 dirty 文件, 停止, 不修改任何文件, 报告父会话需要先清理或确认.\n3. 若工作区可继续, 记录 baseline 命令和初始状态.\n\n执行规则:\n- 默认使用 `tdd` 技能按红-绿-重构执行: 一次一个行为测试, 先看到失败, 再写最小实现, 全部通过后再重构.\n- 测试应通过公共接口验证行为, 不测试实现细节.\n- 如果任务不适合 TDD, 说明原因并提供替代验证证据.\n- 只实现已批准范围. 不自行决定产品, 架构, API 或范围问题.\n- 如果发现未批准决策, 验收标准不清, 需要扩大范围, 关键验证无法运行且没有可接受替代证据, 或疑似工具调用/修复循环失控, 立即停止并报告父会话决策点.\n- 结束前运行 `git diff --stat`, `git diff --name-only`, `git status --short`, 以及聚焦验证命令. 不 stage 文件.\n\n输出必须包含:\n- branch_and_baseline: branch, 初始 `git status --short`, baseline 说明.\n- changed-files: 变更文件列表.\n- tests-added: 新增/更新测试, 或无测试原因.\n- tdd-rounds: RED/GREEN/REFACTOR 证据, 或跳过 TDD 原因.\n- commands-run: 命令, cwd, 退出码.\n- validation-output: 关键输出摘要.\n- no-staged-files: `git status --short` 证据, 若有 staged 文件说明原因.\n- residual-risks: 剩余风险和无法验证项.\n- decisions-needed: 需要父会话批准的问题.",
       "output": "workflow-subagent/afk-implement-review/implementation.md",
       "outputMode": "file-only",
       "progress": true,
       "acceptance": {
         "criteria": [
+          "preflight 记录 branch, 初始 git status 和 diff baseline",
+          "若存在非本任务允许的 dirty 文件则停止且不修改文件",
           "只实现已批准范围",
           "默认按 TDD 红-绿-重构执行",
           "新增或更新测试通过公共接口验证行为, 不测试实现细节",
           "如果跳过 TDD, 报告原因和替代验证证据",
           "不自行决定产品, 架构, API 或范围问题",
           "返回变更文件和实现摘要",
-          "返回 TDD 轮次或跳过原因",
+          "返回 tests-added, TDD 轮次或跳过原因",
           "返回验证命令, 退出码和验证证据",
+          "返回 no-staged-files 证据",
           "报告剩余风险和需要父会话批准的决策"
         ],
         "evidence": [
           "changed-files",
+          "tests-added",
           "commands-run",
           "validation-output",
-          "residual-risks"
+          "residual-risks",
+          "no-staged-files"
         ],
         "stopRules": [
+          "preflight 发现非本任务允许的 dirty 文件",
           "发现未批准的产品, 架构, API 或范围决策",
           "验收标准不清",
           "需要扩大范围才能继续",
@@ -43,21 +51,27 @@
         {
           "agent": "reviewer",
           "as": "correctnessReview",
-          "task": "以新上下文审查当前差异的正确性和回归风险. 从执行交接开始: {outputs.implementation}. 必须直接检查实际 diff 和变更文件, 不能只信执行交接. 对照已批准范围和验收标准, 检查行为是否正确, 是否有未批准行为变化, 兼容性风险, 错误处理遗漏, 边界条件遗漏, 状态/数据一致性风险. 不修改项目/源码文件. 不做产品, 架构, API 或范围决策. 只返回需要现在处理且有证据支撑的发现, 包含严重度和文件/行引用. 可选优化单独标为 deferred.",
+          "phase": "Review",
+          "label": "正确性和回归风险",
+          "task": "以新上下文审查当前差异的正确性和回归风险. 从执行交接开始: {outputs.implementation}.\n\n必须直接检查实际 diff 和变更文件, 不能只信执行交接. 至少运行或等价获取: `git diff --stat`, `git diff --name-only`, 对变更文件运行 `git diff -- <changed files>`. 如有测试变更, 直接读测试文件.\n\n审查范围: 对照已批准范围和验收标准, 检查行为是否正确, 是否有未批准行为变化, 兼容性风险, 错误处理遗漏, 边界条件遗漏, 状态/数据一致性风险.\n\n禁止修改项目源码, 配置, 文档, 依赖文件和测试文件. 允许写本 chain 指定 output artifact. 不做产品, 架构, API 或范围决策.\n\n只返回需要现在处理且有证据支撑的发现. 输出 schema:\n- review_scope: 实际检查的 diff/文件/命令.\n- findings: 列表. 每项包含 finding_id, severity: blocker|required|recommended|deferred, evidence: path:line 或 diff 片段线索, why_now, minimal_fix, requires_decision: true|false.\n- no_findings: 如果没有 blocker/required, 明确说明.\n- deferred_notes: 可选优化或无证据想法.",
           "output": "workflow-subagent/afk-implement-review/correctness-review.md",
           "outputMode": "file-only"
         },
         {
           "agent": "reviewer",
           "as": "testsReview",
-          "task": "以新上下文根据已批准预期行为审查当前差异的测试和验证质量. 从执行交接开始: {outputs.implementation}. 必须直接检查实际 diff, 变更文件和测试文件, 不能只信执行交接. 审查 TDD 证据: 是否有合理的 RED->GREEN 轮次, 新增/更新测试是否通过公共接口验证行为, 是否避免测试实现细节, 跳过 TDD 时理由和替代验证是否可信. 检查测试是否覆盖已批准验收标准, 验证命令和退出码是否可信. 不修改项目/源码文件. 不做产品, 架构, API 或范围决策. 返回需要现在处理的缺失测试, 薄弱验证和最小安全修复建议, 包含文件/行引用. 可选优化单独标为 deferred.",
+          "phase": "Review",
+          "label": "测试和验证质量",
+          "task": "以新上下文根据已批准预期行为审查当前差异的测试和验证质量. 从执行交接开始: {outputs.implementation}.\n\n必须直接检查实际 diff, 变更文件和测试文件, 不能只信执行交接. 至少运行或等价获取: `git diff --stat`, `git diff --name-only`, 对变更文件运行 `git diff -- <changed files>`. 如有测试变更, 直接读测试文件.\n\n审查 TDD 证据: 是否有合理的 RED->GREEN 轮次, 新增/更新测试是否通过公共接口验证行为, 是否避免测试实现细节, 跳过 TDD 时理由和替代验证是否可信. 检查测试是否覆盖已批准验收标准, 验证命令和退出码是否可信.\n\n禁止修改项目源码, 配置, 文档, 依赖文件和测试文件. 允许写本 chain 指定 output artifact. 不做产品, 架构, API 或范围决策.\n\n只返回需要现在处理且有证据支撑的发现. 输出 schema:\n- review_scope: 实际检查的 diff/文件/命令.\n- findings: 列表. 每项包含 finding_id, severity: blocker|required|recommended|deferred, evidence: path:line 或 diff 片段线索, why_now, minimal_fix, requires_decision: true|false.\n- no_findings: 如果没有 blocker/required, 明确说明.\n- deferred_notes: 可选优化或无证据想法.",
           "output": "workflow-subagent/afk-implement-review/tests-review.md",
           "outputMode": "file-only"
         },
         {
           "agent": "reviewer",
           "as": "simplicityReview",
-          "task": "以新上下文审查当前差异的简洁性, 可维护性, 不必要复杂度和 AI-slop. 从执行交接开始: {outputs.implementation}. 必须直接检查实际 diff 和变更文件, 不能只信执行交接. 检查是否扩大范围, 是否有投机代码, 死代码, 不必要抽象, 不必要依赖/配置/框架, 重复样板, 过度注释, 命名含糊, 或可用更小安全修复替代的复杂实现. 不修改项目/源码文件. 不做产品, 架构, API 或范围决策. 只返回需要现在处理且有证据支撑的具体发现, 包含文件/行引用. 可选优化单独标为 deferred.",
+          "phase": "Review",
+          "label": "简洁性和 AI-slop",
+          "task": "以新上下文审查当前差异的简洁性, 可维护性, 不必要复杂度和 AI-slop. 从执行交接开始: {outputs.implementation}.\n\n必须直接检查实际 diff 和变更文件, 不能只信执行交接. 至少运行或等价获取: `git diff --stat`, `git diff --name-only`, 对变更文件运行 `git diff -- <changed files>`.\n\n审查范围: 是否扩大范围, 是否有投机代码, 死代码, 不必要抽象, 不必要依赖/配置/框架, 重复样板, 过度注释, 命名含糊, 或可用更小安全修复替代的复杂实现.\n\n禁止修改项目源码, 配置, 文档, 依赖文件和测试文件. 允许写本 chain 指定 output artifact. 不做产品, 架构, API 或范围决策.\n\n只返回需要现在处理且有证据支撑的发现. 输出 schema:\n- review_scope: 实际检查的 diff/文件/命令.\n- findings: 列表. 每项包含 finding_id, severity: blocker|required|recommended|deferred, evidence: path:line 或 diff 片段线索, why_now, minimal_fix, requires_decision: true|false.\n- no_findings: 如果没有 blocker/required, 明确说明.\n- deferred_notes: 可选优化或无证据想法.",
           "output": "workflow-subagent/afk-implement-review/simplicity-review.md",
           "outputMode": "file-only"
         }
@@ -65,27 +79,43 @@
       "concurrency": 3
     },
     {
+      "agent": "reviewer",
+      "as": "reviewSynthesis",
+      "phase": "Synthesis",
+      "label": "归并审查发现",
+      "task": "只读归并三个 reviewer 输出, 供 fix worker 执行. 不修改项目源码, 配置, 文档, 依赖文件和测试文件. 允许写本 chain 指定 output artifact.\n\n正确性审查:\n{outputs.correctnessReview}\n\n测试审查:\n{outputs.testsReview}\n\n简洁性审查:\n{outputs.simplicityReview}\n\n归并规则:\n- 合并重复发现, 保留最强证据和最高严重度.\n- accepted_now 只包含 severity 为 blocker|required, evidence 充分, minimal_fix 明确, requires_decision=false, 且不扩大已批准范围的发现.\n- recommended/deferred 不进入 accepted_now, 除非它同时是低风险且修复 required/blocker 的必要部分.\n- 需要产品, 架构, API 或范围判断的发现进入 needs_parent_decision.\n- 无文件/行/diff/命令证据的发现进入 rejected_as_not_evidenced.\n\n输出 schema:\n- accepted_now: finding_id, source_review, severity, evidence, minimal_fix, validation_hint.\n- deferred: finding_id, reason.\n- needs_parent_decision: finding_id, decision_needed, evidence.\n- rejected_as_not_evidenced: finding_id, reason.\n- reviewer_coverage: 三个 reviewer 实际检查范围摘要.\n- fix_worker_instructions: 只列 accepted_now, 明确不要处理其他项.",
+      "output": "workflow-subagent/afk-implement-review/review-synthesis.md",
+      "outputMode": "file-only"
+    },
+    {
       "agent": "worker",
       "as": "fixes",
+      "phase": "Fixes",
+      "label": "应用已接受修复",
       "skill": "tdd",
-      "task": "仅应用这些审查结果中值得现在处理且不扩大已批准范围的修复. 默认使用 `tdd` 技能处理需要行为回归覆盖的修复: 先补一个能复现问题或覆盖缺口的公共接口行为测试, 再做最小修复, 最后重构. 如果某个修复不适合 TDD, 说明原因并提供替代验证证据. 如果某个发现需要未批准的产品, 架构, API 或范围决策, 不要应用, 报告给父会话. 如果验收标准不清, 需要扩大范围, 关键验证无法运行且没有可接受替代证据, 或疑似工具调用/修复循环失控, 停止并交回父会话. 运行聚焦验证, 并报告变更文件, TDD 轮次或跳过原因, 命令, 证据和剩余问题.\n\n正确性审查:\n{outputs.correctnessReview}\n\n测试审查:\n{outputs.testsReview}\n\n简洁性审查:\n{outputs.simplicityReview}",
+      "task": "仅应用 review synthesis 中 accepted_now 的修复. 不处理 deferred, rejected_as_not_evidenced, needs_parent_decision.\n\nReview synthesis:\n{outputs.reviewSynthesis}\n\n规则:\n- 你是当前工作树唯一写入者.\n- 每个修复必须引用 finding_id.\n- 只处理不扩大已批准范围, 不需要父会话决策的 accepted_now.\n- 默认使用 `tdd` 技能处理需要行为回归覆盖的修复: 先补一个能复现问题或覆盖缺口的公共接口行为测试, 再做最小修复, 最后重构.\n- 如果某个修复不适合 TDD, 说明原因并提供替代验证证据.\n- 如果某个发现需要未批准的产品, 架构, API 或范围决策, 不要应用, 报告给父会话.\n- 如果验收标准不清, 需要扩大范围, 关键验证无法运行且没有可接受替代证据, 或疑似工具调用/修复循环失控, 停止并交回父会话.\n- 运行 `git diff --stat`, `git diff --name-only`, `git status --short`, 以及聚焦验证命令. 不 stage 文件.\n\n输出必须包含:\n- applied_findings: finding_id -> 变更摘要.\n- skipped_findings: finding_id -> 跳过原因.\n- changed-files.\n- tests-added.\n- tdd-rounds 或跳过 TDD 原因.\n- commands-run: 命令, cwd, 退出码.\n- validation-output.\n- no-staged-files.\n- residual-risks 和 remaining_decisions.",
       "output": "workflow-subagent/afk-implement-review/fixes.md",
       "outputMode": "file-only",
       "progress": true,
       "acceptance": {
         "criteria": [
-          "只处理不扩大已批准范围的已接受修复",
+          "只处理 review synthesis 的 accepted_now",
+          "不处理 deferred, rejected_as_not_evidenced, needs_parent_decision",
+          "每个修复引用 finding_id",
           "默认按 TDD 处理需要行为回归覆盖的修复",
           "新增或更新测试通过公共接口验证行为, 不测试实现细节",
           "如果跳过 TDD, 报告原因和替代验证证据",
           "不自行决定产品, 架构, API 或范围问题",
-          "返回变更文件, TDD 轮次或跳过原因, 验证证据和剩余问题"
+          "返回变更文件, tests-added, TDD 轮次或跳过原因, 验证证据和剩余问题",
+          "返回 no-staged-files 证据"
         ],
         "evidence": [
           "changed-files",
+          "tests-added",
           "commands-run",
           "validation-output",
-          "residual-risks"
+          "residual-risks",
+          "no-staged-files"
         ],
         "stopRules": [
           "发现未批准的产品, 架构, API 或范围决策",
@@ -96,6 +126,15 @@
         ],
         "maxFinalizationTurns": 2
       }
+    },
+    {
+      "agent": "reviewer",
+      "as": "finalAudit",
+      "phase": "Final audit",
+      "label": "最终摘要和风险",
+      "task": "只读最终审计当前 diff, 为父会话输出可直接汇报的摘要. 不修改项目源码, 配置, 文档, 依赖文件和测试文件. 允许写本 chain 指定 output artifact.\n\n实现交接:\n{outputs.implementation}\n\n审查归并:\n{outputs.reviewSynthesis}\n\n修复交接:\n{outputs.fixes}\n\n必须直接检查最终实际状态: `git diff --stat`, `git diff --name-only`, `git status --short`. 必要时读取关键变更文件或测试文件. 不重复做大范围 review, 只确认最终证据链是否一致.\n\n输出:\n- final_diff_summary: 文件和变更意图.\n- validation_summary: 已运行命令, 退出码, 关键证据.\n- review_resolution: accepted_now 是否已处理, 未处理原因.\n- remaining_blockers: blocker/required 剩余项, 没有则写 none.\n- residual_risks: 剩余风险, 无法验证项.\n- parent_report: 10 行以内, 父会话可直接汇报.",
+      "output": "workflow-subagent/afk-implement-review/final-audit.md",
+      "outputMode": "file-only"
     }
   ]
 }
