@@ -1,0 +1,13 @@
+{
+  "name": "workflow-context-scout",
+  "description": "只读代码库探索, 用于压缩父会话上下文. 单个 context-builder 输出代码事实, 范围未知项和验证线索. 不制定需求, 不制定方案, 不写 PRD, 不拆议题, 不定稿验收标准, 不判断是否执行, 不做产品/架构/API/范围决策, 不修改项目/源码文件.",
+  "chain": [
+    {
+      "agent": "context-builder",
+      "as": "contextFacts",
+      "task": "为以下任务做只读代码库探索: {task}. 检查相关代码, 文档, ADR, 测试, 配置和既有议题. 输出代码事实, 文件/路径引用, 既有模式, 约束, 风险, 未知项, 可运行验证命令, 现有测试线索, 以及父会话需确认的问题. 不制定需求, 不制定方案, 不写 PRD, 不拆议题, 不给验收标准定稿, 不判断是否执行, 不做产品/架构/API/范围决策. 不修改项目/源码文件.",
+      "output": "workflow-subagent/context-scout/context-facts.md",
+      "outputMode": "file-only"
+    }
+  ]
+}

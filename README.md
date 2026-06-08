@@ -28,17 +28,9 @@
 │   ├── use-worktree/
 │   ├── workflow-subagent-router/
 │   └── zoom-out/
-├── agents/                          # pi subagent 定义
-│   └── workflow/
-│       ├── architect.md
-│       ├── diagnostician.md
-│       └── issue-steward.md
 ├── chains/                          # pi saved chain 定义
-│   ├── workflow-context-gate.chain.json
-│   ├── workflow-diagnose-to-tdd.chain.json
-│   ├── workflow-implement-review.chain.json
-│   ├── workflow-plan-only.chain.json
-│   └── workflow-prd-to-issues.chain.json
+│   ├── workflow-afk-implement-review.chain.json
+│   └── workflow-context-scout.chain.json
 ├── hitl/                            # HITL 0.0.1 协议与简报技能
 │   ├── human-in-the-loop/
 │   │   ├── references/{agent,shared,human-view}/...
@@ -96,18 +88,12 @@ project-root/
 
 ## Pi 子代理与 saved chains
 
-最近一次提交新增了面向 pi 的 workflow subagent 路由资产. 这些资产不替代 `workflow/orchestrate`, 而是在工程任务需要 subagent 编排, 多阶段计划, 并行审查, 长任务 async 或标准化实现流程时使用.
+本仓库保留极少数面向 pi 的 workflow saved chains. 这些资产不替代 `workflow/orchestrate`, 也不把需求对齐, 方案制定, PRD, issue 拆分或执行决策外包给子代理.
 
-- `workflow/workflow-subagent-router`: 父会话路由器. `orchestrate` 先判断 workflow 类型, router 再判断是否调用 saved chain 以及调用哪条 chain. 执行 chain 前必须向用户确认 `是否执行?`.
-- `AGENTS.md`: 新增 workflow 子代理路由约束. 工程类任务先由 `orchestrate` 分类, 需要 subagent 编排时再读取 router, 默认单 writer.
-- `agents/workflow/architect.md`: 架构评审, 模块边界, 重构候选, 可测试性和领域语言对齐. 默认只读, fresh context.
-- `agents/workflow/diagnostician.md`: 未知根因诊断, 复现, 最小化, 假设, 验证和 TDD 修复建议. 默认只读, fresh context.
-- `agents/workflow/issue-steward.md`: setup-workspace, PRD, tracer-bullet issues, triage, 标签和状态管理. 仅在父会话授权时改文档或 issue tracker.
-- `chains/workflow-context-gate.chain.json`: 需求不清时并行收集请求 scope, 代码库上下文, 验证风险, 然后由父会话追问.
-- `chains/workflow-plan-only.chain.json`: 先 scout, 再产出实现计划, 验收标准, 风险和验证命令, 不实现.
-- `chains/workflow-implement-review.chain.json`: 单 worker 实现, fresh reviewers 并行审查正确性, 测试质量和简洁性, 再做 accepted fix pass.
-- `chains/workflow-diagnose-to-tdd.chain.json`: 对未知根因问题先诊断, 再生成 TDD 修复计划, 默认不直接实现.
-- `chains/workflow-prd-to-issues.chain.json`: 基于当前上下文生成 PRD draft, 再拆 tracer-bullet implementation issues.
+- `workflow/workflow-subagent-router`: 父会话路由器. `orchestrate` 先判断 workflow 类型, router 只判断是否调用只读探索链或 AFK 编码执行链. 执行 chain 前必须向用户确认 `是否执行?`.
+- `AGENTS.md`: 新增 workflow 子代理路由约束. 工程类任务先由 `orchestrate` 分类. 子代理只用于只读代码库探索, 已批准计划的 AFK 编码执行, 或 diff 后 review.
+- `chains/workflow-context-scout.chain.json`: 只读代码库探索, 用于压缩父会话上下文. 只返回事实, 文件证据, 既有模式, 约束和未知项. 不制定需求, 不制定方案, 不拆 issue, 不决定下一步.
+- `chains/workflow-afk-implement-review.chain.json`: 仅用于已批准计划, 验收明确, 可 AFK 执行的编码任务. 单 worker 实现, fresh reviewers 审查 diff, 再做 accepted fix pass.
 
 入口文档: [`workflow/workflow-subagent-router/SKILL.md`](workflow/workflow-subagent-router/SKILL.md)
 
@@ -121,7 +107,7 @@ workflow skills 的默认入口和元编排器:接收工程类用户任务,按�
 
 ### workflow/workflow-subagent-router
 
-当 `orchestrate` 已完成任务类型判断, 且当前阶段需要 subagent 编排, saved chain, 多阶段计划, 并行审查或 async worker 时, 用它选择 `chains/workflow-*` 并保留父会话最终决策权.
+当 `orchestrate` 已完成任务类型判断, 且当前阶段需要只读代码库探索以压缩上下文, 或需要已批准计划的 AFK 编码执行和 diff 后 review 时, 用它选择 `chains/workflow-*` 并保留父会话最终决策权.
 
 入口文档: [`workflow/workflow-subagent-router/SKILL.md`](workflow/workflow-subagent-router/SKILL.md)
 
@@ -230,14 +216,14 @@ docs/changes/<中文变更>/
 2. 先读取对应 `SKILL.md`,再按需读取 `references/`,脚本,测试夹具或 prompt 模板.
 3. 若目标 agent 不会自动发现本仓库目录,按目标 agent 的安装方式安装或链接对应技能目录.
 4. workflow 类任务优先进入 `workflow/orchestrate`;由它按需运行 `workflow/setup-workspace` 建立目标项目约定.
-5. 需要 pi subagent 编排, saved chain, 多阶段计划, 并行审查或 async worker 时, 在 `orchestrate` 分类后读取 `workflow/workflow-subagent-router`.
+5. 需要只读代码库探索以压缩上下文, 或需要已批准计划的 AFK 编码执行和 diff 后 review 时, 在 `orchestrate` 分类后读取 `workflow/workflow-subagent-router`.
 6. 高风险或需要人工批准的任务使用 `hitl/human-in-the-loop`;最终会议材料或方案摘要使用 `hitl/human-in-loop-brief`.
 
 ## 维护约定
 
 - 新增技能应使用独立目录,并至少提供 `SKILL.md` 作为入口文档.
 - 技能目录应区分入口协议,参考资料,脚本,prompt 模板,测试夹具和资产文件.
-- 根 `README.md` 负责登记仓库级目录, 技能概览, pi agents 和 saved chains.
+- 根 `README.md` 负责登记仓库级目录, 技能概览和 pi saved chains.
 - 涉及构建,诊断,规划,执行,审查或输出纪律的强约束应写入技能文档,避免只存在于脚本或对话中.
 - workflow 目标项目的需求/议题资产默认保存到 `docs/changes/<feature-slug>/...`.
 - HITL 正式任务运行资产按协议保存到目标项目的 `docs/changes/<中文变更>/...`.
