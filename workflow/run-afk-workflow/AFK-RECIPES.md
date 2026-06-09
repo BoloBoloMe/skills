@@ -9,6 +9,8 @@
 - 子代理 task 使用中文. schema key, 命令, JSON key, path placeholder 保持英文.
 - 每个子代理 step 必须设置 `reads:false`, `progress:false`, `outputMode:"file-only"`.
 - AFK 写入阶段必须设置 `chainDir:"<AFK_RUN_DIR>"`, `sessionDir:"<AFK_SESSION_DIR>"`, `context:"fresh"`.
+- worker/fix 运行验证前必须读取 `manifest.yaml` 的 `validation_profile`. 若指定 JDK, Maven 或命令, 必须使用该 profile. 若环境不可满足, 报告 blocker, 不把错误环境下的失败当作代码失败证据.
+- worker/fix 最终回复必须包含可解析的 `acceptance-report` fenced block. 不要只写普通 Markdown artifact.
 - 不写仓库根 `progress.md`. 不 stage 文件.
 
 ## context-scout
@@ -53,7 +55,7 @@ subagent({
       output: "worker-result.md",
       outputMode: "file-only",
       skill: "tdd",
-      task: "AFK_RUN_DIR=<AFK_RUN_DIR>. 读取 manifest.yaml, doc-pointers.md, allowed-files.txt, 目标 issue 全文, PLAN 对应章节和 PRD 必要章节. 只实现本次已批准 milestone. 你是当前工作树唯一写入者. 首次编辑前写 worker-preflight.md 和 worker-plan.md. 只修改 allowed-files.txt 允许文件. 不使用仓库根 progress.md. 如缺少文档指针, 文档冲突, 需要修改非 allowed files, 或出现未批准的产品/API/架构/范围决策, 停止并报告. 结束前运行 git diff --stat, git diff --name-only, git status --short 和聚焦验证命令. 不 stage 文件.",
+      task: "AFK_RUN_DIR=<AFK_RUN_DIR>. 读取 manifest.yaml, doc-pointers.md, allowed-files.txt, 目标 issue 全文, PLAN 对应章节和 PRD 必要章节. 运行验证前先读取 manifest.yaml 的 validation_profile. 若指定 JDK, Maven 或命令, 必须使用该 profile. 若验证环境无法满足, 报告 blocker, 不把其他 JDK 或错误环境下的失败作为代码失败证据. 只实现本次已批准 milestone. 你是当前工作树唯一写入者. 首次编辑前写 worker-preflight.md 和 worker-plan.md. 只修改 allowed-files.txt 允许文件. 不使用仓库根 progress.md. 如缺少文档指针, 文档冲突, 需要修改非 allowed files, 或出现未批准的产品/API/架构/范围决策, 停止并报告. 结束前运行 git diff --stat, git diff --name-only, git status --short 和聚焦验证命令. 不 stage 文件. 结束时除写入 worker-result.md 外, 最后一段必须输出可解析的 acceptance-report fenced block. 必须包含 changed-files, commands-run, validation-output, residual-risks, no-staged-files. 不要只写普通 Markdown 总结. 若 runtime 只要求修复 acceptance-report 格式, 只修最终报告格式, 不再编辑源码.",
       acceptance: {
         criteria: [
           "Only approved milestone scope is implemented",
@@ -69,7 +71,7 @@ subagent({
           "residual-risks",
           "no-staged-files"
         ],
-        maxFinalizationTurns: 1
+        maxFinalizationTurns: 2
       }
     }
   ],
@@ -81,6 +83,24 @@ subagent({
   timeoutMs: 900000
 })
 ```
+
+worker/fix 最后一段使用此最小模板. `result` 只能使用 `passed`, `failed`, `not-run`:
+
+````md
+```acceptance-report
+changed-files:
+  - path: <file>
+    reason: <why changed>
+commands-run:
+  - command: <command>
+    result: <passed|failed|not-run>
+validation-output:
+  - <evidence or blocker>
+residual-risks:
+  - <risk or none>
+no-staged-files: true
+```
+````
 
 ## review-only
 
@@ -132,9 +152,19 @@ subagent({
   sessionDir: "<AFK_SESSION_DIR>",
   clarify: false,
   async: true,
+  control: {
+    needsAttentionAfterMs: 180000,
+    activeNoticeAfterMs: 240000,
+    notifyOn: ["needs_attention"]
+  },
   timeoutMs: 900000
 })
 ```
+
+Runtime 信号规则:
+
+- 已收到 completed result 后, 同 run id 的 `needs_attention` 先按 stale control event 处理.
+- 先检查 artifacts, grouped output 和 session log, 再考虑 status 或 interrupt.
 
 Finding schema:
 
@@ -168,7 +198,7 @@ subagent({
       output: "fix-result.md",
       outputMode: "file-only",
       skill: "tdd",
-      task: "AFK_RUN_DIR=<AFK_RUN_DIR>. 只读取并处理 review-synthesis.md 中的 accepted_now. 不处理 deferred, needs_human_decision, rejected_as_not_evidenced. 每个修复必须引用 finding_id. 只修改 allowed-files.txt 允许文件. 不重构无关代码, 不扩大范围, 不自行决定产品/API/架构/范围问题. 不使用仓库根 progress.md. 结束前运行 git diff --stat, git diff --name-only, git status --short 和聚焦验证命令. 不 stage 文件.",
+      task: "AFK_RUN_DIR=<AFK_RUN_DIR>. 只读取并处理 review-synthesis.md 中的 accepted_now. 不处理 deferred, needs_human_decision, rejected_as_not_evidenced. 每个修复必须引用 finding_id. 运行验证前先读取 manifest.yaml 的 validation_profile. 若指定 JDK, Maven 或命令, 必须使用该 profile. 若验证环境无法满足, 报告 blocker, 不把其他 JDK 或错误环境下的失败作为代码失败证据. 只修改 allowed-files.txt 允许文件. 不重构无关代码, 不扩大范围, 不自行决定产品/API/架构/范围问题. 不使用仓库根 progress.md. 结束前运行 git diff --stat, git diff --name-only, git status --short 和聚焦验证命令. 不 stage 文件. 结束时除写入 fix-result.md 外, 最后一段必须输出可解析的 acceptance-report fenced block. 必须包含 changed-files, commands-run, validation-output, residual-risks, no-staged-files. 不要只写普通 Markdown 总结. 若 runtime 只要求修复 acceptance-report 格式, 只修最终报告格式, 不再编辑源码.",
       acceptance: {
         criteria: [
           "Only accepted_now findings are handled",
@@ -186,7 +216,7 @@ subagent({
           "residual-risks",
           "no-staged-files"
         ],
-        maxFinalizationTurns: 1
+        maxFinalizationTurns: 2
       }
     }
   ],

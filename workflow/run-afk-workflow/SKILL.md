@@ -23,6 +23,7 @@ description: 为 workflow 父会话选择 direct subagent recipes. 当 orchestra
 | 计划已批准, 范围和验收明确, 只实现一个 milestone | 父会话 preflight 后调用 implement-only | `AFK-RUNBOOK.md#父会话步骤`, `AFK-RECIPES.md#implement-only` |
 | worker 完成, 父会话已检查真实 diff 并写 `diff-summary.md` | 调用 review-only | `AFK-RECIPES.md#review-only` |
 | `review-synthesis.md` 存在可立即修复的 `accepted_now` | 调用 fix-only | `AFK-RECIPES.md#fix-only` |
+| 子代理 runtime 状态与 artifact/diff 冲突 | 父会话先补验事实, 不自动重跑 writer | `AFK-RUNBOOK.md#runtime-信号冲突处理`, `AFK-RUNBOOK.md#失败恢复` |
 | 需要产品/API/架构/范围判断, 验收未定稿, 文档冲突, dirty worktree 归属不清 | 不调用子代理, 父会话处理或问用户 | `AFK-RUNBOOK.md#失败恢复` |
 
 ## 不变量
@@ -32,12 +33,16 @@ description: 为 workflow 父会话选择 direct subagent recipes. 当 orchestra
 - 写入阶段单写入者. review 阶段只读且可并行.
 - 子代理 step 必须设置 `reads:false`, `progress:false`, `outputMode:"file-only"`.
 - writer/fix 使用 builtin `worker`. review 使用 builtin `reviewer`. scout 使用 builtin `scout`.
+- writer/fix 必须继承 `manifest.yaml` 或 `validation-profile.yaml` 中的验证环境. 错误 JDK/错误 profile 的失败不能作为代码失败证据.
+- writer/fix 最终回复必须包含可解析的 `acceptance-report` fenced block. 代码已改但 acceptance parse failed 时, 父会话先按 artifact, 真实 diff 和验证命令补验.
 
 ## 父会话最小检查
 
 - [ ] 写入阶段前已得到用户执行确认.
 - [ ] `<AFK_RUN_DIR>` 已创建, 且 task 中的 `AFK_RUN_DIR` 与 `chainDir` 一致.
 - [ ] `manifest.yaml`, `baseline.txt`, `doc-pointers.md`, `allowed-files.txt` 已存在.
+- [ ] 项目有特定 JDK/Maven/测试约束时, `validation-profile.yaml` 或 `manifest.yaml.validation_profile` 已写入可执行命令或 blocker.
 - [ ] worker 结束后由父会话检查真实 diff, 不只信 worker 输出.
 - [ ] review findings 只接受有文件, 行号, diff 片段或命令证据的项.
+- [ ] completed 后到达的同 run `needs_attention` 先按 stale control event 排查, 不直接 interrupt.
 - [ ] final validation 和 `final-report.md` 由父会话完成.

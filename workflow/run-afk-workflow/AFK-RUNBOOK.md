@@ -51,6 +51,9 @@ manifest.yaml
 baseline.txt
 allowed-files.txt
 doc-pointers.md
+validation-profile.yaml
+project-constraints.md
+runtime-notes.md
 worker-preflight.md
 worker-plan.md
 worker-result.md
@@ -81,11 +84,35 @@ git diff --name-only
 
 写入:
 
-- `manifest.yaml`: run id, repo, branch, head, task, PRD/PLAN/issue 路径, required sections, allowed files.
+- `manifest.yaml`: run id, repo, branch, head, task, PRD/PLAN/issue 路径, required sections, allowed files, `validation_profile` 摘要.
 - `allowed-files.txt`: 本 milestone 允许修改的文件.
 - `doc-pointers.md`: PRD, PLAN, issue 路径, 必读章节, 推荐读取顺序.
+- `validation-profile.yaml`: JDK, Maven, 测试命令, quality checks 等验证约束. 若不需要特定环境, 明确写 `none`.
+- `project-constraints.md`: 从 AGENTS, build skill 或项目文档提取的关键约束. 只写会影响本 run 的约束.
+- `runtime-notes.md`: 记录 runtime 异常信号, stale notification, acceptance parse recovery 等调度事实.
 
-worker 推荐读取顺序: manifest, doc pointers, allowed files, issue 全文, PLAN 对应章节, PRD 必要章节, 必须源码和测试.
+`manifest.yaml` 中的 `validation_profile` 示例:
+
+```yaml
+validation_profile:
+  required_jdk: 8
+  jdk_home: "C:/Users/L9214/Program/JDK/temurin-1.8.0_402"
+  compile_command: "powershell.exe -NoProfile -ExecutionPolicy Bypass -Command '<set JAVA_HOME and run mvn>'"
+  build_scripts_available: false
+  quality_checks:
+    - id: changed-files-only
+      command: "git diff --name-only"
+    - id: no-staged-files
+      command: "git status --short"
+    - id: no-whitespace-errors
+      command: "git diff --check"
+    - id: changed-log-language
+      command: "check changed hunks for non-English log messages"
+```
+
+若仓库有专用 build skill 或 AGENTS 指定 JDK, Maven, wrapper, 环境变量, 父会话必须把可执行命令或 blocker 写入 `validation-profile.yaml` 和 `doc-pointers.md`. worker/fix 必须优先使用该 profile. 错误 JDK 或错误环境下的失败只记录为环境噪音.
+
+worker 推荐读取顺序: manifest, validation profile, project constraints, doc pointers, allowed files, issue 全文, PLAN 对应章节, PRD 必要章节, 必须源码和测试.
 
 ### 2. Implement
 
@@ -108,7 +135,10 @@ worker 结束后运行:
 git diff --stat
 git diff --name-only
 git status --short
+git diff --check
 ```
+
+如项目约束禁止新增非英文日志或类似局部风格规则, 只检查 changed hunks 或 changed files, 不要求当前任务修复历史问题.
 
 写 `diff-summary.md`:
 
@@ -133,6 +163,8 @@ git status --short
 - simplicity: 简洁性和范围控制.
 
 只接受有文件, 行号, diff 片段或命令证据的 findings.
+
+若父会话已收到 completed result, 后续同 run id 的 `needs_attention` 先按 stale control event 处理. 检查顺序: artifacts 是否存在, grouped output 是否 completed, session log 是否结束, 必要时再 status(dir). 不直接 interrupt 已完成 run.
 
 ### 5. Synthesis
 
@@ -179,6 +211,25 @@ fix_worker_instructions: []
 ## Next action
 ```
 
+父会话必须把最终事实来源排序写清楚: artifact, 真实 diff, 验证命令优先于 runtime 状态信号. 子代理状态是调度信号, 不是最终代码事实.
+
+## Runtime 信号冲突处理
+
+事实优先级:
+
+1. 真实工作树 diff 和 allowed-files 检查.
+2. 父会话运行的验证命令.
+3. 已落盘 artifacts 和 session log.
+4. subagent completed/failed/needs_attention 等 runtime 信号.
+
+处理规则:
+
+- completed result 优先于完成后到达的同 run `needs_attention`. 先按 stale control event 记录到 `runtime-notes.md`.
+- `subagent({ action:"status", id })` 失败不等于 run 未完成. foreground completed run 可能只能通过 grouped output, session 或 artifact 判断.
+- `acceptance-report` parse failure 不等于代码失败. 若 artifact 存在或工作树 dirty, 先补验 diff 和验证命令.
+- 工作树 dirty 时禁止自动重跑 writer. 先保存 diff, 再由父会话决定 review, 手工修复, 继续或回滚.
+- worker validation 若使用错误 JDK 或错误 profile 失败, 按 `validation-profile.yaml` 或项目 build skill 重跑. 错误环境失败只记为环境噪音.
+
 ## 失败恢复
 
 | 情况 | 处理 |
@@ -186,7 +237,10 @@ fix_worker_instructions: []
 | runner stale, 工作树干净, 无 checkpoint | 不原样重跑. 缩小文档读取范围, 确认 `reads:false` 和 `progress:false`, 改 foreground 重跑 worker. |
 | runner stale, 工作树干净, 有 checkpoint | 从 checkpoint 判断阶段. 新 worker 使用 fresh context, 读取 document pointers 和 checkpoint. 不 resume 旧 session. |
 | runner stale, 工作树 dirty, 无 result | 保存 orphan diff, 由父会话审查后决定 review, 手工修复, 继续或回滚. 禁止自动重跑 writer. |
+| worker/fix 返回 failed, 原因为 acceptance-report parse failure, 且工作树 dirty 或 result artifact 存在 | 不自动重跑 writer. 父会话读取 result artifact, 检查真实 diff, 运行验证. 若 diff 合规且验证通过, 可视为 implementation/fix done, 并在 final report 记录 runtime acceptance 格式失败. |
 | worker result 存在, acceptance 不完整 | 父会话用真实 diff 和命令补验. 不让原 worker 自审多轮. 必要时启动只读 reviewer. |
+| completed 后收到同 run `needs_attention` | 查 artifact, grouped output, session log. 不 interrupt. 记录为 stale control event. |
+| worker validation 使用错误 JDK 或错误 profile 失败 | 按 `validation-profile.yaml` 或项目 build skill 重跑. 错误环境失败只记为环境噪音, 不作为代码失败证据. |
 
 保存 orphan diff:
 
