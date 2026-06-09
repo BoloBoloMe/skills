@@ -15,6 +15,5 @@
 ## 工具说明
 - python: 必须以 `uv run python` 执行
 
-## workflow skills 路由指引
+## workflow skills 路由
 - 工程类任务先使用 `orchestrate` 判断任务类型, 选择合适的 skills 完成任务, 任务结束后给出下一步行动建议.
-- 当任务需要代码库探索, 执行 AFK 编码, 执行和 diff 后 review 时, 读取 `workflow-subagent-router` 若有合适的 chains 则优先使用.

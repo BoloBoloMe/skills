@@ -26,11 +26,8 @@
 │   ├── improve-codebase-architecture/
 │   ├── prototype/
 │   ├── use-worktree/
-│   ├── workflow-subagent-router/
+│   ├── run-afk-workflow/
 │   └── zoom-out/
-├── chains/                          # pi saved chain 定义
-│   ├── workflow-afk-implement-review.chain.json
-│   └── workflow-context-scout.chain.json
 ├── hitl/                            # HITL 0.0.1 协议与简报技能
 │   ├── human-in-the-loop/
 │   │   ├── references/{agent,shared,human-view}/...
@@ -86,16 +83,18 @@ project-root/
 
 入口文档:[`workflow/setup-workspace/SKILL.md`](workflow/setup-workspace/SKILL.md)
 
-## Pi 子代理与 saved chains
+## Pi 子代理 direct recipes
 
-本仓库保留极少数面向 pi 的 workflow saved chains. 这些资产不替代 `workflow/orchestrate`, 也不把需求对齐, 方案制定, PRD, issue 拆分或执行决策外包给子代理.
+AFK 采用 direct `subagent({...})` recipes, 不依赖仓库级 chain JSON 自动发现. 这些资产不替代 `workflow/orchestrate`, 也不把需求对齐, 方案制定, PRD, issue 拆分或执行决策外包给子代理.
 
-- `workflow/workflow-subagent-router`: 父会话路由器. `orchestrate` 先判断 workflow 类型, router 只判断是否调用只读探索链或 AFK 编码执行链. 执行 chain 前必须向用户确认 `是否执行?`.
-- `AGENTS.md`: 新增 workflow 子代理路由约束. 工程类任务先由 `orchestrate` 分类. 子代理只用于只读代码库探索, 已批准计划的 AFK 编码执行, 或 diff 后 review.
-- `chains/workflow-context-scout.chain.json`: 只读代码库探索, 用于压缩父会话上下文. 只返回事实, 文件证据, 既有模式, 约束和未知项. 不制定需求, 不制定方案, 不拆 issue, 不决定下一步.
-- `chains/workflow-afk-implement-review.chain.json`: 仅用于已批准计划, 验收明确, 可 AFK 执行的编码任务. 单 worker 实现, fresh reviewers 审查 diff, 再做 accepted fix pass.
+- `workflow/run-afk-workflow`: AFK 权威入口. `orchestrate` 先判断 workflow 类型, 本技能只判断是否调用只读代码库探索 direct recipe, implement-only direct recipe, review-only direct recipe 或 fix-only direct recipe. 执行写入阶段前必须向用户确认 `是否执行?`.
+- `workflow/run-afk-workflow/AFK-RECIPES.md`: 可复制 direct `subagent({...})` 模板. AFK writer 默认使用 builtin `worker`, 并通过 one-step `chain` 的 step 参数设置 `context:"fresh"`, `reads:false`, `progress:false`, `chainDir:<AFK_RUN_DIR>`, `outputMode:"file-only"` 等关键项.
+- `workflow/run-afk-workflow/AFK-RUNBOOK.md`: AFK 状态机, preflight, artifact 布局, review synthesis, fix scope 和 failure recovery.
+- `AGENTS.md`: workflow 子代理路由约束. 工程类任务先由 `orchestrate` 分类. 子代理只用于只读代码库探索, 已批准计划的 AFK 编码执行, diff 后 review, 或 accepted finding 修复.
 
-入口文档: [`workflow/workflow-subagent-router/SKILL.md`](workflow/workflow-subagent-router/SKILL.md)
+本仓库不维护 workflow chain JSON. 如目标项目需要 chain 文件, 由目标项目自行维护. 本仓库只维护 direct recipes 文档.
+
+入口文档: [`workflow/run-afk-workflow/SKILL.md`](workflow/run-afk-workflow/SKILL.md)
 
 ## 技能一览
 
@@ -105,11 +104,11 @@ workflow skills 的默认入口和元编排器:接收工程类用户任务,按�
 
 入口文档:[`workflow/orchestrate/SKILL.md`](workflow/orchestrate/SKILL.md)
 
-### workflow/workflow-subagent-router
+### workflow/run-afk-workflow
 
-当 `orchestrate` 已完成任务类型判断, 且当前阶段需要只读代码库探索以压缩上下文, 或需要已批准计划的 AFK 编码执行和 diff 后 review 时, 用它选择 `chains/workflow-*` 并保留父会话最终决策权.
+当 `orchestrate` 已完成任务类型判断, 且当前阶段需要只读代码库探索以压缩上下文, 或需要已批准计划的 AFK 单阶段编码执行, diff 后 review, accepted finding 修复时, 用它选择 direct `subagent({...})` recipe 并保留父会话最终决策权. 运行模板见 [`workflow/run-afk-workflow/AFK-RECIPES.md`](workflow/run-afk-workflow/AFK-RECIPES.md), 运行细节见 [`workflow/run-afk-workflow/AFK-RUNBOOK.md`](workflow/run-afk-workflow/AFK-RUNBOOK.md).
 
-入口文档: [`workflow/workflow-subagent-router/SKILL.md`](workflow/workflow-subagent-router/SKILL.md)
+入口文档: [`workflow/run-afk-workflow/SKILL.md`](workflow/run-afk-workflow/SKILL.md)
 
 ### workflow/setup-workspace
 
@@ -182,16 +181,16 @@ docs/changes/<中文变更>/
 └── agent/
 ```
 
-入口文档:[`hitl/human-in-the-loop/SKILL.md`](hitl/human-in-the-loop/SKILL.md)
-脚本索引:[`hitl/human-in-the-loop/references/agent/script-index.md`](hitl/human-in-the-loop/references/agent/script-index.md)
-端到端命令链:[`hitl/human-in-the-loop/references/agent/e2e-command-chain.md`](hitl/human-in-the-loop/references/agent/e2e-command-chain.md)
+入口文档:[`hitl/human-in-the-loop/SKILL.md`](deprecated/hitl/human-in-the-loop/SKILL.md)
+脚本索引:[`hitl/human-in-the-loop/references/agent/script-index.md`](deprecated/hitl/human-in-the-loop/references/agent/script-index.md)
+端到端命令链:[`hitl/human-in-the-loop/references/agent/e2e-command-chain.md`](deprecated/hitl/human-in-the-loop/references/agent/e2e-command-chain.md)
 
 ### hitl/human-in-loop-brief
 
 读取 HITL manifest,planning/checks/execution agent assets,验证和收尾记录,生成中文"方案评审简报".
 
-入口文档:[`hitl/human-in-loop-brief/SKILL.md`](hitl/human-in-loop-brief/SKILL.md)
-简报模板:[`hitl/human-in-loop-brief/references/brief-template.md`](hitl/human-in-loop-brief/references/brief-template.md)
+入口文档:[`hitl/human-in-loop-brief/SKILL.md`](deprecated/hitl/human-in-loop-brief/SKILL.md)
+简报模板:[`hitl/human-in-loop-brief/references/brief-template.md`](deprecated/hitl/human-in-loop-brief/references/brief-template.md)
 
 ### general/*
 
@@ -216,14 +215,14 @@ docs/changes/<中文变更>/
 2. 先读取对应 `SKILL.md`,再按需读取 `references/`,脚本,测试夹具或 prompt 模板.
 3. 若目标 agent 不会自动发现本仓库目录,按目标 agent 的安装方式安装或链接对应技能目录.
 4. workflow 类任务优先进入 `workflow/orchestrate`;由它按需运行 `workflow/setup-workspace` 建立目标项目约定.
-5. 需要只读代码库探索以压缩上下文, 或需要已批准计划的 AFK 编码执行和 diff 后 review 时, 在 `orchestrate` 分类后读取 `workflow/workflow-subagent-router`.
+5. 需要只读代码库探索以压缩上下文, 或需要已批准计划的 AFK 编码执行, diff 后 review, accepted finding 修复时, 在 `orchestrate` 分类后读取 `workflow/run-afk-workflow`.
 6. 高风险或需要人工批准的任务使用 `hitl/human-in-the-loop`;最终会议材料或方案摘要使用 `hitl/human-in-loop-brief`.
 
 ## 维护约定
 
 - 新增技能应使用独立目录,并至少提供 `SKILL.md` 作为入口文档.
 - 技能目录应区分入口协议,参考资料,脚本,prompt 模板,测试夹具和资产文件.
-- 根 `README.md` 负责登记仓库级目录, 技能概览和 pi saved chains.
+- 根 `README.md` 负责登记仓库级目录, 技能概览和 pi direct recipes.
 - 涉及构建,诊断,规划,执行,审查或输出纪律的强约束应写入技能文档,避免只存在于脚本或对话中.
 - workflow 目标项目的需求/议题资产默认保存到 `docs/changes/<feature-slug>/...`.
 - HITL 正式任务运行资产按协议保存到目标项目的 `docs/changes/<中文变更>/...`.
