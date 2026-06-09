@@ -7,13 +7,15 @@ description: 为 workflow 父会话选择 direct subagent recipes. 当 orchestra
 
 本技能只供父会话使用. 不注入普通子代理.
 
+本技能不做全局 workflow 分类. 普通工程请求必须先经过 `orchestrate`. 若没有 `orchestrate` 分类或 AFK checkpoint, 停止并回到 `orchestrate`.
+
 ## 文件关系
 
-- 本文件: 只做路由, 不承载长模板和运行手册.
+- 本文件: 只做 AFK 阶段选择, 不承载长模板和运行手册.
 - [AFK-RUNBOOK.md](AFK-RUNBOOK.md): 保存父会话状态机, checkpoint, synthesis 和失败恢复.
 - [AFK-RECIPES.md](AFK-RECIPES.md): 保存可复制 direct `subagent({...})` 调用.
 
-## 路由表
+## AFK 阶段表
 
 | 场景 | 动作 | 参考 |
 |---|---|---|
@@ -25,6 +27,7 @@ description: 为 workflow 父会话选择 direct subagent recipes. 当 orchestra
 
 ## 不变量
 
+- `orchestrate` 决定何时进入 AFK. 本技能只决定 AFK 阶段内怎么调用 direct recipes.
 - 父会话保留需求对齐, 方案制定, PRD, 议题拆分, 验收标准定稿, 是否执行, diff check, review synthesis, failure recovery 和 final report.
 - 写入阶段单写入者. review 阶段只读且可并行.
 - 子代理 step 必须设置 `reads:false`, `progress:false`, `outputMode:"file-only"`.

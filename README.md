@@ -85,12 +85,12 @@ project-root/
 
 ## Pi 子代理 direct recipes
 
-AFK 采用 direct `subagent({...})` recipes, 不依赖仓库级 chain JSON 自动发现. 这些资产不替代 `workflow/orchestrate`, 也不把需求对齐, 方案制定, PRD, issue 拆分或执行决策外包给子代理.
+AFK 采用 direct `subagent({...})` recipes, 不依赖仓库级 chain JSON 自动发现. 这些资产受 `workflow/orchestrate` 管理, 不替代 `workflow/orchestrate`, 也不把需求对齐, 方案制定, PRD, issue 拆分或执行决策外包给子代理.
 
-- `workflow/run-afk-workflow`: AFK 权威入口. `orchestrate` 先判断 workflow 类型, 本技能只判断是否调用只读代码库探索 direct recipe, implement-only direct recipe, review-only direct recipe 或 fix-only direct recipe. 执行写入阶段前必须向用户确认 `是否执行?`.
+- `workflow/run-afk-workflow`: AFK 阶段入口. `orchestrate` 先判断 workflow 类型和调用条件, 本技能只判断是否调用只读代码库探索 direct recipe, implement-only direct recipe, review-only direct recipe 或 fix-only direct recipe. 执行写入阶段前必须向用户确认 `是否执行?`.
 - `workflow/run-afk-workflow/AFK-RECIPES.md`: 可复制 direct `subagent({...})` 模板. AFK writer 默认使用 builtin `worker`, 并通过 one-step `chain` 的 step 参数设置 `context:"fresh"`, `reads:false`, `progress:false`, `chainDir:<AFK_RUN_DIR>`, `outputMode:"file-only"` 等关键项.
 - `workflow/run-afk-workflow/AFK-RUNBOOK.md`: AFK 状态机, preflight, artifact 布局, review synthesis, fix scope 和 failure recovery.
-- `AGENTS.md`: workflow 子代理路由约束. 工程类任务先由 `orchestrate` 分类. 子代理只用于只读代码库探索, 已批准计划的 AFK 编码执行, diff 后 review, 或 accepted finding 修复.
+- `AGENTS.md`: workflow 路由约束. 工程类任务先由 `orchestrate` 分类. 子代理只用于只读代码库探索, 已批准计划的 AFK 编码执行, diff 后 review, 或 accepted finding 修复.
 
 本仓库不维护 workflow chain JSON. 如目标项目需要 chain 文件, 由目标项目自行维护. 本仓库只维护 direct recipes 文档.
 
@@ -106,7 +106,7 @@ workflow skills 的默认入口和元编排器:接收工程类用户任务,按�
 
 ### workflow/run-afk-workflow
 
-当 `orchestrate` 已完成任务类型判断, 且当前阶段需要只读代码库探索以压缩上下文, 或需要已批准计划的 AFK 单阶段编码执行, diff 后 review, accepted finding 修复时, 用它选择 direct `subagent({...})` recipe 并保留父会话最终决策权. 运行模板见 [`workflow/run-afk-workflow/AFK-RECIPES.md`](workflow/run-afk-workflow/AFK-RECIPES.md), 运行细节见 [`workflow/run-afk-workflow/AFK-RUNBOOK.md`](workflow/run-afk-workflow/AFK-RUNBOOK.md).
+`run-afk-workflow` 是 `orchestrate` 管辖下的 AFK 阶段入口. 当 `orchestrate` 已完成任务类型判断并符合 AFK 调用条件, 且当前阶段需要只读代码库探索以压缩上下文, 或需要已批准计划的 AFK 单阶段编码执行, diff 后 review, accepted finding 修复时, 用它选择 direct `subagent({...})` recipe 并保留父会话最终决策权. 运行模板见 [`workflow/run-afk-workflow/AFK-RECIPES.md`](workflow/run-afk-workflow/AFK-RECIPES.md), 运行细节见 [`workflow/run-afk-workflow/AFK-RUNBOOK.md`](workflow/run-afk-workflow/AFK-RUNBOOK.md).
 
 入口文档: [`workflow/run-afk-workflow/SKILL.md`](workflow/run-afk-workflow/SKILL.md)
 
@@ -215,7 +215,7 @@ docs/changes/<中文变更>/
 2. 先读取对应 `SKILL.md`,再按需读取 `references/`,脚本,测试夹具或 prompt 模板.
 3. 若目标 agent 不会自动发现本仓库目录,按目标 agent 的安装方式安装或链接对应技能目录.
 4. workflow 类任务优先进入 `workflow/orchestrate`;由它按需运行 `workflow/setup-workspace` 建立目标项目约定.
-5. 需要只读代码库探索以压缩上下文, 或需要已批准计划的 AFK 编码执行, diff 后 review, accepted finding 修复时, 在 `orchestrate` 分类后读取 `workflow/run-afk-workflow`.
+5. 需要只读代码库探索以压缩上下文, 或需要已批准计划的 AFK 编码执行, diff 后 review, accepted finding 修复时, 由 `orchestrate` 判断符合 AFK 调用条件后读取 `workflow/run-afk-workflow`.
 6. 高风险或需要人工批准的任务使用 `hitl/human-in-the-loop`;最终会议材料或方案摘要使用 `hitl/human-in-loop-brief`.
 
 ## 维护约定

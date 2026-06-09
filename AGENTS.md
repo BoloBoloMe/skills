@@ -15,5 +15,5 @@
 ## 工具说明
 - python: 必须以 `uv run python` 执行
 
-## workflow skills 路由
-- 工程类任务先使用 `orchestrate` 判断任务类型, 选择合适的 skills 完成任务, 任务结束后给出下一步行动建议.
+## 软件工程 workflow skills 路由
+- 软件工程类任务先使用 `orchestrate` 判断任务类型, 选择合适的 skills 完成任务, 任务结束后给出下一步行动建议.
