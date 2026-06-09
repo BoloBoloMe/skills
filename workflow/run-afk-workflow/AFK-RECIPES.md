@@ -1,0 +1,200 @@
+# AFK direct recipes
+
+主路由见 [SKILL.md](SKILL.md). 运行步骤和恢复策略见 [AFK-RUNBOOK.md](AFK-RUNBOOK.md). 本文件只保存可复制 direct `subagent({...})` 模板.
+
+## 公共约束
+
+- 本仓库不维护 workflow chain JSON. 所有模板通过 direct `subagent({...})` 调用.
+- writer/fix 使用 builtin `worker`. review 使用 builtin `reviewer`. scout 使用 builtin `scout`.
+- 子代理 task 使用中文. schema key, 命令, JSON key, path placeholder 保持英文.
+- 每个子代理 step 必须设置 `reads:false`, `progress:false`, `outputMode:"file-only"`.
+- AFK 写入阶段必须设置 `chainDir:"<AFK_RUN_DIR>"`, `sessionDir:"<AFK_SESSION_DIR>"`, `context:"fresh"`.
+- 不写仓库根 `progress.md`. 不 stage 文件.
+
+## context-scout
+
+```js
+subagent({
+  chain: [
+    {
+      agent: "scout",
+      as: "contextFacts",
+      phase: "Recon",
+      label: "快速代码事实",
+      skill: "zoom-out",
+      reads: false,
+      progress: false,
+      output: "context-scout/context-facts.md",
+      outputMode: "file-only",
+      task: "为以下任务做快速只读代码库探索: <TASK>. 禁止修改项目源码, 配置, 文档, 依赖文件和测试文件. 只允许写指定 output artifact. 不制定需求, 不制定方案, 不写 PRD, 不拆议题, 不给验收标准定稿, 不判断是否执行, 不做产品/API/架构/范围决策. 目标 25 次以内工具调用, 上限 30 次. 最多精读 12 个核心文件. 输出 10 行以内事实, 相关文件, 既有行为, 约束风险, 验证线索和未知项. 每个事实必须带路径, 命令输出线索, 或明确标为推断."
+    }
+  ],
+  cwd: "<repo>",
+  context: "fresh",
+  chainDir: "<RUN_DIR>",
+  sessionDir: "<SESSION_DIR>",
+  clarify: false,
+  timeoutMs: 300000
+})
+```
+
+## implement-only
+
+```js
+subagent({
+  chain: [
+    {
+      agent: "worker",
+      phase: "Implementation",
+      label: "实现已批准 milestone",
+      as: "implementation",
+      reads: false,
+      progress: false,
+      output: "worker-result.md",
+      outputMode: "file-only",
+      skill: "tdd",
+      task: "AFK_RUN_DIR=<AFK_RUN_DIR>. 读取 manifest.yaml, doc-pointers.md, allowed-files.txt, 目标 issue 全文, PLAN 对应章节和 PRD 必要章节. 只实现本次已批准 milestone. 你是当前工作树唯一写入者. 首次编辑前写 worker-preflight.md 和 worker-plan.md. 只修改 allowed-files.txt 允许文件. 不使用仓库根 progress.md. 如缺少文档指针, 文档冲突, 需要修改非 allowed files, 或出现未批准的产品/API/架构/范围决策, 停止并报告. 结束前运行 git diff --stat, git diff --name-only, git status --short 和聚焦验证命令. 不 stage 文件.",
+      acceptance: {
+        criteria: [
+          "Only approved milestone scope is implemented",
+          "Allowed file boundaries are respected",
+          "Focused validation is run or a blocker is reported",
+          "No staged files remain",
+          "Changed files and residual risks are reported"
+        ],
+        evidence: [
+          "changed-files",
+          "commands-run",
+          "validation-output",
+          "residual-risks",
+          "no-staged-files"
+        ],
+        maxFinalizationTurns: 1
+      }
+    }
+  ],
+  cwd: "<repo>",
+  context: "fresh",
+  chainDir: "<AFK_RUN_DIR>",
+  sessionDir: "<AFK_SESSION_DIR>",
+  clarify: false,
+  timeoutMs: 900000
+})
+```
+
+## review-only
+
+```js
+subagent({
+  chain: [
+    {
+      parallel: [
+        {
+          agent: "reviewer",
+          as: "correctnessReview",
+          phase: "Review",
+          label: "正确性和回归风险",
+          reads: false,
+          progress: false,
+          output: "review-correctness.md",
+          outputMode: "file-only",
+          task: "AFK_RUN_DIR=<AFK_RUN_DIR>. 只读审查当前 diff 的正确性和回归风险. 读取 manifest.yaml, doc-pointers.md, allowed-files.txt, worker-result.md, diff-summary.md, 目标 issue, PLAN 对应章节和 PRD 必要章节. 必须直接检查真实 diff. 禁止修改项目源码, 配置, 文档, 依赖文件和测试文件. 不使用仓库根 progress.md. 不做产品/API/架构/范围决策. 只返回有文件, 行号, diff 片段或命令证据的 findings."
+        },
+        {
+          agent: "reviewer",
+          as: "testsReview",
+          phase: "Review",
+          label: "测试和验证质量",
+          reads: false,
+          progress: false,
+          output: "review-tests.md",
+          outputMode: "file-only",
+          task: "AFK_RUN_DIR=<AFK_RUN_DIR>. 只读审查当前 diff 的测试和验证质量. 读取 manifest.yaml, doc-pointers.md, allowed-files.txt, worker-result.md, diff-summary.md, 目标 issue, PLAN 对应章节和 PRD 必要章节. 必须直接检查真实 diff 和测试变更. 禁止修改项目源码, 配置, 文档, 依赖文件和测试文件. 不使用仓库根 progress.md. 不做产品/API/架构/范围决策. 只返回有文件, 行号, diff 片段或命令证据的 findings."
+        },
+        {
+          agent: "reviewer",
+          as: "simplicityReview",
+          phase: "Review",
+          label: "简洁性和范围控制",
+          reads: false,
+          progress: false,
+          output: "review-simplicity.md",
+          outputMode: "file-only",
+          task: "AFK_RUN_DIR=<AFK_RUN_DIR>. 只读审查当前 diff 的简洁性和范围控制. 读取 manifest.yaml, doc-pointers.md, allowed-files.txt, worker-result.md, diff-summary.md, 目标 issue, PLAN 对应章节和 PRD 必要章节. 必须直接检查真实 diff. 禁止修改项目源码, 配置, 文档, 依赖文件和测试文件. 不使用仓库根 progress.md. 不做产品/API/架构/范围决策. 只返回有文件, 行号, diff 片段或命令证据的 findings."
+        }
+      ],
+      concurrency: 3
+    }
+  ],
+  cwd: "<repo>",
+  context: "fresh",
+  chainDir: "<AFK_RUN_DIR>",
+  sessionDir: "<AFK_SESSION_DIR>",
+  clarify: false,
+  async: true,
+  timeoutMs: 900000
+})
+```
+
+Finding schema:
+
+```yaml
+review_scope:
+  commands: []
+  files: []
+findings:
+  - finding_id: R1
+    severity: blocker|required|recommended|deferred
+    evidence: path:line or diff fragment
+    why_now: reason
+    minimal_fix: smallest safe fix
+    requires_decision: false
+no_findings: none or summary
+deferred_notes: []
+```
+
+## fix-only
+
+```js
+subagent({
+  chain: [
+    {
+      agent: "worker",
+      phase: "Fixes",
+      label: "应用 accepted_now 修复",
+      as: "fixes",
+      reads: false,
+      progress: false,
+      output: "fix-result.md",
+      outputMode: "file-only",
+      skill: "tdd",
+      task: "AFK_RUN_DIR=<AFK_RUN_DIR>. 只读取并处理 review-synthesis.md 中的 accepted_now. 不处理 deferred, needs_human_decision, rejected_as_not_evidenced. 每个修复必须引用 finding_id. 只修改 allowed-files.txt 允许文件. 不重构无关代码, 不扩大范围, 不自行决定产品/API/架构/范围问题. 不使用仓库根 progress.md. 结束前运行 git diff --stat, git diff --name-only, git status --short 和聚焦验证命令. 不 stage 文件.",
+      acceptance: {
+        criteria: [
+          "Only accepted_now findings are handled",
+          "Deferred and decision-needed findings are not handled",
+          "Each applied fix references finding_id",
+          "Allowed file boundaries are respected",
+          "Focused validation is run or a blocker is reported",
+          "No staged files remain",
+          "Changed files and residual risks are reported"
+        ],
+        evidence: [
+          "changed-files",
+          "commands-run",
+          "validation-output",
+          "residual-risks",
+          "no-staged-files"
+        ],
+        maxFinalizationTurns: 1
+      }
+    }
+  ],
+  cwd: "<repo>",
+  context: "fresh",
+  chainDir: "<AFK_RUN_DIR>",
+  sessionDir: "<AFK_SESSION_DIR>",
+  clarify: false,
+  timeoutMs: 900000
+})
+```
