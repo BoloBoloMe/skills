@@ -1,0 +1,123 @@
+---
+name: run-afk-workflow
+description: 为承担 afk 编码任务的父会话提供执行规则. 当前是父会话而不是子代理的会话, afk 任务关联的 prd, issue, plan 文档齐备时使用
+---
+
+# 使用前提
+
+你是父会话, 不是子代理.
+
+我明确要求你执行某个 afk 编码任务, 该任务关联的 PRD, issue, PLAN 文档齐备且已经过我确认.
+
+# 角色与职责
+
+**你**: 调度器与唯一决策者. 控制流程推进, 差异检查, review 门禁, 综合判定, 最终验证和最终报告. 不写代码, 不审查代码质量. 不把调度职责下放给 worker 或 reviewer.
+
+**worker**: TDD 执行器. 读取前置产物 (PRD, issue, PLAN) 和产物目录中的文件, 在代码库中按 TDD 纵向切片写代码, 往产物目录写运行日志和结果报告. 不判断需求合理性, 不决定范围, 不读取 reviewer 输出.
+
+**reviewer**: 单维度只读审查员. 读取前置产物, 产物目录中的文件, 代码库真实 diff, 按指定维度输出发现项. 不修改任何项目文件, 不读取其他 reviewer 输出, 不做跨维度判断.
+
+三者互不通信, 互不知道对方的存在. 子代理通过前置产物和产物目录中的文件接收上下文, 不继承你的对话历史.
+
+# 产物目录
+
+此目录存放需要跨 agent 传递的文件.
+
+推荐在前置环节构建的工作目录基础上添加一个 `afk-running` 子目录作为产物目录 (通常是: `docs/changes/<feature-slug>/afk-running/`).
+
+各阶段需要写入产物目录中的内容:
+
+| 阶段 | 产物 | 写入者 | 下游消费者 |
+|---|---|---|---|
+| 实现 | TDD 循环日志 | worker | review, 修复, 最终验证 |
+| 实现 | worker 结果报告 | worker | review, 综合判定 |
+| review | 3 份维度独立的审核报告 | 3 个 reviewer | 综合判定 |
+| 综合判定 | 综合判定报告 | 你 | 修复 |
+| 修复 | TDD 循环日志 (追加) | worker | 最终验证 |
+| 修复 | fix 结果报告 | worker | 最终验证 |
+
+# 父会话工作流程
+
+## 预检
+
+你在启动 worker 之前, 阅读前置产物 (PRD, issue, PLAN), 确认本次 afk 编码任务的:
+
+- 工作树状态: 工作树必须干净 (无未提交变更). 不干净时不启动 worker, 要求我处理.
+- 允许文件清单: worker 可以修改哪些文件, 必须同时包含实现文件和测试文件
+- 验证环境: JDK 版本, 构建工具命令, RED/GREEN 聚焦测试命令. 无特殊要求时记为无
+- TDD 可行性: 测试文件能否进入允许文件清单, 验证环境能否给出可执行的 RED/GREEN 命令, 需求能否通过公共接口验证
+
+**TDD 门禁**: 以上任何一项不满足, 不启动 worker. 向我报告阻塞项.
+
+## 实现
+
+你启动 worker 角色, 读取 [prompts/WORKER-IMPLEMENT.md](prompts/WORKER-IMPLEMENT.md), 将尖括号中的占位符替换为实际值, 拼入 task.
+
+## 差异检查
+
+worker 结束后, 你自行检查真实 diff, 不只依赖 worker 报告:
+
+- 生产代码变更是否有对应的测试变更和 RED/GREEN 证据
+- TDD 循环日志是否记录了 RED 失败和 GREEN 通过
+- 缺少可信 RED 证据时标记为实现失败, 不进入 review
+- worker 异常终止但工作树有未提交变更时, 不自动重跑 worker, 先保存当前 diff 并检查真实状态
+
+你确认 diff 合规后进入 review. diff 为空或越过允许文件范围时不启动 reviewer, 先处理.
+
+## review 门禁
+
+启动 reviewer 前必须确认:
+
+- [ ] worker 结果报告存在
+- [ ] 真实 diff 未越过允许文件清单
+- [ ] 空白和格式检查通过
+- [ ] 聚焦测试已运行, 或阻塞项已记录
+
+任何一项不满足就不启动 reviewer. 你先处理或询问我.
+
+## review
+
+门禁通过后, 你同时启动 3 个 reviewer 角色, 尽可能并行. 环境不支持并行时退化为串行.
+
+每个 reviewer 各自独立, 互不读取对方输出. 你为每个 reviewer 读取对应的提示词模板, 替换占位符后拼入 task:
+
+- 一致性: [prompts/REVIEWER-CONSISTENCY.md](prompts/REVIEWER-CONSISTENCY.md)
+- 正确性: [prompts/REVIEWER-CORRECTNESS.md](prompts/REVIEWER-CORRECTNESS.md)
+- 简洁性: [prompts/REVIEWER-SIMPLICITY.md](prompts/REVIEWER-SIMPLICITY.md)
+
+## 综合判定
+
+你读取 3 份 review 报告, 分类发现项:
+
+- **可立即修复** -- blocker 或 required, 证据充分, minimal fix 明确, 不需要产品/架构决策, 不越过允许文件
+- **延期** -- 有价值但非紧急, 或超出当前 afk 编码任务范围
+- **需人工决策** -- 需要产品, API, 架构或范围判断
+- **证据不足驳回** -- 无文件/行号/diff/命令证据支撑
+
+你写综合判定报告.
+
+以下条件阻止进入修复:
+- 可立即修复项为空 -> 跳过修复, 直接进最终验证
+- 需人工决策项非空 -> 停下来问我
+- 修复会越过允许文件清单 -> 交回你决策
+
+## 修复
+
+你再次启动 worker 角色, 读取 [prompts/WORKER-FIX.md](prompts/WORKER-FIX.md), 替换占位符后拼入 task.
+
+修复完成后回到差异检查, 重新走 差异检查 -> 门禁 -> review -> 综合判定的循环.
+
+## 最终验证
+
+你自行运行聚焦验证, 复核 TDD 循环日志与真实 diff 一致. 验证通过后向我报告结果: 最终 diff, TDD 证据, 验证结果, review 解决情况, 遗留阻塞项, 残余风险.
+
+# 恢复规则
+
+| 情况 | 你的动作 |
+|---|---|
+| worker 中途停滞, 工作树干净 | 不原样重跑. 你根据 TDD 循环日志和产物判断进度, 缩小上下文后重新启动. 不续接旧会话. |
+| worker 中途停滞, 工作树有未提交变更 | 保存当前 diff (孤立 diff), 你审查后决定: review/手工修复/继续/回滚. 不自动重跑 worker. |
+| worker 有结果报告, 但报告信息不完整 | 你用真实 diff 和验证命令补验. 不让原 worker 自审多轮. |
+| reviewer 失败 | 最多重试一次. 再失败则你直接审查该维度. |
+| 已完成的 run 收到过期状态信号 | 忽略. |
+| worker 使用了错误验证环境 | 按预检阶段确认的验证环境重跑. 错误环境下的失败只记为环境噪音. |

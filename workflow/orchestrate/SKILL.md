@@ -50,5 +50,5 @@ setup-workspace,use-worktree,diagnose,zoom-out,improve-codebase-architecture,gri
 12. **要创建,分流,推进,审查单个 issue,或管理标签/状态/brief** -> `triage`
     issue tracker 状态机和 agent brief 由该 skill 处理.
 
-13. **路由仍不确定** -> `grill-me`
-    只用于缩小路由空间.一次问一个问题,提供推荐答案;确认后回到本决策树或者用户明示如何执行.
+13. **没有命中上述skills或者不确定** -> `grill-me`
+     询问我的意见
