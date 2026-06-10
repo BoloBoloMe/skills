@@ -12,9 +12,9 @@
 
 - 父会话是调度器, 子代理是单阶段执行器.
 - 每个阶段必须有磁盘 checkpoint.
-- writer/fix 单写入者, reviewer 并行只读.
+- worker/fix 单写入者, reviewer 并行只读.
 - worker 直接读取 PRD, PLAN 和 issue 的必要部分. 父会话不改写需求简报.
-- writer 默认 foreground 或短 async, reviewer 才 async.
+- worker 默认 foreground 或短 async, reviewer 才 async.
 - 父会话负责合并 reviewer findings 和决定 fix scope.
 
 ## 状态机
@@ -97,10 +97,10 @@ git diff --name-only
 ```yaml
 validation_profile:
   required_jdk: 8
-  jdk_home: "C:/Users/L9214/Program/JDK/temurin-1.8.0_402"
-  red_test_command: "powershell.exe -NoProfile -ExecutionPolicy Bypass -Command '<run focused test expected to fail>'"
-  green_test_command: "powershell.exe -NoProfile -ExecutionPolicy Bypass -Command '<run focused test expected to pass>'"
-  compile_command: "powershell.exe -NoProfile -ExecutionPolicy Bypass -Command '<set JAVA_HOME and run mvn>'"
+  jdk_home: "<jdk-home>"
+  red_test_command: "<run focused test expected to fail>"
+  green_test_command: "<run focused test expected to pass>"
+  compile_command: "<set JAVA_HOME and run mvn>"
   build_scripts_available: false
   quality_checks:
     - id: changed-files-only
@@ -113,7 +113,7 @@ validation_profile:
       command: "check changed hunks for non-English log messages"
 ```
 
-若仓库有专用 build skill 或 AGENTS 指定 JDK, Maven, wrapper, 环境变量, 父会话必须把可执行命令或 blocker 写入 `validation-profile.yaml` 和 `doc-pointers.md`. worker/fix 必须优先使用该 profile. 错误 JDK 或错误环境下的失败只记录为环境噪音.
+若仓库有专用 build skill 或 AGENTS 指定 JDK, Maven, wrapper, 环境变量, 父会话必须把对应平台的可执行命令或 blocker 写入 `validation-profile.yaml` 和 `doc-pointers.md`. worker/fix 必须优先使用该 profile. 错误 JDK 或错误环境下的失败只记录为环境噪音.
 
 TDD preflight 是写入阶段 gate:
 
@@ -121,20 +121,18 @@ TDD preflight 是写入阶段 gate:
 - `validation-profile.yaml` 必须给出可执行的 RED/GREEN 聚焦测试命令, 或写明 blocker.
 - 如果需求不可通过公共接口验证, 缺少测试接缝, 或测试文件不能进入 allowed files, 不启动 implement-only/fix-only.
 
-worker 推荐读取顺序: manifest, validation profile, project constraints, doc pointers, allowed files, issue 全文, PLAN 对应章节, PRD 必要章节, 必须源码和测试.
+worker 推荐读取顺序: manifest, validation-profile, project-constraints, doc-pointers, allowed-files, issue 全文, PLAN 对应章节, PRD 必要章节, 必须源码和测试.
 
 ### 2. Implement
 
 使用 [implement-only](AFK-RECIPES.md#implement-only).
 
-writer 约束:
+worker 约束:
 
 - 首次编辑前写 `worker-preflight.md` 和 `worker-plan.md`.
 - `worker-plan.md` 必须列出第一个行为测试, RED 命令, GREEN 命令, 允许修改的测试文件.
-- 修改生产代码前必须先新增或修改行为测试, 运行并记录 RED 失败. RED 必须是目标行为失败, 不能是编译错误, 错误 JDK, 错误 profile 或无关历史失败.
-- GREEN 只写足够通过当前 RED 的最小生产代码. 不批量先写所有测试再批量实现.
+- TDD 循环和 blocker 规则见 SKILL.md 不变量. task 字符串已包含 worker 所需的完整 TDD 指令.
 - 每个行为切片追加记录到 `tdd-cycles.md`: behavior, test file, RED command/output, GREEN command/output, refactor command/output.
-- 若无法得到可信 RED, 必须停止并报告 blocker, 不得先改生产代码.
 - 首次编辑前最多 25 次 read/search 工具调用.
 - 最多精读 12 个源码/测试文件.
 - 只改 `allowed-files.txt` 允许文件.
@@ -143,7 +141,7 @@ writer 约束:
 
 ### 3. Diff check
 
-worker 结束后运行:
+worker 完成后运行:
 
 ```bash
 git diff --stat
@@ -156,7 +154,7 @@ git diff --check
 
 - diff 中生产代码变更必须有测试变更或可执行检查证据对应.
 - `worker-result.md` 或 `tdd-cycles.md` 必须记录 RED 失败和 GREEN 通过命令.
-- 若生产代码已变更但缺少可信 RED 证据, 标记为 `WORKER_FAILED`, 不进入 review-only, 先询问用户是回滚, 手工补救, 还是重新设置 allowed files 后重跑.
+- 若生产代码已变更但缺少可信 RED 证据, 标记为 `WORKER_FAILED`, 不进入 review-only. 处理见 `失败恢复`.
 
 如项目约束禁止新增非英文日志或类似局部风格规则, 只检查 changed hunks 或 changed files, 不要求当前任务修复历史问题.
 
@@ -248,20 +246,20 @@ fix_worker_instructions: []
 - completed result 优先于完成后到达的同 run `needs_attention`. 先按 stale control event 记录到 `runtime-notes.md`.
 - `subagent({ action:"status", id })` 失败不等于 run 未完成. foreground completed run 可能只能通过 grouped output, session 或 artifact 判断.
 - `acceptance-report` parse failure 不等于代码失败. 若 artifact 存在或工作树 dirty, 先补验 diff 和验证命令.
-- 工作树 dirty 时禁止自动重跑 writer. 先保存 diff, 再由父会话决定 review, 手工修复, 继续或回滚.
+- 工作树 dirty 时禁止自动重跑 worker. 先保存 diff, 再由父会话决定 review, 手工修复, 继续或回滚.
 - worker validation 若使用错误 JDK 或错误 profile 失败, 按 `validation-profile.yaml` 或项目 build skill 重跑. 错误环境失败只记为环境噪音.
 
 ## 失败恢复
 
 | 情况 | 处理 |
 |---|---|
-| runner stale, 工作树干净, 无 checkpoint | 不原样重跑. 缩小文档读取范围, 确认 `reads:false` 和 `progress:false`, 改 foreground 重跑 worker. |
-| runner stale, 工作树干净, 有 checkpoint | 从 checkpoint 判断阶段. 新 worker 使用 fresh context, 读取 document pointers 和 checkpoint. 不 resume 旧 session. |
-| runner stale, 工作树 dirty, 无 result | 保存 orphan diff, 由父会话审查后决定 review, 手工修复, 继续或回滚. 禁止自动重跑 writer. |
-| worker/fix 返回 failed, 原因为 acceptance-report parse failure, 且工作树 dirty 或 result artifact 存在 | 不自动重跑 writer. 父会话读取 result artifact, 检查真实 diff, 运行验证. 若 diff 合规且验证通过, 可视为 implementation/fix done, 并在 final report 记录 runtime acceptance 格式失败. |
+| runner stale, 工作树干净, 无 checkpoint | 不原样重跑. 缩小文档读取范围, 确认 `reads:false` 和 `progress:false`, 改 foreground 重跑. |
+| runner stale, 工作树干净, 有 checkpoint | 从 checkpoint 判断阶段. 新 run 使用 fresh context, 读取 doc-pointers 和 checkpoint. 不 resume 旧 session. |
+| runner stale, 工作树 dirty, 无 result | 保存 orphan diff, 由父会话审查后决定 review, 手工修复, 继续或回滚. 禁止自动重跑 worker. |
+| worker/fix 返回 failed, 原因为 acceptance-report parse failure, 且工作树 dirty 或 result artifact 存在 | 不自动重跑 worker. 父会话读取 result artifact, 检查真实 diff, 运行验证. 若 diff 合规且验证通过, 可视为 implementation/fix done, 并在 final report 记录 runtime acceptance 格式失败. |
 | worker result 存在, acceptance 不完整 | 父会话用真实 diff 和命令补验. 不让原 worker 自审多轮. 必要时启动只读 reviewer. |
 | completed 后收到同 run `needs_attention` | 查 artifact, grouped output, session log. 不 interrupt. 记录为 stale control event. |
-| worker validation 使用错误 JDK 或错误 profile 失败 | 按 `validation-profile.yaml` 或项目 build skill 重跑. 错误环境失败只记为环境噪音, 不作为代码失败证据. |
+| worker 验证使用错误 JDK 或错误 profile 失败 | 按 `validation-profile.yaml` 或项目 build skill 重跑. 错误环境失败只记为环境噪音, 不作为代码失败证据. |
 
 保存 orphan diff:
 

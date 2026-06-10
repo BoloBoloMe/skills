@@ -5,14 +5,11 @@
 ## 公共约束
 
 - 本仓库不维护 workflow chain JSON. 所有模板通过 direct `subagent({...})` 调用.
-- writer/fix 使用 builtin `worker`. review 使用 builtin `reviewer`. scout 使用 builtin `scout`.
+- worker/fix 使用 builtin `worker`. review 使用 builtin `reviewer`. scout 使用 builtin `scout`.
 - 子代理 task 使用中文. schema key, 命令, JSON key, path placeholder 保持英文.
 - 每个子代理 step 必须设置 `reads:false`, `progress:false`, `outputMode:"file-only"`.
-- AFK 写入阶段必须设置 `chainDir:"<AFK_RUN_DIR>"`, `sessionDir:"<AFK_SESSION_DIR>"`, `context:"fresh"`.
-- worker/fix 是硬 TDD 阶段. 修改生产代码前必须先新增或修改一个行为测试, 运行并记录 RED 失败, 再写最小实现到 GREEN, 必要时重构并复跑验证.
-- worker/fix 不能静默绕过 TDD. 若缺少测试接缝, 测试文件不在 `allowed-files.txt`, 需求不可验证, 或验证环境不可满足, 必须停止并报告 blocker, 不得先改生产代码.
-- worker/fix 运行验证前必须读取 `manifest.yaml` 的 `validation_profile`. 若指定 JDK, Maven 或命令, 必须使用该 profile. 若环境不可满足, 报告 blocker, 不把错误环境下的失败当作代码失败证据.
-- worker/fix 最终回复必须包含可解析的 `acceptance-report` fenced block, 且包含 TDD 循环证据. 不要只写普通 Markdown artifact.
+- AFK 写入阶段必须设置 `chainDir:"<AFK_RUN_DIR>"`, `sessionDir:"<AFK_SESSION_DIR>"`, `context:"fresh"`. `<AFK_RUN_DIR>` 须与 recipe 外层 `chainDir` 一致.
+- TDD 循环, blocker, 验证 profile 和 `acceptance-report` 约束见 SKILL.md 不变量. 下方 task 字符串已包含 worker 所需的完整指令.
 - 不写仓库根 `progress.md`. 不 stage 文件.
 
 ## context-scout
@@ -35,8 +32,8 @@ subagent({
   ],
   cwd: "<repo>",
   context: "fresh",
-  chainDir: "<RUN_DIR>",
-  sessionDir: "<SESSION_DIR>",
+  chainDir: "<AFK_RUN_DIR>",
+  sessionDir: "<AFK_SESSION_DIR>",
   clarify: false,
   timeoutMs: 300000
 })
