@@ -56,6 +56,7 @@ project-constraints.md
 runtime-notes.md
 worker-preflight.md
 worker-plan.md
+tdd-cycles.md
 worker-result.md
 diff-summary.md
 review-correctness.md
@@ -97,6 +98,8 @@ git diff --name-only
 validation_profile:
   required_jdk: 8
   jdk_home: "C:/Users/L9214/Program/JDK/temurin-1.8.0_402"
+  red_test_command: "powershell.exe -NoProfile -ExecutionPolicy Bypass -Command '<run focused test expected to fail>'"
+  green_test_command: "powershell.exe -NoProfile -ExecutionPolicy Bypass -Command '<run focused test expected to pass>'"
   compile_command: "powershell.exe -NoProfile -ExecutionPolicy Bypass -Command '<set JAVA_HOME and run mvn>'"
   build_scripts_available: false
   quality_checks:
@@ -112,6 +115,12 @@ validation_profile:
 
 若仓库有专用 build skill 或 AGENTS 指定 JDK, Maven, wrapper, 环境变量, 父会话必须把可执行命令或 blocker 写入 `validation-profile.yaml` 和 `doc-pointers.md`. worker/fix 必须优先使用该 profile. 错误 JDK 或错误环境下的失败只记录为环境噪音.
 
+TDD preflight 是写入阶段 gate:
+
+- `allowed-files.txt` 必须包含实现文件和对应测试文件. 若测试文件未知, 写入允许的测试目录或新增测试文件路径.
+- `validation-profile.yaml` 必须给出可执行的 RED/GREEN 聚焦测试命令, 或写明 blocker.
+- 如果需求不可通过公共接口验证, 缺少测试接缝, 或测试文件不能进入 allowed files, 不启动 implement-only/fix-only.
+
 worker 推荐读取顺序: manifest, validation profile, project constraints, doc pointers, allowed files, issue 全文, PLAN 对应章节, PRD 必要章节, 必须源码和测试.
 
 ### 2. Implement
@@ -121,6 +130,11 @@ worker 推荐读取顺序: manifest, validation profile, project constraints, do
 writer 约束:
 
 - 首次编辑前写 `worker-preflight.md` 和 `worker-plan.md`.
+- `worker-plan.md` 必须列出第一个行为测试, RED 命令, GREEN 命令, 允许修改的测试文件.
+- 修改生产代码前必须先新增或修改行为测试, 运行并记录 RED 失败. RED 必须是目标行为失败, 不能是编译错误, 错误 JDK, 错误 profile 或无关历史失败.
+- GREEN 只写足够通过当前 RED 的最小生产代码. 不批量先写所有测试再批量实现.
+- 每个行为切片追加记录到 `tdd-cycles.md`: behavior, test file, RED command/output, GREEN command/output, refactor command/output.
+- 若无法得到可信 RED, 必须停止并报告 blocker, 不得先改生产代码.
 - 首次编辑前最多 25 次 read/search 工具调用.
 - 最多精读 12 个源码/测试文件.
 - 只改 `allowed-files.txt` 允许文件.
@@ -137,6 +151,12 @@ git diff --name-only
 git status --short
 git diff --check
 ```
+
+父会话还必须检查 TDD 证据:
+
+- diff 中生产代码变更必须有测试变更或可执行检查证据对应.
+- `worker-result.md` 或 `tdd-cycles.md` 必须记录 RED 失败和 GREEN 通过命令.
+- 若生产代码已变更但缺少可信 RED 证据, 标记为 `WORKER_FAILED`, 不进入 review-only, 先询问用户是回滚, 手工补救, 还是重新设置 allowed files 后重跑.
 
 如项目约束禁止新增非英文日志或类似局部风格规则, 只检查 changed hunks 或 changed files, 不要求当前任务修复历史问题.
 
@@ -159,7 +179,7 @@ git diff --check
 使用 [review-only](AFK-RECIPES.md#review-only). 三个 reviewer 并行审查:
 
 - correctness: 正确性和回归风险.
-- tests: 测试和验证质量.
+- tests: 测试和验证质量, 包括 TDD RED/GREEN 证据是否可信.
 - simplicity: 简洁性和范围控制.
 
 只接受有文件, 行号, diff 片段或命令证据的 findings.
@@ -194,16 +214,17 @@ fix_worker_instructions: []
 
 ### 6. Fix
 
-使用 [fix-only](AFK-RECIPES.md#fix-only). fix worker 只处理 `accepted_now`, 不处理 `deferred`, `needs_human_decision`, `rejected_as_not_evidenced`. 每个修复必须引用 `finding_id`.
+使用 [fix-only](AFK-RECIPES.md#fix-only). fix worker 只处理 `accepted_now`, 不处理 `deferred`, `needs_human_decision`, `rejected_as_not_evidenced`. 每个修复必须引用 `finding_id`. 每个会改生产代码的修复必须先用行为测试或可执行检查复现 finding 的 RED 失败, 再做最小 GREEN 修复. 无法复现时报告 blocker, 不得先改生产代码.
 
 ### 7. Final validation
 
-父会话运行聚焦验证, 写 `final-report.md`:
+父会话运行聚焦验证, 并复核 `tdd-cycles` 与真实 diff 一致, 写 `final-report.md`:
 
 ```md
 # Final report
 
 ## Final diff
+## TDD evidence
 ## Validation
 ## Review resolution
 ## Remaining blockers
