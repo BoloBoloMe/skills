@@ -49,11 +49,20 @@ description: 为承担 afk 编码任务的父会话提供执行规则. 由 orche
 
 **TDD 门禁**: 以上任何一项不满足, 不启动 worker. 向我报告阻塞项.
 
-## 实现
+
+<issues-processing-loop>
+
+## 挑选 issue
+
+挑选出下一个要被执行的 issue, 严格按照以下过程执行:
+
+<single-issue-processing-flow>
+
+### 1. 实现
 
 你启动 worker 角色, 读取 [prompts/WORKER-IMPLEMENT.md](prompts/WORKER-IMPLEMENT.md), 将尖括号中的占位符替换为实际值, 拼入 task.
 
-## 差异检查
+### 2. 差异检查
 
 worker 结束后, 你自行检查真实 diff, 不只依赖 worker 报告:
 
@@ -64,7 +73,7 @@ worker 结束后, 你自行检查真实 diff, 不只依赖 worker 报告:
 
 你确认 diff 合规后进入 review. diff 为空或越过允许文件范围时不启动 reviewer, 先处理.
 
-## review 门禁
+### 3. review 门禁
 
 启动 reviewer 前必须确认:
 
@@ -75,7 +84,7 @@ worker 结束后, 你自行检查真实 diff, 不只依赖 worker 报告:
 
 任何一项不满足就不启动 reviewer. 你先处理或询问我.
 
-## review
+### 4. review
 
 门禁通过后, 你同时启动 3 个 reviewer 角色, 尽可能并行. 环境不支持并行时退化为串行.
 
@@ -85,7 +94,7 @@ worker 结束后, 你自行检查真实 diff, 不只依赖 worker 报告:
 - 正确性: [prompts/REVIEWER-CORRECTNESS.md](prompts/REVIEWER-CORRECTNESS.md)
 - 简洁性: [prompts/REVIEWER-SIMPLICITY.md](prompts/REVIEWER-SIMPLICITY.md)
 
-## 综合判定
+### 5. 综合判定
 
 你读取 3 份 review 报告, 分类发现项:
 
@@ -101,15 +110,27 @@ worker 结束后, 你自行检查真实 diff, 不只依赖 worker 报告:
 - 需人工决策项非空 -> 停下来问我
 - 修复会越过允许文件清单 -> 交回你决策
 
-## 修复
+### 6. 修复
 
 你再次启动 worker 角色, 读取 [prompts/WORKER-FIX.md](prompts/WORKER-FIX.md), 替换占位符后拼入 task.
 
 修复完成后回到差异检查, 重新走 差异检查 -> 门禁 -> review -> 综合判定的循环.
 
-## 最终验证
+### 7. 最终验证
 
 你自行运行聚焦验证, 复核 TDD 循环日志与真实 diff 一致. 验证通过后向我报告结果: 最终 diff, TDD 证据, 验证结果, review 解决情况, 遗留阻塞项, 残余风险.
+
+### 8. 判断是否继续
+
+思考是否应该继续执行下一个 issue.
+
+如果是, 那么回到 `挑选 issue`.
+
+如果不是, 那么停下来询问我下一步行动的指示.
+
+</single-issue-processing-flow>
+
+</issues-processing-loop>
 
 # 恢复规则
 
