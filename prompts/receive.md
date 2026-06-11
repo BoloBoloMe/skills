@@ -1,5 +1,5 @@
 ---
-description: 计划模式
+description: 接收 `交接文档`
 argument-hint: <交接文档>
 ---
 
