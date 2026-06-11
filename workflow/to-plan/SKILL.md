@@ -1,6 +1,6 @@
 ---
 name: to-plan
-description: 为 to-issues 产出的所有 issues 生成合并源码级执行计划, 包含代码修改边界/分层变更意图/文件变更顺序/测试策略/风险点. 当用户需要在 AFK agent 执行前预览源码级执行计划时使用; 通常由 orchestrate 在 to-issues 完成后主动询问, 也可显式点名.
+description: 为 to-issues 产出的所有 issues 生成合并源码级执行计划, 包含代码修改边界/分层变更意图/文件变更顺序/测试策略/风险点.由 orchestrate 决定何时使用.
 ---
 
 # To Plan

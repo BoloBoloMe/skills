@@ -1,6 +1,6 @@
 ---
 name: improve-codebase-architecture
-description: 对代码库做架构评审,寻找深化模块,重构候选和可测试性/AI 可导航性改进机会,并结合 docs/language/UBIQUITOUS_LANGUAGE.md 与 docs/adr/ 中的约束.通常由 orchestrate 路由;仅当用户明确点名 improve-codebase-architecture 或已处于架构评审流程时直接使用.要架构改进/重构候选/深化接缝走本 skill;只想理解代码地图用 zoom-out.
+description: 对代码库做架构评审,寻找深化模块,重构候选和可测试性/AI 可导航性改进机会,并结合 docs/language/UBIQUITOUS_LANGUAGE.md 与 docs/adr/ 中的约束.由 orchestrate 决定何时使用.
 ---
 
 # 改进代码库架构

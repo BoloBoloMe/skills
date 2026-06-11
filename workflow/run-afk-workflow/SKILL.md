@@ -1,6 +1,6 @@
 ---
 name: run-afk-workflow
-description: 为承担 afk 编码任务的父会话提供执行规则. 当前是父会话而不是子代理的会话, afk 任务关联的 prd, issue, plan 文档齐备时使用
+description: 为承担 afk 编码任务的父会话提供执行规则. 由 orchestrate 决定何时使用.
 ---
 
 # 使用前提

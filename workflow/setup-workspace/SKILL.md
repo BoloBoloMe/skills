@@ -1,6 +1,6 @@
 ---
 name: setup-workspace
-description: 在仓库根目录的 AGENTS.md 和 `docs/agents/` 中设置工程 workflow 的前置约定:本地 Markdown issue tracker,分流(triage)标签词汇,领域文档布局.通常由 orchestrate 作为前置步骤路由;仅当用户明确点名 setup-workspace 或已处于工作区设置流程时直接使用.将要使用 to-issues/to-prd/triage/diagnose/tdd/improve-codebase-architecture/zoom-out 且仓库缺少对应约定时运行;它不是用户目标任务本身.
+description: 在仓库根目录的 AGENTS.md 和 `docs/agents/` 中设置工程 workflow 的前置约定:本地 Markdown issue tracker,分流(triage)标签词汇,领域文档布局.由 orchestrate 决定何时使用.
 disable-model-invocation: true
 ---
 
