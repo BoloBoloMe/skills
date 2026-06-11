@@ -22,7 +22,7 @@
       "worker": {
         "model": "ai-work-qwen/qwen3.7-max",
         "thinking": "high",
-        "defaultContext": "fork",
+        "defaultContext": "fresh",
         "fallbackModels": [
           "ai-work-moonshot/kimi-k2.6"
         ]
