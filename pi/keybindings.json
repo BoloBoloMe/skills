@@ -1,0 +1,17 @@
+{
+  "tui.input.newLine": [
+    "ctrl+j",
+    "shift+j",
+    "alt+j"
+  ],
+  "app.thinking.cycle": [
+    "alt+f"
+  ],
+  "app.model.cycleForward": [
+    "alt+r"
+  ],
+  "tui.editor.cursorWordRight": [
+    "alt+right",
+    "ctrl+right"
+  ]
+}
