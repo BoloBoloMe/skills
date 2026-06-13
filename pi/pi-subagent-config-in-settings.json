@@ -6,55 +6,48 @@
         "thinking": "xhigh",
         "defaultContext": "fork",
         "fallbackModels": [
-          "ai-work-qwen/qwen3.7-max",
-          "ai-work-moonshot/kimi-k2.6"
+          "ai-work-qwen/qwen3.7-max"
         ]
       },
       "planner": {
-        "model": "ai-work-openai/gpt-5.5",
-        "thinking": "high",
+        "model": "ai-work-qwen/qwen3.7-max",
+        "thinking": "xhigh",
         "defaultContext": "fork",
-        "fallbackModels": [
-          "ai-work-qwen/qwen3.7-max",
-          "ai-work-moonshot/kimi-k2.6"
-        ]
+        "fallbackModels": []
       },
       "worker": {
         "model": "ai-work-qwen/qwen3.7-max",
-        "thinking": "high",
+        "thinking": "xhigh",
         "defaultContext": "fresh",
-        "fallbackModels": [
-          "ai-work-moonshot/kimi-k2.6"
-        ]
+        "fallbackModels": []
       },
       "reviewer": {
         "model": "ai-work-openai/gpt-5.5",
         "thinking": "high",
         "defaultContext": "fresh",
         "fallbackModels": [
-          "ai-work-qwen/qwen3.7-max",
-          "ai-work-moonshot/kimi-k2.6"
+          "ai-work-qwen/qwen3.7-max"
         ]
       },
       "context-builder": {
         "model": "ai-work-deepseek/deepseek-v4-pro",
-        "thinking": "high",
+        "thinking": "xhigh",
         "defaultContext": "fresh",
         "fallbackModels": [
           "ai-work-deepseek/deepseek-v4-flash"
         ]
       },
       "scout": {
-        "model": "ai-work-deepseek/deepseek-v4-pro",
-        "thinking": "high",
+        "model": "ai-work-deepseek/deepseek-v4-flash",
+        "thinking": "xhigh",
         "defaultContext": "fresh",
         "fallbackModels": [
-          "ai-work-deepseek/deepseek-v4-flash"
+          "ai-work-deepseek/deepseek-v4-pro"
         ]
       },
       "researcher": {
-        "model": "ai-work-moonshot/kimi-k2.6",
-        "thinking": "high",
+        "model": "ai-work-qwen/qwen3.7-max",
+        "thinking": "xhigh",
         "defaultContext": "fresh",
         "fallbackModels": [
           "ai-work-deepseek/deepseek-v4-pro"

@@ -1,0 +1,221 @@
+{
+  "providers": {
+    "ai-work-openai": {
+      "baseUrl": "https://ai-work.changzhi.top/v1",
+      "api": "openai-responses",
+      "apiKey": "$CHANG_ZHI_AI_WORK",
+      "authHeader": true,
+      "models": [
+        {
+          "id": "gpt-5.5",
+          "reasoning": true,
+          "thinkingLevelMap": {
+            "off": "none",
+            "minimal": "minimal",
+            "low": "low",
+            "medium": "medium",
+            "high": "high",
+            "xhigh": "xhigh"
+          },
+          "input": [
+            "text",
+            "image"
+          ],
+          "contextWindow": 272000,
+          "maxTokens": 128000,
+          "cost": {
+            "input": 5,
+            "output": 30,
+            "cacheRead": 0.5,
+            "cacheWrite": 0
+          }
+        }
+      ]
+    },
+    "ai-work-moonshot": {
+      "baseUrl": "https://ai-work.changzhi.top/v1",
+      "api": "openai-completions",
+      "apiKey": "$CHANG_ZHI_AI_WORK",
+      "authHeader": true,
+      "compat": {
+        "supportsStore": false,
+        "supportsDeveloperRole": false,
+        "supportsReasoningEffort": false,
+        "maxTokensField": "max_tokens",
+        "supportsStrictMode": false
+      },
+      "models": [
+        {
+          "id": "kimi-k2.6",
+          "reasoning": true,
+          "thinkingLevelMap": {
+            "off": null,
+            "minimal": null,
+            "low": null,
+            "medium": null,
+            "high": null,
+            "xhigh": "enabled"
+          },
+          "input": [
+            "text",
+            "image"
+          ],
+          "contextWindow": 262144,
+          "maxTokens": 262144,
+          "cost": {
+            "input": 0.95,
+            "output": 4,
+            "cacheRead": 0.16,
+            "cacheWrite": 0
+          }
+        }
+      ]
+    },
+    "ai-work-deepseek": {
+      "baseUrl": "https://ai-work.changzhi.top/v1",
+      "api": "openai-completions",
+      "apiKey": "$CHANG_ZHI_AI_WORK",
+      "authHeader": true,
+      "compat": {
+        "supportsStore": false,
+        "supportsDeveloperRole": false,
+        "supportsReasoningEffort": true,
+        "supportsUsageInStreaming": true,
+        "maxTokensField": "max_tokens",
+        "supportsStrictMode": false,
+        "thinkingFormat": "deepseek",
+        "requiresReasoningContentOnAssistantMessages": true
+      },
+      "models": [
+        {
+          "id": "deepseek-v4-pro",
+          "name": "DeepSeek V4 Pro",
+          "reasoning": true,
+          "thinkingLevelMap": {
+            "off": "disabled",
+            "minimal": "low",
+            "low": "medium",
+            "medium": "high",
+            "high": "xhigh",
+            "xhigh": "max"
+          },
+          "input": [
+            "text"
+          ],
+          "contextWindow": 1000000,
+          "maxTokens": 384000,
+          "cost": {
+            "input": 0.435,
+            "output": 0.87,
+            "cacheRead": 0.003625,
+            "cacheWrite": 0
+          }
+        },
+        {
+          "id": "deepseek-v4-flash",
+          "name": "DeepSeek V4 Flash",
+          "reasoning": true,
+          "thinkingLevelMap": {
+            "off": "disabled",
+            "minimal": "low",
+            "low": "medium",
+            "medium": "high",
+            "high": "xhigh",
+            "xhigh": "max"
+          },
+          "input": [
+            "text"
+          ],
+          "contextWindow": 1000000,
+          "maxTokens": 384000,
+          "cost": {
+            "input": 0.14,
+            "output": 0.28,
+            "cacheRead": 0.028,
+            "cacheWrite": 0
+          }
+        }
+      ]
+    },
+    "ai-work-qwen": {
+      "baseUrl": "https://ai-work.changzhi.top/v1",
+      "api": "openai-completions",
+      "apiKey": "$CHANG_ZHI_AI_WORK",
+      "authHeader": true,
+      "compat": {
+        "supportsStore": false,
+        "supportsDeveloperRole": false,
+        "supportsReasoningEffort": false,
+        "maxTokensField": "max_tokens",
+        "supportsStrictMode": false,
+        "thinkingFormat": "qwen"
+      },
+      "models": [
+        {
+          "id": "qwen3.7-max",
+          "name": "Qwen3.7 Max",
+          "reasoning": true,
+          "thinkingLevelMap": {
+            "off": "false",
+            "minimal": null,
+            "low": null,
+            "medium": null,
+            "high": "true",
+            "xhigh": "true"
+          },
+          "input": [
+            "text"
+          ],
+          "contextWindow": 1000000,
+          "maxTokens": 65536,
+          "cost": {
+            "input": 1.25,
+            "output": 3.75,
+            "cacheRead": 0.125,
+            "cacheWrite": 1.5625
+          }
+        }
+      ]
+    },
+    "ai-work-zai": {
+      "baseUrl": "https://ai-work.changzhi.top/v1",
+      "api": "openai-completions",
+      "apiKey": "$CHANG_ZHI_AI_WORK",
+      "authHeader": true,
+      "compat": {
+        "supportsStore": false,
+        "supportsDeveloperRole": false,
+        "supportsReasoningEffort": false,
+        "maxTokensField": "max_tokens",
+        "supportsStrictMode": false,
+        "thinkingFormat": "zai"
+      },
+      "models": [
+        {
+          "id": "glm-5.1",
+          "name": "GLM 5.1",
+          "reasoning": true,
+          "thinkingLevelMap": {
+            "off": "disabled",
+            "minimal": null,
+            "low": null,
+            "medium": null,
+            "high": "enabled",
+            "xhigh": "enabled"
+          },
+          "input": [
+            "text"
+          ],
+          "contextWindow": 200000,
+          "maxTokens": 65536,
+          "cost": {
+            "input": 1.4,
+            "output": 4.4,
+            "cacheRead": 0.26,
+            "cacheWrite": 0
+          }
+        }
+      ]
+    }
+  }
+}
