@@ -13,5 +13,8 @@
   "tui.editor.cursorWordRight": [
     "alt+right",
     "ctrl+right"
+  ],
+  "app.editor.external": [
+    "alt+g"
   ]
 }
