@@ -36,9 +36,9 @@ description: 以"总-分-总"结构带领用户逐段交互式代码评审, 产�
 
 ### 文件引用规范
 
-格式: `[文件名:行号](相对路径:行号)`, 行号用 `:` 分隔 (禁用 `#L`). 路径以 cwd 为基准, 不能含空格或特殊字符. 不用 inline code (`path`) 代替链接.
+格式: `[文件名:开始行号~结束行号](相对路径:开始行号~结束行号)`, 行号用 `:` 分隔 (禁用 `#L`). 路径以 cwd 为基准, 不能含空格或特殊字符. 不用 inline code (`path`) 代替链接.
 
-示例: `[Foo.java:42](src/main/java/com/example/Foo.java:42)`
+示例: `[Foo.java:32~51](src/main/java/com/example/Foo.java:32~51)`
 
 ### 交互循环
 
