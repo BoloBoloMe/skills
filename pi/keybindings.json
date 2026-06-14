@@ -16,5 +16,9 @@
   ],
   "app.editor.external": [
     "alt+g"
+  ],
+  "app.tools.expand": [
+    "ctrl+o",
+    "alt+o"
   ]
 }
