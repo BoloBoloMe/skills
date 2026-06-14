@@ -55,6 +55,110 @@ class TestBrowseResources(unittest.TestCase):
         self.assertIsInstance(data.get('resources'), list)
 
 
+class TestContentExtractionContract(unittest.TestCase):
+    def setUp(self):
+        sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'scripts'))
+        import browse_web
+        self.browse_web = browse_web
+        self.ContentExtractor = browse_web.ContentExtractor
+        self._orig_trafilatura = browse_web.trafilatura
+        self._orig_document = browse_web.Document
+        self._orig_markdownify = browse_web.markdownify_md
+        browse_web.trafilatura = None
+        browse_web.Document = None
+        browse_web.markdownify_md = None
+
+    def tearDown(self):
+        self.browse_web.trafilatura = self._orig_trafilatura
+        self.browse_web.Document = self._orig_document
+        self.browse_web.markdownify_md = self._orig_markdownify
+
+    def test_heuristic_extracts_article_before_template_noise(self):
+        article_text = ' '.join(['正文段落提供足够长的可读内容, 用来验证正文抽取会避开导航和页脚噪声.'] * 12)
+        html = f'''<html><head><title>文章标题</title><meta name="author" content="作者A"></head><body>
+<nav><a href="/home">首页</a><a href="/about">关于</a></nav>
+<article><h1>文章标题</h1><p>{article_text}</p><img src="pic.png" alt="配图"></article>
+<footer>版权和友情链接</footer>
+</body></html>'''
+        result = self.ContentExtractor().extract(html, url='https://example.com/post')
+        self.assertTrue(result['ok'])
+        self.assertEqual(result['method'], 'heuristic')
+        self.assertIn('正文段落', result['markdown'])
+        self.assertNotIn('首页', result['markdown'])
+        self.assertEqual(result['title'], '文章标题')
+        self.assertEqual(result['author'], '作者A')
+        self.assertGreaterEqual(len(result['resources']), 1)
+
+    def test_full_mode_uses_full_html_converter(self):
+        html = '<html><head><title>T</title></head><body><nav>Nav</nav><main><p>Main content long enough ' + ('x ' * 80) + '</p></main></body></html>'
+        result = self.ContentExtractor().extract(html, url='https://example.com', mode='full')
+        self.assertEqual(result['method'], 'full_html')
+        self.assertTrue(result['ok'])
+        self.assertIn('Main content', result['markdown'])
+
+    def test_raw_mode_returns_original_html(self):
+        html = '<html><body><div id="app"></div><script src="app.js"></script></body></html>'
+        result = self.ContentExtractor().extract(html, mode='raw')
+        self.assertEqual(result['method'], 'raw_html')
+        self.assertEqual(result['markdown'], html)
+
+    def test_no_fallback_marks_spa_as_low_confidence(self):
+        html = '<html><body><div id="app"></div><script src="app.js"></script></body></html>'
+        result = self.ContentExtractor().extract(html, mode='extract', no_fallback=True)
+        self.assertFalse(result['ok'])
+        self.assertEqual(result['method'], 'none')
+        self.assertEqual(result['confidence'], 'low')
+        self.assertTrue(any('JavaScript' in w for w in result['warnings']))
+
+    def test_browse_payload_contains_extraction_contract(self):
+        html = '<html><head><title>T</title></head><body><article><p>' + ('正文内容 ' * 80) + '</p></article></body></html>'
+
+        class FakeFetch:
+            def fetch(self, url):
+                return {
+                    'status': 200,
+                    'content': html,
+                    'raw': html.encode('utf-8'),
+                    'content_type': 'text/html; charset=utf-8',
+                    'url': url,
+                    'headers_dict': {},
+                    'warnings': [],
+                }
+
+        bw = self.browse_web.BrowseWeb()
+        bw._fetch = FakeFetch()
+        data = bw.browse('https://example.com/post', mode='extract')
+        self.assertIn('extraction', data)
+        self.assertIn('metadata', data)
+        self.assertEqual(data['extraction']['mode'], 'extract')
+        self.assertIn(data['extraction']['confidence'], ('high', 'medium', 'low'))
+        self.assertTrue(data['markdown'].strip())
+
+    def test_trafilatura_metadata_does_not_duplicate_full_text(self):
+        html = '<html><body><article><p>' + ('正文内容 ' * 120) + '</p></article></body></html>'
+
+        class FakeTrafilatura:
+            def extract(self, html, **kwargs):
+                if kwargs.get('output_format') == 'json':
+                    return json.dumps({
+                        'title': 'T',
+                        'text': 'x' * 5000,
+                        'raw_text': 'y' * 5000,
+                        'description': 'desc',
+                        'source': 'https://example.com/post',
+                    })
+                return '正文内容 ' * 120
+
+        self.browse_web.trafilatura = FakeTrafilatura()
+        result = self.ContentExtractor().extract(html, url='https://example.com/post')
+        self.assertTrue(result['ok'])
+        self.assertEqual(result['method'], 'trafilatura')
+        self.assertNotIn('text', result['metadata'])
+        self.assertNotIn('raw_text', result['metadata'])
+        self.assertEqual(result['metadata']['description'], 'desc')
+        self.assertEqual(result['metadata']['source'], 'https://example.com/post')
+
+
 class TestBrowseGzip(unittest.TestCase):
     def test_browse_gzip(self):
         r = run_cli('browse', 'https://example.com')
@@ -75,6 +179,34 @@ class TestSearch(unittest.TestCase):
             self.assertIn('title', item)
             self.assertIn('url', item)
             self.assertIn('snippet', item)
+            self.assertTrue(item['url'].startswith(('http://', 'https://')))
+            self.assertNotIn('duckduckgo.com/l/', item['url'])
+
+    def test_ddg_redirect_url_is_decoded(self):
+        sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'scripts'))
+        from browse_web import _normalize_search_url
+        url = '//duckduckgo.com/l/?uddg=https%3A%2F%2Fdocs.python.org%2F3%2F&rut=abc'
+        self.assertEqual(_normalize_search_url(url), 'https://docs.python.org/3/')
+
+    def test_search_clean_results_filters_ads_and_decodes_targets(self):
+        sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'scripts'))
+        from browse_web import SearchEngine
+        results = [
+            {
+                'title': 'Ad',
+                'url': '//duckduckgo.com/l/?uddg=https%3A%2F%2Fduckduckgo.com%2Fy.js%3Fad_domain%3Dudemy.com',
+                'snippet': 'ad snippet',
+            },
+            {
+                'title': 'Docs',
+                'url': '//duckduckgo.com/l/?uddg=https%3A%2F%2Fdocs.python.org%2F&rut=abc',
+                'snippet': 'docs snippet',
+            },
+        ]
+        cleaned = SearchEngine()._clean_results(results, 'ddg', 5)
+        self.assertEqual(len(cleaned), 1)
+        self.assertEqual(cleaned[0]['url'], 'https://docs.python.org/')
+        self.assertEqual(cleaned[0]['source'], 'ddg')
 
 
 class TestDownload(unittest.TestCase):

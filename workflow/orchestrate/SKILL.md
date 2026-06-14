@@ -1,16 +1,19 @@
 ---
 name: orchestrate
-description: 为软件工程类任务选择合适的 workflow skills 提供决策树, 当我在下达软件工程类任务尤其是[管理git-worktree,排查bug,代码库代码分析,代码库架构优化,新需求/新功能,原型设计,编写代码,编写PRD/ISSUE/PLAN]这些典型任务必须第一时间使用.
+description: 为软件工程类任务提供 workflow skill 选择与子代理分派的决策树. 当我在下达软件工程类任务, 尤其是管理 git-worktree, 排查 bug, 代码分析, 架构优化, 新需求/新功能, 原型设计, 编写代码, 编写 PRD/ISSUE/PLAN 这些典型任务时必须第一时间使用.
 ---
 
 # Orchestrate
 
-本 skill 只负责为软件工程类任务选择合适的 workflow skills 提供决策树, 本文档所说的 workflow skills 明确指以下 skills:
+本 skill 负责两项决策: 为软件工程类任务选择合适的 workflow skill, 以及按需分派子代理. 本文档所说的 workflow skills 明确指以下 skills:
 setup-workspace,use-worktree,diagnose,zoom-out,improve-codebase-architecture,grill-with-docs,prototype,run-afk-workflow,tdd,to-prd,to-issues,to-plan,triage,grill-me
 
 ## 执行过程
 
-根据当前会话内容总结任务内容, 按照 `决策树` 对任务内容进行分类, 选中目标 skill 后读取目标 skill 的 `SKILL.md` 并按其流程执行.
+1. 根据当前会话内容总结任务意图.
+2. 按 `子代理分派决策树 - 阶段一` 判断是否需要外部调研. 如需分派 `researcher`, 先执行调研, 拿到 `research.md` 产出.
+3. 按 `决策树` 分类, 选中目标 workflow skill, 读取其 `SKILL.md` 了解功能和使用方式. 如有 researcher 产出, 将 findings 作为任务上下文的一部分传递给 workflow skill.
+4. 在 workflow skill 执行过程中, 按 `子代理分派决策树 - 阶段二` 判断是否需要分派 `worker`/`reviewer`/`scout`.
 
 ## 决策树
 
@@ -55,3 +58,29 @@ setup-workspace,use-worktree,diagnose,zoom-out,improve-codebase-architecture,gri
 
 14. **以上都不是或不确定** -> `grill-me`
      询问我的意见
+
+## 子代理分派决策树
+
+**前提**: 仅父会话执行以下步骤. 子代理加载本 skill 时跳过此决策树.
+
+### 阶段一: 前置调研 (workflow skill 选定之前运行)
+
+1. **外部事实会影响正确性或方案选择** -> 分派 `researcher`
+   触发场景: 官方文档/API 语义/协议规范/版本差异/三方服务/SDK/OAuth/Webhook/安全边界/兼容性/性能基准等需要查一手来源的情况. 不写代码. 调研产出 (`research.md`) 作为后续 workflow skill 的输入上下文.
+
+2. **不需要外部调研** -> 跳过, 直接进入 workflow skill 选择.
+
+### 阶段二: 实现与审查 (workflow skill 执行过程中按需分派)
+
+**排除**: 当 workflow skill 为 `run-afk-workflow` 时, 跳过本阶段. AFK workflow 内部已完整管理 worker/reviewer 调度.
+
+3. **实现范围跨多文件或多模块, 不适合父会话 inline 执行** -> 分派 `worker`
+   触发场景: diagnose 定位后需要修复多个文件, tdd 扩展到多模块, improve-codebase-architecture 报告产出后需要执行重构, 或任何实现工作超出单文件小修.
+
+4. **实现完成后需要独立质量门禁** -> 分派 `reviewer`
+   触发场景: tdd/worker 实现完成后, 需要独立审查代码变更的正确性/一致性/简洁性, 且当前 workflow skill 内部未自带 review 机制.
+
+5. **需要轻量代码库侦察作为前置输入** -> 分派 `scout`
+   触发场景: 对某个模块或调用链需要快速压缩上下文 (文件清单/结构/入口点), 但尚未到 zoom-out 的深度分析需求.
+
+6. **以上都不满足** -> 不自动分派子代理.

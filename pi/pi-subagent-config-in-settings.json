@@ -10,16 +10,20 @@
         ]
       },
       "planner": {
-        "model": "ai-work-qwen/qwen3.7-max",
-        "thinking": "xhigh",
+        "model": "ai-work-openai/gpt-5.5",
+        "thinking": "high",
         "defaultContext": "fork",
-        "fallbackModels": []
+        "fallbackModels": [
+          "ai-work-qwen/qwen3.7-max"
+        ]
       },
       "worker": {
-        "model": "ai-work-qwen/qwen3.7-max",
-        "thinking": "xhigh",
+        "model": "ai-work-zai/glm-5.1",
+        "thinking": "high",
         "defaultContext": "fresh",
-        "fallbackModels": []
+        "fallbackModels": [
+          "ai-work-qwen/qwen3.7-max"
+        ]
       },
       "reviewer": {
         "model": "ai-work-openai/gpt-5.5",
@@ -46,7 +50,7 @@
         ]
       },
       "researcher": {
-        "model": "ai-work-qwen/qwen3.7-max",
+        "model": "ai-work-deepseek/deepseek-v4-flash",
         "thinking": "xhigh",
         "defaultContext": "fresh",
         "fallbackModels": [
