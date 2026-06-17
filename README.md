@@ -196,7 +196,7 @@ HITL 0.0.1 人在回路协议已移入 `deprecated/hitl/`,包含 `human-in-the-l
 - [`general/grill-me/SKILL.md`](general/grill-me/SKILL.md):围绕计划持续追问直到达成共识.
 - [`general/handoff/SKILL.md`](general/handoff/SKILL.md):交接上下文.
 - [`general/telegraphic-style/SKILL.md`](general/telegraphic-style/SKILL.md):高密度电报式输出.
-- [`general/truth-first/SKILL.md`](general/truth-first/SKILL.md):对抗性分析应答风格,高置信度,不迎合.
+- [`general/truth-first/SKILL.md`](general/opposing-viewpoint/SKILL.md):对抗性分析应答风格,高置信度,不迎合.
 - [`general/write-a-skill/SKILL.md`](general/write-a-skill/SKILL.md):编写技能.
 
 ### others/*
