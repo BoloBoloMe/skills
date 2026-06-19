@@ -1,18 +1,18 @@
-# cz_sdk build constraint on windows
+# cz_sdk Windows 构建约束
 
-## core rule
+## 核心规则
 
-For this project on Windows, Maven compilation must use JDK 8.
+在 Windows 上构建本项目时, Maven 编译必须使用 JDK 8.
 
-## known working pattern
+## 已知可用模式
 
-Example working Java path:
+可用 Java 路径示例:
 
 `C:\Users\L9214\.jdks\temurin-1.8.0_482\bin\java.exe`
 
-## required validation
+## 必需校验
 
-Before build, set `JAVA_HOME` to a JDK 8 home and verify:
+构建前, 将 `JAVA_HOME` 设置为 JDK 8 home, 并执行校验:
 
 ```powershell
 $env:JAVA_HOME='C:\path\to\jdk8'
@@ -20,28 +20,28 @@ $env:Path="$env:JAVA_HOME\bin;" + $env:Path
 mvn -version
 ```
 
-Proceed only if `mvn -version` shows Java 8.
+只有 `mvn -version` 显示 Java 8 时才继续.
 
-## recommended compile commands
+## 推荐编译命令
 
-Compile paycenter and required modules:
+编译 paycenter 及其必需模块:
 
 ```powershell
 mvn -o "-Dmaven.repo.local=.m2-temp" -f czsdk-parent/pom.xml -pl ../czsdk-paycenter -am -DskipTests compile
 ```
 
-Compile all modules under the parent project:
+编译 parent 项目下的所有模块:
 
 ```powershell
 mvn -o "-Dmaven.repo.local=.m2-temp" -f czsdk-parent/pom.xml -DskipTests compile
 ```
 
-## strong failure signals
+## 强失败信号
 
-Common JDK mismatch symptoms include:
+常见 JDK 不匹配症状包括:
 
 - `IllegalAccessError`
 - `NoSuchFieldError`
-- Lombok/Javac internal access failures
+- Lombok/Javac 内部访问失败
 
-If these appear, switch back to JDK 8 first and re-run validation.
+如果出现这些信号, 先切回 JDK 8 并重新运行校验.
