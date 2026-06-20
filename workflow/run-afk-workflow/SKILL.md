@@ -9,181 +9,106 @@ description: 为承担 afk 编码任务的父会话提供执行规则. 由 orche
 
 我明确要求你执行某个 afk 编码任务, 该任务关联的 PRD, issue, PLAN 文档齐备且已经过我确认.
 
-# 角色与职责
+# 硬边界
 
-**你**: 调度器与唯一决策者. 控制流程推进, 差异检查, review 门禁, 综合判定, 最终验证和最终报告. 以下是你必须严格遵守的限制, 任何时候都不能违反:
-- 禁止写代码! 禁止写代码! 禁止写代码! 
-- 禁止审查代码质量! 禁止审查代码质量! 禁止审查代码质量!
-- 禁止将调度职责下放给任何子代理! 禁止将调度职责下放给任何子代理! 禁止将调度职责下放给任何子代理!
+你是调度器与唯一决策者. 控制流程推进, 差异检查, review 门禁, 综合判定, 最终验证和最终报告.
 
-**worker**: TDD 执行器. 读取前置产物 (PRD, issue, PLAN) 和产物目录中的文件, 在代码库中按 TDD 纵向切片写代码,
-往产物目录写运行日志和结果报告. 不判断需求合理性, 不决定范围, 不读取 reviewer 输出.
+任何时候都不能违反:
 
-**reviewer**: 单维度只读审查员. 读取前置产物, 产物目录中的文件, 代码库真实 diff, 按指定维度输出发现项. 不修改任何项目文件,
-不读取其他 reviewer 输出, 不做跨维度判断.
+- 禁止写生产代码或测试代码.
+- 禁止替代 reviewer 审查代码质量.
+- 禁止将调度职责下放给任何子代理.
+- 禁止伪造 RED/GREEN 证据.
 
-三者互不通信, 互不知道对方的存在. 子代理通过前置产物和产物目录中的文件接收上下文, 不继承你的对话历史.
+你允许做:
 
-# 产物目录
+- 查看 `git status`, `git diff`, `git diff --name-only` 等机械性状态.
+- 保存孤立 diff 到产物目录.
+- 运行预检中确认的验证命令.
+- 写流程性产物.
+- 基于真实 diff, 已有日志和命令输出做流程决策.
 
-此目录存放需要跨 agent 传递的文件.
+# 角色
 
-推荐在前置环节构建的工作目录基础上添加一个 `afk-running` 子目录作为产物目录 (通常是:
-`docs/changes/<feature-slug>/afk-running/`).
+**worker**: TDD 执行器. 读取前置产物和 issue 产物目录文件, 按 TDD 纵向切片写代码, 写运行日志和结果报告. 不判断需求合理性, 不决定范围, 不读取 reviewer 输出.
 
-各阶段需要写入产物目录中的内容:
+**reviewer**: 单维度只读审查员. 读取前置产物, issue 产物目录文件和代码库真实 diff, 按指定维度输出发现项. 不修改任何项目/源码文件, 不读取其他 reviewer 输出, 不做跨维度判断.
 
-| 阶段     | 产物            | 写入者          | 下游消费者            |
-|--------|---------------|--------------|------------------|
-| 实现     | TDD 循环日志      | worker       | review, 修复, 最终验证 |
-| 实现     | worker 结果报告   | worker       | review, 综合判定     |
-| review | 3 份维度独立的审核报告  | 3 个 reviewer | 综合判定             |
-| 综合判定   | 综合判定报告        | 你            | 修复               |
-| 修复     | TDD 循环日志 (追加) | worker       | 最终验证             |
-| 修复     | fix 结果报告      | worker       | 最终验证             |
+**recovery worker**: 恢复执行器. 只按 `RECOVERY.md` 指定模式补产物, 修复验证失败, 或继续 dirty tree. 不扩大范围.
 
-# 父会话工作流程
+三者互不通信, 互不知道对方的存在. 子代理通过文件接收上下文, 不继承你的对话历史.
 
-## 预检
+# 渐进式阅读
 
-你在启动 worker 之前, 阅读前置产物 (PRD, issue, PLAN), 确认本次 afk 编码任务的:
+开始 AFK 前必须读取:
 
-- 工作树状态: 工作树必须干净 (无未提交变更). 不干净时不启动 worker, 要求我处理.
-- 允许文件清单: worker 可以修改哪些文件, 必须同时包含实现文件和测试文件
-- 验证环境: JDK 版本, 构建工具命令, RED/GREEN 聚焦测试命令. 无特殊要求时记为无
-- TDD 可行性: 测试文件能否进入允许文件清单, 验证环境能否给出可执行的 RED/GREEN 命令, 需求能否通过公共接口验证
+- `CONTRACTS.md` -- 产物目录, `validation-env.md`, `agent-binding.md`, `review-policy.md`, 文件命名规则.
+- `RUNBOOK.md` -- 正常主流程.
 
-**TDD 门禁**: 以上任何一项不满足, 不启动 worker. 向我报告阻塞项.
+按需读取:
 
+- `LIGHTWEIGHT-TEST-ONLY.md` -- 当 issue 可能是测试 only 轻量路径时读取.
+- `RECOVERY.md` -- 当 worker/reviewer 超时, 中断, 产物缺失, dirty tree, 验证失败或恢复时读取.
 
-<issues-processing-loop>
+启动子代理前读取对应 prompt:
 
-## 挑选 issue
+- implementation: `prompts/WORKER-IMPLEMENT.md`.
+- fix: `prompts/WORKER-FIX.md`.
+- recovery: `prompts/WORKER-RECOVER.md`.
+- consistency review: `prompts/REVIEWER-CONSISTENCY.md`.
+- correctness review: `prompts/REVIEWER-CORRECTNESS.md`.
+- simplicity review: `prompts/REVIEWER-SIMPLICITY.md`.
 
-挑选出下一个要被执行的 issue, 严格按照以下过程执行:
+如果文档冲突, 本文件的硬边界优先. 同一主题下, 更具体的阶段文档优先于 `RUNBOOK.md`.
 
-<single-issue-processing-flow>
+# 顶层流程
 
-### 1. 实现
+1. 预检.
+   - 阅读 PRD, issue, PLAN.
+   - 确认工作树干净.
+   - 写入 `validation-env.md`, `agent-binding.md`, `review-policy.md`.
+   - 确认 TDD 可行性和聚焦测试命令模板.
+   - 不满足门禁则停止并报告阻塞项.
 
-你启动 worker 角色, 读取 [prompts/WORKER-IMPLEMENT.md](prompts/WORKER-IMPLEMENT.md), 将尖括号中的占位符替换为实际值, 拼入
-task.
+2. 初始化 issue 产物目录.
+   - 确定 `issueKey`.
+   - 创建 `afk-running/<issueKey>/`.
+   - 写入或更新 `run-manifest.md`.
 
-### 2. 差异检查
+3. 实现.
+   - 使用 implementation role 启动 worker.
+   - 传入 issue 产物目录, 允许文件清单, issue 执行类型, `validation-env.md`, 增量测试命令模板.
 
-worker 结束后, 你自行检查真实 diff, 不只依赖 worker 报告:
+4. 差异检查.
+   - 父会话检查真实 diff, allowed files, staged 文件, 产物存在性和验证证据.
+   - normal issue 缺少可信 RED/GREEN 证据时不进入 review.
+   - 异常或 dirty tree 转 `RECOVERY.md`.
 
-- 生产代码变更是否有对应的测试变更和 RED/GREEN 证据
-- TDD 循环日志是否记录了 RED 失败和 GREEN 通过
-- 缺少可信 RED 证据时标记为实现失败, 不进入 review
-- worker 异常终止但工作树有未提交变更时, 不自动重跑 worker, 先保存当前 diff 并检查真实状态
+5. 轻量 review 判定.
+   - 如果是 `test-only-light`, 按 `LIGHTWEIGHT-TEST-ONLY.md` 判断是否写 `review-skipped.md` 并跳过 3 reviewer.
+   - 不满足轻量条件则走完整 review.
 
-你确认 diff 合规后进入 review. diff 为空或越过允许文件范围时不启动 reviewer, 先处理.
+6. review 门禁和 review.
+   - 门禁通过后启动 3 个只读 reviewer.
+   - 输出 `review-rN-一致性.md`, `review-rN-正确性.md`, `review-rN-简洁性.md`.
 
-### 3. review 门禁
+7. 综合判定.
+   - 父会话分类发现项: 可立即修复, 延期, 需人工决策, 证据不足驳回.
+   - 写 `review-综合判定-rN.md`.
+   - 有需人工决策项时停下来问用户.
 
-启动 reviewer 前必须确认:
+8. 修复与增量 review.
+   - 对可立即修复项启动 fix worker.
+   - 按发现项来源维度选择需要重跑的 reviewer.
+   - 最多 3 轮, 发散或越界时停止并询问用户.
 
-- [ ] worker 结果报告存在
-- [ ] 真实 diff 未越过允许文件清单
-- [ ] 空白和格式检查通过
-- [ ] 聚焦测试已运行, 或阻塞项已记录
+9. 最终验证.
+   - 父会话运行聚焦验证, 必要时运行由父会话拥有的 full build 命令.
+   - 复核日志与真实 diff 一致.
+   - 报告最终 diff, TDD 或 GREEN-only 证据, 验证结果, review 解决情况, 遗留阻塞项, 残余风险.
 
-任何一项不满足就不启动 reviewer. 你先处理或询问我.
-
-### 4. review
-
-门禁通过后, 你同时启动 3 个 reviewer 角色, 尽可能并行. 环境不支持并行时退化为串行.
-
-每个 reviewer 各自独立, 互不读取对方输出. 你为每个 reviewer 读取对应的提示词模板, 替换占位符后拼入 task:
-
-- 一致性: [prompts/REVIEWER-CONSISTENCY.md](prompts/REVIEWER-CONSISTENCY.md)
-- 正确性: [prompts/REVIEWER-CORRECTNESS.md](prompts/REVIEWER-CORRECTNESS.md)
-- 简洁性: [prompts/REVIEWER-SIMPLICITY.md](prompts/REVIEWER-SIMPLICITY.md)
-
-### 5. 综合判定
-
-你读取 3 份 review 报告, 分类发现项:
-
-- **可立即修复** -- blocker 或 required, 证据充分, minimal fix 明确, 不需要产品/架构决策, 不越过允许文件
-- **延期** -- 有价值但非紧急, 或超出当前 afk 编码任务范围
-- **需人工决策** -- 需要产品, API, 架构或范围判断
-- **证据不足驳回** -- 无文件/行号/diff/命令证据支撑
-
-你写综合判定报告.
-
-以下条件阻止进入修复:
-
-- 可立即修复项为空 -> 跳过修复, 直接进最终验证
-- 需人工决策项非空 -> 停下来问我
-- 修复会越过允许文件清单 -> 交回你决策
-
-### 6. 修复与增量 review
-
-你再次启动 worker 角色, 读取 [prompts/WORKER-FIX.md](prompts/WORKER-FIX.md), 替换占位符后拼入 task.
-
-修复完成后不重跑全部 reviewer. 修复的变更规模远小于初版实现, 且已有 3 份维度独立的 review 报告作为基线. 重跑无关维度的 reviewer 是冗余工作.
-
-#### 6a. 差异检查与门禁
-
-与初版相同: 检查修复 diff 是否合规, 是否越过允许文件清单, 是否有对应 RED/GREEN 证据. 门禁条件不变 (fix 结果报告替代 worker 结果报告).
-
-#### 6b. 选择 reviewer
-
-根据上轮综合判定报告中"可立即修复"项的来源维度, 决定重跑哪些 reviewer:
-
-| 修复项来源维度 | 重跑的 reviewer |
-|---------------|----------------|
-| 仅一个维度 | 只重跑该维度 reviewer |
-| 跨两个维度 | 重跑两个维度 reviewer |
-| 跨三个维度, 或修复涉及新增/删除文件 | 重跑全部三个 reviewer |
-
-重跑的 reviewer 以修复 diff 为主要审查对象. 被修改文件中未变更的部分沿用上轮审查结论, 不重新审查. 未重跑的维度直接复用上轮 review 报告.
-
-#### 6c. 综合判定 (增量)
-
-合并本轮增量 review 报告与上轮复用报告, 重新分类. 增加收敛判定:
-
-- 可立即修复项为空 -> 进入最终验证
-- 可立即修复项数量 >= 上轮数量 -> 标记发散, 全部转为需人工决策, 停止循环
-- 已达最大轮次 (3 轮) -> 停止循环, 剩余项转延期
-
-若修复引入的新问题落在未重跑的维度, 标记为需人工决策.
-
-#### 6d. 循环
-
-若收敛判定允许继续修复, 回到 6 启动新一轮 worker. 否则进入最终验证.
-
-### 7. 最终验证
-
-你自行运行聚焦验证, 复核 TDD 循环日志与真实 diff 一致. 验证通过后向我报告结果: 最终 diff, TDD 证据, 验证结果, review
-解决情况, 遗留阻塞项, 残余风险.
-
-### 8. 判断是否继续
-
-思考是否应该继续执行下一个 issue.
-
-如果是, 那么回到 `挑选 issue`.
-
-如果不是, 那么停下来询问我下一步行动的指示.
-
-</single-issue-processing-flow>
-
-</issues-processing-loop>
-
-# 恢复规则
-
-| 情况                     | 你的动作                                                                                                                                          |
-|------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------|
-| worker 中途停滞, 工作树干净     | 不原样重跑. 你根据 TDD 循环日志和产物判断进度, 缩小上下文后重新启动. 不续接旧会话.                                                                                               |
-| worker 中途停滞, 工作树有未提交变更 | 保存当前 diff (孤立 diff), 你审查后决定: review/手工修复/继续/回滚. 不自动重跑 worker.                                                                                 |
-| worker 有结果报告, 但报告信息不完整 | 你用真实 diff 和验证命令补验. 不让原 worker 自审多轮.                                                                                                           |
-| reviewer 失败            | 最多重试一次. 再失败则你直接审查该维度.                                                                                                                         |
-| 已完成的 run 收到过期状态信号      | 忽略.                                                                                                                                           |
-| worker 使用了错误验证环境       | 按预检阶段确认的验证环境重跑. 错误环境下的失败只记为环境噪音.                                                                                                              |
-| 子代理运行超时而中断             | 先确认子代理支持从超时中断恢复; 再根据 TDD 循环日志, 产物和工作树状态判断是否属于操作耗时长但运行正常, 已有产出符合预期; 符合则 `resume` 恢复, 回到差异检查/门禁/review 流程. |
-
+10. 判断是否继续下一个 issue. 不继续时询问用户下一步行动.
 
 # 最后
 
-接下来, 在正式开始后续的执行阶段以前, 先对你自己复述一遍: 你的职责和行为边界. 
+正式开始执行阶段前, 先对你自己复述一遍: 你的职责和行为边界.
