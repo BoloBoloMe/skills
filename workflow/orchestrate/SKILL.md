@@ -6,7 +6,7 @@ description: 为软件工程类任务提供 workflow skill 选择与子代理分
 # Orchestrate
 
 本 skill 负责两项决策: 为软件工程类任务选择合适的 workflow skill, 以及按需分派子代理. 本文档所说的 workflow skills 明确指以下 skills:
-setup-workspace,use-worktree,diagnose,zoom-out,improve-codebase-architecture,grill-with-docs,prototype,run-afk-workflow,tdd,to-prd,to-issues,to-plan,triage,grill-me
+setup-workspace,use-worktree,diagnose,improve-codebase-architecture,grill-with-docs,prototype,run-afk-workflow,tdd,to-prd,to-issues,to-plan,triage,grill-me
 
 ## 执行过程
 
@@ -23,40 +23,37 @@ setup-workspace,use-worktree,diagnose,zoom-out,improve-codebase-architecture,gri
 2. **未知根因 bug / 异常 / 报错 / 测试失败 / 性能回退** -> `diagnose`
    目标是定位原因或修复失败;先建立复现反馈循环.根因和期望行为已明确且我要测试先行时再考虑 `tdd`.
 
-3. **陌生模块 / 跨包调用链 / 历史代码 / 影响范围不清,目标是理解** -> `zoom-out`
-   只读拉远视角,输出相关模块,调用方和数据流地图.如果我要重构候选或架构改进,改走 `improve-codebase-architecture`.
-
-4. **架构优化 / 降复杂度 / 模块边界 / 可测试性改善 / 重构候选报告** -> `improve-codebase-architecture`
+3. **架构优化 / 降复杂度 / 模块边界 / 可测试性改善 / 重构候选报告** -> `improve-codebase-architecture`
    默认输出报告和建议,不直接大重构.
 
-5. **新功能 / 新流程 / 新接口 / 新业务规则,需求边界不清但工程路由清楚** -> `grill-with-docs`
+4. **新功能 / 新流程 / 新接口 / 新业务规则,需求边界不清但工程路由清楚** -> `grill-with-docs`
    用项目领域语言,代码事实和 ADR 压力测试计划;必要时更新词汇表或提出 ADR.
 
-6. **需要先用可运行东西验证状态机/数据模型/业务逻辑或 UI 方案** -> `prototype`
+5. **需要先用可运行东西验证状态机/数据模型/业务逻辑或 UI 方案** -> `prototype`
    构建一次性原型.状态/业务逻辑走终端交互原型;UI 走多变体页面原型.
 
-7. **AFK 编码任务** -> `run-afk-workflow`
+6. **AFK 编码任务** -> `run-afk-workflow`
    afk 编码任务必须使用 `run-afk-workflow` 执行.
 
-8. **行为已明确,要实现或修复,且适合测试先行** -> `tdd`
+7. **行为已明确,要实现或修复,且适合测试先行** -> `tdd`
    使用 red-green-refactor 和 tracer bullet 小循环.未知根因失败先回到 `diagnose`.
 
-9. **要把当前上下文沉淀为 PRD** -> `to-prd`
+8. **要把当前上下文沉淀为 PRD** -> `to-prd`
    综合已有上下文和代码理解写 PRD.
 
-10. **要把已成形计划 / PRD 拆为执行工单** -> `to-issues`
+9. **要把已成形计划 / PRD 拆为执行工单** -> `to-issues`
     使用 tracer bullets 式垂直切片拆分.
 
-11. **to-issues 已完成, 要生成源码级执行计划** -> `to-plan`
+10. **to-issues 已完成, 要生成源码级执行计划** -> `to-plan`
     当 `to-issues` 阶段完成后, orchestrate 主动询问我是否需要生成执行计划.
 
-12. **要创建,分流,推进,审查单个 issue,或管理标签/状态/brief** -> `triage`
+11. **要创建,分流,推进,审查单个 issue,或管理标签/状态/brief** -> `triage`
     issue tracker 状态机和 agent brief 由该 skill 处理.
 
-13. **仓库缺少 issue tracker/标签/领域文档等约定,且后续要用 to-issues/to-prd/triage/diagnose/tdd/improve-codebase-architecture/zoom-out** -> `setup-workspace`
+12. **仓库缺少 issue tracker/标签/领域文档等约定,且后续要用 to-issues/to-prd/triage/diagnose/tdd/improve-codebase-architecture** -> `setup-workspace`
     这不是用户目标任务;先投影前置约定再路由到实际目标 skill.
 
-14. **以上都不是或不确定** -> `grill-me`
+13. **以上都不是或不确定** -> `grill-me`
      询问我的意见
 
 ## 子代理分派决策树
@@ -81,6 +78,6 @@ setup-workspace,use-worktree,diagnose,zoom-out,improve-codebase-architecture,gri
    触发场景: tdd/worker 实现完成后, 需要独立审查代码变更的正确性/一致性/简洁性, 且当前 workflow skill 内部未自带 review 机制.
 
 5. **需要轻量代码库侦察作为前置输入** -> 分派 `scout`
-   触发场景: 对某个模块或调用链需要快速压缩上下文 (文件清单/结构/入口点), 但尚未到 zoom-out 的深度分析需求.
+   触发场景: 对某个模块或调用链需要快速压缩上下文 (文件清单/结构/入口点), 但尚未需要完整模块地图或长期分析输出.
 
 6. **以上都不满足** -> 不自动分派子代理.
