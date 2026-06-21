@@ -66,13 +66,13 @@
 - 父会话实际运行过的验证命令和结果.
 - 缺失证据列表.
 
-如果需要补 `worker-result.md`, 必须标记:
+如果需要补 `worker-result.md`, 父会话不得直接补写. 父会话只在 `recovery/recovery-observation-rN.md` 中列出可观察证据和缺失字段, 再启动 `complete-artifacts-only` recovery worker. recovery worker 补写时必须标记:
 
 ```md
-source: recovered-by-parent
+source: recovered-by-worker
 ```
 
-并说明哪些字段缺失. 缺少可信 RED 时仍然不能进入 normal review.
+缺少可信 RED 时仍然不能进入 normal review.
 
 ## 恢复动作表
 

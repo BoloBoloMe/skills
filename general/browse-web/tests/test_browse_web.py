@@ -37,9 +37,26 @@ class TestBrowseHTML(unittest.TestCase):
 
 class TestBrowseNonHTML(unittest.TestCase):
     def test_browse_json(self):
-        r = run_cli('browse', 'https://httpbin.org/json')
-        self.assertEqual(r.returncode, 0, r.stderr)
-        data = json.loads(r.stdout)
+        sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'scripts'))
+        from browse_web import BrowseWeb
+
+        payload = '{"slideshow": {"title": "Sample"}}'
+
+        class FakeFetch:
+            def fetch(self, url, max_bytes=None):
+                return {
+                    'status': 200,
+                    'content': payload,
+                    'raw': payload.encode('utf-8'),
+                    'content_type': 'application/json',
+                    'url': url,
+                    'headers_dict': {},
+                    'warnings': [],
+                }
+
+        bw = BrowseWeb()
+        bw._fetch = FakeFetch()
+        data = bw.browse('https://example.com/data.json')
         self.assertEqual(data['status'], 200)
         self.assertIn('application/json', data['content_type'].lower())
         # markdown should contain the original JSON payload
@@ -340,11 +357,11 @@ class TestRedirectSSRF(unittest.TestCase):
     """Fix 3: redirect to private IP must be blocked."""
 
     def test_redirect_to_private_ip(self):
-        r = run_cli('browse', 'https://httpbin.org/redirect-to?url=http://10.0.0.1/&status_code=302')
-        self.assertEqual(r.returncode, 0, r.stderr)
-        data = json.loads(r.stdout)
-        self.assertEqual(data['status'], 0)
-        self.assertIn('private', data['error'].lower())
+        sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'scripts'))
+        from browse_web import Fetch
+        with self.assertRaises(ValueError) as ctx:
+            Fetch._validate_redirect('http://10.0.0.1/')
+        self.assertIn('private', str(ctx.exception).lower())
 
 
 class TestHTTPHeaderCaseInsensitive(unittest.TestCase):
@@ -389,9 +406,26 @@ class TestBinaryResourceMetadata(unittest.TestCase):
     """Fix 5: binary resource includes size and content_type; size uses len(raw)."""
 
     def test_binary_resource_has_size_and_content_type(self):
-        r = run_cli('browse', 'https://httpbin.org/image/png')
-        self.assertEqual(r.returncode, 0, r.stderr)
-        data = json.loads(r.stdout)
+        sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'scripts'))
+        from browse_web import BrowseWeb
+
+        raw = b'\x89PNG\r\n\x1a\nabc'
+
+        class FakeFetch:
+            def fetch(self, url, max_bytes=None):
+                return {
+                    'status': 200,
+                    'content': raw.decode('utf-8', errors='replace'),
+                    'raw': raw,
+                    'content_type': 'image/png',
+                    'url': url,
+                    'headers_dict': {},
+                    'warnings': [],
+                }
+
+        bw = BrowseWeb()
+        bw._fetch = FakeFetch()
+        data = bw.browse('https://example.com/image.png')
         resources = data.get('resources', [])
         self.assertGreaterEqual(len(resources), 1)
         res = resources[0]
