@@ -14,6 +14,7 @@
 |   |-- grilling/
 |   |-- handoff/
 |   |-- opposing-viewpoint/
+|   |-- teach/
 |   `-- write-a-skill/
 |-- workflow/                        # 面向代码库工作的流程技能
 |   |-- orchestrate/
@@ -224,6 +225,7 @@ workflow skills 的默认入口和元编排器: 接收工程类用户任务, 按
 - [`general/grilling/SKILL.md`](general/grilling/SKILL.md): 围绕计划或设计持续追问, 直到达成共识.
 - [`general/handoff/SKILL.md`](general/handoff/SKILL.md): 交接上下文.
 - [`general/opposing-viewpoint/SKILL.md`](general/opposing-viewpoint/SKILL.md): 对抗性分析应答风格, 高置信度, 不迎合.
+- [`general/teach/SKILL.md`](general/teach/SKILL.md): 在当前目录建立长期学习工作区, 生成中文 lesson, reference 和学习记录.
 - [`general/write-a-skill/SKILL.md`](general/write-a-skill/SKILL.md): 编写技能.
 
 ### others/*
