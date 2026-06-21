@@ -53,6 +53,8 @@
 
 `workflow/orchestrate` 是 workflow skills 的默认入口, 负责在 `workflow/` 下的代码理解, 诊断, 需求澄清, 原型, TDD, PRD, 工单, triage, 架构评审, codebase design 和 worktree 管理技能之间做路由与顺序编排.
 
+Invocation policy: 本仓库采用 router exception. `workflow/orchestrate` 可读取并编排同仓库 `workflow/` 下的 user-invoked skills. 该例外只适用于本仓库维护的 workflow 集合, 不代表通用 skill 标准. 细则见 `general/write-a-skill/SKILL.md`.
+
 `workflow/` 下的技能预期在目标项目仓库根目录工作. 首次使用 `to-prd`, `to-issues`, `to-plan`, `triage`, `diagnosing-bugs`, `tdd`, `improve-codebase-architecture` 或 `domain-modeling` 前, 由 `orchestrate` 按需路由到 `setup-workspace` 生成约定文档.
 
 目标项目推荐结构:

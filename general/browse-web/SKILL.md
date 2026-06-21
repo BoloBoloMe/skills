@@ -1,6 +1,6 @@
 ---
 name: browse-web
-description: 抓取, 搜索, 下载互联网资源, 并提取网页主要可读内容. 当我需要访问 URL, 搜索网页, 下载文件, 抽取文章正文, 清理网页噪声, 或将网页转为 Markdown/JSON 时使用.
+description: Web 抓取/搜索/下载. 当我需要访问 URL, 搜索网页, 下载文件或提取网页正文时使用.
 ---
 
 # browse-web
@@ -10,6 +10,8 @@ description: 抓取, 搜索, 下载互联网资源, 并提取网页主要可读�
 本 skill 不执行 JavaScript, 不管理 Cookie/Session, 不处理登录后内容, 不解析 PDF, 不做 OCR. 无法可靠抽取时, 必须根据 `extraction.ok`, `extraction.confidence`, `extraction.warnings` 判断结果质量.
 
 ## 快速开始
+
+命令中的 `scripts/` 相对本 skill 目录解析. 在目标项目仓库中使用时, 先换成该目录的绝对路径或进入本 skill 目录执行.
 
 ```bash
 # 提取网页主要正文, 默认模式
@@ -83,6 +85,8 @@ python scripts/browse_web.py download https://example.com/logo.png ./downloads/l
 - 优先信任 `extraction.ok == true` 且 `confidence` 为 `high` 或 `medium` 的结果.
 - `method == full_html_fallback` 表示返回整页转换结果, 可能包含导航, 页脚, 广告, 推荐链接等噪声.
 - `confidence == low` 时, 应改用更可靠来源或浏览器渲染工具交叉验证.
+
+完成标准: 输出中说明来源 URL, 抽取模式, 置信度, warnings. 低置信结果不得作为可靠事实直接引用.
 
 ## 进阶说明
 

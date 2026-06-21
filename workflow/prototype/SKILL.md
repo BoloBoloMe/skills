@@ -1,6 +1,6 @@
 ---
 name: prototype
-description: 一次性可运行原型. 当用户需要先验证状态机, 数据模型, 业务逻辑或 UI 方案再正式实现时使用.
+description: 一次性可运行原型构建流程, 验证状态机, 数据模型, 业务逻辑或 UI 方案.
 disable-model-invocation: true
 ---
 

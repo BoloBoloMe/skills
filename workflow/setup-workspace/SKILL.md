@@ -1,6 +1,6 @@
 ---
 name: setup-workspace
-description: Workflow 工作区约定初始化. 当仓库缺少 issue tracker, triage 标签或领域文档, 且后续 workflow 需要这些约定时使用.
+description: Workflow 工作区约定初始化, 创建 issue tracker, triage 标签和领域文档约定.
 disable-model-invocation: true
 ---
 

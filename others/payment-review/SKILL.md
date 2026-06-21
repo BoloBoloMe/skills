@@ -1,6 +1,6 @@
 ---
 name: payment-review
-description: 对支付网关或支付链路相关代码变更做风险导向审查. 当用户要求审查支付, 支付网关, 回调, 退款, 对账, 渠道集成, 资金一致性或相关 PR/diff/变更范围时使用.
+description: 支付网关和支付链路代码变更的风险导向审查.
 disable-model-invocation: true
 ---
 

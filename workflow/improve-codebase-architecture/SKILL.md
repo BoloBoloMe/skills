@@ -1,6 +1,6 @@
 ---
 name: improve-codebase-architecture
-description: 架构深化候选审查. 当用户要降低复杂度, 改善模块边界, 改善可测试性, 或生成重构候选报告时使用.
+description: 代码库复杂度, 模块边界, 可测试性和重构候选的架构审查.
 disable-model-invocation: true
 ---
 

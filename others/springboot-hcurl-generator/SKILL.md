@@ -1,6 +1,6 @@
 ---
 name: springboot-hcurl-generator
-description: 根据 Spring Boot Controller 类生成标准 Hurl/.hcurl 接口测试脚本包。用于用户提供 Java/SpringBoot 源码目录、Controller 文件或要求从 Controller 批量生成 .hcurl 脚本、_env 环境文件、README 说明时
+description: Spring Boot Controller 到 Hurl/.hcurl 接口测试脚本包的生成流程.
 disable-model-invocation: true
 ---
 
@@ -53,6 +53,15 @@ disable-model-invocation: true
 - `@PatchMapping`
 
 URL 由类级映射 + 方法级映射拼接，统一去重 `/`。
+
+## Java 解析降级
+
+优先使用语法级解析或可靠的 IDE/AST 信息. 如果只能用文本解析, 必须显式标记 `解析模式: 文本启发式`, 并采用保守策略:
+
+- 只为能明确识别 HTTP method 和 URL 的方法生成脚本.
+- 对复杂注解表达式, 常量拼接, 元注解, 泛型 DTO 字段推断失败的情况, 在 README 的 `解析限制` 中列出.
+- 不确定的参数不要编造业务含义, 使用安全占位值并添加注释.
+- 解析失败的方法写入跳过清单, 不生成可能误导的 `.hcurl`.
 
 HTTP method 规则：
 
@@ -158,3 +167,14 @@ README 必须简短包含：
 - 每个 Controller 一个目录，每个 Controller 方法一个 `.hcurl` 文件。
 - 文件名使用 Java 方法名；重名时追加短路径或序号避免覆盖。
 - 生成完成后汇总 Controller 数、方法脚本数、跳过数、输出路径。
+
+## 生成后校验
+
+完成生成后执行轻量校验, 不要求真实服务在线:
+
+1. 检查每个 `.hcurl` 至少包含请求行, `HTTP 200`, `[Asserts]`.
+2. 检查 `_env/local.properties` 和 `_env/test.properties` 均包含 `baseUrl`.
+3. 如本机存在 `hurl`, 对每个脚本运行语法校验或 dry-run 级命令; 如果 hurl 版本不支持 dry-run, 记录未执行原因.
+4. 如果存在项目统一脚本 `run-hurl.ps1`, 验证 README 中引用的路径存在.
+
+完成标准: 最终汇总包含生成数量, 跳过数量, 校验结果, 未执行校验原因和输出路径.

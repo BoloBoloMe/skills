@@ -1,6 +1,6 @@
 ---
 name: use-worktree
-description: Git worktree 管理. 当用户要创建, 删除, 迁移, 选择 worktree, 或强调分支隔离和避免误改仓库时使用.
+description: Git worktree 布局识别, 创建, 删除, 迁移和安全检查流程.
 disable-model-invocation: true
 ---
 
@@ -22,7 +22,7 @@ disable-model-invocation: true
 
 ## slug 规则
 
-使用 `scripts/slug.py` 预览.
+使用 `scripts/slug.py` 预览. 命令中的 `scripts/` 相对本 skill 目录解析; 在目标项目仓库中使用时, 先换成该目录的绝对路径或进入本 skill 目录执行.
 
 - `/ \ : * ? " < > |` 与控制字符 -> `-`
 - 空格 -> `_`
@@ -46,6 +46,8 @@ disable-model-invocation: true
 ```text
 uv run python scripts/status.py <任意路径>
 ```
+
+命令需在本 skill 目录运行, 或将 `scripts/status.py` 替换为绝对路径.
 
 脚本只读;输出 `layout=standard|nonstandard`,项目,main worktree,每个 worktree 的分支/HEAD/dirty/stale 状态.
 

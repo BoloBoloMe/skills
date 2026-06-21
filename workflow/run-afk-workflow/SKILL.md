@@ -1,6 +1,6 @@
 ---
 name: run-afk-workflow
-description: AFK 编码任务控制器. 当用户明确要求执行 AFK 编码任务, 且 PRD, issue, PLAN 已确认时使用.
+description: 已确认 PRD, issue, PLAN 的 AFK 编码任务父会话控制器.
 disable-model-invocation: true
 ---
 
@@ -14,8 +14,9 @@ disable-model-invocation: true
 - 用户明确要求执行 AFK 编码任务.
 - 关联 PRD, issue, PLAN 已存在且已由用户确认.
 - 任务不要求父会话直接写生产代码或测试代码.
+- 当前运行时存在可承担 implementation, review, recovery 的 agent/role/profile 绑定.
 
-完成标准: 全部满足则进入 `PREFLIGHT`; 任一不满足则停止, 报告缺口和需要用户补齐的输入.
+完成标准: 全部满足则进入 `PREFLIGHT`; 任一不满足则停止, 报告缺口和需要用户补齐的输入. 如果运行时没有可用子代理或等价角色, 不降级为父会话编码, 改为请用户切换到普通 TDD/diagnose 流程.
 
 ## 父会话硬边界
 

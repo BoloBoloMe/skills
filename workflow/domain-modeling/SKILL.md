@@ -1,6 +1,6 @@
 ---
 name: domain-modeling
-description: 领域模型维护. 当用户要固定领域术语, 维护 ubiquitous language, 记录 ADR, 或其他 skill 需要同步领域模型时使用.
+description: 领域模型维护. 当我需要固定领域术语, 维护 ubiquitous language, 记录 ADR 或同步领域模型时使用.
 ---
 
 # Domain Modeling

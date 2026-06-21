@@ -1,10 +1,10 @@
 ---
-name: writing-a-skills
+name: write-a-skill
 description: 编写和编辑优秀 skills 的参考 - 让 skill 行为可预测的词汇和原则.
 disable-model-invocation: true
 ---
 
-Skill 的作用, 的存在是为了从随机系统中驯服确定性. **Predictability** 是它的根本价值: agent 每次运行时遵循相同的*过程*, 而不是产出相同的结果. 下面的每个杠杆都服务于这一点.
+Skill 的作用是从随机系统中驯服确定性. **Predictability** 是它的根本价值: agent 每次运行时遵循相同的*过程*, 而不是产出相同的结果. 下面的每个杠杆都服务于这一点.
 
 **粗体术语** 在 [`GLOSSARY.md`](GLOSSARY.md) 中定义. 需要完整含义时去那里查.
 
@@ -22,6 +22,17 @@ Skill 的作用, 的存在是为了从随机系统中驯服确定性. **Predicta
 只有当 agent 必须自动触发某个 skill, 或另一个 skill 必须触及它时, 才选择 model invocation. 如果它只需要被手动触发, 就让它保持 user-invoked, 避免任何 context load.
 
 当 user-invoked skills 多到我记不住时, 累积的 cognitive load 可以用一个 **router skill** 解决: 创建一个 user-invoked skill, 列出其他 skills, 并说明什么时候该触发哪一个.
+
+## Router exception
+
+本仓库允许一个受控例外: `workflow/orchestrate` 是 user-invoked router, 但它可以读取并编排 `workflow/` 下其他 user-invoked skills. 这不是通用规则. 只有同时满足以下条件才允许:
+
+- 被路由 skill 属于同一仓库维护的 workflow 集合.
+- router 明确列出路由决策树.
+- 被路由 skill 的正文可独立执行, 不依赖 model invocation.
+- router 只负责选择和顺序编排, 不覆盖被路由 skill 的完成标准.
+
+新增跨 skill 调用时, 优先选择 model-invoked. 只有维护者明确接受 router 例外的 cognitive load 时, 才使用该模式.
 
 ## 写 description
 

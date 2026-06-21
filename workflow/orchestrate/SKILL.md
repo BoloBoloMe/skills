@@ -1,6 +1,6 @@
 ---
 name: orchestrate
-description: 软件工程 workflow router. 当我下达工程任务, 需要选择 workflow skill, 管理 worktree, 诊断未知失败, 澄清需求, 拆 PRD/issue/PLAN, TDD/AFK 编码, 架构审查或代码评审时使用.
+description: 软件工程 workflow router, 负责选择和编排仓库 workflow skills.
 disable-model-invocation: true
 ---
 

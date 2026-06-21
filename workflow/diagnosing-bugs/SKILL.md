@@ -1,6 +1,6 @@
 ---
 name: diagnosing-bugs
-description: 未知根因失败诊断循环. 当用户报告失败或性能回退且根因未明时使用; 根因明确且适合测试先行时使用 `tdd`.
+description: 未知根因失败诊断循环. 当我报告失败/报错/性能回退且根因未明时使用; 根因明确且适合测试先行时转 `tdd`.
 ---
 
 # Diagnosing Bugs

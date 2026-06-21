@@ -1,6 +1,6 @@
 ---
 name: confirm-plan
-description: 逐项审查执行计划中的变更, 识别特定类型的变更, 并逐项与我确认后改写执行计划. 当 to-plan 产出 PLAN.md 后需要确认计划时使用.
+description: PLAN.md 变更项风险确认和执行计划改写流程.
 disable-model-invocation: true
 ---
 
@@ -12,4 +12,8 @@ disable-model-invocation: true
 - 对结果会产生决定性影响或者是有风险的变更(如: 涉及资金/发货/不可逆操作/法律/安全/模块边界处的修改/...).
 - 隐含的**生产代码**变更, 在 PRD 和 issue 中都没有明确提及, 也从未得到过我的确认.
 
-如果存在上述变更项, 请使用 `grill-with-docs` 技能逐项和我确认, 每确认一项就根据结果改写 PLAN.md
+如果存在上述变更项, 请使用 `grill-with-docs` 技能逐项和我确认, 每确认一项就根据结果改写 PLAN.md.
+
+如果不存在上述变更项, 不改写 PLAN.md. 输出 `无需要确认的高风险或越界变更`, 并列出已检查的 issue 数和文件数.
+
+完成标准: 每个 issue 都被检查, PLAN.md 只在存在已确认调整时写回, 最终回复说明改写路径或无改写原因.

@@ -1,6 +1,6 @@
 ---
 name: to-issues
-description: Tracer bullet 工单拆分. 当已有计划或 PRD 需要拆成可独立领取的垂直切片 issue 时使用.
+description: PRD 或计划到 tracer bullet 垂直切片 issues 的拆分流程.
 disable-model-invocation: true
 ---
 
@@ -94,9 +94,11 @@ disable-model-invocation: true
 
 ### 6. 将议题发布到议题跟踪器
 
-为每个已批准的切片,在议题跟踪器中发布一个新议题.使用下面的议题正文模板.这些议题被视为已准备好交给 AFK 智能体(agent),因此除非另有指示,请使用正确的分流(triage)标签发布它们. 如果目标 issue tracker 约定在文件中写状态行, 使用独立纯 token 行 `Status: ready-for-agent`, 中文说明另起一行 `状态说明: 已完整说明, 适合 AFK agent 接手.`
+为每个已批准的切片,在议题跟踪器中发布一个新议题.本地 Markdown tracker 固定写入 `docs/changes/<feature-slug>/issues/<NN>-<slug>.md`. 使用下面的议题正文模板.这些议题被视为已准备好交给 AFK 智能体(agent),因此除非另有指示,请使用正确的分流(triage)标签发布它们. 如果目标 issue tracker 约定在文件中写状态行, 使用独立纯 token 行 `Status: ready-for-agent`, 中文说明另起一行 `状态说明: 已完整说明, 适合 AFK agent 接手.`
 
 按依赖顺序发布议题(阻塞项优先),这样你就可以在"被阻塞于"字段中引用真实的议题标识符.
+
+完成标准: 每个已批准切片都有落盘 issue 路径, 编号连续, 阻塞引用可解析, 最终回复列出创建文件和状态标签.
 
 <issue-template>
 ## 父级

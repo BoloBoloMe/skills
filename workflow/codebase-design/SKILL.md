@@ -1,6 +1,6 @@
 ---
 name: codebase-design
-description: Codebase design 词汇和 interface 设计. 当用户要设计 module interface, seam, deep module, 或可测试性 interface 时使用.
+description: Codebase design 词汇和 interface 设计. 当我需要设计 module interface, seam, deep module 或可测试性 interface 时使用.
 ---
 
 # 代码库设计

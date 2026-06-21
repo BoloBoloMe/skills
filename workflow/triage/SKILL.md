@@ -1,6 +1,6 @@
 ---
 name: triage
-description: Issue triage 状态机. 当用户要创建, 分流, 推进或审查单个 issue, 或管理标签, 状态, agent brief 时使用.
+description: 单个 issue 的创建, 分流, 推进, 状态管理和 agent brief 流程.
 disable-model-invocation: true
 ---
 
@@ -18,6 +18,15 @@ disable-model-invocation: true
 
 - [AGENT-BRIEF.md](AGENT-BRIEF.md)--如何编写持久有效的智能体简报(agent brief)
 - [OUT-OF-SCOPE.md](OUT-OF-SCOPE.md)--`.out-of-scope/` 知识库如何工作
+
+## 启动前置读取
+
+先读取目标项目的议题跟踪器约定和标签映射:
+
+- `docs/agents/issue-tracker.md`
+- `docs/agents/triage-labels.md`
+
+如果不存在, 运行 `/setup-workspace`. 读取完成标准: 已知道 issue 文件位置, 状态字段规则, 评论追加位置, 标准角色到实际 label 的映射.
 
 ## 角色
 
@@ -39,6 +48,19 @@ disable-model-invocation: true
 这些是规范角色名称--议题跟踪器中实际使用的标签字符串可能不同.你应该已经获得了映射;如果没有,请运行 `/setup-workspace`.
 
 状态转换:未标记的议题通常先进入 `needs-triage`;随后它会移动到 `needs-info`,`ready-for-agent`,`ready-for-human` 或 `wontfix`.一旦报告者回复,`needs-info` 会回到 `needs-triage`.维护者可以随时覆盖--对看起来异常的转换做出标记,并在继续前询问.
+
+## 本地 Markdown adapter
+
+当 issue tracker 是本地 Markdown 时, 抽象动作按以下方式落盘:
+
+- 创建 issue: 在 `docs/changes/<feature-slug>/issues/<NN>-<slug>.md` 新建文件.
+- 应用类别/状态角色: 在 issue 文件顶部附近维护独立纯 token 行, 如 `Type: bug` 和 `Status: ready-for-agent`. 如项目约定不用 `Type:`, 按 `docs/agents/triage-labels.md` 中的字段规则写入.
+- 发布评论: 追加到文件底部 `## 评论(Comments)` 下. 兼容读取 `## Comments`, `## 评论`, `## 评论(Comments)`.
+- 关闭 issue: 将 `Status:` 改为 `wontfix` 或目标 tracker 约定的关闭状态. 不删除文件.
+- 查询 issue: 读取 `docs/changes/**/issues/*.md`, 按 `Status:` 和 `Type:` 分组. 缺少状态或类别的文件视为未标记.
+- 记录报告者活动: 评论区出现非 AI triage 记录且时间晚于最近一次 `## 分流记录(Triage 记录)` 时, 视为需要重新评估.
+
+完成标准: 每次状态变更都同时更新文件字段和必要评论, 最终回复列出变更文件路径.
 
 ## 调用
 
