@@ -16,6 +16,7 @@ import { fileURLToPath } from "node:url";
  */
 
 const WRITE_TOOL_NAMES = new Set(["write", "edit"]);
+const rememberedOutsideDirectories = new Set<string>();
 
 export default function (pi: ExtensionAPI) {
   pi.on("tool_call", async (event, ctx) => {
@@ -27,11 +28,15 @@ export default function (pi: ExtensionAPI) {
       const root = await resolvePolicyPath(ctx.cwd, ctx.cwd);
       if (isInsideOrSame(root, target)) return;
 
+      const rememberDirectory = path.dirname(target);
+      if (isRememberedOutsideDirectory(rememberDirectory)) return;
+
       return await confirmOrBlock(ctx, {
         title: "当前工作目录外写入确认",
         subject: `工具: ${event.toolName}\n操作: write\n当前工作目录: ${root}\n目标路径: ${target}\n原始路径: ${rawPath}`,
         reason: "该操作会写入当前工作目录外的内容.",
         blockReason: `用户拒绝 ${event.toolName} 写入当前工作目录外路径: ${target}`,
+        rememberDirectory,
       });
     }
 
@@ -40,15 +45,44 @@ export default function (pi: ExtensionAPI) {
       const outsideTargets = findObviousOutsideWriteTargets(command, ctx.cwd);
       if (outsideTargets.length === 0) return;
 
+      const pendingTargets = outsideTargets.filter((target) => !isRememberedOutsideDirectory(path.dirname(target.resolved)));
+      if (pendingTargets.length === 0) return;
+
       const root = await resolvePolicyPath(ctx.cwd, ctx.cwd);
+      const rememberDirectory = getCommonDirectory(pendingTargets.map((target) => path.dirname(target.resolved)));
       return await confirmOrBlock(ctx, {
         title: "bash 当前工作目录外写入确认",
-        subject: `命令: ${command}\n当前工作目录: ${root}\n明确识别到的 cwd 外写入目标:\n${outsideTargets.map((target) => `- ${target}`).join("\n")}`,
+        subject: `命令: ${command}\n当前工作目录: ${root}\n明确识别到的 cwd 外写入目标:\n${pendingTargets.map((target) => `- ${target.raw} -> ${target.resolved}`).join("\n")}`,
         reason: "bash 命令明确包含写入当前工作目录外的目标.",
-        blockReason: `用户拒绝 bash 写入当前工作目录外目标: ${outsideTargets.join(", ")}`,
+        blockReason: `用户拒绝 bash 写入当前工作目录外目标: ${pendingTargets.map((target) => target.resolved).join(", ")}`,
+        rememberDirectory,
       });
     }
   });
+}
+
+function isRememberedOutsideDirectory(directory: string): boolean {
+  const normalizedDirectory = normalizeForCompare(path.resolve(directory));
+  return [...rememberedOutsideDirectories].some((remembered) => isInsideOrSame(remembered, normalizedDirectory));
+}
+
+function rememberOutsideDirectory(directory: string): void {
+  rememberedOutsideDirectories.add(normalizeForCompare(path.resolve(directory)));
+}
+
+function getCommonDirectory(directories: string[]): string | undefined {
+  const [first, ...rest] = directories.map((directory) => path.resolve(directory));
+  if (!first) return undefined;
+
+  let common = first;
+  for (const directory of rest) {
+    while (!isInsideOrSame(common, directory)) {
+      const parent = path.dirname(common);
+      if (parent === common) return undefined;
+      common = parent;
+    }
+  }
+  return common;
 }
 
 function getToolPath(input: unknown): string | undefined {
@@ -59,19 +93,43 @@ function getToolPath(input: unknown): string | undefined {
 }
 
 async function confirmOrBlock(
-  ctx: { hasUI: boolean; ui: { confirm(title: string, message: string): Promise<boolean> } },
-  options: { title: string; subject: string; reason: string; blockReason: string },
+  ctx: {
+    hasUI: boolean;
+    ui: {
+      confirm(title: string, message: string): Promise<boolean>;
+      select(title: string, options: string[]): Promise<string | undefined>;
+    };
+  },
+  options: { title: string; subject: string; reason: string; blockReason: string; rememberDirectory?: string },
 ) {
   if (!ctx.hasUI) {
     return { block: true, reason: `${options.blockReason}. 无 UI 可确认.` };
   }
 
-  const ok = await ctx.ui.confirm(
-    options.title,
-    `${options.subject}\n\n${options.reason}\n是否允许?`,
+  if (!options.rememberDirectory) {
+    const ok = await ctx.ui.confirm(
+      options.title,
+      `${options.subject}\n\n${options.reason}\n是否允许?`,
+    );
+    if (!ok) return { block: true, reason: options.blockReason };
+    return undefined;
+  }
+
+  const choice = await ctx.ui.select(
+    `${options.title}\n\n${options.subject}\n\n${options.reason}`,
+    [
+      "允许一次",
+      `允许并不再询问此目录: ${options.rememberDirectory}`,
+      "拒绝",
+    ],
   );
-  if (!ok) return { block: true, reason: options.blockReason };
-  return undefined;
+
+  if (choice === "允许一次") return undefined;
+  if (choice?.startsWith("允许并不再询问此目录:")) {
+    rememberOutsideDirectory(options.rememberDirectory);
+    return undefined;
+  }
+  return { block: true, reason: options.blockReason };
 }
 
 async function resolvePolicyPath(rawPath: string, cwd: string): Promise<string> {
@@ -125,8 +183,13 @@ type ShellToken = {
   quoted: boolean;
 };
 
+type OutsideWriteTarget = {
+  raw: string;
+  resolved: string;
+};
+
 type SegmentInspection = {
-  outsideTargets: string[];
+  outsideTargets: OutsideWriteTarget[];
   nextCwd?: string;
 };
 
@@ -134,16 +197,16 @@ const COMMAND_BOUNDARIES = new Set(["&&", "||", ";", "|", "(", ")"]);
 const OUTPUT_REDIRECTS = new Set([">", ">>", "&>", ">|", "<>"]);
 const INPUT_REDIRECTS = new Set(["<", "<<", "<<<"]);
 
-function findObviousOutsideWriteTargets(command: string, cwd: string): string[] {
+function findObviousOutsideWriteTargets(command: string, cwd: string): OutsideWriteTarget[] {
   const root = path.resolve(normalizePath(cwd));
   let currentDir = root;
   const tokens = tokenizeShell(command);
-  const outsideTargets = new Set<string>();
+  const outsideTargets = new Map<string, OutsideWriteTarget>();
   let segment: ShellToken[] = [];
 
   const flushSegment = (allowCwdUpdate: boolean) => {
     const inspection = inspectCommandSegment(segment, currentDir, root);
-    for (const target of inspection.outsideTargets) outsideTargets.add(target);
+    for (const target of inspection.outsideTargets) outsideTargets.set(target.resolved, target);
     if (allowCwdUpdate && inspection.nextCwd) currentDir = inspection.nextCwd;
     segment = [];
   };
@@ -157,7 +220,7 @@ function findObviousOutsideWriteTargets(command: string, cwd: string): string[] 
   }
   flushSegment(true);
 
-  return [...outsideTargets];
+  return [...outsideTargets.values()];
 }
 
 function tokenizeShell(command: string): ShellToken[] {
@@ -234,7 +297,7 @@ function tokenizeShell(command: string): ShellToken[] {
 }
 
 function inspectCommandSegment(segment: ShellToken[], currentDir: string, root: string): SegmentInspection {
-  const outsideTargets = new Set<string>();
+  const outsideTargets = new Map<string, OutsideWriteTarget>();
 
   for (let i = 0; i < segment.length; i++) {
     const token = segment[i];
@@ -248,17 +311,17 @@ function inspectCommandSegment(segment: ShellToken[], currentDir: string, root: 
 
   const words = getCommandWords(segment);
   const commandView = unwrapCommand(words);
-  if (!commandView) return { outsideTargets: [...outsideTargets] };
+  if (!commandView) return { outsideTargets: [...outsideTargets.values()] };
 
   const { command, args } = commandView;
   addCommandWriteTargets(command, args, currentDir, root, outsideTargets);
 
   if (command === "cd") {
     const nextCwd = resolveCdTarget(args, currentDir);
-    return { outsideTargets: [...outsideTargets], nextCwd };
+    return { outsideTargets: [...outsideTargets.values()], nextCwd };
   }
 
-  return { outsideTargets: [...outsideTargets] };
+  return { outsideTargets: [...outsideTargets.values()] };
 }
 
 function getCommandWords(segment: ShellToken[]): ShellToken[] {
@@ -337,7 +400,7 @@ function addCommandWriteTargets(
   args: ShellToken[],
   currentDir: string,
   root: string,
-  outsideTargets: Set<string>,
+  outsideTargets: Map<string, OutsideWriteTarget>,
 ): void {
   switch (command) {
     case "rm":
@@ -431,7 +494,7 @@ function addOptionValueTargets(
   args: ShellToken[],
   currentDir: string,
   root: string,
-  outsideTargets: Set<string>,
+  outsideTargets: Map<string, OutsideWriteTarget>,
   optionValueNames: Set<string>,
 ): void {
   for (let i = 0; i < args.length; i++) {
@@ -450,7 +513,7 @@ function addLastOperandTarget(
   args: ShellToken[],
   currentDir: string,
   root: string,
-  outsideTargets: Set<string>,
+  outsideTargets: Map<string, OutsideWriteTarget>,
   optionValueNames: Set<string> = new Set(),
 ): void {
   const operands = getNonOptionArgs(args, optionValueNames);
@@ -470,7 +533,7 @@ function addExistingPathOperands(
   args: ShellToken[],
   currentDir: string,
   root: string,
-  outsideTargets: Set<string>,
+  outsideTargets: Map<string, OutsideWriteTarget>,
 ): void {
   for (const arg of getNonOptionArgs(args)) {
     const resolved = resolveShellPath(arg.text, currentDir);
@@ -482,7 +545,7 @@ function addFindSearchRoots(
   args: ShellToken[],
   currentDir: string,
   root: string,
-  outsideTargets: Set<string>,
+  outsideTargets: Map<string, OutsideWriteTarget>,
 ): void {
   const roots: ShellToken[] = [];
   for (const arg of args) {
@@ -496,7 +559,7 @@ function addFindSearchRoots(
 }
 
 function addTarArchiveTarget(
-  args: ShellToken[], currentDir: string, root: string, outsideTargets: Set<string>): void {
+  args: ShellToken[], currentDir: string, root: string, outsideTargets: Map<string, OutsideWriteTarget>): void {
   const writesArchive = args.some((arg) => {
     const text = arg.text;
     return (
@@ -534,12 +597,12 @@ function resolveCdTarget(args: ShellToken[], currentDir: string): string | undef
   return resolveShellPath(target, currentDir);
 }
 
-function addOutsideWriteTarget(rawPath: string, currentDir: string, root: string, outsideTargets: Set<string>): void {
+function addOutsideWriteTarget(rawPath: string, currentDir: string, root: string, outsideTargets: Map<string, OutsideWriteTarget>): void {
   const cleaned = cleanShellPath(rawPath);
   if (!cleaned || isFdTarget(cleaned) || isSpecialDevicePath(cleaned)) return;
 
   const resolved = resolveShellPath(cleaned, currentDir);
-  if (!isInsideOrSame(root, resolved)) outsideTargets.add(`${cleaned} -> ${resolved}`);
+  if (!isInsideOrSame(root, resolved)) outsideTargets.set(resolved, { raw: cleaned, resolved });
 }
 
 function resolveShellPath(rawPath: string, currentDir: string): string {
