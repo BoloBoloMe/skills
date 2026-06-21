@@ -1,7 +1,7 @@
 ---
 name: handoff
 description: 将当前对话压缩成交接文档,供另一个agent接手后续工作
-argument-hint: "下一次会话将用于什么?"
+disable-model-invocation: true
 ---
 
 编写一份总结当前对话的交接文档,让新的agent能了解前情和现状,保存到当前工作区的 docs/handoff/ 目录下.

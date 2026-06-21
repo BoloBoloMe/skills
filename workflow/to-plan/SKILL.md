@@ -1,6 +1,7 @@
 ---
 name: to-plan
-description: 为 to-issues 产出的所有 issues 生成合并源码级执行计划, 包含代码修改边界/分层变更意图/文件变更顺序/测试策略/风险点.由 orchestrate 决定何时使用.
+description: 源码级执行计划. 当 `to-issues` 已完成, 用户要为这些 issues 生成合并实现计划时使用.
+disable-model-invocation: true
 ---
 
 # To Plan

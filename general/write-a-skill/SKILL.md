@@ -8,16 +8,20 @@ Skill 的作用, 的存在是为了从随机系统中驯服确定性. **Predicta
 
 **粗体术语** 在 [`GLOSSARY.md`](GLOSSARY.md) 中定义. 需要完整含义时去那里查.
 
+## 叙述视角
+
+编写 skill 时始终站在我的第一视角. 读取 skill 的 agent 是 "你", 与之相对, 触发和指挥 agent 的人是 "我". 因此写 "我在使用 skill 时可能遇到的问题", 不写 "用户在使用 skill 时可能遇到的问题". 如果需要讨论调用机制, 保留固定术语 `user-invoked`, 但不要把用户写成第三人称.
+
 ## 调用方式
 
 调用方式有两种, 代价不同:
 
-- **model-invoked** skill 保留 **description**, 因此 agent 可以自行触发它, 其他 skill 也可以触及它. 你也可以手动输入名称调用. 代价是增加 **context load**: description 每一轮都会留在上下文窗口里. 机制: 省略 `disable-model-invocation`, 写一个面向模型的 description, 并包含足够清晰的触发短语, 例如 "Use when the user wants..." 或 "mentions...".
-- **user-invoked** skill 会从 agent 的可达范围中移除 description. 只有你输入它的名称时才能调用它, 其他 skill 不能调用. 它的 context load 为零, 但会增加 **cognitive load**:*你* 必须记得它存在, 并知道何时使用它. 机制: 设置 `disable-model-invocation: true`; 此时 `description` 面向人类, 只写一行摘要, 不写触发词清单.
+- **model-invoked** skill 保留 **description**, 因此 agent 可以自行触发它, 其他 skill 也可以触及它. 我也可以手动输入名称调用. 代价是增加 **context load**: description 每一轮都会留在上下文窗口里. 机制: 省略 `disable-model-invocation`, 写一个面向模型的 description, 并包含足够清晰的触发短语, 例如 "当我想要..." 或 "mentions...".
+- **user-invoked** skill 会从 agent 的可达范围中移除 description. 只有我输入它的名称时才能调用它, 其他 skill 不能调用. 它的 context load 为零, 但会增加 **cognitive load**:*我* 必须记得它存在, 并知道何时使用它. 机制: 设置 `disable-model-invocation: true`; 此时 `description` 面向人类, 只写一行摘要, 不写触发词清单.
 
 只有当 agent 必须自动触发某个 skill, 或另一个 skill 必须触及它时, 才选择 model invocation. 如果它只需要被手动触发, 就让它保持 user-invoked, 避免任何 context load.
 
-当 user-invoked skills 多到你记不住时, 累积的 cognitive load 可以用一个 **router skill** 解决: 创建一个 user-invoked skill, 列出其他 skills, 并说明什么时候该触发哪一个.
+当 user-invoked skills 多到我记不住时, 累积的 cognitive load 可以用一个 **router skill** 解决: 创建一个 user-invoked skill, 列出其他 skills, 并说明什么时候该触发哪一个.
 
 ## 写 description
 
@@ -64,18 +68,18 @@ Skill 由两类内容构成: **steps** 和 **reference**. 它们可以自由混�
 
 **leading word** 是已经存在于模型预训练中的紧凑概念, agent 运行 skill 时会用它来思考, 例如*lesson*,*fog of war*,*tracer bullets*. leading word在文本中反复出现, 虽然强leading word不一定需要重复很多次. 它会积累分布式定义, 借用模型已有的先验, 用很少的 token 锚定一整片行为.
 
-它从两个方向服务于 Predictability. 在正文中, 它锚定*执行*: agent 每次遇到这个词, 都会触及同一组行为. 在 description 中, 它锚定*invocation*: 当同一个词同时出现在你的 prompt, 文档和代码里, agent 会把这套共享语言连接到 skill, 并更可靠地触发它.
+它从两个方向服务于 Predictability. 在正文中, 它锚定*执行*: agent 每次遇到这个词, 都会触及同一组行为. 在 description 中, 它锚定*invocation*: 当同一个词同时出现在我的 prompt, 文档和代码里, agent 会把这套共享语言连接到 skill, 并更可靠地触发它.
 
 寻找机会用leading word重构 skill. 如果同一个三元组在三个位置反复展开, 那就是 **duplication**. 如果一个 description 要花一句话指向一个想法, 也可能在乞求 **collapse** 成一个 token. 例子:
 
 - "fast, deterministic, low-overhead" ->*tight* - 一个 phase 上反复描述的品质, 可以折叠成单个预训练词, 例如一个 *tight* loop.
 - "a loop you believe in" ->*red* - 把模糊 gate 变成二元可观察状态: 循环在 bug 上变*red*, 或者没有变*red*.
 
-你会赢两次: 更少的 token, 以及一个更锋利的钩子, 让 agent 能把思考挂在上面. 假设每个 skill 都有一些重复表达可以被leading word淘汰. 去找出它们.
+这能一箭双雕: 更少的 token, 以及一个更锋利的钩子, 让 agent 能把思考挂在上面. 假设每个 skill 都有一些重复表达可以被 leading word 淘汰. 去找出它们.
 
 ## 失败模式
 
-用这些概念诊断用户在使用 skill 时可能遇到的问题.
+用这些概念诊断我在使用 skill 时可能遇到的问题.
 
 - **Premature completion** - step 在真正完成前就结束, 注意力滑向*已经完成* 的错觉. 防御顺序: 先锐化完成标准, 这是便宜且局部的修复; 只有当标准不可避免地模糊, 且你已经观察到 agent 冲向后续任务时, 才通过拆分隐藏 post-completion steps, 也就是按 sequence 切分.
 - **Duplication** - 同一个意义出现在多个地方. 它会增加维护成本和 token 成本, 还会在层级上夸大这个意义的重要性.

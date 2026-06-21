@@ -1,6 +1,7 @@
 ---
 name: to-issues
-description: 使用 tracer bullets 式垂直切片,将已有计划,规格说明或 PRD 批量拆分为可独立领取的实现工单并发布到项目议题跟踪器.由 orchestrate 决定何时使用.
+description: Tracer bullet 工单拆分. 当已有计划或 PRD 需要拆成可独立领取的垂直切片 issue 时使用.
+disable-model-invocation: true
 ---
 
 # To Issues

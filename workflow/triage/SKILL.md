@@ -1,6 +1,7 @@
 ---
 name: triage
-description: 通过由分流(triage)角色驱动的状态机管理项目议题:创建单个 issue,打标签,变更状态,审查新进入的 bug/功能请求,生成 AFK agent brief.由 orchestrate 决定何时使用.
+description: Issue triage 状态机. 当用户要创建, 分流, 推进或审查单个 issue, 或管理标签, 状态, agent brief 时使用.
+disable-model-invocation: true
 ---
 
 # 分流(Triage)

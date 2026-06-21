@@ -1,6 +1,7 @@
 ---
 name: to-prd
-description: 将当前对话上下文转换为 PRD,并发布到项目议题跟踪器.由 orchestrate 决定何时使用.
+description: PRD 沉淀. 当用户要把当前对话上下文整理为产品需求文档时使用.
+disable-model-invocation: true
 ---
 
 此技能会获取当前对话上下文和对代码库的理解,并产出一份 PRD.不要访谈用户--只综合你已经知道的内容.

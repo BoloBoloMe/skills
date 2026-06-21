@@ -1,6 +1,7 @@
 ---
 name: confirm-plan
 description: 逐项审查执行计划中的变更, 识别特定类型的变更, 并逐项与我确认后改写执行计划. 当 to-plan 产出 PLAN.md 后需要确认计划时使用.
+disable-model-invocation: true
 ---
 
 阅读 PLAN.md 中的 issues 执行计划, 按顺序针对每个 issue 都执行下述操作.

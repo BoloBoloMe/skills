@@ -1,83 +1,74 @@
 ---
 name: orchestrate
-description: 为软件工程类任务提供 workflow skill 选择与子代理分派的决策树. 当我在下达软件工程类任务, 尤其是管理 git-worktree, 排查 bug, 代码分析, 架构优化, 新需求/新功能, 原型设计, 编写代码, 编写 PRD/ISSUE/PLAN 这些典型任务时必须第一时间使用.
+description: 软件工程 workflow router. 当我下达工程任务, 需要选择 workflow skill, 管理 worktree, 诊断未知失败, 澄清需求, 拆 PRD/issue/PLAN, TDD/AFK 编码, 架构审查或代码评审时使用.
+disable-model-invocation: true
 ---
 
 # Orchestrate
 
-本 skill 负责两项决策: 为软件工程类任务选择合适的 workflow skill, 以及按需分派子代理. 本文档所说的 workflow skills 明确指以下 skills:
-setup-workspace,use-worktree,diagnose,improve-codebase-architecture,grill-with-docs,prototype,run-afk-workflow,tdd,to-prd,to-issues,to-plan,triage,grill-me
+你不需要记住每个 workflow. 先判断这项工作从哪条 flow 进入.
 
-## 执行过程
+**flow** 是任务穿过 workflow skills 的路径. 多数构建工作走 **main flow**. Bug, issue, worktree, review 是 **on-ramp**. 架构和领域语言属于 **codebase health**.
 
-1. 根据当前会话内容总结任务意图.
-2. 按 `子代理分派决策树 - 阶段一` 判断是否需要外部调研. 如需分派 `researcher`, 先执行调研, 拿到 `research.md` 产出.
-3. 按 `决策树` 分类, 选中目标 workflow skill, 读取其 `SKILL.md` 了解功能和使用方式. 如有 researcher 产出, 将 findings 作为任务上下文的一部分传递给 workflow skill.
-4. 在 workflow skill 执行过程中, 按 `子代理分派决策树 - 阶段二` 判断是否需要分派 `worker`/`reviewer`/`scout`.
+完成标准: 选中一个入口 skill, 读取它的 `SKILL.md`, 然后按它执行. 如果无法可靠选中, 使用 `grill-me` 向我澄清.
 
-## 决策树
+## 可路由 skills
 
-1. **Git worktree / repo 布局管理** -> `use-worktree`
-   明确要求创建/删除/迁移/选择 worktree,或强调分支隔离/避免改错分支.
+- Workspace: `setup-workspace`, `use-worktree`
+- Clarify and design: `grill-with-docs`, `grill-me`, `prototype`, `codebase-design`, `domain-modeling`
+- Build: `tdd`, `run-afk-workflow`
+- Product and planning: `to-prd`, `to-issues`, `to-plan`, `triage`
+- Health and review: `diagnosing-bugs`, `improve-codebase-architecture`, `code-review-with-me`
 
-2. **未知根因 bug / 异常 / 报错 / 测试失败 / 性能回退** -> `diagnose`
-   目标是定位原因或修复失败;先建立复现反馈循环.根因和期望行为已明确且我要测试先行时再考虑 `tdd`.
+## 前置条件
 
-3. **架构优化 / 降复杂度 / 模块边界 / 可测试性改善 / 重构候选报告** -> `improve-codebase-architecture`
-   默认输出报告和建议,不直接大重构.
+**`setup-workspace`** - 当某个 workflow 依赖仓库约定, 但这些约定缺失时先运行.
 
-4. **新功能 / 新流程 / 新接口 / 新业务规则,需求边界不清但工程路由清楚** -> `grill-with-docs`
-   用项目领域语言,代码事实和 ADR 压力测试计划;必要时更新词汇表或提出 ADR.
+触发: 仓库缺少 issue tracker, triage 标签或领域文档, 且后续 flow 需要 `to-prd`, `to-issues`, `triage`, `diagnosing-bugs`, `tdd`, `improve-codebase-architecture`, `domain-modeling`.
 
-5. **需要先用可运行东西验证状态机/数据模型/业务逻辑或 UI 方案** -> `prototype`
-   构建一次性原型.状态/业务逻辑走终端交互原型;UI 走多变体页面原型.
+这不是我目标任务. 完成约定投影后, 回到原 flow.
 
-6. **AFK 编码任务** -> `run-afk-workflow`
-   afk 编码任务必须使用 `run-afk-workflow` 执行.
+## 主流程: idea -> build
 
-7. **行为已明确,要实现或修复,且适合测试先行** -> `tdd`
-   使用 red-green-refactor 和 tracer bullet 小循环.未知根因失败先回到 `diagnose`.
+多数产品和功能工作走这条路线.
 
-8. **要把当前上下文沉淀为 PRD** -> `to-prd`
-   综合已有上下文和代码理解写 PRD.
+1. **`grill-with-docs`** - 有代码库的新想法, 且边界未定时从这里开始. 典型任务: 新功能, 新流程, 新 API, 新业务规则. 它用代码事实, 项目语言和 ADR 压力测试计划.
+2. **分支 - 问题需要可运行答案吗?** 当对话无法确定状态, 业务逻辑, 数据模型或 UI 行为时, 使用 **`prototype`**. 构建一次性证明, 再把结论带回原 flow.
+3. **分支 - 需要多会话规划吗?** 使用 **`to-prd`** 把当前线程沉淀为 PRD, 再用 **`to-issues`** 拆成可独立领取的垂直切片. `to-issues` 完成后, 询问是否运行 **`to-plan`** 生成合并源码级执行计划.
+4. **分支 - 行为已明确且适合测试先行吗?** 使用 **`tdd`**. 如果根因未知, 离开主流程并先用 `diagnosing-bugs`.
+5. **分支 - 明确是 AFK 编码任务吗?** 只有当 AFK 任务已就绪, 且 PRD, issue 或 PLAN 上下文已确认时, 使用 **`run-afk-workflow`**.
 
-9. **要把已成形计划 / PRD 拆为执行工单** -> `to-issues`
-    使用 tracer bullets 式垂直切片拆分.
+## on-ramp
 
-10. **to-issues 已完成, 要生成源码级执行计划** -> `to-plan`
-    当 `to-issues` 阶段完成后, orchestrate 主动询问我是否需要生成执行计划.
+这些入口会生成工作或解除阻塞, 然后合流到其他 flow.
 
-11. **要创建,分流,推进,审查单个 issue,或管理标签/状态/brief** -> `triage`
-    issue tracker 状态机和 agent brief 由该 skill 处理.
+- **Worktree 或 repo 布局** -> **`use-worktree`**. 我要创建, 删除, 迁移, 选择 worktree, 或强调分支隔离和避免改错仓库时, 先用它.
+- **未知根因失败** -> **`diagnosing-bugs`**. bug, exception, error, test failure, broken behavior, performance regression 且原因未知时使用. 原因和期望行为明确后, 继续到 `tdd` 或最小可行实现路径.
+- **原始 incoming issue** -> **`triage`**. 单个 bug report, feature request, issue 状态变更, 标签操作或 agent brief 使用它. 不要 triage 由 `to-issues` 产出的 issue; 它们已经 agent-ready.
+- **交互式代码评审** -> **`code-review-with-me`**. 我要一起 review 代码, 逐段看代码或产出人审报告时使用.
 
-12. **仓库缺少 issue tracker/标签/领域文档等约定,且后续要用 to-issues/to-prd/triage/diagnose/tdd/improve-codebase-architecture** -> `setup-workspace`
-    这不是用户目标任务;先投影前置约定再路由到实际目标 skill.
+## codebase health
 
-13. **以上都不是或不确定** -> `grill-me`
-     询问我的意见
+不是功能交付. 这些 flow 用来让代码库更容易被人和 agent 修改.
 
-## 子代理分派决策树
+- **`improve-codebase-architecture`** - 我要全库报告时使用. 典型目标: 降复杂度, 模块边界, 可测试性, 重构候选. 选中的候选可以成为 idea, 再从 `grill-with-docs` 进入主流程.
+- **`codebase-design`** - 问题是 module interface 设计, seam 位置, deep module 词汇或可测试性 interface 设计时使用. 如果我要全库候选扫描, 改用 `improve-codebase-architecture`.
+- **`domain-modeling`** - 任务只是在固定或扩展领域术语, ubiquitous language, context map 或 ADR 时使用. 单纯读取既有领域语言不进入该 skill.
 
-**前提**: 仅父会话执行以下步骤. 子代理加载本 skill 时跳过此决策树.
+## 独立入口和兜底
 
-### 阶段一: 前置调研 (workflow skill 选定之前运行)
+- **`grill-me`** - 没有代码库, 工程路由不清, 或我只要对计划和设计做纯对话压力测试时使用.
 
-1. **外部事实会影响正确性或方案选择** -> 分派 `researcher`
-   触发场景: 官方文档/API 语义/协议规范/版本差异/三方服务/SDK/OAuth/Webhook/安全边界/兼容性/性能基准等需要查一手来源的情况. 不写代码. 调研产出 (`research.md`) 作为后续 workflow skill 的输入上下文.
+## 上下文卫生
 
-2. **不需要外部调研** -> 跳过, 直接进入 workflow skill 选择.
+尽量让 `grill-with-docs` -> `to-prd` -> `to-issues` 留在同一个连贯上下文中. 不要在阶段中途 compact. 如果会话过满或 prototype 需要独立线程, 用 `handoff` 搭桥, 在新会话继续.
 
-### 阶段二: 实现与审查 (workflow skill 执行过程中按需分派)
+## 可选协作
 
-**排除**: 当 workflow skill 为 `run-afk-workflow` 时, 跳过本阶段. AFK workflow 内部已完整管理 worker/reviewer 调度.
+只在父会话应用本节. 如果我禁止使用子代理, 则整节跳过. 如果选中的 skill 是 `run-afk-workflow`, 也整节跳过, 因为 AFK workflow 自己管理协作.
 
-3. **实现范围跨多文件或多模块, 不适合父会话 inline 执行** -> 分派 `worker`
-   触发场景: diagnose 定位后需要修复多个文件, tdd 扩展到多模块, improve-codebase-architecture 报告产出后需要执行重构, 或任何实现工作超出单文件小修.
-
-4. **实现完成后需要独立质量门禁** -> 分派 `reviewer`
-   触发场景: tdd/worker 实现完成后, 需要独立审查代码变更的正确性/一致性/简洁性, 且当前 workflow skill 内部未自带 review 机制.
-
-5. **需要轻量代码库侦察作为前置输入** -> 分派 `scout`
-   触发场景: 对某个模块或调用链需要快速压缩上下文 (文件清单/结构/入口点), 但尚未需要完整模块地图或长期分析输出.
-
-6. **以上都不满足** -> 不自动分派子代理.
+1. **外部事实会影响正确性或路线选择** -> 在选择 workflow skill 前分派 `researcher`. 例子: 官方 API 语义, 协议规则, SDK 版本, OAuth, webhook, 安全边界, 兼容性, 性能基线. Research 不写代码; 产出作为所选 workflow 的输入.
+2. **实现跨多个文件或模块** -> 路线明确后, 且变更不适合父会话 inline 执行时分派 `worker`.
+3. **实现完成后需要独立质量门禁** -> 当前 workflow 没有自带 review 时分派 `reviewer`.
+4. **轻量代码库侦察会解除路由阻塞** -> 需要文件清单, 结构, 入口点或短调用链摘要时分派 `scout`.
+5. **以上都不满足** -> 不分派.

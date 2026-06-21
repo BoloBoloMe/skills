@@ -1,6 +1,7 @@
 ---
 name: receive-handoff
 description: 阅读交接文档并全面理解其内容, 简短汇报所了解的信息, 然后询问下一步行动指示并给出建议. 当接收到 handoff 产出的交接文档时使用.
+disable-model-invocation: true
 ---
 
 阅读交接文档.

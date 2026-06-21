@@ -1,6 +1,6 @@
 ---
 name: browse-web
-description: 抓取, 搜索, 下载互联网资源, 并提取网页主要可读内容. 当用户需要访问 URL, 搜索网页, 下载文件, 抽取文章正文, 清理网页噪声, 或将网页转为 Markdown/JSON 时使用.
+description: 抓取, 搜索, 下载互联网资源, 并提取网页主要可读内容. 当我需要访问 URL, 搜索网页, 下载文件, 抽取文章正文, 清理网页噪声, 或将网页转为 Markdown/JSON 时使用.
 ---
 
 # browse-web

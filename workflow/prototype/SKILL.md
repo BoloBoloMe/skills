@@ -1,6 +1,7 @@
 ---
 name: prototype
-description: 构建可运行的一次性原型,用代码在正式投入前验证设计问题.会在两个分支间路由--用于状态/业务逻辑问题的交互式终端应用,或在一个路由上可切换的多个差异显著 UI 变体.由 orchestrate 决定何时使用.
+description: 一次性可运行原型. 当用户需要先验证状态机, 数据模型, 业务逻辑或 UI 方案再正式实现时使用.
+disable-model-invocation: true
 ---
 
 # 原型

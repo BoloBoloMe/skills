@@ -1,81 +1,66 @@
 ---
 name: improve-codebase-architecture
-description: 对代码库做架构评审,寻找深化模块,重构候选和可测试性/AI 可导航性改进机会,并结合 docs/language/UBIQUITOUS_LANGUAGE.md 与 docs/adr/ 中的约束.由 orchestrate 决定何时使用.
+description: 架构深化候选审查. 当用户要降低复杂度, 改善模块边界, 改善可测试性, 或生成重构候选报告时使用.
+disable-model-invocation: true
 ---
 
 # 改进代码库架构
 
-浮现架构摩擦,并提出**深化机会**--把浅模块变成深模块的重构.目标是可测试性和 AI 可导航性.
+发现架构摩擦并提出 **deepening 机会** - 将 shallow module 重构为 deep module 的变更. 目标是可测试性和 AI 可导航性.
 
-## 词汇表
+此命令受项目领域模型启发, 并建立在共享设计词汇之上:
 
-每条建议都精确使用这些术语.一致的语言是重点--不要漂移到"组件","服务","API"或"边界".完整定义见 [LANGUAGE.md](LANGUAGE.md).
-
-- **模块**--任何具有接口和实现的东西(函数,类,包,切片).
-- **接口**--调用者为了使用模块而必须知道的一切:类型,不变量,错误模式,顺序,配置.不只是类型签名.
-- **实现**--内部代码.
-- **深度**--接口处的杠杆效应:小接口后面有大量行为.**深** = 高杠杆效应.**浅** = 接口几乎和实现一样复杂.
-- **接缝**--接口所在的位置;一个可以改变行为而不必在该处编辑的地方.(用这个,不要用"边界".)
-- **适配器**--在接缝处满足接口的具体东西.
-- **杠杆效应**--调用者从深度中获得的东西.
-- **局部性**--维护者从深度中获得的东西:变更,错误,知识集中在一个地方.
-
-关键原则(完整列表见 [LANGUAGE.md](LANGUAGE.md)):
-
-- **删除检验**:想象删除该模块.如果复杂度消失了,它就是透传.如果复杂度在 N 个调用者中重新出现,它就在发挥价值.
-- **接口就是测试表面.**
-- **一个适配器 = 假想接缝.两个适配器 = 真实接缝.**
-
-此技能会受项目领域模型_影响_.领域语言为好接缝命名;ADR 记录此技能不应重新争论的决策.
+- 运行 `/codebase-design` 技能获取架构词汇 (**module**, **interface**, **depth**, **seam**, **adapter**, **leverage**, **locality**) 及其原则 (删除测试, "interface 是测试表面", "一个 adapter = 假想 seam, 两个 = 真实"). 在每个建议中精确使用这些术语 - 不要漂移到 "component", "service", "API" 或 "boundary".
+- `docs/language/UBIQUITOUS_LANGUAGE.md` 中的领域语言为好的 seam 赋名. 多上下文项目先读取 `docs/language/UBIQUITOUS_LANGUAGE_MAP.md`. `docs/adr/` 中的 ADR 记录了此命令不应重新审视的决策.
 
 ## 流程
 
 ### 1. 探索
 
-先读取项目的领域词汇表,以及你将触碰区域中的任何 ADR.
+首先阅读项目的领域术语表: 单上下文项目读取 `docs/language/UBIQUITOUS_LANGUAGE.md`; 多上下文项目先读取 `docs/language/UBIQUITOUS_LANGUAGE_MAP.md`, 再读取相关 `docs/language/contexts/*.md`. 同时阅读你正在触及区域的 ADR.
 
-然后使用 Agent 工具并设置 `subagent_type=Explore` 来遍历代码库.不要遵循僵硬启发式--有机探索,并记录你感到摩擦的地方:
+然后直接探索代码库. 如果目标 agent 支持只读 scout, 可按 `orchestrate` 的子代理规则分派 scout 来压缩上下文. 不要遵循僵硬的启发式规则 - 自然地探索并注意你经历摩擦的地方:
 
-- 理解一个概念时,哪里需要在许多小模块之间来回跳转?
-- 哪里存在**浅**模块--接口几乎和实现一样复杂?
-- 哪里为了可测试性抽出了纯函数,但真正的错误藏在它们被如何调用之中(没有**局部性**)?
-- 哪里存在跨接缝泄漏的紧耦合模块?
-- 代码库哪些部分未测试,或难以通过当前接口测试?
+- 理解一个概念需要在许多小模块之间跳转?
+- 模块是 **shallow** 的 - interface 几乎与 implementation 一样复杂?
+- 纯函数仅仅为了可测试性而被提取, 但真正的 bug 隐藏在它们如何被调用中 (没有 **locality**)?
+- 紧密耦合的模块跨它们的 seam 泄漏?
+- 代码库哪些部分未经测试, 或难以通过当前 interface 测试?
 
-对任何你怀疑浅的东西应用**删除检验**:删除它会让复杂度集中,还是只是移动复杂度?"是,会集中"就是你想要的信号.
+对你怀疑是 shallow 的任何东西应用 **删除测试**: 删除它会集中复杂性, 还是只是移动它? 一个 "是的, 集中" 的信号才是你想要的.
 
-### 2. 以 HTML 报告展示候选项
+### 2. 将候选呈现为 HTML 报告
 
-将一个自包含 HTML 文件写入操作系统临时目录,这样不会有任何东西落到仓库中.从 `$TMPDIR` 解析临时目录,回退到 `/tmp`(Windows 上回退到 `%TEMP%`),并写入 `<tmpdir>/architecture-review-<timestamp>.html`,让每次运行都得到新文件.为用户打开它--Linux 用 `xdg-open <path>`,macOS 用 `open <path>`,Windows 用 `start <path>`--并告诉他们绝对路径.
+向 OS 临时目录写入一个自包含的 HTML 文件, 这样不会有任何东西落入仓库. 从 `$TMPDIR` 解析临时目录, 回退到 `/tmp` (或 Windows 上的 `%TEMP%`), 写入 `<tmpdir>/architecture-review-<timestamp>.html`, 使每次运行获得一个新文件. 为用户打开它 - Linux 上 `xdg-open <path>`, macOS 上 `open <path>`, Windows 上 `start <path>` - 并告诉他们绝对路径.
 
-报告通过 CDN 使用 **Tailwind** 进行布局和样式,并在图/流/序列能可靠传达结构时通过 CDN 使用 **Mermaid** 画图.将 Mermaid 与手写 CSS/SVG 视觉图混用--当关系是图形结构(调用图,依赖,序列)时使用 Mermaid;当你想要更偏编辑表达的东西(质量图,剖面图,折叠动画)时使用手写 div/SVG.每个候选项都有**前后对比可视化**.要视觉化.
+报告使用 **Tailwind via CDN** 进行布局和样式, **Mermaid via CDN** 用于图表 (当图/流/序列可靠传达结构时). Mermaid 与手工 CSS/SVG 视觉混合 - 当关系是图形状的 (调用图, 依赖, 序列) 使用 Mermaid, 当你想要更编辑性的东西 (mass diagram, cross-section, collapse animation) 使用手工 div/SVG. 每个候选获得一个 **before/after 可视化**. 要视觉化.
 
-对每个候选项,使用与之前相同的模板,但渲染成卡片:
+对于每个候选, 渲染一个卡片, 包含:
 
-- **文件**--涉及哪些文件/模块
-- **问题**--当前架构为何造成摩擦
-- **方案**--用朴素中文描述会改变什么
-- **收益**--用局部性和杠杆效应解释,以及测试会如何改进
-- **前 / 后图**--并排,自定义绘制,说明浅薄之处和深化方式
-- **推荐强度**--`强烈推荐`,`值得探索`,`推测性` 之一,渲染为徽章
+- **Files** - 涉及哪些文件/模块
+- **Problem** - 当前架构为什么产生摩擦
+- **Solution** - 用通俗语言描述什么会变化
+- **Benefits** - 以 locality 和 leverage 解释, 以及测试会如何改善
+- **Before / After diagram** - 并排, 自定义绘制, 展示 shallow 和 deepening
+- **Recommendation strength** - `Strong`, `Worth exploring`, `Speculative` 之一, 渲染为徽章
 
-报告最后添加**首要推荐**章节:你会先处理哪个候选项,以及为什么.
+报告末尾以 **Top recommendation** 章节: 你会先处理哪个候选以及原因.
 
-**使用 docs/language/UBIQUITOUS_LANGUAGE.md 词汇表达领域,使用 [LANGUAGE.md](LANGUAGE.md) 词汇表达架构.** 如果 `UBIQUITOUS_LANGUAGE.md` 定义了 "Order",就说 "Order 接收模块"--不要说 "FooBarHandler",也不要说 "Order 服务".
+**使用 `docs/language/UBIQUITOUS_LANGUAGE.md` 或相关 `docs/language/contexts/*.md` 词汇指代领域, `/codebase-design` 词汇指代架构.** 如果词汇表定义了 "Order", 说 "the Order intake module" - 不是 "the FooBarHandler", 也不是 "the Order service".
 
-**ADR 冲突**:如果候选项与现有 ADR 矛盾,只有当摩擦真实到值得重新审视该 ADR 时才提出.要在卡片中清楚标记(例如警告提示:_"与 ADR-0007 冲突--但值得重新打开,因为......"_).不要列出某个 ADR 禁止的所有理论重构.
+**ADR 冲突**: 如果一个候选与现有 ADR 矛盾, 仅在摩擦足以值得重新审视该 ADR 时才展示它. 在卡片中清楚标记 (例如一个警告提示: _"与 ADR-0007 矛盾 - 但值得重新打开因为..."_). 不要列出 ADR 禁止的每一个理论重构.
 
-完整 HTML 脚手架,图表模式和样式指南见 [HTML-REPORT.md](HTML-REPORT.md).
+见 [HTML-REPORT.md](HTML-REPORT.md) 获取完整的 HTML 脚手架, 图表模式和样式指导.
 
-此时不要提出接口.文件写好后,询问用户:"你想探索其中哪一个?"
+**不要** 此时提出 interface. 文件写入后, 询问用户: "你想探索哪一个?"
 
-### 3. 拷问循环
+### 3. Grilling 循环
 
-一旦用户选定候选项,进入拷问式对话.和他们一起沿设计树前进--约束,依赖,深化模块的形状,接缝后面是什么,哪些测试会保留下来.
+一旦用户选择了一个候选, 运行 `/grilling` 技能与他们一起走设计树 - 约束, 依赖, deepened module 的形状, seam 背后是什么, 哪些测试存活.
 
-随着决策逐渐成形,副作用内联发生:
+副作用在决策结晶时内联发生 - 运行 `/domain-modeling` 技能保持领域模型随行更新:
 
-- **用一个不在 `UBIQUITOUS_LANGUAGE.md` 中的概念命名深化模块?** 将该术语添加到适用的 `UBIQUITOUS_LANGUAGE.md`--遵循与 `/grill-with-docs` 相同的纪律(见 [UBIQUITOUS_LANGUAGE_FORMAT.md](../grill-with-docs/UBIQUITOUS_LANGUAGE_FORMAT.md)).如果文件不存在,则惰性创建.
-- **在对话中打磨了模糊术语?** 立即更新适用的 `UBIQUITOUS_LANGUAGE.md`.
-- **用户因承重理由拒绝候选项?** 提出 ADR,措辞为:_"要我把这记录为 ADR,以便未来架构评审不会再次建议它吗?"_ 只有当未来探索者确实需要这个理由来避免重复建议同一件事时才提出--跳过短暂理由("现在不值得")和显而易见的理由.见 [ADR-FORMAT.md](../grill-with-docs/ADR-FORMAT.md).
-- **想探索深化模块的替代接口?** 见 [INTERFACE-DESIGN.md](INTERFACE-DESIGN.md).
+- **用不在领域语言文件中的概念命名一个 deepened module?** 运行 `/domain-modeling`, 将术语添加到 `docs/language/UBIQUITOUS_LANGUAGE.md` 或相关 `docs/language/contexts/*.md`. 如果文件不存在, 惰性创建它.
+- **在对话中锐化了一个模糊术语?** 运行 `/domain-modeling`, 就在对应领域语言文件中更新它.
+- **用户以有支撑作用的理由拒绝了候选?** 提议一个 ADR, 表述为: _"要我将其记录为 ADR, 以便未来的架构审查不会再建议它吗?"_ 仅在该理由确实需要让未来探索者避免再次建议相同东西时才提议 - 跳过短暂理由 ("目前不值得") 和自显而易见的理由.
+- **想为 deepened module 探索替代 interface?** 运行 `/codebase-design` 技能并使用其 design-it-twice 并行 sub-agent 模式.

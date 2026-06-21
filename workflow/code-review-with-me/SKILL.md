@@ -1,6 +1,7 @@
 ---
 name: code-review-with-me
-description: 以"总-分-总"结构带领用户逐段交互式代码评审, 产出评审日志和人审报告. 当用户要求带我CR/一起review代码/代码评审/逐段看代码/带我看代码时使用.
+description: 交互式代码评审,或逐段看代码时使用.
+disable-model-invocation: true
 ---
 
 # 带我评审代码

@@ -1,6 +1,7 @@
 ---
 name: use-worktree
-description: 管理符合用户习惯的本地 Git worktree 布局:识别标准目录,选择/创建/删除/迁移 worktree,检查 dirty 状态并避免误改仓库.由 orchestrate 决定何时使用.
+description: Git worktree 管理. 当用户要创建, 删除, 迁移, 选择 worktree, 或强调分支隔离和避免误改仓库时使用.
+disable-model-invocation: true
 ---
 
 # use-worktree

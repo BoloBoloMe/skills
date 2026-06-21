@@ -1,6 +1,6 @@
 ---
 name: setup-workspace
-description: 在仓库根目录的 AGENTS.md 和 `docs/agents/` 中设置工程 workflow 的前置约定:本地 Markdown issue tracker,分流(triage)标签词汇,领域文档布局.由 orchestrate 决定何时使用.
+description: Workflow 工作区约定初始化. 当仓库缺少 issue tracker, triage 标签或领域文档, 且后续 workflow 需要这些约定时使用.
 disable-model-invocation: true
 ---
 
@@ -48,7 +48,7 @@ disable-model-invocation: true
 
 **Section B--Domain docs.**
 
-> 解释:一些技能(`improve-codebase-architecture`,`diagnose`,`tdd`)会读取 `docs/language/UBIQUITOUS_LANGUAGE.md` 文件来了解项目的领域语言,并读取 `docs/adr/` 来了解过去的架构决策.它们需要知道仓库是一个全局上下文,还是多个上下文(例如分别有 frontend/backend 上下文的 monorepo),这样才能在正确位置查找.
+> 解释:一些技能(`improve-codebase-architecture`,`diagnosing-bugs`,`tdd`)会读取 `docs/language/UBIQUITOUS_LANGUAGE.md` 文件来了解项目的领域语言,并读取 `docs/adr/` 来了解过去的架构决策.它们需要知道仓库是一个全局上下文,还是多个上下文(例如分别有 frontend/backend 上下文的 monorepo),这样才能在正确位置查找.
 
 确认布局:
 

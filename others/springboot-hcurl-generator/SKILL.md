@@ -1,6 +1,7 @@
 ---
 name: springboot-hcurl-generator
-description: 根据 Spring Boot Controller 类生成标准 Hurl/.hcurl 接口测试脚本包。用于用户提供 Java/SpringBoot 源码目录、Controller 文件或要求从 Controller 批量生成 .hcurl 脚本、_env 环境文件、README 说明时。
+description: 根据 Spring Boot Controller 类生成标准 Hurl/.hcurl 接口测试脚本包。用于用户提供 Java/SpringBoot 源码目录、Controller 文件或要求从 Controller 批量生成 .hcurl 脚本、_env 环境文件、README 说明时
+disable-model-invocation: true
 ---
 
 # SpringBoot Hcurl 脚本包生成
