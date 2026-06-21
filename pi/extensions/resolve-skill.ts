@@ -41,8 +41,7 @@ export default function resolveSkillExtension(pi: ExtensionAPI) {
 		description: "根据 frontmatter name 查询未知 skill 的 SKILL.md 路径",
 		promptSnippet: "根据 frontmatter name 查询未知 skill 的 SKILL.md 路径.",
 		promptGuidelines: [
-			"根据 frontmatter name 查询未知 skill 的 SKILL.md 路径.",
-			"拿到 filePath 后,用 read(filePath) 读取.",
+			"使用 resolve_skill(skillFrontmatterName) 查询未知的 skill 的 SKILL.md 路径,拿到 filePath 后用 read(filePath) 读取.",
 		],
 		parameters: RESOLVE_SKILL_PARAMS,
 		async execute(_toolCallId, params: ResolveSkillParams, signal, _onUpdate, ctx) {
