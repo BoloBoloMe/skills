@@ -39,7 +39,7 @@
 
 ## 候选卡片
 
-图表承担重量. 文字稀少, 通俗, 使用术语表术语 (来自 `/codebase-design` 技能) 而不做任何仪式.
+图表承担重量. 文字稀少, 通俗, 使用术语表术语 (来自 `codebase-design` skill) 而不做任何仪式.
 
 每个候选是一个 `<article>`:
 
@@ -105,7 +105,7 @@ Before: 一棵函数调用树渲染为嵌套框. After: 同一棵树坍缩为一
 
 ## 语气
 
-朴素中文, 简洁 - 但架构名词和动词直接来自 `/codebase-design` 技能. 简洁不是漂移的借口.
+朴素中文, 简洁 - 但架构名词和动词直接来自 `codebase-design` skill. 简洁不是漂移的借口.
 
 **精确使用:** module, interface, implementation, depth, deep, shallow, seam, adapter, leverage, locality.
 
@@ -120,4 +120,4 @@ Before: 一棵函数调用树渲染为嵌套框. After: 同一棵树坍缩为一
 
 **Wins 条目** 用术语表术语命名收益: *"locality: bug 集中在一个 module 中"*, *"leverage: 一个 interface, N 个调用点"*, *"interface 缩小; implementation 吸收 wrapper"*. 不写 *"更容易维护"* 或 *"更干净的代码"* - 这些术语不在术语表中, 没有挣到它们的位置.
 
-不做 hedging, 不做 throat-clearing, 不写 "值得注意的是...". 如果一句话可以成为条目, 让它成为条目. 如果一个条目可以削减, 削减它. 如果一个术语不在 `/codebase-design` 术语表中, 在发明新术语之前寻找一个已存在的.
+不做 hedging, 不做 throat-clearing, 不写 "值得注意的是...". 如果一句话可以成为条目, 让它成为条目. 如果一个条目可以削减, 削减它. 如果一个术语不在 `codebase-design` skill 术语表中, 在发明新术语之前寻找一个已存在的.

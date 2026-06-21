@@ -6,13 +6,13 @@ disable-model-invocation: true
 
 # 设置工作区
 
-搭建工程技能所假定的每仓库配置:
+搭建工程 skills 所假定的每仓库配置:
 
 - **问题跟踪器(Issue tracker)**--固定使用本地 Markdown:issue 和 PRD 写入 `docs/changes/`
 - **分流标签(Triage labels)**--五个标准分流(triage)角色所使用的字符串
 - **领域文档**--`docs/language/UBIQUITOUS_LANGUAGE.md` 和 ADR 的位置,以及读取它们的消费规则
 
-这是一个由提示驱动的技能,而不是确定性脚本.先探索,展示发现,向用户确认,然后再写入.
+这是一个由提示驱动的 skill,而不是确定性脚本.先探索,展示发现,向用户确认,然后再写入.
 
 ## 流程
 
@@ -34,7 +34,7 @@ disable-model-invocation: true
 
 **Section A--Triage label 词汇.**
 
-> 解释:当 `triage` 技能处理传入 issue 时,它会让 issue 通过一个状态机--需要评估,等待 reporter,准备好由 AFK agent 接手,准备好由人类处理,或不会修复.为此,它需要应用与你实际使用的字符串匹配的状态值.如果你的仓库已经使用不同的名称(例如 `bug:triage` 而不是 `needs-triage`),请在这里映射它们,这样技能会写入正确的状态,而不是制造重复词汇.
+> 解释:当 `triage` skill 处理传入 issue 时,它会让 issue 通过一个状态机--需要评估,等待 reporter,准备好由 AFK agent 接手,准备好由人类处理,或不会修复.为此,它需要应用与你实际使用的字符串匹配的状态值.如果你的仓库已经使用不同的名称(例如 `bug:triage` 而不是 `needs-triage`),请在这里映射它们,这样 skill 会写入正确的状态,而不是制造重复词汇.
 
 五个标准角色:
 
@@ -48,7 +48,7 @@ disable-model-invocation: true
 
 **Section B--Domain docs.**
 
-> 解释:一些技能(`improve-codebase-architecture`,`diagnosing-bugs`,`tdd`)会读取 `docs/language/UBIQUITOUS_LANGUAGE.md` 文件来了解项目的领域语言,并读取 `docs/adr/` 来了解过去的架构决策.它们需要知道仓库是一个全局上下文,还是多个上下文(例如分别有 frontend/backend 上下文的 monorepo),这样才能在正确位置查找.
+> 解释:`improve-codebase-architecture` skill,`diagnosing-bugs` skill,`tdd` skill 会读取 `docs/language/UBIQUITOUS_LANGUAGE.md` 文件来了解项目的领域语言,并读取 `docs/adr/` 来了解过去的架构决策.它们需要知道仓库是一个全局上下文,还是多个上下文(例如分别有 frontend/backend 上下文的 monorepo),这样才能在正确位置查找.
 
 确认布局:
 
@@ -73,7 +73,7 @@ disable-model-invocation: true
 
 如果所选文件中已经存在文档目录结构区块, 就原地更新其内容, 而不是追加重复区块.兼容识别这些标题: `## Docs Directory Structure`,`## 文档目录结构`,`## 文档目录结构(Docs Directory Structure)`.不要覆盖周边 section 中的用户编辑.
 
-如果所选文件中存在包含 Issue tracker,Triage labels,Domain docs 的旧版技能配置区块, 将其标题改为 `## 文档目录结构(Docs Directory Structure)` 并原地更新内容.旧版子标题也要兼容识别: `### Issue tracker`,`### 问题跟踪器`,`### 问题跟踪器(Issue tracker)`,`### Triage labels`,`### 分流标签`,`### 分流标签(Triage labels)`,`### Domain docs`,`### 领域文档`,`### 领域文档(Domain docs)`.
+如果所选文件中存在包含 Issue tracker,Triage labels,Domain docs 的旧版 skill 配置区块, 将其标题改为 `## 文档目录结构(Docs Directory Structure)` 并原地更新内容.旧版子标题也要兼容识别: `### Issue tracker`,`### 问题跟踪器`,`### 问题跟踪器(Issue tracker)`,`### Triage labels`,`### 分流标签`,`### 分流标签(Triage labels)`,`### Domain docs`,`### 领域文档`,`### 领域文档(Domain docs)`.
 
 区块:
 
@@ -93,7 +93,7 @@ disable-model-invocation: true
 [布局的一行摘要: "single-context" 或 "multi-context"]. 见 `docs/agents/domain.md`.
 ```
 
-然后使用此技能文件夹中的种子模板作为起点,写入三个 docs 文件:
+然后使用此 skill 文件夹中的种子模板作为起点,写入三个 docs 文件:
 
 - [issue-tracker-local.md](./issue-tracker-local.md)--本地 Markdown 问题跟踪器(issue tracker)
 - [triage-labels.md](./triage-labels.md)--label 映射
@@ -101,4 +101,4 @@ disable-model-invocation: true
 
 ### 5. 完成
 
-告诉用户设置已完成,以及哪些工程技能现在会读取这些文件.说明他们之后可以直接编辑 `docs/agents/*.md`--只有当他们想重建本地 Markdown 工作区约定或从头开始时,才需要重新运行此技能.
+告诉用户设置已完成,以及哪些工程 skills 现在会读取这些文件.说明他们之后可以直接编辑 `docs/agents/*.md`--只有当他们想重建本地 Markdown 工作区约定或从头开始时,才需要重新运行此 skill.

@@ -1,6 +1,6 @@
 ---
 name: diagnosing-bugs
-description: 未知根因失败诊断循环. 当我报告失败/报错/性能回退且根因未明时使用; 根因明确且适合测试先行时转 `tdd`.
+description: 未知根因失败诊断循环. 当我报告失败/报错/性能回退且根因未明时使用; 根因明确且适合测试先行时转 `tdd` skill.
 ---
 
 # Diagnosing Bugs
@@ -139,4 +139,4 @@ description: 未知根因失败诊断循环. 当我报告失败/报错/性能回
 - [ ] 一次性原型已删除, 或移动到明确标记的 debug 位置.
 - [ ] commit / PR message 说明最终正确的假设, 让下一个调试者学习.
 
-然后追问: 什么本可阻止这个 bug? 如果答案涉及架构变化, 例如没有好测试 seam, caller 缠绕, 隐藏耦合, 将具体信息交给 `/improve-codebase-architecture` skill. 修复完成后再给该建议, 不要修复前给. 此时你知道的信息更多.
+然后追问: 什么本可阻止这个 bug? 如果答案涉及架构变化, 例如没有好测试 seam, caller 缠绕, 隐藏耦合, 将具体信息交给 `improve-codebase-architecture` skill. 修复完成后再给该建议, 不要修复前给. 此时你知道的信息更多.

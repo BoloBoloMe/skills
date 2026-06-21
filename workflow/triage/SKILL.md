@@ -26,7 +26,7 @@ disable-model-invocation: true
 - `docs/agents/issue-tracker.md`
 - `docs/agents/triage-labels.md`
 
-如果不存在, 运行 `/setup-workspace`. 读取完成标准: 已知道 issue 文件位置, 状态字段规则, 评论追加位置, 标准角色到实际 label 的映射.
+如果不存在, 使用 `setup-workspace` skill. 读取完成标准: 已知道 issue 文件位置, 状态字段规则, 评论追加位置, 标准角色到实际 label 的映射.
 
 ## 角色
 
@@ -45,7 +45,7 @@ disable-model-invocation: true
 
 每个已分流(triage)的议题都应恰好携带一个类别角色和一个状态角色.如果状态角色冲突,请标记出来,并在做任何其他事情之前询问维护者.
 
-这些是规范角色名称--议题跟踪器中实际使用的标签字符串可能不同.你应该已经获得了映射;如果没有,请运行 `/setup-workspace`.
+这些是规范角色名称--议题跟踪器中实际使用的标签字符串可能不同.你应该已经获得了映射;如果没有,请使用 `setup-workspace` skill.
 
 状态转换:未标记的议题通常先进入 `needs-triage`;随后它会移动到 `needs-info`,`ready-for-agent`,`ready-for-human` 或 `wontfix`.一旦报告者回复,`needs-info` 会回到 `needs-triage`.维护者可以随时覆盖--对看起来异常的转换做出标记,并在继续前询问.
 
@@ -89,7 +89,7 @@ disable-model-invocation: true
 
 3. **复现(仅限 bug).** 在任何追问之前,先尝试复现:阅读报告者的步骤,跟踪相关代码,运行测试或命令.报告发生了什么--成功复现及代码路径,复现失败,或细节不足(强烈的 `needs-info` 信号).确认复现会形成强得多的智能体简报(agent brief).
 
-4. **追问(如需).** 如果议题需要补充细节,请运行一次 `/grill-with-docs` 会话.
+4. **追问(如需).** 如果议题需要补充细节,请使用一次 `grill-with-docs` skill 会话.
 
 5. **应用结果:**
    - `ready-for-agent`--发布智能体简报(agent brief)评论([AGENT-BRIEF.md](AGENT-BRIEF.md)).标题使用 `## 智能体简报(Agent Brief)`.

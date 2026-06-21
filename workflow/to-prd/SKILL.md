@@ -8,7 +8,7 @@ disable-model-invocation: true
 
 获取当前对话上下文和代码库理解, 产出 PRD. 不做需求访谈, 不因未知项中断. 未知但会影响实现的内容写入 `未确认假设`.
 
-你应该已经获得议题跟踪器和分流(triage)标签词汇. 如果没有, 运行 `/setup-workspace`.
+你应该已经获得议题跟踪器和分流(triage)标签词汇. 如果没有, 使用 `setup-workspace` skill.
 
 ## 流程
 

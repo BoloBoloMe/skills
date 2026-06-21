@@ -50,7 +50,7 @@ description: TDD red-green-refactor 实现循环. 当行为已明确且我需要
 
 - [ ] 与用户确认需要哪些接口变更
 - [ ] 与用户确认要测试哪些行为(并排序优先级)
-- [ ] 识别 deep module 的机会 (小 interface, 大 implementation) - 从 `/codebase-design` 技能获取词汇和可测试性检查
+- [ ] 识别 deep module 的机会 (小 interface, 大 implementation) - 从 `codebase-design` skill 获取词汇和可测试性检查
 - [ ] 列出要测试的行为(不是实现步骤)
 - [ ] 获得用户对计划的批准
 

@@ -8,7 +8,7 @@ const SKILL_NAME_PATTERN = /^[a-z0-9-]{1,64}$/;
 
 const RESOLVE_SKILL_PARAMS = Type.Object({
 	name: Type.String({
-		description: "Skill frontmatter name, e.g. to-prd",
+		description: "Skill frontmatter name",
 		pattern: "^[a-z0-9-]{1,64}$",
 	}),
 });
@@ -38,12 +38,11 @@ export default function resolveSkillExtension(pi: ExtensionAPI) {
 	pi.registerTool({
 		name: "resolve_skill",
 		label: "Resolve Skill",
-		description: "按 frontmatter name 获取 hidden skill 的 SKILL.md 路径",
-		promptSnippet: "需要读取 hidden skill 时, 用 frontmatter name 定位其 SKILL.md 路径.",
+		description: "根据 frontmatter name 查询未知 skill 的 SKILL.md 路径",
+		promptSnippet: "根据 frontmatter name 查询未知 skill 的 SKILL.md 路径.",
 		promptGuidelines: [
-			"需要读取 hidden skill 时, 使用 resolve_skill 定位 SKILL.md.",
-			"name 填写目标 skill 的 frontmatter name.",
-			"拿到 filePath 后, 用 read(filePath) 读取文件.",
+			"根据 frontmatter name 查询未知 skill 的 SKILL.md 路径.",
+			"拿到 filePath 后,用 read(filePath) 读取.",
 		],
 		parameters: RESOLVE_SKILL_PARAMS,
 		async execute(_toolCallId, params: ResolveSkillParams, signal, _onUpdate, ctx) {

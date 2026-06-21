@@ -1,19 +1,19 @@
 ---
 name: human-in-loop-brief
-description: 根据 human-in-the-loop / HITL 0.0.1 资产包生成完整中文方案评审简报。当用户提供 HITL manifest、planning/checks/execution agent assets、human-view 审核入口或验证/收尾资产，并要求生成最终方案评审简报、评审备忘录、方案简报或决策就绪总结时使用。该技能通读资产包，保留事实和来源可追溯性，缺失证据明确标记，最终仅输出简报内容。
+description: 根据 human-in-the-loop / HITL 0.0.1 资产包生成完整中文方案评审简报. 当用户提供 HITL manifest, planning/checks/execution agent assets, human-view 审核入口或验证/收尾资产, 并要求生成最终方案评审简报, 评审备忘录, 方案简报或决策就绪总结时使用. 该 skill 通读资产包, 保留事实和来源可追溯性, 缺失证据明确标记, 最终仅输出简报内容.
 ---
 
 # 中文方案评审简报生成器
 
 ## 目标
 
-把用户提供的 `human-in-the-loop` / `HITL 0.0.1` 资产包整理成一份中文《方案评审简报》。输出必须是一份包含最终简报内容的 Markdown 文档，不输出过程记录、工作计划或解释性前言。
+把用户提供的 human-in-the-loop / HITL 0.0.1 资产包整理成一份中文《方案评审简报》. 输出必须是一份包含最终简报内容的 Markdown 文档, 不输出过程记录, 工作计划或解释性前言.
 
 ## 角色边界
 
-本技能只做资产解读和简报生成，不启动新的 HITL 流程，不创建或修改 manifest、planning/checks/execution agent assets、approval decision、confirmation decision、Plan、Runbook 或 verification record。
+本 skill 只做资产解读和简报生成, 不启动新的 HITL 流程, 不创建或修改 manifest, planning/checks/execution agent assets, approval decision, confirmation decision, Plan, Runbook 或 verification record.
 
-如需解释资产结构，读取 `human-in-the-loop/SKILL.md` 及其 references。只使用 HITL 语义理解资产结构、状态、审批/确认语义、版本语义、边界、门禁和验证证据；不要把本任务升级为规划或执行协议。
+如需解释资产结构, 读取 `human-in-the-loop` skill 的 `SKILL.md` 及其 references. 只使用 HITL 语义理解资产结构, 状态, 审批/确认语义, 版本语义, 边界, 门禁和验证证据; 不要把本任务升级为规划或执行协议.
 
 ## 输入
 
