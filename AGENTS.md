@@ -4,3 +4,17 @@
 不要复述已经读过的文档. 需要引用时, 只给概述和位置, 格式用 `path:start~end`.
 遇到需求澄清, 架构设计, 复杂取舍, 风险分析, 可以放宽电报文压缩, 但不能省略关键推理, 边界条件, 决策依据.
 **只压缩回复,不省略思考**
+
+## 文档目录结构(Docs Directory Structure)
+
+### 问题跟踪器(Issue tracker)
+
+本仓库使用本地 Markdown issue tracker: PRD 和 issues 存放在 `docs/changes/`. 见 `docs/agents/issue-tracker.md`.
+
+### 分流标签(Triage labels)
+
+使用默认 label 词汇: `needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`. 见 `docs/agents/triage-labels.md`.
+
+### 领域文档(Domain docs)
+
+单上下文布局: `docs/language/UBIQUITOUS_LANGUAGE.md` + `docs/adr/`. 见 `docs/agents/domain.md`.

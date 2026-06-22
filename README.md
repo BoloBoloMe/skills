@@ -137,7 +137,7 @@ workflow skills 的默认入口和元编排器: 接收工程类用户任务, 按
 
 ### workflow/grill-with-docs
 
-围绕计划/设计进行拷问式澄清, 并在术语或决策成形时通过 `domain-modeling` 更新领域语言或提出 ADR.
+围绕设计进行拷问式澄清, 并在术语或决策成形时通过 `domain-modeling` 更新领域语言或提出 ADR.
 
 入口文档: [`workflow/grill-with-docs/SKILL.md`](workflow/grill-with-docs/SKILL.md)
 
