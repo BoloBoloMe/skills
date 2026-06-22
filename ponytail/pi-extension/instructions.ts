@@ -14,21 +14,18 @@ import {
 
 const INDEPENDENT_MODES = new Set<ValidMode>(["review"]);
 
-// SKILL.md path: resolve from extension directory to sibling skills directory.
-// Pi convention: extensions in <root>/extensions/<name>/, skills in <root>/skills/<name>/.
+// SKILL.md 位于同仓库的兄弟目录 ponytail/ponytail/SKILL.md.
+// 部署时 extension 可能在任意位置, 因此同时尝试多个候选路径.
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 function resolveSkillPaths(): string[] {
   const candidates: string[] = [];
 
-  // Project-local: .pi/extensions/ponytail/ → .pi/skills/ponytail/
-  candidates.push(
-    path.resolve(__dirname, "../../skills/ponytail/SKILL.md"),
-  );
+  // 源码布局: ponytail/pi-extension/ → ponytail/ponytail/
+  candidates.push(path.resolve(__dirname, "../ponytail/SKILL.md"));
 
-  // Global: ~/.pi/agent/extensions/ponytail/ → ~/.pi/agent/skills/ponytail/
-  const agentRoot = path.resolve(__dirname, "../../../..");
-  candidates.push(path.join(agentRoot, "skills/ponytail/SKILL.md"));
+  // pi 安装布局: ~/.pi/agent/extensions/ponytail/ → ~/.pi/agent/skills/ponytail/
+  candidates.push(path.resolve(__dirname, "../../skills/ponytail/SKILL.md"));
 
   return candidates;
 }

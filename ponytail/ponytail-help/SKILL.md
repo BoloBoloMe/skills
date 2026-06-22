@@ -1,9 +1,8 @@
 ---
 name: ponytail-help
 description: >
-  所有 ponytail mode, skill 和命令的快速参考卡. 一次性展示, 不是持久模式.
-  触发: /ponytail-help, "ponytail help", "what ponytail commands",
-  "how do I use ponytail".
+  当我说 "ponytail help" 或 /ponytail-help 时使用.
+  所有 mode, skill 和命令的快速参考卡. 一次性展示.
 ---
 
 # Ponytail Help
@@ -33,7 +32,7 @@ Level 持续生效直到更改或 session 结束.
 
 ## Deactivate
 
-说 "stop ponytail" 或 "normal mode". 随时用 `/ponytail` 恢复. `/ponytail off` 也可以.
+"stop ponytail" 或 "normal mode" 关闭. 随时用 `/ponytail` 恢复. `/ponytail off` 也可以.
 
 ## Configure Default Mode
 
@@ -53,6 +52,4 @@ export PONYTAIL_DEFAULT_MODE=ultra
 
 解析顺序: env var > config file > `full`.
 
-## More
 
-完整文档和示例: https://github.com/DietrichGebert/ponytail
