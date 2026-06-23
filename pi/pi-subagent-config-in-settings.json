@@ -18,7 +18,7 @@
         ]
       },
       "worker": {
-        "model": "ai-work-zai/glm-5.1",
+        "model": "ai-work-moonshot/kimi-k2.7-code",
         "thinking": "high",
         "defaultContext": "fresh",
         "fallbackModels": [
@@ -42,19 +42,19 @@
         ]
       },
       "scout": {
-        "model": "ai-work-deepseek/deepseek-v4-flash",
+        "model": "ai-work-deepseek/deepseek-v4-pro",
         "thinking": "xhigh",
         "defaultContext": "fresh",
         "fallbackModels": [
-          "ai-work-deepseek/deepseek-v4-pro"
+          "ai-work-deepseek/deepseek-v4-flash"
         ]
       },
       "researcher": {
-        "model": "ai-work-deepseek/deepseek-v4-flash",
+        "model": "ai-work-zai/glm-5.2",
         "thinking": "xhigh",
         "defaultContext": "fresh",
         "fallbackModels": [
-          "ai-work-deepseek/deepseek-v4-pro"
+          "ai-work-qwen/qwen3.7-max"
         ]
       }
     }
