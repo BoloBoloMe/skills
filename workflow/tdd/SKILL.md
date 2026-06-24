@@ -1,7 +1,6 @@
 ---
 name: tdd
-description: TDD red-green-refactor 实现循环. 当行为已明确且我需要测试先行实现或修复时.
-disable-model-invocation: true
+description: TDD red-green-refactor 实现循环. 行为明确需要测试先行时使用.
 ---
 
 # 测试驱动开发
