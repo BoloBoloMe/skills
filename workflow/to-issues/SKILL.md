@@ -8,7 +8,7 @@ disable-model-invocation: true
 
 使用垂直切片 (tracer bullets) 把计划拆成可独立领取的议题.
 
-你应该已获得议题跟踪器和分流 (call triage skill) 标签词汇; 如果没有, 使用 `setup-workspace` skill.
+你应该已获得议题跟踪器和分流 (call `triage` skill) 标签词汇; 如果没有, 使用 `setup-workspace` skill.
 
 ## 流程
 
