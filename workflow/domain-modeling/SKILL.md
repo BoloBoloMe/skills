@@ -1,6 +1,6 @@
 ---
 name: domain-modeling
-description: 领域模型维护. 当我需要固定领域术语, 维护 ubiquitous language, 记录 ADR 或同步领域模型时使用.
+description: 领域模型维护. 当我需要固定领域术语, 维护 ubiquitous language, 记录 ADR 或同步领域模型时.
 ---
 
 # Domain Modeling
@@ -42,7 +42,7 @@ project-root/
 `-- src/
 ```
 
-惰性创建文件. 只有确实有内容要写时才创建. 如果不存在 `docs/language/UBIQUITOUS_LANGUAGE.md`, 在第一个术语被解析清楚时创建它. 如果不存在 `docs/adr/`, 在第一篇 ADR 需要记录时创建它.
+惰性创建文件: 只有确实有内容要写时才创建. 不存在 `docs/language/UBIQUITOUS_LANGUAGE.md` 时, 在第一个术语被解析清楚时创建它. 不存在 `docs/adr/` 时, 在第一篇 ADR 需要记录时创建它.
 
 ## 会话期间
 
@@ -62,13 +62,13 @@ project-root/
 
 ### 与代码交叉引用
 
-当用户说明某个东西如何工作时, 检查代码是否一致. 如果发现矛盾, 立即指出. 示例: "代码会取消整个 Order, 但你刚才说可以部分取消. 哪个是事实?"
+当用户说明某个东西如何工作时, 检查代码是否一致. 发现矛盾立即指出. 示例: "代码会取消整个 Order, 但你刚才说可以部分取消. 哪个是事实?"
 
 ### 内联更新领域语言
 
 当术语被解析清楚时, 立即更新 `docs/language/UBIQUITOUS_LANGUAGE.md` 或相关 `docs/language/contexts/*.md`. 不要批量积攒. 使用 [UBIQUITOUS_LANGUAGE_FORMAT.md](UBIQUITOUS_LANGUAGE_FORMAT.md) 中的格式.
 
-领域语言文件不包含实现细节. 不要把它当成规范, 草稿纸, 或实现决策仓库. 它只是项目领域词汇表.
+领域语言文件不含实现细节. 不要把它当成规范, 草稿纸, 或实现决策仓库. 它只是项目领域词汇表.
 
 ### 谨慎提出 ADR
 

@@ -1,78 +1,56 @@
 ---
 name: orchestrate
-description: 软件工程 workflow router, 负责选择和编排仓库 workflow skills.
+description: 软件工程 workflow router, 选择并编排仓库 workflow skills.
 disable-model-invocation: true
 ---
 
-# Orchestrate
+判断工作从哪条 flow 进入, 加载对应 skill 的 `SKILL.md` 按它执行. 选不中 -> `grill-me` 澄清.
+未在当前对话的 skill: `resolve_skill(name)` 拿 filePath, 再 `read(filePath)`.
 
-你不需要记住每个 workflow. 先判断这项工作从哪条 flow 进入.
+## 路由
 
-**flow** 是任务穿过 workflow skills 的路径. 多数构建工作走 **main flow**. Bug, issue, worktree, review 是 **on-ramp**. 架构和领域语言属于 **codebase health**.
+按信号匹配, 命中即加载该 skill.
 
-完成标准: 选中一个入口 skill, 按 `Skill 读取规则` 读取它的 `SKILL.md`, 然后按它执行. 如果无法可靠选中, 使用 `grill-me` skill 向我澄清.
+**主流程 (idea -> build)**
+- 新想法, 边界未定, 有代码库 -> `grill-with-docs`
+- 需要可运行答案验证状态/逻辑/数据模型/UI -> `prototype`
+- 多会话规划 -> `to-prd` -> `to-issues` -> `to-plan` -> `confirm-plan` (确认高风险/越界变更)
+- 行为已明确, 测试先行 -> `tdd`; 根因未知先 `diagnosing-bugs`
+- AFK 任务就绪, PRD/issue/PLAN 已确认 -> `run-afk-workflow`
 
-## Skill 读取规则
+**on-ramp**
+- worktree/repo 布局/分支隔离 -> `use-worktree`
+- 未知根因失败 (bug/error/regression) -> `diagnosing-bugs`
+- 原始 incoming issue (bug report/feature request/状态变更) -> `triage` (不 triage `to-issues` 产出)
+- 交互式代码评审/逐段走读 -> `code-review-with-me`
+- 远程仓库 URL, 要了解 -> `explore-repo`
 
-当本 skill 选中另一个 skill 时, 先加载目标 skill 的 `SKILL.md`. 如果目标 skill 未在当前对话中加载, 或不在当前 system prompt 的可用 skills 列表中, 调用 `resolve_skill` 获取 `filePath`, 再用 `read(filePath)` 读取.
+**codebase health**
+- 全库架构报告 (复杂度/边界/可测试性/重构候选) -> `improve-codebase-architecture`
+- module interface/seam/deep module/可测试性 interface 设计 -> `codebase-design`
+- 固定或扩展领域术语/ubiquitous language/context map/ADR -> `domain-modeling`
 
-## 可路由 skills
+**兜底**
+- 无代码库, 路由不清, 纯对话压力测试 -> `grill-me`
 
-- Workspace: `setup-workspace` skill, `use-worktree` skill.
-- Clarify and design: `grill-with-docs` skill, `grill-me` skill, `prototype` skill, `codebase-design` skill, `domain-modeling` skill.
-- Build: `tdd` skill, `run-afk-workflow` skill.
-- Product and planning: `to-prd` skill, `to-issues` skill, `to-plan` skill, `triage` skill.
-- Health and review: `diagnosing-bugs` skill, `improve-codebase-architecture` skill, `code-review-with-me` skill.
+## 前置
 
-## 前置条件
+仓库缺 issue tracker/triage 标签/领域文档, 且后续 flow 需要它们 -> 先 `setup-workspace`, 完成后回原 flow.
 
-**`setup-workspace` skill** - 当某个 workflow 依赖仓库约定, 但这些约定缺失时先使用.
+## 衔接
 
-触发: 仓库缺少 issue tracker, triage 标签或领域文档, 且后续 flow 需要 `to-prd` skill, `to-issues` skill, `triage` skill, `diagnosing-bugs` skill, `tdd` skill, `improve-codebase-architecture` skill, `domain-modeling` skill.
+`grill-with-docs` -> `to-prd` -> `to-issues` 尽量留在同一上下文, 中途不 compact. 会话过满或需独立线程 -> `handoff` 搭桥, 新会话用 `receive-handoff` 接续.
 
-这不是我目标任务. 完成约定投影后, 回到原 flow.
+## 领域专用
 
-## 主流程: idea -> build
+领域专用审查等见 `others/` (如 `payment-review`).
 
-多数产品和功能工作走这条路线.
+## 子代理协作 (仅父会话)
 
-1. **`grill-with-docs` skill** - 有代码库的新想法, 且边界未定时从这里开始. 典型任务: 新功能, 新流程, 新 API, 新业务规则. 它用代码事实, 项目语言和 ADR 压力测试计划.
-2. **分支 - 问题需要可运行答案吗?** 当对话无法确定状态, 业务逻辑, 数据模型或 UI 行为时, 使用 **`prototype` skill**. 构建一次性证明, 再把结论带回原 flow.
-3. **分支 - 需要多会话规划吗?** 使用 **`to-prd` skill** 把当前线程沉淀为 PRD, 再用 **`to-issues` skill** 拆成可独立领取的垂直切片. `to-issues` skill 完成后, 询问是否运行 **`to-plan` skill** 生成合并源码级执行计划.
-4. **分支 - 行为已明确且适合测试先行吗?** 使用 **`tdd` skill**. 如果根因未知, 离开主流程并先用 `diagnosing-bugs` skill.
-5. **分支 - 明确是 AFK 编码任务吗?** 只有当 AFK 任务已就绪, 且 PRD, issue 或 PLAN 上下文已确认时, 使用 **`run-afk-workflow` skill**.
+禁止子代理或选中 `run-afk-workflow` 时整节跳过.
 
-## on-ramp
-
-这些入口会生成工作或解除阻塞, 然后合流到其他 flow.
-
-- **Worktree 或 repo 布局** -> **`use-worktree` skill**. 我要创建, 删除, 迁移, 选择 worktree, 或强调分支隔离和避免改错仓库时, 先用它.
-- **未知根因失败** -> **`diagnosing-bugs` skill**. bug, exception, error, test failure, broken behavior, performance regression 且原因未知时使用. 原因和期望行为明确后, 继续到 `tdd` skill 或最小可行实现路径.
-- **原始 incoming issue** -> **`triage` skill**. 单个 bug report, feature request, issue 状态变更, 标签操作或 agent brief 使用它. 不要 triage 由 `to-issues` skill 产出的 issue; 它们已经 agent-ready.
-- **交互式代码评审** -> **`code-review-with-me` skill**. 我要一起 review 代码, 逐段看代码或产出人审报告时使用.
-
-## codebase health
-
-不是功能交付. 这些 flow 用来让代码库更容易被人和 agent 修改.
-
-- **`improve-codebase-architecture` skill** - 我要全库报告时使用. 典型目标: 降复杂度, 模块边界, 可测试性, 重构候选. 选中的候选可以成为 idea, 再从 `grill-with-docs` skill 进入主流程.
-- **`codebase-design` skill** - 问题是 module interface 设计, seam 位置, deep module 词汇或可测试性 interface 设计时使用. 如果我要全库候选扫描, 改用 `improve-codebase-architecture` skill.
-- **`domain-modeling` skill** - 任务只是在固定或扩展领域术语, ubiquitous language, context map 或 ADR 时使用. 单纯读取既有领域语言不进入该 skill.
-
-## 独立入口和兜底
-
-- **`grill-me` skill** - 没有代码库, 工程路由不清, 或我只要对计划和设计做纯对话压力测试时使用.
-
-## 上下文卫生
-
-尽量让 `grill-with-docs` skill -> `to-prd` skill -> `to-issues` skill 留在同一个连贯上下文中. 不要在阶段中途 compact. 如果会话过满或 `prototype` skill 需要独立线程, 用 `handoff` skill 搭桥, 在新会话继续.
-
-## 可选协作
-
-只在父会话应用本节. 如果我禁止使用子代理, 则整节跳过. 如果选中的 skill 是 `run-afk-workflow` skill, 也整节跳过, 因为 AFK workflow 自己管理协作.
-
-1. **外部事实会影响正确性或路线选择** -> 在选择 workflow skill 前分派 `researcher`. 例子: 官方 API 语义, 协议规则, SDK 版本, OAuth, webhook, 安全边界, 兼容性, 性能基线. Research 不写代码; 产出作为所选 workflow 的输入.
-2. **实现跨多个文件或模块** -> 路线明确后, 且变更不适合父会话 inline 执行时分派 `worker`.
-3. **实现完成后需要独立质量门禁** -> 当前 workflow 没有自带 review 时分派 `reviewer`.
-4. **轻量代码库侦察会解除路由阻塞** -> 需要文件清单, 结构, 入口点或短调用链摘要时分派 `scout`.
-5. **以上都不满足** -> 不分派.
+- 外部事实影响正确性/路线 -> 选 skill 前分派 `researcher`
+- 实现跨多文件/模块, 不适合 inline -> 路线明确后分派 `worker`
+- 需独立质量门禁, workflow 无自带 review -> 分派 `reviewer`
+- 需文件清单/结构/入口/短调用链摘要解除路由阻塞 -> 分派 `scout`
+- 都不满足 -> 不分派

@@ -1,6 +1,6 @@
 ---
 name: receive-handoff
-description: Handoff 交接文档接收, 理解汇报和下一步建议流程.
+description: Handoff 文档接收, 理解汇报与下一步建议流程.
 disable-model-invocation: true
 ---
 
@@ -24,7 +24,7 @@ disable-model-invocation: true
 
 ### 2. 阅读必读材料
 
-完整读取 handoff 文档. 只读取其中 `必读推荐` 指向且当前任务继续必须依赖的文件, 不做无限扩展阅读.
+完整读取 handoff 文档. 只读取其中 `必读推荐` 指向且当前任务继续必需的文件, 不无限扩展阅读.
 
 完成标准: 已掌握目标, 当前状态, 关键决策, 约束, 未完成事项, 风险, 必读引用.
 

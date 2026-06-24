@@ -1,6 +1,7 @@
 ---
 name: explore-repo
 description: explore 远程 git 仓库. 当我提到仓库 URL 并需要了解时.
+disable-model-invocation: true
 ---
 
 # explore-repo

@@ -1,6 +1,6 @@
 ---
 name: setup-workspace
-description: Workflow 工作区约定初始化, 创建 issue tracker, triage 标签和领域文档约定.
+description: Workflow 工作区约定初始化, 创建 issue tracker, triage 标签, 领域文档约定.
 disable-model-invocation: true
 ---
 
@@ -8,72 +8,72 @@ disable-model-invocation: true
 
 搭建工程 skills 所假定的每仓库配置:
 
-- **问题跟踪器(Issue tracker)**--固定使用本地 Markdown:issue 和 PRD 写入 `docs/changes/`
-- **分流标签(Triage labels)**--五个标准分流(triage)角色所使用的字符串
-- **领域文档**--`docs/language/UBIQUITOUS_LANGUAGE.md` 和 ADR 的位置,以及读取它们的消费规则
+- **问题跟踪器 (Issue tracker)** - 固定使用本地 Markdown: issue 和 PRD 写入 `docs/changes/`.
+- **分流标签 (Triage labels)** - 五个标准分流 (triage) 角色所用的字符串.
+- **领域文档** - `docs/language/UBIQUITOUS_LANGUAGE.md` 和 ADR 的位置, 以及读取它们的消费规则.
 
-这是一个由提示驱动的 skill,而不是确定性脚本.先探索,展示发现,向用户确认,然后再写入.
+这是一个提示驱动的 skill, 而非确定性脚本. 先探索, 展示发现, 向用户确认, 再写入.
 
 ## 流程
 
 ### 1. 探索
 
-查看当前仓库,理解它的初始状态.读取已经存在的内容;不要假设:
+查看当前仓库, 理解它的初始状态. 读取已存在的内容; 不要假设:
 
-- 仓库根目录的 `AGENTS.md`--是否存在?其中是否已经有 `## Docs Directory Structure`,`## 文档目录结构`,`## 文档目录结构(Docs Directory Structure)` 或旧版技能配置区块?
-- `docs/language/UBIQUITOUS_LANGUAGE.md` 和 `docs/language/UBIQUITOUS_LANGUAGE_MAP.md`
-- `docs/adr/` 和 `docs/adr/contexts/` 目录
-- `docs/agents/`--这个技能之前的输出是否已经存在?
-- `docs/changes/`--本地 Markdown issue tracker 的既有约定和内容
+- 仓库根目录的 `AGENTS.md` - 是否存在? 其中是否已有 `## Docs Directory Structure`, `## 文档目录结构`, `## 文档目录结构(Docs Directory Structure)` 或旧版技能配置区块?
+- `docs/language/UBIQUITOUS_LANGUAGE.md` 和 `docs/language/UBIQUITOUS_LANGUAGE_MAP.md`.
+- `docs/adr/` 和 `docs/adr/contexts/` 目录.
+- `docs/agents/` - 这个技能之前的输出是否已存在?
+- `docs/changes/` - 本地 Markdown issue tracker 的既有约定和内容.
 
 ### 2. 展示发现并询问
 
-总结已存在和缺失的内容.然后带用户逐一完成两个决策--展示一个区块(section),获得用户回答,再进入下一个.不要一次性倾倒所有问题.
+总结已存在和缺失的内容. 然后带用户逐一完成两个决策 - 展示一个区块 (section), 获得用户回答, 再进入下一个. 不要一次性抛出所有问题.
 
-本技能只内置支持**本地 Markdown issue tracker**.无需询问或生成任何远程 issue tracker 工作流;即使仓库已有远程 issue,也以 `docs/changes/` 本地 Markdown 约定为准.
+本技能只内置支持 **本地 Markdown issue tracker**. 无需询问或生成任何远程 issue tracker 工作流; 即使仓库已有远程 issue, 也以 `docs/changes/` 本地 Markdown 约定为准.
 
-**Section A--Triage label 词汇.**
+**Section A - Triage label 词汇.**
 
-> 解释:当 `triage` skill 处理传入 issue 时,它会让 issue 通过一个状态机--需要评估,等待 reporter,准备好由 AFK agent 接手,准备好由人类处理,或不会修复.为此,它需要应用与你实际使用的字符串匹配的状态值.如果你的仓库已经使用不同的名称(例如 `bug:triage` 而不是 `needs-triage`),请在这里映射它们,这样 skill 会写入正确的状态,而不是制造重复词汇.
+> 解释: `triage` skill 处理传入 issue 时, 会让 issue 通过一个状态机 - 需要评估, 等待 reporter, 准备好由 AFK agent 接手, 准备好由人类处理, 或不会修复. 为此它需要应用与你实际使用的字符串匹配的状态值. 如果你的仓库已用不同名称 (例如 `bug:triage` 而非 `needs-triage`), 请在这里映射它们, 这样 skill 会写入正确的状态, 而非制造重复词.
 
 五个标准角色:
 
-- `needs-triage`--maintainer 需要评估
-- `needs-info`--等待 reporter
-- `ready-for-agent`--已完整说明,适合 AFK(agent 无需人类上下文即可接手)
-- `ready-for-human`--需要人类实施
-- `wontfix`--不会处理
+- `needs-triage` - maintainer 需要评估
+- `needs-info` - 等待 reporter
+- `ready-for-agent` - 已完整说明, 适合 AFK (agent 无需人类上下文即可接手)
+- `ready-for-human` - 需要人类实施
+- `wontfix` - 不会处理
 
-默认值:每个角色的字符串都等于它自己的名称.询问用户是否想覆盖其中任何一个.如果没有既有约定,默认值即可.
+默认值: 每个角色的字符串都等于它自己的名称. 询问用户是否想覆盖其中任何一个. 没有既有约定时, 默认值即可.
 
-**Section B--Domain docs.**
+**Section B - Domain docs.**
 
-> 解释:`improve-codebase-architecture` skill,`diagnosing-bugs` skill,`tdd` skill 会读取 `docs/language/UBIQUITOUS_LANGUAGE.md` 文件来了解项目的领域语言,并读取 `docs/adr/` 来了解过去的架构决策.它们需要知道仓库是一个全局上下文,还是多个上下文(例如分别有 frontend/backend 上下文的 monorepo),这样才能在正确位置查找.
+> 解释: `improve-codebase-architecture` skill, `diagnosing-bugs` skill, `tdd` skill 会读取 `docs/language/UBIQUITOUS_LANGUAGE.md` 了解项目领域语言, 并读取 `docs/adr/` 了解过去的架构决策. 它们需要知道仓库是单上下文还是多上下文 (例如分别有 frontend/backend 上下文的 monorepo), 才能在正确位置查找.
 
 确认布局:
 
-- **单上下文**--`docs/language/UBIQUITOUS_LANGUAGE.md` + `docs/adr/`.大多数仓库都是这样.
-- **多上下文**--`docs/language/UBIQUITOUS_LANGUAGE_MAP.md`,指向 `docs/language/contexts/` 下的上下文语言文件(通常是 monorepo).
+- **单上下文** - `docs/language/UBIQUITOUS_LANGUAGE.md` + `docs/adr/`. 大多数仓库都是这样.
+- **多上下文** - `docs/language/UBIQUITOUS_LANGUAGE_MAP.md`, 指向 `docs/language/contexts/` 下的上下文语言文件 (通常是 monorepo).
 
 ### 3. 确认并编辑
 
 向用户展示以下草稿:
 
-- 要添加到 `AGENTS.md` 中的 `## 文档目录结构(Docs Directory Structure)` 区块
-- `docs/agents/issue-tracker.md`,`docs/agents/triage-labels.md`,`docs/agents/domain.md` 的内容
+- 要添加到 `AGENTS.md` 中的 `## 文档目录结构(Docs Directory Structure)` 区块.
+- `docs/agents/issue-tracker.md`, `docs/agents/triage-labels.md`, `docs/agents/domain.md` 的内容.
 
-在写入前允许用户修改.
+写入前允许用户修改.
 
 ### 4. 写入
 
 **选择要编辑的文件:**
 
-- 如果仓库根目录存在 `AGENTS.md`,编辑它.
-- 如果不存在,询问用户是否创建 `AGENTS.md`--不要替用户静默创建.
+- 仓库根目录存在 `AGENTS.md` 时, 编辑它.
+- 不存在时, 询问用户是否创建 `AGENTS.md` - 不要替用户静默创建.
 
-如果所选文件中已经存在文档目录结构区块, 就原地更新其内容, 而不是追加重复区块.兼容识别这些标题: `## Docs Directory Structure`,`## 文档目录结构`,`## 文档目录结构(Docs Directory Structure)`.不要覆盖周边 section 中的用户编辑.
+所选文件已存在文档目录结构区块时, 原地更新其内容, 而非追加重复区块. 兼容识别这些标题: `## Docs Directory Structure`, `## 文档目录结构`, `## 文档目录结构(Docs Directory Structure)`. 不要覆盖周边 section 中的用户编辑.
 
-如果所选文件中存在包含 Issue tracker,Triage labels,Domain docs 的旧版 skill 配置区块, 将其标题改为 `## 文档目录结构(Docs Directory Structure)` 并原地更新内容.旧版子标题也要兼容识别: `### Issue tracker`,`### 问题跟踪器`,`### 问题跟踪器(Issue tracker)`,`### Triage labels`,`### 分流标签`,`### 分流标签(Triage labels)`,`### Domain docs`,`### 领域文档`,`### 领域文档(Domain docs)`.
+所选文件存在包含 Issue tracker, Triage labels, Domain docs 的旧版 skill 配置区块时, 将其标题改为 `## 文档目录结构(Docs Directory Structure)` 并原地更新内容. 旧版子标题也要兼容识别: `### Issue tracker`, `### 问题跟踪器`, `### 问题跟踪器(Issue tracker)`, `### Triage labels`, `### 分流标签`, `### 分流标签(Triage labels)`, `### Domain docs`, `### 领域文档`, `### 领域文档(Domain docs)`.
 
 区块:
 
@@ -93,12 +93,12 @@ disable-model-invocation: true
 [布局的一行摘要: "single-context" 或 "multi-context"]. 见 `docs/agents/domain.md`.
 ```
 
-然后使用此 skill 文件夹中的种子模板作为起点,写入三个 docs 文件:
+然后用本 skill 文件夹中的种子模板作为起点, 写入三个 docs 文件:
 
-- [issue-tracker-local.md](./issue-tracker-local.md)--本地 Markdown 问题跟踪器(issue tracker)
-- [triage-labels.md](./triage-labels.md)--label 映射
-- [domain.md](./domain.md)--领域文档消费规则 + 布局
+- [issue-tracker-local.md](./issue-tracker-local.md) - 本地 Markdown issue tracker.
+- [triage-labels.md](./triage-labels.md) - label 映射.
+- [domain.md](./domain.md) - 领域文档消费规则 + 布局.
 
 ### 5. 完成
 
-告诉用户设置已完成,以及哪些工程 skills 现在会读取这些文件.说明他们之后可以直接编辑 `docs/agents/*.md`--只有当他们想重建本地 Markdown 工作区约定或从头开始时,才需要重新运行此 skill.
+告诉用户设置已完成, 以及哪些工程 skills 现在会读取这些文件. 说明他们之后可直接编辑 `docs/agents/*.md` - 只有想重建本地 Markdown 工作区约定或从头开始时, 才需重新运行此 skill.
