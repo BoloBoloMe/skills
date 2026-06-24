@@ -15,9 +15,9 @@ disable-model-invocation: true
 - 关联 PRD, issue, PLAN 已存在且已由用户确认.
 - 任务不要求父会话直接写生产代码或测试代码.
 - 当前运行时存在可承担 implementation, review, recovery 的 agent/role/profile 绑定.
-- 前 5 条全满足后, 父代理向用户询问"要不要懒代码"; 用户回答 (要/不要) 则本条满足. 决议由父代理在会话内持有, 不落库, 不写 run manifest 或预检产物.
+- 前 5 条全满足后, 父代理向用户询问"要不要懒代码"; 用户回答 (要/不要) 则本条满足. 决议由父代理在会话内持有, 不写 run manifest 或预检产物.
 
-完成标准: 全部满足则进入 `PREFLIGHT`; 任一不满足则停止, 报告缺口和需要用户补齐的输入. 懒代码必问无答视为第 6 条不满足, 按门禁失败停止. 如果运行时没有可用子代理或等价角色, 不降级为父会话编码, 改为请用户切换到 `tdd` skill 或 `diagnosing-bugs` skill 流程.
+完成标准: 全部满足则进入 `PREFLIGHT`; 任一不满足则停止, 报告缺口和需要用户补齐的输入. 懒代码必问无答视为第 6 条不满足. 如果运行时没有可用子代理或等价角色, 不降级为父会话编码, 改为请用户切换到 `tdd` skill 或 `diagnosing-bugs` skill 流程.
 
 ## 父会话硬边界
 
@@ -42,7 +42,7 @@ disable-model-invocation: true
 
 ## 角色边界
 
-- **worker**: TDD 执行器. 读取前置产物和 issue 产物目录文件, 按 TDD 纵向切片写代码, 写运行日志和结果报告. 不判断需求合理性, 不决定范围, 不读取 reviewer 输出. 若懒代码决议为要, 父代理在启动任一 worker (implementation/fix/recover) 的初始提示词注入指引, 让 worker 自读 `lazy-code` skill 并遵循其标准; lazy-code 不替代 TDD, 需测试先行时仍按 `tdd` skill 完整流程. reviewer 不注入.
+- **worker**: TDD 执行器. 读取前置产物和 issue 产物目录文件, 按 TDD 纵向切片写代码, 写运行日志和结果报告. 不判断需求合理性, 不决定范围, 不读取 reviewer 输出. 若懒代码决议为要, 父代理在启动任一 worker (implementation/fix/recover) 的初始提示词注入指引, 让 worker 自读 `lazy-code` skill 并遵循其标准. reviewer 不注入.
 - **reviewer**: 单维度只读审查员. 读取前置产物, issue 产物目录文件和代码库真实 diff, 按指定维度输出发现项. 不修改任何项目/源码文件, 不读取其他 reviewer 输出, 不做跨维度判断.
 - **recovery worker**: 恢复执行器. 只按 `RECOVERY.md` 指定模式补产物, 修复验证失败, 或继续 dirty tree. 不扩大范围.
 
