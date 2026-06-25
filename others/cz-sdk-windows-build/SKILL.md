@@ -1,6 +1,6 @@
 ---
 name: cz-sdk-windows-build
-description: 在 Windows 上以严格 JDK 8 流程编译和诊断 cz_sdk. 当用户要构建, 编译, 校验 Maven 编译, 或排查 cz_sdk, czsdk-parent, czsdk-paycenter 及相关模块在 Windows 上的构建失败时使用. 必须先检测可用 JDK 8, 在 Maven 编译前强制使用 JDK 8, 环境不是 JDK 8 时停止, 编译失败时运行标准化失败诊断.
+description: 当你要在 Windows 环境下对 `cz_sdk` 项目进行 Maven 构建时使用.
 ---
 
 # cz-sdk Windows 构建
