@@ -1,0 +1,174 @@
+---
+name: skill-translate
+description: 把英文或外部 skill 汉化为本仓库可维护版本, 保持行为语义和低 context load.
+disable-model-invocation: true
+---
+
+你的任务是把已有 skill 翻译/汉化/适配到本仓库. 不适用从零设计新 skill (从零设计时先读 `general/write-a-skill/SKILL.md`).
+
+先读 `general/write-a-skill/SKILL.md` 理解 skill 编写原则. 本文使用 write-a-skill 中的术语: **duplication**, **no-op**, **context load** 等.
+
+完成标准 (全程):
+- 源 skill 路径和目标 skill 路径已确认
+- 目标运行时已确认 (pi, Claude Code, Codex CLI 等)
+- 目标 skill 调用方式 (model-invoked / user-invoked) 已确认
+- 所有操作步骤的中文译文, 只看中文就能执行, 无需回看英文
+
+## 1. 破译: 固定输入, 锁定语义
+
+先读源版 `SKILL.md`, 再读目标版 `SKILL.md`. 若正文明确引用 sibling reference, 按引用读取. **对照完成前不修改任何文件**.
+
+阅读时同时完成两件事:
+
+**标出语义锚点**:
+- 标出所有核心动词 (拆步骤的依据)
+- 圈出所有 `must` / `never` / `only` / `at most` (强度词, 翻译时绝不可弱化)
+- 识别情绪基调: 警告 (严肃), 建议 (中性), 可选优化 (轻松)
+
+**分离三层内容**:
+- 运行时字段: frontmatter 中目标运行时真正消费的字段
+- 触发语义: name, description, slash command, 关闭/切换短语
+- 执行语义: 正文步骤, 规则, 例外, 完成标准, 示例
+
+完成标准:
+- 已读源版和目标版
+- 已读适用的 `AGENTS.md`
+- 已读 `general/write-a-skill/SKILL.md`
+- 若目标运行时有差异, 已查目标运行时文档
+- 所有核心动词和强度词已标出
+- 有效/无效 frontmatter 字段已识别
+- 源 skill 路径, 目标路径, 目标运行时, 调用方式均已确认
+
+## 2. 定信: 先比语义, 再比文字
+
+不直接逐句翻译. 先列行为差异:
+
+- 缺失的规则
+- 范围被误缩或误扩的规则
+- 示例技术栈替换后引入的偏向
+- 持续条件, 关闭条件, 强度级别等状态语义
+- 测试/check 规则和例外条件
+- 原版的最后约束, maxim 或边界说明
+
+完成标准:
+- 每个差异记录: 源版位置, 目标版位置, 影响, 处理决定
+- 本地化措辞差异没有被误判为行为差异
+- 行为差异显式记录, 没有藏在普通翻译里
+
+## 3. 裁剪 frontmatter
+
+按目标运行时保留字段. 以 pi 为例, 常用字段: `name`, `description`, `license`, `compatibility`, `metadata`, `allowed-tools`, `disable-model-invocation`. 未知字段删除以降低噪音.
+
+description 写法:
+- model-invoked: 保留触发词, 每个 branch 只留一个触发器
+- user-invoked: 设 `disable-model-invocation: true`, description 只写一行人类摘要
+- 不扩写触发词清单, 除非 invocation 证据不足
+
+完成标准:
+- frontmatter 只含目标运行时有效字段或明确兼容字段
+- description 没有重复正文内容
+- skill name 保持稳定, 除非迁移计划要求改名
+
+## 4. 立达: 翻译正文
+
+正文以中文为主体. 英文只保留以下类型:
+- frontmatter key 和 metadata value
+- 命令, slash command, 参数, 关闭/切换触发短语
+- code, API, library, file path, protocol, 硬件型号
+- 强 leading word (如 `YAGNI`) 或已成为 skill 共享语言的词
+- skill 名 (如 `Ponytail`, `Caveman`)
+
+**语法切割 (三刀)**:
+
+1. 长句拆成动作链: 英文长句 (超 25 词) 拆成 "谁 → 做什么 → 得到什么结果" 的独立短句. 中文单句强制不超 25 字, 超长必断.
+2. 被动换主动/无主句: `The button is clicked` → `点击按钮`; `it is recommended` → `建议`; 全文禁用 "被" 字 (法律/安全警告除外).
+3. 删虚胖词: `in order to`, `the process of`, `very/really` 直接删; `please` 在指令中酌情保留一次, 后续全删.
+
+**强度守恒**:
+- 保留执行强度: `must not` 译 "严禁" 或 "切勿", 不译 "最好不"
+- 保留例外条件: 不把窄例外扩成通用许可
+- 保留数量词: `one`, `only`, `at most`, `never` 必须显式译出 ("仅有一次", "最多三个", "绝不可")
+- 技术术语: 能自然翻译就翻译 (`parameter` → 参数), 代码字面量不译
+- 示例可本地化, 但不得无意改成特定技术栈专用 (原版 `bash` 示例不可全改 `powershell` 而不加说明)
+
+完成标准:
+- 每个残留英文有保留理由
+- 所有普通 prose 已中文化
+- 原版 must/never/only/at most 约束强度在中文中肉眼可见
+- 每个操作步骤的中文译文, 只看中文就能确定先后顺序, 无需对照英文
+
+## 5. 求净: 中文优化
+
+这里的 "雅" 不是文学修辞, 而是工程语境下的干净, 有力, 无歧义. 逐句检查中文是否像规则而非散文. 优先短句, 硬边界, 可执行表达.
+
+检查点:
+- 贬义人格词改成行为词: `懒惰` → `会偷懒`; `愚蠢` → `不推荐`
+- 直译腔改成工程语境: `boring` → `朴素`; `suffer from` → `受...影响`
+- 模糊动词改成具体动作: `处理` → `删除` / `保留` / `质疑` / `跳过`
+- 弱约束补强: `一个` → `一个且只有一个` (原文是 `one and only one` 时)
+- 口语化保留: 只在能增强记忆时保留 (口诀, 顺口溜)
+- 四字格适度: 允许 "按序执行", "逐一核对", "切勿遗漏" 提升节奏; 禁止生僻成语 (如 "揆情度理") 损害直白性
+- **不因通顺删边界条件**: "除非...否则不执行" 中的 "除非" 分句不能省略
+- **不因文采用生僻词**: 操作指令必须直白 ("点击确认", 不是 "颔首确认")
+
+完成标准:
+- 读者不看源版也能执行
+- 中文没有降低规则强度
+- 没有为顺口删掉边界条件
+- 大声朗读译文不卡顿, 不需回看英文
+
+## 6. 保持信息层级
+
+不因汉化就把所有 reference 内联. 按 write-a-skill 的信息层级放置:
+- 每次运行都需要的步骤和规则留在 `SKILL.md`
+- 只有部分 branch 需要的材料放到 sibling reference
+- 一个概念的定义, 规则, 注意事项放在同一处 (**co-location**)
+
+完成标准:
+- `SKILL.md` 没有被翻译细节撑大
+- reference 链接仍有效
+- branch 专属材料没有污染所有路径
+
+## 7. 校验
+
+汉化后做以下检查:
+
+```bash
+rg -n "[\x{ff0c}\x{3002}\x{ff1b}\x{ff1a}\x{ff01}\x{ff1f}\x{3001}\x{ff08}\x{ff09}\x{3010}\x{3011}]" <SKILL.md>
+rg -n "[A-Za-z][A-Za-z0-9_./:@|*\-]*" <SKILL.md>
+rg -n "^(|name:|description:|license:|compatibility:|metadata:|allowed-tools:|disable-model-invocation:|# |## )" <SKILL.md>
+```
+
+检查说明:
+- 第一条应无命中: 本仓库中文文档使用 ASCII 标点
+- 第二条用于人工审查残留英文, 不是要求清零 (代码/命令可保留)
+- 第三条确认 frontmatter 和标题结构
+
+**冷却朗读测试**:
+- 搁置译文 30 分钟
+- 不看英文, 大声朗读中文全文
+- 绕口或不自然处 → 改
+- 需回看英文才能确定操作顺序处 → 改
+
+完成标准:
+- 无中文全角标点
+- 残留英文均属保留类型
+- frontmatter 可被目标运行时识别
+- 标题层级未因翻译改变结构
+- 朗读全文不卡顿, 不需回看英文
+
+## 8. 交付
+
+交付时只说明行为相关变化, 不复述全文.
+
+交付格式:
+- 修改了哪些文件
+- 删除或保留了哪些运行时字段
+- 哪些英文保留及原因
+- 哪些关键规则恢复或收紧
+- 做过哪些校验 (含朗读测试结论)
+
+完成标准:
+- 维护者能快速 review
+- 不粘贴整份 skill
+- 不用长篇解释为翻译选择辩护
