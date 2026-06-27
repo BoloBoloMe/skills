@@ -1,17 +1,17 @@
 ---
-name: skill-translate
-description: 把英文或外部 skill 汉化为本仓库可维护版本, 保持行为语义和低 context load.
+name: translate-a-skill
+description: 汉化英文 skill, 保持行为语义和低 上下文负载.
 disable-model-invocation: true
 ---
 
-你的任务是把已有 skill 翻译/汉化/适配到本仓库. 不适用从零设计新 skill (从零设计时先读 `general/write-a-skill/SKILL.md`).
+你的任务是把已有 skill 翻译/汉化/适配. 不是从零设计新 skill (从零设计时调用 `write-a-skill` skill).
 
-先读 `general/write-a-skill/SKILL.md` 理解 skill 编写原则. 本文使用 write-a-skill 中的术语: **duplication**, **no-op**, **context load** 等.
+先调用 `write-a-skill` 理解 skill 编写原则. 本文使用 write-a-skill 中的术语: **重复**, **空操作**, **上下文负载** 等.
 
 完成标准 (全程):
 - 源 skill 路径和目标 skill 路径已确认
 - 目标运行时已确认 (pi, Claude Code, Codex CLI 等)
-- 目标 skill 调用方式 (model-invoked / user-invoked) 已确认
+- 目标 skill 调用方式 (模型调用 / 用户调用) 已确认
 - 所有操作步骤的中文译文, 只看中文就能执行, 无需回看英文
 
 ## 1. 破译: 固定输入, 锁定语义
@@ -59,14 +59,14 @@ disable-model-invocation: true
 
 按目标运行时保留字段. 以 pi 为例, 常用字段: `name`, `description`, `license`, `compatibility`, `metadata`, `allowed-tools`, `disable-model-invocation`. 未知字段删除以降低噪音.
 
-description 写法:
-- model-invoked: 保留触发词, 每个 branch 只留一个触发器
-- user-invoked: 设 `disable-model-invocation: true`, description 只写一行人类摘要
-- 不扩写触发词清单, 除非 invocation 证据不足
+描述字段 写法:
+- 模型调用: 保留触发词, 每个 分支 只留一个触发器
+- 用户调用: 设 `disable-model-invocation: true`, description 只写一行人类摘要
+- 不扩写触发词清单, 除非 调用 证据不足
 
 完成标准:
 - frontmatter 只含目标运行时有效字段或明确兼容字段
-- description 没有重复正文内容
+- 描述字段 没有重复正文内容
 - skill name 保持稳定, 除非迁移计划要求改名
 
 ## 4. 立达: 翻译正文
@@ -75,7 +75,7 @@ description 写法:
 - frontmatter key 和 metadata value
 - 命令, slash command, 参数, 关闭/切换触发短语
 - code, API, library, file path, protocol, 硬件型号
-- 强 leading word (如 `YAGNI`) 或已成为 skill 共享语言的词
+- 强 引导词 (如 `YAGNI`) 或已成为 skill 共享语言的词
 - skill 名 (如 `Ponytail`, `Caveman`)
 
 **语法切割 (三刀)**:
@@ -119,15 +119,15 @@ description 写法:
 
 ## 6. 保持信息层级
 
-不因汉化就把所有 reference 内联. 按 write-a-skill 的信息层级放置:
+不因汉化就把所有 参考材料 内联. 按 write-a-skill 的信息层级放置:
 - 每次运行都需要的步骤和规则留在 `SKILL.md`
-- 只有部分 branch 需要的材料放到 sibling reference
-- 一个概念的定义, 规则, 注意事项放在同一处 (**co-location**)
+- 只有部分 分支 需要的材料放到 sibling 参考材料
+- 一个概念的定义, 规则, 注意事项放在同一处 (**就近放置**)
 
 完成标准:
 - `SKILL.md` 没有被翻译细节撑大
-- reference 链接仍有效
-- branch 专属材料没有污染所有路径
+- 参考材料 链接仍有效
+- 分支 专属材料没有污染所有路径
 
 ## 7. 校验
 

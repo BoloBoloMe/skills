@@ -1,11 +1,10 @@
 ---
 name: orchestrate
-description: 软件工程 workflow router, 选择并编排仓库 workflow skills.
+description: 选择并编排 workflow skills.
 disable-model-invocation: true
 ---
 
 判断工作从哪条 flow 进入, 加载对应 skill 的 `SKILL.md` 按它执行. 选不中 -> `grill-me` 澄清.
-未在当前对话的 skill: `resolve_skill(name)` 拿 filePath, 再 `read(filePath)`.
 
 ## 路由
 
@@ -41,16 +40,3 @@ disable-model-invocation: true
 
 `grill-with-docs` -> `to-prd` -> `to-issues` 尽量留在同一上下文, 中途不 compact. 会话过满或需独立线程 -> `handoff` 搭桥, 新会话用 `receive-handoff` 接续.
 
-## 领域专用
-
-领域专用审查等见 `others/` (如 `payment-review`).
-
-## 子代理协作 (仅父会话)
-
-禁止子代理或选中 `run-afk-workflow` 时整节跳过.
-
-- 外部事实影响正确性/路线 -> 选 skill 前分派 `researcher`
-- 实现跨多文件/模块, 不适合 inline -> 路线明确后分派 `worker`
-- 需独立质量门禁, workflow 无自带 review -> 分派 `reviewer`
-- 需文件清单/结构/入口/短调用链摘要解除路由阻塞 -> 分派 `scout`
-- 都不满足 -> 不分派
