@@ -1,38 +1,32 @@
 ---
 name: to-plan
-description: Issues 到合并源码级执行计划 PLAN.md 的生成流程.
+description: 根据 PRD, issues, 代码库事实编写源码级执行计划.
 disable-model-invocation: true
 ---
 
-# To Plan
-
-为 PRD 下的所有 issues 生成合并源码级执行计划, 并写入 `docs/changes/<feature-slug>/PLAN.md`.
+为 PRD 下的所有 issues 生成源码级执行计划, 并写入 `docs/changes/<feature-slug>/PLAN.md`.
 
 ## 流程
 
 ### 1. 读取输入
 
-基于对话上下文中已有内容开展工作. 如果用户传入 issues 引用(issues 编号/URL 或路径), 从议题跟踪器获取这些 issues, 并阅读完整正文和评论.
-
-完成标准: 已确定 PRD 引用, issue 列表, issue 依赖关系, 输出 feature 目录. 如果来源不在 `docs/changes/<feature-slug>/`, 仍按功能标题推断 `<feature-slug>` 并写入 `docs/changes/<feature-slug>/PLAN.md`.
+基于对话上下文中已有内容开展工作. 阅读 PRD 和 issues.
 
 ### 2. 聚焦代码探索
 
-基于 issue 描述中的领域术语和模块名, 在代码库中做聚焦搜索, 确定每个 issue 的代码修改边界. 以 issue 为维度组织探索结果, 不要求全局代码扫描.
-
+探索代码库, 确定每个 issue 的代码修改边界. 以 issue 为维度组织探索结果, 不要求全局代码扫描.
 完成标准: 每个 issue 都有变更层级, 文件候选, 关键符号或入口点. 修改边界不确定的情况写入 PLAN.md `风险点`.
 
 ### 3. 整合交叉风险
 
 合并所有 issue 的文件候选, 标出共享文件, 相邻修改区, 同一函数/类/接口的重叠修改, 顺序依赖, 测试依赖.
-
 完成标准: 已生成交叉风险概览. 无共享文件冲突时明确写 `无交叉风险.`
 
 ### 4. 生成 PLAN.md
 
 按下方模板生成 `docs/changes/<feature-slug>/PLAN.md`.
 
-完成标准: PLAN.md 已写入, 内层 fenced code 已正确闭合, `变更目录树` 非空或明确写无变更. 输出后向用户展示 PLAN.md 路径和内容摘要 (涉及的代码层, 文件总数, 风险概览).
+完成标准: PLAN.md 已写入, 内层 fenced code 已正确闭合, `变更目录树` 非空或明确写无变更. 输出后向我展示 PLAN.md 路径和内容摘要 (涉及的代码层, 文件总数, 风险概览).
 
 ## PLAN.md 模板
 
@@ -86,7 +80,7 @@ disable-model-invocation: true
 
 #### issue 测试用例清单
 
-<!-- 针对 issue 功能边界 (深模块) 的测试用例清单, 不要深入边界内部的具体代码细节 (浅模块) -->
+<!-- 参考 issue 的验收标准, 围绕 issue 顶层边界设计测试用例, 而不是深入边界内部针对具体代码细节进行设计 -->
 
 - [ ] <外部可观察行为或验收标准>
 
