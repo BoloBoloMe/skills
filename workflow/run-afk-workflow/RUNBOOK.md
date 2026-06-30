@@ -63,6 +63,8 @@ normal issue 还必须确认:
 
 `test-only-light` issue 的差异检查见 `LIGHTWEIGHT-TEST-ONLY.md`.
 
+差异检查通过后, 父会话将当前 issue 文件中的 `- [ ] 已实现` 改为 `- [x] 已实现`. 找不到执行标记时停止并报告阻塞, 不自行发明新格式.
+
 worker 异常终止但工作树有未提交变更时, 不自动重跑 worker. 先保存当前 diff 和恢复观察, 再按 `RECOVERY.md` 处理.
 
 ### 3. 轻量 review 判定

@@ -228,7 +228,7 @@ skills/
 ├── pi/                    # Pi agent 本地配置
 ├── deprecated/            # 已归档技能 (hitl, telegraphic-style, zoom-out)
 └── docs/
-    └── agents/            # issue-tracker, triage-labels, domain 约定
+    └── agents/            # issue-tracker, domain 约定
 ```
 
 ### 现有 Skill 模式

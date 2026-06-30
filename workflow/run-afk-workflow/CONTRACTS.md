@@ -10,6 +10,18 @@
 - issue 目录存放该 issue 的 implementation, review, synthesis, fix, recovery 产物.
 - 子代理通过文件契约接收上下文, 不继承父会话历史.
 
+## issue 文件契约
+
+每个 issue 必须包含执行标记:
+
+```md
+## 执行(Execution)
+
+- [ ] 已实现
+```
+
+AFK workflow 在 `DIFF_GATE` 通过后将该标记改为 `- [x] 已实现`. issue 文件不使用 `Status:` 或等价状态行.
+
 ## run root 产物
 
 推荐路径: `docs/changes/<feature-slug>/afk-running/`.

@@ -36,6 +36,7 @@ disable-model-invocation: true
 - 保存孤立 diff 到产物目录.
 - 运行预检中确认的验证命令.
 - 写流程性产物.
+- 在 `DIFF_GATE` 通过后, 将当前 issue 文件中的 `- [ ] 已实现` 回写为 `- [x] 已实现`.
 - 基于真实 diff, 已有日志, 命令输出做流程决策.
 
 推进规则: 进入下一状态的决定必须基于真实 diff, 产物文件, 命令输出, 或用户确认. 无证据时停止, 转 recovery, 或询问用户.
@@ -81,7 +82,7 @@ disable-model-invocation: true
 | `PREFLIGHT` | 阅读 PRD/issue/PLAN; 确认工作树; 按 `CONTRACTS.md` 写预检产物; 确认 TDD 可行性, 聚焦测试命令模板, 依赖预热和模板 smoke. | 预检产物存在且字段完整; 工作树干净且无 staged 文件; 模板 smoke 通过或阻塞项已记录; implementation/review/recovery 角色已解析. 任一失败则停止, 不启动 worker. |
 | `ISSUE_INIT` | 确定下一个 issue 的 `issueKey`; 创建或确认 issue 产物目录; 按 `CONTRACTS.md` 更新 run manifest; 设置初始 review round. | issue 产物目录存在; run manifest 记录 issue 顺序, issue 路径, `issueKey`, issue 产物目录; 本 issue 后续子代理均使用该目录. |
 | `IMPLEMENT` | 读取 implementation prompt; 使用 implementation role 启动 worker; 传入 PRD, PLAN, issue, issue 产物目录, 允许文件清单, issue 执行类型, validation 契约和增量测试命令模板. | worker 已结束或产生可恢复状态; 必需实现阶段产物存在, 或缺失项已记录为恢复输入; 父会话未写代码. worker 异常, 超时, 中断, dirty tree, 或产物缺失则转 `RECOVERY.md`. |
-| `DIFF_GATE` | 父会话检查真实 diff, allowed files, staged 状态, 产物存在性, 验证命令, RED/GREEN 或 GREEN-only 证据. | 每项检查均有结论. normal issue 缺少可信 RED/GREEN 证据则不进 review. test-only-light 不满足轻量门禁则不静默继续. dirty tree 异常先保存证据, 再转 `RECOVERY.md`. |
+| `DIFF_GATE` | 父会话检查真实 diff, allowed files, staged 状态, 产物存在性, 验证命令, RED/GREEN 或 GREEN-only 证据. 门禁通过后, 回写当前 issue 的执行标记为 `- [x] 已实现`. | 每项检查均有结论. normal issue 缺少可信 RED/GREEN 证据则不进 review. test-only-light 不满足轻量门禁则不静默继续. dirty tree 异常先保存证据, 再转 `RECOVERY.md`. issue 执行标记已回写, 或缺失标记已作为阻塞项报告. |
 | `REVIEW_GATE` | 判断轻量跳过条件; 不满足时检查完整 review 门禁; 门禁通过后启动 3 个只读 reviewer, 环境不支持并行时串行. | 轻量跳过成立则按 `LIGHTWEIGHT-TEST-ONLY.md` 写跳过产物并进 `FINAL_VERIFY`; 完整 review 成立则 review 产物齐全; reviewer 失败按 `RECOVERY.md` 处理; 门禁失败不启动 reviewer. |
 | `SYNTHESIZE` | 读取本轮 review 产物; 将发现项分类为可立即修复, 延期, 需人工决策, 证据不足驳回; 按 `CONTRACTS.md` 写综合判定产物. | 每个发现项都有分类和去向; 证据不足项有驳回原因; 有人工决策项则停止询问用户; 无可立即修复项则进 `FINAL_VERIFY`; 可立即修复且不越界则进 `FIX_LOOP`. |
 | `FIX_LOOP` | 读取 fix prompt; 对可立即修复项启动 fix worker; 修复后回到 `DIFF_GATE`; 按发现项来源维度选择重跑 reviewer; 重复综合判定. | 每轮修复有真实 diff 和修复产物; 最多 3 轮; 可立即修复项清零则进 `FINAL_VERIFY`; 数量不降, 修复越界, 或引入未审维度新问题则停止询问用户; 达轮次上限则剩余项转延期. |

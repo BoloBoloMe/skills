@@ -5,7 +5,7 @@ disable-model-invocation: true
 ---
 
 获取当前对话上下文和代码库理解, 产出 PRD. 不做需求访谈, 不因未知项中断. 未知但会影响实现的内容写入 `未确认假设`.
-你应该已获得议题跟踪器和分流标签词汇. 如果没有, 使用 `setup-workspace` skill.
+你应该已获得本地议题跟踪器约定. 如果没有, 使用 `setup-workspace` skill.
 
 ## 流程
 
@@ -22,7 +22,7 @@ disable-model-invocation: true
 
 ### 3. 编写并发布 PRD
 
-使用下方模板编写 PRD, 发布到议题跟踪器. 应用 `ready-for-agent` 分流 (triage) 标签, 无需额外分流. 不要无条件新增 `Status:` 行; 只有目标 issue tracker 约定要求 PRD 或 issue 文件包含状态行时, 才使用独立纯 token 行 `Status: ready-for-agent`, 并将中文说明另起一行写为 `状态说明: 已完整说明, 适合 AFK agent 接手.`
+使用下方模板编写 PRD, 发布到本地议题跟踪器. PRD 只记录需求和设计决策, 不记录执行状态, 不写 `Status:` 或等价状态行.
 完成标准: PRD 已写入目标路径, `未确认假设` 单独成节, 最终回复展示路径, 需求范围摘要, 关键假设, 风险.
 
 <prd-template>

@@ -1,6 +1,6 @@
 ---
 name: setup-workspace
-description: Workflow 工作区约定初始化, 创建 issue tracker, triage 标签, 领域文档约定.
+description: Workflow 工作区约定初始化, 创建本地 issue tracker 和领域文档约定.
 disable-model-invocation: true
 ---
 
@@ -8,8 +8,7 @@ disable-model-invocation: true
 
 搭建工程 skills 所假定的每仓库配置:
 
-- **问题跟踪器 (Issue tracker)** - 固定使用本地 Markdown: issue 和 PRD 写入 `docs/changes/`.
-- **分流标签 (Triage labels)** - 五个标准分流 (triage) 角色所用的字符串.
+- **问题跟踪器 (Issue tracker)** - 固定使用本地 Markdown: PRD 和 issues 写入 `docs/changes/`.
 - **领域文档** - `docs/language/UBIQUITOUS_LANGUAGE.md` 和 ADR 的位置, 以及读取它们的消费规则.
 
 这是一个提示驱动的 skill, 而非确定性脚本. 先探索, 展示发现, 向用户确认, 再写入.
@@ -28,25 +27,9 @@ disable-model-invocation: true
 
 ### 2. 展示发现并询问
 
-总结已存在和缺失的内容. 然后带用户逐一完成两个决策 - 展示一个区块 (section), 获得用户回答, 再进入下一个. 不要一次性抛出所有问题.
+总结已存在和缺失的内容. 然后确认领域文档布局. 不要询问或生成远程 issue tracker 工作流; 本技能只内置支持 **本地 Markdown issue tracker**, 即使仓库已有远程 issue, 也以 `docs/changes/` 本地 Markdown 约定为准.
 
-本技能只内置支持 **本地 Markdown issue tracker**. 无需询问或生成任何远程 issue tracker 工作流; 即使仓库已有远程 issue, 也以 `docs/changes/` 本地 Markdown 约定为准.
-
-**Section A - Triage label 词汇.**
-
-> 解释: `triage` skill 处理传入 issue 时, 会让 issue 通过一个状态机 - 需要评估, 等待 reporter, 准备好由 AFK agent 接手, 准备好由人类处理, 或不会修复. 为此它需要应用与你实际使用的字符串匹配的状态值. 如果你的仓库已用不同名称 (例如 `bug:triage` 而非 `needs-triage`), 请在这里映射它们, 这样 skill 会写入正确的状态, 而非制造重复词.
-
-五个标准角色:
-
-- `needs-triage` - maintainer 需要评估
-- `needs-info` - 等待 reporter
-- `ready-for-agent` - 已完整说明, 适合 AFK (agent 无需人类上下文即可接手)
-- `ready-for-human` - 需要人类实施
-- `wontfix` - 不会处理
-
-默认值: 每个角色的字符串都等于它自己的名称. 询问用户是否想覆盖其中任何一个. 没有既有约定时, 默认值即可.
-
-**Section B - Domain docs.**
+**Section A - Domain docs.**
 
 > 解释: `improve-codebase-architecture` skill, `diagnosing-bugs` skill, `tdd` skill 会读取 `docs/language/UBIQUITOUS_LANGUAGE.md` 了解项目领域语言, 并读取 `docs/adr/` 了解过去的架构决策. 它们需要知道仓库是单上下文还是多上下文 (例如分别有 frontend/backend 上下文的 monorepo), 才能在正确位置查找.
 
@@ -60,7 +43,7 @@ disable-model-invocation: true
 向用户展示以下草稿:
 
 - 要添加到 `AGENTS.md` 中的 `## 文档目录结构(Docs Directory Structure)` 区块.
-- `docs/agents/issue-tracker.md`, `docs/agents/triage-labels.md`, `docs/agents/domain.md` 的内容.
+- `docs/agents/issue-tracker.md`, `docs/agents/domain.md` 的内容.
 
 写入前允许用户修改.
 
@@ -73,7 +56,7 @@ disable-model-invocation: true
 
 所选文件已存在文档目录结构区块时, 原地更新其内容, 而非追加重复区块. 兼容识别这些标题: `## Docs Directory Structure`, `## 文档目录结构`, `## 文档目录结构(Docs Directory Structure)`. 不要覆盖周边 section 中的用户编辑.
 
-所选文件存在包含 Issue tracker, Triage labels, Domain docs 的旧版 skill 配置区块时, 将其标题改为 `## 文档目录结构(Docs Directory Structure)` 并原地更新内容. 旧版子标题也要兼容识别: `### Issue tracker`, `### 问题跟踪器`, `### 问题跟踪器(Issue tracker)`, `### Triage labels`, `### 分流标签`, `### 分流标签(Triage labels)`, `### Domain docs`, `### 领域文档`, `### 领域文档(Domain docs)`.
+所选文件存在旧版三子节 skill 配置区块时, 将其标题改为 `## 文档目录结构(Docs Directory Structure)` 并原地更新为当前两子节内容. 旧版多余子节应删除, 不保留已废弃配置.
 
 区块:
 
@@ -82,21 +65,16 @@ disable-model-invocation: true
 
 ### 问题跟踪器(Issue tracker)
 
-本仓库使用本地 Markdown issue tracker: PRD 和 issues 存放在 `docs/changes/`. 见 `docs/agents/issue-tracker.md`.
-
-### 分流标签(Triage labels)
-
-[label 词汇的一行摘要]. 见 `docs/agents/triage-labels.md`.
+本仓库使用本地 Markdown issue tracker: PRD 和 issues 存放在 `docs/changes/`. issue 只记录任务拆分结果和 `- [ ] 已实现` / `- [x] 已实现` 执行标记. 见 `docs/agents/issue-tracker.md`.
 
 ### 领域文档(Domain docs)
 
 [布局的一行摘要: "single-context" 或 "multi-context"]. 见 `docs/agents/domain.md`.
 ```
 
-然后用本 skill 文件夹中的种子模板作为起点, 写入三个 docs 文件:
+然后用本 skill 文件夹中的种子模板作为起点, 写入两个 docs 文件:
 
 - [issue-tracker-local.md](./issue-tracker-local.md) - 本地 Markdown issue tracker.
-- [triage-labels.md](./triage-labels.md) - label 映射.
 - [domain.md](./domain.md) - 领域文档消费规则 + 布局.
 
 ### 5. 完成

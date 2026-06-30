@@ -20,7 +20,6 @@ disable-model-invocation: true
 **on-ramp**
 - worktree/repo 布局/分支隔离 -> `use-worktree`
 - 未知根因失败 (bug/error/regression) -> `diagnosing-bugs`
-- 原始 incoming issue (bug report/feature request/状态变更) -> `triage` (不 triage `to-issues` 产出)
 - 交互式代码评审/逐段走读 -> `code-review-with-me`
 - 远程仓库 URL, 要了解 -> `explore-repo`
 
@@ -34,7 +33,7 @@ disable-model-invocation: true
 
 ## 前置
 
-仓库缺 issue tracker/triage 标签/领域文档, 且后续 flow 需要它们 -> 先 `setup-workspace`, 完成后回原 flow.
+仓库缺 issue tracker/领域文档, 且后续 flow 需要它们 -> 先 `setup-workspace`, 完成后回原 flow.
 
 ## 衔接
 
