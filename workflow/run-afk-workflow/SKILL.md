@@ -17,7 +17,7 @@ disable-model-invocation: true
 - 当前运行时存在可承担 implementation, review, recovery 的 agent/role/profile 绑定.
 - 前 5 条全满足后, 父代理向用户询问"要不要懒代码"; 用户回答 (要/不要) 则本条满足. 决议由父代理在会话内持有, 不写 run manifest 或预检产物.
 
-完成标准: 全部满足则进入 `PREFLIGHT`; 任一不满足则停止, 报告缺口和需要用户补齐的输入. 懒代码必问无答视为第 6 条不满足. 如果运行时没有可用子代理或等价角色, 不降级为父会话编码, 改为请用户切换到 `tdd` skill 或 `diagnosing-bugs` skill 流程.
+完成标准: 全部满足则进入 `PREFLIGHT`; 任一不满足则停止, 报告缺口和需要用户补齐的输入. 懒代码必问无答视为第 6 条不满足. 如果运行时没有可用子代理或等价角色, 不降级为父会话编码, 改为请用户切换到 `tdd` skill 流程.
 
 ## 父会话硬边界
 

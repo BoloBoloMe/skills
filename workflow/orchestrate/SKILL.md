@@ -12,14 +12,12 @@ disable-model-invocation: true
 
 **主流程 (idea -> build)**
 - 新想法, 边界未定, 有代码库 -> `grill-with-docs`
-- 需要可运行答案验证状态/逻辑/数据模型/UI -> `prototype`
 - 多会话规划 -> `to-prd` -> `to-issues` -> `to-plan` -> `confirm-plan` (确认高风险/越界变更)
-- 行为已明确, 测试先行 -> `tdd`; 根因未知先 `diagnosing-bugs`
+- 行为已明确, 测试先行 -> `tdd`
 - AFK 任务就绪, PRD/issue/PLAN 已确认 -> `run-afk-workflow`
 
 **on-ramp**
 - worktree/repo 布局/分支隔离 -> `use-worktree`
-- 未知根因失败 (bug/error/regression) -> `diagnosing-bugs`
 - 交互式代码评审/逐段走读 -> `code-review-with-me`
 - 远程仓库 URL, 要了解 -> `explore-repo`
 

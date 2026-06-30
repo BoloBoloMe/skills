@@ -23,11 +23,9 @@
 |   |-- code-review-with-me/
 |   |-- codebase-design/
 |   |-- confirm-plan/
-|   |-- diagnosing-bugs/
 |   |-- domain-modeling/
 |   |-- grill-with-docs/
 |   |-- improve-codebase-architecture/
-|   |-- prototype/
 |   |-- receive-handoff/
 |   |-- run-afk-workflow/
 |   |-- tdd/
@@ -52,11 +50,11 @@
 
 ## Workflow 工作区约定
 
-`workflow/orchestrate` 是 workflow skills 的默认入口, 负责在 `workflow/` 下的代码理解, 诊断, 需求澄清, 原型, TDD, PRD, 工单拆分, 架构评审, codebase design 和 worktree 管理技能之间做路由与顺序编排.
+`workflow/orchestrate` 是 workflow skills 的默认入口, 负责在 `workflow/` 下的代码理解, 需求澄清, TDD, PRD, 工单拆分, 架构评审, codebase design 和 worktree 管理技能之间做路由与顺序编排.
 
 Invocation policy: 本仓库采用 router exception. `workflow/orchestrate` 可读取并编排同仓库 `workflow/` 下的 user-invoked skills. 该例外只适用于本仓库维护的 workflow 集合, 不代表通用 skill 标准. 细则见 `general/write-a-skill/SKILL.md`.
 
-`workflow/` 下的技能预期在目标项目仓库根目录工作. 首次使用 `to-prd`, `to-issues`, `to-plan`, `diagnosing-bugs`, `tdd`, `improve-codebase-architecture` 或 `domain-modeling` 前, 由 `orchestrate` 按需路由到 `setup-workspace` 生成约定文档.
+`workflow/` 下的技能预期在目标项目仓库根目录工作. 首次使用 `to-prd`, `to-issues`, `to-plan`, `tdd`, `improve-codebase-architecture` 或 `domain-modeling` 前, 由 `orchestrate` 按需路由到 `setup-workspace` 生成约定文档.
 
 目标项目推荐结构:
 
@@ -160,16 +158,14 @@ workflow skills 的默认入口和元编排器: 接收工程类用户任务, 按
 - [`workflow/to-issues/SKILL.md`](workflow/to-issues/SKILL.md)
 - [`workflow/to-plan/SKILL.md`](workflow/to-plan/SKILL.md)
 
-### workflow/diagnosing-bugs / workflow/tdd
+### workflow/tdd
 
-代码理解, 缺陷诊断和测试驱动实现流程:
+测试驱动实现流程:
 
-- `diagnosing-bugs`: hard bug 和性能回退诊断循环. 先建立可变红的紧反馈循环, 再复现, 最小化, 假设, 插桩, 修复和回归测试.
 - `tdd`: 按 red-green-refactor 小循环推进实现或修复.
 
 入口文档:
 
-- [`workflow/diagnosing-bugs/SKILL.md`](workflow/diagnosing-bugs/SKILL.md)
 - [`workflow/tdd/SKILL.md`](workflow/tdd/SKILL.md)
 
 ### workflow/improve-codebase-architecture
@@ -177,12 +173,6 @@ workflow skills 的默认入口和元编排器: 接收工程类用户任务, 按
 结合领域语言, ADR 和 `codebase-design` 词汇, 寻找代码库中的架构深化机会, 输出可视化 HTML 架构评审报告, 并可继续探索 interface 设计.
 
 入口文档: [`workflow/improve-codebase-architecture/SKILL.md`](workflow/improve-codebase-architecture/SKILL.md)
-
-### workflow/prototype
-
-构建一次性原型, 用于验证业务状态机, 数据模型, 终端交互或 UI 方案.
-
-入口文档: [`workflow/prototype/SKILL.md`](workflow/prototype/SKILL.md)
 
 ### workflow/use-worktree
 

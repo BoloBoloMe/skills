@@ -31,7 +31,7 @@ disable-model-invocation: true
 
 **Section A - Domain docs.**
 
-> 解释: `improve-codebase-architecture` skill, `diagnosing-bugs` skill, `tdd` skill 会读取 `docs/language/UBIQUITOUS_LANGUAGE.md` 了解项目领域语言, 并读取 `docs/adr/` 了解过去的架构决策. 它们需要知道仓库是单上下文还是多上下文 (例如分别有 frontend/backend 上下文的 monorepo), 才能在正确位置查找.
+> 解释: `improve-codebase-architecture` skill 和 `tdd` skill 会读取 `docs/language/UBIQUITOUS_LANGUAGE.md` 了解项目领域语言, 并读取 `docs/adr/` 了解过去的架构决策. 它们需要知道仓库是单上下文还是多上下文 (例如分别有 frontend/backend 上下文的 monorepo), 才能在正确位置查找.
 
 确认布局:
 
