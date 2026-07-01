@@ -10,11 +10,15 @@ disable-model-invocation: true
 
 按信号匹配, 命中即加载该 skill.
 
-**主流程 (idea -> build)**
+**执行流 (idea -> build)**
 - 新想法, 边界未定, 有代码库 -> `grill-with-docs`
-- 多会话规划 -> `grill-with-docs` 维护 `DECISIONS.md` -> `to-prd` -> `to-issues`
+- 设计已定, 要沉淀执行边界 -> `to-contract`
+- 多会话规划 -> `grill-with-docs` 维护 `DECISIONS.md` -> `to-contract` -> `to-issues`
 - 行为已明确, 测试先行 -> `tdd`
-- AFK 任务就绪, PRD/issue/DECISIONS 已确认且 issue 边界清楚 -> `run-afk-workflow`
+- AFK 任务就绪, contract/issue/DECISIONS 已确认且 issue 边界清楚 -> `run-afk-workflow`
+
+**汇报流**
+- 需要团队汇报方案或产品化叙事 -> `to-prd`
 
 **on-ramp**
 - worktree/repo 布局/分支隔离 -> `use-worktree`
@@ -35,5 +39,4 @@ disable-model-invocation: true
 
 ## 衔接
 
-`grill-with-docs` -> `to-prd` -> `to-issues` 尽量留在同一上下文, 中途不 compact. 风险确认并入 `to-issues` 边界和 AFK 启动门禁. 会话过满或需独立线程 -> `handoff` 搭桥, 新会话用 `receive-handoff` 接续.
-
+各环节不自动触发下一环节, 推进必须由用户显式发起. `grill-with-docs` -> `to-contract` -> `to-issues` 尽量留在同一上下文, 中途不 compact. 风险确认并入 `to-contract` 和 `to-issues` 边界. 会话过满或需独立线程 -> `handoff` 搭桥, 新会话用 `receive-handoff` 接续.

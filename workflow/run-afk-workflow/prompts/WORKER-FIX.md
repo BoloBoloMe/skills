@@ -3,10 +3,10 @@
 ## 你的输入
 
 - issue 产物目录: <issue 产物目录绝对路径>
-- PRD: <PRD 绝对路径>
+- contract: <contract.md 绝对路径或 issue 自包含说明>
 - DECISIONS: <DECISIONS.md 绝对路径或无相关决策>
 - issue: <issue 绝对路径>
-- AFK brief: <目标, 相关决策 ID, 允许范围, 禁止范围, 验证入口, 风险提示>
+- AFK task brief: <目标, 相关决策 ID, 允许范围, 禁止范围, 验证入口, 风险提示, 停止条件>
 - 当前 attempt: <a2, a3, ...>
 - 上一 attempt 的 worker note: <路径>
 - reviewer 报告: <一个或多个 review report 路径>
@@ -20,9 +20,9 @@
 
 你必须遵守:
 
-- issue 的允许范围和禁止范围.
+- contract 和 issue 的允许范围, 禁止范围和停止条件.
 - `DECISIONS.md` 中相关且当前有效的决策.
-- 不改变 PRD, issue 或必须遵守的决策.
+- 不改变 contract, issue 或必须遵守的决策.
 - 不扩大范围, 不重构无关代码.
 - 不修改 `DECISIONS.md`.
 - 不 stage 文件.

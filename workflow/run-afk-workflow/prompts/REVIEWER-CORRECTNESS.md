@@ -3,10 +3,10 @@
 ## 你的输入
 
 - issue 产物目录: <issue 产物目录绝对路径>
-- PRD: <PRD 绝对路径>
+- contract: <contract.md 绝对路径或 issue 自包含说明>
 - DECISIONS: <DECISIONS.md 绝对路径或无相关决策>
 - issue: <issue 绝对路径>
-- AFK brief: <目标, 相关决策 ID, 允许范围, 禁止范围, 验证入口, 风险提示>
+- AFK task brief: <目标, 相关决策 ID, 允许范围, 禁止范围, 验证入口, 风险提示, 停止条件>
 - worker 或 fix note: <worker-note-aN.md 或 fix-note-aN.md>
 - 真实 diff 获取方式: <例如 git diff>
 - review 输出文件: <issue 产物目录>/review-correctness-<attempt>.md
@@ -23,7 +23,7 @@
 - 数据一致性.
 - 测试是否覆盖关键行为, 验证结果是否可信.
 
-可以参考 `DECISIONS.md`, 但不要审查决策边界是否被改变, 除非它直接导致正确性问题.
+可以参考 contract 和 `DECISIONS.md`, 但不要审查决策边界是否被改变, 除非它直接导致正确性问题.
 
 ## 禁止
 

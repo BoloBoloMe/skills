@@ -29,6 +29,7 @@
 |   |-- receive-handoff/
 |   |-- run-afk-workflow/
 |   |-- tdd/
+|   |-- to-contract/
 |   |-- to-prd/
 |   |-- to-issues/
 |   |-- to-plan/
@@ -50,11 +51,11 @@
 
 ## Workflow 工作区约定
 
-`workflow/orchestrate` 是 workflow skills 的默认入口, 负责在 `workflow/` 下的代码理解, 需求澄清, TDD, PRD, 工单拆分, 架构评审, codebase design 和 worktree 管理技能之间做路由与顺序编排.
+`workflow/orchestrate` 是 workflow skills 的默认入口, 负责在 `workflow/` 下的代码理解, 需求澄清, TDD, 执行契约, PRD 汇报, 工单拆分, 架构评审, codebase design 和 worktree 管理技能之间做路由与顺序编排.
 
 Invocation policy: 本仓库采用 router exception. `workflow/orchestrate` 可读取并编排同仓库 `workflow/` 下的 user-invoked skills. 该例外只适用于本仓库维护的 workflow 集合, 不代表通用 skill 标准. 细则见 `general/write-a-skill/SKILL.md`.
 
-`workflow/` 下的技能预期在目标项目仓库根目录工作. 首次使用 `to-prd`, `to-issues`, `to-plan`, `tdd`, `improve-codebase-architecture` 或 `domain-modeling` 前, 由 `orchestrate` 按需路由到 `setup-workspace` 生成约定文档.
+`workflow/` 下的技能预期在目标项目仓库根目录工作. 首次使用 `to-contract`, `to-prd`, `to-issues`, `to-plan`, `tdd`, `improve-codebase-architecture` 或 `domain-modeling` 前, 由 `orchestrate` 按需路由到 `setup-workspace` 生成约定文档.
 
 目标项目推荐结构:
 
@@ -74,7 +75,8 @@ project-root/
 |   |   `-- contexts/                       # 多上下文 ADR
 |   `-- changes/
 |       `-- <feature-slug>/
-|           |-- PRD.md
+|           |-- contract.md
+|           |-- PRD.md                    # 可选团队汇报文档
 |           `-- issues/
 |               `-- 01-slice.md
 `-- src/
@@ -144,16 +146,18 @@ workflow skills 的默认入口和元编排器: 接收工程类用户任务, 按
 
 入口文档: [`workflow/run-afk-workflow/SKILL.md`](workflow/run-afk-workflow/SKILL.md)
 
-### workflow/to-prd / workflow/to-issues / workflow/to-plan
+### workflow/to-contract / workflow/to-prd / workflow/to-issues / workflow/to-plan
 
-面向本地 Markdown issue tracker 的需求与议题流程:
+面向本地 Markdown issue tracker 的执行契约, 汇报文档与议题流程:
 
-- `to-prd`: 把当前对话上下文整理为 PRD, 并发布到 `docs/changes/<feature-slug>/PRD.md`.
-- `to-issues`: 把 PRD/计划拆成垂直切片 issue, 写入 `docs/changes/<feature-slug>/issues/`. issue 只记录任务拆分结果和 `- [ ] 已实现` / `- [x] 已实现` 执行标记.
+- `to-contract`: 把已确认设计沉淀为执行契约, 并发布到 `docs/changes/<feature-slug>/contract.md`.
+- `to-prd`: 把已确认方案整理为团队汇报 PRD, 并发布到 `docs/changes/<feature-slug>/PRD.md`. PRD 不作为执行流权威输入.
+- `to-issues`: 把执行契约拆成垂直切片 issue, 写入 `docs/changes/<feature-slug>/issues/`. issue 只记录任务拆分结果和 `- [ ] 已实现` / `- [x] 已实现` 执行标记.
 - `to-plan`: 为 `to-issues` 产出的 issues 生成合并源码级执行计划.
 
 入口文档:
 
+- [`workflow/to-contract/SKILL.md`](workflow/to-contract/SKILL.md)
 - [`workflow/to-prd/SKILL.md`](workflow/to-prd/SKILL.md)
 - [`workflow/to-issues/SKILL.md`](workflow/to-issues/SKILL.md)
 - [`workflow/to-plan/SKILL.md`](workflow/to-plan/SKILL.md)

@@ -1,6 +1,6 @@
 ---
 name: run-afk-workflow
-description: 已确认 PRD, issue, DECISIONS 的 AFK 编码任务父会话控制器.
+description: 已确认 contract, issue, DECISIONS 的 AFK 编码任务父会话控制器.
 disable-model-invocation: true
 ---
 
@@ -12,9 +12,12 @@ disable-model-invocation: true
 
 - 当前会话是父会话, 不是子代理.
 - 我明确要求执行 AFK 编码任务.
-- 关联 PRD 和 issue 已存在且已由我确认.
-- issue 已写清 `相关决策`, `允许范围`, `禁止范围`, `验证入口`, `风险提示`, `适合 AFK 的原因`.
-- `DECISIONS.md` 存在, 或 issue 明确写无相关决策.
+- 关联 issue 已存在且已由我确认.
+- 任务满足以下二选一:
+  - 存在可读取的 `contract.md`.
+  - issue 自包含目标, 允许范围, 禁止范围, 验证入口, 风险提示, 停止条件和相关决策.
+- issue 已写清 `相关决策`, `允许范围`, `禁止范围`, `验证入口`, `风险提示`, `停止条件`, `适合 AFK 的原因`.
+- `DECISIONS.md` 存在, 或 issue/contract 明确写无相关决策.
 - 当前运行时存在可承担 worker 和 reviewer 的 agent/role/profile 绑定.
 - 任务不要求父会话直接写生产代码或测试代码.
 
@@ -46,8 +49,8 @@ disable-model-invocation: true
 
 ## 角色边界
 
-- **worker**: 编码执行器. 读取 PRD, issue, `DECISIONS.md`, 失败模式和 AFK brief, 自行阅读代码并找到实现路径. worker 可写生产代码和测试代码, 但只能在 issue 允许范围内行动. worker 不决定产品/API/架构决策, 不修改决策账本, 不读取 reviewer 输出, 不 stage 文件. 如果我显式要求或 issue/决策要求懒代码, 父会话把 `lazy-code` 约束注入 worker.
-- **reviewer**: 只读审查员. 读取 PRD, issue, `DECISIONS.md`, 真实 diff 和 worker note, 输出审核报告. reviewer 不修改项目/源码文件, 不 stage 文件, 不修复代码, 不改决策账本.
+- **worker**: 编码执行器. 读取 contract, issue, `DECISIONS.md`, 失败模式和 AFK task brief, 自行阅读代码并找到实现路径. worker 可写生产代码和测试代码, 但只能在 issue 允许范围内行动. worker 不决定产品/API/架构决策, 不修改决策账本, 不读取 reviewer 输出, 不 stage 文件. 如果我显式要求或 issue/决策要求懒代码, 父会话把 `lazy-code` 约束注入 worker.
+- **reviewer**: 只读审查员. 读取 contract, issue, `DECISIONS.md`, 真实 diff 和 worker note, 输出审核报告. reviewer 不修改项目/源码文件, 不 stage 文件, 不修复代码, 不改决策账本.
 
 worker 路线错误时, 父会话保存失败摘要和 worker-owned diff, 只回滚 worker-owned changes, 换新 worker 并注入失败模式.
 
@@ -74,7 +77,7 @@ runtime 超时或中断不是 worker/reviewer 失败证据, 只说明运行预�
 
 - 调用 `decision-ledger` skill, 读取决策账本维护规则.
 - `~/.pi/run-afk-workflow/failure-modes.md` -- 长期失败模式. 如果不存在, 记录为无长期失败模式并继续.
-- PRD, issue, `DECISIONS.md` (如存在).
+- contract (如使用独立 contract), issue, `DECISIONS.md` (如存在).
 - worker 和 reviewer prompt.
 
 ## 产物目录和命名
@@ -96,22 +99,22 @@ docs/changes/<feature-slug>/afk-running/<issueKey>/
 
 `aN` 表示 attempt, 从 `a1` 起. 文件存在不证明完成, 只用于追溯. worker 完成看真实 diff, 工作树状态和命令输出.
 
-## AFK brief
+## AFK task brief
 
-父会话启动 worker 前准备轻量 AFK brief, 可写入 issue 产物目录或直接放入 task. AFK brief 只包含:
+父会话启动 worker 前准备轻量 AFK task brief, 可写入 issue 产物目录或直接放入 task. AFK task brief 只包含:
 
-- PRD 路径.
+- contract 路径, 或 issue 自包含说明.
 - issue 路径.
 - `DECISIONS.md` 路径或无相关决策说明.
 - 本 issue 目标.
 - 相关决策 ID.
 - 允许范围和禁止范围.
 - 验证入口.
-- 风险提示.
+- 风险提示和停止条件.
 - 相关长期失败模式.
 - 当前 attempt 和输出 note 路径.
 
-AFK brief 不定义实现方案, 不要求 worker 按文件逐项照做.
+AFK task brief 不定义实现方案, 不要求 worker 按文件逐项照做.
 
 ## 主流程
 
@@ -120,15 +123,15 @@ AFK brief 不定义实现方案, 不要求 worker 按文件逐项照做.
 父会话确认:
 
 - 工作树干净, 无 staged 文件. 不干净时不启动 worker, 除非我明确说明这些变更属于当前 AFK 且可作为基线.
-- PRD, issue, `DECISIONS.md` (如有) 可读取.
+- contract (如使用独立 contract), issue, `DECISIONS.md` (如有) 可读取.
 - issue 的相关决策 ID 存在. 单向引用缺失时, 可按 `decision-ledger` 规则机械补齐.
-- issue 的允许范围, 禁止范围, 验证入口足够明确.
+- issue 的允许范围, 禁止范围, 验证入口, 风险提示和停止条件足够明确.
 - 高风险变更, 产品/API/架构缺口已经由我确认. 否则停止询问我.
 - worker/reviewer 角色已解析.
 
 ### 2. 启动 worker
 
-读取 `prompts/WORKER-IMPLEMENT.md`, 传入 AFK brief. worker 自行读代码找实现路径, 并写 `worker-note-aN.md`.
+读取 `prompts/WORKER-IMPLEMENT.md`, 传入 AFK task brief. worker 自行读代码找实现路径, 并写 `worker-note-aN.md`.
 
 如果 worker 被 runtime 中断:
 
@@ -170,7 +173,7 @@ reviewer 被 runtime 中断时, 优先 resume 同一 reviewer. 如果无法恢�
 父会话读取 reviewer 报告, 只做分流:
 
 - 可直接修: 证据清楚, 不需要产品/设计/API 决策, 修复仍在允许范围内 -> 启动 worker 修复.
-- 需我决策: 需要改变 PRD/issue/DECISIONS, 扩大允许范围, 或做产品/API/架构取舍 -> 停止问我.
+- 需我决策: 需要改变 contract, issue 或 `DECISIONS.md`, 扩大允许范围, 或做产品/API/架构取舍 -> 停止问我.
 - 不采纳: reviewer 缺证据, 误读 diff, 或建议超出本 issue/已确认决策 -> 父会话可驳回并写明依据.
 
 ### 6. 修复循环
@@ -183,7 +186,7 @@ reviewer 被 runtime 中断时, 优先 resume 同一 reviewer. 如果无法恢�
 - 同类问题第二次出现 -> 停止自动推进, 保存失败模式, 换新 worker 或问我.
 - 问题数量/严重度没有下降 -> 停止.
 - 修复引入另一 reviewer 维度问题 -> 停止问我或重跑相关 reviewer.
-- 修复需要改变 PRD/issue/DECISIONS 或扩大范围 -> 停止问我.
+- 修复需要改变 contract, issue 或 `DECISIONS.md`, 或扩大范围 -> 停止问我.
 
 ### 7. 最终验证和追踪
 
@@ -201,7 +204,7 @@ reviewer 被 runtime 中断时, 优先 resume 同一 reviewer. 如果无法恢�
 
 - 触发门禁或预检门禁不满足.
 - 需要产品, API, 架构或范围决策.
-- worker/reviewer 发现需要改变 `DECISIONS.md` 决策内容, 状态或约束性.
+- worker/reviewer 发现需要改变 contract, issue 或 `DECISIONS.md` 决策内容, 状态或约束性.
 - 修复会越过允许范围或触碰禁止范围.
 - diff 混有我已有变更或来源不清, 无法安全回滚 worker-owned changes.
 - 验证失败且下一步需要代码级判断而不是继续交给 worker.

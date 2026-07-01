@@ -3,10 +3,10 @@
 ## 你的输入
 
 - issue 产物目录: <issue 产物目录绝对路径>
-- PRD: <PRD 绝对路径>
+- contract: <contract.md 绝对路径或 issue 自包含说明>
 - DECISIONS: <DECISIONS.md 绝对路径或无相关决策>
 - issue: <issue 绝对路径>
-- AFK brief: <目标, 相关决策 ID, 允许范围, 禁止范围, 验证入口, 风险提示>
+- AFK task brief: <目标, 相关决策 ID, 允许范围, 禁止范围, 验证入口, 风险提示, 停止条件>
 - 当前 attempt: <a1, a2, ...>
 - worker note 输出文件: <issue 产物目录>/worker-note-<attempt>.md
 - 相关长期失败模式: <从 failure-modes.md 摘取或无>
@@ -18,7 +18,7 @@
 
 你必须遵守:
 
-- issue 的目标, 验收标准, 允许范围, 禁止范围, 风险提示.
+- contract 和 issue 的目标, 验收标准, 允许范围, 禁止范围, 风险提示和停止条件.
 - `DECISIONS.md` 中相关且当前有效的决策.
 - 约束性为 `必须遵守` 的决策不可自行改变. 如果实现发现不合适, 停止并在 worker note 报告.
 - 约束性为 `可调整` 的决策可以在不改变产品/API/边界的前提下采用更好代码方案, 但必须在 worker note 说明偏离原因.
@@ -39,11 +39,11 @@
 
 遇到以下情况立即停止并写 worker note, 不要硬做:
 
-- 需要改变 PRD, issue 或 `DECISIONS.md` 中必须遵守的决策.
+- 需要改变 contract, issue 或 `DECISIONS.md` 中必须遵守的决策.
 - 需要越过允许范围或触碰禁止范围.
 - 需求不可验证, 或验证入口不可用且无法找到合理替代.
 - 缺少测试接缝且生产代码变更风险不可接受.
-- 发现现有代码事实与 issue/决策冲突, 需要我取舍.
+- 发现现有代码事实与 contract/issue/决策冲突, 需要我取舍.
 
 ## 输出
 
