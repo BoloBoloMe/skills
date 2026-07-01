@@ -3,7 +3,7 @@
 ## 你的输入
 
 - issue 产物目录: <issue 产物目录绝对路径>
-- contract: <contract.md 绝对路径或 issue 自包含说明>
+- contract: <CONTRACT.md 绝对路径或 issue 自包含说明>
 - DECISIONS: <DECISIONS.md 绝对路径或无相关决策>
 - issue: <issue 绝对路径>
 - AFK task brief: <目标, 相关决策 ID, 允许范围, 禁止范围, 验证入口, 风险提示, 停止条件>

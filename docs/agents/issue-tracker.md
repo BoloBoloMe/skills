@@ -5,7 +5,7 @@
 ## 约定
 
 - 每个功能(feature)一个目录:`docs/changes/<feature-slug>/`
-- 执行契约是 `docs/changes/<feature-slug>/contract.md`
+- 执行契约是 `docs/changes/<feature-slug>/CONTRACT.md`
 - 实施 issues 位于 `docs/changes/<feature-slug>/issues/<NN>-<slug>.md`,从 `01` 开始编号
 - 每个 issue 在正文中包含 `## 执行(Execution)` 章节, 用 `- [ ] 已实现` 或 `- [x] 已实现` 记录是否已经执行
 - issue 不使用 `Status:` 或等价状态行. issue 之间的依赖关系写在 `## 被阻塞于` 中, 这是静态拓扑信息, 不是执行状态

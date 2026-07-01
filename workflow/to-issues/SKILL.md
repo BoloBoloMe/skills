@@ -10,9 +10,9 @@ disable-model-invocation: true
 
 ### 1. 收集上下文
 
-先确认已获得本地议题跟踪器约定; 如果没有, 使用 `setup-workspace` skill. 读取 `contract.md` 和 `DECISIONS.md` (如存在). 我传入议题引用 (议题编号/路径) 作为参数时, 从议题跟踪器获取该议题, 阅读其完整正文和评论. 需要维护决策引用时, 调用 `decision-ledger` skill.
+先确认已获得本地议题跟踪器约定; 如果没有, 使用 `setup-workspace` skill. 读取 `CONTRACT.md` 和 `DECISIONS.md` (如存在). 我传入议题引用 (议题编号/路径) 作为参数时, 从议题跟踪器获取该议题, 阅读其完整正文和评论. 需要维护决策引用时, 调用 `decision-ledger` skill.
 
-多 issue 拆分必须有 `contract.md`. 没有 contract 时停止, 提示缺少执行契约.
+多 issue 拆分必须有 `CONTRACT.md`. 没有 contract 时停止, 提示缺少执行契约.
 
 单 issue 小任务可以没有独立 contract, 但必须能从当前对话或用户输入生成自包含 issue. 自包含 issue 必须包含目标, 允许范围, 禁止范围, 验证入口, 风险提示, 停止条件和相关决策.
 
@@ -83,7 +83,7 @@ issues 太多会增加管理成本, 导致执行总时长增加, 过少则会增
 <issue-template>
 ## 父级
 
-对 `contract.md` 或议题跟踪器中父议题的引用 (来源是现有议题时). 无父级时省略本节.
+对 `CONTRACT.md` 或议题跟踪器中父议题的引用 (来源是现有议题时). 无父级时省略本节.
 
 ## 执行(Execution)
 

@@ -75,7 +75,7 @@ project-root/
 |   |   `-- contexts/                       # 多上下文 ADR
 |   `-- changes/
 |       `-- <feature-slug>/
-|           |-- contract.md
+|           |-- CONTRACT.md
 |           |-- PRD.md                    # 可选团队汇报文档
 |           `-- issues/
 |               `-- 01-slice.md
@@ -150,7 +150,7 @@ workflow skills 的默认入口和元编排器: 接收工程类用户任务, 按
 
 面向本地 Markdown issue tracker 的执行契约, 汇报文档与议题流程:
 
-- `to-contract`: 把已确认设计沉淀为执行契约, 并发布到 `docs/changes/<feature-slug>/contract.md`.
+- `to-contract`: 把已确认设计沉淀为执行契约, 并发布到 `docs/changes/<feature-slug>/CONTRACT.md`.
 - `to-prd`: 把已确认方案整理为团队汇报 PRD, 并发布到 `docs/changes/<feature-slug>/PRD.md`. PRD 不作为执行流权威输入.
 - `to-issues`: 把执行契约拆成垂直切片 issue, 写入 `docs/changes/<feature-slug>/issues/`. issue 只记录任务拆分结果和 `- [ ] 已实现` / `- [x] 已实现` 执行标记.
 - `to-plan`: 为 `to-issues` 产出的 issues 生成合并源码级执行计划.

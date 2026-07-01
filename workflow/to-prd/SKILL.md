@@ -10,7 +10,7 @@ disable-model-invocation: true
 
 ### 1. 收集已知输入
 
-读取当前对话, 用户提供的文档, 原型产物, `contract.md` (如存在), `DECISIONS.md` (如存在) 和其他用户指定材料. 用户给出输出位置时使用该位置; 否则按 `docs/changes/<feature-slug>/PRD.md` 输出, `<feature-slug>` 从功能标题推断.
+读取当前对话, 用户提供的文档, 原型产物, `CONTRACT.md` (如存在), `DECISIONS.md` (如存在) 和其他用户指定材料. 用户给出输出位置时使用该位置; 否则按 `docs/changes/<feature-slug>/PRD.md` 输出, `<feature-slug>` 从功能标题推断.
 
 完成标准: 已得到 PRD 来源材料清单, 已确定输出路径. 如果发现来源材料之间存在会改变方案叙事的冲突, 停止并询问用户, 不自行改写 contract 或决策账本.
 
@@ -22,7 +22,7 @@ disable-model-invocation: true
 
 ### 3. 编写并发布 PRD
 
-使用下方模板编写 PRD, 发布到本地议题跟踪器. PRD 可摘要 `contract.md` 和 `DECISIONS.md` 中对团队理解必要的关键取舍, 但不复制完整执行契约或完整设计树. 不记录执行状态, 不写 `Status:` 或等价状态行.
+使用下方模板编写 PRD, 发布到本地议题跟踪器. PRD 可摘要 `CONTRACT.md` 和 `DECISIONS.md` 中对团队理解必要的关键取舍, 但不复制完整执行契约或完整设计树. 不记录执行状态, 不写 `Status:` 或等价状态行.
 
 完成标准: PRD 已写入目标路径, 最终回复展示路径, 方案摘要, 关键假设和风险.
 

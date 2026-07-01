@@ -4,7 +4,7 @@ description: 将已确认设计沉淀为执行契约.
 disable-model-invocation: true
 ---
 
-`contract.md` 是执行边界契约, 是 issue 拆分, AFK worker 和 reviewer 的权威输入. 它不承担团队汇报, 不写 PRD 式叙事, 不写 issue 拆分, 不写逐文件实现计划.
+`CONTRACT.md` 是执行边界契约, 是 issue 拆分, AFK worker 和 reviewer 的权威输入. 它不承担团队汇报, 不写 PRD 式叙事, 不写 issue 拆分, 不写逐文件实现计划.
 默认输入已经由 `grill-with-docs` 对齐设计决策. 本 skill 不做需求访谈, 只做执行契约完整性检查和聚焦代码探索. 发现设计决策缺口时停止, 要求退回 `grill-with-docs`.
 你应该已获得本地议题跟踪器约定. 如果没有, 使用 `setup-workspace` skill.
 
@@ -13,7 +13,7 @@ disable-model-invocation: true
 ### 1. 收集输入
 
 读取: 当前对话, 我提供的材料, 原型产物, `DECISIONS.md` (如存在), 既有相关文档.
-输出: 我给出输出位置时使用该位置; 否则按 `docs/changes/<feature-slug>/contract.md` 输出, `<feature-slug>` 从功能标题推断.
+输出: 我给出输出位置时使用该位置; 否则按 `docs/changes/<feature-slug>/CONTRACT.md` 输出, `<feature-slug>` 从功能标题推断.
 完成标准: 来源材料清单已列出; 输出路径已确定; `DECISIONS.md` 已读取或已确认不存在/无相关决策.
 
 ### 2. 聚焦探索代码库
@@ -39,7 +39,7 @@ disable-model-invocation: true
 
 ### 4. 编写 contract
 
-写入: 使用下方模板编写 `contract.md`, 发布到本地议题跟踪器.
+写入: 使用下方模板编写 `CONTRACT.md`, 发布到本地议题跟踪器.
 决策: 如果需要新增, 替代或废弃设计决策, 先退回 `grill-with-docs` 或按 `decision-ledger` skill 规则维护账本.
 禁止: contract 只引用和摘要执行必须知道的决策, 不发明新决策 ID, 不复制完整设计树, 不记录执行状态, 不写 `Status:` 或等价状态行.
 完成标准: contract 已写入目标路径; 固定章节齐全且顺序一致; 空章节写明"无"或"未发现"; 最终回复展示路径, 目标, 非目标, 允许/禁止范围, 风险/停止条件; 已询问我是否确认该 contract 可作为执行契约.

@@ -14,7 +14,7 @@ disable-model-invocation: true
 - 我明确要求执行 AFK 编码任务.
 - 关联 issue 已存在且已由我确认.
 - 任务满足以下二选一:
-  - 存在可读取的 `contract.md`.
+  - 存在可读取的 `CONTRACT.md`.
   - issue 自包含目标, 允许范围, 禁止范围, 验证入口, 风险提示, 停止条件和相关决策.
 - issue 已写清 `相关决策`, `允许范围`, `禁止范围`, `验证入口`, `风险提示`, `停止条件`, `适合 AFK 的原因`.
 - `DECISIONS.md` 存在, 或 issue/contract 明确写无相关决策.

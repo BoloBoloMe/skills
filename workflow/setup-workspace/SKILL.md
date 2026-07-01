@@ -65,7 +65,7 @@ disable-model-invocation: true
 
 ### 议题跟踪器
 
-本仓库使用本地 Markdown 议题跟踪器: 执行契约和 issues 存放在 `docs/changes/`. 执行契约位于 `docs/changes/<feature-slug>/contract.md`. issue 只记录任务拆分结果和 `- [ ] 已实现` / `- [x] 已实现` 执行标记. 见 `docs/agents/issue-tracker.md`.
+本仓库使用本地 Markdown 议题跟踪器: 执行契约和 issues 存放在 `docs/changes/`. 执行契约位于 `docs/changes/<feature-slug>/CONTRACT.md`. issue 只记录任务拆分结果和 `- [ ] 已实现` / `- [x] 已实现` 执行标记. 见 `docs/agents/issue-tracker.md`.
 
 ### 领域文档(Domain docs)
 
