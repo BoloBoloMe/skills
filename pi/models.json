@@ -52,8 +52,8 @@
             "off": null,
             "minimal": null,
             "low": null,
-            "medium": null,
-            "high": null,
+            "medium": "enabled",
+            "high": "enabled",
             "xhigh": "enabled"
           },
           "input": [
@@ -159,7 +159,7 @@
             "off": "false",
             "minimal": null,
             "low": null,
-            "medium": null,
+            "medium": "true",
             "high": "true",
             "xhigh": "true"
           },
@@ -192,30 +192,6 @@
       },
       "models": [
         {
-          "id": "glm-5.1",
-          "name": "GLM 5.1",
-          "reasoning": true,
-          "thinkingLevelMap": {
-            "off": "disabled",
-            "minimal": null,
-            "low": null,
-            "medium": null,
-            "high": "enabled",
-            "xhigh": "enabled"
-          },
-          "input": [
-            "text"
-          ],
-          "contextWindow": 200000,
-          "maxTokens": 65536,
-          "cost": {
-            "input": 1.4,
-            "output": 4.4,
-            "cacheRead": 0.26,
-            "cacheWrite": 0
-          }
-        },
-        {
           "id": "glm-5.2",
           "name": "GLM 5.2",
           "reasoning": true,
@@ -223,7 +199,7 @@
             "off": "disabled",
             "minimal": null,
             "low": null,
-            "medium": null,
+            "medium": "enabled",
             "high": "enabled",
             "xhigh": "enabled"
           },
