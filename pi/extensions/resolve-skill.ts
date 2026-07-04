@@ -41,7 +41,7 @@ export default function resolveSkillExtension(pi: ExtensionAPI) {
 		description: "根据 frontmatter name 查询未知 skill 的 SKILL.md 路径",
 		promptSnippet: "根据 frontmatter name 查询未知 skill 的 SKILL.md 路径.",
 		promptGuidelines: [
-			"使用 resolve_skill(skillFrontmatterName) 查询未知的 skill 的 SKILL.md 路径,拿到 filePath 后用 read(filePath) 读取.",
+			"使用 resolve_skill(skillFrontmatterName) 查询未知的 skill 的 SKILL.md 路径,拿到 filePath 后用 read(filePath) 读取; entries 字段展示 skill 目录一级子项, 含 files 和 dirs 数组.",
 		],
 		parameters: RESOLVE_SKILL_PARAMS,
 		async execute(_toolCallId, params: ResolveSkillParams, signal, _onUpdate, ctx) {
@@ -64,7 +64,10 @@ export default function resolveSkillExtension(pi: ExtensionAPI) {
 				return jsonToolResult(payload);
 			}
 
-			return jsonToolResult({ filePath: matches[0].filePath });
+			const filePath = matches[0].filePath;
+			const dir = path.dirname(filePath);
+			const entries = await readSkillEntries(dir);
+			return jsonToolResult({ filePath, entries });
 		},
 	});
 }
@@ -219,6 +222,22 @@ function stripMatchingQuotes(value: string): string {
 		return value.slice(1, -1);
 	}
 	return value;
+}
+
+async function readSkillEntries(dir: string): Promise<{ files: string[]; dirs: string[] }> {
+	const entries = await safeReaddir(dir);
+	const files: string[] = [];
+	const dirs: string[] = [];
+
+	for (const entry of entries) {
+		if (entry.isFile()) files.push(entry.name);
+		else if (entry.isDirectory()) dirs.push(entry.name);
+	}
+
+	files.sort();
+	dirs.sort();
+
+	return { files, dirs };
 }
 
 async function safeReaddir(dir: string) {

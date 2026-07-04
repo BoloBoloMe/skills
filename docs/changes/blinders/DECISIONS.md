@@ -35,16 +35,16 @@ AFK 工作流逐步披露改造. 目标: AFK 父会话只知当前步骤, 不掌
 - 约束性: 必须遵守
 - 决策: to-issues 的父会话在执行 to-issues 时, 对适合 AFK 的 issue 一次性生成全部步骤文件. AFK 父会话不参与步骤文件生成.
 - 理由: 谁生成步骤文件谁就知道全貌. to-issues 父会话知道全貌是可接受的, AFK 父会话不可以.
-- 预计影响: to-issues `SKILL.md` 中增加: "如 issue 适合 AFK, 读取 `run-afk-workflow/references/step-gen-guide.md`, 按指引在 issue 产物目录生成步骤文件".
+- 预计影响: to-issues `SKILL.md` 中增加: "如 issue 适合 AFK, 读取 `references/step-gen-guide.md`, 按指引在 issue 产物目录生成步骤文件".
 - 相关 issue: 待关联
 
 ## D005 — 步骤生成指引
 
 - 状态: 当前有效
 - 约束性: 必须遵守
-- 决策: 步骤生成指引位于 `run-afk-workflow/references/step-gen-guide.md`, 是 run-afk-workflow 的外部参考材料. 它描述如何根据 issue 内容生成一整套步骤文件. to-issues 父会话是唯一消费者.
-- 理由: step-gen-guide 是 to-issues 的分支所需, 不是 AFK 执行的分支所需. 按"分支是最干净的披露测试"原则, 推至外部参考.
-- 预计影响: 新建 `workflow/run-afk-workflow/references/step-gen-guide.md`.
+- 决策: 步骤生成指引位于 `to-issues/references/step-gen-guide.md`, 是 to-issues 的外部参考材料. 它描述如何根据 issue 内容生成一整套步骤文件. to-issues 父会话是唯一消费者.
+- 理由: step-gen-guide 是 to-issues 的分支所需, 不是 AFK 执行的分支所需. 按"分支是最干净的披露测试"原则, 放在 to-issues 下.
+- 预计影响: 新建 `workflow/to-issues/references/step-gen-guide.md`.
 - 相关 issue: 待关联
 
 ## D006 — 步骤文件内容
@@ -53,7 +53,7 @@ AFK 工作流逐步披露改造. 目标: AFK 父会话只知当前步骤, 不掌
 - 约束性: 必须遵守
 - 决策: 步骤文件只写路由指针: 读哪个 prompt, 传入什么参数, 启动什么子代理, 产物路径是什么. 不内联 prompt 或 contract 的完整内容.
 - 理由: 步骤文件负责"在这一步做什么"; prompt 文件负责"worker/reviewer 的详细角色定义". 分离后各自短小, AFK 父会话按需加载.
-- 预计影响: 步骤文件中出现"读取 `prompts/WORKER-IMPLEMENT.md`, 传入 issue 路径..." 等指针性文字.
+- 预计影响: 步骤文件中出现"告诉 worker 读取 `prompts/WORKER.md` 了解角色, 传入 issue 路径..." 等指针性文字. 父会话不读 prompt.
 - 相关 issue: 待关联
 
 ## D007 — 分支出口
@@ -78,7 +78,7 @@ AFK 工作流逐步披露改造. 目标: AFK 父会话只知当前步骤, 不掌
 
 - 状态: 当前有效
 - 约束性: 必须遵守
-- 决策: `_current.md` 和全部 `step-NN.md` 存放于 issue 产物目录 `docs/changes/<feature-slug>/afk-running/<issueKey>/`. prompt 文件, step-gen-guide 等静态模板仍留在 `workflow/run-afk-workflow/` 下.
+- 决策: `_current.md` 和全部 `step-NN.md` 存放于 issue 产物目录 `docs/changes/<feature-slug>/afk-running/<issueKey>/`. prompt 文件留在 `workflow/run-afk-workflow/prompts/`, step-gen-guide 留在 `workflow/to-issues/references/`.
 - 理由: 步骤文件是 issue 产物, to-issues 生成; prompt 是 skill 静态资产. 同目录便于 AFK 父会话访问, 不跨目录跳转.
 - 预计影响: issue 产物目录内容从当前的 `worker-note-aN.md` 扩展到包含 `_current.md` 和 `step-NN.md`.
 - 相关 issue: 待关联
@@ -87,7 +87,7 @@ AFK 工作流逐步披露改造. 目标: AFK 父会话只知当前步骤, 不掌
 
 - 状态: 当前有效
 - 约束性: 可调整
-- 决策: 步骤划分为 19 步: 预检门禁 / 工作树检查 / 角色解析 / 读取失败模式 / 构建 task brief / 启动 worker / diff 门禁 / 正确性 review / 决策边界 review / review 等待 / 综合判定 / 启动修复 worker / 修复 diff 门禁 / 修复循环判断 / 运行验证 / 回写 issue / 更新决策 / 写 final-report / 结束.
-- 理由: 每步一个原子操作, AFK 父会话可机械执行. 步骤边界与子代理启动, diff 检查, 用户数据写入等自然分段对齐.
-- 预计影响: step-gen-guide 生成 19 个步骤文件. 后续可按需增减.
+- 决策: 步骤划分为 15 步: 预检 (含组织输入) / 启动 worker / diff 门禁 / 正确性 review / 决策边界 review / 等待 review / 综合判定 / 修复循环判断 / 启动修复 worker / 修复 diff 门禁 / 运行验证 / 回写 issue / 更新决策 / 写 final-report / 结束.
+- 理由: 每步一个原子操作. 预检与组织输入合并 — 均为执行前机械准备, 无分支无产物.
+- 预计影响: step-gen-guide 生成 15 个步骤文件. 后续可按需增减.
 - 相关 issue: 待关联

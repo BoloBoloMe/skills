@@ -50,23 +50,24 @@
 
 ## 未确认假设
 
-- 假设: 19 步的粒度足够覆盖所有 AFK issue 的执行路径. 影响: 如果某些 issue 需要更细/更粗的粒度, step-gen-guide 需要调整. 验证方式: 第一个 AFK issue 跑通后评估.
+- 假设: 15 步的粒度足够覆盖所有 AFK issue 的执行路径. 影响: 如果某些 issue 需要更细/更粗的粒度, step-gen-guide 需要调整. 验证方式: 第一个 AFK issue 跑通后评估.
 - 假设: AFK 父会话不会主动读取同目录下的其他 `step-NN.md` 文件. 影响: 如果模型出于好奇读了后续步骤文件, 信息隔离被打破. 验证方式: 在步骤文件中加入"不要读其他步骤文件"的纪律约束.
 
 ## 范围外
 
-不做 AFK 执行性能或 token 消耗的优化, 它不在本 PRD 范围内.
-不做 worker/reviewer prompt 文件内容的修改, 它不在本 PRD 范围内.
-不做 subagent 调用机制的修改, 它不在本 PRD 范围内.
-不做其他 workflow skill 的逐步披露改造, 它不在本 PRD 范围内.
+不做 AFK 执行性能或 token 消耗的优化.
+不做 subagent 调用机制的修改.
+不做其他 workflow skill 的逐步披露改造.
 
 ## 补充说明
 
-改造涉及四个文件:
+改造涉及文件:
 
-- `run-afk-workflow/SKILL.md` — 从全量流程改为极简入口
-- `run-afk-workflow/references/step-gen-guide.md` — 新建, 步骤生成指引
-- `to-issues/SKILL.md` — 增加 AFK 步骤生成分支
+- `run-afk-workflow/SKILL.md` — 极简入口, `_current.md` 路由 + 硬边界 + 子代理接口
+- `run-afk-workflow/prompts/WORKER.md` — 新建. 静态角色定义, 合并 IMPLEMENT + FIX
+- `run-afk-workflow/prompts/REVIEWER.md` — 新建. 静态角色定义, 合并 CORRECTNESS + DECISION-BOUNDARY
+- `to-issues/references/step-gen-guide.md` — 新建. 15 步生成指引
+- `to-issues/SKILL.md` — 步骤 6a: AFK 步骤文件生成
 - `docs/changes/blinders/DECISIONS.md` — 本 feature 决策账本
 
 命名来源: 赛马佩戴眼罩 (blinders) 后只能看到正前方, 不被侧后方事物分心. 大模型作为"赛马", 逐步披露就是它的眼罩.

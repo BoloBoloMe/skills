@@ -137,3 +137,16 @@ issues 太多会增加管理成本, 导致执行总时长增加, 过少则会增
 </issue-template>
 
 不要关闭或修改任何父议题.
+
+### 6a. AFK 步骤文件生成
+
+对适合 AFK 的 issue, 在发布 issue 后, 按以下流程生成步骤文件:
+
+1. 读取 `references/step-gen-guide.md`.
+2. 在 issue 产物目录 `docs/changes/<feature-slug>/afk-running/<issueKey>/` 下生成:
+   - `_current.md` — 初始内容 `step-01.md`.
+   - `step-01.md` ~ `step-15.md` — 按 step-gen-guide 中的模板, 替换 `<issue产物目录>`, `<issue路径>`, `<contract路径>`, `<decisions路径>`, `<feature-slug>`, `<issueKey>` 等占位符为绝对路径.
+3. 步骤文件内容由 step-gen-guide 模板决定, to-issues 父会话只做占位符替换, 不修改步骤指引本身.
+4. 如果 issue 产物目录不存在, 创建它.
+
+完成后, 确认目录下存在 16 个文件 (`_current.md` + 15 个 `step-NN.md`).

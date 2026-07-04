@@ -1,21 +1,21 @@
-# 何时 Mock(模拟)
+# 何时 Mock
 
-只在**系统边界** mock(模拟):
+只在**系统边界** mock:
 
 - 外部 API(payment,email 等)
 - 数据库(有时--优先使用测试 DB)
 - 时间/随机性
 - 文件系统(有时)
 
-不要 mock(模拟):
+不要 mock:
 
 - 你自己的类/模块(classes/modules)
 - 内部协作者
 - 任何你控制的东西
 
-## 面向可 Mock(模拟)性的设计
+## 面向可 Mock性的设计
 
-在系统边界,设计易于 mock(模拟)的接口:
+在系统边界,设计易于 mock的接口:
 
 **1. 使用依赖注入**
 
@@ -39,14 +39,14 @@ function processPayment(order) {
 为每个外部操作创建具体函数,而不是创建一个带条件逻辑的通用函数:
 
 ```typescript
-// 好:每个函数都可以独立 mock(模拟)
+// 好:每个函数都可以独立 mock
 const api = {
   getUser: (id) => fetch(`/users/${id}`),
   getOrders: (userId) => fetch(`/users/${userId}/orders`),
   createOrder: (data) => fetch('/orders', { method: 'POST', body: data }),
 };
 
-// 坏:mock(模拟)时需要在 mock 内部写条件逻辑
+// 坏:mock时需要在 mock 内部写条件逻辑
 const api = {
   fetch: (endpoint, options) => fetch(endpoint, options),
 };
