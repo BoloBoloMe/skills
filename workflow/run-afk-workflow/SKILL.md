@@ -10,7 +10,7 @@ disable-model-invocation: true
 
 同时满足以下条件才进入 AFK:
 
-- 当前会话是父会话, 不是子代理.
+- 你是父会话, 不是子代理.
 - 关联 issue 已存在且已由我确认.
 - 任务满足以下二选一: 存在可读取的 `CONTRACT.md`; 或 issue 自包含目标, 允许范围, 禁止范围, 验证入口, 风险提示, 停止条件和相关决策.
 - issue 已写清 `相关决策`, `允许范围`, `禁止范围`, `验证入口`, `风险提示`, `停止条件`, `适合 AFK 的原因`.
@@ -20,9 +20,11 @@ disable-model-invocation: true
 
 任一不满足则停止, 报告缺口. 无可用子代理时不降级为父会话编码, 请我切换到 `tdd` skill.
 
+全部满足 → 继续.
+
 ## 硬边界
 
-你只按步骤文件机械执行, 不掌握全局流程.
+你只按步骤文件机械执行.
 
 禁止:
 
@@ -33,8 +35,6 @@ disable-model-invocation: true
 - 把 worker 偏离解释为新决策.
 - 读同目录下其他 `step-NN.md`.
 - 自主决定跳过或重排步骤.
-
-除以上禁止项外, 你按步骤文件指引机械执行, 不做超出步骤文件范围的操作.
 
 ## 子代理接口
 
@@ -50,19 +50,36 @@ disable-model-invocation: true
 
 ## 执行循环
 
-首次进入: 读 `_current.md` → 若为 `done` 则报告已完成并退出; 否则获得当前步骤 → 执行 → 更新 `_current.md` → 连续执行 (不重复读).
-中断恢复: 读 `_current.md` → 获得断点 → 继续.
-每次执行: 读当前步骤文件 → 按指引机械执行 → 按末尾分支条件选出口 → 写入 `_current.md` → 进入下一步.
-AFK 父会话每次只持有 `_current.md` + 当前步骤文件. 不知道后续步骤数量, 名称, 内容.
+`_current.md` 格式: `ISSUE-KEY:NN` (如 `ISSUE-01:03`). 冒号前定位当前 issue, 冒号后定位当前步骤文件. 终点 `done`.
+
+首次进入: 读 `_current.md` → 解析 `ISSUE-KEY:NN` → 若为 `done` 则报告已完成并退出; 否则读 `step-NN.md` → 执行 → 更新 `_current.md` → 连续执行 (不重复读).
+中断恢复: 读 `_current.md` → 获得断点 (`ISSUE-KEY:NN`) → 读 `step-NN.md` → 继续.
+每次执行: 读当前步骤文件 → 按指引机械执行 → 按末尾分支条件选出口 → 写入 `_current.md` (出口值如 `:02`, `:03`, `<next-key>:01`, `done`) → 进入下一步.
+你每次只持有 `_current.md` + 当前步骤文件. 不知道后续步骤数量, 名称, 内容.
 
 ### 步骤文件位置
 
-`_current.md` 和步骤文件在 issue 产物目录:
+`_current.md` 和 6 个步骤文件 (`step-01.md` ~ `step-06.md`) 在 `afk-running/` 根, 全 feature 共用:
 ```text
-docs/changes/<feature-slug>/afk-running/<issueKey>/
+docs/changes/<feature-slug>/afk-running/
+  _current.md               ← "ISSUE-01:03"
+  step-01.md ~ step-06.md   ← 6 个全局共享
+  ISSUE-01/                  ← per-issue 产物
+  ISSUE-02/
 ```
 
-步骤文件由 to-issues 在发布 issue 时生成, AFK 执行阶段不参与生成.
+步骤文件由 to-issues 父会话在确认切分方案后一次性生成. 你执行阶段不参与生成.
+
+### 路径推断
+
+步骤文件用目录角色名指代路径. 你按 `_current.md` 中的 issue key 和以下约定推断实际路径:
+
+- feature 根目录: `afk-running/` 的父目录
+- contract: feature 根目录下的 `CONTRACT.md`
+- decisions: feature 根目录下的 `DECISIONS.md`
+- 当前 issue 定义文件: feature 根目录下 `issues/` 中以当前 issue key 开头的 .md 文件
+- 当前 issue 产物目录: `afk-running/<ISSUE-KEY>/`
+- worker/reviewer 角色文件: `run-afk-workflow/prompts/` 中的 WORKER.md / REVIEWER.md
 
 ## 必读文档
 
