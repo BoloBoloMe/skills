@@ -7,11 +7,11 @@
 ## 目标
 
 - AFK 父会话执行时看不到全局流程, 只知当前步骤.
-- AFK 父会话通过 `_next.md` 路由, 由步骤文件末尾指引机械推进.
+- AFK 父会话通过 `_current.md` 路由, 由步骤文件末尾指引机械推进.
 - 步骤文件由 to-issues 阶段一次性生成, AFK 执行阶段不参与生成.
 - 现有 worker, reviewer prompt 内容不变.
 - 现有 AFK 产物规范不变 (产物目录, 文件命名, task brief 格式).
-- 中断恢复: AFK 父会话读 `_next.md` 即可从断点继续.
+- 中断恢复: AFK 父会话读 `_current.md` 即可从断点继续.
 
 ## 非目标
 
@@ -24,8 +24,8 @@
 
 ## 行为边界
 
-- to-issues 父会话执行 to-issues 时, 对适合 AFK 的 issue, 按 step-gen-guide 在 issue 产物目录生成全部步骤文件 (`step-01.md` ~ `step-19.md`) 和初始 `_next.md`.
-- AFK 父会话读 `run-afk-workflow/SKILL.md` (极简入口) -> 读 `_next.md` -> 读当前步骤文件 -> 执行 -> 按步骤末尾指引更新 `_next.md` -> 重复.
+- to-issues 父会话执行 to-issues 时, 对适合 AFK 的 issue, 按 step-gen-guide 在 issue 产物目录生成全部步骤文件 (`step-01.md` ~ `step-19.md`) 和初始 `_current.md` (内容 `step-01.md`).
+- AFK 父会话读 `run-afk-workflow/SKILL.md` (极简入口) -> 读 `_current.md` -> 读当前步骤文件 -> 执行 -> 按步骤末尾指引更新 `_current.md` -> 重复.
 - 步骤文件不含阶段语义 (纯数字命名).
 - 同 issue 多次 attempt 复用同一套步骤文件.
 - AFK 父会话不主动读同目录下的其他 `step-NN.md`.
@@ -37,7 +37,7 @@
 | 决策 ID | 约束要点 |
 |---------|---------|
 | D001 | AFK 父会话只知当前步骤; to-issues 父会话掌握全貌 |
-| D002 | `_next.md` 纯自然语言路由, AFK 父会话按指引机械写入 |
+| D002 | `_current.md` 纯自然语言路由, AFK 父会话按指引机械写入 |
 | D003 | 步骤文件纯数字命名, 不泄漏语义 |
 | D004 | 步骤文件由 to-issues 一次性生成 |
 | D005 | step-gen-guide 位于 run-afk-workflow/references/, to-issues 按需加载 |
@@ -60,7 +60,7 @@
 
 涉及修改的文件:
 
-- `workflow/run-afk-workflow/SKILL.md` — 改为极简入口 (触发门禁 + `_next.md` 路由 + 硬边界).
+- `workflow/run-afk-workflow/SKILL.md` — 改为极简入口 (触发门禁 + `_current.md` 路由 + 硬边界).
 - `workflow/run-afk-workflow/references/step-gen-guide.md` — 新建. 被 to-issues 读取, 生成步骤文件.
 - `workflow/to-issues/SKILL.md` — 步骤 6 (发布议题) 增加: AFK issue 时读取 step-gen-guide 并生成步骤文件.
 
@@ -81,7 +81,7 @@ prompt 文件 (WORKER-IMPLEMENT.md, WORKER-FIX.md, REVIEWER-CORRECTNESS.md, REVI
 
 ## 验证入口
 
-- 可观察: to-issues 执行后, issue 产物目录下存在 `_next.md` 和 19 个 `step-NN.md` 文件.
+- 可观察: to-issues 执行后, issue 产物目录下存在 `_current.md` 和 19 个 `step-NN.md` 文件.
 - 可观察: AFK 父会话执行时, 每个步骤只读当前步骤文件, 不触及后续步骤文件.
 - 功能验证: 完整执行一个 AFK issue 通过所有阶段, 最终产出 `final-report.md`.
 

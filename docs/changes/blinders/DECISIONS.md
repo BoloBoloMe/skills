@@ -6,7 +6,7 @@ AFK 工作流逐步披露改造. 目标: AFK 父会话只知当前步骤, 不掌
 
 - 状态: 当前有效
 - 约束性: 必须遵守
-- 决策: AFK 父会话通过 `_next.md` 路径文件获知下一步去哪, 每次只持有当前步骤文件的内容. AFK 父会话不知道后续步骤的数量, 名称, 内容. to-issues 父会话负责一次性生成全部步骤文件, 可掌握 AFK 全貌.
+- 决策: AFK 父会话通过 `_current.md` 路由文件获知当前应执行的步骤, 每次只持有当前步骤文件的内容. AFK 父会话不知道后续步骤的数量, 名称, 内容. to-issues 父会话负责一次性生成全部步骤文件, 可掌握 AFK 全貌.
 - 理由: AFK 父会话掌握全局时会抢 worker 的活, 跳过细节, 急于完成. 限制其视野到当前步骤, 迫使它专注.
 - 预计影响: `run-afk-workflow/SKILL.md` 改写为极简入口; `to-issues/SKILL.md` 增加步骤生成分支.
 - 相关 issue: 待关联
@@ -15,9 +15,9 @@ AFK 工作流逐步披露改造. 目标: AFK 父会话只知当前步骤, 不掌
 
 - 状态: 当前有效
 - 约束性: 必须遵守
-- 决策: 状态文件 `_next.md` 存于 issue 产物目录, 内容为纯自然语言, 写入当前步骤完成后应去读取的下一个文件名. AFK 父会话不自主决定写什么, 只按当前步骤文件末尾的指引机械写入.
+- 决策: 路由文件 `_current.md` 存于 issue 产物目录, 内容为纯自然语言, 写入当前应立即执行的步骤文件名. AFK 父会话读 `_current.md` 取出文件名即开始执行该步骤, 步骤完成后按末尾指引机械写入下一个步骤文件名. AFK 父会话不自主决定写什么.
 - 理由: 纯自然语言避免结构化格式的维护负担. 模型足够理解自然语言. AFK 父会话不写内容则避免它自指自路的矛盾.
-- 预计影响: `_next.md` 由 to-issues 初始化 (内容为 `step-01.md`), 由 AFK 父会话在各步骤末尾按指引更新.
+- 预计影响: `_current.md` 由 to-issues 初始化 (内容为 `step-01.md`), 由 AFK 父会话在各步骤末尾按指引更新.
 - 相关 issue: 待关联
 
 ## D003 — 步骤文件命名
@@ -60,7 +60,7 @@ AFK 工作流逐步披露改造. 目标: AFK 父会话只知当前步骤, 不掌
 
 - 状态: 当前有效
 - 约束性: 必须遵守
-- 决策: 步骤文件末尾预写条件和对应的 `_next.md` 值. 如"如果 diff 为空, 将 `_next.md` 改为 `step-03.md`; 如果通过, 改为 `step-06.md`". AFK 父会话按条件选出口, 写 `_next.md`, 读下一个文件. 不感知"回退"或"跳转"语义.
+- 决策: 步骤文件末尾预写条件和对应的 `_current.md` 值. 如"如果 diff 为空, 将 `_current.md` 改为 `step-03.md`; 如果通过, 改为 `step-06.md`". AFK 父会话按条件选出口, 写 `_current.md`, 然后在下一次循环中读它. 不感知"回退"或"跳转"语义.
 - 理由: AFK 父会话只需读条件、选分支、写路径, 不需要理解流程拓扑.
 - 预计影响: 每个有分支的步骤文件末尾出现条件块.
 - 相关 issue: 待关联
@@ -78,9 +78,9 @@ AFK 工作流逐步披露改造. 目标: AFK 父会话只知当前步骤, 不掌
 
 - 状态: 当前有效
 - 约束性: 必须遵守
-- 决策: `_next.md` 和全部 `step-NN.md` 存放于 issue 产物目录 `docs/changes/<feature-slug>/afk-running/<issueKey>/`. prompt 文件, step-gen-guide 等静态模板仍留在 `workflow/run-afk-workflow/` 下.
+- 决策: `_current.md` 和全部 `step-NN.md` 存放于 issue 产物目录 `docs/changes/<feature-slug>/afk-running/<issueKey>/`. prompt 文件, step-gen-guide 等静态模板仍留在 `workflow/run-afk-workflow/` 下.
 - 理由: 步骤文件是 issue 产物, to-issues 生成; prompt 是 skill 静态资产. 同目录便于 AFK 父会话访问, 不跨目录跳转.
-- 预计影响: issue 产物目录内容从当前的 `worker-note-aN.md` 扩展到包含 `_next.md` 和 `step-NN.md`.
+- 预计影响: issue 产物目录内容从当前的 `worker-note-aN.md` 扩展到包含 `_current.md` 和 `step-NN.md`.
 - 相关 issue: 待关联
 
 ## D010 — 步骤粒度
