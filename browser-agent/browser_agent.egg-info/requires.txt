@@ -1,0 +1,4 @@
+playwright
+
+[test]
+pytest

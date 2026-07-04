@@ -1,0 +1,19 @@
+[project]
+name = "browser-agent"
+version = "0.1.0"
+requires-python = ">=3.9"
+dependencies = [
+    "playwright",
+]
+
+[project.optional-dependencies]
+test = [
+    "pytest",
+]
+
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["browser_agent*"]
