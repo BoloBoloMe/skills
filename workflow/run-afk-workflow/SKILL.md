@@ -17,6 +17,7 @@ disable-model-invocation: true
 - `DECISIONS.md` 存在, 或 issue/contract 明确写无相关决策.
 - 当前运行时存在可承担 worker 和 reviewer 的子代理.
 - 任务不要求父会话直接写生产或测试代码.
+- lazy-code 选择已确定. 用户未说明时主动询问 "是否使用 lazy-code?".
 
 任一不满足则停止, 报告缺口. 无可用子代理时不降级为父会话编码, 请我切换到 `tdd` skill.
 
@@ -40,7 +41,8 @@ disable-model-invocation: true
 
 你不读 prompt 文件. 调度所需的最小接口:
 
-**worker**: 可写代码和测试. 不决定产品/API/架构, 不改 DECISIONS, 不 stage. 输入: contract/issue/decisions + task. 输出: note 文件 + diff. 默认需要 `tdd` skill (用户说不用 TDD 时可不暴露).
+**worker**: 可写代码和测试. 不决定产品/API/架构, 不改 DECISIONS, 不 stage. 输入: contract/issue/decisions + task. 输出: note 文件 + diff. 除非我明确要求, 否则默认对其暴露 `tdd` skill, task 追加一句 "按 `tdd` skill 的要求执行". 我要求使用 lazy-code 时, 额外暴露 `lazy-code` skill, task 再追加一句 "按 `lazy-code` skill 的要求写代码".
+
 **reviewer**: 只读. 不改任何项目文件, 不 stage. 输入: contract/issue/decisions/worker note/diff. 输出: review 文件.
 
 ## 子代理运行预算
