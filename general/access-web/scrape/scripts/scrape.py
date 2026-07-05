@@ -1,4 +1,4 @@
-"""browse_web.py -- zero-dependency web browsing / search / download tool."""
+"""scrape.py -- zero-dependency web scraping / search / download tool."""
 
 import sys
 
@@ -1303,7 +1303,7 @@ def main():
     except Exception:
         pass
 
-    parser = argparse.ArgumentParser(prog="browse_web")
+    parser = argparse.ArgumentParser(prog="scrape")
     sub = parser.add_subparsers(dest="cmd", required=True)
 
     p_browse = sub.add_parser("browse")

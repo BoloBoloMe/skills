@@ -4,7 +4,7 @@ import sys
 import os
 import json
 
-SCRIPT = os.path.join(os.path.dirname(__file__), '..', 'scripts', 'browse_web.py')
+SCRIPT = os.path.join(os.path.dirname(__file__), '..', 'scripts', 'scrape.py')
 
 
 def run_cli(*args, timeout=30, cwd=None):
@@ -38,7 +38,7 @@ class TestBrowseHTML(unittest.TestCase):
 class TestBrowseNonHTML(unittest.TestCase):
     def test_browse_json(self):
         sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'scripts'))
-        from browse_web import BrowseWeb
+        from scrape import BrowseWeb
 
         payload = '{"slideshow": {"title": "Sample"}}'
 
@@ -75,20 +75,20 @@ class TestBrowseResources(unittest.TestCase):
 class TestContentExtractionContract(unittest.TestCase):
     def setUp(self):
         sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'scripts'))
-        import browse_web
-        self.browse_web = browse_web
-        self.ContentExtractor = browse_web.ContentExtractor
-        self._orig_trafilatura = browse_web.trafilatura
-        self._orig_document = browse_web.Document
-        self._orig_markdownify = browse_web.markdownify_md
-        browse_web.trafilatura = None
-        browse_web.Document = None
-        browse_web.markdownify_md = None
+        import scrape
+        self.scrape = scrape
+        self.ContentExtractor = scrape.ContentExtractor
+        self._orig_trafilatura = scrape.trafilatura
+        self._orig_document = scrape.Document
+        self._orig_markdownify = scrape.markdownify_md
+        scrape.trafilatura = None
+        scrape.Document = None
+        scrape.markdownify_md = None
 
     def tearDown(self):
-        self.browse_web.trafilatura = self._orig_trafilatura
-        self.browse_web.Document = self._orig_document
-        self.browse_web.markdownify_md = self._orig_markdownify
+        self.scrape.trafilatura = self._orig_trafilatura
+        self.scrape.Document = self._orig_document
+        self.scrape.markdownify_md = self._orig_markdownify
 
     def test_heuristic_extracts_article_before_template_noise(self):
         article_text = ' '.join(['正文段落提供足够长的可读内容, 用来验证正文抽取会避开导航和页脚噪声.'] * 12)
@@ -142,7 +142,7 @@ class TestContentExtractionContract(unittest.TestCase):
                     'warnings': [],
                 }
 
-        bw = self.browse_web.BrowseWeb()
+        bw = self.scrape.BrowseWeb()
         bw._fetch = FakeFetch()
         data = bw.browse('https://example.com/post', mode='extract')
         self.assertIn('extraction', data)
@@ -166,7 +166,7 @@ class TestContentExtractionContract(unittest.TestCase):
                     })
                 return '正文内容 ' * 120
 
-        self.browse_web.trafilatura = FakeTrafilatura()
+        self.scrape.trafilatura = FakeTrafilatura()
         result = self.ContentExtractor().extract(html, url='https://example.com/post')
         self.assertTrue(result['ok'])
         self.assertEqual(result['method'], 'trafilatura')
@@ -201,13 +201,13 @@ class TestSearch(unittest.TestCase):
 
     def test_ddg_redirect_url_is_decoded(self):
         sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'scripts'))
-        from browse_web import _normalize_search_url
+        from scrape import _normalize_search_url
         url = '//duckduckgo.com/l/?uddg=https%3A%2F%2Fdocs.python.org%2F3%2F&rut=abc'
         self.assertEqual(_normalize_search_url(url), 'https://docs.python.org/3/')
 
     def test_search_clean_results_filters_ads_and_decodes_targets(self):
         sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'scripts'))
-        from browse_web import SearchEngine
+        from scrape import SearchEngine
         results = [
             {
                 'title': 'Ad',
@@ -248,7 +248,7 @@ class TestHTMLTable(unittest.TestCase):
 </table>
 </body></html>'''
         sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'scripts'))
-        from browse_web import HTMLToMarkdown
+        from scrape import HTMLToMarkdown
         result = HTMLToMarkdown().convert(html, base_url='https://example.com')
         md = result['markdown']
         self.assertIn('Name', md)
@@ -264,7 +264,7 @@ class TestCodeBlock(unittest.TestCase):
     return x</code></pre>
 </body></html>'''
         sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'scripts'))
-        from browse_web import HTMLToMarkdown
+        from scrape import HTMLToMarkdown
         result = HTMLToMarkdown().convert(html, base_url='https://example.com')
         md = result['markdown']
         # Preserve 4-space indent and newlines inside code block
@@ -358,7 +358,7 @@ class TestRedirectSSRF(unittest.TestCase):
 
     def test_redirect_to_private_ip(self):
         sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'scripts'))
-        from browse_web import Fetch
+        from scrape import Fetch
         with self.assertRaises(ValueError) as ctx:
             Fetch._validate_redirect('http://10.0.0.1/')
         self.assertIn('private', str(ctx.exception).lower())
@@ -369,7 +369,7 @@ class TestHTTPHeaderCaseInsensitive(unittest.TestCase):
 
     def test_case_insensitive_content_encoding(self):
         sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'scripts'))
-        from browse_web import Fetch
+        from scrape import Fetch
         from http.client import HTTPMessage
         # Build a gzip payload
         import gzip as gzip_mod
@@ -407,7 +407,7 @@ class TestBinaryResourceMetadata(unittest.TestCase):
 
     def test_binary_resource_has_size_and_content_type(self):
         sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'scripts'))
-        from browse_web import BrowseWeb
+        from scrape import BrowseWeb
 
         raw = b'\x89PNG\r\n\x1a\nabc'
 
@@ -442,7 +442,7 @@ class TestBaseHref(unittest.TestCase):
         html = '''<html><head><base href="https://cdn.example.com/assets/"></head>
 <body><a href="page.html">Link</a><img src="img.png" alt="pic"></body></html>'''
         sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'scripts'))
-        from browse_web import HTMLToMarkdown
+        from scrape import HTMLToMarkdown
         result = HTMLToMarkdown().convert(html, base_url='https://example.com/')
         self.assertIn('https://cdn.example.com/assets/page.html', result['markdown'])
         self.assertIn('https://cdn.example.com/assets/img.png', result['markdown'])
@@ -453,7 +453,7 @@ class TestTableFallback(unittest.TestCase):
 
     def test_emit_table_fallback_on_bad_data(self):
         sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'scripts'))
-        from browse_web import HTMLToMarkdown
+        from scrape import HTMLToMarkdown
         parser = HTMLToMarkdown()
         parser.reset()
         parser._base_url = ''
@@ -486,12 +486,12 @@ class TestUnusedVariablesRemoved(unittest.TestCase):
 
     def test_unused_vars_removed(self):
         sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'scripts'))
-        import browse_web
+        import scrape
         # Module-level constant _BLOCK_TAGS should be removed
-        self.assertFalse(hasattr(browse_web, '_BLOCK_TAGS'),
+        self.assertFalse(hasattr(scrape, '_BLOCK_TAGS'),
                          '_BLOCK_TAGS should be removed')
         # Instance attributes that are never read should be removed
-        parser = browse_web.HTMLToMarkdown()
+        parser = scrape.HTMLToMarkdown()
         parser.convert('<p>hello</p>', base_url='https://example.com')
         self.assertFalse(hasattr(parser, '_tag_stack'),
                          '_tag_stack should be removed')
