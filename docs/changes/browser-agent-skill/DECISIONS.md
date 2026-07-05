@@ -42,13 +42,11 @@
 
 ## D005: 每次 skill 调用创建新浏览器上下文, 不跨调用持久化会话
 
-- 状态: 当前有效
-- 约束性: 可调整
-- 决策: 每次 agent 调用 skill 时创建新的 Playwright browser context, 调用结束后关闭. 不提供跨调用的 cookie/session 持久化.
-- 理由: 会话持久化引入状态管理复杂性 (存储, 过期, 安全). 对于首个版本, 保持无状态设计降低复杂度. 后续如有需求可通过决策变更追加.
-- 预计影响: `browser_agent/browser.py` 中 context 生命周期绑定到单次 skill 调用; 不引入 session store.
-- 实际影响: `browser_agent/operations.py` 中 `navigate()` 每次创建 `Browser()` → 调用后 `finally: browser.stop()` 销毁. `browser_agent/browser.py` 无 session store. (ISSUE-01 a1, verified)
-- 相关 issue: ISSUE-01
+- 状态: 已废弃
+- 约束性: -
+- 替代者: D017 (进程级 Browser 会话)
+- 废弃原因: agent 典型用法是多步工作流, 每次重建 Browser 导致语义断裂和页面状态丢失. 改为同进程内操作共享 Browser 实例.
+- 实际影响: 无. D017 完全替代.
 
 ## D006: 每操作超时 30s, 可通过参数覆盖
 
@@ -103,13 +101,11 @@
 
 ## D011: 并发调用时每次创建独立 Browser 实例
 
-- 状态: 当前有效
-- 约束性: 必须遵守
-- 决策: Browser 不为单例. 每次 skill 调用创建独立的 Playwright Browser 实例和 context, 调用结束后销毁. 不共享 Browser 实例.
-- 理由: 独立实例保证隔离性 — 一个调用的超时/崩溃不影响其他调用. Playwright Browser 实例创建成本可接受 (~0.5-1s), 不引入共享状态管理复杂性. 替代方案 (Browser 池或单例) 增加连接管理和并发安全复杂度.
-- 预计影响: `browser_agent/browser.py` 中 Browser 类每次实例化创建新 `sync_playwright` 连接; `__del__` 或 context manager `__exit__` 确保资源释放.
-- 实际影响: `browser_agent/browser.py` `Browser.__init__` 仅设字段为 None. `start()` 创建 `sync_playwright` + Chromium + context + page. `stop()` 逐层关闭 (context→browser→playwright), 设字段为 None 防重复关闭. 支持 context manager 协议. (ISSUE-01 a1, verified)
-- 相关 issue: ISSUE-01
+- 状态: 已废弃
+- 约束性: -
+- 替代者: D017 (进程级 Browser 会话)
+- 废弃原因: 同 D005. 多步工作流需要跨操作共享 Browser 和页面状态. 隔离性由 D017 的 per-process 模型保证 (不同进程拥有独立 Browser), 无需每次调用的微观隔离.
+- 实际影响: 无. D017 完全替代.
 
 ## D012: scroll 操作语义
 
@@ -160,3 +156,22 @@
 - 预计影响: `pyproject.toml` 声明 `requires-python = ">=3.9"`; CI 矩阵不应包含 3.8.
 - 实际影响: `pyproject.toml` `requires-python = ">=3.9"`. (ISSUE-01 a1, verified)
 - 相关 issue: ISSUE-01
+
+## D017: 进程级 Browser 会话 (单例, 懒启动, atexit 清理)
+
+- 状态: 当前有效
+- 约束性: 必须遵守
+- 决策: 一个 pi 进程内维护单个 Browser 会话 (模块级单例). 首个操作调用时懒创建 Browser 实例, 后续操作复用同一 Browser context 和 page. 进程退出时 atexit 兜底清理. 浏览器 profile 仅存内存, 不写磁盘.
+- 理由: agent 典型场景是多步工作流在同一网站上的操作序列. 每次重建 Browser 导致页面状态丢失 (URL, cookies, DOM), 对 agent 认知模型不友好. 单例 + 懒启动: 纯推理对话不浪费 Browser 资源; 需要时再启. 内存 profile: 无磁盘泄漏, 无跨会话数据残留. atexit: 进程崩溃也确保 Browser 不孤儿. pi 进程隔离: 天然保证不同 agent 对话的浏览器会话互不干扰.
+- 代替: D005, D011
+- 预计影响: `browser_agent/session.py` 模块, 封装 Browser 生命周期. 8 个操作函数移除各自的 Browser 创建/销毁样板, 统一通过 session 获取 page.
+- 相关 issue: 暂无
+
+## D018: Browser 崩溃不自动恢复
+
+- 状态: 当前有效
+- 约束性: 必须遵守
+- 决策: 操作期间 Browser 崩溃 (进程消失, page 不可用) 时, 操作返回 `success=False` 且 error 说明原因. session 不自动重建 Browser. agent 需自行判断是否重试以及从哪个 URL 恢复.
+- 理由: 自动重建会丢失当前页面状态 (URL, cookies, DOM), agent 在重建后的空白页上继续操作会产生错误结果. 透传错误让 agent 做知情决策.
+- 预计影响: `browser_agent/session.py` 中 page 访问不做异常恢复. 8 个操作函数的 try/except 捕获并返回 error.
+- 相关 issue: 暂无

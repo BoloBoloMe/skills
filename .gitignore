@@ -9,5 +9,23 @@
 /dataSources/
 /dataSources.local.xml
 /.idea/
+
+# Python
 __pycache__/
 *.py[cod]
+.venv/
+venv/
+*.egg-info/
+*.egg
+
+# 测试 & 缓存
+.pytest_cache/
+
+# 包管理器锁文件 (从 pyproject.toml 可重建)
+uv.lock
+poetry.lock
+Pipfile.lock
+
+# 系统 & IDE
+.DS_Store
+node_modules/

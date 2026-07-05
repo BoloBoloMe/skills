@@ -15,6 +15,26 @@ from pathlib import Path
 
 
 # ============================================================================
+# 同步时忽略的生成/运行时文件
+# ============================================================================
+_SYNC_IGNORE = shutil.ignore_patterns(
+    # Python 缓存 & 虚拟环境
+    "__pycache__", "*.pyc", "*.pyo",
+    ".venv", "venv",
+    # setuptools / 构建产物
+    "*.egg-info", "*.egg",
+    # pytest
+    ".pytest_cache",
+    # 包管理器锁文件 (从 pyproject.toml 可重建)
+    "uv.lock", "poetry.lock", "Pipfile.lock",
+    # macOS
+    ".DS_Store",
+    # Node
+    "node_modules",
+)
+
+
+# ============================================================================
 # Windows terminal: enable ANSI escape code support (VT processing)
 # ============================================================================
 def _enable_vt() -> None:
@@ -235,7 +255,7 @@ def execute_plan(plan: list[PlanItem]) -> None:
             if item.is_dir:
                 if item.dst.exists():
                     shutil.rmtree(item.dst)
-                shutil.copytree(item.src, item.dst)
+                shutil.copytree(item.src, item.dst, ignore=_SYNC_IGNORE)
             else:
                 item.dst.parent.mkdir(parents=True, exist_ok=True)
                 shutil.copy2(item.src, item.dst)

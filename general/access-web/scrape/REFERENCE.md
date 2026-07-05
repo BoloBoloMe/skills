@@ -1,4 +1,4 @@
-# browse-web 参考说明
+# 抓取参数参考
 
 ## `browse` 参数
 

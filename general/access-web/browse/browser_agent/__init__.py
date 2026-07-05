@@ -13,12 +13,14 @@ from browser_agent.result import NavigateResult
 from browser_agent.result import OperationResult
 from browser_agent.result import ScreenshotResult
 from browser_agent.result import StructureResult
+from browser_agent.session import reset_session
 
 __all__ = [
     "click_element",
     "extract_text",
     "get_page_structure",
     "navigate",
+    "reset_session",
     "screenshot",
     "scroll",
     "type_text",
