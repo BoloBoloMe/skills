@@ -9,7 +9,7 @@
 ```text
 .
 |-- general/                         # 通用交互与写作类技能
-|   |-- browse-web/
+|   |-- access-web/
 |   |-- explore-repo/
 |   |-- grill-me/
 |   |-- grilling/
@@ -211,7 +211,7 @@ workflow skills 的默认入口和元编排器: 接收工程类用户任务, 按
 
 通用交互/回答技能:
 
-- [`general/browse-web/SKILL.md`](general/browse-web/SKILL.md): 抓取, 搜索, 下载互联网资源, 提取网页主要可读内容, 转为 Markdown/JSON.
+- [`general/access-web/SKILL.md`](general/access-web/SKILL.md): 网页访问 (只读抓取 + 交互浏览).
 - [`general/explore-repo/SKILL.md`](general/explore-repo/SKILL.md): 将远程 git 仓库克隆到系统临时目录并输出探索报告.
 - [`general/grill-me/SKILL.md`](general/grill-me/SKILL.md): `grilling` 的兼容入口.
 - [`general/grilling/SKILL.md`](general/grilling/SKILL.md): 围绕计划或设计持续追问, 直到达成共识.
