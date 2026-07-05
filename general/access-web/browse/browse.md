@@ -2,6 +2,8 @@
 
 基于 Playwright 驱动 Chromium. 每次对话自动获得独立浏览器会话, 操作间共享页面状态 (URL, cookies, DOM). 8 个操作, 无需初始化, 首次调用懒启动, 进程结束自动关闭.
 
+**关键**: 整个对话只有一个浏览器窗口, 一个标签页. navigate 在当前标签页跳转. click/extract/screenshot 直接操作当前页. 只有需要跳转到新 URL 时才 navigate — 已在该页面时不需要. 需要同时对比两个不同页面时才开新标签 (极少).
+
 ## 快速开始
 
 ```python
