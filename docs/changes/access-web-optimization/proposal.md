@@ -24,22 +24,20 @@
 
 改进方向:
 
-- 引入 pi-session scoped browser controller.
-- 每个 pi 会话拥有独立 browser session id 和 artifact/session 目录.
-- 浏览器 controller 作为长驻进程运行, 生命周期到 pi 会话结束或显式 stop.
-- browser context 使用 persistent user data dir, 保存 cookies/localStorage/sessionStorage.
-- 后续 `navigate/click/extract/screenshot` 通过 controller 复用同一 context/page.
-- `reset_session` 只重置当前 pi 会话的浏览器, 不影响其他 pi 会话.
-- 异常退出后, 下次操作应能根据 session metadata 判断 controller 是否存活, 必要时重启并复用 persistent profile.
+- 利用 CDP (Chrome DevTools Protocol) 实现跨进程浏览器共享. Playwright 原生支持 `connect_over_cdp()`, 任何进程连上同一 CDP WebSocket 即可操控同一 browser/context/page.
+- 每个 pi 会话指定独立 `user_data_dir` (persistent profile), cookies/localStorage/sessionStorage 落盘保存.
+- 首次调用: `launch_persistent_context(user_data_dir, args=["--remote-debugging-port=N"])`, 写入 metadata (端口/目录).
+- 后续调用: 从 metadata 读到 CDP 端口 → `connect_over_cdp()` 直接获取已有 browser 和 context, 不重新启动.
+- browser 进程由 Chromium 自身管理, 没有额外的 controller 进程. Python 工具进程退出不影响 browser.
+- `reset_session()` 只断开当前进程的 Playwright 连接, 不影响 browser 进程.
+- browser 挂掉后: 下次 `connect_over_cdp` 失败 → 用同一 `user_data_dir` 重新 `launch_persistent_context`, profile 保留登录态.
 
 验收:
 
 - 用户登录一次后, 同一 pi 会话内后续工具调用不需要重新登录.
 - Python 工具进程退出不影响浏览器状态.
-- 同时打开多个 pi 会话时, 浏览器 session 互相隔离.
-- pi 会话结束或显式 cleanup 后, controller 和临时 profile 可被清理.
-
-本次临时方案 `pi_browser_control.py` 可视为正确架构的原型: 常驻 controller + per-session state. 后续需要产品化生命周期管理, session id, profile dir, cleanup 和并发隔离.
+- 同时打开多个 pi 会话时, 浏览器 session 通过不同 `user_data_dir` 和 CDP 端口互相隔离.
+- pi 会话结束或显式 cleanup 后, browser 进程和 profile 可被清理.
 
 ### headed 浏览器可见性需要明确验证
 
@@ -121,61 +119,35 @@ Grafana Explore 是复杂 SPA. `extract_text("main")` 只提取到 `Skip to main
 
 ## 可复用脚本
 
-### 常驻浏览器控制服务
+### CDP 跨进程浏览器共享
 
-本次临时脚本位置:
+本次临时的 `pi_browser_control.py` 用一个独立 HTTP 进程做了中转. 更简洁的方案是直接利用 Chromium 内置的 CDP (Chrome DevTools Protocol) — Playwright 原生支持跨进程连接, 不需要中间层.
 
-```text
-C:\Users\L9214\AppData\Local\Temp\pi_browser_control.py
+Playwright CDP 连接机制:
+
+```python
+# 首次: 启动 Chromium 并暴露 CDP 端口
+from playwright.sync_api import sync_playwright
+
+browser = chromium.launch_persistent_context(
+    user_data_dir,
+    headless=False,
+    args=["--remote-debugging-port=9222"],
+)
+# 写入 metadata: {"cdp_port": 9222, "profile_dir": user_data_dir}
+
+# 后续: 新进程直接连接已有 browser
+browser = chromium.connect_over_cdp("http://127.0.0.1:9222")
+context = browser.contexts[0]   # cookies/localStorage 都在
+page = context.pages[0]          # 当前页面
 ```
 
-作用:
-
-- 启动可见 Chromium.
-- 打开指定 URL.
-- 持有同一 browser/page, 保留用户登录态.
-- 在 `127.0.0.1:51237` 提供控制接口.
-
-已验证可用的全局 Python 启动方式:
-
-```bash
-BROWSER_HEADED=true \
-PI_BROWSER_URL='https://example.com' \
-PI_BROWSER_PORT=51237 \
-nohup /c/Users/L9214/AppData/Roaming/uv/python/cpython-3.13.5-windows-x86_64-none/python.exe \
-  /tmp/pi_browser_control.py \
-  > /tmp/pi_browser_control_global.log 2>&1 &
-```
-
-状态检查:
-
-```bash
-curl -s http://127.0.0.1:51237/status
-```
-
-返回示例:
-
-```json
-{"ok": true, "url": "https://example.com/", "title": "Example Domain"}
-```
-
-建议将该脚本产品化到 skill 中, 不再放临时目录.
-
-推荐接口:
-
-- `GET /status`: 返回 pid, url, title, headed, profileDir.
-- `GET /structure`: 返回页面结构.
-- `POST /navigate`: 跳转 URL.
-- `POST /extract`: 按描述或 selector 提取文本.
-- `POST /screenshot`: 保存截图并返回路径.
-- `POST /evaluate`: 执行只读 JS, 用于复杂 SPA 文本提取.
-- `POST /close`: 主动关闭浏览器和控制服务.
+无需额外进程, 无需 HTTP API 定义和序列化. `operations.py` 中的 `_locator`, `_structure` 拿到的仍然是真实 Playwright `Page` 对象, 完全不做改动.
 
 安全约束:
 
-- 只监听 `127.0.0.1`.
-- 默认禁止任意文件写入, screenshot path 限制在 skill temp dir.
-- `evaluate` 默认只读, 或明确标记高风险.
+- CDP 端口仅监听 `127.0.0.1`, 不接受外部连接.
+- 端口号写入 metadata, 每次随机分配避免冲突.
 
 ### Loki 批量查询模式
 
@@ -239,40 +211,89 @@ curl -s http://127.0.0.1:51237/status
 
 ### 阶段 2: pi 会话级持久浏览器
 
-将临时 HTTP 控制服务正式纳入 skill, 作为 pi-session scoped browser controller.
+利用 CDP 实现跨进程浏览器共享, 取代临时 HTTP 控制服务.
 
 关键点:
 
-- 使用 `sys.executable` 启动 controller 进程.
-- 使用 `config.py` 探测并计算出的 session dir, 不在业务逻辑中硬编码目录.
-- 每个 pi 会话独立 user data dir, cookie/localStorage/sessionStorage 随 pi 会话保留.
-- 支持 `start/status/stop/restart`.
-- 工具函数不直接创建临时 browser, 而是连接当前 pi 会话的 controller.
-- controller 异常退出后, 下次操作可根据 metadata 重启并复用 profile.
+- 每个 pi 会话分配独立 `user_data_dir` (persistent profile), cookies/localStorage/sessionStorage 落盘.
+- 首次调用: `launch_persistent_context(user_data_dir, args=["--remote-debugging-port=N"])`, 写入 metadata (端口, profile 路径, session id).
+- 后续调用: 从 metadata 读到 CDP 端口 → `connect_over_cdp()` 获取已有 browser, 不重新启动.
+- 支持 `status/stop/cleanup`:
+  - `status()`: 通过 metadata 和服务端 CDP 端口检测 browser 是否存活.
+  - `stop_browser_session()`: 通过 CDP 发送 `Browser.close`, 清理 browser 进程.
+  - `cleanup_browser_session()`: stop + 删除 profile 和 artifacts 目录.
+- `reset_session()`: 断开当前进程的 Playwright 连接, 不关 browser. 下次调用自动 reconnect.
+- browser 异常退出后: `connect_over_cdp` 抛异常 → 用同一 `user_data_dir` 重新 launch, 登录态不失.
+- 不使用 `subprocess.Popen` 管理额外进程, 不依赖 `nohup`/`start_new_session`.
 
 验收:
 
 - 用户登录后, 同一 pi 会话内后续命令不丢 cookie.
 - Python 工具进程退出不影响浏览器状态.
 - 重复调用 `navigate/extract/screenshot` 不重新打开浏览器.
-- 多个 pi 会话的浏览器状态互相隔离.
-- `stop` 能清理 controller 进程, 显式 cleanup 能清理 profile 和 artifacts.
+- 多个 pi 会话的浏览器状态通过不同 profile 和端口互相隔离.
+- `stop` 能关闭 browser 进程, `cleanup` 能清理 profile 和 artifacts.
 
-### 阶段 3: 复杂页面提取能力
+### 阶段 3: 三层函数体系
 
-新增低层 API:
+agent 最擅长写代码 → 看结果 → 改代码的快速迭代. 函数设计应匹配这个模式: 简单操作一击完成, 复杂场景给一个 JS escape hatch, 极端情况给裸 CDP.
 
-- `extract_page_text()`: 返回 `document.body.innerText`.
-- `extract_selector_text(selector)`.
-- `evaluate_js(script, readonly=True)`.
-- `network_json(url, method='GET')`: 在浏览器上下文里带 cookie 请求 API.
+```
+┌──────────────────────────────────────────────┐
+│ L1 语义函数   navigate, click, extract,       │  ← 80% 日常操作
+│               get_page_structure,              │
+│               screenshot, scroll, wait         │
+├──────────────────────────────────────────────┤
+│ L2 escape     evaluate_js(script)             │  ← 15% 复杂 SPA
+│   hatch       network_json(url, method, body) │     带 cookie API
+├──────────────────────────────────────────────┤
+│ L3 裸 CDP     cdp_send(method, params)        │  ← 5% browser 级操作
+│                                                │     调试/性能/新 tab
+└──────────────────────────────────────────────┘
+```
 
-Grafana/Loki 这种页面优先使用 `network_json`, 避免 UI 不稳定.
+**L1 语义函数** (已有, 不动):
+
+- `navigate(url)` — 打开/跳转.
+- `click_element(description)` — 语义定位 + 点击.
+- `type_text(description, text)` — 语义定位 + 输入.
+- `extract_text(description)` — 语义定位 + 提取.
+- `get_page_structure()` — DOM 可访问树.
+- `screenshot(path=None)` — 截图.
+- `scroll(direction, amount)` — 滚动.
+- `wait_for_element(description, state)` — 等待.
+
+**L2 escape hatch** (新增):
+
+- `evaluate_js(script)`: 在浏览器当前页面执行任意 JS. **不限制读写**. agent 可以用它一站式完成: 定位 → 操作 → 等待 SPA 渲染 → 提取数据 → 返回. 完全替代"新增一堆特殊提取函数"的需求.
+- `network_json(url, method, body)`: 通过 Playwright `context.request` (APIRequestContext) 在浏览器上下文发起 HTTP, 自动共享 cookie, 不受 CORS 限制. 不推荐 `page.evaluate(fetch)` 因为跨域 CORS 拦截.
+
+**L3 裸 CDP** (新增):
+
+- `cdp_send(method, params=None)`: 发送原始 Chrome DevTools Protocol 命令. L1+L2 都做不到时使用 (如 `Performance.getMetrics`, `Emulation.setGeolocationOverride`).
+
+**browser 管理** (新增):
+
+- `status()` — url, title, headed, tabs 列表, profile dir.
+- `cookies()` — 当前 context 所有 cookies.
+- `stop_browser_session()` — CDP `Browser.close`.
+- `cleanup_browser_session()` — stop + 删 profile 和 artifacts.
+- `reset_session()` — 断开当前进程连接 (测试用 local 模式则停 browser).
+
+**agent 使用模式**:
+
+1. 先用 L1. 有语义函数就用, 一键完成.
+2. L1 不够 (数据在 JS 对象不在 DOM, 需要复杂交互序列): 用 `evaluate_js` 一把完成.
+3. evaluate_js 做不了跨域请求: 用 `network_json`.
+4. 需要 browser 级操作 (开 tab, 性能, 网络): 用 `cdp_send`.
+5. 不要用 `evaluate_js` 模拟点击/输入, 除非语义定位失败. 语义定位更稳定 (Playwright auto-wait + retry).
 
 验收:
 
-- Grafana Explore 可直接查询 Loki API 并解析 JSON.
+- Grafana SPA 可先用 `evaluate_js` 探测 `Object.keys(window)`, 找到 `__grafana_initial_state` 后直接提取 JSON.
+- Grafana Loki 查询用 `network_json` 直接访问 datasource proxy API 并解析 JSON.
 - SPA 页面无需依赖 accessible name 才能提取正文.
+- agent 有 undefined behavior 可通过 `cdp_send` 自行探索, 不依赖我们预封装的函数.
 
 ### 阶段 4: 环境感知的路径和产物管理
 
@@ -286,13 +307,13 @@ Grafana/Loki 这种页面优先使用 `network_json`, 避免 UI 不稳定.
 - 当前 shell 是否为 bash/MSYS/Git Bash/WSL/PowerShell.
 - Python native path 与 shell path 是否同一命名空间.
 
-产物目录由 `config.py` 根据探测结果生成, 并写入 `status.json`:
+产物目录由 `config.py` 根据探测结果生成, 并写入 `browser.json`:
 
 - screenshots.
 - downloaded files.
 - extracted json/text.
 - browser logs.
-- control service pid/status.
+- browser pid/port/status.
 
 验收:
 
@@ -308,7 +329,7 @@ Grafana/Loki 这种页面优先使用 `network_json`, 避免 UI 不稳定.
 
 1. 用 headed 浏览器打开 Explore URL.
 2. 用户登录.
-3. 通过 `/status` 确认已进入 Grafana.
+3. 通过 `status()` 确认已进入 Grafana.
 4. 从 URL 或页面配置中提取 datasource uid.
 5. 使用 browser context 访问 datasource proxy 的 Loki API.
 6. 保存原始 JSON 和排序后的 log 文本.
@@ -374,171 +395,183 @@ access-web cleanup --session <id>
 
 ### 目标架构
 
-保留当前 public API 和返回 dataclass, 但把 `get_session().page` 背后的实现从进程内 `_SESSION` 改成可插拔 page provider.
+保留当前 public API 和返回 dataclass. 改动集中在 `Browser` 和 `session` 两层, `operations/_locator/_structure/result` 不动.
 
-建议新增 4 个模块:
+建议新增 1 个模块:
 
 ```text
 browser_agent/config.py
-browser_agent/controller.py
-browser_agent/client.py
-browser_agent/providers.py
 ```
+
+改动 1 个模块, 保留其余:
+
+```text
+browser_agent/browser.py    ← 改造: +persistent context / +connect_over_cdp
+browser_agent/session.py    ← 轻微改造: metadata 驱动连接
+browser_agent/_locator.py   ← 不动
+browser_agent/_structure.py ← 不动
+browser_agent/operations.py ← 不动 (仍通过 session.page 拿 Page)
+browser_agent/result.py     ← 不动
+```
+
+不新增:
+
+- `controller.py` — Chromium 自身就是 controller (通过 CDP).
+- `client.py` — Playwright 自身就是 client (`connect_over_cdp`).
+- `providers.py` — 不需要 backend 抽象, 所有进程都用同样的 Playwright API 拿到真实 `Page` 对象.
 
 职责:
 
-- `config.py`: 探测系统环境, 解析 pi session id, 计算 artifact 根目录, headed/headless, port/pid/profile 路径.
-- `controller.py`: 长驻浏览器控制进程, 持有 Playwright browser/context/page.
-- `client.py`: 当前工具进程中的轻量 HTTP client, 负责连接 controller.
-- `providers.py`: 定义 `PageProvider` 抽象, 提供 `LocalPageProvider` 和 `ControllerPageProvider`.
+- `config.py`: 探测系统环境, 解析 pi session id, 计算 artifact 根目录, profile 路径, 分配 CDP 端口, 读写 metadata 文件.
+- `browser.py`: `Browser` 类增加 `launch_persistent_context` 分支和 `connect_over_cdp` 分支, 根据 metadata 自动选择.
+- `session.py`: `get_session()` 逻辑: 读 metadata → 尝试 connect → 失败则 launch 并写 metadata.
 
 ### 生命周期模型
 
-session key 应来自 pi 会话, 不应随机每次生成. 推荐优先级:
+**session key**: 来自 pi 会话. 推荐优先级:
 
 1. 环境变量 `PI_SESSION_ID` 或 pi harness 提供的会话 ID.
 2. 环境变量 `PI_CONVERSATION_ID`.
 3. fallback: 当前工作目录 + 父进程树 hash, 仅用于本地测试.
 
-目录结构由环境探测结果决定. Windows 上可能类似下面这样, 但这只是示例, 不是硬编码默认:
-
-```text
-<sessionRoot>\
-  controller.pid
-  controller.port
-  status.json
-  profile\
-  artifacts\
-    screenshots\
-    downloads\
-    logs\
-```
-
-`profile\` 用于 Playwright persistent context, 保存 cookies/localStorage/sessionStorage. `artifacts\` 用于截图, 下载, 提取结果, 控制器日志. `<sessionRoot>` 必须写入 metadata, 后续所有进程通过 metadata 读取.
-
-### Browser 改造
-
-`Browser` 仍保留, 但改为支持两种启动方式.
-
-当前:
-
-```python
-self._browser = self._playwright.chromium.launch(headless=headless)
-self._context = self._browser.new_context()
-self._page = self._context.new_page()
-```
-
-建议新增 persistent 参数:
-
-```python
-class Browser:
-    def __init__(self, user_data_dir: str | None = None, headed: bool | None = None):
-        self._user_data_dir = user_data_dir
-        self._headed = headed
-```
-
-启动逻辑:
-
-```python
-if self._user_data_dir:
-    self._context = self._playwright.chromium.launch_persistent_context(
-        self._user_data_dir,
-        headless=headless,
-        accept_downloads=True,
-    )
-    self._page = self._context.pages[0] if self._context.pages else self._context.new_page()
-else:
-    self._browser = self._playwright.chromium.launch(headless=headless)
-    self._context = self._browser.new_context(accept_downloads=True)
-    self._page = self._context.new_page()
-```
-
-注意: persistent context 没有单独的 `Browser` 句柄, stop 时关闭 context 即可.
-
-### Session 改造
-
-`session.py` 不应再直接持有进程内 `_SESSION` 作为默认实现. 建议改成 facade:
-
-```python
-def get_session() -> Session:
-    return Session(provider=get_default_provider())
-```
-
-provider 选择:
-
-- 测试环境或 `ACCESS_WEB_MODE=local`: `LocalPageProvider`, 保持现在行为.
-- 默认交互浏览: `ControllerPageProvider`, 连接 pi-session controller.
-
-`reset_session()` 语义也要拆分:
-
-- `reset_session()`: 重置当前工具进程 facade/cache, 不杀 controller.
-- `stop_browser_session()`: 显式停止当前 pi 会话 controller.
-- `cleanup_browser_session()`: 停止 controller 并删除 profile/artifacts.
-
-这样避免测试 fixture 里的 `reset_session()` 误删用户登录态.
-
-### Controller API
-
-把本次临时 `pi_browser_control.py` 正式化, 但不要直接用临时代码原样落库. 推荐 API:
-
-```text
-GET  /status
-POST /navigate
-POST /click
-POST /type
-POST /extract
-POST /structure
-POST /scroll
-POST /wait
-POST /screenshot
-POST /page_text
-POST /selector_text
-POST /evaluate
-POST /network_json
-POST /close
-```
-
-返回 JSON 应和 `result.py` dataclass 字段一致, 例如:
-
-```json
-{"success": true, "error": null, "url": "https://example.com"}
-```
-
-`/network_json` 很关键: 它应该在浏览器上下文里执行 `fetch`, 自动携带当前登录 cookie, 用于 Grafana datasource proxy 这类场景.
-
-示例请求:
+**metadata 文件**: 位于 `<sessionDir>/browser.json`, 内容:
 
 ```json
 {
-  "url": "https://test-sg-monitor.changzhi.top/api/datasources/proxy/uid/.../loki/api/v1/query_range?...",
-  "method": "GET",
-  "timeout": 60
+  "cdp_port": 9222,
+  "profile_dir": "<sessionDir>/profile",
+  "session_id": "...",
+  "created_at": "...",
+  "status": "running"
 }
 ```
 
+任何进程进入时先读 metadata. 如果 `cdp_port` 可连通则 connect; 否则 launch 并更新 metadata.
+
+**目录结构** (由 `config.py` 计算, 不硬编码):
+
+```text
+<sessionDir>/
+  browser.json       ← metadata
+  profile/            ← Playwright persistent user_data_dir
+  artifacts/
+    screenshots/
+    downloads/
+    logs/
+```
+
+`profile/` 用于 persistent context, 保存 cookies/localStorage/sessionStorage. `artifacts/` 用于截图, 下载, 提取结果.
+
+### Browser 改造
+
+`Browser` 仍保留, 改为支持三种模式, 按参数自动选择:
+
+1. **local (现有, 测试用)**: `user_data_dir=None, cdp_port=None` — 走当前 `chromium.launch()`.
+2. **persistent local (本地调试)**: `user_data_dir=xxx, cdp_port=None` — 走 `launch_persistent_context`, 不暴露 CDP.
+3. **persistent + CDP (交互浏览)**: `user_data_dir=xxx, cdp_port=xxx` — 走 `launch_persistent_context` + `--remote-debugging-port`, 写 metadata.
+
+新增类方法:
+
+```python
+class Browser:
+    def __init__(self, user_data_dir: str | None = None,
+                 cdp_port: int | None = None, headed: bool | None = None):
+        ...
+
+    @classmethod
+    def connect(cls, cdp_port: int) -> "Browser":
+        """通过 CDP 连接已有 browser, 复用 context 和 page."""
+        ...
+
+    def status(self) -> dict:
+        """返回 {url, title, pid, headed, profile_dir}."""
+        ...
+```
+
+`connect()` 内部:
+
+```python
+browser = p.chromium.connect_over_cdp(f"http://127.0.0.1:{cdp_port}")
+context = browser.contexts[0]
+page = context.pages[0] if context.pages else context.new_page()
+```
+
+`stop()` 已有多层 None 保护, persistent context 分支无需 `Browser.close()`, 只需关 context.
+
+### Session 改造
+
+`session.py` 不再用模块级 `_SESSION` 进程内单例. 改为查询 metadata 决策:
+
+```python
+def get_session() -> Session:
+    meta = config.read_metadata()
+    if meta and _cdp_alive(meta.cdp_port):
+        return Session(Browser.connect(meta.cdp_port))
+    else:
+        browser = Browser(
+            user_data_dir=config.profile_dir(),
+            cdp_port=config.allocate_port(),
+            headed=config.is_headed(),
+        )
+        browser.start()
+        config.write_metadata(cdp_port=config.allocate_port(), ...)
+        return Session(browser)
+```
+
+`reset_session()`:
+
+- 断开当前进程 Playwright 连接 (browser.stop() 仅关 context, 不关 Chromium 进程).
+- local 模式 (`ACCESS_WEB_MODE=local`): 仍停 `Browser` (保持现状, conftest autouse fixture 测试隔离).
+- 会话模式: 只清当前进程 cache, 不停 Chromium.
+
+`stop_browser_session()`: 通过 CDP `Browser.close` 关闭 Chromium 进程.
+`cleanup_browser_session()`: stop + 删除 profile 和 artifacts 目录.
+
 ### Operations 改造
 
-`operations.py` 保持函数名和返回类型不变. 但每个函数内部不要直接假设拿到 Playwright `Page`.
+现有 8 个 L1 函数不动. 新增 5 个 L2+L3+管理函数:
 
-建议路径:
+```python
+def evaluate_js(script: str) -> EvalResult:
+    """在浏览器当前页面执行任意 JS, 返回结果."""
+    page = get_session().page
+    result = page.evaluate(script)
+    return EvalResult(success=True, data=result)
 
-1. `provider = get_page_provider()`.
-2. 如果 provider 是 local, 调用当前 Playwright 逻辑.
-3. 如果 provider 是 controller, 调用 `client.py` HTTP API.
-4. 将 JSON 响应映射回 `NavigateResult/OperationResult/ExtractResult/ScreenshotResult/StructureResult`.
+def network_json(url: str, method="GET", body=None,
+                 headers=None) -> NetworkResult:
+    """以浏览器 context 身份发 HTTP, 自动携带 cookies."""
+    session = get_session()
+    ctx = session._browser._context  # or session.context
+    resp = ctx.request.fetch(url, method=method, data=body, headers=headers)
+    return NetworkResult(success=True, status=resp.status, body=resp.body(),
+                         json=resp.json() if resp.headers.get("content-type") == "application/json" else None)
 
-这样可以保留现有测试, 同时新增 controller 集成测试.
+def cdp_send(method: str, params: dict | None = None) -> dict:
+    """发送原始 CDP 命令."""
+    page = get_session().page
+    cdp = page.context.new_cdp_session(page)
+    return cdp.send(method, params)
+
+def status() -> StatusResult:
+    """返回 {url, title, headed, profile_dir, cdp_port, pages[]}."""
+    ...
+
+def cookies() -> list[dict]:
+    """当前 context 所有 cookies."""
+    ...
+```
+
+`_locator.py` 和 `_structure.py` 不动, 仍直接拿 Playwright `Page`. CDP 方案保证所有进程拿到的就是真实 `Page` 对象.
 
 ### 测试计划
 
-保留现有测试:
+保留现有测试 (在 `ACCESS_WEB_MODE=local` 下继续通过):
 
 - `test_navigate.py`
 - `test_interaction.py`
 - `test_extraction.py`
 - `test_integration.py`
-
-这些测试应在 `ACCESS_WEB_MODE=local` 下继续通过.
 
 新增测试:
 
@@ -548,27 +581,32 @@ POST /close
    - stop 后重新 start.
    - 验证 cookie/localStorage 仍存在.
 
-2. `test_controller_lifecycle.py`
-   - start controller.
-   - status 返回 pid/port/profileDir.
-   - navigate 后退出当前 client 进程.
-   - 新 client 再 status, URL 仍保留.
-   - close 后 pid 不存在.
+2. `test_cdp_connect.py`
+   - 用 `launch_persistent_context` + CDP 端口启动 browser.
+   - 在新 Python 进程中 `connect_over_cdp`.
+   - 验证第二个进程拿到同一 page, URL 一致.
+   - 第一个进程退出后, browser 仍在 (第二个进程可继续操作).
 
-3. `test_session_scoping.py`
-   - 模拟两个 `PI_SESSION_ID`.
+3. `test_cdp_reconnect_after_browser_death.py`
+   - 启动 CDP browser.
+   - 手动 kill Chromium 进程.
+   - 验证 `connect_over_cdp` 抛异常.
+   - 用同一 `user_data_dir` 重新 launch, 验证 cookie 仍存在.
+
+4. `test_session_scoping.py`
+   - 两个不同 `user_data_dir` + 不同 CDP 端口.
    - 分别 navigate 到不同页面.
    - 验证状态互不影响.
 
-4. `test_network_json.py`
-   - mock 一个需要 cookie 的接口.
-   - 浏览器先设置 cookie.
-   - `/network_json` 请求能携带 cookie 并返回 JSON.
+5. `test_network_json.py`
+   - 浏览器设置 cookie.
+   - `context.request` 发请求, 验证携带 cookie.
 
-5. `test_reset_semantics.py`
-   - `reset_session()` 不关闭 controller.
-   - `stop_browser_session()` 关闭 controller.
-   - `cleanup_browser_session()` 删除 profile/artifacts.
+6. `test_evaluate_js.py`
+   - 设置 `page.set_content("<div id='app'>hello</div>")`.
+   - `evaluate_js("document.querySelector('#app').innerText")` 返回 `"hello"`.
+   - `evaluate_js("await new Promise(r => setTimeout(r, 100)); return 'done'")` 验证 async.
+   - `evaluate_js("window.__test = 42; return window.__test")` 验证写+读.
 
 ### 兼容策略
 
@@ -581,47 +619,59 @@ from browser_agent import navigate, click_element, extract_text
 新增导出:
 
 ```python
+# L2 escape hatch
+from browser_agent import evaluate_js
+from browser_agent import network_json
+
+# L3 裸 CDP
+from browser_agent import cdp_send
+
+# browser 管理
 from browser_agent import status
+from browser_agent import cookies
 from browser_agent import stop_browser_session
 from browser_agent import cleanup_browser_session
-from browser_agent import page_text
-from browser_agent import selector_text
-from browser_agent import network_json
 ```
 
-`browse.md` 也要更新:
+`browse.md` 更新:
 
 - 明确浏览器会话生命周期绑定 pi 会话.
 - 说明登录态在 pi 会话内保持.
-- 说明 `reset_session` 和 `stop/cleanup` 区别.
+- 给出三层函数一览和选择指南:
+  ```markdown
+  ## 选择哪个函数
+  1. 先看 L1: 你的意图能不能用一个语义函数完成? → 直接调.
+  2. L1 不够: 页面是 SPA, 数据不在 DOM 而在 JS 对象里?
+     → evaluate_js("JSON.stringify(window.__data)") 一把拿到.
+  3. evaluate_js 做不了跨域请求? → network_json.
+  4. 需要 browser 级操作 (性能/网络/新 tab)? → cdp_send.
+  5. 不要用 evaluate_js 模拟点击/输入, 除非语义定位失败.
+     语义定位更稳定 (有 auto-wait 和 retry).
+  ```
+- 说明 `reset_session`/`stop_browser_session`/`cleanup_browser_session` 区别.
 - 说明 artifacts 路径.
-- 说明 Grafana/Loki 这类 API 查询优先用 `network_json`.
 
 ### 迁移步骤
 
 1. 新增 `config.py`, 负责环境探测, 路径策略, session id 计算, 加单元测试.
-2. 改造 `Browser` 支持 `launch_persistent_context`, 保持旧行为默认不变.
-3. 新增 `controller.py` 和 `client.py`, 先覆盖 `status/navigate/screenshot/page_text`.
-4. 在 `operations.py` 增加 provider 分支, 默认仍可通过环境变量回退 local.
-5. 扩展 controller API 到 click/type/extract/structure/scroll/wait.
-6. 新增 `network_json`, 替代复杂 SPA 的 UI 文本抓取.
-7. 更新 `browse.md` 和 tests.
-8. 最后把默认模式切到 controller.
+2. 改造 `Browser`: 加 `user_data_dir`/`cdp_port` 参数, `launch_persistent_context` 分支, `connect()` 类方法. 旧行为 (`Browser()` 无参) 保持.
+3. 改造 `session.py`: `get_session()` 改为 metadata 驱动 (try connect → fallback launch). `reset_session` 按 mode 分支. 加 `stop_browser_session`/`cleanup_browser_session`.
+4. conftest.py 设 `ACCESS_WEB_MODE=local` (或 `pyproject.toml` `[tool.pytest.ini_options]` env), 确保现有 4 个测试文件在 local 模式下运行, patch `Browser.start` 仍生效. 此步在步骤 5 前完成.
+5. `__init__.py` 新增导出: `evaluate_js`, `network_json`, `cdp_send`, `status`, `cookies`, `stop_browser_session`, `cleanup_browser_session`. 更新 `browse.md` (含三层选择指南).
+6. 新增 `evaluate_js`/`network_json`/`cdp_send` 操作实现.
 
 ## 优先级
 
 P0:
 
 - 依赖自检.
-- 使用 `sys.executable`.
-- 持久浏览器控制服务.
-- `stop/status` 管理.
+- 持久浏览器 (CDP `connect_over_cdp` + `launch_persistent_context`).
+- `status/stop/cleanup` 生命周期管理.
 
 P1:
 
-- 统一 Windows 临时目录.
-- 环境感知路径策略和 screenshot/artifact 路径规范.
-- `page_text/selector_text/evaluate`.
+- 环境感知路径策略和 artifact 路径规范.
+- `evaluate_js`, `network_json`, `cdp_send` escape hatches.
 
 P2:
 
