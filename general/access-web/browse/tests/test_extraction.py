@@ -11,20 +11,15 @@ from browser_agent.browser import Browser
 from browser_agent.result import ExtractResult
 from browser_agent.result import ScreenshotResult
 from browser_agent.result import StructureResult
+from browser_agent.session import get_session
 
 
 # ── helpers ──────────────────────────────────────────────────
 
 
-def _patch_browser_start_with_html(html: str):
-    """返回一个 patch 上下文, 使 Browser.start 注入指定 HTML 页面内容."""
-    original_start = Browser.start
-
-    def start_with_content(self):
-        original_start(self)
-        self._page.set_content(html)
-
-    return patch.object(Browser, "start", start_with_content)
+def _set_page_content(html: str):
+    """将当前 page 的内容设置为指定 HTML."""
+    get_session().page.set_content(html)
 
 
 # ── extract_text ────────────────────────────────────────────
@@ -32,9 +27,8 @@ def _patch_browser_start_with_html(html: str):
 
 def test_extract_text_returns_text():
     """extract_text 提取 h1 元素文本."""
-    html = "<h1>Main Heading</h1>"
-    with _patch_browser_start_with_html(html):
-        result = extract_text("Main Heading")
+    _set_page_content("<h1>Main Heading</h1>")
+    result = extract_text("Main Heading")
 
     assert isinstance(result, ExtractResult)
     assert result.success
@@ -44,9 +38,8 @@ def test_extract_text_returns_text():
 
 def test_extract_text_with_paragraph():
     """extract_text 提取 p 元素文本."""
-    html = "<p>Hello World</p>"
-    with _patch_browser_start_with_html(html):
-        result = extract_text("Hello World")
+    _set_page_content("<p>Hello World</p>")
+    result = extract_text("Hello World")
 
     assert result.success
     assert result.text == "Hello World"
@@ -54,9 +47,8 @@ def test_extract_text_with_paragraph():
 
 def test_extract_text_not_found():
     """extract_text 对不存在的元素返回 success=False."""
-    html = "<div>no matching text</div>"
-    with _patch_browser_start_with_html(html):
-        result = extract_text("missing element")
+    _set_page_content("<div>no matching text</div>")
+    result = extract_text("missing element")
 
     assert isinstance(result, ExtractResult)
     assert result.success is False
@@ -82,8 +74,8 @@ def test_get_page_structure_returns_data():
         "<html><head><title>Test Page</title></head>"
         "<body><h1>Heading</h1><p>Paragraph</p></body></html>"
     )
-    with _patch_browser_start_with_html(html):
-        result = get_page_structure()
+    _set_page_content(html)
+    result = get_page_structure()
 
     assert isinstance(result, StructureResult)
     assert result.success
@@ -100,9 +92,8 @@ def test_get_page_structure_returns_data():
 
 def test_get_page_structure_elements_have_role_name():
     """elements 列表中每个元素含 role 和 name."""
-    html = "<body><button>Click Me</button></body>"
-    with _patch_browser_start_with_html(html):
-        result = get_page_structure()
+    _set_page_content("<body><button>Click Me</button></body>")
+    result = get_page_structure()
 
     assert result.success
     elements = result.data["elements"]
@@ -123,8 +114,8 @@ def test_get_page_structure_depth_limit():
         + "".join("</div>" for _ in range(10))
         + "</body></html>"
     )
-    with _patch_browser_start_with_html(deep_html):
-        result = get_page_structure()
+    _set_page_content(deep_html)
+    result = get_page_structure()
 
     assert result.success
     elements = result.data["elements"]
@@ -144,9 +135,8 @@ def test_get_page_structure_depth_limit():
 
 def test_get_page_structure_truncated():
     """设置 max_elements=1 时触发截断标记."""
-    html = "<body><p>A</p><p>B</p><p>C</p></body>"
-    with _patch_browser_start_with_html(html):
-        result = get_page_structure(max_elements=1)
+    _set_page_content("<body><p>A</p><p>B</p><p>C</p></body>")
+    result = get_page_structure(max_elements=1)
 
     assert result.success
     assert result.data["truncated"] is True
@@ -155,9 +145,8 @@ def test_get_page_structure_truncated():
 
 def test_get_page_structure_not_truncated_normal():
     """正常页面不触发截断."""
-    html = "<body><p>Hello</p></body>"
-    with _patch_browser_start_with_html(html):
-        result = get_page_structure(max_elements=500)
+    _set_page_content("<body><p>Hello</p></body>")
+    result = get_page_structure(max_elements=500)
 
     assert result.success
     assert result.data["truncated"] is False
@@ -165,9 +154,8 @@ def test_get_page_structure_not_truncated_normal():
 
 def test_get_page_structure_empty_page():
     """空白页面返回空 elements."""
-    html = "<html></html>"
-    with _patch_browser_start_with_html(html):
-        result = get_page_structure()
+    _set_page_content("<html></html>")
+    result = get_page_structure()
 
     assert result.success
     assert result.data["elements"] == []
@@ -187,9 +175,8 @@ def test_get_page_structure_browser_start_failure():
 
 def test_screenshot_returns_bytes_when_path_none():
     """screenshot path=None 时返回 PNG 字节."""
-    html = "<body><h1>Hello</h1></body>"
-    with _patch_browser_start_with_html(html):
-        result = screenshot(path=None, full_page=True)
+    _set_page_content("<body><h1>Hello</h1></body>")
+    result = screenshot(path=None, full_page=True)
 
     assert isinstance(result, ScreenshotResult)
     assert result.success
@@ -202,14 +189,12 @@ def test_screenshot_returns_bytes_when_path_none():
 
 def test_screenshot_writes_file_when_path_given():
     """screenshot 写入文件, 返回 path, 文件存在且为非空 PNG."""
-    html = "<body><h1>Hello</h1></body>"
-    with _patch_browser_start_with_html(html):
-        with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as tmp:
-            tmp_path = tmp.name
+    _set_page_content("<body><h1>Hello</h1></body>")
+    with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as tmp:
+        tmp_path = tmp.name
 
     try:
-        with _patch_browser_start_with_html(html):
-            result = screenshot(path=tmp_path, full_page=True)
+        result = screenshot(path=tmp_path, full_page=True)
 
         assert result.success
         assert result.path == tmp_path
@@ -235,9 +220,8 @@ def test_screenshot_returns_error_on_failure():
 
 def test_screenshot_viewport_only():
     """screenshot full_page=False 截取仅视口."""
-    html = "<body><h1>Hello</h1></body>"
-    with _patch_browser_start_with_html(html):
-        result = screenshot(path=None, full_page=False)
+    _set_page_content("<body><h1>Hello</h1></body>")
+    result = screenshot(path=None, full_page=False)
 
     assert result.success
     assert isinstance(result.image, bytes)

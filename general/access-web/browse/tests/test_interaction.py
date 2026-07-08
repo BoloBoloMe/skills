@@ -7,20 +7,15 @@ from browser_agent import click_element
 from browser_agent import type_text
 from browser_agent.browser import Browser
 from browser_agent.result import OperationResult
+from browser_agent.session import get_session
 
 
 # ── helpers ──────────────────────────────────────────────────
 
 
-def _patch_browser_start_with_html(html: str):
-    """返回一个 patch 上下文, 使 Browser.start 注入指定 HTML 页面内容."""
-    original_start = Browser.start
-
-    def start_with_content(self):
-        original_start(self)
-        self._page.set_content(html)
-
-    return patch.object(Browser, "start", start_with_content)
+def _set_page_content(html: str):
+    """将当前 page 的内容设置为指定 HTML."""
+    get_session().page.set_content(html)
 
 
 # ── click_element ───────────────────────────────────────────
@@ -28,9 +23,8 @@ def _patch_browser_start_with_html(html: str):
 
 def test_click_element_by_text():
     """click_element 通过文本内容匹配按钮并点击成功."""
-    html = "<button>Submit</button>"
-    with _patch_browser_start_with_html(html):
-        result = click_element("submit button")
+    _set_page_content("<button>Submit</button>")
+    result = click_element("submit button")
 
     assert isinstance(result, OperationResult)
     assert result.success
@@ -39,36 +33,32 @@ def test_click_element_by_text():
 
 def test_click_element_by_accessible_name():
     """click_element 通过 accessible name 匹配按钮."""
-    html = '<button aria-label="login button">Login</button>'
-    with _patch_browser_start_with_html(html):
-        result = click_element("login button")
+    _set_page_content('<button aria-label="login button">Login</button>')
+    result = click_element("login button")
 
     assert result.success
 
 
 def test_click_element_by_label():
     """click_element 通过 aria-label 匹配元素."""
-    html = '<button aria-label="delete item">Delete</button>'
-    with _patch_browser_start_with_html(html):
-        result = click_element("delete item")
+    _set_page_content('<button aria-label="delete item">Delete</button>')
+    result = click_element("delete item")
 
     assert result.success
 
 
 def test_click_element_by_css_selector():
     """click_element CSS selector 兜底匹配."""
-    html = "<button>Publish</button>"
-    with _patch_browser_start_with_html(html):
-        result = click_element("button")
+    _set_page_content("<button>Publish</button>")
+    result = click_element("button")
 
     assert result.success
 
 
 def test_click_element_not_found():
     """click_element 未匹配到元素返回 success=False."""
-    html = "<div>no buttons here</div>"
-    with _patch_browser_start_with_html(html):
-        result = click_element("missing button")
+    _set_page_content("<div>no buttons here</div>")
+    result = click_element("missing button")
 
     assert isinstance(result, OperationResult)
     assert result.success is False
@@ -82,9 +72,8 @@ def test_click_element_not_found():
 
 def test_type_text_by_aria_label():
     """type_text 通过 aria-label 定位输入框并输入成功."""
-    html = '<input aria-label="search box" />'
-    with _patch_browser_start_with_html(html):
-        result = type_text("search box", "hello")
+    _set_page_content('<input aria-label="search box" />')
+    result = type_text("search box", "hello")
 
     assert isinstance(result, OperationResult)
     assert result.success
@@ -93,36 +82,32 @@ def test_type_text_by_aria_label():
 
 def test_type_text_by_placeholder():
     """type_text 通过 placeholder 定位输入框."""
-    html = '<input placeholder="Enter username" />'
-    with _patch_browser_start_with_html(html):
-        result = type_text("Enter username", "alice")
+    _set_page_content('<input placeholder="Enter username" />')
+    result = type_text("Enter username", "alice")
 
     assert result.success
 
 
 def test_type_text_by_role_textbox():
     """type_text 通过 role=textbox + name 定位."""
-    html = '<input aria-label="email field" />'
-    with _patch_browser_start_with_html(html):
-        result = type_text("email field", "user@test.com")
+    _set_page_content('<input aria-label="email field" />')
+    result = type_text("email field", "user@test.com")
 
     assert result.success
 
 
 def test_type_text_by_css():
     """type_text CSS selector 兜底定位 textarea."""
-    html = "<textarea></textarea>"
-    with _patch_browser_start_with_html(html):
-        result = type_text("textarea", "content")
+    _set_page_content("<textarea></textarea>")
+    result = type_text("textarea", "content")
 
     assert result.success
 
 
 def test_type_text_not_found():
     """type_text 未匹配到元素返回 success=False."""
-    html = "<div>no inputs here</div>"
-    with _patch_browser_start_with_html(html):
-        result = type_text("nonexistent", "text")
+    _set_page_content("<div>no input here</div>")
+    result = type_text("nonexistent", "text")
 
     assert result.success is False
     assert result.error is not None
@@ -141,12 +126,12 @@ def test_three_level_fallback_same_element():
     """
     html = "<button>Submit</button>"
 
-    with _patch_browser_start_with_html(html):
-        r1 = click_element("Submit")  # accessible name
-    with _patch_browser_start_with_html(html):
-        r2 = click_element("Submit")  # also accessible name; text also matches
-    with _patch_browser_start_with_html(html):
-        r3 = click_element("button")  # CSS selector
+    _set_page_content(html)
+    r1 = click_element("Submit")  # accessible name
+    _set_page_content(html)
+    r2 = click_element("Submit")  # also accessible name; text also matches
+    _set_page_content(html)
+    r3 = click_element("button")  # CSS selector
 
     assert r1.success, f"accessible name failed: {r1.error}"
     assert r2.success, f"text failed: {r2.error}"
@@ -162,12 +147,12 @@ def test_three_level_fallback_input():
     """
     html = '<input aria-label="search" />'
 
-    with _patch_browser_start_with_html(html):
-        r1 = type_text("search", "a")  # accessible name
-    with _patch_browser_start_with_html(html):
-        r2 = type_text("search", "b")  # text (may fall to label/role)
-    with _patch_browser_start_with_html(html):
-        r3 = type_text("input", "c")  # CSS selector
+    _set_page_content(html)
+    r1 = type_text("search", "a")  # accessible name
+    _set_page_content(html)
+    r2 = type_text("search", "b")  # text (may fall to label/role)
+    _set_page_content(html)
+    r3 = type_text("input", "c")  # CSS selector
 
     assert r1.success, f"accessible name failed: {r1.error}"
     assert r2.success, f"text failed: {r2.error}"

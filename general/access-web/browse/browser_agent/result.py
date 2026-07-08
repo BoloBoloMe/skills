@@ -45,3 +45,50 @@ class StructureResult(OperationResult):
     """
 
     data: Optional[dict] = None
+
+
+@dataclass
+class StatusResult(OperationResult):
+    """status 操作结果.
+
+    alive 双检 pid + CDP 端口.
+    """
+
+    alive: bool = False
+    url: Optional[str] = None
+    title: Optional[str] = None
+    pid: Optional[int] = None
+    headed: Optional[bool] = None
+    cdp_port: Optional[int] = None
+    profile_dir: Optional[str] = None
+    pages: Optional[int] = None
+
+
+@dataclass
+class CookiesResult(OperationResult):
+    """cookies 操作结果."""
+
+    cookies: Optional[list] = None
+
+
+@dataclass
+class EvalResult(OperationResult):
+    """evaluate_js 操作结果."""
+
+    result: Optional[object] = None
+
+
+@dataclass
+class NetworkResult(OperationResult):
+    """network_json 操作结果."""
+
+    status: Optional[int] = None
+    body: Optional[object] = None
+    headers: Optional[dict] = None
+
+
+@dataclass
+class CdpResult(OperationResult):
+    """cdp_send 操作结果."""
+
+    result: Optional[object] = None

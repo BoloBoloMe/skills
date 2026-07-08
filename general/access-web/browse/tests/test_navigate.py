@@ -6,6 +6,26 @@ import pytest
 from browser_agent import navigate
 from browser_agent.browser import Browser
 from browser_agent.result import NavigateResult
+from browser_agent.session import get_session
+
+
+# ── helpers ──────────────────────────────────────────────────
+
+
+def _set_page_route_hanging():
+    """挂起所有导航请求, 用于测试超时."""
+    get_session().page.route("**/*", lambda route: None)
+
+
+def _set_page_route_html(html: str):
+    """通过 page.route 拦截所有请求并返回固定 HTML."""
+    get_session().page.route(
+        "**/*",
+        lambda route: route.fulfill(body=html, content_type="text/html"),
+    )
+
+
+# ── tests ────────────────────────────────────────────────────
 
 
 def test_navigate_returns_navigate_result():
@@ -27,15 +47,8 @@ def test_navigate_invalid_url_returns_failure():
 
 def test_navigate_timeout_returns_failure():
     """navigate 超时返回 success=False (使用 route mock 模拟延迟)"""
-    original_start = Browser.start
-
-    def start_with_hanging_route(self):
-        original_start(self)
-        # 拦截所有请求, 不做 fulfill/abort/continue, 触发 page.goto 超时
-        self._page.route("**/*", lambda route: None)
-
-    with patch.object(Browser, "start", start_with_hanging_route):
-        result = navigate("https://example.com", timeout=1.0)
+    _set_page_route_hanging()
+    result = navigate("https://example.com", timeout=1.0)
 
     assert isinstance(result, NavigateResult)
     assert result.success is False

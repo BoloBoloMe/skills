@@ -18,6 +18,7 @@ from browser_agent import type_text
 from browser_agent import wait_for_element
 from browser_agent.browser import Browser
 from browser_agent.result import OperationResult
+from browser_agent.session import get_session
 
 
 # ── 集成测试 mock 页面 ──────────────────────────────────────
@@ -54,32 +55,9 @@ MOCK_HTML = """<html>
 # ── helpers ──────────────────────────────────────────────────
 
 
-def _patch_browser_start_with_html(html: str):
-    """返回 patch 上下文, 使 Browser.start 注入指定 HTML 页面内容."""
-    original_start = Browser.start
-
-    def start_with_content(self):
-        original_start(self)
-        self._page.set_content(html)
-
-    return patch.object(Browser, "start", start_with_content)
-
-
-def _patch_browser_start_with_route(html: str):
-    """返回 patch 上下文, 使 Browser.start 设置 page.route mock.
-
-    navigate 操作使用 page.goto(url), 需要 mock URL 响应.
-    """
-    original_start = Browser.start
-
-    def start_with_route(self):
-        original_start(self)
-        self._page.route(
-            "**/*",
-            lambda route: route.fulfill(body=html, content_type="text/html"),
-        )
-
-    return patch.object(Browser, "start", start_with_route)
+def _set_page_content(html: str):
+    """将当前 page 的内容设置为指定 HTML."""
+    get_session().page.set_content(html)
 
 
 # ── 完整 8 步集成测试 ──────────────────────────────────────
@@ -97,59 +75,49 @@ def test_integration_full_8_step_flow():
     Step 7: scroll → 滚动页面
     Step 8: get_page_structure → 获取页面结构
     """
-    # Step 1: navigate (使用 route mock)
-    with _patch_browser_start_with_route(MOCK_HTML):
-        r1 = navigate(MOCK_URL)
+    page = get_session().page
+    page.route(
+        "**/*",
+        lambda route: route.fulfill(body=MOCK_HTML, content_type="text/html"),
+    )
 
+    # Step 1: navigate (使用 route mock)
+    r1 = navigate(MOCK_URL)
     assert r1.success, f"Step 1 navigate failed: {r1.error}"
     assert r1.url == MOCK_URL
 
     # Step 2: wait_for_element (等待 "Do Action" 按钮可见)
-    with _patch_browser_start_with_html(MOCK_HTML):
-        r2 = wait_for_element("Do Action", state="visible")
-
+    r2 = wait_for_element("Do Action", state="visible")
     assert r2.success, f"Step 2 wait_for_element failed: {r2.error}"
     assert isinstance(r2, OperationResult)
 
     # Step 3: click_element (点击 "Do Action" 按钮)
-    with _patch_browser_start_with_html(MOCK_HTML):
-        r3 = click_element("Do Action")
-
+    r3 = click_element("Do Action")
     assert r3.success, f"Step 3 click_element failed: {r3.error}"
 
     # Step 4: type_text (向 name input 输入文本)
-    with _patch_browser_start_with_html(MOCK_HTML):
-        r4 = type_text("name input", "Alice")
-
+    r4 = type_text("name input", "Alice")
     assert r4.success, f"Step 4 type_text failed: {r4.error}"
 
     # Step 5: extract_text (提取页面标题文本)
-    with _patch_browser_start_with_html(MOCK_HTML):
-        r5 = extract_text("Integration Page")
-
+    r5 = extract_text("Integration Page")
     assert r5.success, f"Step 5 extract_text failed: {r5.error}"
     assert r5.text == "Integration Page"
 
     # Step 6: screenshot (截取页面, 返回 bytes)
-    with _patch_browser_start_with_html(MOCK_HTML):
-        r6 = screenshot(path=None, full_page=True)
-
+    r6 = screenshot(path=None, full_page=True)
     assert r6.success, f"Step 6 screenshot failed: {r6.error}"
     assert isinstance(r6.image, bytes)
     assert len(r6.image) > 0
     assert r6.image[:8] == b"\x89PNG\r\n\x1a\n"
 
     # Step 7: scroll (向下滚动 300px)
-    with _patch_browser_start_with_html(MOCK_HTML):
-        r7 = scroll("down", 300)
-
+    r7 = scroll("down", 300)
     assert r7.success, f"Step 7 scroll failed: {r7.error}"
     assert isinstance(r7, OperationResult)
 
     # Step 8: get_page_structure (获取最终页面结构)
-    with _patch_browser_start_with_html(MOCK_HTML):
-        r8 = get_page_structure()
-
+    r8 = get_page_structure()
     assert r8.success, f"Step 8 get_page_structure failed: {r8.error}"
     assert isinstance(r8.data, dict)
     assert "url" in r8.data
@@ -164,8 +132,8 @@ def test_integration_full_8_step_flow():
 
 def test_scroll_down_succeeds():
     """scroll('down', 300) 在有可滚动区域页面返回 success=True."""
-    with _patch_browser_start_with_html(MOCK_HTML):
-        result = scroll("down", 300)
+    _set_page_content(MOCK_HTML)
+    result = scroll("down", 300)
 
     assert result.success, f"scroll down failed: {result.error}"
     assert isinstance(result, OperationResult)
@@ -173,28 +141,23 @@ def test_scroll_down_succeeds():
 
 def test_scroll_up_succeeds():
     """scroll('up', 200) 返回 success=True."""
-    with _patch_browser_start_with_html(MOCK_HTML):
-        result = scroll("up", 200)
+    _set_page_content(MOCK_HTML)
+    result = scroll("up", 200)
 
     assert result.success, f"scroll up failed: {result.error}"
 
 
 def test_scroll_actually_scrolls():
-    """scroll 后 window.scrollY 变化 (在同一 Browser 内验证)."""
-    browser = Browser()
-    try:
-        browser.start()
-        page = browser.page
-        page.set_content(MOCK_HTML)
+    """scroll 后 window.scrollY 变化."""
+    _set_page_content(MOCK_HTML)
+    page = get_session().page
 
-        before = page.evaluate("window.scrollY")
-        assert before == 0
+    before = page.evaluate("window.scrollY")
+    assert before == 0
 
-        page.evaluate("window.scrollBy(0, 300)")
-        after = page.evaluate("window.scrollY")
-        assert after == 300
-    finally:
-        browser.stop()
+    page.evaluate("window.scrollBy(0, 300)")
+    after = page.evaluate("window.scrollY")
+    assert after == 300
 
 
 def test_scroll_invalid_direction_raises_value_error():
@@ -220,8 +183,8 @@ def test_scroll_browser_start_failure():
 
 def test_wait_for_element_visible():
     """wait_for_element 等待可见按钮返回 success=True."""
-    with _patch_browser_start_with_html(MOCK_HTML):
-        result = wait_for_element("Do Action", state="visible")
+    _set_page_content(MOCK_HTML)
+    result = wait_for_element("Do Action", state="visible")
 
     assert result.success, f"wait visible failed: {result.error}"
     assert isinstance(result, OperationResult)
@@ -229,9 +192,8 @@ def test_wait_for_element_visible():
 
 def test_wait_for_element_state_attached():
     """wait_for_element state='attached' 等待 DOM 中隐藏元素."""
-    html = '<div><p id="msg" style="display:none;">hidden msg</p></div>'
-    with _patch_browser_start_with_html(html):
-        result = wait_for_element("hidden msg", state="attached")
+    _set_page_content('<div><p id="msg" style="display:none;">hidden msg</p></div>')
+    result = wait_for_element("hidden msg", state="attached")
 
     assert result.success, f"wait attached failed: {result.error}"
 
@@ -241,9 +203,8 @@ def test_wait_for_element_hidden():
 
     使用已隐藏的元素可直接通过.
     """
-    html = '<div><p id="msg" style="display:none;">hidden msg</p></div>'
-    with _patch_browser_start_with_html(html):
-        result = wait_for_element("hidden msg", state="hidden")
+    _set_page_content('<div><p id="msg" style="display:none;">hidden msg</p></div>')
+    result = wait_for_element("hidden msg", state="hidden")
 
     # 元素已隐藏, wait_for state=hidden 应通过
     assert result.success, f"wait hidden failed: {result.error}"
@@ -251,8 +212,8 @@ def test_wait_for_element_hidden():
 
 def test_wait_for_element_not_found():
     """wait_for_element 未匹配到元素返回 success=False."""
-    with _patch_browser_start_with_html(MOCK_HTML):
-        result = wait_for_element("missing element", state="visible")
+    _set_page_content(MOCK_HTML)
+    result = wait_for_element("missing element", state="visible")
 
     assert result.success is False
     assert result.error is not None
@@ -282,15 +243,15 @@ def test_wait_for_element_browser_start_failure():
 
 def test_wait_for_element_default_state_is_visible():
     """wait_for_element 不传 state 时默认使用 visible."""
-    with _patch_browser_start_with_html(MOCK_HTML):
-        result = wait_for_element("Do Action")
+    _set_page_content(MOCK_HTML)
+    result = wait_for_element("Do Action")
 
     assert result.success
 
 
 def test_scroll_default_timeout():
     """scroll 不传 timeout 时使用默认 30s."""
-    with _patch_browser_start_with_html(MOCK_HTML):
-        result = scroll("down", 100)
+    _set_page_content(MOCK_HTML)
+    result = scroll("down", 100)
 
     assert result.success
