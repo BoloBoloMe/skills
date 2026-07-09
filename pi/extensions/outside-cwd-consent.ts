@@ -16,6 +16,19 @@ import { fileURLToPath } from "node:url";
  */
 
 const WRITE_TOOL_NAMES = new Set(["write", "edit"]);
+const SEARCH_COMMAND_NAMES = new Set([
+  "grep",
+  "egrep",
+  "fgrep",
+  "rg",
+  "ripgrep",
+  "ag",
+  "ack",
+  "find",
+  "fd",
+  "fdfind",
+  "locate",
+]);
 const rememberedOutsideDirectories = new Set<string>();
 
 export default function (pi: ExtensionAPI) {
@@ -42,6 +55,18 @@ export default function (pi: ExtensionAPI) {
 
     if (isToolCallEventType("bash", event)) {
       const command = event.input.command ?? "";
+
+      const wholeSearches = findWholeFilesystemSearchTargets(command, ctx.cwd);
+      if (wholeSearches.length > 0) {
+        const root = await resolvePolicyPath(ctx.cwd, ctx.cwd);
+        return await confirmOrBlock(ctx, {
+          title: "全盘搜索确认",
+          subject: `命令: ${command}\n当前工作目录: ${root}\n全盘搜索根:\n${wholeSearches.flatMap((search) => search.roots.map((rootPath) => `- ${search.command}: ${rootPath}`)).join("\n")}`,
+          reason: "该命令会在整台电脑的文件系统中搜索内容, 可能耗时很长并产生大量输出.",
+          blockReason: `用户拒绝全盘搜索: ${wholeSearches.map((search) => `${search.command} -> ${search.roots.join(", ")}`).join("; ")}`,
+        });
+      }
+
       const outsideTargets = findObviousOutsideWriteTargets(command, ctx.cwd);
       if (outsideTargets.length === 0) return;
 
@@ -188,8 +213,14 @@ type OutsideWriteTarget = {
   resolved: string;
 };
 
+type WholeFilesystemSearch = {
+  command: string;
+  roots: string[];
+};
+
 type SegmentInspection = {
   outsideTargets: OutsideWriteTarget[];
+  searches: WholeFilesystemSearch[];
   nextCwd?: string;
 };
 
@@ -298,6 +329,7 @@ function tokenizeShell(command: string): ShellToken[] {
 
 function inspectCommandSegment(segment: ShellToken[], currentDir: string, root: string): SegmentInspection {
   const outsideTargets = new Map<string, OutsideWriteTarget>();
+  const searches = new Map<string, WholeFilesystemSearch>();
 
   for (let i = 0; i < segment.length; i++) {
     const token = segment[i];
@@ -311,17 +343,18 @@ function inspectCommandSegment(segment: ShellToken[], currentDir: string, root: 
 
   const words = getCommandWords(segment);
   const commandView = unwrapCommand(words);
-  if (!commandView) return { outsideTargets: [...outsideTargets.values()] };
+  if (!commandView) return { outsideTargets: [...outsideTargets.values()], searches: [...searches.values()] };
 
   const { command, args } = commandView;
   addCommandWriteTargets(command, args, currentDir, root, outsideTargets);
+  addWholeFilesystemSearch(command, args, currentDir, searches);
 
   if (command === "cd") {
     const nextCwd = resolveCdTarget(args, currentDir);
-    return { outsideTargets: [...outsideTargets.values()], nextCwd };
+    return { outsideTargets: [...outsideTargets.values()], searches: [...searches.values()], nextCwd };
   }
 
-  return { outsideTargets: [...outsideTargets.values()] };
+  return { outsideTargets: [...outsideTargets.values()], searches: [...searches.values()] };
 }
 
 function getCommandWords(segment: ShellToken[]): ShellToken[] {
@@ -588,6 +621,70 @@ function addTarArchiveTarget(
       return;
     }
   }
+}
+
+function findWholeFilesystemSearchTargets(command: string, cwd: string): WholeFilesystemSearch[] {
+  const root = path.resolve(normalizePath(cwd));
+  let currentDir = root;
+  const tokens = tokenizeShell(command);
+  const searches = new Map<string, WholeFilesystemSearch>();
+  let segment: ShellToken[] = [];
+
+  const flushSegment = (allowCwdUpdate: boolean) => {
+    const inspection = inspectCommandSegment(segment, currentDir, root);
+    for (const search of inspection.searches) searches.set(search.command, search);
+    if (allowCwdUpdate && inspection.nextCwd) currentDir = inspection.nextCwd;
+    segment = [];
+  };
+
+  for (const token of tokens) {
+    if (!token.quoted && COMMAND_BOUNDARIES.has(token.text)) {
+      flushSegment(token.text !== "|" && token.text !== "(" && token.text !== ")");
+      continue;
+    }
+    segment.push(token);
+  }
+  flushSegment(true);
+
+  return [...searches.values()];
+}
+
+function addWholeFilesystemSearch(
+  command: string,
+  args: ShellToken[],
+  currentDir: string,
+  searches: Map<string, WholeFilesystemSearch>,
+): void {
+  if (!SEARCH_COMMAND_NAMES.has(command)) return;
+
+  if (command === "locate") {
+    searches.set("locate", { command, roots: [process.platform === "win32" ? "\\\\" : "/"] });
+    return;
+  }
+
+  const roots = getSearchRoots(command, args, currentDir);
+  const wholeRoots = roots.filter((resolved) => isWholeFilesystemRoot(resolved));
+  if (wholeRoots.length > 0) searches.set(command, { command, roots: wholeRoots });
+}
+
+function getSearchRoots(command: string, args: ShellToken[], currentDir: string): string[] {
+  if (command === "find") {
+    const roots: string[] = [];
+    for (const arg of args) {
+      if (!arg.quoted && arg.text.startsWith("-")) break;
+      roots.push(resolveShellPath(arg.text, currentDir));
+    }
+    return roots.length > 0 ? roots : [resolveShellPath(".", currentDir)];
+  }
+
+  const operands = getNonOptionArgs(args);
+  return operands.slice(1).map((arg) => resolveShellPath(arg.text, currentDir));
+}
+
+function isWholeFilesystemRoot(resolvedPath: string): boolean {
+  const normalized = normalizeForCompare(path.resolve(resolvedPath));
+  if (process.platform === "win32") return /^[a-z]:\\$/.test(normalized);
+  return normalized === "/";
 }
 
 function resolveCdTarget(args: ShellToken[], currentDir: string): string | undefined {
