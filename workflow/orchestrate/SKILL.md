@@ -18,7 +18,7 @@ disable-model-invocation: true
 - AFK 任务就绪, contract/issue/DECISIONS 已确认且 issue 边界清楚 -> `run-afk-workflow`
 
 **汇报流**
-- 需要团队汇报方案或产品化叙事 -> `to-prd`
+- 需要团队汇报方案或产品化叙事 -> `to-spec`
 
 **on-ramp**
 - worktree/repo 布局/分支隔离 -> `use-worktree`
