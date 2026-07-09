@@ -90,7 +90,7 @@ diff 为空 → _current.md 写为 :01 (重新启动 worker)
 
 1. 正确性 reviewer. task:
    - 角色文件: reviewer 角色文件
-   - 审查维度: 正确性 (逻辑/边界/异常/回归/并发/数据一致性/测试覆盖)
+   - 审查维度: 正确性 (逻辑/边界/异常/回归/并发/数据一致性/测试覆盖/死代码)
    - 输入: contract, decisions (如存在), 当前 issue 定义文件, 当前 issue 产物目录/worker-note-aN.md
    - diff 获取: git diff
    - 输出: 当前 issue 产物目录/review-correctness-aN.md

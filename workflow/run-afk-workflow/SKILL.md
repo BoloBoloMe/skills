@@ -39,11 +39,14 @@ disable-model-invocation: true
 
 ## 子代理接口
 
-你不读 prompt 文件. 调度所需的最小接口:
+调度所需的最小接口:
 
-**worker**: 可写代码和测试. 不决定产品/API/架构, 不改 DECISIONS, 不 stage. 输入: contract/issue/decisions + task. 输出: note 文件 + diff. 除非我明确要求, 否则默认对其暴露 `tdd` skill, task 追加一句 "按 `tdd` skill 的要求执行". 我要求使用 lazy-code 时, 额外暴露 `lazy-code` skill, task 再追加一句 "按 `lazy-code` skill 的要求写代码".
+**worker**: 可写代码和测试. 不决定产品/API/架构, 不改 DECISIONS, 不 stage. 输入: contract/issue/decisions + task. 输出: note 文件 + diff. 除非我明确要求, 否则默认对其暴露 `tdd` skill, task 追加一句 "按 `tdd` skill 的要求执行". 我要求使用 lazy-code 时, 额外暴露 `lazy-code` skill, task 再追加一句 "按 `lazy-code` skill 的要求写代码". 推荐以前台方式启用, 必须单 worker 串行. 
 
-**reviewer**: 只读. 不改任何项目文件, 不 stage. 输入: contract/issue/decisions/worker note/diff. 输出: review 文件.
+**reviewer**: 只读. 不改任何项目文件, 不 stage. 输入: contract/issue/decisions/worker note/diff. 输出: review 文件. 推荐以前台方式启用, 多个 reviewer 要并行.
+
+在给子代理的提示词中补充有助于其完成任务的信息, 但只写其他文档没有的信息,
+其他文档已有的信息在提示词中增加 `必读推荐` 章节, 指引子代理找到提示词中未包含的 **必读信息** (文件路径/代码位置/URL)
 
 ## 子代理运行预算
 
