@@ -8,7 +8,7 @@ disable-model-invocation: true
 
 搭建工程 skills 所假定的每仓库配置:
 
-- **议题跟踪器** - 固定使用本地 Markdown: 执行契约和 issues 写入 `docs/changes/`. PRD 只是可选团队汇报文档.
+- **议题跟踪器** - 固定使用本地 Markdown: 执行契约和 issues 写入 `docs/changes/`.
 - **领域文档** - `docs/language/UBIQUITOUS_LANGUAGE.md` 和 ADR 的位置, 以及读取它们的消费规则.
 
 这是一个提示驱动的 skill, 而非确定性脚本. 先探索, 展示发现, 向用户确认, 再写入.

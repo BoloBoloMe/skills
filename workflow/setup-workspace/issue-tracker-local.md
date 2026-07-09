@@ -1,6 +1,6 @@
 # 议题跟踪器:本地 Markdown
 
-此仓库的执行契约和 issue 存放为 `docs/changes/` 中的 Markdown 文件. PRD 是可选团队汇报文档, 不属于执行流约定.
+此仓库的执行契约和 issue 存放为 `docs/changes/` 中的 Markdown 文件.
 
 ## 约定
 

@@ -4,7 +4,7 @@ description: 将已确认设计沉淀为执行契约.
 disable-model-invocation: true
 ---
 
-`CONTRACT.md` 是执行边界契约, 是 issue 拆分, AFK worker 和 reviewer 的权威输入. 它不承担团队汇报, 不写 PRD 式叙事, 不写 issue 拆分, 不写逐文件实现计划.
+`CONTRACT.md` 是执行边界契约, 是 issue 拆分, AFK worker 和 reviewer 的权威输入. 它不写 issue 拆分, 不写逐文件实现计划.
 默认输入已经由 `grill-with-docs` 对齐设计决策. 本 skill 不做需求访谈, 只做执行契约完整性检查和聚焦代码探索. 发现设计决策缺口时停止, 要求退回 `grill-with-docs`.
 你应该已获得本地议题跟踪器约定. 如果没有, 使用 `setup-workspace` skill.
 
