@@ -22,12 +22,10 @@ per-issue 产物由 run-afk-workflow 父会话在执行时写入 `afk-running/<I
 - **decisions**: feature 根目录下的 `DECISIONS.md` (如存在)
 - **当前 issue 定义文件**: issues 目录下以当前 issue key 开头的 .md 文件
 - **当前 issue 产物目录**: `afk-running/<ISSUE-KEY>/`
-- **worker 角色文件**: `run-afk-workflow` 的 `prompts/WORKER.md`
-- **reviewer 角色文件**: `run-afk-workflow` 的 `prompts/REVIEWER.md`
 
 ### 禁止
 
-- 步骤文件不内联 prompt 或 contract 的完整内容.
+- 步骤文件不内联 system prompt 或 contract 的完整内容.
 - 步骤文件不写 issue 特有实现细节.
 - 步骤文件不写绝对路径或 `<...>` 占位符.
 
@@ -46,12 +44,10 @@ per-issue 产物由 run-afk-workflow 父会话在执行时写入 `afk-running/<I
 确定 attempt N: 扫描当前 issue 产物目录下现有 worker-note-aN 或 fix-note-aN, 无则 N=1.
 输出: 当前 issue 产物目录/worker-note-aN.md.
 
-启动 worker 子代理. task:
-- 角色文件: worker 角色文件
+启动 worker 子代理. 父会话按 run-afk-workflow 的 system prompt 编写规则, 根据当前实现任务/attempt/工作树状态编写本轮专用 system prompt. task:
 - 任务: 实现当前 issue 的全部目标
 - 输入: contract, decisions (如存在), 当前 issue 定义文件
 - 输出: 上述输出路径
-- 约束: 调用 tdd skill, 读 worker-tdd.md (用户说不用 TDD 时可省略)
 
 worker 中断时优先 resume.
 
@@ -86,17 +82,15 @@ diff 为空 → _current.md 写为 :01 (重新启动 worker)
 ```
 # 步骤 03: review 并行
 
-启动两个 reviewer 子代理 (并行):
+启动两个 reviewer 子代理 (并行). 父会话按 run-afk-workflow 的 system prompt 编写规则, 根据当前 diff/worker note/审查维度分别编写本轮专用 system prompt, 不共用同一份 prompt:
 
 1. 正确性 reviewer. task:
-   - 角色文件: reviewer 角色文件
    - 审查维度: 正确性 (逻辑/边界/异常/回归/并发/数据一致性/测试覆盖/死代码)
    - 输入: contract, decisions (如存在), 当前 issue 定义文件, 当前 issue 产物目录/worker-note-aN.md
    - diff 获取: git diff
    - 输出: 当前 issue 产物目录/review-correctness-aN.md
 
 2. 决策边界 reviewer. task:
-   - 角色文件: reviewer 角色文件
    - 审查维度: 决策边界 (contract 目标/非目标/行为边界, decisions 遵守, issue 允许/禁止范围, 是否越界/提前实现/需改决策)
    - 输入: 同上
    - diff 获取: git diff
@@ -136,12 +130,12 @@ reviewer 中断时优先 resume.
   同类问题重复或恶化 → 停止并报告.
   可继续 → 启动修复 worker.
 
+父会话按 run-afk-workflow 的 system prompt 编写规则, 根据采纳的发现项/当前 diff/上轮产物编写修复 worker 的专用 system prompt, 不复用初始实现 prompt.
+
 修复 worker task:
-  - 角色文件: worker 角色文件
   - 任务: 只修复综合判定中标记为可直接修的问题, 引用 reviewer 发现项编号. 不处理延期/驳回/需我决策项.
   - 输入: contract, decisions, 当前 issue 定义文件, 两份 reviewer 报告, 上轮 worker/fix note, 综合判定
   - 输出: 当前 issue 产物目录/fix-note-aN.md
-  - 约束: 调用 tdd skill, 读 worker-tdd.md (用户说不用 TDD 时可省略)
 
 修复 worker 中断时优先 resume.
 

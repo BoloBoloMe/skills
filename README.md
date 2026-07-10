@@ -94,14 +94,13 @@ project-root/
 
 ## AFK 运行时适配
 
-AFK 核心 skill 只定义父会话状态机, 产物契约和角色契约. 不绑定 pi-subagents, chain JSON, slash command, 或任何具体子代理插件. 目标运行环境可以用已有 agent/role/profile 承担 implementation, review, recovery 角色, 但必须先在 `afk-running/agent-binding.md` 记录绑定和约束.
+AFK 核心 skill 只定义父会话状态机, 产物契约, 角色约束和 system prompt 编写规则. 不绑定 pi-subagents, chain JSON, slash command, 或任何具体子代理插件. 目标运行环境可以用已有 agent/role/profile 承担 implementation, review, recovery 角色, 但必须先在 `afk-running/agent-binding.md` 记录绑定和约束. 仓库不维护角色 prompt 模板, 父会话按每轮任务和执行现场编写子代理的专用 system prompt.
 
-- `workflow/run-afk-workflow/SKILL.md`: AFK 阶段入口. `orchestrate` 先判断 workflow 类型和调用条件, 本技能负责父会话硬边界, 渐进式阅读入口和顶层状态机. 执行写入阶段前必须向用户确认 `是否执行?`.
+- `workflow/run-afk-workflow/SKILL.md`: AFK 阶段入口. `orchestrate` 先判断 workflow 类型和调用条件, 本技能负责父会话硬边界, 渐进式阅读入口, 顶层状态机和子代理 system prompt 编写指导. 执行写入阶段前必须向用户确认 `是否执行?`.
 - `workflow/run-afk-workflow/CONTRACTS.md`: 产物目录, `validation-env.md`, `agent-binding.md`, `review-policy.md` 和命名契约.
 - `workflow/run-afk-workflow/RUNBOOK.md`: 正常 AFK 主流程, 包括预检, diff gate, review, synthesis, fix loop 和最终验证.
 - `workflow/run-afk-workflow/RECOVERY.md`: worker/reviewer 超时, dirty tree, 产物缺失和验证失败的恢复规则.
 - `workflow/run-afk-workflow/LIGHTWEIGHT-TEST-ONLY.md`: 测试 only 轻量路径和 `review-skipped.md` 规则.
-- `workflow/run-afk-workflow/prompts/*.md`: role-specific prompt 模板. 父会话按当前运行环境的 adapter/recipe 将模板交给实际 implementation, review, recovery 角色.
 - `AGENTS.md`: workflow 路由约束. 工程类任务先由 `orchestrate` 分类. 子代理只用于只读代码库探索, 已批准计划的 AFK 编码执行, diff 后 review, accepted finding 修复或恢复.
 
 本仓库不强制维护 workflow chain JSON 或插件 recipe. 如目标项目需要 pi-subagents, Claude agents, Codex profiles, shell wrapper, CI job 等适配层, 由目标项目自行维护 adapter/recipe 文档, 不写入核心 skill.
@@ -142,7 +141,7 @@ workflow skills 的默认入口和元编排器: 接收工程类用户任务, 按
 
 ### workflow/run-afk-workflow
 
-`run-afk-workflow` 是 `orchestrate` 管辖下的 AFK 阶段入口. 它按运行时无关角色契约启动 implementation, review, recovery 角色, 并保留父会话最终决策权. 细节见同目录 `CONTRACTS.md`, `RUNBOOK.md`, `RECOVERY.md`, `LIGHTWEIGHT-TEST-ONLY.md` 和 [`prompts/`](workflow/run-afk-workflow/prompts/).
+`run-afk-workflow` 是 `orchestrate` 管辖下的 AFK 阶段入口. 它按运行时无关角色契约启动 implementation, review, recovery 角色, 由父会话根据每轮任务和执行现场编写专用 system prompt, 并保留父会话最终决策权.
 
 入口文档: [`workflow/run-afk-workflow/SKILL.md`](workflow/run-afk-workflow/SKILL.md)
 
