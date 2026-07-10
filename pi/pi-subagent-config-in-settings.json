@@ -20,11 +20,11 @@
         ]
       },
       "worker": {
-        "model": "ai-work-moonshot/kimi-k2.7-code",
-        "thinking": "medium",
+        "model": "ai-work-openai/glm-5.2",
+        "thinking": "high",
         "defaultContext": "fresh",
         "fallbackModels": [
-          "ai-work-openai/glm-5.2"
+          "ai-work-qwen/qwen3.7-max"
         ]
       },
       "reviewer": {

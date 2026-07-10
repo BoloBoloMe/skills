@@ -7,7 +7,8 @@
       "authHeader": true,
       "models": [
         {
-          "id": "gpt-5.5",
+          "id": "gpt-5.6-sol",
+          "name": "GPT-5.6 Sol",
           "reasoning": true,
           "thinkingLevelMap": {
             "off": "none",
@@ -27,6 +28,56 @@
             "input": 5,
             "output": 30,
             "cacheRead": 0.5,
+            "cacheWrite": 0
+          }
+        },
+        {
+          "id": "gpt-5.6-terra",
+          "name": "GPT-5.6 Terra",
+          "reasoning": true,
+          "thinkingLevelMap": {
+            "off": "none",
+            "minimal": "minimal",
+            "low": "low",
+            "medium": "medium",
+            "high": "high",
+            "xhigh": "xhigh"
+          },
+          "input": [
+            "text",
+            "image"
+          ],
+          "contextWindow": 272000,
+          "maxTokens": 128000,
+          "cost": {
+            "input": 2.5,
+            "output": 15,
+            "cacheRead": 0.25,
+            "cacheWrite": 0
+          }
+        },
+        {
+          "id": "gpt-5.6-luna",
+          "name": "GPT-5.6 Luna",
+          "reasoning": true,
+          "thinkingLevelMap": {
+            "off": "none",
+            "minimal": "minimal",
+            "low": "low",
+            "medium": "medium",
+            "high": "high",
+            "xhigh": "xhigh"
+          },
+          "input": [
+            "text",
+            "image"
+          ],
+          "contextWindow": 272000,
+          "maxTokens": 128000,
+          "cost": {
+            "input": 1,
+            "output": 6,
+            "cacheRead": 0.1,
             "cacheWrite": 0
           }
         }
