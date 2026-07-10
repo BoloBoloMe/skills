@@ -5,15 +5,12 @@ disable-model-invocation: true
 ---
 
 开始前, 使用 `domain-awareness` skill 只读感知当前工作目录的领域模型.
-
 生成 `EXECUTION.md` 和可独立领取的垂直切片 issues. `EXECUTION.md` 是全局执行约束和任务拓扑, issue 是 `afk` 的直接输入. 文档只供 AI 使用. 本 skill 不新增产品/API/架构决策, 不要求我阅读文档后确认.
 
 ## 1. 收集上下文
 
 确认已获得本地 Spec 工作区约定. 没有则停止, 请我通过 `orchestrate` 先运行 `setup-workspace`. 读取同一 feature 下的 `PRODUCT.md`, `TECHNICAL.md`, `DECISIONS.md` (如存在). 需要维护决策引用时调用 `decision-ledger`.
-
 缺少 `PRODUCT.md` 或 `TECHNICAL.md` 时停止. 来源之间冲突, 或拆分需要新产品/API/架构/范围取舍时停止, 在会话中说明影响并请我回到 `grill-with-docs`.
-
 完成标准: 三层输入属于同一 feature; 无阻塞冲突; 当前有效决策已读取或明确无相关决策.
 
 ## 2. 聚焦探索代码库
@@ -26,15 +23,12 @@ disable-model-invocation: true
 - 切片依赖和停止条件.
 
 禁止把早期猜测固化为逐文件计划. 预计文件只允许在迁移或高风险任务中作为非约束提示, 并标明需要执行时复核.
-
 完成标准: 每个候选切片可独立验证; 范围和验证入口来自 Spec 或代码事实.
 
 ## 3. 判断切片粒度
 
 优先单 issue. 只有存在 2 条以上可独立验证的端到端结果, 需要分阶段合并降低风险, 或不同角色可独立领取时才拆分.
-
 每个 issue 必须是贯穿所需层次的 tracer bullet, 完成后可单独演示或验证. 禁止按 schema/API/UI/tests 水平拆分.
-
 完成标准: 每个切片都有独立结果和验证方式; 任意两个切片无法在不损失独立性的前提下自然合并.
 
 ## 4. 会话盘问切片
@@ -48,7 +42,6 @@ disable-model-invocation: true
 - 适合 AFK 或需要 HITL 的原因.
 
 一次只问一个会改变切片边界或依赖的问题. 不展示 issue 全文, 不让我阅读草稿. 我确认的是任务划分及影响, 不是 Markdown 文件.
-
 完成标准: 我已在 grilling 会话中明确确认切片数量, 边界, 依赖和 AFK/HITL 归属; 没有把文档阅读当作确认条件.
 
 ## 5. 编写 Execution Spec 和 issues
@@ -59,7 +52,6 @@ disable-model-invocation: true
 - `docs/changes/<feature-slug>/issues/ISSUE-<NN>-<slug>.md`, 从 `ISSUE-01` 连续编号.
 
 先按模板生成 issues, 再生成引用真实 issue 路径的 `EXECUTION.md`. 按依赖顺序编号. 每个 issue 与 `DECISIONS.md` 维护双向引用. 不复制 Product/Technical Spec 的正文, 只引用稳定 ID 和执行所需摘要. 不记录 `Status:`.
-
 完成标准: `EXECUTION.md` 任务图中的每个引用可解析; 每个 AC/TG/NFR 被至少一个 issue 覆盖或明确说明无需执行任务; issue 编号连续; 依赖无环; 决策双向引用完整.
 
 <execution-spec-template>
@@ -131,5 +123,4 @@ disable-model-invocation: true
 ## 7. 会话交付
 
 直接告诉我: 已生成的三类路径, issue 数量/名称/依赖, AFK 与 HITL 归属, 是否有阻塞. 不展示文档全文, 不让我阅读后确认.
-
 完成标准: 我从会话中知道将执行哪些任务和先后顺序, 无需阅读 `EXECUTION.md` 或 issues.

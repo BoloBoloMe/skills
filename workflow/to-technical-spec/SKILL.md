@@ -5,13 +5,11 @@ disable-model-invocation: true
 ---
 
 开始前, 使用 `domain-awareness` skill 只读感知当前工作目录的领域模型.
-
 生成 `TECHNICAL.md`, 作为当前变更的技术契约和权威索引. 文档只供 AI 使用. 本 skill 不做设计访谈, 不新增产品/API/架构/范围决策, 不要求我阅读或批准文档. 默认输入已由 `grill-with-docs` 确认, `PRODUCT.md` 已存在.
 
 ## 1. 收集输入
 
 读取当前对话, `PRODUCT.md`, `DECISIONS.md` (如存在), 相关领域文档/ADR, 原型和机器可读契约. 输出固定为同一 feature 目录下的 `TECHNICAL.md`.
-
 完成标准: `PRODUCT.md` 可读; 已读取所有相关当前决策和长期架构约束; 输出路径唯一.
 
 ## 2. 聚焦探索代码库
@@ -25,7 +23,6 @@ disable-model-invocation: true
 - 可用测试入口和代码边界.
 
 已有机器可读 API/schema/迁移文件时, 它们是对应事实的单一真相源, `TECHNICAL.md` 只引用. 当前变更需要契约但不存在机器可读资产时, 在 `TECHNICAL.md` 中精确定义字段, 类型, 约束, 状态和错误语义, 该章节成为当前变更的权威来源. 禁止同时维护两份完整定义.
-
 完成标准: 技术设计与代码事实可对照; 权威技术资产和验证入口已定位, 或已明确不存在.
 
 ## 3. 检查闭合
@@ -40,9 +37,7 @@ disable-model-invocation: true
 ## 4. 编写 Technical Spec
 
 使用下方模板写入 `TECHNICAL.md`. 技术目标使用稳定连续 ID `TG-001`; 非功能要求使用 `NFR-001`. 引用 `PRODUCT.md` 中的稳定 ID 和 `DECISIONS.md` 中的决策 ID.
-
 不写 issue 拆分, 执行状态或逐文件实施步骤. 不复制完整决策树. 不发明新决策.
-
 完成标准: 固定章节齐全; 产品验收项均有技术承载或明确标记不需要技术承载; API/schema 等事实只有一个权威来源; 文档未引入来源中不存在的决定.
 
 <technical-spec-template>
@@ -86,5 +81,4 @@ disable-model-invocation: true
 ## 5. 会话交付
 
 只告诉我: 已生成的路径, 是否存在待验证事实, 是否发现冲突. 不展示 Technical Spec 全文, 不让我阅读后确认.
-
 完成标准: 我能从会话回复知道生成是否成功和是否有阻塞, 但无需阅读 `TECHNICAL.md`.

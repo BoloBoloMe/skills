@@ -11,7 +11,6 @@ disable-model-invocation: true
 ## 1. 收集输入
 
 读取当前对话, 我提供的材料, 原型产物, `DECISIONS.md` (如存在) 和相关既有文档. 输出固定为 `docs/changes/<feature-slug>/PRODUCT.md`, `<feature-slug>` 从功能标题推断.
-
 完成标准: 已确定唯一 feature 和输出路径; 每项产品结论都能追溯到会话, 用户材料或当前有效决策.
 
 ## 2. 检查产品闭合

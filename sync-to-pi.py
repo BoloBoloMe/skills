@@ -243,12 +243,39 @@ def _query_sub(repo_root: Path, src: Path, dst_parent: Path) -> list[PlanItem]:
 # ============================================================================
 # 执行同步
 # ============================================================================
-def execute_plan(plan: list[PlanItem]) -> None:
+def _clear_skills(skills_dir: Path) -> None:
+    """删除 skills_dir 中的全部内容, 但保留目录本身."""
+    if skills_dir.is_symlink():
+        raise OSError(f"拒绝清空符号链接目录: {skills_dir}")
+    if skills_dir.exists() and not skills_dir.is_dir():
+        raise NotADirectoryError(f"目标不是目录: {skills_dir}")
+
+    skills_dir.mkdir(parents=True, exist_ok=True)
+    for child in skills_dir.iterdir():
+        if child.is_symlink() or child.is_file():
+            child.unlink()
+        elif child.is_dir():
+            shutil.rmtree(child)
+        else:
+            child.unlink()
+
+
+def execute_plan(plan: list[PlanItem], clear_skills_dir: Path | None = None) -> None:
     print()
-    print(Q("开始同步 ..."))
+    print(Q("开始执行 ..."))
 
     ok_count = 0
     fail_count = 0
+
+    if clear_skills_dir is not None:
+        try:
+            _clear_skills(clear_skills_dir)
+            print(OK(f"  \u2713 已清空 {clear_skills_dir}"))
+            ok_count += 1
+        except Exception as e:
+            print(ERR(f"  \u2717 清空 {clear_skills_dir} 失败: {e}"))
+            print(ERR("已停止, 未执行后续同步."))
+            return
 
     for item in plan:
         try:
@@ -267,7 +294,7 @@ def execute_plan(plan: list[PlanItem]) -> None:
 
     print()
     if fail_count == 0:
-        print(OK(f"全部完成: {ok_count} 项同步成功"))
+        print(OK(f"全部完成: {ok_count} 项操作成功"))
     else:
         print(Q(f"完成: {ok_count} 成功, {fail_count} 失败"))
 
@@ -293,7 +320,13 @@ def main() -> None:
     print()
     print(Q(f"pi agent 根目录: {pi_dir}"))
 
-    # ── 2. 逐项询问 ──────────────────────────────────────────────────
+    # ── 2. 清空选项 ──────────────────────────────────────────────────
+    skills_dir = pi_dir / "skills"
+    clear_skills = _ask_yn(CNF(f"清空 {skills_dir} 下的所有旧 skills?"))
+    if clear_skills:
+        print(ERR("已选择永久删除全部旧 skills, 操作将在最终确认后执行."))
+
+    # ── 3. 逐项询问 ──────────────────────────────────────────────────
     plan: list[PlanItem] = []
 
     # AGENTS.md (单文件)
@@ -349,15 +382,17 @@ def main() -> None:
         )
     )
 
-    # ── 3. 展示计划, 确认 ────────────────────────────────────────────
-    if not plan:
+    # ── 4. 展示计划, 确认 ────────────────────────────────────────────
+    if not plan and not clear_skills:
         print()
-        print(Q("没有要同步的内容, 退出."))
+        print(Q("没有要执行的操作, 退出."))
         return
 
     print()
     print(Q("=" * 54))
-    print(Q("同步计划:"))
+    print(Q("执行计划:"))
+    if clear_skills:
+        print(ERR(f"  [清空] 永久删除 {skills_dir} 下的全部内容"))
     for item in plan:
         print(f"  {SRC(item.label)}  →  {DST(str(item.dst))}")
     print(Q("=" * 54))
@@ -366,8 +401,8 @@ def main() -> None:
         print(SKIP("已取消."))
         return
 
-    # ── 4. 执行 ──────────────────────────────────────────────────────
-    execute_plan(plan)
+    # ── 5. 执行 ──────────────────────────────────────────────────────
+    execute_plan(plan, skills_dir if clear_skills else None)
 
 
 if __name__ == "__main__":
