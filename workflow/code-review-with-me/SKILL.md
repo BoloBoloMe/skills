@@ -4,6 +4,8 @@ description: 交互式代码评审与逐段走读流程.
 disable-model-invocation: true
 ---
 
+开始前, 使用 `domain-awareness` skill 只读感知当前工作目录的领域模型.
+
 # 带我评审代码
 
 交互式代码走读的操作规范. 核心目标: 帮我充分理解代码.

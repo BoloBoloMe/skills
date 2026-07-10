@@ -1,63 +1,43 @@
 # Skills
 
-本仓库用于沉淀可复用的 AI coding agent 工作流技能, 通用回答/协作技能, 以及少量特定技术栈辅助技能. HITL 人在回路协议已归档至 `deprecated/hitl/`.
+本仓库沉淀可复用的 AI coding agent skills. `workflow/orchestrate` 是工程任务默认入口.
 
-本仓库是技能源码与资料仓库, 不声明仓库内目录会被目标 agent 自动发现. 真实使用时, 应按目标 agent 的技能安装方式, 将需要的技能目录安装或链接到对应环境.
+调用策略采用 router exception: `orchestrate` 可以读取并执行同仓库 `workflow/` 下的用户调用 skills. `domain-awareness`/`decision-ledger` 等必须由其他 skill 主动抵达的共享能力使用模型调用. 该例外不扩展到仓库外的用户调用 skills.
 
-## 当前目录
+## 目录
 
 ```text
 .
-|-- general/                         # 通用交互与写作类技能
-|   |-- access-web/
-|   |-- explore-repo/
-|   |-- grill-me/
-|   |-- grilling/
-|   |-- handoff/
-|   |-- opposing-viewpoint/
-|   |-- teach/
-|   `-- write-a-skill/
-|-- workflow/                        # 面向代码库工作的流程技能
-|   |-- orchestrate/
-|   |-- setup-workspace/
-|   |-- code-review-with-me/
-|   |-- codebase-design/
-|   |-- confirm-plan/
-|   |-- domain-modeling/
-|   |-- grill-with-docs/
-|   |-- improve-codebase-architecture/
-|   |-- receive-handoff/
-|   |-- run-afk-workflow/
-|   |-- tdd/
-|   |-- to-contract/
-|   |-- to-prd/
-|   |-- to-issues/
-|   |-- to-plan/
-|   `-- use-worktree/
-|-- others/                          # 特定技术栈/项目辅助技能
-|   |-- payment-review/
-|   `-- springboot-hcurl-generator/
-|-- pi/                              # Pi agent 配置, 示例, 本机辅助资产
-|-- prompts/                         # 独立 prompt 草案或快捷入口
-|-- deprecated/                      # 已归档技能
-|   |-- hitl/human-in-the-loop/
-|   |-- hitl/human-in-loop-brief/
-|   |-- telegraphic-style/
-|   |-- zoom-out/
-|   `-- prompts/
+|-- general/                     # 通用交互/写作/访问技能
+|-- workflow/                    # 代码库工作流技能
+|-- others/                      # 特定技术栈技能
+|-- docs/                        # 本仓库领域/ADR/变更资料
+|-- deprecated/                  # 已归档技能
 |-- AGENTS.md
 `-- README.md
 ```
 
-## Workflow 工作区约定
+## Spec 工作流
 
-`workflow/orchestrate` 是 workflow skills 的默认入口, 负责在 `workflow/` 下的代码理解, 需求澄清, TDD, 执行契约, PRD 汇报, 工单拆分, 架构评审, codebase design 和 worktree 管理技能之间做路由与顺序编排.
+主链:
 
-Invocation policy: 本仓库采用 router exception. `workflow/orchestrate` 可读取并编排同仓库 `workflow/` 下的 user-invoked skills. 该例外只适用于本仓库维护的 workflow 集合, 不代表通用 skill 标准. 细则见 `general/write-a-skill/SKILL.md`.
+```text
+grill-with-docs
+  -> to-product-spec
+  -> to-technical-spec
+  -> to-execution-spec
+  -> afk
+```
 
-`workflow/` 下的技能预期在目标项目仓库根目录工作. 首次使用 `to-contract`, `to-prd`, `to-issues`, `to-plan`, `tdd`, `improve-codebase-architecture` 或 `domain-modeling` 前, 由 `orchestrate` 按需路由到 `setup-workspace` 生成约定文档.
+- `grill-with-docs`: 在会话中关闭产品和技术设计树, 维护功能决策/领域语言/ADR.
+- `to-product-spec`: 把已确认产品结果写入 `PRODUCT.md`.
+- `to-technical-spec`: 把已确认技术设计写入 `TECHNICAL.md`.
+- `to-execution-spec`: 生成 `EXECUTION.md`, 垂直切片 issues 和 AFK 步骤文件.
+- `afk`: 按当前 issue 调度 worker/reviewer, 完成实现/审查/验证/证据闭环.
 
-目标项目推荐结构:
+Spec Pack 和运行文档只供 AI 使用. 人类不通过阅读文档批准方案. 影响产品, API, 架构, 范围, 风险或验证的决定必须在 `grill-with-docs` 会话中解释并确认. 后续 Spec skill 只能整理已确认内容, 发现新决策或冲突时退回盘问.
+
+## 目标项目结构
 
 ```text
 project-root/
@@ -68,182 +48,77 @@ project-root/
 |   |   `-- domain.md
 |   |-- language/
 |   |   |-- UBIQUITOUS_LANGUAGE.md
-|   |   |-- UBIQUITOUS_LANGUAGE_MAP.md      # 仅多上下文项目需要
-|   |   `-- contexts/                       # 多上下文语言文件
+|   |   `-- UBIQUITOUS_LANGUAGE_MAP.md
 |   |-- adr/
-|   |   |-- 0001-system-level-decision.md
-|   |   `-- contexts/                       # 多上下文 ADR
 |   `-- changes/
 |       `-- <feature-slug>/
-|           |-- CONTRACT.md
-|           |-- PRD.md                    # 可选团队汇报文档
-|           `-- issues/
-|               `-- 01-slice.md
+|           |-- PRODUCT.md
+|           |-- TECHNICAL.md
+|           |-- EXECUTION.md
+|           |-- DECISIONS.md
+|           |-- issues/
+|           |   |-- ISSUE-01-<slug>.md
+|           |   `-- ISSUE-02-<slug>.md
+|           `-- afk-running/
+|               |-- _current.md
+|               |-- step-01.md ~ step-06.md
+|               `-- ISSUE-01/
 `-- src/
 ```
 
-核心约定:
+每类事实只有一个权威来源:
 
-- 本地 Markdown issue tracker 固定使用 `docs/changes/<feature-slug>/`.
-- 单上下文领域语言使用 `docs/language/UBIQUITOUS_LANGUAGE.md`.
-- 多上下文项目使用 `docs/language/UBIQUITOUS_LANGUAGE_MAP.md` 指向 `docs/language/contexts/*.md`.
-- 系统级 ADR 位于 `docs/adr/*.md`; 上下文级 ADR 位于 `docs/adr/contexts/<context>/`.
-- `AGENTS.md` 中由 `setup-workspace` 写入 `## Docs Directory Structure` 区块.
+- 产品结果和验收: `PRODUCT.md`.
+- 技术设计和机器契约索引: `TECHNICAL.md`.
+- 执行边界/任务图/DoD: `EXECUTION.md`.
+- 决策历史和代码追踪: `DECISIONS.md`.
+- 单个执行单元: `issues/ISSUE-*.md`.
+- 运行状态和证据: `afk-running/`.
 
-入口文档: [`workflow/setup-workspace/SKILL.md`](workflow/setup-workspace/SKILL.md)
+## Workflow skills
 
-## AFK 运行时适配
+- `workflow/orchestrate`: 路由工程 skills.
+- `workflow/setup-workspace`: 初始化 Spec 工作区和领域文档约定.
+- `workflow/grill-with-docs`: 会话式产品/技术盘问.
+- `workflow/to-product-spec`: Product Spec 生成.
+- `workflow/to-technical-spec`: Technical Spec 生成.
+- `workflow/to-execution-spec`: Execution Spec/issue/AFK 步骤生成.
+- `workflow/afk`: AFK 父会话控制器.
+- `workflow/decision-ledger`: 功能级决策账本.
+- `workflow/tdd`: red-green-refactor 实现循环.
+- `workflow/lazy-design`: 最小可交付设计约束.
+- `workflow/lazy-code`: 最小正确实现约束.
+- `workflow/domain-awareness`: 只读感知领域语言和 ADR.
+- `workflow/domain-modeling`: 维护领域语言和 ADR.
+- `workflow/codebase-design`: deep module/interface/seam 设计词汇.
+- `workflow/improve-codebase-architecture`: 架构评审报告.
+- `workflow/code-review-with-me`: 会话式代码评审.
+- `workflow/use-worktree`: Git worktree 管理.
+- `workflow/receive-handoff`: 接收会话交接.
 
-AFK 核心 skill 只定义父会话状态机, 产物契约, 角色约束和 system prompt 编写规则. 不绑定 pi-subagents, chain JSON, slash command, 或任何具体子代理插件. 目标运行环境可以用已有 agent/role/profile 承担 implementation, review, recovery 角色, 但必须先在 `afk-running/agent-binding.md` 记录绑定和约束. 仓库不维护角色 prompt 模板, 父会话按每轮任务和执行现场编写子代理的专用 system prompt.
+## AFK
 
-- `workflow/run-afk-workflow/SKILL.md`: AFK 阶段入口. `orchestrate` 先判断 workflow 类型和调用条件, 本技能负责父会话硬边界, 渐进式阅读入口, 顶层状态机和子代理 system prompt 编写指导. 执行写入阶段前必须向用户确认 `是否执行?`.
-- `workflow/run-afk-workflow/CONTRACTS.md`: 产物目录, `validation-env.md`, `agent-binding.md`, `review-policy.md` 和命名契约.
-- `workflow/run-afk-workflow/RUNBOOK.md`: 正常 AFK 主流程, 包括预检, diff gate, review, synthesis, fix loop 和最终验证.
-- `workflow/run-afk-workflow/RECOVERY.md`: worker/reviewer 超时, dirty tree, 产物缺失和验证失败的恢复规则.
-- `workflow/run-afk-workflow/LIGHTWEIGHT-TEST-ONLY.md`: 测试 only 轻量路径和 `review-skipped.md` 规则.
-- `AGENTS.md`: workflow 路由约束. 工程类任务先由 `orchestrate` 分类. 子代理只用于只读代码库探索, 已批准计划的 AFK 编码执行, diff 后 review, accepted finding 修复或恢复.
+`afk` 是运行时无关父会话控制器. 它不绑定具体子代理插件, 不直接编写生产/测试代码, 不替代 reviewer. `to-execution-spec` 生成全 feature 共用的 6 个步骤文件, `afk` 每次只读取 `_current.md` 和当前步骤, 按状态机推进.
 
-本仓库不强制维护 workflow chain JSON 或插件 recipe. 如目标项目需要 pi-subagents, Claude agents, Codex profiles, shell wrapper, CI job 等适配层, 由目标项目自行维护 adapter/recipe 文档, 不写入核心 skill.
+执行前必须在会话中说明当前 issue 的可观察结果, 代码边界, 验证方式和最高风险, 再询问 `是否执行?`. 停止或完成时直接在会话中说明影响/结果/风险, 不要求人类阅读运行产物.
 
-入口文档: [`workflow/run-afk-workflow/SKILL.md`](workflow/run-afk-workflow/SKILL.md)
+## Setup
 
-## 技能一览
+首次在目标项目使用 Spec 工作流时运行 `setup-workspace`. 它生成或更新:
 
-### workflow/orchestrate
+- `AGENTS.md` 中的文档目录约定.
+- `docs/agents/issue-tracker.md`.
+- `docs/agents/domain.md`.
 
-workflow skills 的默认入口和元编排器: 接收工程类用户任务, 按静态决策树在 `workflow/` skills 间路由, 处理前置 `setup-workspace`, 并支持多阶段顺序编排.
+## 其他技能
 
-入口文档: [`workflow/orchestrate/SKILL.md`](workflow/orchestrate/SKILL.md)
+`general/` 包含网页访问, 仓库探索, grilling, handoff, 教学, skill 编写等通用能力. `others/` 包含支付评审和 Spring Boot Hurl 生成器. `deprecated/` 仅保留历史资料, 新流程不依赖它.
 
-### workflow/setup-workspace
+## 维护
 
-为目标项目建立 workflow 技能需要的本地工作区约定: `AGENTS.md`, `docs/agents/*`, 本地 Markdown issue tracker 和领域文档布局.
-
-入口文档: [`workflow/setup-workspace/SKILL.md`](workflow/setup-workspace/SKILL.md)
-
-### workflow/codebase-design
-
-提供 deep module 设计共享词汇, 用于 module/interface/seam/adapter/depth/leverage/locality 的一致表达, 并提供 dependency deepening 与 design-it-twice interface 探索资料.
-
-入口文档: [`workflow/codebase-design/SKILL.md`](workflow/codebase-design/SKILL.md)
-
-### workflow/domain-modeling
-
-维护项目领域语言和 ADR. 单上下文使用 `docs/language/UBIQUITOUS_LANGUAGE.md`; 多上下文通过 `docs/language/UBIQUITOUS_LANGUAGE_MAP.md` 定位 `docs/language/contexts/*.md`.
-
-入口文档: [`workflow/domain-modeling/SKILL.md`](workflow/domain-modeling/SKILL.md)
-
-### workflow/grill-with-docs
-
-围绕设计进行拷问式澄清, 并在术语或决策成形时通过 `domain-modeling` 更新领域语言或提出 ADR.
-
-入口文档: [`workflow/grill-with-docs/SKILL.md`](workflow/grill-with-docs/SKILL.md)
-
-### workflow/run-afk-workflow
-
-`run-afk-workflow` 是 `orchestrate` 管辖下的 AFK 阶段入口. 它按运行时无关角色契约启动 implementation, review, recovery 角色, 由父会话根据每轮任务和执行现场编写专用 system prompt, 并保留父会话最终决策权.
-
-入口文档: [`workflow/run-afk-workflow/SKILL.md`](workflow/run-afk-workflow/SKILL.md)
-
-### workflow/to-contract / workflow/to-prd / workflow/to-issues / workflow/to-plan
-
-面向本地 Markdown issue tracker 的执行契约, 汇报文档与议题流程:
-
-- `to-contract`: 把已确认设计沉淀为执行契约, 并发布到 `docs/changes/<feature-slug>/CONTRACT.md`.
-- `to-prd`: 把已确认方案整理为团队汇报 PRD, 并发布到 `docs/changes/<feature-slug>/PRD.md`. PRD 不作为执行流权威输入.
-- `to-issues`: 把执行契约拆成垂直切片 issue, 写入 `docs/changes/<feature-slug>/issues/`. issue 只记录任务拆分结果和 `- [ ] 已实现` / `- [x] 已实现` 执行标记.
-- `to-plan`: 为 `to-issues` 产出的 issues 生成合并源码级执行计划.
-
-入口文档:
-
-- [`workflow/to-contract/SKILL.md`](workflow/to-contract/SKILL.md)
-- [`workflow/to-prd/SKILL.md`](workflow/to-prd/SKILL.md)
-- [`workflow/to-issues/SKILL.md`](workflow/to-issues/SKILL.md)
-- [`workflow/to-plan/SKILL.md`](workflow/to-plan/SKILL.md)
-
-### workflow/tdd
-
-测试驱动实现流程:
-
-- `tdd`: 按 red-green-refactor 小循环推进实现或修复.
-
-入口文档:
-
-- [`workflow/tdd/SKILL.md`](workflow/tdd/SKILL.md)
-
-### workflow/improve-codebase-architecture
-
-结合领域语言, ADR 和 `codebase-design` 词汇, 寻找代码库中的架构深化机会, 输出可视化 HTML 架构评审报告, 并可继续探索 interface 设计.
-
-入口文档: [`workflow/improve-codebase-architecture/SKILL.md`](workflow/improve-codebase-architecture/SKILL.md)
-
-### workflow/use-worktree
-
-管理本地 Git worktree 标准布局, 创建, 检查, 删除或迁移 worktree, 并在修改前检查目标 worktree 状态以避免误改分支.
-
-入口文档: [`workflow/use-worktree/SKILL.md`](workflow/use-worktree/SKILL.md)
-
-### workflow/code-review-with-me / workflow/confirm-plan / workflow/receive-handoff
-
-交互式协作流程:
-
-- `code-review-with-me`: 以总-分-总结构带领用户逐段交互式代码评审, 产出评审日志和人审报告.
-- `confirm-plan`: 逐项审查执行计划中的变更, 对特定变更逐项确认后改写计划.
-- `receive-handoff`: 阅读 handoff 文档, 汇报理解, 询问下一步指示并给出建议.
-
-入口文档:
-
-- [`workflow/code-review-with-me/SKILL.md`](workflow/code-review-with-me/SKILL.md)
-- [`workflow/confirm-plan/SKILL.md`](workflow/confirm-plan/SKILL.md)
-- [`workflow/receive-handoff/SKILL.md`](workflow/receive-handoff/SKILL.md)
-
-### deprecated/hitl / deprecated/telegraphic-style / deprecated/zoom-out
-
-已归档技能:
-
-- [`deprecated/hitl/human-in-the-loop/SKILL.md`](deprecated/hitl/human-in-the-loop/SKILL.md)
-- [`deprecated/hitl/human-in-loop-brief/SKILL.md`](deprecated/hitl/human-in-loop-brief/SKILL.md)
-- [`deprecated/telegraphic-style/SKILL.md`](deprecated/telegraphic-style/SKILL.md)
-- [`deprecated/zoom-out/SKILL.md`](deprecated/zoom-out/SKILL.md)
-
-### general/*
-
-通用交互/回答技能:
-
-- [`general/access-web/SKILL.md`](general/access-web/SKILL.md): 网页访问 (只读抓取 + 交互浏览).
-- [`general/explore-repo/SKILL.md`](general/explore-repo/SKILL.md): 将远程 git 仓库克隆到系统临时目录并输出探索报告.
-- [`general/grill-me/SKILL.md`](general/grill-me/SKILL.md): `grilling` 的兼容入口.
-- [`general/grilling/SKILL.md`](general/grilling/SKILL.md): 围绕计划或设计持续追问, 直到达成共识.
-- [`general/handoff/SKILL.md`](general/handoff/SKILL.md): 交接上下文.
-- [`general/opposing-viewpoint/SKILL.md`](general/opposing-viewpoint/SKILL.md): 对抗性分析应答风格, 高置信度, 不迎合.
-- [`general/teach/SKILL.md`](general/teach/SKILL.md): 在当前目录建立长期学习工作区, 生成中文 lesson, reference 和学习记录.
-- [`general/write-a-skill/SKILL.md`](general/write-a-skill/SKILL.md): 编写技能.
-
-### others/*
-
-特定技术栈辅助技能:
-
-- [`others/payment-review/SKILL.md`](others/payment-review/SKILL.md): 对支付网关或支付链路相关代码变更做风险导向审查.
-- [`others/springboot-hcurl-generator/SKILL.md`](others/springboot-hcurl-generator/SKILL.md): 从 Spring Boot Controller 生成 Hurl/.hcurl 接口测试脚本包.
-
-### pi/
-
-Pi agent 本地配置文件, 包含快捷键, 模型注册, 扩展脚本和子代理配置示例. 不随技能安装分发, 仅供本机 pi 环境引用.
-
-## 使用方式
-
-1. 根据任务场景选择技能目录.
-2. 先读取对应 `SKILL.md`, 再按需读取 `references/`, 脚本, 测试夹具或 prompt 模板.
-3. 若目标 agent 不会自动发现本仓库目录, 按目标 agent 的安装方式安装或链接对应技能目录.
-4. workflow 类任务优先进入 `workflow/orchestrate`; 由它按需运行 `workflow/setup-workspace` 建立目标项目约定.
-5. 需要只读代码库探索以压缩上下文, 或需要已批准计划的 AFK 编码执行, diff 后 review, accepted finding 修复时, 由 `orchestrate` 判断符合 AFK 调用条件后读取 `workflow/run-afk-workflow`.
-6. HITL 协议已归档至 `deprecated/hitl/`, 如需参考请查阅对应目录.
-
-## 维护约定
-
-- 新增技能应使用独立目录, 并至少提供 `SKILL.md` 作为入口文档.
-- 技能目录应区分入口协议, 参考资料, 脚本, prompt 模板, 测试夹具和资产文件.
-- 根 `README.md` 负责登记仓库级目录, 技能概览和 pi direct recipes.
-- 涉及构建, 诊断, 规划, 执行, 审查或输出纪律的强约束应写入技能文档, 避免只存在于脚本或对话中.
-- workflow 目标项目的需求/议题资产默认保存到 `docs/changes/<feature-slug>/...`.
-- HITL 协议已归档, 新任务不再依赖 HITL 流程. 如需参考旧协议, 查阅 `deprecated/hitl/`.
+- 新 skill 使用独立目录和 `SKILL.md`.
+- 需要生成文档或与我交流的 workflow skill, 必须在 frontmatter 后第一条调用 `domain-awareness`.
+- 强约束写入 skill, 不只存在于脚本或对话.
+- 一个意义只保留一个权威位置.
+- 修改主链名称/产物/路径时同步 `orchestrate`, `setup-workspace`, `README` 和所有引用方.
+- skill 文档站在我的第一视角: agent 是"你", 发起者是"我".

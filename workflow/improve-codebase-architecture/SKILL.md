@@ -4,6 +4,8 @@ description: 代码库复杂度, 模块边界, 可测试性, 重构候选的架�
 disable-model-invocation: true
 ---
 
+开始前, 使用 `domain-awareness` skill 只读感知当前工作目录的领域模型.
+
 # 改进代码库架构
 
 发现架构摩擦并提出 **deepening 机会** - 将 shallow module 重构为 deep module 的变更. 目标是可测试性和 AI 可导航性.

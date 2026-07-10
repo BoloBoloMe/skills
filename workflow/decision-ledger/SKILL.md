@@ -1,12 +1,15 @@
 ---
 name: decision-ledger
-description: 功能级决策账本维护规则.
-disable-model-invocation: true
+description: 当 Spec 工作流需要记录, 变更或追踪功能级决策时, 维护 DECISIONS.md.
 ---
+
+开始前, 使用 `domain-awareness` skill 只读感知当前工作目录的领域模型.
 
 # 决策账本
 
 `DECISIONS.md` 是功能级决策账本, 也是决策到代码的追踪索引. 它不规定实现方案, 只记录我确认过的决策, 以及代码最终如何承载这些决策.
+
+文档只供 AI 使用. 新增, 替代, 废弃或改变约束性前, 必须在会话中向我说明决定含义, 影响和推荐, 再取得确认. 不让我阅读账本后批准.
 
 位置:
 
@@ -115,10 +118,10 @@ AFK 后, 父会话基于真实 diff 更新 `实际影响`. 可写:
 
 ## 职责
 
-- `grill-with-docs`: 维护决策内容. 新增, 替代, 废弃决策前必须得到我确认.
-- `to-contract`: 摘要执行必须知道的关键取舍并引用账本, 不复制完整决策树.
-- `to-spec`: 面向团队汇报摘要关键取舍并引用账本, 不成为执行权威输入.
-- `to-issues`: 在 issue 中引用相关决策 ID, 并维护双向引用.
+- `grill-with-docs`: 在会话中解释并确认决策, 再维护决策内容. 新增, 替代, 废弃前必须得到我确认.
+- `to-product-spec`: 只整理已确认产品决策, 不新增决策.
+- `to-technical-spec`: 引用和摘要执行必须知道的技术决策, 不复制完整决策树.
+- `to-execution-spec`: 在 issue 中引用相关决策 ID, 并维护双向引用.
 - worker: 只读账本. 决策不可实现, 成本异常或需要改变时, 在 handoff note 上报.
 - reviewer: 只读账本. 报告 diff 违反决策或实际改变决策.
 - AFK 父会话: 基于真实 diff 更新实际影响; 不擅自改变决策内容, 状态或约束性.

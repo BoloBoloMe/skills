@@ -1,20 +1,24 @@
-# 问题跟踪器:本地 Markdown
+# Spec 工作区: 本地 Markdown
 
-此仓库的执行契约和 issue 存放为 `docs/changes/` 中的 Markdown 文件. PRD 是可选团队汇报文档, 不属于执行流约定.
+每个 feature 的 Spec Pack, decisions, issues 和 AFK 证据存放在 `docs/changes/`. 这些文件供 AI 使用; 影响产品, API, 架构, 范围, 风险或验证的决定必须在盘问会话中向我解释并确认, 不以让我阅读文件作为审批步骤.
 
 ## 约定
 
-- 每个功能(feature)一个目录:`docs/changes/<feature-slug>/`
-- 执行契约是 `docs/changes/<feature-slug>/CONTRACT.md`
-- 实施 issues 位于 `docs/changes/<feature-slug>/issues/<NN>-<slug>.md`,从 `01` 开始编号
-- 每个 issue 在正文中包含 `## 执行(Execution)` 章节, 用 `- [ ] 已实现` 或 `- [x] 已实现` 记录是否已经执行
-- issue 不使用 `Status:` 或等价状态行. issue 之间的依赖关系写在 `## 被阻塞于` 中, 这是静态拓扑信息, 不是执行状态
-- 评论和对话历史追加到文件底部的 `## 评论(Comments)` 标题下. 读取和追加时兼容 `## Comments`,`## 评论`,`## 评论(Comments)`.
+- 每个 feature 一个目录: `docs/changes/<feature-slug>/`.
+- Product Spec: `PRODUCT.md`.
+- Technical Spec: `TECHNICAL.md`.
+- Execution Spec: `EXECUTION.md`.
+- 功能决策账本: `DECISIONS.md` (有决策时).
+- issues: `issues/ISSUE-<NN>-<slug>.md`, 从 `ISSUE-01` 连续编号.
+- AFK 运行产物: `afk-running/`.
+- 每个 issue 包含 `## 执行(Execution)`, 用 `- [ ] 已实现` 或 `- [x] 已实现` 记录结果.
+- issue 不使用 `Status:`. 静态依赖写在 `## 被阻塞于`.
+- 评论固定追加到文件底部的 `## 评论(Comments)`.
 
-## 当某个技能说"发布到问题跟踪器(publish to the issue tracker)"时
+## 发布到议题跟踪器
 
-在 `docs/changes/<feature-slug>/` 下创建新文件(必要时创建目录).
+在 `docs/changes/<feature-slug>/` 下创建对应文件或目录.
 
-## 当某个技能说"获取相关工单(fetch the relevant ticket)"时
+## 获取相关工单
 
-读取所引用路径处的文件.用户通常会直接传入路径或 issue 编号.
+读取引用路径的完整正文和评论. issue key 必须唯一定位一个 `issues/ISSUE-*.md` 文件.

@@ -3,6 +3,8 @@ name: domain-modeling
 description: 领域模型维护. 当我需要固定领域术语, 维护 ubiquitous language, 记录 ADR 或同步领域模型时.
 ---
 
+开始前, 使用 `domain-awareness` skill 只读感知当前工作目录的领域模型.
+
 # Domain Modeling
 
 在设计过程中主动构建和打磨项目领域模型. 本 skill 是主动纪律: 挑战术语, 制造边界场景, 并在术语或决策成形时立即写入领域语言文件或 ADR.

@@ -4,6 +4,8 @@ description: Git worktree 布局识别, 创建, 删除, 迁移, 安全检查流�
 disable-model-invocation: true
 ---
 
+开始前, 使用 `domain-awareness` skill 只读感知当前工作目录的领域模型.
+
 # use-worktree
 
 ## 标准布局

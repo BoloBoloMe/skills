@@ -1,0 +1,164 @@
+# AFK 步骤生成指引
+
+`to-execution-spec` 在切片确认后读取本文件, 一次性生成 6 个全局步骤文件和初始 `_current.md`. `afk` 不读本文件.
+
+## 生成规则
+
+全部文件写入 `docs/changes/<feature-slug>/afk-running/`:
+
+- `_current.md`: 初始内容为第一个 issue key 加 `:01`.
+- `step-01.md` 到 `step-06.md`: 全部 issues 共用.
+
+per-issue 产物由 `afk` 写入 `afk-running/<ISSUE-KEY>/`.
+
+步骤文件使用以下目录角色名, `afk` 根据 `_current.md` 推断路径:
+
+- **feature 根目录**: `afk-running/` 的父目录.
+- **product**: feature 根目录下的 `PRODUCT.md`.
+- **technical**: feature 根目录下的 `TECHNICAL.md`.
+- **execution**: feature 根目录下的 `EXECUTION.md`.
+- **decisions**: feature 根目录下的 `DECISIONS.md` (如存在).
+- **当前 issue**: `issues/` 中以当前 issue key 开头的 `.md`.
+- **当前 issue 产物目录**: `afk-running/<ISSUE-KEY>/`.
+
+步骤文件禁止内联 system prompt/Spec/issue 正文, 禁止写 feature 特有实现细节, 绝对路径或占位符.
+
+## step-01
+
+生成 `step-01.md`:
+
+```markdown
+# 步骤 01: 预检和启动 worker
+
+确认工作树状态来源清楚, worker/reviewer 可用. 读取 product, technical, execution, decisions (如存在) 和当前 issue. 验证 issue 中的覆盖 ID/决策引用/父级引用可解析. 任一失败 -> 停止并在会话中报告.
+
+创建当前 issue 产物目录. 扫描 worker-note-aN/fix-note-aN 确定 attempt N, 无则 N=1. 输出为当前 issue 产物目录/worker-note-aN.md.
+
+按 afk 的 system prompt 规则启动初始 worker:
+- 目标: 实现当前 issue 的全部验收标准.
+- 必读: product, technical, execution, decisions (如存在), 当前 issue.
+- 输出: 上述 worker note.
+
+worker 中断时优先 resume.
+
+---
+worker 完成 -> _current.md 写为 :02
+worker 不可恢复 -> 停止并在会话中报告
+```
+
+## step-02
+
+生成 `step-02.md`:
+
+```markdown
+# 步骤 02: diff 门禁
+
+检查 worker diff:
+- diff 非空.
+- 每个改动可追溯到当前 issue 的 AC/TG/NFR 或必要测试.
+- 未越过允许范围或触碰禁止范围.
+- 无 staged 文件或未知来源变更.
+- worker-note-aN.md 存在, 且含 RED/GREEN/验证证据, 风险和阻塞.
+
+---
+通过 -> _current.md 写为 :03
+diff 为空 -> _current.md 写为 :01
+越界/未知变更/证据缺失 -> 停止并在会话中报告
+```
+
+## step-03
+
+生成 `step-03.md`:
+
+```markdown
+# 步骤 03: 并行 review
+
+按 afk 的 system prompt 规则并行启动两个只读 reviewer, 不共用 prompt:
+
+1. 正确性 reviewer:
+   - 维度: 逻辑, 边界, 异常, 回归, 并发, 数据一致性, 测试覆盖, 死代码.
+   - 输入: product, technical, execution, decisions (如存在), 当前 issue, worker-note-aN, git diff.
+   - 输出: 当前 issue 产物目录/review-correctness-aN.md.
+
+2. Spec 边界 reviewer:
+   - 维度: PRODUCT/TECHNICAL/EXECUTION/decisions 遵守, AC/TG/NFR 覆盖, issue 允许/禁止范围, 越界, 提前实现, 隐含新决策.
+   - 输入: 同上.
+   - 输出: 当前 issue 产物目录/review-spec-boundary-aN.md.
+
+reviewer 中断时优先 resume.
+
+---
+两份报告就绪 -> _current.md 写为 :04
+任一 reviewer 不可恢复 -> 停止并在会话中报告
+```
+
+## step-04
+
+生成 `step-04.md`:
+
+```markdown
+# 步骤 04: 综合判定和修复
+
+读取两份 review, 分类:
+- 可直接修: 证据清楚, 不需产品/API/架构/范围决策, 且在当前 issue 范围内.
+- 需我决策: 需改变任一 Spec/issue/decision, 扩大范围或作产品/API/架构取舍.
+- 不采纳: 缺证据, 误读 diff, 或建议越界.
+- 通过: 无实质问题.
+
+可通过 -> _current.md 写为 :06.
+
+需我决策 -> 停止. 在会话中说明问题, 影响, 推荐和一个待回答问题, 不要求我阅读 review.
+
+可直接修:
+- 根据已有 fix-note 确定下一 attempt.
+- attempt >= 3 时转 :06, 在 final report 记录残余风险.
+- 同类问题重复或恶化时停止并在会话中报告.
+- 否则按 afk 的 prompt 规则启动修复 worker, 只修复明确采纳的发现项.
+- 输入: 全部 Spec, decisions, 当前 issue, 两份 review, 上轮 note, 综合判定.
+- 输出: 当前 issue 产物目录/fix-note-aN.md.
+
+---
+修复 worker 完成 -> _current.md 写为 :05
+修复 worker 不可恢复 -> 停止并在会话中报告
+```
+
+## step-05
+
+生成 `step-05.md`:
+
+```markdown
+# 步骤 05: 修复 diff 门禁
+
+检查修复后的完整 diff:
+- diff 非空.
+- 只处理已采纳发现项和保持测试通过所需改动.
+- 未越过允许范围或触碰禁止范围.
+- 无 staged 文件或未知来源变更.
+- fix-note-aN.md 存在且证据完整.
+
+---
+通过 -> _current.md 写为 :03
+diff 为空 -> _current.md 写为 :04
+越界/未知变更/证据缺失 -> 停止并在会话中报告
+```
+
+## step-06
+
+生成 `step-06.md`:
+
+```markdown
+# 步骤 06: 验证和收尾
+
+执行当前 issue 的验证入口和 EXECUTION 中与其覆盖 ID 对应的完成定义. 验证失败 -> 停止并在会话中报告, 不勾选完成.
+
+验证每项 issue 验收标准都有可复核证据. 通过后:
+- 将当前 issue 的 `- [ ] 已实现` 改为 `- [x] 已实现`.
+- 调用 decision-ledger, 基于真实 diff 更新相关决策的实际影响.
+- 写入当前 issue 产物目录/final-report.md, 包含可观察结果, 覆盖的 AC/TG/NFR, 最终 diff, 验证证据, review 处理, 决策实际影响, 未运行项和残余风险.
+
+扫描 issues/ISSUE-*.md, 按编号找到下一个未勾选 issue:
+- 找到 -> _current.md 写为 <下一 issue key>:01, 继续.
+- 全部完成 -> 检查 EXECUTION 覆盖矩阵中的每个 AC/TG/NFR 均有已完成 issue 和 final-report 证据. 写入 afk-running/final-report.md, 再将 _current.md 写为 done.
+
+覆盖缺口或证据缺失 -> 停止并在会话中报告.
+```

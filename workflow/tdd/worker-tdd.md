@@ -1,24 +1,23 @@
-# run-afk-workflow 的 worker 如何使用 TDD
+# afk worker 如何使用 TDD
 
 ## 阅读门禁
 
-仅当 contract/issue 已确定所有行为和接口, 无需再与用户确认时, 才读本文件. 否则按 `tdd` skill 标准流程走, 包括计划步骤.
+仅当 PRODUCT/TECHNICAL/EXECUTION/issue 已确定所有行为和接口, 无需再向我确认时才读本文件. 否则按 `tdd` 标准流程走, 包括会话计划.
 
 ## 红-绿-重构
 
-contract/issue 已为你提供规格. 跳过 `tdd` skill 的"计划"步骤, 直接 red-green-refactor:
+Spec Pack 和当前 issue 已提供规格. 跳过 `tdd` 的计划步骤, 直接 red-green-refactor:
 
-1. RED: 按 contract/issue 要求的规格写一个测试 → 失败.
-2. GREEN: 最少代码通过.
-3. REFACTOR: 清理重复/加深模块, 保持绿.
+1. RED: 按 issue 覆盖的 AC/TG/NFR 写一个行为测试 -> 失败.
+2. GREEN: 写最少代码通过.
+3. REFACTOR: 清理重复/加深模块, 保持 green.
 
-参考 `tdd` skill 中的 `tests.md` (好/坏测试示例), `mocking.md` (mock 规则), `refactoring.md` (重构候选项).
+参考 `tests.md`, `mocking.md`, `refactoring.md`.
 
 ## 修复场景
 
-若审核报告指出你的测试偏离 contract: 先修正测试 (使其表达正确规格, 修正后的测试对当前错误代码应为 RED), 再修正代码到 GREEN. 
-如果你的任务中本来就需要编写自由格式的执行记录如 node, 那么在你的 note 中补充说明: 区分哪些测试被修正 (及原因), 哪些是新增.
+review 指出测试偏离 Spec 时, 先修正测试, 使它表达正确规格并对当前错误代码变 red, 再修正代码到 green. note 中区分修正测试及原因和新增测试.
 
 ## 证据
 
-在你的 note (如果有) 中记录每个 RED/GREEN 循环: 命令, 失败/通过输出. 无法提供 RED 时 (如项目不支持可信 RED) 说明原因并提供可复核验证.
+note 记录每个 RED/GREEN 循环的命令和失败/通过输出. 无法提供 RED 时说明原因, 并给出可复核验证. 每项证据标出覆盖的 AC/TG/NFR.

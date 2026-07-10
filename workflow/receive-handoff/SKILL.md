@@ -4,6 +4,8 @@ description: Handoff 文档接收, 理解汇报与下一步建议流程.
 disable-model-invocation: true
 ---
 
+开始前, 使用 `domain-awareness` skill 只读感知当前工作目录的领域模型.
+
 # Receive Handoff
 
 接收 handoff 文档, 建立可继续工作的上下文, 但不擅自开始执行后续任务.

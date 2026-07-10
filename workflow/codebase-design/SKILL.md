@@ -3,6 +3,8 @@ name: codebase-design
 description: Codebase design 词汇与 interface 设计. 当我需要设计 module interface, seam, deep module 或可测试性 interface 时.
 ---
 
+开始前, 使用 `domain-awareness` skill 只读感知当前工作目录的领域模型.
+
 # 代码库设计
 
 设计 **deep module**: 大量行为隐藏在小接口背后, 位于清晰的 seam, 可通过该接口测试. 在任何代码被设计或重构的地方使用这套语言和原则. 目标: 对调用者的 leverage, 对维护者的 locality, 对所有人的可测试性.

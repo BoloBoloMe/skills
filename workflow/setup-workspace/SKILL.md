@@ -1,82 +1,72 @@
 ---
 name: setup-workspace
-description: Workflow 工作区约定初始化, 创建本地议题跟踪器和领域文档约定.
+description: 初始化 Spec 工作区和领域文档约定.
 disable-model-invocation: true
 ---
 
+开始前, 使用 `domain-awareness` skill 只读感知当前工作目录的领域模型.
+
 # 设置工作区
 
-搭建工程 skills 所假定的每仓库配置:
+建立工程 skills 所需的每仓库配置:
 
-- **议题跟踪器** - 固定使用本地 Markdown: 执行契约和 issues 写入 `docs/changes/`.
-- **领域文档** - `docs/language/UBIQUITOUS_LANGUAGE.md` 和 ADR 的位置, 以及读取它们的消费规则.
+- Spec Pack/decisions/issues/AFK 产物固定写入 `docs/changes/`.
+- 领域语言和 ADR 使用单上下文或多上下文布局.
+- `AGENTS.md` 指向 `docs/agents/issue-tracker.md` 和 `docs/agents/domain.md`.
 
-这是一个提示驱动的 skill, 而非确定性脚本. 先探索, 展示发现, 向用户确认, 再写入.
+生成文档只供 AI 使用. 我不需要阅读或批准文档正文. 需要我选择的布局必须在会话中解释含义, 影响和你的推荐.
 
-## 流程
+## 1. 探索
 
-### 1. 探索
+读取并检查:
 
-查看当前仓库, 理解它的初始状态. 读取已存在的内容; 不要假设:
+- 根 `AGENTS.md`.
+- `docs/agents/`.
+- `docs/changes/`.
+- `docs/language/UBIQUITOUS_LANGUAGE.md`.
+- `docs/language/UBIQUITOUS_LANGUAGE_MAP.md` 和 `docs/language/contexts/`.
+- `docs/adr/` 和 `docs/adr/contexts/`.
 
-- 仓库根目录的 `AGENTS.md` - 是否存在? 其中是否已有 `## Docs Directory Structure`, `## 文档目录结构`, `## 文档目录结构(Docs Directory Structure)` 或旧版技能配置区块?
-- `docs/language/UBIQUITOUS_LANGUAGE.md` 和 `docs/language/UBIQUITOUS_LANGUAGE_MAP.md`.
-- `docs/adr/` 和 `docs/adr/contexts/` 目录.
-- `docs/agents/` - 这个技能之前的输出是否已存在?
-- `docs/changes/` - 本地 Markdown 议题跟踪器的既有约定和内容.
+完成标准: 已知道哪些路径存在, 当前仓库是否明显包含多个 bounded contexts, 以及写入是否会覆盖用户内容.
 
-### 2. 展示发现并询问
+## 2. 会话确认领域布局
 
-总结已存在和缺失的内容. 然后确认领域文档布局. 不要询问或生成远程议题跟踪器工作流; 本技能只内置支持 **本地 Markdown 议题跟踪器**, 即使仓库已有远程 issue, 也以 `docs/changes/` 本地 Markdown 约定为准.
+在会话中简短说明发现和推荐:
 
-**Section A - Domain docs.**
+- 单上下文: `docs/language/UBIQUITOUS_LANGUAGE.md` + `docs/adr/`. 适合大多数仓库.
+- 多上下文: `UBIQUITOUS_LANGUAGE_MAP.md` + `docs/language/contexts/` + `docs/adr/contexts/`. 仅当多个 bounded contexts 有独立词义和决策时使用.
 
-> 解释: `improve-codebase-architecture` skill 和 `tdd` skill 会读取 `docs/language/UBIQUITOUS_LANGUAGE.md` 了解项目领域语言, 并读取 `docs/adr/` 了解过去的架构决策. 它们需要知道仓库是单上下文还是多上下文 (例如分别有 frontend/backend 上下文的 monorepo), 才能在正确位置查找.
+一次只问"使用单上下文还是多上下文?", 并给出推荐. 不展示生成文档草稿.
 
-确认布局:
+完成标准: 我已在会话中选择布局; 不需要阅读文件才能理解该选择的影响.
 
-- **单上下文** - `docs/language/UBIQUITOUS_LANGUAGE.md` + `docs/adr/`. 大多数仓库都是这样.
-- **多上下文** - `docs/language/UBIQUITOUS_LANGUAGE_MAP.md`, 指向 `docs/language/contexts/` 下的上下文语言文件 (通常是 monorepo).
+## 3. 写入
 
-### 3. 确认并编辑
-
-向用户展示以下草稿:
-
-- 要添加到 `AGENTS.md` 中的 `## 文档目录结构(Docs Directory Structure)` 区块.
-- `docs/agents/issue-tracker.md`, `docs/agents/domain.md` 的内容.
-
-写入前允许用户修改.
-
-### 4. 写入
-
-**选择要编辑的文件:**
-
-- 仓库根目录存在 `AGENTS.md` 时, 编辑它.
-- 不存在时, 询问用户是否创建 `AGENTS.md` - 不要替用户静默创建.
-
-所选文件已存在文档目录结构区块时, 原地更新其内容, 而非追加重复区块. 兼容识别这些标题: `## Docs Directory Structure`, `## 文档目录结构`, `## 文档目录结构(Docs Directory Structure)`. 不要覆盖周边 section 中的用户编辑.
-
-所选文件存在旧版三子节 skill 配置区块时, 将其标题改为 `## 文档目录结构(Docs Directory Structure)` 并原地更新为当前两子节内容. 旧版多余子节应删除, 不保留已废弃配置.
+根 `AGENTS.md` 不存在时, 在会话中询问是否创建. 存在时, 添加或更新唯一的 `## Spec 工作区(Spec workspace)` 区块, 不覆盖其他内容.
 
 区块:
 
 ```markdown
-## 文档目录结构(Docs Directory Structure)
+## Spec 工作区(Spec workspace)
 
-### 议题跟踪器
+### Spec 和 issues
 
-本仓库使用本地 Markdown 议题跟踪器: 执行契约和 issues 存放在 `docs/changes/`. 执行契约位于 `docs/changes/<feature-slug>/CONTRACT.md`. issue 只记录任务拆分结果和 `- [ ] 已实现` / `- [x] 已实现` 执行标记. 见 `docs/agents/issue-tracker.md`.
+本仓库使用本地 Spec 工作区: 每个 feature 的 `PRODUCT.md`, `TECHNICAL.md`, `EXECUTION.md`, `DECISIONS.md` 和 issues 存放在 `docs/changes/<feature-slug>/`. issue 使用 `issues/ISSUE-<NN>-<slug>.md`, 并以 `- [ ] 已实现` / `- [x] 已实现` 记录执行结果. 见 `docs/agents/issue-tracker.md`.
 
 ### 领域文档(Domain docs)
 
-[布局的一行摘要: "single-context" 或 "multi-context"]. 见 `docs/agents/domain.md`.
+<single-context 或 multi-context 布局摘要>. 见 `docs/agents/domain.md`.
 ```
 
-然后用本 skill 文件夹中的种子模板作为起点, 写入两个 docs 文件:
+使用本 skill 目录中的种子文件生成或更新:
 
-- [issue-tracker-local.md](./issue-tracker-local.md) - 本地 Markdown 议题跟踪器.
-- [domain.md](./domain.md) - 领域文档消费规则 + 布局.
+- `issue-tracker-local.md` -> `docs/agents/issue-tracker.md`.
+- `domain.md` -> `docs/agents/domain.md`, 按已确认布局替换对应内容.
 
-### 5. 完成
+完成标准: `AGENTS.md` 只有一个 Spec 工作区区块; 两个 `docs/agents` 文件存在; 路径和所选领域布局一致; 未覆盖无关用户内容.
 
-告诉用户设置已完成, 以及哪些工程 skills 现在会读取这些文件. 说明他们之后可直接编辑 `docs/agents/*.md` - 只有想重建议题跟踪器工作区约定或从头开始时, 才需重新运行此 skill.
+## 4. 会话交付
+
+直接告诉我: 采用的领域布局, 创建/更新的路径, 哪些 skills 会消费这些约定. 不展示文件全文, 不让我阅读后确认.
+
+完成标准: 我从会话中知道设置结果和影响, 无需阅读生成文档.
