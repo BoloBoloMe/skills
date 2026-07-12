@@ -8,8 +8,6 @@ disable-model-invocation: true
 
 判断工作从哪条 flow 进入, 加载对应 skill 的 `SKILL.md` 按它执行. 选不中 -> `grill-me` 澄清.
 
-本仓库采用 router exception: `orchestrate` 可以读取并执行同仓库 `workflow/` 下的用户调用 skills. 该例外只属于本仓库的 workflow 集合, 不扩展到其他用户调用 skills.
-
 ## Spec 执行流
 
 - 新想法, 产品或技术边界未定, 有代码库 -> `grill-with-docs`.
@@ -50,5 +48,4 @@ Product/Technical/Execution Spec 和运行产物只供 AI 使用. 所有影响�
 ## 衔接
 
 各环节不自动触发下一环节, 推进由我显式发起. 主链尽量留在同一上下文, 中途不 compact. 会话过满或需独立线程 -> `handoff`, 新会话用 `receive-handoff` 接续.
-
 后续 Spec 生成 skill 发现新决策或来源冲突时, 必须退回 `grill-with-docs`, 在会话中解释影响并盘问, 不得藏进文档让我发现.
