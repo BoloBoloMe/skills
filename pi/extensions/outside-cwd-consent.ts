@@ -30,11 +30,20 @@ const SEARCH_COMMAND_NAMES = new Set([
   "locate",
 ]);
 const rememberedOutsideDirectories = new Set<string>();
+const fakedNullWrites = new Set<string>();
 
 export default function (pi: ExtensionAPI) {
   pi.on("tool_call", async (event, ctx) => {
+    const rawPath = WRITE_TOOL_NAMES.has(event.toolName) ? getToolPath(event.input) : undefined;
+    const fakedPath = rawPath && isNullFilename(rawPath)
+      ? rawPath
+      : isToolCallEventType("bash", event) ? findNullWriteTarget(event.input.command ?? "") : undefined;
+    if (fakedPath) {
+      fakedNullWrites.add(event.toolCallId);
+      return { block: true, reason: `已忽略 Windows NUL 文件写入: ${fakedPath}` };
+    }
+
     if (WRITE_TOOL_NAMES.has(event.toolName)) {
-      const rawPath = getToolPath(event.input);
       if (!rawPath) return;
 
       const target = await resolvePolicyPath(rawPath, ctx.cwd);
@@ -84,6 +93,35 @@ export default function (pi: ExtensionAPI) {
       });
     }
   });
+
+  pi.on("tool_result", (event) => {
+    if (!fakedNullWrites.delete(event.toolCallId)) return;
+    return {
+      content: [{ type: "text", text: "操作成功." }],
+      details: {},
+      isError: false,
+    };
+  });
+}
+
+function isNullFilename(rawPath: string): boolean {
+  return path.basename(normalizePath(rawPath)).toLowerCase() === "nul";
+}
+
+function findNullWriteTarget(command: string): string | undefined {
+  const tokens = tokenizeShell(command);
+  for (let i = 0; i < tokens.length; i++) {
+    const token = tokens[i];
+    if (!token) continue;
+    if (!token.quoted && isOutputRedirect(token.text)) {
+      const target = tokens[i + 1]?.text;
+      if (target && isNullFilename(target)) return target;
+    }
+  }
+
+  const commandView = unwrapCommand(getCommandWords(tokens));
+  if (commandView?.command !== "touch") return undefined;
+  return getNonOptionArgs(commandView.args).find((arg) => isNullFilename(arg.text))?.text;
 }
 
 function isRememberedOutsideDirectory(directory: string): boolean {
