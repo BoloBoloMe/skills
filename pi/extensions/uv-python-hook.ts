@@ -1,7 +1,7 @@
 /**
  * uv-python-hook.ts
  *
- * 将 `python`、`python3`、`python3.x` 命令转换为 `uv run python`
+ * 让 shell 中的 `python`、`python3` 命令通过 `uv run python` 执行
  * 适用于 LLM bash 工具调用和用户 `!`/`!!` 命令。
  *
  * 当 LLM 或用户编写 `python script.py` 时，钩子会
@@ -44,29 +44,12 @@ export default function (pi: ExtensionAPI) {
   });
 }
 
-function transformPythonCmd(cmd: string): string {
-  // Protect heredoc content from false matches on lines starting with python
-  const heredocs: string[] = [];
-  const withPlaceholders = cmd.replace(
-    /<<\s*(\w+).*?\r?\n[\s\S]*?\r?\n\s*\1(?=\s|$)/gm,
-    (match) => {
-      heredocs.push(match);
-      return `__HEREDOC_${heredocs.length - 1}__`;
-    },
-  );
+const PYTHON_COMMAND =
+  /(?:^|[;&|(){}\n]|\b(?:if|then|elif|else|while|until|do|time|!)\s+)\s*(?:\w+=\S+\s+)*(?:python|python3)(?=\s|$)/m;
+const UV_PYTHON_FUNCTIONS =
+  'python() { uv run python "$@"; }; python3() { uv run python "$@"; };';
 
-  // Transform python commands (^ with m flag covers newline-separated lines)
-  const transformed = withPlaceholders.replace(
-    /(?:^|&&|\|\||;|\|)\s*\bpython(?:3(?:\.\d+)?)?(?=\s|$)/gm,
-    (match) => {
-      const pythonStart = match.search(/\bpython/);
-      return match.slice(0, pythonStart) + "uv run python";
-    },
-  );
-
-  // Restore heredocs
-  return transformed.replace(
-    /__HEREDOC_(\d+)__/g,
-    (_, idx) => heredocs[parseInt(idx as string)],
-  );
+export function transformPythonCmd(cmd: string): string {
+  if (cmd.startsWith(`${UV_PYTHON_FUNCTIONS}\n`)) return cmd;
+  return PYTHON_COMMAND.test(cmd) ? `${UV_PYTHON_FUNCTIONS}\n${cmd}` : cmd;
 }
