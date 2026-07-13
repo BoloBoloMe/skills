@@ -10,7 +10,7 @@ disable-model-invocation: true
 ## 1. 收集上下文
 
 确认已获得本地 Spec 工作区约定. 没有则停止, 请我通过 `orchestrate` 先运行 `setup-workspace`. 读取同一 feature 下的 `PRODUCT.md`, `TECHNICAL.md`, `DECISIONS.md` (如存在). 需要维护决策引用时调用 `decision-ledger`.
-缺少 `PRODUCT.md` 或 `TECHNICAL.md` 时停止. 来源之间冲突, 或拆分需要新产品/API/架构/范围取舍时停止, 在会话中说明影响并请我回到 `grill-with-docs`.
+缺少 `PRODUCT.md` 或 `TECHNICAL.md` 时停止. 来源之间冲突, 或拆分需要新产品/API/架构/范围取舍时停止, 在会话中说明影响并请我回到 `propose`.
 完成标准: 三层输入属于同一 feature; 无阻塞冲突; 当前有效决策已读取或明确无相关决策.
 
 ## 2. 聚焦探索代码库

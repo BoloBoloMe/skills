@@ -10,7 +10,7 @@ disable-model-invocation: true
 
 ## Spec 执行流
 
-- 新想法, 产品或技术边界未定, 有代码库 -> `grill-with-docs`.
+- 新想法, 产品或技术边界未定, 有代码库 -> `propose`.
 - 产品/技术决策已在会话中确认, 要生成产品基线 -> `to-product-spec`.
 - `PRODUCT.md` 已存在, 要整理技术契约 -> `to-technical-spec`.
 - `PRODUCT.md` 和 `TECHNICAL.md` 已存在, 要拆执行切片 -> `to-execution-spec`.
@@ -20,10 +20,10 @@ disable-model-invocation: true
 完整主链:
 
 ```text
-grill-with-docs -> to-product-spec -> to-technical-spec -> to-execution-spec -> afk
+propose -> to-product-spec -> to-technical-spec -> to-execution-spec -> afk
 ```
 
-Product/Technical/Execution Spec 和运行产物只供 AI 使用. 所有影响产品, API, 架构, 范围, 风险或验证的决定必须在 `grill-with-docs` 会话中向我解释并确认. 不路由到"让我阅读文档后批准"的步骤.
+Product/Technical/Execution Spec 和运行产物只供 AI 使用. 所有影响产品, API, 架构, 范围, 风险或验证的决定必须在 `propose` 会话中向我解释并确认. 不路由到"让我阅读文档后批准"的步骤.
 
 ## on-ramp
 
@@ -48,4 +48,4 @@ Product/Technical/Execution Spec 和运行产物只供 AI 使用. 所有影响�
 ## 衔接
 
 各环节不自动触发下一环节, 推进由我显式发起. 主链尽量留在同一上下文, 中途不 compact. 会话过满或需独立线程 -> `handoff`, 新会话用 `receive-handoff` 接续.
-后续 Spec 生成 skill 发现新决策或来源冲突时, 必须退回 `grill-with-docs`, 在会话中解释影响并盘问, 不得藏进文档让我发现.
+后续 Spec 生成 skill 发现新决策或来源冲突时, 必须退回 `propose`, 在会话中解释影响并盘问, 不得藏进文档让我发现.

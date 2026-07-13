@@ -2,7 +2,7 @@
 
 本仓库沉淀可复用的 AI coding agent skills. `workflow/orchestrate` 是工程任务默认入口.
 
-调用策略采用 router exception: `orchestrate` 可以读取并执行同仓库 `workflow/` 下的用户调用 skills. `domain-awareness`/`decision-ledger` 等必须由其他 skill 主动抵达的共享能力使用模型调用. 该例外不扩展到仓库外的用户调用 skills.
+调用策略采用 router exception: `orchestrate` 可以读取并执行同仓库 `workflow/` 下的用户调用 skills. `domain-awareness`/`decision-ledger` 等其他必须由 skill 主动抵达的共享能力使用模型调用. 该例外不扩展到仓库外的用户调用 skills.
 
 ## 目录
 
@@ -22,20 +22,20 @@
 主链:
 
 ```text
-grill-with-docs
+propose
   -> to-product-spec
   -> to-technical-spec
   -> to-execution-spec
   -> afk
 ```
 
-- `grill-with-docs`: 在会话中关闭产品和技术设计树, 维护功能决策/领域语言/ADR.
+- `propose`: 在会话中关闭产品和技术设计树, 在发散点读取外部参考 `EXPLORE-DESIGN-OPTIONS.md` 比较多方案, 延迟固化到盘问结束, 可选生成 Spec 链.
 - `to-product-spec`: 把已确认产品结果写入 `PRODUCT.md`.
 - `to-technical-spec`: 把已确认技术设计写入 `TECHNICAL.md`.
 - `to-execution-spec`: 生成 `EXECUTION.md`, 垂直切片 issues 和 AFK 步骤文件.
 - `afk`: 按当前 issue 调度 worker/reviewer, 完成实现/审查/验证/证据闭环.
 
-Spec Pack 和运行文档只供 AI 使用. 人类不通过阅读文档批准方案. 影响产品, API, 架构, 范围, 风险或验证的决定必须在 `grill-with-docs` 会话中解释并确认. 后续 Spec skill 只能整理已确认内容, 发现新决策或冲突时退回盘问.
+Spec Pack 和运行文档只供 AI 使用. 人类不通过阅读文档批准方案. 影响产品, API, 架构, 范围, 风险或验证的决定必须在 `propose` 会话中解释并确认. 后续 Spec skill 只能整理已确认内容, 发现新决策或冲突时退回盘问.
 
 ## 目标项目结构
 
@@ -79,7 +79,7 @@ project-root/
 
 - `workflow/orchestrate`: 路由工程 skills.
 - `workflow/setup-workspace`: 初始化 Spec 工作区和领域文档约定.
-- `workflow/grill-with-docs`: 会话式产品/技术盘问.
+- `workflow/propose`: 会话式产品/技术盘问与方案发散; 发散流程的外部参考 `EXPLORE-DESIGN-OPTIONS.md` 在同目录.
 - `workflow/to-product-spec`: Product Spec 生成.
 - `workflow/to-technical-spec`: Technical Spec 生成.
 - `workflow/to-execution-spec`: Execution Spec/issue/AFK 步骤生成.
