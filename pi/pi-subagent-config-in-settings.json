@@ -20,11 +20,10 @@
         ]
       },
       "worker": {
-        "model": "ai-work-deepseek/deepseek-v4-pro",
+        "model": "ai-work-zai/glm-5.2",
         "thinking": "high",
         "defaultContext": "fresh",
         "fallbackModels": [
-          "ai-work-zai/glm-5.2",
           "ai-work-moonshot/kimi-k2.7-code"
         ]
       },
