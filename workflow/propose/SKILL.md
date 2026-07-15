@@ -4,9 +4,8 @@ description: 处理我的提案, 盘问并关闭产品与技术决策, 可选生
 disable-model-invocation: true
 ---
 
-开始前, 使用 `domain-awareness` skill 只读感知当前工作目录的领域模型.
-
-用 `grilling` skill 沿设计树盘问我. 盘问中的每次回答都使用 `adaptive-presentation` skill. 一次只问一个问题, 并给出推荐. 遵守 `grilling` 的认知校准和盲区扫描规则.
+开始前, 使用 `domain-awareness` skill 只读感知当前工作目录的领域模型, 使用 `adaptive-presentation` skill 了解回复形式.
+用 `grilling` skill 盘问我, 盘问中你的每次回答都要按信息形状选择回复形式, 直到盘问会话结束为止. 遵守 `grilling` 的认知校准和盲区扫描规则.
 
 文档只供后续 AI 使用. 我不会通过阅读文档补齐上下文或批准方案. 每项影响产品, API, 架构, 范围, 风险或验证的决定, 必须在会话中向我说明含义, 影响和你的推荐, 再取得明确确认. 不要让我阅读生成文档后再确认.
 

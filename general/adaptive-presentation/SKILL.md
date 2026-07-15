@@ -1,6 +1,6 @@
 ---
 name: adaptive-presentation
-description: 按信息形状选择 chat/Markdown 表格/临时 HTML.
+description: 按信息形状选择回复形式.
 disable-model-invocation: true
 ---
 
