@@ -33,11 +33,11 @@ disable-model-invocation: true
 
 父会话按 `adaptive-presentation` 路由决定用 HTML 回复时, 委派子代理生成 HTML. HTML 是写入临时目录的展示副产物, 非项目内容.
 
-- 上下文: `fork`, 子代理从 fork 历史自行决定写入 HTML 的内容, 按 `HTML-GUIDE` 过滤凭据, 最小化原始日志/业务数据.
+- 子代理与调用: `delegate`, 逐调用覆盖 `model: ai-work-deepseek/deepseek-v4-pro`, `context: fork`; 同步, 禁止 `异步 + 等待` 假同步.
+- 内容来源: 子代理从 fork 历史自行决定写入 HTML 的内容, 按 `HTML-GUIDE` 过滤凭据, 最小化原始日志/业务数据.
 - 父会话在 task 传入 `HTML-GUIDE.md` 和 `browser_session.py` 的绝对路径.
-- 调用方式: 同步, 禁止 `异步 + 等待` 假同步.
-- 子代理: 写自包含 HTML, 调 `browser_session.py open`, 返回结构化 `{绝对路径, session-dir, 一句话说明}`.
-- 父会话: 在 chat 给本地路径链接 + 一句话说明 + 自己的待确认问题. 关键结论和待确认决策仍须在 chat 中说明.
+- 子代理职责: 写自包含 HTML, 调 `browser_session.py open`, 返回结构化 `{绝对路径, session-dir, 一句话说明}`.
+- 父会话职责: 在 chat 给本地路径链接 + 一句话说明 + 自己的待确认问题. 关键结论和待确认决策仍须在 chat 中说明.
 - 降级: 一次修正重试子代理; 仍失败则父会话回退到 Markdown 表格或 chat 文字, 不自行生成 HTML, 不阻塞盘问.
 
 以下不委派: 技能调用与路由, 盘问交互, 审核确认, 文档起草, 决策固化.
