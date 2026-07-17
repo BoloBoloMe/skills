@@ -2,17 +2,18 @@ import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { isToolCallEventType } from "@earendil-works/pi-coding-agent";
 import { existsSync } from "node:fs";
 import { realpath } from "node:fs/promises";
-import { homedir } from "node:os";
+import { homedir, tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 /**
- * outside-cwd-consent: require user consent only before tools clearly write outside ctx.cwd.
+ * filesystem-operation-gate: 仅在工具明确写入 ctx.cwd 外时要求用户确认.
  *
- * Read operations are not gated.
- * Path-aware write tools (write, edit) are gated only when the target path resolves outside ctx.cwd.
- * Bash is gated only when an obvious write target outside ctx.cwd is statically identified.
- * Ambiguous shell commands are allowed instead of being conservatively blocked.
+ * 不拦截读取操作.
+ * 不拦截当前系统临时目录的子路径, 但临时目录根本身除外.
+ * 路径感知写入工具 (`write`, `edit`) 仅在目标路径解析到 ctx.cwd 外时拦截.
+ * Bash 仅在静态识别出 ctx.cwd 外的明确写入目标时拦截.
+ * 对含义不明确的 shell 命令不作保守拦截.
  */
 
 const WRITE_TOOL_NAMES = new Set(["write", "edit"]);
@@ -49,6 +50,7 @@ export default function (pi: ExtensionAPI) {
       const target = await resolvePolicyPath(rawPath, ctx.cwd);
       const root = await resolvePolicyPath(ctx.cwd, ctx.cwd);
       if (isInsideOrSame(root, target)) return;
+      if (await isTemporaryDirectoryChild(target, ctx.cwd)) return;
 
       const rememberDirectory = path.dirname(target);
       if (isRememberedOutsideDirectory(rememberDirectory)) return;
@@ -79,7 +81,12 @@ export default function (pi: ExtensionAPI) {
       const outsideTargets = findObviousOutsideWriteTargets(command, ctx.cwd);
       if (outsideTargets.length === 0) return;
 
-      const pendingTargets = outsideTargets.filter((target) => !isRememberedOutsideDirectory(path.dirname(target.resolved)));
+      const pendingTargets = [] as OutsideWriteTarget[];
+      for (const target of outsideTargets) {
+        if (isRememberedOutsideDirectory(path.dirname(target.resolved))) continue;
+        if (await isTemporaryDirectoryChild(target.resolved, ctx.cwd)) continue;
+        pendingTargets.push(target);
+      }
       if (pendingTargets.length === 0) return;
 
       const root = await resolvePolicyPath(ctx.cwd, ctx.cwd);
@@ -234,6 +241,23 @@ function isInsideOrSame(root: string, target: string): boolean {
     relative === "" ||
     (!!relative && relative !== ".." && !relative.startsWith(`..${path.sep}`) && !path.isAbsolute(relative))
   );
+}
+
+async function isTemporaryDirectoryChild(target: string, cwd: string): Promise<boolean> {
+  const temporaryDirectory = await resolvePolicyPath(tmpdir(), cwd);
+  if (isFilesystemRoot(temporaryDirectory)) return false;
+
+  const resolvedTarget = await resolvePolicyPath(target, cwd);
+  return !isSamePath(temporaryDirectory, resolvedTarget) && isInsideOrSame(temporaryDirectory, resolvedTarget);
+}
+
+function isFilesystemRoot(value: string): boolean {
+  const normalized = normalizeForCompare(path.resolve(value));
+  return normalized === normalizeForCompare(path.parse(normalized).root);
+}
+
+function isSamePath(left: string, right: string): boolean {
+  return normalizeForCompare(path.resolve(left)) === normalizeForCompare(path.resolve(right));
 }
 
 function normalizeForCompare(value: string): string {

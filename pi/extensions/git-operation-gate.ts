@@ -2,19 +2,19 @@ import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { isToolCallEventType } from "@earendil-works/pi-coding-agent";
 
 /**
- * git-push-guard: 拦截 agent 发起的危险 Git 操作, 向用户确认后才放行.
+ * git-operation-gate: 拦截智能体发起的危险 Git 操作, 向用户确认后才放行.
  *
  * 分级拦截:
  *   - 危险级 (danger): 不可逆破坏操作, 弹窗默认拒绝
- *   - 警告级 (warn):   可逆但有风险的操作, 弹窗默认允许
+ *   - 警告级 (warn): 可逆但有风险的操作, 弹窗默认允许
  *
  * 匹配策略:
- *   - 对整个命令字符串跨行全局扫描, 命中多个 guard 取最高等级
- *   - 同等级多个 guard 命中时, 弹窗拼接展示所有理由
+ *   - 对整个命令字符串跨行全局扫描, 命中多条规则时取最高等级
+ *   - 同等级多条规则命中时, 弹窗拼接展示所有理由
  *
  * 会话放行:
- *   - "本次会话都允许" 按 guard 粒度放行, 不落盘
- *   - session_start 事件清空 allowlist (切 session / 新建 / 重载)
+ *   - "本次会话都允许" 按规则粒度放行, 不落盘
+ *   - `session_start` 事件清空允许列表 (切换/新建/重载会话)
  */
 
 type DangerLevel = "warn" | "danger";
@@ -130,7 +130,7 @@ export default function (pi: ExtensionAPI) {
     if (!isToolCallEventType("bash", event)) return;
     const cmd = event.input.command ?? "";
 
-    // 收集所有命中的 guard
+    // 收集所有命中的规则
     const hits = GUARDS.filter((g) => g.pattern.test(cmd));
     if (hits.length === 0) return;
 
@@ -138,10 +138,10 @@ export default function (pi: ExtensionAPI) {
     const maxLevel: DangerLevel =
       hits.some((g) => g.level === "danger") ? "danger" : "warn";
 
-    // 只保留该等级的命中
+    // 只保留该等级命中的规则
     const levelHits = hits.filter((g) => g.level === maxLevel);
 
-    // 若所有命中的 guard 已在本会话放行, 跳过弹窗
+    // 若所有命中的规则已在本会话放行, 跳过弹窗
     if (levelHits.every((g) => allowlist.has(g.name))) return;
 
     // 构建弹窗内容
@@ -175,6 +175,6 @@ export default function (pi: ExtensionAPI) {
         allowlist.add(g.name);
       }
     }
-    // "允许本次": 放行但不记录
+    // "允许本次": 仅本次放行, 不记录
   });
 }

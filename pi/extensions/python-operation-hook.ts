@@ -1,37 +1,37 @@
 /**
- * uv-python-hook.ts
+ * python-operation-hook.ts
  *
- * 让 shell 中的 `python`、`python3` 命令通过 `uv run python` 执行
- * 适用于 LLM bash 工具调用和用户 `!`/`!!` 命令。
+ * 让 shell 中的 `python`, `python3` 命令通过 `uv run python` 执行.
+ * 适用于 LLM bash 工具调用和用户 `!`/`!!` 命令.
  *
- * 当 LLM 或用户编写 `python script.py` 时，钩子会
- * 透明地执行 `uv run python script.py` 作为替代。
+ * 当 LLM 或用户编写 `python script.py` 时, 钩子会
+ * 透明地执行 `uv run python script.py` 作为替代.
  *
- * 存放位置：~/.pi/agent/extensions/uv-python-hook.ts
+ * 存放位置: ~/.pi/agent/extensions/python-operation-hook.ts
  */
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { isToolCallEventType, createLocalBashOperations } from "@earendil-works/pi-coding-agent";
 
 export default function (pi: ExtensionAPI) {
-  // Intercept LLM bash tool calls
+  // 拦截 LLM 发起的 bash 工具调用
   pi.on("tool_call", async (event, ctx) => {
     if (!isToolCallEventType("bash", event)) return;
 
     const original = event.input.command;
     const transformed = transformPythonCmd(original);
     if (transformed !== original) {
-      ctx.ui.notify(`[uv-python-hook] python -> uv run python`, "info");
+      ctx.ui.notify(`[python-operation-hook] python -> uv run python`, "info");
       event.input.command = transformed;
     }
   });
 
-  // Intercept user ! / !! commands
+  // 拦截用户的 ! / !! 命令
   pi.on("user_bash", (event, ctx) => {
     const original = event.command;
     const transformed = transformPythonCmd(original);
     if (transformed === original) return;
 
-    ctx.ui.notify(`[uv-python-hook] python -> uv run python`, "info");
+    ctx.ui.notify(`[python-operation-hook] python -> uv run python`, "info");
 
     const local = createLocalBashOperations();
     return {
