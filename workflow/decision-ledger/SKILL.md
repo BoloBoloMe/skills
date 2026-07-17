@@ -1,6 +1,6 @@
 ---
 name: decision-ledger
-description: 当 Spec 工作流需要记录, 变更或追踪功能级决策时, 维护 DECISIONS.md.
+description: 当需要记录, 变更或追踪功能级决策时, 维护 DECISIONS.md.
 ---
 
 开始前, 使用 `domain-awareness` skill 只读感知当前工作目录的领域模型.
