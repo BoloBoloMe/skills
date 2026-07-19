@@ -1,8 +1,8 @@
 # Skills
 
-本仓库沉淀可复用的 AI coding agent skills. `workflow/orchestrate` 是工程任务默认入口.
+本仓库沉淀可复用的 AI coding agent skills. `workflow/probe` 是大任务入口, `workflow/propose` 是常规任务入口.
 
-调用策略采用 router exception: `orchestrate` 可以读取并执行同仓库 `workflow/` 下的用户调用 skills. `domain-awareness`/`decision-ledger` 等其他必须由 skill 主动抵达的共享能力使用模型调用. 该例外不扩展到仓库外的用户调用 skills.
+调用策略: `probe`/`propose` 等 workflow skills 使用用户调用; `domain-awareness`/`decision-ledger` 等共享能力使用模型调用.
 
 ## 目录
 
@@ -22,13 +22,14 @@
 主链:
 
 ```text
-propose
+probe -> propose
   -> to-product-spec
   -> to-technical-spec
   -> to-execution-spec
   -> afk
 ```
 
+- `probe`: 当任务超出单会话容量时, 绘制 Backlog 拆分决策调查, 遍历关闭后路径清晰, 移交 propose.
 - `propose`: 在会话中关闭产品和技术设计树, 在发散点读取外部参考 `EXPLORE-DESIGN-OPTIONS.md` 比较多方案, 延迟固化到盘问结束, 可选生成 Spec 链.
 - `to-product-spec`: 把已确认产品结果写入 `PRODUCT.md`.
 - `to-technical-spec`: 把已确认技术设计写入 `TECHNICAL.md`.
@@ -77,7 +78,8 @@ project-root/
 
 ## Workflow skills
 
-- `workflow/orchestrate`: 路由工程 skills.
+- `workflow/probe`: 大任务入口 — 绘制和遍历决策调查 Backlog.
+- `workflow/probe`: 大任务入口 — 绘制和遍历决策调查 Backlog.
 - `workflow/setup-workspace`: 初始化 Spec 工作区和领域文档约定.
 - `workflow/propose`: 会话式产品/技术盘问与方案发散; 发散流程的外部参考 `EXPLORE-DESIGN-OPTIONS.md` 在同目录.
 - `workflow/to-product-spec`: Product Spec 生成.
@@ -120,5 +122,5 @@ project-root/
 - 需要生成文档或与我交流的 workflow skill, 必须在 frontmatter 后第一条调用 `domain-awareness`.
 - 强约束写入 skill, 不只存在于脚本或对话.
 - 一个意义只保留一个权威位置.
-- 修改主链名称/产物/路径时同步 `orchestrate`, `setup-workspace`, `README` 和所有引用方.
+- 修改主链名称/产物/路径时同步 `setup-workspace`, `README` 和所有引用方.
 - skill 文档站在我的第一视角: agent 是"你", 发起者是"我".

@@ -10,6 +10,7 @@ disable-model-invocation: true
 
 ## Spec 执行流
 
+- 模糊想法, 超出单会话容量, 需要拆分决策调查 -> `probe`.
 - 新想法, 产品或技术边界未定, 有代码库 -> `propose`.
 - 产品/技术决策已在会话中确认, 要生成产品基线 -> `to-product-spec`.
 - `PRODUCT.md` 已存在, 要整理技术契约 -> `to-technical-spec`.
@@ -20,7 +21,7 @@ disable-model-invocation: true
 完整主链:
 
 ```text
-propose -> to-product-spec -> to-technical-spec -> to-execution-spec -> afk
+probe -> propose -> to-product-spec -> to-technical-spec -> to-execution-spec -> afk
 ```
 
 Product/Technical/Execution Spec 和运行产物只供 AI 使用. 所有影响产品, API, 架构, 范围, 风险或验证的决定必须在 `propose` 会话中向我解释并确认. 不路由到"让我阅读文档后批准"的步骤.

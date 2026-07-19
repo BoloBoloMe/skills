@@ -21,7 +21,7 @@ disable-model-invocation: true
 
 首先阅读项目的领域术语表: 单上下文项目读取 `docs/language/UBIQUITOUS_LANGUAGE.md`; 多上下文项目先读取 `docs/language/UBIQUITOUS_LANGUAGE_MAP.md`, 再读取相关 `docs/language/contexts/*.md`. 同时阅读你正在触及区域的 ADR.
 
-然后直接探索代码库. 如果目标 agent 支持只读 scout, 可按 `orchestrate` skill 的子代理规则分派 scout 压缩上下文. 不遵循死板启发式 - 自然探索, 注意经历摩擦的地方:
+然后直接探索代码库. 如需分派只读 scout 压缩上下文, 按子代理规则委派. 不遵循死板启发式 - 自然探索, 注意经历摩擦的地方:
 
 - 理解一个概念需要在许多小模块之间跳转?
 - 模块是 **shallow** 的 - interface 几乎与 implementation 一样复杂?
