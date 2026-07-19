@@ -19,10 +19,7 @@ disable-model-invocation: true
    - diff: 解析 diff, 对每个变更文件查看变更点所在完整函数/方法体及调用者和被调用者, 识别是否触及接口/契约层 -> 输出变更文件清单 + 每文件变更摘要
    - PR: 读 PR 描述/title/关联 issue + diff 解析 + 按文件性质分类 (新增文件 -> 全量, 变更文件 -> diff) + PR 额外检查 (描述一致性/遗漏文件测试/commit 粒度)
 4. 如果 review 范围关联 feature 且存在 `DECISIONS.md`, 调用 `decision-ledger` skill, 读取决策账本和维护规则, 并在 review 计划中加入决策核对范围. 决策核对只覆盖本次 review 范围内的修改; 不盘点全仓库历史决策. 如果不存在 `DECISIONS.md`, 不做决策核对.
-5. 向我展示模块关系简图和 review 计划, 确认后将 review 计划写入产出物目录 (`review-plan.md`). 画图规则:
-   - 默认用 ASCII box 图, 可混用纯文本箭头链补充细节
-   - 交叉密集的局部生成落盘 Mermaid 文件 (路径: 产出物目录/`模块关系图.mermaid`), 主会话用 box 图展示骨架并指引我查看 Mermaid 文件
-   - 子模块过多时分层输出, 先顶层后展开
+5. 向我展示模块关系简图和 review 计划, 确认后将 review 计划写入产出物目录 (`review-plan.md`). 画图规则: 调用 `adaptive-presentation` skill, 用 HTML 载体呈现.
 
 ## 阶段 2 - 逐段走读
 
