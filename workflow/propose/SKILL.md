@@ -76,7 +76,7 @@ disable-model-invocation: true
 3. 必要时技术方向发散 (读取并执行 `EXPLORE-DESIGN-OPTIONS.md`).
 4. 选择方向.
 5. 架构和 module 责任.
-6. interface/schema/状态机, 关键流程.
+6. interface/schema/状态机, 关键流程. 仅在盘问到这一点的内容时, 调用 `codebase-design` skill, 禁止提前调用.
 7. 异常和边界处理, 安全, 性能/可观测性/可用性, 测试策略, 代码允许/禁止范围, 风险和停止条件.
 8. 遇高影响专项决定时嵌套发散 (读取并执行 `EXPLORE-DESIGN-OPTIONS.md`).
 
