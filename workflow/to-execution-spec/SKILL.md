@@ -111,7 +111,7 @@ disable-model-invocation: true
 
 ## 6. 生成 AFK 步骤文件
 
-切片确认并落盘后:
+AFK 步骤文件是为调用 skill `afk` 的另一个父会话准备的. 切片确认并落盘后:
 
 1. 读取 `references/step-gen-guide.md`.
 2. 在 `afk-running/` 根生成 `_current.md` 和 `step-01.md` 到 `step-06.md`.

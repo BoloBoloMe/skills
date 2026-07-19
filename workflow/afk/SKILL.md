@@ -52,7 +52,7 @@ system prompt 只写权威输入中没有且当前任务必需的信息. 文档�
 - **现场事实**: 当前 attempt, 工作树和 diff 来源, 已有 note/review, 已采纳或排除发现项, 已知阻塞, 可用工具与 skill. 只写父会话已验证事实.
 - **权威输入**: 指向 PRODUCT, TECHNICAL, EXECUTION, issue, DECISIONS (如存在) 和本轮产物. 输入冲突时停止, 不授权子代理改需求或决策.
 - **权限和禁止项**: worker 可改代码和测试, 但不做产品/API/架构/范围决策, 不改 Spec/DECISIONS, 不 stage. 初始 worker 不读 review; 修复 worker 只读父会话指定的 review 和发现项. reviewer 只读, 不修改/修复/stage 项目文件. 未授权时不得委派其他子代理.
-- **执行方法**: worker 默认暴露 `tdd` 并按其执行; 我选择 lazy-code 时额外暴露 `lazy-code`. reviewer 写明唯一审查维度, 检查范围和证据标准.
+- **执行方法**: worker 默认暴露 `tdd` skill 并按其执行; 我选择 lazy-code 时额外暴露 `lazy-code`. reviewer 写明唯一审查维度, 检查范围和证据标准.
 - **停止条件**: 包含 issue 停止条件. 需要改变任一 Spec/issue/必须遵守决策, 扩大范围, 触碰禁止范围, 无法验证, 缺少测试接缝且风险不可接受, 或文档与代码冲突时停止.
 - **输出契约**: 指定唯一输出路径和必含内容. worker note 包含改动入口, RED/GREEN 证据, 验证结果, 风险/阻塞, 决策偏离; 高风险操作前先刷新 note. reviewer 每个发现项包含严重度, 证据, 问题性质, 最小修复方向, 是否需我决策.
 - **完成证据**: 指定验证入口, 覆盖的 AC/TG/NFR 和应检查的 diff. 禁止伪造或省略命令结果.
