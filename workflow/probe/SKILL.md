@@ -14,7 +14,7 @@ Probe 把路径画成一张本地 markdown Backlog — 按阻塞关系组织的�
 
 ## 规划, 而非执行
 
-Probe 不直接产出决策 — 它组织 Item 的调查和关闭流程. grilling Item 调用 propose 产出决策, research Item 委派子代理产出事实, prototype Item 产出设计表达, task Item 搬开执行障碍. Backlog 清空时, 所有必要的调查, 决策, 原型和执行前置工作都已完成, 路径清晰.
+Probe 不直接产出决策 — 它组织 Item 的调查和关闭流程. grilling Item 调用 grilling 产出决策, research Item 委派子代理产出事实, prototype Item 产出设计表达, task Item 搬开执行障碍. Backlog 清空时, 所有必要的调查, 决策, 原型和执行前置工作都已完成, 路径清晰.
 
 `task` 是唯一涉及执行的 Item 类型, 但它不直接抵达目的地 — 只是搬开挡在决策前面的石头 (比如开通权限, 迁移数据, 看清 API 形状). 其余类型只做决策.
 
@@ -22,7 +22,7 @@ Probe 不直接产出决策 — 它组织 Item 的调查和关闭流程. grillin
 
 两种模式. 无论哪种, 每次会话最多关闭一个非 research Item.
 
-**绘制 Backlog**: 我带着模糊想法来. 自检 → 定目的地 → 用 propose 广度扫描 → 创建 BACKLOG.md + ITEM-NN.md + 阻塞连线图. 画图和遍历不在同一会话.
+**绘制 Backlog**: 我带着模糊想法来. 自检 → 定目的地 → 用 grilling 广度扫描 → 创建 BACKLOG.md + ITEM-NN.md + 阻塞连线图. 画图和遍历不在同一会话.
 
 **遍历 Backlog**: 我带着 BACKLOG.md 来. 加载索引 → 选前沿 Item → 认领 → 按类型分流处理 → 记录关闭 → 转化迷雾 → 停止. 我不指定 Item 时, 你取前沿第一个.
 
@@ -46,11 +46,11 @@ BACKLOG.md 的未决迷雾区段存的就是这些模糊视图 — 疑似的问�
 
 没有 BACKLOG.md 时走这条分支.
 
-1. **自检.** 这一个会话能装下全部决策吗? 能 → 直接用 propose, 不需要 Backlog. 不能 → 继续.
+1. **自检.** 这一个会话能装下全部决策吗? 能 → 直接用 grilling, 不需要 Backlog. 不能 → 继续.
    完成标准: 已判断是否需要 Backlog, 或已确认跳过.
 2. **定目的地.** 跟我确定这次 Probe 最终要找到什么. 目的地限定范围.
    完成标准: 目的地已用 1-2 句话确认.
-3. **广度扫描.** 调用 propose, 广度优先展开: 浮现开放决策, 找出第一步, 填充迷雾.
+3. **广度扫描.** 调用 grilling, 广度优先展开: 浮现开放决策, 找出第一步, 填充迷雾.
    完成标准: 至少一个 Item 可以精确表述; 其余不确定项已写入未决迷雾.
 4. **落盘.** 按 [TEMPLATES.md](TEMPLATES.md) 创建 BACKLOG.md 和 ITEM-NN.md, 画阻塞连线图.
    完成标准: BACKLOG.md 六区段完整; 每个 Item 文件头三字段正确; 连线图反映阻塞关系; 前沿列表准确.
@@ -77,12 +77,12 @@ BACKLOG.md 的未决迷雾区段存的就是这些模糊视图 — 疑似的问�
 | 类型 | 处理方式 | 模式 |
 |------|---------|------|
 | research | 委派子代理独立探索, 产出分析文件 | AFK |
-| grilling | 调用 propose 盘问, 产出 spec + decisions + 领域模型 + ADR | HITL |
+| grilling | 调用 grilling 盘问, 产出 spec + decisions + 领域模型 + ADR | HITL |
 | prototype | 跟我协作做粗糙原型 — 大纲/草稿/桩代码, 提升讨论保真度 | HITL |
 | task | AFK 就委派子代理执行, HITL 就跟我协作 | AFK/HITL |
 
 **research 完成标准**: 分析文件已写, Item 中所有考察点已被覆盖.
-**grilling 完成标准**: propose 盘问闭环, spec/decisions/领域模型/ADR 已落盘.
+**grilling 完成标准**: grilling 盘问闭环, spec/decisions/领域模型/ADR 已落盘.
 **prototype 完成标准**: 原型文件已写, 足以支撑后续决策.
 **task 完成标准**: 工作已完成, 结果事实已记录 (凭证, URL, 行号等).
 
