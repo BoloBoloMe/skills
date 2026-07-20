@@ -5,7 +5,7 @@ disable-model-invocation: true
 ---
 
 开始前, 使用 `domain-awareness` skill 只读感知当前工作目录的领域模型.
-生成 `TECHNICAL.md`, 作为当前变更的技术契约和权威索引. 文档只供 AI 使用. 本 skill 不做设计访谈, 不新增产品/API/架构/范围决策, 不要求我阅读或批准文档. 默认输入已由 `propose` 确认, `PRODUCT.md` 已存在.
+生成 `TECHNICAL.md`, 作为当前变更的技术契约和权威索引. 文档只供 AI 使用. 本 skill 不做设计访谈, 不新增产品/API/架构/范围决策, 不要求我阅读或批准文档. 默认输入已由 `deliberate` 确认, `PRODUCT.md` 已存在.
 
 ## 1. 收集输入
 
@@ -27,8 +27,8 @@ disable-model-invocation: true
 
 ## 3. 检查闭合
 
-- 产品/API/架构/范围决策缺失 -> 停止, 请我回到 `propose`.
-- `PRODUCT.md`, `DECISIONS.md`, ADR 和代码事实冲突 -> 停止, 在会话中说明证据和影响, 请我回到 `propose` 处理.
+- 产品/API/架构/范围决策缺失 -> 停止, 请我回到 `deliberate`.
+- `PRODUCT.md`, `DECISIONS.md`, ADR 和代码事实冲突 -> 停止, 在会话中说明证据和影响, 请我回到 `deliberate` 处理.
 - 只缺非阻塞事实 -> 写入待验证事实, 包含影响和验证方式.
 - 阻塞性开放问题不得写进已完成的 Technical Spec.
 

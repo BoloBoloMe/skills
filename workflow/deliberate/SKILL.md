@@ -1,6 +1,6 @@
 ---
-name: propose
-description: 处理我的提案, 盘问并关闭产品与技术决策, 可选生成 Spec.
+name: deliberate
+description: 审议并关闭产品与技术决策, 可选生成 Spec.
 disable-model-invocation: true
 ---
 
