@@ -51,7 +51,7 @@
 ### 规则
 
 - `状态`: 三种 — `待处理` (初始), `进行中` (已认领), `已关闭` (已完成)
-- `类型`: `research` (AFK), `deliberate` (HITL), `prototype` (HITL), `task` (AFK/HITL)
+- `类型`: `research`, `deliberate`, `prototype`, `task`
 - `阻塞于`: 无阻塞时写 `无`; 多项时逗号分隔
 - 答案不写入 Milestone 正文 — 写入独立产物文件 (如 `MILESTONE-NN-findings.md`), 由 ROADMAP `已关闭决策` 链接
 - 全部产物放在 `docs/changes/<feature-slug>/` 子目录下
