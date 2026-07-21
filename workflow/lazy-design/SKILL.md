@@ -1,6 +1,7 @@
 ---
 name: lazy-design
-description: 当我需要 `懒设计` 技术方案时, 提供指导.
+description: 懒设计技术方案指导.
+disable-model-invocation: true
 ---
 
 开始前, 调用 `domain-awareness` skill 只读感知当前工作目录的领域模型.

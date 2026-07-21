@@ -1,6 +1,7 @@
 ---
 name: lazy-code
-description: 当我需要 `懒代码` 实现时, 提供指导.
+description: 懒代码实现指导.
+disable-model-invocation: true
 ---
 
 开始前, 调用 `domain-awareness` skill 只读感知当前工作目录的领域模型.

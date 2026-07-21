@@ -1,6 +1,7 @@
 ---
 name: domain-modeling
-description: 当我需要固定领域术语, 维护 ubiquitous language, 记录 ADR 或同步领域模型时, 维护领域模型.
+description: 固定领域术语, 维护 ubiquitous language, 记录 ADR 与同步领域模型.
+disable-model-invocation: true
 ---
 
 开始前, 调用 `domain-awareness` skill 只读感知当前工作目录的领域模型.

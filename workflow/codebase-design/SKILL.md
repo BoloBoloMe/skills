@@ -1,6 +1,7 @@
 ---
 name: codebase-design
-description: 当我需要设计 module interface, seam, deep module 或可测试性 interface 时, 使用 codebase design 词汇.
+description: Module interface, seam, deep module 设计词汇与可测试性原则.
+disable-model-invocation: true
 ---
 
 开始前, 调用 `domain-awareness` skill 只读感知当前工作目录的领域模型.

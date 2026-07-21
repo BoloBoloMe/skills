@@ -1,6 +1,7 @@
 ---
 name: decision-ledger
-description: 当需要记录, 变更或追踪功能级决策时, 维护 DECISIONS.md.
+description: 功能级决策账本 DECISIONS.md 维护.
+disable-model-invocation: true
 ---
 
 开始前, 调用 `domain-awareness` skill 只读感知当前工作目录的领域模型.
