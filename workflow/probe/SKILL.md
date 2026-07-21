@@ -68,12 +68,12 @@ ROADMAP.md 的未决迷雾区段存的就是这些模糊视图 — 疑似的问�
 
 ### Milestone 类型处理
 
-| 类型 | 处理方式 | 模式 |
-|------|---------|------|
-| research | 委派子代理独立探索, 产出分析文件 | AFK |
-| deliberate | 停止并请我调用 `deliberate` skill 盘问; 产出 spec + decisions + 领域模型 + ADR | HITL |
-| prototype | 跟我协作做粗糙原型 — 大纲/草稿/桩代码, 提升讨论保真度 | HITL |
-| task | AFK 就委派子代理执行, HITL 就跟我协作 | AFK/HITL |
+| 类型         | 处理方式                                                            | 模式       |
+|------------|-----------------------------------------------------------------|----------|
+| research   | 委派子代理独立探索, 产出分析文件                                               | AFK      |
+| deliberate | 停止并请我调用 `deliberate` skill 盘问; 产出 spec + decisions + 领域模型 + ADR | HITL     |
+| prototype  | 跟我协作做粗糙原型 — 大纲/草稿/桩代码, 提升讨论保真度                                  | HITL     |
+| task       | AFK 就委派子代理执行, HITL 就跟我协作. 如果 AFK 任务是编码任务, 就调用 `afk` skill       | AFK/HITL |
 
 **research 完成标准**: 分析文件已写, Milestone 中所有考察点已被覆盖.
 **deliberate 完成标准**: deliberate 盘问闭环; 已确认决策已按需要写入 DECISIONS.md/领域语言/ADR; 如我选择生成 Spec, 对应 Spec 已落盘.
