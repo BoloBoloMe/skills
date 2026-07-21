@@ -1,6 +1,6 @@
 ---
 name: tdd
-description: 行为明确需要测试先行时, 使用 TDD red-green-refactor 实现循环.
+description: 当要开发的需求有明确的验证标准时, 使用 TDD 实现循环.
 ---
 
 开始前, 调用 `domain-awareness` skill 只读感知当前工作目录的领域模型.
