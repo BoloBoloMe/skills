@@ -260,7 +260,33 @@ def _clear_skills(skills_dir: Path) -> None:
             child.unlink()
 
 
-def execute_plan(plan: list[PlanItem], clear_skills_dir: Path | None = None) -> None:
+def _merge_subagent_overrides(src: Path, dst: Path) -> int:
+    """把 src 的 subagents.agentOverrides 合并到 dst settings.json.
+
+    逐 agent 整体覆盖 (源中每个 agent 的 override 对象是完整定义).
+    保留 dst 中源未提及的 agent. 写前备份 .bak.
+    返回合并的 agent 数.
+    """
+    import json
+
+    file_cfg = json.loads(src.read_text(encoding="utf-8"))
+    file_overrides = file_cfg.get("subagents", {}).get("agentOverrides", {})
+    if not file_overrides:
+        raise ValueError(f"{src} 无 subagents.agentOverrides")
+
+    settings = json.loads(dst.read_text(encoding="utf-8"))
+    settings.setdefault("subagents", {}).setdefault("agentOverrides", {})
+    settings["subagents"]["agentOverrides"].update(file_overrides)
+
+    backup = dst.with_name(dst.name + ".bak")
+    shutil.copy2(dst, backup)
+    dst.write_text(json.dumps(settings, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    print(OK(f"  \u2713 合并 {len(file_overrides)} 个 agent override → {dst}"))
+    print(OK(f"    备份: {backup}"))
+    return len(file_overrides)
+
+
+def execute_plan(plan: list[PlanItem], clear_skills_dir: Path | None = None, merge_sub: tuple[Path, Path] | None = None) -> None:
     print()
     print(Q("开始执行 ..."))
 
@@ -290,6 +316,15 @@ def execute_plan(plan: list[PlanItem], clear_skills_dir: Path | None = None) -> 
             ok_count += 1
         except Exception as e:
             print(ERR(f"  \u2717 {item.label}: {e}"))
+            fail_count += 1
+
+    if merge_sub is not None:
+        src, dst = merge_sub
+        try:
+            _merge_subagent_overrides(src, dst)
+            ok_count += 1
+        except Exception as e:
+            print(ERR(f"  \u2717 合并子代理配置失败: {e}"))
             fail_count += 1
 
     print()
@@ -382,8 +417,19 @@ def main() -> None:
         )
     )
 
+    # ── 3.5 子代理 override 合并选项 ────────────────────────────────
+    config_src = repo_root / "pi" / "pi-subagent-config-in-settings.json"
+    merge_sub = False
+    if config_src.exists():
+        print()
+        merge_sub = _ask_yn(CNF(
+            f"合并子代理 override ({SRC(str(config_src.relative_to(repo_root)))}) → {DST(str(pi_dir / 'settings.json'))}?"
+        ))
+    else:
+        print(ERR(f"\n子代理配置源不存在: {config_src}, 跳过合并选项"))
+
     # ── 4. 展示计划, 确认 ────────────────────────────────────────────
-    if not plan and not clear_skills:
+    if not plan and not clear_skills and not merge_sub:
         print()
         print(Q("没有要执行的操作, 退出."))
         return
@@ -395,6 +441,8 @@ def main() -> None:
         print(ERR(f"  [清空] 永久删除 {skills_dir} 下的全部内容"))
     for item in plan:
         print(f"  {SRC(item.label)}  →  {DST(str(item.dst))}")
+    if merge_sub:
+        print(f"  {SYNC('[合并]')} 子代理 override  →  {DST(str(pi_dir / 'settings.json'))}")
     print(Q("=" * 54))
 
     if not _ask_yn(CNF("确认执行?")):
@@ -402,7 +450,11 @@ def main() -> None:
         return
 
     # ── 5. 执行 ──────────────────────────────────────────────────────
-    execute_plan(plan, skills_dir if clear_skills else None)
+    execute_plan(
+        plan,
+        skills_dir if clear_skills else None,
+        (config_src, pi_dir / "settings.json") if merge_sub else None,
+    )
 
 
 if __name__ == "__main__":
