@@ -12,6 +12,7 @@
           "read",
           "write",
           "bash",
+          "contact_supervisor",
           "intercom",
           "resolve_skill"
         ],
@@ -33,6 +34,7 @@
           "ls",
           "bash",
           "write",
+          "contact_supervisor",
           "intercom",
           "resolve_skill"
         ],
@@ -54,6 +56,7 @@
           "ls",
           "bash",
           "write",
+          "contact_supervisor",
           "intercom",
           "resolve_skill"
         ],
@@ -63,11 +66,10 @@
       },
       "planner": {
         "model": "ai-work-zai/glm-5.2",
-        "thinking": "high",
+        "thinking": "max",
         "defaultContext": "fork",
         "fallbackModels": [
-          "ai-work-qwen/qwen3.7-max",
-          "ai-work-openai/gpt-5.5"
+          "ai-work-qwen/qwen3.7-max"
         ],
         "tools": [
           "read",
@@ -75,6 +77,7 @@
           "find",
           "ls",
           "write",
+          "contact_supervisor",
           "intercom",
           "resolve_skill"
         ],
@@ -84,11 +87,10 @@
       },
       "oracle": {
         "model": "ai-work-zai/glm-5.2",
-        "thinking": "high",
+        "thinking": "max",
         "defaultContext": "fork",
         "fallbackModels": [
-          "ai-work-qwen/qwen3.7-max",
-          "ai-work-openai/gpt-5.5"
+          "ai-work-qwen/qwen3.7-max"
         ],
         "tools": [
           "read",
@@ -96,6 +98,7 @@
           "find",
           "ls",
           "bash",
+          "contact_supervisor",
           "intercom",
           "resolve_skill"
         ],
@@ -119,6 +122,7 @@
           "edit",
           "write",
           "contact_supervisor",
+          "intercom",
           "resolve_skill"
         ],
         "systemPromptMode": "replace",
@@ -126,11 +130,10 @@
         "systemPrompt": "你是 `worker`: 实现子代理.\n\n你是单一写入线程. 你的职责是以窄而连贯的编辑执行分配的任务或已批准方向. 主代理与用户仍是决策权威.\n\n直接使用提供的工具. 先理解继承的上下文, 供给的文件, 计划与显式任务. 然后谨慎最小地实现.\n\n若任务被框架为已批准方向, oracle 交接或执行计划, 把该方向视为契约. 对照实际代码验证它, 但不悄然做出新的产品, 架构或范围决策.\n\n若实现揭示一个未批准且为安全继续所必需的决策, 暂停并通过活跃协调通道上报. 若runtime bridge instructions存在, 以其为真源, 决定联系哪个主管会话及如何协调. 需要新决策时用 `contact_supervisor` 并 `reason: \"need_decision\"`, 保持存活收到回复后再继续. 仅当额外协调有用或被明确要求时, 用 `reason: \"progress_update\"` 发送简短非阻塞进展更新. 仅当 `contact_supervisor` 不可用时回退到通用 `intercom`. 不要在最终回复末尾抛出一个需主管选择才能继续的问题.\n\n默认职责:\n- 对照实际代码验证任务或已批准方向\n- 实现最小正确改动\n- 遵循代码库现有模式\n- 可能时用适当检查验证结果\n- 被要求时保持 `progress.md` 准确\n- 清晰回报改动, 验证, 风险与下一步\n\n工作规则:\n- 优先窄而正确的改动, 而非大范围重写.\n- 不加投机脚手架或future-proofing, 除非被明确要求.\n- 不留占位代码, TODO 或悄然的范围变更.\n- `bash` 用于检查, 验证与相关测试.\n- 若有供给上下文或计划, 先读.\n- 若实现揭示已批准方向的缺口, 用 `contact_supervisor` 并 `reason: \"need_decision\"` 上报, 而非用隐式决策悄然绕过.\n- 若实现揭示未批准的产品或架构选择, 用 `contact_supervisor` 并 `reason: \"need_decision\"` 等待回复, 而非自行决定或返回一个最终二选一答案.\n- 若委派任务期望代码或文件编辑而你尚未做这些编辑, 不返回成功摘要. 做编辑, 受阻则联系主管, 或明确报告未做编辑.\n- 若通过 `contact_supervisor` 发送受阻/进展更新, 保持简短, 并仍正常返回完整结构化任务结果.\n- 不发送例行完成回执. 无需协调时正常返回完成的实现摘要.\n\n在 chain 中运行时, 预期关于以下内容的指令:\n- 先读哪些文件\n- 在何处维护进度跟踪\n- 若提供文件目标, 输出写往何处\n\n你的最终回复应遵循此形状:\n\nImplemented X.\nChanged files: Y.\nValidation: Z.\nOpen risks/questions: R.\nRecommended next step: N."
       },
       "reviewer": {
-        "model": "ai-work-openai/gpt-5.5",
-        "thinking": "high",
+        "model": "ai-work-zai/glm-5.2",
+        "thinking": "max",
         "defaultContext": "fresh",
         "fallbackModels": [
-          "ai-work-zai/glm-5.2",
           "ai-work-qwen/qwen3.7-max"
         ],
         "tools": [
@@ -141,6 +144,7 @@
           "bash",
           "edit",
           "write",
+          "contact_supervisor",
           "intercom",
           "resolve_skill"
         ],
@@ -158,6 +162,7 @@
           "edit",
           "write",
           "contact_supervisor",
+          "intercom",
           "resolve_skill"
         ],
         "systemPromptMode": "append",

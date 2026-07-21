@@ -286,7 +286,38 @@ def _merge_subagent_overrides(src: Path, dst: Path) -> int:
     return len(file_overrides)
 
 
-def execute_plan(plan: list[PlanItem], clear_skills_dir: Path | None = None, merge_sub: tuple[Path, Path] | None = None) -> None:
+def _merge_models(src: Path, dst: Path) -> int:
+    """把 src 的 providers 合并到 dst models.json.
+
+    provider 级整体覆盖 (源中每个 provider 是完整定义).
+    保留 dst 中源未提及的 provider. 写前备份 .bak.
+    返回合并的 provider 数.
+    """
+    import json
+
+    file_cfg = json.loads(src.read_text(encoding="utf-8"))
+    file_providers = file_cfg.get("providers", {})
+    if not file_providers:
+        raise ValueError(f"{src} 无 providers")
+
+    if dst.exists():
+        backup = dst.with_name(dst.name + ".bak")
+        shutil.copy2(dst, backup)
+        models = json.loads(dst.read_text(encoding="utf-8"))
+    else:
+        backup = None
+        models = {}
+    models.setdefault("providers", {})
+    models["providers"].update(file_providers)
+
+    dst.write_text(json.dumps(models, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    print(OK(f"  \u2713 合并 {len(file_providers)} 个 provider → {dst}"))
+    if backup:
+        print(OK(f"    备份: {backup}"))
+    return len(file_providers)
+
+
+def execute_plan(plan: list[PlanItem], clear_skills_dir: Path | None = None, merge_sub: tuple[Path, Path] | None = None, merge_models: tuple[Path, Path] | None = None) -> None:
     print()
     print(Q("开始执行 ..."))
 
@@ -325,6 +356,15 @@ def execute_plan(plan: list[PlanItem], clear_skills_dir: Path | None = None, mer
             ok_count += 1
         except Exception as e:
             print(ERR(f"  \u2717 合并子代理配置失败: {e}"))
+            fail_count += 1
+
+    if merge_models is not None:
+        src, dst = merge_models
+        try:
+            _merge_models(src, dst)
+            ok_count += 1
+        except Exception as e:
+            print(ERR(f"  \u2717 合并模型配置失败: {e}"))
             fail_count += 1
 
     print()
@@ -428,8 +468,19 @@ def main() -> None:
     else:
         print(ERR(f"\n子代理配置源不存在: {config_src}, 跳过合并选项"))
 
+    # ── 3.6 模型配置同步选项 ────────────────────────────────────────
+    models_src = repo_root / "pi" / "models.json"
+    merge_models = False
+    if models_src.exists():
+        print()
+        merge_models = _ask_yn(CNF(
+            f"同步模型配置 ({SRC(str(models_src.relative_to(repo_root)))}) → {DST(str(pi_dir / 'models.json'))}? (provider 级覆盖, 写前备份)"
+        ))
+    else:
+        print(ERR(f"\n模型配置源不存在: {models_src}, 跳过同步选项"))
+
     # ── 4. 展示计划, 确认 ────────────────────────────────────────────
-    if not plan and not clear_skills and not merge_sub:
+    if not plan and not clear_skills and not merge_sub and not merge_models:
         print()
         print(Q("没有要执行的操作, 退出."))
         return
@@ -443,6 +494,8 @@ def main() -> None:
         print(f"  {SRC(item.label)}  →  {DST(str(item.dst))}")
     if merge_sub:
         print(f"  {SYNC('[合并]')} 子代理 override  →  {DST(str(pi_dir / 'settings.json'))}")
+    if merge_models:
+        print(f"  {SYNC('[合并]')} 模型 providers  →  {DST(str(pi_dir / 'models.json'))}")
     print(Q("=" * 54))
 
     if not _ask_yn(CNF("确认执行?")):
@@ -454,6 +507,7 @@ def main() -> None:
         plan,
         skills_dir if clear_skills else None,
         (config_src, pi_dir / "settings.json") if merge_sub else None,
+        (models_src, pi_dir / "models.json") if merge_models else None,
     )
 
 

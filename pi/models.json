@@ -5,10 +5,12 @@
       "api": "openai-responses",
       "apiKey": "$CHANG_ZHI_AI_WORK",
       "authHeader": true,
+      "compat": {
+        "supportsToolSearch": true
+      },
       "models": [
         {
-          "id": "gpt-5.6-sol",
-          "name": "GPT-5.6 Sol",
+          "id": "gpt-5.5",
           "reasoning": true,
           "thinkingLevelMap": {
             "off": "none",
@@ -32,6 +34,32 @@
           }
         },
         {
+          "id": "gpt-5.6-sol",
+          "name": "GPT-5.6 Sol",
+          "reasoning": true,
+          "thinkingLevelMap": {
+            "off": "none",
+            "minimal": "minimal",
+            "low": "low",
+            "medium": "medium",
+            "high": "high",
+            "xhigh": "xhigh",
+            "max": "max"
+          },
+          "input": [
+            "text",
+            "image"
+          ],
+          "contextWindow": 272000,
+          "maxTokens": 128000,
+          "cost": {
+            "input": 5,
+            "output": 30,
+            "cacheRead": 0.5,
+            "cacheWrite": 6.25
+          }
+        },
+        {
           "id": "gpt-5.6-terra",
           "name": "GPT-5.6 Terra",
           "reasoning": true,
@@ -41,7 +69,8 @@
             "low": "low",
             "medium": "medium",
             "high": "high",
-            "xhigh": "xhigh"
+            "xhigh": "xhigh",
+            "max": "max"
           },
           "input": [
             "text",
@@ -53,7 +82,7 @@
             "input": 2.5,
             "output": 15,
             "cacheRead": 0.25,
-            "cacheWrite": 0
+            "cacheWrite": 3.125
           }
         },
         {
@@ -66,7 +95,8 @@
             "low": "low",
             "medium": "medium",
             "high": "high",
-            "xhigh": "xhigh"
+            "xhigh": "xhigh",
+            "max": "max"
           },
           "input": [
             "text",
@@ -78,7 +108,7 @@
             "input": 1,
             "output": 6,
             "cacheRead": 0.1,
-            "cacheWrite": 0
+            "cacheWrite": 1.25
           }
         }
       ]
@@ -93,19 +123,15 @@
         "supportsDeveloperRole": false,
         "supportsReasoningEffort": false,
         "maxTokensField": "max_tokens",
-        "supportsStrictMode": false
+        "supportsStrictMode": false,
+        "thinkingFormat": "deepseek"
       },
       "models": [
         {
           "id": "kimi-k2.7-code",
           "reasoning": true,
           "thinkingLevelMap": {
-            "off": null,
-            "minimal": null,
-            "low": null,
-            "medium": "enabled",
-            "high": "enabled",
-            "xhigh": "enabled"
+            "off": null
           },
           "input": [
             "text",
@@ -130,7 +156,7 @@
       "compat": {
         "supportsStore": false,
         "supportsDeveloperRole": false,
-        "supportsReasoningEffort": true,
+        "supportsReasoningEffort": false,
         "supportsUsageInStreaming": true,
         "maxTokensField": "max_tokens",
         "supportsStrictMode": false,
@@ -143,12 +169,12 @@
           "name": "DeepSeek V4 Pro",
           "reasoning": true,
           "thinkingLevelMap": {
-            "off": "disabled",
-            "minimal": "low",
-            "low": "medium",
-            "medium": "high",
-            "high": "xhigh",
-            "xhigh": "max"
+            "off": null,
+            "minimal": null,
+            "low": null,
+            "medium": null,
+            "high": "high",
+            "max": "max"
           },
           "input": [
             "text"
@@ -167,12 +193,12 @@
           "name": "DeepSeek V4 Flash",
           "reasoning": true,
           "thinkingLevelMap": {
-            "off": "disabled",
-            "minimal": "low",
-            "low": "medium",
-            "medium": "high",
-            "high": "xhigh",
-            "xhigh": "max"
+            "off": null,
+            "minimal": null,
+            "low": null,
+            "medium": null,
+            "high": "high",
+            "max": "max"
           },
           "input": [
             "text"
@@ -182,7 +208,7 @@
           "cost": {
             "input": 0.14,
             "output": 0.28,
-            "cacheRead": 0.028,
+            "cacheRead": 0.0028,
             "cacheWrite": 0
           }
         }
@@ -212,7 +238,8 @@
             "low": null,
             "medium": "true",
             "high": "true",
-            "xhigh": "true"
+            "xhigh": "true",
+            "max": "true"
           },
           "input": [
             "text"
@@ -236,10 +263,11 @@
       "compat": {
         "supportsStore": false,
         "supportsDeveloperRole": false,
-        "supportsReasoningEffort": false,
+        "supportsReasoningEffort": true,
         "maxTokensField": "max_tokens",
         "supportsStrictMode": false,
-        "thinkingFormat": "zai"
+        "thinkingFormat": "zai",
+        "zaiToolStream": true
       },
       "models": [
         {
@@ -247,18 +275,19 @@
           "name": "GLM 5.2",
           "reasoning": true,
           "thinkingLevelMap": {
-            "off": "disabled",
-            "minimal": null,
-            "low": null,
-            "medium": "enabled",
-            "high": "enabled",
-            "xhigh": "enabled"
+            "off": "none",
+            "minimal": "minimal",
+            "low": "high",
+            "medium": "high",
+            "high": "high",
+            "xhigh": "xhigh",
+            "max": "max"
           },
           "input": [
             "text"
           ],
           "contextWindow": 1000000,
-          "maxTokens": 128000,
+          "maxTokens": 131072,
           "cost": {
             "input": 1.4,
             "output": 4.4,
