@@ -151,4 +151,6 @@ disable-model-invocation: true
 
 ## Spec 生成
 
-盘问固化结束后, 询问我是否生成 Spec. 如果我说不用, 就跳过; 如果我说要, 那么请我依次调用 `to-product-spec` skill, `to-technical-spec` skill, `to-execution-spec` skill; 一个完成后, 再请我调用下一个.
+盘问固化结束后, 询问我是否生成 Spec.
+如果我说不用, 就跳过本节内容;
+如果我说要, 那么你要依次调用 `to-product-spec` skill , `to-technical-spec` skill. 接着你判断: 现在不是在 `probe` skill 的流程内? 如果是那么 spec 生成完毕, 如果不是那么你还要继续调用 `to-execution-spec` skill.
