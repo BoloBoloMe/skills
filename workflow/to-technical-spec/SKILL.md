@@ -4,7 +4,7 @@ description: 将已确认设计整理为 AI 使用的 Technical Spec.
 disable-model-invocation: true
 ---
 
-开始前, 使用 `domain-awareness` skill 只读感知当前工作目录的领域模型.
+开始前, 调用 `domain-awareness` skill 只读感知当前工作目录的领域模型.
 生成 `TECHNICAL.md`, 作为当前变更的技术契约和权威索引. 文档只供 AI 使用. 本 skill 不做设计访谈, 不新增产品/API/架构/范围决策, 不要求我阅读或批准文档. 默认输入已由 `deliberate` 确认, `PRODUCT.md` 已存在.
 
 ## 1. 收集输入

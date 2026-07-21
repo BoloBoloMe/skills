@@ -4,8 +4,8 @@ description: 审议并关闭产品与技术决策, 可选生成 Spec.
 disable-model-invocation: true
 ---
 
-开始前, 使用 `domain-awareness` skill 只读感知当前工作目录的领域模型, 使用 `adaptive-presentation` skill 了解回复形式.
-用 `grilling` skill 盘问我, 盘问中你的每次回答都要按信息形状选择回复形式, 直到盘问会话结束为止. 遵守 `grilling` 的认知校准和盲区扫描规则.
+开始前, 调用 `domain-awareness` skill 只读感知当前工作目录的领域模型, 调用 `adaptive-presentation` skill 了解回复形式.
+调用 `grilling` skill 盘问我, 盘问中你的每次回答都要按信息形状选择回复形式, 直到盘问会话结束为止. 遵守 `grilling` 的认知校准和盲区扫描规则.
 文档只供后续 AI 使用. 我不会通过阅读文档补齐上下文或批准方案. 每项影响产品, API, 架构, 范围, 风险或验证的决定, 必须在会话中向我说明含义, 影响和你的推荐, 再取得明确确认. 不要让我阅读生成文档后再确认.
 
 ## 建议委派给子代理完成的任务
@@ -23,9 +23,9 @@ disable-model-invocation: true
 
 父会话按 `adaptive-presentation` 路由决定用 HTML 回复时, 委派子代理生成 HTML. HTML 是写入临时目录的展示副产物, 非项目内容.
 
-- 子代理与调用: `delegate`, 逐调用覆盖 `model: ai-work-deepseek/deepseek-v4-pro`, `context: fork`; 同步, 禁止 `异步 + 等待` 假同步.
+- 子代理与调用: 按 adaptive-presentation 的 HTML 路由生成临时展示副产物; 路径由当前运行时解析并返回可打开的位置. 同步, 禁止 `异步 + 等待` 假同步.
 - 内容来源: 子代理从 fork 历史自行决定写入 HTML 的内容, 按 `HTML-GUIDE` 过滤凭据, 最小化原始日志/业务数据.
-- 父会话在 task 传入 `HTML-GUIDE.md` 和 `browser_session.py` 的绝对路径.
+- 父会话在 task 传入 `HTML-GUIDE.md` 和 `browser_session.py` 的路径, 由当前运行时解析.
 - 子代理职责: 写自包含 HTML, 调 `browser_session.py open`, 返回结构化 `{绝对路径, session-dir, 一句话说明}`.
 - 父会话职责: 在 chat 给本地路径链接 + 一句话说明 + 自己的待确认问题. 关键结论和待确认决策仍须在 chat 中说明.
 - 降级: 一次修正重试子代理; 仍失败则父会话回退到 Markdown 表格或 chat 文字, 不自行生成 HTML, 不阻塞盘问.
@@ -151,4 +151,4 @@ disable-model-invocation: true
 
 ## Spec 生成
 
-盘问固化结束后, 询问我是否生成 Spec. 如果我说不用, 就跳过; 如果我说要, 那么依次执行后面这些 skills, 一个完成后, 再执行下一个: to-product-spec, to-technical-spec, to-execution-spec.
+盘问固化结束后, 询问我是否生成 Spec. 如果我说不用, 就跳过; 如果我说要, 那么请我依次调用 `to-product-spec` skill, `to-technical-spec` skill, `to-execution-spec` skill; 一个完成后, 再请我调用下一个.

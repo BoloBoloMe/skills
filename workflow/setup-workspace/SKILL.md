@@ -4,7 +4,7 @@ description: 初始化 Spec 工作区和领域文档约定.
 disable-model-invocation: true
 ---
 
-开始前, 使用 `domain-awareness` skill 只读感知当前工作目录的领域模型.
+开始前, 调用 `domain-awareness` skill 只读感知当前工作目录的领域模型.
 
 # 设置工作区
 
@@ -27,7 +27,7 @@ disable-model-invocation: true
 - `docs/language/UBIQUITOUS_LANGUAGE_MAP.md` 和 `docs/language/contexts/`.
 - `docs/adr/` 和 `docs/adr/contexts/`.
 
-完成标准: 已知道哪些路径存在, 当前仓库是否明显包含多个 bounded contexts, 以及写入是否会覆盖用户内容.
+完成标准: 已知道哪些路径存在, 当前仓库是否明显包含多个 bounded contexts, 以及写入是否会覆盖已有内容.
 
 ## 2. 会话确认领域布局
 
@@ -63,7 +63,7 @@ disable-model-invocation: true
 - `issue-tracker-local.md` -> `docs/agents/issue-tracker.md`.
 - `domain.md` -> `docs/agents/domain.md`, 按已确认布局替换对应内容.
 
-完成标准: `AGENTS.md` 只有一个 Spec 工作区区块; 两个 `docs/agents` 文件存在; 路径和所选领域布局一致; 未覆盖无关用户内容.
+完成标准: `AGENTS.md` 只有一个 Spec 工作区区块; 两个 `docs/agents` 文件存在; 路径和所选领域布局一致; 未覆盖无关已有内容.
 
 ## 4. 会话交付
 

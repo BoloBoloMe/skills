@@ -4,14 +4,14 @@ description: 将已确认产品方案整理为 AI 使用的 Product Spec.
 disable-model-invocation: true
 ---
 
-开始前, 使用 `domain-awareness` skill 只读感知当前工作目录的领域模型.
+开始前, 调用 `domain-awareness` skill 只读感知当前工作目录的领域模型.
 
 生成 `PRODUCT.md`, 作为当前变更的产品结果基线. 文档只供 AI 使用. 本 skill 不做需求访谈, 不新增产品决策, 不要求我阅读或批准文档. 默认输入已由 `deliberate` 在会话中确认.
 
 ## 1. 收集输入
 
 读取当前对话, 我提供的材料, 原型产物, `DECISIONS.md` (如存在) 和相关既有文档. 输出固定为 `docs/changes/<feature-slug>/PRODUCT.md`, `<feature-slug>` 从功能标题推断.
-完成标准: 已确定唯一 feature 和输出路径; 每项产品结论都能追溯到会话, 用户材料或当前有效决策.
+完成标准: 已确定唯一 feature 和输出路径; 每项产品结论都能追溯到会话, 我提供的材料或当前有效决策.
 
 ## 2. 检查产品闭合
 

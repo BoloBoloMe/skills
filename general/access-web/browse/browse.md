@@ -1,6 +1,6 @@
 # 交互浏览
 
-基于 Playwright 驱动 Chromium 的语义化浏览器操作. 浏览器以**脱离式子进程**启动, 绑定当前 pi 会话 (由 cwd 派生的 session-key 决定). 首次调用时懒启动, 工具进程退出后 Chromium 仍然存活, 同一会话内的后续工具调用自动复用同一浏览器、profile 与登录态.
+基于 Playwright 驱动 Chromium 的语义化浏览器操作. 浏览器以**脱离式子进程**启动, 绑定当前 pi 会话 (由 cwd 派生的 session-key 决定). 首次调用时懒启动, 工具进程退出后 Chromium 仍然存活, 同一会话内的后续工具调用自动复用同一浏览器, profile 与登录态.
 
 **关键**: 同一工作目录共享同一个浏览器会话; 不同工作目录相互隔离. 整个会话只有一个浏览器窗口/一个默认标签页, `navigate` 在当前标签页跳转. 只有需要同时对比两个不同页面时才开新标签 (极少). 默认使用 `headless` 模式; 设置环境变量 `BROWSER_HEADED=true` 可切换到 headed 模式, 登录弹窗由人类操作.
 
@@ -11,7 +11,7 @@
 - `session-key = sha256(canonicalize(cwd))[:16]`, 基于当前工作目录计算, 同 cwd 共享, 不同 cwd 隔离.
 - 首次调用任意操作时, 以 `subprocess.Popen` 脱离式启动 Chromium (`--user-data-dir` + `--remote-debugging-port`), 并写入 `browser.json` 元数据.
 - 之后无论工具进程是否退出, Chromium 继续在后台运行. 新的工具进程通过 CDP (`connect_over_cdp`) 连接并复用.
-- 登录态、cookie、localStorage 等保存在 profile 中, 会话内保持, 不必重复登录.
+- 登录态, cookie, localStorage 等保存在 profile 中, 会话内保持, 不必重复登录.
 - 若 Chromium 被外部杀死, 下次调用时会检测到 CDP 端口不可用, 自动使用同一 profile 重新启动 (自愈), 登录态仍然保留.
 
 ### 产物路径
@@ -129,7 +129,7 @@ stop_browser_session() -> None
 cleanup_browser_session() -> None
 ```
 
-先执行 `stop_browser_session`, 然后彻底删除 `tempfile.gettempdir()/access-web/<session-key>/` 目录 (profile、metadata、产物全部清理). 用于完全重置会话, 下次调用相当于全新启动.
+先执行 `stop_browser_session`, 然后彻底删除 `tempfile.gettempdir()/access-web/<session-key>/` 目录 (profile, metadata, 产物全部清理). 用于完全重置会话, 下次调用相当于全新启动.
 
 ### status
 
@@ -137,7 +137,7 @@ cleanup_browser_session() -> None
 status() -> StatusResult
 ```
 
-返回当前会话状态, `alive` 字段通过 **pid + CDP 端口双检**判断浏览器是否真正可用. 不自动截图, 不调用 `bring_to_front`.
+返回当前会话状态, `alive` 字段通过 **pid + CDP 端口双检**判断浏览器是否真正可用. 不自动截图.
 
 返回字段:
 
@@ -167,18 +167,9 @@ cookies() -> CookiesResult
 - 默认 30 秒超时, 参数可覆盖.
 - 失败返回 `success=False` + `error`, 不抛异常.
 - 仅依赖 `playwright` (sync API). Python >= 3.9.
-- 测试: `cd browse && PYTHONPATH=. pytest tests/ -q` (需先 `python -m playwright install chromium`).
+- 测试: `uv run python -m pytest tests/ -q` (需先 `uv run python -m playwright install chromium`).
 
-## 范围外 (P2 / 不做)
-
-以下功能本次不做, 后续可能单独规划:
-
-- Grafana/Loki 专用查询辅助函数、批量 trace 查询模板.
-- 跨操作系统重启保持登录态 (profile 在临时目录, 重启后丢失).
-- `bring_to_front` / 自动截图.
-- `page_text` / `selector_text` 等专用文本提取 (可用 `evaluate_js` 替代).
-- 独立的 `doctor` 命令.
-- `cleanup --older-than` 等自动清理策略.
+可用能力以上方函数表为准.
 
 ## 完成标准
 

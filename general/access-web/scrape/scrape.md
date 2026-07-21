@@ -10,19 +10,19 @@
 
 ```bash
 # 提取网页主要正文
-python scrape/scripts/scrape.py browse https://example.com
+uv run python scrape/scripts/scrape.py browse https://example.com
 
 # 整页 HTML 转 Markdown
-python scrape/scripts/scrape.py browse https://example.com --mode full
+uv run python scrape/scripts/scrape.py browse https://example.com --mode full
 
 # 返回原始 HTML / 文本
-python scrape/scripts/scrape.py browse https://example.com --mode raw
+uv run python scrape/scripts/scrape.py browse https://example.com --mode raw
 
 # 搜索互联网
-python scrape/scripts/scrape.py search "python urllib" -n 5
+uv run python scrape/scripts/scrape.py search "python urllib" -n 5
 
 # 下载文件
-python scrape/scripts/scrape.py download https://example.com/logo.png ./downloads/logo.png
+uv run python scrape/scripts/scrape.py download https://example.com/logo.png ./downloads/logo.png
 ```
 
 ## 工作流
@@ -40,7 +40,7 @@ python scrape/scripts/scrape.py download https://example.com/logo.png ./download
 ### `browse <url>`
 
 ```bash
-python scrape/scripts/scrape.py browse https://example.com --mode extract --max-chars 12000
+uv run python scrape/scripts/scrape.py browse https://example.com --mode extract --max-chars 12000
 ```
 
 输出核心字段:
@@ -64,13 +64,13 @@ python scrape/scripts/scrape.py browse https://example.com --mode extract --max-
 ### `search <query> [-n 10]`
 
 ```bash
-python scrape/scripts/scrape.py search "python urllib" -n 5
+uv run python scrape/scripts/scrape.py search "python urllib" -n 5
 ```
 
 ### `download <url> [path]`
 
 ```bash
-python scrape/scripts/scrape.py download https://example.com/logo.png ./downloads/logo.png
+uv run python scrape/scripts/scrape.py download https://example.com/logo.png ./downloads/logo.png
 ```
 
 ## 结果质量规则

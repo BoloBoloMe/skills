@@ -1,6 +1,6 @@
 ---
 name: explain-diff
-description: 当需要为代码变更/diff/分支/PR 生成交互式解释, 输出为自包含 HTML 文件时使用.
+description: 代码变更/diff/分支/PR 的交互式 HTML 解释流程.
 disable-model-invocation: true
 ---
 
@@ -15,7 +15,7 @@ disable-model-invocation: true
 
 格式要求:
 
-- 输出单个自包含 HTML 文件, 内嵌 CSS 和 JavaScript. 整页为连续长页面, 含章节标题和目录. 顶层结构禁用 tab 切换. 建议添加基础响应式样式, 手机可读. 将文件放到当前系统环境中的临时目录. 文件名始终以当天日期 `YYYY-MM-DD-` 开头, 便于按时间排序且不入版本控制. 例如 (Linux): /tmp/2026-01-12-explanation-<slug>.html
+- 输出单个自包含 HTML 文件, 内嵌 CSS 和 JavaScript. 整页为连续长页面, 含章节标题和目录. 顶层结构禁用 tab 切换. 建议添加基础响应式样式, 手机可读. 将文件放到当前系统环境中的临时目录. 文件名始终以当天日期 `YYYY-MM-DD-` 开头, 便于按时间排序且不入版本控制. 例如 <system-temp-dir>/YYYY-MM-DD-explanation-<slug>.html
 - 以 Martin Kleppmann 的清晰度和流畅感写作, 引人入胜, 经典风格. 章节间过渡平滑自然.
 - 图表建议: 选取少量图表族, 在整个解释中复用以说明各种场景. 常用图表类型:
   - 极度简化的应用 UI 示意图, 用于解释 UI 变更.

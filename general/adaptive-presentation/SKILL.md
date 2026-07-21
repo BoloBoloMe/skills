@@ -1,7 +1,6 @@
 ---
 name: adaptive-presentation
-description: 按信息形状选择回复形式.
-disable-model-invocation: true
+description: 当你要向我展示信息, 我要求可视化, 或我说禁用/恢复自动可视化时, 按信息形状选择回复形式.
 ---
 
 本 skill 是展示层, 不改变调用方工作流, 决策顺序或确认规则.
@@ -62,7 +61,7 @@ presentation_session_dir: absolute path | absent
 2. `presentation_session_dir` 缺失或目录不存在时, 用 `tempfile.mkdtemp(prefix="pi-presentation-")` 创建.
 3. 过滤凭据, 最小化原始日志/业务数据, 写入自包含 HTML 含 `window.__PRESENTATION_STATE__`.
 4. 语义化不重复文件名, 新版本不覆盖旧版本.
-5. `python <helper> open <session-dir> <html-file>`.
+5. `uv run python <helper> open <session-dir> <html-file>`.
 6. 成功时在 chat 给出: 本地绝对路径链接, 一句话说明展示内容, 待我观察/回答的具体问题. 关键结论和待确认决策仍须在 chat 中说明.
 7. 失败时提供本地绝对路径链接和 chat 摘要, 继续原工作流.
 
@@ -71,7 +70,7 @@ presentation_session_dir: absolute path | absent
 收到我的回复后, 只有页面含交互且 DOM 状态对当前反馈有帮助时才调用:
 
 ```text
-python <helper> state <session-dir>
+uv run python <helper> state <session-dir>
 ```
 
 - 合并 DOM 状态和 chat; 冲突时以 chat 为准.
@@ -81,7 +80,7 @@ python <helper> state <session-dir>
 ### 检查浏览器存活
 
 ```text
-python <helper> status <session-dir>
+uv run python <helper> status <session-dir>
 ```
 
 - `alive: false` 时不触发浏览器启动.

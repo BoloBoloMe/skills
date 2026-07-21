@@ -3,7 +3,7 @@ name: decision-ledger
 description: 当需要记录, 变更或追踪功能级决策时, 维护 DECISIONS.md.
 ---
 
-开始前, 使用 `domain-awareness` skill 只读感知当前工作目录的领域模型.
+开始前, 调用 `domain-awareness` skill 只读感知当前工作目录的领域模型.
 
 # 决策账本
 

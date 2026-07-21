@@ -20,6 +20,10 @@ _避免_: Bill, payment request
 **Customer**:
 下订单的人或组织.
 _避免_: Client, buyer, account
+
+## 示例对话
+
+{开发者和领域专家之间的对话, 展示术语如何自然互动, 并澄清相关概念之间的边界.}
 ```
 
 ## 规则

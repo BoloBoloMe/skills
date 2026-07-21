@@ -3,7 +3,7 @@ name: lazy-design
 description: 当我需要 `懒设计` 技术方案时, 提供指导.
 ---
 
-开始前, 使用 `domain-awareness` skill 只读感知当前工作目录的领域模型.
+开始前, 调用 `domain-awareness` skill 只读感知当前工作目录的领域模型.
 
 # 设计品味
 

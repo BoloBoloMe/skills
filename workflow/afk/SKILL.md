@@ -4,7 +4,7 @@ description: 按已确认 Execution Spec 自动实现, 审查和验证 issues.
 disable-model-invocation: true
 ---
 
-开始前, 使用 `domain-awareness` skill 只读感知当前工作目录的领域模型.
+开始前, 调用 `domain-awareness` skill 只读感知当前工作目录的领域模型.
 
 # AFK controller
 
@@ -20,7 +20,7 @@ disable-model-invocation: true
 - 任务不要求父会话直接写生产或测试代码.
 - lazy-code 选择已确定. 我未说明时, 在会话中问"是否使用 lazy-code?", 并说明你的推荐.
 
-任一不满足则停止并在会话中报告缺口. 无可用子代理时不降级为父会话编码, 请我切换到 `tdd`.
+任一不满足则停止并在会话中报告缺口. 无可用子代理时不降级为父会话编码, 调用 `tdd` skill.
 
 执行前, 在会话中用简短语言告诉我本轮将执行的 issue, 可观察结果, 主要代码边界, 验证方式和最高风险, 然后问"是否执行?". 不让我阅读 Spec 或 issue 后再决定.
 

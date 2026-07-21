@@ -6,7 +6,7 @@ disable-model-invocation: true
 
 你的任务是把已有 skill 翻译/汉化/适配. 不是从零设计新 skill (从零设计时调用 `write-a-skill` skill).
 
-先调用 `write-a-skill` 理解 skill 编写原则. 本文使用 write-a-skill 中的术语: **重复**, **空操作**, **上下文负载** 等.
+先读 `write-a-skill` 的 SKILL.md 理解 skill 编写原则. 本文使用 write-a-skill 中的术语: **重复**, **空操作**, **上下文负载** 等.
 
 完成标准 (全程):
 - 源 skill 路径和目标 skill 路径已确认

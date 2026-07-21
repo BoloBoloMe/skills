@@ -1,7 +1,6 @@
 ---
 name: explore-repo
-description: 当需要探索远程 git 仓库, 并且你知道仓库的地址时使用.
-disable-model-invocation: true
+description: 远程 git 仓库探索流程.
 ---
 
 # explore-repo

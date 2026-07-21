@@ -41,7 +41,7 @@ disable-model-invocation: true
 4. 根据使命和学习记录判断我的最近发展区. 若我点名了要学的内容, 仍要检查它是否过宽或脱离使命.
 5. 先复用 `assets/` 中已有组件. 需要新组件时写入 `assets/`, 再从 lesson/reference 链接.
 6. 创建或更新 lesson/reference/resources/glossary/learning-records. 学习记录只在有证据显示我已经理解时写入.
-7. 如果可能, 用 CLI 打开新 lesson, 例如 `python -m webbrowser lessons/0001-example.html`.
+7. 如果可能, 用 CLI 打开新 lesson, 例如 `uv run python -m webbrowser lessons/0001-example.html`.
 
 完成标准: 本轮结束时说明新建/更新了哪些路径, lesson 的单一学习目标, 主要来源, 下次建议.
 

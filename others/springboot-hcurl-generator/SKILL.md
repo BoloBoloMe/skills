@@ -24,7 +24,7 @@ disable-model-invocation: true
 
 ## 使用时机
 
-当用户要求“根据 Controller 生成 hcurl / hurl / 接口脚本 / 脚本包 / 接口测试样例”时使用本技能。
+当我要求“根据 Controller 生成 hcurl / hurl / 接口脚本 / 脚本包 / 接口测试样例”时使用本技能。
 
 ## 输入确认
 
@@ -32,7 +32,7 @@ disable-model-invocation: true
 
 1. Spring Boot 源码目录，默认从当前目录递归查找 `src/main/java`。
 2. 输出根目录，默认当前目录。
-3. 脚本包项目名，默认取模块目录名；若不确定，使用用户给出的业务名。
+3. 脚本包项目名，默认取模块目录名；若不确定，使用我给出的业务名。
 4. 是否覆盖已有 `.hcurl`，默认不覆盖，只新增缺失文件。
 
 ## Controller 识别
@@ -154,7 +154,7 @@ token=replace-me
 README 必须简短包含：
 
 - 脚本包结构
-- `baseUrl`、`token` 变量说明
+- `baseUrl`, `token` 变量说明
 - hurl 原生命令
 - 若存在 `run-hurl.ps1`，给出执行示例
 - 说明示例值需替换为真实测试数据
@@ -162,11 +162,11 @@ README 必须简短包含：
 ## 执行约束
 
 - 生成前先列出将新增/覆盖的文件清单。
-- 默认不覆盖已有 `.hcurl`；需要覆盖时必须得到用户确认。
-- 不把真实 token、密钥、生产域名写入脚本。
+- 默认不覆盖已有 `.hcurl`；需要覆盖时必须得到我确认。
+- 不把真实 token, 密钥, 生产域名写入脚本。
 - 每个 Controller 一个目录，每个 Controller 方法一个 `.hcurl` 文件。
 - 文件名使用 Java 方法名；重名时追加短路径或序号避免覆盖。
-- 生成完成后汇总 Controller 数、方法脚本数、跳过数、输出路径。
+- 生成完成后汇总 Controller 数, 方法脚本数, 跳过数, 输出路径。
 
 ## 生成后校验
 

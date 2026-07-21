@@ -44,7 +44,7 @@
 
 ## 子代理验证
 
-每次发散必须先 `subagent({action:"list"})` 动态发现可用 agent. 默认至少两个独立 child session:
+每次发散必须先动态发现可用子代理. 默认至少两个独立 child session:
 
 | 角色 | 职责 | context |
 |---|---|---|
@@ -55,20 +55,9 @@ agent 名称动态选取 (优先 `scout`/`researcher`/`context-builder` 做事�
 
 ### 调用约束
 
-首轮使用 top-level parallel tasks:
+首轮并行派发两个独立只读角色: 事实探索者 (只读验证全部候选, 禁止修改项目文件) 和独立批评者 (只读问题/约束/标准并独立发散, 禁止修改项目文件). 两者使用 fresh context.
 
-```typescript
-subagent({
-  tasks: [
-    { agent: "<事实探索者>", task: "...只读验证全部候选. 禁止修改项目文件.", output: false, progress: false },
-    { agent: "<独立批评者>", task: "...只读问题/约束/标准并独立发散. 禁止修改项目文件.", output: false, progress: false }
-  ],
-  context: "fresh",
-  async: true
-})
-```
-
-- 你无独立工作时调用 `wait()` 等待, 不结束 turn.
+- 无独立工作时等待子代理完成, 不结束 turn.
 - 批评者第二轮通过 run id + child index `resume` 获取候选并做对照批评.
 - 不写相对项目输出路径; 报告只留 subagent runtime artifacts.
 - 保持 agent 动态发现, 不硬编码 agent 名称.
@@ -101,7 +90,7 @@ subagent({
 
 1. 原 child resume 恢复, 最多 1 次.
 2. 恢复失败则用替代 agent 重建, 最多 1 次.
-3. 疑似全局故障先执行 `subagent({action:"doctor"})`, 避免无意义重试.
+3. 疑似全局故障时执行当前运行时的子代理健康检查, 避免无意义重试.
 4. 仍失败 -> 你降级评估.
 
 降级时保留已成功子代理的证据. 降级最多给可行懒设计基线 + 一个实质不同的最佳常规方案, 不强凑. 明示验证缺口, 我显式接受后才能继续.

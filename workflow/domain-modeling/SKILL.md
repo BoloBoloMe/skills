@@ -1,9 +1,9 @@
 ---
 name: domain-modeling
-description: 领域模型维护. 当我需要固定领域术语, 维护 ubiquitous language, 记录 ADR 或同步领域模型时.
+description: 当我需要固定领域术语, 维护 ubiquitous language, 记录 ADR 或同步领域模型时, 维护领域模型.
 ---
 
-开始前, 使用 `domain-awareness` skill 只读感知当前工作目录的领域模型.
+开始前, 调用 `domain-awareness` skill 只读感知当前工作目录的领域模型.
 
 # Domain Modeling
 
@@ -50,21 +50,21 @@ project-root/
 
 ### 对照领域语言挑战
 
-当用户使用的术语与既有领域语言冲突时, 立即指出. 示例: "你的词汇表把 cancellation 定义为 X, 但你现在像是在说 Y. 到底是哪一个?"
+当我使用的术语与既有领域语言冲突时, 立即指出. 示例: "你的词汇表把 cancellation 定义为 X, 但你现在像是在说 Y. 到底是哪一个?"
 
 单上下文项目对照 `docs/language/UBIQUITOUS_LANGUAGE.md`. 多上下文项目先读 `docs/language/UBIQUITOUS_LANGUAGE_MAP.md`, 再对照相关 `docs/language/contexts/*.md`.
 
 ### 打磨模糊语言
 
-当用户使用含糊或过载术语时, 提出精确规范术语. 示例: "你说 account. 是指 Customer 还是 User? 它们是不同概念."
+当我使用含糊或过载术语时, 提出精确规范术语. 示例: "你说 account. 是指 Customer 还是 User? 它们是不同概念."
 
 ### 讨论具体场景
 
-讨论领域关系时, 用具体场景压力测试. 主动制造边缘场景, 迫使用户明确概念边界.
+讨论领域关系时, 用具体场景压力测试. 主动制造边缘场景, 迫使我明确概念边界.
 
 ### 与代码交叉引用
 
-当用户说明某个东西如何工作时, 检查代码是否一致. 发现矛盾立即指出. 示例: "代码会取消整个 Order, 但你刚才说可以部分取消. 哪个是事实?"
+当我说明某个东西如何工作时, 检查代码是否一致. 发现矛盾立即指出. 示例: "代码会取消整个 Order, 但你刚才说可以部分取消. 哪个是事实?"
 
 ### 内联更新领域语言
 
@@ -74,10 +74,4 @@ project-root/
 
 ### 谨慎提出 ADR
 
-只有以下三项全部为真时, 才提出创建 ADR:
-
-1. **难以逆转**: 以后改变主意的成本有意义.
-2. **缺少上下文会令人意外**: 未来读者会疑惑为什么这样做.
-3. **真实权衡的结果**: 存在真正替代方案, 且选择有具体理由.
-
-缺少任一项则跳过 ADR. 使用 [ADR-FORMAT.md](ADR-FORMAT.md) 中的格式.
+只有满足 [ADR-FORMAT.md](ADR-FORMAT.md) 中 "何时提出 ADR" 的三项条件时, 才提出创建 ADR. 使用 [ADR-FORMAT.md](ADR-FORMAT.md) 中的格式.

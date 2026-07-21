@@ -1,9 +1,9 @@
 ---
 name: tdd
-description: TDD red-green-refactor 实现循环. 行为明确需要测试先行时使用.
+description: 行为明确需要测试先行时, 使用 TDD red-green-refactor 实现循环.
 ---
 
-开始前, 使用 `domain-awareness` skill 只读感知当前工作目录的领域模型.
+开始前, 调用 `domain-awareness` skill 只读感知当前工作目录的领域模型.
 
 # 测试驱动开发
 
@@ -50,7 +50,7 @@ description: TDD red-green-refactor 实现循环. 行为明确需要测试先行
 
 - [ ] 在会话中与我确认需要哪些接口变更
 - [ ] 在会话中与我确认要测试哪些行为 (并排序优先级)
-- [ ] 识别 deep module 的机会 (小 interface, 大 implementation) - 从 `codebase-design` skill 获取词汇和可测试性检查
+- [ ] 识别 deep module 的机会 (小 interface, 大 implementation) - 调用 `codebase-design` skill 获取词汇和可测试性检查
 - [ ] 列出要测试的行为 (不是实现步骤)
 - [ ] 在会话中获得我对计划的批准, 不让我阅读文档后确认
 

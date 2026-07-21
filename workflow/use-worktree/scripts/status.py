@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Read-only inspection for the standard local git worktree layout."""
 from __future__ import annotations
 
@@ -15,7 +14,7 @@ USAGE = """用法:
   status.py [路径]
 
 只读检查标准 worktree 布局:
-  <workspace>/<project>/<project>-master
+  <workspace>/<project>/<project>-<主分支名>
   <workspace>/<project>/<project>-<source-slug>-<branch-slug>
 
 说明:
@@ -73,6 +72,19 @@ def origin_project_from(path: str | Path) -> str | None:
     url = url.removesuffix(".git").rstrip("/")
     name = url.rsplit("/", 1)[-1].rsplit(":", 1)[-1]
     return name or None
+
+
+def infer_main_branch(repo: str | Path) -> str:
+    """Infer main branch name from origin/HEAD or common names."""
+    head_ref = git_text(repo, "symbolic-ref", "refs/remotes/origin/HEAD")
+    if head_ref:
+        branch = head_ref.rsplit("/", 1)[-1]
+        if branch:
+            return branch
+    for candidate in ("main", "master", "trunk"):
+        if run_git(repo, "rev-parse", "--verify", f"refs/heads/{candidate}").returncode == 0:
+            return candidate
+    return "master"
 
 
 def print_worktree(path: str) -> None:
@@ -141,7 +153,8 @@ def main(argv: list[str]) -> int:
         if inferred:
             project = inferred
             project_dir = dirname(git_root)
-            main_path = str(Path(project_dir) / f"{project}-master")
+            main_branch = infer_main_branch(git_root)
+            main_path = str(Path(project_dir) / f"{project}-{main_branch}")
             repo_for_list = git_root
             if basename(project_dir) == project and Path(main_path).is_dir() and basename(git_root).startswith(f"{project}-"):
                 layout = "standard"
@@ -153,13 +166,19 @@ def main(argv: list[str]) -> int:
             repo_for_list = git_root
     else:
         candidate_project = basename(input_abs)
-        candidate_main = str(Path(input_abs) / f"{candidate_project}-master")
-        if Path(candidate_main).is_dir() and is_git_worktree(candidate_main):
+        candidate_main = ""
+        for mb in ("main", "master", "trunk"):
+            test_path = str(Path(input_abs) / f"{candidate_project}-{mb}")
+            if Path(test_path).is_dir() and is_git_worktree(test_path):
+                candidate_main = test_path
+                break
+        if candidate_main and is_git_worktree(candidate_main):
             inferred = origin_project_from(candidate_main)
             if inferred:
                 project = inferred
                 project_dir = input_abs
-                main_path = str(Path(project_dir) / f"{project}-master")
+                main_branch = infer_main_branch(candidate_main)
+                main_path = str(Path(project_dir) / f"{project}-{main_branch}")
                 repo_for_list = main_path
                 if candidate_project == project and Path(main_path).is_dir():
                     layout = "standard"

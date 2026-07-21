@@ -4,7 +4,7 @@ description: Git worktree 布局识别, 创建, 删除, 迁移, 安全检查流�
 disable-model-invocation: true
 ---
 
-开始前, 使用 `domain-awareness` skill 只读感知当前工作目录的领域模型.
+开始前, 调用 `domain-awareness` skill 只读感知当前工作目录的领域模型.
 
 # use-worktree
 
@@ -17,7 +17,7 @@ disable-model-invocation: true
 └─ ...
 ```
 
-- `<project>` 优先从 `origin` 远端仓库名推断; 无 `origin` 或无法推断时询问用户.
+- `<project>` 优先从 `origin` 远端仓库名推断; 无 `origin` 或无法推断时询问我.
 - main worktree 为 `<project>-<主分支名>`.
 - linked worktree 目录名记录创建时的来源分支: `<project>-<来源分支 slug>-<目标分支 slug>`.
 - 目录名只是创建时约定; 后续 rebase/merge/upstream 变化不自动改名.
@@ -32,7 +32,7 @@ disable-model-invocation: true
 - 首尾空格/点号去除
 - 保留中文/Unicode
 - 每个分支 slug 最长 60 字符; 超长截断为 52 字符 + `-` + SHA-1 前 7 位
-- 若生成目录名与已有路径冲突: 停止并询问用户指定目录名
+- 若生成目录名与已有路径冲突: 停止并询问我指定目录名
 
 ## 硬规则
 
@@ -40,8 +40,8 @@ disable-model-invocation: true
 - 修改前必须报告: 目标 worktree, 分支, HEAD, `git status --short --branch --untracked-files=all`.
 - 一次任务默认只改一个 worktree; 跨 worktree 对照默认只读.
 - 禁止手删 `.git` 文件或 `.git/worktrees/*`; 删除/清理用 `git worktree remove/prune`.
-- 目标 worktree dirty (含 untracked) 时停止并询问用户.
-- 用户未指定 repo/worktree 时, 从当前路径向上识别标准 `<workspace>/<project>/`; 不确定则列信息并询问.
+- 目标 worktree dirty (含 untracked) 时停止并询问我.
+- 我未指定 repo/worktree 时, 从当前路径向上识别标准 `<workspace>/<project>/`; 不确定则列信息并询问.
 
 ## 状态检查
 
@@ -61,7 +61,7 @@ uv run python scripts/status.py <任意路径>
    - 询问是否执行 `git fetch --all --prune`.
    - 用 `uv run python scripts/slug.py <project> <source-branch> <target-branch>` 生成目录名.
    - 若目标目录已存在但不是目标 Git worktree: 停止并询问.
-   - 若目标分支已存在且未被其他 worktree checkout: `git worktree add <dir> <target-branch>`, 并告知用户这是 checkout 已有分支.
+   - 若目标分支已存在且未被其他 worktree checkout: `git worktree add <dir> <target-branch>`, 并告知我这是 checkout 已有分支.
    - 若目标分支不存在: `git worktree add -b <target-branch> <dir> <source-branch>`.
    - 若目标分支已被其他 worktree checkout: 停止并告知已有路径.
 3. 若布局非标准: 先询问是否迁移到标准 `<workspace>/<project>/`; 没有 base 目录时可在批准后新建.

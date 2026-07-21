@@ -4,12 +4,12 @@ description: 将 Product/Technical Spec 拆成 AI 可执行的 Execution Spec �
 disable-model-invocation: true
 ---
 
-开始前, 使用 `domain-awareness` skill 只读感知当前工作目录的领域模型.
+开始前, 调用 `domain-awareness` skill 只读感知当前工作目录的领域模型.
 生成 `EXECUTION.md` 和可独立领取的垂直切片 issues. `EXECUTION.md` 是全局执行约束和任务拓扑, issue 是 `afk` 的直接输入. 文档只供 AI 使用. 本 skill 不新增产品/API/架构决策, 不要求我阅读文档后确认.
 
 ## 1. 收集上下文
 
-确认已获得本地 Spec 工作区约定. 没有则停止, 请我先运行 `setup-workspace`. 读取同一 feature 下的 `PRODUCT.md`, `TECHNICAL.md`, `DECISIONS.md` (如存在). 需要维护决策引用时调用 `decision-ledger`.
+确认已获得本地 Spec 工作区约定. 没有则停止, 请我调用 `setup-workspace` skill 完成本地 Spec 工作区初始化. 读取同一 feature 下的 `PRODUCT.md`, `TECHNICAL.md`, `DECISIONS.md` (如存在). 需要维护决策引用时调用 `decision-ledger`.
 缺少 `PRODUCT.md` 或 `TECHNICAL.md` 时停止. 来源之间冲突, 或拆分需要新产品/API/架构/范围取舍时停止, 在会话中说明影响并请我回到 `deliberate`.
 完成标准: 三层输入属于同一 feature; 无阻塞冲突; 当前有效决策已读取或明确无相关决策.
 
@@ -51,8 +51,8 @@ disable-model-invocation: true
 - `docs/changes/<feature-slug>/EXECUTION.md`.
 - `docs/changes/<feature-slug>/issues/ISSUE-<NN>-<slug>.md`, 从 `ISSUE-01` 连续编号.
 
-先按模板生成 issues, 再生成引用真实 issue 路径的 `EXECUTION.md`. 按依赖顺序编号. 每个 issue 与 `DECISIONS.md` 维护双向引用. 不复制 Product/Technical Spec 的正文, 只引用稳定 ID 和执行所需摘要. 不记录 `Status:`.
-完成标准: `EXECUTION.md` 任务图中的每个引用可解析; 每个 AC/TG/NFR 被至少一个 issue 覆盖或明确说明无需执行任务; issue 编号连续; 依赖无环; 决策双向引用完整.
+先按模板生成 issues, 再生成引用真实 issue 路径的 `EXECUTION.md`. 按依赖顺序编号. 存在相关 DECISIONS.md 时, 每个 issue 与相关决策维护双向引用; 无相关决策时 issue 写"无". 不复制 Product/Technical Spec 的正文, 只引用稳定 ID 和执行所需摘要. 不记录 `Status:`.
+完成标准: `EXECUTION.md` 任务图中的每个引用可解析; 每个 AC/TG/NFR 被至少一个 issue 覆盖或明确说明无需执行任务; issue 编号连续; 依赖无环; 决策双向引用完整, 或已明确无相关决策.
 
 <execution-spec-template>
 # <变更标题> Execution Spec
