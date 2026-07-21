@@ -73,12 +73,14 @@ ROADMAP.md 的未决迷雾区段存的就是这些模糊视图 — 疑似的问�
 | research   | 委派子代理独立探索, 产出分析文件                                               | AFK      |
 | deliberate | 停止并请我调用 `deliberate` skill 盘问; 产出 spec + decisions + 领域模型 + ADR | HITL     |
 | prototype  | 跟我协作做粗糙原型 — 大纲/草稿/桩代码, 提升讨论保真度                                  | HITL     |
-| task       | AFK 就委派子代理执行, HITL 就跟我协作. 如果 AFK 任务是编码任务, 就调用 `afk` skill       | AFK/HITL |
+| task       | AFK 非编码任务委派子代理; AFK 编码任务见下; HITL 跟我协作 | AFK/HITL |
 
 **research 完成标准**: 分析文件已写, Milestone 中所有考察点已被覆盖.
 **deliberate 完成标准**: deliberate 盘问闭环; 已确认决策已按需要写入 DECISIONS.md/领域语言/ADR; 如我选择生成 Spec, 对应 Spec 已落盘.
 **prototype 完成标准**: 原型文件已写, 足以支撑后续决策.
 **task 完成标准**: 工作已完成, 结果事实已记录 (凭证, URL, 行号等).
+
+**task 的 AFK 编码分支**: 工作内容涉及编写/修改代码时, 必须调用 `afk` skill, 不得直接委派裸子代理写代码. `afk` 按已确认 Execution Spec 执行, 调用前须满足其触发门禁 (PRODUCT/TECHNICAL/EXECUTION/issue 已确认可读); 门禁不满足则不进入 AFK — 先补齐 Spec 或回退 HITL 与我协作. 跳过 `afk` 直接委派子代理属于违规, 即使代码能跑通也不算完成.
 
 ### 子代理派发
 
