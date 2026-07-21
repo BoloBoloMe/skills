@@ -13,7 +13,7 @@
 |-- others/                      # 特定技术栈技能
 |-- docs/                        # 本仓库领域/ADR/变更资料
 |-- deprecated/                  # 已归档技能
-|-- AGENTS.md
+|-- pi/                          # pi agent 配置 (AGENTS.md, extensions, ...)
 `-- README.md
 ```
 

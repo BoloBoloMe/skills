@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """pi skill sync
 ----------------
-答式同步脚本: 将本仓库中的 skills/extensions/AGENTS.md 同步到 pi agent 目录。
+答式同步脚本: 将本仓库中的 skills/extensions/pi/AGENTS.md 同步到 pi agent 目录。
 
 用法:
     python sync-to-pi.py
@@ -342,7 +342,7 @@ def main() -> None:
 
     print(_ct("pi skill sync", _C.BLD))
     print(f"仓库根目录: {SRC(str(repo_root))}")
-    print(Q("本脚本将仓库中的 skills / extensions / AGENTS.md 同步到 pi agent 目录"))
+    print(Q("本脚本将仓库中的 skills / extensions / pi/AGENTS.md 同步到 pi agent 目录"))
     print(SKIP("注意: 目标路径已有内容将被直接覆盖"))
 
     # ── 1. 探测 pi 目录 ──────────────────────────────────────────────
@@ -364,12 +364,12 @@ def main() -> None:
     # ── 3. 逐项询问 ──────────────────────────────────────────────────
     plan: list[PlanItem] = []
 
-    # AGENTS.md (单文件)
+    # pi/AGENTS.md (单文件)
     plan.extend(
         _query_top_file(
             repo_root,
-            "AGENTS.md",
-            repo_root / "AGENTS.md",
+            "pi/AGENTS.md",
+            repo_root / "pi" / "AGENTS.md",
             pi_dir / "AGENTS.md",
         )
     )
