@@ -199,8 +199,8 @@
           "thinkingLevelMap": {
             "off": "none",
             "minimal": "minimal",
-            "low": "high",
-            "medium": "high",
+            "low": null,
+            "medium": null,
             "high": "high",
             "xhigh": "xhigh",
             "max": "max"
