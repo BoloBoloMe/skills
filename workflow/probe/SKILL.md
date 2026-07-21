@@ -71,12 +71,12 @@ ROADMAP.md 的未决迷雾区段存的就是这些模糊视图 — 疑似的问�
 | 类型 | 处理方式 | 模式 |
 |------|---------|------|
 | research | 委派子代理独立探索, 产出分析文件 | AFK |
-| grilling | 停止并请我调用 `deliberate` skill 盘问; 产出 spec + decisions + 领域模型 + ADR | HITL |
+| deliberate | 停止并请我调用 `deliberate` skill 盘问; 产出 spec + decisions + 领域模型 + ADR | HITL |
 | prototype | 跟我协作做粗糙原型 — 大纲/草稿/桩代码, 提升讨论保真度 | HITL |
 | task | AFK 就委派子代理执行, HITL 就跟我协作 | AFK/HITL |
 
 **research 完成标准**: 分析文件已写, Milestone 中所有考察点已被覆盖.
-**grilling 完成标准**: grilling 盘问闭环; 已确认决策已按需要写入 DECISIONS.md/领域语言/ADR; 如我选择生成 Spec, 对应 Spec 已落盘.
+**deliberate 完成标准**: deliberate 盘问闭环; 已确认决策已按需要写入 DECISIONS.md/领域语言/ADR; 如我选择生成 Spec, 对应 Spec 已落盘.
 **prototype 完成标准**: 原型文件已写, 足以支撑后续决策.
 **task 完成标准**: 工作已完成, 结果事实已记录 (凭证, URL, 行号等).
 
@@ -86,7 +86,7 @@ research 子代理可并行, 上限 3 个. 其余类型一次一个. 不设超�
 
 ### AFK 到 HITL 切换
 
-research 子代理返回后, 如果解锁了新的 grilling 或 prototype Milestone: 创建 MILESTONE-NN.md → 加入前沿 → 更新连线图 → 问我"要在当前会话继续处理这个新 Milestone 吗?". 我确认就立即进入, 处理完停止.
+research 子代理返回后, 如果解锁了新的 deliberate 或 prototype Milestone: 创建 MILESTONE-NN.md → 加入前沿 → 更新连线图 → 问我"要在当前会话继续处理这个新 Milestone 吗?". 我确认就立即进入, 处理完停止.
 
 ## 产物结构
 
