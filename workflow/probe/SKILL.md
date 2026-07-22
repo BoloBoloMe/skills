@@ -116,7 +116,7 @@ ROADMAP.md 的未决迷雾区段存的就是这些模糊视图 — 疑似的问�
 
 **task 的 AFK 编码分支**: 工作内容涉及编写/修改代码时, 必须调用 `afk` skill, 不得直接委派裸子代理写代码. `afk` 按已确认 Execution Spec 执行, 调用前须满足其触发门禁 (PRODUCT/TECHNICAL/EXECUTION/issue 已确认可读); 门禁不满足则不进入 AFK — 先补齐 Spec 或回退 HITL 与我协作. 跳过 `afk` 直接委派子代理属于违规, 即使代码能跑通也不算完成.
 
-### 子代理派发
+### 并发模型
 
 散雾段并行, 上限 3 个. HITL 段一次一个. 准入段按 feature 逐个调 `to-execution-spec` (HITL). 终端段单 worker 逐个连做 (遵守 `afk` skill 单 worker 约束). 不设超时; 失败后最多重试一次, 仍失败触发硬停.
 
