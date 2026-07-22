@@ -129,4 +129,4 @@ disable-model-invocation: true
 盘问固化结束后, 询问我是否生成 Spec. 
 我说不用则跳过; 
 我说要则依次调用 `to-product-spec` skill, `to-technical-spec` skill.
-接着判断当前是否在 `probe` skill 流程内: 在则 spec 生成完毕, 停止; 不在则继续调用 `to-execution-spec` skill.
+接着判断当前是否在 `probe` skill 流程内: 不在则继续调用 `to-execution-spec` skill; 在则 spec 生成完毕, 停止 (`to-execution-spec` 改由 probe 在进入终端段前的准入步骤按 feature 接管, 不在此处调用).

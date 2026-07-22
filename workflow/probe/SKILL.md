@@ -79,11 +79,25 @@ ROADMAP.md 的未决迷雾区段存的就是这些模糊视图 — 疑似的问�
 5. **转化迷雾.** 解决结果让某块迷雾变清晰了? 从迷雾移除, 写成 MILESTONE-NN.md, 加入前沿. 发现某个 Milestone 在目的地之外? 划入范围外. 给已存在 Milestone 挂了新下游 → 其角色按派生规则重算.
    完成标准: 未决迷雾每项已判断; 该转化的已创建 Milestone; 前沿和范围外已同步.
 6. **相位推进.** 按当前相位决定下一步, 不逐个停:
-   - 散雾段: 前沿仍有散雾 → 回 step 2 继续抽干; 散雾抽干 → 前沿有 HITL 则召唤我进 HITL 段 (唯一主动停), 前沿只剩终端则进终端段.
-   - HITL 段: 关一个后问我 "要继续吗". 是且前沿仍有 HITL → 回 step 2; 否 → 落盘停, 等我回来. HITL 抽干 → 进终端段 (我可离场).
+   - 散雾段: 前沿仍有散雾 → 回 step 2 继续抽干; 散雾抽干 → 前沿有 HITL 则召唤我进 HITL 段 (主动停), 前沿只剩终端则召唤我执行终端段准入 (主动停) → 进终端段.
+   - HITL 段: 关一个后问我 "要继续吗". 是且前沿仍有 HITL → 回 step 2; 否 → 落盘停, 等我回来. HITL 抽干 → 执行终端段准入 (仍 HITL, 切片确认后我可离场) → 进终端段.
    - 终端段: 单 worker 逐个调用 `afk` skill, 前沿仍有终端 → 回 step 2 连做; 抽干 → 遍历结束.
    - 硬停 (任何相位): 关闭解锁了当前相位没预期的 HITL → 停, 召唤我开新一轮 HITL 段; 子代理不可恢复失败 → 停, 报告; 上下文预算阈值 → 落盘, 新会话重载继续.
    完成标准: 已按相位推进到下一认领, 或触发硬停落盘, 或遍历结束.
+
+### 终端段准入
+
+首次进入终端段前执行一次, 之后不重复. 终端段内 `转化迷雾` 新造出终端编码 Milestone 时视为意外 HITL → 硬停 (见 step 6), 召唤我回本准入补该 feature, 不在 AFK 中 grilling.
+
+前提: 前沿终端 Milestone 都是 spec-gated afk 编码任务 (终端段定义), 其上游 deliberate 已关闭或 spec 现成.
+
+1. 归组. 前沿所有终端 Milestone 按 feature 归组 — feature 由其上游 deliberate 产物的 `docs/changes/<feature-slug>/` 路径确定. 一个终端 Milestone 对应一个 feature. 归不上的 (无上游 deliberate 也无现成 `PRODUCT.md`/`TECHNICAL.md`) 标为缺 spec.
+2. 守底. 缺 spec 的终端 Milestone 不进终端段 — 报告缺口, 为其开 deliberate Milestone 回 HITL 段, 准入中止.
+3. 离场闸门 (HITL). 我仍在场, 按 feature 逐个调用 `to-execution-spec` skill (其 step 4 grilling 在会话中确认切片). 每个 feature 产出 `EXECUTION.md` + issues + `afk-running/` 步骤文件. `deliberate` 在 probe 内已跳过 `to-execution-spec`, 由本步骤接管.
+4. 入索引. 各 feature 的 `EXECUTION.md`/issues/`afk-running/` 路径从 ROADMAP 笔记或已关闭决策链接, 保持 ROADMAP 只做索引.
+5. 准入完成, 进终端段. 终端段单 worker 逐个 Milestone 调 `afk` 时, 按该 Milestone 所属 feature 的根目录定位 `afk-running/` (满足 `afk` 路径推断).
+
+完成标准: 前沿每个终端 Milestone 所属 feature 的 execution-spec 产物齐备且可由 `afk` 路径推断定位; ROADMAP 已链接这些产物; 缺 spec 的已回 HITL.
 
 ### Milestone 类型处理
 
