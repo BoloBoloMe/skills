@@ -66,10 +66,10 @@
       },
       "planner": {
         "model": "ai-work-zai/glm-5.2",
-        "thinking": "max",
+        "thinking": "xhigh",
         "defaultContext": "fork",
         "fallbackModels": [
-          "ai-work-qwen/qwen3.7-max"
+          "ai-work-deepseek/deepseek-v4-pro"
         ],
         "tools": [
           "read",
@@ -87,10 +87,10 @@
       },
       "oracle": {
         "model": "ai-work-zai/glm-5.2",
-        "thinking": "max",
+        "thinking": "high",
         "defaultContext": "fork",
         "fallbackModels": [
-          "ai-work-qwen/qwen3.7-max"
+          "ai-work-deepseek/deepseek-v4-pro"
         ],
         "tools": [
           "read",
@@ -131,10 +131,10 @@
       },
       "reviewer": {
         "model": "ai-work-zai/glm-5.2",
-        "thinking": "max",
+        "thinking": "xhigh",
         "defaultContext": "fresh",
         "fallbackModels": [
-          "ai-work-qwen/qwen3.7-max"
+          "ai-work-deepseek/deepseek-v4-pro"
         ],
         "tools": [
           "read",
