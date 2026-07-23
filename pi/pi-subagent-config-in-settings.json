@@ -111,7 +111,7 @@
         "thinking": "high",
         "defaultContext": "fresh",
         "fallbackModels": [
-          "ai-work-moonshot/kimi-k2.7-code"
+          "ai-work-deepseek/deepseek-v4-pro"
         ],
         "tools": [
           "read",
