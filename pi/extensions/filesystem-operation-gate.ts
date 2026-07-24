@@ -10,7 +10,7 @@ import { fileURLToPath } from "node:url";
  * filesystem-operation-gate: 仅在工具明确写入 ctx.cwd 外时要求用户确认.
  *
  * 不拦截读取操作.
- * 不拦截当前系统临时目录的子路径, 但临时目录根本身除外.
+ * 不拦截对当前系统临时目录或其子路径的写入; 但以临时目录根本身为目标的删除类操作仍需确认.
  * 路径感知写入工具 (`write`, `edit`) 仅在目标路径解析到 ctx.cwd 外时拦截.
  * Bash 仅在静态识别出 ctx.cwd 外的明确写入目标时拦截.
  * 对含义不明确的 shell 命令不作保守拦截.
@@ -51,6 +51,7 @@ export default function (pi: ExtensionAPI) {
       const root = await resolvePolicyPath(ctx.cwd, ctx.cwd);
       if (isInsideOrSame(root, target)) return;
       if (await isTemporaryDirectoryChild(target, ctx.cwd)) return;
+      if (await isTemporaryDirectoryRoot(target, ctx.cwd)) return;
 
       const rememberDirectory = path.dirname(target);
       if (isRememberedOutsideDirectory(rememberDirectory)) return;
@@ -85,6 +86,7 @@ export default function (pi: ExtensionAPI) {
       for (const target of outsideTargets) {
         if (isRememberedOutsideDirectory(path.dirname(target.resolved))) continue;
         if (await isTemporaryDirectoryChild(target.resolved, ctx.cwd)) continue;
+        if (!target.destructive && await isTemporaryDirectoryRoot(target.resolved, ctx.cwd)) continue;
         pendingTargets.push(target);
       }
       if (pendingTargets.length === 0) return;
@@ -251,6 +253,14 @@ async function isTemporaryDirectoryChild(target: string, cwd: string): Promise<b
   return !isSamePath(temporaryDirectory, resolvedTarget) && isInsideOrSame(temporaryDirectory, resolvedTarget);
 }
 
+async function isTemporaryDirectoryRoot(target: string, cwd: string): Promise<boolean> {
+  const temporaryDirectory = await resolvePolicyPath(tmpdir(), cwd);
+  if (isFilesystemRoot(temporaryDirectory)) return false;
+
+  const resolvedTarget = await resolvePolicyPath(target, cwd);
+  return isSamePath(temporaryDirectory, resolvedTarget);
+}
+
 function isFilesystemRoot(value: string): boolean {
   const normalized = normalizeForCompare(path.resolve(value));
   return normalized === normalizeForCompare(path.parse(normalized).root);
@@ -273,6 +283,7 @@ type ShellToken = {
 type OutsideWriteTarget = {
   raw: string;
   resolved: string;
+  destructive: boolean;
 };
 
 type WholeFilesystemSearch = {
@@ -501,6 +512,9 @@ function addCommandWriteTargets(
     case "rm":
     case "unlink":
     case "rmdir":
+      for (const arg of getNonOptionArgs(args)) addOutsideWriteTarget(arg.text, currentDir, root, outsideTargets, true);
+      return;
+
     case "touch":
     case "mkdir":
       for (const arg of getNonOptionArgs(args)) addOutsideWriteTarget(arg.text, currentDir, root, outsideTargets);
@@ -540,7 +554,7 @@ function addCommandWriteTargets(
       return;
 
     case "find":
-      if (args.some((arg) => arg.text === "-delete")) addFindSearchRoots(args, currentDir, root, outsideTargets);
+      if (args.some((arg) => arg.text === "-delete")) addFindSearchRoots(args, currentDir, root, outsideTargets, true);
       return;
 
     case "dd":
@@ -641,6 +655,7 @@ function addFindSearchRoots(
   currentDir: string,
   root: string,
   outsideTargets: Map<string, OutsideWriteTarget>,
+  destructive = false,
 ): void {
   const roots: ShellToken[] = [];
   for (const arg of args) {
@@ -649,7 +664,7 @@ function addFindSearchRoots(
   }
 
   for (const arg of roots.length > 0 ? roots : [{ text: ".", quoted: false }]) {
-    addOutsideWriteTarget(arg.text, currentDir, root, outsideTargets);
+    addOutsideWriteTarget(arg.text, currentDir, root, outsideTargets, destructive);
   }
 }
 
@@ -756,12 +771,21 @@ function resolveCdTarget(args: ShellToken[], currentDir: string): string | undef
   return resolveShellPath(target, currentDir);
 }
 
-function addOutsideWriteTarget(rawPath: string, currentDir: string, root: string, outsideTargets: Map<string, OutsideWriteTarget>): void {
+function addOutsideWriteTarget(
+  rawPath: string,
+  currentDir: string,
+  root: string,
+  outsideTargets: Map<string, OutsideWriteTarget>,
+  destructive = false,
+): void {
   const cleaned = cleanShellPath(rawPath);
   if (!cleaned || isFdTarget(cleaned) || isSpecialDevicePath(cleaned)) return;
 
   const resolved = resolveShellPath(cleaned, currentDir);
-  if (!isInsideOrSame(root, resolved)) outsideTargets.set(resolved, { raw: cleaned, resolved });
+  if (!isInsideOrSame(root, resolved)) {
+    const existing = outsideTargets.get(resolved);
+    outsideTargets.set(resolved, { raw: cleaned, resolved, destructive: (existing?.destructive ?? false) || destructive });
+  }
 }
 
 function resolveShellPath(rawPath: string, currentDir: string): string {
