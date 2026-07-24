@@ -5,9 +5,6 @@ disable-model-invocation: true
 ---
 
 开始前, 调用 `domain-awareness` skill 感知领域模型.
-
-# Probe
-
 我有一个模糊的想法, 但体量太大了 — 一个 agent 会话装不下, 而且前方迷雾重重: 从这里到目的地的路径还看不清. 你要做的是找路, 不是直奔目的地.
 Probe 把路径画成一张本地 markdown Roadmap — 按阻塞关系组织的决策调查索引, 指向逐个 Milestone. 你遍历 Roadmap, 逐个关闭 Milestone, 直到路线清晰. 不限领域.
 
@@ -102,12 +99,12 @@ ROADMAP.md 的未决迷雾区段存的就是这些模糊视图 — 疑似的问�
 
 ### Milestone 类型处理
 
-| 类型         | 处理方式                                                            | 模式       |
-|------------|-----------------------------------------------------------------|----------|
-| research   | 委派子代理独立探索, 产出分析文件                                               | AFK      |
-| deliberate | 停止并请我调用 `deliberate` skill 盘问; 产出 spec + decisions + 领域模型 + ADR | HITL     |
-| prototype  | 跟我协作做粗糙原型 — 大纲/草稿/桩代码, 提升讨论保真度                                  | HITL     |
-| task       | AFK 非编码任务委派子代理; AFK 编码任务见下; HITL 跟我协作                           | AFK/HITL |
+每个 Milestone 非 HITL 即 AFK: HITL 须经与我现场来回对话才能关闭, 代理不得替我作答 (盘问代理自问自答即违规); AFK 由代理独立驱动.
+
+- **research** (AFK): 委派子代理独立探索, 产出分析文件. **何时创建**: 决策在等一个事实, 而该事实藏在当前工作目录之外 (文档, 第三方 API, 本地知识库等), 须先暴露出来.
+- **deliberate** (HITL): 停止并请我调用 `deliberate` skill 盘问; 产出 spec + decisions + 领域模型 + ADR. **何时创建**: 默认情形 — 要敲定一个决策, 其选项/取舍无法单靠 research 暴露事实或靠 prototype 提升保真度直接看清, 须与我逐条盘问.
+- **prototype** (HITL): 跟我协作做粗糙原型 — 大纲/草稿/桩代码, 提升讨论保真度. **何时创建**: 关键问题是 "它应该是什么样子" 或 "它应该如何运行", 靠语言说不清, 需要一个可反应的具体物件才能继续讨论.
+- **task** (AFK/HITL): AFK 非编码任务委派子代理; AFK 编码任务见下; HITL 跟我协作. **何时创建**: 某件手工活必须在决策之前发生 — 无可决策/原型/研究, 但讨论被它卡住直到做完 (开通权限以判断 API, 迁移数据以看清形状). 唯一 "做" 而非 "决策" 的类型, 靠解锁决策而非抵达目的地立足.
 
 **research 完成标准**: 分析文件已写, Milestone 中所有考察点已被覆盖.
 **deliberate 完成标准**: deliberate 盘问闭环; 已确认决策已按需要写入 DECISIONS.md/领域语言/ADR; 如我选择生成 Spec, 对应 Spec 已落盘.
