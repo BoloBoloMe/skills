@@ -5,21 +5,25 @@ disable-model-invocation: true
 ---
 
 开始前, 调用 `domain-awareness` skill 感知领域模型.
-我有一个模糊的想法, 但体量太大了 — 一个 agent 会话装不下, 而且前方迷雾重重: 从这里到目的地的路径还看不清. 你要做的是找路, 不是直奔目的地.
-Probe 把路径画成一张本地 markdown Roadmap — 按阻塞关系组织的决策调查索引, 指向逐个 Milestone. 你遍历 Roadmap, 逐个关闭 Milestone, 直到路线清晰. 不限领域.
+
+## 使命
+
+我有一个初步的想法, 它过于庞大和模糊, 无法在一次代理会话中完成, 而且前方迷雾重重: 从这里到目的地的路径还看不清. 你要做的是*寻路*, 而不是直奔目的地.
+Probe 会先把路径画成一张 Roadmap, 即可一个按阻塞关系组织的 Milestone 索引, 然后再遍历 Roadmap, 逐个关闭 Milestone, 直到路线清晰.
+
+## 调用方式
+
+两种模式:
+
+**绘制 Roadmap**: 我带着模糊想法来. 自检 → 定目的地 → 广度扫描 → 创建 ROADMAP.md + MILESTONE-NN.md + 阻塞连线图.
+**遍历 Roadmap**: 我带着 ROADMAP.md 来. 加载索引 → 按相位选前沿认领 → 按类型分流处理 → 记录关闭 → 转化迷雾 → 相位推进. 我不指定 Milestone 时, 按角色优先级 散雾 > HITL > 终端 选前沿.
+
+绘制和遍历永远不在同一个会话中进行.
 
 ## 规划, 而非执行
 
 Probe 不直接产出决策 — 它组织 Milestone 的调查和关闭流程 (类型处理见下). Roadmap 清空时, 所有必要的调查, 决策, 原型和执行前置工作都已完成, 路径清晰.
 `task` 是唯一涉及执行的 Milestone 类型, 但它不直接抵达目的地 — 只是搬开挡在决策前面的石头 (比如开通权限, 迁移数据, 看清 API 形状).
-
-## 调用方式
-
-两种模式:
-**绘制 Roadmap**: 我带着模糊想法来. 自检 → 定目的地 → 广度扫描 → 创建 ROADMAP.md + MILESTONE-NN.md + 阻塞连线图.
-**遍历 Roadmap**: 我带着 ROADMAP.md 来. 加载索引 → 按相位选前沿认领 → 按类型分流处理 → 记录关闭 → 转化迷雾 → 相位推进. 我不指定 Milestone 时, 按角色优先级 散雾 > HITL > 终端 选前沿.
-
-绘制和遍历永远不在同一个会话中进行.
 
 ## 战争迷雾
 
@@ -32,6 +36,24 @@ ROADMAP.md 的未决迷雾区段存的就是这些模糊视图 — 疑似的问�
 
 迷雾只向目的地聚拢. 目的地决定了工作范围, 因此超出目的地的工作就超出了范围 — 主动排除, 它不是 *迷雾*. 范围外永不转化, 除非重新划定目的地, 而且那已经是新任务.
 如果后来发现某个 Milestone 其实在目的地之外 (最初画错了范围, 或是某个解决结果把它推出去的), 就关掉它, 在范围外区段记一笔: 关掉的原因. 不放进已关闭决策 — 划范围不是路线上的步骤.
+
+## Milestone
+
+每个 Milestone 非 HITL 即 AFK: HITL 须经与我现场来回对话才能关闭, 代理不得替我作答 (盘问代理自问自答即违规); AFK 由代理独立驱动.
+
+**种类**:
+- research (AFK): 委派子代理独立探索, 产出分析文件. **何时创建**: 决策在等一个事实, 而该事实藏在当前工作目录之外 (文档, 第三方 API, 本地知识库等), 须先暴露出来.
+- deliberate (HITL): 调用 `deliberate` skill 盘问我, 产出决策. **何时创建**: 默认情形 — 要敲定一个决策, 其选项/取舍无法单靠 research 暴露事实或靠 prototype 提升保真度直接看清, 须与我逐条盘问.
+- prototype (HITL): 调用 `prototype` skill 和我做出粗糙原型, 提升讨论保真度, 产出原型文件. **何时创建**: 关键问题是 "它应该是什么样子" 或 "它应该如何运行", 靠语言说不清, 需要一个可反应的具体物件才能继续讨论.
+- task (AFK/HITL): AFK 非编码任务委派子代理; AFK 编码任务见下; HITL 跟我协作. **何时创建**: 某件必须在决策之前完成的手工活 — 无需决策/原型/研究, 但讨论在它完成前被卡住. 唯一 "做" 而非 "决策" 的类型, 靠解锁决策而非抵达目的地立足.
+
+**完成标准**:
+- research: 分析文件已写, Milestone 中所有考察点已被覆盖.
+- deliberate: 盘问闭环; 已确认决策已按需要写入对应文件; 如我选择生成 Spec, 对应 Spec 已落盘.
+- prototype: 原型文件已写, 足以支撑后续决策.
+- task: 工作已完成, 结果事实已记录.
+
+**task 的 AFK 编码分支**: 工作内容涉及编写/修改代码时, 必须调用 `afk` skill, 不得直接委派裸子代理写代码. `afk` 按已确认 Execution Spec 执行, 调用前须满足其触发门禁 (PRODUCT/TECHNICAL/EXECUTION/issue 已确认可读); 门禁不满足则不进入 AFK — 先补齐 Spec 或回退 HITL 与我协作. 跳过 `afk` 直接委派子代理属于违规, 即使代码能跑通也不算完成.
 
 ## 绘制 Roadmap
 
@@ -53,15 +75,20 @@ ROADMAP.md 的未决迷雾区段存的就是这些模糊视图 — 疑似的问�
 
 ### 相位与角色
 
-遍历按相位推进, 形态为轮次 `(散雾抽干 → HITL 连做)* → 准入 → 终端 AFK 抽干`. 准入是 HITL 性质的独立过渡相位, 承 HITL 启终端; 生成执行计划 (调 `to-execution-spec`) 与执行计划 (终端段调 `afk`) 必须在不同会话. 每个 Milestone 的相位角色在选前沿时从 (类型, 阻塞图) 派生, 不存字段:
+遍历按相位推进, 形态为轮次 `(散雾抽干 → HITL 连做)* → 准入 → 终端 AFK 抽干`. *准入*是 HITL 性质的独立过渡相位, 承前启后; 生成执行计划 (调 `to-execution-spec` skill) 与执行计划 (调 `afk` skill) 必须在不同会话. 每个 Milestone 的相位角色在选前沿时从 (类型, 阻塞图) 派生, 不存字段:
+
 - research → 散雾
 - deliberate / prototype → HITL
 - task (HITL 模式) → HITL
 - task (AFK 模式) → 阻塞图中有下游依赖它, 或关闭会退迷雾 → 散雾; 否则 (spec-gated afk 编码, 无下游) → 终端; 意不定默认 散雾
 
-散雾段 = AFK 散雾 (research + 有下游的 AFK task); HITL 段 = deliberate/prototype + HITL task; 准入段 = HITL 过渡 (为前沿所有终端 Milestone 生成 execution-spec, 见 [终端段准入](#终端段准入)); 终端段 = spec-gated 无下游 afk 编码 task (终端指轮次末位, 非抵达目的地). 角色随图变化自动重算 (转化迷雾给某 Milestone 挂新下游 → 终端降级散雾), 不影响已关闭的.
+散雾段 = AFK 散雾 (research + 有下游的 AFK task);
+HITL 段 = deliberate/prototype + HITL task;
+准入段 = HITL 过渡, 为前沿所有终端 Milestone 生成 execution-spec, 见 [终端段准入](#终端段准入);
+终端段 = spec-gated 无下游 afk 编码 task (终端指轮次末位, 非抵达目的地).
 
-取舍依据: 散雾段前置 (多为 AFK research) 把藏在迷雾里的 HITL 尽早显形, 摊到我在场一次清掉, 避免我离场后被散雾结果召回.
+角色随图变化自动重算 (转化迷雾给某 Milestone 挂新下游 → 终端降级散雾), 不影响已关闭的.
+散雾段前置 (多为 AFK research) 把藏在迷雾里的 HITL 尽早显形, 摊到我在场一次清掉, 避免我离场后被散雾结果召回.
 
 ### 遍历步骤
 
@@ -86,7 +113,6 @@ ROADMAP.md 的未决迷雾区段存的就是这些模糊视图 — 疑似的问�
 ### 终端段准入
 
 准入段在 HITL 抽干后执行一次 (若无终端 Milestone 则跳过, 遍历结束). 终端段内 `转化迷雾` 新造出终端编码 Milestone → 硬停落盘; 我回来后新开计划会话补跑本准入 (仅该 feature), 再落盘交新执行会话, 不在 AFK 中 grilling.
-
 前提: 前沿终端 Milestone 都是 spec-gated afk 编码任务 (终端段定义), 其上游 deliberate 已关闭或 spec 现成.
 
 1. 归组. 在会话中与我确认每个前沿终端 Milestone 对应的 feature 路径 (`docs/changes/<feature-slug>/`) — 候选含已关闭 deliberate 在 ROADMAP 记录的路径和现存 `docs/changes/*/` 目录. 一个终端 Milestone 对应一个 feature. 归不上的 (无对应 feature, 或对应 feature 缺 `PRODUCT.md`/`TECHNICAL.md`) 标为缺 spec.
@@ -97,29 +123,12 @@ ROADMAP.md 的未决迷雾区段存的就是这些模糊视图 — 疑似的问�
 
 完成标准: 前沿每个终端 Milestone 所属 feature 的 execution-spec 产物齐备; ROADMAP 笔记已记映射与产物路径, 供新执行会话定位; 缺 spec 的已回 HITL; 准入会话与终端段执行会话分离.
 
-### Milestone 类型处理
-
-每个 Milestone 非 HITL 即 AFK: HITL 须经与我现场来回对话才能关闭, 代理不得替我作答 (盘问代理自问自答即违规); AFK 由代理独立驱动.
-
-- **research** (AFK): 委派子代理独立探索, 产出分析文件. **何时创建**: 决策在等一个事实, 而该事实藏在当前工作目录之外 (文档, 第三方 API, 本地知识库等), 须先暴露出来.
-- **deliberate** (HITL): 停止并请我调用 `deliberate` skill 盘问; 产出 spec + decisions + 领域模型 + ADR. **何时创建**: 默认情形 — 要敲定一个决策, 其选项/取舍无法单靠 research 暴露事实或靠 prototype 提升保真度直接看清, 须与我逐条盘问.
-- **prototype** (HITL): 跟我协作做粗糙原型 — 大纲/草稿/桩代码, 提升讨论保真度. **何时创建**: 关键问题是 "它应该是什么样子" 或 "它应该如何运行", 靠语言说不清, 需要一个可反应的具体物件才能继续讨论.
-- **task** (AFK/HITL): AFK 非编码任务委派子代理; AFK 编码任务见下; HITL 跟我协作. **何时创建**: 某件手工活必须在决策之前发生 — 无可决策/原型/研究, 但讨论被它卡住直到做完 (开通权限以判断 API, 迁移数据以看清形状). 唯一 "做" 而非 "决策" 的类型, 靠解锁决策而非抵达目的地立足.
-
-**research 完成标准**: 分析文件已写, Milestone 中所有考察点已被覆盖.
-**deliberate 完成标准**: deliberate 盘问闭环; 已确认决策已按需要写入 DECISIONS.md/领域语言/ADR; 如我选择生成 Spec, 对应 Spec 已落盘.
-**prototype 完成标准**: 原型文件已写, 足以支撑后续决策.
-**task 完成标准**: 工作已完成, 结果事实已记录 (凭证, URL, 行号等).
-
-**task 的 AFK 编码分支**: 工作内容涉及编写/修改代码时, 必须调用 `afk` skill, 不得直接委派裸子代理写代码. `afk` 按已确认 Execution Spec 执行, 调用前须满足其触发门禁 (PRODUCT/TECHNICAL/EXECUTION/issue 已确认可读); 门禁不满足则不进入 AFK — 先补齐 Spec 或回退 HITL 与我协作. 跳过 `afk` 直接委派子代理属于违规, 即使代码能跑通也不算完成.
-
 ### 并发模型
 
-散雾段并行, 上限 3 个. HITL 段一次一个. 准入段按 feature 逐个调 `to-execution-spec` (HITL). 终端段单 worker 逐个连做 (遵守 `afk` skill 单 worker 约束). 不设超时; 失败后最多重试一次, 仍失败触发硬停.
-
-### AFK 到 HITL 切换
-
-已并入相位推进 (step 6): research 解锁新 HITL 后, 散雾抽干再召唤我进 HITL 段, 不再逐个征询 "要在当前会话继续吗".
+散雾段并行, 上限 5 个. 
+HITL 段一次一个. 
+准入段按 feature 逐个调 `to-execution-spec` (HITL). 
+终端段单 worker 逐个连做, 遵守 `afk` skill 单 worker 约束; 不设超时, 失败后最多重试一次, 仍失败触发硬停.
 
 ## 产物结构
 
