@@ -1,78 +1,29 @@
 ---
 name: domain-modeling
-description: 固定领域术语, 维护 ubiquitous language, 记录 ADR 与同步领域模型.
+description: 维护领域语言和 ADR, 随设计对话实时更新领域模型.
 disable-model-invocation: true
 ---
 
-开始前, 调用 `domain-awareness` skill 只读感知当前工作目录的领域模型.
+开始前, 调用 `domain-awareness` skill 获取当前工作目录的领域模型.
 
-# Domain Modeling
+# 领域建模
 
-在设计过程中主动构建和打磨项目领域模型. 本 skill 是主动纪律: 挑战术语, 制造边界场景, 并在术语或决策成形时立即写入领域语言文件或 ADR.
+在设计过程中主动构建和打磨项目领域模型. 本 skill 是主动纪律: 对照既有语言挑刺, 迫使模糊概念澄清, 并在术语或决策成形时立即写入文件.
+单纯读取 `docs/language/UBIQUITOUS_LANGUAGE.md` 获取词汇不算使用本 skill. 任何 skill 都可以读取领域语言. 只有需要改变模型时才调用本 skill.
+文件结构和格式约定见 `domain-awareness` skill.
 
-单纯读取 `docs/language/UBIQUITOUS_LANGUAGE.md` 获取词汇不算使用本 skill. 任何 skill 都可以读取领域语言. 只有需要改变模型时才使用本 skill.
+**惰性创建.** 只有确实有内容要写时才创建文件. 不存在 `docs/language/UBIQUITOUS_LANGUAGE.md` 时, 在第一个术语被解析清楚时创建它. 不存在 `docs/adr/` 时, 在第一篇 ADR 需要记录时创建它.
 
-## 文件结构
+**挑战模型.** 对照 awareness 返回的领域语言, 对我说的每句话保持怀疑:
+- 术语与既有定义冲突? 立即指出. "词汇表把 cancellation 定义为 X, 你现在在说 Y. 到底是哪一个?"
+- 术语模糊或过载? 追问消歧. "你说 account — 是指 Customer 还是 User? 它们是不同概念."
+- 讨论领域关系? 制造边界场景压力测试, 迫使我明确概念边界.
+- 口头描述与代码行为不一致? 立即指出. "代码会取消整个 Order, 你刚才说可以部分取消. 哪个是事实?"
 
-多数仓库是单上下文:
+**更新语言.** 术语解析清楚后立即更新 `docs/language/UBIQUITOUS_LANGUAGE.md` 或相关 `docs/language/contexts/*.md`, 不积攒.
+领域语言文件不含实现细节 — 不把它当成规范, 草稿纸或实现决策仓库, 它只是项目领域词汇表.
 
-```text
-project-root/
-|-- docs/
-|   |-- language/
-|   |   `-- UBIQUITOUS_LANGUAGE.md
-|   `-- adr/
-|       |-- 0001-event-sourced-orders.md
-|       `-- 0002-postgres-for-write-model.md
-`-- src/
-```
-
-如果存在 `docs/language/UBIQUITOUS_LANGUAGE_MAP.md`, 仓库有多个上下文. map 指向每个上下文的语言文件和关系:
-
-```text
-project-root/
-|-- docs/
-|   |-- language/
-|   |   |-- UBIQUITOUS_LANGUAGE_MAP.md
-|   |   `-- contexts/
-|   |       |-- ordering.md
-|   |       `-- billing.md
-|   `-- adr/
-|       |-- 0001-system-wide-decision.md
-|       `-- contexts/
-|           |-- ordering/
-|           `-- billing/
-`-- src/
-```
-
-惰性创建文件: 只有确实有内容要写时才创建. 不存在 `docs/language/UBIQUITOUS_LANGUAGE.md` 时, 在第一个术语被解析清楚时创建它. 不存在 `docs/adr/` 时, 在第一篇 ADR 需要记录时创建它.
-
-## 会话期间
-
-### 对照领域语言挑战
-
-当我使用的术语与既有领域语言冲突时, 立即指出. 示例: "你的词汇表把 cancellation 定义为 X, 但你现在像是在说 Y. 到底是哪一个?"
-
-单上下文项目对照 `docs/language/UBIQUITOUS_LANGUAGE.md`. 多上下文项目先读 `docs/language/UBIQUITOUS_LANGUAGE_MAP.md`, 再对照相关 `docs/language/contexts/*.md`.
-
-### 打磨模糊语言
-
-当我使用含糊或过载术语时, 提出精确规范术语. 示例: "你说 account. 是指 Customer 还是 User? 它们是不同概念."
-
-### 讨论具体场景
-
-讨论领域关系时, 用具体场景压力测试. 主动制造边缘场景, 迫使我明确概念边界.
-
-### 与代码交叉引用
-
-当我说明某个东西如何工作时, 检查代码是否一致. 发现矛盾立即指出. 示例: "代码会取消整个 Order, 但你刚才说可以部分取消. 哪个是事实?"
-
-### 内联更新领域语言
-
-当术语被解析清楚时, 立即更新 `docs/language/UBIQUITOUS_LANGUAGE.md` 或相关 `docs/language/contexts/*.md`. 不要批量积攒. 使用 [UBIQUITOUS_LANGUAGE_FORMAT.md](UBIQUITOUS_LANGUAGE_FORMAT.md) 中的格式.
-
-领域语言文件不含实现细节. 不要把它当成规范, 草稿纸, 或实现决策仓库. 它只是项目领域词汇表.
-
-### 谨慎提出 ADR
-
-只有满足 [ADR-FORMAT.md](ADR-FORMAT.md) 中 "何时提出 ADR" 的三项条件时, 才提出创建 ADR. 使用 [ADR-FORMAT.md](ADR-FORMAT.md) 中的格式.
+**记录 ADR.** 只有同时满足以下三项时才提出创建 ADR: (1) **难以逆转** — 以后改变主意成本有意义; (2) **缺少上下文会令人意外** — 未来读者看到代码会想"他们为什么这样做?"; (3) **真实权衡的结果** — 存在真正的替代方案, 你出于具体原因选了其中一个.
+容易逆转就跳过; 不令人意外就没人会疑惑; 没有真正替代方案就没什么可记录.
+什么算数: **架构形态** (monorepo, 事件溯源写模型); **上下文集成模式** (Ordering 和 Billing 通过领域事件而非同步 HTTP 通信); **锁定性技术选择** (数据库, 消息总线, 认证提供商 — 不是每个库, 只记录需要一个季度才能替换的); **边界和范围决策** (明确"不做"与"做"同样有价值); **偏离显而易见路径** (手写 SQL 而非 ORM, 因为 X); **代码不可见的约束** (合规, 合作方 API 合同); **拒绝原因不明显的替代方案** (考虑过 GraphQL, 因微妙原因选了 REST).
+ADR 格式和编号规则见 `domain-awareness` skill 中的 ADR-FORMAT.md.
