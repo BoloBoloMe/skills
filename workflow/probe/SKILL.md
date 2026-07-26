@@ -43,7 +43,7 @@ ROADMAP.md 的未决迷雾区段存的就是这些模糊视图 — 疑似的问�
 
 **种类**:
 - research (AFK): 委派子代理独立探索, 产出分析文件. **何时创建**: 决策在等一个事实, 而该事实藏在当前工作目录之外 (文档, 第三方 API, 本地知识库等), 须先暴露出来.
-- deliberate (HITL): 调用 `deliberate` skill 盘问我, 产出决策. **何时创建**: 默认情形 — 要敲定一个决策, 其选项/取舍无法单靠 research 暴露事实或靠 prototype 提升保真度直接看清, 须与我逐条盘问.
+- deliberate (HITL): 调用 `deliberate` skill 盘问我, 产出决策. **何时创建**: 默认情形 — 要敲定一个决策, 其选项/取舍无法单靠 research 暴露事实或靠 prototype 提升保真度直接看清, 须与我逐条盘问. 决策域含高风险全新 module/interface 形状且无实现知识支撑时, 先立 spike 型 task 阻塞本 Milestone - 立 Milestone 时不知道届时是否选 HILT, 故按形状风险判断, 不以 HILT 为条件.
 - prototype (HITL): 调用 `prototype` skill 和我做出粗糙原型, 提升讨论保真度, 产出原型文件. **何时创建**: 关键问题是 "它应该是什么样子" 或 "它应该如何运行", 靠语言说不清, 需要一个可反应的具体物件才能继续讨论.
 - task (AFK/HITL): AFK 非编码任务委派子代理; AFK 编码任务见下; HITL 跟我协作. **何时创建**: 某件必须在决策之前完成的手工活 — 无需决策/原型/研究, 但讨论在它完成前被卡住. 唯一 "做" 而非 "决策" 的类型, 靠解锁决策而非抵达目的地立足.
 
@@ -98,7 +98,7 @@ HITL 段 = deliberate/prototype + HITL task;
    完成标准: 当前相位的 Milestone 已认领.
 3. **放大解决.** 按 Milestone 类型分流, 需要时读取被阻塞者的上下文或已关闭 Milestone 的产物.
    完成标准见 [Milestone 类型处理](#milestone-类型处理).
-4. **记录关闭.** Milestone 文件头改 `状态: 已关闭` → ROADMAP 已关闭决策追加摘要+链接 → 更新前沿 → 更新连线图. deliberate 生成 spec 时, 链接须含产出的 `docs/changes/<feature-slug>/` 路径, 供终端段准入定位. 父会话只收摘要 + 产物链接 + 索引更新; 重上下文留在子代理产物文件, 父保持精瘦.
+4. **记录关闭.** Milestone 文件头改 `状态: 已关闭` → ROADMAP 已关闭决策追加摘要+链接 → 更新前沿 → 更新连线图. deliberate 生成 spec 时, 链接须含产出的 `docs/changes/<feature-slug>/` 路径, 供终端段准入定位. 父会话只收摘要 + 产物链接 + 索引更新; 重上下文留在子代理产物文件, 父保持精瘦. 终端 Milestone 关闭时, 摘要须列出其 feature 的 `afk-running/final-report.md` 中的实现发现和重构候选, 供我判断是否按 step 5 转化为新 Milestone.
    完成标准: 所有文件更新已落地; 下一个 Milestone 可从前沿正确识别.
 5. **转化迷雾.** 解决结果让某块迷雾变清晰了? 从迷雾移除, 写成 MILESTONE-NN.md, 加入前沿. 发现某个 Milestone 在目的地之外? 划入范围外. 给已存在 Milestone 挂了新下游 → 其角色按派生规则重算.
    完成标准: 未决迷雾每项已判断; 该转化的已创建 Milestone; 前沿和范围外已同步.
@@ -117,11 +117,12 @@ HITL 段 = deliberate/prototype + HITL task;
 
 1. 归组. 在会话中与我确认每个前沿终端 Milestone 对应的 feature 路径 (`docs/changes/<feature-slug>/`) — 候选含已关闭 deliberate 在 ROADMAP 记录的路径和现存 `docs/changes/*/` 目录. 一个终端 Milestone 对应一个 feature. 归不上的 (无对应 feature, 或对应 feature 缺 `PRODUCT.md`/`TECHNICAL.md`) 标为缺 spec.
 2. 守底. 缺 spec 的终端 Milestone 不进终端段 — 报告缺口, 为其开 deliberate Milestone 回 HITL 段, 准入中止.
-3. 生成执行计划 (HITL). 我仍在场, 按 feature 逐个调用 `to-execution-spec` skill (其 step 4 grilling 在会话中确认切片). 每个 feature 产出 `EXECUTION.md` + issues + `afk-running/` 步骤文件. `deliberate` 在 probe 内已跳过 `to-execution-spec`, 由本步骤接管.
-4. 入索引. 把每个终端 Milestone → feature 路径的确认映射, 连同各 feature 的 `EXECUTION.md`/issues/`afk-running/` 路径, 记入 ROADMAP 笔记, 保持 ROADMAP 只做索引. 终端 Milestone 尚未关闭, 不写入已关闭决策.
-5. 准入完成, 落盘. 终端段在新会话重载执行; 单 worker 逐个 Milestone 调 `afk` 时, 按 ROADMAP 笔记中的映射定位该 Milestone 所属 feature 的根目录 `afk-running/` (满足 `afk` 路径推断).
+3. 探针判断. 对每个归上的 feature: 涉及全新 module/interface 形状且其 deliberate 未选 HILT 时, 在会话中说明接口在零实现知识下被冻结的风险, 建议先回 HITL 段开一个 spike 型 task Milestone (一次性探针代码, 产物: 接口草图 + 测试清单候选). 我采纳 -> 该 Milestone 登记入前沿, 本 feature 准入中止, spike 关闭后重跑本准入 (仅该 feature); 我跳过 -> 继续, 在 ROADMAP 笔记记录已知情跳过. 形状已由 HILT, 既有代码, 机器契约或 spike 产物支撑 -> 直接继续, 不建议.
+4. 生成执行计划 (HITL). 我仍在场, 按 feature 逐个调用 `to-execution-spec` skill (其 step 4 grilling 在会话中确认切片数量上限, 首 issue, 粗轮廓和重切授权边界; 后续 issue 由 afk 在授权内随实现物化). 每个 feature 产出 `EXECUTION.md` + 首 issue + `afk-running/` 步骤文件. `deliberate` 在 probe 内已跳过 `to-execution-spec`, 由本步骤接管.
+5. 入索引. 把每个终端 Milestone → feature 路径的确认映射, 连同各 feature 的 `EXECUTION.md`/issues/`afk-running/` 路径, 记入 ROADMAP 笔记, 保持 ROADMAP 只做索引. 终端 Milestone 尚未关闭, 不写入已关闭决策.
+6. 准入完成, 落盘. 终端段在新会话重载执行; 单 worker 逐个 Milestone 调 `afk` 时, 按 ROADMAP 笔记中的映射定位该 Milestone 所属 feature 的根目录 `afk-running/` (满足 `afk` 路径推断).
 
-完成标准: 前沿每个终端 Milestone 所属 feature 的 execution-spec 产物齐备; ROADMAP 笔记已记映射与产物路径, 供新执行会话定位; 缺 spec 的已回 HITL; 准入会话与终端段执行会话分离.
+完成标准: 前沿每个终端 Milestone 所属 feature 的 execution-spec 产物齐备; ROADMAP 笔记已记映射与产物路径, 供新执行会话定位; 缺 spec 的已回 HITL; 需 spike 的已回 HITL 或已记录知情跳过; 准入会话与终端段执行会话分离.
 
 ### 并发模型
 

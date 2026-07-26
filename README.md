@@ -33,7 +33,7 @@ probe -> deliberate
 - `deliberate`: 在会话中关闭产品和技术设计树, 在发散点读取外部参考 `EXPLORE-DESIGN-OPTIONS.md` 比较多方案, 延迟固化到盘问结束, 可选生成 Spec 链.
 - `to-product-spec`: 把已确认产品结果写入 `PRODUCT.md`.
 - `to-technical-spec`: 把已确认技术设计写入 `TECHNICAL.md`.
-- `to-execution-spec`: 生成 `EXECUTION.md`, 垂直切片 issues 和 AFK 步骤文件.
+- `to-execution-spec`: 生成 `EXECUTION.md`, 首 issue 全文与后续切片粗轮廓 (由 `afk` 按重切授权随实现物化) 和 AFK 步骤文件.
 - `afk`: 按当前 issue 调度 worker/reviewer, 完成实现/审查/验证/证据闭环.
 
 Spec Pack 和运行文档只供 AI 使用. 人类不通过阅读文档批准方案. 影响产品, API, 架构, 范围, 风险或验证的决定必须在 `deliberate` 会话中解释并确认. 后续 Spec skill 只能整理已确认内容, 发现新决策或冲突时退回盘问.
