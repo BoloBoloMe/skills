@@ -107,3 +107,5 @@ disable-model-invocation: true
 我说不用则跳过; 
 我说要则依次调用 `to-product-spec` skill, `to-technical-spec` skill.
 接着判断当前是否在 `probe` skill 流程内: 不在则继续调用 `to-execution-spec` skill; 在则 spec 生成完毕, 停止 (`to-execution-spec` 改由 probe 准入相位按 feature 接管, 不在此处调用).
+
+在生成 Spec 的过程中发现的任何未定决策都属于*盲区*, 须回到对应设计分支继续盘问, 该分支关闭后再继续生成 Spec.
