@@ -155,6 +155,27 @@ diff 为空 -> _current.md 写为 :04
 - 将当前 issue 的 `- [ ] 已实现` 改为 `- [x] 已实现`.
 - 调用 decision-ledger, 基于真实 diff 更新相关决策的实际影响.
 - 写入当前 issue 产物目录/final-report.md, 包含可观察结果, 覆盖的 AC/TG/NFR, 最终 diff, 验证证据, review 处理, 决策实际影响, 未运行项和残余风险.
+- 提交本次 issue 变更, 提交信息按以下模板生成:
+
+  ```text
+  [type]([scope]): [ISSUE-KEY] - [summary]
+
+  [ISSUE-KEY] 实现完成.
+
+  变更:
+  - [change-1]
+  - [change-2]
+  - ...
+
+  验收标准: 全部通过, 见 final-report.md.
+  ```
+
+  字段:
+  - `[type]`: 从 issue 推断, 默认 `feat`. 可选: `feat` / `fix` / `refactor` / `perf` / `chore`.
+  - `[scope]`: feature-slug.
+  - `[ISSUE-KEY]`: 当前 issue key.
+  - `[summary]`: issue 文件的一行描述, 取第一条非标题/非元数据行; 取不到则用 `[ISSUE-KEY]`.
+  - `[change-N]`: 从 worker-note-aN 的 RED/GREEN 或 final-report 提取的关键变更点. 无变更点则省略 `变更:` 块.
 
 扫描 issues/ISSUE-*.md, 按编号找到下一个未勾选 issue:
 - 找到 -> _current.md 写为 <下一 issue key>:01, 继续.

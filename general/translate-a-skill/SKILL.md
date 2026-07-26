@@ -148,7 +148,7 @@ rg -n "^(|name:|description:|license:|compatibility:|metadata:|allowed-tools:|di
 - 完整查看全文
 - 发现有直译腔 → 改
 - 不符合中文表达习惯 → 改
-- 需回看英文才能确定操作顺序处 → 改
+- 需回看英文原文才能确定操作顺序处 → 改
 
 完成标准:
 - 无中文全角标点
