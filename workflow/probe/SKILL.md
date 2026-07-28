@@ -36,7 +36,7 @@ ROADMAP.md 的未决迷雾区段存的就是这些模糊视图 — 疑似问题,
 
 **种类**:
 - research (AFK): 委派子代理独立探索, 产出分析文件. **何时创建**: 决策在等一个藏在当前工作目录之外的事实 (文档, 第三方 API, 本地知识库等), 须先暴露.
-- deliberate (HITL): 调用 `deliberate` skill 盘问我, 产出决策. **何时创建**: 默认情形 — 决策的选项/取舍无法靠 research 暴露事实或靠 prototype 提升保真度直接看清, 须逐条盘问. 决策域含高风险全新 module/interface 形状且无实现知识支撑时, 先立 spike 型 task 阻塞本 Milestone — 立 Milestone 时不知届时是否选 HILT, 故按形状风险判断, 不以 HILT 为条件.
+- deliberate (HITL): 调用 `deliberate` skill 盘问我, 固化决策. **何时创建**: 默认情形 — 决策的选项/取舍无法靠 research 暴露事实或靠 prototype 提升保真度直接看清, 须逐条盘问. 决策域含高风险全新 module/interface 形状且无实现知识支撑时, 先立 spike 型 task 阻塞本 Milestone — 立 Milestone 时不知届时是否选 HILT, 故按形状风险判断, 不以 HILT 为条件.
 - prototype (HITL): 调用 `prototype` skill 与我做粗糙原型, 提升讨论保真度, 产出原型文件. **何时创建**: 关键问题是 "它应该是什么样子/如何运行", 语言说不清, 需要可反应的具体物件才能继续讨论.
 - task (AFK/HITL): AFK 非编码任务委派子代理; AFK 编码见下; HITL 与我协作. **何时创建**: 必须在决策前完成的手工活 — 无需决策/原型/研究, 但讨论在它完成前被卡住. 唯一 "做" 而非 "决策" 的类型, 靠解锁决策立足, 不直接抵达目的地 — 只搬开挡在决策前的石头 (开通权限, 迁移数据, 看清 API 形状).
 
