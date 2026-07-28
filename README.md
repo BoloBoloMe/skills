@@ -30,7 +30,7 @@ probe -> deliberate
 ```
 
 - `probe`: 当任务超出单会话容量时, 绘制 Roadmap 拆分决策调查, 遍历关闭后路径清晰, 移交 deliberate.
-- `deliberate`: 在会话中关闭产品和技术设计树, 在发散点读取外部参考 `EXPLORE-DESIGN-OPTIONS.md` 比较多方案, 延迟固化到盘问结束, 可选生成 Spec 链.
+- `deliberate`: 在会话中关闭产品和技术设计树, 延迟固化到盘问结束, 可选生成 Spec 链.
 - `to-product-spec`: 把已确认产品结果写入 `PRODUCT.md`.
 - `to-technical-spec`: 把已确认技术设计写入 `TECHNICAL.md`.
 - `to-execution-spec`: 生成 `EXECUTION.md`, 首 issue 全文与后续切片粗轮廓 (由 `afk` 按重切授权随实现物化) 和 AFK 步骤文件.
@@ -81,7 +81,7 @@ project-root/
 - `workflow/probe`: 大任务入口 — 绘制和遍历决策调查 Roadmap.
 - `workflow/probe`: 大任务入口 — 绘制和遍历决策调查 Roadmap.
 - `workflow/setup-workspace`: 初始化 Spec 工作区和领域文档约定.
-- `workflow/deliberate`: 会话式产品/技术盘问与方案发散; 发散流程的外部参考 `EXPLORE-DESIGN-OPTIONS.md` 在同目录.
+- `workflow/deliberate`: 会话式产品/技术盘问与决策关闭.
 - `workflow/to-product-spec`: Product Spec 生成.
 - `workflow/to-technical-spec`: Technical Spec 生成.
 - `workflow/to-execution-spec`: Execution Spec/issue/AFK 步骤生成.
