@@ -30,7 +30,7 @@ disable-model-invocation: true
 # 固化
 
 分支完成标准检查通过后, 询问 *是否结束盘问*.
-我回答是: 使用 `domain-modeling` 维护领域语言文件或 ADR, 调用 `decision-ledger` 维护 `DECISIONS.md`.
+我回答是: 使用 `domain-modeling` 维护领域语言文件或 ADR, 调用 `decision-ledger` 维护决策账本.
 我回答否并补充问题: 不写文件, 返回对应设计分支继续.
 
 # 生成 Spec (我选)
@@ -39,3 +39,7 @@ disable-model-invocation: true
 再判断: 当前在 `probe` skill 流程内则停止 (`to-execution-spec` 由 probe 准入相位按 feature 接管); 否则继续调用 `to-execution-spec` skill.
 
 Spec 只能整理已确认决策, 禁止新增; 生成中发现的任何未定决策都属于遗漏的*盲区*, 回到对应设计分支继续盘问, 该分支关闭后再继续生成.
+
+# 检查产物
+
+要落盘的产物都落盘之后, 启动一名子代理校验它们的内容是否正确且一致. 如果发现有问题先向我汇报, 在得到我的答复前禁止采取任何行动.
