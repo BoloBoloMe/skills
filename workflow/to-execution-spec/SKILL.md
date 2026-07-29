@@ -5,6 +5,7 @@ disable-model-invocation: true
 ---
 
 开始前, 调用 `domain-awareness` skill 只读感知当前工作目录的领域模型.
+
 生成 `EXECUTION.md` 和可独立领取的垂直切片 issues. `EXECUTION.md` 是全局执行约束和任务拓扑, issue 是 `afk` 的直接输入. 文档只供 AI 使用. 本 skill 不新增产品/API/架构决策, 不要求我阅读文档后确认.
 切片采用两步承诺: 本 skill 冻结切片数量上限, 首 issue 全文, 其余切片的粗轮廓和重切授权边界; 后续 issue 由 `afk` 在每个 issue 关闭时依据实现知识在授权内物化. 不把零实现知识时的猜测固化为全部切片.
 
