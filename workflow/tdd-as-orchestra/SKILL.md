@@ -1,6 +1,6 @@
 ---
 name: tdd-as-orchestra
-description: TDD 管弦式子代理编排, 基于权威输入和切片推进实现, 审核和本地提交.
+description: 编程任务的体量较大, 一个会话容纳不下时使用.
 disable-model-invocation: true
 ---
 

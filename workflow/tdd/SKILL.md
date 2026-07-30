@@ -1,6 +1,7 @@
 ---
 name: tdd
-description: 当要需求有明确的验证标准时, 使用 TDD 实现循环.
+description: 编程任务的体量较小, 一个会话可以容纳时使用.
+disable-model-invocation: true
 ---
 
 开始前, 调用 `domain-awareness` skill 只读感知当前工作目录的领域模型.
