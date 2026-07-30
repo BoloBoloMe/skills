@@ -66,7 +66,7 @@ docs/changes/<feature-slug>/
 - 边界和异常处理.
 - 安全策略.
 - `NFR-001` 格式的性能/可观测性/可用性要求.
-- 测试策略.
+- 已确认测试接缝与用例.
 - 技术决策/ADR 引用.
 - 依赖, 风险, 代码边界提示和非阻塞待验证事实.
 
@@ -81,7 +81,7 @@ docs/changes/<feature-slug>/
 - PRODUCT/TECHNICAL/DECISIONS 权威输入.
 - 全局允许范围和禁止范围.
 - build/lint/test/benchmark/人工验证组成的完成定义.
-- AC/TG/NFR 测试策略.
+- AC/TG/NFR 测试策略, 已确认测试接缝和验证入口.
 - issue 任务图和依赖.
 - `AC/TG/NFR -> issue -> 验证入口` 覆盖矩阵.
 - 风险和停止条件.
@@ -99,6 +99,8 @@ EXECUTION 不复制 issue 正文, 不记录运行状态.
 - 覆盖的 AC/TG/NFR.
 - 决策引用.
 - 允许/禁止范围.
+- 代码定位提示.
+- TDD 切片.
 - 验证入口和通过标准.
 - 风险和停止条件.
 - AFK/HITL 依据.
@@ -136,7 +138,7 @@ propose
 
 ### 4.3 to-technical-spec
 
-探索代码事实, 将已确认设计写入 `TECHNICAL.md`. 不新增产品/API/架构/范围决策. 缺口或冲突退回 `propose`.
+探索代码事实, 将已确认设计写入 `TECHNICAL.md`. 不新增产品/API/架构/范围/测试接缝决策. 缺口或冲突退回 `propose`.
 
 完成后只在会话中报告路径, 待验证事实和阻塞, 不要求文档审批.
 
@@ -144,7 +146,7 @@ propose
 
 按 tracer bullets 生成 `EXECUTION.md` 和 issues.
 
-切片决策必须在会话中确认. 先说明推荐切片数, 再逐个说明可观察结果, 覆盖 ID, 依赖, 风险和 AFK/HITL 依据. 一次只问一个边界或依赖问题, 不展示 issue 全文.
+切片决策必须在会话中确认. 先说明推荐切片数, 再逐个说明可观察结果, 覆盖 ID, 依赖, 风险, TDD 切片和 AFK/HITL 依据. 一次只问一个边界或依赖问题, 不展示 issue 全文.
 
 确认后落盘并生成 AFK 步骤文件.
 
