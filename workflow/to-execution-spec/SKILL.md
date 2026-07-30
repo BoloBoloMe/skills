@@ -6,64 +6,61 @@ disable-model-invocation: true
 
 开始前, 调用 `domain-awareness` skill 只读感知当前工作目录的领域模型.
 
-生成 `EXECUTION.md` 和可独立领取的垂直切片 issues. `EXECUTION.md` 是全局执行约束和任务拓扑, issue 是 `afk` 的直接输入. 文档只供 AI 使用. 本 skill 不新增产品/API/架构决策, 不要求我阅读文档后确认.
-切片采用两步承诺: 本 skill 冻结切片数量上限, 首 issue 全文, 其余切片的粗轮廓和重切授权边界; 后续 issue 由 `afk` 在每个 issue 关闭时依据实现知识在授权内物化. 不把零实现知识时的猜测固化为全部切片.
+目标: 编写 Execution Spec: `EXECUTION.md` 和 issues. 常规工作拆成可独立领取的垂直切片; 宽重构特例按 HITL/integration 标注. 文档只供 AI 使用, 不要求我阅读文档后确认.
 
-## 1. 收集上下文
+按信源顺序收集 `EXECUTION.md` 需要的信息: `PRODUCT.md`, `TECHNICAL.md`, `DECISIONS.md`, 领域文档, 代码事实. Product/Technical/Decisions 定义意图; 代码事实只验证可行性和既有形状. 信源冲突, 或需要新增/改变决策内容时, 调用 `grilling` skill 盘问我. 使用下方模板写 `EXECUTION.md` 和 issues. 输出:
+`docs/changes/<feature-slug>/EXECUTION.md`
+`docs/changes/<feature-slug>/issues/ISSUE-<NN>-<slug>.md`, 从 `ISSUE-01` 连续编号.
 
-确认已获得本地 Spec 工作区约定. 没有则停止, 请我调用 `setup-workspace` skill 完成本地 Spec 工作区初始化. 读取同一 feature 下的 `PRODUCT.md`, `TECHNICAL.md`, `DECISIONS.md` (如存在). 需要维护决策引用时调用 `decision-ledger`.
-缺少 `PRODUCT.md` 或 `TECHNICAL.md` 时停止. 来源之间冲突, 或拆分需要新产品/API/架构/范围取舍时停止, 在会话中说明影响并请我回到 `deliberate`.
-完成标准: 三层输入属于同一 feature; 无阻塞冲突; 当前有效决策已读取或明确无相关决策.
+# 起草垂直切片
 
-## 2. 聚焦探索代码库
+把工作拆成 **tracer bullet** issues.
 
-如果当前上下文不足, 读取相关代码, 测试和配置, 只为确定:
+<vertical-slice-rules>
 
-- 可独立验证的垂直切片.
-- 模块/目录/行为级允许和禁止范围.
-- 真实验证入口和全局完成定义.
-- 切片依赖和停止条件.
+- 每个切片都走过本变更涉及的适用层的窄而 **完整** 路径, 例如 schema, API, UI, tests. 它是垂直切片, 切勿是单层水平切片
+- 完成的切片本身可以演示, 或可独立验证
+- 每个切片都应适合一个全新的上下文窗口
+- 只有当前切片无法在保持边界和验证的前提下推进时, 才创建阻塞它的预重构 issue
 
-禁止把早期猜测固化为逐文件计划. 预计文件只允许在迁移或高风险任务中作为非约束提示, 并标明需要执行时复核.
-完成标准: 首切片可独立验证; 轮廓切片有暂定覆盖和验证方向; 首切片的范围和验证入口来自 Spec 或代码事实.
+</vertical-slice-rules>
 
-## 3. 判断切片粒度 (两步承诺)
 
-优先单 issue. 只有存在 2 条以上可独立验证的端到端结果, 需要分阶段合并降低风险, 或不同角色可独立领取时才拆分.
-每个 issue 必须是贯穿所需层次的 tracer bullet, 完成后可单独演示或验证. 禁止按 schema/API/UI/tests 水平拆分.
+为每个 issue 写出 **blocking edges**. Blocking edges 是 issue 之间的先后依赖关系. 它们说明哪些其他 issues 必须先完成, 这个 issue 才能开始. 没有 blockers 的 issue 可以立即开始.
 
-多 issue 时, 输出按确定性分两层:
+起草完成标准: 每个 AC/TG/NFR 被至少一个拟议 issue 覆盖或明确说明无需执行任务; 每个 issue 都有可独立验证的可观察结果; blockers 无环且只包含真正阻塞项; 每个 issue 适合一个全新的上下文窗口; 宽重构已命中特例规则或明确不适用.
 
-- **冻结**: 首 issue 的完整内容 (覆盖 ID, 范围, 验证入口, 风险, AFK/HITL 归属) - 它最近, 认知最充分.
-- **未决轮廓**: 其余切片只写暂名, 暂覆盖 ID, 依赖假设和主要不确定性. 轮廓是零实现知识时的暂定猜测, 允许 `afk` 在重切授权内物化时调整.
+**宽重构是垂直切片的例外.** 宽重构是一次机械改动. 例如重命名列, 或修改共享符号类型. 
+它的 **blast radius** 会扩散到整个代码库. 一次编辑会打断成千上万个调用点. 没有任何垂直切片能独立保持绿色. 切勿强塞成 tracer bullet. 
+宽重构按 **扩展-收缩** (先兼容新增, 再迁移旧用法, 最后清理旧形式) 处理: 先让新旧两种形式并存, 再分批迁移调用者, 最后删除旧形式. 这样每一批迁移后都有机会保持项目可验证.
 
-同时给出切片数量上限 (含理由) 和重切授权边界:
+- 兼容扩展 issue: 添加新形式, 保留旧形式, 不大批迁移调用者. 完成后现有路径仍然可用
+- 分批迁移 issues: 按 package, 目录或调用者类型分批把使用处从旧形式改到新形式. 每批都是一张 issue, 且由兼容扩展 issue 阻塞. 因为旧形式仍存在, 每批完成后都应能通过验证
+- 收缩清理 issue: 确认没有调用者再使用旧形式后, 删除旧形式. 这个 issue 由所有分批迁移 issues 阻塞
 
-- 轻量重切 (afk 自主): 调整未决切片的覆盖 ID 组合, 顺序和边界; 按实现知识拆分或合并轮廓.
-- 越权停止: 切片数超上限; 需推翻已关闭 issue 的假设; 需改变 PRODUCT/TECHNICAL/DECISIONS.
+若任何分批迁移 issue 单独完成后都无法保持绿色, 仍保留兼容扩展/分批迁移/收缩清理序列, 但这些 issue 不再标为可独立领取. 将它们标为 HITL/integration 特例, 写明共享 integration branch, 每个中间 issue 的局部完成证据, 以及最终整合验证 issue 的整体绿色承诺. 这些 issues 都阻塞最终的整合验证 issue.
 
-完成标准: 数量上限有理由; 首切片可独立验证且完整; 轮廓暂定覆盖全部剩余 AC/TG/NFR 且标明不确定性; 授权边界可执行 (轻量与越权可区分).
+# 盘问我
 
-## 4. 会话盘问切片
+把建议拆分展示为编号列表. 每个 issue 都展示:
 
-调用 `grilling` skill 确认两步承诺. 文档不是审批界面. 在会话中先给出你的推荐 (数量上限和理由), 然后说明:
+- **标题**: 简短描述名
+- **阻塞项**: 哪些其他 issues 必须先完成, 若无则写无
+- **交付内容**: 这个 issue 打通的端到端行为
 
-- 首 issue: 名称和用户/系统可观察结果, 覆盖的 `AC/TG/NFR`, 主要风险, 适合 AFK 或需要 HITL 的原因.
-- 其余轮廓: 暂名, 暂覆盖, 依赖假设, 主要不确定性.
-- 重切授权边界: 哪些调整授权 `afk` 自主, 哪些触发停止回到我.
+询问我:
 
-一次只问一个会改变上限, 首 issue 边界或授权边界的问题. 不展示 issue 全文, 不让我阅读草稿. 我确认的是首切片, 数量上限, 轮廓走向和授权边界, 不是 Markdown 文件, 也不是后续切片的最终边界.
-完成标准: 我已在 grilling 会话中明确确认数量上限, 首 issue 内容, 轮廓走向和重切授权边界; 没有把文档阅读当作确认条件; 未把轮廓当作已冻结切片要我确认.
+- 粒度是否合适? 是太粗, 还是太细?
+- Blocking edges 是否正确? 每个 issue 是否只依赖真正阻塞它的 issues?
+- 是否需要合并或继续拆分 issues?
 
-## 5. 编写 Execution Spec 和 issues
+持续迭代, 直到我批准拆分.
 
-输出:
+# 固化 Execution Spec 和 issues
 
-- `docs/changes/<feature-slug>/EXECUTION.md`.
-- `docs/changes/<feature-slug>/issues/ISSUE-01-<slug>.md` (仅首 issue 落盘全文).
+按模板生成已批准的 issues, 再生成引用真实 issue 路径的 `EXECUTION.md`. 按依赖顺序编号. 存在相关 DECISIONS.md 时, 每个 issue 与相关决策维护双向引用索引; 只更新引用索引, 不新增或改变决策内容. 无相关决策时 issue 写"无". 不复制 Product/Technical Spec 的正文, 只引用稳定 ID 和执行所需摘要.
 
-先生成首 issue, 再生成引用其路径的 `EXECUTION.md`; 未决轮廓只写在 `EXECUTION.md` 任务图中, 不生成 issue 文件, 由 `afk` 物化时按当时依赖顺序连续编号落盘. 单 issue 变更直接全部冻结, 无轮廓. 存在相关 DECISIONS.md 时, 首 issue 与相关决策维护双向引用; 无相关决策时 issue 写"无". 不复制 Product/Technical Spec 的正文, 只引用稳定 ID 和执行所需摘要. 不记录 `Status:`.
-完成标准: 首 issue 引用可解析; 每个 AC/TG/NFR 被首 issue 或某轮廓暂定覆盖, 或明确说明无需执行任务; 轮廓不含实现细节; 任务图标明冻结/未决; 依赖无环; 决策双向引用完整 (首 issue), 或已明确无相关决策.
+完成标准: `EXECUTION.md` 任务图中的每个引用可解析; 每个 AC/TG/NFR 被至少一个 issue 覆盖或明确说明无需执行任务; issue 编号连续; 依赖无环; 决策引用索引双向完整, 或已明确无相关决策.
 
 <execution-spec-template>
 # <变更标题> Execution Spec
@@ -80,20 +77,13 @@ disable-model-invocation: true
 ## 测试策略
 - AC/TG/NFR 对应的测试类型和验证入口.
 ## 任务图
-- ISSUE-01 (已冻结): `issues/ISSUE-01-<slug>.md`; 覆盖: AC-001, TG-001; 依赖: 无.
-- ISSUE-02 (未决轮廓): 暂名 <名称>; 暂覆盖: AC-002; 依赖: ISSUE-01; 不确定性: <...>.
-## 重切授权
-- 切片数量上限: <N> (理由: <...>).
-- 轻量重切 (afk 自主): 调整未决切片的覆盖 ID 组合, 顺序和边界; 按实现知识拆分或合并轮廓.
-- 越权停止: 切片数超上限; 需推翻已关闭 issue 的假设; 需改变 PRODUCT/TECHNICAL/DECISIONS.
+- ISSUE-01: `issues/ISSUE-01-<slug>.md`; 覆盖: AC-001, TG-001; 依赖: 无.
 ## 覆盖矩阵
-- AC-001 -> ISSUE-01 (已冻结) -> 验证入口.
-- AC-002 -> ISSUE-02 (未决轮廓, 暂定) -> 验证入口.
-- TG-001 -> ISSUE-01 (已冻结) -> 验证入口.
+- AC-001 -> ISSUE-01 -> 验证入口.
+- TG-001 -> ISSUE-01 -> 验证入口.
 ## 全局风险和停止条件
 - 需要改变 PRODUCT/TECHNICAL/DECISIONS 时停止.
 - 需要扩大允许范围或触碰禁止范围时停止.
-- 重切触发越权条件时停止.
 - Spec 与代码事实冲突或无法提供完成证据时停止.
 </execution-spec-template>
 
@@ -126,19 +116,3 @@ disable-model-invocation: true
 ## 被阻塞于
 - ISSUE 引用. 无则写"无 - 可以立即开始".
 </issue-template>
-
-## 6. 生成 AFK 步骤文件
-
-AFK 步骤文件是为调用 skill `afk` 的另一个父会话准备的. 切片确认并落盘后:
-
-1. 读取 `references/step-gen-guide.md`.
-2. 在 `afk-running/` 根生成 `_current.md` 和 `step-01.md` 到 `step-06.md`.
-3. `_current.md` 初始内容为第一个 issue key 加 `:01`, 例如 `ISSUE-01:01`.
-4. 步骤文件内容严格来自生成指引, 不加入 feature 特有实现细节.
-
-完成标准: `_current.md` 和 6 个步骤文件存在; 第一个 issue 可由 `_current.md` 唯一定位.
-
-## 7. 会话交付
-
-直接告诉我: 已生成的三类路径, 数量上限和首 issue 名称/覆盖, 轮廓走向, 重切授权边界, AFK 与 HITL 归属, 是否有阻塞. 不展示文档全文, 不让我阅读后确认.
-完成标准: 我从会话中知道首 issue 做什么, 上限是多少, 后续切片如何随实现显形, 无需阅读 `EXECUTION.md` 或 issues.
