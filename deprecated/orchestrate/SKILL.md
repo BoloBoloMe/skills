@@ -15,13 +15,13 @@ disable-model-invocation: true
 - 产品/技术决策已在会话中确认, 要生成产品基线 -> `to-product-spec`.
 - `PRODUCT.md` 已存在, 要整理技术契约 -> `to-technical-spec`.
 - `PRODUCT.md` 和 `TECHNICAL.md` 已存在, 要拆执行切片 -> `to-execution-spec`.
-- `EXECUTION.md`/issues/DECISIONS 已就绪, issue 已在会话中确认 -> `afk`.
+- `EXECUTION.md`/issues/DECISIONS 已就绪, issue 已在会话中确认 -> `tdd-as-orchestra`.
 - 行为已明确, 由当前会话直接测试先行实现 -> `tdd`.
 
 完整主链:
 
 ```text
-probe -> propose -> to-product-spec -> to-technical-spec -> to-execution-spec -> afk
+probe -> propose -> to-product-spec -> to-technical-spec -> to-execution-spec -> tdd-as-orchestra
 ```
 
 Product/Technical/Execution Spec 和运行产物只供 AI 使用. 所有影响产品, API, 架构, 范围, 风险或验证的决定必须在 `propose` 会话中向我解释并确认. 不路由到"让我阅读文档后批准"的步骤.

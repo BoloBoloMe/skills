@@ -11,13 +11,6 @@ disable-model-invocation: true
 我的想法庞大且模糊: 单会话装不下, 前方还迷雾重重. 你的任务是*寻路*, 而不是直奔目的地: 先画 Roadmap — 按阻塞关系组织的 Milestone 索引, 再遍历它 — 逐个关闭 Milestone, 直到路线清晰.
 Probe 不直接产出决策, 只组织 Milestone 的调查与关闭流程; Roadmap 清空时, 所有必要的调查, 决策, 原型和执行前置工作都已完成, 路径清晰.
 
-## 两种模式
-
-- **绘制**: 无 ROADMAP.md → 走 [绘制 Roadmap](#绘制-roadmap).
-- **遍历**: 已有 ROADMAP.md → 走 [遍历 Roadmap](#遍历-roadmap).
-
-绘制和遍历永不同会话进行.
-
 ## 战争迷雾
 
 Roadmap 刻意不画满 — 看不清的绝不硬画. 活跃 Milestone 之外全是战争迷雾: 隐约感到前面有决策等着, 但眼下问题未关, 形状无法确定. 每关一个 Milestone, 迷雾退一步, 露出可明确写出的新 Milestone; 步步推进, 直到目的地完全清晰.
@@ -38,7 +31,7 @@ ROADMAP.md 的未决迷雾区段存的就是这些模糊视图 — 疑似问题,
 - research (AFK): 委派子代理独立探索, 产出分析文件. **何时创建**: 决策在等一个藏在当前工作目录之外的事实 (文档, 第三方 API, 本地知识库等), 须先暴露.
 - prototype (HITL): 调用 `prototype` skill 与我做粗糙原型, 提升讨论保真度, 产出原型文件. **何时创建**: 关键问题是 "它应该是什么样子/如何运行", 语言说不清, 需要可反应的具体物件才能继续讨论.
 - deliberate (HITL): 调用 `deliberate` skill 盘问我, 固化决策. **何时创建**: 需要决策, 且选项/取舍无法靠 research 暴露事实或靠 prototype 提升保真度直接看清, 须逐条盘问我. 默认类型.
-- task (AFK/HITL): AFK 非编码任务直接处理; AFK 编码任务则调用 `afk` skill 来处理; HITL 需要我在场协作才能完成的操作. **何时创建**: 必须在决策前完成的手工活 — 无需决策/原型/研究, 但讨论在它完成前被卡住. 唯一 "做" 而非 "决策" 的类型, 它的价值在于疏通决策流程.
+- task (AFK/HITL): AFK 非编码任务直接处理; AFK 编码任务则调用 `tdd-as-orchestra` skill 来处理; HITL 需要我在场协作才能完成的操作. **何时创建**: 必须在决策前完成的手工活 — 无需决策/原型/研究, 但讨论在它完成前被卡住. 唯一 "做" 而非 "决策" 的类型, 它的价值在于疏通决策流程.
 
 **完成标准**:
 - research: 分析文件已写, Milestone 全部考察点已覆盖.
@@ -46,7 +39,16 @@ ROADMAP.md 的未决迷雾区段存的就是这些模糊视图 — 疑似问题,
 - prototype: 原型文件已写, 足以支撑后续决策.
 - task: 工作已完成, 结果事实已记录.
 
+## 调用模式
+
+- **绘制**: 无 ROADMAP.md → 走 [绘制 Roadmap](#绘制-roadmap).
+- **遍历**: 已有 ROADMAP.md → 走 [遍历 Roadmap](#遍历-roadmap).
+
+绘制和遍历永不同会话进行.
+
 ## 绘制 Roadmap
+
+我带着一个模糊的想法进行调用.
 
 1. **确定目的地.** 与我敲定这次 Probe 最终要得到什么, 必须是高清晰度目标; 不够清晰就调用 `grilling` skill 盘问我 `目标是什么`, 不深入 `如何做到` 的实现细节, 不使用 *反方攻击*, 直到目标清晰度足够为止.
    完成标准: 目的地已被几句话高清晰度描述.
@@ -62,45 +64,18 @@ ROADMAP.md 的未决迷雾区段存的就是这些模糊视图 — 疑似问题,
 
 ## 遍历 Roadmap
 
+我带着 Roadmap进行调用. 
 始终用文件名指代 Milestone, 禁用裸编号.
-
-### 相位与角色
-
-遍历*按相位推进*, 形态为: `(散雾抽干 → HITL 连做)* → 准入 → 终端 AFK 抽干`.
-`准入` 是 HITL 性质的独立过渡相位, 可确保生成执行计划与执行计划分属不同会话. 
-每个 Milestone 的相位角色在选前沿时从 (类型, 阻塞图) 派生, 不存字段:
-
-- research → 散雾
-- deliberate / prototype → HITL
-- task (HITL 模式) → HITL
-- task (AFK 模式) → 有下游依赖或关闭会退迷雾 → 散雾; 否则 (spec-gated afk 编码, 无下游) → 终端; 意不定默认散雾
-
-散雾段 = research + 有下游的 AFK task; 
-HITL 段 = deliberate/prototype + HITL task; 
-准入段 = HITL 过渡, 为前沿所有终端 Milestone 生成 execution-spec, 见 [终端段准入](#终端段准入); 
-终端段 = spec-gated 无下游 afk 编码 task (终端指轮次末位, 非抵达目的地). 
-
-角色随图变化自动重算 (转化迷雾挂新下游 → 终端降级散雾), 不影响已关闭的.
 
 ### 遍历步骤
 
-1. **加载索引.** 读取 ROADMAP.md 的目的地, 前沿列表, 阻塞连线图, 笔记. 不展开 Milestone 正文. *按相位推进*.
+1. **加载索引.** 读取 ROADMAP.md 的目的地, 前沿列表, 阻塞连线图, 笔记. 不展开 Milestone 正文.
    完成标准: 已知当前目的地和前沿.
-2. **选前沿认领.** 定按角色优先级 散雾 > HITL > 终端 选. 散雾段认领前沿全部散雾, 并行派发子代理; HITL 段认领第一个 HITL; 终端段认领第一个终端. 改文件头 `状态: 进行中`.
-   完成标准: 当前相位的 Milestone 已认领.
+2. **选前沿认领.** 按顺序领取第一个 Milestone. 改文件头 `状态: 进行中`.
+   完成标准: Milestone 已认领.
 3. **放大解决.** 按 Milestone 类型分流, 需要时读取被阻塞者的上下文或已关闭 Milestone 的产物.
    完成标准见 [Milestone](#milestone).
 4. **记录关闭.** Milestone 文件头改 `状态: 已关闭` → ROADMAP 已关闭决策追加摘要+链接 → 更新前沿 → 更新连线图.
    完成标准: 所有文件更新已落地; 下一个 Milestone 可从前沿正确识别.
 5. **转化迷雾.** 解决结果让某块迷雾变清晰 → 从迷雾移除, 写成 MILESTONE-NN.md, 加入前沿; 发现 Milestone 在目的地之外 → 划入范围外.
    完成标准: 未决迷雾每项已判断; 该转化的已创建; 前沿和范围外已同步.
-
-### 终端段准入
-
-HITL 抽干后执行一次. 前提: 前沿终端 Milestone 都是 spec-gated afk 编码任务, 其上游 deliberate 已关闭或 spec 现成. 前提不成立则跳过, 遍历结束. 
-
-1. 生成执行计划. 逐个 Milestone 调 `to-execution-spec` skill. `deliberate` 在 probe 内已跳过 `to-execution-spec`, 由本步骤接管.
-2. 入索引. 把每个终端 Milestone → feature 路径的确认映射, 记入 ROADMAP 笔记, 保持 ROADMAP 只做索引. 
-
-完成标准: 前沿每个终端 Milestone 的 execution-spec 产物齐备, ROADMAP 笔记已记映射, 供新执行会话定位.
-准入段结束后停下, 准入会话与终端段执行会话分离.

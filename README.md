@@ -26,15 +26,15 @@ probe -> deliberate
   -> to-product-spec
   -> to-technical-spec
   -> to-execution-spec
-  -> afk
+  -> tdd-as-orchestra
 ```
 
 - `probe`: 当任务超出单会话容量时, 绘制 Roadmap 拆分决策调查, 遍历关闭后路径清晰, 移交 deliberate.
 - `deliberate`: 在会话中关闭产品和技术设计树, 延迟固化到盘问结束, 可选生成 Spec 链.
 - `to-product-spec`: 把已确认产品结果写入 `PRODUCT.md`.
 - `to-technical-spec`: 把已确认技术设计写入 `TECHNICAL.md`.
-- `to-execution-spec`: 生成 `EXECUTION.md`, 首 issue 全文与后续切片粗轮廓 (由 `afk` 按重切授权随实现物化) 和 AFK 步骤文件.
-- `afk`: 按当前 issue 调度 worker/reviewer, 完成实现/审查/验证/证据闭环.
+- `to-execution-spec`: 生成 `EXECUTION.md`, 首 issue 全文与后续切片粗轮廓 (由 `tdd-as-orchestra` 按重切授权随实现物化) 和 AFK 步骤文件.
+- `tdd-as-orchestra`: 按当前 issue 调度 worker/reviewer, 完成实现/审查/验证/证据闭环.
 
 Spec Pack 和运行文档只供 AI 使用. 人类不通过阅读文档批准方案. 影响产品, API, 架构, 范围, 风险或验证的决定必须在 `deliberate` 会话中解释并确认. 后续 Spec skill 只能整理已确认内容, 发现新决策或冲突时退回盘问.
 
@@ -85,7 +85,7 @@ project-root/
 - `workflow/to-product-spec`: Product Spec 生成.
 - `workflow/to-technical-spec`: Technical Spec 生成.
 - `workflow/to-execution-spec`: Execution Spec/issue/AFK 步骤生成.
-- `workflow/afk`: AFK 父会话控制器.
+- `workflow/tdd-as-orchestra`: AFK 父会话控制器.
 - `workflow/decision-ledger`: 功能级决策账本.
 - `workflow/tdd`: red-green-refactor 实现循环.
 - `workflow/lazy-design`: 最小可交付设计约束.
@@ -98,9 +98,9 @@ project-root/
 - `workflow/use-worktree`: Git worktree 管理.
 - `workflow/receive-handoff`: 接收会话交接.
 
-## AFK
+## TDD As Orchestra
 
-`afk` 是运行时无关父会话控制器. 它不绑定具体子代理插件, 不直接编写生产/测试代码, 不替代 reviewer. `to-execution-spec` 生成全 feature 共用的 6 个步骤文件, `afk` 每次只读取 `_current.md` 和当前步骤, 按状态机推进.
+`tdd-as-orchestra` 是运行时无关父会话控制器. 它不绑定具体子代理插件, 不直接编写生产/测试代码, 不替代 reviewer. `to-execution-spec` 生成全 feature 共用的 6 个步骤文件, `tdd-as-orchestra` 每次只读取 `_current.md` 和当前步骤, 按状态机推进.
 
 执行前必须在会话中说明当前 issue 的可观察结果, 代码边界, 验证方式和最高风险, 再询问 `是否执行?`. 停止或完成时直接在会话中说明影响/结果/风险, 不要求人类阅读运行产物.
 

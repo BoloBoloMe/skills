@@ -90,7 +90,7 @@ EXECUTION 不复制 issue 正文, 不记录运行状态.
 
 ### 3.4 issues
 
-每个 issue 是可独立验证的 tracer bullet, 是 `afk` 的直接入口.
+每个 issue 是可独立验证的 tracer bullet, 是 `tdd-as-orchestra` 的直接入口.
 
 必含:
 
@@ -117,7 +117,7 @@ propose
   -> to-product-spec
   -> to-technical-spec
   -> to-execution-spec
-  -> afk
+  -> tdd-as-orchestra
 ```
 
 ### 4.1 propose
@@ -148,7 +148,7 @@ propose
 
 确认后落盘并生成 AFK 步骤文件.
 
-### 4.5 afk
+### 4.5 tdd-as-orchestra
 
 执行前在会话中说明当前 issue 的结果, 代码边界, 验证方式和最高风险, 再问"是否执行?".
 
