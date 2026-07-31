@@ -77,7 +77,11 @@ ROADMAP.md 的未决迷雾区段存的就是这些模糊视图 — 疑似问题,
    完成标准: Milestone 已认领.
 3. **放大解决.** 按 Milestone 类型分流, 需要时读取被阻塞者的上下文或已关闭 Milestone 的产物.
    完成标准见 [Milestone](#milestone).
-4. **记录关闭.** Milestone 文件头改 `状态: 已关闭` → ROADMAP 已关闭决策追加摘要+链接 → 更新前沿 → 更新连线图.
+4. **收口产物.** 按 Milestone 类型确认产物归属: research 分析文件; deliberate 决策/领域/Spec 文档; prototype 按它自己的规则管理产物, 并在 Milestone 文件记录归档指针; task 完成证据或代码提交. 提交信息: 下游 skill 有规定则用其规定; 否则 `doc: <MILESTONE-NN.md> <产物简述>`.
+   完成标准: 本 Milestone 产物已提交或已有可追溯指针; 无独立产物/非 git 仓库时已记录原因.
+5. **记录关闭.** Milestone 文件头改 `状态: 已关闭` → ROADMAP 已关闭决策追加摘要+链接 → 更新前沿 → 更新连线图.
    完成标准: 所有文件更新已落地; 下一个 Milestone 可从前沿正确识别.
-5. **转化迷雾.** 解决结果让某块迷雾变清晰 → 从迷雾移除, 写成 MILESTONE-NN.md, 加入前沿; 发现 Milestone 在目的地之外 → 划入范围外.
+6. **转化迷雾.** 解决结果让某块迷雾变清晰 → 从迷雾移除, 写成 MILESTONE-NN.md, 加入前沿; 发现 Milestone 在目的地之外 → 划入范围外.
    完成标准: 未决迷雾每项已判断; 该转化的已创建; 前沿和范围外已同步.
+7. **提交路线图.** 提交 ROADMAP.md 和相关 MILESTONE 文件. 提交信息: `doc: 更新路线图 <MILESTONE-NN.md>`.
+   完成标准: Roadmap 变更已提交; 或确认非 git 仓库而跳过.
