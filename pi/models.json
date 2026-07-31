@@ -197,8 +197,8 @@
           "name": "GLM 5.2",
           "reasoning": true,
           "thinkingLevelMap": {
-            "off": "none",
-            "minimal": "minimal",
+            "off": null,
+            "minimal": null,
             "low": null,
             "medium": null,
             "high": "high",
@@ -208,7 +208,7 @@
           "input": [
             "text"
           ],
-          "contextWindow": 196608,
+          "contextWindow": 1000000,
           "maxTokens": 131072,
           "cost": {
             "input": 1.4,
