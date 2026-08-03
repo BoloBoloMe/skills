@@ -4,8 +4,6 @@ description: 编程任务的体量较小, 一个会话可以容纳时使用.
 disable-model-invocation: true
 ---
 
-开始前, 调用 `domain-awareness` skill 只读感知当前工作目录的领域模型.
-
 # 测试驱动开发
 
 TDD 是 red -> green 循环. 本 skill 让循环产出好测试, 这些测试值得保留. 它说明好测试是什么, 也说明测试放在哪里, 还列出反模式和循环规则. 

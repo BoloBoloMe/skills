@@ -9,8 +9,7 @@ disable-model-invocation: true
 
 好在, 你足够聪明, 还有子代理可以任你调遣. 只要按我说的去拆分任务, 我相信任务最终能被完成. 
 
-首先, 调用 `domain-awareness` skill 只读感知当前工作目录的领域模型.
-接着, 建立对 *权威输入* 的理解: DECISIONS.md, PRODUCT.md, TECHNICAL.md, EXECUTION.md,
+首先, 建立对 *权威输入* 的理解: DECISIONS.md, PRODUCT.md, TECHNICAL.md, EXECUTION.md,
 然后, 调用 `tdd` skill 理解 TDD 的循环.
 
 `tdd` 要求写测试前先向我确认接缝和用例, 你先检查这些内容是否能被 *权威输入* 回答.

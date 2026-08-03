@@ -4,8 +4,6 @@ description: 懒代码实现指导.
 disable-model-invocation: true
 ---
 
-开始前, 调用 `domain-awareness` skill 只读感知当前工作目录的领域模型.
-
 # 代码品味
 
 好的代码, 不是写得多漂亮, 覆盖多全面, 而在是否 *正确*, *最小*, *无未来负担*. 关键在用 *最少代码* 实现 *已确定行为*, 不为推测需求多写一行.
