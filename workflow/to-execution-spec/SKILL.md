@@ -9,8 +9,9 @@ disable-model-invocation: true
 目标: 编写 Execution Spec: `EXECUTION.md` 和 issues. 常规工作拆成可独立领取的垂直切片; 宽重构特例按 HITL/integration 标注. 文档只供 AI 使用, 不要求我阅读文档后确认.
 
 按信源顺序收集 `EXECUTION.md` 需要的信息: `PRODUCT.md`, `TECHNICAL.md`, `DECISIONS.md`, 领域文档, 代码事实. Product/Technical/Decisions 定义意图; 代码事实只验证可行性和既有形状. 信源冲突, 或需要新增/改变决策内容时, 调用 `grilling` skill 盘问我. 使用下方模板写 `EXECUTION.md` 和 issues. 输出:
-`docs/changes/<feature-slug>/EXECUTION.md`
-`docs/changes/<feature-slug>/issues/ISSUE-<NN>-<slug>.md`, 从 `ISSUE-01` 连续编号.
+`<产物根目录>/EXECUTION.md`
+`<产物根目录>/issues/ISSUE-<NN>-<slug>.md`, 从 `ISSUE-01` 连续编号.
+产物根目录默认 `docs/changes/<feature-slug>/`; 调用方可指定其他根目录.
 
 # 起草垂直切片
 

@@ -9,7 +9,7 @@ disable-model-invocation: true
 目标: 编写 Product Spec: `PRODUCT.md`. 它将作为当前变更的产品结果基线. 文档只供 AI 使用.
 
 从可靠信源处收集 PRODUCT.md 需要的信息, 如果发现存在缺口/冲突 就调用 `grilling` skill 盘问我. 
-使用下方模板写 `PRODUCT.md`. ID 在 feature 内稳定且连续. 输出为 `docs/changes/<feature-slug>/PRODUCT.md`.
+使用下方模板写 `PRODUCT.md`. ID 在 feature 内稳定且连续. 输出为 `<产物根目录>/PRODUCT.md`, 产物根目录默认 `docs/changes/<feature-slug>/`; 调用方可指定其他根目录.
 
 <product-spec-template>
 

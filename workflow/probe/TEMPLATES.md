@@ -53,4 +53,4 @@
 - `阻塞于`: 无阻塞时写 `无`; 多项时逗号分隔
 - ROADMAP.md 是索引 — 不复述 Milestone 详情, 只摘要+链接;
 - 答案不写入 Milestone 正文 — 写入独立产物文件 (如 `MILESTONE-NN-findings.md`), 由 ROADMAP `已关闭决策` 链接
-- 全部产物放在 `docs/changes/<feature-slug>/roadmap` 子目录下
+- ROADMAP.md, MILESTONE-NN.md 放在 `docs/changes/<feature-slug>/roadmap` 子目录下; research 与 deliberate 产物放在 `docs/changes/<feature-slug>/<milestone-NN>/` 子目录下
