@@ -1,10 +1,12 @@
 ---
 name: domain-modeling
-description: 维护领域语言和 ADR, 随设计对话实时更新领域模型.
+description: 初始化仓库领域文档约定, 并维护领域语言和 ADR.
 disable-model-invocation: true
 ---
 
 开始前, 调用 `domain-awareness` skill 获取当前工作目录的领域模型.
+
+仓库还没有领域文档约定 (根 `AGENTS.md` 无领域文档区块) 且我要求初始化时, 先按 [SETUP.md](SETUP.md) 完成设置, 再进入建模.
 
 # 领域建模
 

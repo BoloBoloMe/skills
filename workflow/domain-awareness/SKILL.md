@@ -25,6 +25,7 @@ project-root/
 project-root/
 |-- docs/
 |   |-- language/
+|   |   |-- UBIQUITOUS_LANGUAGE.md
 |   |   |-- UBIQUITOUS_LANGUAGE_MAP.md
 |   |   `-- contexts/
 |   |       |-- ordering.md
@@ -41,8 +42,8 @@ project-root/
 
 # 读取流程
 
-从当前工作目录定位所属仓库并读取 `AGENTS.md`. 优先遵循其中的领域文档约定和 `docs/agents/domain.md`; 无约定时按上述文件结构探测 `docs/language/`, `docs/adr/`.
-多上下文: 先读 `UBIQUITOUS_LANGUAGE_MAP.md` 确定上下文边界, 再读当前任务相关的领域语言和 ADR. 不确定属于哪个上下文时询问.
+从当前工作目录定位所属仓库并读取 `AGENTS.md`. 优先遵循其中的领域文档约定; 无约定时按上述文件结构探测 `docs/language/`, `docs/adr/`.
+多上下文: 先读 `UBIQUITOUS_LANGUAGE_MAP.md` 确定上下文边界, 再读根级 `UBIQUITOUS_LANGUAGE.md` 和当前任务相关的上下文语言与 ADR. 不确定属于哪个上下文时询问.
 
 # 行为约束
 

@@ -39,7 +39,7 @@ disable-model-invocation: true
 - review 阶段: 调用 `code-review` skill 对代码进行评审.
 - 重构: 你只采纳明确发现项, 交还给 *执行者* 回到 `先红后绿` 进行修复.
 - 切片循环: 回到 `挑选测试用例切片`.
-- 提交 ISSUE: 当前 ISSUE 的所有测试用例都已完成, 如果代码库被 git 管理, 就提交当前 ISSUE (只提交到本地, 不推到远端), 提交信息: `feat: ISSUE-<NN>: <描述>`. 回到 `挑选 ISSUE`.
+- 提交 ISSUE: 当前 ISSUE 的所有测试用例都已完成, 勾选该 ISSUE 的 `- [x] 已实现`, 如果代码库被 git 管理, 就提交当前 ISSUE (只提交到本地, 不推到远端), 提交信息: `feat: ISSUE-<NN>: <描述>`. 回到 `挑选 ISSUE`.
 - 汇总或停止: 你基于证据向我汇报结果, 风险和阻塞.
 
 # 子代理提示词编写

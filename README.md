@@ -21,24 +21,21 @@
 project-root/
 |-- AGENTS.md
 |-- docs/
-|   |-- agents/
-|   |   |-- issue-tracker.md
-|   |   `-- domain.md
 |   |-- language/
 |   |   |-- UBIQUITOUS_LANGUAGE.md
-|   |   `-- UBIQUITOUS_LANGUAGE_MAP.md
+|   |   |-- UBIQUITOUS_LANGUAGE_MAP.md
+|   |   `-- contexts/
 |   |-- adr/
+|   |   `-- contexts/
 |   `-- changes/
 |       `-- <feature-slug>/
 |           |-- PRODUCT.md
 |           |-- TECHNICAL.md
 |           |-- EXECUTION.md
 |           |-- DECISIONS.md
-|           |-- issues/
-|           |   |-- ISSUE-01-<slug>.md
-|           |   `-- ISSUE-02-<slug>.md
-|           `-- afk-running/
-|               `-- ISSUE-01/
+|           `-- issues/
+|               |-- ISSUE-01-<slug>.md
+|               `-- ISSUE-02-<slug>.md
 `-- src/
 ```
 
@@ -49,4 +46,3 @@ project-root/
 - 执行边界/任务图/DoD: `EXECUTION.md`.
 - 决策历史和代码追踪: `DECISIONS.md`.
 - 单个执行单元: `issues/ISSUE-*.md`.
-- 运行状态和证据: `afk-running/`.
