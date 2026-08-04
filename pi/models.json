@@ -111,7 +111,7 @@
           }
         },
         {
-          "id": "deepseek-v4-flash",
+          "id": "deepseek-v4-flash-0731",
           "name": "DeepSeek V4 Flash",
           "reasoning": true,
           "thinkingLevelMap": {
