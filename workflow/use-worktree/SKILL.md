@@ -4,9 +4,9 @@ description: Git worktree 布局识别, 创建, 删除, 迁移, 安全检查流�
 disable-model-invocation: true
 ---
 
-开始前, 调用 `domain-awareness` skill 只读感知当前工作目录的领域模型.
-
 # use-worktree
+
+开始前, 调用 `domain-awareness` skill 只读感知当前工作目录的领域模型.
 
 ## 标准布局
 
@@ -24,7 +24,7 @@ disable-model-invocation: true
 
 ## slug 规则
 
-使用 `scripts/slug.py` 预览. 命令中的 `scripts/` 相对本 skill 目录解析; 在目标项目仓库中使用时, 先换成该目录的绝对路径或进入本 skill 目录执行.
+使用 `scripts/slug.py` 预览 (脚本路径解析见硬规则).
 
 - `/ \ : * ? " < > |` 与控制字符 -> `-`
 - 空格 -> `_`
@@ -36,7 +36,8 @@ disable-model-invocation: true
 
 ## 硬规则
 
-- 始终进入具体 worktree, 或用 `git -C <worktree>`; 不在 workspace/project 父目录假定 Git 上下文.
+- Git 操作始终进入具体 worktree, 或用 `git -C <worktree>`; 不在 workspace/project 父目录假定 Git 上下文.
+- 脚本 (`scripts/slug.py`, `scripts/status.py`) 以本 SKILL.md 所在目录为基准解析, 调用时换算为绝对路径, 从任意 cwd 运行, 不受上一条约束.
 - 修改前必须报告: 目标 worktree, 分支, HEAD, `git status --short --branch --untracked-files=all`.
 - 一次任务默认只改一个 worktree; 跨 worktree 对照默认只读.
 - 禁止手删 `.git` 文件或 `.git/worktrees/*`; 删除/清理用 `git worktree remove/prune`.
@@ -49,18 +50,15 @@ disable-model-invocation: true
 uv run python scripts/status.py <任意路径>
 ```
 
-命令需在本 skill 目录运行, 或将 `scripts/status.py` 替换为绝对路径.
-
 脚本只读; 输出 `layout=standard|nonstandard`, 项目, main worktree, 每个 worktree 的分支/HEAD/dirty/stale 状态.
 
 ## 新建 worktree
 
-1. 用 `uv run python scripts/status.py` 检查目标仓库布局.
+1. 用 `uv run python scripts/status.py <目标路径>` 检查目标仓库布局.
 2. 若布局标准:
    - 确认来源分支, 目标分支; 未给出则询问.
    - 询问是否执行 `git fetch --all --prune`.
    - 用 `uv run python scripts/slug.py <project> <source-branch> <target-branch>` 生成目录名.
-   - 若目标目录已存在但不是目标 Git worktree: 停止并询问.
    - 若目标分支已存在且未被其他 worktree checkout: `git worktree add <dir> <target-branch>`, 并告知我这是 checkout 已有分支.
    - 若目标分支不存在: `git worktree add -b <target-branch> <dir> <source-branch>`.
    - 若目标分支已被其他 worktree checkout: 停止并告知已有路径.
@@ -68,8 +66,7 @@ uv run python scripts/status.py <任意路径>
 
 ## 删除 worktree
 
-- 只允许删除干净 worktree.
-- 删除前展示路径, 分支, HEAD, 状态, 命令, 并询问 `是否执行?`.
+- 按硬规则报告后, 询问 `是否执行?`.
 - 执行: `git worktree remove <path>`.
 - 删除后询问是否执行 `git worktree prune`; 确认后再执行.
 
@@ -80,13 +77,12 @@ uv run python scripts/status.py <任意路径>
 迁移前必须:
 
 - 推断或询问 `<project>`.
-- 检查所有相关 worktree 均干净; 任何 dirty 即停止.
-- 展示 before/after 路径, 移动命令, `git worktree repair <paths...>`, 验证命令.
+- 检查涉及的所有 worktree 均干净, 不限于当前目标; 任一 dirty 即停止 (硬规则).
+- 展示 before/after 路径, 移动命令 (以平台无关方式表述), `git worktree repair <paths...>`, 验证命令.
 - 询问 `是否执行?`.
 
 迁移后执行 `git worktree repair` 修复登记路径, 再用 `git worktree list` 与 `uv run python scripts/status.py` 验证.
 
 ## 汇报格式
 
-- 执行前: 目标 worktree, 分支, HEAD, dirty 状态, 将执行的命令.
 - 执行后: 修改/创建/删除的路径, 测试或验证命令, 最终 Git 状态.
