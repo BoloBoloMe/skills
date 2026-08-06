@@ -66,8 +66,7 @@ ROADMAP.md 的未决迷雾区段存的就是这些模糊视图 — 疑似问题,
 
 ## 遍历 Roadmap
 
-我带着 Roadmap进行调用. 
-始终用文件名指代 Milestone, 禁用裸编号.
+我带着 Roadmap 进行调用. 始终用文件名指代 Milestone, 禁用裸编号. 每完成一个 Milestone 就停下来, 等待我的进一步提示.
 
 ### 遍历步骤
 
