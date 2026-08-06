@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>少即多</title>
+<style>
+  :root{
+    --paper:#f6f1e7;
+    --ink:#2b2a26;
+    --muted:#8a8375;
+    --line:#c9beab;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;height:100%;}
+  body{
+    background:var(--paper);
+    color:var(--ink);
+    font-family:'Noto Serif SC','Spectral',"Songti SC",serif;
+    -webkit-font-smoothing:antialiased;
+    display:grid;place-items:center;
+    padding:6vh 8vw;
+    overflow:hidden;
+    position:relative;
+  }
+
+  /* 手绘背景层: 地平线横贯全幅, 旭日半沉在线上, 衬于文字背后. CSS 定位只对 <svg> 根元素有效, 故不用 <g>. */
+  .art{position:absolute;pointer-events:none;color:var(--line);z-index:1;}
+  .horizon{
+    left:0;right:0;bottom:26%;
+    height:64px;
+  }
+  .sun{
+    left:12%;bottom:24%;
+    width:clamp(260px,44vmin,460px);
+  }
+
+  .poem{
+    max-width:560px;
+    text-align:center;
+    position:relative;
+    z-index:2;
+  }
+  .poem .en{
+    font-family:'Spectral',serif;
+    font-style:italic;
+    font-size:.95rem;
+    letter-spacing:.28em;
+    text-transform:lowercase;
+    color:var(--muted);
+    margin-bottom:4.5vh;
+  }
+  .poem .cn{
+    font-size:1.5rem;
+    line-height:2;
+    letter-spacing:.1em;
+    color:var(--ink);
+    margin:0;
+  }
+</style>
+</head>
+<body>
+
+<svg class="art horizon" viewBox="0 0 100 12" preserveAspectRatio="none">
+  <path d="M0 8 C 30 6, 55 10, 100 7" fill="none" stroke="currentColor"
+        stroke-width="0.5" vector-effect="non-scaling-stroke"/>
+</svg>
+<svg class="art sun" viewBox="0 0 100 100">
+  <g fill="none" stroke="currentColor" stroke-width="2">
+    <circle cx="50" cy="50" r="24"/>
+    <path d="M50 12 V22 M50 78 V88 M12 50 H22 M78 50 H88 M23 23 L30 30 M70 70 L77 77 M77 23 L70 30 M30 70 L23 77"/>
+  </g>
+</svg>
+
+<div class="poem">
+  <p class="en">less is more</p>
+  <p class="cn">少即多.</p>
+</div>
+
+<script>
+  window.__PRESENTATION_STATE__ = { version:1, values:{} };
+</script>
+</body>
+</html>
