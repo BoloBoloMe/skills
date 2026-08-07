@@ -35,7 +35,7 @@ ROADMAP.md 的未决迷雾区段存的就是这些模糊视图 — 疑似问题,
 
 **完成标准**:
 - research: 分析文件已写, Milestone 全部考察点已覆盖.
-- deliberate: 盘问闭环; 决策已按需写入对应文件; 我选择生成 Spec 时, Spec 已落盘.
+- deliberate: 盘问闭环; 决策已按需写入对应文件.
 - prototype: 原型文件已写, 足以支撑后续决策.
 - task: 工作已完成, 结果事实已记录.
 
@@ -76,7 +76,7 @@ ROADMAP.md 的未决迷雾区段存的就是这些模糊视图 — 疑似问题,
    完成标准: Milestone 已认领.
 3. **放大解决.** 按 Milestone 类型分流, 需要时读取被阻塞者的上下文或已关闭 Milestone 的产物.
    完成标准见 [Milestone](#milestone).
-4. **收口产物.** 按 Milestone 类型确认产物归属: research 分析文件; deliberate 决策/领域/Spec 文档; prototype 按它自己的规则管理产物, 并在 Milestone 文件记录归档指针; task 完成证据或代码提交. 提交信息: 下游 skill 有规定则用其规定; 否则 `doc: <MILESTONE-NN.md> <产物简述>`.
+4. **收口产物.** 按 Milestone 类型确认产物归属: research 分析文件; deliberate 决策/领域文档; prototype 按它自己的规则管理产物, 并在 Milestone 文件记录归档指针; task 完成证据或代码提交. 提交信息: 下游 skill 有规定则用其规定; 否则 `doc: <MILESTONE-NN.md> <产物简述>`.
    完成标准: 本 Milestone 产物已提交或已有可追溯指针; 无独立产物/非 git 仓库时已记录原因.
 5. **记录关闭.** Milestone 文件头改 `状态: 已关闭` → ROADMAP 已关闭决策追加摘要+链接 → 更新前沿 → 更新连线图.
    完成标准: 所有文件更新已落地; 下一个 Milestone 可从前沿正确识别.

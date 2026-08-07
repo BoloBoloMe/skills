@@ -8,12 +8,12 @@ disable-model-invocation: true
 
 目标: 编写 Execution Spec: `EXECUTION.md` 和 issues. 常规工作拆成可独立领取的垂直切片; 宽重构按扩展-收缩特例处理. 文档只供 AI 使用, 不要求我阅读文档后确认.
 
-按信源顺序收集 `EXECUTION.md` 需要的信息: 产物根目录中的 `PRODUCT.md`, `TECHNICAL.md`, `DECISIONS.md` 和领域文档, 以及代码事实. Product/Technical/Decisions 定义意图; 代码事实只验证可行性和既有形状. 信源冲突, 或需要新增/改变决策内容时, 调用 `grilling` skill 盘问我.
+按信源顺序收集 `EXECUTION.md` 需要的信息: `PRODUCT.md`, `TECHNICAL.md`, `DECISIONS.md`, 领域文档, 代码事实. Product/Technical/Decisions 定义意图; 代码事实只验证可行性和既有形状. 信源冲突, 或需要新增/改变决策内容时, 调用 `grilling` skill 盘问我.
 
 输出:
 `<产物根目录>/EXECUTION.md`
 `<产物根目录>/issues/ISSUE-<NN>-<slug>.md`, 从 `ISSUE-01` 连续编号.
-产物根目录默认 `docs/changes/<feature-slug>/`, 调用方可指定其他根目录, 落盘前须和我确认输出目录是否正确.
+产物根目录默认 `docs/changes/<feature-slug>/`; 调用方可指定其他根目录, 落盘前须和我确认输出目录是否正确.
 
 # 起草垂直切片
 
@@ -60,7 +60,7 @@ disable-model-invocation: true
 
 # 固化 Execution Spec 和 issues
 
-按模板生成已批准的 issues, 再生成引用真实 issue 路径的 `EXECUTION.md`. 按依赖顺序编号. 
+按模板生成已批准的 issues, 再生成引用真实 issue 路径的 `EXECUTION.md`. 按依赖顺序编号. 信源与决策的引用路径按实际位置解析, 不假设它们位于产物根目录. 
 存在相关 DECISIONS.md 时, 每个 issue 与相关决策维护双向引用索引; 只更新引用索引, 不新增或改变决策内容. 无相关决策时 issue 写"无".
 不复制 Product/Technical Spec 的正文, 只引用稳定 ID 和执行所需摘要.
 
@@ -74,9 +74,9 @@ issue 编号连续;
 <execution-spec-template>
 # <变更标题> Execution Spec
 ## 权威输入
-- Product Spec: `PRODUCT.md`
-- Technical Spec: `TECHNICAL.md`
-- Decisions: `DECISIONS.md` 或"无"
+- Product Spec: `<PRODUCT.md 实际路径>`
+- Technical Spec: `<TECHNICAL.md 实际路径>`
+- Decisions: `<DECISIONS.md 实际路径>` 或"无"
 ## 全局允许范围
 - 可修改的模块, 目录, 文件模式或行为范围.
 ## 全局禁止范围
@@ -105,10 +105,10 @@ issue 编号连续;
 ## 要构建什么
 端到端可观察结果. 结尾说明适合 AFK 或需要 HITL 的原因.
 ## 覆盖依据
-- Product: `../PRODUCT.md`, AC-001
-- Technical: `../TECHNICAL.md`, TG-001, NFR-001
+- Product: `<PRODUCT.md 实际路径>`, AC-001
+- Technical: `<TECHNICAL.md 实际路径>`, TG-001, NFR-001
 ## 相关决策
-- `../DECISIONS.md`: D001. 无则写"无".
+- `<DECISIONS.md 实际路径>`: D001. 无则写"无".
 ## 允许范围
 可以修改的模块, 目录, 文件模式或行为范围.
 ## 禁止范围

@@ -54,3 +54,5 @@
 - ROADMAP.md 是索引 — 不复述 Milestone 详情, 只摘要+链接;
 - 答案不写入 Milestone 正文 — 写入独立产物文件 (如 `MILESTONE-NN-findings.md`), 由 ROADMAP `已关闭决策` 链接
 - ROADMAP.md, MILESTONE-NN.md 放在 `docs/changes/<feature-slug>/roadmap` 子目录下; research 与 deliberate 产物放在 `docs/changes/<feature-slug>/<milestone-NN>/` 子目录下
+- 会话中调用 `to-execution-spec` skill 时, 产物根目录指定为 AFK 编码任务所属 Milestone 的子目录 `docs/changes/<feature-slug>/<milestone-NN>/`
+
