@@ -44,7 +44,8 @@ disable-model-invocation: true
 
 ## 3. 扫描盲区
 
-以上两层面的分支都闭合后, 执行 `grilling - 扫描盲区`. 
+以上两层面的分支都闭合后, 执行 `grilling - 扫描盲区`.
+在此步骤检查 `to-product-spec` skill 和 `to-technical-spec` skill 所需的内容是否存在缺口, 缺口皆为盲区.
 
 # 固化
 
