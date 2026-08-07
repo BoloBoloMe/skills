@@ -6,16 +6,18 @@ disable-model-invocation: true
 
 开始前, 调用 `domain-awareness` skill 只读感知当前工作目录的领域模型.
 
-目标: 编写 Execution Spec: `EXECUTION.md` 和 issues. 常规工作拆成可独立领取的垂直切片; 宽重构特例按 HITL/integration 标注. 文档只供 AI 使用, 不要求我阅读文档后确认.
+目标: 编写 Execution Spec: `EXECUTION.md` 和 issues. 常规工作拆成可独立领取的垂直切片; 宽重构按扩展-收缩特例处理. 文档只供 AI 使用, 不要求我阅读文档后确认.
 
-按信源顺序收集 `EXECUTION.md` 需要的信息: `PRODUCT.md`, `TECHNICAL.md`, `DECISIONS.md`, 领域文档, 代码事实. Product/Technical/Decisions 定义意图; 代码事实只验证可行性和既有形状. 信源冲突, 或需要新增/改变决策内容时, 调用 `grilling` skill 盘问我. 使用下方模板写 `EXECUTION.md` 和 issues. 输出:
+按信源顺序收集 `EXECUTION.md` 需要的信息: 产物根目录中的 `PRODUCT.md`, `TECHNICAL.md`, `DECISIONS.md` 和领域文档, 以及代码事实. Product/Technical/Decisions 定义意图; 代码事实只验证可行性和既有形状. 信源冲突, 或需要新增/改变决策内容时, 调用 `grilling` skill 盘问我.
+
+输出:
 `<产物根目录>/EXECUTION.md`
 `<产物根目录>/issues/ISSUE-<NN>-<slug>.md`, 从 `ISSUE-01` 连续编号.
-产物根目录默认 `docs/changes/<feature-slug>/`; 调用方可指定其他根目录.
+产物根目录默认 `docs/changes/<feature-slug>/`, 调用方可指定其他根目录, 落盘前须和我确认输出目录是否正确.
 
 # 起草垂直切片
 
-把工作拆成 **tracer bullet** issues.
+把工作拆成 **tracer bullet** issues. Issues 将由全新上下文窗口中的执行 agent 领取, 只有端到端可独立验证的切片才能让执行者无需折返追问.
 
 <vertical-slice-rules>
 
@@ -26,10 +28,7 @@ disable-model-invocation: true
 
 </vertical-slice-rules>
 
-
-为每个 issue 写出 **blocking edges**. Blocking edges 是 issue 之间的先后依赖关系. 它们说明哪些其他 issues 必须先完成, 这个 issue 才能开始. 没有 blockers 的 issue 可以立即开始.
-
-起草完成标准: 每个 AC/TG/NFR 被至少一个拟议 issue 覆盖或明确说明无需执行任务; 每个 issue 都有可独立验证的可观察结果; blockers 无环且只包含真正阻塞项; 每个 issue 适合一个全新的上下文窗口; 宽重构已命中特例规则或明确不适用.
+为每个 issue 写出 **blocking edges**: 哪些其他 issues 必须先完成, 这个 issue 才能开始. 没有 blockers 的 issue 可以立即开始.
 
 **宽重构是垂直切片的例外.** 宽重构是一次机械改动. 例如重命名列, 或修改共享符号类型. 
 它的 **blast radius** 会扩散到整个代码库. 一次编辑会打断成千上万个调用点. 没有任何垂直切片能独立保持绿色. 切勿强塞成 tracer bullet. 
@@ -41,27 +40,36 @@ disable-model-invocation: true
 
 若任何分批迁移 issue 单独完成后都无法保持绿色, 仍保留兼容扩展/分批迁移/收缩清理序列, 但这些 issue 不再标为可独立领取. 将它们标为 HITL/integration 特例, 写明共享 integration branch, 每个中间 issue 的局部完成证据, 以及最终整合验证 issue 的整体绿色承诺. 这些 issues 都阻塞最终的整合验证 issue.
 
+起草完成标准: 每个 AC/TG/NFR 被至少一个拟议 issue 覆盖或明确说明无需执行任务; 每个切片符合 vertical-slice-rules; blockers 无环且只包含真正阻塞项; 宽重构已命中特例规则或明确不适用.
+
 # 盘问我
 
 把建议拆分展示为编号列表. 每个 issue 都展示:
 
 - **标题**: 简短描述名
-- **阻塞项**: 哪些其他 issues 必须先完成, 若无则写无
+- **被阻塞于**: 哪些其他 issues 必须先完成, 若无则写无
 - **交付内容**: 这个 issue 打通的端到端行为
 
 询问我:
 
 - 粒度是否合适? 是太粗, 还是太细?
-- Blocking edges 是否正确? 每个 issue 是否只依赖真正阻塞它的 issues?
+- Blocking edges 是否正确?
 - 是否需要合并或继续拆分 issues?
 
 持续迭代, 直到我批准拆分.
 
 # 固化 Execution Spec 和 issues
 
-按模板生成已批准的 issues, 再生成引用真实 issue 路径的 `EXECUTION.md`. 按依赖顺序编号. 存在相关 DECISIONS.md 时, 每个 issue 与相关决策维护双向引用索引; 只更新引用索引, 不新增或改变决策内容. 无相关决策时 issue 写"无". 不复制 Product/Technical Spec 的正文, 只引用稳定 ID 和执行所需摘要.
+按模板生成已批准的 issues, 再生成引用真实 issue 路径的 `EXECUTION.md`. 按依赖顺序编号. 
+存在相关 DECISIONS.md 时, 每个 issue 与相关决策维护双向引用索引; 只更新引用索引, 不新增或改变决策内容. 无相关决策时 issue 写"无".
+不复制 Product/Technical Spec 的正文, 只引用稳定 ID 和执行所需摘要.
 
-完成标准: `EXECUTION.md` 任务图中的每个引用可解析; 每个 AC/TG/NFR 被至少一个 issue 覆盖或明确说明无需执行任务; 每个 issue 有代码定位提示和可执行 TDD 切片, 或明确标记非代码/人工验证/HITL 特例; issue 编号连续; 依赖无环; 决策引用索引双向完整, 或已明确无相关决策.
+完成标准: 
+`EXECUTION.md` 任务图中的每个引用可解析; 
+覆盖矩阵与批准的拆分一致, 无遗漏; 
+每个 issue 有代码定位提示和可执行 TDD 切片, 或明确标记非代码/人工验证/HITL 特例; 
+issue 编号连续; 
+决策引用索引双向完整, 或已明确无相关决策.
 
 <execution-spec-template>
 # <变更标题> Execution Spec
@@ -126,5 +134,5 @@ disable-model-invocation: true
 ## 验收标准
 - [ ] 与覆盖依据一致的可观察标准.
 ## 被阻塞于
-- ISSUE 引用. 无则写"无 - 可以立即开始".
+- ISSUE 引用. 无则写"无".
 </issue-template>

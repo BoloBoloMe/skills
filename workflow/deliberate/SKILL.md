@@ -55,13 +55,6 @@ disable-model-invocation: true
 我回答是: 使用 `domain-modeling` 维护领域语言文件或 ADR, 调用 `decision-ledger` 维护决策账本.
 我回答否并补充问题: 不写文件, 返回对应设计分支继续.
 
-# 生成 Spec (我选)
-
-固化结束后, 询问我是否生成 Spec. 不用则跳过; 要则依次调用 `to-product-spec` skill, `to-technical-spec` skill;
-再判断: 当前在 `probe` skill 流程内则停止, 否则继续调用 `to-execution-spec` skill.
-
-Spec 只能整理已确认决策, 禁止新增; 生成中发现的任何未定决策都属于遗漏的*盲区*, 必须回到对应设计分支继续盘问, 该分支关闭后再继续生成.
-
 # 检查产物
 
 要落盘的产物都落盘之后, 启动一名子代理校验它们的内容是否正确且一致. 如果发现有问题先向我汇报, 在得到我的答复前禁止采取任何行动.
