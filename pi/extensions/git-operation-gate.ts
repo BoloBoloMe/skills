@@ -162,9 +162,18 @@ export default function (pi: ExtensionAPI) {
 
     const choice = await ctx.ui.select(title, [
       "拒绝",
+      "拒绝并说明理由",
       "允许本次",
       "本次会话都允许",
     ]);
+
+    if (choice === "拒绝并说明理由") {
+      const detail = await ctx.ui.input(title, "输入返回给 AI 的拦截理由 (留空则普通拒绝)");
+      const reason = detail?.trim()
+        ? `用户拒绝执行\n并给你发来回复: ${detail.trim()}`
+        : "用户拒绝执行";
+      return { block: true, reason };
+    }
 
     if (!choice || choice === "拒绝") {
       return { block: true, reason: "用户拒绝执行" };

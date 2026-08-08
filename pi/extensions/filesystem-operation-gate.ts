@@ -170,6 +170,7 @@ async function confirmOrBlock(
     ui: {
       confirm(title: string, message: string): Promise<boolean>;
       select(title: string, options: string[]): Promise<string | undefined>;
+      input(title: string, placeholder?: string): Promise<string | undefined>;
     };
   },
   options: { title: string; subject: string; reason: string; blockReason: string; rememberDirectory?: string },
@@ -178,21 +179,30 @@ async function confirmOrBlock(
     return { block: true, reason: `${options.blockReason}. 无 UI 可确认.` };
   }
 
+  const prompt = `${options.title}\n\n${options.subject}\n\n${options.reason}`;
+
+  const withUserReason = async (): Promise<{ block: true; reason: string }> => {
+    const detail = await ctx.ui.input(prompt, "输入返回给 AI 的拦截理由 (留空则普通拒绝)");
+    const reason = detail?.trim()
+      ? `${options.blockReason}\n并给你发来回复: ${detail.trim()}`
+      : options.blockReason;
+    return { block: true, reason };
+  };
+
   if (!options.rememberDirectory) {
-    const ok = await ctx.ui.confirm(
-      options.title,
-      `${options.subject}\n\n${options.reason}\n是否允许?`,
-    );
-    if (!ok) return { block: true, reason: options.blockReason };
-    return undefined;
+    const choice = await ctx.ui.select(prompt, ["允许", "拒绝", "拒绝并说明理由"]);
+    if (choice === "允许") return undefined;
+    if (choice === "拒绝并说明理由") return withUserReason();
+    return { block: true, reason: options.blockReason };
   }
 
   const choice = await ctx.ui.select(
-    `${options.title}\n\n${options.subject}\n\n${options.reason}`,
+    prompt,
     [
       "允许一次",
       `允许并不再询问此目录: ${options.rememberDirectory}`,
       "拒绝",
+      "拒绝并说明理由",
     ],
   );
 
@@ -201,6 +211,7 @@ async function confirmOrBlock(
     rememberOutsideDirectory(options.rememberDirectory);
     return undefined;
   }
+  if (choice === "拒绝并说明理由") return withUserReason();
   return { block: true, reason: options.blockReason };
 }
 
