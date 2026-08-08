@@ -4,9 +4,9 @@ description: 汉化英文 skill, 保持行为语义和低 上下文负载.
 disable-model-invocation: true
 ---
 
-你的任务是把已有 skill 翻译/汉化/适配. 不是从零设计新 skill (从零设计时调用 `write-a-skill` skill).
+你的任务是把已有 skill 翻译/汉化/适配. 不是从零设计新 skill (从零设计时调用 `writing-for-agents` skill).
 
-先读 `write-a-skill` 的 SKILL.md 理解 skill 编写原则. 本文使用 write-a-skill 中的术语: **重复**, **空操作**, **上下文负载** 等.
+先读 `writing-for-agents` 的 SKILL.md 理解文档编写原则. 本文使用 writing-for-agents 中的术语: **重复**, **空操作**, **上下文负载** 等.
 
 完成标准 (全程):
 - 源 skill 路径和目标 skill 路径已确认
@@ -33,7 +33,7 @@ disable-model-invocation: true
 完成标准:
 - 已读源版和目标版
 - 已读适用的 `AGENTS.md`
-- 已读 `general/write-a-skill/SKILL.md`
+- 已读 `general/writing-for-agents/SKILL.md`
 - 若目标运行时有差异, 已查目标运行时文档
 - 所有核心动词和强度词已标出
 - 有效/无效 frontmatter 字段已识别
@@ -119,7 +119,7 @@ disable-model-invocation: true
 
 ## 6. 保持信息层级
 
-不因汉化就把所有 参考材料 内联. 按 write-a-skill 的信息层级放置:
+不因汉化就把所有 参考材料 内联. 按 writing-for-agents 的信息层级放置:
 - 每次运行都需要的步骤和规则留在 `SKILL.md`
 - 只有部分 分支 需要的材料放到 sibling 参考材料
 - 一个概念的定义, 规则, 注意事项放在同一处 (**就近放置**)
