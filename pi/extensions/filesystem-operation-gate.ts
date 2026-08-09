@@ -231,6 +231,15 @@ function normalizePath(input: string): string {
   return normalized;
 }
 
+// 只对最近的已存在父目录做 realpath, 保留最终路径分量本身.
+// 删除/替换临时目录下的符号链接只影响链接本身, 若 realpath 跟随到链接目标,
+// 目标在临时目录外时会使临时目录豁免失效.
+async function resolvePolicyPathPreservingFinalComponent(rawPath: string, cwd: string): Promise<string> {
+  const absolutePath = path.resolve(normalizePath(cwd), normalizePath(rawPath));
+  const realParent = await realpathNearest(path.dirname(absolutePath));
+  return path.join(realParent, path.basename(absolutePath));
+}
+
 async function realpathNearest(absolutePath: string): Promise<string> {
   const missingParts: string[] = [];
   let current = path.resolve(absolutePath);
@@ -260,7 +269,7 @@ async function isTemporaryDirectoryChild(target: string, cwd: string): Promise<b
   const temporaryDirectory = await resolvePolicyPath(tmpdir(), cwd);
   if (isFilesystemRoot(temporaryDirectory)) return false;
 
-  const resolvedTarget = await resolvePolicyPath(target, cwd);
+  const resolvedTarget = await resolvePolicyPathPreservingFinalComponent(target, cwd);
   return !isSamePath(temporaryDirectory, resolvedTarget) && isInsideOrSame(temporaryDirectory, resolvedTarget);
 }
 
@@ -268,7 +277,7 @@ async function isTemporaryDirectoryRoot(target: string, cwd: string): Promise<bo
   const temporaryDirectory = await resolvePolicyPath(tmpdir(), cwd);
   if (isFilesystemRoot(temporaryDirectory)) return false;
 
-  const resolvedTarget = await resolvePolicyPath(target, cwd);
+  const resolvedTarget = await resolvePolicyPathPreservingFinalComponent(target, cwd);
   return isSamePath(temporaryDirectory, resolvedTarget);
 }
 
