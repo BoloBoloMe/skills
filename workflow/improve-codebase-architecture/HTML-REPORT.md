@@ -1,41 +1,10 @@
 # HTML 报告格式
 
-架构审查渲染为 OS 临时目录中的单一自包含 HTML 文件. Tailwind 和 Mermaid 都来自 CDN. Mermaid 在图形状的图表上可靠; 手工 div 和 inline SVG 处理更编辑性的视觉 (mass diagram, cross-section). 两者混合 - 不要对所有东西都依赖 Mermaid, 它会开始看起来千篇一律.
-
-## 脚手架
-
-```html
-<!doctype html>
-<html lang="zh-CN">
-<head>
-    <meta charset="utf-8" />
-    <title>架构评审 - {{repo name}}</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script type="module">
-        import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
-        mermaid.initialize({ startOnLoad: true, theme: "neutral", securityLevel: "loose" });
-    </script>
-    <style>
-        /* Tailwind 无法干净覆盖的小型自定义层:
-           虚线接缝线,手绘感箭头等. */
-        .seam { stroke-dasharray: 4 4; }
-        .leak { stroke: #dc2626; }
-        .deep { background: linear-gradient(135deg, #0f172a, #1e293b); }
-    </style>
-</head>
-<body class="bg-stone-50 text-slate-900 font-sans">
-<main class="max-w-5xl mx-auto px-6 py-12 space-y-12">
-    <header>...</header>
-    <section id="candidates" class="space-y-10">...</section>
-    <section id="top-recommendation">...</section>
-</main>
-</body>
-</html>
-```
+架构审查报告由 `adaptive-presentation` skill 生成与展示: 自包含 HTML, 临时目录, 视觉风格, 浏览器展示均遵循其规则. 本文件只携带架构报告的内容结构与图表模式增量.
 
 ## 头部
 
-仓库名称, 日期, 和简洁图例: 实线框 = module, dashed 线 = seam, 红色箭头 = 泄漏, 粗深框 = deep module. 不写介绍段落 - 直奔候选.
+仓库名称, 日期, 和简洁图例: 实线框 = module, 虚线 = seam, 红色箭头 = 泄漏, 粗深框 = deep module. 不写介绍段落 - 直奔候选.
 
 ## 候选卡片
 
@@ -44,44 +13,27 @@
 每个候选是一个 `<article>`:
 
 - **Title** - 短, 命名 deepening (例如 "Collapse the Order intake pipeline").
-- **Badge row** - recommendation strength (`Strong` = emerald, `Worth exploring` = amber, `Speculative` = slate), 加上依赖类别标签 (`in-process`, `local-substitutable`, `ports & adapters`, `mock`).
-- **Files** - monospaced 列表, `font-mono text-sm`.
+- **Badge row** - recommendation strength (`Strong` / `Worth exploring` / `Speculative`), 加上依赖类别标签 (`in-process`, `local-substitutable`, `ports & adapters`, `mock`).
+- **Files** - 等宽字体列表.
 - **Before / After diagram** - 核心内容. 两列, 并排. 见下方模式.
 - **Problem** - 一句话. 什么痛苦.
 - **Solution** - 一句话. 什么改变.
 - **Wins** - 条目, 每条 <= 10 个汉字或短语. 例如 "测试命中一个 interface", "Pricing 不再泄漏", "删除 4 个 shallow wrapper".
-- **ADR callout** (如适用) - amber 浅色提示框中的一行.
+- **ADR callout** (如适用) - 警告色提示框中的一行.
 
 没有解释段落. 如果一个图表需要一段文字才能理解, 重画图表.
 
 ## 图表模式
 
-选择适合候选的模式. 混合使用. 不要让每个图表看起来一样 - 多样性是部分目的.
+全部用 inline SVG 和 HTML+CSS 手工绘制. 混合使用. 不要让每个图表看起来一样 - 多样性是部分目的.
 
-### Mermaid graph (依赖/调用流的主力)
+### 流程与依赖图 (主力)
 
-当要点是 "X 调用 Y 调用 Z, 看这一团糟" 时使用 Mermaid `flowchart` 或 `graph`. 用 Tailwind 样式卡片包裹它, 不要让它看起来是临时空降的. 用 classDef 将泄漏边标红, deep module 标暗色. Sequence diagram 适合 "之前: 6 次往返; 之后: 1 次."
-
-```html
-<div class="rounded-lg border border-slate-200 bg-white p-4">
-  <pre class="mermaid">
-    flowchart LR
-      A[OrderHandler] --> B[OrderValidator]
-      B --> C[OrderRepo]
-      C -.leak.-> D[PricingClient]
-      classDef leak stroke:#dc2626,stroke-width:2px;
-      class C,D leak
-  </pre>
-</div>
-```
-
-### 手工 boxes-and-arrows (当 Mermaid 的布局与你对抗时)
-
-模块作为带边框和标签的 `<div>`. 箭头作为在 relative 容器上 absolute 定位的 inline SVG `<line>` 或 `<path>` 元素. 当你想让 "after" 图表感觉像一个粗边框 deep module, 内部灰掉 - Mermaid 不会以正确的重量渲染它.
+当要点是 "X 调用 Y 调用 Z, 看这一团糟" 时, 用手工 boxes-and-arrows: 模块作为带边框和标签的 `<div>` 或 SVG `<rect>`, 箭头作为 relative 容器内 absolute 定位的 inline SVG `<line>`/`<path>`. 虚线描边表示 seam, 红色边表示泄漏, 深色实心框表示 deep module. 往返次数标注在边上 ("之前: 6 次往返; 之后: 1 次").
 
 ### Cross-section (适合分层 shallow)
 
-堆叠水平条带 (`h-12 border-l-4`) 来展示一次调用穿过的层. Before: 6 个薄层每个什么都不做. After: 1 个厚条带标注着合并的责任.
+堆叠水平条带来展示一次调用穿过的层. Before: 6 个薄层每个什么都不做. After: 1 个厚条带标注着合并的责任.
 
 ### Mass diagram (适合 "interface 与 implementation 一样宽")
 
@@ -91,13 +43,13 @@
 
 Before: 一棵函数调用树渲染为嵌套框. After: 同一棵树坍缩为一个框, 现在内部的调用在其内部以淡色显示.
 
-## 样式指导
+## 增量样式
 
-- 倾向编辑性, 不是企业仪表盘. 充裕的留白. Serif 可选用于标题 (`font-serif` 与 stone/slate 配合良好).
-- 谨慎用色: 一个强调色 (emerald 或 indigo) 加红色用于泄漏, amber 用于警告.
-- 保持图表 ~320px 高, 使 before/after 并排时不需滚动.
-- 在图表内部使用 `text-xs uppercase tracking-wider` 标注模块标签 - 它们应读作示意图, 不是 UI.
-- 唯一的脚本是 Tailwind CDN 和 Mermaid ESM import. 报告其余部分是静态的 - 无应用代码, 无交互性 (除 Mermaid 自身的渲染).
+视觉风格遵循 `adaptive-presentation`; 报告只追加:
+
+- Before/after 图并排, 高度约 320px, 不需滚动即可同屏对比.
+- 图表内模块标签用小号大写字母加宽字距, 读作示意图, 不是 UI.
+- 颜色纪律: 红 = 泄漏, 警告色 = ADR 冲突, 一个强调色渲染 recommendation strength 徽章; 其余用低饱和自然色.
 
 ## Top recommendation 部分
 

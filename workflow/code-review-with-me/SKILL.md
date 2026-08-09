@@ -73,7 +73,7 @@ disable-model-invocation: true
 # 边界
 
 整个审核过程中 **绝不能** 修改项目代码或配置, 也不能直接修改 `DECISIONS.md`.
-**唯一能写的文件**: `review-plan.md`, `代码评审日志.md`, `人审报告.md`, `模块关系图.mermaid` 和产出物目录下的探索产物.
+**唯一能写的文件**: `review-plan.md`, `代码评审日志.md`, `人审报告.md` 和产出物目录下的探索产物.
 
 ---
 

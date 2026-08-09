@@ -33,9 +33,9 @@ disable-model-invocation: true
 
 ### 2. 将候选呈现为 HTML 报告
 
-向 OS 临时目录写入一个自包含的 HTML 文件, 这样不会有任何东西落入仓库. 将 HTML 写入当前运行时解析出的系统临时目录, 文件名为 architecture-review-<timestamp>.html; 然后用可用浏览器展示方式打开, 或向我报告路径.
+调用 `adaptive-presentation` skill 呈现报告: 自包含 HTML, 临时目录, 视觉风格和浏览器展示都由它负责, 不会有任何东西落入仓库.
 
-报告使用 **Tailwind via CDN** 进行布局和样式, **Mermaid via CDN** 用于图表 (当图/流/序列可靠传达结构时). Mermaid 与手工 CSS/SVG 视觉混合 - 关系是图形的 (调用图, 依赖, 序列) 时用 Mermaid; 想要更编辑性的呈现 (mass diagram, cross-section, collapse animation) 时用手工 div/SVG. 每个候选获得一个 **before/after 可视化**. 强调可视化.
+每个候选获得一个 **before/after 可视化**. 强调可视化.
 
 对每个候选渲染一个卡片, 包含:
 
@@ -52,9 +52,9 @@ disable-model-invocation: true
 
 **ADR 冲突**: 候选与现有 ADR 矛盾时, 仅在摩擦足以值得重新审视该 ADR 时才展示. 在卡片中清楚标记 (例如警告提示: _"与 ADR-0007 矛盾 - 但值得重新打开, 因为..."_). 不要列出 ADR 禁止的每一个理论重构.
 
-见 [HTML-REPORT.md](HTML-REPORT.md) 获取完整的 HTML 脚手架, 图表模式和样式指导.
+内容结构与图表模式见 [HTML-REPORT.md](HTML-REPORT.md); 样式与展示规则以 `adaptive-presentation` 为准.
 
-**不要** 此时提出 interface. 文件写入后, 询问我: "你想探索哪一个?"
+**不要** 此时提出 interface. 报告展示后, 询问我: "你想探索哪一个?"
 
 ### 3. Grilling 循环
 

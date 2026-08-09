@@ -24,7 +24,7 @@ Learning records 位于 `./learning-records/`, 用连续编号命名: `0001-slug
 
 ## 编号
 
-扫描 `./learning-records/` 中已有文件, 找到最高编号, 加 1.
+扫描 `./learning-records/` 中已有文件, 找到最高编号, 加 1. slug 可用拼音或简短英文.
 
 ## 何时写 learning record
 
@@ -45,6 +45,3 @@ Learning records 位于 `./learning-records/`, 用连续编号命名: `0001-slug
 
 如果后来的记录推翻或深化了早期记录, 不删除旧记录. 在旧记录 frontmatter 标记 `status: superseded by LR-NNNN`. 理解如何演化本身也是有用信号.
 
-## 中文规则
-
-标题, 正文, 证据, 后续影响都用中文组织. 文件名 slug 可用拼音或简短英文, 但页面标题必须中文.

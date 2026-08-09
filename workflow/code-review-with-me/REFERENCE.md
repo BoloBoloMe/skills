@@ -8,7 +8,6 @@ docs/reviews/
     ├── review-plan.md           # 确认后的评审计划
     ├── 代码评审日志.md
     ├── 人审报告.md
-    ├── 模块关系图.mermaid       # 交叉密集时生成
     └── subagent/              # 子代理探索产出物
         ├── 目录扫描.md
         ├── 依赖图.md

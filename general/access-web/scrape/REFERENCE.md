@@ -53,7 +53,7 @@ HTML 内容按以下顺序处理:
 增强依赖安装:
 
 ```bash
-pip install trafilatura readability-lxml markdownify
+uv add trafilatura readability-lxml markdownify
 ```
 
 增强依赖是可选项. 缺失时脚本仍可运行, 但真实网页正文抽取质量有限.
@@ -66,7 +66,6 @@ pip install trafilatura readability-lxml markdownify
 - 不解析 PDF, 不做图片 OCR.
 - 不支持 FTP / 非 HTTP(S) 协议.
 - 对强反爬网站, 客户端渲染页面, 复杂列表页, 商品页, 搜索结果页, 正文抽取可能低置信.
-- 当 `extraction.confidence` 为 `low` 时, 调用者应谨慎使用结果.
 
 ## 下载输出示例
 

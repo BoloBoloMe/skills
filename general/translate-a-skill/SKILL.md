@@ -8,11 +8,7 @@ disable-model-invocation: true
 
 先读 `writing-for-agents` 的 SKILL.md 理解文档编写原则. 本文使用 writing-for-agents 中的术语: **重复**, **空操作**, **上下文负载** 等.
 
-完成标准 (全程):
-- 源 skill 路径和目标 skill 路径已确认
-- 目标运行时已确认 (pi, Claude Code, Codex CLI 等)
-- 目标 skill 调用方式 (模型调用 / 用户调用) 已确认
-- 所有操作步骤的中文译文, 只看中文就能执行, 无需回看英文
+完成标准 (全程): 所有操作步骤的中文译文, 只看中文就能执行, 无需回看英文.
 
 ## 1. 破译: 固定输入, 锁定语义
 
@@ -33,7 +29,7 @@ disable-model-invocation: true
 完成标准:
 - 已读源版和目标版
 - 已读适用的 `AGENTS.md`
-- 已读 `general/writing-for-agents/SKILL.md`
+- 已读 `writing-for-agents` skill 的编写原则
 - 若目标运行时有差异, 已查目标运行时文档
 - 所有核心动词和强度词已标出
 - 有效/无效 frontmatter 字段已识别

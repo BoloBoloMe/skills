@@ -113,5 +113,5 @@ disable-model-invocation: true
 
 ## 深入阅读
 
-- **加深集群的依赖关系** - 见 [DEEPENING.md](DEEPENING.md): 依赖类别, seam 纪律, 和 replace-don't-layer 测试.
+- **加深集群的依赖关系** - 见 [DEEPENING.md](DEEPENING.md): 依赖类别和 replace-don't-layer 测试.
 - **探索替代 interface** - 见 [DESIGN-IT-TWICE.md](DESIGN-IT-TWICE.md): 启动并行 sub-agent 用几种截然不同的方式设计 interface, 然后按 depth, locality 和 seam 位置比较.
