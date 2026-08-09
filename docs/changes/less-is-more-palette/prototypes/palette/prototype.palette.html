@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>原型: tears in rain 插画变体</title>
+<!--
+  原型 (一次性, 用后归档).
+  配色: 米白 (b-rice), 已锁定. 手法: Steinberg 概念线 + feTurbulence 手绘抖动.
+  第四轮: 乐谱胜出. 第五轮: 宇宙维度, 星谱 (d-stars) 胜出.
+  第六轮 (当前): 星谱精修 — v1 原稿 vs v2 精修对照.
+  v2 改动: 谱线真正弯成闭合轨道; 音符演化链补全 (符→点→芒→主星);
+           关键线条双 seed 重描; 坠落音符带涟漪落点; 天空只留一颗远星.
+-->
+<style>
+  :root{
+    --paper:#faf7ef; --ink:#2e2c27; --muted:#948d7e; --line:#d6cebd; --accent:#b3562e;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;height:100%;}
+  body{
+    background:var(--paper);
+    color:var(--ink);
+    font-family:'Noto Serif SC','Spectral',"Songti SC",serif;
+    -webkit-font-smoothing:antialiased;
+    display:grid;place-items:center;
+    padding:6vh 8vw;
+    overflow:hidden;
+    position:relative;
+  }
+
+  .stage{
+    position:absolute;left:0;right:0;bottom:8%;
+    width:100%;height:min(62vh,600px);
+    pointer-events:none;z-index:1;display:none;
+  }
+  .stage.on{display:block;}
+  .stage .l-ink{stroke:var(--ink);}
+  .stage .l-muted{stroke:var(--muted);}
+  .stage .l-line{stroke:var(--line);}
+  .stage .f-ink{fill:var(--ink);}
+
+  .poem{
+    max-width:640px;text-align:center;position:relative;z-index:2;
+    margin-bottom:26vh;
+  }
+  .poem .en{
+    font-family:'Spectral',serif;font-style:italic;font-size:1.05rem;
+    letter-spacing:.08em;line-height:2;color:var(--muted);margin-bottom:3.5vh;
+  }
+  .poem .cn{font-size:1.35rem;line-height:2.1;letter-spacing:.1em;margin:0;}
+
+  /* 悬浮底栏 */
+  .dock{
+    position:fixed;left:50%;bottom:2.2vh;transform:translateX(-50%);
+    z-index:10;display:flex;align-items:center;gap:.9em;
+    background:#1c1b18;color:#f0ead9;
+    font-family:'Spectral',serif;font-size:.85rem;letter-spacing:.06em;
+    padding:.55em 1.1em;border-radius:999px;
+    box-shadow:0 6px 24px rgba(0,0,0,.35);
+    user-select:none;
+  }
+  .dock button{
+    background:none;border:none;color:inherit;font:inherit;cursor:pointer;
+    padding:.2em .5em;border-radius:999px;line-height:1;
+  }
+  .dock button:hover,.dock button:focus-visible{background:rgba(240,234,217,.18);outline:none;}
+  .dock .label{min-width:12em;text-align:center;}
+  .dock .label em{font-style:italic;color:#b8ad93;margin-left:.5em;}
+  .dock .proto{font-size:.68rem;letter-spacing:.22em;color:#8f8672;text-transform:uppercase;}
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute">
+  <defs>
+    <filter id="wobble" x="-5%" y="-5%" width="110%" height="110%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.012" numOctaves="2" seed="7" result="n"/>
+      <feDisplacementMap in="SourceGraphic" in2="n" scale="7"/>
+    </filter>
+    <!-- 第二遍描线用: 不同 seed, 抖动更细, 偏移略小 -->
+    <filter id="wobble2" x="-5%" y="-5%" width="110%" height="110%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.02" numOctaves="2" seed="11" result="n"/>
+      <feDisplacementMap in="SourceGraphic" in2="n" scale="5"/>
+    </filter>
+  </defs>
+</svg>
+
+<!-- v1 星谱原稿 (第五轮胜出版, 原样保留作对照) -->
+<svg class="stage" viewBox="0 0 1200 420" preserveAspectRatio="xMidYMax meet" data-v="v1">
+  <g filter="url(#wobble)" fill="none" stroke-width="2" stroke-linecap="round">
+    <g class="l-ink" stroke-width="1.6">
+      <path d="M80 330 C 320 328, 520 320, 700 270 C 830 234, 930 190, 1010 130"/>
+      <path d="M80 308 C 320 306, 510 298, 680 252 C 810 218, 900 176, 970 118" opacity=".85"/>
+      <path d="M80 286 C 320 284, 500 276, 660 234 C 790 202, 870 162, 930 106" opacity=".7"/>
+      <path d="M80 264 C 320 262, 490 254, 640 216 C 770 186, 840 148, 890 96" opacity=".55"/>
+      <path d="M80 242 C 320 240, 480 232, 620 198 C 750 170, 810 134, 850 88" opacity=".4"/>
+    </g>
+    <circle class="l-ink" cx="1030" cy="100" r="14" stroke-width="1.8"/>
+    <path class="l-ink" d="M1030 62 h 0 M1016 56 h 28 M1030 42 v 28" stroke-width="1.6"/>
+    <g stroke-width="1.8">
+      <!-- 四分音符 -->
+      <ellipse class="f-ink" cx="180" cy="300" rx="8" ry="6" transform="rotate(-15 180 300)"/>
+      <path class="l-ink" d="M188 298 L 188 258"/>
+      <!-- 八分连音对: 一条梁连两根杆 -->
+      <ellipse class="f-ink" cx="278" cy="302" rx="8" ry="6" transform="rotate(-15 278 302)"/>
+      <ellipse class="f-ink" cx="330" cy="297" rx="8" ry="6" transform="rotate(-15 330 297)"/>
+      <path class="l-ink" d="M286 300 L 286 258 M338 295 L 338 253"/>
+      <path class="l-ink" d="M286 258 L 338 253" stroke-width="3.4"/>
+      <!-- 二分音符: 空心符头 -->
+      <ellipse cx="430" cy="288" rx="8" ry="6" transform="rotate(-15 430 288)" fill="none" stroke="var(--ink)"/>
+      <path class="l-ink" d="M438 286 L 438 246"/>
+      <!-- 双音和弦: 两个符头共享一根杆 -->
+      <ellipse class="f-ink" cx="522" cy="290" rx="8" ry="6" transform="rotate(-15 522 290)"/>
+      <ellipse class="f-ink" cx="530" cy="274" rx="8" ry="6" transform="rotate(-15 530 274)"/>
+      <path class="l-ink" d="M538 272 L 538 232"/>
+    </g>
+    <ellipse class="f-ink" cx="610" cy="256" rx="7" ry="5" transform="rotate(-25 610 256)" opacity=".8"/>
+    <circle class="f-ink" cx="740" cy="216" r="4.5" opacity=".65"/>
+    <circle class="f-ink" cx="850" cy="176" r="3.2" opacity=".5"/>
+    <path class="l-ink" d="M918 138 h 12 M924 132 v 12" stroke-width="1.6" opacity=".8"/>
+    <path class="l-muted" d="M700 290 l -18 40" stroke-width="1.8"/>
+    <ellipse class="f-ink" cx="678" cy="338" rx="4.5" ry="4" opacity=".5"/>
+  </g>
+</svg>
+
+<!-- v2 星谱精修: 谱线弯成闭合轨道环绕主星; 音符沿途脱杆, 先成点, 再成芒, 终于星 -->
+<svg class="stage" viewBox="0 0 1200 420" preserveAspectRatio="xMidYMax meet" data-v="v2">
+  <!-- 第一遍 -->
+  <g filter="url(#wobble)" fill="none" stroke-width="2" stroke-linecap="round">
+    <!-- 谱线: 左端平直如常, 右端扬起 -->
+    <g class="l-ink" stroke-width="1.7">
+      <path d="M70 336 C 300 334, 480 326, 620 292 C 700 272, 760 248, 810 220"/>
+      <path d="M70 314 C 300 312, 470 304, 600 272 C 680 252, 730 232, 770 208" opacity=".85"/>
+      <path d="M70 292 C 300 290, 460 282, 580 252 C 660 232, 700 216, 730 196" opacity=".7"/>
+      <path d="M70 270 C 300 268, 450 260, 560 232 C 640 212, 672 200, 696 184" opacity=".55"/>
+      <path d="M70 248 C 300 246, 440 238, 545 212 C 620 194, 648 184, 668 172" opacity=".4"/>
+    </g>
+    <!-- 谱线的尽头: 闭合为环绕主星的轨道 -->
+    <g class="l-ink">
+      <ellipse cx="940" cy="150" rx="140" ry="50" transform="rotate(-24 940 150)" stroke-width="1.6"/>
+    </g>
+    <!-- 主星: 圆描两遍, 短芒 -->
+    <circle class="l-ink" cx="940" cy="150" r="13" stroke-width="1.9"/>
+    <path class="l-ink" d="M940 122 v -12 M940 178 v 12 M912 150 h -12 M968 150 h 12" stroke-width="1.6"/>
+    <!-- 轨道上的行星 -->
+    <circle class="f-ink" cx="1058" cy="196" r="5" stroke="none"/>
+    <!-- 天上唯一一颗远星 -->
+    <path class="l-muted" d="M180 84 h 12 M186 78 v 12" stroke-width="1.5"/>
+    <!-- 在谱音符 -->
+    <g stroke-width="1.9">
+      <ellipse class="f-ink" cx="190" cy="306" rx="8.5" ry="6.5" transform="rotate(-14 190 306)"/>
+      <path class="l-ink" d="M198 304 L 198 262"/>
+      <ellipse class="f-ink" cx="320" cy="298" rx="8.5" ry="6.5" transform="rotate(-14 320 298)"/>
+      <path class="l-ink" d="M328 296 L 328 254"/>
+      <ellipse class="f-ink" cx="450" cy="286" rx="8.5" ry="6.5" transform="rotate(-14 450 286)"/>
+      <path class="l-ink" d="M458 284 L 458 242"/>
+    </g>
+    <!-- 演化链: 脱杆 → 点 → 芒 -->
+    <ellipse class="f-ink" cx="590" cy="262" rx="7.5" ry="5.5" transform="rotate(-24 590 262)" opacity=".85"/>
+    <circle class="f-ink" cx="700" cy="232" r="4.5" opacity=".65"/>
+    <circle class="f-ink" cx="782" cy="204" r="3" opacity=".5"/>
+    <path class="l-ink" d="M836 176 h 11 M841.5 170.5 v 11" stroke-width="1.5" opacity=".8"/>
+    <!-- 坠落的一个: 带虚线尾, 落点起涟漪 -->
+    <path class="l-muted" d="M664 286 l -22 46" stroke-width="1.7" stroke-dasharray="5 7"/>
+    <path class="l-ink" d="M638 336 c -6 7 -6 12 0 16 c 6 -4 6 -9 0 -16" stroke-width="1.7"/>
+    <path class="l-muted" d="M612 356 a 30 9 0 1 1 60 0 a 30 9 0 1 1 -60 0" stroke-width="1.5" opacity=".6"/>
+    <path class="l-line" d="M590 366 a 52 13 0 1 1 104 0 a 52 13 0 1 1 -104 0" stroke-width="1.4" opacity=".45"/>
+  </g>
+  <!-- 第二遍描线: 只重描骨架 (谱线, 轨道, 主星), 低透明度, 错开的抖动 -->
+  <g filter="url(#wobble2)" fill="none" stroke-linecap="round" opacity=".28">
+    <g class="l-ink" stroke-width="1.2">
+      <path d="M70 336 C 300 334, 480 326, 620 292 C 700 272, 760 248, 810 220"/>
+      <path d="M70 314 C 300 312, 470 304, 600 272 C 680 252, 730 232, 770 208"/>
+      <path d="M70 292 C 300 290, 460 282, 580 252 C 660 232, 700 216, 730 196"/>
+    </g>
+    <ellipse class="l-ink" cx="940" cy="150" rx="140" ry="50" transform="rotate(-24 940 150)" stroke-width="1.2"/>
+    <circle class="l-ink" cx="940" cy="150" r="13" stroke-width="1.3"/>
+  </g>
+</svg>
+
+<!-- v3 星谱: 无轨道, 主星孤悬 -->
+<svg class="stage" viewBox="0 0 1200 420" preserveAspectRatio="xMidYMax meet" data-v="v3">
+  <!-- 第一遍 -->
+  <g filter="url(#wobble)" fill="none" stroke-width="2" stroke-linecap="round">
+    <g class="l-ink" stroke-width="1.7">
+      <path d="M70 336 C 300 334, 480 326, 620 292 C 700 272, 760 248, 810 220"/>
+      <path d="M70 314 C 300 312, 470 304, 600 272 C 680 252, 730 232, 770 208" opacity=".85"/>
+      <path d="M70 292 C 300 290, 460 282, 580 252 C 660 232, 700 216, 730 196" opacity=".7"/>
+      <path d="M70 270 C 300 268, 450 260, 560 232 C 640 212, 672 200, 696 184" opacity=".55"/>
+      <path d="M70 248 C 300 246, 440 238, 545 212 C 620 194, 648 184, 668 172" opacity=".4"/>
+    </g>
+    <!-- 主星: 圆描两遍, 短芒 -->
+    <circle class="l-ink" cx="940" cy="150" r="13" stroke-width="1.9"/>
+    <path class="l-ink" d="M940 122 v -12 M940 178 v 12 M912 150 h -12 M968 150 h 12" stroke-width="1.6"/>
+    <!-- 远处的小星 -->
+    <circle class="f-ink" cx="1058" cy="196" r="5" stroke="none"/>
+    <path class="l-muted" d="M180 84 h 12 M186 78 v 12" stroke-width="1.5"/>
+    <g stroke-width="1.9">
+      <ellipse class="f-ink" cx="190" cy="306" rx="8.5" ry="6.5" transform="rotate(-14 190 306)"/>
+      <path class="l-ink" d="M198 304 L 198 262"/>
+      <ellipse class="f-ink" cx="320" cy="298" rx="8.5" ry="6.5" transform="rotate(-14 320 298)"/>
+      <path class="l-ink" d="M328 296 L 328 254"/>
+      <ellipse class="f-ink" cx="450" cy="286" rx="8.5" ry="6.5" transform="rotate(-14 450 286)"/>
+      <path class="l-ink" d="M458 284 L 458 242"/>
+    </g>
+    <ellipse class="f-ink" cx="590" cy="262" rx="7.5" ry="5.5" transform="rotate(-24 590 262)" opacity=".85"/>
+    <circle class="f-ink" cx="700" cy="232" r="4.5" opacity=".65"/>
+    <circle class="f-ink" cx="782" cy="204" r="3" opacity=".5"/>
+    <path class="l-ink" d="M836 176 h 11 M841.5 170.5 v 11" stroke-width="1.5" opacity=".8"/>
+    <path class="l-muted" d="M664 286 l -22 46" stroke-width="1.7" stroke-dasharray="5 7"/>
+    <path class="l-ink" d="M638 336 c -6 7 -6 12 0 16 c 6 -4 6 -9 0 -16" stroke-width="1.7"/>
+    <path class="l-muted" d="M612 356 a 30 9 0 1 1 60 0 a 30 9 0 1 1 -60 0" stroke-width="1.5" opacity=".6"/>
+    <path class="l-line" d="M590 366 a 52 13 0 1 1 104 0 a 52 13 0 1 1 -104 0" stroke-width="1.4" opacity=".45"/>
+  </g>
+  <!-- 第二遍描线 -->
+  <g filter="url(#wobble2)" fill="none" stroke-linecap="round" opacity=".28">
+    <g class="l-ink" stroke-width="1.2">
+      <path d="M70 336 C 300 334, 480 326, 620 292 C 700 272, 760 248, 810 220"/>
+      <path d="M70 314 C 300 312, 470 304, 600 272 C 680 252, 730 232, 770 208"/>
+      <path d="M70 292 C 300 290, 460 282, 580 252 C 660 232, 700 216, 730 196"/>
+    </g>
+    <circle class="l-ink" cx="940" cy="150" r="13" stroke-width="1.3"/>
+  </g>
+</svg>
+
+<div class="poem">
+  <p class="en">all those moments will be lost in time,<br>like tears in rain</p>
+  <p class="cn">所有瞬间终将消逝于时间, 一如泪水没入雨中.</p>
+</div>
+
+<nav class="dock" aria-label="变体切换">
+  <span class="proto">prototype</span>
+  <button id="prev" aria-label="上一个变体">←</button>
+  <span class="label" id="label"></span>
+  <button id="next" aria-label="下一个变体">→</button>
+</nav>
+
+<script>
+  var VARIANTS = [
+    { key:"v1", name:"星谱 v1", en:"原稿" },
+    { key:"v2", name:"星谱 v2", en:"精修" },
+    { key:"v3", name:"星谱 v3", en:"无轨道" }
+  ];
+  var order = VARIANTS.map(function(v){ return v.key; });
+
+  function current(){
+    var q = new URLSearchParams(location.search).get("variant");
+    var i = order.indexOf(q);
+    return i < 0 ? 0 : i;
+  }
+
+  function apply(i){
+    var v = VARIANTS[i];
+    var stages = document.querySelectorAll(".stage[data-v]");
+    for (var k = 0; k < stages.length; k++)
+      stages[k].classList.toggle("on", stages[k].getAttribute("data-v") === v.key);
+    document.getElementById("label").innerHTML =
+      v.name + " <em>" + v.en + "</em>";
+    var url = new URL(location.href);
+    url.searchParams.set("variant", v.key);
+    history.replaceState(null, "", url);
+    window.__PRESENTATION_STATE__.values.variant = v.key;
+  }
+
+  function step(d){
+    apply((current() + d + VARIANTS.length) % VARIANTS.length);
+  }
+
+  document.getElementById("prev").addEventListener("click", function(){ step(-1); });
+  document.getElementById("next").addEventListener("click", function(){ step(1); });
+  document.addEventListener("keydown", function(e){
+    var t = e.target;
+    if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA")) return;
+    if (e.key === "ArrowLeft") step(-1);
+    if (e.key === "ArrowRight") step(1);
+  });
+
+  window.__PRESENTATION_STATE__ = { version:1, values:{ variant:"v2" } };
+  apply(new URLSearchParams(location.search).has("variant") ? current() : 0);
+</script>
+</body>
+</html>
