@@ -52,7 +52,7 @@ disable-model-invocation: true
 本 skill 的所有落盘产物都写入一个产物根目录, 默认 `docs/changes/<feature-slug>/`, 调用方可指定其他根目录.
 
 分支完成标准检查通过后, 询问 *是否结束盘问*.
-我回答是: 使用 `domain-modeling` 维护领域语言文件或 ADR, 调用 `decision-ledger` 维护决策账本.
+我回答是: 使用 `domain-modeling` 维护领域语言文件或 ADR; 调用 `decision-ledger` 维护决策账本, 必须完整记录会话中所有确认过的决策和事实, 禁止写成摘要.
 我回答否并补充问题: 不写文件, 返回对应设计分支继续.
 
 # 检查产物
