@@ -1,6 +1,7 @@
 ---
 name: writing-for-agents
-description: 为 agent 编写文档. 创建或编辑 skill, 修改 AGENTS.md 或 CLAUDE.md 时使用.
+description: 为 agent 编写文档的写作参考, 覆盖 skill, AGENTS.md/CLAUDE.md 与指针文档.
+disable-model-invocation: true
 ---
 
 为 agent 消费的任何文档而写的参考材料: skill, `AGENTS.md`/`CLAUDE.md`, 由 *指针* 抵达的文档. 包装不同, 写法相同: 同一批杠杆让每一份都可预测 — agent 每次运行走相同的*过程*, 而不是产出相同的结果.
