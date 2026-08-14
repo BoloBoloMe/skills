@@ -1,12 +1,17 @@
 """脱离式 Chromium + CDP 会话共享测试."""
 
 import os
-import re
 import subprocess
 import sys
+import time
 
 import pytest
 
+from browser_agent import navigate
+from browser_agent._proc import find_pids_by_cmdline
+from browser_agent._proc import is_pid_alive as _is_process_alive
+from browser_agent.browser import Browser
+from browser_agent.config import allocate_cdp_port
 from browser_agent.config import BrowserConfig
 from browser_agent.session import cleanup_browser_session
 from browser_agent.session import get_session
@@ -15,26 +20,6 @@ from browser_agent.session import stop_browser_session
 
 
 # ── helpers ──────────────────────────────────────────────────
-
-
-def _is_process_alive(pid: int) -> bool:
-    """跨平台检查进程是否仍在运行."""
-    try:
-        if os.name == "nt":
-            result = subprocess.run(
-                ["tasklist", "/FI", f"PID eq {pid}", "/NH"],
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                text=True,
-                check=False,
-            )
-            # tasklist alive: 输出包含 PID; dead: 输出提示无匹配任务
-            return re.search(rf"\\b{pid}\\b", result.stdout) is not None
-        else:
-            os.kill(pid, 0)
-            return True
-    except (ProcessLookupError, OSError):
-        return False
 
 
 def _add_test_cookie(name: str, value: str):
@@ -187,3 +172,115 @@ def test_launch_detached_kills_orphan_chromium():
 
     new_meta = config.read_metadata()
     assert new_meta["pid"] != old_pid
+
+
+# ── 无 metadata 记录的孤儿占 profile: 清扫后自愈 ──────────────
+
+
+@pytest.mark.skipif(os.name == "nt", reason="孤儿清扫仅 POSIX 实现")
+def test_orphan_chromium_holding_profile_is_swept(monkeypatch):
+    """Popen 与 write_metadata 之间崩溃留下的孤儿 chromium 占用 profile 时,
+    navigate 应清扫孤儿并重试启动成功 (不再每次 30s 超时)."""
+    # 先正常启动一次, 备好 profile 与 chromium binary
+    page = get_session().page
+    page.set_content("<html><body>seed</body></html>")
+    config = BrowserConfig()
+    meta = config.read_metadata()
+    binary = meta["chromium_binary"]
+
+    # 停掉受管实例并删除 metadata, 模拟 "崩溃后无记录" 的前提
+    stop_browser_session()
+    reset_session()
+    config.browser_json.unlink(missing_ok=True)
+
+    # 直接起孤儿 chromium 占住同一 user-data-dir, 但不写 metadata
+    orphan_port = allocate_cdp_port()
+    orphan = subprocess.Popen(
+        [
+            binary,
+            f"--remote-debugging-port={orphan_port}",
+            f"--user-data-dir={config.profile_dir}",
+            "--no-first-run",
+            "--no-default-browser-check",
+            "--headless=new",
+        ],
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+        start_new_session=True,
+    )
+    try:
+        # 确认孤儿已占稳 profile (SingletonLock)
+        Browser._wait_for_port(orphan_port, timeout=30.0)
+
+        # 缩短 CDP 端口等待, 避免测试在首次失败启动上等满 30s
+        orig_wait = Browser._wait_for_port
+        monkeypatch.setattr(
+            Browser,
+            "_wait_for_port",
+            staticmethod(lambda port, timeout=30.0: orig_wait(port, min(timeout, 5.0))),
+        )
+
+        # navigate 应自愈: 首次启动撞 SingletonLock 超时 → 清扫孤儿 → 重试成功
+        result = navigate("about:blank")
+        assert result.success, f"navigate 自愈失败: {result.error}"
+
+        # 孤儿已被杀掉, metadata 指向新进程
+        assert not _is_process_alive(orphan.pid)
+        new_meta = config.read_metadata()
+        assert new_meta["pid"] != orphan.pid
+    finally:
+        if orphan.poll() is None:
+            orphan.kill()
+            orphan.wait()
+
+
+# ── 并发 cleanup+start 不双启同一 profile (split-brain 回归) ──
+
+
+@pytest.mark.skipif(os.name == "nt", reason="flock 互斥仅 POSIX 实现")
+def test_concurrent_cleanup_and_start_no_split_brain():
+    """两个进程并发交替 navigate/cleanup, 不得双启同一 profile 或残留孤儿."""
+    project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    cwd = os.getcwd()
+    env = os.environ.copy()
+    env["PYTHONPATH"] = project_root + os.pathsep + env.get("PYTHONPATH", "")
+
+    script = f"""
+import os, sys
+sys.path.insert(0, r"{project_root}")
+os.chdir(r"{cwd}")
+from browser_agent import navigate, cleanup_browser_session
+for i in range(3):
+    r = navigate("about:blank")
+    if not r.success:
+        print("NAV-FAIL", r.error)
+    cleanup_browser_session()
+print("DONE")
+"""
+    procs = [
+        subprocess.Popen(
+            [sys.executable, "-c", script],
+            cwd=cwd,
+            env=env,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+        )
+        for _ in range(2)
+    ]
+    for p in procs:
+        out, err = p.communicate(timeout=180)
+        assert p.returncode == 0, f"stdout: {out}\nstderr: {err}"
+        assert "DONE" in out
+
+    # 终态收敛: 清理后不得有指向本 session profile 的残留进程
+    # (chromium 子进程退出略滞后, 轮询等待收敛)
+    cleanup_browser_session()
+    config = BrowserConfig()
+
+    deadline = time.monotonic() + 15.0
+    leftover = find_pids_by_cmdline(str(config.profile_dir))
+    while leftover and time.monotonic() < deadline:
+        time.sleep(0.5)
+        leftover = find_pids_by_cmdline(str(config.profile_dir))
+    assert leftover == []

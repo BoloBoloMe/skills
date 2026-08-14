@@ -162,6 +162,38 @@ def test_network_json_post_carries_cookie():
         server.shutdown()
 
 
+def test_network_json_dict_body_serializes_and_sets_content_type():
+    """body 为 dict 时自动 JSON 序列化并补 Content-Type: application/json."""
+    url, server = _start_cookie_echo_server()
+    try:
+        result = network_json(url, method="POST", body={"key": "value"})
+
+        assert result.success, f"request failed: {result.error}"
+        assert result.body["body"] == '{"key": "value"}'
+        headers = {k.lower(): v for k, v in result.body["headers"].items()}
+        assert headers.get("content-type") == "application/json"
+    finally:
+        server.shutdown()
+
+
+def test_network_json_dict_body_respects_existing_content_type_any_case():
+    """headers 已有 content-type (任意大小写) 时不覆盖."""
+    url, server = _start_cookie_echo_server()
+    try:
+        result = network_json(
+            url,
+            method="POST",
+            body={"key": "value"},
+            headers={"CONTENT-TYPE": "application/vnd.custom+json"},
+        )
+
+        assert result.success, f"request failed: {result.error}"
+        headers = {k.lower(): v for k, v in result.body["headers"].items()}
+        assert headers.get("content-type") == "application/vnd.custom+json"
+    finally:
+        server.shutdown()
+
+
 def test_network_json_error_returns_failure():
     """network_json 请求无效 URL 返回 success=False."""
     result = network_json("http://127.0.0.1:0/no-such-port")
@@ -192,3 +224,73 @@ def test_cdp_send_invalid_method_returns_failure():
     assert isinstance(result, CdpResult)
     assert result.success is False
     assert result.error is not None
+
+
+# ── cdp_send detach 契约 ────────────────────────────────────
+
+
+class _FakeCdpSession:
+    """可注入 send/detach 异常的假 CDP session."""
+
+    def __init__(self, send_result=None, send_error=None, detach_error=None):
+        self._send_result = send_result
+        self._send_error = send_error
+        self._detach_error = detach_error
+
+    def send(self, method, params=None):
+        if self._send_error is not None:
+            raise self._send_error
+        return self._send_result if self._send_result is not None else {}
+
+    def detach(self):
+        if self._detach_error is not None:
+            raise self._detach_error
+
+
+def _install_fake_session(monkeypatch, cdp):
+    from types import SimpleNamespace
+
+    from browser_agent import operations as operations_mod
+
+    page = SimpleNamespace(
+        context=SimpleNamespace(new_cdp_session=lambda _page: cdp)
+    )
+    monkeypatch.setattr(
+        operations_mod, "get_session", lambda: SimpleNamespace(page=page)
+    )
+
+
+def test_cdp_send_detach_failure_becomes_warning(monkeypatch):
+    """send 成功但 detach 失败: success=True 且 error=None, 问题记入 warning."""
+    from browser_agent import operations as operations_mod
+
+    cdp = _FakeCdpSession(
+        send_result={"ok": 1}, detach_error=RuntimeError("detach boom")
+    )
+    _install_fake_session(monkeypatch, cdp)
+
+    result = operations_mod.cdp_send("Target.getTargets")
+
+    assert result.success is True
+    assert result.error is None
+    assert result.result == {"ok": 1}
+    assert result.warning is not None
+    assert "detach" in result.warning
+
+
+def test_cdp_send_send_and_detach_failure_merges_into_error(monkeypatch):
+    """send 与 detach 均失败: success=False, detach 问题追加进 error, warning 为空."""
+    from browser_agent import operations as operations_mod
+
+    cdp = _FakeCdpSession(
+        send_error=RuntimeError("send boom"),
+        detach_error=RuntimeError("detach boom"),
+    )
+    _install_fake_session(monkeypatch, cdp)
+
+    result = operations_mod.cdp_send("Target.getTargets")
+
+    assert result.success is False
+    assert "send boom" in result.error
+    assert "detach" in result.error
+    assert result.warning is None

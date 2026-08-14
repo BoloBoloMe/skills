@@ -30,7 +30,8 @@ class ExtractResult(OperationResult):
 class ScreenshotResult(OperationResult):
     """screenshot 操作结果.
 
-    path 为 None 时 image 含 PNG 字节; 非 None 时 path 为写入路径.
+    显式传入 path 时 image 为 None; path 为 None 时自动落盘到会话
+    artifacts/screenshots/ 目录, 同时返回 image (PNG 字节) 与 path.
     """
 
     image: Optional[bytes] = None
@@ -89,6 +90,11 @@ class NetworkResult(OperationResult):
 
 @dataclass
 class CdpResult(OperationResult):
-    """cdp_send 操作结果."""
+    """cdp_send 操作结果.
+
+    warning: 操作本身成功但善后步骤 (如 cdp session detach) 出问题时
+    记录的非致命告警; success=False 时恒为 None (问题并入 error).
+    """
 
     result: Optional[object] = None
+    warning: Optional[str] = None

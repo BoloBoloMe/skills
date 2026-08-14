@@ -8,9 +8,7 @@ if sys.version_info < (3, 9):
     sys.exit(1)
 
 import argparse
-import gzip
 import ipaddress
-import io
 import json
 import os
 import re
@@ -48,6 +46,21 @@ SEARCH_UA = (
 TIMEOUT = 15
 DDG_URL = "https://html.duckduckgo.com/html/?q={q}"
 BRAVE_URL = "https://search.brave.com/search?q={q}"
+# Response size caps (bytes). browse/search responses are truncated at
+# MAX_RESPONSE_BYTES; downloads are streamed to disk and aborted at
+# MAX_DOWNLOAD_BYTES. Both also cap decompressed output.
+MAX_RESPONSE_BYTES = 20 * 1024 * 1024
+MAX_DOWNLOAD_BYTES = 200 * 1024 * 1024
+DOWNLOAD_CHUNK_SIZE = 64 * 1024
+# Headers dropped when a redirect crosses origins.
+_SENSITIVE_HEADERS = frozenset(
+    {"authorization", "cookie", "proxy-authorization", "x-api-key"}
+)
+# Opt-in escape hatch: set SCRAPE_ALLOW_PRIVATE_HOSTS=1 to disable the private
+# address blocklist (SSRF guard). Intended for tests and trusted LAN scraping.
+ALLOW_PRIVATE_HOSTS = os.environ.get("SCRAPE_ALLOW_PRIVATE_HOSTS", "").lower() in (
+    "1", "true", "yes",
+)
 
 
 # ── Helpers ────────────────────────────────────────────────────────────
@@ -57,6 +70,11 @@ def _is_blocked_ip(value: str) -> bool:
         ip = ipaddress.ip_address(value)
     except ValueError:
         return False
+    # IPv4-mapped IPv6 (e.g. ::ffff:127.0.0.1) must be judged by the mapped
+    # IPv4 address; on Python < 3.11 the is_* checks miss it otherwise.
+    mapped = getattr(ip, "ipv4_mapped", None)
+    if mapped is not None:
+        ip = mapped
     return any(
         (
             ip.is_private,
@@ -98,13 +116,21 @@ def validate_url(url: str) -> None:
     parsed = urllib.parse.urlparse(url)
     if parsed.scheme not in ("http", "https"):
         raise ValueError(f"unsupported scheme: {parsed.scheme}")
-    if _resolves_to_private_host(parsed.hostname or ""):
+    if not ALLOW_PRIVATE_HOSTS and _resolves_to_private_host(parsed.hostname or ""):
         raise ValueError(f"private address: {parsed.hostname}")
 
 
 def resolve_url(url: str, base_url: str) -> str:
     """Resolve a potentially relative URL against a base URL."""
     return urllib.parse.urljoin(base_url, url)
+
+
+def _remove_quiet(path: str) -> None:
+    """Best-effort file removal (partial downloads, temp files)."""
+    try:
+        os.remove(path)
+    except OSError:
+        pass
 
 
 def parse_content_type(ct_header: str):
@@ -122,7 +148,14 @@ def parse_content_type(ct_header: str):
 
 
 def detect_charset(headers, html_bytes: bytes = b"") -> str:
-    """Detect charset from headers or HTML meta tags."""
+    """Detect charset from BOM, headers or HTML meta tags."""
+    # Byte-order marks take precedence over any declared charset.
+    if html_bytes.startswith(b"\xef\xbb\xbf"):
+        return "utf-8-sig"
+    if html_bytes.startswith((b"\xff\xfe\x00\x00", b"\x00\x00\xfe\xff")):
+        return "utf-32"
+    if html_bytes.startswith((b"\xff\xfe", b"\xfe\xff")):
+        return "utf-16"
     ct = headers.get("content-type", "") if hasattr(headers, "get") else ""
     _, params = parse_content_type(ct)
     if "charset" in params:
@@ -157,59 +190,28 @@ class Fetch:
 
     def fetch(self, url: str, headers: dict = None, ua: str = UA,
               max_bytes: int = None) -> dict:
-        hdrs = {"User-Agent": ua, "Accept-Encoding": "gzip, deflate"}
-        if headers:
-            hdrs.update(headers)
-
-        resp_headers = {}
-        status = 0
-        raw = b""
-        final_url = url
+        limit = max_bytes if max_bytes and max_bytes > 0 else MAX_RESPONSE_BYTES
+        resp, final_url, resp_headers, status = self.stream(url, headers=headers, ua=ua)
         warnings = []
-
-        for _ in range(self.REDIRECT_LIMIT + 1):
-            req = urllib.request.Request(url, headers=hdrs)
+        try:
+            raw, truncated = self._read_limited(resp, limit)
+        finally:
             try:
-                resp = self._opener.open(req, timeout=TIMEOUT)
-                raw, truncated = self._read_limited(resp, max_bytes)
-                if truncated:
-                    warnings.append("response truncated at max_bytes")
-                final_url = resp.geturl()
-                resp_headers = self._headers_dict(resp.headers)
-                status = resp.status
-            except urllib.error.HTTPError as e:
-                raw, truncated = self._read_limited(e, max_bytes) if hasattr(e, "read") else (b"", False)
-                if truncated:
-                    warnings.append("response truncated at max_bytes")
-                final_url = e.url or url
-                resp_headers = self._headers_dict(e.headers) if hasattr(e, "headers") else {}
-                status = e.code
+                resp.close()
+            except Exception:
+                pass
+        if truncated:
+            warnings.append(f"response truncated at {limit} bytes")
 
-            # Handle redirects manually with SSRF validation
-            if status in self._REDIRECT_CODES:
-                loc = resp_headers.get("location", "")
-                if loc:
-                    new_url = urllib.parse.urljoin(url, loc)
-                    self._validate_redirect(new_url)
-                    url = new_url
-                    continue
-            break
-
-        # Decompress
+        # Decompress (incremental, output capped at the same limit)
         enc = resp_headers.get("content-encoding", "").lower()
-        if enc == "gzip":
-            try:
-                raw = gzip.decompress(raw)
-            except Exception:
-                warnings.append("gzip decompression failed; returned compressed bytes decoded as text")
-        elif enc == "deflate":
-            try:
-                raw = zlib.decompress(raw)
-            except Exception:
-                try:
-                    raw = zlib.decompress(raw, -zlib.MAX_WBITS)
-                except Exception:
-                    warnings.append("deflate decompression failed; returned compressed bytes decoded as text")
+        raw, d_truncated, failed = _decompress_limited(raw, enc, limit)
+        if failed:
+            warnings.append(
+                f"{enc} decompression failed; returned compressed bytes decoded as text"
+            )
+        elif d_truncated:
+            warnings.append(f"decompressed response truncated at {limit} bytes")
 
         charset = detect_charset(resp_headers, raw)
         try:
@@ -230,20 +232,148 @@ class Fetch:
             "warnings": warnings,
         }
 
+    def stream(self, url: str, headers: dict = None, ua: str = UA):
+        """Open URL following validated redirects.
+
+        Returns (resp, final_url, headers_dict, status); the caller must read
+        and close resp. Raises ValueError on SSRF violations or when the
+        redirect limit is exceeded.
+        """
+        hdrs = {"User-Agent": ua, "Accept-Encoding": "gzip, deflate"}
+        if headers:
+            hdrs.update(headers)
+        origin = _origin(url)
+
+        for _ in range(self.REDIRECT_LIMIT + 1):
+            req = urllib.request.Request(url, headers=hdrs)
+            try:
+                resp = self._opener.open(req, timeout=TIMEOUT)
+                status = resp.status
+                resp_headers = self._headers_dict(resp.headers)
+            except urllib.error.HTTPError as e:
+                resp = e
+                status = e.code
+                resp_headers = self._headers_dict(e.headers) if hasattr(e, "headers") else {}
+            # Best-effort anti-TOCTOU: check the actually connected peer.
+            self._check_peer(resp, url)
+
+            # Handle redirects manually with SSRF validation
+            if status in self._REDIRECT_CODES:
+                loc = resp_headers.get("location", "")
+                if loc:
+                    new_url = urllib.parse.urljoin(url, loc)
+                    self._validate_redirect(new_url)
+                    new_origin = _origin(new_url)
+                    if new_origin != origin:
+                        # Cross-origin redirect: drop credentials.
+                        hdrs = {
+                            k: v for k, v in hdrs.items()
+                            if k.lower() not in _SENSITIVE_HEADERS
+                        }
+                        origin = new_origin
+                    try:
+                        resp.close()
+                    except Exception:
+                        pass
+                    url = new_url
+                    continue
+            return resp, url, resp_headers, status
+        raise ValueError(f"redirect limit exceeded ({self.REDIRECT_LIMIT})")
+
     @staticmethod
     def _validate_redirect(url: str) -> None:
         """Validate redirect target URL (scheme + SSRF)."""
         parsed = urllib.parse.urlparse(url)
         if parsed.scheme not in ("http", "https"):
             raise ValueError(f"redirect to unsupported scheme: {parsed.scheme}")
-        if _resolves_to_private_host(parsed.hostname or ""):
+        if not ALLOW_PRIVATE_HOSTS and _resolves_to_private_host(parsed.hostname or ""):
             raise ValueError(f"redirect to private address: {parsed.hostname}")
+
+    def _check_peer(self, resp, url: str = None) -> None:
+        """Best-effort check of the connected peer IP against the blocklist.
+
+        If the peer address cannot be determined, silently allow.
+
+        Trust model: when the request is routed through a user-configured
+        proxy (http_proxy/https_proxy env vars etc.), the connected peer is
+        the proxy -- a user-chosen intermediary -- not the target host. The
+        target was already validated by validate_url (scheme + DNS blocklist),
+        so the peer check is skipped; otherwise a loopback or LAN proxy
+        address would reject every request.
+        """
+        if ALLOW_PRIVATE_HOSTS:
+            return
+        if url and self._uses_proxy(url):
+            return
+        try:
+            peer = self._peer_ip(resp)
+        except Exception:
+            return
+        if peer and _is_blocked_ip(peer):
+            try:
+                resp.close()
+            except Exception:
+                pass
+            raise ValueError(f"private peer address: {peer}")
+
+    @staticmethod
+    def _uses_proxy(url: str) -> bool:
+        """Return True if urllib would route this request through a proxy."""
+        try:
+            proxies = urllib.request.getproxies()
+        except Exception:
+            return False
+        parsed = urllib.parse.urlparse(url)
+        if parsed.scheme not in proxies:
+            return False
+        # Honor no_proxy: a bypassed host connects directly, so the peer
+        # check must still apply.
+        try:
+            return not urllib.request.proxy_bypass(parsed.hostname or "")
+        except Exception:
+            return True
+
+    @staticmethod
+    def _peer_ip(resp):
+        """Walk the resp -> fp -> raw -> _sock chain to find getpeername()."""
+        obj = resp
+        seen = set()
+        for _ in range(8):
+            if obj is None or id(obj) in seen:
+                return None
+            seen.add(id(obj))
+            getpeername = getattr(obj, "getpeername", None)
+            if callable(getpeername):
+                try:
+                    peer = getpeername()
+                except Exception:
+                    return None
+                if isinstance(peer, tuple) and peer:
+                    return peer[0]
+                return None
+            nxt = None
+            for attr in ("fp", "raw", "_sock"):
+                nxt = getattr(obj, attr, None)
+                if nxt is not None:
+                    break
+            obj = nxt
+        return None
 
     @staticmethod
     def _read_limited(resp, max_bytes: int = None):
         if max_bytes is None or max_bytes <= 0:
             return resp.read(), False
-        raw = resp.read(max_bytes + 1)
+        # read(amt) may return fewer bytes than requested (short read), so
+        # loop until we have max_bytes + 1 bytes or hit EOF.
+        chunks = []
+        remaining = max_bytes + 1
+        while remaining > 0:
+            chunk = resp.read(remaining)
+            if not chunk:
+                break
+            chunks.append(chunk)
+            remaining -= len(chunk)
+        raw = b"".join(chunks)
         if len(raw) > max_bytes:
             return raw[:max_bytes], True
         return raw, False
@@ -252,6 +382,47 @@ class Fetch:
     def _headers_dict(headers) -> dict:
         """Convert HTTP headers to a lowercase-key dict."""
         return {k.lower(): v for k, v in headers.items()}
+
+
+def _origin(url: str):
+    """Return (scheme, host, port) origin tuple for redirect comparison."""
+    parsed = urllib.parse.urlparse(url)
+    try:
+        port = parsed.port
+    except ValueError:
+        port = None
+    if port is None:
+        port = 443 if parsed.scheme == "https" else 80
+    return (parsed.scheme.lower(), (parsed.hostname or "").lower(), port)
+
+
+def _decompress_limited(raw: bytes, encoding: str, max_bytes: int):
+    """Incrementally decompress with output capped at max_bytes.
+
+    Returns (data, truncated, failed). On failure returns the original bytes.
+    """
+    if encoding == "gzip":
+        candidates = (16 + zlib.MAX_WBITS,)
+    elif encoding == "deflate":
+        candidates = (zlib.MAX_WBITS, -zlib.MAX_WBITS)
+    else:
+        return raw, False, False
+    for wbits in candidates:
+        d = zlib.decompressobj(wbits)
+        try:
+            out = d.decompress(raw, max_bytes + 1)
+            if not d.unconsumed_tail and not d.eof:
+                out += d.flush()
+        except zlib.error:
+            continue
+        truncated = bool(d.unconsumed_tail) or len(out) > max_bytes
+        # Note: raw deflate (wbits=-MAX_WBITS) has no end-of-stream marker, so
+        # d.eof stays False even for a complete stream; do not treat it as
+        # truncation. Truncated *input* is already reported by _read_limited.
+        if truncated:
+            out = out[:max_bytes]
+        return out, truncated, False
+    return raw, False, True
 
 
 # ── HTMLToMarkdown ─────────────────────────────────────────────────────
@@ -293,6 +464,20 @@ class HTMLToMarkdown(HTMLParser):
         return {"title": self._title, "markdown": md, "resources": self._resources}
 
     # ── parser callbacks ───────────────────────────────────────────────
+    def _emit(self, text: str) -> None:
+        """Append inline markup to the current table cell or the main buffer."""
+        if self._in_cell:
+            self._current_cell.append(text)
+        else:
+            self._buf.append(text)
+
+    def _escape_url(self, url: str) -> str:
+        """Escape | in a URL emitted into a table cell (a raw | would split
+        the markdown table cell). Cell text is escaped in handle_data."""
+        if self._in_cell:
+            return url.replace("|", "\\|")
+        return url
+
     def handle_starttag(self, tag: str, attrs):
         attrs_d = dict(attrs)
         low = tag.lower()
@@ -321,25 +506,25 @@ class HTMLToMarkdown(HTMLParser):
             else:
                 self._buf.append("  \n")
         elif low == "a":
-            href = attrs_d.get("href", "")
-            if href.lower().startswith("javascript:"):
+            href = attrs_d.get("href", "").strip()
+            # Browsers ignore ASCII whitespace inside the scheme, so embedded
+            # whitespace ("java\tscript:") must be blocked too, not just
+            # leading/trailing whitespace.
+            if re.sub(r"\s+", "", href).lower().startswith("javascript:"):
                 href = ""
             elif href:
                 href = resolve_url(href, self._base_url)
             self._href_stack.append(href if self.include_links else None)
             if self.include_links:
-                self._buf.append("[")
+                self._emit("[")
         elif low == "img":
-            src = attrs_d.get("src", "")
+            src = attrs_d.get("src", "").strip()
             if src:
                 src = resolve_url(src, self._base_url)
-            alt = attrs_d.get("alt", "")
-            if self.include_images:
-                if self._in_cell:
-                    self._current_cell.append(f"![{alt}]({src})")
-                else:
-                    self._buf.append(f"![{alt}]({src})")
-                self._resources.append({"type": "image", "url": src, "alt": alt})
+                alt = attrs_d.get("alt", "")
+                if self.include_images:
+                    self._emit(f"![{alt}]({self._escape_url(src)})")
+                    self._resources.append({"type": "image", "url": src, "alt": alt})
         elif low in ("audio", "video"):
             src = attrs_d.get("src", "")
             if src:
@@ -352,10 +537,10 @@ class HTMLToMarkdown(HTMLParser):
                 self._resources.append({"type": "source", "url": src})
         elif low in ("strong", "em", "b", "i"):
             if not self._pre_depth:
-                self._buf.append(_INLINE_WRAP[low])
+                self._emit(_INLINE_WRAP[low])
         elif low == "code":
             if self._pre_depth == 0:
-                self._buf.append("`")
+                self._emit("`")
         elif low == "pre":
             self._pre_depth += 1
             self._buf.append("\n\n```\n")
@@ -403,13 +588,13 @@ class HTMLToMarkdown(HTMLParser):
         elif low == "a":
             href = self._href_stack.pop() if self._href_stack else ""
             if href is not None:
-                self._buf.append(f"]({href})")
+                self._emit(f"]({self._escape_url(href)})")
         elif low in ("strong", "em", "b", "i"):
             if not self._pre_depth:
-                self._buf.append(_INLINE_WRAP[low])
+                self._emit(_INLINE_WRAP[low])
         elif low == "code":
             if self._pre_depth == 0:
-                self._buf.append("`")
+                self._emit("`")
         elif low == "pre":
             self._pre_depth = max(0, self._pre_depth - 1)
             self._buf.append("\n```\n")
@@ -446,11 +631,8 @@ class HTMLToMarkdown(HTMLParser):
             if text:
                 self._buf.append(text)
 
-    def handle_entityref(self, name: str):
-        self.handle_data(f"&{name};")
-
-    def handle_charref(self, name: str):
-        self.handle_data(f"&#{name};")
+    # handle_entityref/handle_charref are intentionally absent: HTMLParser is
+    # constructed with convert_charrefs=True (default), so they never fire.
 
     # ── helpers ────────────────────────────────────────────────────────
     def _emit_table(self):
@@ -504,10 +686,9 @@ def _is_search_result_url(url: str) -> bool:
     host = (parsed.hostname or "").lower()
     if parsed.scheme not in ("http", "https") or not host:
         return False
-    low = url.lower()
+    # Any duckduckgo.com URL is an ad/redirect wrapper; real result targets
+    # are decoded by _normalize_search_url before this check.
     if host in ("duckduckgo.com", "www.duckduckgo.com"):
-        if parsed.path.startswith("/y.js") or "ad_domain=" in low:
-            return False
         return False
     if host in ("bing.com", "www.bing.com") and parsed.path.startswith("/aclick"):
         return False
@@ -530,6 +711,7 @@ class _DDGParser(HTMLParser):
         d = dict(attrs)
         cls = d.get("class", "")
         if tag == "a" and "result__a" in cls:
+            self._flush()  # keep a previous result that had no snippet
             self._current = {"url": d.get("href", ""), "title": "", "snippet": ""}
             self._capture_title = True
             self._title_buf = []
@@ -544,9 +726,17 @@ class _DDGParser(HTMLParser):
         if self._capture_snippet and tag == "a":
             self._current["snippet"] = "".join(self._snippet_buf).strip()
             self._capture_snippet = False
-            if self._current.get("url"):
-                self.results.append(self._current)
-            self._current = {}
+            self._flush()
+
+    def close(self):
+        super().close()
+        # Keep results that have a link but no snippet element.
+        self._flush()
+
+    def _flush(self):
+        if self._current.get("url"):
+            self.results.append(self._current)
+        self._current = {}
 
     def handle_data(self, data):
         if self._capture_title:
@@ -620,8 +810,6 @@ class _GenericLinkParser(HTMLParser):
         "google.com",
         "bing.com",
         "wikipedia.org",
-        "about:",
-        "javascript:",
     )
 
     def __init__(self):
@@ -631,13 +819,17 @@ class _GenericLinkParser(HTMLParser):
         self._href = ""
         self._buf: list[str] = []
 
+    @classmethod
+    def _is_skipped(cls, url: str) -> bool:
+        host = (urllib.parse.urlparse(url).hostname or "").lower()
+        return any(host == d or host.endswith("." + d) for d in cls.SKIP_DOMAINS)
+
     def handle_starttag(self, tag, attrs):
         d = dict(attrs)
         if tag == "a":
             href = d.get("href", "")
             if href.startswith(("http://", "https://")):
-                low = href.lower()
-                if not any(skip in low for skip in self.SKIP_DOMAINS):
+                if not self._is_skipped(href):
                     self._capture = True
                     self._href = href
                     self._buf = []
@@ -659,50 +851,44 @@ class _GenericLinkParser(HTMLParser):
 class SearchEngine:
     MAX = 50
 
-    def search(self, query: str, num: int = 10) -> list:
+    def search(self, query: str, num: int = 10):
+        """Search DDG then Brave.
+
+        Returns a list of result dicts. When both engines yield nothing,
+        returns {"results": [], "warnings": [...]} with per-engine diagnostics.
+        """
         n = min(max(1, num), self.MAX)
         f = Fetch()
+        diagnostics = []
 
-        # 1. DDG
-        try:
-            r = f.fetch(DDG_URL.format(q=urllib.parse.quote_plus(query)), ua=SEARCH_UA)
-            if r["status"] == 200 and r["content"].strip():
-                p = _DDGParser()
-                try:
-                    p.feed(r["content"])
-                except Exception:
-                    pass
-                if p.results:
-                    out = self._clean_results(p.results, "ddg", n)
-                    if out:
-                        return out
-                # DDG returned HTML but no parsed results -> try generic on DDG
-                generic = self._clean_results(self._generic_on(r["content"]), "fallback", n)
-                if generic:
-                    return generic
-        except Exception:
-            pass
+        for name, url_tmpl, parser_cls in (
+            ("ddg", DDG_URL, _DDGParser),
+            ("brave", BRAVE_URL, _BraveParser),
+        ):
+            try:
+                r = f.fetch(url_tmpl.format(q=urllib.parse.quote_plus(query)),
+                            ua=SEARCH_UA)
+            except Exception as e:
+                diagnostics.append(f"{name}: fetch failed: {e}")
+                continue
+            if r["status"] != 200 or not r["content"].strip():
+                diagnostics.append(f"{name}: http status {r['status']}")
+                continue
+            p = parser_cls()
+            try:
+                p.feed(r["content"])
+                p.close()
+            except Exception as e:
+                diagnostics.append(f"{name}: parse error: {e}")
+            out = self._clean_results(p.results, name, n)
+            if out:
+                return out
+            generic = self._clean_results(self._generic_on(r["content"]), "fallback", n)
+            if generic:
+                return generic
+            diagnostics.append(f"{name}: no results parsed")
 
-        # 2. Brave
-        try:
-            r = f.fetch(BRAVE_URL.format(q=urllib.parse.quote_plus(query)), ua=SEARCH_UA)
-            if r["status"] == 200 and r["content"].strip():
-                p = _BraveParser()
-                try:
-                    p.feed(r["content"])
-                except Exception:
-                    pass
-                if p.results:
-                    out = self._clean_results(p.results, "brave", n)
-                    if out:
-                        return out
-                generic = self._clean_results(self._generic_on(r["content"]), "fallback", n)
-                if generic:
-                    return generic
-        except Exception:
-            pass
-
-        return []
+        return {"results": [], "warnings": diagnostics}
 
     def _generic_on(self, html: str) -> list:
         p = _GenericLinkParser()
@@ -1267,30 +1453,163 @@ class BrowseWeb:
         suffix = "\n[Truncated at max_chars]\n"
         return markdown[:max(0, max_chars - len(suffix))].rstrip() + suffix
 
-    def search(self, query: str, num: int = 10) -> list:
+    def search(self, query: str, num: int = 10):
+        """See SearchEngine.search: list of results, or dict with warnings."""
         return self._search.search(query, num)
 
     def download(self, url: str, path: str = None) -> dict:
         validate_url(url)
 
-        if path is None:
+        temp = path is None
+        if temp:
             suffix = os.path.splitext(urllib.parse.urlparse(url).path)[1] or ".bin"
             fd, path = tempfile.mkstemp(suffix=suffix)
             os.close(fd)
+            write_path = path
         else:
             path = os.path.abspath(path)
             os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
+            # Never write to the requested path directly: stream into a
+            # sibling temp file and os.replace() it into place on success.
+            # Any failure (HTTP error, size cap, decompression or network
+            # error) removes only the temp file, so a pre-existing file at
+            # the target path is preserved untouched.
+            fd, write_path = tempfile.mkstemp(
+                dir=os.path.dirname(path) or ".",
+                prefix=os.path.basename(path) + ".",
+                suffix=".part",
+            )
+            os.close(fd)
 
-        result = self._fetch.fetch(url)
-        raw = result["raw"]
-        with open(path, "wb") as f:
-            f.write(raw)
+        try:
+            resp, final_url, headers, status = self._fetch.stream(url)
+        except Exception:
+            _remove_quiet(write_path)
+            raise
+
+        if status >= 400:
+            try:
+                resp.close()
+            except Exception:
+                pass
+            _remove_quiet(write_path)
+            return {
+                "status": status,
+                "error": f"http status {status}",
+                "url": final_url,
+                "content_type": headers.get("content-type", ""),
+            }
+
+        limit = MAX_DOWNLOAD_BYTES
+        enc = headers.get("content-encoding", "").lower()
+        if enc == "gzip":
+            wbits_candidates = (16 + zlib.MAX_WBITS,)
+        elif enc == "deflate":
+            wbits_candidates = (zlib.MAX_WBITS, -zlib.MAX_WBITS)
+        else:
+            wbits_candidates = ()
+
+        size = 0
+        exceeded = False
+        error = None
+        decompressor = None
+        pending = b""
+        try:
+            with open(write_path, "wb") as out:
+                while True:
+                    chunk = resp.read(DOWNLOAD_CHUNK_SIZE)
+                    if not chunk:
+                        break
+                    if wbits_candidates:
+                        if decompressor is None:
+                            # First bytes: pick the working variant (deflate
+                            # may be zlib-wrapped or raw). A lone byte cannot
+                            # discriminate -- both variants accept it without
+                            # error -- so buffer until >= 2 bytes before
+                            # deciding; a wrong pick would fail every later
+                            # chunk with zlib.error.
+                            pending += chunk
+                            if len(pending) < 2:
+                                continue
+                            chunk, pending = pending, b""
+                            for wbits in wbits_candidates:
+                                candidate = zlib.decompressobj(wbits)
+                                try:
+                                    data = candidate.decompress(chunk)
+                                except zlib.error:
+                                    continue
+                                decompressor = candidate
+                                break
+                            if decompressor is None:
+                                error = f"{enc} decompression failed"
+                                break
+                        else:
+                            try:
+                                data = decompressor.decompress(chunk)
+                            except zlib.error:
+                                error = f"{enc} decompression failed"
+                                break
+                    else:
+                        data = chunk
+                    if data:
+                        size += len(data)
+                        if size > limit:
+                            exceeded = True
+                            break
+                        out.write(data)
+                # A compressed body shorter than 2 bytes can never decode to
+                # anything; report it instead of silently writing nothing.
+                if not error and not exceeded and pending:
+                    error = f"{enc} decompression failed"
+                if not error and not exceeded and decompressor is not None:
+                    try:
+                        tail = decompressor.flush()
+                    except zlib.error:
+                        error = f"{enc} decompression failed"
+                    else:
+                        if tail:
+                            size += len(tail)
+                            if size > limit:
+                                exceeded = True
+                            else:
+                                out.write(tail)
+        except Exception:
+            _remove_quiet(write_path)
+            raise
+        finally:
+            try:
+                resp.close()
+            except Exception:
+                pass
+
+        if exceeded:
+            _remove_quiet(write_path)
+            return {
+                "status": 0,
+                "error": f"download exceeded max size {limit} bytes",
+                "url": final_url,
+            }
+        if error:
+            _remove_quiet(write_path)
+            return {"status": 0, "error": error, "url": final_url}
+
+        if not temp:
+            try:
+                os.replace(write_path, path)
+            except OSError as e:
+                _remove_quiet(write_path)
+                return {
+                    "status": 0,
+                    "error": f"cannot move download into place: {e}",
+                    "url": final_url,
+                }
 
         return {
             "path": path,
-            "url": result["url"],
-            "size": len(raw),
-            "content_type": result["content_type"],
+            "url": final_url,
+            "size": size,
+            "content_type": headers.get("content-type", ""),
+            "status": status,
         }
 
 
@@ -1347,7 +1666,7 @@ def main():
             parser.error("unknown command")
             return
         print(json.dumps(result, ensure_ascii=False))
-    except (ValueError, Exception) as e:
+    except Exception as e:
         print(json.dumps({"status": 0, "error": str(e)}, ensure_ascii=False))
 
 

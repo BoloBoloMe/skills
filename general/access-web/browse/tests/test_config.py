@@ -7,6 +7,8 @@ import tempfile
 import socket
 from pathlib import Path
 
+import pytest
+
 from browser_agent.config import (
     BrowserConfig,
     allocate_cdp_port,
@@ -25,6 +27,36 @@ def test_compute_session_key_is_stable_for_same_cwd():
 
 def test_compute_session_key_differs_for_different_cwd():
     assert compute_session_key("/tmp/a") != compute_session_key("/tmp/b")
+
+
+def test_canonicalize_case_sensitive_on_posix(tmp_path):
+    """POSIX 下 normcase 不统一大小写: 大小写不同的目录不共享 session key."""
+    if os.name == "nt":
+        pytest.skip("Windows normcase 会统一大小写")
+    upper = tmp_path / "ProjA"
+    lower = tmp_path / "proja"
+    upper.mkdir()
+    lower.mkdir()
+    assert compute_session_key(str(upper)) != compute_session_key(str(lower))
+
+
+def test_ensure_session_dirs_creates_artifacts_and_chmod_700(tmp_path):
+    """ensure_session_dirs 创建 artifacts 子目录, POSIX 下 session 根目录修正为 700."""
+    config = BrowserConfig(cwd=str(tmp_path))
+    # 模拟已存在且权限过宽的旧目录, 验证权限会被修正
+    config.session_root.mkdir(parents=True)
+    if os.name != "nt":
+        os.chmod(config.session_root, 0o755)
+
+    config.ensure_session_dirs()
+
+    assert config.artifacts_dir.is_dir()
+    assert config.screenshots_dir.is_dir()
+    assert config.downloads_dir.is_dir()
+    assert config.logs_dir.is_dir()
+    if os.name != "nt":
+        mode = config.session_root.stat().st_mode & 0o777
+        assert mode == 0o700, f"session_root mode {mode:o} != 700"
 
 
 def test_get_runtime_info():

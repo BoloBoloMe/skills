@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """pi skill sync
 ----------------
-答式同步脚本: 将本仓库中的 skills/extensions/pi/AGENTS.md 同步到 pi agent 目录。
+问答式同步脚本: 将本仓库中的 skills/extensions/pi/AGENTS.md 同步到 pi agent 目录.
 
 用法:
     python sync-to-pi.py
@@ -25,6 +25,9 @@ _SYNC_IGNORE = shutil.ignore_patterns(
     "*.egg-info", "*.egg",
     # pytest
     ".pytest_cache",
+    # 测试目录 (agent 运行不需要; ignore_patterns 按 basename 全层级匹配,
+    # 同步范围 (general/others/workflow/pi) 内无需要保留的同名目录)
+    "tests",
     # 包管理器锁文件 (从 pyproject.toml 可重建)
     "uv.lock", "poetry.lock", "Pipfile.lock",
     # macOS

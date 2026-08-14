@@ -2,7 +2,7 @@
 
 轻量级 Web 抓取, 搜索, 下载. 默认提取网页主要可读内容, stdout JSON 返回.
 
-不执行 JavaScript, 不管理 Cookie/Session, 不处理登录后内容, 不解析 PDF/OCR. 无法可靠抽取时, 根据 `extraction.ok`, `extraction.confidence`, `extraction.warnings` 判断结果质量.
+不执行 JavaScript, 不处理登录后内容; 完整能力限制清单见 [REFERENCE.md](REFERENCE.md). 无法可靠抽取时, 根据 `extraction.ok`, `extraction.confidence`, `extraction.warnings` 判断结果质量.
 
 ## 工作流
 
@@ -47,11 +47,22 @@ uv run python scrape/scripts/scrape.py browse https://example.com --mode extract
 uv run python scrape/scripts/scrape.py search "python urllib" -n 5
 ```
 
+成功返回结果 list. DuckDuckGo 与 Brave 两引擎都无果时返回 `{"results": [], "warnings": ["<各引擎诊断>"]}` 而非 list, 消费前先判断返回类型.
+
 ### `download <url> [path]`
 
 ```bash
 uv run python scrape/scripts/scrape.py download https://example.com/logo.png ./downloads/logo.png
 ```
+
+成功输出含 `path`, `url`, `size`, `content_type`, `status`, `path` 恒为绝对路径. `status >= 400` 时不写盘, 返回 `{"status": http码, "error": ..., "url": ...}`. 下载流式写盘, 超 200MiB 中止并删除半成品文件 (显式路径只删同目录 `<basename>.<随机>.part` 临时文件, 既有目标文件内容保留), 返回 error.
+
+## 错误与退出码
+
+- 正常运行路径 exit 0, 运行错误以 stdout JSON 表达: `{"status": 0, "error": "..."}`. Python < 3.9 时启动即 `sys.exit(1)`, 仅 argparse 用法错误 exit 2.
+- 响应体超 20MiB 截断, warning `response truncated at {N} bytes` 合并进 `extraction.warnings`.
+- 重定向最多 10 跳, 超限返回 `{"status": 0, "error": "redirect limit exceeded (10)"}`; 跨域重定向自动剥离 authorization/cookie 等敏感头.
+- 默认拦截私网地址 (SSRF 防护); 可信内网/测试场景可设环境变量 `SCRAPE_ALLOW_PRIVATE_HOSTS=1` 关闭.
 
 ## 结果质量规则
 

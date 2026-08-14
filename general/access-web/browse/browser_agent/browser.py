@@ -5,10 +5,9 @@
 connect_over_cdp 复用同一浏览器与 profile.
 """
 
+import contextlib
 import json
 import os
-import shutil
-import signal
 import socket
 import subprocess
 import time
@@ -21,8 +20,50 @@ from playwright.sync_api import Page
 from playwright.sync_api import Playwright
 from playwright.sync_api import sync_playwright
 
+from browser_agent._proc import find_pids_by_cmdline
+from browser_agent._proc import is_port_open
+from browser_agent._proc import kill_pid
 from browser_agent.config import allocate_cdp_port
 from browser_agent.config import BrowserConfig
+
+
+@contextlib.contextmanager
+def _startup_lock(config: BrowserConfig, timeout: float = 120.0):
+    """启动/停止/清理并发互斥锁: 串行化 "读 metadata → 复用/启动/停止 → 写 metadata" 全程.
+
+    POSIX 经 fcntl.flock 对 <session-key>.lock 加独占锁 (与 session 目录
+    平级, 不被 cleanup 的 rmtree 删除, 避免锁文件 inode 分裂导致并发
+    cleanup+start 双启同一 profile). 采用 LOCK_NB + 轮询 (每 0.2s),
+    超过 timeout 抛 TimeoutError, 防止 holder 被 SIGSTOP/D-state 挂起时
+    waiter 无限阻塞. Windows 降级为无锁: msvcrt 锁语义差异大, 且竞态窗口小.
+    """
+    if os.name == "nt":
+        yield
+        return
+    import errno
+    import fcntl
+
+    config.session_root.parent.mkdir(parents=True, exist_ok=True)
+    lock_path = config.startup_lock
+    with open(lock_path, "a", encoding="utf-8") as lock_file:
+        fd = lock_file.fileno()
+        deadline = time.monotonic() + timeout
+        while True:
+            try:
+                fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                break
+            except OSError as e:
+                if e.errno not in (errno.EACCES, errno.EAGAIN):
+                    raise
+                if time.monotonic() >= deadline:
+                    raise TimeoutError(
+                        f"获取 session 启动锁超时 ({timeout}s): {lock_path}"
+                    ) from None
+                time.sleep(0.2)
+        try:
+            yield
+        finally:
+            fcntl.flock(fd, fcntl.LOCK_UN)
 
 
 def _load_session_cookies(context, config: BrowserConfig) -> None:
@@ -69,20 +110,22 @@ class Browser:
             except Exception:
                 self._release_handles()
 
-        # 尝试根据 metadata 复用已存在的 Chromium
-        meta = self._read_metadata()
-        if meta and meta.get("cdp_port"):
-            cdp_port = int(meta["cdp_port"])
-            if self._is_port_open(cdp_port):
-                try:
-                    self._connect(cdp_port)
-                    if self._page is not None:
-                        return self
-                except Exception:
-                    self._release_handles()
+        with _startup_lock(self.config):
+            self.config.ensure_session_dirs()
+            # 持锁后 (重)读 metadata: 等待期间可能已有其他进程完成首启
+            meta = self._read_metadata()
+            if meta and meta.get("cdp_port"):
+                cdp_port = int(meta["cdp_port"])
+                if is_port_open(cdp_port):
+                    try:
+                        self._connect(cdp_port)
+                        if self._page is not None:
+                            return self
+                    except Exception:
+                        self._release_handles()
 
-        # 无法复用则脱离式启动
-        self._launch_detached()
+            # 无法复用则脱离式启动 (杀旧 → 分配端口 → 启动 → 写 metadata 全程持锁)
+            self._launch_detached()
         return self
 
     def stop(self) -> None:
@@ -113,22 +156,44 @@ class Browser:
     def _launch_detached(self) -> None:
         """脱离式启动 Chromium 并写入 metadata."""
         binary = self.config.locate_chromium_binary()
-        cdp_port = allocate_cdp_port()
         self.config.profile_dir.mkdir(parents=True, exist_ok=True)
 
         # 清理可能存在的旧 metadata, 避免端口/PID 混淆
         if self.config.browser_json.exists():
-            # N1: 先杀掉旧 Chromium, 避免孤儿进程与新进程共享 user-data-dir
+            # N1: 先杀掉旧 Chromium 并等待其退出, 避免孤儿进程与新进程
+            # 共享 user-data-dir (SingletonLock 竞态)
             old_meta = self._read_metadata()
             if old_meta:
                 old_pid = old_meta.get("pid")
                 if old_pid:
-                    _kill_pid(int(old_pid))
+                    kill_pid(int(old_pid), identity_hint=str(self.config.profile_dir))
             try:
                 self.config.browser_json.unlink()
             except Exception:
                 pass
 
+        try:
+            self._spawn_and_connect(binary)
+            return
+        except Exception as first_error:
+            # Popen 与 write_metadata 之间崩溃 (如工具进程被 kill) 会留下无
+            # metadata 记录的孤儿 chromium, 它持有 profile 的 SingletonLock,
+            # 导致新实例的 CDP 端口永不就绪 (每次 navigate 30s 超时).
+            # POSIX 下严格按本 session 的 user-data-dir 清扫此类孤儿后重试一次;
+            # Windows 无 /proc 可扫, 跳过清扫直接报错.
+            if not self._sweep_orphan_chromium():
+                raise RuntimeError(
+                    f"Failed to launch detached Chromium: {first_error}"
+                ) from first_error
+
+        try:
+            self._spawn_and_connect(binary)
+        except Exception as e:
+            raise RuntimeError(f"Failed to launch detached Chromium: {e}") from e
+
+    def _spawn_and_connect(self, binary: Path) -> None:
+        """分配端口, 脱离式启动 Chromium, CDP 连接, 恢复 cookie, 写 metadata."""
+        cdp_port = allocate_cdp_port()
         headless = os.environ.get("BROWSER_HEADED", "").lower() != "true"
         args = self._build_chromium_args(binary, cdp_port, headless)
 
@@ -151,15 +216,12 @@ class Browser:
         try:
             self._connect(cdp_port)
             _load_session_cookies(self._context, self.config)
-        except Exception as e:
-            # 启动失败时尽量清理, 避免残留
-            try:
-                if process.poll() is None:
-                    process.terminate()
-                    process.wait(timeout=5)
-            except Exception:
-                pass
-            raise RuntimeError(f"Failed to launch detached Chromium: {e}") from e
+        except Exception:
+            # 启动失败时杀掉新进程 (kill_pid 内置 SIGTERM → 等待 → SIGKILL
+            # 升级), 并释放 Playwright 句柄, 避免残留
+            kill_pid(process.pid, identity_hint=str(self.config.profile_dir))
+            self._release_handles()
+            raise
 
         self.config.write_metadata(
             {
@@ -169,6 +231,27 @@ class Browser:
                 "chromium_binary": str(binary),
             }
         )
+
+    def _sweep_orphan_chromium(self) -> bool:
+        """POSIX: 清扫 cmdline 指向本 session user-data-dir 的残留 chromium 进程.
+
+        严格匹配本 session 的 user-data-dir 完整路径 (每个 session-key 唯一),
+        不误杀其他会话的浏览器; 排除自身进程. Windows 无法安全枚举命令行,
+        直接跳过.
+
+        Returns:
+            是否杀掉了至少一个进程 (决定是否值得重试启动).
+        """
+        if os.name == "nt":
+            return False
+        profile = str(self.config.profile_dir)
+        swept = False
+        for pid in find_pids_by_cmdline(profile):
+            if pid in (os.getpid(), os.getppid()):
+                continue
+            if kill_pid(pid, identity_hint=profile):
+                swept = True
+        return swept
 
     def _build_chromium_args(
         self,
@@ -231,15 +314,6 @@ class Browser:
             self._playwright = None
 
     @staticmethod
-    def _is_port_open(port: int, timeout: float = 1.0) -> bool:
-        """快速探测端口是否可连接."""
-        try:
-            with socket.create_connection(("127.0.0.1", port), timeout=timeout):
-                return True
-        except Exception:
-            return False
-
-    @staticmethod
     def _wait_for_port(port: int, timeout: float = 30.0) -> None:
         """轮询等待 CDP 端口可用."""
         deadline = time.monotonic() + timeout
@@ -250,24 +324,3 @@ class Browser:
             except Exception:
                 time.sleep(0.1)
         raise TimeoutError(f"CDP port {port} not reachable within {timeout}s")
-
-
-def _kill_pid(pid: int) -> None:
-    """跨平台尝试结束进程, 用于 _launch_detached 清理孤儿 Chromium."""
-    if os.name == "nt":
-        try:
-            subprocess.run(
-                ["taskkill", "/F", "/PID", str(pid)],
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL,
-                check=False,
-            )
-        except Exception:
-            pass
-    else:
-        try:
-            os.kill(pid, signal.SIGTERM)
-        except ProcessLookupError:
-            pass
-        except Exception:
-            pass

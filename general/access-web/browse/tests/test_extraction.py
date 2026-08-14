@@ -2,12 +2,14 @@
 
 import os
 import tempfile
+from pathlib import Path
 from unittest.mock import patch
 
 from browser_agent import extract_text
 from browser_agent import get_page_structure
 from browser_agent import screenshot
 from browser_agent.browser import Browser
+from browser_agent.config import BrowserConfig
 from browser_agent.result import ExtractResult
 from browser_agent.result import ScreenshotResult
 from browser_agent.result import StructureResult
@@ -185,6 +187,20 @@ def test_screenshot_returns_bytes_when_path_none():
     assert len(result.image) > 0
     # PNG magic bytes
     assert result.image[:8] == b"\x89PNG\r\n\x1a\n"
+
+
+def test_screenshot_default_path_saved_under_artifacts():
+    """path=None 时落盘 artifacts/screenshots/<时间戳>.png, 结果同时带 image 与 path."""
+    _set_page_content("<body><h1>Hello</h1></body>")
+    result = screenshot()
+
+    assert result.success, f"screenshot failed: {result.error}"
+    assert result.image is not None
+    assert result.path is not None
+    saved = Path(result.path)
+    assert saved.exists()
+    assert saved.suffix == ".png"
+    assert saved.parent == BrowserConfig().screenshots_dir
 
 
 def test_screenshot_writes_file_when_path_given():

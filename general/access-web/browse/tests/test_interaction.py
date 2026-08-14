@@ -2,7 +2,6 @@
 
 from unittest.mock import patch
 
-import pytest
 from browser_agent import click_element
 from browser_agent import type_text
 from browser_agent.browser import Browser

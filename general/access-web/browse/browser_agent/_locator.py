@@ -18,9 +18,13 @@ def locate(page: Page, description: str) -> Tuple[Optional[Locator], Optional[st
         description: agent 传入的语义描述 (如 "submit button", "search box").
 
     Returns:
-        (locator, strategy) 元组. locator 为 None 表示全部策略未命中.
+        (locator, strategy) 元组. locator 为 None 表示全部策略未命中
+        (含空 description).
         strategy 为命中所用策略标签 (如 "role=button,name=submit").
     """
+    if not description or not description.strip():
+        return None, None
+
     # 提取潜在名称: 去除常见 role 后缀词
     role_suffixes = [
         " button", " link", " input", " box", " field",

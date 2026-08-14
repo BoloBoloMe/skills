@@ -5,12 +5,11 @@ D001/D002/D005/D009: 脱离式 Chromium + CDP 共享; 仅保留 session 模式.
 
 import atexit
 import json
-import os
 import shutil
-import signal
-import subprocess
 from typing import Optional
 
+from browser_agent._proc import kill_pid
+from browser_agent.browser import _startup_lock
 from browser_agent.browser import Browser
 from browser_agent.config import BrowserConfig
 
@@ -53,6 +52,7 @@ def get_session(cwd: Optional[str] = None) -> Session:
 
     Args:
         cwd: 可选, 用于计算 session-key. 未传时使用 os.getcwd().
+            注意: 仅首次调用 (单例尚未创建) 时生效, 后续调用被忽略.
     """
     global _SESSION
     if _SESSION is None:
@@ -75,9 +75,16 @@ def reset_session() -> None:
 def stop_browser_session(cwd: Optional[str] = None) -> None:
     """按 metadata 中的 PID 杀掉 Chromium, 保留 profile.
 
-    同时释放当前进程内的 Session 句柄.
+    同时释放当前进程内的 Session 句柄. 全程持有 startup 锁,
+    与并发的 start/cleanup 互斥, 避免 profile 状态分裂.
     """
     config = BrowserConfig(cwd=cwd) if cwd else BrowserConfig()
+    with _startup_lock(config):
+        _stop_browser_session_locked(config)
+
+
+def _stop_browser_session_locked(config: BrowserConfig) -> None:
+    """stop_browser_session 的持锁内体, 调用方必须已持有 startup 锁."""
     pid: Optional[int] = None
     cdp_port: Optional[int] = None
 
@@ -100,7 +107,7 @@ def stop_browser_session(cwd: Optional[str] = None) -> None:
             pass
 
     if pid:
-        _kill_pid(int(pid))
+        kill_pid(int(pid), identity_hint=str(config.profile_dir))
 
     # 释放本进程句柄, 避免后续操作连到已死的浏览器
     global _SESSION
@@ -110,15 +117,23 @@ def stop_browser_session(cwd: Optional[str] = None) -> None:
 
 
 def _save_session_cookies(config: BrowserConfig) -> None:
-    """将当前 Session 的 cookie 持久化到 session 目录."""
-    cookies: list = []
+    """将当前 Session 的 cookie 持久化到 session 目录.
+
+    只读访问 _browser._page, 不经过 Browser.page property: stop 流程中
+    句柄可能已释放 (_page=None), 经 property 访问会隐式重启 Chromium.
+    无活跃页面时跳过保存, 保留上次写入的 cookies.json.
+    """
+    cookies: Optional[list] = None
     if _SESSION is not None and _SESSION._browser is not None:
         try:
-            page = _SESSION._browser.page
+            page = _SESSION._browser._page
             if page is not None:
                 cookies = page.context.cookies()
         except Exception:
-            pass
+            cookies = None
+
+    if cookies is None:
+        return
 
     cookies_path = config.session_root / "cookies.json"
     try:
@@ -144,32 +159,16 @@ def _graceful_close_browser(cdp_port: int) -> None:
 
 
 def cleanup_browser_session(cwd: Optional[str] = None) -> None:
-    """杀掉 Chromium 并彻底清理 session 目录 (profile + metadata + 产物)."""
-    stop_browser_session(cwd=cwd)
+    """杀掉 Chromium 并彻底清理 session 目录 (profile + metadata + 产物).
+
+    与 stop 共用同一把 startup 锁 (锁文件在 session 目录平级, 不会被
+    下面的 rmtree 删除), 避免并发 cleanup+start 双启同一 profile.
+    """
     config = BrowserConfig(cwd=cwd) if cwd else BrowserConfig()
-    if config.session_root.exists():
-        try:
-            shutil.rmtree(config.session_root, ignore_errors=True)
-        except Exception:
-            pass
-
-
-def _kill_pid(pid: int) -> None:
-    """跨平台安全结束进程."""
-    if os.name == "nt":
-        try:
-            subprocess.run(
-                ["taskkill", "/F", "/PID", str(pid)],
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL,
-                check=False,
-            )
-        except Exception:
-            pass
-    else:
-        try:
-            os.kill(pid, signal.SIGTERM)
-        except ProcessLookupError:
-            pass
-        except Exception:
-            pass
+    with _startup_lock(config):
+        _stop_browser_session_locked(config)
+        if config.session_root.exists():
+            try:
+                shutil.rmtree(config.session_root, ignore_errors=True)
+            except Exception:
+                pass

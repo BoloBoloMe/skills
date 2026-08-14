@@ -1,34 +1,13 @@
 """生命周期管理命令测试: status/stop/cleanup/reset/cookies."""
 
-import os
-import re
-import subprocess
+from unittest.mock import patch
 
-import pytest
-
+from browser_agent._proc import is_pid_alive as _is_process_alive
+from browser_agent.browser import Browser
 from browser_agent.config import BrowserConfig
 from browser_agent.operations import cookies, status
 from browser_agent.result import CookiesResult, StatusResult
 from browser_agent.session import cleanup_browser_session, get_session, reset_session, stop_browser_session
-
-
-def _is_process_alive(pid: int) -> bool:
-    """跨平台检查进程是否仍在运行."""
-    try:
-        if os.name == "nt":
-            result = subprocess.run(
-                ["tasklist", "/FI", f"PID eq {pid}", "/NH"],
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                text=True,
-                check=False,
-            )
-            return re.search(rf"\b{pid}\b", result.stdout) is not None
-        else:
-            os.kill(pid, 0)
-            return True
-    except (ProcessLookupError, OSError):
-        return False
 
 
 def test_status_returns_all_fields_and_alive_true():
@@ -46,6 +25,27 @@ def test_status_returns_all_fields_and_alive_true():
     assert isinstance(result.cdp_port, int) and result.cdp_port > 0
     assert result.profile_dir is not None
     assert isinstance(result.pages, int) and result.pages >= 0
+
+
+def test_stop_does_not_implicitly_restart_browser():
+    """stop 流程保存 cookies 不触发 Browser.start (不隐式重启浏览器)."""
+    page = get_session().page
+    page.set_content("<html><body>no restart</body></html>")
+
+    # 释放 Playwright 句柄 (_page=None) 但保留 _SESSION 与 _browser 引用,
+    # 模拟 stop 时句柄已释放的状态
+    get_session().stop()
+
+    with patch.object(
+        Browser, "start", side_effect=AssertionError("implicit restart")
+    ) as start_mock:
+        stop_browser_session()
+
+    start_mock.assert_not_called()
+
+    config = BrowserConfig()
+    meta = config.read_metadata()
+    assert not _is_process_alive(meta["pid"])
 
 
 def test_stop_keeps_profile_and_kills_chromium():

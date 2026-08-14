@@ -3,7 +3,8 @@ name = "browser-agent"
 version = "0.1.0"
 requires-python = ">=3.9"
 dependencies = [
-    "playwright",
+    # >=1.40: 代码依赖 connect_over_cdp 与 --headless=new
+    "playwright>=1.40",
 ]
 
 [project.optional-dependencies]

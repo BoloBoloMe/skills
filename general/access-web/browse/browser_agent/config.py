@@ -32,9 +32,13 @@ class ChromiumNotInstalledError(RuntimeError):
 
 
 def _canonicalize(cwd: str) -> str:
-    """返回跨平台稳定的 cwd 规范化字符串."""
+    """返回跨平台稳定的 cwd 规范化字符串.
+
+    使用 os.path.normcase: Windows 统一大小写, POSIX 保持原样
+    (POSIX 文件系统大小写敏感, /tmp/ProjA 与 /tmp/proja 是不同目录).
+    """
     path = Path(cwd).resolve()
-    return str(path).lower()
+    return os.path.normcase(str(path))
 
 
 def compute_session_key(cwd: str) -> str:
@@ -54,11 +58,17 @@ def get_runtime_info() -> Dict[str, Any]:
 
 
 def get_session_paths(tempdir: str, session_key: str) -> Dict[str, Path]:
-    """规划 session 目录结构, 返回各路径."""
+    """规划 session 目录结构, 返回各路径.
+
+    startup_lock 放在与 session_root 平级的位置而非其内部: cleanup 的
+    rmtree 删除 session_root 后锁文件仍在, 避免锁文件被删后新 open 得到
+    新 inode, 导致并发 cleanup+start 各持一把锁的 split-brain 双启.
+    """
     session_root = Path(tempdir) / "access-web" / session_key
     artifacts = session_root / "artifacts"
     return {
         "session_root": session_root,
+        "startup_lock": session_root.parent / f"{session_key}.lock",
         "browser_json": session_root / "browser.json",
         "profile_dir": session_root / "profile",
         "artifacts_dir": artifacts,
@@ -91,6 +101,16 @@ def write_metadata(path: Path | str, data: Dict[str, Any]) -> None:
         json.dump(data, f, indent=2)
 
 
+def _chmod_private(path: Path) -> None:
+    """POSIX 下将目录权限设为 700 (session 目录含 cookies/登录态); Windows 跳过."""
+    if os.name == "nt":
+        return
+    try:
+        os.chmod(path, 0o700)
+    except OSError:
+        pass
+
+
 class BrowserConfig:
     """封装单个 browser session 的运行时配置."""
 
@@ -100,12 +120,29 @@ class BrowserConfig:
         self.session_key = compute_session_key(self.cwd)
         paths = get_session_paths(self.tempdir, self.session_key)
         self.session_root: Path = paths["session_root"]
+        self.startup_lock: Path = paths["startup_lock"]
         self.browser_json: Path = paths["browser_json"]
         self.profile_dir: Path = paths["profile_dir"]
         self.artifacts_dir: Path = paths["artifacts_dir"]
         self.screenshots_dir: Path = paths["screenshots_dir"]
         self.downloads_dir: Path = paths["downloads_dir"]
         self.logs_dir: Path = paths["logs_dir"]
+
+    def ensure_session_dirs(self) -> None:
+        """创建 session 根目录与 artifacts 子目录, 并修正权限 (幂等).
+
+        POSIX 下 session 根目录 chmod 700 (含 cookies/登录态), 已存在的
+        目录也会修正权限; Windows 跳过 chmod.
+        """
+        self.session_root.mkdir(parents=True, exist_ok=True)
+        _chmod_private(self.session_root)
+        for d in (
+            self.artifacts_dir,
+            self.screenshots_dir,
+            self.downloads_dir,
+            self.logs_dir,
+        ):
+            d.mkdir(parents=True, exist_ok=True)
 
     def read_metadata(self) -> Dict[str, Any]:
         """读取 session 的 browser.json."""

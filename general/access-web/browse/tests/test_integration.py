@@ -6,6 +6,7 @@ extract_text → screenshot → scroll → get_page_structure
 使用 page.route() mock 避免外部站点依赖.
 """
 
+import os
 from unittest.mock import patch
 
 from browser_agent import click_element
@@ -104,12 +105,14 @@ def test_integration_full_8_step_flow():
     assert r5.success, f"Step 5 extract_text failed: {r5.error}"
     assert r5.text == "Integration Page"
 
-    # Step 6: screenshot (截取页面, 返回 bytes)
+    # Step 6: screenshot (path=None 时返回 bytes 并落盘 artifacts/screenshots/)
     r6 = screenshot(path=None, full_page=True)
     assert r6.success, f"Step 6 screenshot failed: {r6.error}"
     assert isinstance(r6.image, bytes)
     assert len(r6.image) > 0
     assert r6.image[:8] == b"\x89PNG\r\n\x1a\n"
+    assert r6.path is not None and r6.path.endswith(".png")
+    assert os.path.exists(r6.path)
 
     # Step 7: scroll (向下滚动 300px)
     r7 = scroll("down", 300)
@@ -148,25 +151,58 @@ def test_scroll_up_succeeds():
 
 
 def test_scroll_actually_scrolls():
-    """scroll 后 window.scrollY 变化."""
+    """scroll 后 window.scrollY 变化 (真调 browser_agent.scroll)."""
     _set_page_content(MOCK_HTML)
     page = get_session().page
 
     before = page.evaluate("window.scrollY")
     assert before == 0
 
-    page.evaluate("window.scrollBy(0, 300)")
-    after = page.evaluate("window.scrollY")
-    assert after == 300
+    result = scroll("down", 300)
+    assert result.success, f"scroll down failed: {result.error}"
+    assert page.evaluate("window.scrollY") == 300
+
+    result = scroll("up", 300)
+    assert result.success, f"scroll up failed: {result.error}"
+    assert page.evaluate("window.scrollY") == 0
 
 
-def test_scroll_invalid_direction_raises_value_error():
-    """scroll 传入非法 direction 抛出 ValueError."""
-    try:
-        scroll("left", 100)
-        assert False, "应该抛出 ValueError"
-    except ValueError as e:
-        assert "direction" in str(e)
+def test_scroll_invalid_direction_returns_failure():
+    """scroll 传入非法 direction 返回 success=False, 不抛异常."""
+    result = scroll("left", 100)
+
+    assert result.success is False
+    assert result.error is not None
+    assert "direction" in result.error
+
+
+def test_scroll_bool_amount_returns_failure():
+    """scroll 的 amount 为 bool 时拒绝 (不当作 1/0 像素), 返回 success=False."""
+    result = scroll("down", True)
+
+    assert result.success is False
+    assert result.error is not None
+    assert "amount" in result.error
+
+
+def test_scroll_non_numeric_amount_returns_failure():
+    """scroll 的 amount 无法强转为 int 时返回 success=False."""
+    result = scroll("down", "abc")
+
+    assert result.success is False
+    assert result.error is not None
+    assert "amount" in result.error
+
+
+def test_scroll_numeric_string_amount_succeeds():
+    """scroll 的 amount 为数字字符串时强转后正常滚动."""
+    _set_page_content(MOCK_HTML)
+    page = get_session().page
+
+    result = scroll("down", "300")
+
+    assert result.success, f"scroll numeric string failed: {result.error}"
+    assert page.evaluate("window.scrollY") == 300
 
 
 def test_scroll_browser_start_failure():
@@ -220,13 +256,13 @@ def test_wait_for_element_not_found():
     assert "未找到匹配元素" in result.error
 
 
-def test_wait_for_element_invalid_state_raises_value_error():
-    """wait_for_element 传入非法 state 抛出 ValueError."""
-    try:
-        wait_for_element("anything", state="loading")
-        assert False, "应该抛出 ValueError"
-    except ValueError as e:
-        assert "state" in str(e)
+def test_wait_for_element_invalid_state_returns_failure():
+    """wait_for_element 传入非法 state 返回 success=False, 不抛异常."""
+    result = wait_for_element("anything", state="loading")
+
+    assert result.success is False
+    assert result.error is not None
+    assert "state" in result.error
 
 
 def test_wait_for_element_browser_start_failure():
@@ -249,8 +285,8 @@ def test_wait_for_element_default_state_is_visible():
     assert result.success
 
 
-def test_scroll_default_timeout():
-    """scroll 不传 timeout 时使用默认 30s."""
+def test_scroll_minimal_call_succeeds():
+    """scroll 仅需 direction 与 amount 两个参数 (无 timeout 参数)."""
     _set_page_content(MOCK_HTML)
     result = scroll("down", 100)
 

@@ -1,6 +1,6 @@
 ---
 name: access-web
-description: 网页访问, 只读抓取或交互浏览.
+description: 网页访问: 搜索, 正文提取, 文件下载用只读抓取; 截图, 登录, 表单交互, JS 渲染页面用交互浏览.
 ---
 
 # access-web
