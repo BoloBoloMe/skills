@@ -1,6 +1,6 @@
 ---
 name: adaptive-presentation
-description: 当你要向我展示信息, 或我要求可视化时, 生成自包含 HTML 页面并用浏览器展示.
+description: 当你认为要向我解释的事情很复杂, 或者我表达事情复杂到难以理解时使用. 你将生成自包含 HTML 页面并用浏览器展示.
 ---
 
 本 skill 是展示层, 不改变调用方工作流, 决策顺序或确认规则. 总是生成 HTML.
