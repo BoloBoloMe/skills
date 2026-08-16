@@ -61,7 +61,7 @@ disable-model-invocation: true
 # 固化 Execution Spec 和 issues
 
 按模板生成已批准的 issues, 再生成引用真实 issue 路径的 `EXECUTION.md`. 按依赖顺序编号. 信源与决策的引用路径按实际位置解析, 不假设它们位于产物根目录. 
-存在相关 DECISIONS.md 时, 每个 issue 与相关决策维护双向引用索引; 只更新引用索引, 不新增或改变决策内容. 无相关决策时 issue 写"无".
+存在相关 DECISIONS.md 时, 每个 issue 单向引用相关决策 ID, 见 issue 模板的 相关决策 节. 引用只从产物指向账本: DECISIONS.md 是权威信源, 产物是派生视图, 账本不记录产物引用. 不新增或改变决策内容. 无相关决策时 issue 写"无".
 不复制 Product/Technical Spec 的正文, 只引用稳定 ID 和执行所需摘要.
 
 完成标准: 
@@ -69,7 +69,7 @@ disable-model-invocation: true
 覆盖矩阵与批准的拆分一致, 无遗漏; 
 每个 issue 有代码定位提示和可执行 TDD 切片, 或明确标记非代码/人工验证/HITL 特例; 
 issue 编号连续; 
-决策引用索引双向完整, 或已明确无相关决策.
+决策引用单向完整: 每个 issue 的 相关决策 节引用真实存在的决策 ID, 或已明确无相关决策.
 
 <execution-spec-template>
 # <变更标题> Execution Spec
