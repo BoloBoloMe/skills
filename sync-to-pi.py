@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """pi skill sync
 ----------------
-问答式同步脚本: 将本仓库中的 skills/extensions/pi/AGENTS.md 同步到 pi agent 目录.
+问答式同步脚本: 将本仓库中的 skills 同步到 ~/.agents/skills/, extensions/pi/AGENTS.md 同步到 pi agent 目录.
 
 用法:
     python sync-to-pi.py
@@ -350,7 +350,7 @@ def main() -> None:
 
     print(_ct("pi skill sync", _C.BLD))
     print(f"仓库根目录: {SRC(str(repo_root))}")
-    print(Q("本脚本将仓库中的 skills / extensions / pi/AGENTS.md 同步到 pi agent 目录"))
+    print(Q("本脚本将仓库中的 skills 同步到 ~/.agents/skills/, extensions / pi/AGENTS.md 同步到 pi agent 目录"))
     print(SKIP("注意: 目标路径已有内容将被直接覆盖"))
 
     # ── 1. 探测 pi 目录 ──────────────────────────────────────────────
@@ -364,7 +364,7 @@ def main() -> None:
     print(Q(f"pi agent 根目录: {pi_dir}"))
 
     # ── 2. 清空选项 ──────────────────────────────────────────────────
-    skills_dir = pi_dir / "skills"
+    skills_dir = Path.home() / ".agents" / "skills"
     clear_skills = _ask_yn(CNF(f"清空 {skills_dir} 下的所有旧 skills?"))
     if clear_skills:
         print(ERR("已选择永久删除全部旧 skills, 操作将在最终确认后执行."))
@@ -388,7 +388,7 @@ def main() -> None:
             repo_root,
             "general/",
             repo_root / "general",
-            pi_dir / "skills",
+            skills_dir,
             flatten=True,
         )
     )
@@ -399,7 +399,7 @@ def main() -> None:
             repo_root,
             "others/",
             repo_root / "others",
-            pi_dir / "skills",
+            skills_dir,
             flatten=True,
         )
     )
@@ -420,7 +420,7 @@ def main() -> None:
             repo_root,
             "workflow/",
             repo_root / "workflow",
-            pi_dir / "skills",
+            skills_dir,
             flatten=True,
         )
     )
