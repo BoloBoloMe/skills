@@ -54,20 +54,21 @@ disable-model-invocation: true
 
 ## 3. 扫描盲区
 
-已启用层面(至少判定过一个问题归属的层面)的分支都闭合后, 做终局 spec 缺口检查; grilling 的分支级扫描已在各分支关闭前完成, 此处不再重复.
-检查已启用层面对应的 `to-product-spec` 或 `to-technical-spec` 所需内容是否存在缺口, 缺口皆为盲区.
+执行 grilling 的 `扫描盲区`. 附加加以下额外检查项.
+检查已启用层面 (至少判定过一个问题归属的层面) 对应的 `to-product-spec` 或 `to-technical-spec` 所需内容是否存在缺口, 缺口皆为盲区.
 
 完成标准:
-已启用层面所需的 spec 内容无缺口, 或每个缺口都已回到盘问逐项解决.
+符合执行 grilling 的 `扫描盲区` 完成标准;
+已启用层面对应的 spec 内容无缺口, 或每个缺口都已回到盘问逐项解决.
 
 # 固化
-
-`DECISIONS.md` 写入产物根目录, 默认 `docs/changes/<feature-slug>/`, 调用方可指定其他根目录; 领域语言文件与 ADR 由 `domain-modeling` 写入其约定位置.
-已有同 slug 产物时直接修订, 无则新建.
 
 各层面完成标准检查通过后, 询问 *是否结束盘问*.
 我回答是: 使用 `domain-modeling` 维护领域语言文件或 ADR; 调用 `decision-ledger` 维护决策账本, 必须完整记录会话中所有确认过的决策和事实, 禁止写成摘要.
 我回答否并补充问题: 不写文件, 返回对应设计分支继续.
+
+`DECISIONS.md` 写入产物根目录, 默认 `docs/changes/<feature-slug>/`, 调用方可指定其他根目录; 领域语言文件与 ADR 由 `domain-modeling` 写入其约定位置.
+已有同 slug 产物时直接修订, 无则新建.
 
 # 检查产物
 
