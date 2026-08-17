@@ -24,5 +24,8 @@
   "app.tools.expand": [
     "ctrl+o",
     "alt+o"
+  ],
+  "app.clipboard.pasteImage": [
+    "ctrl+shift+v"
   ]
 }
