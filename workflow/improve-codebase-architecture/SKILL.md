@@ -33,7 +33,7 @@ disable-model-invocation: true
 
 ### 2. 将候选呈现为 HTML 报告
 
-调用 `adaptive-presentation` skill 呈现报告: 自包含 HTML, 临时目录, 视觉风格和浏览器展示都由它负责, 不会有任何东西落入仓库.
+调用 `present` skill 呈现报告: 自包含 HTML, 临时目录, 视觉风格和浏览器展示都由它负责, 不会有任何东西落入仓库.
 
 每个候选获得一个 **前后对比可视化**. 强调可视化.
 
@@ -52,7 +52,7 @@ disable-model-invocation: true
 
 **ADR 冲突**: 候选与现有 ADR 矛盾时, 仅在摩擦足以值得重新审视该 ADR 时才展示. 在卡片中清楚标记 (例如警告提示: _"与 ADR-0007 矛盾 - 但值得重新打开, 因为..."_). 不要列出 ADR 禁止的每一个理论重构.
 
-内容结构与图表模式见 [HTML-REPORT.md](HTML-REPORT.md); 样式与展示规则以 `adaptive-presentation` 为准.
+内容结构与图表模式见 [HTML-REPORT.md](HTML-REPORT.md); 样式与展示规则以 `present` 为准.
 
 **报告全文使用中文.** 英文术语 (含 `codebase-design` 词汇和领域术语表中的术语) 进入产物时译为中文, 对照表和例外见 [HTML-REPORT.md](HTML-REPORT.md) 的输出语言节.
 

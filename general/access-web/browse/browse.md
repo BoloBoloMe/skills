@@ -191,7 +191,7 @@ cookies() -> CookiesResult
 
 ## 只读附加 (attach)
 
-观察一个已运行的会话而不启动浏览器. 供展示类工具 (如 adaptive-presentation)
+观察一个已运行的会话而不启动浏览器. 供展示类工具 (如 present)
 绑定任意 session 目录做只读观察; 全部函数无副作用: 不启动 Chromium,
 不写 metadata, 不创建目录.
 

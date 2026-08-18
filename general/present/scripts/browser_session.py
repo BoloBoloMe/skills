@@ -1,4 +1,4 @@
-"""adaptive-presentation browser session helper.
+"""present browser session helper.
 
 CLI commands:
   open   <session-dir> <html-file>  - Open HTML in isolated headed browser
@@ -39,7 +39,7 @@ def _find_access_web():
     """Locate sibling access-web/browse/ and return its path.
 
     Expected layout:
-      general/adaptive-presentation/scripts/browser_session.py
+      general/present/scripts/browser_session.py
       general/access-web/browse/browser_agent/
     """
     script_dir = Path(__file__).resolve().parent

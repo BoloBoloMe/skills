@@ -1,6 +1,6 @@
 ---
-name: adaptive-presentation
-description: 当你认为要向我解释的事情很复杂, 或者我表达事情复杂到难以理解时使用. 你将生成自包含 HTML 页面并用浏览器展示.
+name: present
+description: 当我要求可视化或展示, 或你要向我解释的内容复杂到文字难以承载时使用.
 ---
 
 本 skill 是展示层, 不改变调用方工作流, 决策顺序或确认规则. 总是生成 HTML.
@@ -9,18 +9,21 @@ description: 当你认为要向我解释的事情很复杂, 或者我表达事�
 
 将 `scripts/browser_session.py` 相对本 skill 目录解析为绝对路径, 计为 `<helper>`. 不从调用方工作目录查找脚本.
 
-### 临时目录
+### 输出目录
 
-首次生成页面时创建唯一目录, 后续复用:
+目录解析顺序: 调用上下文指定 (我明示位置, 或调用方 skill 给出目录) > 临时目录. 目录即浏览器会话键: 同一目录的反复展示复用同一浏览器窗口, 换目录即换会话, 所以同一话题的页面应落在同一目录.
+
+- 指定: 用给定绝对路径, 不存在则创建. 页面持久留存, 归我处置, 不代我清理.
+- 未指定: 首次生成页面时创建, 后续复用:
 
 ```python
 import tempfile
-session_dir = tempfile.mkdtemp(prefix="pi-presentation-")
+session_dir = tempfile.mkdtemp(prefix="pi-present-")
 ```
 
-路径丢失或目录不存在时重新创建. 不写死平台路径. 绝对路径保存在会话上下文的 `presentation_session_dir`.
+路径丢失或目录不存在时重新创建. 不写死平台路径. 绝对路径保存在会话上下文的 `session_dir`.
 
-完成标准: 目录由标准临时目录 API 在运行时得出, 唯一且位于该 API 返回的临时目录内.
+完成标准: 有指定时页面落在指定目录; 未指定时目录由标准临时目录 API 在运行时得出, 唯一且位于该 API 返回的临时目录内.
 
 ### 信息架构
 
@@ -106,7 +109,7 @@ window.__PRESENTATION_STATE__ = {
 
 ### 步骤
 
-1. 按临时目录规则创建或复用 `presentation_session_dir`.
+1. 按输出目录规则创建或复用 `session_dir`.
 2. 过滤凭据, 最小化原始日志/业务数据, 写入自包含 HTML 含 `window.__PRESENTATION_STATE__`.
 3. 语义化不重复文件名, 新版本不覆盖旧版本.
 4. `uv run python <helper> open <session-dir> <html-file>`.

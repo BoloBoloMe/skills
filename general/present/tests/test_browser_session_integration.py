@@ -1,8 +1,8 @@
 """真实 Chromium 验收测试.
 
 显式运行:
-  ADAPTIVE_PRESENTATION_REAL_BROWSER=1 python -m unittest \
-    general/adaptive-presentation/tests/test_browser_session_integration.py -v
+  PRESENT_REAL_BROWSER=1 python -m unittest \
+    general/present/tests/test_browser_session_integration.py -v
 """
 
 import json
@@ -17,10 +17,10 @@ from pathlib import Path
 SKILL_DIR = Path(__file__).resolve().parent.parent
 SCRIPT = SKILL_DIR / "scripts" / "browser_session.py"
 ACCESS_WEB_BROWSE = SKILL_DIR.parent / "access-web" / "browse"
-RUN_REAL_BROWSER = os.environ.get("ADAPTIVE_PRESENTATION_REAL_BROWSER") == "1"
+RUN_REAL_BROWSER = os.environ.get("PRESENT_REAL_BROWSER") == "1"
 
 
-@unittest.skipUnless(RUN_REAL_BROWSER, "set ADAPTIVE_PRESENTATION_REAL_BROWSER=1")
+@unittest.skipUnless(RUN_REAL_BROWSER, "set PRESENT_REAL_BROWSER=1")
 class TestRealBrowserLifecycle(unittest.TestCase):
     maxDiff = None
 

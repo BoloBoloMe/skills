@@ -27,7 +27,7 @@ UI 原型贴在真实应用环境里才容易评判 — 真实的 header, sideba
 
 ### 子形态 C — 无现有项目 (降级)
 
-当不存在前端项目可嵌入时使用. 生成独立 HTML 文件, 通过 `adaptive-presentation` skill 自包含渲染.
+当不存在前端项目可嵌入时使用. 生成独立 HTML 文件, 通过 `present` skill 自包含渲染.
 放在 `docs/changes/<feature-slug>/prototypes/<prototype-name>/` 下, 变体和 switcher 内联到单文件.
 **注意**: 此模式丧失真实项目上下文, 仅能评估组件视觉外观 — 无法评判信息密度, 与周边元素的关系, 或实际数据下的表现.
 若后续项目初始化, 应将变体迁移到子形态 A 重新评估.

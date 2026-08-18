@@ -6,8 +6,8 @@ CLI 契约 (argv 解析 / 单行 JSON / 退出码 / 脱敏) 经 _run_main 走 ma
 Covers: CLI, path validation, JSON output, error codes, sibling detection,
 security, isolation, state shape, lifecycle (mocked attach seam).
 
-Run: python -m pytest general/adaptive-presentation/tests/ -v
-Or:  python -m unittest discover -s general/adaptive-presentation/tests -v
+Run: python -m pytest general/present/tests/ -v
+Or:  python -m unittest discover -s general/present/tests -v
 """
 
 import contextlib
