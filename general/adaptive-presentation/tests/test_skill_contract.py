@@ -14,9 +14,8 @@ class TestSkillContract(unittest.TestCase):
         description = next(
             line for line in skill.splitlines() if line.startswith("description:")
         )
-        self.assertIn("当你要向我展示信息", description)
-        self.assertIn("我要求可视化", description)
-        self.assertIn("禁用/恢复自动可视化", description)
+        self.assertIn("当你认为要向我解释的事情很复杂", description)
+        self.assertIn("自包含 HTML", description)
 
     def test_browser_helper_path_is_resolved_from_skill_directory(self):
         skill = (SKILL_DIR / "SKILL.md").read_text(encoding="utf-8")
