@@ -26,7 +26,7 @@ _SYNC_IGNORE = shutil.ignore_patterns(
     # pytest
     ".pytest_cache",
     # 测试目录 (agent 运行不需要; ignore_patterns 按 basename 全层级匹配,
-    # 同步范围 (general/others/workflow/pi) 内无需要保留的同名目录)
+    # 同步范围 (general/workflow/pi) 内无需要保留的同名目录)
     "tests",
     # 包管理器锁文件 (从 pyproject.toml 可重建)
     "uv.lock", "poetry.lock", "Pipfile.lock",
@@ -388,17 +388,6 @@ def main() -> None:
             repo_root,
             "general/",
             repo_root / "general",
-            skills_dir,
-            flatten=True,
-        )
-    )
-
-    # others/ → skills/ (flatten)
-    plan.extend(
-        _query_top_dir(
-            repo_root,
-            "others/",
-            repo_root / "others",
             skills_dir,
             flatten=True,
         )
