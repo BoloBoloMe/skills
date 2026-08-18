@@ -6,64 +6,34 @@ CLI commands:
   status <session-dir>              - Check browser alive status (side-effect free)
 
 stdout: single UTF-8 JSON object. Exit 0 success, non-zero failure.
+
+结构: run_* 是展示会话核心 — 校验, 领域 state 检查, 经 browser_agent 公开
+接口 (get_session / probe / attached_context) 动作, 一律返回结果 dict,
+不碰 stdout 与 sys.exit. main() 是薄 CLI 适配器: argv 解析, JSON 序列化,
+凭据脱敏, 退出码.
 """
 
 import json
 import os
-import socket
 import sys
 from pathlib import Path
 
 
 # ---------------------------------------------------------------------------
-# Helpers
+# Result construction (core produces dicts, never prints or exits)
 # ---------------------------------------------------------------------------
 
-def _json_out(obj):
-    """Write single JSON object to stdout."""
-    sys.stdout.write(json.dumps(obj, ensure_ascii=False) + "\n")
-    sys.stdout.flush()
+def _err(command, code, error):
+    return {"success": False, "command": command, "code": code, "error": error}
 
 
-def _sanitize_error(msg):
-    """Strip credential-like patterns from error messages.
-
-    Technical Spec: error JSON must not contain credentials or full env vars.
-    """
-    import re
-    # Redact common credential patterns in paths and exception strings
-    patterns = [
-        (r'(token[=:]\s*)([^\s,&"]+)', r'\1[REDACTED]'),
-        (r'(api_key[=:]\s*)([^\s,&"]+)', r'\1[REDACTED]'),
-        (r'(secret[=:]\s*)([^\s,&"]+)', r'\1[REDACTED]'),
-        (r'(password[=:]\s*)([^\s,&"]+)', r'\1[REDACTED]'),
-        (r'(auth[=:]\s*)([^\s,&"]+)', r'\1[REDACTED]'),
-        (r'(credential[=:]\s*)([^\s,&"]+)', r'\1[REDACTED]'),
-        (r'(bearer\s+)([^\s,&"]+)', r'\1[REDACTED]'),
-    ]
-    for pattern, replacement in patterns:
-        msg = re.sub(pattern, replacement, msg, flags=re.IGNORECASE)
-    return msg
+def _success(command, payload):
+    return {"success": True, "command": command, **payload}
 
 
-def _fail(command, code, error, exit_code=1):
-    """Write failure JSON and exit."""
-    _json_out({
-        "success": False,
-        "command": command,
-        "code": code,
-        "error": _sanitize_error(error),
-    })
-    sys.exit(exit_code)
-
-
-def _ok(command, payload):
-    """Write success JSON and exit."""
-    obj = {"success": True, "command": command}
-    obj.update(payload)
-    _json_out(obj)
-    sys.exit(0)
-
+# ---------------------------------------------------------------------------
+# access-web location
+# ---------------------------------------------------------------------------
 
 def _find_access_web():
     """Locate sibling access-web/browse/ and return its path.
@@ -89,312 +59,255 @@ def _ensure_access_web():
         sys.path.insert(0, aw_str)
 
 
-def _validate_session_dir(session_dir_str):
-    """Validate session-dir. Returns Path or calls _fail."""
+def _import_attach():
+    """Import browser_agent 只读会话视图. Raises RuntimeError if unavailable."""
+    _ensure_access_web()
+    try:
+        from browser_agent.attach import attached_context
+        from browser_agent.attach import probe
+    except ImportError as e:
+        raise RuntimeError(f"Cannot import browser_agent: {e}")
+    return attached_context, probe
+
+
+# ---------------------------------------------------------------------------
+# Path validation
+# ---------------------------------------------------------------------------
+
+def _validate_session_dir(session_dir_str, command):
+    """Validate session-dir. Returns (Path, None) or (None, error-dict)."""
     # Check absolute BEFORE resolve, otherwise resolve() makes relative paths absolute
     if not Path(session_dir_str).is_absolute():
-        _fail(_current_cmd, "invalid_session_dir",
-              "session-dir must be absolute path")
+        return None, _err(command, "invalid_session_dir",
+                          "session-dir must be absolute path")
     try:
         p = Path(session_dir_str).resolve()
     except Exception as e:
-        _fail(_current_cmd, "invalid_session_dir",
-              f"Cannot resolve path: {e}")
+        return None, _err(command, "invalid_session_dir",
+                          f"Cannot resolve path: {e}")
     if not p.exists():
-        _fail(_current_cmd, "invalid_session_dir",
-              f"session-dir does not exist: {p}")
+        return None, _err(command, "invalid_session_dir",
+                          f"session-dir does not exist: {p}")
     if not p.is_dir():
-        _fail(_current_cmd, "invalid_session_dir",
-              f"session-dir is not a directory: {p}")
-    return p
+        return None, _err(command, "invalid_session_dir",
+                          f"session-dir is not a directory: {p}")
+    return p, None
 
 
 def _validate_html_file(session_dir, html_file_str):
-    """Validate html-file. Returns Path or calls _fail."""
+    """Validate html-file. Returns (Path, None) or (None, error-dict)."""
     # Check absolute BEFORE resolve (same reasoning as _validate_session_dir)
     if not Path(html_file_str).is_absolute():
-        _fail("open", "invalid_html_file",
-              "html-file must be absolute path")
+        return None, _err("open", "invalid_html_file",
+                          "html-file must be absolute path")
     try:
         html_path = Path(html_file_str).resolve()
     except Exception as e:
-        _fail("open", "invalid_html_file",
-              f"Cannot resolve path: {e}")
+        return None, _err("open", "invalid_html_file",
+                          f"Cannot resolve path: {e}")
     if not html_path.exists():
-        _fail("open", "invalid_html_file",
-              f"HTML file does not exist: {html_path}")
+        return None, _err("open", "invalid_html_file",
+                          f"HTML file does not exist: {html_path}")
     if not html_path.is_file():
-        _fail("open", "invalid_html_file",
-              f"HTML path is not a regular file: {html_path}")
+        return None, _err("open", "invalid_html_file",
+                          f"HTML path is not a regular file: {html_path}")
     if html_path.suffix.lower() != ".html":
-        _fail("open", "invalid_html_file",
-              f"File extension must be .html, got: {html_path.suffix}")
+        return None, _err("open", "invalid_html_file",
+                          f"File extension must be .html, got: {html_path.suffix}")
     # Containment: html must be inside session-dir
     try:
         html_path.relative_to(session_dir)
     except ValueError:
-        _fail("open", "invalid_html_file",
-              f"HTML file not inside session-dir: {html_path}")
-    return html_path
-
-
-def _is_pid_alive(pid):
-    """Cross-platform PID liveness check."""
-    try:
-        if os.name == "nt":
-            import re as _re
-            import subprocess as _sp
-            result = _sp.run(
-                ["tasklist", "/FI", f"PID eq {pid}", "/NH"],
-                stdout=_sp.PIPE, stderr=_sp.PIPE,
-                text=True, check=False,
-            )
-            return _re.search(rf"\b{pid}\b", result.stdout) is not None
-        else:
-            os.kill(pid, 0)
-            return True
-    except (ProcessLookupError, OSError):
-        return False
-
-
-def _is_port_open(port, timeout=1.0):
-    """Check if TCP port is accepting connections."""
-    try:
-        with socket.create_connection(("127.0.0.1", port), timeout=timeout):
-            return True
-    except Exception:
-        return False
-
-
-def _check_alive(config):
-    """Check browser alive via metadata pid+CDP port. Side-effect free."""
-    if not config.browser_json.exists():
-        return False, None
-    try:
-        meta = config.read_metadata()
-    except Exception:
-        return False, None
-    if not isinstance(meta, dict):
-        return False, meta
-    pid = meta.get("pid")
-    cdp_port = meta.get("cdp_port")
-    if (
-        not isinstance(pid, int)
-        or isinstance(pid, bool)
-        or pid <= 0
-        or not isinstance(cdp_port, int)
-        or isinstance(cdp_port, bool)
-        or not 1 <= cdp_port <= 65535
-    ):
-        return False, meta
-    alive = _is_pid_alive(pid) and _is_port_open(cdp_port)
-    return alive, meta
+        return None, _err("open", "invalid_html_file",
+                          f"HTML file not inside session-dir: {html_path}")
+    return html_path, None
 
 
 # ---------------------------------------------------------------------------
-# Commands
+# Core commands (return result dicts)
 # ---------------------------------------------------------------------------
 
-_current_cmd = "unknown"
-
-
-def cmd_open(session_dir_str, html_file_str):
+def run_open(session_dir_str, html_file_str):
     """Open HTML file in isolated headed browser session."""
-    global _current_cmd
-    _current_cmd = "open"
+    command = "open"
 
-    session_dir = _validate_session_dir(session_dir_str)
-    html_path = _validate_html_file(session_dir, html_file_str)
+    session_dir, err = _validate_session_dir(session_dir_str, command)
+    if err is not None:
+        return err
+    html_path, err = _validate_html_file(session_dir, html_file_str)
+    if err is not None:
+        return err
 
     # Set headed mode before any browser import
     os.environ["BROWSER_HEADED"] = "true"
 
-    # Import access-web
     try:
         _ensure_access_web()
     except RuntimeError as e:
-        _fail("open", "access_web_unavailable", str(e))
-
+        return _err(command, "access_web_unavailable", str(e))
     try:
-        from browser_agent.browser import Browser
-        from browser_agent.config import BrowserConfig
+        from browser_agent import get_session
     except ImportError as e:
-        _fail("open", "access_web_unavailable",
-              f"Cannot import browser_agent: {e}")
+        return _err(command, "access_web_unavailable",
+                    f"Cannot import browser_agent: {e}")
 
-    # Navigate
+    # 首次 get_session(cwd=...) 绑定展示会话目录; .page 触发脱离式启动/复用
     try:
-        config = BrowserConfig(cwd=str(session_dir))
-        browser = Browser(config)
-        browser.start()
+        page = get_session(cwd=str(session_dir)).page
     except Exception as e:
-        _fail("open", "browser_unavailable", f"Browser start failed: {e}")
+        return _err(command, "browser_unavailable", f"Browser start failed: {e}")
 
     try:
-        page = browser.page
         url = html_path.as_uri()
         page.goto(url)
     except Exception as e:
-        _fail("open", "navigation_failed", f"Navigation failed: {e}")
+        return _err(command, "navigation_failed", f"Navigation failed: {e}")
 
-    _ok("open", {"url": url, "alive": True})
+    return _success(command, {"url": url, "alive": True})
 
 
-def cmd_state(session_dir_str):
+def run_state(session_dir_str):
     """Read __PRESENTATION_STATE__ from page. Must not start browser."""
-    global _current_cmd
-    _current_cmd = "state"
+    command = "state"
 
-    session_dir = _validate_session_dir(session_dir_str)
+    session_dir, err = _validate_session_dir(session_dir_str, command)
+    if err is not None:
+        return err
 
-    # Import access-web (import only, no browser start)
     try:
-        _ensure_access_web()
+        attached_context, probe = _import_attach()
     except RuntimeError as e:
-        _fail("state", "access_web_unavailable", str(e))
+        return _err(command, "access_web_unavailable", str(e))
 
+    cwd = str(session_dir)
+    if not probe(cwd=cwd).alive:
+        return _err(command, "browser_not_running",
+                    "Chromium is not running for this session")
+
+    # 只读附加: 不启动浏览器; attach 内部遵守 "CDP 连接不 close" 纪律
     try:
-        from browser_agent.config import BrowserConfig
-    except ImportError as e:
-        _fail("state", "access_web_unavailable",
-              f"Cannot import browser_agent: {e}")
-
-    config = BrowserConfig(cwd=str(session_dir))
-    alive, meta = _check_alive(config)
-
-    if not alive:
-        _fail("state", "browser_not_running",
-              "Chromium is not running for this session")
-
-    cdp_port = meta.get("cdp_port")
-
-    # Connect via CDP and read state (no browser start)
-    try:
-        from playwright.sync_api import sync_playwright
-        with sync_playwright() as pw:
-            browser = pw.chromium.connect_over_cdp(
-                f"http://127.0.0.1:{cdp_port}"
-            )
-            try:
-                context = browser.contexts[0] if browser.contexts else None
-                if context is None or not context.pages:
-                    _fail("state", "state_unavailable",
-                          "No page available to read state")
-                page = context.pages[0]
-                state = page.evaluate("window.__PRESENTATION_STATE__")
-            finally:
-                # Do NOT call browser.close() on a CDP connection;
-                # it kills the remote Chromium process (NFR-003).
-                # sync_playwright() context manager handles local cleanup.
-                pass
+        with attached_context(cwd=cwd) as context:
+            if context is None or not context.pages:
+                return _err(command, "state_unavailable",
+                            "No page available to read state")
+            state = context.pages[0].evaluate("window.__PRESENTATION_STATE__")
     except Exception as e:
-        _fail("state", "state_unavailable",
-              f"Failed to read page state: {e}")
+        return _err(command, "state_unavailable",
+                    f"Failed to read page state: {e}")
 
     # Validate state shape
     if not isinstance(state, dict):
-        _fail("state", "state_unavailable",
-              "State object is not a dict")
+        return _err(command, "state_unavailable",
+                    "State object is not a dict")
     version = state.get("version")
     if not isinstance(version, int) or isinstance(version, bool):
-        _fail("state", "state_unavailable",
-              f"State version must be int, got {type(version).__name__}: {version}")
+        return _err(command, "state_unavailable",
+                    f"State version must be int, got {type(version).__name__}: {version}")
     if version != 1:
-        _fail("state", "state_unavailable",
-              f"Unsupported state version: {version}")
+        return _err(command, "state_unavailable",
+                    f"Unsupported state version: {version}")
     values = state.get("values")
     if not isinstance(values, dict):
-        _fail("state", "state_unavailable",
-              f"State values must be dict, got {type(values).__name__}")
+        return _err(command, "state_unavailable",
+                    f"State values must be dict, got {type(values).__name__}")
 
-    _ok("state", {"alive": True, "state": state})
+    return _success(command, {"alive": True, "state": state})
 
 
-def cmd_status(session_dir_str):
+def run_status(session_dir_str):
     """Check browser status. Side-effect free, must not start browser."""
-    global _current_cmd
-    _current_cmd = "status"
+    command = "status"
 
-    session_dir = _validate_session_dir(session_dir_str)
+    session_dir, err = _validate_session_dir(session_dir_str, command)
+    if err is not None:
+        return err
 
-    # Import access-web (import only, no browser start)
     try:
-        _ensure_access_web()
+        attached_context, probe = _import_attach()
     except RuntimeError as e:
-        _fail("status", "access_web_unavailable", str(e))
+        return _err(command, "access_web_unavailable", str(e))
 
-    try:
-        from browser_agent.config import BrowserConfig
-    except ImportError as e:
-        _fail("status", "access_web_unavailable",
-              f"Cannot import browser_agent: {e}")
-
-    config = BrowserConfig(cwd=str(session_dir))
-    alive, meta = _check_alive(config)
-
+    cwd = str(session_dir)
+    alive = probe(cwd=cwd).alive
     result = {"alive": alive}
 
-    if alive and meta:
-        cdp_port = meta.get("cdp_port")
-        # Try to get URL/title via CDP (side-effect free read)
+    if alive:
+        # 只读附加读取 URL; 失败不致命, 降级为仅存活标记
         try:
-            from playwright.sync_api import sync_playwright
-            with sync_playwright() as pw:
-                browser = pw.chromium.connect_over_cdp(
-                    f"http://127.0.0.1:{cdp_port}"
-                )
-                try:
-                    context = (
-                        browser.contexts[0] if browser.contexts else None
-                    )
-                    if context and context.pages:
-                        page = context.pages[0]
-                        result["url"] = page.url
-                finally:
-                    # Do NOT call browser.close(); see cmd_state.
-                    pass
+            with attached_context(cwd=cwd) as context:
+                if context is not None and context.pages:
+                    result["url"] = context.pages[0].url
         except Exception:
             pass
 
-    _ok("status", result)
+    return _success(command, result)
 
 
 # ---------------------------------------------------------------------------
-# Main
+# CLI adapter (argv, JSON serialization, sanitization, exit code)
 # ---------------------------------------------------------------------------
 
-def main():
-    global _current_cmd
-    if len(sys.argv) < 2:
-        _fail("unknown", "internal_error",
-              "Usage: browser_session.py <open|state|status> <session-dir> [html-file]")
+def _sanitize_error(msg):
+    """Strip credential-like patterns from error messages.
 
-    command = sys.argv[1]
-    _current_cmd = command
+    Technical Spec: error JSON must not contain credentials or full env vars.
+    """
+    import re
+    # Redact common credential patterns in paths and exception strings
+    patterns = [
+        (r'(token[=:]\s*)([^\s,&"]+)', r'\1[REDACTED]'),
+        (r'(api_key[=:]\s*)([^\s,&"]+)', r'\1[REDACTED]'),
+        (r'(secret[=:]\s*)([^\s,&"]+)', r'\1[REDACTED]'),
+        (r'(password[=:]\s*)([^\s,&"]+)', r'\1[REDACTED]'),
+        (r'(auth[=:]\s*)([^\s,&"]+)', r'\1[REDACTED]'),
+        (r'(credential[=:]\s*)([^\s,&"]+)', r'\1[REDACTED]'),
+        (r'(bearer\s+)([^\s,&"]+)', r'\1[REDACTED]'),
+    ]
+    for pattern, replacement in patterns:
+        msg = re.sub(pattern, replacement, msg, flags=re.IGNORECASE)
+    return msg
 
-    if command == "open":
-        if len(sys.argv) < 4:
-            _fail("open", "internal_error",
-                  "Usage: browser_session.py open <session-dir> <html-file>")
-        cmd_open(sys.argv[2], sys.argv[3])
-    elif command == "state":
-        if len(sys.argv) < 3:
-            _fail("state", "internal_error",
-                  "Usage: browser_session.py state <session-dir>")
-        cmd_state(sys.argv[2])
-    elif command == "status":
-        if len(sys.argv) < 3:
-            _fail("status", "internal_error",
-                  "Usage: browser_session.py status <session-dir>")
-        cmd_status(sys.argv[2])
-    else:
-        _fail(command, "internal_error", f"Unknown command: {command}")
+
+def _emit(obj):
+    """Serialize one result object to stdout; return exit code."""
+    if not obj.get("success") and isinstance(obj.get("error"), str):
+        obj = dict(obj, error=_sanitize_error(obj["error"]))
+    sys.stdout.write(json.dumps(obj, ensure_ascii=False) + "\n")
+    sys.stdout.flush()
+    return 0 if obj["success"] else 1
+
+
+def main(argv=None):
+    argv = list(sys.argv[1:]) if argv is None else list(argv)
+    command = argv[0] if argv else "unknown"
+    try:
+        if command == "open":
+            if len(argv) < 3:
+                obj = _err(command, "internal_error",
+                           "Usage: browser_session.py open <session-dir> <html-file>")
+            else:
+                obj = run_open(argv[1], argv[2])
+        elif command == "state":
+            if len(argv) < 2:
+                obj = _err(command, "internal_error",
+                           "Usage: browser_session.py state <session-dir>")
+            else:
+                obj = run_state(argv[1])
+        elif command == "status":
+            if len(argv) < 2:
+                obj = _err(command, "internal_error",
+                           "Usage: browser_session.py status <session-dir>")
+            else:
+                obj = run_status(argv[1])
+        elif command == "unknown":
+            obj = _err(command, "internal_error",
+                       "Usage: browser_session.py <open|state|status> <session-dir> [html-file]")
+        else:
+            obj = _err(command, "internal_error", f"Unknown command: {command}")
+    except Exception as e:
+        obj = _err(command, "internal_error", str(e))
+    sys.exit(_emit(obj))
 
 
 if __name__ == "__main__":
-    try:
-        main()
-    except SystemExit:
-        raise
-    except Exception as e:
-        _fail(_current_cmd, "internal_error", str(e))
+    main()

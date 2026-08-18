@@ -1,18 +1,21 @@
 """browser_session.py unit tests.
 
+结构跟随被测对象: 行为测试直接命中 run_* 核心接缝 (断言结果 dict),
+CLI 契约 (argv 解析 / 单行 JSON / 退出码 / 脱敏) 经 _run_main 走 main().
+
 Covers: CLI, path validation, JSON output, error codes, sibling detection,
-security, isolation, state shape, lifecycle (mocked).
+security, isolation, state shape, lifecycle (mocked attach seam).
 
 Run: python -m pytest general/adaptive-presentation/tests/ -v
 Or:  python -m unittest discover -s general/adaptive-presentation/tests -v
 """
 
+import contextlib
 import importlib
 import importlib.util
+import io
 import json
 import os
-import socket
-import subprocess
 import sys
 import tempfile
 import unittest
@@ -38,34 +41,63 @@ bs = _load_bs()
 
 
 # ---------------------------------------------------------------------------
-# Helper: capture JSON output and exit
+# Helpers
 # ---------------------------------------------------------------------------
 
-class ExitCalled(Exception):
-    """Raised when sys.exit is called."""
-    def __init__(self, code):
-        self.code = code
-
-def _run_cmd(func, *args):
-    """Run a command function, capture JSON output and exit code.
-
-    Returns (json_dict, exit_code).
-    """
-    captured = []
-    original_json_out = bs._json_out
-
-    def mock_json_out(obj):
-        captured.append(obj)
-        original_json_out(obj)
-
-    exit_code = 0
-    with mock.patch.object(bs, "_json_out", side_effect=mock_json_out):
+def _run_main(*argv):
+    """跑 main(argv), 捕获 stdout 与退出码. 返回 (json_dict, exit_code, lines)."""
+    buf = io.StringIO()
+    code = 0
+    with contextlib.redirect_stdout(buf):
         try:
-            func(*args)
+            bs.main(list(argv))
         except SystemExit as e:
-            exit_code = e.code if e.code is not None else 0
+            code = e.code if e.code is not None else 0
+    lines = [l for l in buf.getvalue().splitlines() if l.strip()]
+    obj = json.loads(lines[-1]) if lines else None
+    return obj, code, lines
 
-    return captured[-1] if captured else None, exit_code
+
+def _attach_modules(alive=True, page=None, attach_error=None):
+    """构造 patch.dict 用的 browser_agent / browser_agent.attach 模拟模块.
+
+    只读会话视图 (probe / attached_context) 是 run_state/run_status 触及
+    browser_agent 的唯一接缝; 测试只模拟这一道接缝, 不模拟内部件.
+    """
+    mock_probe = mock.MagicMock(return_value=mock.MagicMock(alive=alive))
+    mock_context = mock.MagicMock()
+    mock_context.pages = [page] if page is not None else []
+    mock_attached = mock.MagicMock()
+    ctx_mgr = mock_attached.return_value
+    if attach_error is not None:
+        ctx_mgr.__enter__.side_effect = attach_error
+    else:
+        ctx_mgr.__enter__.return_value = mock_context
+    ctx_mgr.__exit__.return_value = False
+    return {
+        "browser_agent": mock.MagicMock(),
+        "browser_agent.attach": mock.MagicMock(
+            probe=mock_probe, attached_context=mock_attached
+        ),
+    }
+
+
+def _open_modules(page):
+    """构造 patch.dict 用的 browser_agent.get_session 模拟模块 (open 接缝)."""
+    mock_session = mock.MagicMock()
+    mock_session.page = page
+    return {
+        "browser_agent": mock.MagicMock(
+            get_session=mock.MagicMock(return_value=mock_session)
+        ),
+    }
+
+
+def _state_page(state):
+    """返回 evaluate 给出指定 state 的模拟页面."""
+    page = mock.MagicMock()
+    page.evaluate.return_value = state
+    return page
 
 
 # ===========================================================================
@@ -76,65 +108,62 @@ class TestCLI(unittest.TestCase):
     """CLI argument parsing and dispatch."""
 
     def test_no_args_fails(self):
-        """No arguments produces internal_error."""
-        with mock.patch("sys.argv", ["browser_session.py"]):
-            obj, code = _run_cmd(bs.main)
+        obj, code, _ = _run_main()
         self.assertEqual(code, 1)
         self.assertFalse(obj["success"])
         self.assertEqual(obj["code"], "internal_error")
 
     def test_unknown_command(self):
-        """Unknown command produces internal_error."""
-        with mock.patch("sys.argv", ["browser_session.py", "foo", "/tmp"]):
-            obj, code = _run_cmd(bs.main)
+        obj, code, _ = _run_main("foo", "/tmp")
         self.assertEqual(code, 1)
         self.assertFalse(obj["success"])
         self.assertEqual(obj["code"], "internal_error")
         self.assertEqual(obj["command"], "foo")
 
     def test_open_missing_args(self):
-        """open without session-dir and html-file fails."""
-        with mock.patch("sys.argv", ["browser_session.py", "open"]):
-            obj, code = _run_cmd(bs.main)
+        obj, code, _ = _run_main("open")
         self.assertEqual(code, 1)
         self.assertFalse(obj["success"])
 
     def test_state_missing_args(self):
-        """state without session-dir fails."""
-        with mock.patch("sys.argv", ["browser_session.py", "state"]):
-            obj, code = _run_cmd(bs.main)
+        obj, code, _ = _run_main("state")
         self.assertEqual(code, 1)
         self.assertFalse(obj["success"])
 
     def test_status_missing_args(self):
-        """status without session-dir fails."""
-        with mock.patch("sys.argv", ["browser_session.py", "status"]):
-            obj, code = _run_cmd(bs.main)
+        obj, code, _ = _run_main("status")
         self.assertEqual(code, 1)
         self.assertFalse(obj["success"])
 
     def test_output_is_single_json(self):
         """stdout contains exactly one JSON object per call."""
         with tempfile.TemporaryDirectory() as td:
-            obj, code = _run_cmd(bs.cmd_status, td)
-        # Status should succeed or fail with a single JSON
-        self.assertIsNotNone(obj)
+            obj, code, lines = _run_main("status", td)
+        self.assertEqual(len(lines), 1)
         self.assertIn("success", obj)
         self.assertIn("command", obj)
 
     def test_exit_code_0_on_success(self):
-        """Successful command exits with 0."""
         with tempfile.TemporaryDirectory() as td:
-            obj, code = _run_cmd(bs.cmd_status, td)
-        # status with no metadata returns alive:false, which is success
+            obj, code, _ = _run_main("status", td)
         self.assertEqual(code, 0)
         self.assertTrue(obj["success"])
 
     def test_exit_code_nonzero_on_failure(self):
-        """Failed command exits with non-zero."""
-        obj, code = _run_cmd(bs.cmd_status, "/nonexistent/path/xyz")
+        obj, code, _ = _run_main("status", "/nonexistent/path/xyz")
         self.assertNotEqual(code, 0)
         self.assertFalse(obj["success"])
+
+    def test_uncaught_exception_handled(self):
+        """Uncaught exceptions produce internal_error, not traceback."""
+        with tempfile.TemporaryDirectory() as td:
+            with mock.patch.object(bs, "run_status",
+                                   side_effect=RuntimeError("unexpected")):
+                obj, code, lines = _run_main("status", td)
+        self.assertNotEqual(code, 0)
+        self.assertEqual(obj["code"], "internal_error")
+        self.assertEqual(obj["error"], "unexpected")
+        self.assertEqual(len(lines), 1)
 
 
 # ===========================================================================
@@ -142,22 +171,22 @@ class TestCLI(unittest.TestCase):
 # ===========================================================================
 
 class TestPathValidation(unittest.TestCase):
-    """Session dir and HTML file validation."""
+    """Session dir and HTML file validation (via core seam)."""
 
     def test_nonexistent_session_dir(self):
-        obj, code = _run_cmd(bs.cmd_status, "/nonexistent/path/xyz")
+        obj = bs.run_status("/nonexistent/path/xyz")
         self.assertFalse(obj["success"])
         self.assertEqual(obj["code"], "invalid_session_dir")
 
     def test_session_dir_is_file(self):
         with tempfile.NamedTemporaryFile() as f:
-            obj, code = _run_cmd(bs.cmd_status, f.name)
+            obj = bs.run_status(f.name)
         self.assertFalse(obj["success"])
         self.assertEqual(obj["code"], "invalid_session_dir")
 
     def test_nonexistent_html_file(self):
         with tempfile.TemporaryDirectory() as td:
-            obj, code = _run_cmd(bs.cmd_open, td, "/nonexistent/file.html")
+            obj = bs.run_open(td, "/nonexistent/file.html")
         self.assertFalse(obj["success"])
         self.assertEqual(obj["code"], "invalid_html_file")
 
@@ -165,7 +194,7 @@ class TestPathValidation(unittest.TestCase):
         with tempfile.TemporaryDirectory() as td:
             html_dir = Path(td) / "fake.html"
             html_dir.mkdir()
-            obj, code = _run_cmd(bs.cmd_open, td, str(html_dir))
+            obj = bs.run_open(td, str(html_dir))
         self.assertFalse(obj["success"])
         self.assertEqual(obj["code"], "invalid_html_file")
 
@@ -173,7 +202,7 @@ class TestPathValidation(unittest.TestCase):
         with tempfile.TemporaryDirectory() as td:
             txt_file = Path(td) / "test.txt"
             txt_file.write_text("hello", encoding="utf-8")
-            obj, code = _run_cmd(bs.cmd_open, td, str(txt_file))
+            obj = bs.run_open(td, str(txt_file))
         self.assertFalse(obj["success"])
         self.assertEqual(obj["code"], "invalid_html_file")
 
@@ -182,7 +211,7 @@ class TestPathValidation(unittest.TestCase):
             with tempfile.TemporaryDirectory() as other:
                 html_file = Path(other) / "test.html"
                 html_file.write_text("<html></html>", encoding="utf-8")
-                obj, code = _run_cmd(bs.cmd_open, td, str(html_file))
+                obj = bs.run_open(td, str(html_file))
         self.assertFalse(obj["success"])
         self.assertEqual(obj["code"], "invalid_html_file")
 
@@ -194,10 +223,9 @@ class TestPathValidation(unittest.TestCase):
         with tempfile.TemporaryDirectory() as td:
             html_file = Path(td) / "test.html"
             html_file.write_text("<html></html>", encoding="utf-8")
-            # Mock the browser import to avoid actual browser launch
             with mock.patch.object(bs, "_ensure_access_web",
                                    side_effect=RuntimeError("test")):
-                obj, code = _run_cmd(bs.cmd_open, td, str(html_file))
+                obj = bs.run_open(td, str(html_file))
             # Path validation passed, failed at browser step
             self.assertEqual(obj["code"], "access_web_unavailable")
 
@@ -208,19 +236,19 @@ class TestPathValidation(unittest.TestCase):
             html_file.write_text("<html></html>", encoding="utf-8")
             with mock.patch.object(bs, "_ensure_access_web",
                                    side_effect=RuntimeError("test")):
-                obj, code = _run_cmd(bs.cmd_open, td, str(html_file))
+                obj = bs.run_open(td, str(html_file))
             self.assertEqual(obj["code"], "access_web_unavailable")
 
     def test_relative_session_dir_rejected(self):
         """Relative session-dir is rejected before resolve."""
-        obj, code = _run_cmd(bs.cmd_status, "relative/path")
+        obj = bs.run_status("relative/path")
         self.assertFalse(obj["success"])
         self.assertEqual(obj["code"], "invalid_session_dir")
 
     def test_relative_html_file_rejected(self):
         """Relative html-file is rejected before resolve."""
         with tempfile.TemporaryDirectory() as td:
-            obj, code = _run_cmd(bs.cmd_open, td, "relative/test.html")
+            obj = bs.run_open(td, "relative/test.html")
         self.assertFalse(obj["success"])
         self.assertEqual(obj["code"], "invalid_html_file")
 
@@ -233,16 +261,14 @@ class TestJSONOutput(unittest.TestCase):
     """JSON output format compliance."""
 
     def test_success_has_required_fields(self):
-        """Success response has success and command."""
         with tempfile.TemporaryDirectory() as td:
-            obj, code = _run_cmd(bs.cmd_status, td)
+            obj = bs.run_status(td)
         self.assertTrue(obj["success"])
         self.assertEqual(obj["command"], "status")
         self.assertIn("alive", obj)
 
     def test_failure_has_required_fields(self):
-        """Failure response has success, command, code, error."""
-        obj, code = _run_cmd(bs.cmd_status, "/nonexistent/xyz")
+        obj = bs.run_status("/nonexistent/xyz")
         self.assertFalse(obj["success"])
         self.assertEqual(obj["command"], "status")
         self.assertIn("code", obj)
@@ -251,32 +277,29 @@ class TestJSONOutput(unittest.TestCase):
     def test_status_alive_false_when_no_metadata(self):
         """status returns alive:false when no browser.json exists."""
         with tempfile.TemporaryDirectory() as td:
-            obj, code = _run_cmd(bs.cmd_status, td)
+            obj = bs.run_status(td)
         self.assertTrue(obj["success"])
         self.assertFalse(obj["alive"])
 
     def test_state_browser_not_running_when_no_metadata(self):
         """state returns browser_not_running when no browser.json."""
         with tempfile.TemporaryDirectory() as td:
-            obj, code = _run_cmd(bs.cmd_state, td)
+            obj = bs.run_state(td)
         self.assertFalse(obj["success"])
         self.assertEqual(obj["code"], "browser_not_running")
 
     def test_error_no_traceback_in_stdout(self):
-        """Error messages don't contain tracebacks."""
-        obj, code = _run_cmd(bs.cmd_status, "/nonexistent/xyz")
+        obj, code, lines = _run_main("status", "/nonexistent/xyz")
         self.assertNotIn("Traceback", obj.get("error", ""))
 
     def test_all_stable_error_codes_are_strings(self):
-        """All error codes are string values."""
         valid_codes = {
             "invalid_session_dir", "invalid_html_file",
             "access_web_unavailable", "browser_not_running",
             "browser_unavailable", "navigation_failed",
             "state_unavailable", "internal_error",
         }
-        # Test a few scenarios and check code is in valid set
-        obj, _ = _run_cmd(bs.cmd_status, "/nonexistent/xyz")
+        obj = bs.run_status("/nonexistent/xyz")
         self.assertIn(obj["code"], valid_codes)
 
 
@@ -288,7 +311,6 @@ class TestSiblingDetection(unittest.TestCase):
     """access-web sibling location detection."""
 
     def test_find_access_web_returns_path(self):
-        """_find_access_web returns a path when sibling exists."""
         result = bs._find_access_web()
         # In the actual repo, sibling exists
         if result is not None:
@@ -297,35 +319,31 @@ class TestSiblingDetection(unittest.TestCase):
             )
 
     def test_find_access_web_checks_init(self):
-        """_find_access_web verifies browser_agent/__init__.py exists."""
         result = bs._find_access_web()
         if result is not None:
             init_file = result / "browser_agent" / "__init__.py"
             self.assertTrue(init_file.is_file())
 
     def test_ensure_access_web_adds_to_sys_path(self):
-        """_ensure_access_web adds browse/ to sys.path."""
         aw_path = bs._find_access_web()
         if aw_path is not None:
-            # Remove from sys.path if already there
             aw_str = str(aw_path)
             sys.path = [p for p in sys.path if p != aw_str]
             bs._ensure_access_web()
             self.assertIn(aw_str, sys.path)
 
     def test_ensure_access_web_raises_when_missing(self):
-        """_ensure_access_web raises RuntimeError when sibling not found."""
         with mock.patch.object(bs, "_find_access_web", return_value=None):
             with self.assertRaises(RuntimeError):
                 bs._ensure_access_web()
 
 
 # ===========================================================================
-# Lifecycle Tests (mocked browser)
+# Lifecycle Tests (mocked seams: get_session / attach)
 # ===========================================================================
 
 class TestLifecycle(unittest.TestCase):
-    """Browser lifecycle tests with mocked Browser class."""
+    """Browser lifecycle tests, mocked at the browser_agent seams."""
 
     def test_open_success(self):
         """open navigates to HTML and returns url+alive."""
@@ -334,27 +352,10 @@ class TestLifecycle(unittest.TestCase):
             html_file.write_text("<html></html>", encoding="utf-8")
 
             mock_page = mock.MagicMock()
-            mock_page.url = html_file.as_uri()
-            mock_browser_instance = mock.MagicMock()
-            mock_browser_instance.page = mock_page
-            mock_browser_cls = mock.MagicMock(
-                return_value=mock_browser_instance
-            )
-            mock_config_cls = mock.MagicMock()
-
             with mock.patch.object(bs, "_ensure_access_web"):
-                with mock.patch.dict("sys.modules", {
-                    "browser_agent": mock.MagicMock(),
-                    "browser_agent.browser": mock.MagicMock(
-                        Browser=mock_browser_cls
-                    ),
-                    "browser_agent.config": mock.MagicMock(
-                        BrowserConfig=mock_config_cls
-                    ),
-                }):
-                    obj, code = _run_cmd(bs.cmd_open, td, str(html_file))
+                with mock.patch.dict("sys.modules", _open_modules(mock_page)):
+                    obj = bs.run_open(td, str(html_file))
 
-            self.assertEqual(code, 0)
             self.assertTrue(obj["success"])
             self.assertEqual(obj["command"], "open")
             self.assertTrue(obj["alive"])
@@ -362,8 +363,25 @@ class TestLifecycle(unittest.TestCase):
             self.assertTrue(obj["url"].startswith("file://"))
             mock_page.goto.assert_called_once()
 
+    def test_open_binds_session_dir(self):
+        """open 经 get_session(cwd=session_dir) 绑定展示会话目录."""
+        with tempfile.TemporaryDirectory() as td:
+            html_file = Path(td) / "test.html"
+            html_file.write_text("<html></html>", encoding="utf-8")
+
+            mock_page = mock.MagicMock()
+            modules = _open_modules(mock_page)
+            with mock.patch.object(bs, "_ensure_access_web"):
+                with mock.patch.dict("sys.modules", modules):
+                    obj = bs.run_open(td, str(html_file))
+
+            self.assertTrue(obj["success"])
+            modules["browser_agent"].get_session.assert_called_once_with(
+                cwd=str(Path(td).resolve())
+            )
+
     def test_open_idempotent_reuse(self):
-        """open on same session reuses browser (Browser.start handles this)."""
+        """open on same session reuses browser (session 单例处理复用)."""
         with tempfile.TemporaryDirectory() as td:
             html1 = Path(td) / "v1.html"
             html1.write_text("<html>v1</html>", encoding="utf-8")
@@ -371,29 +389,13 @@ class TestLifecycle(unittest.TestCase):
             html2.write_text("<html>v2</html>", encoding="utf-8")
 
             mock_page = mock.MagicMock()
-            mock_browser_instance = mock.MagicMock()
-            mock_browser_instance.page = mock_page
-            mock_browser_cls = mock.MagicMock(
-                return_value=mock_browser_instance
-            )
-            mock_config_cls = mock.MagicMock()
-
             with mock.patch.object(bs, "_ensure_access_web"):
-                with mock.patch.dict("sys.modules", {
-                    "browser_agent": mock.MagicMock(),
-                    "browser_agent.browser": mock.MagicMock(
-                        Browser=mock_browser_cls
-                    ),
-                    "browser_agent.config": mock.MagicMock(
-                        BrowserConfig=mock_config_cls
-                    ),
-                }):
-                    obj1, code1 = _run_cmd(bs.cmd_open, td, str(html1))
-                    obj2, code2 = _run_cmd(bs.cmd_open, td, str(html2))
+                with mock.patch.dict("sys.modules", _open_modules(mock_page)):
+                    obj1 = bs.run_open(td, str(html1))
+                    obj2 = bs.run_open(td, str(html2))
 
-            self.assertEqual(code1, 0)
-            self.assertEqual(code2, 0)
-            # Both navigated
+            self.assertTrue(obj1["success"])
+            self.assertTrue(obj2["success"])
             self.assertEqual(mock_page.goto.call_count, 2)
 
     def test_open_browser_unavailable(self):
@@ -402,24 +404,20 @@ class TestLifecycle(unittest.TestCase):
             html_file = Path(td) / "test.html"
             html_file.write_text("<html></html>", encoding="utf-8")
 
-            mock_browser_cls = mock.MagicMock(
+            mock_session = mock.MagicMock()
+            type(mock_session).page = mock.PropertyMock(
                 side_effect=RuntimeError("Chromium not installed")
             )
-            mock_config_cls = mock.MagicMock()
-
+            modules = {
+                "browser_agent": mock.MagicMock(
+                    get_session=mock.MagicMock(return_value=mock_session)
+                ),
+            }
             with mock.patch.object(bs, "_ensure_access_web"):
-                with mock.patch.dict("sys.modules", {
-                    "browser_agent": mock.MagicMock(),
-                    "browser_agent.browser": mock.MagicMock(
-                        Browser=mock_browser_cls
-                    ),
-                    "browser_agent.config": mock.MagicMock(
-                        BrowserConfig=mock_config_cls
-                    ),
-                }):
-                    obj, code = _run_cmd(bs.cmd_open, td, str(html_file))
+                with mock.patch.dict("sys.modules", modules):
+                    obj = bs.run_open(td, str(html_file))
 
-            self.assertNotEqual(code, 0)
+            self.assertFalse(obj["success"])
             self.assertEqual(obj["code"], "browser_unavailable")
 
     def test_open_navigation_failed(self):
@@ -430,519 +428,178 @@ class TestLifecycle(unittest.TestCase):
 
             mock_page = mock.MagicMock()
             mock_page.goto.side_effect = Exception("net::ERR_FILE_NOT_FOUND")
-            mock_browser_instance = mock.MagicMock()
-            mock_browser_instance.page = mock_page
-            mock_browser_cls = mock.MagicMock(
-                return_value=mock_browser_instance
-            )
-            mock_config_cls = mock.MagicMock()
-
             with mock.patch.object(bs, "_ensure_access_web"):
-                with mock.patch.dict("sys.modules", {
-                    "browser_agent": mock.MagicMock(),
-                    "browser_agent.browser": mock.MagicMock(
-                        Browser=mock_browser_cls
-                    ),
-                    "browser_agent.config": mock.MagicMock(
-                        BrowserConfig=mock_config_cls
-                    ),
-                }):
-                    obj, code = _run_cmd(bs.cmd_open, td, str(html_file))
+                with mock.patch.dict("sys.modules", _open_modules(mock_page)):
+                    obj = bs.run_open(td, str(html_file))
 
-            self.assertNotEqual(code, 0)
+            self.assertFalse(obj["success"])
             self.assertEqual(obj["code"], "navigation_failed")
 
     def test_state_reads_presentation_state(self):
-        """state reads __PRESENTATION_STATE__ via CDP."""
+        """state 经只读附加读取 __PRESENTATION_STATE__."""
         with tempfile.TemporaryDirectory() as td:
-            # Write fake metadata
-            config_dir = Path(td)
-            # We need to mock BrowserConfig to return proper config
-            mock_config = mock.MagicMock()
-            mock_config.browser_json = Path(td) / "browser.json"
-            mock_config.browser_json.write_text(
-                json.dumps({"pid": 99999, "cdp_port": 19222}),
-                encoding="utf-8",
-            )
-            mock_config.read_metadata.return_value = {
-                "pid": 99999, "cdp_port": 19222
-            }
-            mock_config_cls = mock.MagicMock(return_value=mock_config)
-
             expected_state = {"version": 1, "values": {"selected": "A"}}
+            with mock.patch.object(bs, "_ensure_access_web"):
+                with mock.patch.dict(
+                    "sys.modules",
+                    _attach_modules(page=_state_page(expected_state)),
+                ):
+                    obj = bs.run_state(td)
 
-            # Mock alive check
-            with mock.patch.object(bs, "_is_pid_alive", return_value=True):
-                with mock.patch.object(bs, "_is_port_open", return_value=True):
-                    # Mock playwright
-                    mock_page = mock.MagicMock()
-                    mock_page.evaluate.return_value = expected_state
-                    mock_context = mock.MagicMock()
-                    mock_context.pages = [mock_page]
-                    mock_browser = mock.MagicMock()
-                    mock_browser.contexts = [mock_context]
-                    mock_pw = mock.MagicMock()
-                    mock_pw.chromium.connect_over_cdp.return_value = mock_browser
-                    mock_pw.__enter__ = mock.MagicMock(return_value=mock_pw)
-                    mock_pw.__exit__ = mock.MagicMock(return_value=False)
-
-                    with mock.patch.object(bs, "_ensure_access_web"):
-                        with mock.patch.dict("sys.modules", {
-                            "browser_agent": mock.MagicMock(),
-                            "browser_agent.config": mock.MagicMock(
-                                BrowserConfig=mock_config_cls
-                            ),
-                            "playwright": mock.MagicMock(),
-                            "playwright.sync_api": mock.MagicMock(
-                                sync_playwright=lambda: mock_pw
-                            ),
-                        }):
-                            obj, code = _run_cmd(bs.cmd_state, td)
-
-            self.assertEqual(code, 0)
             self.assertTrue(obj["success"])
             self.assertEqual(obj["state"], expected_state)
 
-    def test_state_browser_not_running_dead_pid(self):
-        """state returns browser_not_running when pid is dead."""
+    def test_state_browser_not_running(self):
+        """probe 不存活时 state 返回 browser_not_running, 且不尝试附加.
+
+        pid 死亡与端口关闭的区分由 browser_agent.attach.probe 负责,
+        在 access-web 侧测试; 此处只验证接缝上的语义映射.
+        """
         with tempfile.TemporaryDirectory() as td:
-            mock_config = mock.MagicMock()
-            mock_config.browser_json = Path(td) / "browser.json"
-            mock_config.browser_json.write_text(
-                json.dumps({"pid": 99999, "cdp_port": 19222}),
-                encoding="utf-8",
-            )
-            mock_config.read_metadata.return_value = {
-                "pid": 99999, "cdp_port": 19222
-            }
-            mock_config_cls = mock.MagicMock(return_value=mock_config)
+            modules = _attach_modules(alive=False)
+            with mock.patch.object(bs, "_ensure_access_web"):
+                with mock.patch.dict("sys.modules", modules):
+                    obj = bs.run_state(td)
 
-            with mock.patch.object(bs, "_is_pid_alive", return_value=False):
-                with mock.patch.object(bs, "_ensure_access_web"):
-                    with mock.patch.dict("sys.modules", {
-                        "browser_agent": mock.MagicMock(),
-                        "browser_agent.config": mock.MagicMock(
-                            BrowserConfig=mock_config_cls
-                        ),
-                    }):
-                        obj, code = _run_cmd(bs.cmd_state, td)
-
-            self.assertNotEqual(code, 0)
+            self.assertFalse(obj["success"])
             self.assertEqual(obj["code"], "browser_not_running")
+            modules["browser_agent.attach"].attached_context.assert_not_called()
 
-    def test_state_browser_not_running_closed_port(self):
-        """state returns browser_not_running when CDP port is closed."""
+    def test_state_no_page_available(self):
+        """存活但无页面: state 返回 state_unavailable."""
         with tempfile.TemporaryDirectory() as td:
-            mock_config = mock.MagicMock()
-            mock_config.browser_json = Path(td) / "browser.json"
-            mock_config.browser_json.write_text(
-                json.dumps({"pid": 99999, "cdp_port": 19222}),
-                encoding="utf-8",
-            )
-            mock_config.read_metadata.return_value = {
-                "pid": 99999, "cdp_port": 19222
-            }
-            mock_config_cls = mock.MagicMock(return_value=mock_config)
+            with mock.patch.object(bs, "_ensure_access_web"):
+                with mock.patch.dict(
+                    "sys.modules", _attach_modules(alive=True, page=None)
+                ):
+                    obj = bs.run_state(td)
 
-            with mock.patch.object(bs, "_is_pid_alive", return_value=True):
-                with mock.patch.object(bs, "_is_port_open", return_value=False):
-                    with mock.patch.object(bs, "_ensure_access_web"):
-                        with mock.patch.dict("sys.modules", {
-                            "browser_agent": mock.MagicMock(),
-                            "browser_agent.config": mock.MagicMock(
-                                BrowserConfig=mock_config_cls
-                            ),
-                        }):
-                            obj, code = _run_cmd(bs.cmd_state, td)
+            self.assertFalse(obj["success"])
+            self.assertEqual(obj["code"], "state_unavailable")
 
-            self.assertNotEqual(code, 0)
-            self.assertEqual(obj["code"], "browser_not_running")
+    def test_state_attach_failure_is_state_unavailable(self):
+        """CDP 附加抛异常: state 返回 state_unavailable."""
+        with tempfile.TemporaryDirectory() as td:
+            with mock.patch.object(bs, "_ensure_access_web"):
+                with mock.patch.dict(
+                    "sys.modules",
+                    _attach_modules(attach_error=Exception("refused")),
+                ):
+                    obj = bs.run_state(td)
+
+            self.assertFalse(obj["success"])
+            self.assertEqual(obj["code"], "state_unavailable")
 
     def test_state_invalid_version(self):
         """state returns state_unavailable for unsupported version."""
         with tempfile.TemporaryDirectory() as td:
-            mock_config = mock.MagicMock()
-            mock_config.browser_json = Path(td) / "browser.json"
-            mock_config.browser_json.write_text(
-                json.dumps({"pid": 99999, "cdp_port": 19222}),
-                encoding="utf-8",
-            )
-            mock_config.read_metadata.return_value = {
-                "pid": 99999, "cdp_port": 19222
-            }
-            mock_config_cls = mock.MagicMock(return_value=mock_config)
-
-            with mock.patch.object(bs, "_is_pid_alive", return_value=True):
-                with mock.patch.object(bs, "_is_port_open", return_value=True):
-                    mock_page = mock.MagicMock()
-                    mock_page.evaluate.return_value = {
-                        "version": 99, "values": {}
-                    }
-                    mock_context = mock.MagicMock()
-                    mock_context.pages = [mock_page]
-                    mock_browser = mock.MagicMock()
-                    mock_browser.contexts = [mock_context]
-                    mock_pw = mock.MagicMock()
-                    mock_pw.chromium.connect_over_cdp.return_value = mock_browser
-                    mock_pw.__enter__ = mock.MagicMock(return_value=mock_pw)
-                    mock_pw.__exit__ = mock.MagicMock(return_value=False)
-
-                    with mock.patch.object(bs, "_ensure_access_web"):
-                        with mock.patch.dict("sys.modules", {
-                            "browser_agent": mock.MagicMock(),
-                            "browser_agent.config": mock.MagicMock(
-                                BrowserConfig=mock_config_cls
-                            ),
-                            "playwright": mock.MagicMock(),
-                            "playwright.sync_api": mock.MagicMock(
-                                sync_playwright=lambda: mock_pw
-                            ),
-                        }):
-                            obj, code = _run_cmd(bs.cmd_state, td)
-
-            self.assertNotEqual(code, 0)
+            page = _state_page({"version": 99, "values": {}})
+            with mock.patch.object(bs, "_ensure_access_web"):
+                with mock.patch.dict(
+                    "sys.modules", _attach_modules(page=page)
+                ):
+                    obj = bs.run_state(td)
+            self.assertFalse(obj["success"])
             self.assertEqual(obj["code"], "state_unavailable")
 
     def test_state_missing_values(self):
         """state returns state_unavailable when values key missing."""
         with tempfile.TemporaryDirectory() as td:
-            mock_config = mock.MagicMock()
-            mock_config.browser_json = Path(td) / "browser.json"
-            mock_config.browser_json.write_text(
-                json.dumps({"pid": 99999, "cdp_port": 19222}),
-                encoding="utf-8",
-            )
-            mock_config.read_metadata.return_value = {
-                "pid": 99999, "cdp_port": 19222
-            }
-            mock_config_cls = mock.MagicMock(return_value=mock_config)
-
-            with mock.patch.object(bs, "_is_pid_alive", return_value=True):
-                with mock.patch.object(bs, "_is_port_open", return_value=True):
-                    mock_page = mock.MagicMock()
-                    mock_page.evaluate.return_value = {"version": 1}
-                    mock_context = mock.MagicMock()
-                    mock_context.pages = [mock_page]
-                    mock_browser = mock.MagicMock()
-                    mock_browser.contexts = [mock_context]
-                    mock_pw = mock.MagicMock()
-                    mock_pw.chromium.connect_over_cdp.return_value = mock_browser
-                    mock_pw.__enter__ = mock.MagicMock(return_value=mock_pw)
-                    mock_pw.__exit__ = mock.MagicMock(return_value=False)
-
-                    with mock.patch.object(bs, "_ensure_access_web"):
-                        with mock.patch.dict("sys.modules", {
-                            "browser_agent": mock.MagicMock(),
-                            "browser_agent.config": mock.MagicMock(
-                                BrowserConfig=mock_config_cls
-                            ),
-                            "playwright": mock.MagicMock(),
-                            "playwright.sync_api": mock.MagicMock(
-                                sync_playwright=lambda: mock_pw
-                            ),
-                        }):
-                            obj, code = _run_cmd(bs.cmd_state, td)
-
-            self.assertNotEqual(code, 0)
+            page = _state_page({"version": 1})
+            with mock.patch.object(bs, "_ensure_access_web"):
+                with mock.patch.dict(
+                    "sys.modules", _attach_modules(page=page)
+                ):
+                    obj = bs.run_state(td)
+            self.assertFalse(obj["success"])
             self.assertEqual(obj["code"], "state_unavailable")
 
     def test_state_bool_version_rejected(self):
         """state returns state_unavailable when version is bool (True)."""
         with tempfile.TemporaryDirectory() as td:
-            mock_config = mock.MagicMock()
-            mock_config.browser_json = Path(td) / "browser.json"
-            mock_config.browser_json.write_text(
-                json.dumps({"pid": 99999, "cdp_port": 19222}),
-                encoding="utf-8",
-            )
-            mock_config.read_metadata.return_value = {
-                "pid": 99999, "cdp_port": 19222
-            }
-            mock_config_cls = mock.MagicMock(return_value=mock_config)
-
-            with mock.patch.object(bs, "_is_pid_alive", return_value=True):
-                with mock.patch.object(bs, "_is_port_open", return_value=True):
-                    mock_page = mock.MagicMock()
-                    mock_page.evaluate.return_value = {
-                        "version": True, "values": {}
-                    }
-                    mock_context = mock.MagicMock()
-                    mock_context.pages = [mock_page]
-                    mock_browser = mock.MagicMock()
-                    mock_browser.contexts = [mock_context]
-                    mock_pw = mock.MagicMock()
-                    mock_pw.chromium.connect_over_cdp.return_value = mock_browser
-                    mock_pw.__enter__ = mock.MagicMock(return_value=mock_pw)
-                    mock_pw.__exit__ = mock.MagicMock(return_value=False)
-
-                    with mock.patch.object(bs, "_ensure_access_web"):
-                        with mock.patch.dict("sys.modules", {
-                            "browser_agent": mock.MagicMock(),
-                            "browser_agent.config": mock.MagicMock(
-                                BrowserConfig=mock_config_cls
-                            ),
-                            "playwright": mock.MagicMock(),
-                            "playwright.sync_api": mock.MagicMock(
-                                sync_playwright=lambda: mock_pw
-                            ),
-                        }):
-                            obj, code = _run_cmd(bs.cmd_state, td)
-
-            self.assertNotEqual(code, 0)
+            page = _state_page({"version": True, "values": {}})
+            with mock.patch.object(bs, "_ensure_access_web"):
+                with mock.patch.dict(
+                    "sys.modules", _attach_modules(page=page)
+                ):
+                    obj = bs.run_state(td)
+            self.assertFalse(obj["success"])
             self.assertEqual(obj["code"], "state_unavailable")
 
     def test_state_float_version_rejected(self):
         """state returns state_unavailable when version is float (1.0)."""
         with tempfile.TemporaryDirectory() as td:
-            mock_config = mock.MagicMock()
-            mock_config.browser_json = Path(td) / "browser.json"
-            mock_config.browser_json.write_text(
-                json.dumps({"pid": 99999, "cdp_port": 19222}),
-                encoding="utf-8",
-            )
-            mock_config.read_metadata.return_value = {
-                "pid": 99999, "cdp_port": 19222
-            }
-            mock_config_cls = mock.MagicMock(return_value=mock_config)
-
-            with mock.patch.object(bs, "_is_pid_alive", return_value=True):
-                with mock.patch.object(bs, "_is_port_open", return_value=True):
-                    mock_page = mock.MagicMock()
-                    mock_page.evaluate.return_value = {
-                        "version": 1.0, "values": {}
-                    }
-                    mock_context = mock.MagicMock()
-                    mock_context.pages = [mock_page]
-                    mock_browser = mock.MagicMock()
-                    mock_browser.contexts = [mock_context]
-                    mock_pw = mock.MagicMock()
-                    mock_pw.chromium.connect_over_cdp.return_value = mock_browser
-                    mock_pw.__enter__ = mock.MagicMock(return_value=mock_pw)
-                    mock_pw.__exit__ = mock.MagicMock(return_value=False)
-
-                    with mock.patch.object(bs, "_ensure_access_web"):
-                        with mock.patch.dict("sys.modules", {
-                            "browser_agent": mock.MagicMock(),
-                            "browser_agent.config": mock.MagicMock(
-                                BrowserConfig=mock_config_cls
-                            ),
-                            "playwright": mock.MagicMock(),
-                            "playwright.sync_api": mock.MagicMock(
-                                sync_playwright=lambda: mock_pw
-                            ),
-                        }):
-                            obj, code = _run_cmd(bs.cmd_state, td)
-
-            self.assertNotEqual(code, 0)
+            page = _state_page({"version": 1.0, "values": {}})
+            with mock.patch.object(bs, "_ensure_access_web"):
+                with mock.patch.dict(
+                    "sys.modules", _attach_modules(page=page)
+                ):
+                    obj = bs.run_state(td)
+            self.assertFalse(obj["success"])
             self.assertEqual(obj["code"], "state_unavailable")
 
     def test_state_values_not_dict_rejected(self):
         """state returns state_unavailable when values is a list."""
         with tempfile.TemporaryDirectory() as td:
-            mock_config = mock.MagicMock()
-            mock_config.browser_json = Path(td) / "browser.json"
-            mock_config.browser_json.write_text(
-                json.dumps({"pid": 99999, "cdp_port": 19222}),
-                encoding="utf-8",
-            )
-            mock_config.read_metadata.return_value = {
-                "pid": 99999, "cdp_port": 19222
-            }
-            mock_config_cls = mock.MagicMock(return_value=mock_config)
-
-            with mock.patch.object(bs, "_is_pid_alive", return_value=True):
-                with mock.patch.object(bs, "_is_port_open", return_value=True):
-                    mock_page = mock.MagicMock()
-                    mock_page.evaluate.return_value = {
-                        "version": 1, "values": [1, 2, 3]
-                    }
-                    mock_context = mock.MagicMock()
-                    mock_context.pages = [mock_page]
-                    mock_browser = mock.MagicMock()
-                    mock_browser.contexts = [mock_context]
-                    mock_pw = mock.MagicMock()
-                    mock_pw.chromium.connect_over_cdp.return_value = mock_browser
-                    mock_pw.__enter__ = mock.MagicMock(return_value=mock_pw)
-                    mock_pw.__exit__ = mock.MagicMock(return_value=False)
-
-                    with mock.patch.object(bs, "_ensure_access_web"):
-                        with mock.patch.dict("sys.modules", {
-                            "browser_agent": mock.MagicMock(),
-                            "browser_agent.config": mock.MagicMock(
-                                BrowserConfig=mock_config_cls
-                            ),
-                            "playwright": mock.MagicMock(),
-                            "playwright.sync_api": mock.MagicMock(
-                                sync_playwright=lambda: mock_pw
-                            ),
-                        }):
-                            obj, code = _run_cmd(bs.cmd_state, td)
-
-            self.assertNotEqual(code, 0)
+            page = _state_page({"version": 1, "values": [1, 2, 3]})
+            with mock.patch.object(bs, "_ensure_access_web"):
+                with mock.patch.dict(
+                    "sys.modules", _attach_modules(page=page)
+                ):
+                    obj = bs.run_state(td)
+            self.assertFalse(obj["success"])
             self.assertEqual(obj["code"], "state_unavailable")
 
-    def test_state_does_not_close_browser(self):
-        """state connects via CDP but does NOT call browser.close()."""
+    # "CDP 连接绝不调用 browser.close()" 的纪律已随实现集中到
+    # browser_agent.attach, 由 access-web 侧 test_attach.py 覆盖.
+
+    def test_status_alive_returns_url(self):
+        """status 存活时经只读附加带回当前 URL."""
         with tempfile.TemporaryDirectory() as td:
-            mock_config = mock.MagicMock()
-            mock_config.browser_json = Path(td) / "browser.json"
-            mock_config.browser_json.write_text(
-                json.dumps({"pid": 99999, "cdp_port": 19222}),
-                encoding="utf-8",
-            )
-            mock_config.read_metadata.return_value = {
-                "pid": 99999, "cdp_port": 19222
-            }
-            mock_config_cls = mock.MagicMock(return_value=mock_config)
+            page = mock.MagicMock()
+            page.url = "file:///test.html"
+            with mock.patch.object(bs, "_ensure_access_web"):
+                with mock.patch.dict(
+                    "sys.modules", _attach_modules(page=page)
+                ):
+                    obj = bs.run_status(td)
 
-            with mock.patch.object(bs, "_is_pid_alive", return_value=True):
-                with mock.patch.object(bs, "_is_port_open", return_value=True):
-                    mock_page = mock.MagicMock()
-                    mock_page.evaluate.return_value = {
-                        "version": 1, "values": {"x": 1}
-                    }
-                    mock_context = mock.MagicMock()
-                    mock_context.pages = [mock_page]
-                    mock_browser = mock.MagicMock()
-                    mock_browser.contexts = [mock_context]
-                    mock_pw = mock.MagicMock()
-                    mock_pw.chromium.connect_over_cdp.return_value = mock_browser
-                    mock_pw.__enter__ = mock.MagicMock(return_value=mock_pw)
-                    mock_pw.__exit__ = mock.MagicMock(return_value=False)
-
-                    with mock.patch.object(bs, "_ensure_access_web"):
-                        with mock.patch.dict("sys.modules", {
-                            "browser_agent": mock.MagicMock(),
-                            "browser_agent.config": mock.MagicMock(
-                                BrowserConfig=mock_config_cls
-                            ),
-                            "playwright": mock.MagicMock(),
-                            "playwright.sync_api": mock.MagicMock(
-                                sync_playwright=lambda: mock_pw
-                            ),
-                        }):
-                            obj, code = _run_cmd(bs.cmd_state, td)
-
-            self.assertEqual(code, 0)
-            self.assertTrue(obj["success"])
-            # The critical assertion: browser.close() must NOT be called
-            mock_browser.close.assert_not_called()
-
-    def test_status_does_not_close_browser(self):
-        """status connects via CDP but does NOT call browser.close()."""
-        with tempfile.TemporaryDirectory() as td:
-            mock_config = mock.MagicMock()
-            mock_config.browser_json = Path(td) / "browser.json"
-            mock_config.browser_json.write_text(
-                json.dumps({"pid": 99999, "cdp_port": 19222}),
-                encoding="utf-8",
-            )
-            mock_config.read_metadata.return_value = {
-                "pid": 99999, "cdp_port": 19222
-            }
-            mock_config_cls = mock.MagicMock(return_value=mock_config)
-
-            with mock.patch.object(bs, "_is_pid_alive", return_value=True):
-                with mock.patch.object(bs, "_is_port_open", return_value=True):
-                    mock_page = mock.MagicMock()
-                    mock_page.url = "file:///test.html"
-                    mock_context = mock.MagicMock()
-                    mock_context.pages = [mock_page]
-                    mock_browser = mock.MagicMock()
-                    mock_browser.contexts = [mock_context]
-                    mock_pw = mock.MagicMock()
-                    mock_pw.chromium.connect_over_cdp.return_value = mock_browser
-                    mock_pw.__enter__ = mock.MagicMock(return_value=mock_pw)
-                    mock_pw.__exit__ = mock.MagicMock(return_value=False)
-
-                    with mock.patch.object(bs, "_ensure_access_web"):
-                        with mock.patch.dict("sys.modules", {
-                            "browser_agent": mock.MagicMock(),
-                            "browser_agent.config": mock.MagicMock(
-                                BrowserConfig=mock_config_cls
-                            ),
-                            "playwright": mock.MagicMock(),
-                            "playwright.sync_api": mock.MagicMock(
-                                sync_playwright=lambda: mock_pw
-                            ),
-                        }):
-                            obj, code = _run_cmd(bs.cmd_status, td)
-
-            self.assertEqual(code, 0)
-            self.assertTrue(obj["success"])
-            # The critical assertion: browser.close() must NOT be called
-            mock_browser.close.assert_not_called()
-
-    def test_status_alive_with_metadata(self):
-        """status returns alive:true when pid+port are alive."""
-        with tempfile.TemporaryDirectory() as td:
-            mock_config = mock.MagicMock()
-            mock_config.browser_json = Path(td) / "browser.json"
-            mock_config.browser_json.write_text(
-                json.dumps({"pid": 99999, "cdp_port": 19222}),
-                encoding="utf-8",
-            )
-            mock_config.read_metadata.return_value = {
-                "pid": 99999, "cdp_port": 19222
-            }
-            mock_config_cls = mock.MagicMock(return_value=mock_config)
-
-            with mock.patch.object(bs, "_is_pid_alive", return_value=True):
-                with mock.patch.object(bs, "_is_port_open", return_value=True):
-                    # Mock playwright for CDP connect (may fail, that's ok)
-                    with mock.patch.object(bs, "_ensure_access_web"):
-                        with mock.patch.dict("sys.modules", {
-                            "browser_agent": mock.MagicMock(),
-                            "browser_agent.config": mock.MagicMock(
-                                BrowserConfig=mock_config_cls
-                            ),
-                            "playwright": mock.MagicMock(),
-                            "playwright.sync_api": mock.MagicMock(
-                                sync_playwright=mock.MagicMock(
-                                    side_effect=Exception("no pw")
-                                )
-                            ),
-                        }):
-                            obj, code = _run_cmd(bs.cmd_status, td)
-
-            self.assertEqual(code, 0)
             self.assertTrue(obj["success"])
             self.assertTrue(obj["alive"])
+            self.assertEqual(obj["url"], "file:///test.html")
+
+    def test_status_alive_but_attach_fails_degrades(self):
+        """status 存活但附加失败: 仍成功, 降级为仅存活标记."""
+        with tempfile.TemporaryDirectory() as td:
+            with mock.patch.object(bs, "_ensure_access_web"):
+                with mock.patch.dict(
+                    "sys.modules",
+                    _attach_modules(attach_error=Exception("no pw")),
+                ):
+                    obj = bs.run_status(td)
+
+            self.assertTrue(obj["success"])
+            self.assertTrue(obj["alive"])
+            self.assertNotIn("url", obj)
 
     def test_status_no_side_effect_on_closed_browser(self):
-        """status does not start browser when metadata shows dead process."""
+        """status does not start browser when session is not alive."""
         with tempfile.TemporaryDirectory() as td:
-            mock_config = mock.MagicMock()
-            mock_config.browser_json = Path(td) / "browser.json"
-            mock_config.browser_json.write_text(
-                json.dumps({"pid": 99999, "cdp_port": 19222}),
-                encoding="utf-8",
-            )
-            mock_config.read_metadata.return_value = {
-                "pid": 99999, "cdp_port": 19222
-            }
-            mock_config_cls = mock.MagicMock(return_value=mock_config)
+            modules = _attach_modules(alive=False)
+            with mock.patch.object(bs, "_ensure_access_web"):
+                with mock.patch.dict("sys.modules", modules):
+                    obj = bs.run_status(td)
 
-            with mock.patch.object(bs, "_is_pid_alive", return_value=False):
-                with mock.patch.object(bs, "_ensure_access_web"):
-                    with mock.patch.dict("sys.modules", {
-                        "browser_agent": mock.MagicMock(),
-                        "browser_agent.config": mock.MagicMock(
-                            BrowserConfig=mock_config_cls
-                        ),
-                    }):
-                        obj, code = _run_cmd(bs.cmd_status, td)
-
-            self.assertEqual(code, 0)
             self.assertTrue(obj["success"])
             self.assertFalse(obj["alive"])
+            modules["browser_agent.attach"].attached_context.assert_not_called()
 
     def test_recovery_after_close(self):
         """After browser close, state returns browser_not_running,
         then open can restart (mocked)."""
         with tempfile.TemporaryDirectory() as td:
             # Phase 1: state shows browser_not_running
-            obj, code = _run_cmd(bs.cmd_state, td)
+            obj = bs.run_state(td)
             self.assertEqual(obj["code"], "browser_not_running")
 
             # Phase 2: open can be called (mocked browser)
@@ -950,26 +607,10 @@ class TestLifecycle(unittest.TestCase):
             html_file.write_text("<html></html>", encoding="utf-8")
 
             mock_page = mock.MagicMock()
-            mock_browser_instance = mock.MagicMock()
-            mock_browser_instance.page = mock_page
-            mock_browser_cls = mock.MagicMock(
-                return_value=mock_browser_instance
-            )
-            mock_config_cls = mock.MagicMock()
-
             with mock.patch.object(bs, "_ensure_access_web"):
-                with mock.patch.dict("sys.modules", {
-                    "browser_agent": mock.MagicMock(),
-                    "browser_agent.browser": mock.MagicMock(
-                        Browser=mock_browser_cls
-                    ),
-                    "browser_agent.config": mock.MagicMock(
-                        BrowserConfig=mock_config_cls
-                    ),
-                }):
-                    obj2, code2 = _run_cmd(bs.cmd_open, td, str(html_file))
+                with mock.patch.dict("sys.modules", _open_modules(mock_page)):
+                    obj2 = bs.run_open(td, str(html_file))
 
-            self.assertEqual(code2, 0)
             self.assertTrue(obj2["success"])
 
 
@@ -981,29 +622,23 @@ class TestSecurity(unittest.TestCase):
     """Security boundary tests."""
 
     def test_html_file_outside_session_rejected(self):
-        """HTML file outside session-dir is rejected."""
         with tempfile.TemporaryDirectory() as session:
             with tempfile.TemporaryDirectory() as outside:
                 html_file = Path(outside) / "secret.html"
                 html_file.write_text("<html></html>", encoding="utf-8")
-                obj, code = _run_cmd(bs.cmd_open, session, str(html_file))
+                obj = bs.run_open(session, str(html_file))
             self.assertFalse(obj["success"])
             self.assertEqual(obj["code"], "invalid_html_file")
 
     def test_path_traversal_rejected(self):
-        """Path traversal attempts are rejected."""
         with tempfile.TemporaryDirectory() as td:
             html_file = Path(td) / ".." / "evil.html"
-            # Don't actually create the file; resolve will normalize
-            # Just test with a resolved path outside
-            obj, code = _run_cmd(bs.cmd_open, td, str(html_file))
+            obj = bs.run_open(td, str(html_file))
             self.assertFalse(obj["success"])
             self.assertEqual(obj["code"], "invalid_html_file")
 
     def test_credentials_not_in_error_output(self):
-        """Error output does not contain credential-like strings."""
-        # Even if session-dir path contains sensitive info, error is generic
-        obj, code = _run_cmd(bs.cmd_status, "/nonexistent/xyz")
+        obj, code, _ = _run_main("status", "/nonexistent/xyz")
         error_str = json.dumps(obj)
         self.assertNotIn("password", error_str.lower())
         self.assertNotIn("token", error_str.lower())
@@ -1027,21 +662,29 @@ class TestSecurity(unittest.TestCase):
                              sanitized)
 
     def test_sanitize_preserves_normal_text(self):
-        """_sanitize_error does not alter normal error messages."""
         normal = "session-dir does not exist: /tmp/nonexistent"
         self.assertEqual(bs._sanitize_error(normal), normal)
+
+    def test_error_sanitized_at_cli_boundary(self):
+        """脱敏发生在 CLI 适配器: 核心返回原文, 出口 JSON 已脱敏."""
+        with mock.patch.object(
+            bs, "run_status",
+            return_value={"success": False, "command": "status",
+                          "code": "internal_error", "error": "token=abc123"},
+        ):
+            obj, code, _ = _run_main("status", "/tmp")
+        self.assertEqual(obj["error"], "token=[REDACTED]")
 
     def test_session_containment_uses_resolve(self):
         """Containment check uses Path.relative_to, not string prefix."""
         with tempfile.TemporaryDirectory() as td:
-            # Create a sibling dir with similar prefix
             parent = Path(td).parent
             sibling = parent / (Path(td).name + "-evil")
             try:
                 sibling.mkdir(exist_ok=True)
                 html_file = sibling / "test.html"
                 html_file.write_text("<html></html>", encoding="utf-8")
-                obj, code = _run_cmd(bs.cmd_open, td, str(html_file))
+                obj = bs.run_open(td, str(html_file))
                 self.assertFalse(obj["success"])
                 self.assertEqual(obj["code"], "invalid_html_file")
             finally:
@@ -1054,7 +697,7 @@ class TestSecurity(unittest.TestCase):
             for ext in [".py", ".js", ".json", ".txt", ".htm", ".xhtml"]:
                 f = Path(td) / f"test{ext}"
                 f.write_text("content", encoding="utf-8")
-                obj, code = _run_cmd(bs.cmd_open, td, str(f))
+                obj = bs.run_open(td, str(f))
                 self.assertFalse(obj["success"],
                                  f"Extension {ext} should be rejected")
                 self.assertEqual(obj["code"], "invalid_html_file",
@@ -1082,19 +725,7 @@ class TestIsolation(unittest.TestCase):
                     self.assertNotEqual(config1.browser_json, config2.browser_json)
                     self.assertNotEqual(config1.profile_dir, config2.profile_dir)
                 except (RuntimeError, ImportError):
-                    # Fallback: verify paths differ via _check_alive
-                    alive1, _ = bs._check_alive(
-                        mock.MagicMock(
-                            browser_json=Path(td1) / "browser.json"
-                        )
-                    )
-                    alive2, _ = bs._check_alive(
-                        mock.MagicMock(
-                            browser_json=Path(td2) / "browser.json"
-                        )
-                    )
-                    self.assertFalse(alive1)
-                    self.assertFalse(alive2)
+                    # Fallback: 路径隔离性直接比较派生路径
                     self.assertNotEqual(
                         Path(td1) / "browser.json",
                         Path(td2) / "browser.json",
@@ -1116,7 +747,7 @@ class TestIsolation(unittest.TestCase):
 
             with mock.patch.object(bs, "_ensure_access_web",
                                    side_effect=capture_env):
-                _run_cmd(bs.cmd_open, td, str(html_file))
+                bs.run_open(td, str(html_file))
 
             self.assertEqual(env_at_import.get("BROWSER_HEADED"), "true")
 
@@ -1134,73 +765,29 @@ class TestURLGeneration(unittest.TestCase):
             html_file = Path(td) / "test.html"
             html_file.write_text("<html></html>", encoding="utf-8")
 
-            captured_url = {}
             mock_page = mock.MagicMock()
-            def capture_goto(url):
-                captured_url["url"] = url
-            mock_page.goto = capture_goto
-            mock_browser_instance = mock.MagicMock()
-            mock_browser_instance.page = mock_page
-            mock_browser_cls = mock.MagicMock(
-                return_value=mock_browser_instance
-            )
-            mock_config_cls = mock.MagicMock()
-
             with mock.patch.object(bs, "_ensure_access_web"):
-                with mock.patch.dict("sys.modules", {
-                    "browser_agent": mock.MagicMock(),
-                    "browser_agent.browser": mock.MagicMock(
-                        Browser=mock_browser_cls
-                    ),
-                    "browser_agent.config": mock.MagicMock(
-                        BrowserConfig=mock_config_cls
-                    ),
-                }):
-                    obj, code = _run_cmd(bs.cmd_open, td, str(html_file))
+                with mock.patch.dict("sys.modules", _open_modules(mock_page)):
+                    obj = bs.run_open(td, str(html_file))
 
             expected_url = html_file.as_uri()
-            self.assertEqual(captured_url["url"], expected_url)
+            mock_page.goto.assert_called_once_with(expected_url)
             self.assertEqual(obj["url"], expected_url)
 
     def test_special_chars_in_path(self):
         """Paths with spaces and unicode are handled correctly."""
         with tempfile.TemporaryDirectory(prefix="pi-test ") as td:
-            # Directory with space
             html_file = Path(td) / "test page.html"
             html_file.write_text("<html></html>", encoding="utf-8")
 
-            captured_url = {}
             mock_page = mock.MagicMock()
-            def capture_goto(url):
-                captured_url["url"] = url
-            mock_page.goto = capture_goto
-            mock_browser_instance = mock.MagicMock()
-            mock_browser_instance.page = mock_page
-            mock_browser_cls = mock.MagicMock(
-                return_value=mock_browser_instance
-            )
-            mock_config_cls = mock.MagicMock()
-
             with mock.patch.object(bs, "_ensure_access_web"):
-                with mock.patch.dict("sys.modules", {
-                    "browser_agent": mock.MagicMock(),
-                    "browser_agent.browser": mock.MagicMock(
-                        Browser=mock_browser_cls
-                    ),
-                    "browser_agent.config": mock.MagicMock(
-                        BrowserConfig=mock_config_cls
-                    ),
-                }):
-                    obj, code = _run_cmd(bs.cmd_open, td, str(html_file))
+                with mock.patch.dict("sys.modules", _open_modules(mock_page)):
+                    obj = bs.run_open(td, str(html_file))
 
-            self.assertEqual(code, 0)
             self.assertTrue(obj["success"])
-            # URL should be properly encoded
-            self.assertIn("file://", captured_url["url"])
-            self.assertEqual(
-                captured_url["url"],
-                html_file.as_uri(),
-            )
+            self.assertEqual(mock_page.goto.call_args[0][0],
+                             html_file.as_uri())
 
 
 # ===========================================================================
@@ -1218,7 +805,7 @@ class TestDegradation(unittest.TestCase):
 
             with mock.patch.object(bs, "_find_access_web",
                                    return_value=None):
-                obj, code = _run_cmd(bs.cmd_open, td, str(html_file))
+                obj = bs.run_open(td, str(html_file))
 
             self.assertFalse(obj["success"])
             self.assertEqual(obj["code"], "access_web_unavailable")
@@ -1228,7 +815,7 @@ class TestDegradation(unittest.TestCase):
         with tempfile.TemporaryDirectory() as td:
             with mock.patch.object(bs, "_find_access_web",
                                    return_value=None):
-                obj, code = _run_cmd(bs.cmd_state, td)
+                obj = bs.run_state(td)
         self.assertFalse(obj["success"])
         self.assertEqual(obj["code"], "access_web_unavailable")
 
@@ -1237,111 +824,9 @@ class TestDegradation(unittest.TestCase):
         with tempfile.TemporaryDirectory() as td:
             with mock.patch.object(bs, "_find_access_web",
                                    return_value=None):
-                obj, code = _run_cmd(bs.cmd_status, td)
+                obj = bs.run_status(td)
         self.assertFalse(obj["success"])
         self.assertEqual(obj["code"], "access_web_unavailable")
-
-    def test_uncaught_exception_handled(self):
-        """Uncaught exceptions produce internal_error, not traceback."""
-        # Simulate the __main__ block's try/except
-        captured = []
-        original_json_out = bs._json_out
-
-        def mock_json_out(obj):
-            captured.append(obj)
-            original_json_out(obj)
-
-        with mock.patch.object(bs, "_json_out", side_effect=mock_json_out):
-            try:
-                raise RuntimeError("unexpected")
-            except SystemExit:
-                pass
-            except Exception as e:
-                try:
-                    bs._fail(bs._current_cmd, "internal_error", str(e))
-                except SystemExit:
-                    pass
-
-        self.assertTrue(len(captured) > 0)
-        obj = captured[-1]
-        self.assertFalse(obj["success"])
-        self.assertEqual(obj["code"], "internal_error")
-        self.assertEqual(obj["error"], "unexpected")
-
-
-# ===========================================================================
-# PID/Port Check Tests
-# ===========================================================================
-
-class TestPidPortChecks(unittest.TestCase):
-    """Low-level pid and port check functions."""
-
-    def test_is_pid_alive_false_for_bogus_pid(self):
-        """_is_pid_alive returns False for non-existent PID."""
-        self.assertFalse(bs._is_pid_alive(999999))
-
-    def test_is_port_open_false_for_closed_port(self):
-        """_is_port_open returns False for closed port."""
-        # Use a port that's very unlikely to be open
-        self.assertFalse(bs._is_port_open(59999, timeout=0.5))
-
-    def test_is_port_open_true_for_listening_socket(self):
-        """_is_port_open returns True for a listening socket."""
-        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        s.bind(("127.0.0.1", 0))
-        s.listen(1)
-        port = s.getsockname()[1]
-        try:
-            self.assertTrue(bs._is_port_open(port, timeout=1.0))
-        finally:
-            s.close()
-
-    def test_check_alive_no_metadata(self):
-        """_check_alive returns False when browser.json doesn't exist."""
-        with tempfile.TemporaryDirectory() as td:
-            mock_config = mock.MagicMock()
-            mock_config.browser_json = Path(td) / "nonexistent.json"
-            alive, meta = bs._check_alive(mock_config)
-            self.assertFalse(alive)
-            self.assertIsNone(meta)
-
-    def test_check_alive_dead_pid(self):
-        """_check_alive returns False when PID is dead."""
-        with tempfile.TemporaryDirectory() as td:
-            meta_path = Path(td) / "browser.json"
-            meta_path.write_text(
-                json.dumps({"pid": 999999, "cdp_port": 59999}),
-                encoding="utf-8",
-            )
-            mock_config = mock.MagicMock()
-            mock_config.browser_json = meta_path
-            mock_config.read_metadata.return_value = {
-                "pid": 999999, "cdp_port": 59999
-            }
-            alive, meta = bs._check_alive(mock_config)
-            self.assertFalse(alive)
-            self.assertIsNotNone(meta)
-
-    def test_corrupt_metadata_is_not_running(self):
-        """Malformed pid/port metadata is treated as a stopped browser."""
-        corrupt_values = [
-            [],
-            {"pid": "not-a-pid", "cdp_port": 9222},
-            {"pid": -1, "cdp_port": 9222},
-            {"pid": 1234, "cdp_port": 0},
-            {"pid": 1234, "cdp_port": 70000},
-            {"pid": True, "cdp_port": 9222},
-        ]
-        with tempfile.TemporaryDirectory() as td:
-            mock_config = mock.MagicMock()
-            mock_config.browser_json = Path(td) / "browser.json"
-            mock_config.browser_json.write_text("{}", encoding="utf-8")
-            for metadata in corrupt_values:
-                with self.subTest(metadata=metadata):
-                    mock_config.read_metadata.return_value = metadata
-                    alive, returned = bs._check_alive(mock_config)
-                    self.assertFalse(alive)
-                    self.assertEqual(returned, metadata)
 
 
 if __name__ == "__main__":

@@ -14,13 +14,10 @@ from datetime import datetime
 from typing import Any
 from typing import Optional
 
-from playwright.sync_api import sync_playwright
-
 from browser_agent._locator import locate
-from browser_agent._proc import is_pid_alive
-from browser_agent._proc import is_port_open
 from browser_agent._structure import extract_structure
-from browser_agent.config import BrowserConfig
+from browser_agent.attach import attached_context
+from browser_agent.attach import probe
 from browser_agent.result import CdpResult
 from browser_agent.result import CookiesResult
 from browser_agent.result import EvalResult
@@ -320,32 +317,18 @@ def cdp_send(method: str, params: dict | None = None) -> CdpResult:
 def status() -> StatusResult:
     """返回当前浏览器会话状态.
 
-    alive 双检 pid + CDP 端口. 不自动截图, 不做 bring_to_front.
+    alive 双检 pid + CDP 端口 (见 attach.probe). 不启动浏览器,
+    不自动截图, 不做 bring_to_front.
     """
-    config = BrowserConfig()
     headed = os.environ.get("BROWSER_HEADED", "").lower() == "true"
-
-    if not config.browser_json.exists():
-        return StatusResult(success=True, alive=False, headed=headed)
-
-    try:
-        meta = config.read_metadata()
-    except Exception:
-        return StatusResult(success=True, alive=False, headed=headed)
-
-    pid = meta.get("pid")
-    cdp_port = meta.get("cdp_port")
-    profile_dir = meta.get("profile_dir") or str(config.profile_dir)
-
-    alive = False
-    if pid is not None and cdp_port is not None:
-        alive = is_pid_alive(int(pid)) and is_port_open(int(cdp_port))
+    p = probe()
 
     url: Optional[str] = None
     title: Optional[str] = None
     pages: int = 0
+    alive = p.alive
 
-    if alive and cdp_port is not None:
+    if alive:
         # 优先复用当前进程 Session 的页面, 避免嵌套 sync_playwright 事件循环.
         try:
             session = _session_module._SESSION
@@ -362,29 +345,17 @@ def status() -> StatusResult:
             url = title = None
             pages = 0
 
-        # 没有可用 Session 时, 通过 CDP 独立连接获取信息.
+        # 没有可用 Session 时, 经只读附加 (attach) 获取信息; 连接失败折算为不存活.
         if url is None:
             try:
-                with sync_playwright() as p:
-                    browser = p.chromium.connect_over_cdp(
-                        f"http://127.0.0.1:{cdp_port}"
-                    )
-                    try:
-                        context = (
-                            browser.contexts[0] if browser.contexts else None
-                        )
-                        if context:
-                            page_list = context.pages
-                            pages = len(page_list)
-                            if page_list:
-                                active = page_list[0]
-                                url = active.url
-                                title = active.title()
-                    finally:
-                        try:
-                            browser.close()
-                        except Exception:
-                            pass
+                with attached_context() as context:
+                    if context is not None:
+                        page_list = context.pages
+                        pages = len(page_list)
+                        if page_list:
+                            active = page_list[0]
+                            url = active.url
+                            title = active.title()
             except Exception:
                 alive = False
 
@@ -393,10 +364,10 @@ def status() -> StatusResult:
         alive=alive,
         url=url,
         title=title,
-        pid=pid,
+        pid=p.pid,
         headed=headed,
-        cdp_port=cdp_port,
-        profile_dir=profile_dir,
+        cdp_port=p.cdp_port,
+        profile_dir=p.profile_dir,
         pages=pages,
     )
 

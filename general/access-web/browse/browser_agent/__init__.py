@@ -1,5 +1,8 @@
 """browser-agent: AI agent 语义化浏览器操作 skill."""
 
+from browser_agent.attach import attached_context
+from browser_agent.attach import probe
+from browser_agent.attach import SessionProbe
 from browser_agent.operations import click_element
 from browser_agent.operations import cookies
 from browser_agent.operations import cdp_send
@@ -24,16 +27,21 @@ from browser_agent.result import ScreenshotResult
 from browser_agent.result import StatusResult
 from browser_agent.result import StructureResult
 from browser_agent.session import cleanup_browser_session
+from browser_agent.session import get_session
 from browser_agent.session import reset_session
 from browser_agent.session import stop_browser_session
 
 __all__ = [
+    "attached_context",
+    "probe",
+    "SessionProbe",
     "click_element",
     "cookies",
     "cdp_send",
     "evaluate_js",
     "extract_text",
     "get_page_structure",
+    "get_session",
     "navigate",
     "network_json",
     "reset_session",

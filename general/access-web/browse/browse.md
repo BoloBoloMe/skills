@@ -164,7 +164,7 @@ cleanup_browser_session() -> None
 status() -> StatusResult
 ```
 
-返回当前会话状态, `alive` 字段通过 **pid + CDP 端口双检**判断浏览器是否真正可用. 不自动截图.
+- `status()` 的 `alive` 字段通过 **pid + CDP 端口双检**判断浏览器是否真正可用 (见 `probe`); 不启动浏览器, 不自动截图.
 
 返回字段:
 
@@ -188,6 +188,44 @@ cookies() -> CookiesResult
 ```
 
 返回当前浏览器 context 中的所有 cookie.
+
+## 只读附加 (attach)
+
+观察一个已运行的会话而不启动浏览器. 供展示类工具 (如 adaptive-presentation)
+绑定任意 session 目录做只读观察; 全部函数无副作用: 不启动 Chromium,
+不写 metadata, 不创建目录.
+
+```python
+from browser_agent import probe, attached_context, SessionProbe
+```
+
+- `probe(cwd: str | None = None) -> SessionProbe`  
+  pid + CDP 端口双检存活, 返回 `SessionProbe(alive, pid, cdp_port, profile_dir)`;
+  无 metadata 或 metadata 畸形时 `alive=False` 且字段为 None/原样摘录.
+  `cwd` 用于绑定非当前目录的会话 (如展示会话的 session-dir).
+
+- `attached_context(cwd: str | None = None) -> 上下文管理器`  
+  只读附加到存活会话的默认 context; 会话未存活或无可用 context 时 yield `None`.
+  CDP 连接失败抛异常, 由调用方决定语义. 内部遵守 "CDP 连接不调用
+  `browser.close()`" 纪律 (close 会杀远端 Chromium), 仅释放本地句柄.
+
+注意: 若当前进程已持有活跃 Session (本进程 operations 已连接浏览器),
+优先复用 Session 页面 (见 `status()` 实现), 避免嵌套 sync_playwright 事件循环.
+
+## 绑定非 cwd 会话目录
+
+公开操作默认绑定进程 cwd 派生的会话. 需要绑定其他目录 (如展示会话的
+session-dir) 时, 使用 `get_session(cwd=...)`:
+
+```python
+from browser_agent import get_session
+
+page = get_session(cwd="/tmp/pi-presentation-xxx").page
+```
+
+`cwd` 参数仅在进程内首次调用 (单例尚未创建) 时生效; CLI 每进程一次调用
+无坑, 库内换会话需先 `reset_session()`. 对会话做只读观察用上方的
+`probe` / `attached_context`, 不要经 `get_session` (会隐式启动浏览器).
 
 ## 约束
 
