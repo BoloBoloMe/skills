@@ -74,8 +74,17 @@ def origin_project_from(path: str | Path) -> str | None:
     return name or None
 
 
+def main_worktree_branch(repo: str | Path) -> str:
+    """Checked-out branch of the main worktree; empty when detached or unreadable."""
+    porcelain = git_text(repo, "worktree", "list", "--porcelain")
+    for line in porcelain.splitlines():
+        if line.startswith("worktree "):
+            return git_text(line.removeprefix("worktree "), "branch", "--show-current")
+    return ""
+
+
 def infer_main_branch(repo: str | Path) -> str:
-    """Infer main branch name from origin/HEAD or common names."""
+    """Infer main branch from origin/HEAD, common names, or main worktree; empty when undetectable."""
     head_ref = git_text(repo, "symbolic-ref", "refs/remotes/origin/HEAD")
     if head_ref:
         branch = head_ref.rsplit("/", 1)[-1]
@@ -84,7 +93,7 @@ def infer_main_branch(repo: str | Path) -> str:
     for candidate in ("main", "master", "trunk"):
         if run_git(repo, "rev-parse", "--verify", f"refs/heads/{candidate}").returncode == 0:
             return candidate
-    return "master"
+    return main_worktree_branch(repo)
 
 
 def print_worktree(path: str) -> None:
@@ -154,11 +163,18 @@ def main(argv: list[str]) -> int:
             project = inferred
             project_dir = dirname(git_root)
             main_branch = infer_main_branch(git_root)
-            main_path = str(Path(project_dir) / f"{project}-{main_branch}")
+            main_path = str(Path(project_dir) / f"{project}-{main_branch}") if main_branch else ""
             repo_for_list = git_root
-            if basename(project_dir) == project and Path(main_path).is_dir() and basename(git_root).startswith(f"{project}-"):
+            if (
+                main_path
+                and basename(project_dir) == project
+                and Path(main_path).is_dir()
+                and basename(git_root).startswith(f"{project}-")
+            ):
                 layout = "standard"
                 reason = "matched_origin_project_parent_and_main"
+            elif not main_branch:
+                reason = "main_branch_unknown"
             else:
                 reason = "git_root_not_in_standard_project_layout"
         else:
@@ -167,24 +183,36 @@ def main(argv: list[str]) -> int:
     else:
         candidate_project = basename(input_abs)
         candidate_main = ""
-        for mb in ("main", "master", "trunk"):
-            test_path = str(Path(input_abs) / f"{candidate_project}-{mb}")
-            if Path(test_path).is_dir() and is_git_worktree(test_path):
-                candidate_main = test_path
+        try:
+            children = sorted(Path(input_abs).iterdir())
+        except OSError:
+            children = []
+        for child in children:
+            if (
+                child.is_dir()
+                and child.name.startswith(f"{candidate_project}-")
+                and (child / ".git").is_dir()
+                and is_git_worktree(child)
+            ):
+                candidate_main = str(child)
                 break
-        if candidate_main and is_git_worktree(candidate_main):
+        if candidate_main:
             inferred = origin_project_from(candidate_main)
             if inferred:
                 project = inferred
                 project_dir = input_abs
                 main_branch = infer_main_branch(candidate_main)
-                main_path = str(Path(project_dir) / f"{project}-{main_branch}")
-                repo_for_list = main_path
-                if candidate_project == project and Path(main_path).is_dir():
+                main_path = str(Path(project_dir) / f"{project}-{main_branch}") if main_branch else ""
+                repo_for_list = main_path if main_path and Path(main_path).is_dir() else candidate_main
+                if not main_branch:
+                    reason = "main_branch_unknown"
+                elif candidate_project == project and Path(main_path).is_dir():
                     layout = "standard"
                     reason = "input_is_standard_project_dir"
-                else:
+                elif candidate_project != project:
                     reason = "project_dir_name_does_not_match_origin_project"
+                else:
+                    reason = "main_worktree_path_missing"
             else:
                 reason = "main_missing_or_unparseable_origin"
                 repo_for_list = candidate_main
