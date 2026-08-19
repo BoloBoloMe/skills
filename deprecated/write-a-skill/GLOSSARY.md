@@ -181,7 +181,7 @@ Agent 按需参考的材料: 定义, 事实, 参数, 示例, 条件指令. 当 s
 
 ### 引导词
 
-一个紧凑概念, 也叫 *Leitwort*. 它已经存在于模型预训练中, agent 运行 skill 时会用它思考. 它借用模型已有先验, 用尽可能少的 token 编码行为原则, 例如 *lesson*, *proximal zone of development*, *fog of war*, *tracer bullets*.
+一个紧凑概念, 也叫 *Leitwort*. 它已经存在于 LLM 预训练中, agent 运行 skill 时会用它思考. 它借用 LLM 已有先验, 用尽可能少的 token 编码行为原则, 例如 *lesson*, *proximal zone of development*, *fog of war*, *tracer bullets*.
 
 它作为 token 重复, 而不是作为句子重复. 它会在 skill 中积累分布式定义, 并锚定一整片行为. 自造词在定义清楚时也能工作, 但它不会招募预训练先验. 我需要支付定义 token, 才能得到已有词免费给我的东西. 先找已有词.
 
@@ -258,13 +258,13 @@ Skill 单纯太长: `SKILL.md` 中行数太多, 与这些行是否过期或重�
 
 ### 空操作
 
-一条不改变任何行为的指令, 因为模型默认就会这么做. 我支付负载, 告诉 agent 它本来就会做的事.
+一条不改变任何行为的指令, 因为 LLM 默认就会这么做. 我支付负载, 告诉 agent 它本来就会做的事.
 
 测试方法: 这一行相对默认行为有改变吗? 一行可以完全 **相关**, 但仍然是 空操作. 让 **引导词** 免费发挥作用的同一套先验, 也让 空操作 没有价值.
 
 引导词 是一种*技术*. 空操作 是对某一行的*裁决*. 它们会交叉: 一个太弱, 不足以击败默认行为的 引导词, 就是 空操作. 例如当 agent 已经大致 thorough-ish 时, 写 *be thorough* 就没有价值. 修复不是换一种技术性说法, 而是换一个能通过裁决的更强词, 例如 *relentless*.
 
-因此, 空操作 测试, 也就是 "它相对默认行为有改变吗?", 同时也是我判断 引导词 是否值得重复的方式. 这是相对模型的判断, 不是相对读者的判断. 如果两个人对一行是否 空操作 有分歧, 真正的分歧在于他们对模型默认行为的判断不同. 通过运行 skill 解决, 不要靠辩论解决.
+因此, 空操作 测试, 也就是 "它相对默认行为有改变吗?", 同时也是我判断 引导词 是否值得重复的方式. 这是相对 LLM 的判断, 不是相对读者的判断. 如果两个人对一行是否 空操作 有分歧, 真正的分歧在于他们对 LLM 默认行为的判断不同. 通过运行 skill 解决, 不要靠辩论解决.
 
 *避免*: redundant instruction, restating the obvious, belaboring
 
@@ -276,7 +276,7 @@ Skill 单纯太长: `SKILL.md` 中行数太多, 与这些行是否过期或重�
 
 ### 与具体平台绑定的操作
 
-Skill 要追求跨环境可用, 不应规定 AI 使用特定系统上特有的操作. 例如 "当需要盘问时运行 `/grilling`" 错误, `/grilling` 只在 claude code 上可用, 在 pi 中不可用; 应以平台无关方式描述, "当需要盘问时调用 `grilling` skill" 正确, 无论什么环境, AI 都知道这是在调用一个叫 grilling 的 skill.
+Skill 要追求跨环境可用, 不应规定 LLM 使用特定系统上特有的操作. 例如 "当需要盘问时运行 `/grilling`" 错误, `/grilling` 只在 claude code 上可用, 在 pi 中不可用; 应以平台无关方式描述, "当需要盘问时调用 `grilling` skill" 正确, 无论什么环境, LLM 都知道这是在调用一个叫 grilling 的 skill.
 
 *避免*: platform-specific command, tool-coupled instruction
 

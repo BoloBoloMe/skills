@@ -24,7 +24,7 @@ disable-model-invocation: true
 probe -> propose -> to-product-spec -> to-technical-spec -> to-execution-spec -> tdd-as-orchestra
 ```
 
-Product/Technical/Execution Spec 和运行产物只供 AI 使用. 所有影响产品, API, 架构, 范围, 风险或验证的决定必须在 `propose` 会话中向我解释并确认. 不路由到"让我阅读文档后批准"的步骤.
+Product/Technical/Execution Spec 和运行产物只供 LLM 使用. 所有影响产品, API, 架构, 范围, 风险或验证的决定必须在 `propose` 会话中向我解释并确认. 不路由到"让我阅读文档后批准"的步骤.
 
 ## on-ramp
 

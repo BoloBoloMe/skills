@@ -1,12 +1,12 @@
 ---
 name: to-technical-spec
-description: 将已确认设计整理为 AI 使用的 Technical Spec.
+description: 将已确认设计整理为 LLM 使用的 Technical Spec.
 disable-model-invocation: true
 ---
 
 开始前, 调用 `domain-awareness` skill 只读感知当前工作目录的领域模型.
 
-目标: 编写 Technical Spec: `TECHNICAL.md`. 它将作为当前变更的技术契约. 文档只供 AI 使用.
+目标: 编写 Technical Spec: `TECHNICAL.md`. 它将作为当前变更的技术契约. 文档只供 LLM 使用.
 
 从可靠信源处收集 `TECHNICAL.md` 需要的信息, 如果发现存在缺口/冲突 就调用 `grilling` skill 盘问我.
 使用下方模板写 `TECHNICAL.md`. ID 在 feature 内稳定且连续. 输出为 `<产物根目录>/TECHNICAL.md`, 产物根目录默认 `docs/changes/<feature-slug>/`; 调用方可指定其他根目录.
