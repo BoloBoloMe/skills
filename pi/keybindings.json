@@ -2,7 +2,6 @@
   "tui.input.newLine": [
     "enter",
     "ctrl+j",
-    "shift+j",
     "alt+j"
   ],
   "tui.input.submit": [
