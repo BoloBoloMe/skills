@@ -66,15 +66,15 @@ ROADMAP.md 的未决迷雾区段存的就是这些模糊视图 — 疑似问题,
 
 ## 遍历 Roadmap
 
-我带着 Roadmap 进行调用. 始终用文件名指代 Milestone, 禁用裸编号. 每完成一个 Milestone 就停下来, 等待我的进一步提示.
+我带着 Roadmap 进行调用. 始终用文件名指代 Milestone, 禁用裸编号. 每完成一轮 (单个 Milestone, 或一批并行的) 就停下来, 等待我的进一步提示.
 
 ### 遍历步骤
 
 1. **加载索引.** 读取 ROADMAP.md 的目的地, 前沿列表, 阻塞连线图, 笔记. 不展开 Milestone 正文.
    完成标准: 已知当前目的地和前沿.
-2. **选前沿认领.** 按顺序领取第一个 Milestone. 改文件头 `状态: 进行中`.
-   完成标准: Milestone 已认领.
-3. **放大解决.** 按 Milestone 类型分流, 需要时读取被阻塞者的上下文或已关闭 Milestone 的产物.
+2. **选前沿认领.** 按顺序领取前沿的第一个 Milestone; 若前沿还有与它互相独立的 AFK Milestone, 一并领取 — 独立即无阻塞关系, 不触碰同一文件, 这样的 AFK 工作串行排队纯属浪费, 并行是免费提速. 每个领取的 Milestone 改文件头 `状态: 进行中`.
+   完成标准: 领取的 Milestone 均已标记进行中; 每个未领取的前沿 Milestone 都能说出原因 (HITL, 或不独立).
+3. **放大解决.** 按 Milestone 类型分流, 需要时读取被阻塞者的上下文或已关闭 Milestone 的产物. 本轮领取了多个 → 每个 AFK Milestone 委派一名子代理同时开工; HITL 逐个与我进行.
    完成标准见 [Milestone](#milestone).
 4. **收口产物.** 按 Milestone 类型确认产物归属: research 分析文件; deliberate 决策/领域文档; prototype 按它自己的规则管理产物, 并在 Milestone 文件记录归档指针; task 完成证据或代码提交. 提交信息: 下游 skill 有规定则用其规定; 否则 `doc: <MILESTONE-NN.md> <产物简述>`.
    完成标准: 本 Milestone 产物已提交或已有可追溯指针; 无独立产物/非 git 仓库时已记录原因.
@@ -82,5 +82,5 @@ ROADMAP.md 的未决迷雾区段存的就是这些模糊视图 — 疑似问题,
    完成标准: 所有文件更新已落地; 下一个 Milestone 可从前沿正确识别.
 6. **转化迷雾.** 解决结果让某块迷雾变清晰 → 从迷雾移除, 写成 MILESTONE-NN.md, 加入前沿; 发现 Milestone 在目的地之外 → 划入范围外.
    完成标准: 未决迷雾每项已判断; 该转化的已创建; 前沿和范围外已同步.
-7. **提交路线图.** 提交 ROADMAP.md 和相关 MILESTONE 文件. 提交信息: `doc: 更新路线图 <MILESTONE-NN.md>`.
+7. **提交路线图.** 提交 ROADMAP.md 和相关 MILESTONE 文件. 提交信息: `doc: 更新路线图 <MILESTONE-NN.md>`; 批量并行时列出本轮全部文件名.
    完成标准: Roadmap 变更已提交; 或确认非 git 仓库而跳过.
