@@ -10,6 +10,10 @@
   "app.thinking.cycle": [
     "alt+f"
   ],
+  "app.thinking.toggle": [
+    "ctrl+t",
+    "alt+t"
+  ],
   "app.model.cycleForward": [
     "alt+r"
   ],
