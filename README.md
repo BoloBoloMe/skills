@@ -9,7 +9,6 @@
 |-- general/                     # 通用技能
 |-- workflow/                    # 代码库工作流技能
 |-- docs/                        # 本仓库领域/ADR/变更资料
-|-- deprecated/                  # 已归档技能
 |-- pi/                          # pi agent 配置 (AGENTS.md, extensions, ...)
 `-- README.md
 ```

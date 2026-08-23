@@ -4,7 +4,7 @@ description: 将当前对话内容压缩成一份交接文件, 以便其他 agen
 disable-model-invocation: true
 ---
 
-编写总结当前对话的交接文档, 供新 agent 了解前情和现状. 落盘到当前工作区 `docs/handoff/YYYY-MM-DD-<简短标识>.md`.
+编写总结当前对话的交接文档, 供新 agent 了解前情和现状. 落盘到当前工作区 `docs/changes/handoff/YYYY-MM-DD-<简短标识>.md`.
 保持高信息密度, 不写对后续工作低价值的内容;
 只写其他文档没有的信息, 其他文档已有的信息写入 `必读推荐`;
 遮蔽所有敏感信息, 如 API key/密码/个人身份信息.

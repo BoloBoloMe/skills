@@ -15,9 +15,10 @@ SPEC.loader.exec_module(sync_to_pi)
 
 
 class ClearSkillsTests(unittest.TestCase):
-    def _run_main(self, pi_dir, answers):
+    def _run_main(self, pi_dir, answers, home):
         with (
             mock.patch.object(sync_to_pi, "detect_pi_dir", return_value=pi_dir),
+            mock.patch("pathlib.Path.home", return_value=home),
             mock.patch("builtins.input", side_effect=answers),
             contextlib.redirect_stdout(io.StringIO()),
         ):
@@ -25,23 +26,25 @@ class ClearSkillsTests(unittest.TestCase):
 
     def test_final_rejection_keeps_old_skills(self):
         with tempfile.TemporaryDirectory() as tmp:
-            pi_dir = Path(tmp) / "agent"
-            old_skill = pi_dir / "skills" / "old-skill"
+            home = Path(tmp) / "home"
+            pi_dir = home / ".pi" / "agent"
+            old_skill = home / ".agents" / "skills" / "old-skill"
             old_skill.mkdir(parents=True)
 
-            self._run_main(pi_dir, ["y", "", "", "", "", "", "n"])
+            self._run_main(pi_dir, ["y", "", "", "", "", "", "n"], home)
 
             self.assertTrue(old_skill.is_dir())
 
     def test_clear_only_runs_after_final_confirmation(self):
         with tempfile.TemporaryDirectory() as tmp:
-            pi_dir = Path(tmp) / "agent"
-            old_skill = pi_dir / "skills" / "old-skill"
+            home = Path(tmp) / "home"
+            pi_dir = home / ".pi" / "agent"
+            old_skill = home / ".agents" / "skills" / "old-skill"
             old_skill.mkdir(parents=True)
 
-            self._run_main(pi_dir, ["y", "", "", "", "", "", "y"])
+            self._run_main(pi_dir, ["y", "", "", "", "", "", "y"], home)
 
-            self.assertEqual([], list((pi_dir / "skills").iterdir()))
+            self.assertEqual([], list((home / ".agents" / "skills").iterdir()))
 
     def test_clear_removes_all_children_and_preserves_root(self):
         with tempfile.TemporaryDirectory() as tmp:

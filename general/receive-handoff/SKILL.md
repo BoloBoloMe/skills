@@ -11,7 +11,7 @@ disable-model-invocation: true
 优先级:
 
 1. 我显式给出的路径.
-2. 当前工作区 `docs/handoff/` 下最新的 `*.md`.
+2. 当前工作区 `docs/changes/handoff/` 下最新且匹配 `????-??-??-*.md` 的 `*.md`.
 3. 当前对话中最近出现的 handoff 文档路径.
 
 找不到时, 询问我提供路径.
