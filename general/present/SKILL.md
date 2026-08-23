@@ -5,6 +5,16 @@ description: 当我要求可视化或展示, 或你要向我解释的内容复�
 
 本 skill 是展示层, 不改变调用方工作流, 决策顺序或确认规则. 总是生成 HTML.
 
+## Setup
+
+本 skill 无第三方依赖, 经 sibling 路径复用 `access-web` 的浏览器会话 (browser_agent 公共契约: `get_session`/`attached_context`). 首次使用前须确保 sibling `access-web` 已同步齐备且其 browse 依赖已安装:
+
+```text
+cd <access-web>/browse && uv sync && uv run playwright install chromium
+```
+
+`access-web` 缺失或 browser_agent 导入失败时 `<helper>` 会报错, 此时按本文步骤 6 的失败出口继续原工作流; 不要尝试自行安装或绕开.
+
 ## 1. 生成
 
 将 `scripts/browser_session.py` 相对本 skill 目录解析为绝对路径, 计为 `<helper>`. 不从调用方工作目录查找脚本.

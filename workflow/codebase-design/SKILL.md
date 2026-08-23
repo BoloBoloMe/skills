@@ -1,6 +1,6 @@
 ---
 name: codebase-design
-description: Module interface, seam, deep module 设计词汇与可测试性原则.
+description: 接口, seam, deep module 等设计词汇与可测试性原则.
 disable-model-invocation: true
 ---
 

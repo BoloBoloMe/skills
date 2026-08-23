@@ -1,4 +1,6 @@
-# 决策账本: propose 上下文窗口优化
+# 决策账本: 委派上下文窗口优化
+
+> 命名备注 (2026-08-23 审查修正): 本账本决策时所指 `workflow/propose/SKILL.md` 已删除; 正文路径按委派语境更正为 `workflow/probe/SKILL.md` (委派探索), 盘问收口纪律现行于 `workflow/deliberate/SKILL.md`, 两者承接边界见 skills-review-improvements/DECISIONS.md 之 F003; `adaptive-presentation` 已改名 `present` (提交 f22847e).
 
 ## D001: 杂活分类与委派边界
 
@@ -6,7 +8,7 @@
 - **约束性**: 必须遵守
 - **决策**: 只读探索任务委派子代理; 起草产出, HTML 生成, 技能调用与路由, 盘问交互, 决策固化不委派.
 - **理由**: 探索返回事实, 审核成本低, 可有效卸载上下文; 起草内容简短, 委派指令开销接近直接起草; HTML 生成需父会话掌握页面内容以维持交互质量; 固化只有父会话持有完整决策链.
-- **预计影响**: `workflow/propose/SKILL.md`
+- **预计影响**: `workflow/probe/SKILL.md`
 - **相关 issue**: 待关联
 
 ## D002: 委派规模分类
@@ -15,16 +17,16 @@
 - **约束性**: 必须遵守
 - **决策**: 单文件/单 ADR/单一配置 → 父会话直接读取; 多文件/跨模块/需搜索/需运行测试 → 委派子代理.
 - **理由**: 小探索委派开销可能超过直接执行; 大探索收益明确; 分类标准简单可操作.
-- **预计影响**: `workflow/propose/SKILL.md`
+- **预计影响**: `workflow/probe/SKILL.md`
 - **相关 issue**: 待关联
 
 ## D003: 委派逻辑位置
 
 - **状态**: 当前有效
 - **约束性**: 必须遵守
-- **决策**: 委派逻辑写入 `workflow/propose/SKILL.md`. `adaptive-presentation` 保持纯展示层不感知委派. `grill-me` 不做任何委派.
+- **决策**: 委派逻辑写入 `workflow/probe/SKILL.md`. `present` 保持纯展示层不感知委派. `grill-me` 不做任何委派.
 - **理由**: 编排决策留在编排层; 避免递归委派; `grill-me` 上下文压力小, 委派收益为负.
-- **预计影响**: `workflow/propose/SKILL.md`
+- **预计影响**: `workflow/probe/SKILL.md`
 - **相关 issue**: 待关联
 
 ## D004: 子代理配置
@@ -33,7 +35,7 @@
 - **约束性**: 必须遵守
 - **决策**: 子代理使用 fresh context; 不设超时; 父会话自由组织任务描述, 无固定模板.
 - **理由**: fresh context 隔离上下文避免交叉污染; 不设超时减少假阳性失败; 无模板保持灵活性.
-- **预计影响**: `workflow/propose/SKILL.md`
+- **预计影响**: `workflow/probe/SKILL.md`
 - **相关 issue**: 待关联
 
 ## D005: 降级路径
@@ -42,7 +44,7 @@
 - **约束性**: 必须遵守
 - **决策**: 子代理失败或产出不可用时, 父会话自行完成探索, 不阻塞流程. 最多一次修正重试.
 - **理由**: 流程不能因子代理不可用而中断.
-- **预计影响**: `workflow/propose/SKILL.md`
+- **预计影响**: `workflow/probe/SKILL.md`
 - **相关 issue**: 待关联
 
 ## D006: 上下文阈值不实现

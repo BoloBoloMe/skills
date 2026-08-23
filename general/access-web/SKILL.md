@@ -1,9 +1,16 @@
 ---
 name: access-web
-description: '网页访问: 搜索, 正文提取, 文件下载, 截图, 登录, 表单交互, JS 渲染页面.'
+description: 网页访问, 支持搜索, 正文提取, 文件下载, 截图, 登录, 表单交互, JS 渲染页面..
 ---
 
 # access-web
+
+## Setup
+
+- 交互浏览模式 (browse): 首次使用前 `cd <access-web>/browse && uv sync && uv run playwright install chromium`.
+- 只读抓取模式 (scrape): 无额外依赖, 纯标准库.
+
+完成标准: 本次要用的模式对应依赖已就位.
 
 两种模式, 按任务分派:
 

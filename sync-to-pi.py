@@ -352,6 +352,7 @@ def main() -> None:
     print(f"仓库根目录: {SRC(str(repo_root))}")
     print(Q("本脚本将仓库中的 skills 同步到 ~/.agents/skills/, extensions / pi/AGENTS.md 同步到 pi agent 目录"))
     print(SKIP("注意: 目标路径已有内容将被直接覆盖"))
+    print(SKIP("首次使用 general/access-web 或 general/present 前, 按其 SKILL.md 的 Setup 完成依赖安装 (uv sync + playwright install chromium)"))
 
     # ── 1. 探测 pi 目录 ──────────────────────────────────────────────
     pi_dir = detect_pi_dir()
@@ -379,6 +380,16 @@ def main() -> None:
             "pi/AGENTS.md",
             repo_root / "pi" / "AGENTS.md",
             pi_dir / "AGENTS.md",
+        )
+    )
+
+    # pi/keybindings.json (单文件)
+    plan.extend(
+        _query_top_file(
+            repo_root,
+            "pi/keybindings.json",
+            repo_root / "pi" / "keybindings.json",
+            pi_dir / "keybindings.json",
         )
     )
 

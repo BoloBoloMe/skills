@@ -1,6 +1,6 @@
 ---
 name: translate-a-skill
-description: 汉化英文 skill, 保持行为语义和低 上下文负载.
+description: 汉化英文 skill, 保持行为语义和低上下文负载.
 disable-model-invocation: true
 ---
 

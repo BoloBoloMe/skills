@@ -39,7 +39,9 @@ def sanitize(raw: str) -> str:
     clean = INVALID_RE.sub("-", clean)
     clean = clean.replace(" ", "_")
     clean = HYPHEN_RE.sub("-", clean)
-    clean = clean.strip(".")
+    clean = re.sub(r"_-|-_|--", "-", clean)
+    clean = HYPHEN_RE.sub("-", clean)
+    clean = clean.strip(".-")
     return clean
 
 
@@ -78,7 +80,7 @@ def main(argv: list[str]) -> int:
         print(f"source_slug={source_slug}")
         print(f"target_branch={target_branch}")
         print(f"target_slug={target_slug}")
-        print(f"dir={project}-{source_slug}-{target_slug}")
+        print(f"dir={sanitize(f'{project}-{source_slug}-{target_slug}')}")
         return 0
 
     print(USAGE, end="", file=sys.stderr)

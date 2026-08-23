@@ -1,6 +1,6 @@
 ---
 name: lazy-dev
-description: 懒设计与懒代码实现的统一指导.
+description: 设计与实现都追求极致精简时使用, 懒设计的决策阶梯与实现阶梯.
 disable-model-invocation: true
 ---
 

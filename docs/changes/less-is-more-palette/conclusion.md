@@ -1,5 +1,7 @@
 # less-is-more.html 重设计: 结论记录
 
+> 命名备注 (2026-08-23 审查修正): 文中 `adaptive-presentation` 即现行 `present` skill (提交 f22847e 改名).
+
 ## 问题
 
 1. 例子页配色换代 (原暖纸).
@@ -16,5 +18,5 @@
 
 ## 落地
 
-- 最终方案已写回 `general/adaptive-presentation/examples/less-is-more.html`.
+- 最终方案已写回 `general/present/examples/less-is-more.html`.
 - 原型归档: `prototypes/palette/prototype.palette.html` (本目录下, 合并主干前清理).

@@ -22,7 +22,7 @@ disable-model-invocation: true
 ## 硬规则
 
 - Git 操作始终进入具体 worktree, 或用 `git -C <worktree>`; 不在 workspace/project 父目录假定 Git 上下文.
-- 脚本 (`scripts/slug.py`, `scripts/status.py`) 不受上一条约束: 从任意 cwd 运行, 不需要 Git 上下文.
+- 脚本 (`scripts/slug.py`, `scripts/status.py`) 不受上一条约束: 路径相对本 skill 目录解析, 从任意 cwd 显式引用该相对路径运行, 不需要 Git 上下文.
 - 修改前必须报告: 目标 worktree, 分支, HEAD, 状态 (以 `scripts/status.py` 输出为准).
 - 一次任务默认只改一个 worktree; 跨 worktree 对照默认只读.
 - 删除/清理 worktree 一律走 `git worktree remove/prune`.

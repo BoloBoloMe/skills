@@ -1,17 +1,19 @@
 # 提案: browser_agent 会话接口契约化, 支撑展示会话 (open/state/status)
 
+> 当时命名备注 (2026-08-23 审查修正): 文中 `adaptive-presentation` 即现行 `present` skill (提交 f22847e 改名), 后文路径已相应更正.
+
 - 日期: 2026-08-18
 - 状态: 提案待审 (未决策)
 - 涉及路径:
   - `general/access-web/browse/browser_agent/` (被提议方)
-  - `general/adaptive-presentation/scripts/browser_session.py` (调用方)
-  - `general/adaptive-presentation/SKILL.md` (CLI 契约, 本提案不改)
+  - `general/present/scripts/browser_session.py` (调用方)
+  - `general/present/SKILL.md` (CLI 契约, 本提案不改)
 
 ## 1. 背景与问题
 
 ### 1.1 现状
 
-`adaptive-presentation` skill 通过 `scripts/browser_session.py` 提供三个 CLI 命令:
+`present` skill 通过 `scripts/browser_session.py` 提供三个 CLI 命令:
 
 | 命令 | 语义 |
 |---|---|
@@ -63,7 +65,7 @@ session-key). browser_agent 公开操作全部绑定进程 cwd; `get_session(cwd
 - 不把 `__PRESENTATION_STATE__` 版本校验, JSON 错误码协议, 凭据脱敏下沉到
   browser_agent (presentation 领域概念, 污染通用库).
 - 不改会话隔离语义 (session-key 仍由 cwd 派生, 展示会话与浏览会话互不可见).
-- 不合并 `general/adaptive-presentation` 与 `general/access-web` 两个项目.
+- 不合并 `general/present` 与 `general/access-web` 两个项目.
 
 ## 3. 方案选项
 
@@ -142,7 +144,7 @@ values 为 dict), JSON 错误码映射, 凭据脱敏.
 - `tests/`: 新增 attach-only 用例 (无存活会话返回 browser_not_running; 存活会话
   可求值且不杀浏览器; 连接后远端进程仍存活).
 
-### skill (`general/adaptive-presentation/`)
+### skill (`general/present/`)
 
 - `scripts/browser_session.py`: 重写为薄壳 (保留校验/协议/脱敏), 核心调用走公开 API.
 - `SKILL.md`: 不改 (CLI 调用方式不变).
