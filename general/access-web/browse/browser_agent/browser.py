@@ -20,6 +20,7 @@ from playwright.sync_api import Page
 from playwright.sync_api import Playwright
 from playwright.sync_api import sync_playwright
 
+from browser_agent._proc import chromium_sandbox_supported
 from browser_agent._proc import find_pids_by_cmdline
 from browser_agent._proc import is_port_open
 from browser_agent._proc import kill_pid
@@ -159,43 +160,83 @@ class Browser:
         self.config.profile_dir.mkdir(parents=True, exist_ok=True)
 
         # 清理可能存在的旧 metadata, 避免端口/PID 混淆
+        old_meta: dict = {}
         if self.config.browser_json.exists():
             # N1: 先杀掉旧 Chromium 并等待其退出, 避免孤儿进程与新进程
             # 共享 user-data-dir (SingletonLock 竞态)
-            old_meta = self._read_metadata()
-            if old_meta:
-                old_pid = old_meta.get("pid")
-                if old_pid:
-                    kill_pid(int(old_pid), identity_hint=str(self.config.profile_dir))
+            old_meta = self._read_metadata() or {}
+            old_pid = old_meta.get("pid")
+            if old_pid:
+                kill_pid(int(old_pid), identity_hint=str(self.config.profile_dir))
             try:
                 self.config.browser_json.unlink()
             except Exception:
                 pass
 
+        # sandbox 预判: 上次会话已确认需 --no-sandbox 时直接沿用 (免再付一次
+        # 启动超时代价); 典型受限环境 (userns 受限/AppArmor userns 限制)
+        # 由 chromium_sandbox_supported() 立即识别. 预判只是快速路径,
+        # 未命中但启动仍会失败的环境由下方运行时回退兑底.
+        no_sandbox = bool(old_meta.get("no_sandbox")) or (
+            os.name != "nt" and not chromium_sandbox_supported()
+        )
+
         try:
-            self._spawn_and_connect(binary)
+            self._spawn_and_connect(binary, no_sandbox=no_sandbox)
             return
         except Exception as first_error:
             # Popen 与 write_metadata 之间崩溃 (如工具进程被 kill) 会留下无
             # metadata 记录的孤儿 chromium, 它持有 profile 的 SingletonLock,
             # 导致新实例的 CDP 端口永不就绪 (每次 navigate 30s 超时).
-            # POSIX 下严格按本 session 的 user-data-dir 清扫此类孤儿后重试一次;
-            # Windows 无 /proc 可扫, 跳过清扫直接报错.
-            if not self._sweep_orphan_chromium():
+            # POSIX 下严格按本 session 的 user-data-dir 清扫此类孤儿;
+            # Windows 无 /proc 可扫, 跳过清扫.
+            swept = self._sweep_orphan_chromium()
+            # 已带 --no-sandbox 且无孤儿可扫时, 重试必是重复同一失败,
+            # 直接报错; 否则下方还有一次回退重试
+            if no_sandbox and not swept:
+                raise RuntimeError(
+                    f"Failed to launch detached Chromium: {first_error}"
+                    f" (--no-sandbox already enabled, no orphan to sweep)"
+                ) from first_error
+            if os.name == "nt" and not swept:
+                # Windows 无孤儿清扫手段, 首启失败与 sandbox 探测无关
+                # (探测在 nt 下恒为支持), 带 flag 重试只会掩盖真实错误,
+                # 保持原语义直接报错
                 raise RuntimeError(
                     f"Failed to launch detached Chromium: {first_error}"
                 ) from first_error
 
+        # 回退重试: 孤儿场景 (swept) 保留原 flag 重试, 与原语义一致, 避免健康
+        # 环境因一次孤儿碰撞被永久降级; 非 orphan 失败且首启未带 --no-sandbox
+        # (探测未覆盖的 sandbox 失效原因) 则带上 flag 重试. fallback 授予的
+        # flag 不写入 metadata 缓存 (cache_no_sandbox=预判值), 防止健康环境
+        # 一次瞬态失败被永久降级; 代价是 "受限但探测盲区" 的环境每次冷启动
+        # 付一次启动超时后回退, 换取缓存永不中毒
+        retry_no_sandbox = no_sandbox if swept else True
         try:
-            self._spawn_and_connect(binary)
+            self._spawn_and_connect(
+                binary,
+                no_sandbox=retry_no_sandbox,
+                cache_no_sandbox=no_sandbox,
+            )
         except Exception as e:
             raise RuntimeError(f"Failed to launch detached Chromium: {e}") from e
 
-    def _spawn_and_connect(self, binary: Path) -> None:
-        """分配端口, 脱离式启动 Chromium, CDP 连接, 恢复 cookie, 写 metadata."""
+    def _spawn_and_connect(
+        self, binary: Path, no_sandbox: bool = False, cache_no_sandbox=None
+    ) -> None:
+        """分配端口, 脱离式启动 Chromium, CDP 连接, 恢复 cookie, 写 metadata.
+
+        Args:
+            no_sandbox: 本次启动是否带 --no-sandbox.
+            cache_no_sandbox: 写入 metadata 的持久化值, 默认随 no_sandbox;
+                回退重试时传预判值, 避免把 fallback 授予的 flag 固化成永久降级.
+        """
         cdp_port = allocate_cdp_port()
         headless = os.environ.get("BROWSER_HEADED", "").lower() != "true"
-        args = self._build_chromium_args(binary, cdp_port, headless)
+        args = self._build_chromium_args(
+            binary, cdp_port, headless, no_sandbox=no_sandbox
+        )
 
         popen_kwargs: dict = {
             "stdout": subprocess.DEVNULL,
@@ -229,6 +270,9 @@ class Browser:
                 "cdp_port": cdp_port,
                 "profile_dir": str(self.config.profile_dir),
                 "chromium_binary": str(binary),
+                "no_sandbox": (
+                    no_sandbox if cache_no_sandbox is None else cache_no_sandbox
+                ),
             }
         )
 
@@ -258,6 +302,7 @@ class Browser:
         binary: Path,
         cdp_port: int,
         headless: bool,
+        no_sandbox: bool = False,
     ) -> list:
         args = [
             str(binary),
@@ -273,6 +318,11 @@ class Browser:
         ]
         if headless:
             args.append("--headless=new")
+        if no_sandbox:
+            # Chromium zygote sandbox 依赖 unprivileged userns, 受限环境
+            # (Ubuntu 23.10+ AppArmor / 容器) 初始化即 FATAL; 本 skill 的
+            # profile 目录独立隔离, 退化关停 sandbox 风险可控
+            args.append("--no-sandbox")
         # 无头模式下不保留默认窗口大小限制
         args.append("--window-size=1280,720")
         return args

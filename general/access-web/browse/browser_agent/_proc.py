@@ -6,12 +6,74 @@
 
 from __future__ import annotations
 
+import ctypes
 import os
 import re
 import signal
 import socket
 import subprocess
+import sys
 import time
+import warnings
+
+_CLONE_NEWUSER = 0x10000000
+
+
+def _read_proc_sys(name: str) -> "str | None":
+    """读 /proc/sys/<name>, 不存在/不可读返回 None."""
+    try:
+        with open(f"/proc/sys/{name}", "r") as f:
+            return f.read().strip()
+    except OSError:
+        return None
+
+
+def chromium_sandbox_supported() -> bool:
+    """探测当前环境 Chromium zygote sandbox 是否可用.
+
+    Chromium namespace sandbox 依赖 unprivileged user namespace, 两种典型受限:
+    - Ubuntu 23.10+ AppArmor userns 限制 (apparmor_restrict_unprivileged_
+      userns=1): unshare 本身可能成功, 但 namespace 内被叠加限制配置,
+      sandbox 初始化仍 FATAL, 故先查 sysctl;
+    - 部分容器/内核直接以 EPERM 拒绝创建 userns: fork 子进程实测
+      unshare(CLONE_NEWUSER), 子进程即刻退出, 不影响父进程 namespace.
+
+    探测仅限 Linux (sys.platform); 其余平台 (macOS/BSD 等, 含挂有
+    /proc 的 NetBSD/Solaris) 返回 True, 不降级 —— 误降级会无谓禁用
+    平台原生沙箱 (如 macOS seatbelt), 且非 Linux libc 的 unshare
+    符号语义未必是创建 user namespace.
+    探测只是快速路径, 无法覆盖所有失效原因; Linux 上启动仍失败时
+    上层还有 --no-sandbox 运行时回退.
+    """
+    if os.name != "posix":
+        return True
+    if _read_proc_sys("kernel/apparmor_restrict_unprivileged_userns") == "1":
+        return False
+    if not sys.platform.startswith("linux"):
+        # 非 Linux POSIX (macOS/BSD/Solaris 等): 不做 fork 探测, 按支持处理
+        return True
+    try:
+        with warnings.catch_warnings():
+            # Python 3.12+: 多线程进程 fork 触发 DeprecationWarning;
+            # 子进程内仅 ctypes 调用 + os._exit, 风险可控
+            warnings.simplefilter("ignore", DeprecationWarning)
+            pid = os.fork()
+    except OSError:
+        # fork 失败按不支持处理, 保守降级
+        return False
+    if pid == 0:
+        try:
+            libc = ctypes.CDLL(None, use_errno=True)
+            os._exit(0 if libc.unshare(_CLONE_NEWUSER) == 0 else 1)
+        except BaseException:
+            os._exit(1)
+    try:
+        _, status = os.waitpid(pid, 0)
+    except OSError:
+        # waitpid 失败 (如嵌入 SIGCHLD reaper 的宿主提前回收): 无法判定,
+        # 保守降级
+        return False
+    return os.waitstatus_to_exitcode(status) == 0
 
 
 def is_port_open(port: int, timeout: float = 1.0) -> bool:

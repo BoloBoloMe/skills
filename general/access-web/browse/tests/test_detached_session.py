@@ -194,16 +194,23 @@ def test_orphan_chromium_holding_profile_is_swept(monkeypatch):
     config.browser_json.unlink(missing_ok=True)
 
     # 直接起孤儿 chromium 占住同一 user-data-dir, 但不写 metadata
+    # (受限环境如 Ubuntu 23.10+ AppArmor 下, 不带 --no-sandbox 启动即 FATAL,
+    #  孤儿永远占不住 profile, 按产品同款探测补 flag 保持测试语义)
+    from browser_agent._proc import chromium_sandbox_supported
+
     orphan_port = allocate_cdp_port()
+    orphan_args = [
+        binary,
+        f"--remote-debugging-port={orphan_port}",
+        f"--user-data-dir={config.profile_dir}",
+        "--no-first-run",
+        "--no-default-browser-check",
+        "--headless=new",
+    ]
+    if os.name != "nt" and not chromium_sandbox_supported():
+        orphan_args.append("--no-sandbox")
     orphan = subprocess.Popen(
-        [
-            binary,
-            f"--remote-debugging-port={orphan_port}",
-            f"--user-data-dir={config.profile_dir}",
-            "--no-first-run",
-            "--no-default-browser-check",
-            "--headless=new",
-        ],
+        orphan_args,
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
         start_new_session=True,
