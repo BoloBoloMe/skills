@@ -19,6 +19,14 @@ cd <access-web>/browse && uv sync && uv run playwright install chromium
 
 将 `scripts/browser_session.py` 相对本 skill 目录解析为绝对路径, 计为 `<helper>`. 不从调用方工作目录查找脚本.
 
+**调用约定**: `<helper>` 的所有命令 (`open`/`state`/`status`) 在 browse 项目环境下执行, `<session-dir>` 与 `<html-file>` 一律绝对路径, `<html-file>` 位于 `<session-dir>` 内:
+
+```bash
+cd <access-web>/browse && uv run python <helper> <命令> ...
+```
+
+原因: `uv run` 按 cwd 解析项目环境, playwright 与 browser_agent 运行时只装在 browse 的环境里, 在本 skill 目录执行会落进无 playwright 的环境, 报 `No module named 'playwright'`; 相对路径则被入口校验直接拒绝. 成败以 stdout 的单行 JSON (`success` 字段) 为准: 成功时 stderr 仍会打 `Task was destroyed...`/`TargetClosedError` 等 playwright 进程退出噪声, 不表示失败.
+
 ### 输出目录
 
 目录解析顺序: 调用上下文指定 (我明示位置, 或调用方 skill 给出目录) > 临时目录. 目录即浏览器会话键: 同一目录的反复展示复用同一浏览器窗口, 换目录即换会话, 所以同一话题的页面应落在同一目录.
@@ -122,7 +130,7 @@ window.__PRESENTATION_STATE__ = {
 1. 按输出目录规则创建或复用 `session_dir`.
 2. 过滤凭据, 最小化原始日志/业务数据, 写入自包含 HTML 含 `window.__PRESENTATION_STATE__`.
 3. 语义化不重复文件名, 新版本不覆盖旧版本.
-4. `uv run python <helper> open <session-dir> <html-file>`.
+4. 按调用约定执行 `uv run python <helper> open <session-dir> <html-file>`.
 5. 成功时在 chat 给出: 本地绝对路径链接, 一句话说明展示内容, 待我观察/回答的具体问题. 关键结论和待确认决策仍须在 chat 中说明.
 6. 失败时提供本地绝对路径链接和 chat 摘要, 继续原工作流.
 
