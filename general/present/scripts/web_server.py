@@ -31,7 +31,8 @@ import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import unquote
-from urllib.request import urlopen
+from urllib.error import HTTPError
+from urllib.request import Request, urlopen
 
 
 # ---------------------------------------------------------------------------
@@ -203,6 +204,17 @@ def _ping_control(bind, port, expected_pid=None, timeout=2):
         return False, None
 
 
+def _http_error_payload(e):
+    """读取 HTTPError 响应 body 的 JSON 错误载荷; 非 JSON 时回退到状态串."""
+    try:
+        data = json.loads(e.read().decode("utf-8"))
+        if isinstance(data, dict) and data.get("error"):
+            return data
+    except Exception:
+        pass
+    return {"success": False, "error": str(e)}
+
+
 def _probe_existing(runtime_dir):
     """读 server.json 并 ping 探活. 返回 (alive, server_info)."""
     json_path = runtime_dir / "server.json"
@@ -332,6 +344,47 @@ def _wait_child_ready(child, bind, port, timeout=10):
 
 
 # ---------------------------------------------------------------------------
+# Process helpers (stop)
+# ---------------------------------------------------------------------------
+
+def _pid_alive(pid):
+    """探测 pid 是否存活 (信号 0 探测, 不发送任何信号)."""
+    try:
+        os.kill(pid, 0)
+        return True
+    except ProcessLookupError:
+        return False
+    except PermissionError:
+        return True
+
+
+def _wait_pid_exit(pid, timeout=5.0):
+    """轮询等待进程退出; 返回是否确认已退出."""
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        if not _pid_alive(pid):
+            return True
+        time.sleep(0.05)
+    return not _pid_alive(pid)
+
+
+def _ps_args_contains(pid, needle):
+    """`ps -o args= -p <pid>` 校验命令行含 needle (防 pid 复用误杀)."""
+    try:
+        out = subprocess.run(
+            ["ps", "-o", "args=", "-p", str(pid)],
+            capture_output=True,
+            text=True,
+            timeout=5,
+        )
+    except Exception:
+        return False
+    if out.returncode != 0:
+        return False
+    return needle in out.stdout
+
+
+# ---------------------------------------------------------------------------
 # HTTP handler & log
 # ---------------------------------------------------------------------------
 
@@ -393,6 +446,46 @@ class _Handler(BaseHTTPRequestHandler):
             self._send_error(404)
         except Exception as e:
             _log(self.runtime_dir, f"GET {path} error: {e}")
+            self._send_error(500)
+
+    def do_POST(self):
+        try:
+            if self.path == "/__control__/add-dir":
+                try:
+                    length = int(self.headers.get("Content-Length", 0))
+                    payload = json.loads(self.rfile.read(length).decode("utf-8"))
+                except Exception:
+                    self._write_json(400, {"success": False, "error": "invalid JSON body"})
+                    return
+                directory = payload.get("dir") if isinstance(payload, dict) else None
+                if not isinstance(directory, str) or not directory:
+                    self._write_json(400, {"success": False, "error": "missing dir"})
+                    return
+                resolved = str(Path(directory).resolve())
+                if not Path(resolved).exists() or not Path(resolved).is_dir():
+                    self._write_json(
+                        400, {"success": False, "error": f"dir is not an existing directory: {resolved}"}
+                    )
+                    return
+                with self.roots_lock:
+                    if resolved not in self.roots:
+                        self.roots.append(resolved)
+                    roots = list(self.roots)
+                    # R1/U-007: 持锁原子回写 server.json 的 roots,
+                    # 保序, 0600, 使 status/重建的 roots 权威来源一致.
+                    # 回写失败仅记日志: 内存挂载已生效, 不因此拒绝请求.
+                    try:
+                        json_path = self.runtime_dir / "server.json"
+                        info = json.loads(json_path.read_text(encoding="utf-8"))
+                        info["roots"] = roots
+                        _atomic_write_json(json_path, info)
+                    except Exception as e:
+                        _log(self.runtime_dir, f"persist roots failed: {e}")
+                self._write_json(200, {"success": True, "roots": roots})
+                return
+            self._send_error(404)
+        except Exception as e:
+            _log(self.runtime_dir, f"POST {self.path} error: {e}")
             self._send_error(500)
 
     def _serve_static(self, roots, rel):
@@ -610,13 +703,125 @@ def run_status():
 
 
 def run_stop():
-    """Stop server and remove runtime files."""
-    return _err("stop", "internal_error", "not implemented in ISSUE-02")
+    """Stop server and remove runtime files.
+
+    D006/D020: 不经 HTTP; ping 指纹比对 + `ps` 命令行校验, 不匹配报错不杀;
+    服务半死 (ping 失联) 时经 ps 校验仍可终止. 无 server.json 幂等成功.
+    """
+    runtime_dir = _runtime_dir()
+    if not runtime_dir.exists():
+        # 运行时目录不存在 -> 必然未启动, 幂等成功 (不为 no-op stop 创建目录).
+        return _success("stop", {})
+
+    lock_fd = _lock_runtime(runtime_dir)
+    try:
+        json_path = runtime_dir / "server.json"
+        if not json_path.exists():
+            # 锁内判定 (R2): 并发 stop 已清理或从未启动 -> 幂等成功;
+            # 消除锁外见到文件, 锁内被并发 stop 删走而误报 cannot read 的窗口.
+            return _success("stop", {})
+        try:
+            data = json.loads(json_path.read_text(encoding="utf-8"))
+            pid = int(data["pid"])
+        except Exception as e:
+            return _err("stop", "internal_error", f"cannot read server.json: {e}")
+
+        alive, payload = _ping_control(data["bind"], data["port"], pid, timeout=2)
+        if not alive and payload is not None:
+            # 端口上有应答但 pid 指纹不匹配: 疑似无关服务占用, 报错不杀.
+            return _err(
+                "stop",
+                "internal_error",
+                f"control endpoint on port {data['port']} answered with foreign "
+                f"fingerprint; refuse to stop pid {pid}",
+            )
+
+        if not _pid_alive(pid):
+            # 进程已死: 仅清理残留运行时文件.
+            _remove_json(json_path)
+            return _success("stop", {})
+
+        if not _ps_args_contains(pid, str(Path(__file__).resolve())):
+            # pid 已被其他进程复用: 报错不杀.
+            return _err(
+                "stop",
+                "internal_error",
+                f"pid {pid} command line does not contain this script; refuse to stop",
+            )
+
+        os.kill(pid, signal.SIGTERM)
+        if not _wait_pid_exit(pid, timeout=5.0):
+            try:
+                os.kill(pid, signal.SIGKILL)
+            except ProcessLookupError:
+                pass
+            _wait_pid_exit(pid, timeout=2.0)
+
+        _remove_json(json_path)
+        return _success("stop", {})
+    finally:
+        if lock_fd is not None:
+            fcntl.flock(lock_fd.fileno(), fcntl.LOCK_UN)
+            lock_fd.close()
+
+
+def _remove_json(json_path):
+    try:
+        json_path.unlink()
+    except FileNotFoundError:
+        pass
 
 
 def run_add_dir(directory):
-    """Mount a directory via control endpoint."""
-    return _err("add-dir", "internal_error", "not implemented in ISSUE-02")
+    """Mount a directory via control endpoint (D006/D020).
+
+    校验目录 (D012) -> 读 server.json 探活 -> POST /__control__/add-dir -> 返回 roots.
+    """
+    err = _validate_root(directory, command="add-dir")
+    if err is not None:
+        return err
+    runtime_dir = _runtime_dir()
+    if not runtime_dir.exists():
+        return _err("add-dir", "internal_error", "server not running")
+
+    lock_fd = _lock_runtime(runtime_dir)
+    try:
+        json_path = runtime_dir / "server.json"
+        if not json_path.exists():
+            # 锁内判定 (R2): server.json 在锁外见到但锁内已不存在
+            # (并发 stop 已清理) -> 报 server not running, 不误报 cannot read.
+            return _err("add-dir", "internal_error", "server not running")
+        try:
+            data = json.loads(json_path.read_text(encoding="utf-8"))
+        except Exception as e:
+            return _err("add-dir", "internal_error", f"cannot read server.json: {e}")
+
+        alive, _ = _ping_control(data["bind"], data["port"], data.get("pid"), timeout=2)
+        if not alive:
+            return _err("add-dir", "internal_error", "server not running")
+
+        url = f"http://{_ping_host(data['bind'])}:{data['port']}/__control__/add-dir"
+        body = json.dumps({"dir": str(Path(directory).resolve())}).encode("utf-8")
+        req = Request(
+            url,
+            data=body,
+            method="POST",
+            headers={"Content-Type": "application/json"},
+        )
+        try:
+            with urlopen(req, timeout=2) as resp:
+                payload = json.loads(resp.read().decode("utf-8"))
+        except HTTPError as e:
+            # R3: 端点拒绝 (4xx) 时读取 body 的语义错误并原样转述,
+            # 不让裸 "HTTP Error 400: Bad Request" 到达 CLI 输出.
+            payload = _http_error_payload(e)
+        if payload.get("success"):
+            return _success("add-dir", {"roots": payload.get("roots", [])})
+        return _err("add-dir", "internal_error", payload.get("error", "add-dir rejected"))
+    finally:
+        if lock_fd is not None:
+            fcntl.flock(lock_fd.fileno(), fcntl.LOCK_UN)
+            lock_fd.close()
 
 
 # ---------------------------------------------------------------------------
@@ -685,8 +890,17 @@ def main(argv=None):
                 obj = run_start(port, root, bind)
         elif command == "status":
             obj = run_status()
-        elif command in ("stop", "add-dir"):
-            obj = _err(command, "internal_error", "not implemented in ISSUE-02")
+        elif command == "stop":
+            obj = run_stop()
+        elif command == "add-dir":
+            if len(argv) != 2:
+                obj = _err(
+                    "add-dir",
+                    "invalid_args",
+                    "Usage: web_server.py add-dir <dir>",
+                )
+            else:
+                obj = run_add_dir(argv[1])
         elif command == "unknown":
             obj = _err(
                 command,

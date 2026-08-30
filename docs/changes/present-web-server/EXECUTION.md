@@ -25,7 +25,7 @@
 范围: run_stop (ping 指纹比对 + `ps -o args=` 校验 + SIGTERM + 删 server.json), run_add_dir (校验 + POST 控制端点), 服务端 `/__control__/add-dir` 端点 (loopback-only, 锁保护 append, 幂等), 权限断言, 日志断言.
 用例: TC-012, TC-013, TC-014, TC-015, TC-026.
 依赖: ISSUE-02.
-- [ ] 已实现
+- [x] 已实现 (含审核建议修复 R1-R3)
 
 ## ISSUE-04 复用/冲突/host 探测 (Seam 2 扩展)
 
