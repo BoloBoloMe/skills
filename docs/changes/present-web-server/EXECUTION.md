@@ -39,7 +39,7 @@
 范围: run_status 死则重建: 按 roots 保序重 spawn, 先试原端口, 被占则 49152-65534 随机换 ≤10 次, 更新 server.json, 报告新端口 (`rebuilt` 字段).
 用例: TC-010, TC-011.
 依赖: ISSUE-04.
-- [ ] 已实现
+- [x] 已实现 (含审核修复 R1: 重建就绪 pid 指纹)
 
 ## ISSUE-06 内容访问 (Seam 3)
 

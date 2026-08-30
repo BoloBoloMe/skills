@@ -9,8 +9,10 @@ import socket
 import subprocess
 import sys
 import tempfile
+import threading
 import time
 import unittest
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib import request
 from urllib.error import HTTPError, URLError
@@ -267,6 +269,234 @@ class TestTC009StatusNotStarted(WebServerLifecycleTestCase):
         self.assertTrue(obj["success"])
         self.assertFalse(obj["alive"])
         self.assertFalse(self._server_json_path().exists())
+
+
+class TestTC010StatusRebuild(WebServerLifecycleTestCase):
+    """TC-010: 进程被杀 (server.json 残留) -> status 按原 roots 重建, 端口沿用, 内容可访问."""
+
+    def test_status_rebuilds_dead_instance_on_original_port(self):
+        root1 = Path(self._tmpdir.name) / "root1"
+        root1.mkdir()
+        (root1 / "a.txt").write_text("aaa", encoding="utf-8")
+        root2 = Path(self._tmpdir.name) / "root2"
+        root2.mkdir()
+        (root2 / "b.txt").write_text("bbb", encoding="utf-8")
+        port = self._free_port("127.0.0.1")
+
+        start_obj, code, proc = self._run_subprocess(
+            "start", str(port), str(root1), "--bind", "127.0.0.1"
+        )
+        self.assertEqual(code, 0, f"stdout={proc.stdout} stderr={proc.stderr}")
+        self.assertTrue(start_obj["success"])
+        sj = json.loads(self._server_json_path().read_text(encoding="utf-8"))
+        old_pid = sj["pid"]
+        self._server_pids.append(old_pid)
+
+        # 挂上第二个目录, 使重建须按完整清单保序恢复
+        add_obj, code, proc = self._run_subprocess("add-dir", str(root2))
+        self.assertEqual(code, 0, f"stdout={proc.stdout} stderr={proc.stderr}")
+        self.assertTrue(add_obj["success"])
+
+        # 杀死服务进程 (SIGKILL), server.json 残留
+        os.kill(old_pid, signal.SIGKILL)
+        deadline = time.time() + 5
+        while time.time() < deadline:
+            try:
+                os.kill(old_pid, 0)
+            except ProcessLookupError:
+                break
+            time.sleep(0.05)
+        else:
+            self.fail(f"server process {old_pid} still alive after SIGKILL")
+
+        status_obj, code, proc = self._run_subprocess("status")
+        self.assertEqual(code, 0, f"stdout={proc.stdout} stderr={proc.stderr}")
+        self.assertTrue(status_obj["success"])
+        self.assertTrue(status_obj["alive"])
+        self.assertTrue(status_obj["rebuilt"])
+        # 端口可用则沿用
+        self.assertEqual(status_obj["port"], port)
+        # 原 roots 保序恢复
+        self.assertEqual(
+            status_obj["roots"], [str(root1.resolve()), str(root2.resolve())]
+        )
+        # 新实例新 pid
+        self.assertNotEqual(status_obj["pid"], old_pid)
+        self.assertIn("started_at", status_obj)
+        self.assertEqual(status_obj["bind"], "127.0.0.1")
+
+        # 重建后的新 pid 登记清理
+        new_pid = status_obj["pid"]
+        self._server_pids.append(new_pid)
+
+        # server.json 已由子进程更新为新实例
+        sj2 = json.loads(self._server_json_path().read_text(encoding="utf-8"))
+        self.assertEqual(sj2["pid"], new_pid)
+        self.assertEqual(sj2["port"], port)
+        self.assertEqual(
+            sj2["roots"], [str(root1.resolve()), str(root2.resolve())]
+        )
+
+        # 重建后原端口内容可访问 (两 root 均恢复)
+        body, status = self._wait_for_url(f"http://127.0.0.1:{port}/a.txt")
+        self.assertEqual(status, 200)
+        self.assertEqual(body, "aaa")
+        body, status = self._wait_for_url(f"http://127.0.0.1:{port}/b.txt")
+        self.assertEqual(status, 200)
+        self.assertEqual(body, "bbb")
+
+
+class TestTC011StatusRebuildPortTaken(WebServerLifecycleTestCase):
+    """TC-011: 进程已死且原端口被占 -> 换 49152-65534 端口重建, 报告新端口."""
+
+    def test_status_rebuilds_on_random_port_when_original_taken(self):
+        root1 = Path(self._tmpdir.name) / "root1"
+        root1.mkdir()
+        (root1 / "a.txt").write_text("aaa", encoding="utf-8")
+        port = self._free_port("127.0.0.1")
+
+        start_obj, code, proc = self._run_subprocess(
+            "start", str(port), str(root1), "--bind", "127.0.0.1"
+        )
+        self.assertEqual(code, 0, f"stdout={proc.stdout} stderr={proc.stderr}")
+        self.assertTrue(start_obj["success"])
+        sj = json.loads(self._server_json_path().read_text(encoding="utf-8"))
+        old_pid = sj["pid"]
+        self._server_pids.append(old_pid)
+
+        # 杀死服务进程
+        os.kill(old_pid, signal.SIGKILL)
+        deadline = time.time() + 5
+        while time.time() < deadline:
+            try:
+                os.kill(old_pid, 0)
+            except ProcessLookupError:
+                break
+            time.sleep(0.05)
+        else:
+            self.fail(f"server process {old_pid} still alive after SIGKILL")
+
+        # 原端口被无关进程占位 (TC-007 同款占位者模式)
+        occupant = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        occupant.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        occupant.bind(("127.0.0.1", port))
+        occupant.listen(1)
+        try:
+            status_obj, code, proc = self._run_subprocess("status")
+            self.assertEqual(code, 0, f"stdout={proc.stdout} stderr={proc.stderr}")
+            self.assertTrue(status_obj["success"])
+            self.assertTrue(status_obj["alive"])
+            self.assertTrue(status_obj["rebuilt"])
+            new_port = status_obj["port"]
+            self.assertNotEqual(new_port, port)
+            # 新端口在 D005 规定范围内
+            self.assertGreaterEqual(new_port, 49152)
+            self.assertLessEqual(new_port, 65534)
+            self.assertNotEqual(status_obj["pid"], old_pid)
+            new_pid = status_obj["pid"]
+            self._server_pids.append(new_pid)
+
+            # server.json 已更新为新实例
+            sj2 = json.loads(self._server_json_path().read_text(encoding="utf-8"))
+            self.assertEqual(sj2["pid"], new_pid)
+            self.assertEqual(sj2["port"], new_port)
+            self.assertEqual(sj2["roots"], [str(root1.resolve())])
+
+            # 新端口内容可访问
+            body, status = self._wait_for_url(
+                f"http://127.0.0.1:{new_port}/a.txt"
+            )
+            self.assertEqual(status, 200)
+            self.assertEqual(body, "aaa")
+        finally:
+            occupant.close()
+
+
+class TestR1RebuildReadyFingerprint(WebServerLifecycleTestCase):
+    """R1 (=S1, ISSUE-05 审核修复): 重建就绪判定缺 pid 指纹校验.
+
+    原端口被另一 pi-present-web 指纹假响应器 (ping 回固定 service 名 + 假 pid)
+    占住且真服务已死时, 重建候选端口的就绪轮询若不校验 pid, 会在子进程 bind
+    失败退出前 ping 命中假响应器, 把残留旧 server.json 当重建成功误报
+    (rebuilt:true + 死 pid/旧端口). 修复后: 就绪 ping 携带 child.pid 指纹
+    (D020), 且就绪后校验 server.json 的 pid/port, 不匹配按该候选失败处理,
+    走换端口/耗尽路径; 不得把假响应者当成重建成功.
+    """
+
+    def test_rebuild_ping_hit_fake_responder_not_reported_success(self):
+        root = Path(self._tmpdir.name) / "root"
+        root.mkdir()
+        (root / "a.txt").write_text("aaa", encoding="utf-8")
+        port = self._free_port("127.0.0.1")
+
+        start_obj, code, proc = self._run_subprocess(
+            "start", str(port), str(root), "--bind", "127.0.0.1"
+        )
+        self.assertEqual(code, 0, f"stdout={proc.stdout} stderr={proc.stderr}")
+        self.assertTrue(start_obj["success"])
+        sj = json.loads(self._server_json_path().read_text(encoding="utf-8"))
+        old_pid = sj["pid"]
+        self._server_pids.append(old_pid)
+
+        # 杀死真服务 (SIGKILL), server.json 残留 (TC-010 同款前置)
+        os.kill(old_pid, signal.SIGKILL)
+        deadline = time.time() + 5
+        while time.time() < deadline:
+            try:
+                os.kill(old_pid, 0)
+            except ProcessLookupError:
+                break
+            time.sleep(0.05)
+        else:
+            self.fail(f"server process {old_pid} still alive after SIGKILL")
+
+        # 假响应器占住原端口: /__control__/ping 回真实指纹格式 + 假 pid
+        # (假 pid 取测试进程 pid, 必不等于任何服务子进程).
+        fake_pid = os.getpid()
+
+        class _FakePingHandler(BaseHTTPRequestHandler):
+            def do_GET(self):
+                if self.path == "/__control__/ping":
+                    body = json.dumps(
+                        {"service": "pi-present-web", "pid": fake_pid}
+                    ).encode("utf-8")
+                    self.send_response(200)
+                    self.send_header("Content-Type", "application/json; charset=utf-8")
+                    self.send_header("Content-Length", str(len(body)))
+                    self.end_headers()
+                    self.wfile.write(body)
+                    return
+                self.send_error(404)
+
+            def log_message(self, fmt, *args):
+                pass
+
+        fake = ThreadingHTTPServer(("127.0.0.1", port), _FakePingHandler)
+        fake_thread = threading.Thread(target=fake.serve_forever, daemon=True)
+        fake_thread.start()
+        self.addCleanup(fake.shutdown)
+        self.addCleanup(fake.server_close)
+
+        status_obj, code, proc = self._run_subprocess("status")
+        # 红断言: 不得把假响应者当成重建成功 —
+        # 即不得出现 success=true 且 alive=true 且 port 仍为被占原端口
+        # (误报 rebuilt:true + 死 pid/旧端口). 修复后该候选判失败,
+        # 走换端口 (alive=true 但 port 变) 或耗尽 (success=false) 路径.
+        self.assertFalse(
+            status_obj.get("success")
+            and status_obj.get("alive")
+            and status_obj.get("port") == port,
+            f"port occupied by fake responder must not be reported as "
+            f"rebuilt success: {status_obj}",
+        )
+        # 若报告存活, 报告值必须通过独立 pid 指纹 ping 校验 (真实可用的新实例).
+        if status_obj.get("success") and status_obj.get("alive"):
+            self.assertTrue(status_obj.get("rebuilt"))
+            self.assertNotEqual(status_obj["pid"], old_pid)
+            ping = self._ping_local(status_obj["bind"], status_obj["port"])
+            self.assertEqual(ping["service"], "pi-present-web")
+            self.assertEqual(ping["pid"], status_obj["pid"])
+            self._server_pids.append(status_obj["pid"])
 
 
 class TestTC012Stop(WebServerLifecycleTestCase):

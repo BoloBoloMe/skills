@@ -19,6 +19,7 @@ import fcntl
 import json
 import mimetypes
 import os
+import random
 import re
 import shutil
 import signal
@@ -297,6 +298,10 @@ def _read_startup_error(runtime_dir):
 # Port / spawn helpers
 # ---------------------------------------------------------------------------
 
+# D005: 重建时原端口被占, 49152-65534 随机换端口的上限尝试次数
+_REBUILD_RANDOM_ATTEMPTS = 10
+
+
 def _check_port_available(bind, port):
     """试探 bind:port 是否可绑定.
 
@@ -325,10 +330,21 @@ def _atomic_write_json(path, data):
     os.chmod(path, 0o600)
 
 
-def _spawn_serve(port, root, bind):
-    """re-exec 自身以隐藏子命令 __serve__ 起子进程."""
+def _spawn_serve(port, roots, bind):
+    """re-exec 自身以隐藏子命令 __serve__ 起子进程.
+
+    roots 为挂载目录列表 (保序), 以 JSON 数组编码进 argv;
+    冷启动传单元素列表, 与旧单 root 行为兼容.
+    """
     script_path = Path(__file__).resolve()
-    cmd = [sys.executable, str(script_path), "__serve__", str(port), root, bind]
+    cmd = [
+        sys.executable,
+        str(script_path),
+        "__serve__",
+        str(port),
+        json.dumps(list(roots)),
+        bind,
+    ]
     env = os.environ.copy()
     return subprocess.Popen(
         cmd,
@@ -363,13 +379,17 @@ def _terminate_child(child):
         pass
 
 
-def _wait_child_ready(child, bind, port, timeout=10):
-    """轮询 ping 直到子进程就绪或超时/子进程退出."""
+def _wait_child_ready(child, bind, port, expected_pid=None, timeout=10):
+    """轮询 ping 直到子进程就绪或超时/子进程退出.
+
+    expected_pid (R1): ping 携带 pid 指纹 (D020), 只认本子进程的就绪信号;
+    防候选端口被另一 pi-present-web 实例占用时 ping 命中占用者而误判就绪.
+    """
     deadline = time.monotonic() + timeout
     while time.monotonic() < deadline:
         if child.poll() is not None:
             break
-        alive, _ = _ping_control(bind, port, timeout=2)
+        alive, _ = _ping_control(bind, port, expected_pid=expected_pid, timeout=2)
         if alive:
             return True
         time.sleep(0.1)
@@ -578,10 +598,14 @@ class _Handler(BaseHTTPRequestHandler):
 # Serve entry (child process only)
 # ---------------------------------------------------------------------------
 
-def _serve(port, root, bind):
-    """子进程入口: 绑定端口, 写 server.json, 开 HTTP 服务."""
+def _serve(port, roots, bind):
+    """子进程入口: 绑定端口, 写 server.json, 开 HTTP 服务.
+
+    roots 为挂载目录绝对路径列表, 顺序即遮蔽优先级; 逐个 resolve 后
+    完整保序写入 server.json, 作为 status 重建的权威清单.
+    """
     port = int(port)
-    root_resolved = str(Path(root).resolve())
+    roots_resolved = [str(Path(r).resolve()) for r in roots]
     runtime_dir = _runtime_dir()
     _ensure_runtime_dir(runtime_dir)
 
@@ -602,7 +626,7 @@ def _serve(port, root, bind):
         _write_startup_error(runtime_dir, code, f"bind failed on {bind}:{port}: {e}")
         sys.exit(1)
 
-    _Handler.roots = [root_resolved]
+    _Handler.roots = roots_resolved
     _Handler.runtime_dir = runtime_dir
 
     started_at = datetime.datetime.now(datetime.timezone.utc).isoformat()
@@ -610,7 +634,7 @@ def _serve(port, root, bind):
         "pid": os.getpid(),
         "port": port,
         "bind": bind,
-        "roots": [root_resolved],
+        "roots": roots_resolved,
         "started_at": started_at,
     }
     _atomic_write_json(runtime_dir / "server.json", data)
@@ -725,8 +749,10 @@ def run_start(port, root, bind):
             except Exception:
                 pass
 
-        child = _spawn_serve(port_int, root_resolved, bind)
-        if not _wait_child_ready(child, bind, port_int):
+        child = _spawn_serve(port_int, [root_resolved], bind)
+        # R1: 就绪 ping 带 pid 指纹, 防端口竞态窗口内 ping 命中占用者误判就绪
+        # (防御性加固, 正常路径行为不变).
+        if not _wait_child_ready(child, bind, port_int, expected_pid=child.pid):
             # 子进程启动失败或超时: 先读真实错误, 再强制回收.
             startup_err = _read_startup_error(runtime_dir)
             _terminate_child(child)
@@ -762,22 +788,143 @@ def run_start(port, root, bind):
             lock_fd.close()
 
 
+def _status_alive_payload(data, rebuilt):
+    """由 server.json 数据构造 status 成功载荷 (含运行时信息)."""
+    result = {"alive": True, "rebuilt": rebuilt}
+    for key in ("pid", "port", "bind", "roots", "started_at"):
+        result[key] = data.get(key)
+    return _success("status", result)
+
+
+def _rebuild_spawn(runtime_dir, bind, old_port, roots):
+    """按 roots 保序重 spawn 服务子进程.
+
+    先试原端口; 被占 (预检或子进程绑定失败) 则 49152-65534 随机换端口
+    重试 ≤10 次 (D005). 成功时子进程已写新 server.json, 读回并返回
+    rebuilt 载荷; 全部失败返回 port_in_use / internal_error.
+    """
+    json_path = runtime_dir / "server.json"
+    candidates = [old_port] + [
+        random.randint(49152, 65534) for _ in range(_REBUILD_RANDOM_ATTEMPTS)
+    ]
+    startup_err_path = _startup_error_path(runtime_dir)
+    last_code, last_error = "internal_error", "no candidate port could bind"
+    for port in candidates:
+        if startup_err_path.exists():
+            try:
+                startup_err_path.unlink()
+            except Exception:
+                pass
+        child = _spawn_serve(port, roots, bind)
+        if _wait_child_ready(child, bind, port, expected_pid=child.pid):
+            try:
+                new_data = json.loads(json_path.read_text(encoding="utf-8"))
+            except Exception as e:
+                _terminate_child(child)
+                return _err(
+                    "status", "internal_error",
+                    f"rebuilt but server.json unreadable: {e}",
+                )
+            # R1: 就绪后读回 server.json 校验指纹: pid 须为本子进程且 port
+            # 须为候选端口; 不匹配 (如 ping 曾命中占用者) 按该候选失败处理,
+            # 继续换端口, 不把残留旧 server.json 当重建成功.
+            if new_data.get("pid") != child.pid or new_data.get("port") != port:
+                _terminate_child(child)
+                last_code, last_error = "internal_error", (
+                    f"rebuilt server.json fingerprint mismatch on port {port}: "
+                    f"pid={new_data.get('pid')!r} port={new_data.get('port')!r}, "
+                    f"expected pid={child.pid}"
+                )
+                continue
+            return _status_alive_payload(new_data, rebuilt=True)
+        # 失败: 先读真实错误, 再强制回收子进程
+        err = _read_startup_error(runtime_dir)
+        _terminate_child(child)
+        if err is not None:
+            last_code = err.get("code", "internal_error")
+            last_error = err.get("error", "server failed to start")
+            if last_code != "port_in_use":
+                # 非端口问题, 换端口无意义, 直接报错
+                return _err("status", last_code, f"rebuild failed: {last_error}")
+        else:
+            return _err(
+                "status", "internal_error",
+                "rebuild failed: server did not become ready within timeout",
+            )
+    return _err(
+        "status", "port_in_use",
+        f"rebuild failed: all candidate ports in use (last: {last_error})",
+    )
+
+
+def _rebuild_status(runtime_dir, json_path):
+    """D005 重建入口: 锁内重探活后按原 roots 保序重建.
+
+    锁策略 (D023): 仅重建路径持锁 — 探活只读无共享可变状态, 存活路径
+    无锁免争用; 锁内重读 server.json 并重探活, 防并发 start/stop/status
+    竞争 (可能已被他人重建/清理/复用).
+    """
+    lock_fd = None
+    try:
+        lock_fd = _lock_runtime(runtime_dir)
+        if not json_path.exists():
+            # 锁内判定: 并发 stop/重建窗口已清走 -> 未启动
+            return _success("status", {"alive": False, "rebuilt": False})
+        try:
+            data = json.loads(json_path.read_text(encoding="utf-8"))
+        except Exception as e:
+            return _err("status", "internal_error", f"cannot read server.json: {e}")
+        alive, _ = _ping_control(data["bind"], data["port"], data.get("pid"), timeout=2)
+        if alive:
+            # 并发 start/重建已恢复实例, 无需重建
+            return _status_alive_payload(data, rebuilt=False)
+
+        roots = data.get("roots")
+        bind = data.get("bind")
+        if (
+            not isinstance(roots, list)
+            or not roots
+            or not all(isinstance(r, str) for r in roots)
+            or not isinstance(bind, str)
+            or not bind
+        ):
+            return _err(
+                "status", "internal_error",
+                "server.json lacks valid roots/bind; cannot rebuild",
+            )
+        try:
+            old_port = int(data["port"])
+        except Exception:
+            return _err(
+                "status", "internal_error",
+                "server.json has invalid port; cannot rebuild",
+            )
+        return _rebuild_spawn(runtime_dir, bind, old_port, [str(r) for r in roots])
+    finally:
+        if lock_fd is not None:
+            fcntl.flock(lock_fd.fileno(), fcntl.LOCK_UN)
+            lock_fd.close()
+
+
 def run_status():
-    """Check server alive status (本 ISSUE 不重建)."""
+    """Check server alive status; 死则重建 (D005).
+
+    无 server.json -> alive=false 不重建; ping 指纹匹配 -> alive=true;
+    server.json 在但探活失败 (进程死/指纹不匹配) -> 重建 (锁内).
+    """
     runtime_dir = _runtime_dir()
     json_path = runtime_dir / "server.json"
     if not json_path.exists():
-        return _success("status", {"alive": False})
+        return _success("status", {"alive": False, "rebuilt": False})
     try:
         data = json.loads(json_path.read_text(encoding="utf-8"))
     except Exception as e:
         return _err("status", "internal_error", f"cannot read server.json: {e}")
 
     alive, _ = _ping_control(data["bind"], data["port"], data.get("pid"), timeout=2)
-    result = {"alive": alive}
-    for key in ("pid", "port", "bind", "roots", "started_at"):
-        result[key] = data.get(key)
-    return _success("status", result)
+    if alive:
+        return _status_alive_payload(data, rebuilt=False)
+    return _rebuild_status(runtime_dir, json_path)
 
 
 def run_stop():
@@ -930,11 +1077,22 @@ def main(argv=None):
     if command == "__serve__":
         if len(argv) != 4:
             sys.stderr.write(
-                "Usage: web_server.py __serve__ <port> <root> <bind>\n"
+                "Usage: web_server.py __serve__ <port> <roots_json> <bind>\n"
             )
             sys.exit(1)
         try:
-            _serve(argv[1], argv[2], argv[3])
+            roots = json.loads(argv[2])
+            if not isinstance(roots, list) or not all(
+                isinstance(r, str) for r in roots
+            ):
+                raise ValueError("roots must be a JSON array of strings")
+        except Exception:
+            sys.stderr.write(
+                "Usage: web_server.py __serve__ <port> <roots_json> <bind>\n"
+            )
+            sys.exit(1)
+        try:
+            _serve(argv[1], roots, argv[3])
         except Exception as e:
             sys.stderr.write(f"serve failed: {e}\n")
             sys.exit(1)
