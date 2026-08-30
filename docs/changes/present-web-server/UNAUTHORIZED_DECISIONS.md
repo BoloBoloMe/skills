@@ -41,3 +41,11 @@
 - 理由: 失败全部位于 browser_session (本变更禁改文件), 与 web_server 零交集; web_server 子集 10 passed 全绿.
 - 影响: 全量测试稳定呈 "69 passed, 5 failed (browser_session), 1 skipped"; 最终汇总列为环境阻塞项, 是否补装 playwright 由用户定.
 - 风险: 若用户期望本机全绿, 需另行补环境; 不影响 present-web-server 交付判定.
+
+## U-006 子代理模型重新选型
+
+- 问题: handoff 指定的执行者 kimi-for-coding 与审核者 k3-256k 在本机子代理选型表中不存在 (旧机器配置).
+- 决策: 执行者 = ai-work-zai/glm-5.3 (thinking xhigh); 审核者 = ai-work-zai/glm-5.3-flash (thinking high). 二者为不同模型, 满足对抗对不同模型要求.
+- 理由: 执行者做真实子进程/并发/契约细节的 TDD 实现, 取 coding 基线档防返工; 审核者是大量读代码找缺陷, flash 的 review 画像分 (1.758) 高且价格 1/10, 弱点 (谨慎度) 由 thinking high 缓解.
+- 影响: ISSUE-03..09 全部子代理调用沿用此配对; 旧机器的 opencode-go 额度耗尽结论不适用本机.
+- 风险: 同家族模型对抗性弱于跨家族; 若审核发现率异常低, 中途换 ai-work-deepseek/deepseek-v4-flash-vision-exp 做交叉审核.
