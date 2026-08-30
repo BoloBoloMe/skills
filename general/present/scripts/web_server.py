@@ -31,7 +31,7 @@ import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import unquote
-from urllib.error import HTTPError
+from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
 
@@ -184,6 +184,15 @@ def _ping_host(bind):
     return bind
 
 
+def _loopback_forward_hint(bind, port):
+    """D011: bind 为 loopback 时生成 ssh -L 端口转发指引."""
+    return (
+        f"server bound to {bind}: URL reachable only on this host; "
+        f"to view from your local machine forward the port first: "
+        f"ssh -L {port}:127.0.0.1:{port} <user>@{socket.gethostname()}"
+    )
+
+
 # ---------------------------------------------------------------------------
 # Control ping
 # ---------------------------------------------------------------------------
@@ -213,6 +222,30 @@ def _http_error_payload(e):
     except Exception:
         pass
     return {"success": False, "error": str(e)}
+
+
+def _post_add_dir(bind, port, directory_resolved):
+    """POST /__control__/add-dir 挂载目录 (无锁辅助函数).
+
+    调用方负责 flock 互斥与存活校验: run_add_dir 与 run_start 复用分支
+    均已在锁内探活后调用; 此处只发请求, 避免重入 flock 死锁.
+    返回端点载荷 dict; 4xx 读取 body 语义错误 (R3), 连接失败返回失败载荷.
+    """
+    url = f"http://{_ping_host(bind)}:{port}/__control__/add-dir"
+    body = json.dumps({"dir": directory_resolved}).encode("utf-8")
+    req = Request(
+        url,
+        data=body,
+        method="POST",
+        headers={"Content-Type": "application/json"},
+    )
+    try:
+        with urlopen(req, timeout=2) as resp:
+            return json.loads(resp.read().decode("utf-8"))
+    except HTTPError as e:
+        return _http_error_payload(e)
+    except URLError as e:
+        return {"success": False, "error": f"cannot reach control endpoint: {e.reason}"}
 
 
 def _probe_existing(runtime_dir):
@@ -620,21 +653,63 @@ def run_start(port, root, bind):
     lock_fd = None
     try:
         lock_fd = _lock_runtime(runtime_dir)
+        # D002: 复用判定前先校验 server.json 属主; 非本人 -> instance_conflict,
+        # 不复用不挂载 (异 uid 场景自动化不覆盖, 见 TC-029 人工验证).
+        json_path = runtime_dir / "server.json"
+        if json_path.exists():
+            try:
+                owner_uid = os.stat(json_path).st_uid
+            except OSError as e:
+                return _err("start", "internal_error", f"cannot stat server.json: {e}")
+            if owner_uid != os.getuid():
+                return _err(
+                    "start",
+                    "instance_conflict",
+                    f"existing server.json owned by uid {owner_uid}, "
+                    f"not current user (uid {os.getuid()}); not reusing",
+                )
         alive, existing = _probe_existing(runtime_dir)
         if alive:
-            # 存活实例: 按 D006 先校验 bind 一致, 一致则复用 (本 ISSUE 暂不实现 add-dir)
             if existing.get("bind") != bind:
                 return _err(
                     "start",
                     "bind_conflict",
                     "existing instance bind differs; stop it first",
                 )
-            # 复用挂载尚未实现 (ISSUE-04); 现在明确失败, 不静默复用.
-            return _err(
-                "start",
-                "internal_error",
-                "实例已存活, 复用挂载尚未实现 (ISSUE-04)",
-            )
+            # D006: bind 一致 -> 真复用: 经控制端点幂等挂载 root,
+            # 忽略端口差异仅告警, 返回现有实例信息.
+            # flock 陷阱: 此处已持运行时锁, 直接调 run_add_dir 会重入 flock
+            # 死锁, 故经无锁的 _post_add_dir 直发控制端点.
+            payload = _post_add_dir(existing["bind"], existing["port"], root_resolved)
+            if not payload.get("success"):
+                return _err(
+                    "start",
+                    "internal_error",
+                    f"reuse add-dir failed (service still alive): "
+                    f"{payload.get('error', 'endpoint rejected')}",
+                )
+            ex_port = int(existing["port"])
+            ex_bind = existing["bind"]
+            warnings = []
+            if port_int != ex_port:
+                warnings.append(
+                    f"requested port {port_int} differs from existing instance "
+                    f"port {ex_port}; ignoring requested port, serving on {ex_port}"
+                )
+            if ex_bind in ("127.0.0.1", "::1"):
+                warnings.append(_loopback_forward_hint(ex_bind, ex_port))
+            info = {
+                "url": f"http://{_url_host(ex_bind)}:{ex_port}/",
+                "hostname": socket.gethostname(),
+                "lan_ip": _detect_lan_host(),
+                "port": ex_port,
+                "bind": ex_bind,
+                "roots": payload.get("roots", []),
+                "reused": True,
+            }
+            if warnings:
+                info["warning"] = "; ".join(warnings)
+            return _success("start", info)
 
         available, err_code = _check_port_available(bind, port_int)
         if not available:
@@ -669,7 +744,7 @@ def run_start(port, root, bind):
             return _err("start", "internal_error", f"server started but server.json missing: {e}")
 
         host = _detect_lan_host()
-        return _success("start", {
+        info = {
             "url": f"http://{_url_host(bind)}:{port_int}/",
             "hostname": socket.gethostname(),
             "lan_ip": host,
@@ -677,7 +752,10 @@ def run_start(port, root, bind):
             "bind": bind,
             "roots": [root_resolved],
             "reused": False,
-        })
+        }
+        if bind in ("127.0.0.1", "::1"):
+            info["warning"] = _loopback_forward_hint(bind, port_int)
+        return _success("start", info)
     finally:
         if lock_fd is not None:
             fcntl.flock(lock_fd.fileno(), fcntl.LOCK_UN)
@@ -800,21 +878,9 @@ def run_add_dir(directory):
         if not alive:
             return _err("add-dir", "internal_error", "server not running")
 
-        url = f"http://{_ping_host(data['bind'])}:{data['port']}/__control__/add-dir"
-        body = json.dumps({"dir": str(Path(directory).resolve())}).encode("utf-8")
-        req = Request(
-            url,
-            data=body,
-            method="POST",
-            headers={"Content-Type": "application/json"},
+        payload = _post_add_dir(
+            data["bind"], data["port"], str(Path(directory).resolve())
         )
-        try:
-            with urlopen(req, timeout=2) as resp:
-                payload = json.loads(resp.read().decode("utf-8"))
-        except HTTPError as e:
-            # R3: 端点拒绝 (4xx) 时读取 body 的语义错误并原样转述,
-            # 不让裸 "HTTP Error 400: Bad Request" 到达 CLI 输出.
-            payload = _http_error_payload(e)
         if payload.get("success"):
             return _success("add-dir", {"roots": payload.get("roots", [])})
         return _err("add-dir", "internal_error", payload.get("error", "add-dir rejected"))

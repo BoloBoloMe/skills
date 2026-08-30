@@ -136,6 +136,70 @@ class TestTC005StartSuccess(WebServerLifecycleTestCase):
         self.assertEqual(body, "hello-world")
 
 
+class TestTC006StartReuse(WebServerLifecycleTestCase):
+    """TC-006: 实例存活且 bind 一致, 不同端口 start 新 root -> 复用+告警+新 root 可访问."""
+
+    def test_reuse_with_different_port_mounts_new_root(self):
+        root1 = Path(self._tmpdir.name) / "root1"
+        root1.mkdir()
+        (root1 / "a.txt").write_text("aaa", encoding="utf-8")
+        root2 = Path(self._tmpdir.name) / "root2"
+        root2.mkdir()
+        (root2 / "b.txt").write_text("bbb", encoding="utf-8")
+        port1 = self._free_port("127.0.0.1")
+
+        start1, code, proc = self._run_subprocess(
+            "start", str(port1), str(root1), "--bind", "127.0.0.1"
+        )
+        self.assertEqual(code, 0, f"stdout={proc.stdout} stderr={proc.stderr}")
+        self.assertTrue(start1["success"])
+        self.assertFalse(start1["reused"])
+        sj = json.loads(self._server_json_path().read_text(encoding="utf-8"))
+        pid1 = sj["pid"]
+        self._server_pids.append(pid1)
+
+        port2 = self._free_port("127.0.0.1")
+        self.assertNotEqual(port2, port1)
+        obj, code, proc = self._run_subprocess(
+            "start", str(port2), str(root2), "--bind", "127.0.0.1"
+        )
+        self.assertEqual(code, 0, f"stdout={proc.stdout} stderr={proc.stderr}")
+        self.assertTrue(obj["success"])
+        self.assertEqual(obj["command"], "start")
+        # 复用现有实例: 忽略请求端口, 服务仍开在原端口
+        self.assertTrue(obj["reused"])
+        self.assertEqual(obj["port"], port1)
+        self.assertEqual(obj["bind"], "127.0.0.1")
+        self.assertEqual(
+            obj["roots"], [str(root1.resolve()), str(root2.resolve())]
+        )
+        # 端口差异告警: 请求端口与现有端口均被提及
+        warning = obj.get("warning")
+        self.assertIsNotNone(warning, "port mismatch warning required")
+        self.assertIn(str(port2), warning)
+        self.assertIn(str(port1), warning)
+        # D011: bind 为 loopback 时成功输出含 ssh -L 端口转发指引
+        self.assertIn("ssh -L", warning)
+
+        # 复用是同一进程, 未重启
+        sj2 = json.loads(self._server_json_path().read_text(encoding="utf-8"))
+        self.assertEqual(sj2["pid"], pid1)
+        # server.json roots 已含新 root 且保序 (原有在前)
+        self.assertEqual(
+            sj2["roots"], [str(root1.resolve()), str(root2.resolve())]
+        )
+
+        # 新 root 经现有端口立即可访问
+        body, status = self._wait_for_url(f"http://127.0.0.1:{port1}/b.txt")
+        self.assertEqual(status, 200)
+        self.assertEqual(body, "bbb")
+        # 原 root 仍可访问
+        with request.urlopen(
+            f"http://127.0.0.1:{port1}/a.txt", timeout=2
+        ) as resp:
+            self.assertEqual(resp.read().decode("utf-8"), "aaa")
+
+
 class TestTC007PortInUse(WebServerLifecycleTestCase):
     """TC-007: 端口被无关进程占用 -> port_in_use, 不换端口."""
 
@@ -461,6 +525,47 @@ class TestTC015ServerLog(WebServerLifecycleTestCase):
         self.assertIn("GET", content)
 
 
+class TestTC025BindConflict(WebServerLifecycleTestCase):
+    """TC-025: 实例存活且 bind 不同 -> bind_conflict 报错, 不复用."""
+
+    def test_bind_conflict_not_reused(self):
+        root1 = Path(self._tmpdir.name) / "root1"
+        root1.mkdir()
+        (root1 / "a.txt").write_text("aaa", encoding="utf-8")
+        root2 = Path(self._tmpdir.name) / "root2"
+        root2.mkdir()
+        (root2 / "b.txt").write_text("bbb", encoding="utf-8")
+        port1 = self._free_port("127.0.0.1")
+
+        start1, code, proc = self._run_subprocess(
+            "start", str(port1), str(root1), "--bind", "127.0.0.1"
+        )
+        self.assertEqual(code, 0, f"stdout={proc.stdout} stderr={proc.stderr}")
+        self.assertTrue(start1["success"])
+        sj = json.loads(self._server_json_path().read_text(encoding="utf-8"))
+        self._server_pids.append(sj["pid"])
+
+        obj, code, proc = self._run_subprocess(
+            "start", str(port1), str(root2), "--bind", "0.0.0.0"
+        )
+        self.assertEqual(code, 1, f"stdout={proc.stdout} stderr={proc.stderr}")
+        self.assertFalse(obj["success"])
+        self.assertEqual(obj["code"], "bind_conflict")
+        # 报错须提示先 stop 再起新实例 (D006)
+        self.assertIn("stop", obj["error"])
+
+        # 不复用不挂载: server.json roots 不变
+        sj2 = json.loads(self._server_json_path().read_text(encoding="utf-8"))
+        self.assertEqual(sj2["roots"], [str(root1.resolve())])
+
+        # 服务仍存活, 且新 root 不可访问 (404, 未挂载)
+        ping = self._ping_local("127.0.0.1", port1)
+        self.assertEqual(ping["service"], "pi-present-web")
+        with self.assertRaises(HTTPError) as ctx:
+            request.urlopen(f"http://127.0.0.1:{port1}/b.txt", timeout=2)
+        self.assertEqual(ctx.exception.code, 404)
+
+
 class TestTC026FilePermissions(WebServerLifecycleTestCase):
     """TC-026: start 成功 -> server.json 与 server.log 权限 0600."""
 
@@ -485,6 +590,40 @@ class TestTC026FilePermissions(WebServerLifecycleTestCase):
                 0o600,
                 f"{name} must have mode 0600, got {oct(st.st_mode & 0o777)}",
             )
+
+
+class TestTC027HostFromSSHConnection(WebServerLifecycleTestCase):
+    """TC-027: 注入 SSH_CONNECTION -> 成功 JSON 的 URL host 取第 3 字段 (D011).
+
+    bind 选 0.0.0.0: _url_host 对 loopback 返回 localhost, 只有非 loopback
+    bind 才能在 URL 里观察到 SSH_CONNECTION 探测结果.
+    """
+
+    def test_url_host_uses_ssh_connection_server_ip(self):
+        cip, cport, sip, sport = "192.0.2.1", "51234", "192.0.2.55", "22"
+        os.environ["SSH_CONNECTION"] = f"{cip} {cport} {sip} {sport}"
+        self.addCleanup(os.environ.pop, "SSH_CONNECTION", None)
+
+        root = Path(self._tmpdir.name) / "root"
+        root.mkdir()
+        (root / "f.txt").write_text("host-probe", encoding="utf-8")
+        port = self._free_port("0.0.0.0")
+
+        obj, code, proc = self._run_subprocess(
+            "start", str(port), str(root), "--bind", "0.0.0.0"
+        )
+        self.assertEqual(code, 0, f"stdout={proc.stdout} stderr={proc.stderr}")
+        self.assertTrue(obj["success"])
+        self.assertEqual(obj["url"], f"http://{sip}:{port}/")
+        self.assertEqual(obj["lan_ip"], sip)
+        # 非 loopback bind 不应输出 ssh -L 转发指引
+        self.assertNotIn("ssh -L", obj.get("warning") or "")
+
+        sj = json.loads(self._server_json_path().read_text(encoding="utf-8"))
+        self._server_pids.append(sj["pid"])
+        body, status = self._wait_for_url(f"http://127.0.0.1:{port}/f.txt")
+        self.assertEqual(status, 200)
+        self.assertEqual(body, "host-probe")
 
 
 if __name__ == "__main__":

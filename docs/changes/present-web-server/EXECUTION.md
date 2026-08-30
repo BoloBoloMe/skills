@@ -32,7 +32,7 @@
 范围: run_start 复用路径 (probe 存活 + 属主/bind 校验 + add-dir 挂载 + 端口差异告警), `bind_conflict`, `instance_conflict` (属主非本人判定逻辑, 异 uid 场景仅实现代码路径, 自动化不测), host 探测完整实现 (`SSH_CONNECTION` 第 3 字段 > 默认路由接口 IP > 主机名, bind 127.0.0.1 时 `ssh -L` 指引).
 用例: TC-006, TC-025, TC-027.
 依赖: ISSUE-03.
-- [ ] 已实现
+- [x] 已实现 (审核 0 阻断 0 建议)
 
 ## ISSUE-05 status 重建 (Seam 2 收尾)
 
