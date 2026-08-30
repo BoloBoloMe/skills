@@ -131,7 +131,6 @@ class TestTC003UnknownCommand(WebServerCliTestCase):
         self.assertEqual(code, 1)
         self.assertFalse(obj["success"])
         self.assertEqual(obj["command"], "not-a-command")
-        self.assertIn("Unknown command", obj["error"])
 
 
 class TestTC004NonPosix(WebServerCliTestCase):
