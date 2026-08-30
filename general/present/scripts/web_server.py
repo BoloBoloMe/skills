@@ -14,6 +14,7 @@ main() 是薄 CLI 适配器: argv 解析, JSON 序列化, 凭据脱敏, 退出�
 """
 
 import datetime
+import errno
 import fcntl
 import json
 import mimetypes
@@ -216,21 +217,67 @@ def _probe_existing(runtime_dir):
 
 
 # ---------------------------------------------------------------------------
+# Startup error propagation (child → parent)
+# ---------------------------------------------------------------------------
+
+def _startup_error_path(runtime_dir):
+    return runtime_dir / "startup_error"
+
+
+def _write_startup_error(runtime_dir, code, message):
+    """子进程启动失败时写入错误码与消息, 供父进程读取后区分失败类型."""
+    path = _startup_error_path(runtime_dir)
+    try:
+        data = json.dumps({"code": code, "error": message}, ensure_ascii=False)
+        tmp = path.with_name(path.name + ".tmp")
+        tmp.write_text(data, encoding="utf-8")
+        os.replace(tmp, path)
+        os.chmod(path, 0o600)
+    except Exception:
+        pass
+
+
+def _read_startup_error(runtime_dir):
+    """读取并删除 startup_error; 不存在或损坏返回 None."""
+    path = _startup_error_path(runtime_dir)
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+        path.unlink()
+        return data
+    except Exception:
+        return None
+
+
+# ---------------------------------------------------------------------------
 # Port / spawn helpers
 # ---------------------------------------------------------------------------
 
 def _check_port_available(bind, port):
-    """试探 bind:port 是否可绑定."""
+    """试探 bind:port 是否可绑定.
+
+    返回 (available, code_or_none): available=True 表示可绑定;
+    available=False 时 code_or_none 为错误码 (port_in_use/internal_error).
+    """
     host = "" if bind in ("0.0.0.0", "::") else bind
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     try:
         s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         s.bind((host, port))
-        return True
-    except OSError:
-        return False
+        return True, None
+    except OSError as e:
+        if e.errno == errno.EADDRINUSE:
+            return False, "port_in_use"
+        return False, "internal_error"
     finally:
         s.close()
+
+
+def _atomic_write_json(path, data):
+    """原子写 JSON 文件并保持 0600."""
+    tmp = path.with_name(path.name + ".tmp")
+    tmp.write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
+    os.replace(tmp, path)
+    os.chmod(path, 0o600)
 
 
 def _spawn_serve(port, root, bind):
@@ -245,6 +292,30 @@ def _spawn_serve(port, root, bind):
         stderr=subprocess.DEVNULL,
         env=env,
     )
+
+
+def _terminate_child(child):
+    """SIGTERM 回收子进程; 超时再加 SIGKILL 兜底."""
+    if child.poll() is not None:
+        return
+    try:
+        child.terminate()
+    except Exception:
+        pass
+    try:
+        child.wait(timeout=2)
+        return
+    except Exception:
+        pass
+    if child.poll() is None:
+        try:
+            child.kill()
+        except Exception:
+            pass
+    try:
+        child.wait(timeout=2)
+    except Exception:
+        pass
 
 
 def _wait_child_ready(child, bind, port, timeout=10):
@@ -297,6 +368,15 @@ class _Handler(BaseHTTPRequestHandler):
         self.send_header("Content-Length", str(len(body)))
         self.end_headers()
         self.wfile.write(body)
+
+    def _send_error(self, code):
+        """Send a plain HTTP error response; BaseHTTPRequestHandler.send_error
+        would also log, which is fine, but we keep it short and avoid raising.
+        """
+        try:
+            self.send_error(code)
+        except BrokenPipeError:
+            pass
 
     def do_GET(self):
         path = self.path
@@ -391,7 +471,9 @@ def _serve(port, root, bind):
     try:
         server = ThreadingHTTPServer((bind, port), _Handler)
     except OSError as e:
+        code = "port_in_use" if e.errno == errno.EADDRINUSE else "internal_error"
         _log(runtime_dir, f"bind failed on {bind}:{port}: {e}")
+        _write_startup_error(runtime_dir, code, f"bind failed on {bind}:{port}: {e}")
         sys.exit(1)
 
     _Handler.roots = [root_resolved]
@@ -405,9 +487,7 @@ def _serve(port, root, bind):
         "roots": [root_resolved],
         "started_at": started_at,
     }
-    json_path = runtime_dir / "server.json"
-    json_path.write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
-    os.chmod(json_path, 0o600)
+    _atomic_write_json(runtime_dir / "server.json", data)
 
     _log(runtime_dir, f"server started on {bind}:{port} pid={os.getpid()}")
 
@@ -456,37 +536,43 @@ def run_start(port, root, bind):
                     "bind_conflict",
                     "existing instance bind differs; stop it first",
                 )
-            host = _detect_lan_host()
-            return _success("start", {
-                "url": f"http://{_url_host(existing['bind'])}:{existing['port']}/",
-                "hostname": socket.gethostname(),
-                "lan_ip": host,
-                "port": existing["port"],
-                "bind": existing["bind"],
-                "roots": existing.get("roots", []),
-                "reused": True,
-            })
+            # 复用挂载尚未实现 (ISSUE-04); 现在明确失败, 不静默复用.
+            return _err(
+                "start",
+                "internal_error",
+                "实例已存活, 复用挂载尚未实现 (ISSUE-04)",
+            )
 
-        if not _check_port_available(bind, port_int):
-            return _err("start", "port_in_use", f"port {port_int} already in use")
+        available, err_code = _check_port_available(bind, port_int)
+        if not available:
+            if err_code == "port_in_use":
+                return _err("start", "port_in_use", f"port {port_int} already in use")
+            return _err("start", "internal_error", f"cannot bind to {bind}:{port_int}")
+
+        # 清除可能残留的启动错误文件, 避免误读旧错误.
+        startup_err_path = _startup_error_path(runtime_dir)
+        if startup_err_path.exists():
+            try:
+                startup_err_path.unlink()
+            except Exception:
+                pass
 
         child = _spawn_serve(port_int, root_resolved, bind)
         if not _wait_child_ready(child, bind, port_int):
-            # 子进程启动失败或超时: 尝试回收并报告端口不可用
-            try:
-                child.terminate()
-                child.wait(timeout=2)
-            except Exception:
-                pass
-            return _err("start", "port_in_use", f"port {port_int} unavailable or server failed to start")
+            # 子进程启动失败或超时: 先读真实错误, 再强制回收.
+            startup_err = _read_startup_error(runtime_dir)
+            _terminate_child(child)
+            if startup_err is not None:
+                code = startup_err.get("code", "internal_error")
+                if code == "port_in_use":
+                    return _err("start", "port_in_use", f"port {port_int} already in use")
+                return _err("start", "internal_error", startup_err.get("error", "server failed to start"))
+            return _err("start", "internal_error", f"server failed to start within timeout")
 
         try:
             data = json.loads((runtime_dir / "server.json").read_text(encoding="utf-8"))
         except Exception as e:
-            try:
-                child.terminate()
-            except Exception:
-                pass
+            _terminate_child(child)
             return _err("start", "internal_error", f"server started but server.json missing: {e}")
 
         host = _detect_lan_host()

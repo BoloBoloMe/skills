@@ -119,6 +119,8 @@ class TestTC005StartSuccess(WebServerLifecycleTestCase):
 
         sj = json.loads(self._server_json_path().read_text(encoding="utf-8"))
         self.assertIn("pid", sj)
+        # 启动成功后立即登记清理, 避免后续断言失败泄漏进程.
+        self._server_pids.append(sj["pid"])
         self.assertIn("port", sj)
         self.assertIn("bind", sj)
         self.assertIn("roots", sj)
@@ -126,8 +128,6 @@ class TestTC005StartSuccess(WebServerLifecycleTestCase):
         self.assertEqual(sj["port"], port)
         self.assertEqual(sj["bind"], "127.0.0.1")
         self.assertEqual(sj["roots"], [str(root.resolve())])
-
-        self._server_pids.append(sj["pid"])
 
         body, status = self._wait_for_url(f"http://127.0.0.1:{port}/hello.txt")
         self.assertEqual(status, 200)
@@ -174,6 +174,7 @@ class TestTC008StatusAlive(WebServerLifecycleTestCase):
         self.assertTrue(start_obj["success"])
 
         sj = json.loads(self._server_json_path().read_text(encoding="utf-8"))
+        # 启动成功后立即登记清理, 避免后续断言失败泄漏进程.
         self._server_pids.append(sj["pid"])
 
         # 先确认服务真的在响
