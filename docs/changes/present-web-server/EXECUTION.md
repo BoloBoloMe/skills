@@ -54,7 +54,7 @@
 范围: `/__control__/*` 仅 loopback, 经本机 LAN IP 访问控制面一律拒绝, 静态内容经 LAN IP 正常; 探测不到非 loopback 接口时 skip 不 fail.
 用例: TC-022, TC-023.
 依赖: ISSUE-03 (add-dir 端点存在).
-- [ ] 已实现
+- [x] 已实现 (含审核修复 R1-R3 与 U-009/U-010)
 
 ## ISSUE-08 TTL 空闲自退 (Seam 6 增补)
 

@@ -16,6 +16,7 @@ main() 是薄 CLI 适配器: argv 解析, JSON 序列化, 凭据脱敏, 退出�
 import datetime
 import errno
 import fcntl
+import ipaddress
 import json
 import mimetypes
 import os
@@ -462,6 +463,7 @@ class _Handler(BaseHTTPRequestHandler):
     roots = []
     roots_lock = threading.RLock()
     runtime_dir = Path(".")
+    bind = None  # 本服务 bind 地址, _serve 注入 (U-009 守卫用)
     protocol_version = "HTTP/1.1"
 
     def log_message(self, fmt, *args):
@@ -484,11 +486,63 @@ class _Handler(BaseHTTPRequestHandler):
         except BrokenPipeError:
             pass
 
+    @staticmethod
+    def _is_loopback_client(ip):
+        """D020/ISSUE-07: 控制面仅 loopback 来源放行.
+
+        接受 IPv4 127.0.0.0/8, IPv6 ::1, 以及 v4-mapped (::ffff:127.x).
+        """
+        try:
+            addr = ipaddress.ip_address(ip)
+        except ValueError:
+            return False
+        if addr.version == 4:
+            return addr.is_loopback
+        if addr.is_loopback:  # ::1
+            return True
+        mapped = addr.ipv4_mapped if isinstance(addr, ipaddress.IPv6Address) else None
+        return mapped is not None and mapped.is_loopback
+
+    @staticmethod
+    def _is_control_path(path):
+        """控制命名空间判定: raw path 前缀 (与守卫同轨, U-010)."""
+        return path == "/__control__" or path.startswith("/__control__/")
+
+    def _guard_control_namespace(self, path):
+        """/__control__/ 命名空间仅本机来源放行 (U-009): loopback 来源,
+        或 client IP == 本服务 bind 的地址; 其余 403 拒绝.
+
+        远端无法以本机 bind IP 完成 TCP 握手, 放行源==bind 不扩大暴露面,
+        保留 bind 具体 IP (AC-001) 时 CLI 就绪 ping/探活/add-dir 可用.
+        bind 0.0.0.0/127.0.0.1 行为不变 (TC-022 不回归): 源不可能为 0.0.0.0,
+        loopback 源恒被 loopback 条件放行. 拒绝时置 close_connection (审核 T1):
+        未消费的 POST body 不得污染 keep-alive 连接.
+
+        返回 True 表示请求属于控制命名空间且已被拒绝 (响应已写出).
+        """
+        if not self._is_control_path(path):
+            return False
+        ip = self.client_address[0]
+        if self._is_loopback_client(ip) or ip == self.bind:
+            return False
+        self.close_connection = True
+        self._write_json(
+            403, {"success": False, "error": "control plane accepts loopback connections only"}
+        )
+        return True
+
     def do_GET(self):
         path = self.path
-        # 控制面优先
-        if path == "/__control__/ping":
-            self._write_json(200, {"service": "pi-present-web", "pid": os.getpid()})
+        # 控制面优先; /__control__/ 全命名空间仅本机来源 (D020/U-009)
+        if self._guard_control_namespace(path):
+            return
+        # U-010: /__control__/* 为保留命名空间: 已定义端点路由不变,
+        # 其余控制路径一律 404, 不回落静态查找 (静默遮蔽同路径文件).
+        if self._is_control_path(path):
+            if path == "/__control__/ping":
+                self._write_json(200, {"service": "pi-present-web", "pid": os.getpid()})
+                return
+            self._send_error(404)
             return
         try:
             with self.roots_lock:
@@ -503,6 +557,13 @@ class _Handler(BaseHTTPRequestHandler):
 
     def do_POST(self):
         try:
+            # /__control__/ 全命名空间仅本机来源 (D020/U-009)
+            if self._guard_control_namespace(self.path):
+                return
+            # U-010: 保留命名空间内仅 add-dir 已定义, 其余 404 不回落静态
+            if self._is_control_path(self.path) and self.path != "/__control__/add-dir":
+                self._send_error(404)
+                return
             if self.path == "/__control__/add-dir":
                 try:
                     length = int(self.headers.get("Content-Length", 0))
@@ -658,6 +719,7 @@ def _serve(port, roots, bind):
 
     _Handler.roots = roots_resolved
     _Handler.runtime_dir = runtime_dir
+    _Handler.bind = bind  # U-009: 守卫按源==bind 放行本机控制流
 
     started_at = datetime.datetime.now(datetime.timezone.utc).isoformat()
     data = {

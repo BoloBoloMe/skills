@@ -5,6 +5,7 @@ import importlib.util
 import io
 import json
 import os
+import re
 import subprocess
 import sys
 import tempfile
@@ -69,9 +70,15 @@ class WebServerCliTestCase(unittest.TestCase):
         return obj, proc.returncode, proc
 
     def _assert_no_serve_children(self):
-        """断言当前没有遗留的 __serve__ 子进程."""
+        """断言没有遗留的与本测试运行时目录关联的 __serve__ 子进程.
+
+        只匹配命令行含本测试临时目录的 __serve__ 进程 (spawn argv 的
+        roots 编码里带挂载路径, 必落于本测试 tmpdir 下), 避免全局 pgrep
+        误伤其他测试类/会话刚被 SIGKILL 尚未收割的孤儿进程.
+        """
+        pattern = f"__serve__.*{re.escape(self._runtime_dir)}"
         result = subprocess.run(
-            ["pgrep", "-f", "__serve__"],
+            ["pgrep", "-f", pattern],
             capture_output=True,
             text=True,
         )
