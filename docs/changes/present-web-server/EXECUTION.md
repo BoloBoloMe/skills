@@ -47,7 +47,7 @@
 用例: TC-016, TC-017, TC-018, TC-019, TC-020, TC-021.
 新测试文件: `general/present/tests/test_web_server_content.py`.
 依赖: ISSUE-02 (服务可起).
-- [ ] 已实现
+- [x] 已实现 (含审核修复 R1/R2 与 U-008 语义)
 
 ## ISSUE-07 控制面安全 (Seam 4)
 

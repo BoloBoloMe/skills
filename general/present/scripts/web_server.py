@@ -542,8 +542,15 @@ class _Handler(BaseHTTPRequestHandler):
             self._send_error(500)
 
     def _serve_static(self, roots, rel):
-        for root in roots:
-            root_path = Path(root).resolve()
+        roots_resolved = [Path(r).resolve() for r in roots]
+        if rel == "":
+            # D007/U-008 (R1): 顶层路径 -> 各挂载目录顶层条目并集 listing
+            # (D008: 去重, 先挂载者优先, 无遮蔽提示);
+            # 部分不可读 -> 可读子集 200, 全部不可读 -> 404.
+            if self._send_dir_listing(roots_resolved):
+                return True
+            return False
+        for root_path in roots_resolved:
             try:
                 candidate = (root_path / rel).resolve()
             except (OSError, ValueError):
@@ -555,9 +562,18 @@ class _Handler(BaseHTTPRequestHandler):
                 continue
             if not candidate.exists():
                 continue
+            if candidate == root_path:
+                # R2: 非规范顶层路径 (/, a/../ 等) resolve 后等于挂载根,
+                # 与 / 同义 -> 走顶层并集 listing 分支 (U-008 语义适用)
+                if self._send_dir_listing(roots_resolved):
+                    return True
+                return False
             if candidate.is_dir():
-                self._send_dir_listing(candidate)
-                return True
+                # D007/U-008 (R1): 子目录路径返回该目录自身 listing (非并集);
+                # 单点不可读 -> 404 (恢复单目录原语义)
+                if self._send_dir_listing([candidate]):
+                    return True
+                return False
             if candidate.is_file():
                 self._send_file(candidate)
                 return True
@@ -574,15 +590,29 @@ class _Handler(BaseHTTPRequestHandler):
             shutil.copyfileobj(f, self.wfile)
         return True
 
-    def _send_dir_listing(self, path):
-        try:
-            entries = sorted(os.listdir(path))
-        except OSError:
-            self._send_error(404)
-            return True
+    def _send_dir_listing(self, dir_paths):
+        """目录 listing; 多目录时为条目并集 (D007/D008):
+        按名去重, 先挂载者优先 (先见者的目录/文件类型定后缀), 按名排序.
+        返回是否读到至少一个目录: 部分不可读 -> 可读子集 200 (True);
+        全部不可读 -> False (调用方 404, U-008/R1: 不泄露存在性,
+        恢复单目录时代原语义, 子目录单点不可读同此).
+        """
+        names = {}
+        readable = 0
+        for d in dir_paths:
+            try:
+                entries = os.listdir(d)
+            except OSError:
+                continue
+            readable += 1
+            for e in entries:
+                if e not in names:
+                    names[e] = (d / e).is_dir()
+        if readable == 0:
+            return False
         lines = ["<html><body><h1>Directory listing</h1><ul>"]
-        for e in entries:
-            suffix = "/" if (path / e).is_dir() else ""
+        for e in sorted(names):
+            suffix = "/" if names[e] else ""
             lines.append(f'<li><a href="{e}{suffix}">{e}{suffix}</a></li>')
         lines.append("</ul></body></html>")
         body = "\n".join(lines).encode("utf-8")
