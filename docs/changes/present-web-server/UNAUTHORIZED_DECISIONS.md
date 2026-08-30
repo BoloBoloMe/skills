@@ -49,3 +49,11 @@
 - 理由: 执行者做真实子进程/并发/契约细节的 TDD 实现, 取 coding 基线档防返工; 审核者是大量读代码找缺陷, flash 的 review 画像分 (1.758) 高且价格 1/10, 弱点 (谨慎度) 由 thinking high 缓解.
 - 影响: ISSUE-03..09 全部子代理调用沿用此配对; 旧机器的 opencode-go 额度耗尽结论不适用本机.
 - 风险: 同家族模型对抗性弱于跨家族; 若审核发现率异常低, 中途换 ai-work-deepseek/deepseek-v4-flash-vision-exp 做交叉审核.
+
+## U-007 add-dir 端点回写 server.json roots
+
+- 问题: 审核发现 add-dir 只改服务进程内存挂载表, server.json roots 不更新 — 与 D005 "按原挂载清单重建" 矛盾, 且当前 run_status 报告的 roots 在 add-dir 后即失真 (规格自相矛盾, 非需求变更).
+- 决策: 采纳审核建议 S1: /__control__/add-dir 端点在持锁 append 后原子回写 server.json 的 roots (0600), 数据模型 "写入方" 相应扩展为 "子进程启动时与挂载变更时; 重建时更新 port/pid/started_at".
+- 理由: 消除规格内部矛盾, 使 status 与重建的 roots 权威来源一致; 改动面小 (端点内一次原子写), 不新增需求.
+- 影响: ISSUE-03 修复轮实现; ISSUE-05 重建天然拿到完整挂载清单; TC-013 增补断言 (add-dir 后 server.json roots 含新目录).
+- 风险: 服务进程写 server.json 与 CLI 侧读写的并发 — 由 roots_lock 串行化端点写, flock 串行化 CLI 入口, 交叉窗口为 CLI 读时端点写, 原子写保证读者见完整旧版或新版.
