@@ -18,6 +18,7 @@ import errno
 import fcntl
 import ipaddress
 import json
+import math
 import mimetypes
 import os
 import random
@@ -464,6 +465,9 @@ class _Handler(BaseHTTPRequestHandler):
     roots_lock = threading.RLock()
     runtime_dir = Path(".")
     bind = None  # 本服务 bind 地址, _serve 注入 (U-009 守卫用)
+    # D014: 最后任一请求的 time.monotonic() 时间戳; 单属性赋值在 GIL 下
+    # 原子, 更新轻量无锁, 不与 roots_lock 纠缠 (watchdog 只读).
+    last_activity = 0.0
     protocol_version = "HTTP/1.1"
 
     def log_message(self, fmt, *args):
@@ -531,7 +535,12 @@ class _Handler(BaseHTTPRequestHandler):
         )
         return True
 
+    def _note_activity(self):
+        """D014: 任一请求 (含被 403/404 拒绝的) 刷新空闲计时; 见类属性注释."""
+        type(self).last_activity = time.monotonic()
+
     def do_GET(self):
+        self._note_activity()
         path = self.path
         # 控制面优先; /__control__/ 全命名空间仅本机来源 (D020/U-009)
         if self._guard_control_namespace(path):
@@ -556,6 +565,7 @@ class _Handler(BaseHTTPRequestHandler):
             self._send_error(500)
 
     def do_POST(self):
+        self._note_activity()
         try:
             # /__control__/ 全命名空间仅本机来源 (D020/U-009)
             if self._guard_control_namespace(self.path):
@@ -686,6 +696,45 @@ class _Handler(BaseHTTPRequestHandler):
 
 
 # ---------------------------------------------------------------------------
+# Idle TTL (D014)
+# ---------------------------------------------------------------------------
+
+_DEFAULT_TTL_SECONDS = 86400  # D014: 默认空闲 24h 自退
+
+
+def _idle_ttl_seconds(runtime_dir):
+    """读取空闲 TTL: env PI_PRESENT_WEB_TTL_SECONDS 覆盖 (D014), 默认 86400s.
+    非法值 (非数字/非正/非有限) 记日志并回退默认, 不拒绝启动."""
+    raw = os.environ.get("PI_PRESENT_WEB_TTL_SECONDS")
+    if raw is None:
+        return _DEFAULT_TTL_SECONDS
+    try:
+        value = float(raw)
+    except ValueError:
+        _log(
+            runtime_dir,
+            f"invalid PI_PRESENT_WEB_TTL_SECONDS={raw!r}; "
+            f"fallback to {_DEFAULT_TTL_SECONDS}",
+        )
+        return _DEFAULT_TTL_SECONDS
+    if not math.isfinite(value):
+        _log(
+            runtime_dir,
+            f"non-finite PI_PRESENT_WEB_TTL_SECONDS={raw!r}; "
+            f"fallback to {_DEFAULT_TTL_SECONDS}",
+        )
+        return _DEFAULT_TTL_SECONDS
+    if value <= 0:
+        _log(
+            runtime_dir,
+            f"non-positive PI_PRESENT_WEB_TTL_SECONDS={raw!r}; "
+            f"fallback to {_DEFAULT_TTL_SECONDS}",
+        )
+        return _DEFAULT_TTL_SECONDS
+    return value
+
+
+# ---------------------------------------------------------------------------
 # Serve entry (child process only)
 # ---------------------------------------------------------------------------
 
@@ -732,6 +781,25 @@ def _serve(port, roots, bind):
     _atomic_write_json(runtime_dir / "server.json", data)
 
     _log(runtime_dir, f"server started on {bind}:{port} pid={os.getpid()}")
+
+    # D014: 空闲 TTL 自退. last_activity 为最后任一请求的 monotonic 时间戳;
+    # watchdog 周期检查, 空闲超 TTL -> 记日志并 shutdown, serve_forever 返回
+    # 后进程自然退出 (server.json 保留 -> 已死状态, status 可重建).
+    # 检查间隔 = TTL/4, 下限 0.1s 上限 30s: 默认 86400s 时 30s 一查,
+    # 秒级 TTL 时及时退出; 最坏退出延迟 = TTL + 间隔.
+    ttl = _idle_ttl_seconds(runtime_dir)
+    _Handler.last_activity = time.monotonic()
+    interval = max(0.1, min(ttl / 4.0, 30.0))
+
+    def _idle_watchdog():
+        while True:
+            time.sleep(interval)
+            if time.monotonic() - _Handler.last_activity > ttl:
+                _log(runtime_dir, f"idle exceeded ttl={ttl}s; shutting down")
+                server.shutdown()
+                return
+
+    threading.Thread(target=_idle_watchdog, daemon=True).start()
 
     try:
         server.serve_forever()

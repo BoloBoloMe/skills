@@ -61,7 +61,7 @@
 范围: 服务空闲 TTL 自退, 每次请求刷新计时, `PI_PRESENT_WEB_TTL_SECONDS` 注入点.
 用例: TC-028.
 依赖: ISSUE-02.
-- [ ] 已实现
+- [x] 已实现 (含审核修复 R1)
 
 ## ISSUE-09 SKILL.md 远程模式段 + 契约断言 (Seam 5)
 

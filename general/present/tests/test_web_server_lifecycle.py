@@ -755,6 +755,100 @@ class TestTC015ServerLog(WebServerLifecycleTestCase):
         self.assertIn("GET", content)
 
 
+class TestTC028IdleTTLExit(WebServerLifecycleTestCase):
+    """TC-028 (D014/NFR-004): 注入秒级 TTL, 空闲超过 TTL -> 服务自退 (进程退出);
+    每次请求刷新计时 -> TTL 内持续请求不退; 停止请求后仍空闲自退."""
+
+    def _pid_alive(self, pid):
+        try:
+            os.kill(pid, 0)
+            return True
+        except ProcessLookupError:
+            return False
+
+    def _wait_pid_gone(self, pid, timeout):
+        deadline = time.time() + timeout
+        while time.time() < deadline:
+            if not self._pid_alive(pid):
+                return True
+            time.sleep(0.2)
+        return not self._pid_alive(pid)
+
+    def _start_with_ttl(self, root, ttl):
+        """注入秒级 TTL 启动服务, 返回 (port, pid)."""
+        os.environ["PI_PRESENT_WEB_TTL_SECONDS"] = str(ttl)
+        self.addCleanup(os.environ.pop, "PI_PRESENT_WEB_TTL_SECONDS", None)
+        port = self._free_port("127.0.0.1")
+        obj, code, proc = self._run_subprocess(
+            "start", str(port), str(root), "--bind", "127.0.0.1"
+        )
+        self.assertEqual(code, 0, f"stdout={proc.stdout} stderr={proc.stderr}")
+        self.assertTrue(obj["success"])
+        sj = json.loads(self._server_json_path().read_text(encoding="utf-8"))
+        self._server_pids.append(sj["pid"])
+        return port, sj["pid"]
+
+    def test_idle_beyond_ttl_self_exits(self):
+        root = Path(self._tmpdir.name) / "root"
+        root.mkdir()
+        (root / "f.txt").write_text("ttl", encoding="utf-8")
+
+        port, pid = self._start_with_ttl(root, ttl=2)
+
+        # 前置: 服务真的在提供内容 (TTL 注入不影响正常服务)
+        body, status = self._wait_for_url(f"http://127.0.0.1:{port}/f.txt")
+        self.assertEqual(status, 200)
+        self.assertEqual(body, "ttl")
+
+        # 核心: 空闲超过 TTL (2s) -> 进程自退
+        self.assertTrue(
+            self._wait_pid_gone(pid, timeout=10),
+            f"server pid {pid} still alive 10s after exceeding idle ttl=2s",
+        )
+        # 自退后状态 = 已死: server.json 保留 (status 重建路径 ISSUE-05 已实现)
+        self.assertTrue(
+            self._server_json_path().exists(),
+            "server.json must be preserved after ttl self-exit",
+        )
+        # 后续请求失败 (端口已无服务)
+        with self.assertRaises(OSError):
+            request.urlopen(f"http://127.0.0.1:{port}/f.txt", timeout=2)
+
+    def test_requests_refresh_ttl_timer(self):
+        """D014 "每次请求刷新计时": TTL=3s 内持续请求 (> TTL 时长) 不自退;
+        停止请求后空闲, 仍会自退."""
+        root = Path(self._tmpdir.name) / "root"
+        root.mkdir()
+        (root / "f.txt").write_text("refresh", encoding="utf-8")
+
+        port, pid = self._start_with_ttl(root, ttl=3)
+
+        # 每 ~1s 请求一次, 持续 6 次 (~5s > TTL=3s): 请求刷新计时, 不自退
+        for i in range(6):
+            try:
+                with request.urlopen(
+                    f"http://127.0.0.1:{port}/f.txt", timeout=2
+                ) as resp:
+                    self.assertEqual(resp.getcode(), 200)
+            except Exception as e:
+                self.fail(
+                    f"server exited during refresh loop (iteration {i}, "
+                    f"~{i}s since first request < ttl horizon): {e}"
+                )
+            self.assertTrue(
+                self._pid_alive(pid),
+                f"server pid {pid} exited at iteration {i} despite "
+                f"ongoing requests refreshing the ttl timer",
+            )
+            time.sleep(1.0)
+
+        # 停止请求 -> 空闲超过 TTL 后仍自退
+        self.assertTrue(
+            self._wait_pid_gone(pid, timeout=10),
+            f"server pid {pid} still alive 10s after requests stopped",
+        )
+
+
 class TestTC025BindConflict(WebServerLifecycleTestCase):
     """TC-025: 实例存活且 bind 不同 -> bind_conflict 报错, 不复用."""
 
