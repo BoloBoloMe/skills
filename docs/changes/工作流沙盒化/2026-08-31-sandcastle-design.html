@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>sandcastle 设计解剖 — 容器, 镜像, 模块</title>
+<style>
+  :root {
+    --paper: #f7f3ea;
+    --ink: #2b2620;
+    --ink-soft: #5a5248;
+    --ochre: #a15c2f;
+    --sage: #5c6e58;
+    --slate: #3d4c5c;
+    --faint: #d8d0c0;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: "Spectral", "Noto Serif SC", "Source Han Serif SC", "Songti SC", serif;
+    font-size: 1.06rem;
+    line-height: 1.85;
+    counter-reset: sec;
+  }
+  .page { max-width: 47rem; margin: 0 auto; padding: 4rem 1.4rem 6rem; }
+
+  /* 纸面手感: 极浅纹理 */
+  body::before {
+    content: ""; position: fixed; inset: 0; pointer-events: none; z-index: 0;
+    background:
+      radial-gradient(ellipse 80% 60% at 20% 0%, rgba(161,92,47,.045), transparent),
+      radial-gradient(ellipse 70% 50% at 90% 100%, rgba(61,76,92,.05), transparent);
+  }
+  .page { position: relative; z-index: 1; }
+
+  h1, h2, h3 { font-weight: 600; letter-spacing: .01em; }
+  h1 {
+    font-size: clamp(2rem, 5vw, 2.9rem); line-height: 1.3;
+    margin: 1.2rem 0 1rem; color: var(--ink);
+  }
+  .subtitle { font-style: italic; color: var(--ink-soft); font-size: 1.12rem; margin-bottom: 2.2rem; }
+  h2 {
+    font-size: 1.55rem; margin: 4.2rem 0 1.4rem; color: var(--ink);
+    display: flex; align-items: baseline; gap: .8rem;
+  }
+  h2::before {
+    counter-increment: sec; content: counter(sec, cjk-ideographic);
+    font-size: .95rem; color: var(--ochre);
+    border-bottom: 2px solid var(--ochre);
+    padding-bottom: .1rem; transform: translateY(-.35rem);
+    font-style: italic;
+  }
+  h3 { font-size: 1.15rem; margin: 2.2rem 0 .8rem; color: var(--slate); }
+  p { margin: 0 0 1.1rem; }
+  em { color: var(--ochre); font-style: normal; border-bottom: 1px dashed var(--ochre); }
+  strong { font-weight: 700; }
+  .en { font-style: italic; }
+
+  a { color: var(--slate); }
+
+  /* 目录 */
+  nav.toc {
+    margin: 2.5rem 0 1rem; padding-left: 0;
+    font-size: .98rem; color: var(--ink-soft);
+  }
+  nav.toc ol { list-style: none; }
+  nav.toc li { margin: .35rem 0; }
+  nav.toc a { text-decoration: none; }
+  nav.toc a:hover { color: var(--ochre); }
+  nav.toc .toc-note { font-style: italic; margin-top: .6rem; }
+
+  /* callout: 手绘括线, 非卡片 */
+  .callout {
+    margin: 1.6rem 0; padding: .35rem 0 .35rem 1.6rem;
+    border-left: none; position: relative;
+  }
+  .callout::before {
+    content: "※"; position: absolute; left: 0; top: .3rem;
+    color: var(--ochre); font-size: 1.1rem;
+  }
+  .callout .callout-title { font-weight: 700; color: var(--ochre); margin-right: .5rem; }
+
+  svg text { font-family: system-ui, -apple-system, "Segoe UI", "Noto Sans CJK SC", "PingFang SC", "Microsoft YaHei", sans-serif; font-weight: 400; }
+  figcaption {
+    font-size: .9rem; color: var(--ink-soft); font-style: italic;
+    margin-top: .7rem; text-align: center; max-width: 40rem; margin-left: auto; margin-right: auto;
+  }
+
+
+  /* 代码 */
+  pre {
+    background: #efe9db; padding: 1rem 1.2rem; margin: 1.4rem 0;
+    overflow-x: auto; white-space: pre-wrap; word-break: break-all;
+    font-size: .86rem; line-height: 1.7; border-radius: 2px;
+    font-family: "JetBrains Mono", ui-monospace, monospace;
+    color: #3a332a;
+  }
+  code { font-family: "JetBrains Mono", ui-monospace, monospace; font-size: .88em; background: #efe9db; padding: 0 .3em; border-radius: 2px; }
+  pre code { background: none; padding: 0; }
+
+  /* 手绘分隔 */
+  .squiggle { display: block; margin: 3.2rem auto 0; width: 100%; height: 24px; }
+
+  /* details 展开: 键盘原生可达 */
+  details.layer {
+    margin: 0; padding: .15rem 0;
+    border-bottom: 1px dashed var(--faint);
+  }
+  details.layer:last-of-type { border-bottom: none; }
+  details.layer summary {
+    cursor: pointer; list-style: none; display: flex; align-items: baseline; gap: .9rem;
+    padding: .55rem 0; font-weight: 600; color: var(--ink);
+  }
+  details.layer summary::-webkit-details-marker { display: none; }
+  details.layer summary::before {
+    content: "▸"; color: var(--ochre); transition: transform .18s ease; font-size: .85rem;
+  }
+  details.layer[open] summary::before { transform: rotate(90deg); }
+  details.layer summary:hover { color: var(--ochre); }
+  details.layer summary .tag {
+    font-size: .78rem; color: var(--ink-soft); font-weight: 400; font-style: italic;
+  }
+  details.layer .layer-body { padding: .2rem 0 .9rem 1.8rem; color: var(--ink-soft); font-size: .97rem; }
+  details.layer .layer-body code { font-size: .84em; }
+
+  /* 对照表 */
+  table.cmp { width: 100%; border-collapse: collapse; margin: 1.6rem 0; font-size: .95rem; }
+  table.cmp th {
+    text-align: left; font-style: italic; font-weight: 600; color: var(--slate);
+    padding: .5rem .6rem .5rem 0; border-bottom: 2px solid var(--ink);
+  }
+  table.cmp td {
+    padding: .6rem .6rem .6rem 0; border-bottom: 1px dashed var(--faint);
+    vertical-align: top; color: var(--ink-soft);
+  }
+  table.cmp td:first-child { color: var(--ink); white-space: nowrap; font-weight: 600; }
+  table.cmp tr.borrowed td { color: var(--ink); }
+  table.cmp tr.borrowed td:first-child::after { content: " ◂ 借鉴"; font-size: .72rem; color: var(--ochre); font-weight: 400; white-space: nowrap; }
+
+  /* 溯源脚注 */
+  .src { font-size: .82rem; color: #8a8073; font-style: italic; }
+  .src code { background: none; padding: 0; font-style: normal; font-size: .92em; }
+
+  /* 引子大图区域 */
+  .hero { text-align: center; margin: 1rem 0 0; }
+
+  .legend { font-size: .85rem; color: var(--ink-soft); text-align: center; margin: .4rem 0 0; }
+  .legend .k { display: inline-block; margin: 0 .9rem; }
+  .legend .swatch { display: inline-block; width: .85em; height: .85em; border-radius: 50%; vertical-align: -0.08em; margin-right: .3em; }
+
+  @media (max-width: 560px) {
+    body { font-size: 1rem; }
+    .page { padding: 2.6rem 1rem 4rem; }
+    table.cmp td:first-child { white-space: normal; }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+<h1>sandcastle 设计解剖</h1>
+<p class="subtitle">一座用 shell 命令搭起来的沙堡 — 它如何驱动容器, 生成镜像, 以及代码库的分层思路</p>
+
+<nav class="toc" aria-label="目录">
+  <ol>
+    <li><a href="#s1">它是怎么操作容器的 — 拼 CLI, 不走 API</a></li>
+    <li><a href="#s2">它定义自己的镜像吗 — 生成, 而非发布</a></li>
+    <li><a href="#s3">代码库模块设计 — 四层蛋糕</a></li>
+    <li><a href="#s4">对照我们的 use-sandbox 方案</a></li>
+  </ol>
+  <p class="toc-note">基于 @ai-hero/sandcastle 0.12.0 源码精读; 每节末附出处。行内 ▸ 可展开细节。</p>
+</nav>
+
+<div class="hero">
+  <svg viewBox="0 0 640 190" width="100%" role="img" aria-label="概念画: 调用者把任务交给沙堡, 沙堡在容器里运行 agent, 产物以 git 补丁回流">
+    <!-- 手绘沙堡 -->
+    <g stroke="#2b2620" stroke-width="2.2" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <!-- 左: 调用者 (简笔人) -->
+      <circle cx="72" cy="72" r="14"/>
+      <path d="M72 86 L72 122 M72 98 L52 112 M72 98 L94 110"/>
+      <path d="M40 140 q10 -8 22 0" opacity=".55"/>
+      <!-- 任务飞向城堡 -->
+      <path d="M112 78 q30 -18 58 -10" stroke-dasharray="1 7"/>
+      <path d="M166 66 l10 -4 -6 9" fill="none"/>
+      <text x="118" y="52" font-size="13" fill="#5a5248" font-style="italic">prompt + worktree</text>
+      <!-- 中央: 沙堡容器 -->
+      <path d="M230 150 V96 q0 -8 8 -8 h96 q8 0 8 8 v54"/>
+      <path d="M222 96 L286 52 350 96"/>
+      <!-- 城垛 -->
+      <path d="M250 88 v-10 h10 v10 M272 88 v-10 h10 v10 M294 88 v-10 h10 v10 M316 88 v-10 h10 v10" opacity=".8"/>
+      <!-- 门 -->
+      <path d="M272 150 v-24 q14 -14 28 0 v24"/>
+      <!-- 城内 agent (小旗) -->
+      <path d="M286 150 V112"/>
+      <path d="M286 112 l18 5 -18 6 z" fill="#a15c2f" stroke="none"/>
+      <!-- 底座波纹 -->
+      <path d="M196 158 q60 8 130 0 t120 0" opacity=".5"/>
+      <!-- 右: 补丁回流 -->
+      <path d="M392 108 q36 12 66 -2" stroke-dasharray="1 7"/>
+      <path d="M452 104 l12 2 -8 8" fill="none"/>
+      <rect x="476" y="92" width="52" height="34" rx="3" stroke="#5c6e58"/>
+      <line x1="482" y1="102" x2="522" y2="102" opacity=".5"/>
+      <line x1="482" y1="110" x2="516" y2="110" opacity=".5"/>
+      <text x="476" y="146" font-size="13" fill="#5a5248" font-style="italic">git am 补丁</text>
+    </g>
+    <text x="286" y="180" font-size="13" fill="#8a8073" font-style="italic" text-anchor="middle">容器 = 沙堡 (sleep infinity 长驻)</text>
+  </svg>
+</div>
+
+<h2 id="s1">它是怎么操作容器的</h2>
+
+<p>先说本质: sandcastle 操作本地容器的方式, 是最朴素的一种 — <em>拼 CLI 命令起子进程</em>。<code>podman.ts</code> 与 <code>docker.ts</code> 里没有任何容器 daemon API 或 SDK 调用, 全部是 <code>child_process</code> 的 <code>execFile</code> / <code>spawn</code>, argv 一个参数一个参数地拼。反差在于云端 provider (Vercel / Daytona) 恰好相反, 走官方 SDK。</p>
+
+<div class="legend">
+  <span class="k"><span class="swatch" style="background:#3d4c5c"></span>podman.ts (bind-mount 最完整)</span>
+  <span class="k"><span class="swatch" style="background:#a15c2f"></span>docker.ts</span>
+  <span class="k"><span class="swatch" style="background:#5c6e58"></span>云端 SDK</span>
+</div>
+
+<figure>
+  <svg viewBox="0 0 660 300" width="100%" role="img" aria-label="容器生命周期: run 创建长驻容器, exec 执行, cp 拷贝, rm 清理, 退出钩子兜底">
+    <g stroke="#2b2620" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <!-- 时间轴 -->
+      <path d="M30 240 H630" opacity=".65"/>
+      <path d="M630 240 l-10 -5 m10 5 -10 5"/>
+      <text x="34" y="232" font-size="12" fill="#8a8073" font-style="italic">t</text>
+
+      <!-- run -->
+      <g>
+        <path d="M46 168 q-6 -26 22 -28 l54 0 q10 -18 20 0 l52 0 q10 26 -20 30 l-100 2 q-26 0 -28 -4 z" stroke="#3d4c5c"/>
+        <text x="72" y="160" font-size="14" fill="#3d4c5c">run -d</text>
+        <text x="46" y="196" font-size="11.5" fill="#5a5248">--entrypoint sleep infinity</text>
+        <text x="46" y="212" font-size="11.5" fill="#5a5248">--userns=keep-id:uid,gid</text>
+        <text x="46" y="120" font-size="12" fill="#8a8073" font-style="italic">创建</text>
+      </g>
+      <path d="M196 160 h34" stroke-dasharray="1 6"/>
+      <path d="M226 156 l10 4 -10 5"/>
+
+      <!-- exec -->
+      <g>
+        <path d="M244 138 q-6 -22 18 -24 l44 0 q10 -16 18 0 l42 0 q8 22 -16 26 l-82 2 q-22 0 -24 -4 z" stroke="#3d4c5c"/>
+        <text x="272" y="130" font-size="14" fill="#3d4c5c">exec</text>
+        <text x="244" y="166" font-size="11.5" fill="#5a5248">sh -c &lt;cmd&gt;, onLine 逐行流式</text>
+        <text x="244" y="114" font-size="12" fill="#8a8073" font-style="italic">执行</text>
+      </g>
+      <path d="M380 130 h30" stroke-dasharray="1 6"/>
+      <path d="M406 126 l10 4 -10 5"/>
+
+      <!-- cp -->
+      <g>
+        <path d="M424 138 q-6 -22 18 -24 l40 0 q10 -16 18 0 l40 0 q8 22 -16 26 l-78 2 q-22 0 -22 -4 z" stroke="#3d4c5c"/>
+        <text x="452" y="130" font-size="14" fill="#3d4c5c">cp ⇄</text>
+        <text x="424" y="166" font-size="11.5" fill="#5a5248">copyFileIn / copyFileOut</text>
+        <text x="424" y="114" font-size="12" fill="#8a8073" font-style="italic">拷贝</text>
+      </g>
+
+      <!-- rm -->
+      <g>
+        <path d="M562 138 q-6 -22 18 -24 l36 0 q10 -16 18 0 l34 0 q8 22 -16 26 l-74 2 q-20 0 -16 -4 z" stroke="#a15c2f"/>
+        <text x="588" y="130" font-size="14" fill="#a15c2f">rm -f</text>
+        <text x="562" y="166" font-size="11.5" fill="#5a5248">handle.close()</text>
+        <text x="562" y="114" font-size="12" fill="#8a8073" font-style="italic">拆除</text>
+      </g>
+
+      <!-- 兜底钩子 -->
+      <path d="M100 244 q60 34 230 22" stroke="#5c6e58" stroke-dasharray="3 5"/>
+      <path d="M322 264 l12 2 -9 7" stroke="#5c6e58"/>
+      <text x="120" y="284" font-size="12.5" fill="#5c6e58" font-style="italic">shutdownRegistry: 进程 exit / SIGINT / SIGTERM 时同步 rm -f 兜底</text>
+
+      <!-- 云端对照 -->
+      <path d="M470 60 q-80 -26 -170 6" stroke="#5c6e58" stroke-dasharray="2 5" opacity=".7"/>
+      <text x="330" y="34" font-size="12.5" fill="#5c6e58" font-style="italic">云端 provider: Sandbox.create() 官方 SDK</text>
+      <text x="330" y="50" font-size="12" fill="#8a8073" font-style="italic">(vercel 是唯一有端口概念的 provider)</text>
+    </g>
+  </svg>
+  <figcaption>本地 provider 的全部容器操作只有四个动词; 唯一技巧是覆盖 entrypoint 为 <code>sleep infinity</code>, 让容器本身只是一具 "睡着的躯体", 一切动作经 <code>exec</code> 注入。</figcaption>
+</figure>
+
+<p>所有动作汇合于一个类型契约 — <code>SandboxProvider.ts</code> (纯类型文件, ~450 行, 零实现)。Provider 是三种形态的 tagged union:</p>
+
+<pre><code>// src/SandboxProvider.ts — 三种形态
+BindMountSandboxProvider  // tag: "bind-mount" — worktree 直接挂进容器
+IsolatedSandboxProvider   // tag: "isolated"   — 无共享 FS, 靠文件搬运 (bundle 进, patch 出)
+NoSandboxProvider         // tag: "none"       — 裸奔宿主机 ("opt in at your own risk")
+
+// handle 契约 (bind-mount 形态)
+exec(command, { onLine?, cwd?, sudo?, stdin? })  // 强制支持逐行流式
+interactiveExec?(args, options)                   // 可选, TTY
+copyFileIn(hostPath, sandboxPath)
+copyFileOut(sandboxPath, hostPath)
+close()</code></pre>
+
+<div class="callout">
+  <span class="callout-title">细节两枚</span>
+  <code>exec</code> 契约强制逐行流式 (<code>onLine</code>) — 这是空闲超时检测与实时反馈的地基; prompt 走 <code>stdin</code> 而非 argv, 规避 Linux 单参数 128KB 上限。
+</div>
+
+<div class="callout">
+  <span class="callout-title">微妙差异</span>
+  podman.ts 显式传 <code>--entrypoint sleep infinity</code>; docker.ts 的 <code>startContainer</code> 不传 entrypoint, 依赖镜像自带的 <code>ENTRYPOINT ["sleep","infinity"]</code> — 同一意图, 两个 provider 各写一遍, 一处显式一处隐式。
+</div>
+
+<p class="src">出处: <code>src/sandboxes/podman.ts</code> (create / checkImageExists / 注册清理), <code>src/DockerLifecycle.ts:99</code>, <code>src/SandboxProvider.ts</code>, <code>src/shutdownRegistry.ts:72</code></p>
+
+<svg class="squiggle" viewBox="0 0 600 24" aria-hidden="true"><path d="M10 12 q40 -10 80 0 t80 0 t80 0 t80 0 t80 0 t80 0" stroke="#d8d0c0" fill="none" stroke-width="2"/></svg>
+
+<h2 id="s2">它定义自己的镜像吗</h2>
+
+<p>答案有点出乎意料: <em>既不用现成镜像, 也不发布镜像</em>。仓库里找不到独立的 Dockerfile — 镜像定义以字符串常量内嵌在 <code>InitService.ts</code> 里 (按 agent 各一份: CLAUDE_CODE / PI / CODEX / CURSOR / OPENCODE / COPILOT), <code>sandcastle init</code> 时写入用户仓库的 <code>.sandcastle/</code> 目录, 用户本地执行 <code>build-image</code> 构建。</p>
+
+<figure>
+  <svg viewBox="0 0 660 260" width="100%" role="img" aria-label="镜像地层图: 从 node:22-bookworm 基础到 sleep infinity 入口共六层">
+    <g stroke="#2b2620" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <!-- 地层, 自下而上 -->
+      <path d="M120 218 L540 218 L520 190 L140 190 Z" fill="#efe9db"/>
+      <text x="165" y="209" font-size="13.5" fill="#5a5248">FROM node:22-bookworm</text>
+
+      <path d="M140 190 L520 190 L500 162 L160 162 Z" fill="#e6ddc9"/>
+      <text x="185" y="181" font-size="13.5" fill="#5a5248">apt: git, curl, jq (+可选 gh)</text>
+
+      <path d="M160 162 L500 162 L480 134 L180 134 Z" fill="#ddd2b8"/>
+      <text x="205" y="153" font-size="13.5" fill="#5a5248">node 用户改名 agent, build-arg 对齐宿主 UID/GID</text>
+
+      <path d="M180 134 L480 134 L460 106 L200 106 Z" fill="#d3c7a5"/>
+      <text x="225" y="125" font-size="13.5" fill="#5a5248">agent CLI: curl 安装脚本 / npm install -g</text>
+
+      <path d="M200 106 L460 106 L440 78 L220 78 Z" fill="#c9bb92"/>
+      <text x="245" y="97" font-size="13.5" fill="#5a5248">WORKDIR /home/agent</text>
+
+      <path d="M220 78 L440 78 L420 50 L240 50 Z" fill="#a15c2f" fill-opacity=".22"/>
+      <text x="270" y="69" font-size="13.5" fill="#a15c2f">ENTRYPOINT sleep infinity</text>
+
+      <!-- 侧标 -->
+      <path d="M96 218 q-18 -84 4 -160" stroke="#8a8073" stroke-dasharray="2 5"/>
+      <text x="30" y="140" font-size="12.5" fill="#8a8073" font-style="italic" transform="rotate(-83 30 140)">稳定 → 多变</text>
+      <text x="120" y="244" font-size="12.5" fill="#8a8073" font-style="italic">镜像名 sandcastle:&lt;repo 目录名&gt;, 运行前 image inspect 预检</text>
+    </g>
+  </svg>
+  <figcaption>地层学视角: 稳定层在下, 多变层在上 — agent CLI 与 UID 对齐永远在基础系统之上重新生成。</figcaption>
+</figure>
+
+<div class="callout">
+  <span class="callout-title">为什么生成而非发布</span>
+  UID/GID 必须与宿主用户一致 (build-image 命令自动传 <code>id -u</code> / <code>id -g</code> 作 build-args), 镜像天然因机器而异; 加上 agent 选择是用户决策, 干脆把 Dockerfile 当作 <em>init 的生成物</em> 而非制品。
+</div>
+
+<div class="callout">
+  <span class="callout-title">未知点</span>
+  云端 provider (vercel/daytona) 无自建镜像, 源码走 git bundle 注入; 但 isolated 形态下 agent CLI 如何在云端沙箱就位, 已读代码中找不到路径 (grep "npm install" 无命中) — 推测依赖平台 runtime 或用户 hooks, 未经确认。
+</div>
+
+<p class="src">出处: <code>src/InitService.ts</code> (DOCKERFILE 常量区段, :502, :589), <code>src/mountUtils.ts:39</code> (defaultImageName), <code>src/cli.ts:545,618</code> (build-image), <code>src/sandboxes/podman.ts:462</code> (inspect 预检)</p>
+
+<svg class="squiggle" viewBox="0 0 600 24" aria-hidden="true"><path d="M10 12 q40 -10 80 0 t80 0 t80 0 t80 0 t80 0 t80 0" stroke="#d8d0c0" fill="none" stroke-width="2"/></svg>
+
+<h2 id="s3">代码库模块设计</h2>
+
+<p>整体是一块四层蛋糕 — 依赖严格自上而下。贯穿的两条设计事实: <strong>边界外是纯 Promise, 内部是 Effect-ts</strong> (桥在 <code>SandboxFactory.makeSandboxFromHandle</code>); <strong>契约前置</strong> — 扩展点全部先写成纯类型文件, 新 provider 只需 200–500 行实现。每层 ▸ 可展开。</p>
+
+<details class="layer" open>
+  <summary>L1 编排 / 入口层 <span class="tag">run · interactive · createSandbox · createWorktree · cli</span></summary>
+  <div class="layer-body">
+    <p><code>run.ts</code> 是主 API: 多轮 agent 循环 (maxIterations, completion signal 提前结束), 校验组合合法性 (head + isolated 不兼容等), env 三方合并, 组装 Effect Layer。<code>interactive.ts</code> 是宿主 TUI 会话。<code>createSandbox.ts</code> 返回长驻 <code>Sandbox</code> 对象 (含 <code>Symbol.asyncDispose</code>, 支持 resume)。<code>templates/</code> 是 init 脚手架: simple-loop, sequential-reviewer, parallel-planner(-with-review), blank — 每套 template.json + main.mts + prompt 文件。</p>
+  </div>
+</details>
+<details class="layer">
+  <summary>L2 沙箱生命周期层 <span class="tag">SandboxFactory · SandboxLifecycle · syncIn/syncOut · WorktreeManager</span></summary>
+  <div class="layer-body">
+    <p><code>SandboxFactory.ts:290</code> 的 <code>WorktreeDockerSandboxFactory</code> 用 <code>Effect.acquireUseRelease</code> 把 worktree 修剪/创建 → copyToWorktree → host hooks → startSandbox → 业务 → close → worktree 清理包成一次事务。isolated 分支的代码搬运: <code>syncIn.ts:80</code> = <code>git bundle create --all</code> → copyIn → 沙箱内 <code>git clone</code> → 校验 HEAD; <code>syncOut.ts:219</code> = 以自有 ref <code>refs/sandcastle/sync-base</code> 为 base 做 <code>format-patch</code> → 宿主 <code>git am</code>。<code>SandboxLifecycle.ts</code> 负责 hooks 与 merge-to-head, 用 <code>git rev-list baseHead..HEAD --reverse</code> 收集 agent 提交。</p>
+  </div>
+</details>
+<details class="layer">
+  <summary>L3 agent 适配层 <span class="tag">AgentProvider · 六个实现 · SessionStore</span></summary>
+  <div class="layer-body">
+    <p><code>AgentProvider.ts:264</code> 定义 agent 契约: name / env / captureSessions / sessionStorage / buildPrintCommand / parseStreamLine 等。六个内置实现 (claudeCode, codex, copilot, cursor, opencode, pi), 各自负责 print 命令拼接与 stream-json 行解析。<code>SessionStore.ts</code> 把 claude/codex/pi 的会话 JSONL 在宿主与沙箱间搬运, 支持 resume / fork (ADR-0018)。</p>
+  </div>
+</details>
+<details class="layer">
+  <summary>L4 基础设施层 <span class="tag">EnvResolver · errors · shutdownRegistry · terminalCleanup · …</span></summary>
+  <div class="layer-body">
+    <p>碎而稳的一层: <code>EnvResolver</code> + <code>mergeProviderEnv</code> (.env 与 provider env 三方合并); <code>errors.ts</code> / <code>ErrorHandler</code> / <code>RecoveryMessage</code> (失败步骤的可恢复提示); <code>shutdownRegistry</code> (共享退出钩子, 解决并发沙箱 MaxListenersExceededWarning); <code>terminalCleanup</code> (异常退出时恢复光标 \x1b[?25h); <code>boundedTail</code> (流式输出尾部限长 64KiB); <code>Output.ts</code> (结构化输出 <code>&lt;tag&gt;</code> 提取); PromptResolver / PromptPreprocessor / PromptArgumentSubstitution (prompt 文件, <code>!command</code> 上下文注入, <code>{{arg}}</code> 替换)。</p>
+  </div>
+</details>
+
+<div class="callout">
+  <span class="callout-title">文档滞后两处</span>
+  README provider 表未列 Daytona (package.json exports 已有 <code>./sandboxes/daytona</code>); "two kinds" 漏了第三种 <code>none</code>。读代码比读 README 可靠。
+</div>
+
+<p class="src">出处: <code>src/index.ts</code>, <code>package.json</code> (exports / bin), <code>src/SandboxFactory.ts:99,290</code>, <code>src/AgentProvider.ts:264</code>, <code>docs/adr/</code></p>
+
+<svg class="squiggle" viewBox="0 0 600 24" aria-hidden="true"><path d="M10 12 q40 -10 80 0 t80 0 t80 0 t80 0 t80 0 t80 0" stroke="#d8d0c0" fill="none" stroke-width="2"/></svg>
+
+<h2 id="s4">对照我们的 use-sandbox 方案</h2>
+
+<p>研究它的真实目的, 是给容器试验场方案找参照系。共性先摆出来: <strong>长驻容器</strong> (它 sleep infinity, 我们 sshd), <strong>fat 镜像 + 秒级启动</strong>, <strong>UID 对齐</strong> (它 <code>--userns=keep-id</code>, 我们 rootless 天然同 uid), <strong>host 仓库进容器</strong>。分岔在于: 它是<em>程序化编排的无人车间</em> (库代码 exec 注入, 用完即毁), 我们是<em>ssh 可入的长住工坊</em> (我本人在里面干活, 有展示需求)。</p>
+
+<table class="cmp">
+  <thead>
+    <tr><th>维度</th><th>sandcastle</th><th>use-sandbox (我们)</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>进入方式</td><td><code>podman exec</code> 程序注入, 无交互登录</td><td>ssh 登录, 容器即工作区</td>
+    </tr>
+    <tr>
+      <td>端口映射</td><td>本地 provider 零端口 (全仓无 <code>-p</code>), 仅 vercel 有</td><td>核心需求: 2222 / 8800 / 6080</td>
+    </tr>
+    <tr>
+      <td>镜像策略</td><td>init 按 agent 生成 Dockerfile, 本地构建</td><td>一份全量 fat 镜像, 手工维护</td>
+    </tr>
+    <tr>
+      <td>代码回流</td><td>format-patch → git am (补丁信使)</td><td>容器内 commit, 经 remote 回流</td>
+    </tr>
+    <tr class="borrowed">
+      <td>git bundle</td><td>syncIn: bundle --all → 容器内 clone, 免网络</td><td>已列为备选 (强隔离需求时)</td>
+    </tr>
+    <tr class="borrowed">
+      <td>image inspect 预检</td><td>运行前检查镜像存在, 失败提示 build</td><td>可纳入 use-sandbox 流程</td>
+    </tr>
+    <tr>
+      <td>会话搬运</td><td>SessionStore 跨界搬运 JSONL, resume/fork</td><td>暂无对应物 (我们的会话在 host)</td>
+    </tr>
+    <tr>
+      <td>agent 面</td><td>六家 agent, provider 可插拔</td><td>就我一个, 无需抽象层</td>
+    </tr>
+    <tr>
+      <td>清理兜底</td><td>handle.close + shutdownRegistry 双保险</td><td>试验场长驻, 语义不同 (可不管)</td>
+    </tr>
+  </tbody>
+</table>
+
+<div class="callout">
+  <span class="callout-title">一句话结论</span>
+  它证明 "拼 CLI 命令 + sleep infinity 长驻容器" 这条最朴素的路线足够支撑严肃的沙箱编排 — 这正是我们方案的地基; 而它没有的东西 (端口, 登录, 展示链) 恰好是我们方案真正的增量, 不是重复造轮子。
+</div>
+
+<p class="src">对照基线: 交接文档 <code>docs/changes/handoff/2026-08-31-container-sandbox-plan.md</code> 定型方案; ◂ 标记 = 已纳入或值得纳入我们方案的部分。</p>
+
+<script>
+window.__PRESENTATION_STATE__ = {
+  version: 1,
+  values: {
+    page: "sandcastle-design-report",
+    expandedLayers: [],
+    note: "分层展开状态经 toggle 事件记录; 表格 ◂ 行为借鉴标记, 无交互."
+  }
+};
+(function () {
+  var layers = document.querySelectorAll("details.layer");
+  function sync() {
+    window.__PRESENTATION_STATE__.values.expandedLayers =
+      Array.prototype.slice.call(layers)
+        .filter(function (d) { return d.open; })
+        .map(function (d) { return d.querySelector("summary .tag").textContent.trim(); });
+  }
+  Array.prototype.forEach.call(layers, function (d) {
+    d.addEventListener("toggle", sync);
+  });
+  sync();
+})();
+</script>
+
+</div>
+</body>
+</html>
