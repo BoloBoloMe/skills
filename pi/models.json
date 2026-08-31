@@ -32,6 +32,30 @@
             "cacheRead": 0.5,
             "cacheWrite": 0
           }
+        },
+        {
+          "id": "gpt5.6-sol",
+          "reasoning": true,
+          "thinkingLevelMap": {
+            "off": "none",
+            "minimal": "minimal",
+            "low": "low",
+            "medium": "medium",
+            "high": "high",
+            "xhigh": "xhigh"
+          },
+          "input": [
+            "text",
+            "image"
+          ],
+          "contextWindow": 272000,
+          "maxTokens": 128000,
+          "cost": {
+            "input": 4,
+            "output": 20,
+            "cacheRead": 0.4,
+            "cacheWrite": 5
+          }
         }
       ]
     },
