@@ -15,6 +15,37 @@ cd <access-web>/browse && uv sync && uv run playwright install chromium
 
 `access-web` 缺失或 browser_agent 导入失败时 `<helper>` 会报错, 此时按本文步骤 6 的失败出口继续原工作流; 不要尝试自行安装或绕开.
 
+## 远程 (ssh) 模式
+
+进入流程前先判定是否远程 (ssh) 环境: `SSH_TTY` 或 `SSH_CONNECTION` 任一存在即远程; 两者都不存在但用户明示远程时, 同样按远程处理; 用户明示也可覆盖检测结果. 其余情况走 "1. 生成" 节的本地路径.
+
+远程时完全不起 Chromium: 按本地路径相同规则生成自包含 HTML (含 `window.__PRESENTATION_STATE__`), 再用 `scripts/web_server.py` 把页面所在目录挂载到常驻 web 服务, 直接交付 URL. 该脚本纯标准库, 远程模式无需 Setup 节的 access-web 环境.
+
+### 挂载或复用
+
+```bash
+uv run python <web-server> start <port> <页面所在目录绝对路径> --bind <addr>
+```
+
+`<web-server>` 是 `scripts/web_server.py` 相对本 skill 目录解析出的绝对路径. 成败以 stdout 单行 JSON (`success` 字段) 为准.
+
+- 端口: 在 49152-65534 内随机选. 返回 `port_in_use` 时换端口重试, 上限 ≤10 次.
+- bind: ssh 场景默认 `0.0.0.0`, 直接向用户交付可点击 URL. 该服务无认证无 TLS, 开放期间同网段任何主体可读全部已挂载目录, 选用此 bind 前向用户明示这一取舍一次. 用户要求仅本机可看时用 `--bind 127.0.0.1`, 此时成功输出 warning 含 `ssh -L` 端口转发指引, 原样转述给用户.
+- 成功: 在 chat 给出可点击 URL, 原样转述输出中的 `url`/`hostname`/`lan_ip` 与 `port`, 一句话说明展示内容和待反馈问题.
+- 复用: 同一用户的存活实例 bind 一致时幂等复用 (`reused: true`), 新目录自动经 add-dir 挂载, 忽略端口差异仅告警; bind 不一致返回 `bind_conflict`, 提示先 `stop` 再起新实例, 不静默复用.
+- 失败出口: 重试与备选 bind 均失败后, 走既有失败出口 — 给出 HTML 本地绝对路径链接和内容摘要, 继续原工作流.
+
+### 远程降级: 纯展示
+
+远程模式降级为纯展示: 无 `__PRESENTATION_STATE__` 回读通道, 页面交互反馈与最终确认全部在 chat 完成. 页面仍须写 `__PRESENTATION_STATE__` (本地模式与未来兼容需要).
+
+### 服务生命周期
+
+- `status`: 探活; 服务已死时按原挂载清单重建, 可能换端口, 以输出 `port`/`rebuilt` 为准更新交付 URL.
+- `add-dir <dir>`: 增挂目录, 同目录幂等.
+- `stop`: 终止服务并删除运行时文件.
+- 服务空闲 24h 自退; 运行时文件在系统临时目录, 重启后归零, 不承诺跨重启.
+
 ## 1. 生成
 
 将 `scripts/browser_session.py` 相对本 skill 目录解析为绝对路径, 计为 `<helper>`. 不从调用方工作目录查找脚本.

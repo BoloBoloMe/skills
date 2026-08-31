@@ -65,7 +65,7 @@
 
 ## ISSUE-09 SKILL.md 远程模式段 + 契约断言 (Seam 5)
 
-范围: 修改 `general/present/SKILL.md` 增加远程 (ssh) 模式段 (D003/D004/D007 验收第 7 条全部条款: 远程检测 SSH_TTY/SSH_CONNECTION+用户明示覆盖, web 服务器完全替代 Chromium, 端口 49152-65534 随机选+被占重试 ≤10 依据 `port_in_use`, 成功交付可点 URL, bind 127.0.0.1 时 ssh -L 指引, 失败出口本地路径+摘要, 远程降级纯展示无 state 回读); 扩充 `general/present/tests/test_skill_contract.py` 断言.
+范围: 修改 `general/present/SKILL.md` 增加远程 (ssh) 模式段 (D003/D004/D013 验收第 7 条全部条款: 远程检测 SSH_TTY/SSH_CONNECTION+用户明示覆盖, web 服务器完全替代 Chromium, 端口 49152-65534 随机选+被占重试 ≤10 依据 `port_in_use`, 成功交付可点 URL, bind 127.0.0.1 时 ssh -L 指引, 失败出口本地路径+摘要, 远程降级纯展示无 state 回读); 扩充 `general/present/tests/test_skill_contract.py` 断言.
 用例: TC-024.
 依赖: ISSUE-01..08 全部 (契约须与已实现行为一致).
-- [ ] 已实现
+- [x] 已实现 (含审核修复 S1 断言锚点)
