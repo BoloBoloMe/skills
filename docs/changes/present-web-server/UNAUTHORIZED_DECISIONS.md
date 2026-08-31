@@ -81,3 +81,7 @@
 - 理由: "保留命名空间+静默遮蔽" 的字面兑现; 挂载目录内恰有 __control__/ 前缀文件的场景极罕见, 404 语义 (不存在) 符合不泄露原则.
 - 影响: ISSUE-07 修复轮实现 + 用例 (挂载内放 __control__/shadow.txt, loopback GET → 404, LAN GET → 403).
 - 风险: 极端场景用户真想经静态面提供 __control__/ 前缀文件将不可达 — 与决策取舍一致, 接受.
+
+## 修订记录
+
+- 2026-08-30 用户裁决: U-004/U-005 的 "browser_session 5 例环境差异" 认定撤销 — 本机 ~/.cache/ms-playwright 已有浏览器二进制, 测试命令补 `--with playwright` 后 62/62 全绿. 测试命令定版: `~/.local/bin/uv run --with pytest --with playwright python -m pytest general/present/tests -q` (U-004 相应修订). sync-to-pi.py 不执行 (用户裁决).

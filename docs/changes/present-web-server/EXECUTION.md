@@ -3,7 +3,7 @@
 拆分依据: TECHNICAL.md Seam 1-6 与 TC-001..TC-028 权威清单. 每 ISSUE 独立可提交.
 执行规则: 执行者逐 TC 先红后绿, 一次一个切片; 只运行受影响测试; ISSUE 全绿后 review, 修复明确发现项, 勾选并本地提交 `feat: ISSUE-<NN>: <描述>`.
 
-测试命令 (仓库根执行): `uv run python -m pytest general/present/tests -q`, 单文件: `uv run python -m pytest general/present/tests/test_web_server.py -q`
+测试命令 (仓库根执行): `~/.local/bin/uv run --with pytest --with playwright python -m pytest general/present/tests -q`, 单文件把路径换成目标测试文件
 
 ## ISSUE-01 CLI 骨架与参数校验 (Seam 1)
 
