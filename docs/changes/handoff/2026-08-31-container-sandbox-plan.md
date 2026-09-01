@@ -47,6 +47,10 @@ podman run -d --shm-size=1g \
 - skills 同步进容器: sync-to-pi.py 本就 ignore .venv/tests, 容器内重新 uv sync; host .venv 不可复用 (python 路径硬编码)
 - ~/AGENTS.md 引用的 ~/docs/, ~/Workspace/ 约定在容器内不存在 — 挂载或降级
 - 本地 podman: Ubuntu 26.04, rootless, subuid 已配, 存储 ~/.local/share/containers (见必读推荐)
+- 端口映射 IPv6 坑: rootless pasta 只监听 IPv4 `*:<port>`, 访问 localhost 优先解析到 ::1 会连接失败 → 用 127.0.0.1 或局域网 IP
+- Xvfb 启动需 `-ac -noreset`; 分辨率由 `GEOM` env 控制 (默认可取 1920x1080x24)
+- x11vnc 用 `-nopw` 无密码; 容器 stop 时 SIGTERM 10s 超时升 SIGKILL (因 xterm/cmatrix 不响应 SIGTERM)
+- noVNC 入口: 1.3.0 同时存在 index.html/vnc.html, 但为兼容旧版建议保留 vnc.html→index.html 软链兜底
 
 ## 已否定的方向 (勿重提)
 
@@ -62,6 +66,16 @@ podman run -d --shm-size=1g \
 - `/tmp/sandcastle/src/` — 仅当仍需参考: `sandboxes/podman.ts` (rootless/SELinux/mount 参数), `syncIn.ts` (git bundle 机制), `AgentProvider.ts` (pi provider), `AgentProvider.ts` 的 `makePiSessionStorage` (session 跨边界). /tmp 可能已被清理.
 - `~/.agents/skills/use-worktree/SKILL.md` — 标准 worktree 布局与硬规则, 理解 "容器内为何不适用" 的对照面.
 
+## 落地验证记录 (2026-09-01): Xvfb+noVNC 通道已实测
+
+在 /tmp 用干净自建镜像 (`vnc-demo`) 实测了一次 VNC 虚拟屏幕闭环, 验证结论直接沉淀到本方案:
+
+- **运行容器**: Xvfb(:99, 1920x1080x24) + x11vnc(:5900) + noVNC/websockify(6080) + 演示 GUI (交互 xterm / cmatrix / neofetch). 浏览器访问 noVNC 正常.
+- **noVNC 1.3.0 缩放**: 三档 `off/scale/remote`, 默认 `off`. `scale` 随浏览器窗口**等比**自适应, `core/display.js` 的 `autoscale` 按容器尺寸 fit; **长宽比固定为远程分辨率 16:9, 不随窗口变形** (窗口更宽/更窄补黑边, 拉伸失真是 noVNC 不做的事). 开启: URL `?resize=scale` 或界面工具栏 Settings. `remote` 让远程反向改分辨率, Xvfb 静态 screen 不响应, 故用 `scale`.
+- **出网**: 容器经 host NAT (rootless pasta), 出口 IP 与宿主机一致 (实测 47.236.247.245); DNS 解析 / HTTPS(200) / 公网裸 TCP(8.8.8.8:53) 全通.
+- **对方案的衔接**: VNC 通道 = 已验证的底层; 接浏览器登录墙只需把演示 GUI 换成 `DISPLAY=:99 BROWSER_HEADED=true` 的容器内浏览器 (chromium/firefox), 通道本身零改动.
+- **清理经验**: 试验容器/镜像/dangling 层/临时目录已清, 端口 6080 已释放; base 镜像 ubuntu:24.04 保留复用.
+
 ## 路线图评估
 
-用户真实意图: 一个干净的, ssh 可入的容器化试验场, 让我的全套工作流 (含浏览器与 HTML 展示) 在容器里无障碍运转, 且 host 不落盘, 无重复下载. 设计侧已 100% 闭环 (上文全貌); 落地侧 0%: Containerfile 未写, 镜像未 build, use-sandbox skill 未起草, present 容器分支未动, 端到端 (ssh 入容器 → clone → 干活 → HTML 展示 → 登录墙演练) 未验证.
+用户真实意图: 一个干净的, ssh 可入的容器化试验场, 让我的全套工作流 (含浏览器与 HTML 展示) 在容器里无障碍运转, 且 host 不落盘, 无重复下载. 设计侧已 100% 闭环 (上文全貌); 落地进度 (2026-09-01 更新): 设计 100% 闭环不变; **VNC 通道已实测** (见上节, 含等比缩放机制与 NAT 出网验证), 其余仍 0%: 正式 Containerfile 未写, use-sandbox skill 未起草, present 容器分支未动, 端到端 (ssh 入容器 → clone → 干活 → HTML 展示 → 登录墙演练) 未验证.
