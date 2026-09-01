@@ -40,14 +40,14 @@ disable-model-invocation: true
 
 若任何分批迁移 issue 单独完成后都无法保持绿色, 仍保留兼容扩展/分批迁移/收缩清理序列, 但这些 issue 不再标为可独立领取. 将它们标为 HITL/integration 特例, 写明共享 integration branch, 每个中间 issue 的局部完成证据, 以及最终整合验证 issue 的整体绿色承诺. 这些 issues 都阻塞最终的整合验证 issue.
 
-起草完成标准: 每个 AC/TG/NFR 被至少一个拟议 issue 覆盖或明确说明无需执行任务; 每个切片符合 vertical-slice-rules; blockers 无环且只包含真正阻塞项; 宽重构已命中特例规则或明确不适用.
+起草完成标准: 每个 AC/TG/NFR 被至少一个拟议 issue 覆盖或明确说明无需执行任务; 每个 NB (非行为验收) 项必须进覆盖矩阵并有承接条目 (人工验证或 issue); 每个切片符合 vertical-slice-rules; blockers 无环且只包含真正阻塞项; 宽重构已命中特例规则或明确不适用.
 
 # 盘问我
 
 把建议拆分展示为编号列表. 每个 issue 都展示:
 
 - **标题**: 简短描述名
-- **被阻塞于**: 哪些其他 issues 必须先完成, 若无则写无
+- **被阻塞于**: 该 issue 的 blocking edges, 若无则写无
 - **交付内容**: 这个 issue 打通的端到端行为
 
 询问我:
@@ -91,6 +91,7 @@ issue 编号连续;
 ## 覆盖矩阵
 - AC-001 -> ISSUE-01 -> TC-001 -> 验证入口.
 - TG-001 -> ISSUE-01 -> TC-001 -> 验证入口.
+- NB-001 -> 人工验证: <验证方式及通过标准>. 或承接为 issue: NB-001 -> ISSUE-02 -> 验证入口.
 ## 全局风险和停止条件
 - 需要改变 PRODUCT/TECHNICAL/DECISIONS 时停止.
 - 需要扩大允许范围或触碰禁止范围时停止.
