@@ -168,7 +168,7 @@
     <li><a href="#s1">它是怎么操作容器的 — 拼 CLI, 不走 API</a></li>
     <li><a href="#s2">它定义自己的镜像吗 — 生成, 而非发布</a></li>
     <li><a href="#s3">代码库模块设计 — 四层蛋糕</a></li>
-    <li><a href="#s4">对照我们的 to-sandbox 方案</a></li>
+    <li><a href="#s4">对照我们的 use-sandbox 方案</a></li>
   </ol>
   <p class="toc-note">基于 @ai-hero/sandcastle 0.12.0 源码精读; 每节末附出处。行内 ▸ 可展开细节。</p>
 </nav>
@@ -393,13 +393,13 @@ close()</code></pre>
 
 <svg class="squiggle" viewBox="0 0 600 24" aria-hidden="true"><path d="M10 12 q40 -10 80 0 t80 0 t80 0 t80 0 t80 0 t80 0" stroke="#d8d0c0" fill="none" stroke-width="2"/></svg>
 
-<h2 id="s4">对照我们的 to-sandbox 方案</h2>
+<h2 id="s4">对照我们的 use-sandbox 方案</h2>
 
 <p>研究它的真实目的, 是给容器试验场方案找参照系。共性先摆出来: <strong>长驻容器</strong> (它 sleep infinity, 我们 sshd), <strong>fat 镜像 + 秒级启动</strong>, <strong>UID 对齐</strong> (它 <code>--userns=keep-id</code>, 我们 rootless 天然同 uid), <strong>host 仓库进容器</strong>。分岔在于: 它是<em>程序化编排的无人车间</em> (库代码 exec 注入, 用完即毁), 我们是<em>ssh 可入的长住工坊</em> (我本人在里面干活, 有展示需求)。</p>
 
 <table class="cmp">
   <thead>
-    <tr><th>维度</th><th>sandcastle</th><th>to-sandbox (我们)</th></tr>
+    <tr><th>维度</th><th>sandcastle</th><th>use-sandbox (我们)</th></tr>
   </thead>
   <tbody>
     <tr>
@@ -418,7 +418,7 @@ close()</code></pre>
       <td>git bundle</td><td>syncIn: bundle --all → 容器内 clone, 免网络</td><td>已列为备选 (强隔离需求时)</td>
     </tr>
     <tr class="borrowed">
-      <td>image inspect 预检</td><td>运行前检查镜像存在, 失败提示 build</td><td>可纳入 to-sandbox 流程</td>
+      <td>image inspect 预检</td><td>运行前检查镜像存在, 失败提示 build</td><td>可纳入 use-sandbox 流程</td>
     </tr>
     <tr>
       <td>会话搬运</td><td>SessionStore 跨界搬运 JSONL, resume/fork</td><td>暂无对应物 (我们的会话在 host)</td>
