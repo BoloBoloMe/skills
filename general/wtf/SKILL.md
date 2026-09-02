@@ -1,5 +1,5 @@
 ---
-name: WTF
+name: wtf
 description: 你的回答难懂到令人发指.
 disable-model-invocation: true
 ---
