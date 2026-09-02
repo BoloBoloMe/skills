@@ -55,7 +55,7 @@ disable-model-invocation: true
 ## 3. 扫描盲区
 
 盘问结束前, 执行 grilling 的 `扫描盲区`, 附加额外检查项:
-检查已启用层面 (至少判定过一个问题归属的层面) 对应的 `to-product-spec` 或 `to-technical-spec` 所需内容是否存在缺口, 缺口皆为盲区.
+检查已启用层面 (至少判定过一个问题归属的层面) 对应的 `to-spec` 产物所需内容是否存在缺口, 缺口皆为盲区.
 
 完成标准:
 符合执行 grilling 的 `扫描盲区` 完成标准;

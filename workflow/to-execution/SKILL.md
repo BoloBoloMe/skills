@@ -1,5 +1,5 @@
 ---
-name: to-execution-spec
+name: to-execution
 description: 将 Product/Technical Spec 拆成 LLM 可执行的 Execution Spec 和垂直切片 issues.
 disable-model-invocation: true
 ---

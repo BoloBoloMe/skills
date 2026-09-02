@@ -1,5 +1,7 @@
 # 交接: Gherkin AC 形式化与 workflow 元词汇表 — 待执行
 
+> 改名注解 (2026-09-02): 文中 `to-product-spec` 与 `to-technical-spec` 即现行 `to-spec` (`workflow/to-spec/`), `to-execution-spec` 即现行 `to-execution` (`workflow/to-execution/`); 决策见 `docs/changes/spec-skills-merge/DECISIONS.md`.
+
 交接目的: 后续会话负责**执行落地**. 全部设计决策已关闭并固化于决策账本, 本文只补账本没有的信息.
 
 ## 执行上下文

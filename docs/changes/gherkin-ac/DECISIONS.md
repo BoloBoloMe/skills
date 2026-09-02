@@ -1,5 +1,7 @@
 # 产品验收标准 Gherkin 化与 workflow 元词汇表 决策账本
 
+> 改名注解 (2026-09-02): 文中 `to-product-spec` 与 `to-technical-spec` 即现行 `to-spec` (`workflow/to-spec/`), `to-execution-spec` 即现行 `to-execution` (`workflow/to-execution/`); 决策见 `docs/changes/spec-skills-merge/DECISIONS.md`.
+
 ## 决策
 
 ### D001 PRODUCT.md 验收标准形式化为内嵌 Gherkin

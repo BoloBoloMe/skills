@@ -1,6 +1,6 @@
 # Gherkin 书写规范参考
 
-本文件是 `to-product-spec` skill 的补充参考, 管 PRODUCT.md 验收标准 Gherkin 块的书写细节; 模板形态与机检触发时机见 `SKILL.md`.
+本文件是 `to-spec` skill 的补充参考, 管 PRODUCT.md 验收标准 Gherkin 块的书写细节; 模板形态与机检触发时机见 `SKILL.md`.
 
 ## 1. 语法子集
 

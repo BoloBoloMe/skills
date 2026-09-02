@@ -1,5 +1,7 @@
 # 产品验收标准 Gherkin 化与机检脚本 Product Spec
 
+> 改名注解 (2026-09-02): 文中 `to-product-spec` 与 `to-technical-spec` 即现行 `to-spec` (`workflow/to-spec/`), `to-execution-spec` 即现行 `to-execution` (`workflow/to-execution/`); 决策见 `docs/changes/spec-skills-merge/DECISIONS.md`.
+
 ## 背景
 
 旧格式 PRODUCT.md 的验收标准 (AC) 是自由散文的给定/当/则句式, 且 关键场景 (SC) 节与 AC 双载体重叠; 解析/标签/覆盖等形态规则没有机械校验面, 只能靠 LLM 目检, 而 LLM 目检不可靠. 受益者: spec 编写方 (落盘即合法, 不返工), workflow 维护者 (规则由脚本统一强制, 不随会话漂移), 变更的四方读者 (业务/开发/测试/人, 场景自包含可读). 需求来源: 用户经 deliberate 盘问确认, 结论固化于本变更决策账本 D001-D022. 现在处理的理由: 模板改动无实例是盲改 (D017), 本 spec 自身即新模板与机检脚本的首个试金石.

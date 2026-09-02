@@ -5,6 +5,8 @@
 - 审查范围: `general/` 与 `workflow/` 全部 SKILL.md 及附属文档 (30 个 skill), `deprecated/` 归档项, `docs/` (adr/changes/handoff), `pi/` 配置, `sync-to-pi.py` 与 `tests/`, `README.md`/`AGENTS.md`
 - 审查方法: 通读全部 skill 正文与附属文档, 机械校验 (frontmatter name 与目录名一致性, 相对链接完整性, skill 互相引用可达性, 测试运行), 交叉核对文档间引用 (docs/changes, docs/handoff, pi 配置), git 历史沿革
 
+> 改名注解 (2026-09-02): 文中 `to-product-spec` 与 `to-technical-spec` 即现行 `to-spec` (`workflow/to-spec/`), `to-execution-spec` 即现行 `to-execution` (`workflow/to-execution/`); 决策见 `docs/changes/spec-skills-merge/DECISIONS.md`.
+
 ## 总体评价
 
 审查目标达成度整体高, 先记录查无问题的项, 避免凑数:
