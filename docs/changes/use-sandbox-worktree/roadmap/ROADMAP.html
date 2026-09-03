@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>use-sandbox-worktree · Roadmap</title>
+<style>
+  :root {
+    --paper: #f7f3ea;
+    --ink: #3a3630;
+    --ink-soft: #6b655c;
+    --rust: #b5542d;
+    --sage: #6f7d5c;
+    --bluegray: #5b7288;
+    --fog: #c9c2b4;
+    --line: #8a8276;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: "Spectral", "Noto Serif CJK SC", "Source Han Serif SC", "Songti SC", serif;
+    line-height: 1.75;
+  }
+  .page { max-width: 1080px; margin: 0 auto; padding: 3rem 1.5rem 6rem; }
+  h1 { font-size: 1.9rem; font-weight: 600; letter-spacing: .02em; margin: 0 0 .25rem; }
+  h1 .sub { display: block; font-size: .95rem; color: var(--ink-soft); font-weight: 400; margin-top: .4rem; }
+  h2 {
+    font-size: 1.25rem; font-weight: 600; margin: 3.2rem 0 1rem;
+    padding-bottom: .35rem; border-bottom: 1.5px solid var(--line);
+  }
+  h2 .anchor { color: var(--rust); margin-right: .5rem; }
+  p { margin: .6rem 0; }
+  .lede { font-size: 1.06rem; }
+  .callout {
+    border-left: 3px solid var(--rust);
+    background: #f1ebdd;
+    padding: .7rem 1rem; margin: 1rem 0;
+    border-radius: 0 6px 6px 0;
+  }
+  .callout.sage { border-left-color: var(--sage); }
+  .callout.blue { border-left-color: var(--bluegray); }
+  .toc { columns: 2; font-size: .95rem; margin: 1rem 0 0; }
+  .toc a { color: var(--ink); text-decoration: none; border-bottom: 1px dotted var(--line); }
+  .toc a:hover { color: var(--rust); }
+  figure { margin: 1.5rem 0; }
+  figcaption { font-size: .9rem; color: var(--ink-soft); margin-top: .5rem; font-style: italic; }
+  svg { width: 100%; height: auto; display: block; }
+  .ms { margin: 1.1rem 0; padding-left: 1.2rem; border-left: 2px solid transparent; }
+  .ms.hitl { border-left-color: var(--rust); }
+  .ms.afk  { border-left-color: var(--bluegray); }
+  .ms h3 { margin: 0 0 .15rem; font-size: 1.05rem; font-weight: 600; }
+  .ms h3 .tag {
+    display: inline-block; font-size: .72rem; font-weight: 400; vertical-align: middle;
+    border: 1px solid currentColor; border-radius: 999px; padding: 0 .55em; margin-left: .6em;
+  }
+  .tag.hitl { color: var(--rust); }
+  .tag.afk  { color: var(--bluegray); }
+  .ms .q { margin: .1rem 0; }
+  .ms .blocked { font-size: .88rem; color: var(--ink-soft); }
+  .ms ul { margin: .3rem 0 .3rem 1.1rem; padding: 0; font-size: .95rem; }
+  ul.plain { margin: .4rem 0 .4rem 1.2rem; padding: 0; }
+  ul.plain li { margin: .35rem 0; }
+  .fog-item { color: var(--ink-soft); }
+  .out-item { color: var(--ink-soft); text-decoration: line-through; text-decoration-color: var(--fog); }
+  .out-item b { text-decoration: none; }
+  .kicker { font-size: .8rem; letter-spacing: .18em; text-transform: uppercase; color: var(--ink-soft); }
+  hr.soft { border: none; border-top: 1px dashed var(--line); margin: 2.5rem 0; }
+  code { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: .88em; background: #efe9db; padding: 0 .3em; border-radius: 4px; }
+  a { color: var(--bluegray); }
+  .node-link { cursor: pointer; }
+  .node-link:focus { outline: 2px dashed var(--rust); outline-offset: 3px; }
+  @media (max-width: 640px) { .toc { columns: 1; } }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <p class="kicker">probe · 绘制 · 2026-09-01 之后</p>
+  <h1>use-sandbox-worktree Roadmap
+    <span class="sub">从战争迷雾到一个会管理 sandbox-worktree 生命周期的 skill</span>
+  </h1>
+
+  <nav class="toc">
+    <div><a href="#dest">① 目的地</a></div>
+    <div><a href="#map">② 地图: 依赖树与迷雾</a></div>
+    <div><a href="#milestones">③ Milestone 详表</a></div>
+    <div><a href="#fog">④ 未决迷雾</a></div>
+    <div><a href="#out">⑤ 范围外</a></div>
+    <div><a href="#notes">⑥ 笔记: 路线与拍板</a></div>
+  </nav>
+
+  <h2 id="dest"><span class="anchor">①</span>目的地</h2>
+  <p class="lede">use-sandbox-worktree skill 落地并经端到端演练验证可用 — 它管理 <b>sandbox-worktree</b> (host git worktree + 容器的绑定对) 的完整生命周期.</p>
+  <ul class="plain">
+    <li><b>诞生</b>: 用 use-worktree 在 host 建工作树分支目录 + 拉起容器 (镜像由 host llm 按项目推导制备, 内含 pi CLI + skill 库 + 部分扩展)</li>
+    <li><b>存续</b>: 用户 ssh 入容器, 驱动容器内的 pi 干活; 产物经 gate 门禁 (<code>sandbox/work</code> ff-push + <code>updateInstead</code>) 回流 host; 展示链与登录墙容器内可用</li>
+    <li><b>终结</b>: 删容器 + 删 host worktree</li>
+  </ul>
+  <div class="callout"><b>完成判据</b>: 端到端演练跑通整个周期 (建 → 干 → 回流 → 拆). 交付物是一个可工作的 skill, 不是又一份设计文档.</div>
+
+  <h2 id="map"><span class="anchor">②</span>地图: 依赖树与迷雾</h2>
+  <p>箭头即阻塞关系, 右为下游. 红实心结点须用户在场 (HITL), 蓝灰空心结点由代理独立驱动 (AFK). M03 瘦闭环是全局咽喉; 关键路径沿 M01/M02 → M03 → M07 → M09 → M10 走, 登录墙支线最长.</p>
+
+  <figure>
+  <svg viewBox="0 0 1140 560" role="img" aria-label="Roadmap 依赖树地图">
+    <defs>
+      <filter id="rough"><feTurbulence type="fractalNoise" baseFrequency="0.015" numOctaves="2" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="3.5"/></filter>
+      <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+        <path d="M0,0 L10,5 L0,10 z" fill="#8a8276"/>
+      </marker>
+      <pattern id="hatch" width="7" height="7" patternTransform="rotate(45)" patternUnits="userSpaceOnUse">
+        <line x1="0" y1="0" x2="0" y2="7" stroke="#c9c2b4" stroke-width="1.2"/>
+      </pattern>
+    </defs>
+
+    <!-- 纸面边框 -->
+    <rect x="6" y="6" width="1128" height="548" fill="none" stroke="#8a8276" stroke-width="1.4" filter="url(#rough)" rx="10"/>
+
+    <!-- 迷雾云 (目的地与晚期支线之上) -->
+    <g filter="url(#rough)" opacity="0.85">
+      <path d="M770 60 q30-38 70-22 q18-30 58-18 q40-14 62 14 q38-4 44 26 q26 14 8 36 q10 30-24 36 q-6 28-44 22 q-20 24-56 10 q-30 18-58-2 q-38 6-48-22 q-28-16-12-40 q-16-24 0-40 z"
+            fill="#e6e0d2" stroke="#b3ab99" stroke-width="1.5"/>
+      <text x="890" y="88" text-anchor="middle" font-size="14" fill="#6b655c" font-style="italic">未决迷雾</text>
+    </g>
+
+    <!-- 范围外 孤岛 -->
+    <g filter="url(#rough)">
+      <path d="M880 440 q40-22 92-10 q52-12 88 8 q30 18 10 44 q14 30-22 44 q-24 22-66 12 q-36 16-72-2 q-40 4-52-26 q-20-24 2-44 q-8-16 20-26 z"
+            fill="url(#hatch)" stroke="#b3ab99" stroke-width="1.5" stroke-dasharray="5 4"/>
+      <text x="965" y="486" text-anchor="middle" font-size="14" fill="#8a8276" font-style="italic">范围外</text>
+      <text x="965" y="505" text-anchor="middle" font-size="10.5" fill="#8a8276">sandcastle · pi 整进程容器化 · 云端 provider</text>
+    </g>
+
+    <!-- 依赖边 -->
+    <g stroke="#8a8276" stroke-width="1.6" fill="none" filter="url(#rough)">
+      <path d="M180 128 C 240 128 250 168 300 175" marker-end="url(#arr)"/>
+      <path d="M180 218 C 240 218 250 190 298 180" marker-end="url(#arr)"/>
+      <path d="M180 330 C 250 330 250 340 298 342" marker-end="url(#arr)"/>
+      <path d="M395 165 C 450 140 470 105 518 92" marker-end="url(#arr)"/>
+      <path d="M398 182 C 450 210 470 255 516 272" marker-end="url(#arr)"/>
+      <path d="M396 190 C 440 260 460 400 516 428" marker-end="url(#arr)"/>
+      <path d="M395 350 C 450 350 460 320 514 288" marker-end="url(#arr)"/>
+      <path d="M615 285 C 660 285 665 285 706 285" marker-end="url(#arr)"/>
+      <path d="M615 82 C 720 70 800 150 880 205" marker-end="url(#arr)"/>
+      <path d="M613 295 C 700 320 790 280 878 245" marker-end="url(#arr)"/>
+      <path d="M613 438 C 720 460 810 330 880 262" marker-end="url(#arr)"/>
+      <path d="M795 278 C 830 265 850 252 878 240" marker-end="url(#arr)"/>
+      <path d="M952 232 C 980 230 990 228 1016 226" marker-end="url(#arr)"/>
+    </g>
+
+    <!-- 结点: HITL = 实心 rust, AFK = 空心 bluegray -->
+    <g font-size="12.5">
+      <!-- M01 -->
+      <g class="node-link" tabindex="0" data-ms="m01" role="link" aria-label="跳到 MILESTONE-01">
+        <circle cx="140" cy="125" r="34" fill="#b5542d" opacity="0.92" filter="url(#rough)"/>
+        <text x="140" y="121" text-anchor="middle" fill="#f7f3ea" font-weight="600" font-size="13">M01</text>
+        <text x="140" y="136" text-anchor="middle" fill="#f7f3ea" font-size="10.5">gate 设计</text>
+        <text x="140" y="172" text-anchor="middle" fill="#6b655c" font-size="10.5">盘问 HITL</text>
+      </g>
+      <!-- M02 -->
+      <g class="node-link" tabindex="0" data-ms="m02" role="link" aria-label="跳到 MILESTONE-02">
+        <circle cx="140" cy="222" r="40" fill="#b5542d" opacity="0.92" filter="url(#rough)"/>
+        <text x="140" y="216" text-anchor="middle" fill="#f7f3ea" font-weight="600" font-size="13">M02</text>
+        <text x="140" y="230" text-anchor="middle" fill="#f7f3ea" font-size="10">生命周期语义</text>
+        <text x="140" y="272" text-anchor="middle" fill="#6b655c" font-size="10.5">盘问 HITL</text>
+      </g>
+      <!-- M05 -->
+      <g class="node-link" tabindex="0" data-ms="m05" role="link" aria-label="跳到 MILESTONE-05">
+        <circle cx="140" cy="332" r="34" fill="none" stroke="#5b7288" stroke-width="2.2" filter="url(#rough)"/>
+        <text x="140" y="328" text-anchor="middle" fill="#5b7288" font-weight="600" font-size="13">M05</text>
+        <text x="140" y="343" text-anchor="middle" fill="#5b7288" font-size="10">元数据调研</text>
+        <text x="140" y="379" text-anchor="middle" fill="#6b655c" font-size="10.5">调研 AFK</text>
+      </g>
+      <!-- M03 -->
+      <g class="node-link" tabindex="0" data-ms="m03" role="link" aria-label="跳到 MILESTONE-03">
+        <circle cx="352" cy="178" r="36" fill="none" stroke="#5b7288" stroke-width="3" filter="url(#rough)"/>
+        <text x="352" y="174" text-anchor="middle" fill="#5b7288" font-weight="600" font-size="13">M03</text>
+        <text x="352" y="189" text-anchor="middle" fill="#5b7288" font-size="10.5">瘦闭环</text>
+        <text x="352" y="132" text-anchor="middle" fill="#6b655c" font-size="10.5">咽喉 · 施工 AFK</text>
+      </g>
+      <!-- M06 -->
+      <g class="node-link" tabindex="0" data-ms="m06" role="link" aria-label="跳到 MILESTONE-06">
+        <circle cx="352" cy="346" r="36" fill="#b5542d" opacity="0.92" filter="url(#rough)"/>
+        <text x="352" y="342" text-anchor="middle" fill="#f7f3ea" font-weight="600" font-size="13">M06</text>
+        <text x="352" y="357" text-anchor="middle" fill="#f7f3ea" font-size="10.5">制备策略</text>
+        <text x="352" y="394" text-anchor="middle" fill="#6b655c" font-size="10.5">盘问 HITL</text>
+      </g>
+      <!-- M04 -->
+      <g class="node-link" tabindex="0" data-ms="m04" role="link" aria-label="跳到 MILESTONE-04">
+        <circle cx="570" cy="84" r="36" fill="none" stroke="#5b7288" stroke-width="2.2" filter="url(#rough)"/>
+        <text x="570" y="80" text-anchor="middle" fill="#5b7288" font-weight="600" font-size="13">M04</text>
+        <text x="570" y="95" text-anchor="middle" fill="#5b7288" font-size="10">网络访问控制</text>
+        <text x="570" y="133" text-anchor="middle" fill="#6b655c" font-size="10.5">施工 AFK</text>
+      </g>
+      <!-- M07 -->
+      <g class="node-link" tabindex="0" data-ms="m07" role="link" aria-label="跳到 MILESTONE-07">
+        <circle cx="570" cy="282" r="36" fill="none" stroke="#5b7288" stroke-width="2.2" filter="url(#rough)"/>
+        <text x="570" y="278" text-anchor="middle" fill="#5b7288" font-weight="600" font-size="13">M07</text>
+        <text x="570" y="293" text-anchor="middle" fill="#5b7288" font-size="10.5">制备实现</text>
+        <text x="570" y="330" text-anchor="middle" fill="#6b655c" font-size="10.5">施工 AFK</text>
+      </g>
+      <!-- M08 -->
+      <g class="node-link" tabindex="0" data-ms="m08" role="link" aria-label="跳到 MILESTONE-08">
+        <circle cx="570" cy="436" r="34" fill="none" stroke="#5b7288" stroke-width="2.2" filter="url(#rough)"/>
+        <text x="570" y="432" text-anchor="middle" fill="#5b7288" font-weight="600" font-size="13">M08</text>
+        <text x="570" y="447" text-anchor="middle" fill="#5b7288" font-size="10.5">展示链</text>
+        <text x="570" y="483" text-anchor="middle" fill="#6b655c" font-size="10.5">施工 AFK</text>
+      </g>
+      <!-- M09 -->
+      <g class="node-link" tabindex="0" data-ms="m09" role="link" aria-label="跳到 MILESTONE-09">
+        <circle cx="750" cy="285" r="34" fill="none" stroke="#5b7288" stroke-width="2.2" filter="url(#rough)"/>
+        <text x="750" y="281" text-anchor="middle" fill="#5b7288" font-weight="600" font-size="13">M09</text>
+        <text x="750" y="296" text-anchor="middle" fill="#5b7288" font-size="10.5">登录墙</text>
+        <text x="750" y="332" text-anchor="middle" fill="#6b655c" font-size="10.5">施工 AFK</text>
+      </g>
+      <!-- M10 -->
+      <g class="node-link" tabindex="0" data-ms="m10" role="link" aria-label="跳到 MILESTONE-10">
+        <circle cx="915" cy="235" r="38" fill="#b5542d" opacity="0.92" filter="url(#rough)"/>
+        <text x="915" y="231" text-anchor="middle" fill="#f7f3ea" font-weight="600" font-size="13">M10</text>
+        <text x="915" y="246" text-anchor="middle" fill="#f7f3ea" font-size="10">SKILL.md+演练</text>
+        <text x="915" y="287" text-anchor="middle" fill="#6b655c" font-size="10.5">收口 HITL</text>
+      </g>
+      <!-- 目的地旗 -->
+      <g filter="url(#rough)">
+        <line x1="1044" y1="226" x2="1044" y2="178" stroke="#3a3630" stroke-width="2.4"/>
+        <path d="M1044 178 L1096 190 L1044 204 z" fill="#6f7d5c"/>
+        <text x="1044" y="248" text-anchor="middle" font-size="11.5" fill="#3a3630" font-weight="600">目的地</text>
+        <text x="1044" y="263" text-anchor="middle" font-size="10" fill="#6b655c">建→干→回流→拆</text>
+      </g>
+    </g>
+
+    <!-- 图例 -->
+    <g font-size="11" fill="#3a3630">
+      <circle cx="48" cy="52" r="8" fill="#b5542d" opacity="0.92"/>
+      <text x="63" y="56">HITL 须用户在场</text>
+      <circle cx="48" cy="76" r="8" fill="none" stroke="#5b7288" stroke-width="2"/>
+      <text x="63" y="80">AFK 代理独立驱动</text>
+      <path d="M40 100 q14-16 28-6 q14-12 26 0 q12 10-2 20 q-4 12-20 8 q-12 8-24-2 q-14-4-8-20 z" fill="#e6e0d2" stroke="#b3ab99"/>
+      <text x="105" y="110">迷雾: 在范围内, 形状未定</text>
+      <rect x="40" y="128" width="26" height="14" fill="url(#hatch)" stroke="#b3ab99" stroke-dasharray="4 3"/>
+      <text x="75" y="139">范围外: 主动排除</text>
+    </g>
+  </svg>
+  <figcaption>点击 (或 Tab+Enter) 任一结点跳转到其详表条目. 三根 M01/M02/M05 可并行开工; M05 是 AFK, 可与 HITL 盘问同时进行.</figcaption>
+  </figure>
+
+  <h2 id="milestones"><span class="anchor">③</span>Milestone 详表</h2>
+
+  <div class="ms hitl" id="m01">
+    <h3>MILESTONE-01 · gate 设计 <span class="tag hitl">deliberate · HITL</span></h3>
+    <p class="q">读通道 (真远端是否对容器暴露, 读全走 gate 镜像?) / gate 服务形态 (git daemon vs ssh) / gate 工作树干净保障 (who/when).</p>
+    <p class="blocked">阻塞于: 无</p>
+  </div>
+
+  <div class="ms hitl" id="m02">
+    <h3>MILESTONE-02 · sandbox-worktree 生命周期语义 <span class="tag hitl">deliberate · HITL</span></h3>
+    <p class="q">一个 sandbox-worktree 从生到灭的状态机, 两个资源面一起拍:</p>
+    <ul>
+      <li>worktree 面: 分支生灭 / reset 策略 / 与 use-worktree 的交互</li>
+      <li>容器面: 容器生灭与分支的同步关系 / stop 还是只许 rm / 镜像换版时存活容器处置 / 孤儿容器清理</li>
+      <li>终结面: 拆的顺序 / 脏状态检查 (未 push 的工作怎么办)</li>
+      <li>端口分配结果算不算 sandbox-worktree 的身份信息 (容器 restart 后宿主端口会变)</li>
+    </ul>
+    <p class="blocked">阻塞于: 无</p>
+  </div>
+
+  <div class="ms afk" id="m03">
+    <h3>MILESTONE-03 · 瘦闭环端到端 <span class="tag afk">task · AFK</span></h3>
+    <p class="q">最简镜像 (git+pi+ssh) + gate 工作树仓 + 编排脚本, 跑通 建 → 干 → ff-push 回流 → 拆. 全通网络中间态须守 T7b 拓扑铁律: real 仓永不入任何可写端点路径.</p>
+    <p class="blocked">阻塞于: MILESTONE-01, MILESTONE-02</p>
+  </div>
+
+  <div class="ms afk" id="m04">
+    <h3>MILESTONE-04 · 网络访问控制 (双模式) <span class="tag afk">task · AFK</span></h3>
+    <p class="q">黑名单 (默认放行+拒清单) 与白名单 (默认拒+放行清单) 两种模式并存; host llm 创建容器前询问用户选定; 白名单模式含创建时盘点确认环节; 运行期不切换. 静态 IP 子网 + nft 注入 + 启动后重注入.</p>
+    <p class="blocked">阻塞于: MILESTONE-03</p>
+  </div>
+
+  <div class="ms afk" id="m05">
+    <h3>MILESTONE-05 · podman 镜像元数据能力调研 <span class="tag afk">research · AFK</span></h3>
+    <p class="q">labels / inspect / 命名与 tag 策略 / 按 label 查询过滤 — "镜像属于哪个项目, 内容物有什么, 版本号" 记录到哪的事实基础.</p>
+    <p class="blocked">阻塞于: 无</p>
+  </div>
+
+  <div class="ms hitl" id="m06">
+    <h3>MILESTONE-06 · 镜像制备策略 + 约定降级 <span class="tag hitl">deliberate · HITL</span></h3>
+    <p class="q">镜像内容不钉死, 由 host llm 按项目推导: 依赖件分析流程 (运行环境/构建工具/harness/浏览器/系统工具) / 版本号语义 / 记录位置 (借 M05 结论, 优先 podman 原生) / "最合适" 匹配规则 / 失配重建触发. 约定降级 (~/docs, ~/Workspace) 归入本簇: 约定文档也是 harness 内容物, 由 host llm 制备时推导, 不落项目 git.</p>
+    <p class="blocked">阻塞于: MILESTONE-05</p>
+  </div>
+
+  <div class="ms afk" id="m07">
+    <h3>MILESTONE-07 · 镜像制备实现 <span class="tag afk">task · AFK</span></h3>
+    <p class="q">host llm 分析 → 查已有镜像 → 选最适版本或 build 新版 → 记录元数据. 端口动态分配 (<code>-p 6080</code> 省宿主侧) + <code>podman port</code> 事后发现, 容器内端口固定, 宿主端口不钉.</p>
+    <p class="blocked">阻塞于: MILESTONE-03, MILESTONE-06</p>
+  </div>
+
+  <div class="ms afk" id="m08">
+    <h3>MILESTONE-08 · 展示链接线 <span class="tag afk">task · AFK</span></h3>
+    <p class="q">容器内 present web_server bind 0.0.0.0, 经端口映射交付 URL. 考察点: 此路径不经 host 常驻展示服务, add-dir/stop 缺失是否真有影响 (预期无 — stop 随容器灭, add-dir 可绕过).</p>
+    <p class="blocked">阻塞于: MILESTONE-03</p>
+  </div>
+
+  <div class="ms afk" id="m09">
+    <h3>MILESTONE-09 · 登录墙闭环 <span class="tag afk">task · AFK</span></h3>
+    <p class="q">Xvfb :99 + x11vnc + websockify/noVNC 接入编排, <code>DISPLAY=:99 BROWSER_HEADED=true</code> 切换约定, 浏览器 profile volume 持久化; 底层通道已实测 (2026-09-01 vnc-demo).</p>
+    <p class="blocked">阻塞于: MILESTONE-07</p>
+  </div>
+
+  <div class="ms hitl" id="m10">
+    <h3>MILESTONE-10 · SKILL.md 定稿 + 全链演练 <span class="tag hitl">task · HITL</span></h3>
+    <p class="q">按实证现实写 SKILL.md (非设计虚构); 用户 ssh 实操验收: 建 → ssh 干活 → 过门禁回流 → 展示 → 登录墙 → 拆.</p>
+    <p class="blocked">阻塞于: MILESTONE-04, MILESTONE-07, MILESTONE-08, MILESTONE-09</p>
+  </div>
+
+  <h2 id="fog"><span class="anchor">④</span>未决迷雾</h2>
+  <p>在范围内, 但问题形状还不够清晰, 尚不能写成 Milestone. 前沿推进到那里时再回访:</p>
+  <ul class="plain">
+    <li class="fog-item">☁ 运行期新站点需求的处理流程形态 (回父会话确认 → 更新容器的具体动作)</li>
+    <li class="fog-item">☁ 多 sandbox-worktree 并发 (动态端口分配后可能缩水为资源限额问题)</li>
+    <li class="fog-item">☁ rootless netns 清理偶发失败的编排兜底是否够用 (M04 后回访)</li>
+    <li class="fog-item">☁ 镜像版本积累后的 GC 策略</li>
+    <li class="fog-item">☁ 镜像复用的项目边界 (严格按项目隔离, 还是允许跨项目匹配)</li>
+    <li class="fog-item">☁ 容器崩溃 / host 重启后的恢复语义 (可能与孤儿清理同解, M02 后回访)</li>
+  </ul>
+
+  <h2 id="out"><span class="anchor">⑤</span>范围外</h2>
+  <ul class="plain">
+    <li class="out-item"><b>subagent 工具容器化 / sandcastle 集成落地</b> — 已否定方向 (调研 §6)</li>
+    <li class="out-item"><b>pi 整进程容器化</b> (gondolin / whole-process-docker / OpenShell) — 隔离对象不同, 形态不同</li>
+    <li class="out-item"><b>present web_server ISSUE-02/04 实现本体</b> — present-web-server 会话跟踪中, 本路线只消费其结果</li>
+    <li class="out-item"><b>云端 provider</b> (vercel / daytona) — 本地 rootless podman 已够</li>
+  </ul>
+
+  <h2 id="notes"><span class="anchor">⑥</span>笔记: 路线与拍板</h2>
+
+  <div class="callout sage"><b>路线 A「垂直切片先行」(已选定)</b>: 最瘦闭环先跑通, 再逐层加固. 理由: 单项机制已被调研全部实测, 仅存不确定性是集成咬合, 垂直切片最早兑现它; 切片骨架与完成判据同形; SKILL.md 最后写 = 记录实证现实.</div>
+  <ul class="plain">
+    <li><b>路线 B「契约先行」排除理由</b>: 先写 SKILL.md 有写出不可执行文档的真实风险, 集中在集成缝; 其 "规格逼决策" 的收益已由前置 deliberate Milestone 获得, 不需要拿文档当赌注.</li>
+    <li><b>路线 C「自底向上组件先行」排除理由</b>: 组件各自验收但集成期才暴露接缝 (容器内 pi 真跑通 / 展示链 / ufw), 谨慎买不到新信息.</li>
+  </ul>
+
+  <div class="callout blue"><b>本次会话拍板与修正</b>:
+    <ul class="plain">
+      <li>改名 use-sandbox → <b>use-sandbox-worktree</b>; 新概念 <b>sandbox-worktree</b> 入领域语言 (worktree + 容器绑定对)</li>
+      <li>agent 的位置修正: agent 就在容器内, ssh 入容器的是用户; use-sandbox-worktree 会话只管理生命周期</li>
+      <li>调研 §4.1 "白名单单模式" 修正为 <b>黑/白双模式</b>, 创建时询问用户选定</li>
+      <li>镜像内容<b>不钉死</b>: host llm 按项目推导依赖件, 镜像=带元数据的缓存制品, 优先 podman 原生记录; 镜像/容器是环境信息, 不落项目 git</li>
+      <li>端口<b>动态分配</b>: 宿主端口不钉死, <code>podman port</code> 事后发现; 容器内端口固定</li>
+      <li>白名单盘点确认是 sandbox-worktree 诞生步骤的<b>固定环节</b>, 非可选</li>
+    </ul>
+  </div>
+
+  <hr class="soft">
+  <p style="font-size:.88rem;color:var(--ink-soft)">每个会话应查阅的 skill: present (展示链) · use-worktree (诞生步骤) · access-web (登录墙消费方). 固定偏好: 硬约束交给环境, 容器内 agent 自由驰骋, 容器之外用户说了算.</p>
+
+</div>
+
+<script>
+  window.__PRESENTATION_STATE__ = { version: 1, values: { selectedMilestone: null } };
+  function jump(g) {
+    var id = g.getAttribute('data-ms');
+    var el = document.getElementById(id);
+    if (el) {
+      window.__PRESENTATION_STATE__.values.selectedMilestone = id;
+      el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }
+  document.querySelectorAll('.node-link').forEach(function (g) {
+    g.addEventListener('click', function () { jump(g); });
+    g.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); jump(g); }
+    });
+  });
+</script>
+</body>
+</html>
