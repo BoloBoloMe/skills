@@ -1,6 +1,6 @@
 # 状态: 待处理
 # 类型: deliberate
-# 阻塞于: MILESTONE-05
+# 阻塞于: 无
 
 ## 问题
 
