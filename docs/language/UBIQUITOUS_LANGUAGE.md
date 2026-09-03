@@ -32,6 +32,14 @@ _避免_: 公开面, 静态面
 present skill 检测到 ssh 会话 (`SSH_TTY`/`SSH_CONNECTION` 或用户明示) 时的展示路径: 走**常驻展示服务**交付 URL, 完全替代本地 Chromium, 降级为纯展示 (无页面状态回读).
 _避免_: ssh 模式, headless 模式
 
+**sandbox-worktree**:
+git worktree + sandbox 容器的绑定对, use-sandbox-worktree skill 管理的生命周期单元: 诞生 (建工作树 + 拉起容器) → 存续 (用户 ssh 入容器驱动容器内 agent, 产物经**gate**回流 host) → 终结 (删容器 + 删 worktree).
+_避免_: 沙盒 (未含 worktree 绑定语义), 容器工作区
+
+**gate**:
+**sandbox-worktree** 中 host 上的独立 clone 专用目录, agent 对共享侧的唯一可写端点: 前置钩子只收 sandbox/work 分支的 fast-forward push, updateInstead 让合规 push 瞬间落地为可打开/编译/运行的文件. 门禁由拓扑保证 (real 仓不在任何可写端点路径内), 不由钩子保证.
+_避免_: 网关仓库 (过长), 中转仓 (未含门禁与落地窗口二合一语义)
+
 ## 示例对话
 
 开发者: 第二个会话又调用 start, 会起新的**常驻展示服务**吗?
