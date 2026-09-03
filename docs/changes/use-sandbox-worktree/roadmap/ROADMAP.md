@@ -13,6 +13,7 @@ use-sandbox-worktree skill 落地并经端到端演练验证可用 — 它管理
 - 固定偏好: 硬约束交给环境; 容器内 agent 自由驰骋, 容器之外用户说了算
 - 新概念入领域语言: **sandbox-worktree** = git worktree + sandbox 容器的绑定对; skill 原名 use-sandbox 已改名
 - agent 位置: agent 就在容器内 (镜像打包 pi CLI + skill 库 + 部分扩展); ssh 入容器的是用户; use-sandbox-worktree 会话只管理生命周期
+- MILESTONE-01 盘问补充 (2026-09): 反方攻击已执行 (成立项转为 D003 freshness 可观测 / D006 报错全路径透明); 实测: 未跟踪文件不阻塞 updateInstead push, 跟踪文件脏拒 push 且原生报错半可读; daemon 无身份/审计为已认知限制 (D004)
 
 **路线侦查结论 (2026-09-01 后绘制会话)**:
 
@@ -30,11 +31,11 @@ use-sandbox-worktree skill 落地并经端到端演练验证可用 — 它管理
 ## 已关闭决策
 
 <!-- 每个已关闭 Milestone 一行: 链接 + 一句话摘要 -->
+- [MILESTONE-01](MILESTONE-01.md) — gate 设计拍完: 读全走 gate 镜像 / 每 gate 专属 git daemon (拒 ssh, ADR 0007) / 纪律+host 兜底保干净; 附 freshness 可观测与报错全路径透明 — 详见 [../DECISIONS.md](../DECISIONS.md) D001-D006
 - [MILESTONE-05](MILESTONE-05.md) — podman 元数据能力实测 ([findings](../milestone-05/MILESTONE-05-findings.md)): image label 可查询可过滤, 项目标识/构建事实入 label; 版本 = digest 精确 + tag 可读; 内容物清单走外部制品 + label 存摘要; sandbox-worktree 身份入容器 label (镜像 label 自动继承, create --label 覆盖)
 
 ## 前沿
 
-- [MILESTONE-01](MILESTONE-01.md) — `deliberate` — gate 设计: 读通道 / gate 服务形态 / gate 干净保障
 - [MILESTONE-02](MILESTONE-02.md) — `deliberate` — sandbox-worktree 生命周期语义 (worktree 面 + 容器面 + 终结面)
 - [MILESTONE-06](MILESTONE-06.md) — `deliberate` — 镜像制备策略 (依赖件推导 / 版本语义 / 记录位置 — M05 结论在手)
 
@@ -57,12 +58,12 @@ use-sandbox-worktree skill 落地并经端到端演练验证可用 — 它管理
 ## 阻塞关系
 
 ```
-M01 ────────┐
-            ├─→ M03 ──┬─→ M04 ────────────────┐
-M02 ────────┘         │                       │
-                      ├─→ M08 ────────────────┤
-M05(已关闭) ─→ M06 ───┴─→ M07 ─→ M09 ────────┴─→ M10 ─→ 目的地
+M01(已关闭) ──┐
+              ├─→ M03 ──┬─→ M04 ────────────────┐
+M02 ──────────┘         │                       │
+                        ├─→ M08 ────────────────┤
+M05(已关闭) ─→ M06 ─────┴─→ M07 ─→ M09 ────────┴─→ M10 ─→ 目的地
 ```
 
-- M01, M02, M06 互相独立, 可并行开工 (均为 HITL 盘问)
-- M03 瘦闭环是全局咽喉; 关键路径: M01/M02 → M03 → (M06 →) M07 → M09 → M10
+- M02, M06 互相独立, 可并行开工 (均为 HITL 盘问)
+- M03 瘦闭环是全局咽喉; 关键路径: M02 → M03 → (M06 →) M07 → M09 → M10
