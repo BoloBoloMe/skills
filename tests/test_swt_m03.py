@@ -6,6 +6,8 @@ import shutil
 import signal
 import socket
 import subprocess
+import sys
+import time
 import unittest
 from pathlib import Path
 from tempfile import mkdtemp
@@ -16,7 +18,45 @@ SCRIPT = ROOT / "workflow/use-sandbox-worktree/scripts/e2e-smoke.py"
 SLUG_SCRIPT = ROOT / "workflow/use-worktree/scripts/slug.py"
 
 
-class TestHostLoop(unittest.TestCase):
+def _test_daemon_pids() -> list[int]:
+    result = subprocess.run(
+        ["ps", "-eo", "pid=,args="],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if result.returncode != 0:
+        print(
+            "!!! WARNING: teardown ps failed "
+            f"(returncode={result.returncode}); "
+            f"stderr: {result.stderr.strip()!r}",
+            file=sys.stderr,
+        )
+        return []
+
+    pids = []
+    for line in result.stdout.splitlines():
+        fields = line.strip().split(None, 1)
+        if not fields or not fields[0].isdigit():
+            continue
+        command = fields[1] if len(fields) > 1 else ""
+        if "swt-m03-test-" not in command or not (
+            "git daemon" in command or "git-daemon" in command
+        ):
+            continue
+        pids.append(int(fields[0]))
+    return pids
+
+
+def _kill_test_daemons(signum: signal.Signals) -> None:
+    for pid in _test_daemon_pids():
+        try:
+            os.kill(pid, signum)
+        except ProcessLookupError:
+            pass
+
+
+class _FixtureTestCase(unittest.TestCase):
     def setUp(self) -> None:
         self.fixture_root, self.repo = self._create_fixture()
 
@@ -61,20 +101,62 @@ class TestHostLoop(unittest.TestCase):
             raise
         return fixture_root, repo
 
+    @staticmethod
+    def _runtime_files(repo: Path) -> list[Path]:
+        return [
+            path
+            for path in repo.glob(".swt-m03-*.json")
+            if path.name != ".swt-m03-checklist.json"
+        ]
+
     def tearDown(self) -> None:
-        for runtime_file in self.repo.glob(".swt-m03-*.json"):
-            try:
-                state = json.loads(runtime_file.read_text(encoding="utf-8"))
-            except (OSError, json.JSONDecodeError):
-                continue
-            daemon = state.get("daemon") or {}
-            pid = daemon.get("pid")
-            if isinstance(pid, int):
-                try:
-                    os.kill(pid, signal.SIGTERM)
-                except ProcessLookupError:
-                    pass
+        container_result = subprocess.run(
+            [
+                "podman",
+                "ps",
+                "-a",
+                "--filter",
+                f"label=sandbox-worktree.repo={self.repo}",
+                "--format",
+                "{{.Names}}",
+            ],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        if container_result.returncode != 0:
+            print(
+                "!!! WARNING: teardown podman ps failed "
+                f"(returncode={container_result.returncode}); "
+                f"stderr: {container_result.stderr.strip()!r}",
+                file=sys.stderr,
+            )
+        else:
+            for name in container_result.stdout.splitlines():
+                subprocess.run(
+                    ["podman", "rm", "-f", name.strip()],
+                    capture_output=True,
+                    text=True,
+                    check=False,
+                )
+        _kill_test_daemons(signal.SIGTERM)
+        time.sleep(0.1)
+        _kill_test_daemons(signal.SIGKILL)
+        subprocess.run(
+            [
+                "pkill",
+                "-KILL",
+                "-f",
+                "[g]it(-daemon| daemon).*swt-m03-test-",
+            ],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
         shutil.rmtree(self.fixture_root, ignore_errors=True)
+
+
+class TestHostLoop(_FixtureTestCase):
 
     def test_birth_writes_mother_config_daemon(self) -> None:
         name = "feature/alpha"
@@ -195,7 +277,8 @@ class TestHostLoop(unittest.TestCase):
         )
         self.assertEqual(0, birth_result.returncode, birth_result.stderr)
 
-        runtime_files = list(self.repo.glob(".swt-m03-*.json"))
+        runtime_files = self._runtime_files(self.repo)
+
         self.assertEqual(1, len(runtime_files), birth_result.stdout)
         runtime = json.loads(runtime_files[0].read_text(encoding="utf-8"))
         mother_dir = Path(runtime["mother_dir"])
@@ -237,9 +320,10 @@ class TestHostLoop(unittest.TestCase):
         )
         self.assertEqual(0, birth_result.returncode, birth_result.stderr)
 
-        runtime_path = next(self.repo.glob(".swt-m03-*.json"))
+        runtime_path = next(iter(self._runtime_files(self.repo)))
         first_runtime = json.loads(runtime_path.read_text(encoding="utf-8"))
         mother_dir = Path(first_runtime["mother_dir"])
+        ssh_dir = Path(first_runtime["container"]["ssh_dir"])
         mother_branch = first_runtime["mother_branch"]
         first_daemon_pid = first_runtime["daemon"]["pid"]
         os.kill(first_daemon_pid, 0)
@@ -264,6 +348,7 @@ class TestHostLoop(unittest.TestCase):
         with self.assertRaises(ProcessLookupError):
             os.kill(first_daemon_pid, 0)
         self.assertFalse(runtime_path.exists())
+        self.assertFalse(ssh_dir.exists())
         self.assertTrue(mother_dir.is_dir())
         branch_result = subprocess.run(
             ["git", "-C", str(self.repo), "show-ref", "--verify", f"refs/heads/{mother_branch}"],
@@ -322,7 +407,7 @@ class TestHostLoop(unittest.TestCase):
         )
         self.assertEqual(0, birth_result.returncode, birth_result.stderr)
 
-        runtime_path = next(self.repo.glob(".swt-m03-*.json"))
+        runtime_path = next(iter(self._runtime_files(self.repo)))
         runtime = json.loads(runtime_path.read_text(encoding="utf-8"))
         mother_dir = Path(runtime["mother_dir"])
         mother_branch = runtime["mother_branch"]
@@ -409,7 +494,7 @@ class TestHostLoop(unittest.TestCase):
         }
         self.assertEqual(baseline_hooks, current_hooks)
 
-        runtime_path = next(self.repo.glob(".swt-m03-*.json"))
+        runtime_path = next(iter(self._runtime_files(self.repo)))
         runtime = json.loads(runtime_path.read_text(encoding="utf-8"))
         daemon_pid = runtime["daemon"]["pid"]
         cmdline = Path(f"/proc/{daemon_pid}/cmdline").read_bytes().split(b"\0")
@@ -522,7 +607,8 @@ class TestHostLoop(unittest.TestCase):
                     )
                     self.assertEqual(0, config_result.returncode, key)
                     self.assertEqual(values, config_result.stdout.splitlines(), key)
-                    runtime_files = list(repo.glob(".swt-m03-*.json"))
+                    runtime_files = self._runtime_files(repo)
+
                     self.assertEqual(1, len(runtime_files), result.stdout)
                     runtime = json.loads(runtime_files[0].read_text(encoding="utf-8"))
                     self.assertIsNone(runtime["daemon"])
@@ -635,3 +721,509 @@ class TestHostLoop(unittest.TestCase):
         self.assertEqual(before_config, after_config)
         self.assertEqual(before_hooks, after_hooks)
         self.assertEqual(before_file_count, after_file_count)
+
+
+class TestContainerLoop(_FixtureTestCase):
+    def run_birth_and_smoke(self, name: str) -> subprocess.CompletedProcess[str]:
+        command = ["uv", "run", "python", str(SCRIPT)]
+        birth_result = subprocess.run(
+            [*command, "birth", "--repo", str(self.repo), "--name", name],
+            cwd=ROOT,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        self.assertEqual(
+            0,
+            birth_result.returncode,
+            f"birth failed: {birth_result.stderr}",
+        )
+
+        smoke_result = subprocess.run(
+            [*command, "smoke", "--repo", str(self.repo), "--name", name],
+            cwd=ROOT,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        self.assertEqual(
+            0,
+            smoke_result.returncode,
+            f"smoke failed: {smoke_result.stderr}",
+        )
+        return smoke_result
+
+    def container_exists(self, name: str) -> bool:
+        result = subprocess.run(
+            [
+                "podman",
+                "ps",
+                "-a",
+                "--filter",
+                f"name=^{name}$",
+                "--format",
+                "{{.Names}}",
+            ],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        self.assertEqual(0, result.returncode, result.stderr)
+        return bool(result.stdout.strip())
+
+    def test_container_oob_push_rejected(self) -> None:
+        name = "feature/container-oob"
+        smoke_result = self.run_birth_and_smoke(name)
+        self.assertIn(
+            "[STAGE] ok container reject matrix: new branch/tag/non-ff/delete",
+            smoke_result.stdout,
+        )
+
+    def test_container_clone_checks_out_mother_branch(self) -> None:
+        name = "feature/container-client"
+        self.run_birth_and_smoke(name)
+
+        runtime_path = next(iter(self._runtime_files(self.repo)))
+        runtime = json.loads(runtime_path.read_text(encoding="utf-8"))
+        branch = runtime["mother_branch"]
+        container = runtime["container"]
+        self.assertIsInstance(container, dict, runtime)
+        container_name = container["name"]
+        self.assertEqual(f"swt-{branch}", container_name)
+        self.assertIsInstance(container["host_port"], int)
+
+        inspect_result = subprocess.run(
+            [
+                "podman",
+                "inspect",
+                "--format",
+                "{{.State.Running}}\\n"
+                "{{index .Config.Labels \"sandbox-worktree.name\"}}\\n"
+                "{{index .Config.Labels \"sandbox-worktree.repo\"}}\\n"
+                "{{index .Config.Labels \"sandbox-worktree.branch\"}}",
+                container_name,
+            ],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        self.assertEqual(0, inspect_result.returncode, inspect_result.stderr)
+        self.assertEqual(
+            ["true", branch, str(self.repo), branch],
+            inspect_result.stdout.splitlines(),
+        )
+
+        port_result = subprocess.run(
+            ["podman", "port", container_name, "22"],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        self.assertEqual(0, port_result.returncode, port_result.stderr)
+        port_line = port_result.stdout.strip()
+        self.assertRegex(port_line, r"^.*:\d+$")
+        self.assertTrue(
+            port_line.endswith(f":{container['host_port']}"),
+            port_line,
+        )
+
+        ssh_key = Path(runtime["container"]["ssh_private_key"])
+        ssh_target = runtime["container"].get("ssh_host", "127.0.0.1")
+        ssh_command = [
+            "ssh",
+            "-i",
+            str(ssh_key),
+            "-o",
+            "BatchMode=yes",
+            "-o",
+            "StrictHostKeyChecking=no",
+            "-o",
+            "UserKnownHostsFile=/dev/null",
+            "-p",
+            str(container["host_port"]),
+            f"agent@{ssh_target}",
+            "true",
+        ]
+        ssh_result = subprocess.run(
+            ssh_command,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        self.assertEqual(0, ssh_result.returncode, ssh_result.stderr)
+
+        clone_dir = container["clone_dir"]
+
+        def ssh_git(arguments: str) -> str:
+            result = subprocess.run(
+                [
+                    "ssh",
+                    "-i",
+                    str(ssh_key),
+                    "-o",
+                    "BatchMode=yes",
+                    "-o",
+                    "StrictHostKeyChecking=no",
+                    "-o",
+                    "UserKnownHostsFile=/dev/null",
+                    "-p",
+                    str(container["host_port"]),
+                    f"agent@{ssh_target}",
+                    f"git -C {clone_dir} {arguments}",
+                ],
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            self.assertEqual(0, result.returncode, result.stderr)
+            return result.stdout
+
+        self.assertEqual(branch, ssh_git("branch --show-current").strip())
+        expected_remote = (
+            f"git://{container['daemon_addr']}:{runtime['daemon']['port']}/{self.repo.name}"
+        )
+        self.assertEqual(expected_remote, container["remote"])
+        self.assertEqual(
+            [
+                f"origin\t{expected_remote} (fetch)",
+                f"origin\t{expected_remote} (push)",
+            ],
+            ssh_git("remote -v").splitlines(),
+        )
+        advertised_refs = [
+            fields[1]
+            for line in ssh_git("ls-remote origin").splitlines()
+            if len(fields := line.split()) >= 2 and fields[1] != "HEAD"
+        ]
+        self.assertEqual([f"refs/heads/{branch}"], advertised_refs)
+        self.assertEqual(
+            [f"origin/{branch}"],
+            ssh_git("branch -r '--format=%(refname:short)'").splitlines(),
+        )
+
+    def test_container_push_lands_and_dirty_tree_rejected(self) -> None:
+        name = "feature/container-push"
+        smoke_result = self.run_birth_and_smoke(name)
+
+        runtime_path = next(iter(self._runtime_files(self.repo)))
+        runtime = json.loads(runtime_path.read_text(encoding="utf-8"))
+        branch = runtime["mother_branch"]
+        mother_dir = Path(runtime["mother_dir"])
+        container = runtime["container"]
+
+        self.assertEqual(
+            "container client smoke\n",
+            (mother_dir / "container-client.txt").read_text(encoding="utf-8"),
+        )
+        self.assertIn("[remote rejected]", smoke_result.stdout)
+
+        status_result = subprocess.run(
+            ["git", "-C", str(mother_dir), "status", "--porcelain"],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        self.assertEqual(0, status_result.returncode, status_result.stderr)
+        self.assertEqual("", status_result.stdout)
+
+        ssh_key = Path(container["ssh_private_key"])
+        ssh_result = subprocess.run(
+            [
+                "ssh",
+                "-i",
+                str(ssh_key),
+                "-o",
+                "BatchMode=yes",
+                "-o",
+                "ConnectTimeout=2",
+                "-o",
+                "StrictHostKeyChecking=no",
+                "-o",
+                "UserKnownHostsFile=/dev/null",
+                "-p",
+                str(container["host_port"]),
+                "agent@127.0.0.1",
+                f"git -C {container['clone_dir']} status --porcelain",
+            ],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        self.assertEqual(0, ssh_result.returncode, ssh_result.stderr)
+        self.assertEqual("", ssh_result.stdout)
+
+        unpushed_result = subprocess.run(
+            [
+                "ssh",
+                "-i",
+                str(ssh_key),
+                "-o",
+                "BatchMode=yes",
+                "-o",
+                "ConnectTimeout=2",
+                "-o",
+                "StrictHostKeyChecking=no",
+                "-o",
+                "UserKnownHostsFile=/dev/null",
+                "-p",
+                str(container["host_port"]),
+                "agent@127.0.0.1",
+                f"git -C {container['clone_dir']} log origin/{branch}..HEAD --format=%H",
+            ],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        self.assertEqual(0, unpushed_result.returncode, unpushed_result.stderr)
+        self.assertEqual("", unpushed_result.stdout)
+
+    def test_image_minimal_pi_runs_report_complete(self) -> None:
+        containerfile = (
+            ROOT / "workflow/use-sandbox-worktree/image/Containerfile"
+        ).read_text(encoding="utf-8")
+        containerfile_lower = containerfile.lower()
+        for forbidden in (
+            "jdk",
+            "maven",
+            "playwright",
+            "vnc",
+            "nft",
+            "login wall",
+            "login-wall",
+        ):
+            self.assertNotIn(forbidden, containerfile_lower, forbidden)
+        self.assertNotIn("ssh-rsa", containerfile_lower)
+        self.assertNotIn("authorized_keys", containerfile_lower)
+
+        name = "feature/pi-report"
+        self.run_birth_and_smoke(name)
+        runtime_path = next(iter(self._runtime_files(self.repo)))
+        runtime = json.loads(runtime_path.read_text(encoding="utf-8"))
+        container = runtime["container"]
+        self.assertIsInstance(container, dict, runtime)
+        pi_result = subprocess.run(
+            [
+                "ssh",
+                "-i",
+                container["ssh_private_key"],
+                "-o",
+                "BatchMode=yes",
+                "-o",
+                "ConnectTimeout=2",
+                "-o",
+                "StrictHostKeyChecking=no",
+                "-o",
+                "UserKnownHostsFile=/dev/null",
+                "-p",
+                str(container["host_port"]),
+                "agent@127.0.0.1",
+                "pi --help",
+            ],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        self.assertEqual(0, pi_result.returncode, pi_result.stderr)
+
+        cleanup_result = subprocess.run(
+            [
+                "uv",
+                "run",
+                "python",
+                str(SCRIPT),
+                "cleanup",
+                "--repo",
+                str(self.repo),
+                "--name",
+                name,
+            ],
+            cwd=ROOT,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        self.assertEqual(0, cleanup_result.returncode, cleanup_result.stderr)
+
+        artifact = ROOT / "docs/changes/use-sandbox-worktree/milestone-03-e2e-run.md"
+        self.assertTrue(artifact.is_file())
+        report = artifact.read_text(encoding="utf-8")
+        self.assertIn("## 逐阶段日志", report)
+        self.assertIn("## 结果事实", report)
+        self.assertIn("全通网络", report)
+        self.assertIn("daemon 监听地址", report)
+        self.assertIn("pi --help", report)
+        self.assertIn("## checklist", report)
+        for field in (
+            "母体复用",
+            "脏放行",
+            "黑白名单模式",
+            "端口冲突",
+            "失败清理",
+        ):
+            self.assertIn(field, report)
+
+    def test_full_chain_cleanup_and_rerun(self) -> None:
+        name = "feature/full-chain"
+        command = ["uv", "run", "python", str(SCRIPT)]
+
+        self.run_birth_and_smoke(name)
+        runtime_path = next(iter(self._runtime_files(self.repo)))
+        first_runtime = json.loads(runtime_path.read_text(encoding="utf-8"))
+        mother_dir = Path(first_runtime["mother_dir"])
+        branch = first_runtime["mother_branch"]
+
+        first_daemon_pid = first_runtime["daemon"]["pid"]
+        first_container_name = first_runtime["container"]["name"]
+
+        cleanup_result = subprocess.run(
+            [*command, "cleanup", "--repo", str(self.repo), "--name", name],
+            cwd=ROOT,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        self.assertEqual(0, cleanup_result.returncode, cleanup_result.stderr)
+        self.assertFalse(runtime_path.exists())
+        self.assertTrue(mother_dir.is_dir())
+        self.assertFalse(self.container_exists(first_container_name))
+        with self.assertRaises(ProcessLookupError):
+            os.kill(first_daemon_pid, 0)
+        ref_result = subprocess.run(
+            [
+                "git",
+                "-C",
+                str(self.repo),
+                "show-ref",
+                "--verify",
+                f"refs/heads/{branch}",
+            ],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        self.assertEqual(0, ref_result.returncode, ref_result.stderr)
+
+        rebirth_result = subprocess.run(
+            [*command, "birth", "--repo", str(self.repo), "--name", name],
+            cwd=ROOT,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        self.assertEqual(0, rebirth_result.returncode, rebirth_result.stderr)
+        self.assertIn(f"reuse mother {branch}", rebirth_result.stdout)
+        rebirth_smoke = subprocess.run(
+            [*command, "smoke", "--repo", str(self.repo), "--name", name],
+            cwd=ROOT,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        self.assertEqual(0, rebirth_smoke.returncode, rebirth_smoke.stderr)
+        second_runtime = json.loads(runtime_path.read_text(encoding="utf-8"))
+        second_daemon_pid = second_runtime["daemon"]["pid"]
+        container = second_runtime["container"]
+        self.assertIsInstance(container, dict, second_runtime)
+
+        ssh_result = subprocess.run(
+            [
+                "ssh",
+                "-i",
+                container["ssh_private_key"],
+                "-o",
+                "BatchMode=yes",
+                "-o",
+                "ConnectTimeout=2",
+                "-o",
+                "StrictHostKeyChecking=no",
+                "-o",
+                "UserKnownHostsFile=/dev/null",
+                "-p",
+                str(container["host_port"]),
+                "agent@127.0.0.1",
+                f"printf '%s\\n' 'manual dirty state' >> {container['clone_dir']}/README.md",
+            ],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        self.assertEqual(0, ssh_result.returncode, ssh_result.stderr)
+
+        blocked_result = subprocess.run(
+            [*command, "cleanup", "--repo", str(self.repo), "--name", name],
+            cwd=ROOT,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        self.assertEqual(3, blocked_result.returncode, blocked_result.stderr)
+        self.assertIn("CLEANUP-BLOCKED", blocked_result.stderr)
+        self.assertIn("README.md", blocked_result.stderr)
+        self.assertIn("uncommitted", blocked_result.stderr)
+        self.assertTrue(runtime_path.exists())
+        self.assertTrue(self.container_exists(container["name"]))
+        os.kill(second_daemon_pid, 0)
+
+        checklist_path = self.repo / ".swt-m03-checklist.json"
+        force_result = subprocess.run(
+            [
+                *command,
+                "cleanup",
+                "--repo",
+                str(self.repo),
+                "--name",
+                name,
+                "--i-am-sure",
+            ],
+            cwd=ROOT,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        self.assertEqual(0, force_result.returncode, force_result.stderr)
+        self.assertTrue(checklist_path.is_file())
+        self.assertFalse((mother_dir / checklist_path.name).exists())
+        checklist = json.loads(checklist_path.read_text(encoding="utf-8"))
+        dirty_release = checklist["dirty_release"]
+        self.assertGreaterEqual(dirty_release["uncommitted_changes"], 1)
+        self.assertEqual(0, dirty_release["unpushed_commits"])
+        self.assertEqual(str(self.fixture_root), dirty_release["fixture_path"])
+        self.assertTrue(dirty_release["recorded_at"])
+        self.assertIn("--i-am-sure", dirty_release["basis"])
+        self.assertEqual("allow cleanup", dirty_release["decision"])
+        decision_point = checklist["decision_points"]["脏放行"]
+        self.assertEqual(dirty_release["decision"], decision_point["decision"])
+        self.assertEqual(dirty_release["basis"], decision_point["basis"])
+        self.assertEqual(dirty_release["recorded_at"], decision_point["recorded_at"])
+
+        artifact = ROOT / "docs/changes/use-sandbox-worktree/milestone-03-e2e-run.md"
+        report = artifact.read_text(encoding="utf-8")
+        artifact_checklist = json.loads(
+            report.split("```json\n", 1)[1].split("\n```", 1)[0]
+        )
+        artifact_dirty_release = artifact_checklist["dirty_release"]
+        artifact_decision_point = artifact_checklist["decision_points"]["脏放行"]
+        self.assertEqual(
+            artifact_dirty_release["decision"], artifact_decision_point["decision"]
+        )
+        self.assertEqual(
+            artifact_dirty_release["basis"], artifact_decision_point["basis"]
+        )
+        self.assertEqual(
+            artifact_dirty_release["recorded_at"], artifact_decision_point["recorded_at"]
+        )
+        self.assertEqual(dirty_release, artifact_dirty_release)
+        self.assertFalse(runtime_path.exists())
+        with self.assertRaises(ProcessLookupError):
+            os.kill(second_daemon_pid, 0)
+
+        override_rebirth = subprocess.run(
+            [*command, "birth", "--repo", str(self.repo), "--name", name],
+            cwd=ROOT,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        self.assertEqual(0, override_rebirth.returncode, override_rebirth.stderr)
+        self.assertIn(f"reuse mother {branch}", override_rebirth.stdout)
+        self.assertTrue(runtime_path.exists())

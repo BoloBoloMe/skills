@@ -1,0 +1,16 @@
+FROM docker.io/library/node:24-bookworm-slim
+
+RUN apt-get update \
+    && apt-get install --no-install-recommends -y git openssh-server \
+    && rm -rf /var/lib/apt/lists/* \
+    && useradd --create-home --shell /bin/bash agent \
+    && ssh-keygen -A \
+    && mkdir -p /run/sshd \
+    && chmod 755 /run/sshd
+
+RUN npm i -g @earendil-works/pi-coding-agent
+
+WORKDIR /home/agent
+
+EXPOSE 22
+CMD ["/usr/sbin/sshd", "-D", "-e"]

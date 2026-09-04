@@ -8,6 +8,7 @@ import os
 import re
 import shutil
 import signal
+import shlex
 import socket
 import subprocess
 import sys
@@ -21,6 +22,12 @@ from typing import Any, NamedTuple
 ROOT = Path(__file__).resolve().parents[3]
 SLUG_SCRIPT = ROOT / "workflow/use-worktree/scripts/slug.py"
 FIXTURE_MARKER = ".git/swt-m03-fixture"
+IMAGE_DIR = Path(__file__).resolve().parents[1] / "image"
+IMAGE_NAME = "localhost/swt-m03:latest"
+ARTIFACT_PATH = ROOT / "docs/changes/use-sandbox-worktree/milestone-03-e2e-run.md"
+CONTAINER_CLONE_DIR = "/home/agent/workspace"
+
+STAGE_LOG: list[dict[str, str]] = []
 
 CONFIG_TEMPLATE: tuple[tuple[str, tuple[str, ...], bool], ...] = (
     ("receive.denyCurrentBranch", ("updateInstead",), False),
@@ -66,12 +73,17 @@ class CleanupBlocked(Exception):
         super().__init__(detail)
 
 
-def run_command(command: list[str], cwd: Path | None = None) -> subprocess.CompletedProcess[str]:
+def run_command(
+    command: list[str],
+    cwd: Path | None = None,
+    input_text: str | None = None,
+) -> subprocess.CompletedProcess[str]:
     result = subprocess.run(
         command,
         cwd=cwd,
         capture_output=True,
         text=True,
+        input=input_text,
         check=False,
     )
     if result.returncode != 0:
@@ -107,7 +119,45 @@ def write_json(path: Path, value: dict[str, Any]) -> None:
 
 
 def stage(status: str, summary: str) -> None:
+    STAGE_LOG.append({"status": status, "summary": summary})
     print(f"[STAGE] {status} {summary}", flush=True)
+
+
+def begin_stage_log(existing: object = None) -> None:
+    global STAGE_LOG
+    if isinstance(existing, list) and all(
+        isinstance(item, dict)
+        and isinstance(item.get("status"), str)
+        and isinstance(item.get("summary"), str)
+        for item in existing
+    ):
+        STAGE_LOG = [
+            {"status": item["status"], "summary": item["summary"]}
+            for item in existing
+        ]
+    else:
+        STAGE_LOG = []
+
+
+def save_runtime_state(path: Path, state: dict[str, Any]) -> None:
+    state["stage_log"] = list(STAGE_LOG)
+    write_json(path, state)
+
+
+def write_text_atomic(path: Path, content: str) -> None:
+    fd, temporary = tempfile.mkstemp(prefix=f".{path.name}.", dir=path.parent)
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as stream:
+            stream.write(content)
+            stream.flush()
+            os.fsync(stream.fileno())
+        os.replace(temporary, path)
+    except BaseException:
+        try:
+            os.unlink(temporary)
+        except FileNotFoundError:
+            pass
+        raise
 
 
 def fixture_repo() -> tuple[Path, Path]:
@@ -363,7 +413,424 @@ def assert_daemon_command_safe(daemon: dict[str, Any]) -> None:
     stage("ok", "audit NB-003 daemon command line")
 
 
+def container_daemon_address(address: str) -> str:
+    if address in {"0.0.0.0", "::"}:
+        return "host.containers.internal"
+    return address
+
+
+def container_ssh_base(container: dict[str, Any]) -> list[str]:
+    private_key = container.get("ssh_private_key")
+    host_port = container.get("host_port")
+    if not isinstance(private_key, str) or not isinstance(host_port, int):
+        raise AssertionFailure("container-ssh", "container SSH state is incomplete")
+    return [
+        "ssh",
+        "-i",
+        private_key,
+        "-o",
+        "BatchMode=yes",
+        "-o",
+        "ConnectTimeout=2",
+        "-o",
+        "StrictHostKeyChecking=no",
+        "-o",
+        "UserKnownHostsFile=/dev/null",
+        "-p",
+        str(host_port),
+        "agent@127.0.0.1",
+    ]
+
+
+def container_ssh(
+    container: dict[str, Any], remote_command: str
+) -> subprocess.CompletedProcess[str]:
+    return subprocess.run(
+        [*container_ssh_base(container), remote_command],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+
+def assert_container_clone(
+    container: dict[str, Any], branch: str, remote: str
+) -> None:
+    def run_git(arguments: str) -> str:
+        result = container_ssh(
+            container,
+            f"git -C {shlex.quote(CONTAINER_CLONE_DIR)} {arguments}",
+        )
+        if result.returncode != 0:
+            raise AssertionFailure(
+                "container-git",
+                f"{arguments}\n{result.stderr.strip()}",
+            )
+        return result.stdout
+
+    current_branch = run_git("branch --show-current").strip()
+    if current_branch != branch:
+        raise AssertionFailure(
+            "container-clone-branch",
+            f"expected {branch}, got {current_branch}",
+        )
+
+    remote_lines = run_git("remote -v").splitlines()
+    expected_remote_lines = [
+        f"origin\t{remote} (fetch)",
+        f"origin\t{remote} (push)",
+    ]
+    if remote_lines != expected_remote_lines:
+        raise AssertionFailure(
+            "container-remote",
+            f"expected {expected_remote_lines!r}, got {remote_lines!r}",
+        )
+
+    advertised_refs = []
+    for line in run_git("ls-remote origin").splitlines():
+        fields = line.split()
+        if len(fields) >= 2 and fields[1] != "HEAD":
+            advertised_refs.append(fields[1])
+    expected_ref = f"refs/heads/{branch}"
+    if advertised_refs != [expected_ref]:
+        raise AssertionFailure(
+            "container-ls-remote",
+            f"expected {[expected_ref]!r}, got {advertised_refs!r}",
+        )
+
+    tracking_refs = run_git("branch -r '--format=%(refname:short)'").splitlines()
+    if tracking_refs != [f"origin/{branch}"]:
+        raise AssertionFailure(
+            "container-tracking-refs",
+            f"expected {[f'origin/{branch}']!r}, got {tracking_refs!r}",
+        )
+    stage("ok", f"container clone -b {branch}, daemon-only read face")
+
+
+def assert_minimal_containerfile() -> None:
+    try:
+        content = (IMAGE_DIR / "Containerfile").read_text(encoding="utf-8")
+    except OSError as error:
+        raise AssertionFailure("audit-image", str(error)) from error
+    lowered = content.lower()
+    forbidden = (
+        "jdk",
+        "maven",
+        "playwright",
+        "vnc",
+        "nft",
+        "login wall",
+        "login-wall",
+        "ssh-rsa",
+        "authorized_keys",
+    )
+    present = [term for term in forbidden if term in lowered]
+    if present:
+        raise AssertionFailure("audit-image", f"forbidden components: {present}")
+    required = (
+        "FROM docker.io/library/node:24-bookworm-slim",
+        "apt-get install --no-install-recommends -y git openssh-server",
+        "npm i -g @earendil-works/pi-coding-agent",
+        "useradd --create-home --shell /bin/bash agent",
+        'CMD [\"/usr/sbin/sshd\", \"-D\", \"-e\"]',
+    )
+    missing = [term for term in required if term not in content]
+    if missing:
+        raise AssertionFailure("audit-image", f"missing image contract: {missing}")
+    stage("ok", "audit NB-002 minimal Containerfile")
+
+
+def image_ready() -> None:
+    assert_minimal_containerfile()
+    result = subprocess.run(
+        ["podman", "image", "exists", IMAGE_NAME],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if result.returncode == 0:
+        return
+    try:
+        run_command(["podman", "build", "-t", IMAGE_NAME, str(IMAGE_DIR)])
+    except CommandFailure as failure:
+        raise fail_command(failure) from failure
+    stage("ok", f"image ready {IMAGE_NAME}")
+
+
+def create_container(
+    repo: Path,
+    branch: str,
+    daemon: DaemonHandle,
+    state: dict[str, Any],
+    runtime_path: Path,
+) -> dict[str, Any]:
+    name = f"swt-{branch}"
+    labels = [
+        f"sandbox-worktree.name={branch}",
+        f"sandbox-worktree.repo={repo}",
+        f"sandbox-worktree.branch={branch}",
+    ]
+    label_args: list[str] = []
+    for label in labels:
+        label_args.extend(["--label", label])
+    try:
+        run_command(
+            [
+                "podman",
+                "create",
+                "--name",
+                name,
+                *label_args,
+                "-p",
+                "22",
+                IMAGE_NAME,
+            ]
+        )
+        run_command(["podman", "start", name])
+    except CommandFailure as failure:
+        raise fail_command(failure) from failure
+
+    port_result = subprocess.run(
+        ["podman", "port", name, "22"],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if port_result.returncode != 0:
+        raise AssertionFailure("container-port", port_result.stderr.strip())
+    port_match = re.search(r":(\d+)\s*$", port_result.stdout.strip())
+    if port_match is None:
+        raise AssertionFailure("container-port", port_result.stdout.strip())
+    host_port = int(port_match.group(1))
+
+    key_dir = repo.parent.parent / "ssh"
+    ssh_dir_created = False
+    try:
+        key_dir.mkdir(mode=0o700)
+        ssh_dir_created = True
+    except FileExistsError:
+        if not key_dir.is_dir():
+            raise AssertionFailure("container-ssh", f"SSH path is not a directory: {key_dir}")
+    private_key = key_dir / f"{branch}-{time.time_ns()}.ed25519"
+    try:
+        run_command(
+            [
+                "ssh-keygen",
+                "-q",
+                "-t",
+                "ed25519",
+                "-N",
+                "",
+                "-f",
+                str(private_key),
+            ]
+        )
+        public_key = private_key.with_suffix(private_key.suffix + ".pub")
+        authorized_key = public_key.read_text(encoding="utf-8")
+        run_command(
+            [
+                "podman",
+                "exec",
+                "-i",
+                name,
+                "sh",
+                "-c",
+                "install -d -m 700 -o agent -g agent /home/agent/.ssh "
+                "&& cat > /home/agent/.ssh/authorized_keys "
+                "&& chown agent:agent /home/agent/.ssh/authorized_keys "
+                "&& chmod 600 /home/agent/.ssh/authorized_keys",
+            ],
+            input_text=authorized_key,
+        )
+    except CommandFailure as failure:
+        raise fail_command(failure) from failure
+
+    container: dict[str, Any] = {
+        "name": name,
+        "host_port": host_port,
+        "ssh_private_key": str(private_key),
+        "ssh_dir": str(key_dir),
+        "ssh_dir_created": ssh_dir_created,
+        "ssh_host": "127.0.0.1",
+        "daemon_addr": container_daemon_address(daemon.address),
+        "clone_dir": CONTAINER_CLONE_DIR,
+        "remote": (
+            f"git://{container_daemon_address(daemon.address)}:"
+            f"{daemon.port}/{repo.name}"
+        ),
+    }
+    state["container"] = container
+    state["stage"] = "container"
+    save_runtime_state(runtime_path, state)
+    deadline = time.monotonic() + 8
+    last_result: subprocess.CompletedProcess[str] | None = None
+    while time.monotonic() < deadline:
+        last_result = container_ssh(container, "true")
+        if last_result.returncode == 0:
+            break
+        time.sleep(0.2)
+    else:
+        detail = last_result.stderr.strip() if last_result is not None else ""
+        raise AssertionFailure("container-ssh", detail)
+    stage("ok", f"container ssh BatchMode {name}:{host_port}")
+
+    remote_value = container.get("remote")
+    if not isinstance(remote_value, str) or not remote_value:
+        raise AssertionFailure("container-remote", "container remote state is incomplete")
+    clone_command = (
+        f"rm -rf {shlex.quote(CONTAINER_CLONE_DIR)} && "
+        f"git clone -b {shlex.quote(branch)} {shlex.quote(remote_value)} "
+        f"{shlex.quote(CONTAINER_CLONE_DIR)}"
+    )
+    clone_result = container_ssh(container, clone_command)
+    if clone_result.returncode != 0:
+        raise AssertionFailure("container-clone", clone_result.stderr.strip())
+    assert_container_clone(container, branch, remote_value)
+    return container
+
+
+def assert_pi_help(
+    container: dict[str, Any], state: dict[str, Any], runtime_path: Path
+) -> None:
+    result = container_ssh(container, "pi --help")
+    state["pi_help"] = {
+        "command": "pi --help",
+        "returncode": result.returncode,
+        "stdout": result.stdout,
+        "stderr": result.stderr,
+    }
+    if result.returncode != 0:
+        save_runtime_state(runtime_path, state)
+        raise AssertionFailure(
+            "pi-help",
+            f"exit={result.returncode}\n{result.stdout}\n{result.stderr}".strip(),
+        )
+    stage("ok", "container pi --help exit=0")
+    save_runtime_state(runtime_path, state)
+
+
+def load_checklist(path: Path) -> dict[str, Any]:
+    try:
+        value = json.loads(path.read_text(encoding="utf-8"))
+    except FileNotFoundError:
+        return {"version": 1}
+    except (OSError, json.JSONDecodeError) as error:
+        raise AssertionFailure("checklist", str(error)) from error
+    if not isinstance(value, dict):
+        raise AssertionFailure("checklist", "checklist must be an object")
+    return value
+
+
+def write_birth_checklist(
+    repo: Path, mother_reused: bool, daemon: dict[str, Any]
+) -> None:
+    path = repo / ".swt-m03-checklist.json"
+    checklist = load_checklist(path)
+    checklist["version"] = 1
+    decision_points = checklist.get("decision_points")
+    if not isinstance(decision_points, dict):
+        decision_points = {}
+    decision_points.update(
+        {
+            "母体复用": {
+                "decision": "复用现有干净母体" if mother_reused else "首次创建母体",
+                "observed": mother_reused,
+            },
+            "脏放行": {
+                "decision": "未请求; 默认阻塞脏容器",
+                "registration_fields": ["状态值", "夹具路径", "时间", "依据"],
+            },
+            "黑白名单模式": {
+                "decision": "M03 全通网络中间态; nft 白名单归 M04",
+                "observed": "full-network-intermediate",
+            },
+            "端口冲突": {
+                "decision": "记录失败事实, 不自动换容器端口",
+                "observed": "not exercised",
+            },
+            "失败清理": {
+                "decision": "保留运行时 JSON, 由 cleanup 兜底发现并人工处理",
+                "observed": "not exercised",
+            },
+        }
+    )
+    checklist["decision_points"] = decision_points
+    checklist["network"] = {
+        "mode": "full-network-intermediate",
+        "daemon_address": daemon.get("addr"),
+        "daemon_port": daemon.get("port"),
+    }
+    checklist.setdefault(
+        "dirty_release",
+        {
+            "status": "not requested",
+            "uncommitted_changes": 0,
+            "unpushed_commits": 0,
+            "status_summary": "",
+            "fixture_path": str(repo.parent.parent.resolve()),
+            "recorded_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+            "basis": "clean cleanup; no override",
+            "decision": "not applicable",
+        },
+    )
+    write_json(path, checklist)
+
+
+def write_artifact(repo: Path, state: dict[str, Any]) -> None:
+    checklist = load_checklist(repo / ".swt-m03-checklist.json")
+    daemon = state.get("daemon")
+    container = state.get("container")
+    pi_help = state.get("pi_help")
+    if not isinstance(daemon, dict):
+        daemon = {}
+    if not isinstance(container, dict):
+        container = {}
+    if not isinstance(pi_help, dict):
+        pi_help = {}
+    stage_log = state.get("stage_log")
+    if not isinstance(stage_log, list):
+        stage_log = []
+    lines = ["# MILESTONE-03 E2E Run", "", "## 逐阶段日志", ""]
+    for event in stage_log:
+        if not isinstance(event, dict):
+            continue
+        lines.append(
+            f"- [{event.get('status', 'unknown')}] {event.get('summary', '')}"
+        )
+    lines.extend(
+        [
+            "",
+            "## 结果事实",
+            "",
+            f"- 夹具主仓: `{repo}`",
+            f"- 母体目录: `{state.get('mother_dir', '')}`",
+            f"- 容器: `{container.get('name', '')}`",
+            "- 全通网络: 是, M03 全通网络中间态, nft 白名单不属于本切片.",
+            f"- daemon 监听地址: `{daemon.get('addr', '')}:{daemon.get('port', '')}` (实际值).",
+            f"- daemon 监听模式: {'pasta 网关地址优先' if daemon.get('addr') != '0.0.0.0' else '0.0.0.0 兜底'}.",
+            f"- pi --help: 命令 `{pi_help.get('command', 'pi --help')}`, 退出码 `{pi_help.get('returncode', 'unknown')}`.",
+            "",
+            "### 命令结果附录",
+            "",
+            "```text",
+            "pi --help",
+            str(pi_help.get("stdout", "")).rstrip(),
+            str(pi_help.get("stderr", "")).rstrip(),
+            "```",
+            "",
+            "## checklist",
+            "",
+            "```json",
+            json.dumps(checklist, ensure_ascii=False, indent=2, sort_keys=True),
+            "```",
+            "",
+        ]
+    )
+    write_text_atomic(ARTIFACT_PATH, "\n".join(lines))
+
+
 def birth(args: argparse.Namespace) -> int:
+    begin_stage_log()
     repo, temporary_root = resolve_repo(args.repo)
     validate_explicit_repo(repo, args.repo)
     srv = repo.parent
@@ -385,6 +852,7 @@ def birth(args: argparse.Namespace) -> int:
         raise AssertionFailure("daemon", f"existing pids: {existing_daemons}")
 
     mother_dir.parent.mkdir(parents=True, exist_ok=True)
+    mother_reused = False
     if mother_dir.exists():
         status = subprocess.run(
             ["git", "-C", str(mother_dir), "status", "--porcelain"],
@@ -399,6 +867,7 @@ def birth(args: argparse.Namespace) -> int:
                 "mother-dirty",
                 f"manual intervention required: {status.stdout.strip()}",
             )
+        mother_reused = True
         stage("ok", f"reuse mother {branch}")
     else:
         try:
@@ -429,20 +898,21 @@ def birth(args: argparse.Namespace) -> int:
         "hooks_baseline": baseline_hooks,
         "daemon": None,
         "container": None,
+        "mother_reused": mother_reused,
         "stage": "mother",
     }
-    write_json(runtime_path, state)
+    save_runtime_state(runtime_path, state)
 
     try:
         export_marker = repo / ".git/git-daemon-export-ok"
         export_marker.touch()
         state["stage"] = "exported"
-        write_json(runtime_path, state)
+        save_runtime_state(runtime_path, state)
 
         configure_repo(repo, branch)
         assert_srv_layout(repo, srv)
         state["stage"] = "config"
-        write_json(runtime_path, state)
+        save_runtime_state(runtime_path, state)
         stage("ok", "export marker and D008 config")
 
         daemon = start_daemon(srv)
@@ -454,12 +924,17 @@ def birth(args: argparse.Namespace) -> int:
         state["stage"] = "daemon"
         if daemon.fallback:
             state["checklist"] = ["daemon address fallback: 0.0.0.0"]
-        write_json(runtime_path, state)
+        save_runtime_state(runtime_path, state)
         stage("ok", f"daemon {daemon.address}:{daemon.port}")
 
+        image_ready()
+        container = create_container(repo, branch, daemon, state, runtime_path)
+        assert_pi_help(container, state, runtime_path)
+        write_birth_checklist(repo, mother_reused, state["daemon"])
+
         state["stage"] = "born"
-        write_json(runtime_path, state)
         stage("ok", "birth complete")
+        save_runtime_state(runtime_path, state)
         print(f"repo={repo}", flush=True)
         return 0
     except AssertionFailure:
@@ -480,14 +955,236 @@ def assert_rejected(
         )
     except CommandFailure as failure:
         result = failure.result
+    assert_remote_rejected(result, assertion_name)
+
+
+def assert_remote_rejected(
+    result: subprocess.CompletedProcess[str], assertion_name: str
+) -> None:
     output = f"{result.stdout}\n{result.stderr}"
     if result.returncode == 0:
         raise AssertionFailure(assertion_name, output.strip())
-    if not any(
-        re.match(r"^\s*! \[remote rejected\]", line)
-        for line in output.splitlines()
-    ):
+    if "[remote rejected]" not in output:
         raise AssertionFailure(assertion_name, output.strip())
+
+
+def assert_container_rejected(
+    container: dict[str, Any], push_args: list[str], assertion_name: str
+) -> None:
+    arguments = " ".join(shlex.quote(argument) for argument in push_args)
+    result = container_ssh(
+        container,
+        f"git -C {shlex.quote(CONTAINER_CLONE_DIR)} push origin {arguments}",
+    )
+    assert_remote_rejected(result, assertion_name)
+
+
+def container_oob_push_loop(container: dict[str, Any], branch: str) -> None:
+    new_branch = "oob-container-new-branch"
+    tag = "oob-container-tag"
+
+    container_git(
+        container,
+        f"switch -c {shlex.quote(new_branch)}",
+        "container-reject-new-branch-setup",
+    )
+    assert_container_rejected(
+        container,
+        [f"HEAD:refs/heads/{new_branch}"],
+        "container-reject-new-branch",
+    )
+    container_git(
+        container,
+        f"switch {shlex.quote(branch)}",
+        "container-reject-new-branch-restore",
+    )
+
+    container_git(
+        container,
+        f"tag {shlex.quote(tag)}",
+        "container-reject-tag-setup",
+    )
+    assert_container_rejected(
+        container,
+        [f"refs/tags/{tag}"],
+        "container-reject-tag",
+    )
+
+    container_git(
+        container,
+        "reset --hard HEAD^",
+        "container-reject-non-ff-setup",
+    )
+    non_ff_file = (
+        f"printf '%s\\n' 'container non-fast-forward' > "
+        f"{shlex.quote(CONTAINER_CLONE_DIR + '/container-non-ff.txt')}"
+    )
+    non_ff_file_result = container_ssh(container, non_ff_file)
+    if non_ff_file_result.returncode != 0:
+        raise AssertionFailure(
+            "container-reject-non-ff-setup",
+            non_ff_file_result.stderr.strip(),
+        )
+    container_git(
+        container,
+        "add container-non-ff.txt",
+        "container-reject-non-ff-setup",
+    )
+    container_git(
+        container,
+        "commit -m 'container non-fast-forward'",
+        "container-reject-non-ff-setup",
+    )
+    try:
+        assert_container_rejected(
+            container,
+            ["--force", f"HEAD:refs/heads/{branch}"],
+            "container-reject-non-ff",
+        )
+    finally:
+        active_exception = sys.exc_info()[1]
+        cleanup_errors: list[Exception] = []
+        try:
+            container_git(
+                container,
+                f"reset --hard origin/{shlex.quote(branch)}",
+                "container-reject-non-ff-restore",
+            )
+        except Exception as error:
+            cleanup_errors.append(error)
+        for error in cleanup_errors:
+            print(f"!!! cleanup failure: {error}", file=sys.stderr, flush=True)
+        if cleanup_errors and active_exception is None:
+            raise cleanup_errors[0]
+
+    assert_container_rejected(
+        container,
+        [f":refs/heads/{branch}"],
+        "container-reject-delete-mother",
+    )
+    stage("ok", "container reject matrix: new branch/tag/non-ff/delete")
+
+
+def container_git(
+    container: dict[str, Any], arguments: str, assertion_name: str
+) -> subprocess.CompletedProcess[str]:
+    result = container_ssh(
+        container,
+        f"git -C {shlex.quote(CONTAINER_CLONE_DIR)} {arguments}",
+    )
+    if result.returncode != 0:
+        raise AssertionFailure(assertion_name, result.stderr.strip())
+    return result
+
+
+def container_push_loop(
+    container: dict[str, Any], branch: str, mother_dir: Path
+) -> None:
+    container_git(container, "config user.name swt-m03", "container-commit")
+    container_git(
+        container,
+        "config user.email swt-m03@example.invalid",
+        "container-commit",
+    )
+    container_git(
+        container,
+        "status --porcelain",
+        "container-clean",
+    )
+    run_marker = f"container-client-run-{time.time_ns()}.txt"
+    create_file = (
+        f"printf '%s\\n' 'container client smoke' > "
+        f"{shlex.quote(CONTAINER_CLONE_DIR + '/container-client.txt')} && "
+        f"printf '%s\\n' '{run_marker}' > "
+        f"{shlex.quote(CONTAINER_CLONE_DIR + '/' + run_marker)}"
+    )
+    create_result = container_ssh(container, create_file)
+    if create_result.returncode != 0:
+        raise AssertionFailure("container-commit", create_result.stderr.strip())
+    container_git(
+        container,
+        f"add container-client.txt {shlex.quote(run_marker)}",
+        "container-commit",
+    )
+    container_git(
+        container,
+        "commit -m 'container client push'",
+        "container-commit",
+    )
+    push_result = container_ssh(
+        container,
+        f"git -C {shlex.quote(CONTAINER_CLONE_DIR)} push origin "
+        f"HEAD:refs/heads/{shlex.quote(branch)}",
+    )
+    if push_result.returncode != 0:
+        raise AssertionFailure(
+            "container-push",
+            f"{push_result.stdout}\n{push_result.stderr}".strip(),
+        )
+    landed = mother_dir / "container-client.txt"
+    deadline = time.monotonic() + 3
+    while time.monotonic() < deadline:
+        try:
+            landed_content = (
+                landed.read_text(encoding="utf-8") if landed.is_file() else None
+            )
+        except (FileNotFoundError, UnicodeDecodeError):
+            landed_content = None
+        if landed_content == "container client smoke\n":
+            break
+        time.sleep(0.05)
+    else:
+        raise AssertionFailure("container-push-landed", str(landed))
+    stage("ok", f"container push landed {branch}")
+
+    dirty_path = mother_dir / "README.md"
+    original = dirty_path.read_bytes()
+    dirty_path.write_bytes(original + b"dirty mother tree\n")
+    try:
+        dirty_file_result = container_ssh(
+            container,
+            "printf '%s\\n' 'container dirty push' > "
+            f"{shlex.quote(CONTAINER_CLONE_DIR + '/container-dirty.txt')}",
+        )
+        if dirty_file_result.returncode != 0:
+            raise AssertionFailure("container-dirty-push-setup", dirty_file_result.stderr.strip())
+        container_git(container, "add container-dirty.txt", "container-dirty-push-setup")
+        container_git(
+            container,
+            "commit -m 'container dirty tree push'",
+            "container-dirty-push-setup",
+        )
+        dirty_push_result = container_ssh(
+            container,
+            f"git -C {shlex.quote(CONTAINER_CLONE_DIR)} push origin "
+            f"HEAD:refs/heads/{shlex.quote(branch)}",
+        )
+        assert_remote_rejected(dirty_push_result, "container-dirty-push")
+        push_output = f"{dirty_push_result.stdout}\n{dirty_push_result.stderr}".strip()
+        stage("ok", f"container push rejected with dirty mother tree: {push_output.replace(chr(10), ' ')}")
+    finally:
+        active_exception = sys.exc_info()[1]
+        cleanup_errors: list[Exception] = []
+        try:
+            container_git(
+                container,
+                f"reset --hard origin/{shlex.quote(branch)}",
+                "container-dirty-restore",
+            )
+        except Exception as error:
+            cleanup_errors.append(error)
+        try:
+            run_command(["git", "-C", str(mother_dir), "checkout", "--", "README.md"])
+            if dirty_path.read_bytes() != original:
+                raise AssertionFailure("container-dirty-restore", str(dirty_path))
+        except Exception as error:
+            cleanup_errors.append(error)
+        for error in cleanup_errors:
+            print(f"!!! cleanup failure: {error}", file=sys.stderr, flush=True)
+        if cleanup_errors and active_exception is None:
+            raise cleanup_errors[0]
+
+    container_oob_push_loop(container, branch)
 
 
 def smoke(args: argparse.Namespace) -> int:
@@ -502,6 +1199,7 @@ def smoke(args: argparse.Namespace) -> int:
 
     if not isinstance(state, dict):
         raise AssertionFailure("state", "runtime state must be an object")
+    begin_stage_log(state.get("stage_log"))
     daemon = state.get("daemon")
     if not isinstance(daemon, dict):
         raise AssertionFailure("daemon", "runtime daemon state is incomplete")
@@ -518,6 +1216,11 @@ def smoke(args: argparse.Namespace) -> int:
 
     connect_address = "127.0.0.1" if address in {"0.0.0.0", "::"} else address
     remote = f"git://{connect_address}:{port}/{repo.name}"
+    container = state.get("container")
+    if not isinstance(container, dict):
+        raise AssertionFailure("container", "runtime container state is incomplete")
+    container_push_loop(container, branch, mother_dir)
+
     client_root = Path(tempfile.mkdtemp(prefix=f"swt-m03-client-{branch}-", dir=repo.parent.parent))
     client = client_root / "clone"
     try:
@@ -545,8 +1248,10 @@ def smoke(args: argparse.Namespace) -> int:
                 "swt-m03@example.invalid",
             ]
         )
+        host_run_marker = f"host-client-run-{time.time_ns()}.txt"
         (client / "host-client.txt").write_text("host-client smoke\n", encoding="utf-8")
-        run_command(["git", "-C", str(client), "add", "host-client.txt"])
+        (client / host_run_marker).write_text(f"{host_run_marker}\n", encoding="utf-8")
+        run_command(["git", "-C", str(client), "add", "host-client.txt", host_run_marker])
         run_command(
             [
                 "git",
@@ -599,6 +1304,8 @@ def smoke(args: argparse.Namespace) -> int:
         stage("ok", "reject matrix: new branch/tag/non-ff/delete")
         assert_hooks_unchanged(repo, state.get("hooks_baseline"))
         assert_daemon_command_safe(daemon)
+        state["stage"] = "smoked"
+        save_runtime_state(runtime_path, state)
         return 0
     finally:
         shutil.rmtree(client_root, ignore_errors=True)
@@ -740,6 +1447,165 @@ def stop_daemon(pid: int) -> None:
     raise AssertionFailure("cleanup-daemon", f"daemon pid still alive: {pid}")
 
 
+def discover_container_ssh(
+    repo: Path, container_name: str, branch: str
+) -> tuple[dict[str, Any] | None, str | None]:
+    port_result = subprocess.run(
+        ["podman", "port", container_name, "22"],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if port_result.returncode != 0:
+        return None, port_result.stderr.strip() or "podman port failed"
+    port_match = re.search(r":(\d+)\s*$", port_result.stdout.strip())
+    if port_match is None:
+        return None, f"invalid podman port output: {port_result.stdout.strip()!r}"
+    key_dir = repo.parent.parent / "ssh"
+    keys = sorted(key_dir.glob(f"{branch}-*.ed25519"))
+    if len(keys) != 1:
+        return None, f"expected one temporary SSH key in {key_dir}, found {len(keys)}"
+    return {
+        "name": container_name,
+        "host_port": int(port_match.group(1)),
+        "ssh_private_key": str(keys[0]),
+        "ssh_dir": str(key_dir),
+        "ssh_dir_created": True,
+        "ssh_host": "127.0.0.1",
+    }, None
+
+
+def cleanup_container_git_status(
+    container: dict[str, Any], branch: str
+) -> tuple[dict[str, Any] | None, str | None]:
+    try:
+        status_result = container_ssh(
+            container,
+            f"git -C {shlex.quote(CONTAINER_CLONE_DIR)} status --porcelain=v1",
+        )
+        if status_result.returncode != 0:
+            return None, status_result.stderr.strip() or "ssh status command failed"
+        unpushed_result = container_ssh(
+            container,
+            f"git -C {shlex.quote(CONTAINER_CLONE_DIR)} rev-list --count "
+            f"origin/{shlex.quote(branch)}..HEAD",
+        )
+        if unpushed_result.returncode != 0:
+            return None, unpushed_result.stderr.strip() or "ssh rev-list command failed"
+    except AssertionFailure as error:
+        return None, str(error)
+
+    status_lines = [line for line in status_result.stdout.splitlines() if line]
+    raw_unpushed = unpushed_result.stdout.strip()
+    try:
+        unpushed_commits = int(raw_unpushed)
+    except ValueError:
+        return None, f"invalid unpushed commit count: {raw_unpushed!r}"
+    if unpushed_commits < 0:
+        return None, f"invalid unpushed commit count: {unpushed_commits}"
+    status = {
+        "uncommitted_changes": len(status_lines),
+        "unpushed_commits": unpushed_commits,
+        "summary": "\n".join(status_lines),
+    }
+    return status, None
+
+
+def record_dirty_release(
+    repo: Path, status: dict[str, Any], basis: str
+) -> None:
+    checklist_path = repo / ".swt-m03-checklist.json"
+    checklist: dict[str, Any] = {"version": 1}
+    try:
+        existing = json.loads(checklist_path.read_text(encoding="utf-8"))
+    except FileNotFoundError:
+        existing = None
+    except (OSError, json.JSONDecodeError) as error:
+        raise AssertionFailure("cleanup-checklist", str(error)) from error
+    if isinstance(existing, dict):
+        checklist.update(existing)
+    dirty_release = {
+        "uncommitted_changes": status.get("uncommitted_changes"),
+        "unpushed_commits": status.get("unpushed_commits"),
+        "status_summary": status.get("summary", ""),
+        "fixture_path": str(repo.parent.parent.resolve()),
+        "recorded_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+        "basis": basis,
+        "decision": "allow cleanup",
+    }
+    checklist["dirty_release"] = dirty_release
+    decision_points = checklist.get("decision_points")
+    if not isinstance(decision_points, dict):
+        decision_points = {}
+    dirty_release_point = decision_points.get("脏放行")
+    if not isinstance(dirty_release_point, dict):
+        dirty_release_point = {}
+    dirty_release_point.update(
+        {
+            "decision": dirty_release["decision"],
+            "basis": dirty_release["basis"],
+            "recorded_at": dirty_release["recorded_at"],
+        }
+    )
+    decision_points["脏放行"] = dirty_release_point
+    checklist["decision_points"] = decision_points
+    write_json(checklist_path, checklist)
+    stage("ok", f"cleanup dirty release recorded {checklist_path}")
+
+
+def cleanup_ssh_dir(repo: Path, state: dict[str, Any] | None, branch: str) -> None:
+    if state is None:
+        return
+    container = state.get("container")
+    if not isinstance(container, dict):
+        return
+    raw_ssh_dir = container.get("ssh_dir")
+    if not isinstance(raw_ssh_dir, str):
+        return
+
+    ssh_dir = Path(raw_ssh_dir)
+    if not ssh_dir.is_absolute() or ssh_dir.is_symlink():
+        return
+    fixture_root = repo.parent.parent.resolve()
+    resolved_ssh_dir = ssh_dir.resolve()
+    expected_ssh_dir = (fixture_root / "ssh").resolve()
+    try:
+        resolved_ssh_dir.relative_to(fixture_root)
+    except ValueError:
+        return
+    if resolved_ssh_dir != expected_ssh_dir:
+        return
+    if not ssh_dir.exists():
+        return
+    if not ssh_dir.is_dir():
+        raise AssertionFailure("cleanup-ssh", f"SSH path is not a directory: {ssh_dir}")
+    try:
+        for private_key in ssh_dir.glob(f"{branch}-*.ed25519"):
+            if not private_key.is_file() or private_key.is_symlink():
+                continue
+            private_key.unlink()
+            public_key = private_key.with_suffix(private_key.suffix + ".pub")
+            if public_key.is_file() or public_key.is_symlink():
+                public_key.unlink()
+        if any(ssh_dir.iterdir()):
+            print(
+                f"!!! WARNING: cleanup ssh directory retained non-orchestrator files: {ssh_dir}",
+                file=sys.stderr,
+                flush=True,
+            )
+        else:
+            ssh_dir.rmdir()
+    except OSError as error:
+        raise AssertionFailure("cleanup-ssh", str(error)) from error
+    if ssh_dir.exists():
+        if ssh_dir.is_dir():
+            stage("ok", f"cleanup ssh keys removed; directory retained {ssh_dir}")
+        else:
+            raise AssertionFailure("cleanup-ssh", f"SSH directory remains: {ssh_dir}")
+    else:
+        stage("ok", f"cleanup ssh directory removed {ssh_dir}")
+
+
 def cleanup(args: argparse.Namespace) -> int:
     repo, _temporary_root = resolve_repo(args.repo)
     validate_explicit_repo(repo, args.repo)
@@ -749,6 +1615,7 @@ def cleanup(args: argparse.Namespace) -> int:
     branch = get_slug(repo.name, args.name)
     runtime_path = runtime_state_path(repo, branch)
     state, incomplete = read_runtime_state(runtime_path)
+    begin_stage_log(state.get("stage_log") if state is not None else None)
     expected_srv = repo.parent
     expected_mother = mother_path(expected_srv, branch)
     if state is not None:
@@ -771,19 +1638,88 @@ def cleanup(args: argparse.Namespace) -> int:
             "cleanup-discovery",
             f"multiple daemon pids for {expected_srv}: {discovered_daemons}",
         )
+    expected_container = state.get("container") if state is not None else None
+    expected_name = (
+        expected_container.get("name")
+        if isinstance(expected_container, dict)
+        else f"swt-{branch}"
+    )
+    cleanup_container_state: dict[str, Any] | None = state
     if discovered_containers:
-        expected_container = state.get("container") if state is not None else None
-        expected_name = (
-            expected_container.get("name")
-            if isinstance(expected_container, dict)
-            else None
-        )
-        if expected_name is None or discovered_containers != [expected_name]:
+        if discovered_containers != [expected_name]:
             raise AssertionFailure(
                 "cleanup-discovery",
                 f"runtime container={expected_name!r}, discovered={discovered_containers!r}",
             )
-        raise AssertionFailure("cleanup-container", "container cleanup is outside TS-005")
+        status_container = expected_container
+        if not isinstance(status_container, dict):
+            status_container, discovery_error = discover_container_ssh(
+                repo, expected_name, branch
+            )
+            if status_container is not None:
+                cleanup_container_state = {"container": status_container}
+        else:
+            discovery_error = None
+        if status_container is not None:
+            container_status, status_error = cleanup_container_git_status(
+                status_container, branch
+            )
+        else:
+            container_status, status_error = None, discovery_error
+        if status_error is not None:
+            if not args.i_am_sure:
+                raise CleanupBlocked(
+                    f"container git status unavailable; cleanup is blocked: {status_error}"
+                )
+            container_status = {
+                "uncommitted_changes": None,
+                "unpushed_commits": None,
+                "summary": f"unavailable: {status_error}",
+            }
+        assert container_status is not None
+        is_dirty = (
+            container_status["uncommitted_changes"] is None
+            or container_status["unpushed_commits"] is None
+            or container_status["uncommitted_changes"] > 0
+            or container_status["unpushed_commits"] > 0
+        )
+        if is_dirty and not args.i_am_sure:
+            summary = container_status.get("summary") or "(no porcelain details)"
+            raise CleanupBlocked(
+                "container git status dirty: "
+                f"uncommitted_changes={container_status['uncommitted_changes']}, "
+                f"unpushed_commits={container_status['unpushed_commits']}\n"
+                f"{summary}"
+            )
+        if is_dirty and args.i_am_sure:
+            # 先登记清理意图, 即使 podman rm -f 失败也保留审计痕迹.
+            record_dirty_release(
+                repo,
+                container_status,
+                "explicit --i-am-sure; D012 cleanup override",
+            )
+        try:
+            run_command(["podman", "rm", "-f", expected_name])
+        except CommandFailure as failure:
+            raise fail_command(failure) from failure
+        if discover_containers(repo):
+            raise AssertionFailure("cleanup-container", f"container remains: {expected_name}")
+        stage("ok", f"cleanup container removed {expected_name}")
+    elif isinstance(expected_container, dict):
+        status_error = "container is absent from podman ps -a; git status is not knowable"
+        if not args.i_am_sure:
+            raise CleanupBlocked(
+                f"container git status unavailable; cleanup is blocked: {status_error}"
+            )
+        record_dirty_release(
+            repo,
+            {
+                "uncommitted_changes": None,
+                "unpushed_commits": None,
+                "summary": f"unavailable: {status_error}",
+            },
+            "explicit --i-am-sure; D012 cleanup override",
+        )
 
     expected_daemon = state.get("daemon") if state is not None else None
     expected_pid = expected_daemon.get("pid") if isinstance(expected_daemon, dict) else None
@@ -834,11 +1770,16 @@ def cleanup(args: argparse.Namespace) -> int:
     elif state is not None or incomplete:
         raise AssertionFailure("mother", f"mother is missing: {mother_dir}")
 
+    cleanup_ssh_dir(repo, cleanup_container_state, branch)
     if runtime_path.exists():
         runtime_path.unlink()
     if runtime_path.exists():
         raise AssertionFailure("cleanup-state", f"runtime remains: {runtime_path}")
     stage("ok", "cleanup complete")
+    if state is not None:
+        state["stage"] = "cleaned"
+        state["stage_log"] = list(STAGE_LOG)
+        write_artifact(repo, state)
     return 0
 
 
