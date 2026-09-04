@@ -109,6 +109,12 @@
 - 依赖事实: 无 (镜像 digest 版本语义来自 MILESTONE-05 外部产物, 非本账本事实)
 - 预计影响: use-sandbox-worktree skill 诞生步骤 (镜像比对提示)
 
+### D007 容器操作不做 provider 抽象层, 仅留文档级扩展点
+- 状态: 当前有效
+- 约束性: 必须遵守
+- 内容: 不建 "接口 + 实现类" 式的容器 provider 抽象 (docker/podman 多态). 理由: (1) 同一场景同一时刻只绑一个 provider, 诞生时选定后全程复用, 运行期多态无收益; (2) 硬约束长在 podman rootless 特性上 (netavark/nft 白名单注入, rootless netns, Quadlet), docker 的网络模型不同, 抽象层必漏成抽象漏洞; (3) skill 是 markdown 驱动 llm 敲命令, 抽象层无代码宿主. 扩展点形态: skill 文档把所有容器命令收拢到单独一节, 未来换/加 provider 时只改该节. 动机记录: 留扩展点 + 架构整洁偏好.
+- 预计影响: use-sandbox-worktree SKILL.md 结构 (容器命令独立一节)
+
 ## 事实
 
 ### F001 updateInstead 阻塞条件实测 (2026-09-01 后盘问会话)
