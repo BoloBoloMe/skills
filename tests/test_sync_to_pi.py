@@ -31,7 +31,7 @@ class ClearSkillsTests(unittest.TestCase):
             old_skill = home / ".agents" / "skills" / "old-skill"
             old_skill.mkdir(parents=True)
 
-            self._run_main(pi_dir, ["y", "", "", "", "", "", "", "n"], home)
+            self._run_main(pi_dir, ["y", "", "", "", "", "", "", "", "n"], home)
 
             self.assertTrue(old_skill.is_dir())
 
@@ -42,7 +42,7 @@ class ClearSkillsTests(unittest.TestCase):
             old_skill = home / ".agents" / "skills" / "old-skill"
             old_skill.mkdir(parents=True)
 
-            self._run_main(pi_dir, ["y", "", "", "", "", "", "", "y"], home)
+            self._run_main(pi_dir, ["y", "", "", "", "", "", "", "", "y"], home)
 
             self.assertEqual([], list((home / ".agents" / "skills").iterdir()))
 

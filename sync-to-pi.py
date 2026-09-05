@@ -383,6 +383,16 @@ def main() -> None:
         )
     )
 
+    # pi/herdr-pi.md (单文件)
+    plan.extend(
+        _query_top_file(
+            repo_root,
+            "pi/herdr-pi.md",
+            repo_root / "pi" / "herdr-pi.md",
+            pi_dir / "herdr-pi.md",
+        )
+    )
+
     # pi/keybindings.json (单文件)
     plan.extend(
         _query_top_file(
