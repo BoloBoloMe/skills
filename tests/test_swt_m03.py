@@ -58,8 +58,10 @@ def _kill_test_daemons(signum: signal.Signals) -> None:
 
 class _FixtureTestCase(unittest.TestCase):
     def setUp(self) -> None:
+        self.index_path = Path("/tmp/swt-m03-index.json")
+        self.index_backup = self.index_path.read_bytes() if self.index_path.exists() else None
+        super().setUp()
         self.fixture_root, self.repo = self._create_fixture()
-
     def _create_fixture(self) -> tuple[Path, Path]:
         fixture_root = Path(mkdtemp(prefix="swt-m03-test-"))
         repo = fixture_root / "srv" / "demo"
@@ -154,11 +156,76 @@ class _FixtureTestCase(unittest.TestCase):
             check=False,
         )
         shutil.rmtree(self.fixture_root, ignore_errors=True)
+        if self.index_backup is None:
+            self.index_path.unlink(missing_ok=True)
+        else:
+            self.index_path.write_bytes(self.index_backup)
+
+
+class TestIndexContract(_FixtureTestCase):
+    def test_index_register_lookup_unregister(self) -> None:
+        name = "feature/index-lifecycle"
+        command = ["uv", "run", "python", str(SCRIPT)]
+        birth = subprocess.run([*command, "birth", "--name", name], cwd=ROOT, capture_output=True, text=True, check=False)
+        self.assertEqual(0, birth.returncode, birth.stderr)
+        self.assertIn("index=/tmp/swt-m03-index.json", birth.stdout)
+        index = json.loads(self.index_path.read_text(encoding="utf-8"))
+        repo = Path(index[name])
+        self.assertTrue(repo.is_absolute())
+        self.assertTrue((repo / ".git/swt-m03-fixture").is_file())
+        smoke = subprocess.run([*command, "smoke", "--name", name], cwd=ROOT, capture_output=True, text=True, check=False)
+        self.assertEqual(0, smoke.returncode, smoke.stderr)
+        cleanup = subprocess.run([*command, "cleanup", "--name", name], cwd=ROOT, capture_output=True, text=True, check=False)
+        self.assertEqual(0, cleanup.returncode, cleanup.stderr)
+        self.assertNotIn(name, json.loads(self.index_path.read_text(encoding="utf-8")))
+
+    def test_index_conflict_and_invalid_lookup(self) -> None:
+        name = "feature/index-conflict"
+        self.index_path.write_text(json.dumps({name: str(self.repo)}), encoding="utf-8")
+        command = ["uv", "run", "python", str(SCRIPT)]
+        conflict = subprocess.run([*command, "birth", "--name", name], cwd=ROOT, capture_output=True, text=True, check=False)
+        self.assertEqual(2, conflict.returncode, conflict.stderr)
+        self.assertIn("already registered", conflict.stderr)
+        missing = subprocess.run([*command, "smoke", "--name", "feature/missing-index"], cwd=ROOT, capture_output=True, text=True, check=False)
+        self.assertEqual(2, missing.returncode, missing.stderr)
+        self.assertIn("--repo", missing.stderr)
+        self.index_path.write_text("{broken", encoding="utf-8")
+        corrupt = subprocess.run([*command, "cleanup", "--name", name], cwd=ROOT, capture_output=True, text=True, check=False)
+        self.assertEqual(2, corrupt.returncode, corrupt.stderr)
+
+    def test_index_concurrent_birth_has_one_winner(self) -> None:
+        name = "feature/index-concurrent"
+        command = ["uv", "run", "python", str(SCRIPT), "birth", "--name", name]
+        first = subprocess.Popen(command, cwd=ROOT, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        second = subprocess.Popen(command, cwd=ROOT, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        first_output = first.communicate(timeout=900)
+        second_output = second.communicate(timeout=900)
+        results = [(first.returncode, *first_output), (second.returncode, *second_output)]
+        self.assertEqual([0, 2], sorted(result[0] for result in results), results)
+        winner = next(result for result in results if result[0] == 0)
+        winner_repo = next(
+            Path(line.removeprefix("repo="))
+            for line in winner[1].splitlines()
+            if line.startswith("repo=")
+        )
+        cleanup = subprocess.run(
+            ["uv", "run", "python", str(SCRIPT), "cleanup", "--repo", str(winner_repo), "--name", name],
+            cwd=ROOT, capture_output=True, text=True, check=False,
+        )
+        self.assertEqual(0, cleanup.returncode, cleanup.stderr)
+
+        command = ["uv", "run", "python", str(SCRIPT)]
+        for phase in ("birth", "smoke"):
+            result = subprocess.run([*command, phase, "--repo", str(self.repo), "--name", "feature/flag", "--i-am-sure"], cwd=ROOT, capture_output=True, text=True, check=False)
+            self.assertEqual(2, result.returncode)
 
 
 class TestHostLoop(_FixtureTestCase):
+    def test_daemon_failure_logging_points_present(self) -> None:
+        source = SCRIPT.read_text(encoding="utf-8")
+        for marker in ("daemon-stderr", "daemon-probe", "daemon-terminate", "daemon-wait", "daemon-reap", "TimeoutExpired"):
+            self.assertIn(marker, source)
 
-    def test_birth_writes_mother_config_daemon(self) -> None:
         name = "feature/alpha"
         result = subprocess.run(
             ["uv", "run", "python", str(SCRIPT), "birth", "--repo", str(self.repo), "--name", name],
@@ -1051,8 +1118,13 @@ class TestContainerLoop(_FixtureTestCase):
         self.assertIn("## 结果事实", report)
         self.assertIn("全通网络", report)
         self.assertIn("daemon 监听地址", report)
-        self.assertIn("pi --help", report)
-        self.assertIn("## checklist", report)
+        self.assertIn("$ podman rm -f", report)
+        self.assertIn("git -C", report)
+        self.assertIn("status --porcelain=v1", report)
+        self.assertIn("rev-list --count", report)
+        self.assertIn("$ ssh ", report)
+        self.assertIn("cleanup daemon", report)
+        self.assertIn("$ kill -TERM ", report)
         for field in (
             "母体复用",
             "脏放行",

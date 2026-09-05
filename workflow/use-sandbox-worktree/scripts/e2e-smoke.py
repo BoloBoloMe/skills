@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import fcntl
 import json
 import os
 import re
@@ -28,6 +29,10 @@ ARTIFACT_PATH = ROOT / "docs/changes/use-sandbox-worktree/milestone-03-e2e-run.m
 CONTAINER_CLONE_DIR = "/home/agent/workspace"
 
 STAGE_LOG: list[dict[str, str]] = []
+COMMAND_LOG: list[dict[str, Any]] = []
+INDEX_PATH = Path("/tmp/swt-m03-index.json")
+INDEX_LOCK_PATH = Path("/tmp/swt-m03-index.json.lock")
+INDEX_LOCK_HANDLE: Any = None
 
 CONFIG_TEMPLATE: tuple[tuple[str, tuple[str, ...], bool], ...] = (
     ("receive.denyCurrentBranch", ("updateInstead",), False),
@@ -73,6 +78,20 @@ class CleanupBlocked(Exception):
         super().__init__(detail)
 
 
+_ORIGINAL_SUBPROCESS_RUN = subprocess.run
+
+
+def _observed_run(*args: Any, **kwargs: Any) -> subprocess.CompletedProcess[str]:
+    result = _ORIGINAL_SUBPROCESS_RUN(*args, **kwargs)
+    command = args[0] if args else kwargs.get("args", [])
+    if isinstance(command, (list, tuple)):
+        record_command([str(item) for item in command], result)
+    return result
+
+
+subprocess.run = _observed_run  # type: ignore[assignment]
+
+
 def run_command(
     command: list[str],
     cwd: Path | None = None,
@@ -89,6 +108,17 @@ def run_command(
     if result.returncode != 0:
         raise CommandFailure(command, result)
     return result
+
+
+def record_command(command: list[str], result: subprocess.CompletedProcess[str]) -> None:
+    COMMAND_LOG.append(
+        {"command": shlex.join(command), "returncode": result.returncode,
+         "stdout": result.stdout, "stderr": result.stderr}
+    )
+
+
+def record_observation(command: str, returncode: int | None, stdout: str = "", stderr: str = "") -> None:
+    COMMAND_LOG.append({"command": command, "returncode": returncode, "stdout": stdout, "stderr": stderr})
 
 
 def runtime_state_path(repo: Path, branch: str) -> Path:
@@ -139,8 +169,14 @@ def begin_stage_log(existing: object = None) -> None:
         STAGE_LOG = []
 
 
+def begin_command_log(existing: object = None) -> None:
+    global COMMAND_LOG
+    COMMAND_LOG = [item for item in existing if isinstance(item, dict)] if isinstance(existing, list) else []
+
+
 def save_runtime_state(path: Path, state: dict[str, Any]) -> None:
     state["stage_log"] = list(STAGE_LOG)
+    state["command_log"] = list(COMMAND_LOG)
     write_json(path, state)
 
 
@@ -180,11 +216,100 @@ def fixture_repo() -> tuple[Path, Path]:
     return root, repo
 
 
-def resolve_repo(raw_repo: str | None) -> tuple[Path, Path | None]:
-    if raw_repo is None:
+class IndexErrorState(Exception):
+    pass
+
+
+def acquire_index_lock() -> None:
+    global INDEX_LOCK_HANDLE
+    if INDEX_LOCK_HANDLE is not None:
+        return
+    try:
+        handle = INDEX_LOCK_PATH.open("a+")
+        fcntl.flock(handle.fileno(), fcntl.LOCK_EX)
+    except OSError as error:
+        raise IndexErrorState(f"index lock unavailable: {error}") from error
+    INDEX_LOCK_HANDLE = handle
+
+
+def release_index_lock() -> None:
+    global INDEX_LOCK_HANDLE
+    if INDEX_LOCK_HANDLE is None:
+        return
+    handle = INDEX_LOCK_HANDLE
+    INDEX_LOCK_HANDLE = None
+    try:
+        fcntl.flock(handle.fileno(), fcntl.LOCK_UN)
+        handle.close()
+    except OSError as error:
+        raise IndexErrorState(f"index unlock failed: {error}") from error
+
+
+def load_index() -> dict[str, str]:
+    try:
+        value = json.loads(INDEX_PATH.read_text(encoding="utf-8"))
+    except FileNotFoundError:
+        return {}
+    except (OSError, json.JSONDecodeError) as error:
+        raise IndexErrorState(f"index unavailable: {error}") from error
+    if not isinstance(value, dict) or any(
+        not isinstance(name, str) or not isinstance(repo, str) or not Path(repo).is_absolute()
+        for name, repo in value.items()
+    ):
+        raise IndexErrorState("index must map names to absolute repo paths")
+    return value
+
+
+def save_index(index: dict[str, str]) -> None:
+    write_json(INDEX_PATH, index)
+
+
+def register_index(name: str, repo: Path) -> None:
+    acquire_index_lock()
+    try:
+        index = load_index()
+        if name in index:
+            raise IndexErrorState(f"name already registered: {name}")
+        index[name] = str(repo.resolve())
+        save_index(index)
+        print(f"index={INDEX_PATH}", flush=True)
+    finally:
+        release_index_lock()
+
+
+def unregister_index(name: str, repo: Path) -> None:
+    acquire_index_lock()
+    try:
+        index = load_index()
+        if index.get(name) == str(repo.resolve()):
+            del index[name]
+            save_index(index)
+    finally:
+        release_index_lock()
+
+
+def resolve_repo(raw_repo: str | None, name: str, command: str) -> tuple[Path, Path | None]:
+    if raw_repo is not None:
+        return Path(raw_repo).expanduser().resolve(), None
+    acquire_index_lock()
+    try:
+        index = load_index()
+    except BaseException:
+        release_index_lock()
+        raise
+    if command == "birth":
+        if name in index:
+            release_index_lock()
+            raise IndexErrorState(f"name already registered: {name}")
         root, repo = fixture_repo()
         return repo.resolve(), root
-    return Path(raw_repo).expanduser().resolve(), None
+    try:
+        raw = index.get(name)
+        if raw is None or not Path(raw).is_dir():
+            raise IndexErrorState(f"cannot locate name {name}; pass --repo explicitly")
+        return Path(raw).resolve(), None
+    finally:
+        release_index_lock()
 
 
 def validate_explicit_repo(repo: Path, raw_repo: str | None) -> None:
@@ -320,38 +445,64 @@ def start_daemon(srv: Path) -> DaemonHandle:
             try:
                 reservation, port = reserve_port(address)
             except OSError as error:
+                record_observation(f"daemon-reserve {address}", 1, stderr=str(error))
                 last_error = str(error)
                 continue
-            process = subprocess.Popen(
-                [
-                    "git",
-                    "daemon",
-                    "--enable=receive-pack",
-                    f"--base-path={srv}",
-                    f"--listen={address}",
-                    f"--port={port}",
-                    "--reuseaddr",
-                    "--log-destination=none",
-                    str(srv),
-                ],
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                text=True,
-            )
+            daemon_command = [
+                "git", "daemon", "--enable=receive-pack", f"--base-path={srv}",
+                f"--listen={address}", f"--port={port}", "--reuseaddr",
+                "--log-destination=none", str(srv),
+            ]
+            record_observation(shlex.join(daemon_command), None)
+            try:
+                process = subprocess.Popen(
+                    daemon_command, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                    text=True,
+                )
+            except OSError as error:
+                record_observation("daemon-start", 1, stderr=str(error))
+                last_error = str(error)
+                reservation.close()
+                continue
             reservation.close()
             time.sleep(0.15)
             if process.poll() is not None:
                 stderr = process.stderr.read().strip() if process.stderr else ""
+                record_observation("daemon-stderr", process.returncode, stderr=stderr)
+                try:
+                    reap_code = process.wait(timeout=0)
+                    record_observation(f"daemon-reap {process.pid}", reap_code)
+                except subprocess.TimeoutExpired as error:
+                    record_observation(f"daemon-reap {process.pid}", None, stderr=str(error))
                 last_error = stderr
                 continue
             connect_address = "127.0.0.1" if address in {"0.0.0.0", "::"} else address
             try:
                 with socket.create_connection((connect_address, port), timeout=1):
+                    record_observation(f"daemon-probe {connect_address}:{port}", 0)
                     return DaemonHandle(process, address, port, address == "0.0.0.0")
             except OSError as error:
+                record_observation(f"daemon-probe {connect_address}:{port}", 1, stderr=str(error))
                 last_error = str(error)
-                process.terminate()
-                process.wait(timeout=2)
+                try:
+                    process.terminate()
+                    record_observation(f"daemon-terminate {process.pid}", 0)
+                except OSError as error:
+                    record_observation(f"daemon-terminate {process.pid}", 1, stderr=str(error))
+                try:
+                    wait_code = process.wait(timeout=2)
+                    record_observation(f"daemon-wait {process.pid}", wait_code)
+                except subprocess.TimeoutExpired as error:
+                    record_observation(f"daemon-wait {process.pid}", None, stderr=str(error))
+                    try:
+                        process.kill()
+                        record_observation(f"daemon-kill {process.pid}", 0)
+                        kill_code = process.wait(timeout=2)
+                        record_observation(f"daemon-reap {process.pid}", kill_code)
+                    except OSError as kill_error:
+                        record_observation(f"daemon-kill {process.pid}", 1, stderr=str(kill_error))
+                    except subprocess.TimeoutExpired as reap_error:
+                        record_observation(f"daemon-reap {process.pid}", None, stderr=str(reap_error))
     raise AssertionFailure("daemon", last_error)
 
 
@@ -787,6 +938,7 @@ def write_artifact(repo: Path, state: dict[str, Any]) -> None:
         container = {}
     if not isinstance(pi_help, dict):
         pi_help = {}
+    command_log = state.get("command_log") if isinstance(state.get("command_log"), list) else []
     stage_log = state.get("stage_log")
     if not isinstance(stage_log, list):
         stage_log = []
@@ -818,6 +970,25 @@ def write_artifact(repo: Path, state: dict[str, Any]) -> None:
             str(pi_help.get("stderr", "")).rstrip(),
             "```",
             "",
+            "### 全链命令与输出附录",
+            "",
+            "以下记录实际调用的 git/podman/ssh/daemon 命令及结果.",
+            "",
+            "```text",
+        ]
+    )
+    for item in command_log:
+        if isinstance(item, dict):
+            lines.extend([
+                f"$ {item.get('command', '')}",
+                f"exit={item.get('returncode', 'unknown')}",
+                f"stdout: {str(item.get('stdout', '')).rstrip() or '(empty)'}",
+                f"stderr: {str(item.get('stderr', '')).rstrip() or '(empty)'}",
+                "",
+            ])
+    lines.extend([
+            "```",
+            "",
             "## checklist",
             "",
             "```json",
@@ -826,14 +997,17 @@ def write_artifact(repo: Path, state: dict[str, Any]) -> None:
             "",
         ]
     )
-    write_text_atomic(ARTIFACT_PATH, "\n".join(lines))
+    artifact = "\n".join(line.rstrip() for line in "\n".join(lines).splitlines())
+    write_text_atomic(ARTIFACT_PATH, artifact + "\n")
 
 
 def birth(args: argparse.Namespace) -> int:
-    begin_stage_log()
-    repo, temporary_root = resolve_repo(args.repo)
+    repo, temporary_root = resolve_repo(args.repo, args.name, "birth")
     validate_explicit_repo(repo, args.repo)
     srv = repo.parent
+    checklist = load_checklist(repo / ".swt-m03-checklist.json")
+    begin_stage_log(checklist.get("stage_log_history"))
+    begin_command_log(checklist.get("command_log_history"))
     if not (repo / ".git").is_dir():
         raise AssertionFailure("repo", f"repository is not a worktree: {repo}")
     project = repo.name
@@ -936,12 +1110,16 @@ def birth(args: argparse.Namespace) -> int:
         stage("ok", "birth complete")
         save_runtime_state(runtime_path, state)
         print(f"repo={repo}", flush=True)
+        if args.repo is None:
+            register_index(args.name, repo)
         return 0
     except AssertionFailure:
         raise
     except OSError as error:
         raise AssertionFailure("birth", str(error)) from error
     finally:
+        if INDEX_LOCK_HANDLE is not None:
+            release_index_lock()
         if temporary_root is not None:
             print(f"fixture={temporary_root}", file=sys.stderr, flush=True)
 
@@ -1188,7 +1366,7 @@ def container_push_loop(
 
 
 def smoke(args: argparse.Namespace) -> int:
-    repo, _temporary_root = resolve_repo(args.repo)
+    repo, _temporary_root = resolve_repo(args.repo, args.name, "smoke")
     validate_explicit_repo(repo, args.repo)
     branch = get_slug(repo.name, args.name)
     runtime_path = runtime_state_path(repo, branch)
@@ -1200,6 +1378,7 @@ def smoke(args: argparse.Namespace) -> int:
     if not isinstance(state, dict):
         raise AssertionFailure("state", "runtime state must be an object")
     begin_stage_log(state.get("stage_log"))
+    begin_command_log(state.get("command_log"))
     daemon = state.get("daemon")
     if not isinstance(daemon, dict):
         raise AssertionFailure("daemon", "runtime daemon state is incomplete")
@@ -1306,6 +1485,7 @@ def smoke(args: argparse.Namespace) -> int:
         assert_daemon_command_safe(daemon)
         state["stage"] = "smoked"
         save_runtime_state(runtime_path, state)
+        write_artifact(repo, state)
         return 0
     finally:
         shutil.rmtree(client_root, ignore_errors=True)
@@ -1422,6 +1602,7 @@ def process_is_alive(pid: int) -> bool:
 
 
 def stop_daemon(pid: int) -> None:
+    COMMAND_LOG.append({"command": f"kill -TERM {pid}", "returncode": 0, "stdout": "", "stderr": ""})
     try:
         os.kill(pid, signal.SIGTERM)
     except ProcessLookupError:
@@ -1433,6 +1614,7 @@ def stop_daemon(pid: int) -> None:
         except ProcessLookupError:
             return
         time.sleep(0.05)
+    COMMAND_LOG.append({"command": f"kill -KILL {pid}", "returncode": 0, "stdout": "", "stderr": ""})
     try:
         os.kill(pid, signal.SIGKILL)
     except ProcessLookupError:
@@ -1607,7 +1789,7 @@ def cleanup_ssh_dir(repo: Path, state: dict[str, Any] | None, branch: str) -> No
 
 
 def cleanup(args: argparse.Namespace) -> int:
-    repo, _temporary_root = resolve_repo(args.repo)
+    repo, _temporary_root = resolve_repo(args.repo, args.name, "cleanup")
     validate_explicit_repo(repo, args.repo)
     if not (repo / ".git").is_dir():
         raise AssertionFailure("repo", f"repository is not a worktree: {repo}")
@@ -1616,6 +1798,7 @@ def cleanup(args: argparse.Namespace) -> int:
     runtime_path = runtime_state_path(repo, branch)
     state, incomplete = read_runtime_state(runtime_path)
     begin_stage_log(state.get("stage_log") if state is not None else None)
+    begin_command_log(state.get("command_log") if state is not None else None)
     expected_srv = repo.parent
     expected_mother = mother_path(expected_srv, branch)
     if state is not None:
@@ -1777,19 +1960,32 @@ def cleanup(args: argparse.Namespace) -> int:
         raise AssertionFailure("cleanup-state", f"runtime remains: {runtime_path}")
     stage("ok", "cleanup complete")
     if state is not None:
+        checklist_path = repo / ".swt-m03-checklist.json"
+        checklist = load_checklist(checklist_path)
+        checklist["stage_log_history"] = list(STAGE_LOG)
+        checklist["command_log_history"] = list(COMMAND_LOG)
+        write_json(checklist_path, checklist)
+        state["stage"] = "cleaned"
+    if state is not None:
+        state["command_log"] = list(COMMAND_LOG)
         state["stage"] = "cleaned"
         state["stage_log"] = list(STAGE_LOG)
         write_artifact(repo, state)
+    unregister_index(args.name, repo)
     return 0
 
 
 def parse_args(argv: list[str]) -> argparse.Namespace:
     parser = argparse.ArgumentParser()
-    parser.add_argument("command", choices=["birth", "smoke", "cleanup"])
-    parser.add_argument("--repo")
-    parser.add_argument("--name", required=True)
-    # ISSUE-01 无容器阶段无脏检查对象, 骨架预留, 触发点归 ISSUE-02 容器接入.
-    parser.add_argument("--i-am-sure", action="store_true")
+    subparsers = parser.add_subparsers(dest="command", required=True)
+    for command in ("birth", "smoke"):
+        subparser = subparsers.add_parser(command)
+        subparser.add_argument("--repo")
+        subparser.add_argument("--name", required=True)
+    cleanup_parser = subparsers.add_parser("cleanup")
+    cleanup_parser.add_argument("--repo")
+    cleanup_parser.add_argument("--name", required=True)
+    cleanup_parser.add_argument("--i-am-sure", action="store_true")
     return parser.parse_args(argv)
 
 
@@ -1801,6 +1997,9 @@ def main(argv: list[str]) -> int:
         if args.command == "smoke":
             return smoke(args)
         return cleanup(args)
+    except IndexErrorState as failure:
+        print(f"INDEX-ERROR {failure}", file=sys.stderr)
+        return 2
     except NotAFixture as failure:
         print(f"NOT-A-FIXTURE {failure.repo}", file=sys.stderr)
         return 2
