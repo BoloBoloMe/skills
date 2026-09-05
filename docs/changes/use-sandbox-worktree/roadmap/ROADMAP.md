@@ -18,6 +18,7 @@ use-sandbox-worktree skill 落地并经端到端演练验证可用 — 它管理
 - 脚本封装决策 (2026-09-03): host llm 容器操作脚本化方向确认, 但 [反方审查](../milestone-02-scripting-opposing-review.md) 成立 — 首次完整流程未跑前不得冻结五场景接口; M03 只交可观测/可清理/可重跑的瘦 E2E 编排器 + 负向断言 + checklist, 五场景入口拆出为 MILESTONE-11 (用户在场盘问方案) → MILESTONE-12 (实现)
 - MILESTONE-03 实跑新事实 (2026-09): updateInstead 推送落地存在短延迟 (push 返回成功后 linked worktree 文件稍后可读, 编排器以 ≤3s 轮询消解); 本机无 pasta 网关接口, daemon 监听按兜底顺序落 0.0.0.0 + `host.containers.internal` 配对; 硬中断 (进程被杀级) 会留 daemon 僵尸, 已知限制未做 atexit 兜底
 - MILESTONE-03 遗留缺口 (待路由): (1) TECHNICAL.md 的 `/tmp/swt-m03-index.json` 索引契约 (缺省 --repo 跨命令定位/同名冲突拒绝) 未被 EXECUTION 任何切片认领, 未实现 — 须决定补 ISSUE 或改 spec; (2) 运行时 JSON container 段为 schema 超集 (ssh_private_key/ssh_host/daemon_addr/clone_dir/remote), TECHNICAL.md 字面宜补记; (3) 仓库根无 pytest 依赖, 测试实际以 `uv run --with pytest` 运行, EXECUTION.md 的 `uv run pytest` 字面与现实不符
+- MILESTONE-09 实跑新事实 (2026-09-06): 登录墙 6 检查真链路全过 (空白基线 0.0019% / headed 渲染 30.19% / headless 回切); 渲染窗口固定 1280x720 使阈值定 0.2; image-prep `build` 缺 --repo 裸崩 (M07 领地待补); 接缝补钉五条待用户追认 (见 [../milestone-09-login-wall-run.md](../milestone-09-login-wall-run.md)); 3840 翻倍疑点挂起 (0/21 复现, 档案在该报告内, 复现时留容器验尸)
 - MILESTONE-06 盘问 (2026-09-04): 镜像制备策略拍完 (D014-D020) + herdr 集成形态 d 拍完 (D021); 反方攻击 6 项成立已转为修正 (门禁扩展留 host/清单带版本谓词/base-digest 硬谓词/home 完美复刻取代适配版/委派配方加就绪 guard 与动态提交键/定位收窄为交互式编排适配层); 关键实测 (F009/F010): herdr 经 HERDR_AGENT=pi 提示识别 ssh 后的 pi, 委派全链路 (send-text + alt+\ → working→done→read) 跑通, 提交键取决于容器内 keybindings (键位即接口), pi -p 批处理为保底形态; 后续修订: D023 推翻 host 环境文档 (~/AGENTS.md/~/docs) 注入 — host 环境文档不进独立环境
 
 **路线侦查结论 (2026-09-01 后绘制会话)**:
@@ -44,6 +45,7 @@ use-sandbox-worktree skill 落地并经端到端演练验证可用 — 它管理
 - [MILESTONE-04](MILESTONE-04.md) — 网络访问控制已实现并实测: rootless bridge netns nft 黑/白名单, 静态 IP, 重启后重注入, IPv6 DROP, 8 项测试全绿 — 详见 [../milestone-04/MILESTONE-04-findings.md](../milestone-04/MILESTONE-04-findings.md)
 - [MILESTONE-08](MILESTONE-08.md) — 容器内 present 展示链接线已实测: 动态端口交付, add-dir/同 UID 复用/stop 影响均已确认, present 及跟随 skill 已更新 — 详见 [../milestone-08-present-container-findings.md](../milestone-08-present-container-findings.md)
 - [MILESTONE-07](MILESTONE-07.md) — 镜像制备闭环已实现: build-base/match/build, 需求与实测内容物比对, base-digest 硬匹配, 30 项测试全绿 — 详见 [../milestone-07-image-prep-run.md](../milestone-07-image-prep-run.md)
+- [MILESTONE-09](MILESTONE-09.md) — 登录墙闭环已实现并真链路实测: login-wall build/up/down/verify + 浏览器项目层清单 + 容器内 swt-vnc, 31 项测试全绿, 真记录根 dogfood 6 检查全过 — 详见 [../milestone-09-login-wall-run.md](../milestone-09-login-wall-run.md)
 
 ## 前沿
 
@@ -65,14 +67,14 @@ use-sandbox-worktree skill 落地并经端到端演练验证可用 — 它管理
 
 ```
 M01(已关闭) ──┐
-              ├─→ M03(已关闭) ──┬─→ M04 ────────────────┐
+              ├─→ M03(已关闭) ──┬─→ M04(已关闭) ─────────┐
 M02(已关闭) ──┘                 │                       │
-                                ├─→ M08 ────────────────┤
+                                ├─→ M08(已关闭) ─────────┤
                                 │                       │
-                                └─→ M11 ─→ M12 ───────────┤
-M05(已关闭) ─→ M06(已关闭) ────┴─→ M07 ─→ M09 ────────┴─→ M10 ─→ 目的地
+                                └─→ M11 ─→ M12 ──────────┤
+M05(已关闭) ─→ M06(已关闭) ────┴─→ M07(已关闭) ─→ M09(已关闭) ┴─→ M10 ─→ 目的地
 ```
 
-- M03, M04, M06, M07, M08 已关闭; 前沿 = MILESTONE-11 (M04/M07/M08 为 AFK task, M11 为 HITL deliberate)
-- 关键路径推进为: M07 → M09 → M10
+- M01..M09 中已关闭: M03, M04, M06, M07, M08, M09; 前沿 = MILESTONE-11 (HITL deliberate)
+- 关键路径推进为: M11 → M12 → M10
 - M11 (五场景脚本抽取**方案**盘问, HITL) → M12 (脚本实现, AFK) 阻塞 M10 (SKILL.md 引用场景脚本)
