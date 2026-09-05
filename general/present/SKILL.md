@@ -21,6 +21,15 @@ cd <access-web>/browse && uv sync && uv run playwright install chromium
 
 远程时完全不起 Chromium: 按本地路径相同规则生成自包含 HTML (含 `window.__PRESENTATION_STATE__`), 再用 `scripts/web_server.py` 把页面所在目录挂载到常驻 web 服务, 直接交付 URL. 该脚本纯标准库, 远程模式无需 Setup 节的 access-web 环境.
 
+### 容器内分支
+
+远程判定命中且 `/run/.containerenv` 存在 (podman 容器内, 即 sandbox-worktree 场景) 时走本分支: 完全不起 Chromium, HTML 生成与挂载复用与远程模式相同, 仅两处容器特有规则:
+
+- bind 必须 `0.0.0.0` (端口映射只达容器公网监听, loopback bind 不可达); 容器端口必须复用容器创建时已映射的那个端口 — 映射在 create 时钉死容器端口, 服务换端口重启 host 侧即不可达 (实测), 不适用上方 "port_in_use 换端口重试" 的自由度.
+- 输出 JSON 的 `url`/`hostname`/`lan_ip` 是容器视角, 不可直接交付: 在 chat 报告容器内端口与挂载根目录, 由 host 侧会话 `podman port <容器> <端口>` 发现映射端口并组装交付 URL, 容器内不猜测 host 地址.
+
+add-dir/复用/stop 语义与远程模式一致 (容器内实测可用); 服务与运行时状态随容器生灭, 终结容器不必先 `stop`.
+
 ### 挂载或复用
 
 ```bash
