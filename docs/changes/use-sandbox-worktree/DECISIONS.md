@@ -109,11 +109,61 @@
 - 依赖事实: 无 (镜像 digest 版本语义来自 MILESTONE-05 外部产物, 非本账本事实)
 - 预计影响: use-sandbox-worktree skill 诞生步骤 (镜像比对提示)
 
-### D007 容器操作不做 provider 抽象层, 仅留文档级扩展点
+### D022 容器操作不做 provider 抽象层, 仅留文档级扩展点
 - 状态: 当前有效
 - 约束性: 必须遵守
 - 内容: 不建 "接口 + 实现类" 式的容器 provider 抽象 (docker/podman 多态). 理由: (1) 同一场景同一时刻只绑一个 provider, 诞生时选定后全程复用, 运行期多态无收益; (2) 硬约束长在 podman rootless 特性上 (netavark/nft 白名单注入, rootless netns, Quadlet), docker 的网络模型不同, 抽象层必漏成抽象漏洞; (3) skill 是 markdown 驱动 llm 敲命令, 抽象层无代码宿主. 扩展点形态: skill 文档把所有容器命令收拢到单独一节, 未来换/加 provider 时只改该节. 动机记录: 留扩展点 + 架构整洁偏好.
 - 预计影响: use-sandbox-worktree SKILL.md 结构 (容器命令独立一节)
+
+### D014 两层镜像结构与门禁扩展归属
+- 状态: 当前有效
+- 约束性: 必须遵守
+- 内容: 镜像分两层. **base 层**固定且跨项目共享: OS + pi CLI + skill 库全量 (含 access-web) + fd/rg 等 bin; **项目层**由 host llm 读项目信号 (AGENTS.md/README/package.json/pyproject.toml 等) 推导依赖件叠加. 诞生时向用户展示推导清单, 确认后才构建 ("容器之外用户说了算"). 门禁类扩展 (filesystem-operation-gate, git-operation-gate, python-operation-hook, repetition-guard) **留 host 不进容器** — 回归调研 §3 原结论 (2026-09-01-research.md: 容器内 pi 不装门禁类扩展), 反方攻击成立项: gate 弹确认会阻塞 herdr 委派回路, 且容器内硬约束已由 D008 daemon/config 拓扑承担, gate 扩展在容器内只增行为耦合. 排除单层自由推导: base 复用率低. 构建期安装项目依赖的传递依赖/postinstall 风险与日常开发同级 (装依赖即工作流目的), 不入威胁模型, 但清单确认时应提示.
+- 预计影响: MILESTONE-07 镜像制备实现; use-sandbox-worktree skill 诞生步骤 (清单确认环节)
+
+### D015 镜像版本语义与清单格式
+- 状态: 当前有效
+- 约束性: 必须遵守
+- 内容: 不做语义版本. tag = 构建日期-当日序号 (如 2026.09.05-1), 纯人读索引; digest = 精确版本, 落 image label (MILESTONE-05 结论). 新旧判定不靠 tag, 靠需求清单 vs 内容物清单比对. 清单条目 = 名称 + 版本谓词 (如 node>=20); contents.md = 构建后**实测**版本清单 — 反方攻击成立项: 无版本谓词的名称 subset 判不了运行时版本满足, 且 label 声明不是内容证明, 内容物必须实测.
+- 依赖事实: MILESTONE-05 findings (外部产物)
+- 预计影响: MILESTONE-07 (清单生成/比对实现)
+
+### D016 记录位置与项目身份规则
+- 状态: 当前有效
+- 约束性: 必须遵守
+- 内容: 构建输入 (Containerfile) + 需求清单 requirements.md + 实测内容物清单 contents.md 落 `~/.pi/sandbox-worktree/<project-slug>/builds/<build-id>/` (环境信息不落项目 git). label 前缀 `run.sandbox-worktree.*`: image 存 project-id/schema-version/contents-digest/build-id/base-digest; 容器存 identity/worktree-path/image-digest (MILESTONE-05 结论的落地). **身份规则**: project-id = 主仓绝对路径 (唯一主键, 防同名目录碰撞); slug = 目录名规范化, 仅作展示索引与目录名, 冲突时加短 hash; build-id 构建前查重 (防两会话并发同号).
+- 预计影响: MILESTONE-07; skill 诞生步骤 (镜像查询/构建记录)
+
+### D017 镜像匹配规则
+- 状态: 当前有效
+- 约束性: 必须遵守
+- 内容: `podman images --filter label=run.sandbox-worktree.project-id=<主仓路径>` 取候选 → digest 去重 (同镜像多 tag 会去重) → 按 build-id 排序取最新. 判定: 需求逐项**版本满足** (含谓词) + **base-digest = 当前 base** (硬谓词 — 反方攻击成立项: 用户更新 base 后旧项目镜像须自然淘汰, 不能仅靠提示) → 复用. 同名条目版本不满足即不可用; 多余项容忍; 缺任意项 → 推导新清单构建新版; 旧镜像保留不删 (GC 在未决迷雾).
+- 预计影响: MILESTONE-07 (候选选择逻辑)
+
+### D018 容器 home 完美复刻与 harness 注入
+- 状态: 当前有效
+- 约束性: 必须遵守
+- 内容: 容器用户 home **完美复刻** host 布局 (用户拍板): home 路径与 host 字面相同, `~/docs`, `~/AGENTS.md`, `~/Workspace/`, `~/.pi/agent` (settings/models/keybindings) 全部机械复制 — 根部 AGENTS.md 原样注入即生效, 零适配层. 代码固定 `~/Workspace/<母体目录名>` — use-worktree 所建的规范化目录名, 非原始分支名 (反方攻击成立项: `feature/foo` 分支名含斜杠会造成路径嵌套/非法容器名). skill 库全量 COPY 进 base: access-web 的 139M 大头是浏览器依赖, 容器内浏览器专为 agent 而设, 即容器唯一浏览器, 一份两用. auth.json **只读挂载**不烤进镜像层 (换 key 不重建镜像); sessions 不进容器.
+- 预计影响: MILESTONE-07 (base 层 Containerfile, 挂载点); 容器内路径契约
+
+### D019 auth.json 残余风险接受
+- 状态: 当前有效
+- 约束性: 必须遵守
+- 内容: 只读挂载防写回 host, 不防读 — 容器内恶意依赖可读 token 并经白名单内的 LLM 域名外传/滥用 (与 D004 拒 ssh 私钥同类的凭据泄漏面, 但容器 agent 工作必需 LLM 凭据, 无法根除). 用户亲口确认接受该风险: 仅要求 skill 文档明示; **不配**独立可撤销 key (用户明确否决); 只读挂载即权衡后的最终选择.
+- 预计影响: use-sandbox-worktree skill 文档 (风险明示段落)
+
+### D020 base 层更新语义
+- 状态: 当前有效
+- 约束性: 必须遵守
+- 内容: base 仅在用户明说 "更新 base" 时重建, 无自动检测. 项目层镜像 label 记 base-digest, 诞生比对不一致仅提示不强制 (D013 精神: 不动存活容器, 决定权在用户); 匹配层 base-digest 硬谓词 (D017) 使旧 base 项目镜像自然被淘汰出候选.
+- 预计影响: MILESTONE-07; skill 诞生步骤 (base 比对提示)
+
+### D021 herdr 集成: 形态 d (host herdr + wrapper 提示) 与委派配方
+- 状态: 当前有效
+- 约束性: 必须遵守
+- 内容: **容器不装 herdr** — 诞生后 host 侧开 `HERDR_AGENT=pi ssh -p <动态端口> ...` 窗格接入 host herdr, 经进程 env 提示 + 屏幕清单把 ssh 后的 pi 识别为一等 agent (F009 实测). **委派配方**: (1) `agent get` 确认 idle, blocked 态不发 (反方修正: 无就绪 guard 会把键打进错误界面); (2) `pane send-text` 发任务文本; (3) 提交键 = 读容器内 keybindings.json 的 `tui.input.submit` 首键 — 键位即接口, 跟随用户配置 (本机为 `alt+\`), 兜底 alt+enter (pi followUp 排队键, 空闲等效提交); (4) `agent wait`/`agent read` 收结果. **定位收窄为交互式编排适配层** (反方攻击成立项): 无 task id/退出码/重试幂等, 不宣称协议级替代 subagent; 状态/重试/幂等契约入未决迷雾, M10 端到端演练回访. herdr 编排的编排者是 host 侧 (用户/host pi), 容器内 pi 不自治编排; 任务切分配方细节同入迷雾. 排除: host herdr socket 挂入容器 (`pane run` 在 host 执行 = 容器逃逸通道); 容器内自含 herdr (嵌套 multiplexer, 剪贴板/键位降级, 且同键位注入问题); 暂不结合 (用户已明确要集成).
+- 依赖事实: F009, F010
+- 预计影响: skill 存续步骤 (herdr 接入与委派配方); MILESTONE-10 演练场景
 
 ## 事实
 
@@ -156,3 +206,13 @@
 - 状态: 当前有效
 - 来源: docs/changes/use-sandbox-worktree/milestone-02-opposing-review.md (opposing-viewpoint 对抗分析)
 - 内容: (1) 高置信: 共享主仓 config 无法表达每容器/每守护进程的分支授权映射, 同仓出现两个不同活动母体时每容器单分支约束确定性失效 — 当前拓扑上限是单授权域, 已由 D010 单活动母体不变量采纳修正; (2) 中置信: `--restart=always` 独立抢跑 + 事后重注入 nft 存在 fail-open 网络裸奔窗口, 已由 D011 fail-closed 重启序列 (且废弃自动重启, 改 skill 入口询问式恢复) 采纳修正.
+
+### F009 herdr 检测与委派机制实测 (2026-09-04, MILESTONE-06 盘问会话)
+- 状态: 当前有效
+- 来源: 本机 herdr 0.8.2 实测 + 官方文档 (herdr.dev/docs/agents) + 源码核查 (github.com/herdrdev/herdr)
+- 内容: (1) herdr agent 识别 = host 进程存在性 + 屏幕清单 (TOML 规则匹配终端底部缓冲快照); ssh 后的 agent 默认不可见 (社区 issue #1170 同现象). (2) `HERDR_AGENT=<agent>` 环境提示 (0.7.1+ 内建, 读 wrapper 进程 /proc environ) 使 ssh 后的 pi 被识别为一等 agent — 实测 `HERDR_AGENT=pi ssh localhost` 后窗格识别为 pi/idle. (3) herdr 注入 Enter 为标准 `\r` (字节捕获实测), agent prompt/send-keys/pane run 同理; 提交是否生效取决于目标 pi 的 keybindings.json — 本机 `tui.input.submit=alt+\` 且 enter 被划给 newLine, 致注入的 enter 只插入换行 (用户定位根因, 非 herdr/pi bug). (4) 委派全链路实测成功: `pane send-text` 发任务 + `agent send-keys alt+\` 提交 → working → done → read 读回. (5) herdr agent kind 原生支持 pi; `herdr --remote` 是 attach 远端会话的 thin client 形态, 多容器不共 workspace, 不符合 "host 一个 workspace 总览多容器" 目标.
+
+### F010 pi 非交互模式可作自动化保底 (2026-09-04)
+- 状态: 当前有效
+- 来源: 本机实测 (`pi -p "<任务>" --model glm-5.3-flash`, exit 0)
+- 内容: `pi -p` 非交互模式 (处理 prompt 后退出) 可用; host 经 ssh + herdr `pane run`/`pane wait-output` 编排容器内 pi 批处理任务, 可完全绕开 TUI 键位注入, 是委派回路 (D021) 失效时的保底形态. 代价: 失去交互 TUI, 一轮一进程.

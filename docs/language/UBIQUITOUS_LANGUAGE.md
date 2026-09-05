@@ -48,6 +48,18 @@ _避免_: 后台服务 (过泛, 未含协议与无认证语义)
 git 配置 `receive.denyCurrentBranch=updateInstead` 的效果: 合规 push 被接收的瞬间, 检出该分支的工作区文件同步更新为 push 内容. **母体**目录因此 push 即落地.
 _避免_: 自动同步 (未含 git 语义)
 
+**base 层 / 项目层**:
+**sandbox-worktree** 镜像的两层结构: base 层固定且跨项目共享 (OS + pi CLI + skill 库 + bin), 项目层由 host llm 按项目推导依赖件叠加. 门禁类扩展不属于任何一层 — 留 host 不进容器.
+_避免_: 基础镜像 (未含跨项目共享与固定语义), 项目镜像
+
+**完美复刻**:
+**sandbox-worktree** 容器用户 home 的布局原则: home 路径与 host 字面相同, `~/docs`, `~/AGENTS.md`, `~/Workspace/`, `~/.pi/agent` 机械复制 — host 约定文档原样注入即生效, 零适配层. 代码固定 `~/Workspace/<母体目录名>` (规范化目录名, 非原始分支名).
+_避免_: 环境同步 (未含字面路径相同语义), 镜像复刻
+
+**交互式编排适配层**:
+herdr 在 **sandbox-worktree** 中的定位: host herdr 经 `HERDR_AGENT=pi` wrapper 提示把 ssh 入容器的 pi 识别为一等 agent, host 侧用 委派配方 (查 idle → send-text → 容器键位提交 → wait/read) 驱动容器 agent. 刻意不宣称协议级替代 subagent: 无 task id/退出码/重试幂等.
+_避免_: subagent 替代 (被刻意收窄的定位), 远程控制
+
 ## 示例对话
 
 开发者: 第二个会话又调用 start, 会起新的**常驻展示服务**吗?
