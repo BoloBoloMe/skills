@@ -40,7 +40,7 @@ use-sandbox-worktree skill 落地并经端到端演练验证可用 — 它管理
 - [MILESTONE-02](MILESTONE-02.md) — 生命周期语义拍完: 母体模型 + 无 hooks config 收敛 + 单活动母体不变量 + fail-closed 入口恢复 + 终结脏检查; 反方攻击两项成立已转为修正 — 详见 [../DECISIONS.md](../DECISIONS.md) D007-D013, [拓扑实测](../milestone-02-worktree-topology-findings.md), [反方审查](../milestone-02-opposing-review.md)
 - [MILESTONE-05](MILESTONE-05.md) — podman 元数据能力实测 ([findings](../milestone-05/MILESTONE-05-findings.md)): image label 可查询可过滤, 项目标识/构建事实入 label; 版本 = digest 精确 + tag 可读; 内容物清单走外部制品 + label 存摘要; sandbox-worktree 身份入容器 label (镜像 label 自动继承, create --label 覆盖)
 - [MILESTONE-03](MILESTONE-03.md) — 瘦闭环 E2E 跑通 (ISSUE-01 commit 401eddd / ISSUE-02 commit 196e6c0, 12 用例全绿): 编排器 `workflow/use-sandbox-worktree/scripts/e2e-smoke.py` (birth/smoke/cleanup) + 最简镜像 Containerfile; 建→干→回流→拆全链实测, 负向断言 (config 中止/拒绝矩阵/TC-008/脏阻塞码 3/--i-am-sure 登记/兜底回收) 全过; 产物 [../milestone-03-e2e-run.md](../milestone-03-e2e-run.md) (三节齐全, 中间态声明: 全通网络 + daemon 0.0.0.0 兜底). 遗留缺口见笔记
-- [MILESTONE-06](MILESTONE-06.md) — 镜像制备策略 + herdr 集成拍完: 两层镜像 (门禁扩展留 host)/版本=需求清单 vs 实测内容物比对/记录落 ~/.pi/sandbox-worktree/匹配含 base-digest 硬谓词/home 完美复刻/auth.json ro 挂载风险接受/base 用户明说更新/herdr 形态 d (host herdr + HERDR_AGENT 提示 + 委派配方, 定位交互式编排适配层) — 详见 [../DECISIONS.md](../DECISIONS.md) D014-D021, F009-F010
+- [MILESTONE-06](MILESTONE-06.md) — 镜像制备策略 + herdr 集成拍完: 两层镜像 (门禁扩展留 host)/版本=需求清单 vs 实测内容物比对/记录落 ~/.agents/sandbox-worktree/匹配含 base-digest 硬谓词/home 完美复刻/auth.json ro 挂载风险接受/base 用户明说更新/herdr 形态 d (host herdr + HERDR_AGENT 提示 + 委派配方, 定位交互式编排适配层) — 详见 [../DECISIONS.md](../DECISIONS.md) D014-D021, F009-F010
 
 ## 前沿
 

@@ -123,8 +123,9 @@
 - 预计影响: MILESTONE-07 (清单生成/比对实现)
 
 ### D016 记录位置与项目身份规则
-- 状态: 当前有效
+- 状态: 已替代 (→ D024, 仅记录位置路径变更; 身份规则不变由 D024 承接)
 - 约束性: 必须遵守
+- 替代说明: 记录根目录由 `~/.pi/sandbox-worktree/` 改为 `~/.agents/sandbox-worktree/` (用户拍板 2026-09-04). 尚无实现, 无代码需调整. 以下原文保留:
 - 内容: 构建输入 (Containerfile) + 需求清单 requirements.md + 实测内容物清单 contents.md 落 `~/.pi/sandbox-worktree/<project-slug>/builds/<build-id>/` (环境信息不落项目 git). label 前缀 `run.sandbox-worktree.*`: image 存 project-id/schema-version/contents-digest/build-id/base-digest; 容器存 identity/worktree-path/image-digest (MILESTONE-05 结论的落地). **身份规则**: project-id = 主仓绝对路径 (唯一主键, 防同名目录碰撞); slug = 目录名规范化, 仅作展示索引与目录名, 冲突时加短 hash; build-id 构建前查重 (防两会话并发同号).
 - 预计影响: MILESTONE-07; skill 诞生步骤 (镜像查询/构建记录)
 
@@ -172,6 +173,13 @@
 - 替代: D018 (部分)
 - 内容: **不打**: `~/AGENTS.md` 与 `~/docs/*` 是记录 host 本身环境的文档 (host 软件指针/ssh/输入法/防火墙等设施说明), 容器是另一个独立环境, 注入即误导, 一律不进容器 (不 COPY 不挂载). 容器内 pi 的约定来源 = 项目仓自身 AGENTS.md (经母体克隆随代码到达) + `~/.pi/agent/AGENTS.md` (pi 用户级指令, 属 harness, 随 ~/.pi/agent 机械复制). 承接 D018 保留部分: 容器 home 布局复刻 host (home 路径字面相同), 代码固定 `~/Workspace/<母体目录名>` (use-worktree 规范化目录名), `~/.pi/agent` (settings/models/keybindings) 机械复制, skill 库全量 COPY 进 base (容器浏览器专为 agent, 即容器唯一浏览器), auth.json 只读挂载不烤镜像层, sessions 不进容器.
 - 预计影响: MILESTONE-07 (base 层 Containerfile 与挂载点 — 剔除 ~/docs 与 ~/AGENTS.md); 容器内路径契约
+
+### D024 记录位置修订: 落 ~/.agents/sandbox-worktree/
+- 状态: 当前有效
+- 约束性: 必须遵守
+- 替代: D016
+- 内容: 构建输入 (Containerfile) + 需求清单 requirements.md + 实测内容物清单 contents.md 落 `~/.agents/sandbox-worktree/<project-slug>/builds/<build-id>/` (环境信息不落项目 git; 与 skills 库同屋, 区别于 pi 运行时配置 ~/.pi). label 前缀 `run.sandbox-worktree.*`: image 存 project-id/schema-version/contents-digest/build-id/base-digest; 容器存 identity/worktree-path/image-digest. **身份规则** (承接 D016 不变): project-id = 主仓绝对路径 (唯一主键, 防同名目录碰撞); slug = 目录名规范化, 仅作展示索引与目录名, 冲突时加短 hash; build-id 构建前查重 (防两会话并发同号).
+- 预计影响: MILESTONE-07; skill 诞生步骤 (镜像查询/构建记录)
 
 ## 事实
 
