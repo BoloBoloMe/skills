@@ -53,7 +53,7 @@ _避免_: 自动同步 (未含 git 语义)
 _避免_: 基础镜像 (未含跨项目共享与固定语义), 项目镜像
 
 **完美复刻**:
-**sandbox-worktree** 容器用户 home 的布局原则: home 路径与 host 字面相同, `~/docs`, `~/AGENTS.md`, `~/Workspace/`, `~/.pi/agent` 机械复制 — host 约定文档原样注入即生效, 零适配层. 代码固定 `~/Workspace/<母体目录名>` (规范化目录名, 非原始分支名).
+**sandbox-worktree** 容器用户 home 的布局原则: home 路径与 host 字面相同, `~/Workspace/`, `~/.pi/agent` 机械复制, 零适配层. 代码固定 `~/Workspace/<母体目录名>` (规范化目录名, 非原始分支名). 刻意排除 `~/AGENTS.md` 与 `~/docs/` — 它们是 host 环境文档, 容器是独立环境, 注入即误导.
 _避免_: 环境同步 (未含字面路径相同语义), 镜像复刻
 
 **交互式编排适配层**:

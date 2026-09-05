@@ -109,12 +109,6 @@
 - 依赖事实: 无 (镜像 digest 版本语义来自 MILESTONE-05 外部产物, 非本账本事实)
 - 预计影响: use-sandbox-worktree skill 诞生步骤 (镜像比对提示)
 
-### D022 容器操作不做 provider 抽象层, 仅留文档级扩展点
-- 状态: 当前有效
-- 约束性: 必须遵守
-- 内容: 不建 "接口 + 实现类" 式的容器 provider 抽象 (docker/podman 多态). 理由: (1) 同一场景同一时刻只绑一个 provider, 诞生时选定后全程复用, 运行期多态无收益; (2) 硬约束长在 podman rootless 特性上 (netavark/nft 白名单注入, rootless netns, Quadlet), docker 的网络模型不同, 抽象层必漏成抽象漏洞; (3) skill 是 markdown 驱动 llm 敲命令, 抽象层无代码宿主. 扩展点形态: skill 文档把所有容器命令收拢到单独一节, 未来换/加 provider 时只改该节. 动机记录: 留扩展点 + 架构整洁偏好.
-- 预计影响: use-sandbox-worktree SKILL.md 结构 (容器命令独立一节)
-
 ### D014 两层镜像结构与门禁扩展归属
 - 状态: 当前有效
 - 约束性: 必须遵守
@@ -140,9 +134,10 @@
 - 内容: `podman images --filter label=run.sandbox-worktree.project-id=<主仓路径>` 取候选 → digest 去重 (同镜像多 tag 会去重) → 按 build-id 排序取最新. 判定: 需求逐项**版本满足** (含谓词) + **base-digest = 当前 base** (硬谓词 — 反方攻击成立项: 用户更新 base 后旧项目镜像须自然淘汰, 不能仅靠提示) → 复用. 同名条目版本不满足即不可用; 多余项容忍; 缺任意项 → 推导新清单构建新版; 旧镜像保留不删 (GC 在未决迷雾).
 - 预计影响: MILESTONE-07 (候选选择逻辑)
 
-### D018 容器 home 完美复刻与 harness 注入
-- 状态: 当前有效
+### D018 容器 home 复刻布局与 harness 注入
+- 状态: 已替代 (→ D023, 仅 host 环境文档注入部分被推翻; 其余内容保留并由 D023 承接)
 - 约束性: 必须遵守
+- 替代说明: 原决策中 "~/docs, ~/AGENTS.md 机械复制进容器" 被用户推翻 (D023): 它们是 host 环境文档, 容器是独立环境, 注入即误导. 原决策其余部分 (home 路径字面相同/~/Workspace/<母体目录名>/~/.pi/agent 机械复制/auth.json ro 挂载/skills COPY/浏览器定位) 不变, 由 D023 完整承接. 以下原文保留:
 - 内容: 容器用户 home **完美复刻** host 布局 (用户拍板): home 路径与 host 字面相同, `~/docs`, `~/AGENTS.md`, `~/Workspace/`, `~/.pi/agent` (settings/models/keybindings) 全部机械复制 — 根部 AGENTS.md 原样注入即生效, 零适配层. 代码固定 `~/Workspace/<母体目录名>` — use-worktree 所建的规范化目录名, 非原始分支名 (反方攻击成立项: `feature/foo` 分支名含斜杠会造成路径嵌套/非法容器名). skill 库全量 COPY 进 base: access-web 的 139M 大头是浏览器依赖, 容器内浏览器专为 agent 而设, 即容器唯一浏览器, 一份两用. auth.json **只读挂载**不烤进镜像层 (换 key 不重建镜像); sessions 不进容器.
 - 预计影响: MILESTONE-07 (base 层 Containerfile, 挂载点); 容器内路径契约
 
@@ -164,6 +159,19 @@
 - 内容: **容器不装 herdr** — 诞生后 host 侧开 `HERDR_AGENT=pi ssh -p <动态端口> ...` 窗格接入 host herdr, 经进程 env 提示 + 屏幕清单把 ssh 后的 pi 识别为一等 agent (F009 实测). **委派配方**: (1) `agent get` 确认 idle, blocked 态不发 (反方修正: 无就绪 guard 会把键打进错误界面); (2) `pane send-text` 发任务文本; (3) 提交键 = 读容器内 keybindings.json 的 `tui.input.submit` 首键 — 键位即接口, 跟随用户配置 (本机为 `alt+\`), 兜底 alt+enter (pi followUp 排队键, 空闲等效提交); (4) `agent wait`/`agent read` 收结果. **定位收窄为交互式编排适配层** (反方攻击成立项): 无 task id/退出码/重试幂等, 不宣称协议级替代 subagent; 状态/重试/幂等契约入未决迷雾, M10 端到端演练回访. herdr 编排的编排者是 host 侧 (用户/host pi), 容器内 pi 不自治编排; 任务切分配方细节同入迷雾. 排除: host herdr socket 挂入容器 (`pane run` 在 host 执行 = 容器逃逸通道); 容器内自含 herdr (嵌套 multiplexer, 剪贴板/键位降级, 且同键位注入问题); 暂不结合 (用户已明确要集成).
 - 依赖事实: F009, F010
 - 预计影响: skill 存续步骤 (herdr 接入与委派配方); MILESTONE-10 演练场景
+
+### D022 容器操作不做 provider 抽象层, 仅留文档级扩展点
+- 状态: 当前有效
+- 约束性: 必须遵守
+- 内容: 不建 "接口 + 实现类" 式的容器 provider 抽象 (docker/podman 多态). 理由: (1) 同一场景同一时刻只绑一个 provider, 诞生时选定后全程复用, 运行期多态无收益; (2) 硬约束长在 podman rootless 特性上 (netavark/nft 白名单注入, rootless netns, Quadlet), docker 的网络模型不同, 抽象层必漏成抽象漏洞; (3) skill 是 markdown 驱动 llm 敲命令, 抽象层无代码宿主. 扩展点形态: skill 文档把所有容器命令收拢到单独一节, 未来换/加 provider 时只改该节. 动机记录: 留扩展点 + 架构整洁偏好.
+- 预计影响: use-sandbox-worktree SKILL.md 结构 (容器命令独立一节)
+
+### D023 容器不注入 host 环境文档 (~/AGENTS.md, ~/docs)
+- 状态: 当前有效
+- 约束性: 必须遵守
+- 替代: D018 (部分)
+- 内容: **不打**: `~/AGENTS.md` 与 `~/docs/*` 是记录 host 本身环境的文档 (host 软件指针/ssh/输入法/防火墙等设施说明), 容器是另一个独立环境, 注入即误导, 一律不进容器 (不 COPY 不挂载). 容器内 pi 的约定来源 = 项目仓自身 AGENTS.md (经母体克隆随代码到达) + `~/.pi/agent/AGENTS.md` (pi 用户级指令, 属 harness, 随 ~/.pi/agent 机械复制). 承接 D018 保留部分: 容器 home 布局复刻 host (home 路径字面相同), 代码固定 `~/Workspace/<母体目录名>` (use-worktree 规范化目录名), `~/.pi/agent` (settings/models/keybindings) 机械复制, skill 库全量 COPY 进 base (容器浏览器专为 agent, 即容器唯一浏览器), auth.json 只读挂载不烤镜像层, sessions 不进容器.
+- 预计影响: MILESTONE-07 (base 层 Containerfile 与挂载点 — 剔除 ~/docs 与 ~/AGENTS.md); 容器内路径契约
 
 ## 事实
 
