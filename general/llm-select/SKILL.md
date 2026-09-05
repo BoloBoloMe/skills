@@ -1,6 +1,7 @@
 ---
 name: llm-select
 description: 为子代理选择模型或 thinking 档位时使用, 也用于给模型补评分或重建评分表
+disable-model-invocation: true
 ---
 
 # llm-select
