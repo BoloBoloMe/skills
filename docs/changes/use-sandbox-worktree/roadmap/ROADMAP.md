@@ -18,6 +18,7 @@ use-sandbox-worktree skill 落地并经端到端演练验证可用 — 它管理
 - 脚本封装决策 (2026-09-03): host llm 容器操作脚本化方向确认, 但 [反方审查](../milestone-02-scripting-opposing-review.md) 成立 — 首次完整流程未跑前不得冻结五场景接口; M03 只交可观测/可清理/可重跑的瘦 E2E 编排器 + 负向断言 + checklist, 五场景入口拆出为 MILESTONE-11 (用户在场盘问方案) → MILESTONE-12 (实现)
 - MILESTONE-03 实跑新事实 (2026-09): updateInstead 推送落地存在短延迟 (push 返回成功后 linked worktree 文件稍后可读, 编排器以 ≤3s 轮询消解); 本机无 pasta 网关接口, daemon 监听按兜底顺序落 0.0.0.0 + `host.containers.internal` 配对; 硬中断 (进程被杀级) 会留 daemon 僵尸, 已知限制未做 atexit 兜底
 - MILESTONE-03 遗留缺口 (待路由): (1) TECHNICAL.md 的 `/tmp/swt-m03-index.json` 索引契约 (缺省 --repo 跨命令定位/同名冲突拒绝) 未被 EXECUTION 任何切片认领, 未实现 — 须决定补 ISSUE 或改 spec; (2) 运行时 JSON container 段为 schema 超集 (ssh_private_key/ssh_host/daemon_addr/clone_dir/remote), TECHNICAL.md 字面宜补记; (3) 仓库根无 pytest 依赖, 测试实际以 `uv run --with pytest` 运行, EXECUTION.md 的 `uv run pytest` 字面与现实不符
+- MILESTONE-06 盘问 (2026-09-04): 镜像制备策略拍完 (D014-D020) + herdr 集成形态 d 拍完 (D021); 反方攻击 6 项成立已转为修正 (门禁扩展留 host/清单带版本谓词/base-digest 硬谓词/home 完美复刻取代适配版/委派配方加就绪 guard 与动态提交键/定位收窄为交互式编排适配层); 关键实测 (F009/F010): herdr 经 HERDR_AGENT=pi 提示识别 ssh 后的 pi, 委派全链路 (send-text + alt+\ → working→done→read) 跑通, 提交键取决于容器内 keybindings (键位即接口), pi -p 批处理为保底形态
 
 **路线侦查结论 (2026-09-01 后绘制会话)**:
 
@@ -39,13 +40,14 @@ use-sandbox-worktree skill 落地并经端到端演练验证可用 — 它管理
 - [MILESTONE-02](MILESTONE-02.md) — 生命周期语义拍完: 母体模型 + 无 hooks config 收敛 + 单活动母体不变量 + fail-closed 入口恢复 + 终结脏检查; 反方攻击两项成立已转为修正 — 详见 [../DECISIONS.md](../DECISIONS.md) D007-D013, [拓扑实测](../milestone-02-worktree-topology-findings.md), [反方审查](../milestone-02-opposing-review.md)
 - [MILESTONE-05](MILESTONE-05.md) — podman 元数据能力实测 ([findings](../milestone-05/MILESTONE-05-findings.md)): image label 可查询可过滤, 项目标识/构建事实入 label; 版本 = digest 精确 + tag 可读; 内容物清单走外部制品 + label 存摘要; sandbox-worktree 身份入容器 label (镜像 label 自动继承, create --label 覆盖)
 - [MILESTONE-03](MILESTONE-03.md) — 瘦闭环 E2E 跑通 (ISSUE-01 commit 401eddd / ISSUE-02 commit 196e6c0, 12 用例全绿): 编排器 `workflow/use-sandbox-worktree/scripts/e2e-smoke.py` (birth/smoke/cleanup) + 最简镜像 Containerfile; 建→干→回流→拆全链实测, 负向断言 (config 中止/拒绝矩阵/TC-008/脏阻塞码 3/--i-am-sure 登记/兜底回收) 全过; 产物 [../milestone-03-e2e-run.md](../milestone-03-e2e-run.md) (三节齐全, 中间态声明: 全通网络 + daemon 0.0.0.0 兜底). 遗留缺口见笔记
+- [MILESTONE-06](MILESTONE-06.md) — 镜像制备策略 + herdr 集成拍完: 两层镜像 (门禁扩展留 host)/版本=需求清单 vs 实测内容物比对/记录落 ~/.pi/sandbox-worktree/匹配含 base-digest 硬谓词/home 完美复刻/auth.json ro 挂载风险接受/base 用户明说更新/herdr 形态 d (host herdr + HERDR_AGENT 提示 + 委派配方, 定位交互式编排适配层) — 详见 [../DECISIONS.md](../DECISIONS.md) D014-D021, F009-F010
 
 ## 前沿
 
 - [MILESTONE-04](MILESTONE-04.md) — `task` — 网络访问控制双模式 (黑/白名单)
 - [MILESTONE-08](MILESTONE-08.md) — `task` — 展示链接线 (容器内 present web_server 经端口映射交付)
-- [MILESTONE-06](MILESTONE-06.md) — `deliberate` — 镜像制备策略 (依赖件推导 / 版本语义 / 记录位置 — M05 结论在手)
 - [MILESTONE-11](MILESTONE-11.md) — `deliberate` — 五场景脚本抽取方案盘问 (M03 实跑事实在手)
+- [MILESTONE-07](MILESTONE-07.md) — `task` — 镜像制备实现 (M03/M06 双双就位)
 
 ## 未决迷雾
 
@@ -54,6 +56,7 @@ use-sandbox-worktree skill 落地并经端到端演练验证可用 — 它管理
 - rootless netns 清理偶发失败的编排兜底是否够用 (MILESTONE-04 后回访)
 - 镜像版本积累后的 GC 策略
 - 镜像复用的项目边界 (严格按项目隔离, 还是允许跨项目匹配)
+- herdr 编排可靠性契约 (状态/重试/幂等/断连恢复, M10 端到端演练时回访; 含任务切分配方 — 何时开辅助容器, 主机如何拆分任务) 与保底形态 pi -p 批处理 (F010) 的取舍
 
 ## 范围外
 
@@ -71,9 +74,9 @@ M02(已关闭) ──┘                 │                       │
                                 ├─→ M08 ────────────────┤
                                 │                       │
                                 └─→ M11 ─→ M12 ───────────┤
-M05(已关闭) ─→ M06 ─────────────┴─→ M07 ─→ M09 ────────┴─→ M10 ─→ 目的地
+M05(已关闭) ─→ M06(已关闭) ────┴─→ M07 ─→ M09 ────────┴─→ M10 ─→ 目的地
 ```
 
-- M03 已关闭; M04, M06, M08, M11 全部解阻塞入前沿 (M04/M08 为 AFK task 且互相独立, M06/M11 为 HITL 盘问)
-- 关键路径推进为: M04/M08 → M07 → M09 → M10 (M06 镜像制备策略仍喂 M07)
+- M03, M06 已关闭; 前沿 = M04, M08, M11, M07 (M04/M08/M07 为 AFK task 且互相独立, M11 为 HITL 盘问)
+- 关键路径推进为: M07 → M09 → M10
 - M11 (五场景脚本抽取**方案**盘问, HITL) → M12 (脚本实现, AFK) 阻塞 M10 (SKILL.md 引用场景脚本)
