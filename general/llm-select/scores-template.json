@@ -1,0 +1,18 @@
+{
+  "baseline": "",
+  "models": {
+    "provider/model": {
+      "coding": 1,
+      "knowledge": 1,
+      "longctx": 1,
+      "multimodal": null,
+      "stability": 1,
+      "speed": 1,
+      "updatedAt": "YYYY-MM-DD",
+      "note": "一行依据",
+      "evidence": {
+        "speed": "依据弱: 无权威数据源, 经验估计"
+      }
+    }
+  }
+}
