@@ -41,22 +41,18 @@ use-sandbox-worktree skill 落地并经端到端演练验证可用 — 它管理
 - [MILESTONE-05](MILESTONE-05.md) — podman 元数据能力实测 ([findings](../milestone-05/MILESTONE-05-findings.md)): image label 可查询可过滤, 项目标识/构建事实入 label; 版本 = digest 精确 + tag 可读; 内容物清单走外部制品 + label 存摘要; sandbox-worktree 身份入容器 label (镜像 label 自动继承, create --label 覆盖)
 - [MILESTONE-03](MILESTONE-03.md) — 瘦闭环 E2E 跑通 (ISSUE-01 commit 401eddd / ISSUE-02 commit 196e6c0, 12 用例全绿): 编排器 `workflow/use-sandbox-worktree/scripts/e2e-smoke.py` (birth/smoke/cleanup) + 最简镜像 Containerfile; 建→干→回流→拆全链实测, 负向断言 (config 中止/拒绝矩阵/TC-008/脏阻塞码 3/--i-am-sure 登记/兜底回收) 全过; 产物 [../milestone-03-e2e-run.md](../milestone-03-e2e-run.md) (三节齐全, 中间态声明: 全通网络 + daemon 0.0.0.0 兜底). 遗留缺口见笔记
 - [MILESTONE-06](MILESTONE-06.md) — 镜像制备策略 + herdr 集成拍完: 两层镜像 (门禁扩展留 host)/版本=需求清单 vs 实测内容物比对/记录落 ~/.agents/sandbox-worktree/匹配含 base-digest 硬谓词/home 完美复刻/auth.json ro 挂载风险接受/base 用户明说更新/herdr 形态 d (host herdr + HERDR_AGENT 提示 + 委派配方, 定位交互式编排适配层) — 详见 [../DECISIONS.md](../DECISIONS.md) D014-D021, F009-F010
+- [MILESTONE-04](MILESTONE-04.md) — 网络访问控制已实现并实测: rootless bridge netns nft 黑/白名单, 静态 IP, 重启后重注入, IPv6 DROP, 8 项测试全绿 — 详见 [../milestone-04/MILESTONE-04-findings.md](../milestone-04/MILESTONE-04-findings.md)
+- [MILESTONE-08](MILESTONE-08.md) — 容器内 present 展示链接线已实测: 动态端口交付, add-dir/同 UID 复用/stop 影响均已确认, present 及跟随 skill 已更新 — 详见 [../milestone-08-present-container-findings.md](../milestone-08-present-container-findings.md)
+- [MILESTONE-07](MILESTONE-07.md) — 镜像制备闭环已实现: build-base/match/build, 需求与实测内容物比对, base-digest 硬匹配, 30 项测试全绿 — 详见 [../milestone-07-image-prep-run.md](../milestone-07-image-prep-run.md)
 
 ## 前沿
 
-- [MILESTONE-04](MILESTONE-04.md) — `task` — 网络访问控制双模式 (黑/白名单)
-- [MILESTONE-08](MILESTONE-08.md) — `task` — 展示链接线 (容器内 present web_server 经端口映射交付)
+<!-- 开放 + 已解除阻塞 + 未被认领的 Milestone -->
 - [MILESTONE-11](MILESTONE-11.md) — `deliberate` — 五场景脚本抽取方案盘问 (M03 实跑事实在手)
-- [MILESTONE-07](MILESTONE-07.md) — `task` — 镜像制备实现 (M03/M06 双双就位)
 
 ## 未决迷雾
 
 - 运行期新站点需求的处理流程形态 (回父会话确认 → 更新容器的具体动作)
-- 多 sandbox-worktree 并发, 含同仓不同母体并发 (动态端口分配后可能缩水为资源限额问题; 不同母体并发被 D010 单活动母体不变量挡住, 须重开 receiver 隔离: 独立 clone 或钩子)
-- rootless netns 清理偶发失败的编排兜底是否够用 (MILESTONE-04 后回访)
-- 镜像版本积累后的 GC 策略
-- 镜像复用的项目边界 (严格按项目隔离, 还是允许跨项目匹配)
-- herdr 编排可靠性契约 (状态/重试/幂等/断连恢复, M10 端到端演练时回访; 含任务切分配方 — 何时开辅助容器, 主机如何拆分任务) 与保底形态 pi -p 批处理 (F010) 的取舍
 
 ## 范围外
 
@@ -77,6 +73,6 @@ M02(已关闭) ──┘                 │                       │
 M05(已关闭) ─→ M06(已关闭) ────┴─→ M07 ─→ M09 ────────┴─→ M10 ─→ 目的地
 ```
 
-- M03, M06 已关闭; 前沿 = M04, M08, M11, M07 (M04/M08/M07 为 AFK task 且互相独立, M11 为 HITL 盘问)
+- M03, M04, M06, M07, M08 已关闭; 前沿 = MILESTONE-11 (M04/M07/M08 为 AFK task, M11 为 HITL deliberate)
 - 关键路径推进为: M07 → M09 → M10
 - M11 (五场景脚本抽取**方案**盘问, HITL) → M12 (脚本实现, AFK) 阻塞 M10 (SKILL.md 引用场景脚本)
