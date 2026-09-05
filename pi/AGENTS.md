@@ -8,3 +8,4 @@
 当被要求使用子代理/subagent 时, 用 herdr 开新会话 (用法读 `herdr --skill` 输出); 新会话放新标签页, 标签名 `S::<子代理名>::<序号>`.
 注意事项:
 - pi 的 tui.input.submit 不是 `enter` 是 `alt+\` 
+- 如果子代理会话使用 pi 作为 agent, 那么这个 pi 会话也要指定名称, 和标签名相同.
