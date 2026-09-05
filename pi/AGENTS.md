@@ -5,6 +5,6 @@
 运行 Python 脚本/模块用 `uv run python`, 添加依赖用 `uv add`, 禁止直接使用 `python`/`pip`.
 需要了解当前环境时, 读 `~/AGENTS.md`; 不存在就跳过.
 当被要求调用某个不在列表中的 skill 时, 读 `~/.agents/skills/<skill-name>/SKILL.md`; 文件不存在就报告未找到, 不要搜索其他位置.
-当被要求使用子代理/subagent 时, 用 herdr 开新会话 (用法读 `herdr --skill` 输出); 新会话放新标签页, 标签名 `S:<子代理名-序号>`.
+当被要求使用子代理/subagent 时, 用 herdr 开新会话 (用法读 `herdr --skill` 输出); 新会话放新标签页, 标签名 `S::<子代理名>::<序号>`.
 注意事项:
 - pi 的 tui.input.submit 不是 `enter` 是 `alt+\` 
