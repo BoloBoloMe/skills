@@ -1,6 +1,6 @@
 ---
 name: llm-select
-description: 为子代理选择模型或 thinking 档位时使用, 也用于给模型补评分或重建评分表
+description: 为子代理选择模型或 thinking 档位时使用
 disable-model-invocation: true
 ---
 
@@ -8,7 +8,7 @@ disable-model-invocation: true
 
 为子代理选型的依据是每台设备自己的评分表: 候选模型各维能力相对基准模型的比率分, 由联网调研建立, 可按任务画像加权出总分. 不凭印象选型 — 印象分会过期, 且无法校对.
 
-本 skill 平台无关: 不读任何 agent 平台的配置 (pi 的 settings.json/auth.json 等), 只依赖两份自有数据. 模型目录与总分的解释见 [bootstrap.md](bootstrap.md). 全部算分逻辑以 `score.py` 为唯一真相源 (改画像或算法只改它).
+本 skill 平台无关: 模型目录与总分的解释见 [bootstrap.md](bootstrap.md). 全部算分逻辑以 `score.py` 为唯一真相源 (改画像或算法只改它).
 
 ## 步骤
 
