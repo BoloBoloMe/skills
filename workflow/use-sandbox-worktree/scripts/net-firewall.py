@@ -7,8 +7,9 @@
 uid (含 root) 均不可达不可删 (调研 §4.1 实测结论, 本脚本承接).
 
 用法:
-  apply --mode whitelist --container-ip <IP> --gateway <IP> [--allow <IP/CIDR>]... [--netns <PATH>]
-  apply --mode blacklist --container-ip <IP> --gateway <IP> [--deny <IP/CIDR>]...  [--netns <PATH>]
+  apply --mode whitelist --container-ip <IP> --gateway <IP> [--allow <IP/CIDR>]... [--merge] [--netns <PATH>]
+  apply --mode blacklist --container-ip <IP> --gateway <IP> [--deny <IP/CIDR>]...  [--merge] [--netns <PATH>]
+  remove --container-ip <IP> [--netns <PATH>]
   show  [--netns <PATH>]
   clear [--netns <PATH>]
 
@@ -19,6 +20,8 @@ uid (含 root) 均不可达不可删 (调研 §4.1 实测结论, 本脚本承接
 - 两模式共通: IPv6 兜底 DROP (调研 §4.1).
 - 条目只收 IP/CIDR; 域名须在盘点确认环节解析为 IP 后传入 (nft 无域名语义).
 - 运行期不切换: apply 为表级全量替换, 无增量放行通道; 换模式/换清单 = 整体重建.
+- apply --merge 在整体重建时保留异己容器的源地址规则; 不带时发现异己源地址即拒绝.
+- remove 按容器源地址删除规则, 最后一个源地址消失时删除整表, 无目标时幂等.
 
 退出码: 0 = 成功; 1 = 注入/校验失败 (stderr 首行 <失败名>); 2 = 环境/参数错误.
 """
@@ -27,11 +30,20 @@ from __future__ import annotations
 import argparse
 import ipaddress
 import os
+import re
 import subprocess
 import sys
+from typing import NamedTuple
 
 TABLE = "swt"
 DNS_PORTS = ("udp", "tcp")
+
+
+class SaddrRule(NamedTuple):
+    rule_chain: str
+    source: str
+    handle: int
+    body: str
 
 
 def default_netns() -> str:
@@ -91,7 +103,11 @@ def assert_netns_reachable(netns: str) -> None:
 
 
 def build_ruleset(
-    mode: str, container_ip: str, gateway: str, entries: list[str]
+    mode: str,
+    container_ip: str,
+    gateway: str,
+    entries: list[str],
+    foreign_rules: dict[str, list[str]] | None = None,
 ) -> str:
     lines: list[str] = [f"table inet {TABLE} {{"]
 
@@ -116,6 +132,8 @@ def build_ruleset(
             for entry in entries:
                 body.append(f"\t\tip saddr {container_ip} ip daddr {entry} drop")
             body.append("\t\tct state established,related accept")
+        if foreign_rules:
+            body.extend(foreign_rules.get(chain_name, []))
         chain(chain_name, body)
 
     lines.append("}")
@@ -130,24 +148,29 @@ def cmd_apply(args: argparse.Namespace) -> int:
     entries = parse_entries(getattr(args, kind), f"--{kind}")
     assert_netns_reachable(netns)
 
-    # 多容器同 netns 守卫 (D010 允许多容器共存): 表按容器源地址过滤, 表级替换会把
-    # 其它容器的规则一并清掉 (对它 fail-open). 发现异己 saddr 即拒绝, 不猜.
-    existing = run_nft(netns, ["list", "table", "inet", TABLE])
-    if existing.returncode == 0:
-        foreign = {
-            part[len("ip saddr "):].split()[0]
-            for line in existing.stdout.splitlines()
-            for part in [line.strip()]
-            if part.startswith("ip saddr ")
-        } - {container_ip}
-        if foreign:
-            die(
-                1, "APPLY-CONFLICT",
-                f"表 inet {TABLE} 已含其它容器源地址 {sorted(foreign)} 的规则; "
-                "先 clear 或换专用 netns, 不做覆盖",
-            )
+    existing = run_nft(netns, ["-a", "list", "table", "inet", TABLE])
+    existing_rules = parse_saddr_rules(existing.stdout) if existing.returncode == 0 else []
+    foreign_rules: dict[str, list[str]] = {"forward": [], "input": []}
+    foreign = {
+        line.strip()[len("ip saddr "):].split()[0]
+        for line in existing.stdout.splitlines()
+        if line.strip().startswith("ip saddr ")
+    } - {container_ip}
+    if foreign and not args.merge:
+        die(
+            1, "APPLY-CONFLICT",
+            f"表 inet {TABLE} 已含其它容器源地址 {sorted(foreign)} 的规则; "
+            "先 clear 或换专用 netns, 不做覆盖",
+        )
+    if args.merge:
+        for rule in existing_rules:
+            if rule.source != container_ip:
+                foreign_rules[rule.rule_chain].append(rule.body)
 
-    ruleset = build_ruleset(args.mode, container_ip, gateway, entries)
+    ruleset = build_ruleset(
+        args.mode, container_ip, gateway, entries,
+        foreign_rules if args.merge else None,
+    )
 
     # 幂等: 旧表有无皆可 (rc 不看), 重复表名会在下一步 add 报错被逮住.
     run_nft(netns, ["delete", "table", "inet", TABLE])
@@ -158,10 +181,11 @@ def cmd_apply(args: argparse.Namespace) -> int:
 
     verify = run_nft(netns, ["list", "table", "inet", TABLE])
     marker = "meta nfproto ipv6 drop"
+    expected_sources = {container_ip, *foreign}
     if (
         verify.returncode != 0
         or marker not in verify.stdout
-        or f"ip saddr {container_ip}" not in verify.stdout
+        or any(f"ip saddr {source}" not in verify.stdout for source in expected_sources)
     ):
         die(1, "APPLY-VERIFY-FAIL", "注入后校验失败 (表缺失或缺关键规则)")
 
@@ -169,6 +193,78 @@ def cmd_apply(args: argparse.Namespace) -> int:
         f"[SWT-NET] ok apply mode={args.mode} container_ip={container_ip} "
         f"entries={len(entries)} chain=forward+input table=inet {TABLE}"
     )
+    return 0
+
+
+def parse_saddr_rules(text: str) -> list[SaddrRule]:
+    """解析 nft -a 输出中的源地址规则, 返回 chain/source/handle/规则正文."""
+    rules: list[SaddrRule] = []
+    chain: str | None = None
+    for line in text.splitlines():
+        stripped = line.strip()
+        chain_match = re.match(r"^chain\s+(\S+)\s+\{", stripped)
+        if chain_match:
+            chain = chain_match.group(1)
+            continue
+        if stripped == "}":
+            chain = None
+            continue
+        if chain not in ("forward", "input") or not stripped.startswith("ip saddr "):
+            continue
+        source = stripped[len("ip saddr "):].split()[0]
+        handle_match = re.search(r"\s+# handle (\d+)\s*$", line)
+        # nft -a 正常会提供 handle; 缺失时无法安全地删除或重放该规则.
+        if handle_match:
+            body = line[:handle_match.start()].rstrip()
+            rules.append(SaddrRule(chain, source, int(handle_match.group(1)), body))
+    return rules
+
+
+def cmd_remove(args: argparse.Namespace) -> int:
+    netns = args.netns
+    container_ip = parse_ip(args.container_ip, "--container-ip")
+    assert_netns_reachable(netns)
+
+    existing = run_nft(netns, ["-a", "list", "table", "inet", TABLE])
+    if existing.returncode != 0:
+        print(f"[SWT-NET] ok remove removed=absent table=inet {TABLE}")
+        return 0
+
+    matches = [
+        rule for rule in parse_saddr_rules(existing.stdout) if rule.source == container_ip
+    ]
+    for rule in matches:
+        deleted = run_nft(
+            netns,
+            [
+                "delete", "rule", "inet", TABLE,
+                rule.rule_chain, "handle", str(rule.handle),
+            ],
+        )
+        if deleted.returncode != 0:
+            die(
+                1, "REMOVE-FAIL",
+                f"删除 {rule.rule_chain} handle {rule.handle} 失败: {deleted.stderr.strip()}",
+            )
+
+    remaining = run_nft(netns, ["list", "table", "inet", TABLE])
+    if remaining.returncode != 0:
+        die(1, "REMOVE-VERIFY-FAIL", "删除后无法校验 inet swt 表")
+    if not any(line.strip().startswith("ip saddr ") for line in remaining.stdout.splitlines()):
+        deleted_table = run_nft(netns, ["delete", "table", "inet", TABLE])
+        if deleted_table.returncode != 0:
+            die(1, "REMOVE-FAIL", f"删除空表失败: {deleted_table.stderr.strip()}")
+        table_state = "table-removed"
+    else:
+        table_state = "table-kept"
+
+    if matches:
+        print(
+            f"[SWT-NET] ok remove removed={len(matches)} "
+            f"container_ip={container_ip} {table_state}"
+        )
+    else:
+        print(f"[SWT-NET] ok remove removed=absent {table_state}")
     return 0
 
 
@@ -203,7 +299,12 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     apply_parser.add_argument("--gateway", required=True)
     apply_parser.add_argument("--allow", action="append", default=[], metavar="IP/CIDR")
     apply_parser.add_argument("--deny", action="append", default=[], metavar="IP/CIDR")
+    apply_parser.add_argument("--merge", action="store_true", help="保留异己容器规则")
     apply_parser.add_argument("--netns", default=default_netns())
+
+    remove_parser = subparsers.add_parser("remove", help="按容器源地址删除规则")
+    remove_parser.add_argument("--container-ip", required=True)
+    remove_parser.add_argument("--netns", default=default_netns())
 
     show_parser = subparsers.add_parser("show", help="列出当前 inet swt 表")
     show_parser.add_argument("--netns", default=default_netns())
@@ -224,6 +325,8 @@ def main(argv: list[str]) -> int:
         return cmd_apply(args)
     if args.command == "show":
         return cmd_show(args)
+    if args.command == "remove":
+        return cmd_remove(args)
     return cmd_clear(args)
 
 

@@ -328,5 +328,263 @@ class ArgumentGuardTestCase(unittest.TestCase):
         self.assertTrue(result.stderr.startswith("NETNS-UNREACHABLE"))
 
 
+class FirewallExtensionTestCase(unittest.TestCase):
+    """ISSUE-06 net-firewall 扩展: 每个切片独立使用真实 rootless netns."""
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        missing = missing_dependencies()
+        if missing:
+            raise AssertionError("环境依赖缺失: " + "; ".join(missing))
+
+    def setUp(self) -> None:
+        self.fx = NetFixture()
+        self.fx.up()
+
+    def tearDown(self) -> None:
+        self.fx.down()
+
+    def test_f1_conflict_guard_scans_other_chains(self) -> None:
+        fx = self.fx
+        netns = fx.netns_path()
+        other_ip = f"10.99.{fx.subnet.split('.')[2]}.6"
+        first = run_script(
+            [
+                "apply", "--mode", "blacklist",
+                "--container-ip", fx.container_ip, "--gateway", fx.gateway,
+                "--deny", "203.0.113.7", "--netns", netns,
+            ]
+        )
+        self.assertEqual(first.returncode, 0, first.stderr)
+        added_chain = run(
+            [
+                "podman", "unshare", "nsenter", f"--net={netns}", "nft",
+                "add", "chain", "inet", "swt", "output", "{",
+                "type", "filter", "hook", "output", "priority", "filter", "+", "10;",
+                "policy", "accept;", "}",
+            ]
+        )
+        self.assertEqual(added_chain.returncode, 0, added_chain.stderr)
+        added_rule = run(
+            [
+                "podman", "unshare", "nsenter", f"--net={netns}", "nft",
+                "add", "rule", "inet", "swt", "output",
+                "ip", "saddr", other_ip, "ip", "daddr", "203.0.113.8", "drop",
+            ]
+        )
+        self.assertEqual(added_rule.returncode, 0, added_rule.stderr)
+
+        conflict = run_script(
+            [
+                "apply", "--mode", "whitelist",
+                "--container-ip", fx.container_ip, "--gateway", fx.gateway,
+                "--netns", netns,
+            ]
+        )
+        self.assertEqual(conflict.returncode, 1)
+        self.assertTrue(conflict.stderr.startswith("APPLY-CONFLICT"), conflict.stderr)
+
+    def test_ts105_apply_without_merge_keeps_conflict_guard(self) -> None:
+        fx = self.fx
+        netns = fx.netns_path()
+        other_ip = f"10.99.{fx.subnet.split('.')[2]}.6"
+        first = run_script(
+            [
+                "apply", "--mode", "blacklist",
+                "--container-ip", fx.container_ip, "--gateway", fx.gateway,
+                "--deny", "203.0.113.7", "--netns", netns,
+            ]
+        )
+        self.assertEqual(first.returncode, 0, first.stderr)
+        before = run_script(["show", "--netns", netns])
+        self.assertEqual(before.returncode, 0, before.stderr)
+
+        added = run(
+            [
+                "podman", "unshare", "nsenter", f"--net={netns}", "nft",
+                "add", "rule", "inet", "swt", "forward",
+                "ip", "saddr", other_ip, "ip", "daddr", "203.0.113.8", "drop",
+            ]
+        )
+        self.assertEqual(added.returncode, 0, added.stderr)
+        conflict = run_script(
+            [
+                "apply", "--mode", "whitelist",
+                "--container-ip", other_ip, "--gateway", fx.gateway,
+                "--netns", netns,
+            ]
+        )
+        self.assertEqual(conflict.returncode, 1)
+        self.assertTrue(conflict.stderr.startswith("APPLY-CONFLICT"), conflict.stderr)
+        after = run_script(["show", "--netns", netns])
+        self.assertEqual(after.returncode, 0, after.stderr)
+        self.assertIn(f"ip saddr {fx.container_ip}", after.stdout)
+        self.assertIn(f"ip saddr {other_ip}", after.stdout)
+
+    def test_ts104_apply_merge_preserves_foreign_rules(self) -> None:
+        fx = self.fx
+        netns = fx.netns_path()
+        other_ip = f"10.99.{fx.subnet.split('.')[2]}.6"
+
+        first = run_script(
+            [
+                "apply", "--mode", "blacklist",
+                "--container-ip", fx.container_ip, "--gateway", fx.gateway,
+                "--deny", "203.0.113.7", "--netns", netns,
+            ]
+        )
+        self.assertEqual(first.returncode, 0, first.stderr)
+        before_merge = run_script(["show", "--netns", netns])
+        self.assertEqual(before_merge.returncode, 0, before_merge.stderr)
+        a_rules = [
+            line.split(" # handle", 1)[0]
+            for line in before_merge.stdout.splitlines()
+            if line.strip().startswith(f"ip saddr {fx.container_ip} ")
+        ]
+        self.assertTrue(a_rules)
+
+        merged = run_script(
+            [
+                "apply", "--merge", "--mode", "whitelist",
+                "--container-ip", other_ip, "--gateway", fx.gateway,
+                "--allow", "198.51.100.8", "--netns", netns,
+            ]
+        )
+        self.assertEqual(merged.returncode, 0, merged.stderr)
+        merged_show = run_script(["show", "--netns", netns])
+        self.assertEqual(merged_show.returncode, 0, merged_show.stderr)
+        for rule in a_rules:
+            self.assertIn(rule, merged_show.stdout)
+        self.assertIn(f"ip saddr {other_ip}", merged_show.stdout)
+        b_rules = [
+            line.split(" # handle", 1)[0]
+            for line in merged_show.stdout.splitlines()
+            if line.strip().startswith(f"ip saddr {other_ip} ")
+        ]
+        self.assertTrue(b_rules)
+
+        updated = run_script(
+            [
+                "apply", "--merge", "--mode", "blacklist",
+                "--container-ip", fx.container_ip, "--gateway", fx.gateway,
+                "--deny", "203.0.113.8", "--netns", netns,
+            ]
+        )
+        self.assertEqual(updated.returncode, 0, updated.stderr)
+        final_show = run_script(["show", "--netns", netns])
+        self.assertEqual(final_show.returncode, 0, final_show.stderr)
+        for rule in b_rules:
+            self.assertIn(rule, final_show.stdout)
+        self.assertIn("203.0.113.8", final_show.stdout)
+        self.assertNotIn("203.0.113.7 drop", final_show.stdout)
+
+    def test_ts103_remove_absent_source_or_table_is_idempotent(self) -> None:
+        fx = self.fx
+        netns = fx.netns_path()
+        applied = run_script(
+            [
+                "apply", "--mode", "whitelist",
+                "--container-ip", fx.container_ip, "--gateway", fx.gateway,
+                "--netns", netns,
+            ]
+        )
+        self.assertEqual(applied.returncode, 0, applied.stderr)
+
+        absent_source = run_script(
+            [
+                "remove", "--container-ip", "10.99.0.6",
+                "--netns", netns,
+            ]
+        )
+        self.assertEqual(absent_source.returncode, 0, absent_source.stderr)
+        self.assertIn("removed=absent", absent_source.stdout)
+        self.assertEqual(run_script(["show", "--netns", netns]).returncode, 0)
+
+        removed = run_script(
+            ["remove", "--container-ip", fx.container_ip, "--netns", netns]
+        )
+        self.assertEqual(removed.returncode, 0, removed.stderr)
+        self.assertIn("table-removed", removed.stdout)
+        absent_table = run_script(
+            ["remove", "--container-ip", fx.container_ip, "--netns", netns]
+        )
+        self.assertEqual(absent_table.returncode, 0, absent_table.stderr)
+        self.assertIn("removed=absent", absent_table.stdout)
+
+    def test_ts102_remove_last_container_deletes_table(self) -> None:
+        fx = self.fx
+        netns = fx.netns_path()
+        applied = run_script(
+            [
+                "apply", "--mode", "blacklist",
+                "--container-ip", fx.container_ip, "--gateway", fx.gateway,
+                "--deny", "203.0.113.7", "--netns", netns,
+            ]
+        )
+        self.assertEqual(applied.returncode, 0, applied.stderr)
+
+        removed = run_script(
+            ["remove", "--container-ip", fx.container_ip, "--netns", netns]
+        )
+        self.assertEqual(removed.returncode, 0, removed.stderr)
+        self.assertIn("removed=2", removed.stdout)
+        self.assertIn("table-removed", removed.stdout)
+        show = run_script(["show", "--netns", netns])
+        self.assertEqual(show.returncode, 1)
+        self.assertTrue(show.stderr.startswith("NO-TABLE"), show.stderr)
+
+        absent = run_script(
+            ["remove", "--container-ip", fx.container_ip, "--netns", netns]
+        )
+        self.assertEqual(absent.returncode, 0, absent.stderr)
+        self.assertIn("removed=absent", absent.stdout)
+
+    def test_ts101_remove_keeps_sibling_rules(self) -> None:
+        fx = self.fx
+        other_ip = f"10.99.{fx.subnet.split('.')[2]}.6"
+        other_name = fx.token + "-b"
+        other = run(
+            [
+                "podman", "run", "-d", "--name", other_name,
+                "--network", fx.token, "--ip", other_ip,
+                IMAGE, "sleep", "infinity",
+            ]
+        )
+        self.assertEqual(other.returncode, 0, other.stderr)
+        try:
+            applied = run_script(
+                [
+                    "apply", "--mode", "whitelist",
+                    "--container-ip", fx.container_ip, "--gateway", fx.gateway,
+                    "--netns", fx.netns_path(),
+                ]
+            )
+            self.assertEqual(applied.returncode, 0, applied.stderr)
+            netns = fx.netns_path()
+            for chain in ("forward", "input"):
+                added = run(
+                    [
+                        "podman", "unshare", "nsenter", f"--net={netns}", "nft",
+                        "add", "rule", "inet", "swt", chain,
+                        "ip", "saddr", other_ip, "ip", "daddr", "203.0.113.7",
+                        "accept",
+                    ]
+                )
+                self.assertEqual(added.returncode, 0, added.stderr)
+
+            removed = run_script(
+                ["remove", "--container-ip", fx.container_ip, "--netns", netns]
+            )
+            self.assertEqual(removed.returncode, 0, removed.stderr)
+            self.assertIn("removed=6", removed.stdout)
+
+            show = run_script(["show", "--netns", netns])
+            self.assertEqual(show.returncode, 0, show.stderr)
+            self.assertNotIn(f"ip saddr {fx.container_ip}", show.stdout)
+            self.assertEqual(show.stdout.count(f"ip saddr {other_ip}"), 2)
+        finally:
+            run(["podman", "rm", "-f", other_name])
+
+
 if __name__ == "__main__":
     unittest.main()
