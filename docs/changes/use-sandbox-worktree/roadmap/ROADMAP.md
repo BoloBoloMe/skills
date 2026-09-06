@@ -19,6 +19,7 @@ use-sandbox-worktree skill 落地并经端到端演练验证可用 — 它管理
 - MILESTONE-03 实跑新事实 (2026-09): updateInstead 推送落地存在短延迟 (push 返回成功后 linked worktree 文件稍后可读, 编排器以 ≤3s 轮询消解); 本机无 pasta 网关接口, daemon 监听按兜底顺序落 0.0.0.0 + `host.containers.internal` 配对; 硬中断 (进程被杀级) 会留 daemon 僵尸, 已知限制未做 atexit 兜底
 - MILESTONE-03 遗留缺口 (待路由): (1) TECHNICAL.md 的 `/tmp/swt-m03-index.json` 索引契约 (缺省 --repo 跨命令定位/同名冲突拒绝) 未被 EXECUTION 任何切片认领, 未实现 — 须决定补 ISSUE 或改 spec; (2) 运行时 JSON container 段为 schema 超集 (ssh_private_key/ssh_host/daemon_addr/clone_dir/remote), TECHNICAL.md 字面宜补记; (3) 仓库根无 pytest 依赖, 测试实际以 `uv run --with pytest` 运行, EXECUTION.md 的 `uv run pytest` 字面与现实不符
 - MILESTONE-09 实跑新事实 (2026-09-06): 登录墙 6 检查真链路全过 (空白基线 0.0019% / headed 渲染 30.19% / headless 回切); 渲染窗口固定 1280x720 使阈值定 0.2; image-prep `build` 缺 --repo 裸崩 (M07 领地待补); 接缝补钉五条待用户追认 (见 [../milestone-09-login-wall-run.md](../milestone-09-login-wall-run.md)); 3840 翻倍疑点挂起 (0/21 复现, 档案在该报告内, 复现时留容器验尸)
+- MILESTONE-11 盘问 (2026-09-06): 五场景抽取方案拍完 (D025-D038) — 单 module `swt` 五子命令 + 决策收据协议; Design It Twice 三分支 (glm-5.3-flash: min/flex/caller) 取 caller 骨架; 反方攻击 (gpt-5.6-luna) 10 项 9 成立全部转为修正; 校验代理 6 项属实已修. M03 遗留缺口 (1) 注册表索引契约由 D025 废弃 (改显式 --repo + cwd 探测); 缺口 (2)(3) (TECHNICAL.md 字面修补) 留 MILESTONE-12 顺手处理
 - MILESTONE-06 盘问 (2026-09-04): 镜像制备策略拍完 (D014-D020) + herdr 集成形态 d 拍完 (D021); 反方攻击 6 项成立已转为修正 (门禁扩展留 host/清单带版本谓词/base-digest 硬谓词/home 完美复刻取代适配版/委派配方加就绪 guard 与动态提交键/定位收窄为交互式编排适配层); 关键实测 (F009/F010): herdr 经 HERDR_AGENT=pi 提示识别 ssh 后的 pi, 委派全链路 (send-text + alt+\ → working→done→read) 跑通, 提交键取决于容器内 keybindings (键位即接口), pi -p 批处理为保底形态; 后续修订: D023 推翻 host 环境文档 (~/AGENTS.md/~/docs) 注入 — host 环境文档不进独立环境
 
 **路线侦查结论 (2026-09-01 后绘制会话)**:
@@ -46,15 +47,17 @@ use-sandbox-worktree skill 落地并经端到端演练验证可用 — 它管理
 - [MILESTONE-08](MILESTONE-08.md) — 容器内 present 展示链接线已实测: 动态端口交付, add-dir/同 UID 复用/stop 影响均已确认, present 及跟随 skill 已更新 — 详见 [../milestone-08-present-container-findings.md](../milestone-08-present-container-findings.md)
 - [MILESTONE-07](MILESTONE-07.md) — 镜像制备闭环已实现: build-base/match/build, 需求与实测内容物比对, base-digest 硬匹配, 30 项测试全绿 — 详见 [../milestone-07-image-prep-run.md](../milestone-07-image-prep-run.md)
 - [MILESTONE-09](MILESTONE-09.md) — 登录墙闭环已实现并真链路实测: login-wall build/up/down/verify + 浏览器项目层清单 + 容器内 swt-vnc, 31 项测试全绿, 真记录根 dogfood 6 检查全过 — 详见 [../milestone-09-login-wall-run.md](../milestone-09-login-wall-run.md)
+- [MILESTONE-11](MILESTONE-11.md) — 五场景抽取方案拍完: 单 module `swt` 五子命令 (birth/resume/status/terminate/switch) + 决策收据协议 + 危险操作显式独立; 反方攻击 9 项成立已转为修正 (D025-D038) — 详见 [../DECISIONS.md](../DECISIONS.md) D025-D038, [反方审查](../milestone-11-opposing-review.md), 设计稿 [min](../milestone-11-design-min.md)/[flex](../milestone-11-design-flex.md)/[caller](../milestone-11-design-caller.md), [ADR 0009](../../adr/0009-swt-five-subcommands-decision-receipt.md)
 
 ## 前沿
 
 <!-- 开放 + 已解除阻塞 + 未被认领的 Milestone -->
-- [MILESTONE-11](MILESTONE-11.md) — `deliberate` — 五场景脚本抽取方案盘问 (M03 实跑事实在手)
+- [MILESTONE-12](MILESTONE-12.md) — `task` (AFK 编码, tdd-as-orchestra) — swt 五子命令实现 (方案 D025-D038 在手)
 
 ## 未决迷雾
 
 - 运行期新站点需求的处理流程形态 (回父会话确认 → 更新容器的具体动作)
+- 修复原语 (config/daemon 子命令) 是否需要 — M12 实现或 M10 演练暴露真实救场需求时回访 D037
 
 ## 范围外
 
@@ -71,10 +74,10 @@ M01(已关闭) ──┐
 M02(已关闭) ──┘                 │                       │
                                 ├─→ M08(已关闭) ─────────┤
                                 │                       │
-                                └─→ M11 ─→ M12 ──────────┤
+                                └─→ M11(已关闭) ─→ M12 ──┤
 M05(已关闭) ─→ M06(已关闭) ────┴─→ M07(已关闭) ─→ M09(已关闭) ┴─→ M10 ─→ 目的地
 ```
 
-- M01..M09 中已关闭: M03, M04, M06, M07, M08, M09; 前沿 = MILESTONE-11 (HITL deliberate)
-- 关键路径推进为: M11 → M12 → M10
-- M11 (五场景脚本抽取**方案**盘问, HITL) → M12 (脚本实现, AFK) 阻塞 M10 (SKILL.md 引用场景脚本)
+- M01..M11 全部已关闭; 前沿 = MILESTONE-12 (AFK task)
+- 关键路径推进为: M12 → M10
+- M12 (swt 实现, AFK) 阻塞 M10 (SKILL.md 引用场景脚本)

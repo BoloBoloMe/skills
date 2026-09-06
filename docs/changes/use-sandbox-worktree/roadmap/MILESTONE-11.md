@@ -1,4 +1,4 @@
-# 状态: 待处理
+# 状态: 已关闭
 # 类型: deliberate
 # 阻塞于: MILESTONE-03
 

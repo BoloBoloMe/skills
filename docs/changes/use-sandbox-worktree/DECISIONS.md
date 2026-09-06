@@ -48,7 +48,7 @@
 - 状态: 当前有效
 - 约束性: 必须遵守
 - 替代: D001, D005
-- 内容: gate 重定义为**母体**: 主仓的 linked worktree (use-worktree 所建的工作树分支). 诞生时 host llm 调 use-worktree 建工作树分支作母体 (或复用现有母体, 见 D010); 容器诞生时经 git 守护进程 `git clone -b <母体分支>` 克隆母体为代码母体; 容器工作成果 push 直写主仓 `refs/heads/<母体分支>`, 推送落地 (updateInstead) 让母体目录文件即时更新为 agent 成果, host 直接审阅/试跑. 真远端对容器完全不暴露 (D001 此部分保留). 一名贯穿: 母体分支名 = worktree 目录名 = 容器名 = 容器 label 标识. 理由: 用户判定独立 clone 中转层多余, 砍层; 实测 updateInstead 识别 linked worktree 当前分支并即时更新其工作区 (F007). 代价: 主仓成为 receive 端, 写面收敛全靠主仓 config (D008); 母体工作区跟踪文件脏会拒容器 push (updateInstead 原生行为, F001 同构).
+- 内容: gate 重定义为**母体**: 主仓的 linked worktree (use-worktree 所建的工作树分支). 诞生时 host llm 调 use-worktree 建工作树分支作母体 (或复用现有母体, 见 D010); 容器诞生时经 git 守护进程 `git clone -b <母体分支>` 克隆母体为代码母体; 容器工作成果 push 直写主仓 `refs/heads/<母体分支>`, 推送落地 (updateInstead) 让母体目录文件即时更新为 agent 成果, host 直接审阅/试跑. 真远端对容器完全不暴露 (D001 此部分保留). 一名贯穿: 母体分支名 = worktree 目录名 = 容器名 = 容器 label 标识 (澄清 2026-09-06: 本条适用单容器缺省名; 多容器情形身份规则由 D031 细化, 母体 id + 容器实例名两层). 理由: 用户判定独立 clone 中转层多余, 砍层; 实测 updateInstead 识别 linked worktree 当前分支并即时更新其工作区 (F007). 代价: 主仓成为 receive 端, 写面收敛全靠主仓 config (D008); 母体工作区跟踪文件脏会拒容器 push (updateInstead 原生行为, F001 同构).
 - 依赖事实: F007
 - 预计影响: use-sandbox-worktree skill 诞生/存续/终结全部步骤; MILESTONE-03 瘦闭环编排脚本
 - 需要调整: 按 D005 旧模型写的 gate 独立 clone 初始化流程 (尚无实现)
@@ -128,6 +128,101 @@
 - 替代说明: 记录根目录由 `~/.pi/sandbox-worktree/` 改为 `~/.agents/sandbox-worktree/` (用户拍板 2026-09-04). 尚无实现, 无代码需调整. 以下原文保留:
 - 内容: 构建输入 (Containerfile) + 需求清单 requirements.md + 实测内容物清单 contents.md 落 `~/.pi/sandbox-worktree/<project-slug>/builds/<build-id>/` (环境信息不落项目 git). label 前缀 `run.sandbox-worktree.*`: image 存 project-id/schema-version/contents-digest/build-id/base-digest; 容器存 identity/worktree-path/image-digest (MILESTONE-05 结论的落地). **身份规则**: project-id = 主仓绝对路径 (唯一主键, 防同名目录碰撞); slug = 目录名规范化, 仅作展示索引与目录名, 冲突时加短 hash; build-id 构建前查重 (防两会话并发同号).
 - 预计影响: MILESTONE-07; skill 诞生步骤 (镜像查询/构建记录)
+
+### D025 场景脚本总体形态: 单 module `swt` 五子命令
+- 状态: 当前有效
+- 约束性: 必须遵守
+- 内容: host 侧生命周期编排收敛为**一个 module** (`workflow/use-sandbox-worktree/scripts/swt.py`), 对外五个子命令: `birth` (诞生: 建/复用母体 + config + daemon + nft + 容器就绪) / `resume` (恢复, 带 DECIDE gate, 见 D030) / `status` (只读盘点, 永不改状态) / `terminate` (按容器终结, D029) / `switch` (换活动母体, 独立危险入口, D028). 五场景共享同一套探测, D008 config 模板, runtime 状态文件与输出协议, 拆成五个独立脚本会把它们复制五份 (locality 崩坏), 故为单 module 五子命令. 形态经 Design It Twice 三分支比较拍板 ([design-min](milestone-11-design-min.md) 2 入口 / [design-flex](milestone-11-design-flex.md) 9 入口 / [design-caller](milestone-11-design-caller.md) 5 子命令), 取 caller 骨架. 与现有脚本的关系: image-prep.py / net-firewall.py 复用不吞并 (各自 interface 已被 M04/M07 测试钉住, 包一层是透传浅 module); login-wall.py 不统辖 (登录墙是存续期可选环节); e2e-smoke.py 下沉缓退役 (D036). 目标定位: 显式 `--repo` 优先, 缺省从 cwd 推导主仓 (`git rev-parse --git-common-dir`), **废弃 M03 的跨命令注册表索引契约** (M03 遗留缺口 (1) 就此消解: 多一份跨命令状态 = 多一类不一致). 命名消歧: 容器内已有 swt-vnc (M09), SKILL.md 首次出现处各写全称.
+- 依赖事实: F006, F007, F011
+- 预计影响: MILESTONE-12 实现本体; MILESTONE-10 SKILL.md 引用
+
+### D026 用户决策协议: DECIDE + 决策收据 (指纹绑定)
+- 状态: 当前有效
+- 约束性: 必须遵守
+- 内容: 脚本非交互 (不读 stdin), 一切用户拍板点表达为 **exit 1 + stdout `DECIDE` 行**, llm 原样转述用户, 用户答后带 flag 重跑同一子命令. 规则四条: (1) **一次列全**: 在首次改变任何资源之前, 列出当前所有可知待决问题, 不挤牙膏; 执行中途新冒出的问题不算 DECIDE, 走 exit 3 PARTIAL 语义. (2) **决策收据**: 每个 DECIDE 生成一次性票据 (decision id) 并绑定资源指纹 — 主仓绝对路径 / 母体分支+ref tip / 容器 Podman ID (非可复用 name) / 镜像 digest / config 指纹 / 网络模式与规则输入 / 脏计数 / 全部受影响容器清单 / (switch 时) 目标分支; 重跑时拿锁 (D034) 后 compare-and-swap 比对指纹并消费票据 (一次性, 不可复用), 任一字段变了 → 重新 DECIDE 或 FAIL, **绝不把旧答案静默套到新状态上** (反方攻击成立项: 无指纹则用户确认拆的是容器 A, 实际可能拆了同名重建的 B). (3) **已答不重问**: 已答决策记入 runtime, 重入重探测仅当其前提字段变化才重问. (4) DECIDE 走 stdout 不是错误, exit code 语义见 D027. 理由: 决策权在用户 + 脚本非交互两条约束的合取; 指纹机制同时覆盖文件锁不跨 DECIDE 空窗的缺口.
+- 依赖事实: F011
+- 预计影响: MILESTONE-12 (decision 协议实现); SKILL.md (确认话术节)
+
+### D027 exit code 协议与输出契约
+- 状态: 当前有效
+- 约束性: 必须遵守
+- 内容: 全子命令统一: **0** 成功 (含幂等 no-op); **1** DECIDE 待用户 (D026); **2** 前置不满足 — 严格限定为**尚未创建/改动任何资源**的预检失败, 状态未变, 调用方别重试同一命令; **3** 中途失败可重入 — 凡是动过状态之后的失败全归此类 (含端口被占: F006 实测 start 失败留下 exited 容器, 已动状态, 不属 exit 2 — 反方攻击成立项), 已完成阶段登记 runtime; 已定义的常规半状态重跑同一命令幂等收敛, 不可自动收敛的半状态由 PARTIAL 文案列出唯一人工恢复路径 (D037), 不空泛承诺 "重跑必收敛"; **4** 环境错误 (podman/git/nft 缺失或版本不支持, 含 D008 `!` 语法重验失败). 输出: stdout 进度行人话 + 末行 `STATE {...}` 单行 json (五子命令共用 schema, 带版本号, 只加字段不改名, 沿用 M09 login-wall up 先例); stderr 首行机器标签 (`FAIL`/`PARTIAL`/`ENV` + 人话), git/podman 原生报错原文透传不吞不译 (译解表归 SKILL.md, D006 降级精神, 防两处漂移).
+- 依赖事实: F006, F011
+- 预计影响: MILESTONE-12; SKILL.md (exit 表 + 译解表)
+
+### D028 危险操作显式独立
+- 状态: 当前有效
+- 约束性: 必须遵守
+- 内容: 换母体 = 独立 `switch` 子命令 (D010 原子序: 停旧全部容器/daemon → 校验 ref 与工作区干净 → 改 hideRefs 例外 → 拉起新端点); 强拆 = `terminate --force` 独立 flag, 先审计登记 (判决快照: 谁/何时/脏概要) 再删. 拒绝把换母体藏进 birth/up 的决策点 (design-min 分支形态): 停全部容器 + 改主仓全局 config 是危险复合操作, interface 应当在敲下命令那一刻就无可误会, 藏进通用入口算设计失败. 危险入口刻意不做 "聪明": 不自动迁移, 不自动确认.
+- 依赖事实: F011
+- 预计影响: MILESTONE-12; SKILL.md
+
+### D029 terminate 按容器粒度与脏检查口径
+- 状态: 当前有效
+- 约束性: 必须遵守
+- 内容: `terminate --repo <主仓> [--name <容器名>] [--force]`, 按容器粒度 (共享母体 D009 时按母体一次拆光会误伤兄弟容器), `--name` 缺省 = 该母体唯一容器, 多容器时必填. 脏检查口径定稿: 未 push = `git rev-list --count <母体ref>..HEAD`; ahead/behind/diverged 关系用 ancestor 检查区分 (`git merge-base --is-ancestor`): HEAD 是 ref 的祖先 → 纯 behind 不算脏 (落后于母体不丢数据); ref 是 HEAD 的祖先 → 纯 ahead, 算脏; 互为非祖先 → diverged, 算脏; STATE 与 DECIDE 文案分别给出 ahead/behind/diverged 关系与计数; 未提交含未跟踪文件; ssh 不可达或容器已停 → 脏度 unknown **视同脏** 阻塞. TOCTOU 残余 (检查到 rm 之间容器内 agent 可能还在写) 的处理: DECIDE 文案要求用户确认容器内 agent 已停手 + 决策收据含脏计数, 重跑必重查 (D026); 残余窗口知情接受. 成功后: rm 容器, 收该容器 daemon, nft 按 D032 规则, **母体保留** (D012), 主仓 config 不动.
+- 依赖事实: F011
+- 预计影响: MILESTONE-12; SKILL.md (停手确认话术)
+
+### D030 resume 带 DECIDE gate, D011 确认义务落代码
+- 状态: 当前有效
+- 约束性: 必须遵守
+- 内容: `resume` 有 CLI 级 DECIDE gate: 检测到可恢复对象 (停着的容器/stale daemon/缺规则) 时 exit 1, 决策收据绑定容器 Podman ID + 当前授权母体分支; 用户确认后带 flag 重跑, 按 D011 fail-closed 序列执行, 时序以 M04 实测为准 (F-M04-02: netns 在首个容器 start 前不存在, 落地 = 收 stale daemon → start 容器 → **start 后立即注入 nft 并校验 daemon, 校验通过前不开放 agent 工作负载**; D011 的排序精神 "规则未就绪工作负载不跑" 由此保全, 字面 "先注入后 start" 已被 F-M04-02 修订). 推翻 design-caller 的 "resume 无 gate, 确认由 skill 层承担" — 反方攻击成立: 那正好把 D011 的确认义务退回给 llm 自觉, 是脚本化方向要消灭的漏项; resume 会杀进程, 重建网络规则, 重启工作负载, 绝非无副作用. resume 同时校验 runtime 记录的母体分支仍是当前全局授权分支, 否则拒绝 (防 switch 后旧容器在新授权域下被拉起, 配合 D033).
+- 依赖事实: F008, F011
+- 预计影响: MILESTONE-12; SKILL.md 恢复节
+
+### D031 多容器两层身份: 母体 id + 容器实例名
+- 状态: 当前有效
+- 约束性: 必须遵守
+- 内容: D009 允许同母体多容器, 与 D007 一名贯穿 (容器名 = 母体 slug) 冲突 (反方攻击成立项: 同母体第二次 birth 撞 podman name). 解法: 身份分两层 — 母体 id (分支名 = worktree 目录名, 不变) + 容器实例名. `birth` 加可选 `--name`, 缺省 `swt-<slug>` (单容器情形一名贯穿保留), 撞名 exit 2 要求显式命名. 容器 label 同时存母体 id 与实例名, runtime 记录同. 拒绝 v1 收窄为单容器 (birth 拒第二容器): D009 是已拍板语义, 且 D032/D033 的修复都以多容器存在为前提, 身份分离是共同地基, 实现增量小.
+- 依赖事实: F011
+- 预计影响: MILESTONE-12; D024 容器 label (identity 拆两层); SKILL.md
+
+### D032 nft 共享表按容器归属, net-firewall 扩展入 M12 范围
+- 状态: 当前有效
+- 约束性: 必须遵守
+- 内容: 反方攻击发现的确定性冲突: 现有 net-firewall.py 的 `clear` 删整张 `inet swt` 表, `apply` 见表中已有其他容器源地址即拒 (APPLY-CONFLICT) — 多容器下同母体兄弟容器的终结/恢复会互删网络保护. 决策: net-firewall.py 扩展**按容器源地址删除规则**的能力 (或锁内按剩余容器全量重渲染), 仅最后一个容器消失才删整表; resume 在共享表场景不得走 clear+apply (窗口内会清掉兄弟规则). 此扩展属 MILESTONE-12 范围 (M04 module 的 interface 演进, 其既有测试保持绿).
+- 依赖事实: F011
+- 预计影响: MILESTONE-12 (net-firewall.py 接口扩展 + swt 编排)
+
+### D033 switch 后旧容器标记 retired
+- 状态: 当前有效
+- 约束性: 必须遵守
+- 内容: switch 停旧母体全部容器但**不删** (D010 不变), 停下的旧容器在 runtime 标记 **retired**: status 可见 (标 retired), `resume` 拒绝 retired 容器 (防旧容器在新全局授权域下被拉起, 看到/操作错误分支), 唯一出路是 `terminate` (走 D029 正常脏检查). 用户想把旧分支捡回来 → 对旧母体重新 switch 回去或 birth (经 D026 决策协议).
+- 依赖事实: F011
+- 预计影响: MILESTONE-12; SKILL.md switch 节
+
+### D034 并发: 同主仓文件锁, 第二者 exit 2 不排队
+- 状态: 当前有效
+- 约束性: 必须遵守
+- 内容: 同主仓的 swt 变更类调用持文件锁 (M03 fcntl 先例), 拿不到锁 exit 2 直接拒, 不排队 (排队等锁反而让第二会话拿到过时状态). DECIDE 两次调用之间的空窗不由锁保护 (进程退出锁即释放), 由 D026 决策收据的指纹比对覆盖.
+- 预计影响: MILESTONE-12
+
+### D035 镜像构建职责: birth 只判不建
+- 状态: 当前有效
+- 约束性: 必须遵守
+- 内容: birth 内部经 image-prep `match` 判镜像 (D017 匹配规则留在 image-prep); verdict=BUILD-NEW 即停出 DECIDE (附推导清单), 用户确认后由 llm 走 D014 流程跑 image-prep `build`, 再带 `--image <ref>` 重跑 birth. birth 不自动构建 — D014 的清单确认本就是会话环节, birth 吞了它会造出两条确认路径并存. 在跑容器镜像有新版只标 `newer-available` (D013), 绝不自动拆.
+- 预计影响: MILESTONE-12; SKILL.md 诞生节
+
+### D036 e2e-smoke 下沉但缓退役, 等价矩阵通过才删
+- 状态: 当前有效
+- 约束性: 必须遵守
+- 内容: M12 把 e2e-smoke.py 已实跑验证的阶段函数 (母体建立/config 写入与断言/daemon 拉起/脏检查/兜底清理) 下沉为 swt 的 implementation, 测试在 swt CLI 接口处重写 (替换不叠加精神). **但** e2e-smoke 保留为独立回归基线, 直到 swt 黑盒测试矩阵逐项等价 M03 证据全绿方可删除, 等价矩阵至少含: 拒绝矩阵 (新分支/tag/non-ff/删除), 母体脏树拒收, daemon 不带 --export-all, config 校验先于 daemon 启动, clone 检出母体分支, push 回流落地, D008 多值 config 的既有值/错值/幂等重跑, ssh 不可达与已停容器视同脏, 强拆审计登记, 中途清理与重复 birth, 多容器共享母体时互不影响的 resume/terminate/nft 规则, switch 中途失败与旧容器 retired — 且断言独立外部状态 (`git config --get-all` / `podman ps` / nft 表 / 母体文件落地), 不只信 swt 自己的 STATE. — 反方攻击成立项: 阶段函数下沉不自动继承覆盖, 提前退役会同时失去独立基线与负向断言. 此条写入 MILESTONE-12 完成判据. (对本会话先前提案 "直接退役" 的修正.)
+- 依赖事实: F011
+- 预计影响: MILESTONE-12 完成判据; e2e-smoke.py 生命周期
+
+### D037 修复原语 (config/daemon 子命令) 不进 v1
+- 状态: 当前有效
+- 约束性: 可调整
+- 内容: design-flex 分支的 `swt config apply|verify|revoke` 与 `swt daemon start|stop|probe` 修复原语不进 v1 interface. resume 已收敛常规残留态; 更深的救场由 llm 敲原生命令 (git config / pgrep / net-firewall show), 包一层是透传浅 module. 若 M12 实现或 M10 演练暴露真实救场需求, 可重开. 代价记录: exit 3 PARTIAL 的文案必须列出每种半状态的唯一人工恢复路径, 不能空泛承诺 "重跑必收敛".
+- 依赖事实: F011
+- 预计影响: MILESTONE-12 (PARTIAL 文案质量); 迷雾回访入口
+
+### D038 脚本与 skill 文档的职责边界
+- 状态: 当前有效
+- 约束性: 必须遵守
+- 内容: **进脚本** (可执行断言防错): 状态探测, D008 config 模板写入/读回/快照回滚, D011 fail-closed 顺序, D010 单活动母体检查, D012 脏检查阻塞, D013 digest 比对提示, 决策收据协议, 审计登记, 并发锁. **留文档** (需人/agent 判断): 原生报错译解表 (D006 降级), 黑/白模式语义与域名盘点方法论, 多容器冲突消化指引 (D009, 容器内流程), 母体存删自决指引, D019 风险明示, D021 委派配方. 判据: 可执行断言防错的进代码, 需要判断的留文档, 同一知识不两处维护 (反方审查第 3 点). M03 checklist 决策点成熟度: 母体复用/黑白模式/脏放行/镜像换版成熟为 DECIDE+flag; 端口冲突不设决策点 (F006, exit 3 透传); base 更新判断留会话问答 (D020, 低频); 运行期新站点需求留迷雾.
+- 预计影响: MILESTONE-12; MILESTONE-10 SKILL.md 结构
 
 ### D017 镜像匹配规则
 - 状态: 当前有效
@@ -232,3 +327,8 @@
 - 状态: 当前有效
 - 来源: 本机实测 (`pi -p "<任务>" --model glm-5.3-flash`, exit 0)
 - 内容: `pi -p` 非交互模式 (处理 prompt 后退出) 可用; host 经 ssh + herdr `pane run`/`pane wait-output` 编排容器内 pi 批处理任务, 可完全绕开 TUI 键位注入, 是委派回路 (D021) 失效时的保底形态. 代价: 失去交互 TUI, 一轮一进程.
+
+### F011 MILESTONE-11 反方审查结论 (2026-09-06)
+- 状态: 当前有效
+- 来源: docs/changes/use-sandbox-worktree/milestone-11-opposing-review.md (opposing-viewpoint 对抗分析, gpt-5.6-luna; 产出方为 glm-5.3-flash 三设计分支, 对抗对不同模型)
+- 内容: 对五场景方案 (Design It Twice 三分支 + 用户拍板的 caller 骨架混合案) 的反方攻击, 10 项攻击 9 项成立或部分成立, 全部已转为修正: (1)(3) DECIDE 重探测与决策不过期矛盾 + 锁不跨空窗 → D026 决策收据指纹; (2) 一次列全与示例矛盾 → D026 定义收紧 (首次改状态前列全); (4) 端口被占非 exit 2 → D027 exit 2/3 重划; (5) resume 无 gate 违背 D011 → D030; (6) net-firewall clear 删共享整表与多容器冲突 (硬事实) → D032; (7) 多容器身份未落地 → D031; (8) switch 后旧容器 resume 归属丢失 → D033; (9) 脏检查 ahead/behind 与 TOCTOU → D029 (behind 不算脏, 残余窗口知情接受); (10) 下沉不继承覆盖 → D036 缓退役.

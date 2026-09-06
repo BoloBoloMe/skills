@@ -56,6 +56,14 @@ _避免_: 基础镜像 (未含跨项目共享与固定语义), 项目镜像
 **sandbox-worktree** 容器用户 home 的布局原则: home 路径与 host 字面相同, `~/Workspace/`, `~/.pi/agent` 机械复制, 零适配层. 代码固定 `~/Workspace/<母体目录名>` (规范化目录名, 非原始分支名). 刻意排除 `~/AGENTS.md` 与 `~/docs/` — 它们是 host 环境文档, 容器是独立环境, 注入即误导.
 _避免_: 环境同步 (未含字面路径相同语义), 镜像复刻
 
+**决策收据**:
+swt 场景脚本非交互决策协议的载体 (D026): 脚本遇用户拍板点 exit 1 输出 DECIDE 行与绑定的资源指纹 (主仓/母体分支+ref tip/容器 Podman ID/镜像 digest/config 指纹/脏计数), 用户答后带 flag 重跑, 重跑先比对指纹, 变了就重新问, 绝不把旧答案套到新状态上.
+_避免_: 确认令牌 (技术味过重), 会话记忆 (决策不依赖任何进程存活)
+
+**retired 容器**:
+换母体 (switch) 后被停下的旧母体容器的状态 (D033): 不删 (D010), 标记 retired, 查询可见, **恢复拒绝**, 唯一出路是终结 (走正常脏检查). 防旧容器在新全局授权域下被拉起操作错误分支.
+_避免_: 僵尸容器 (与 stale daemon 残留进程混淆), 归档容器
+
 **交互式编排适配层**:
 herdr 在 **sandbox-worktree** 中的定位: host herdr 经 `HERDR_AGENT=pi` wrapper 提示把 ssh 入容器的 pi 识别为一等 agent, host 侧用 委派配方 (查 idle → send-text → 容器键位提交 → wait/read) 驱动容器 agent. 刻意不宣称协议级替代 subagent: 无 task id/退出码/重试幂等.
 _避免_: subagent 替代 (被刻意收窄的定位), 远程控制
