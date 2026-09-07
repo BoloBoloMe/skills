@@ -846,6 +846,10 @@ class TestTS205ConfigFault(TestTS201BirthChain):
             ["git", "-C", str(self.repo), "config", "--get-all", "receive.denyDeletes"],
             capture_output=True, text=True, check=True,
         ).stdout.splitlines())
+        self.assertEqual([], subprocess.run(
+            ["pgrep", "-af", f"git daemon.*--base-path={self.repo.parent}"],
+            capture_output=True, text=True, check=False,
+        ).stdout.strip().splitlines())
         self.assertFalse(list(self.records.glob("runtime/*/*.json")))
         subprocess.run(["git", "-C", str(self.repo), "config", "--unset-all", "receive.denyDeletes"], check=True)
         for value in ("refs/heads", "refs/heads", "refs/tags"):

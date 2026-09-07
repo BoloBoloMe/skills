@@ -37,7 +37,7 @@ uv run scripts/e2e-smoke.py cleanup --repo <主仓路径> --name <分支名原�
 - **--repo 边界** (防越界写真实仓): 提供的 `--repo` 必须含 `.git/swt-m03-fixture` 标识文件, 否则退出码 2 (`stderr` 首行 `NOT-A-FIXTURE <路径>`), 不执行任何写操作.
 - 退出码: 0 = 阶段含断言全过; 1 = 断言失败 (stderr 首行 `ASSERT-FAIL <断言名>`); 2 = 环境/参数错误; 3 = cleanup 脏阻塞 (资源全保留, stderr 含脏内容摘要; ssh 不可达/容器已退出致状态不可判定时按脏处理, fail-closed).
 - 状态发现: birth **每创建一个资源即增量更新** `<repo>/.swt-m03-<slug>.json` (母体/daemon/容器逐段落盘), 而非末尾一次写; smoke/cleanup 读它, 不各自重新探测.
-  - JSON schema: `{version, name, repo, srv, mother_dir, mother_branch, daemon: {pid, addr, port} | null, container: {name, host_port} | null, stage}`; 写入原子化 (临时文件 + `os.replace`).
+  - JSON schema (实际运行时超集, 已随 swt 退役, 文档存档用途): `{version, name, repo, srv, mother_dir, mother_branch, daemon: {pid, addr, port} | null, container: {name, host_port, ssh_private_key, ssh_dir, ssh_dir_created, ssh_host, daemon_addr, clone_dir, remote} | null, stage}`; 写入原子化 (临时文件 + `os.replace`).
   - **cleanup 兜底发现与 fail-closed**: JSON 缺失或缺段时, 按 `podman ps -a --filter label=sandbox-worktree.repo=<repo>` 与 `pgrep -f 'git daemon.*<srv 根>'` 发现残留; JSON 与兜底发现结果不一致 (PID 对不上/多 daemon 匹配/容器名不符) → 中止并打印两侧事实, 交人工处理, 不猜. 容器内克隆目录不登记不删 (留 /tmp 夹具供审计).
   - **cleanup 成功收尾时删除该 JSON**; birth 开头发现 JSON 残留视为上次未清理干净, 提示先 cleanup.
 - 缺省 `--repo` 的跨命令定位: 编排器维护 `/tmp/swt-m03-index.json` (name → repo 绝对路径); birth 自建夹具成功后原子注册 (临时文件 + rename) 并 stdout 打印路径; smoke/cleanup 省略 `--repo` 时按 `--name` 查索引 — 索引缺失/损坏/name 不存在/登记路径已失效 → 退出码 2 并提示显式传 `--repo`; birth 遇同名登记冲突 → 退出码 2 拒绝, 不覆盖; cleanup 成功收尾时原子注销.
@@ -105,7 +105,7 @@ cleanup (完整终结语义归 M11/12, 本变更实现 D012 的非交互形态):
 
 ## 测试接缝与用例
 
-测试统一落 `tests/test_swt_m03.py` (pytest 发现, unittest.TestCase 风格与仓库既有 `tests/test_sync_to_pi.py` 一致); 验证命令 `uv run pytest tests/test_swt_m03.py`. 环境依赖 (podman/网络拉镜像) 缺失时测试失败并打印缺失项, 不静默 skip.
+测试统一落 `tests/test_swt_m03.py` (pytest 发现, unittest.TestCase 风格与仓库既有 `tests/test_sync_to_pi.py` 一致); 验证命令 `uv run --with pytest pytest tests/test_swt_m03.py`. 环境依赖 (podman/网络拉镜像) 缺失时测试失败并打印缺失项, 不静默 skip.
 
 - TC-001:
   接缝: 编排器 CLI 退出码 + `git config --get-all` 输出 + 文件系统.
