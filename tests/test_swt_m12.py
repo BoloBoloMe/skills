@@ -1704,5 +1704,249 @@ class TestTS408SwitchMultipleContainers(SwtBirthFixture):
         self.assertTrue(all(item["retired"] for item in runtime["containers"]))
 
 
-if __name__ == "__main__":
-    unittest.main()
+class TestTS5Resume(SwtBirthFixture):
+    IMAGE_REF = "localhost/swt-m03:latest"
+
+    def resume(self, *extra: str) -> subprocess.CompletedProcess[str]:
+        return self.run_swt(
+            "resume", "--repo", str(self.repo), "--records-root", str(self.records), *extra,
+        )
+
+    def decide_id(self, result: subprocess.CompletedProcess[str]) -> str:
+        return next(line.split()[1] for line in result.stdout.splitlines() if line.startswith("DECIDE "))
+
+    def nft_table(self, netns: str | None = None, source: str | None = None) -> str:
+        candidates = [netns] if netns else []
+        for line in subprocess.run(
+            ["pgrep", "-af", "pasta --config-net"], capture_output=True, text=True, check=False,
+        ).stdout.splitlines():
+            match = re.search(r"--netns\s+(\S+)", line)
+            if match and match.group(1) not in candidates:
+                candidates.append(match.group(1))
+        for candidate in candidates:
+            result = subprocess.run(
+                ["podman", "unshare", "nsenter", f"--net={candidate}", "nft", "list", "table", "inet", "swt"],
+                capture_output=True, text=True, check=False,
+            )
+            if result.returncode == 0 and (source is None or f"ip saddr {source}" in result.stdout):
+                return result.stdout
+        self.fail(f"未找到 nft 表或源地址: {source}")
+
+    def delete_source_rules(self, netns: str, source: str) -> None:
+        listed = subprocess.run(
+            ["podman", "unshare", "nsenter", f"--net={netns}", "nft", "-a", "list", "table", "inet", "swt"],
+            check=True, capture_output=True, text=True,
+        ).stdout
+        chain = None
+        handles: list[tuple[str, str]] = []
+        for line in listed.splitlines():
+            chain_match = re.match(r"^\s*chain\s+(\S+)\s+\{", line)
+            if chain_match:
+                chain = chain_match.group(1)
+                continue
+            if chain in {"forward", "input"} and line.strip().startswith(f"ip saddr {source} "):
+                handle = re.search(r"# handle (\d+)\s*$", line)
+                if handle:
+                    handles.append((chain, handle.group(1)))
+        self.assertTrue(handles, f"未找到目标源地址规则: {source}")
+        for chain_name, handle in handles:
+            deleted = subprocess.run(
+                ["podman", "unshare", "nsenter", f"--net={netns}", "nft", "delete", "rule", "inet", "swt", chain_name, "handle", handle],
+                check=False, capture_output=True, text=True,
+            )
+            self.assertEqual(0, deleted.returncode, deleted.stderr)
+
+    def test_cold_confirm_without_receipt_still_decides(self) -> None:
+        before = self.birth_ready()
+        subprocess.run(["podman", "stop", before["containers"][0]["name"]], check=True, capture_output=True, text=True)
+        direct = self.resume("--confirm")
+        self.assertEqual(1, direct.returncode, direct.stderr)
+        self.assertIn("DECIDE ", direct.stdout)
+
+    def test_resume_success_then_new_stop_reopens_decide(self) -> None:
+        before = self.birth_ready()
+        name = before["containers"][0]["name"]
+        subprocess.run(["podman", "stop", name], check=True, capture_output=True, text=True)
+        self.assertEqual(1, self.resume().returncode)
+        completed = self.resume("--confirm")
+        self.assertEqual(0, completed.returncode, completed.stderr)
+        self.assertNotIn("resume", self.runtime_data())
+        subprocess.run(["podman", "stop", name], check=True, capture_output=True, text=True)
+        reopened = self.resume()
+        self.assertEqual(1, reopened.returncode, reopened.stderr)
+        self.assertIn("DECIDE ", reopened.stdout)
+
+    def test_missing_target_rule_with_table_present_reopens_and_repairs(self) -> None:
+        before = self.birth_ready()
+        target = before["containers"][0]
+        netns = self.runtime_data()["network"]["netns"]
+        self.delete_source_rules(netns, target["network-ip"])
+        shown = subprocess.run(
+            ["podman", "unshare", "nsenter", f"--net={netns}", "nft", "list", "table", "inet", "swt"],
+            check=True, capture_output=True, text=True,
+        ).stdout
+        self.assertNotIn(f"ip saddr {target['network-ip']}", shown)
+        decide = self.resume()
+        self.assertEqual(1, decide.returncode, decide.stderr)
+        self.assertIn("DECIDE ", decide.stdout)
+        repaired = self.resume("--confirm")
+        self.assertEqual(0, repaired.returncode, repaired.stderr)
+        self.assertIn(f"ip saddr {target['network-ip']}", self.nft_table(netns))
+
+    def test_ts501_resume_decide_then_fail_closed_chain(self) -> None:
+        before = self.birth_ready()
+        name = before["containers"][0]["name"]
+        old_pid = before["daemon"]["pid"]
+        stopped = subprocess.run(["podman", "stop", name], capture_output=True, text=True, check=False)
+        self.assertEqual(0, stopped.returncode, stopped.stderr)
+
+        decide = self.resume()
+        self.assertEqual(1, decide.returncode, decide.stderr)
+        self.assertIn("DECIDE ", decide.stdout)
+        self.assertIn("resume", decide.stdout)
+        self.assertIn("nft", decide.stdout)
+        self.assertIn("daemon", decide.stdout)
+
+        completed = self.resume("--confirm")
+        self.assertEqual(0, completed.returncode, completed.stderr)
+        state = self.state(completed)
+        container = next(item for item in state["containers"] if item["name"] == name)
+        self.assertEqual("running", container["state"])
+        self.assertTrue(state["daemon"]["pid"] != old_pid)
+        self.assertEqual(0, subprocess.run(["kill", "-0", str(state["daemon"]["pid"])], check=False).returncode)
+        table = self.nft_table(state["network"].get("netns"), source=container["network-ip"])
+        self.assertIn(f"ip saddr {container['network-ip']}", table)
+        self.assertEqual(0, self.ssh_run(state, "true").returncode)
+        fetched = self.ssh_run(state, "git -C /home/agent/workspace fetch --quiet origin")
+        self.assertEqual(0, fetched.returncode, fetched.stderr)
+
+    def test_ts502_resume_receipt_reopens_for_recreated_podman_id(self) -> None:
+        before = self.birth_ready()
+        name = before["containers"][0]["name"]
+        old_id = before["containers"][0]["podman-id"]
+        subprocess.run(["podman", "stop", name], check=True, capture_output=True, text=True)
+        first = self.resume()
+        self.assertEqual(1, first.returncode, first.stderr)
+        first_id = self.decide_id(first)
+
+        subprocess.run(["podman", "rm", name], check=True, capture_output=True, text=True)
+        self.container_names.append(name)
+        runtime = self.runtime_data()
+        labels = {
+            "sandbox-worktree.repo": str(self.repo.resolve()),
+            "sandbox-worktree.mother": runtime["mother"]["branch"],
+            "sandbox-worktree.name": name,
+            "sandbox-worktree.branch": runtime["mother"]["branch"],
+        }
+        create_args = ["podman", "create", "--name", name]
+        for key, value in labels.items():
+            create_args.extend(["--label", f"{key}={value}"])
+        create_args.extend(["-p", "22", self.IMAGE_REF])
+        created = subprocess.run(
+            create_args,
+            check=False, capture_output=True, text=True,
+        )
+        self.assertEqual(0, created.returncode, created.stderr)
+        second = self.resume("--confirm")
+        self.assertEqual(1, second.returncode, second.stderr)
+        second_id = self.decide_id(second)
+        self.assertNotEqual(first_id, second_id)
+        observed = json.loads(subprocess.run(["podman", "inspect", name], check=True, capture_output=True, text=True).stdout)[0]
+        self.assertNotEqual(old_id, observed["Id"])
+
+    def test_ts503_retired_container_requires_terminate(self) -> None:
+        before = self.birth_ready()
+        old_name = before["containers"][0]["name"]
+        self.make_target_mother()
+        switched = self.run_swt(
+            "switch", "--repo", str(self.repo), "--records-root", str(self.records), "--to", "feature/next",
+        )
+        self.assertEqual(0, switched.returncode, switched.stderr)
+        result = self.resume("--name", old_name)
+        self.assertEqual(2, result.returncode)
+        self.assertIn("retired", result.stderr)
+        self.assertIn("terminate", result.stderr)
+
+    def test_ts504_authorized_mother_drift_is_rejected(self) -> None:
+        before = self.birth_ready()
+        other = "feature/not-authorized"
+        subprocess.run(
+            ["git", "-C", str(self.repo), "config", "--unset-all", "receive.hideRefs"],
+            check=True, capture_output=True, text=True,
+        )
+        for value in ("refs/heads", f"!refs/heads/{other}", "refs/tags"):
+            subprocess.run(
+                ["git", "-C", str(self.repo), "config", "--add", "receive.hideRefs", value],
+                check=True, capture_output=True, text=True,
+            )
+        result = self.resume()
+        self.assertEqual(2, result.returncode)
+        self.assertIn("授权母体", result.stderr)
+        self.assertEqual("running", self.state(self.run_swt("status", "--repo", str(self.repo), "--records-root", str(self.records)))["containers"][0]["state"])
+
+    def test_ts505_ready_resume_is_idempotent_without_decide_or_daemon_reload(self) -> None:
+        before = self.birth_ready()
+        result = self.resume()
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertNotIn("DECIDE ", result.stdout)
+        state = self.state(result)
+        self.assertEqual(before["daemon"]["pid"], state["daemon"]["pid"])
+        self.assertEqual("running", state["containers"][0]["state"])
+
+    def test_ts506_stale_daemon_is_collected_before_resume(self) -> None:
+        before = self.birth_ready()
+        name = before["containers"][0]["name"]
+        old_pid = before["daemon"]["pid"]
+        subprocess.run(["podman", "stop", name], check=True, capture_output=True, text=True)
+        first = self.resume()
+        self.assertEqual(1, first.returncode, first.stderr)
+        completed = self.resume("--confirm")
+        self.assertEqual(0, completed.returncode, completed.stderr)
+        state = self.state(completed)
+        self.assertNotEqual(old_pid, state["daemon"]["pid"])
+        self.assertEqual(0, subprocess.run(["kill", "-0", str(state["daemon"]["pid"])], check=False).returncode)
+        audit = json.loads(next((self.records / "runtime").glob("*/audit.jsonl")).read_text(encoding="utf-8").splitlines()[0])
+        self.assertIn(old_pid, audit["killed-daemons"])
+
+    def test_ts507_resume_merge_preserves_sibling_network_rule(self) -> None:
+        first = self.birth_ready()
+        second_result = self.run_swt(
+            "birth", "--repo", str(self.repo), "--records-root", str(self.records), "--branch", "feature/m12",
+            "--image", "localhost/swt-m03:latest", "--mode", "whitelist", "--allow", "127.0.0.1",
+            "--reuse-mother", "--name", "swt-m12-resume-sibling",
+        )
+        self.assertEqual(0, second_result.returncode, second_result.stderr)
+        before = self.state(second_result)
+        target = first["containers"][0]
+        sibling = next(item for item in before["containers"] if item["name"] != target["name"])
+        subprocess.run(["podman", "stop", target["name"]], check=True, capture_output=True, text=True)
+        decide = self.resume("--name", target["name"])
+        self.assertEqual(1, decide.returncode, decide.stderr)
+        completed = self.resume("--name", target["name"], "--confirm")
+        self.assertEqual(0, completed.returncode, completed.stderr)
+        table = self.nft_table(self.runtime_data()["network"]["netns"])
+        self.assertIn(f"ip saddr {target['network-ip']}", table)
+        self.assertIn(f"ip saddr {sibling['network-ip']}", table)
+        self.assertEqual("running", next(item for item in self.state(completed)["containers"] if item["name"] == sibling["name"])["state"])
+
+    def test_ts508_port_collision_is_partial_and_release_allows_retry(self) -> None:
+        before = self.birth_ready()
+        name = before["containers"][0]["name"]
+        port = before["containers"][0]["ssh-port"]
+        subprocess.run(["podman", "stop", name], check=True, capture_output=True, text=True)
+        decide = self.resume()
+        self.assertEqual(1, decide.returncode, decide.stderr)
+        holder = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        holder.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        holder.bind(("0.0.0.0", port))
+        holder.listen(1)
+        try:
+            failed = self.resume("--confirm")
+            self.assertEqual(3, failed.returncode, failed.stderr)
+            self.assertTrue(failed.stderr.startswith("PARTIAL "))
+            self.assertIn("Address already in use", failed.stderr)
+        finally:
+            holder.close()
+        retry = self.resume()
+        self.assertEqual(0, retry.returncode, retry.stderr)
+        self.assertEqual("running", next(item for item in self.state(retry)["containers"] if item["name"] == name)["state"])

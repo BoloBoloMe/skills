@@ -41,6 +41,7 @@ CONFIG_KEYS = (
 )
 SLUG_SCRIPT = Path(__file__).resolve().parents[2] / "use-worktree" / "scripts" / "slug.py"
 _SLUG_CACHE: dict[Path, str] = {}
+MUTATING_COMMANDS = ("podman", "nft", "ssh", "uv", "pgrep")
 _UNSET = object()
 
 
@@ -692,13 +693,26 @@ def mark_newer_available(image: dict[str, Any], runtime: dict[str, Any] | None) 
     return result
 
 
-def decision_fingerprint(repo: Path, branch: str, mother: Path | None, image: dict[str, Any]) -> dict[str, Any]:
+def decision_fingerprint_base(
+    repo: Path,
+    branch: str | None,
+    mother: Path | None,
+) -> dict[str, Any]:
     return {
         "repo": str(repo.resolve()),
-        "mother": {"branch": branch, "dir": str(mother) if mother else None, "ref-tip": ref_tip(repo, branch)},
+        "mother": {
+            "branch": branch,
+            "dir": str(mother) if mother else None,
+            "ref-tip": ref_tip(repo, branch or "") if branch else None,
+        },
         "config": config_fingerprint(repo),
-        "image-digest": image.get("digest"),
     }
+
+
+def decision_fingerprint(repo: Path, branch: str, mother: Path | None, image: dict[str, Any]) -> dict[str, Any]:
+    fingerprint = decision_fingerprint_base(repo, branch, mother)
+    fingerprint["image-digest"] = image.get("digest")
+    return fingerprint
 
 
 def receipt_files(records_root: Path, identity: str, kind: str) -> list[Path]:
@@ -743,15 +757,6 @@ def expire_receipts(
             path.unlink(missing_ok=True)
             expired = True
     return expired
-
-
-def decision_fingerprint(repo: Path, branch: str, mother: Path | None, image: dict[str, Any]) -> dict[str, Any]:
-    return {
-        "repo": str(repo.resolve()),
-        "mother": {"branch": branch, "dir": str(mother) if mother else None, "ref-tip": ref_tip(repo, branch)},
-        "config": config_fingerprint(repo),
-        "image-digest": image.get("digest"),
-    }
 
 
 def decision_pending(
@@ -1452,6 +1457,12 @@ def podman_container_state(
             ssh_dirty = ssh_container_git_status(retired_record, ssh_port, branch, mother_tip)
             if ssh_dirty is not None:
                 dirty = ssh_dirty
+        network_ip = retired_record.get("network-ip")
+        if not isinstance(network_ip, str):
+            try:
+                network_ip = container_ip(detail)
+            except SwtError:
+                network_ip = None
         containers.append(
             {
                 "name": name,
@@ -1459,6 +1470,7 @@ def podman_container_state(
                 "podman-id": podman_id or None,
                 "state": state.get("Status") or row.get("State") or row.get("Status"),
                 "ssh-port": ssh_port,
+                "network-ip": network_ip,
                 "image-digest": image_digest,
                 "retired": bool(retired_record.get("retired", False)),
                 "dirty": dirty,
@@ -1537,27 +1549,21 @@ def terminate_decision_fingerprint(
     containers = runtime.get("containers", []) if isinstance(runtime, dict) else []
     if not isinstance(containers, list):
         containers = []
-    return {
-        "repo": str(repo.resolve()),
-        "mother": {
-            "branch": branch or target.get("branch"),
-            "dir": str(mother) if mother else None,
-            "ref-tip": ref_tip(repo, branch or str(target.get("branch") or "")),
-        },
+    fingerprint = decision_fingerprint_base(
+        repo, branch or target.get("branch"), mother,
+    )
+    fingerprint.update({
         "containers": [
-            {
-                "name": item.get("name"),
-                "podman-id": item.get("podman-id"),
-            }
+            {"name": item.get("name"), "podman-id": item.get("podman-id")}
             for item in containers
             if is_active_container(item)
         ],
         "image-digest": (runtime.get("image") or {}).get("digest") if isinstance(runtime, dict) and isinstance(runtime.get("image"), dict) else target.get("image-digest"),
-        "config": config_fingerprint(repo),
         "network": runtime.get("network") if isinstance(runtime, dict) else None,
         "dirty": target.get("dirty", {}),
         "target-branch": branch or target.get("branch"),
-    }
+    })
+    return fingerprint
 
 
 def terminate_state(repo: Path, records_root: Path, runtime: dict[str, Any] | None, progress: str) -> None:
@@ -1795,27 +1801,26 @@ def switch_decision_fingerprint(
     records = runtime.get("containers", [])
     if not isinstance(records, list):
         records = []
-    return {
-        "repo": str(repo.resolve()),
-        "mother": {
-            "branch": branch,
-            "dir": str(mother) if mother else None,
-            "ref-tip": ref_tip(repo, branch or ""),
-        },
+    branch, mother = runtime_mother(runtime)
+    records = runtime.get("containers", [])
+    if not isinstance(records, list):
+        records = []
+    fingerprint = decision_fingerprint_base(repo, branch, mother)
+    fingerprint.update({
         "containers": [
             {"name": item.get("name"), "podman-id": item.get("podman-id")}
             for item in records
             if is_active_container(item)
         ],
         "image-digest": (runtime.get("image") or {}).get("digest") if isinstance(runtime.get("image"), dict) else None,
-        "config": config_fingerprint(repo),
         "network": runtime.get("network"),
         "dirty": [
             {"name": item.get("name"), "dirty": item.get("dirty", {})}
             for item in dirty
         ],
         "target-branch": target_branch,
-    }
+    })
+    return fingerprint
 
 
 def switch_config(repo: Path, old_branch: str, target_branch: str) -> None:
@@ -2036,6 +2041,346 @@ def daemon_state(repo: Path, runtime: dict[str, Any] | None) -> dict[str, Any] |
     return result
 
 
+def resume_decision_fingerprint(
+    repo: Path,
+    runtime: dict[str, Any],
+    observed: list[dict[str, Any]],
+    target: dict[str, Any],
+    network_ready: bool,
+) -> dict[str, Any]:
+    branch, mother = runtime_mother(runtime)
+    fingerprint = decision_fingerprint_base(repo, branch, mother)
+    fingerprint.update({
+        "authorized-mother": configured_mother_branch(repo),
+        "containers": [
+            {
+                "name": item.get("name"),
+                "podman-id": item.get("podman-id"),
+                "state": item.get("state"),
+                "retired": bool(item.get("retired")),
+            }
+            for item in observed
+            if not item.get("retired")
+        ],
+        "target": {
+            "name": target.get("name"),
+            "podman-id": target.get("podman-id"),
+            "state": target.get("state"),
+        },
+        "network-ready": network_ready,
+        "network": runtime.get("network"),
+    })
+    return fingerprint
+
+
+def resume_container_candidates(
+    runtime: dict[str, Any],
+    observed: list[dict[str, Any]],
+    name: str | None,
+) -> tuple[dict[str, Any], list[dict[str, Any]]]:
+    records = runtime.get("containers", [])
+    if not isinstance(records, list):
+        records = []
+    observed_by_name = {item.get("name"): item for item in observed if item.get("name")}
+    candidates: list[dict[str, Any]] = []
+    for record in records:
+        if not isinstance(record, dict) or not record.get("name"):
+            continue
+        item = dict(record)
+        item.update(observed_by_name.get(record["name"], {}))
+        item["name"] = record["name"]
+        candidates.append(item)
+    if name:
+        target = next((item for item in candidates if item.get("name") == name), None)
+        if target is None:
+            raise PreconditionError(f"容器不存在或不属于当前 runtime: {name}")
+        return target, candidates
+    active = [item for item in candidates if not item.get("retired")]
+    if len(active) == 1:
+        return active[0], candidates
+    if len(active) > 1:
+        names = ", ".join(str(item.get("name")) for item in active)
+        raise PreconditionError(f"当前母体有多个可恢复容器, 请使用 --name; 候选: {names}")
+    if len(candidates) == 1:
+        return candidates[0], candidates
+    raise PreconditionError("当前母体没有可恢复容器")
+
+
+def resume_daemon_stale(daemon: dict[str, Any] | None, runtime: dict[str, Any]) -> bool:
+    recorded = runtime.get("daemon")
+    if not isinstance(recorded, dict) or not process_alive(recorded.get("pid")):
+        return True
+    return daemon is None or bool(daemon.get("orphan"))
+
+
+def resume_network_status(runtime: dict[str, Any], container_ip_value: object) -> tuple[bool, str]:
+    network = runtime.get("network")
+    if not isinstance(network, dict) or not isinstance(container_ip_value, str):
+        return False, ""
+    netns = network.get("netns")
+    if not isinstance(netns, str) or not netns:
+        netns = pasta_netns()
+    if not netns:
+        return False, ""
+    script = Path(__file__).with_name("net-firewall.py")
+    result = run(["uv", "run", "python", str(script), "show", "--netns", netns], timeout=10)
+    return result.returncode == 0 and f"ip saddr {container_ip_value} " in result.stdout, result.stdout
+
+
+def resume_ready(target: dict[str, Any], daemon_ready: bool, network_ready: bool) -> bool:
+    return target.get("state") == "running" and daemon_ready and network_ready
+
+
+def collect_resume_daemons(repo: Path, runtime: dict[str, Any]) -> list[int]:
+    pids = set(daemon_pids(repo))
+    recorded = runtime.get("daemon")
+    if isinstance(recorded, dict) and isinstance(recorded.get("pid"), int):
+        pids.add(recorded["pid"])
+    killed: list[int] = []
+    for pid in sorted(pids):
+        if pid == os.getpid() or not process_alive(pid):
+            continue
+        killed.append(pid)
+        try:
+            os.kill(pid, signal.SIGTERM)
+        except ProcessLookupError:
+            continue
+    deadline = time.monotonic() + 2
+    while time.monotonic() < deadline and any(process_alive(pid) for pid in pids):
+        time.sleep(0.05)
+    for pid in sorted(pids):
+        if process_alive(pid):
+            try:
+                os.kill(pid, signal.SIGKILL)
+            except ProcessLookupError:
+                pass
+    remaining = daemon_pids(repo)
+    if remaining:
+        raise SwtError(3, "PARTIAL", f"resume 收 daemon 失败(pid={remaining}), 请人工终止后重跑")
+    return killed
+
+
+def resume_probe(
+    record: dict[str, Any],
+    daemon_address: str,
+    daemon_port: int,
+) -> None:
+    key_value = record.get("ssh_private_key") or record.get("ssh-private-key")
+    port = record.get("ssh-port")
+    if not isinstance(key_value, str) or not isinstance(port, int):
+        raise SwtError(3, "PARTIAL", "resume 缺少 SSH runtime 记录, 无法校验就绪")
+    key = Path(key_value)
+    if not key.is_file():
+        raise SwtError(3, "PARTIAL", f"resume SSH 私钥不存在: {key}")
+    remote = record.get("remote")
+    if not isinstance(remote, str):
+        repo_name = record.get("repo-name") or ""
+        remote = f"git://{daemon_address}:{daemon_port}/{repo_name}" if repo_name else None
+    if not isinstance(remote, str):
+        raise SwtError(3, "PARTIAL", "resume 缺少 daemon 远端地址")
+    wait_for_ssh(key, port)
+    probe = ssh_command(key, port, f"git ls-remote {shlex.quote(remote)}", timeout=10)
+    if probe.returncode != 0:
+        raise SwtError(3, "PARTIAL", f"daemon probe 失败: {probe.stderr.strip()}")
+    clone_dir = record.get("clone_dir") or record.get("clone-dir") or "/home/agent/workspace"
+    set_remote = ssh_command(
+        key, port,
+        f"git -C {shlex.quote(str(clone_dir))} remote set-url origin {shlex.quote(remote)}",
+        timeout=10,
+    )
+    if set_remote.returncode != 0:
+        raise SwtError(3, "PARTIAL", f"容器 remote 更新失败: {set_remote.stderr.strip()}")
+    fetched = ssh_command(
+        key, port,
+        f"git -C {shlex.quote(str(clone_dir))} fetch --quiet origin",
+        timeout=20,
+    )
+    if fetched.returncode != 0:
+        raise SwtError(3, "PARTIAL", f"容器 git fetch probe 失败: {fetched.stderr.strip()}")
+    record["remote"] = remote
+
+
+def resume(args: argparse.Namespace, repo: Path) -> int:
+    records_root = args.records_root.expanduser().resolve()
+    runtime_file = runtime_path(records_root, repo)
+    runtime = load_runtime(runtime_file)
+    if runtime is None:
+        raise PreconditionError("没有 runtime 记录, 请先使用 birth")
+    branch, _mother = runtime_mother(runtime)
+    if not branch:
+        raise PreconditionError("runtime 缺少授权母体分支, 请先人工恢复或 terminate")
+    authorized = configured_mother_branch(repo)
+    if authorized != branch:
+        raise PreconditionError(
+            f"授权母体不匹配: runtime={branch}, 当前 config={authorized}; 请先恢复授权配置"
+        )
+
+    observed = podman_container_state(repo, runtime)
+    target, candidates = resume_container_candidates(runtime, observed, args.name)
+    if target.get("retired"):
+        raise PreconditionError(
+            f"容器 {target.get('name')} 已 retired, resume 被拒绝; 唯一出路是 terminate"
+        )
+    daemon_observed = daemon_state(repo, runtime)
+    daemon_ready = not resume_daemon_stale(daemon_observed, runtime)
+    network_ready, _network_output = resume_network_status(runtime, target.get("network-ip"))
+    active_observed = [item for item in candidates if not item.get("retired")]
+    fingerprint = resume_decision_fingerprint(
+        repo, runtime, active_observed, target, network_ready,
+    )
+    identity = runtime_file.stem
+    recoverable = not resume_ready(target, daemon_ready, network_ready)
+    if not recoverable:
+        runtime.pop("resume", None)
+        runtime["stage"] = "born"
+        atomic_write_json(runtime_file, runtime)
+        print_state(
+            build_state(repo, records_root, runtime, mother=_UNSET, containers=observed,
+                        daemon=daemon_observed, image=_UNSET, network=_UNSET),
+            "[SWT] resume: 已就绪, 什么都没有需要恢复",
+        )
+        return 0
+
+    resume_record = runtime.get("resume")
+    answered = (
+        isinstance(resume_record, dict)
+        and resume_record.get("answered") is True
+        and canonical_json(resume_record.get("fingerprint")) == canonical_json(fingerprint)
+    )
+    receipt = matching_receipt(records_root, identity, "resume", fingerprint)
+    receipt_payload = json.loads(receipt.read_text(encoding="utf-8")) if receipt is not None else None
+    stale = bool(receipt_files(records_root, identity, "resume") and receipt is None)
+    if stale:
+        expire_receipts(records_root, identity, "resume", fingerprint)
+        receipt = None
+        answered = False
+    pending = decision_pending(
+        records_root,
+        identity,
+        "resume",
+        fingerprint,
+        answered or (args.confirm and receipt is not None),
+        "检测到可恢复对象, 将收 stale daemon/start 容器/重拉 daemon/nft --merge/SSH 与 git fetch 校验",
+        "恢复前提已变化, 请重新确认",
+        ["--confirm"],
+        stale,
+    )
+    if pending:
+        pending_kind, pending_question, pending_options = pending
+        receipt = matching_receipt(records_root, identity, pending_kind, fingerprint)
+        if receipt is None:
+            receipt = create_receipt(
+                records_root, identity, pending_kind, fingerprint, pending_options,
+            )
+        print(decision_line(receipt, pending_kind, pending_question, pending_options))
+        print_state(
+            build_state(repo, records_root, runtime, mother=_UNSET, containers=observed,
+                        daemon=daemon_observed, image=_UNSET, network=_UNSET),
+            "[SWT] resume: 等待用户决定",
+        )
+        return 1
+    if receipt is not None:
+        runtime["resume"] = {
+            "answered": True,
+            "decision-id": receipt_payload["id"] if receipt_payload else None,
+            "fingerprint": fingerprint,
+        }
+        atomic_write_json(runtime_file, runtime)
+
+    target_name = str(target.get("name"))
+    record = next(
+        (item for item in runtime.get("containers", [])
+         if isinstance(item, dict) and item.get("name") == target_name),
+        None,
+    )
+    if record is None:
+        raise PreconditionError(f"容器 {target_name} 缺少 runtime 记录")
+    runtime["stage"] = "resume-start"
+    atomic_write_json(runtime_file, runtime)
+    killed: list[int] = []
+    stale_daemon_pid = (
+        runtime.get("daemon", {}).get("pid")
+        if isinstance(runtime.get("daemon"), dict) and resume_daemon_stale(daemon_observed, runtime)
+        else None
+    )
+    try:
+        killed = collect_resume_daemons(repo, runtime)
+        detail = inspect_container(target_name)
+        state = detail.get("State") if isinstance(detail.get("State"), dict) else {}
+        if state.get("Status") != "running":
+            started = run(["podman", "start", target_name], timeout=30)
+            if started.returncode != 0:
+                raise SwtError(3, "PARTIAL", f"resume container-start {target_name}: {started.stderr.strip()}")
+        detail = inspect_container(target_name)
+        record.update({
+            "podman-id": detail.get("Id"), "state": "running",
+            "network-ip": container_ip(detail), "retired": False,
+        })
+        runtime["stage"] = "resume-container-started"
+        upsert_container_record(runtime, record, runtime_file)
+
+        daemon = start_daemon(repo)
+        daemon_record = {
+            "pid": daemon.process.pid, "addr": daemon.address, "port": daemon.port,
+            "base-path": str(daemon.base_path), "orphan": False,
+        }
+        runtime["daemon"] = daemon_record
+        runtime["stage"] = "resume-daemon"
+        atomic_write_json(runtime_file, runtime)
+
+        netns = container_netns(detail) or pasta_netns()
+        if not netns:
+            raise SwtError(3, "PARTIAL", "resume 找不到容器 netns")
+        network = runtime.get("network") if isinstance(runtime.get("network"), dict) else {}
+        daemon_address = daemon_container_address(str(daemon_record["addr"]))
+        gateway = container_gateway(target_name, daemon_address)
+        route_gateway = container_route_gateway(detail)
+        network.update({"gateway": gateway, "route-gateway": route_gateway, "netns": netns})
+        plan = network_plan_from_record(network, record, netns)
+        if plan is None:
+            raise SwtError(3, "PARTIAL", "resume 缺少网络参数, 无法 fail-closed 注入")
+        runtime["network"] = apply_network(plan)
+        runtime["network"].update({"container-ip": record["network-ip"], "netns": netns})
+        active_records = [
+            item for item in runtime.get("containers", [])
+            if isinstance(item, dict) and not item.get("retired") and item.get("name") != target_name
+        ]
+        apply_sibling_networks(runtime["network"], active_records, {netns})
+        runtime["stage"] = "resume-network"
+        atomic_write_json(runtime_file, runtime)
+
+        record["daemon-addr"] = daemon_address
+        record["remote"] = f"git://{daemon_address}:{int(daemon_record['port'])}/{repo.name}"
+        record["ssh-port"] = container_ssh_port(target_name)
+        resume_probe(record, daemon_address, int(daemon_record["port"]))
+        runtime["stage"] = "born"
+        runtime.pop("resume", None)
+        runtime["network"]["table-present"] = True
+        atomic_write_json(runtime_file, runtime)
+        if killed or isinstance(stale_daemon_pid, int):
+            append_audit_entry(records_root, identity, {
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "action": "resume", "killed-daemons": killed,
+                "stale-daemon": stale_daemon_pid,
+            })
+    except SwtError:
+        runtime["partial-error"] = "resume 执行失败"
+        atomic_write_json(runtime_file, runtime)
+        raise
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        runtime["partial-error"] = str(exc)
+        atomic_write_json(runtime_file, runtime)
+        raise SwtError(3, "PARTIAL", f"resume 中途失败: {exc}") from exc
+
+    observed = podman_container_state(repo, runtime)
+    print_state(
+        build_state(repo, records_root, runtime, mother=_UNSET, containers=observed,
+                    daemon=daemon_record, image=_UNSET, network=_UNSET),
+        "[SWT] resume: 已完成 fail-closed 恢复",
+    )
+    return 0
+
+
 def network_state(runtime: dict[str, Any] | None) -> dict[str, Any] | None:
     network = runtime.get("network") if isinstance(runtime, dict) else None
     if not isinstance(network, dict):
@@ -2226,12 +2571,16 @@ def main(argv: list[str]) -> int:
         try:
             if args.command == "birth":
                 return birth(args, repo)
+            if args.command == "resume":
+                for command in MUTATING_COMMANDS:
+                    require_command(command)
+                return resume(args, repo)
             if args.command == "terminate":
-                for command in ("podman", "nft", "ssh", "uv", "pgrep"):
+                for command in MUTATING_COMMANDS:
                     require_command(command)
                 return terminate(args, repo)
             if args.command == "switch":
-                for command in ("podman", "nft", "ssh", "uv", "pgrep"):
+                for command in MUTATING_COMMANDS:
                     require_command(command)
                 if not args.to:
                     raise PreconditionError("switch 必须指定 --to")
