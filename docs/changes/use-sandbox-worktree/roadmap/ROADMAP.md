@@ -48,11 +48,12 @@ use-sandbox-worktree skill 落地并经端到端演练验证可用 — 它管理
 - [MILESTONE-07](MILESTONE-07.md) — 镜像制备闭环已实现: build-base/match/build, 需求与实测内容物比对, base-digest 硬匹配, 30 项测试全绿 — 详见 [../milestone-07-image-prep-run.md](../milestone-07-image-prep-run.md)
 - [MILESTONE-09](MILESTONE-09.md) — 登录墙闭环已实现并真链路实测: login-wall build/up/down/verify + 浏览器项目层清单 + 容器内 swt-vnc, 31 项测试全绿, 真记录根 dogfood 6 检查全过 — 详见 [../milestone-09-login-wall-run.md](../milestone-09-login-wall-run.md)
 - [MILESTONE-11](MILESTONE-11.md) — 五场景抽取方案拍完: 单 module `swt` 五子命令 (birth/resume/status/terminate/switch) + 决策收据协议 + 危险操作显式独立; 反方攻击 9 项成立已转为修正 (D025-D038) — 详见 [../DECISIONS.md](../DECISIONS.md) D025-D038, [反方审查](../milestone-11-opposing-review.md), 设计稿 [min](../milestone-11-design-min.md)/[flex](../milestone-11-design-flex.md)/[caller](../milestone-11-design-caller.md), [ADR 0009](../../adr/0009-swt-five-subcommands-decision-receipt.md)
+- [MILESTONE-12](MILESTONE-12.md) — swt 五子命令已实现 (ISSUE-05..11, commit 01d6146..3b92b21): 骨架/status/net-firewall 扩展 (remove+--merge)/birth/terminate/switch/resume 全链 TDD, tests/test_swt_m12.py 84 用例全绿 + m04/m07/m09 回归绿; D036 等价矩阵 13/13 后 e2e-smoke 退役; TECHNICAL.md 字面缺口 (2)(3) 已补 — 详见 [../EXECUTION-M12.md](../EXECUTION-M12.md), [../issues/](../issues/), [AFK 补钉 U-001..013](../UNAUTHORIZED_DECISIONS.md)
 
 ## 前沿
 
 <!-- 开放 + 已解除阻塞 + 未被认领的 Milestone -->
-- [MILESTONE-12](MILESTONE-12.md) — `task` (AFK 编码, tdd-as-orchestra) — swt 五子命令实现 (方案 D025-D038 在手)
+- [MILESTONE-10](MILESTONE-10.md) — `task` — SKILL.md 定稿 + 全链演练 (全部阻塞项已关闭)
 
 ## 未决迷雾
 
@@ -74,10 +75,9 @@ M01(已关闭) ──┐
 M02(已关闭) ──┘                 │                       │
                                 ├─→ M08(已关闭) ─────────┤
                                 │                       │
-                                └─→ M11(已关闭) ─→ M12 ──┤
+                                └─→ M11(已关闭) ─→ M12(已关闭) ──┤
 M05(已关闭) ─→ M06(已关闭) ────┴─→ M07(已关闭) ─→ M09(已关闭) ┴─→ M10 ─→ 目的地
 ```
 
-- M01..M11 全部已关闭; 前沿 = MILESTONE-12 (AFK task)
-- 关键路径推进为: M12 → M10
-- M12 (swt 实现, AFK) 阻塞 M10 (SKILL.md 引用场景脚本)
+- M01..M12 全部已关闭; 前沿 = MILESTONE-10 (最后一个 Milestone, 关闭即达目的地)
+- M12 已交付 swt 五子命令实现 (ISSUE-05..11), M10 的 SKILL.md 引用对象已就绪
