@@ -375,6 +375,20 @@ def ref_tip(repo: Path, branch: str) -> str | None:
     return result.stdout.strip() if result.returncode == 0 else None
 
 
+def create_mother_worktree(repo: Path, branch: str, base: str | None = None) -> Path:
+    directory = mother_path(repo, branch)
+    directory.parent.mkdir(parents=True, exist_ok=True)
+    result = run([
+        "git", "-C", str(repo), "worktree", "add", "-b", branch,
+        str(directory), base or default_branch(repo),
+    ])
+    if result.returncode != 0:
+        raise PreconditionError(f"创建母体失败: {result.stderr.strip()}")
+    return directory
+
+
+
+
 def live_repo_containers(repo: Path) -> list[dict[str, Any]]:
     try:
         return podman_json([
@@ -769,6 +783,34 @@ def decision_line(path: Path, kind: str, question: str, options: list[str]) -> s
     return f"DECIDE {payload['id']} {kind} {question} 选项: {' '.join(options)}"
 
 
+def handle_dirty_decision(
+    records_root: Path,
+    identity: str,
+    kind: str,
+    fingerprint: dict[str, Any],
+    dirty: bool,
+    force: bool,
+    question: str,
+    options: list[str],
+) -> tuple[bool, str | None]:
+    expire_receipts(records_root, identity, kind, fingerprint)
+    receipt = matching_receipt(records_root, identity, kind, fingerprint)
+    if dirty and (not force or receipt is None):
+        if receipt is None:
+            receipt = create_receipt(records_root, identity, kind, fingerprint, options)
+        print(decision_line(receipt, kind, question, options))
+        return True, None
+    if not dirty:
+        return False, None
+    payload = json.loads(receipt.read_text(encoding="utf-8")) if receipt else {}
+    decision_id = payload.get("id")
+    if not isinstance(decision_id, str) or not consume_receipt(records_root, identity, kind, fingerprint):
+        raise SwtError(3, "PARTIAL", f"{kind} 决策收据消费失败, 请重新执行并确认")
+    return False, decision_id
+
+
+
+
 def print_birth_state(
     repo: Path,
     records_root: Path,
@@ -1048,6 +1090,7 @@ def birth(args: argparse.Namespace, repo: Path) -> int:
 
     mother_kind = "mother-reuse" if mother_dir else "mother-create"
     partial_runtime = bool(runtime_existing and runtime_existing.get("stage") != "born")
+    prefer_container_netns = False
     if mother_dir and args.new_mother and not partial_runtime:
         raise PreconditionError("母体已存在, 不能使用 --new-mother")
     if not mother_dir and args.reuse_mother:
@@ -1085,6 +1128,30 @@ def birth(args: argparse.Namespace, repo: Path) -> int:
         daemon_record = runtime.get("daemon")
         if not isinstance(daemon_record, dict) or not process_alive(daemon_record.get("pid")):
             raise PreconditionError("已有 runtime 但 daemon 不存活, 请先使用 resume")
+    elif runtime_existing and runtime_existing.get("stage") == "switched":
+        runtime = runtime_existing
+        current_branch, _ = runtime_mother(runtime)
+        if current_branch != branch or any(
+            is_active_container(item)
+            for item in runtime.get("containers", [])
+        ):
+            raise PreconditionError("switch 后 runtime 只允许对当前目标母体重新 birth")
+        if mother_dir is None:
+            mother_dir = create_mother_worktree(repo, branch, args.base)
+        runtime["mother"] = {"branch": branch, "dir": str(mother_dir)}
+        runtime["mother_branch"] = branch
+        runtime["mother_dir"] = str(mother_dir)
+        runtime["config"] = {"swt-form": config_matches(repo, branch)}
+        runtime["network"] = network_input
+        prefer_container_netns = True
+        daemon = start_daemon(repo)
+        daemon_record = {
+            "pid": daemon.process.pid, "addr": daemon.address, "port": daemon.port,
+            "base-path": str(daemon.base_path), "orphan": False,
+        }
+        runtime["daemon"] = daemon_record
+        runtime["stage"] = "daemon"
+        atomic_write_json(runtime_file, runtime)
     elif runtime_existing:
         if runtime_existing.get("stage") not in {"container-created", "container-started", "network", "ssh-ready"}:
             raise PreconditionError("已有未完成 birth runtime, 请按 PARTIAL 指引处理")
@@ -1097,12 +1164,7 @@ def birth(args: argparse.Namespace, repo: Path) -> int:
         expected = expected_config(branch)
         validate_config_before_resources(repo, expected)
         if mother_dir is None:
-            mother_dir = mother_path(repo, branch)
-            mother_dir.parent.mkdir(parents=True, exist_ok=True)
-            base = args.base or default_branch(repo)
-            result = run(["git", "-C", str(repo), "worktree", "add", "-b", branch, str(mother_dir), base])
-            if result.returncode != 0:
-                raise PreconditionError(f"创建母体失败: {result.stderr.strip()}")
+            mother_dir = create_mother_worktree(repo, branch, args.base)
         elif not mother_dir.is_dir():
             raise PreconditionError(f"母体目录不存在: {mother_dir}")
         runtime = {
@@ -1142,7 +1204,7 @@ def birth(args: argparse.Namespace, repo: Path) -> int:
         gateway_address = container_gateway(container["name"], daemon_address)
         route_gateway = container_route_gateway(container["detail"])
         ip_value = container_ip(container["detail"])
-        shared_netns = pasta_netns() or container_netns(container["detail"])
+        shared_netns = (container_netns(container["detail"]) if prefer_container_netns else None) or pasta_netns() or container_netns(container["detail"])
         container["record"]["network-ip"] = ip_value
         runtime["network"] = apply_network(
             NetworkPlan(
@@ -1159,7 +1221,10 @@ def birth(args: argparse.Namespace, repo: Path) -> int:
         if own_netns and own_netns != shared_netns:
             apply_sibling_networks(
                 runtime["network"],
-                [item for item in runtime.get("containers", []) if isinstance(item, dict)],
+                [
+                    item for item in runtime.get("containers", [])
+                    if is_active_container(item)
+                ],
                 {own_netns},
             )
         runtime["stage"] = "network"
@@ -1414,7 +1479,7 @@ def terminate_container_candidates(
     candidates: list[dict[str, Any]] = []
     names = set(by_name)
     for item in runtime_records:
-        if isinstance(item, dict) and not item.get("retired") and item.get("name"):
+        if is_active_container(item) and item.get("name"):
             names.add(str(item["name"]))
     for name in sorted(names):
         record = next(
@@ -1434,6 +1499,10 @@ def terminate_container_candidates(
             }
         candidates.append(target)
     return candidates, observed
+
+
+def is_active_container(item: Any) -> bool:
+    return isinstance(item, dict) and not item.get("retired")
 
 
 def terminate_dirty(dirty: dict[str, Any]) -> bool:
@@ -1481,7 +1550,7 @@ def terminate_decision_fingerprint(
                 "podman-id": item.get("podman-id"),
             }
             for item in containers
-            if isinstance(item, dict) and not item.get("retired")
+            if is_active_container(item)
         ],
         "image-digest": (runtime.get("image") or {}).get("digest") if isinstance(runtime, dict) and isinstance(runtime.get("image"), dict) else target.get("image-digest"),
         "config": config_fingerprint(repo),
@@ -1511,14 +1580,20 @@ def terminate_state(repo: Path, records_root: Path, runtime: dict[str, Any] | No
     )
 
 
+def append_audit_entry(records_root: Path, identity: str, entry: dict[str, Any]) -> Path:
+    path = records_root / "runtime" / identity / "audit.jsonl"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("a", encoding="utf-8") as stream:
+        stream.write(canonical_json(entry) + "\n")
+    return path
+
+
 def append_audit(
     records_root: Path,
     identity: str,
     target: dict[str, Any],
     decision_id: str,
 ) -> Path:
-    path = records_root / "runtime" / identity / "audit.jsonl"
-    path.parent.mkdir(parents=True, exist_ok=True)
     entry = {
         "timestamp": datetime.now(timezone.utc).isoformat(),
         "container": target.get("name"),
@@ -1526,9 +1601,27 @@ def append_audit(
         "dirty": target.get("dirty"),
         "decision-id": decision_id,
     }
-    with path.open("a", encoding="utf-8") as stream:
-        stream.write(canonical_json(entry) + "\n")
-    return path
+    return append_audit_entry(records_root, identity, entry)
+
+
+def append_switch_audit(
+    records_root: Path,
+    identity: str,
+    dirty_items: list[dict[str, Any]],
+    decision_id: str,
+    target_branch: str,
+) -> Path:
+    entry = {
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "action": "switch",
+        "decision-id": decision_id,
+        "target-branch": target_branch,
+        "containers": [
+            {"name": item.get("name"), "podman-id": item.get("podman-id"), "dirty": item.get("dirty")}
+            for item in dirty_items
+        ],
+    }
+    return append_audit_entry(records_root, identity, entry)
 
 
 def stop_repo_daemons(repo: Path, runtime: dict[str, Any] | None) -> None:
@@ -1605,26 +1698,18 @@ def terminate(args: argparse.Namespace, repo: Path) -> int:
     observed_names = {item.get("name") for item in observed}
     fingerprint = terminate_decision_fingerprint(repo, runtime, target)
     identity = runtime_file.stem
-    expire_receipts(records_root, identity, "terminate-dirty", fingerprint)
     dirty = terminate_dirty(target.get("dirty", {})) if target_name in {item.get("name") for item in observed} else False
-    receipt = matching_receipt(records_root, identity, "terminate-dirty", fingerprint)
-    decision_id: str | None = None
-    if dirty and (not args.force or receipt is None):
-        if receipt is None:
-            receipt = create_receipt(records_root, identity, "terminate-dirty", fingerprint, ["--force"])
-        payload = json.loads(receipt.read_text(encoding="utf-8"))
-        question = (
-            f"容器 {target_name} 脏检查为 {dirty_explanation(target['dirty'])}; "
-            "请确认容器内 agent 已停手后再强拆"
-        )
-        print(decision_line(receipt, "terminate-dirty", question, ["--force"]))
+    question = (
+        f"容器 {target_name} 脏检查为 {dirty_explanation(target['dirty'])}; "
+        "请确认容器内 agent 已停手后再强拆"
+    )
+    blocked, decision_id = handle_dirty_decision(
+        records_root, identity, "terminate-dirty", fingerprint, dirty,
+        args.force, question, ["--force"],
+    )
+    if blocked:
         terminate_state(repo, records_root, runtime, "[SWT] terminate: 等待用户决定")
         return 1
-    if dirty:
-        payload = json.loads(receipt.read_text(encoding="utf-8")) if receipt else {}
-        decision_id = payload.get("id")
-        if not isinstance(decision_id, str) or not consume_receipt(records_root, identity, "terminate-dirty", fingerprint):
-            raise SwtError(3, "PARTIAL", "terminate 决策收据消费失败, 请重新执行并确认")
 
     if dirty and args.force:
         append_audit(records_root, identity, target, decision_id)
@@ -1698,6 +1783,208 @@ def daemon_matches_repo(repo: Path, command: str) -> bool:
         base_path = match.group(1).strip("'\"")
         return Path(base_path).expanduser().resolve() == repo.parent.resolve()
     return str(repo.parent) in command
+
+
+def switch_decision_fingerprint(
+    repo: Path,
+    runtime: dict[str, Any],
+    target_branch: str,
+    dirty: list[dict[str, Any]],
+) -> dict[str, Any]:
+    branch, mother = runtime_mother(runtime)
+    records = runtime.get("containers", [])
+    if not isinstance(records, list):
+        records = []
+    return {
+        "repo": str(repo.resolve()),
+        "mother": {
+            "branch": branch,
+            "dir": str(mother) if mother else None,
+            "ref-tip": ref_tip(repo, branch or ""),
+        },
+        "containers": [
+            {"name": item.get("name"), "podman-id": item.get("podman-id")}
+            for item in records
+            if is_active_container(item)
+        ],
+        "image-digest": (runtime.get("image") or {}).get("digest") if isinstance(runtime.get("image"), dict) else None,
+        "config": config_fingerprint(repo),
+        "network": runtime.get("network"),
+        "dirty": [
+            {"name": item.get("name"), "dirty": item.get("dirty", {})}
+            for item in dirty
+        ],
+        "target-branch": target_branch,
+    }
+
+
+def switch_config(repo: Path, old_branch: str, target_branch: str) -> None:
+    old_exception = f"!refs/heads/{old_branch}"
+    new_exception = f"!refs/heads/{target_branch}"
+    expected = expected_config(target_branch)
+    pattern = f"^!refs/heads/{re.escape(old_branch)}$"
+    for key in ("receive.hideRefs", "uploadpack.hideRefs"):
+        actual = git_values(repo, key)
+        if new_exception in actual:
+            continue
+        if old_exception not in actual:
+            raise SwtError(3, "PARTIAL", f"git config {key} 缺少旧母体例外, 授权域空窗")
+        replaced = run([
+            "git", "-C", str(repo), "config", "--replace-all", key,
+            new_exception, pattern,
+        ])
+        if replaced.returncode != 0:
+            raise SwtError(3, "PARTIAL", f"切换 git config {key} 写入失败: {replaced.stderr.strip()}")
+    for key, wanted in expected.items():
+        if git_values(repo, key) != wanted:
+            raise SwtError(3, "PARTIAL", f"切换后 git config {key} 校验失败, 授权域可能为空窗")
+
+
+def record_switch_partial(runtime_file: Path, runtime: dict[str, Any], message: str) -> None:
+    runtime["stage"] = "switch-partial"
+    runtime["authorized-mother"] = None
+    runtime["partial-error"] = message
+    atomic_write_json(runtime_file, runtime)
+
+
+def switch_state(
+    repo: Path,
+    records_root: Path,
+    runtime: dict[str, Any],
+    target_branch: str,
+    target_mother: Path | None,
+    target_exists: bool,
+    progress: str,
+) -> None:
+    containers = podman_container_state(repo, runtime)
+    state = build_state(
+        repo,
+        records_root,
+        runtime,
+        mother={
+            "branch": target_branch,
+            "dir": str(target_mother) if target_mother else None,
+            "exists": target_exists,
+            "worktree-dirty": False,
+        },
+        containers=containers,
+        daemon=None,
+        image=image_state(records_root, repo, runtime, containers),
+        network=network_state(runtime),
+    )
+    state["target-mother-exists"] = target_exists
+    state["authorized-mother"] = target_branch
+    print_state(state, progress)
+
+
+def switch(args: argparse.Namespace, repo: Path) -> int:
+    records_root = args.records_root.expanduser().resolve()
+    runtime_file = runtime_path(records_root, repo)
+    runtime = load_runtime(runtime_file)
+    target_branch = resolve_branch_slug(repo, args.to)
+    if runtime is None:
+        raise PreconditionError("没有活动母体, switch 无对象, 请直接使用 birth")
+    old_branch, old_mother = runtime_mother(runtime)
+    active_records = [
+        item for item in runtime.get("containers", [])
+        if is_active_container(item)
+    ]
+    if not old_branch or not active_records:
+        raise PreconditionError("没有活动母体, switch 无对象, 请直接使用 birth")
+    if target_branch == old_branch:
+        raise PreconditionError("目标母体就是当前活动母体, 无需 switch")
+
+    target_ref = ref_tip(repo, target_branch)
+    target_dir, target_dirty = find_mother(repo, target_branch)
+    if target_ref is not None and target_dir is None:
+        raise PreconditionError("目标分支已有 ref 但没有对应母体 worktree, 请先建立目标母体")
+    if target_dir is not None and target_dirty:
+        raise PreconditionError(f"目标母体工作树脏, 请先人工处理: {target_dir}")
+
+    partial_switch = runtime.get("stage") == "switch-partial"
+    observed = podman_container_state(repo, runtime)
+    observed_by_name = {item.get("name"): item for item in observed}
+    dirty_items: list[dict[str, Any]] = []
+    if not partial_switch:
+        for record in active_records:
+            name = record.get("name")
+            item = observed_by_name.get(name, {"name": name, "dirty": {"reachable": False}})
+            if terminate_dirty(item.get("dirty", {})):
+                dirty_items.append(item)
+    fingerprint = switch_decision_fingerprint(repo, runtime, target_branch, dirty_items)
+    identity = runtime_file.stem
+    details = "; ".join(
+        f"{item.get('name')}: {dirty_explanation(item.get('dirty', {}))}"
+        for item in dirty_items
+    )
+    blocked, decision_id = handle_dirty_decision(
+        records_root, identity, "switch-dirty", fingerprint, bool(dirty_items),
+        args.force,
+        f"旧母体容器脏检查: {details}; 请确认容器内 agent 已停手后切换",
+        ["--force"],
+    )
+    if blocked:
+        switch_state(repo, records_root, runtime, old_branch, old_mother, bool(old_mother), "[SWT] switch: 等待用户决定")
+        return 1
+    if dirty_items:
+        append_switch_audit(records_root, identity, dirty_items, decision_id, target_branch)
+
+    runtime["switch"] = {
+        "from": old_branch,
+        "to": target_branch,
+        "target-mother-exists": target_dir is not None,
+    }
+    runtime["stage"] = "switch-stopped"
+    atomic_write_json(runtime_file, runtime)
+    try:
+        network = runtime.get("network") if isinstance(runtime.get("network"), dict) else {}
+        netns = network.get("netns") if isinstance(network, dict) else None
+        if not partial_switch:
+            for record in active_records:
+                target = dict(record)
+                remove_container_firewall(runtime, target, True, netns if isinstance(netns, str) else None)
+        runtime["stage"] = "switch-network"
+        atomic_write_json(runtime_file, runtime)
+
+        for record in active_records:
+            name = record.get("name")
+            if not isinstance(name, str):
+                continue
+            inspected = run(["podman", "inspect", name])
+            if inspected.returncode == 0:
+                stopped = run(["podman", "stop", name], timeout=30)
+                if stopped.returncode != 0:
+                    raise SwtError(3, "PARTIAL", f"停止旧容器 {name} 失败: {stopped.stderr.strip()}")
+        stop_repo_daemons(repo, runtime)
+        runtime["daemon"] = None
+        runtime["stage"] = "switch-stopped"
+        atomic_write_json(runtime_file, runtime)
+
+        runtime["stage"] = "switch-config"
+        atomic_write_json(runtime_file, runtime)
+        switch_config(repo, old_branch, target_branch)
+    except SwtError as exc:
+        record_switch_partial(runtime_file, runtime, exc.message)
+        if exc.code == 3:
+            raise SwtError(3, "PARTIAL", f"switch 中途失败, 当前为授权域空窗; 唯一恢复路径: 重跑 switch --to {args.to} 或对旧母体 birth: {exc.message}") from exc
+        raise
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        record_switch_partial(runtime_file, runtime, str(exc))
+        raise SwtError(3, "PARTIAL", f"switch 中途失败, 当前为授权域空窗; 唯一恢复路径: 重跑 switch --to {args.to} 或对旧母体 birth: {exc}") from exc
+
+    for record in runtime.get("containers", []):
+        if isinstance(record, dict) and not record.get("retired"):
+            record["retired"] = True
+            record["state"] = "exited"
+    runtime["mother"] = {"branch": target_branch, "dir": str(target_dir) if target_dir else None}
+    runtime["mother_branch"] = target_branch
+    runtime["mother_dir"] = str(target_dir) if target_dir else None
+    runtime["authorized-mother"] = target_branch
+    runtime["stage"] = "switched"
+    runtime["network"] = {**network, "table-present": False} if isinstance(network, dict) else None
+    atomic_write_json(runtime_file, runtime)
+    switch_state(repo, records_root, runtime, target_branch, target_dir, target_dir is not None, "[SWT] switch: 已完成")
+    return 0
 
 
 def daemon_state(repo: Path, runtime: dict[str, Any] | None) -> dict[str, Any] | None:
@@ -1943,6 +2230,12 @@ def main(argv: list[str]) -> int:
                 for command in ("podman", "nft", "ssh", "uv", "pgrep"):
                     require_command(command)
                 return terminate(args, repo)
+            if args.command == "switch":
+                for command in ("podman", "nft", "ssh", "uv", "pgrep"):
+                    require_command(command)
+                if not args.to:
+                    raise PreconditionError("switch 必须指定 --to")
+                return switch(args, repo)
             raise PreconditionError(f"NOT-IMPLEMENTED {args.command}")
         finally:
             lock.close()

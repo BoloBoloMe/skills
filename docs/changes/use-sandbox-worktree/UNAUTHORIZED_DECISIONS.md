@@ -94,3 +94,9 @@ MILESTONE-12 以 AFK 模式执行 (tdd-as-orchestra). 以下决定本应由用�
 
 - terminate 执行顺序实现为 nft remove → rm → (最后容器) 收 daemon, 与任务书字面序不同 — 先断网再删方向更安全, 接受.
 - birth/status 为支持多容器 nft 断言夹带的改动 (own_netns 兄弟规则复制/runtime network.netns 字段/status stage 回读) 接受为必要使能改动.
+
+## U-013 ISSUE-09 三项偏差追认
+
+- switch 执行序实现为 nft remove 先于 podman stop (spec 字面为停容器先行) — 先断网方向更安全, 接受 (同 U-012 逻辑).
+- 目标校验 (ref 存在性与工作区干净) 提为 switch 前置, 脏/异常 exit 2 (未动资源); ISSUE-09 步骤 3 "停容器后校验, 脏 exit 3" 与 U-005/D027 自相矛盾 (exit 2 要求未动资源), 实现取前置 exit 2 一侧, 自洽.
+- 新增前置: 目标 ref 存在但无对应母体 worktree → exit 2 (半状态母体不接收授权域换绑).
