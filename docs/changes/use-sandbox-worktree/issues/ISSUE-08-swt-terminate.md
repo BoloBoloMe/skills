@@ -9,7 +9,7 @@
 
 ## 执行(Execution)
 
-- [ ] 已实现
+- [x] 已实现
 
 ## 要构建什么
 
@@ -55,3 +55,9 @@
 ## 停止条件
 
 需要改 D012/D028/D029 语义时停止上报.
+
+## 复核补钉 (评审后总指挥裁决, 详见 UNAUTHORIZED_DECISIONS U-010..U-012)
+
+- daemon 为主仓级共享, terminate 仅最后容器收 (本文件第 5 步字面随之修订).
+- 执行顺序实为 nft remove → rm → 收 daemon (先断网再删).
+- 脏检查 fetch 走 `refs/swt-probe/mother` 暂存命名空间, 不动容器 origin/<branch> (status 只读性保全).

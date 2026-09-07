@@ -561,7 +561,7 @@ class TestS4DaemonProbe(SwtFixture):
         self.assertIsNone(self.state(result)["daemon"])
 
 
-class TestTS201BirthChain(SwtFixture):
+class SwtBirthFixture(SwtFixture):
     def tearDown(self) -> None:
         runtime = self.records / "runtime"
         for path in runtime.glob("*.json") if runtime.is_dir() else []:
@@ -608,6 +608,9 @@ class TestTS201BirthChain(SwtFixture):
              "agent@127.0.0.1", command],
             capture_output=True, text=True, check=False,
         )
+
+
+class TestTS201BirthChain(SwtBirthFixture):
 
     def test_birth_decides_then_builds_complete_chain(self) -> None:
         common = (
@@ -1058,6 +1061,280 @@ class TestS1CliFlags(SwtFixture):
         )
         self.assertEqual(2, result.returncode)
         self.assertTrue(result.stderr.splitlines()[0].startswith("FAIL NOT-IMPLEMENTED birth"))
+
+
+class TestTS301Terminate(SwtBirthFixture):
+    def terminate(self, *extra: str) -> subprocess.CompletedProcess[str]:
+        return self.run_swt(
+            "terminate", "--repo", str(self.repo), "--records-root", str(self.records), *extra,
+        )
+
+    def test_dirty_untracked_blocks_without_force_and_preserves_resources(self) -> None:
+        state = self.birth_ready()
+        changed = self.ssh_run(state, "printf dirty > /home/agent/workspace/untracked.txt")
+        self.assertEqual(0, changed.returncode, changed.stderr)
+        result = self.terminate()
+        self.assertEqual(1, result.returncode, result.stderr)
+        self.assertIn("DECIDE ", result.stdout)
+        self.assertIn("terminate-dirty", result.stdout)
+        self.assertIn("uncommitted=1", result.stdout)
+        current = self.state(result)["containers"][0]
+        self.assertEqual(1, current["dirty"]["uncommitted"])
+        self.assertTrue(current["dirty"]["reachable"])
+        self.assertEqual(0, subprocess.run(["podman", "inspect", state["containers"][0]["name"]], capture_output=True).returncode)
+
+    def test_unpushed_commit_is_ahead_then_push_allows_terminate(self) -> None:
+        state = self.birth_ready()
+        committed = self.ssh_run(
+            state,
+            "git -C /home/agent/workspace config user.name swt-m12 && "
+            "git -C /home/agent/workspace config user.email swt-m12@example.invalid && "
+            "printf ahead > /home/agent/workspace/ahead.txt && "
+            "git -C /home/agent/workspace add ahead.txt && "
+            "git -C /home/agent/workspace commit -m ahead",
+        )
+        self.assertEqual(0, committed.returncode, committed.stderr)
+        blocked = self.terminate()
+        self.assertEqual(1, blocked.returncode, blocked.stderr)
+        self.assertIn("relation=ahead", blocked.stdout)
+        self.assertIn("ahead=1", blocked.stdout)
+        pushed = self.ssh_run(state, "git -C /home/agent/workspace push origin HEAD")
+        self.assertEqual(0, pushed.returncode, pushed.stdout + pushed.stderr)
+        completed = self.terminate()
+        self.assertEqual(0, completed.returncode, completed.stderr)
+
+    def test_behind_container_is_clean_when_mother_advances(self) -> None:
+        state = self.birth_ready()
+        branch = state["mother"]["branch"]
+        remote_ref = f"refs/remotes/origin/{branch}"
+        remote_before = self.ssh_run(
+            state, f"git -C /home/agent/workspace rev-parse {shlex.quote(remote_ref)}"
+        ).stdout.strip()
+        mother = Path(state["mother"]["dir"])
+        subprocess.run(["git", "-C", str(mother), "config", "user.name", "swt-m12"], check=True)
+        subprocess.run(["git", "-C", str(mother), "config", "user.email", "swt-m12@example.invalid"], check=True)
+        (mother / "host-behind.txt").write_text("host\n", encoding="utf-8")
+        subprocess.run(["git", "-C", str(mother), "add", "host-behind.txt"], check=True)
+        subprocess.run(["git", "-C", str(mother), "commit", "-m", "host-behind"], check=True, capture_output=True, text=True)
+        status = self.run_swt("status", "--repo", str(self.repo), "--records-root", str(self.records))
+        self.assertEqual(0, status.returncode, status.stderr)
+        remote_after = self.ssh_run(
+            state, f"git -C /home/agent/workspace rev-parse {shlex.quote(remote_ref)}"
+        ).stdout.strip()
+        self.assertEqual(
+            remote_before,
+            remote_after,
+            self.ssh_run(state, "git -C /home/agent/workspace show-ref | sort").stdout,
+        )
+        result = self.terminate()
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertNotIn("DECIDE ", result.stdout)
+
+    def test_diverged_container_and_mother_are_dirty(self) -> None:
+        state = self.birth_ready()
+        committed = self.ssh_run(
+            state,
+            "git -C /home/agent/workspace config user.name swt-m12 && "
+            "git -C /home/agent/workspace config user.email swt-m12@example.invalid && "
+            "printf container > /home/agent/workspace/container-side.txt && "
+            "git -C /home/agent/workspace add container-side.txt && "
+            "git -C /home/agent/workspace commit -m container-side",
+        )
+        self.assertEqual(0, committed.returncode, committed.stderr)
+        mother = Path(state["mother"]["dir"])
+        (mother / "host-side.txt").write_text("host\n", encoding="utf-8")
+        subprocess.run(["git", "-C", str(mother), "add", "host-side.txt"], check=True)
+        subprocess.run(["git", "-C", str(mother), "commit", "-m", "host-side"], check=True, capture_output=True, text=True)
+        result = self.terminate()
+        self.assertEqual(1, result.returncode, result.stderr)
+        self.assertIn("relation=diverged", result.stdout)
+        self.assertIn("terminate-dirty", result.stdout)
+
+    def test_stopped_container_is_unknown_dirty_then_force_removes_it(self) -> None:
+        state = self.birth_ready()
+        name = state["containers"][0]["name"]
+        stopped = subprocess.run(["podman", "stop", name], capture_output=True, text=True, check=False)
+        self.assertEqual(0, stopped.returncode, stopped.stderr)
+        blocked = self.terminate()
+        self.assertEqual(1, blocked.returncode, blocked.stderr)
+        self.assertIn("unknown", blocked.stdout)
+        forced = self.terminate("--name", name, "--force")
+        self.assertEqual(0, forced.returncode, forced.stderr)
+        self.assertEqual([], self.state(forced)["containers"])
+
+    def test_ssh_unreachable_container_is_unknown_dirty(self) -> None:
+        state = self.birth_ready()
+        name = state["containers"][0]["name"]
+        removed = subprocess.run(
+            ["podman", "exec", name, "rm", "-f", "/home/agent/.ssh/authorized_keys"],
+            capture_output=True, text=True, check=False,
+        )
+        self.assertEqual(0, removed.returncode, removed.stderr)
+        blocked = self.terminate()
+        self.assertEqual(1, blocked.returncode, blocked.stderr)
+        self.assertIn("SSH 不可达", blocked.stdout)
+        forced = self.terminate("--force")
+        self.assertEqual(0, forced.returncode, forced.stderr)
+
+    def test_force_writes_audit_snapshot_and_consumes_receipt(self) -> None:
+        state = self.birth_ready()
+        changed = self.ssh_run(state, "printf dirty > /home/agent/workspace/audit.txt")
+        self.assertEqual(0, changed.returncode, changed.stderr)
+        first = self.terminate()
+        self.assertEqual(1, first.returncode, first.stderr)
+        decision_id = next(line.split()[1] for line in first.stdout.splitlines() if line.startswith("DECIDE "))
+        forced = self.terminate("--force")
+        self.assertEqual(0, forced.returncode, forced.stderr)
+        audit = next((self.records / "runtime").glob("*/audit.jsonl"))
+        entries = [json.loads(line) for line in audit.read_text(encoding="utf-8").splitlines() if line]
+        self.assertEqual(1, len(entries))
+        self.assertEqual(decision_id, entries[0]["decision-id"])
+        self.assertEqual(state["containers"][0]["name"], entries[0]["container"])
+        self.assertTrue(entries[0]["podman-id"])
+        self.assertEqual(1, entries[0]["dirty"]["uncommitted"])
+        self.assertEqual([], list((self.records / "runtime").glob("*/decisions/d-*.json")))
+
+    def test_dirty_fingerprint_drift_reopens_decision(self) -> None:
+        state = self.birth_ready()
+        first_change = self.ssh_run(state, "printf one > /home/agent/workspace/one.txt")
+        self.assertEqual(0, first_change.returncode, first_change.stderr)
+        first = self.terminate()
+        self.assertEqual(1, first.returncode, first.stderr)
+        first_id = next(line.split()[1] for line in first.stdout.splitlines() if line.startswith("DECIDE "))
+        second_change = self.ssh_run(state, "printf two > /home/agent/workspace/two.txt")
+        self.assertEqual(0, second_change.returncode, second_change.stderr)
+        drifted = self.terminate("--force")
+        self.assertEqual(1, drifted.returncode, drifted.stderr)
+        second_id = next(line.split()[1] for line in drifted.stdout.splitlines() if line.startswith("DECIDE "))
+        self.assertNotEqual(first_id, second_id)
+        self.assertIn("uncommitted=2", drifted.stdout)
+        receipt_files = list((self.records / "runtime").glob("*/decisions/d-*.json"))
+        self.assertEqual([second_id + ".json"], [path.name for path in receipt_files])
+
+    def nft_table(self, netns: str | None = None, source: str | None = None) -> str:
+        # pasta 的 --netns 参数对应容器 rootless netns; 不同 netns 可能复用同一个源 IP.
+        netnses = [netns] if netns else []
+        for line in subprocess.run(
+            ["pgrep", "-af", "pasta --config-net"], capture_output=True, text=True, check=False,
+        ).stdout.splitlines():
+            match = re.search(r"--netns\s+(\S+)", line)
+            if match and match.group(1) not in netnses:
+                netnses.append(match.group(1))
+        for candidate in netnses:
+            result = subprocess.run(
+                ["podman", "unshare", "nsenter", f"--net={candidate}", "nft", "list", "table", "inet", "swt"],
+                capture_output=True, text=True, check=False,
+            )
+            if result.returncode == 0 and (source is None or f"ip saddr {source}" in result.stdout):
+                return result.stdout
+        self.fail(f"未找到 nft 表或源地址: {source}")
+
+    def test_multiple_containers_require_name_and_remove_only_selected_network_rule(self) -> None:
+        first = self.birth_ready()
+        second = self.run_swt(
+            "birth", "--repo", str(self.repo), "--records-root", str(self.records),
+            "--branch", "feature/m12", "--image", "localhost/swt-m03:latest",
+            "--mode", "whitelist", "--allow", "127.0.0.1", "--reuse-mother",
+            "--name", "swt-m12-second",
+        )
+        self.assertEqual(0, second.returncode, second.stderr)
+        both = self.state(second)
+        self.assertEqual(2, len(both["containers"]))
+        missing_name = self.terminate()
+        self.assertEqual(2, missing_name.returncode)
+        self.assertIn("--name", missing_name.stderr)
+        self.assertIn(first["containers"][0]["name"], missing_name.stderr)
+        self.assertIn("swt-m12-second", missing_name.stderr)
+        runtime = json.loads(next((self.records / "runtime").glob("*.json")).read_text(encoding="utf-8"))
+        netns = runtime["network"]["netns"]
+        before = self.nft_table(netns)
+        first_ip = first["containers"][0]["network-ip"] if "network-ip" in first["containers"][0] else runtime["containers"][0]["network-ip"]
+        sibling = next(item for item in runtime["containers"] if item["name"] == "swt-m12-second")
+        sibling_netns_before = json.loads(
+            subprocess.run(["podman", "inspect", "swt-m12-second"], capture_output=True, text=True, check=True).stdout
+        )[0].get("NetworkSettings", {}).get("SandboxKey")
+        sibling_before = self.nft_table(sibling_netns_before, source=sibling["network-ip"])
+        self.assertIn(f"ip saddr {first_ip}", sibling_before)
+        selected = self.terminate("--name", first["containers"][0]["name"])
+        self.assertEqual(0, selected.returncode, selected.stderr)
+        sibling_detail = json.loads(
+            subprocess.run(["podman", "inspect", "swt-m12-second"], capture_output=True, text=True, check=True).stdout
+        )[0]
+        sibling_netns = sibling_detail.get("NetworkSettings", {}).get("SandboxKey")
+        after = self.nft_table(sibling_netns, source=sibling["network-ip"])
+        self.assertIn(f"ip saddr {sibling['network-ip']}", after)
+        if first_ip != sibling["network-ip"]:
+            self.assertLess(
+                after.count(f"ip saddr {first_ip}"),
+                sibling_before.count(f"ip saddr {first_ip}"),
+            )
+        else:
+            self.assertIn(f"ip saddr {sibling['network-ip']}", after)
+        self.assertEqual(0, subprocess.run(["podman", "inspect", "swt-m12-second"], capture_output=True).returncode)
+        if first_ip != sibling["network-ip"]:
+            self.assertNotEqual(before, after)
+
+    def test_missing_container_with_daemon_residue_converges(self) -> None:
+        state = self.birth_ready()
+        name = state["containers"][0]["name"]
+        removed = subprocess.run(["podman", "rm", "-f", name], capture_output=True, text=True, check=False)
+        self.assertEqual(0, removed.returncode, removed.stderr)
+        result = self.terminate("--name", name)
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertEqual("idle", self.state(result)["stage"])
+        self.assertEqual([], subprocess.run(["pgrep", "-af", f"git daemon.*--base-path={self.repo.parent}"], capture_output=True, text=True).stdout.strip().splitlines())
+
+    def test_last_container_leaves_mother_idle_and_visible_in_status(self) -> None:
+        state = self.birth_ready()
+        completed = self.terminate()
+        self.assertEqual(0, completed.returncode, completed.stderr)
+        status = self.run_swt("status", "--repo", str(self.repo), "--records-root", str(self.records))
+        self.assertEqual(0, status.returncode, status.stderr)
+        observed = self.state(status)
+        self.assertEqual("idle", observed["stage"])
+        self.assertTrue(observed["mother"]["exists"])
+        self.assertEqual(state["mother"]["dir"], observed["mother"]["dir"])
+        self.assertTrue(observed["config"]["swt-form"])
+        self.assertEqual([], observed["containers"])
+
+    def test_clean_container_terminate_removes_container_daemon_and_runtime_segment(self) -> None:
+        state = self.birth_ready()
+        branch = state["mother"]["branch"]
+        mother = Path(state["mother"]["dir"])
+        runtime_file = next((self.records / "runtime").glob("*.json"))
+        runtime_before = json.loads(runtime_file.read_text(encoding="utf-8"))
+        container_name = state["containers"][0]["name"]
+        terminate = self.run_swt(
+            "terminate", "--repo", str(self.repo), "--records-root", str(self.records),
+        )
+        self.assertEqual(0, terminate.returncode, terminate.stderr)
+        final_state = self.state(terminate)
+        self.assertEqual("idle", final_state["stage"])
+        self.assertEqual([], final_state["containers"])
+        self.assertEqual(str(mother.resolve()), final_state["mother"]["dir"])
+        self.assertIn(str(mother.resolve()), terminate.stdout)
+        self.assertEqual(
+            [],
+            subprocess.run(
+                ["podman", "ps", "-a", "--filter", f"name=^{container_name}$", "--format", "{{.Names}}"],
+                capture_output=True, text=True, check=True,
+            ).stdout.splitlines(),
+        )
+        self.assertEqual(
+            f"{branch}",
+            subprocess.run(
+                ["git", "-C", str(mother), "branch", "--show-current"],
+                cwd=mother,
+                capture_output=True, text=True, check=True,
+            ).stdout.strip(),
+        )
+        self.assertEqual(
+            runtime_before["mother"],
+            json.loads(runtime_file.read_text(encoding="utf-8"))["mother"],
+        )
+        self.assertFalse(
+            any(item.get("name") == container_name for item in json.loads(runtime_file.read_text(encoding="utf-8")).get("containers", []))
+        )
 
 
 if __name__ == "__main__":

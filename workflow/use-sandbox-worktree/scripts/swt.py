@@ -41,6 +41,7 @@ CONFIG_KEYS = (
 )
 SLUG_SCRIPT = Path(__file__).resolve().parents[2] / "use-worktree" / "scripts" / "slug.py"
 _SLUG_CACHE: dict[Path, str] = {}
+_UNSET = object()
 
 
 class SwtError(Exception):
@@ -466,6 +467,16 @@ class DaemonHandle(NamedTuple):
     base_path: Path
 
 
+class NetworkPlan(NamedTuple):
+    mode: str
+    allow: tuple[str, ...]
+    deny: tuple[str, ...]
+    gateway: str
+    container_ip: str
+    netns: str | None = None
+    route_gateway: str | None = None
+
+
 def pasta_addresses() -> list[str]:
     result = run(["ip", "-o", "-4", "addr", "show"])
     if result.returncode != 0:
@@ -758,17 +769,30 @@ def decision_line(path: Path, kind: str, question: str, options: list[str]) -> s
     return f"DECIDE {payload['id']} {kind} {question} 选项: {' '.join(options)}"
 
 
-def print_birth_state(repo: Path, runtime: dict[str, Any] | None, mother: dict[str, Any], image: dict[str, Any] | None, network: dict[str, Any] | None, progress: str) -> None:
-    state = empty_state(repo)
-    state["mother"] = mother
-    state["config"]["swt-form"] = config_matches(repo, mother.get("branch"))
-    state["image"] = image
-    state["network"] = network
-    if runtime:
-        state["stage"] = runtime.get("stage")
-        state["daemon"] = runtime.get("daemon")
-        state["containers"] = runtime.get("containers", [])
-    print_state(state, progress)
+def print_birth_state(
+    repo: Path,
+    records_root: Path,
+    runtime: dict[str, Any] | None,
+    mother: dict[str, Any],
+    image: dict[str, Any] | None,
+    network: dict[str, Any] | None,
+    progress: str,
+) -> None:
+    containers = runtime.get("containers", []) if runtime else []
+    daemon = runtime.get("daemon") if runtime else None
+    print_state(
+        build_state(
+            repo,
+            records_root,
+            runtime,
+            mother=mother,
+            containers=containers,
+            daemon=daemon,
+            image=image,
+            network=network,
+        ),
+        progress,
+    )
 
 
 def container_ssh_base(key: Path, port: int) -> list[str]:
@@ -796,32 +820,83 @@ def ssh_command(key: Path, port: int, command: str, timeout: float = 10) -> subp
     return run([*container_ssh_base(key, port), command], timeout=timeout)
 
 
-def apply_network(args: argparse.Namespace, gateway: str, container_ip_value: str, netns: str | None = None, extra_allow: list[str] | None = None) -> dict[str, Any]:
+def apply_network(plan: NetworkPlan) -> dict[str, Any]:
     script = Path(__file__).with_name("net-firewall.py")
-    command = ["uv", "run", "python", str(script), "apply", "--mode", args.mode,
-               "--container-ip", container_ip_value, "--gateway", gateway, "--merge"]
-    if netns:
-        command.extend(["--netns", netns])
+    command = [
+        "uv", "run", "python", str(script), "apply", "--mode", plan.mode,
+        "--container-ip", plan.container_ip, "--gateway", plan.gateway, "--merge",
+    ]
+    if plan.netns:
+        command.extend(["--netns", plan.netns])
     auto_allow: list[str] = []
-    if args.mode == "whitelist":
-        entries = list(args.allow)
-        if gateway not in entries:
-            entries.append(f"{gateway}/32")
-            auto_allow.append(gateway)
-        if extra_allow:
-            for entry in extra_allow:
-                if entry not in entries:
-                    entries.append(f"{entry}/32")
-                    auto_allow.append(entry)
+    if plan.mode == "whitelist":
+        entries = list(plan.allow)
+        if plan.gateway not in entries:
+            entries.append(f"{plan.gateway}/32")
+            auto_allow.append(plan.gateway)
+        for entry in (plan.route_gateway, plan.container_ip):
+            if entry and entry not in entries:
+                entries.append(f"{entry}/32")
+                auto_allow.append(entry)
         for entry in entries:
             command.extend(["--allow", entry])
     else:
-        for entry in args.deny:
+        for entry in plan.deny:
             command.extend(["--deny", entry])
     result = run(command, timeout=30)
     if result.returncode != 0:
         raise SwtError(3, "PARTIAL", f"nft apply 失败, 容器已登记但网络未就绪: {result.stderr.strip()}")
-    return {"mode": args.mode, "table-present": True, "auto-allow": auto_allow}
+    return {
+        "mode": plan.mode,
+        "table-present": True,
+        "auto-allow": auto_allow,
+        "allow": list(plan.allow),
+        "deny": list(plan.deny),
+        "gateway": plan.gateway,
+        "route-gateway": plan.route_gateway,
+    }
+
+
+def network_plan_from_record(
+    network: dict[str, Any],
+    record: dict[str, Any],
+    netns: str,
+) -> NetworkPlan | None:
+    mode = network.get("mode")
+    gateway = network.get("gateway")
+    container_ip = record.get("network-ip")
+    if mode not in {"whitelist", "blacklist"} or not isinstance(gateway, str) or not isinstance(container_ip, str):
+        return None
+    allow = network.get("allow")
+    deny = network.get("deny")
+    route_gateway = network.get("route-gateway")
+    return NetworkPlan(
+        mode,
+        tuple(allow) if isinstance(allow, list) else (),
+        tuple(deny) if isinstance(deny, list) else (),
+        gateway,
+        container_ip,
+        netns,
+        route_gateway if isinstance(route_gateway, str) else None,
+    )
+
+
+def apply_sibling_networks(
+    network: dict[str, Any],
+    records: list[dict[str, Any]],
+    netnses: set[str],
+) -> None:
+    for netns in sorted(netnses):
+        for record in records:
+            plan = network_plan_from_record(network, record, netns)
+            if plan is None:
+                continue
+            try:
+                apply_network(plan)
+            except SwtError as exc:
+                if "NETNS-UNREACHABLE" in exc.message:
+                    continue
+                raise
 
 
 def upsert_container_record(runtime: dict[str, Any], record: dict[str, Any], runtime_file: Path) -> None:
@@ -999,7 +1074,7 @@ def birth(args: argparse.Namespace, repo: Path) -> int:
         mother_state = {"branch": branch, "dir": str(mother_dir) if mother_dir else None, "exists": bool(mother_dir), "worktree-dirty": dirty}
         for line in lines:
             print(line)
-        print_birth_state(repo, runtime_existing, mother_state, image, network_input, "[SWT] birth: 等待用户决定")
+        print_birth_state(repo, records_root, runtime_existing, mother_state, image, network_input, "[SWT] birth: 等待用户决定")
         return 1
 
     if runtime_existing and runtime_existing.get("stage") == "born":
@@ -1070,9 +1145,23 @@ def birth(args: argparse.Namespace, repo: Path) -> int:
         shared_netns = pasta_netns() or container_netns(container["detail"])
         container["record"]["network-ip"] = ip_value
         runtime["network"] = apply_network(
-            args, gateway_address, ip_value, shared_netns,
-            [entry for entry in (route_gateway, ip_value) if entry] or None,
+            NetworkPlan(
+                args.mode,
+                tuple(args.allow),
+                tuple(args.deny),
+                gateway_address,
+                ip_value,
+                shared_netns,
+                route_gateway,
+            )
         )
+        own_netns = container_netns(container["detail"])
+        if own_netns and own_netns != shared_netns:
+            apply_sibling_networks(
+                runtime["network"],
+                [item for item in runtime.get("containers", []) if isinstance(item, dict)],
+                {own_netns},
+            )
         runtime["stage"] = "network"
         atomic_write_json(runtime_file, runtime)
         key = inject_ssh_key(container, records_root, identity, runtime, runtime_file)
@@ -1083,7 +1172,7 @@ def birth(args: argparse.Namespace, repo: Path) -> int:
         wait_for_ssh(key, container["port"])
         assert_container_clone(container, key, branch, remote)
         runtime["stage"] = "born"
-        runtime["network"] = {**runtime["network"], "gateway": gateway_address, "container-ip": ip_value}
+        runtime["network"] = {**runtime["network"], "gateway": gateway_address, "container-ip": ip_value, "netns": shared_netns}
         atomic_write_json(runtime_file, runtime)
     except SwtError:
         raise
@@ -1164,6 +1253,7 @@ def ssh_container_git_status(
     runtime_record: dict[str, Any],
     ssh_port: int,
     branch: str | None,
+    mother_tip: str | None,
 ) -> dict[str, Any] | None:
     private_key = runtime_record.get("ssh_private_key") or runtime_record.get("ssh-private-key")
     if not isinstance(private_key, str) or not Path(private_key).is_file():
@@ -1171,38 +1261,82 @@ def ssh_container_git_status(
     clone_dir = runtime_record.get("clone_dir") or runtime_record.get("clone-dir") or "/workspace"
     if not isinstance(clone_dir, str):
         return None
-    remote = f"origin/{branch or 'main'}"
     base = container_ssh_base(Path(private_key), ssh_port)
+    comparison = shlex.quote(mother_tip) if mother_tip else shlex.quote(f"origin/{branch or 'main'}")
     try:
         status_result = run(
-            [*base, f"git -C {clone_dir} status --porcelain=v1"],
+            [*base, f"git -C {shlex.quote(clone_dir)} status --porcelain=v1"],
             timeout=3,
         )
         if status_result.returncode != 0:
             return None
-        unpushed_result = run(
-            [*base, f"git -C {clone_dir} rev-list --count {remote}..HEAD"],
+        has_mother_object = None
+        if mother_tip:
+            has_mother_object = run(
+                [
+                    *base,
+                    f"git -C {shlex.quote(clone_dir)} cat-file -e "
+                    f"{shlex.quote(mother_tip + '^{commit}')}",
+                ],
+                timeout=3,
+            )
+        if has_mother_object is not None and has_mother_object.returncode != 0:
+            probe_refspec = f"+refs/heads/{branch or 'main'}:refs/swt-probe/mother"
+            fetched = run(
+                [
+                    *base,
+                    f"git -C {shlex.quote(clone_dir)} fetch --quiet --no-write-fetch-head --refmap= origin "
+                    f"{shlex.quote(probe_refspec)}",
+                ],
+                timeout=5,
+            )
+            if fetched.returncode != 0:
+                return None
+            comparison = "refs/swt-probe/mother"
+        relation_result = run(
+            [
+                *base,
+                f"git -C {shlex.quote(clone_dir)} rev-list --count --left-right "
+                f"{comparison}...HEAD",
+            ],
             timeout=3,
         )
-        if unpushed_result.returncode != 0:
-            return None
-        try:
-            unpushed = int(unpushed_result.stdout.strip())
-        except ValueError:
-            return None
-        if unpushed < 0:
+        fields = relation_result.stdout.strip().split() if relation_result.returncode == 0 else []
+        relation: str | None = None
+        behind: int | None = None
+        if len(fields) == 2 and all(field.isdigit() for field in fields):
+            behind, ahead = (int(field) for field in fields)
+            if ahead == 0 and behind == 0:
+                relation = "same"
+            elif ahead == 0:
+                relation = "behind"
+            elif behind == 0:
+                relation = "ahead"
+            else:
+                relation = "diverged"
+        elif len(fields) == 1 and fields[0].isdigit():
+            # 兼容旧探针只返回一个总数的退回语义, 正常路径始终走双计数.
+            ahead = int(fields[0])
+        else:
             return None
     except (SwtEnvError, subprocess.TimeoutExpired):
         return None
-    return {
+    result: dict[str, Any] = {
         "uncommitted": len([line for line in status_result.stdout.splitlines() if line]),
-        "unpushed": unpushed,
-        "relation": None,
+        "unpushed": ahead,
+        "relation": relation,
         "reachable": True,
     }
+    if behind is not None:
+        result["behind"] = behind
+    return result
 
 
-def podman_container_state(repo: Path, runtime: dict[str, Any] | None) -> list[dict[str, Any]]:
+def podman_container_state(
+    repo: Path,
+    runtime: dict[str, Any] | None,
+    mother_tip: str | None = None,
+) -> list[dict[str, Any]]:
     rows = podman_json(
         [
             "podman",
@@ -1215,6 +1349,8 @@ def podman_container_state(repo: Path, runtime: dict[str, Any] | None) -> list[d
         ]
     )
     containers: list[dict[str, Any]] = []
+    branch, _mother_dir = runtime_mother(runtime)
+    mother_tip = mother_tip or ref_tip(repo, branch or "")
     for row in rows:
         names = row.get("Names") or row.get("Name") or []
         if isinstance(names, list):
@@ -1248,7 +1384,7 @@ def podman_container_state(repo: Path, runtime: dict[str, Any] | None) -> list[d
         }
         branch, _mother_dir = runtime_mother(runtime)
         if ssh_port is not None:
-            ssh_dirty = ssh_container_git_status(retired_record, ssh_port, branch)
+            ssh_dirty = ssh_container_git_status(retired_record, ssh_port, branch, mother_tip)
             if ssh_dirty is not None:
                 dirty = ssh_dirty
         containers.append(
@@ -1264,6 +1400,296 @@ def podman_container_state(repo: Path, runtime: dict[str, Any] | None) -> list[d
             }
         )
     return containers
+
+
+def terminate_container_candidates(
+    repo: Path,
+    runtime: dict[str, Any] | None,
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    observed = podman_container_state(repo, runtime)
+    by_name = {item["name"]: item for item in observed if item.get("name")}
+    runtime_records = runtime.get("containers", []) if isinstance(runtime, dict) else []
+    if not isinstance(runtime_records, list):
+        runtime_records = []
+    candidates: list[dict[str, Any]] = []
+    names = set(by_name)
+    for item in runtime_records:
+        if isinstance(item, dict) and not item.get("retired") and item.get("name"):
+            names.add(str(item["name"]))
+    for name in sorted(names):
+        record = next(
+            (item for item in runtime_records if isinstance(item, dict) and item.get("name") == name),
+            {},
+        )
+        target = dict(record)
+        target.update(by_name.get(name, {}))
+        target["name"] = name
+        if name not in by_name:
+            target.setdefault("state", "missing")
+            target["dirty"] = {
+                "uncommitted": None,
+                "unpushed": None,
+                "relation": None,
+                "reachable": False,
+            }
+        candidates.append(target)
+    return candidates, observed
+
+
+def terminate_dirty(dirty: dict[str, Any]) -> bool:
+    if not dirty.get("reachable"):
+        return True
+    if dirty.get("uncommitted") is None or dirty.get("unpushed") is None:
+        return True
+    return bool(
+        dirty.get("uncommitted", 0)
+        or dirty.get("unpushed", 0)
+        or dirty.get("relation") in {"ahead", "diverged"}
+    )
+
+
+def dirty_explanation(dirty: dict[str, Any]) -> str:
+    if not dirty.get("reachable"):
+        return "unknown(SSH 不可达或容器已停, 视同脏)"
+    return (
+        f"uncommitted={dirty.get('uncommitted', 0)} "
+        f"ahead={dirty.get('unpushed', 0)} "
+        f"behind={dirty.get('behind', 0)} "
+        f"relation={dirty.get('relation') or 'unknown'}"
+    )
+
+
+def terminate_decision_fingerprint(
+    repo: Path,
+    runtime: dict[str, Any] | None,
+    target: dict[str, Any],
+) -> dict[str, Any]:
+    branch, mother = runtime_mother(runtime)
+    containers = runtime.get("containers", []) if isinstance(runtime, dict) else []
+    if not isinstance(containers, list):
+        containers = []
+    return {
+        "repo": str(repo.resolve()),
+        "mother": {
+            "branch": branch or target.get("branch"),
+            "dir": str(mother) if mother else None,
+            "ref-tip": ref_tip(repo, branch or str(target.get("branch") or "")),
+        },
+        "containers": [
+            {
+                "name": item.get("name"),
+                "podman-id": item.get("podman-id"),
+            }
+            for item in containers
+            if isinstance(item, dict) and not item.get("retired")
+        ],
+        "image-digest": (runtime.get("image") or {}).get("digest") if isinstance(runtime, dict) and isinstance(runtime.get("image"), dict) else target.get("image-digest"),
+        "config": config_fingerprint(repo),
+        "network": runtime.get("network") if isinstance(runtime, dict) else None,
+        "dirty": target.get("dirty", {}),
+        "target-branch": branch or target.get("branch"),
+    }
+
+
+def terminate_state(repo: Path, records_root: Path, runtime: dict[str, Any] | None, progress: str) -> None:
+    containers = podman_container_state(repo, runtime)
+    daemon = daemon_state(repo, runtime)
+    image = image_state(records_root, repo, runtime, containers)
+    network = network_state(runtime)
+    print_state(
+        build_state(
+            repo,
+            records_root,
+            runtime,
+            mother=_UNSET,
+            containers=containers,
+            daemon=daemon,
+            image=image,
+            network=network,
+        ),
+        progress,
+    )
+
+
+def append_audit(
+    records_root: Path,
+    identity: str,
+    target: dict[str, Any],
+    decision_id: str,
+) -> Path:
+    path = records_root / "runtime" / identity / "audit.jsonl"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    entry = {
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "container": target.get("name"),
+        "podman-id": target.get("podman-id"),
+        "dirty": target.get("dirty"),
+        "decision-id": decision_id,
+    }
+    with path.open("a", encoding="utf-8") as stream:
+        stream.write(canonical_json(entry) + "\n")
+    return path
+
+
+def stop_repo_daemons(repo: Path, runtime: dict[str, Any] | None) -> None:
+    pids: set[int] = set(daemon_pids(repo))
+    recorded = runtime.get("daemon") if isinstance(runtime, dict) else None
+    if isinstance(recorded, dict) and isinstance(recorded.get("pid"), int):
+        pids.add(recorded["pid"])
+    for pid in sorted(pids):
+        if pid == os.getpid() or not process_alive(pid):
+            continue
+        try:
+            os.kill(pid, signal.SIGTERM)
+        except ProcessLookupError:
+            continue
+    deadline = time.monotonic() + 2
+    while time.monotonic() < deadline and any(process_alive(pid) for pid in pids):
+        time.sleep(0.05)
+    for pid in sorted(pids):
+        if process_alive(pid):
+            try:
+                os.kill(pid, signal.SIGKILL)
+            except ProcessLookupError:
+                pass
+    remaining = daemon_pids(repo)
+    if remaining:
+        raise SwtError(3, "PARTIAL", f"daemon 仍存活(pid={remaining}), 请先人工终止后重跑 terminate")
+
+
+def remove_container_firewall(
+    runtime: dict[str, Any] | None,
+    target: dict[str, Any],
+    has_siblings: bool,
+    netns: str | None = None,
+) -> None:
+    container_ip = target.get("network-ip")
+    if not isinstance(container_ip, str) or not container_ip:
+        return
+    script = Path(__file__).with_name("net-firewall.py")
+    command = ["uv", "run", "python", str(script), "remove", "--container-ip", container_ip]
+    if not netns:
+        network = runtime.get("network") if isinstance(runtime, dict) else None
+        netns = network.get("netns") if isinstance(network, dict) else None
+    if isinstance(netns, str) and netns:
+        command.extend(["--netns", netns])
+    result = run(command, timeout=30)
+    if result.returncode == 0:
+        return
+    # 最后一个容器 rm 后 netns 可能随 pasta 一并消失, 此时规则也已随 netns 消失.
+    if not has_siblings and "NETNS-UNREACHABLE" in result.stderr:
+        return
+    raise SwtError(3, "PARTIAL", f"nft remove 失败: {result.stderr.strip()}")
+
+
+def terminate(args: argparse.Namespace, repo: Path) -> int:
+    records_root = args.records_root.expanduser().resolve()
+    runtime_file = runtime_path(records_root, repo)
+    runtime = load_runtime(runtime_file)
+    candidates, observed = terminate_container_candidates(repo, runtime)
+    if args.name:
+        target = next((item for item in candidates if item.get("name") == args.name), None)
+        if target is None:
+            raise PreconditionError(f"容器不存在或不属于当前母体: {args.name}")
+    elif len(candidates) == 1:
+        target = candidates[0]
+    elif not candidates:
+        raise PreconditionError("当前母体没有可终结容器")
+    else:
+        names = ", ".join(str(item.get("name")) for item in candidates)
+        raise PreconditionError(f"当前母体有多个容器, 请使用 --name; 候选: {names}")
+
+    if runtime is None:
+        raise PreconditionError("容器存在但 runtime 记录缺失, 不自动拆除未登记资源")
+    target_name = str(target["name"])
+    observed_names = {item.get("name") for item in observed}
+    fingerprint = terminate_decision_fingerprint(repo, runtime, target)
+    identity = runtime_file.stem
+    expire_receipts(records_root, identity, "terminate-dirty", fingerprint)
+    dirty = terminate_dirty(target.get("dirty", {})) if target_name in {item.get("name") for item in observed} else False
+    receipt = matching_receipt(records_root, identity, "terminate-dirty", fingerprint)
+    decision_id: str | None = None
+    if dirty and (not args.force or receipt is None):
+        if receipt is None:
+            receipt = create_receipt(records_root, identity, "terminate-dirty", fingerprint, ["--force"])
+        payload = json.loads(receipt.read_text(encoding="utf-8"))
+        question = (
+            f"容器 {target_name} 脏检查为 {dirty_explanation(target['dirty'])}; "
+            "请确认容器内 agent 已停手后再强拆"
+        )
+        print(decision_line(receipt, "terminate-dirty", question, ["--force"]))
+        terminate_state(repo, records_root, runtime, "[SWT] terminate: 等待用户决定")
+        return 1
+    if dirty:
+        payload = json.loads(receipt.read_text(encoding="utf-8")) if receipt else {}
+        decision_id = payload.get("id")
+        if not isinstance(decision_id, str) or not consume_receipt(records_root, identity, "terminate-dirty", fingerprint):
+            raise SwtError(3, "PARTIAL", "terminate 决策收据消费失败, 请重新执行并确认")
+
+    if dirty and args.force:
+        append_audit(records_root, identity, target, decision_id)
+
+    runtime_records = [
+        item for item in runtime.get("containers", [])
+        if isinstance(item, dict) and item.get("name") != target_name
+    ]
+    has_siblings = bool(runtime_records)
+    network = runtime.get("network") if isinstance(runtime.get("network"), dict) else {}
+    sibling_netnses: set[str] = set()
+    for sibling in runtime_records:
+        sibling_name = sibling.get("name") if isinstance(sibling, dict) else None
+        if not isinstance(sibling_name, str):
+            continue
+        detail = podman_json(["podman", "inspect", sibling_name])
+        if detail:
+            sibling_netns = container_netns(detail[0])
+            if sibling_netns:
+                sibling_netnses.add(sibling_netns)
+    netns_candidates = set(sibling_netnses)
+    recorded_netns = network.get("netns") if isinstance(network, dict) else None
+    if isinstance(recorded_netns, str) and recorded_netns:
+        netns_candidates.add(recorded_netns)
+    live_pasta = pasta_netns()
+    if live_pasta:
+        netns_candidates.add(live_pasta)
+    remove_errors: list[str] = []
+    for netns in sorted(netns_candidates):
+        try:
+            remove_container_firewall(runtime, target, has_siblings, netns)
+        except SwtError as exc:
+            if "NETNS-UNREACHABLE" not in exc.message:
+                remove_errors.append(exc.message)
+    if remove_errors:
+        raise SwtError(3, "PARTIAL", f"nft remove 失败: {'; '.join(remove_errors)}")
+    if target_name in observed_names:
+        removed = run(["podman", "rm", "-f", target_name], timeout=30)
+        if removed.returncode != 0:
+            still_there = run(["podman", "inspect", target_name])
+            if still_there.returncode == 0:
+                raise SwtError(3, "PARTIAL", f"容器 {target_name} 删除失败: {removed.stderr.strip()}")
+    if has_siblings:
+        apply_sibling_networks(network, runtime_records, sibling_netnses)
+    if not has_siblings:
+        stop_repo_daemons(repo, runtime)
+
+    runtime["containers"] = runtime_records
+    if has_siblings:
+        runtime["stage"] = "born"
+        if isinstance(runtime.get("network"), dict):
+            runtime["network"]["table-present"] = True
+    else:
+        runtime["stage"] = "idle"
+        runtime["daemon"] = None
+        if isinstance(runtime.get("network"), dict):
+            runtime["network"]["table-present"] = False
+    atomic_write_json(runtime_file, runtime)
+    mother = runtime.get("mother") if isinstance(runtime.get("mother"), dict) else {}
+    mother_dir = mother.get("dir")
+    progress = "[SWT] terminate: 已完成"
+    if isinstance(mother_dir, str):
+        progress += f"; 母体保留路径: {mother_dir}"
+    terminate_state(repo, records_root, runtime, progress)
+    return 0
 
 
 def daemon_matches_repo(repo: Path, command: str) -> bool:
@@ -1372,17 +1798,52 @@ def image_state(records_root: Path, repo: Path, runtime: dict[str, Any] | None, 
     }
 
 
+def build_state(
+    repo: Path,
+    records_root: Path,
+    runtime: dict[str, Any] | None,
+    *,
+    mother: dict[str, Any] | object,
+    containers: list[dict[str, Any]] | object,
+    daemon: dict[str, Any] | None | object,
+    image: dict[str, Any] | None | object,
+    network: dict[str, Any] | None | object,
+) -> dict[str, Any]:
+    observed_mother = detect_mother(repo, runtime) if mother is _UNSET else mother
+    observed_containers = podman_container_state(repo, runtime) if containers is _UNSET else containers
+    observed_daemon = daemon_state(repo, runtime) if daemon is _UNSET else daemon
+    observed_image = image_state(records_root, repo, runtime, observed_containers) if image is _UNSET else image
+    observed_network = network_state(runtime) if network is _UNSET else network
+    state = empty_state(repo)
+    state["mother"] = observed_mother
+    state["config"]["swt-form"] = config_matches(repo, observed_mother.get("branch"))
+    state["containers"] = observed_containers
+    state["daemon"] = observed_daemon
+    state["image"] = observed_image
+    state["network"] = observed_network
+    if runtime:
+        state["stage"] = runtime.get("stage")
+    return state
+
+
 def status(args: argparse.Namespace, repo: Path) -> int:
     require_command("podman")
-    state = empty_state(repo)
     records_root = args.records_root.expanduser().resolve()
     runtime = load_runtime(runtime_path(records_root, repo))
-    state["mother"] = detect_mother(repo, runtime)
-    state["config"]["swt-form"] = config_matches(repo, state["mother"]["branch"])
-    state["containers"] = podman_container_state(repo, runtime)
-    state["daemon"] = daemon_state(repo, runtime)
-    state["image"] = image_state(records_root, repo, runtime, state["containers"])
-    state["network"] = network_state(runtime)
+    containers = podman_container_state(repo, runtime)
+    daemon = daemon_state(repo, runtime)
+    image = image_state(records_root, repo, runtime, containers)
+    network = network_state(runtime)
+    state = build_state(
+        repo,
+        records_root,
+        runtime,
+        mother=_UNSET,
+        containers=containers,
+        daemon=daemon,
+        image=image,
+        network=network,
+    )
     if not state["mother"]["exists"] and runtime is None and not state["containers"]:
         print_state(state, "[SWT] status: 什么都没有")
     else:
@@ -1403,7 +1864,7 @@ def create_receipt(
 ) -> Path:
     decisions = records_root.expanduser().resolve() / "runtime" / identity / "decisions"
     decisions.mkdir(parents=True, exist_ok=True)
-    stamp = datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S")
+    stamp = datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S-%f")
     existing = sorted(decisions.glob(f"d-{stamp}-*.json"))
     decision_id = f"d-{stamp}-{len(existing) + 1:03d}"
     path = decisions / f"{decision_id}.json"
@@ -1478,6 +1939,10 @@ def main(argv: list[str]) -> int:
         try:
             if args.command == "birth":
                 return birth(args, repo)
+            if args.command == "terminate":
+                for command in ("podman", "nft", "ssh", "uv", "pgrep"):
+                    require_command(command)
+                return terminate(args, repo)
             raise PreconditionError(f"NOT-IMPLEMENTED {args.command}")
         finally:
             lock.close()

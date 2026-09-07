@@ -73,3 +73,24 @@ MILESTONE-12 以 AFK 模式执行 (tdd-as-orchestra). 以下决定本应由用�
 - 理由: llm-select score.py 2026-09 渲染表, 过质量底线取最便宜.
 - 影响: herdr 子会话启动参数.
 - 风险: glm 稳定性低 → 审核者中断时 resume 或降级重派.
+
+## U-010 daemon 粒度: 主仓级共享 (ISSUE-08 复核补钉)
+
+- 问题: ISSUE-08 任务书写 "kill 该容器 daemon" 假设每容器专属 daemon; 实现与 birth 实际为主仓级单 daemon 复用 (TS-206 已钉).
+- 决策: 确认主仓级共享 daemon 形态; terminate 仅在最后容器终结时收 daemon.
+- 理由: 母体模型下 base-path=主仓, 多容器共享同一母体 (D009/D031) 时一个 daemon 即可服务全部; 按容器拆 daemon 会引入端口与发现复杂度, 无收益.
+- 影响: D008 "每容器专属守护进程" 字面在该点被实践修订 (每主仓每个活动母体域一个).
+- 风险: 低; 威胁模型不变 (daemon 无认证, 单授权域).
+
+## U-011 决策收据 id 加微秒 (ISSUE-08 复核补钉)
+
+- 问题: U-002 字面 id = `d-<yyyymmdd-HHMMSS>-<seq>`, 同秒多收据撞 id.
+- 决策: id 时间戳改为 `d-<yyyymmdd-HHMMSS>-<微秒>`.
+- 理由: 实测同秒冲突致收据互覆.
+- 影响: 纯格式, 无语义变化.
+- 风险: 无.
+
+## U-012 ISSUE-08 两项偏差追认
+
+- terminate 执行顺序实现为 nft remove → rm → (最后容器) 收 daemon, 与任务书字面序不同 — 先断网再删方向更安全, 接受.
+- birth/status 为支持多容器 nft 断言夹带的改动 (own_netns 兄弟规则复制/runtime network.netns 字段/status stage 回读) 接受为必要使能改动.
