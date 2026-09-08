@@ -47,8 +47,12 @@ uv run python scripts/swt.py status [--repo <主仓>]
 - **blacklist** (默认放行): 只断 `--deny` 条目, 护 host 侧特定服务 (数据库/redis 等) 场景.
 盘点方法论: 与我一起列出容器工作所需站点, **域名须解析为具体 IP/CIDR 后传入** (防火墙规则只认 IP, 脚本拒收域名); 条目是 IP 级, 放行即全端口. 站点换 IP 失效时重新盘点. 运行期新站点需求的处理形态未定, 发生时带回本会话问我.
 
-**第二步: 镜像判定**
-birth 内部自动跑 image-prep `match`: REUSE 直接用; BUILD-NEW 则 birth 停出 DECIDE 并附需求清单 — 与我确认清单后由你跑 `image-prep build` (见镜像管理节), birth 不吞构建环节, 构建完成带 `--image <ref>` 重跑 birth. 在跑容器镜像有新版只在 STATE 标 `newer-available`, 不动存活容器.
+**第二步: 镜像判定与制备**
+birth 内部自动跑 image-prep `match`, 需求清单取 `<records-root>/<项目slug>/requirements.md` (或 `--requirements` 指定):
+- **清单文件不存在 → birth exit 2, 这是首次为项目建镜像的入口**: 你读项目信号 (AGENTS.md/README/package.json/pyproject.toml 等) 推导依赖件写成需求清单 (格式见镜像管理节), **展示清单与我确认后才落盘** — 装依赖会运行其安装脚本, 风险与日常装包同级, 确认时向我明示; 落盘后重跑 birth.
+- REUSE → 直接用.
+- BUILD-NEW → birth 停出 DECIDE 并附清单; 我确认后由你跑 `image-prep build` (见镜像管理节), birth 不吞构建环节, 构建完成带 `--image <ref>` 重跑 birth.
+在跑容器镜像有新版只在 STATE 标 `newer-available`, 不动存活容器.
 
 **第三步: 执行 birth**
 ```text
