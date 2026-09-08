@@ -6,7 +6,7 @@ disable-model-invocation: true
 
 # use-sandbox-worktree
 
-领域术语 (**sandbox-worktree**, **母体**, **git 守护进程**, **推送落地**, **base 层/项目层**, **决策收据**, **retired 容器**) 定义见 `docs/language/UBIQUITOUS_LANGUAGE.md`.
+领域术语定义见 `docs/language/UBIQUITOUS_LANGUAGE.md`.
 固定偏好: 硬约束交给环境 (config/nft/拓扑); 容器内 agent 自由驰骋; 容器之外我说了算.
 **命名消歧**: `swt` = host 编排脚本 `scripts/swt.py`; `swt-vnc` = 容器内 VNC helper (见登录墙节), 两者无关.
 
@@ -69,7 +69,7 @@ uv run python scripts/swt.py birth [--repo <主仓>] --branch <母体分支名�
 4. `herdr agent wait` / `agent read` 收结果.
 定位收窄为**交互式编排适配层**: 无 task id/退出码/重试幂等, 不宣称替代 subagent. 保底形态: `pi -p "<任务>"` 批处理 (绕开 TUI 键位注入, 一轮一进程).
 
-**展示链 (present 容器分支)**: 容器内 present 走其容器分支 (`/run/.containerenv` 命中): bind 必须 `0.0.0.0`, **容器端口必须复用创建时已映射的那个** (换端口 host 侧即不可达), 输出 JSON 的 url 不可直接交付 — 由你 `podman port` 发现映射端口并组装 URL 交付给我. add-dir/复用/stop 语义与远程模式一致; 服务随容器生灭, 终结容器不必先 stop. 细节见 present skill 的 "容器内分支" 节.
+**展示链**: 容器内展示由 `present` skill 的容器分支全权负责 (判定/bind/端口/url 语义见其 "容器内分支" 节), 你侧只剩一项: host 侧用 `podman port` 发现映射端口, 组装交付 URL 给我.
 
 **登录墙 (可选环节)**: 容器内需 headed 浏览器过登录墙时:
 ```text
