@@ -198,7 +198,7 @@ def _baseline_probe_script() -> str:
     )
 
 
-BROWSE_DIR = "/home/agent/.agents/skills/access-web/browse"
+BROWSE_DIR = "/home/bolo/.agents/skills/access-web/browse"
 
 # image-prep 与缺省清单的仓库内位置 (本脚本在 scripts/ 下)
 IMAGE_PREP_SCRIPT = Path(__file__).resolve().parent / "image-prep.py"
@@ -334,13 +334,13 @@ def cmd_verify(args: argparse.Namespace) -> int:
         print("evidence: unavailable (baseline probe failed)")
 
     # (5) headed chromium 渲染 -> framebuffer 非黑超阈值 + PPM 证据
-    # HOME=/home/agent: chromium 由项目层装在该处缓存; root 直跑会找错
+    # HOME=/home/bolo: chromium 由项目层装在该处缓存; root 直跑会找错
     try:
         _podman(["exec", args.name, "mkdir", "-p", "/tmp/headless-session"],
                 timeout=60)
         headed = _podman([
             "exec", "-w", BROWSE_DIR,
-            "-e", "HOME=/home/agent",
+            "-e", "HOME=/home/bolo",
             "-e", "BROWSER_HEADED=true", "-e", "DISPLAY=:99",
             args.name, "uv", "run", "python", "-c",
             _navigate_script(),
@@ -375,7 +375,7 @@ def cmd_verify(args: argparse.Namespace) -> int:
     try:
         headless = _podman([
             "exec", "-w", "/tmp/headless-session",
-            "-e", "HOME=/home/agent",
+            "-e", "HOME=/home/bolo",
             args.name, "uv", "run", "--project", BROWSE_DIR,
             "python", "-c", _navigate_script(),
         ], check=False, timeout=300)

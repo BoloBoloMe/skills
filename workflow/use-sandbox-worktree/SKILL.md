@@ -8,7 +8,7 @@ disable-model-invocation: true
 
 **术语**:
 - **sandbox-worktree**: 一个 host 上的 git worktree (**母体**) + 一个 sandbox 容器的绑定对, 本 skill 管理的生命周期单元.
-- **母体**: 主仓在 host 上的一个 worktree 目录, 身兼两职: 容器诞生时从它克隆代码; 容器 push 的成果直接落进它, 打开就能审阅/试跑.
+- **母体**: 主仓在 host 上的一个 worktree 目录 (与主仓同级的兄弟目录, 目录名 = 母体分支名), 身兼两职: 容器诞生时从它克隆代码; 容器 push 的成果直接落进它, 打开就能审阅/试跑.
 - **推送落地**: 容器 `git push` 被接受的瞬间, 母体目录里的文件自动更新成 push 内容, 不用手动 pull.
 - **git 守护进程 (daemon)**: 随容器生灭临时起的 `git daemon` 进程, 容器碰到代码的唯一通道, 无认证.
 - **决策收据**: 脚本向我提问时开出的一次性票据, 绑定当时的资源状态; 我答后重跑时先核对状态没变才采用, 变了就重新问.
@@ -65,16 +65,16 @@ uv run python scripts/swt.py birth [--repo <主仓>] --branch <母体分支名�
 
 **第四步: 交付汇报**
 向我报告:
-- ssh 入口: `ssh -i <私钥> -p <宿主端口> agent@127.0.0.1`; 私钥落 `<records-root>/runtime/<identity>/ssh/` (0600), 随 terminate 清除.
+- ssh 入口: `ssh -i <私钥> -p <宿主端口> bolo@127.0.0.1`; 私钥落 `<records-root>/runtime/<identity>/ssh/` (0600), 随 terminate 清除.
 - 宿主端口动态分配, 跨 stop/start 稳定; 用 `podman port <容器名>` 或 STATE 的 `ssh-port` 发现, 不记录端口 (rm 重建才变).
-- 容器内路径契约: 用户 `agent`, 代码固定克隆在 `/home/agent/workspace` (当前分支 = 母体分支); skill 库在 `~/.agents/skills/`, pi 配置在 `~/.pi/agent/`.
+- 容器内路径契约: 用户 `bolo` (home 与 host 字面相同), 代码固定克隆在 `/home/bolo/Workspace/<母体目录名>` — 与 host 母体路径字面一致 (当前分支 = 母体分支); skill 库在 `~/.agents/skills/`, pi 配置在 `~/.pi/agent/`.
 完成标准: STATE `stage=born`, 容器内检出分支 = 母体分支, ssh 入口与端口发现方式已汇报给我.
 
 ## 存续
 
 **ssh 入容器**: 经上方入口进容器驱动 pi 干活. 产物回流 = 容器内 `git push` (只允许历史只增不改的快进推送), **推送落地**使母体目录文件即时更新, host 直接审阅/试跑. 推送落地有秒级短延迟 (push 返回后文件稍后可读).
 
-**herdr 接入与委派配方**: 容器不装 herdr; host 侧开窗格 `HERDR_AGENT=pi ssh -p <端口> -i <私钥> agent@127.0.0.1`, host herdr 经 env 提示把容器内 pi 识别为一等 agent. 委派配方:
+**herdr 接入与委派配方**: herdr 在 base 层 (容器内可直接用); 要从 host herdr 工作区总览容器内 pi, 就在 host 侧开窗格 `HERDR_AGENT=pi ssh -p <端口> -i <私钥> bolo@127.0.0.1`, host herdr 经 env 提示把容器内 pi 识别为一等 agent. 委派配方:
 1. `herdr agent get` 确认 idle — blocked/working 态不发 (无 guard 会把键打进错误界面).
 2. `herdr pane send-text` 发任务文本.
 3. 提交键 = 读容器内 `~/.pi/agent/keybindings.json` 的 `tui.input.submit` 首键 (跟随我的键位配置; 本机为 `alt+\`), 兜底 alt+enter.
@@ -131,7 +131,7 @@ uv run python scripts/image-prep.py match      --repo <主仓> [--requirements <
 uv run python scripts/image-prep.py build      --repo <主仓> [--requirements <file>]
 ```
 
-- 两层结构: **base 层** (OS+git+sshd+node+pi CLI+uv+fd+rg+python3 + skill 库全量 COPY + `~/.pi/agent` 复制, 排除 auth.json/sessions) 固定且跨项目共享; **项目层**由你读项目信号推导依赖件叠加, 清单与我确认后才构建.
+- 两层结构: **base 层** (OS+git+sshd+node+pi CLI+uv+fd+rg+python3+herdr + skill 库全量 COPY + `~/.pi/agent` 复制, 排除 auth.json/sessions) 固定且跨项目共享; **项目层**由你读项目信号推导依赖件叠加, 清单与我确认后才构建.
 - 需求清单条目 = 名称 + 版本要求 (`>= <= > < ==` 或裸名称), 指令 `install=`/`probe=` (探测缺省 `<name> --version`); apt 条目必须写 `install=` (只写 probe 不装包).
 - 匹配规则: 按镜像 label 找候选取最新构建 → 需求逐项版本满足 + 硬性条件 "基于当前 base 构建" (base 更新后旧项目镜像自然淘汰) → REUSE, 否则 BUILD-NEW. 旧镜像保留不删.
 - 版本语义: tag = 日期-序号 (人读索引), digest = 镜像内容哈希即精确版本; contents.md = 构建后**实测**清单.

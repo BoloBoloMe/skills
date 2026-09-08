@@ -368,7 +368,8 @@ def resolve_branch_slug(repo: Path, raw_branch: str) -> str:
 
 
 def mother_path(repo: Path, branch: str) -> Path:
-    return (repo.parent.parent / "mother" / branch).resolve()
+    # 母体 = 主仓同级兄弟目录 (用户拍板: 与 host 路径字面一致)
+    return (repo.parent / branch).resolve()
 
 
 def ref_tip(repo: Path, branch: str) -> str | None:
@@ -379,10 +380,13 @@ def ref_tip(repo: Path, branch: str) -> str | None:
 def create_mother_worktree(repo: Path, branch: str, base: str | None = None) -> Path:
     directory = mother_path(repo, branch)
     directory.parent.mkdir(parents=True, exist_ok=True)
-    result = run([
-        "git", "-C", str(repo), "worktree", "add", "-b", branch,
-        str(directory), base or default_branch(repo),
-    ])
+    if ref_tip(repo, branch):
+        # 分支 ref 已存在 (上次终结后留存): 直接检出, 不再 -b 新建
+        command = ["git", "-C", str(repo), "worktree", "add", str(directory), branch]
+    else:
+        command = ["git", "-C", str(repo), "worktree", "add", "-b", branch,
+                   str(directory), base or default_branch(repo)]
+    result = run(command)
     if result.returncode != 0:
         raise PreconditionError(f"创建母体失败: {result.stderr.strip()}")
     return directory
@@ -842,7 +846,7 @@ def container_ssh_base(key: Path, port: int) -> list[str]:
     return [
         "ssh", "-i", str(key), "-o", "BatchMode=yes", "-o", "ConnectTimeout=2",
         "-o", "StrictHostKeyChecking=no", "-o", "UserKnownHostsFile=/dev/null",
-        "-p", str(port), "agent@127.0.0.1",
+        "-p", str(port), "bolo@127.0.0.1",
     ]
 
 
@@ -1018,14 +1022,15 @@ def inject_ssh_key(container: dict[str, Any], records_root: Path, identity: str,
     public = key.with_suffix(key.suffix + ".pub").read_text(encoding="utf-8")
     result = subprocess.run([
         "podman", "exec", "-i", container["name"], "sh", "-c",
-        "install -d -m 700 -o agent -g agent /home/agent/.ssh && "
-        "cat > /home/agent/.ssh/authorized_keys && "
-        "chown agent:agent /home/agent/.ssh/authorized_keys && "
-        "chmod 600 /home/agent/.ssh/authorized_keys",
+        "install -d -m 700 -o bolo -g bolo /home/bolo/.ssh && "
+        "install -d -m 755 -o bolo -g bolo /home/bolo/Workspace && "
+        "cat > /home/bolo/.ssh/authorized_keys && "
+        "chown bolo:bolo /home/bolo/.ssh/authorized_keys && "
+        "chmod 600 /home/bolo/.ssh/authorized_keys",
     ], input=public, capture_output=True, text=True, check=False)
     if result.returncode != 0:
         raise SwtError(3, "PARTIAL", f"authorized_keys 注入失败: {result.stderr.strip()}")
-    container["record"].update({"ssh_private_key": str(key), "clone_dir": "/home/agent/workspace"})
+    container["record"].update({"ssh_private_key": str(key), "clone_dir": f"/home/bolo/Workspace/{container['record']['branch']}"})
     upsert_container_record(runtime, container["record"], runtime_file)
     runtime["stage"] = "ssh-ready"
     atomic_write_json(runtime_file, runtime)
@@ -1034,17 +1039,18 @@ def inject_ssh_key(container: dict[str, Any], records_root: Path, identity: str,
 
 def assert_container_clone(container: dict[str, Any], key: Path, branch: str, remote: str) -> None:
     port = int(container["port"])
+    clone_dir = f"/home/bolo/Workspace/{branch}"
     command = (
-        "rm -rf /home/agent/workspace && "
-        f"git clone -b {shlex.quote(branch)} {shlex.quote(remote)} /home/agent/workspace"
+        f"rm -rf {shlex.quote(clone_dir)} && "
+        f"git clone -b {shlex.quote(branch)} {shlex.quote(remote)} {shlex.quote(clone_dir)}"
     )
     result = ssh_command(key, port, command, timeout=30)
     if result.returncode != 0:
         raise SwtError(3, "PARTIAL", f"容器 clone 失败: {result.stderr.strip()}")
-    current = ssh_command(key, port, "git -C /home/agent/workspace branch --show-current")
+    current = ssh_command(key, port, f"git -C {shlex.quote(clone_dir)} branch --show-current")
     if current.returncode != 0 or current.stdout.strip() != branch:
         raise SwtError(3, "PARTIAL", f"容器检出分支错误: {current.stdout.strip()!r}")
-    refs = ssh_command(key, port, "git -C /home/agent/workspace ls-remote origin")
+    refs = ssh_command(key, port, f"git -C {shlex.quote(clone_dir)} ls-remote origin")
     if refs.returncode != 0:
         raise SwtError(3, "PARTIAL", f"容器 ls-remote 失败: {refs.stderr.strip()}")
     advertised = [line.split()[1] for line in refs.stdout.splitlines() if len(line.split()) >= 2 and line.split()[1] != "HEAD"]
@@ -1059,6 +1065,9 @@ def birth(args: argparse.Namespace, repo: Path) -> int:
     branch = resolve_branch_slug(repo, args.branch)
     runtime_file = runtime_path(records_root, repo)
     runtime_existing = load_runtime(runtime_file)
+    if runtime_existing is not None and runtime_existing.get("stage") == "idle":
+        # 上次已彻底终结 (容器空/daemon 灭): 视为全新 birth, runtime 由后续流程重建覆盖.
+        runtime_existing = None
     if runtime_existing is None:
         active_daemons = daemon_pids(repo)
         if active_daemons:
@@ -2179,7 +2188,7 @@ def resume_probe(
     probe = ssh_command(key, port, f"git ls-remote {shlex.quote(remote)}", timeout=10)
     if probe.returncode != 0:
         raise SwtError(3, "PARTIAL", f"daemon probe 失败: {probe.stderr.strip()}")
-    clone_dir = record.get("clone_dir") or record.get("clone-dir") or "/home/agent/workspace"
+    clone_dir = record.get("clone_dir") or record.get("clone-dir") or f"/home/bolo/Workspace/{record.get('branch')}"
     set_remote = ssh_command(
         key, port,
         f"git -C {shlex.quote(str(clone_dir))} remote set-url origin {shlex.quote(remote)}",

@@ -54,6 +54,7 @@ uv>=0.5
 fd>=1.0 probe="fd --version"
 rg>=13.0
 sshd>=8.0 probe="/usr/sbin/sshd -V"
+herdr>=0.9 probe="herdr --version"
 """
 
 
@@ -235,21 +236,25 @@ RUN curl -LsSf https://astral.sh/uv/install.sh | UV_INSTALL_DIR=/usr/local/bin s
 # 稳定层: pi CLI
 RUN npm i -g @earendil-works/pi-coding-agent
 
-# agent 用户 + sshd host keys (M03 镜像契约)
-RUN useradd --create-home --shell /bin/bash agent \\
+# 稳定层: herdr (官方发布静态二进制, 不依赖 host 现状)
+RUN curl -LsSf -o /usr/local/bin/herdr https://github.com/herdrdev/herdr/releases/download/v0.9.0/herdr-linux-x86_64 \
+    && chmod 755 /usr/local/bin/herdr
+
+# bolo 用户 + sshd host keys (home 与 host 字面相同, D018 字面复刻)
+RUN useradd --create-home --shell /bin/bash bolo \\
     && ssh-keygen -A \\
     && mkdir -p /run/sshd \\
     && chmod 755 /run/sshd
 
 # 常变层: skill 库全量 COPY (D014/D018); ~/.pi/agent 机械复制 (D018/D023); auth.json/sessions 不进镜像 (D018)
-COPY --chown=agent:agent skills/ /home/agent/.agents/skills/
-COPY --chown=agent:agent pi-agent/ /home/agent/.pi/agent/
+COPY --chown=bolo:bolo skills/ /home/bolo/.agents/skills/
+COPY --chown=bolo:bolo pi-agent/ /home/bolo/.pi/agent/
 
 # skill 库内 pyproject 的依赖在容器内重建 (无锁文件先试 frozen 再回落)
-RUN for p in $(find /home/agent/.agents/skills -name pyproject.toml 2>/dev/null); do \\
+RUN for p in $(find /home/bolo/.agents/skills -name pyproject.toml 2>/dev/null); do \\
         uv sync --project "$(dirname "$p")" --frozen || uv sync --project "$(dirname "$p")"; \\
     done \\
-    && chown -R agent:agent /home/agent/.agents /home/agent/.pi
+    && chown -R bolo:bolo /home/bolo/.agents /home/bolo/.pi
 
 # 容器内端口固定 (22 ssh / 8800 present / 6080 noVNC); 宿主端口不钉, 诞生时 -p <容器端口> 动态分配
 EXPOSE 22 8800 6080
