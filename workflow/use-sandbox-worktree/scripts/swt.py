@@ -298,8 +298,8 @@ def expected_config(branch: str) -> dict[str, list[str]]:
         "receive.denyCurrentBranch": ["updateInstead"],
         "receive.denyNonFastForwards": ["true"],
         "receive.denyDeletes": ["true"],
-        "receive.hideRefs": ["refs/heads", f"!refs/heads/{branch}", "refs/tags"],
-        "uploadpack.hideRefs": ["refs/heads", f"!refs/heads/{branch}", "refs/tags"],
+        "receive.hideRefs": ["refs/heads", f"!refs/heads/{branch}", "refs/tags", "refs/remotes"],
+        "uploadpack.hideRefs": ["refs/heads", f"!refs/heads/{branch}", "refs/tags", "refs/remotes"],
     }
 
 
@@ -442,12 +442,6 @@ def find_mother(repo: Path, branch: str) -> tuple[Path | None, bool]:
     return (target if target.exists() else None), False
 
 
-def assert_srv_layout(repo: Path) -> None:
-    siblings = sorted(path.resolve() for path in repo.parent.iterdir() if (path / ".git").is_dir())
-    if siblings != [repo.resolve()]:
-        raise PreconditionError(f"daemon base-path 只能包含主仓, 发现其它仓库: {siblings!r}")
-
-
 def daemon_pids(repo: Path) -> list[int]:
     pattern = rf"git daemon.*--base-path={re.escape(str(repo.parent.resolve()))}"
     result = run(["pgrep", "-af", pattern])
@@ -524,10 +518,12 @@ def start_daemon(repo: Path) -> DaemonHandle:
             except OSError as exc:
                 last_error = str(exc)
                 continue
+            # 允许目录只给主仓本身: 兄弟仓库由 daemon 原生拒绝 (行为已实测),
+            # export-ok 标记 (无 --export-all) 是第二道闸.
             command = [
                 "git", "daemon", "--enable=receive-pack", f"--base-path={base_path}",
                 f"--listen={address}", f"--port={port}", "--reuseaddr",
-                "--log-destination=none", str(base_path),
+                "--log-destination=none", str(repo.resolve()),
             ]
             try:
                 process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
@@ -1013,9 +1009,11 @@ def inject_ssh_key(container: dict[str, Any], records_root: Path, identity: str,
     key_dir.mkdir(parents=True, exist_ok=True)
     os.chmod(key_dir, 0o700)
     key = key_dir / f"{container['name']}.ed25519"
-    generated = run(["ssh-keygen", "-q", "-t", "ed25519", "-N", "", "-f", str(key)])
-    if generated.returncode != 0:
-        raise SwtError(3, "PARTIAL", f"SSH key 生成失败: {generated.stderr.strip()}")
+    # 重入: 上次 PARTIAL 已生成过就直接复用 (ssh-keygen 见已存在文件会交互询问, 非交互下必死).
+    if not (key.is_file() and Path(str(key) + ".pub").is_file()):
+        generated = run(["ssh-keygen", "-q", "-t", "ed25519", "-N", "", "-f", str(key)])
+        if generated.returncode != 0:
+            raise SwtError(3, "PARTIAL", f"SSH key 生成失败: {generated.stderr.strip()}")
     os.chmod(key, 0o600)
     public = key.with_suffix(key.suffix + ".pub").read_text(encoding="utf-8")
     result = subprocess.run([
@@ -1061,7 +1059,6 @@ def birth(args: argparse.Namespace, repo: Path) -> int:
     branch = resolve_branch_slug(repo, args.branch)
     runtime_file = runtime_path(records_root, repo)
     runtime_existing = load_runtime(runtime_file)
-    assert_srv_layout(repo)
     if runtime_existing is None:
         active_daemons = daemon_pids(repo)
         if active_daemons:

@@ -181,7 +181,8 @@ def cmd_apply(args: argparse.Namespace) -> int:
 
     verify = run_nft(netns, ["list", "table", "inet", TABLE])
     marker = "meta nfproto ipv6 drop"
-    expected_sources = {container_ip, *foreign}
+    # 黑名单空名单时规则集无 ip saddr 行, 校验只查表和 ipv6 标记.
+    expected_sources = {container_ip, *foreign} if (args.mode == "whitelist" or entries) else set(foreign)
     if (
         verify.returncode != 0
         or marker not in verify.stdout
