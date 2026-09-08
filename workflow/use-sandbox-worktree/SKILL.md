@@ -62,7 +62,7 @@ uv run python scripts/swt.py birth [--repo <主仓>] --branch <母体分支名�
 
 **ssh 入容器**: 经上方入口进容器驱动 pi 干活. 产物回流 = 容器内 `git push` (ff-only), **推送落地**使母体目录文件即时更新, host 直接审阅/试跑. 推送落地有秒级短延迟 (push 返回后文件稍后可读).
 
-**herdr 接入与委派配方 (D021)**: 容器不装 herdr; host 侧开窗格 `HERDR_AGENT=pi ssh -p <端口> -i <私钥> agent@127.0.0.1`, host herdr 经 env 提示把容器内 pi 识别为一等 agent. 委派配方:
+**herdr 接入与委派配方**: 容器不装 herdr; host 侧开窗格 `HERDR_AGENT=pi ssh -p <端口> -i <私钥> agent@127.0.0.1`, host herdr 经 env 提示把容器内 pi 识别为一等 agent. 委派配方:
 1. `herdr agent get` 确认 idle — blocked/working 态不发 (无 guard 会把键打进错误界面).
 2. `herdr pane send-text` 发任务文本.
 3. 提交键 = 读容器内 `~/.pi/agent/keybindings.json` 的 `tui.input.submit` 首键 (**键位即接口**, 跟随配置; 本机为 `alt+\`), 兜底 alt+enter.
@@ -78,7 +78,7 @@ uv run python scripts/login-wall.py up     --image <项目层镜像> [--name <�
 uv run python scripts/login-wall.py verify --name <名> [--evidence-dir <目录>]
 uv run python scripts/login-wall.py down   --name <名>          # 幂等
 ```
-up 起容器并启动 VNC 栈 (Xvfb + x11vnc + websockify/noVNC), 交付 noVNC URL 给我浏览器操作; verify 做通道检查 (HTTP/ws/RFB/空白基线), 渲染阈值 0.2. 浏览器项目层清单 = `image/requirements-browser.md`; chromium 为 playwright 管理 (与 access-web 同源). 登录态 profile 落容器内 /tmp, 容器存续期内跨 ssh 会话复用, rm 即失 (ADR 0003). `build` 必传 `--repo` (image-prep build 缺省裸崩, 已知限制).
+up 起容器并启动 VNC 栈 (Xvfb + x11vnc + websockify/noVNC), 交付 noVNC URL 给我浏览器操作; verify 做通道检查 (HTTP/ws/RFB/空白基线), 渲染阈值 0.2. 浏览器项目层清单 = `image/requirements-browser.md`; chromium 为 playwright 管理 (与 access-web 同源). 登录态 profile 落容器内 /tmp, 容器存续期内跨 ssh 会话复用, rm 即失. `build` 必传 `--repo` (image-prep build 缺省裸崩, 已知限制).
 
 **多容器共推同一母体**: 允许. 写面 ff-only 使后推者被 non-ff 拒: 容器内 `git fetch` → 解冲突 → 重推 (git 原生串行化, 无新机制).
 
@@ -169,10 +169,10 @@ stdout 末行 `STATE {...}` 单行 json (只加字段不改名); stderr 首行 `
 
 ## 风险明示 (向我声明)
 
-- **auth.json 只读挂载**进容器: 防写回 host, 不防读 — 容器内恶意依赖可读 token 并经白名单内 LLM 域名外传, 已接受 (D019).
+- **auth.json 只读挂载**进容器: 防写回 host, 不防读 — 容器内恶意依赖可读 token 并经白名单内 LLM 域名外传, 已接受.
 - **git 守护进程无认证/审计**: 威胁模型仅覆盖单授权域防容器 agent 越权; 监听落 0.0.0.0 时 LAN 可达收敛写面 (仅母体分支 ff).
-- **whitelist 自动放行 daemon 地址** = 容器可经网关地址访问 host 全部非 loopback 监听端口 (IP 级, 无端口收窄), internet 方向仍收敛 (U-004).
-- HEAD 协议广告藏不掉, 容器物理可读 main tip 对象 (D008 已接受残余).
+- **whitelist 自动放行 daemon 地址** = 容器可经网关地址访问 host 全部非 loopback 监听端口 (IP 级, 无端口收窄), internet 方向仍收敛.
+- HEAD 协议广告藏不掉, 容器物理可读 main tip 对象 (已接受残余).
 - 主仓 config 常驻: 不影响主仓 push 真远端, 但**手动 push 进主仓会被拒** (hideRefs).
 
 ## 容器命令收拢 (provider 扩展点)
@@ -184,6 +184,6 @@ stdout 末行 `STATE {...}` 单行 json (只加字段不改名); stderr 首行 `
 - 容器内操作: `podman exec` (key 注入/swt-vnc); 网络注入: `podman unshare nsenter --net=<rootless-netns> nft -f -`
 - daemon 发现: `pgrep -f 'git daemon.*<srv 根>'`
 
-## 救场 (无修复原语, D037)
+## 救场 (无修复原语)
 
-swt 无 config/daemon 修复子命令. exit 3 的 PARTIAL 文案给出该半状态的唯一人工恢复路径; 更深的救场由你敲原生命令: `git config --get-all` / `pgrep -f 'git daemon'` / `net-firewall.py show` / `podman ps -a`, 诊断后手工收敛. 真实救场需求暴露时回报我 (迷雾回访 D037).
+swt 无 config/daemon 修复子命令. exit 3 的 PARTIAL 文案给出该半状态的唯一人工恢复路径; 更深的救场由你敲原生命令: `git config --get-all` / `pgrep -f 'git daemon'` / `net-firewall.py show` / `podman ps -a`, 诊断后手工收敛. 真实救场需求暴露时回报我.
