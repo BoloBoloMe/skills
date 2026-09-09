@@ -244,7 +244,8 @@ RUN curl -LsSf -o /usr/local/bin/herdr https://github.com/herdrdev/herdr/release
 RUN useradd --create-home --shell /bin/bash bolo \\
     && ssh-keygen -A \\
     && mkdir -p /run/sshd \\
-    && chmod 755 /run/sshd
+    && chmod 755 /run/sshd \\
+    && sed -i 's/^#\\?PermitUserEnvironment.*/PermitUserEnvironment yes/' /etc/ssh/sshd_config
 
 # 常变层: skill 库全量 COPY (D014/D018); ~/.pi/agent 机械复制 (D018/D023); auth.json/sessions 不进镜像 (D018)
 COPY --chown=bolo:bolo skills/ /home/bolo/.agents/skills/

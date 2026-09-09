@@ -69,8 +69,9 @@ uv run python scripts/swt.py birth [--repo <主仓>] --branch <母体分支名�
   - 端口映射: `ssh -p <宿主端口> bolo@127.0.0.1` — 跨 stop/start 稳定, 用 `podman port <容器名>` 或 STATE 的 `ssh-port` 发现, 不记录端口 (rm 重建才变).
   - 容器 IP: `ssh bolo@<容器IP>` — STATE 的 `network-ip`, rm 重建后可能变.
 - 登录凭证 (两种, 都随 terminate 清除, 落 `<records-root>/runtime/<identity>/ssh/`, 0600):
-  - 密码: `<容器名>.password`, 每容器随机生成, 人登录用; 直接连文件内容一起交付给我.
+  - 密码: 固定 `sandbox` (用户拍板, 风险见风险明示节), `<容器名>.password` 留档; 人登录用.
   - 密钥: `<容器名>.ed25519` (`ssh -i <私钥> ...`), 脚本/herdr 的 BatchMode 走它.
+- herdr remote (走 ssh, 容器无需预启 server, remote attach 按需拉起): birth 收尾直接打印两条完整命令 — host 用 `herdr --remote ssh://bolo@127.0.0.1:<宿主端口>`, 局域网机器用 `herdr --remote ssh://bolo@<host-LAN-IP>:<宿主端口>`.
 - 容器内路径契约: 用户 `bolo` (home 与 host 字面相同), 代码固定克隆在 `/home/bolo/Workspace/<母体目录名>` — 与 host 母体路径字面一致 (当前分支 = 母体分支); skill 库在 `~/.agents/skills/`, pi 配置在 `~/.pi/agent/`.
 完成标准: STATE `stage=born`, 容器内检出分支 = 母体分支, ssh 入口与端口发现方式已汇报给我.
 
@@ -143,6 +144,13 @@ uv run python scripts/image-prep.py build      --repo <主仓> [--requirements <
 - 记录落 `<records-root>/<slug>/builds/<build-id>/` (Containerfile/requirements.md/contents.md/build.json), 不落项目 git.
 - 门禁类扩展 (filesystem-operation-gate 等) 留 host 不进容器; host 环境文档 (`~/AGENTS.md`/`~/docs/`) 不进容器.
 
+## 环境变量继承 (env.conf)
+
+容器要继承的 host 环境变量列在清单文件里, birth 创建容器时烘入 (`podman create -e`), **改清单须重建容器才生效**:
+- 全局: `<records-root>/env.conf`; 项目级: `<records-root>/<项目slug>/env.conf` (同名覆盖全局).
+- 每行一条: `NAME` = 值取 host 当前环境 (**文件不存秘密值**); `NAME=value` = 固定值 (仅限非秘密). `#` 开头为注释.
+- `NAME` 在 host 未设置: stderr 警告并跳过, 不阻塞 birth.
+
 ## 网络控制 (net-firewall, 一般由 swt 编排)
 
 正常路径不需要直接调用 — birth/resume/terminate/switch 自动注入与回收. 手救场用:
@@ -189,7 +197,7 @@ stdout 末行 `STATE {...}` 单行 json (只加字段不改名); stderr 首行 `
 - **git 守护进程无认证/审计**: 只靠 "同一时刻只有一个分支可写" 的拓扑防容器 agent 越权; 监听落 0.0.0.0 时, 局域网内其他机器也够得着这个受限写入口 (只能快进推母体分支).
 - **whitelist 自动放行 daemon 地址** = 容器可经网关地址访问 host 全部对外监听 (非仅本机回环) 的端口, 按 IP 放行无法收窄到单端口; 出访互联网方向仍收敛.
 - 容器物理可读主分支最新提交 (git 协议广告藏不掉), 已接受.
-- 容器 sshd 同时开密码登录 (每容器随机密码, 落 host 0600 文件); 容器 IP 局域网可达时理论上可被尝试暴破, 随机密码强度下风险已接受.
+- 容器 sshd 同时开密码登录且**密码固定为 sandbox**; 容器 ssh 端口经宿主机映射对局域网开放, 同网段任何人可进沙盒容器 — 用户知情接受.
 - 主仓 config 常驻: 不影响主仓 push 真远端, 但**手动 push 进主仓会被拒**.
 
 ## 容器命令收拢 (provider 扩展点)

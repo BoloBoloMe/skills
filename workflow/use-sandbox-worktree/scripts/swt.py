@@ -17,7 +17,6 @@ import hashlib
 import json
 import os
 import re
-import secrets
 import shutil
 import shlex
 import signal
@@ -376,6 +375,33 @@ def mother_path(repo: Path, branch: str) -> Path:
 def ref_tip(repo: Path, branch: str) -> str | None:
     result = run(["git", "-C", str(repo), "rev-parse", f"refs/heads/{branch}"])
     return result.stdout.strip() if result.returncode == 0 else None
+
+
+def load_inherited_env(records_root: Path, slug: str) -> dict[str, str]:
+    """环境变量继承清单: <records-root>/env.conf (全局) + <records-root>/<slug>/env.conf (项目, 同名覆盖).
+    每行 NAME (值取 host 当前环境, 文件不存秘密) 或 NAME=value (固定值)."""
+    inherited: dict[str, str] = {}
+    for path in (records_root / "env.conf", records_root / slug / "env.conf"):
+        if not path.is_file():
+            continue
+        for raw in path.read_text(encoding="utf-8").splitlines():
+            line = raw.strip()
+            if not line or line.startswith("#"):
+                continue
+            if "=" in line:
+                key, value = line.split("=", 1)
+                inherited[key.strip()] = value.strip()
+            elif line in os.environ:
+                inherited[line] = os.environ[line]
+            else:
+                print(f"[SWT] env 继承跳过: {line} (host 未设置)", file=sys.stderr)
+    return inherited
+
+
+def lan_ip() -> str | None:
+    result = run(["ip", "-o", "-4", "route", "get", "1.1.1.1"])
+    match = re.search(r"src (\d+\.\d+\.\d+\.\d+)", result.stdout)
+    return match.group(1) if match else None
 
 
 def create_mother_worktree(repo: Path, branch: str, base: str | None = None) -> Path:
@@ -977,7 +1003,7 @@ def refresh_container(
     return {"name": name, "port": port, "record": record, "detail": detail}
 
 
-def create_and_start_container(args: argparse.Namespace, repo: Path, image: dict[str, Any], branch: str, runtime: dict[str, Any], runtime_file: Path) -> dict[str, Any]:
+def create_and_start_container(args: argparse.Namespace, repo: Path, image: dict[str, Any], branch: str, runtime: dict[str, Any], runtime_file: Path, env: dict[str, str]) -> dict[str, Any]:
     name = args.name or f"swt-{branch}"
     existing = run(["podman", "inspect", name])
     if existing.returncode == 0:
@@ -993,6 +1019,9 @@ def create_and_start_container(args: argparse.Namespace, repo: Path, image: dict
     command = ["podman", "create", "--name", name]
     for label in labels:
         command.extend(["--label", label])
+    # 环境变量继承 (创建时烘入镜像 env, ssh 面由 inject_ssh_key 写 ~/.ssh/environment)
+    for env_name, env_value in env.items():
+        command.extend(["-e", f"{env_name}={env_value}"])
     command.extend(["-p", "22", str(image["ref"])])
     created = run(command)
     if created.returncode != 0:
@@ -1008,7 +1037,7 @@ def create_and_start_container(args: argparse.Namespace, repo: Path, image: dict
     return refresh_container(name, record, runtime, runtime_file)
 
 
-def inject_ssh_key(container: dict[str, Any], records_root: Path, identity: str, runtime: dict[str, Any], runtime_file: Path) -> Path:
+def inject_ssh_key(container: dict[str, Any], records_root: Path, identity: str, runtime: dict[str, Any], runtime_file: Path, env: dict[str, str]) -> Path:
     require_command("ssh-keygen")
     key_dir = records_root / "runtime" / identity / "ssh"
     key_dir.mkdir(parents=True, exist_ok=True)
@@ -1031,8 +1060,19 @@ def inject_ssh_key(container: dict[str, Any], records_root: Path, identity: str,
     ], input=public, capture_output=True, text=True, check=False)
     if result.returncode != 0:
         raise SwtError(3, "PARTIAL", f"authorized_keys 注入失败: {result.stderr.strip()}")
-    # 密码登录 (用户拍板): 每容器随机密码, 与 key 同目录 0600 存放, 随 terminate 清除
-    password = secrets.token_urlsafe(12)
+    if env:
+        # sshd 不给登录会话传容器 env; PermitUserEnvironment + ~/.ssh/environment 才是 ssh 面通道
+        env_text = "".join(f"{k}={v}\n" for k, v in env.items())
+        env_result = subprocess.run([
+            "podman", "exec", "-i", container["name"], "sh", "-c",
+            "cat > /home/bolo/.ssh/environment && "
+            "chown bolo:bolo /home/bolo/.ssh/environment && "
+            "chmod 600 /home/bolo/.ssh/environment",
+        ], input=env_text, capture_output=True, text=True, check=False)
+        if env_result.returncode != 0:
+            raise SwtError(3, "PARTIAL", f"environment 注入失败: {env_result.stderr.strip()}")
+    # 密码登录 (用户拍板): 固定密码 sandbox, 与 key 同目录 0600 留档, 随 terminate 清除
+    password = "sandbox"
     pw_result = subprocess.run([
         "podman", "exec", "-i", container["name"], "sh", "-c",
         f"echo 'bolo:{password}' | chpasswd",
@@ -1222,7 +1262,8 @@ def birth(args: argparse.Namespace, repo: Path) -> int:
     runtime["image"] = image
     atomic_write_json(runtime_file, runtime)
     try:
-        container = create_and_start_container(args, repo, image, branch, runtime, runtime_file)
+        env_map = load_inherited_env(records_root, resolve_project_slug(repo))
+        container = create_and_start_container(args, repo, image, branch, runtime, runtime_file, env_map)
         daemon_address = daemon_container_address(str(daemon_record["addr"]))
         gateway_address = container_gateway(container["name"], daemon_address)
         route_gateway = container_route_gateway(container["detail"])
@@ -1252,7 +1293,7 @@ def birth(args: argparse.Namespace, repo: Path) -> int:
             )
         runtime["stage"] = "network"
         atomic_write_json(runtime_file, runtime)
-        key = inject_ssh_key(container, records_root, identity, runtime, runtime_file)
+        key = inject_ssh_key(container, records_root, identity, runtime, runtime_file, env_map)
         remote = f"git://{daemon_address}:{int(daemon_record['port'])}/{repo.name}"
         container["record"]["remote"] = remote
         container["record"]["daemon-addr"] = daemon_address
@@ -1271,6 +1312,14 @@ def birth(args: argparse.Namespace, repo: Path) -> int:
     state.update({"stage": "born", "mother": {"branch": branch, "dir": str(mother_dir), "exists": True, "worktree-dirty": False},
                   "config": {"swt-form": True}, "daemon": observed_daemon or {**runtime["daemon"], "orphan": True}, "containers": runtime["containers"],
                   "image": runtime["image"], "network": runtime["network"]})
+    port = container["record"].get("ssh-port") or container.get("port")
+    lan = lan_ip()
+    print(f"[SWT] ssh 入口 (端口映射): ssh -p {port} bolo@127.0.0.1  (用户 bolo, 密码 sandbox)")
+    print(f"[SWT] ssh 入口 (容器 IP):  ssh bolo@{ip_value}  (用户 bolo, 密码 sandbox)")
+    print(f"[SWT] herdr remote (host):    herdr --remote ssh://bolo@127.0.0.1:{port}")
+    if lan:
+        print(f"[SWT] herdr remote (局域网): herdr --remote ssh://bolo@{lan}:{port}")
+    print(f"[SWT] ssh 私钥: {key}")
     print_state(state, "[SWT] birth: 已完成")
     return 0
 
