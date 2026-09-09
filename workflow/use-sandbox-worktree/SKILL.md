@@ -41,6 +41,9 @@ uv run python scripts/swt.py status [--repo <主仓>]
 
 ## 诞生 (birth)
 
+**第零步: 先用 `use-worktree` skill 为项目创建工作树分支 (固定前置, 不可跳过)**
+母体分支不是本 skill 自创的命名, 必须走 use-worktree 的建树流程产出 (分支名/目录名 = 它的 slug 规则); 后续 birth 的 `--branch` 与母体目录都以这个名为准. 未建树先 birth 会在 DECIDE/断言处卡住, 别绕.
+
 **第一步: 网络模式与白名单盘点 (固定环节, 不可跳过)**
 创建容器前必须与我确认网络模式, 运行期不切换:
 - **whitelist** (默认拒, 推荐): 只放行 网关 DNS + `--allow` 条目 + 已建立连接的返程流量 (保住 host 发起的 ssh), 其余容器流出全断. birth 自动把容器可达的 daemon 地址并入 allow (否则容器内 clone 物理不通), 该自动条目的残余暴露见风险明示节.
