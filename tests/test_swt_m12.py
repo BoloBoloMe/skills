@@ -142,8 +142,8 @@ class TestTS003MotherAndConfig(SwtFixture):
             "receive.denyCurrentBranch": ["updateInstead"],
             "receive.denyNonFastForwards": ["true"],
             "receive.denyDeletes": ["true"],
-            "receive.hideRefs": ["refs/heads", f"!refs/heads/{branch}", "refs/tags"],
-            "uploadpack.hideRefs": ["refs/heads", f"!refs/heads/{branch}", "refs/tags"],
+            "receive.hideRefs": ["refs/heads", f"!refs/heads/{branch}", "refs/tags", "refs/remotes"],
+            "uploadpack.hideRefs": ["refs/heads", f"!refs/heads/{branch}", "refs/tags", "refs/remotes"],
         }
         for key, entries in values.items():
             for value in entries:
@@ -599,7 +599,7 @@ class SwtBirthFixture(SwtFixture):
 
     def make_target_mother(self, raw_branch: str = "feature/next") -> tuple[str, Path]:
         swt = self.load_swt()
-        branch = swt.resolve_branch_slug(self.repo, raw_branch)
+        branch = swt.resolve_mother_branch(self.repo, raw_branch)
         mother = self.root / "target-mother"
         subprocess.run(
             ["git", "-C", str(self.repo), "worktree", "add", "-b", branch, str(mother)],
@@ -628,7 +628,7 @@ class SwtBirthFixture(SwtFixture):
         return subprocess.run(
             ["ssh", "-i", str(key), "-o", "BatchMode=yes", "-o", "StrictHostKeyChecking=no",
              "-o", "UserKnownHostsFile=/dev/null", "-p", str(container["ssh-port"]),
-             "agent@127.0.0.1", command],
+             "bolo@127.0.0.1", command],
             capture_output=True, text=True, check=False,
         )
 
@@ -675,14 +675,14 @@ class TestTS201BirthChain(SwtBirthFixture):
         self.assertEqual(["updateInstead"], config["receive.denyCurrentBranch"])
         self.assertEqual(["true"], config["receive.denyNonFastForwards"])
         self.assertEqual(["true"], config["receive.denyDeletes"])
-        self.assertEqual(["refs/heads", f"!refs/heads/{branch}", "refs/tags"], config["receive.hideRefs"])
-        self.assertEqual(["refs/heads", f"!refs/heads/{branch}", "refs/tags"], config["uploadpack.hideRefs"])
+        self.assertEqual(["refs/heads", f"!refs/heads/{branch}", "refs/tags", "refs/remotes"], config["receive.hideRefs"])
+        self.assertEqual(["refs/heads", f"!refs/heads/{branch}", "refs/tags", "refs/remotes"], config["uploadpack.hideRefs"])
         pid = state["daemon"]["pid"]
         command_line = Path(f"/proc/{pid}/cmdline").read_bytes().decode(errors="replace").split("\0")
         self.assertNotIn("--export-all", command_line)
         self.assertEqual(str(self.repo.parent), state["daemon"]["base-path"])
         self.assertEqual(branch, self.ssh_run(
-            state, "git -C /home/agent/workspace branch --show-current"
+            state, f"git -C /home/bolo/Workspace/{branch} branch --show-current"
         ).stdout.strip())
         self.assertTrue(list((self.records / "runtime").glob("*.json")))
 
@@ -701,7 +701,7 @@ class TestTS212Environment(TestTS201BirthChain):
         )
         self.assertEqual(4, result.returncode)
         self.assertTrue(result.stderr.splitlines()[0].startswith("ENV "))
-        self.assertFalse((self.root / "mother").exists())
+        self.assertFalse((self.repo.parent / "demo-main-feature-m12").exists())
 
 
 class TestTS213SshKey(TestTS201BirthChain):
@@ -782,7 +782,7 @@ class TestTS209ImageDecision(TestTS201BirthChain):
         )
         self.assertEqual(2, result.returncode)
         self.assertIn("requirements", result.stderr)
-        self.assertFalse((self.root / "mother").exists())
+        self.assertFalse((self.repo.parent / "demo-main-feature-m12").exists())
 
 
 class TestTS208DecisionReceipts(TestTS201BirthChain):
@@ -800,7 +800,7 @@ class TestTS208DecisionReceipts(TestTS201BirthChain):
         drift = self.run_swt(*common, "--mode", "blacklist", "--new-mother")
         self.assertEqual(1, drift.returncode, drift.stderr)
         self.assertIn("DECIDE ", drift.stdout)
-        self.assertFalse((self.root / "mother").exists())
+        self.assertFalse((self.repo.parent / "demo-main-feature-m12").exists())
         self.assertTrue(list((self.records / "runtime").glob("*/decisions/d-*.json")))
 
 
@@ -813,7 +813,7 @@ class TestTS207ActiveMother(TestTS201BirthChain):
         )
         self.assertEqual(2, result.returncode)
         self.assertIn("switch", result.stderr)
-        self.assertFalse((self.root / "mother" / "demo-main-other").exists())
+        self.assertFalse((self.repo.parent / "demo-main-other").exists())
 
 
 class TestTS206ConfigIdempotence(TestTS201BirthChain):
@@ -829,7 +829,7 @@ class TestTS206ConfigIdempotence(TestTS201BirthChain):
         self.assertEqual(2, len(state["containers"]))
         for key in ("receive.hideRefs", "uploadpack.hideRefs"):
             values = self.config_values(key)
-            self.assertEqual(3, len(values))
+            self.assertEqual(4, len(values))
             self.assertEqual(len(values), len(set(values)))
         self.assertEqual(first["daemon"]["pid"], state["daemon"]["pid"])
 
@@ -873,16 +873,16 @@ class TestTS204DirtyMother(TestTS201BirthChain):
         (mother / "README.md").write_bytes(original + b"dirty\n")
         result = self.ssh_run(
             state,
-            "git -C /home/agent/workspace config user.name swt-m12 && "
-            "git -C /home/agent/workspace config user.email swt-m12@example.invalid && "
-            "printf 'dirty-push\\n' > /home/agent/workspace/ts204.txt && "
-            "git -C /home/agent/workspace add ts204.txt && "
-            "git -C /home/agent/workspace commit -m ts204 && "
-            "git -C /home/agent/workspace push origin HEAD",
+            "git -C /home/bolo/Workspace/feature/m12 config user.name swt-m12 && "
+            "git -C /home/bolo/Workspace/feature/m12 config user.email swt-m12@example.invalid && "
+            "printf 'dirty-push\\n' > /home/bolo/Workspace/feature/m12/ts204.txt && "
+            "git -C /home/bolo/Workspace/feature/m12 add ts204.txt && "
+            "git -C /home/bolo/Workspace/feature/m12 commit -m ts204 && "
+            "git -C /home/bolo/Workspace/feature/m12 push origin HEAD",
         )
         self.assertNotEqual(0, result.returncode)
         self.assertIn("[remote rejected]", result.stdout + result.stderr)
-        restore = self.ssh_run(state, "git -C /home/agent/workspace reset --hard origin/" + shlex.quote(state["mother"]["branch"]))
+        restore = self.ssh_run(state, "git -C /home/bolo/Workspace/feature/m12 reset --hard origin/" + shlex.quote(state["mother"]["branch"]))
         self.assertEqual(0, restore.returncode, restore.stderr)
         subprocess.run(["git", "-C", str(mother), "checkout", "--", "README.md"], check=True)
         self.assertEqual(original, (mother / "README.md").read_bytes())
@@ -894,42 +894,42 @@ class TestTS203RejectMatrix(TestTS201BirthChain):
         branch = state["mother"]["branch"]
         setup = self.ssh_run(
             state,
-            "git -C /home/agent/workspace config user.name swt-m12 && "
-            "git -C /home/agent/workspace config user.email swt-m12@example.invalid && "
-            "printf 'base\\n' > /home/agent/workspace/ts203-base && "
-            "git -C /home/agent/workspace add ts203-base && "
-            "git -C /home/agent/workspace commit -m ts203-base && "
-            "git -C /home/agent/workspace push origin HEAD",
+            "git -C /home/bolo/Workspace/feature/m12 config user.name swt-m12 && "
+            "git -C /home/bolo/Workspace/feature/m12 config user.email swt-m12@example.invalid && "
+            "printf 'base\\n' > /home/bolo/Workspace/feature/m12/ts203-base && "
+            "git -C /home/bolo/Workspace/feature/m12 add ts203-base && "
+            "git -C /home/bolo/Workspace/feature/m12 commit -m ts203-base && "
+            "git -C /home/bolo/Workspace/feature/m12 push origin HEAD",
         )
         self.assertEqual(0, setup.returncode, setup.stderr)
         new_branch = self.ssh_run(
             state,
-            "git -C /home/agent/workspace switch -c ts203-new && "
-            "git -C /home/agent/workspace push origin HEAD:refs/heads/ts203-new",
+            "git -C /home/bolo/Workspace/feature/m12 switch -c ts203-new && "
+            "git -C /home/bolo/Workspace/feature/m12 push origin HEAD:refs/heads/ts203-new",
         )
         self.assertNotEqual(0, new_branch.returncode)
         self.assertIn("[remote rejected]", new_branch.stdout + new_branch.stderr)
         tag = self.ssh_run(
             state,
-            "git -C /home/agent/workspace switch " + shlex.quote(branch) + " && "
-            "git -C /home/agent/workspace tag ts203-tag && "
-            "git -C /home/agent/workspace push origin refs/tags/ts203-tag",
+            "git -C /home/bolo/Workspace/feature/m12 switch " + shlex.quote(branch) + " && "
+            "git -C /home/bolo/Workspace/feature/m12 tag ts203-tag && "
+            "git -C /home/bolo/Workspace/feature/m12 push origin refs/tags/ts203-tag",
         )
         self.assertNotEqual(0, tag.returncode)
         self.assertIn("[remote rejected]", tag.stdout + tag.stderr)
         non_ff = self.ssh_run(
             state,
-            "git -C /home/agent/workspace reset --hard HEAD^ && "
-            "printf 'non-ff\\n' > /home/agent/workspace/ts203-nonff && "
-            "git -C /home/agent/workspace add ts203-nonff && "
-            "git -C /home/agent/workspace commit -m ts203-nonff && "
-            "git -C /home/agent/workspace push --force origin HEAD:refs/heads/" + shlex.quote(branch),
+            "git -C /home/bolo/Workspace/feature/m12 reset --hard HEAD^ && "
+            "printf 'non-ff\\n' > /home/bolo/Workspace/feature/m12/ts203-nonff && "
+            "git -C /home/bolo/Workspace/feature/m12 add ts203-nonff && "
+            "git -C /home/bolo/Workspace/feature/m12 commit -m ts203-nonff && "
+            "git -C /home/bolo/Workspace/feature/m12 push --force origin HEAD:refs/heads/" + shlex.quote(branch),
         )
         self.assertNotEqual(0, non_ff.returncode)
         self.assertIn("[remote rejected]", non_ff.stdout + non_ff.stderr)
         delete = self.ssh_run(
             state,
-            "git -C /home/agent/workspace push origin :refs/heads/" + shlex.quote(branch),
+            "git -C /home/bolo/Workspace/feature/m12 push origin :refs/heads/" + shlex.quote(branch),
         )
         self.assertNotEqual(0, delete.returncode)
         self.assertIn("[remote rejected]", delete.stdout + delete.stderr)
@@ -945,12 +945,12 @@ class TestTS202PushLands(TestTS201BirthChain):
         state = self.birth_ready()
         result = self.ssh_run(
             state,
-            "git -C /home/agent/workspace config user.name swt-m12 && "
-            "git -C /home/agent/workspace config user.email swt-m12@example.invalid && "
-            "printf 'from-container\\n' > /home/agent/workspace/ts202.txt && "
-            "git -C /home/agent/workspace add ts202.txt && "
-            "git -C /home/agent/workspace commit -m ts202 && "
-            "git -C /home/agent/workspace push origin HEAD",
+            "git -C /home/bolo/Workspace/feature/m12 config user.name swt-m12 && "
+            "git -C /home/bolo/Workspace/feature/m12 config user.email swt-m12@example.invalid && "
+            "printf 'from-container\\n' > /home/bolo/Workspace/feature/m12/ts202.txt && "
+            "git -C /home/bolo/Workspace/feature/m12 add ts202.txt && "
+            "git -C /home/bolo/Workspace/feature/m12 commit -m ts202 && "
+            "git -C /home/bolo/Workspace/feature/m12 push origin HEAD",
         )
         self.assertEqual(0, result.returncode, result.stderr)
         mother = Path(state["mother"]["dir"])
@@ -981,7 +981,7 @@ class TestReviewP1ActiveDaemon(TestTS201BirthChain):
             self.assertEqual(2, result.returncode, result.stderr)
             self.assertIn("daemon", result.stderr)
             self.assertIn("清理", result.stderr)
-            self.assertFalse((self.root / "mother").exists())
+            self.assertFalse((self.repo.parent / "demo-main-feature-m12").exists())
         finally:
             daemon.terminate()
             try:
@@ -1048,7 +1048,7 @@ class TestReviewP4ConfigPartial(TestTS201BirthChain):
         )
         self.assertEqual(3, result.returncode, result.stderr)
         self.assertTrue(result.stderr.startswith("PARTIAL "))
-        self.assertTrue((self.root / "mother").exists())
+        self.assertTrue((self.repo.parent / "demo-main-feature-m12").exists())
         self.assertTrue(list((self.records / "runtime").glob("*.json")))
 
 
@@ -1096,7 +1096,7 @@ class TestTS301Terminate(SwtBirthFixture):
 
     def test_dirty_untracked_blocks_without_force_and_preserves_resources(self) -> None:
         state = self.birth_ready()
-        changed = self.ssh_run(state, "printf dirty > /home/agent/workspace/untracked.txt")
+        changed = self.ssh_run(state, "printf dirty > /home/bolo/Workspace/feature/m12/untracked.txt")
         self.assertEqual(0, changed.returncode, changed.stderr)
         result = self.terminate()
         self.assertEqual(1, result.returncode, result.stderr)
@@ -1112,18 +1112,18 @@ class TestTS301Terminate(SwtBirthFixture):
         state = self.birth_ready()
         committed = self.ssh_run(
             state,
-            "git -C /home/agent/workspace config user.name swt-m12 && "
-            "git -C /home/agent/workspace config user.email swt-m12@example.invalid && "
-            "printf ahead > /home/agent/workspace/ahead.txt && "
-            "git -C /home/agent/workspace add ahead.txt && "
-            "git -C /home/agent/workspace commit -m ahead",
+            "git -C /home/bolo/Workspace/feature/m12 config user.name swt-m12 && "
+            "git -C /home/bolo/Workspace/feature/m12 config user.email swt-m12@example.invalid && "
+            "printf ahead > /home/bolo/Workspace/feature/m12/ahead.txt && "
+            "git -C /home/bolo/Workspace/feature/m12 add ahead.txt && "
+            "git -C /home/bolo/Workspace/feature/m12 commit -m ahead",
         )
         self.assertEqual(0, committed.returncode, committed.stderr)
         blocked = self.terminate()
         self.assertEqual(1, blocked.returncode, blocked.stderr)
         self.assertIn("relation=ahead", blocked.stdout)
         self.assertIn("ahead=1", blocked.stdout)
-        pushed = self.ssh_run(state, "git -C /home/agent/workspace push origin HEAD")
+        pushed = self.ssh_run(state, "git -C /home/bolo/Workspace/feature/m12 push origin HEAD")
         self.assertEqual(0, pushed.returncode, pushed.stdout + pushed.stderr)
         completed = self.terminate()
         self.assertEqual(0, completed.returncode, completed.stderr)
@@ -1133,7 +1133,7 @@ class TestTS301Terminate(SwtBirthFixture):
         branch = state["mother"]["branch"]
         remote_ref = f"refs/remotes/origin/{branch}"
         remote_before = self.ssh_run(
-            state, f"git -C /home/agent/workspace rev-parse {shlex.quote(remote_ref)}"
+            state, f"git -C /home/bolo/Workspace/feature/m12 rev-parse {shlex.quote(remote_ref)}"
         ).stdout.strip()
         mother = Path(state["mother"]["dir"])
         subprocess.run(["git", "-C", str(mother), "config", "user.name", "swt-m12"], check=True)
@@ -1144,12 +1144,12 @@ class TestTS301Terminate(SwtBirthFixture):
         status = self.run_swt("status", "--repo", str(self.repo), "--records-root", str(self.records))
         self.assertEqual(0, status.returncode, status.stderr)
         remote_after = self.ssh_run(
-            state, f"git -C /home/agent/workspace rev-parse {shlex.quote(remote_ref)}"
+            state, f"git -C /home/bolo/Workspace/feature/m12 rev-parse {shlex.quote(remote_ref)}"
         ).stdout.strip()
         self.assertEqual(
             remote_before,
             remote_after,
-            self.ssh_run(state, "git -C /home/agent/workspace show-ref | sort").stdout,
+            self.ssh_run(state, "git -C /home/bolo/Workspace/feature/m12 show-ref | sort").stdout,
         )
         result = self.terminate()
         self.assertEqual(0, result.returncode, result.stderr)
@@ -1159,11 +1159,11 @@ class TestTS301Terminate(SwtBirthFixture):
         state = self.birth_ready()
         committed = self.ssh_run(
             state,
-            "git -C /home/agent/workspace config user.name swt-m12 && "
-            "git -C /home/agent/workspace config user.email swt-m12@example.invalid && "
-            "printf container > /home/agent/workspace/container-side.txt && "
-            "git -C /home/agent/workspace add container-side.txt && "
-            "git -C /home/agent/workspace commit -m container-side",
+            "git -C /home/bolo/Workspace/feature/m12 config user.name swt-m12 && "
+            "git -C /home/bolo/Workspace/feature/m12 config user.email swt-m12@example.invalid && "
+            "printf container > /home/bolo/Workspace/feature/m12/container-side.txt && "
+            "git -C /home/bolo/Workspace/feature/m12 add container-side.txt && "
+            "git -C /home/bolo/Workspace/feature/m12 commit -m container-side",
         )
         self.assertEqual(0, committed.returncode, committed.stderr)
         mother = Path(state["mother"]["dir"])
@@ -1191,7 +1191,7 @@ class TestTS301Terminate(SwtBirthFixture):
         state = self.birth_ready()
         name = state["containers"][0]["name"]
         removed = subprocess.run(
-            ["podman", "exec", name, "rm", "-f", "/home/agent/.ssh/authorized_keys"],
+            ["podman", "exec", name, "rm", "-f", "/home/bolo/.ssh/authorized_keys"],
             capture_output=True, text=True, check=False,
         )
         self.assertEqual(0, removed.returncode, removed.stderr)
@@ -1203,7 +1203,7 @@ class TestTS301Terminate(SwtBirthFixture):
 
     def test_force_writes_audit_snapshot_and_consumes_receipt(self) -> None:
         state = self.birth_ready()
-        changed = self.ssh_run(state, "printf dirty > /home/agent/workspace/audit.txt")
+        changed = self.ssh_run(state, "printf dirty > /home/bolo/Workspace/feature/m12/audit.txt")
         self.assertEqual(0, changed.returncode, changed.stderr)
         first = self.terminate()
         self.assertEqual(1, first.returncode, first.stderr)
@@ -1222,12 +1222,12 @@ class TestTS301Terminate(SwtBirthFixture):
 
     def test_dirty_fingerprint_drift_reopens_decision(self) -> None:
         state = self.birth_ready()
-        first_change = self.ssh_run(state, "printf one > /home/agent/workspace/one.txt")
+        first_change = self.ssh_run(state, "printf one > /home/bolo/Workspace/feature/m12/one.txt")
         self.assertEqual(0, first_change.returncode, first_change.stderr)
         first = self.terminate()
         self.assertEqual(1, first.returncode, first.stderr)
         first_id = next(line.split()[1] for line in first.stdout.splitlines() if line.startswith("DECIDE "))
-        second_change = self.ssh_run(state, "printf two > /home/agent/workspace/two.txt")
+        second_change = self.ssh_run(state, "printf two > /home/bolo/Workspace/feature/m12/two.txt")
         self.assertEqual(0, second_change.returncode, second_change.stderr)
         drifted = self.terminate("--force")
         self.assertEqual(1, drifted.returncode, drifted.stderr)
@@ -1416,11 +1416,11 @@ class TestTS401SwitchExistingMother(SwtBirthFixture):
         self.assertEqual(["true"], self.config_values("receive.denyNonFastForwards"))
         self.assertEqual(["true"], self.config_values("receive.denyDeletes"))
         self.assertEqual(
-            ["refs/heads", f"!refs/heads/{target_branch}", "refs/tags"],
+            ["refs/heads", f"!refs/heads/{target_branch}", "refs/tags", "refs/remotes"],
             self.config_values("receive.hideRefs"),
         )
         self.assertEqual(
-            ["refs/heads", f"!refs/heads/{target_branch}", "refs/tags"],
+            ["refs/heads", f"!refs/heads/{target_branch}", "refs/tags", "refs/remotes"],
             self.config_values("uploadpack.hideRefs"),
         )
         runtime = self.runtime_data()
@@ -1441,10 +1441,10 @@ class TestTS402SwitchMissingMother(SwtBirthFixture):
         switched_state = self.state(switched)
         self.assertFalse(switched_state["target-mother-exists"])
         swt = self.load_swt()
-        target_branch = swt.resolve_branch_slug(self.repo, target)
+        target_branch = swt.resolve_mother_branch(self.repo, target)
         self.assertEqual(target_branch, switched_state["mother"]["branch"])
-        self.assertEqual(["refs/heads", f"!refs/heads/{switched_state['mother']['branch']}", "refs/tags"], self.config_values("receive.hideRefs"))
-        self.assertFalse((self.root / "mother" / switched_state["mother"]["branch"]).exists())
+        self.assertEqual(["refs/heads", f"!refs/heads/{switched_state['mother']['branch']}", "refs/tags", "refs/remotes"], self.config_values("receive.hideRefs"))
+        self.assertFalse((self.repo.parent / "demo-main-feature-future").exists())
         created = self.run_swt(
             "birth", "--repo", str(self.repo), "--records-root", str(self.records),
             "--branch", target, "--image", "localhost/swt-m03:latest", "--mode", "whitelist",
@@ -1459,7 +1459,7 @@ class TestTS402SwitchMissingMother(SwtBirthFixture):
         self.assertEqual(1, len(active))
         self.assertEqual("running", active[0]["state"])
         self.assertTrue((Path(state["mother"]["dir"]) / "README.md").is_file())
-        self.assertEqual(["refs/heads", f"!refs/heads/{state['mother']['branch']}", "refs/tags"], self.config_values("uploadpack.hideRefs"))
+        self.assertEqual(["refs/heads", f"!refs/heads/{state['mother']['branch']}", "refs/tags", "refs/remotes"], self.config_values("uploadpack.hideRefs"))
 
 
 class TestTS403SwitchDirty(SwtBirthFixture):
@@ -1468,11 +1468,11 @@ class TestTS403SwitchDirty(SwtBirthFixture):
         target_branch, _target_mother = self.make_target_mother()
         committed = self.ssh_run(
             before,
-            "git -C /home/agent/workspace config user.name swt-m12 && "
-            "git -C /home/agent/workspace config user.email swt-m12@example.invalid && "
-            "printf switch-dirty > /home/agent/workspace/switch-dirty.txt && "
-            "git -C /home/agent/workspace add switch-dirty.txt && "
-            "git -C /home/agent/workspace commit -m switch-dirty",
+            "git -C /home/bolo/Workspace/feature/m12 config user.name swt-m12 && "
+            "git -C /home/bolo/Workspace/feature/m12 config user.email swt-m12@example.invalid && "
+            "printf switch-dirty > /home/bolo/Workspace/feature/m12/switch-dirty.txt && "
+            "git -C /home/bolo/Workspace/feature/m12 add switch-dirty.txt && "
+            "git -C /home/bolo/Workspace/feature/m12 commit -m switch-dirty",
         )
         self.assertEqual(0, committed.returncode, committed.stderr)
         old_name = before["containers"][0]["name"]
@@ -1496,7 +1496,7 @@ class TestTS403SwitchDirty(SwtBirthFixture):
         payload = json.loads(receipt.read_text(encoding="utf-8"))
         self.assertEqual(target_branch, payload["fingerprint"]["target-branch"])
         self.assertEqual([{"name": old_name, "podman-id": before["containers"][0]["podman-id"]}], payload["fingerprint"]["containers"])
-        pushed = self.ssh_run(before, "git -C /home/agent/workspace push origin HEAD")
+        pushed = self.ssh_run(before, "git -C /home/bolo/Workspace/feature/m12 push origin HEAD")
         self.assertEqual(0, pushed.returncode, pushed.stdout + pushed.stderr)
         completed = self.run_swt(
             "switch", "--repo", str(self.repo), "--records-root", str(self.records), "--to", "feature/next",
@@ -1509,7 +1509,7 @@ class TestTS404SwitchForce(SwtBirthFixture):
     def test_force_switch_consumes_receipt_and_audits_dirty_decision(self) -> None:
         before = self.birth_ready()
         target_branch, _target_mother = self.make_target_mother()
-        changed = self.ssh_run(before, "printf dirty > /home/agent/workspace/switch-force.txt")
+        changed = self.ssh_run(before, "printf dirty > /home/bolo/Workspace/feature/m12/switch-force.txt")
         self.assertEqual(0, changed.returncode, changed.stderr)
         first = self.run_swt(
             "switch", "--repo", str(self.repo), "--records-root", str(self.records), "--to", "feature/next",
@@ -1610,14 +1610,14 @@ class TestTS406SwitchPartial(SwtBirthFixture):
             subprocess.run(["podman", "inspect", old_name], capture_output=True, text=True, check=True).stdout
         )[0]["State"]["Status"])
         self.assertEqual(
-            ["refs/heads", f"!refs/heads/{target_branch}", "refs/tags"],
+            ["refs/heads", f"!refs/heads/{target_branch}", "refs/tags", "refs/remotes"],
             subprocess.run(
                 ["git", "-C", str(self.repo), "config", "--get-all", "receive.hideRefs"],
                 capture_output=True, text=True, check=True,
             ).stdout.splitlines(),
         )
         self.assertEqual(
-            ["refs/heads", f"!refs/heads/{before['mother']['branch']}", "refs/tags"],
+            ["refs/heads", f"!refs/heads/{before['mother']['branch']}", "refs/tags", "refs/remotes"],
             subprocess.run(
                 ["git", "-C", str(self.repo), "config", "--get-all", "uploadpack.hideRefs"],
                 capture_output=True, text=True, check=True,
@@ -1676,7 +1676,7 @@ class TestTS408SwitchMultipleContainers(SwtBirthFixture):
         second = self.state(second_result)
         self.assertEqual(2, len(second["containers"]))
         target_branch, _target_mother = self.make_target_mother()
-        changed = self.ssh_run(second, "printf dirty > /home/agent/workspace/multi-switch-dirty.txt")
+        changed = self.ssh_run(second, "printf dirty > /home/bolo/Workspace/feature/m12/multi-switch-dirty.txt")
         self.assertEqual(0, changed.returncode, changed.stderr)
         blocked = self.run_swt(
             "switch", "--repo", str(self.repo), "--records-root", str(self.records), "--to", "feature/next",
@@ -1689,7 +1689,7 @@ class TestTS408SwitchMultipleContainers(SwtBirthFixture):
         current = self.state(blocked)
         self.assertEqual(2, len(current["containers"]))
         self.assertTrue(all(item["state"] == "running" for item in current["containers"]))
-        cleaned = self.ssh_run(second, "rm -f /home/agent/workspace/multi-switch-dirty.txt")
+        cleaned = self.ssh_run(second, "rm -f /home/bolo/Workspace/feature/m12/multi-switch-dirty.txt")
         self.assertEqual(0, cleaned.returncode, cleaned.stderr)
         completed = self.run_swt(
             "switch", "--repo", str(self.repo), "--records-root", str(self.records), "--to", "feature/next",
@@ -1821,7 +1821,7 @@ class TestTS5Resume(SwtBirthFixture):
         table = self.nft_table(state["network"].get("netns"), source=container["network-ip"])
         self.assertIn(f"ip saddr {container['network-ip']}", table)
         self.assertEqual(0, self.ssh_run(state, "true").returncode)
-        fetched = self.ssh_run(state, "git -C /home/agent/workspace fetch --quiet origin")
+        fetched = self.ssh_run(state, "git -C /home/bolo/Workspace/feature/m12 fetch --quiet origin")
         self.assertEqual(0, fetched.returncode, fetched.stderr)
 
     def test_ts502_resume_receipt_reopens_for_recreated_podman_id(self) -> None:

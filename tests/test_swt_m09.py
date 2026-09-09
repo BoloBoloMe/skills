@@ -415,7 +415,7 @@ class TestBrowserImageE2E(unittest.TestCase):
         # playwright chromium 二进制可跑出版本
         chrome = self._podman_sh(
             image,
-            "/home/agent/.cache/ms-playwright/chromium-*/chrome-linux*/chrome --version",
+            "/home/bolo/.cache/ms-playwright/chromium-*/chrome-linux*/chrome --version",
         )
         self.assertEqual(chrome.returncode, 0, msg=chrome.stderr)
         self.assertRegex(chrome.stdout + chrome.stderr, r"\d+(\.\d+)+")

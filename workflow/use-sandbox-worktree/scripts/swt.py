@@ -355,8 +355,17 @@ def configure_repo(repo: Path, branch: str) -> None:
         raise
 
 
-def resolve_branch_slug(repo: Path, raw_branch: str) -> str:
-    result = run(["uv", "run", "python", str(SLUG_SCRIPT), repo.name, "main", raw_branch])
+def resolve_mother_branch(_repo: Path, raw_branch: str) -> str:
+    """母体分支名 = use-worktree 第零步产出的目标分支名原文 (不二次前缀化)."""
+    value = raw_branch.strip()
+    if not value:
+        raise SwtEnvError("母体分支名为空")
+    return value
+
+
+def mother_dir_name(repo: Path, branch: str) -> str:
+    """母体目录名 = use-worktree slug 规则 (<项目>-<真实来源分支>-<目标分支>)."""
+    result = run(["uv", "run", "python", str(SLUG_SCRIPT), repo.name, default_branch(repo), branch])
     if result.returncode != 0:
         raise SwtEnvError(f"slug.py 失败: {result.stderr.strip()}")
     for line in result.stdout.splitlines():
@@ -369,7 +378,7 @@ def resolve_branch_slug(repo: Path, raw_branch: str) -> str:
 
 def mother_path(repo: Path, branch: str) -> Path:
     # 母体 = 主仓同级兄弟目录 (用户拍板: 与 host 路径字面一致)
-    return (repo.parent / branch).resolve()
+    return (repo.parent / mother_dir_name(repo, branch)).resolve()
 
 
 def ref_tip(repo: Path, branch: str) -> str | None:
@@ -1003,8 +1012,21 @@ def refresh_container(
     return {"name": name, "port": port, "record": record, "detail": detail}
 
 
+def container_default_name(branch: str) -> str:
+    """容器缺省名 swt-<分支净化>; 分支含 / 等字符时经 slug 规则净化 (podman 名不允许)."""
+    result = run(["uv", "run", "python", str(SLUG_SCRIPT), branch])
+    if result.returncode == 0:
+        for line in result.stdout.splitlines():
+            if line.startswith("slug="):
+                value = line.removeprefix("slug=").strip()
+                if value:
+                    return f"swt-{value}"
+    clean = re.sub(r"[^a-zA-Z0-9_.-]+", "-", branch).strip(".-") or "branch"
+    return f"swt-{clean}"
+
+
 def create_and_start_container(args: argparse.Namespace, repo: Path, image: dict[str, Any], branch: str, runtime: dict[str, Any], runtime_file: Path, env: dict[str, str]) -> dict[str, Any]:
-    name = args.name or f"swt-{branch}"
+    name = args.name or container_default_name(branch)
     existing = run(["podman", "inspect", name])
     if existing.returncode == 0:
         records = runtime.get("containers", [])
@@ -1114,7 +1136,7 @@ def birth(args: argparse.Namespace, repo: Path) -> int:
     records_root = args.records_root.expanduser().resolve()
     if args.base and not any((args.mode, args.image, args.requirements, args.new_mother, args.reuse_mother)):
         raise PreconditionError("NOT-IMPLEMENTED birth")
-    branch = resolve_branch_slug(repo, args.branch)
+    branch = resolve_mother_branch(repo, args.branch)
     runtime_file = runtime_path(records_root, repo)
     runtime_existing = load_runtime(runtime_file)
     if runtime_existing is not None and runtime_existing.get("stage") == "idle":
@@ -1953,7 +1975,7 @@ def switch(args: argparse.Namespace, repo: Path) -> int:
     records_root = args.records_root.expanduser().resolve()
     runtime_file = runtime_path(records_root, repo)
     runtime = load_runtime(runtime_file)
-    target_branch = resolve_branch_slug(repo, args.to)
+    target_branch = resolve_mother_branch(repo, args.to)
     if runtime is None:
         raise PreconditionError("没有活动母体, switch 无对象, 请直接使用 birth")
     old_branch, old_mother = runtime_mother(runtime)

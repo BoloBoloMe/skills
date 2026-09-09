@@ -42,7 +42,7 @@ uv run python scripts/swt.py status [--repo <主仓>]
 ## 诞生 (birth)
 
 **第零步: 先用 `use-worktree` skill 为项目创建工作树分支 (固定前置, 不可跳过)**
-母体分支不是本 skill 自创的命名, 必须走 use-worktree 的建树流程产出 (分支名/目录名 = 它的 slug 规则); 后续 birth 的 `--branch` 与母体目录都以这个名为准. 未建树先 birth 会在 DECIDE/断言处卡住, 别绕.
+母体不是本 skill 自创的命名, 必须走 use-worktree 的建树流程产出: 分支名 = 目标分支名原文, 目录名 = 它的 slug 规则 (<项目>-<来源分支>-<目标分支>). 后续 birth 的 `--branch` 传目标分支名原文, 脚本按分支名识别已有母体并走 reuse 决策. 未建树先 birth 会在 DECIDE/断言处卡住, 别绕.
 
 **第一步: 网络模式与白名单盘点 (固定环节, 不可跳过)**
 创建容器前必须与我确认网络模式, 运行期不切换:
@@ -64,7 +64,7 @@ uv run python scripts/swt.py birth [--repo <主仓>] --branch <母体分支名�
     [--mode whitelist --allow <CIDR>]... | [--mode blacklist [--deny <CIDR>]...]
     [--image <ref>] [--requirements <file>] [--new-mother | --reuse-mother]
 ```
-母体分支名与母体目录名是同一个规范化名字 (use-worktree 的 slug 规则生成); 容器缺省名 `swt-<该名>`, 同母体第二个容器须显式 `--name`. 首次执行通常出 DECIDE (母体新建/复用, 网络模式, 镜像), 按决策协议节应答.
+母体分支名 = use-worktree 目标分支名原文, 母体目录名 = 它的 slug 规则生成; 容器缺省名 `swt-<分支名>`, 同母体第二个容器须显式 `--name`. 首次执行通常出 DECIDE (母体新建/复用, 网络模式, 镜像), 按决策协议节应答.
 
 **第四步: 交付汇报**
 向我报告:
