@@ -55,6 +55,7 @@ fd>=1.0 probe="fd --version"
 rg>=13.0
 sshd>=8.0 probe="/usr/sbin/sshd -V"
 herdr>=0.9 probe="herdr --version"
+codex-config probe="grep -c . /home/bolo/.codex/config.toml"
 """
 
 
@@ -246,6 +247,11 @@ RUN useradd --create-home --shell /bin/bash bolo \\
     && mkdir -p /run/sshd \\
     && chmod 755 /run/sshd \\
     && sed -i 's/^#\\?PermitUserEnvironment.*/PermitUserEnvironment yes/' /etc/ssh/sshd_config
+
+# codex 中转站配置 (零秘密, 密钥走 env_key 环境变量; 容器无 codex 时此文件无害)
+RUN mkdir -p /home/bolo/.codex \\
+    && echo bW9kZWwgPSAiZ3B0LTUuNSIKbW9kZWxfcHJvdmlkZXIgPSAiYWktd29yayIKClttb2RlbF9wcm92aWRlcnMuYWktd29ya10KbmFtZSA9ICJDaGFuZ1poaSIKYmFzZV91cmwgPSAiaHR0cHM6Ly9haS13b3JrLmNoYW5nemhpLnRvcC92MSIKZW52X2tleSA9ICJDSEFOR19aSElfQUlfV09SSyIKd2lyZV9hcGkgPSAicmVzcG9uc2VzIgo= | base64 -d > /home/bolo/.codex/config.toml \\
+    && chown -R bolo:bolo /home/bolo/.codex
 
 # 常变层: skill 库全量 COPY (D014/D018); ~/.pi/agent 机械复制 (D018/D023); auth.json/sessions 不进镜像 (D018)
 COPY --chown=bolo:bolo skills/ /home/bolo/.agents/skills/

@@ -138,6 +138,7 @@ uv run python scripts/image-prep.py build      --repo <主仓> [--requirements <
 
 - 两层结构: **base 层** (OS+git+sshd+node+pi CLI+uv+fd+rg+python3+herdr + skill 库全量 COPY + `~/.pi/agent` 复制, 排除 auth.json/sessions) 固定且跨项目共享; **项目层**由你读项目信号推导依赖件叠加, 清单与我确认后才构建.
 - 需求清单条目 = 名称 + 版本要求 (`>= <= > < ==` 或裸名称), 指令 `install=`/`probe=` (探测缺省 `<name> --version`); apt 条目必须写 `install=` (只写 probe 不装包).
+- **推导规则: 项目层清单含 codex (或其他支持 env_key 的 llm CLI) 时, 必须附静态配置条目** — 以 codex 为例: `codex-config install="mkdir -p /home/bolo/.codex && echo <config.toml 的 base64> | base64 -d > /home/bolo/.codex/config.toml && chown -R bolo:bolo /home/bolo/.codex" probe="grep -c . /home/bolo/.codex/config.toml"`; 配置文件零秘密, 密钥走 `env_key` 指向 env.conf 继承的环境变量, 禁止把密钥写进清单/镜像/文件. 参照实现: `<records-root>/skills/requirements.md`.
 - 匹配规则: 按镜像 label 找候选取最新构建 → 需求逐项版本满足 + 硬性条件 "基于当前 base 构建" (base 更新后旧项目镜像自然淘汰) → REUSE, 否则 BUILD-NEW. 旧镜像保留不删.
 - 版本语义: tag = 日期-序号 (人读索引), digest = 镜像内容哈希即精确版本; contents.md = 构建后**实测**清单.
 - **base 只在我明说 "更新 base" 时重建**, 无自动检测.
