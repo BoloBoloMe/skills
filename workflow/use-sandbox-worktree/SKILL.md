@@ -71,7 +71,7 @@ uv run python scripts/swt.py birth [--repo <主仓>] --branch <母体分支名�
 - 登录凭证 (两种, 都随 terminate 清除, 落 `<records-root>/runtime/<identity>/ssh/`, 0600):
   - 密码: 固定 `sandbox` (用户拍板, 风险见风险明示节), `<容器名>.password` 留档; 人登录用.
   - 密钥: `<容器名>.ed25519` (`ssh -i <私钥> ...`), 脚本/herdr 的 BatchMode 走它.
-- herdr remote (走 ssh, 容器无需预启 server, remote attach 按需拉起): birth 收尾直接打印两条完整命令 — host 用 `herdr --remote ssh://bolo@127.0.0.1:<宿主端口>`, 局域网机器用 `herdr --remote ssh://bolo@<host-LAN-IP>:<宿主端口>`.
+- herdr remote (走 ssh, 容器无需预启 server, remote attach 按需拉起): birth 收尾必须打印两条完整可直接复制的命令, 一条不漏 — 我在本机用 `herdr --remote ssh://bolo@127.0.0.1:<宿主端口>`, 我在局域网远程机上用 `herdr --remote ssh://bolo@<host-LAN-IP>:<宿主端口>`. 我会在本机和远程机之间来回切换, 每次 birth 交付都必须两条齐发, 禁止只发本机那条; 远程机上 ssh 用的私钥需先从 host 拷贝 (路径见上), 或直接用密码.
 - 容器内路径契约: 用户 `bolo` (home 与 host 字面相同), 代码固定克隆在 `/home/bolo/Workspace/<母体目录名>` — 与 host 母体路径字面一致 (当前分支 = 母体分支); skill 库在 `~/.agents/skills/`, pi 配置在 `~/.pi/agent/`.
 完成标准: STATE `stage=born`, 容器内检出分支 = 母体分支, ssh 入口与端口发现方式已汇报给我.
 
