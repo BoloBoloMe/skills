@@ -17,6 +17,7 @@ import hashlib
 import json
 import os
 import re
+import secrets
 import shutil
 import shlex
 import signal
@@ -1030,7 +1031,18 @@ def inject_ssh_key(container: dict[str, Any], records_root: Path, identity: str,
     ], input=public, capture_output=True, text=True, check=False)
     if result.returncode != 0:
         raise SwtError(3, "PARTIAL", f"authorized_keys 注入失败: {result.stderr.strip()}")
-    container["record"].update({"ssh_private_key": str(key), "clone_dir": f"/home/bolo/Workspace/{container['record']['branch']}"})
+    # 密码登录 (用户拍板): 每容器随机密码, 与 key 同目录 0600 存放, 随 terminate 清除
+    password = secrets.token_urlsafe(12)
+    pw_result = subprocess.run([
+        "podman", "exec", "-i", container["name"], "sh", "-c",
+        f"echo 'bolo:{password}' | chpasswd",
+    ], capture_output=True, text=True, check=False)
+    if pw_result.returncode != 0:
+        raise SwtError(3, "PARTIAL", f"容器密码设置失败: {pw_result.stderr.strip()}")
+    password_file = key_dir / f"{container['name']}.password"
+    password_file.write_text(password + "\n", encoding="utf-8")
+    os.chmod(password_file, 0o600)
+    container["record"].update({"ssh_private_key": str(key), "password_file": str(password_file), "clone_dir": f"/home/bolo/Workspace/{container['record']['branch']}"})
     upsert_container_record(runtime, container["record"], runtime_file)
     runtime["stage"] = "ssh-ready"
     atomic_write_json(runtime_file, runtime)
