@@ -23,6 +23,7 @@ SLUG_SCRIPT = ROOT / "workflow/use-worktree/scripts/slug.py"
 
 TEST_PREFIX = "localhost/swt-m07-test"
 TEST_BASE_REF = f"{TEST_PREFIX}/base"
+TEST_DISPLAY_REF = f"{TEST_PREFIX}/display"
 
 
 def _load_module():
@@ -226,7 +227,10 @@ class TestGenerate(unittest.TestCase):
         self.assertIn("EXPOSE 22 8800 6080", text)
         self.assertIn('CMD ["/usr/sbin/sshd", "-D", "-e"]', text)
         self.assertIn("uv sync", text)
-
+        # F012: ssh 非交互 shell 的 PATH 烘配在 sshd_config SetEnv (sshd 重设会话 PATH,
+        # 镜像 ENV 不生效)
+        self.assertIn("RUN printf 'SetEnv PATH=/home/bolo/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin", text)
+        self.assertIn("sshd_config", text)
     def test_base_containerfile_fat_layering(self):
         """Stable layers before volatile copies (D014 fat principle)."""
         text = self.m.generate_base_containerfile()
@@ -239,13 +243,13 @@ class TestGenerate(unittest.TestCase):
         self.assertLess(idx["COPY --chown"], idx["EXPOSE"])
 
     def test_no_gate_extensions_or_host_docs(self):
-        """D014/D023: gate extensions, ~/AGENTS.md, ~/docs never enter images."""
+        """D014/D023/D043: 留 host 门禁扩展, ~/AGENTS.md, ~/docs never enter images."""
         base = self.m.generate_base_containerfile()
         project = self.m.generate_project_containerfile(
-            "localhost/x/base", "sha256:abc", self.reqs
+            "localhost/x/display", "sha256:abc", self.reqs
         )
         for text in (base, project):
-            for gate in self.m.GATE_EXTENSIONS:
+            for gate in self.m.HOST_ONLY_EXTENSIONS:
                 self.assertNotIn(gate, text)
         # no copy of host environment docs; only staged relative sources
         for text in (base, project):
@@ -256,24 +260,25 @@ class TestGenerate(unittest.TestCase):
                     self.assertNotIn("docs", source, msg=line)
                     self.assertNotIn("AGENTS.md", source, msg=line)
 
-    def test_project_containerfile_from_base_digest_ordered(self):
+    def test_project_containerfile_from_display_digest_ordered(self):
         text = self.m.generate_project_containerfile(
-            "localhost/x/base", "sha256:abc", self.reqs
+            "localhost/x/display", "sha256:abc", self.reqs
         )
         lines = [ln for ln in text.splitlines() if ln.strip()]
-        self.assertEqual(lines[0], "FROM localhost/x/base@sha256:abc")
+        self.assertEqual(lines[0], "FROM localhost/x/display@sha256:abc")
         run_lines = [ln for ln in lines if ln.startswith("RUN ")]
         self.assertEqual(run_lines, ["RUN apt-get install -y jdk"])
 
     def test_project_containerfile_no_install_lines(self):
         text = self.m.generate_project_containerfile(
-            "localhost/x/base", "sha256:abc", self.m.parse_requirements("node>=20\n")
+            "localhost/x/display", "sha256:abc", self.m.parse_requirements("node>=20\n")
         )
         self.assertNotIn("RUN ", text)
 
 
 class TestStageContextExcludes(unittest.TestCase):
-    """D018: auth.json not baked, sessions excluded; pi-agent rest copied."""
+    """D018: auth.json not baked, sessions excluded; D043: 门禁扩展留 host,
+    其余 extensions 默认进容器; pi-agent rest copied."""
 
     def setUp(self):
         self.m = _load_module()
@@ -290,6 +295,11 @@ class TestStageContextExcludes(unittest.TestCase):
             (self.pi_agent / name).write_text("{}")
         (self.pi_agent / "sessions").mkdir()
         (self.pi_agent / "sessions" / "s1.json").write_text("{}")
+        extensions = self.pi_agent / "extensions"
+        extensions.mkdir()
+        for name in (*self.m.HOST_ONLY_EXTENSIONS,
+                     "repetition-guard", "herdr-agent-state", "future-ext"):
+            (extensions / f"{name}.ts").write_text("// ext")
         self.ctx = self.root / "context"
 
     def test_staging_excludes_auth_and_sessions(self):
@@ -303,6 +313,14 @@ class TestStageContextExcludes(unittest.TestCase):
         self.assertFalse((staged_pi / "auth.json").exists())
         self.assertFalse((staged_pi / "sessions").exists())
 
+    def test_staging_filters_host_only_extensions(self):
+        """D043 白名单心智: 留 host 名单排除, 其余 (含新扩展) 默认进容器."""
+        self.m.stage_context(self.ctx, self.skills, self.pi_agent)
+        staged_ext = self.ctx / "pi-agent" / "extensions"
+        for name in self.m.HOST_ONLY_EXTENSIONS:
+            self.assertFalse((staged_ext / f"{name}.ts").exists(), msg=name)
+        for name in ("repetition-guard.ts", "herdr-agent-state.ts", "future-ext.ts"):
+            self.assertTrue((staged_ext / name).exists(), msg=name)
 
 class TestMatchE2E(_PodmanTestCase):
     def setUp(self):
@@ -321,6 +339,16 @@ class TestMatchE2E(_PodmanTestCase):
         )
         self.base_digest = self._digest_of(f"{TEST_BASE_REF}:t1")
         self.addCleanup(subprocess.run, ["podman", "rmi", "-f", base_id],
+                        capture_output=True)
+        # fake display image (D039): based on current base, digest = 项目层匹配谓词对象
+        display_id = _build_scratch_image(
+            f"{TEST_DISPLAY_REF}:t1",
+            {f"{self.m.LABEL_PREFIX}.build-id": "2026.09.02-1",
+             f"{self.m.LABEL_PREFIX}.schema-version": self.m.SCHEMA_VERSION,
+             f"{self.m.LABEL_PREFIX}.base-digest": self.base_digest},
+        )
+        self.display_digest = self._digest_of(f"{TEST_DISPLAY_REF}:t1")
+        self.addCleanup(subprocess.run, ["podman", "rmi", "-f", display_id],
                         capture_output=True)
         self.contents = "node: 24.1.0\nfd: 1.0.1\nrg: 14.1.0\n"
         self._make_candidate("2026.09.05-1", self.contents)
@@ -343,7 +371,7 @@ class TestMatchE2E(_PodmanTestCase):
                 f"{self.m.LABEL_PREFIX}.build-id": build_id,
                 f"{self.m.LABEL_PREFIX}.contents-digest":
                     hashlib.sha256(contents.encode()).hexdigest(),
-                f"{self.m.LABEL_PREFIX}.base-digest": self.base_digest,
+                f"{self.m.LABEL_PREFIX}.base-digest": self.display_digest,
             },
         )
         self.addCleanup(subprocess.run, ["podman", "rmi", "-f", image_id],
@@ -357,12 +385,15 @@ class TestMatchE2E(_PodmanTestCase):
         )
         return image_id
 
-    def _match(self, requirements: str, base_digest: str | None = None):
+    def _match(self, requirements: str, base_digest: str | None = None,
+               display_ref: str | None = None):
         req_file = self.root / "requirements.md"
         req_file.write_text(requirements)
         args = ["match", "--repo", str(self.repo), "--requirements", str(req_file),
                 "--records-root", str(self.records_root), "--prefix", TEST_PREFIX,
                 "--base-ref", TEST_BASE_REF]
+        if display_ref:
+            args += ["--display-ref", display_ref]
         return _run(args)
 
     def test_reuse_newest_matching_candidate(self):
@@ -391,11 +422,26 @@ class TestMatchE2E(_PodmanTestCase):
         self.assertEqual(values["verdict"], "BUILD-NEW")
         self.assertIn("missing:jdk", result.stdout)
 
-    def test_base_digest_hard_predicate(self):
-        """Different current base => candidate unusable even if contents match."""
+    def test_parent_digest_hard_predicate(self):
+        """D039: 新 display 层上线 => 基于 display:t1 的项目候选不可用."""
+        _build_scratch_image(
+            f"{TEST_DISPLAY_REF}:t2",
+            {f"{self.m.LABEL_PREFIX}.build-id": "2026.09.06-1",
+             f"{self.m.LABEL_PREFIX}.schema-version": self.m.SCHEMA_VERSION,
+             f"{self.m.LABEL_PREFIX}.base-digest": self.base_digest},
+        )
+        self.addCleanup(subprocess.run, ["podman", "rmi", "-f", f"{TEST_DISPLAY_REF}:t2"],
+                        capture_output=True)
+        result = self._match("node>=20\n")
+        values = _kv(result.stdout)
+        self.assertEqual(values["verdict"], "BUILD-NEW")
+        self.assertIn("parent-digest", result.stdout)
+
+    def test_display_stale_after_base_update_builds_new(self):
+        """D039 谓词链: base 更新 => 旧 display 淘汰 => 项目层无候选 (BUILD-NEW)."""
         _build_scratch_image(
             f"{TEST_BASE_REF}:t2",
-            {f"{self.m.LABEL_PREFIX}.build-id": "2026.09.06-1",
+            {f"{self.m.LABEL_PREFIX}.build-id": "2026.09.07-1",
              f"{self.m.LABEL_PREFIX}.schema-version": self.m.SCHEMA_VERSION},
         )
         self.addCleanup(subprocess.run, ["podman", "rmi", "-f", f"{TEST_BASE_REF}:t2"],
@@ -403,7 +449,16 @@ class TestMatchE2E(_PodmanTestCase):
         result = self._match("node>=20\n")
         values = _kv(result.stdout)
         self.assertEqual(values["verdict"], "BUILD-NEW")
-        self.assertIn("base-digest", result.stdout)
+        self.assertIn("no-display", values.get("reason", ""))
+
+    def test_no_display_image_builds_new_with_reason(self):
+        """display 层完全缺失: match 软失败 BUILD-NEW + reason, 不硬崩."""
+        result = self._match("node>=20\n",
+                             display_ref=f"{TEST_PREFIX}/no-such-display")
+        self.assertEqual(result.returncode, 0, msg=result.stderr)
+        values = _kv(result.stdout)
+        self.assertEqual(values["verdict"], "BUILD-NEW")
+        self.assertIn("no-display", values.get("reason", ""))
 
     def test_tampered_record_skips_candidate(self):
         build_dir = self.records_root / "proj" / "builds" / "2026.09.05-2"
@@ -453,12 +508,32 @@ class TestBuildFlowE2E(_PodmanTestCase):
             )
             if result.returncode != 0:
                 raise AssertionError(f"fixture base build failed: {result.stderr}")
+            base_digest = subprocess.run(
+                ["podman", "inspect", f"{TEST_BASE_REF}:flow", "--format", "{{.Digest}}"],
+                capture_output=True, text=True, check=True,
+            ).stdout.strip()
+            # display fixture (D039): FROM 当前 base, 项目层经它构建
+            (ctx / "Containerfile").write_text(
+                f"FROM {TEST_BASE_REF}:flow\nRUN true\n"
+            )
+            result = subprocess.run(
+                ["podman", "build", "-q", "-f", "Containerfile",
+                 "-t", f"{TEST_DISPLAY_REF}:flow",
+                 "--label", "run.sandbox-worktree.build-id=2026.09.02-1",
+                 "--label", "run.sandbox-worktree.schema-version=1",
+                 "--label", f"run.sandbox-worktree.base-digest={base_digest}"],
+                cwd=ctx, capture_output=True, text=True, check=False,
+            )
+            if result.returncode != 0:
+                raise AssertionError(f"fixture display build failed: {result.stderr}")
         finally:
             rmtree(tmp, ignore_errors=True)
 
     @classmethod
     def tearDownClass(cls):
         subprocess.run(["podman", "rmi", "-f", f"{TEST_BASE_REF}:flow"],
+                       capture_output=True)
+        subprocess.run(["podman", "rmi", "-f", f"{TEST_DISPLAY_REF}:flow"],
                        capture_output=True)
         super().tearDownClass()
 
@@ -498,7 +573,7 @@ class TestBuildFlowE2E(_PodmanTestCase):
         self.assertIn("fake2: 2.0.1", contents)
         manifest = json.loads((record / "build.json").read_text())
         self.assertEqual(manifest["project-id"], str(self.repo.resolve()))
-        self.assertEqual(manifest["base-ref"], TEST_BASE_REF)
+        self.assertEqual(manifest["base-ref"], TEST_DISPLAY_REF)  # D039: 父层 = display
         self.assertEqual(values["digest"], manifest["digest"])
         # label consistency on the tagged image
         ref = values["image"]
@@ -558,6 +633,102 @@ class TestBuildFlowE2E(_PodmanTestCase):
         self.assertEqual(seq(second["build-id"]), seq(first["build-id"]) + 1)
 
 
+class TestDisplayBuildE2E(_PodmanTestCase):
+    """D039 display 层构建流程: FROM 当前 base + 记录落 display/builds."""
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        tmp = mkdtemp()
+        try:
+            ctx = Path(tmp)
+            (ctx / "Containerfile").write_text(
+                "FROM alpine:latest\n"
+                "RUN printf '#!/bin/sh\\necho fake 1.2.3\\n' > /usr/local/bin/fake "
+                "&& chmod +x /usr/local/bin/fake\n"
+            )
+            result = subprocess.run(
+                ["podman", "build", "-q", "-f", "Containerfile",
+                 "-t", f"{TEST_BASE_REF}:disp",
+                 "--label", "run.sandbox-worktree.build-id=2026.09.01-1",
+                 "--label", "run.sandbox-worktree.schema-version=1"],
+                cwd=ctx, capture_output=True, text=True, check=False,
+            )
+            if result.returncode != 0:
+                raise AssertionError(f"fixture base build failed: {result.stderr}")
+        finally:
+            rmtree(tmp, ignore_errors=True)
+        cls.root = Path(mkdtemp())
+        cls.records_root = cls.root / "records"
+
+    @classmethod
+    def tearDownClass(cls):
+        subprocess.run(
+            ["bash", "-c",
+             f"podman images --format '{{{{.ID}}}}' "
+             f"--filter reference={TEST_DISPLAY_REF} "
+             "| xargs -r podman rmi -f"],
+            capture_output=True,
+        )
+        subprocess.run(["podman", "rmi", "-f", f"{TEST_BASE_REF}:disp"],
+                       capture_output=True)
+        rmtree(cls.root, ignore_errors=True)
+        super().tearDownClass()
+
+    def test_display_build_records_and_labels(self):
+        req = self.root / "requirements.md"
+        req.write_text("fake>=1.0\n")
+        result = _run([
+            "build-display",
+            "--requirements", str(req),
+            "--records-root", str(self.records_root),
+            "--prefix", TEST_PREFIX,
+            "--base-ref", TEST_BASE_REF,
+            "--display-ref", TEST_DISPLAY_REF,
+        ])
+        self.assertEqual(result.returncode, 0, msg=result.stderr)
+        values = _kv(result.stdout)
+        self.assertEqual(values["kind"], "display")
+        build_id = values["build-id"]
+        record = self.records_root / "display" / "builds" / build_id
+        for name in ("Containerfile", "requirements.md", "contents.md", "build.json"):
+            self.assertTrue((record / name).exists(), msg=name)
+        self.assertTrue(
+            (record / "Containerfile").read_text().startswith(f"FROM {TEST_BASE_REF}@"))
+        self.assertIn("fake: 1.2.3", (record / "contents.md").read_text())
+        manifest = json.loads((record / "build.json").read_text())
+        self.assertEqual(manifest["kind"], "display")
+        self.assertEqual(manifest["base-ref"], TEST_BASE_REF)
+        # resolve_display 拿得到它 (基于当前 base)
+        m = _load_module()
+        digest, got_build_id, _image_id = m.resolve_display(TEST_BASE_REF, TEST_DISPLAY_REF)
+        self.assertEqual(digest, values["digest"])
+        self.assertEqual(got_build_id, build_id)
+
+    def test_display_stale_when_base_moves_on(self):
+        """D039 谓词: base 出新 build-id 后, 基于旧 base 的 display 报 DISPLAY-STALE."""
+        m = _load_module()
+        tmp = mkdtemp()
+        try:
+            ctx = Path(tmp)
+            (ctx / "Containerfile").write_text("FROM alpine:latest\nRUN true\n")
+            subprocess.run(
+                ["podman", "build", "-q", "-f", "Containerfile",
+                 "-t", f"{TEST_BASE_REF}:disp-new",
+                 "--label", "run.sandbox-worktree.build-id=2026.09.09-1",
+                 "--label", "run.sandbox-worktree.schema-version=1"],
+                cwd=ctx, capture_output=True, text=True, check=True,
+            )
+        finally:
+            rmtree(tmp, ignore_errors=True)
+        self.addCleanup(subprocess.run,
+                        ["podman", "rmi", "-f", f"{TEST_BASE_REF}:disp-new"],
+                        capture_output=True)
+        with self.assertRaises(m.EnvError) as caught:
+            m.resolve_display(TEST_BASE_REF, TEST_DISPLAY_REF)
+        self.assertIn("DISPLAY-STALE", str(caught.exception))
+
+
 class TestBaseBuildE2E(_PodmanTestCase):
     """TS-006: real base build (network heavy: apt/npm/uv)."""
 
@@ -614,6 +785,13 @@ class TestBaseBuildE2E(_PodmanTestCase):
         for port in ("22/tcp", "8800/tcp", "6080/tcp"):
             self.assertIn(port, exposed)
         self.assertEqual(label_digest, _sha256_file(record / "contents.md"))
+        # F012: sshd_config SetEnv 烘配 (非交互 PATH 含 ~/.local/bin)
+        sshd_cfg = subprocess.run(
+            ["podman", "run", "--rm", values["image"], "sh", "-c",
+             "grep SetEnv /etc/ssh/sshd_config"],
+            capture_output=True, text=True, check=True,
+        ).stdout
+        self.assertIn("/home/bolo/.local/bin", sshd_cfg)
         self.addCleanup(subprocess.run, ["podman", "rmi", "-f", values["image"]],
                         capture_output=True)
 

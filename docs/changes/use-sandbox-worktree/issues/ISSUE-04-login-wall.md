@@ -1,5 +1,9 @@
 # ISSUE-04 登录墙: 容器内 VNC 通道 + headed 浏览器切换闭环
 
+> 2026-09-10: 本 ISSUE 的独立登录墙容器与 login-wall.py 编排形态已被
+> D039-D042 替代 (显示栈烘入 display 层内置化, swt display-check 门禁);
+> 通道检查代码迁至 `scripts/swt-display.py`. 本文保留为历史依据.
+
 ## 父级
 
 - `../roadmap/MILESTONE-09.md` (M09 本体; 状态变更归 roadmap, 本文件不改其状态)

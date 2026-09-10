@@ -1,3 +1,5 @@
+# M03 冒烟镜像定义 (localhost/swt-m03, M12 e2e 测试用极简形态), 不是真实 base 层.
+# 真实三层镜像 (base/display/项目层) 由 image-prep.py 生成与构建 (D039).
 FROM docker.io/library/node:24-bookworm-slim
 
 RUN apt-get update \

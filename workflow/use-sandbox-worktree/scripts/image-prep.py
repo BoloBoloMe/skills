@@ -1,10 +1,13 @@
 #!/usr/bin/env -S uv run python
-"""M07 image preparation (ISSUE-03).
+"""M07 image preparation (ISSUE-03), M10 三层化 (D039).
 
-Two-layer image flow per D014/D015/D017/D024:
-  build-base : generate base Containerfile -> build -> measure -> label -> record
-  match      : candidate match per D017 (contents predicates + base-digest hard rule)
-  build      : project layer build -> verify -> label -> record
+Three-layer image flow per D014/D015/D017/D024/D039:
+  build-base    : generate base Containerfile -> build -> measure -> label -> record
+  build-display : display layer FROM base@digest (VNC 栈 + chromium + swt-vnc)
+                  -> build -> measure -> label -> record
+  match         : candidate match per D017 (contents predicates + parent-digest
+                  hard rule: display 基于 current base, 项目层基于 current display)
+  build         : project layer FROM display@digest -> verify -> label -> record
 
 Records: <records-root>/<slug>/builds/<build-id>/
   Containerfile, requirements.md, contents.md, build.json, context/
@@ -30,19 +33,30 @@ SLUG_SCRIPT = ROOT / "use-worktree/scripts/slug.py"
 LABEL_PREFIX = "run.sandbox-worktree"
 SCHEMA_VERSION = "1"
 BASE_SLUG = "base"
-GATE_EXTENSIONS = (
+DISPLAY_SLUG = "display"
+# 门禁类扩展留 host 名单 (D043 白名单心智): extensions/ 下新扩展默认随
+# ~/.pi/agent 进容器, 只有此处显式点名的留 host (D014 精神: 容器内硬
+# 约束已由 daemon/config 拓扑承担; repetition-guard/herdr-agent-state
+# 属行为辅助, 随行进容器).
+HOST_ONLY_EXTENSIONS = (
     "filesystem-operation-gate",
     "git-operation-gate",
     "python-operation-hook",
-    "repetition-guard",
 )
 HEADER_KEYS = {"build-id", "project-id", "image-ref", "measured-at"}
 IGNORE_SKILLS = shutil.ignore_patterns("__pycache__", ".venv", ".pytest_cache", "*.pyc")
 IGNORE_PI_AGENT = shutil.ignore_patterns("auth.json", "sessions", "*.bak")
+IGNORE_HOST_ONLY_EXT = shutil.ignore_patterns(
+    *(f"{name}*" for name in HOST_ONLY_EXTENSIONS)
+)
 
 DEFAULT_PREFIX = "localhost/sandbox-worktree"
 DEFAULT_SKILLS_DIR = Path.home() / ".agents" / "skills"
 DEFAULT_PI_AGENT_DIR = Path.home() / ".pi" / "agent"
+# display 层缺省需求清单 (仓库内, D039)
+DEFAULT_DISPLAY_REQUIREMENTS = (
+    Path(__file__).resolve().parents[1] / "image" / "requirements-browser.md"
+)
 
 # base 层实测清单 (D014: OS + pi CLI + skill 库全量 + fd/rg; uv 供容器内 uv sync)
 DEFAULT_BASE_REQUIREMENTS = """\
@@ -188,7 +202,7 @@ def _short_hash(project_id: str) -> str:
 
 
 def resolve_slug(records_root: Path, repo_path: Path) -> tuple[str, str]:
-    """slug 复用 use-worktree slug.py; 冲突加短 hash; base 保留 (D024)."""
+    """slug 复用 use-worktree slug.py; 冲突加短 hash; base/display 保留 (D024/D039)."""
     repo = repo_path.resolve()
     if not repo.is_dir():
         raise EnvError(f"NO-REPO {repo}")
@@ -203,7 +217,7 @@ def resolve_slug(records_root: Path, repo_path: Path) -> tuple[str, str]:
     if not match:
         raise EnvError(f"SLUG-FAIL no slug= line in output: {result.stdout!r}")
     slug = match.group(1).strip()
-    if slug == BASE_SLUG:
+    if slug in (BASE_SLUG, DISPLAY_SLUG):
         return f"{slug}-{_short_hash(project_id)}", project_id
     slug_root = records_root / slug
     if slug_root.is_dir():
@@ -253,7 +267,13 @@ RUN mkdir -p /home/bolo/.codex \\
     && echo bW9kZWwgPSAiZ3B0LTUuNSIKbW9kZWxfcHJvdmlkZXIgPSAiYWktd29yayIKClttb2RlbF9wcm92aWRlcnMuYWktd29ya10KbmFtZSA9ICJDaGFuZ1poaSIKYmFzZV91cmwgPSAiaHR0cHM6Ly9haS13b3JrLmNoYW5nemhpLnRvcC92MSIKZW52X2tleSA9ICJDSEFOR19aSElfQUlfV09SSyIKd2lyZV9hcGkgPSAicmVzcG9uc2VzIgo= | base64 -d > /home/bolo/.codex/config.toml \\
     && chown -R bolo:bolo /home/bolo/.codex
 
-# 常变层: skill 库全量 COPY (D014/D018); ~/.pi/agent 机械复制 (D018/D023); auth.json/sessions 不进镜像 (D018)
+# F012: ssh 非交互 shell 的 PATH 须含 ~/.local/bin (herdr remote 把 binary
+# 装到 ~/.local/bin 后, 远端 shell 要能解析). sshd 对每个会话重设 PATH 为
+# 编译缺省, 镜像 ENV PATH 不生效, 必须烘进 sshd_config SetEnv.
+RUN printf 'SetEnv PATH=/home/bolo/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin\\n' >> /etc/ssh/sshd_config
+
+# 常变层: skill 库全量 COPY (D014/D018); ~/.pi/agent 机械复制 (D018/D023);
+# auth.json/sessions 不进镜像 (D018); 门禁类扩展留 host (D043 stage 过滤)
 COPY --chown=bolo:bolo skills/ /home/bolo/.agents/skills/
 COPY --chown=bolo:bolo pi-agent/ /home/bolo/.pi/agent/
 
@@ -286,7 +306,8 @@ def generate_project_containerfile(
 
 
 def stage_context(context_dir: Path, skills_dir: Path, pi_agent_dir: Path) -> None:
-    """构建上下文 staging: skills 全量; ~/.pi/agent 除 auth.json/sessions (D018)."""
+    """构建上下文 staging: skills 全量; ~/.pi/agent 除 auth.json/sessions (D018)
+    与门禁类扩展留 host 名单 (D043, extensions/ 只排除显式点名文件)."""
     if not skills_dir.is_dir():
         raise EnvError(f"NO-SKILLS-DIR {skills_dir}")
     if not pi_agent_dir.is_dir():
@@ -294,7 +315,13 @@ def stage_context(context_dir: Path, skills_dir: Path, pi_agent_dir: Path) -> No
     context_dir.mkdir(parents=True, exist_ok=True)
     shutil.copytree(skills_dir, context_dir / "skills", ignore=IGNORE_SKILLS,
                     dirs_exist_ok=True)
-    shutil.copytree(pi_agent_dir, context_dir / "pi-agent", ignore=IGNORE_PI_AGENT,
+
+    def ignore_pi_agent(directory: str, names: list[str]) -> list[str]:
+        hits = list(IGNORE_PI_AGENT(directory, names))
+        hits.extend(IGNORE_HOST_ONLY_EXT(directory, names))
+        return hits
+
+    shutil.copytree(pi_agent_dir, context_dir / "pi-agent", ignore=ignore_pi_agent,
                     dirs_exist_ok=True)
 
 
@@ -322,8 +349,8 @@ def image_inspect(ref: str, template: str) -> str:
     return run_podman(["inspect", ref, "--format", template]).stdout.strip()
 
 
-def resolve_base(base_ref: str) -> tuple[str, str]:
-    """当前 base = 该 reference 下 build-id 最新的镜像 → (digest, build-id)."""
+def resolve_base(base_ref: str) -> tuple[str, str, str]:
+    """当前 base = 该 reference 下 build-id 最新的镜像 → (digest, build-id, image_id)."""
     listing = run_podman(
         ["images", "--no-trunc", "--format", "{{.ID}} {{.Repository}} {{.Tag}}"]
     ).stdout
@@ -347,6 +374,49 @@ def resolve_base(base_ref: str) -> tuple[str, str]:
             best = (key, normalized, build_id)
     if best is None:
         raise EnvError(f"NO-BASE {base_ref}")
+    digest = image_inspect(best[1], "{{.Digest}}")
+    return digest, best[2], best[1]
+
+
+def resolve_display(base_ref: str, display_ref: str) -> tuple[str, str, str]:
+    """当前 display = base-digest == 当前 base 的镜像中 build-id 最新者
+    → (digest, build-id, image_id). D039 匹配谓词: display 层自身必须
+    基于当前 base; base 更新后旧 display 自然淘汰 (报 DISPLAY-STALE)."""
+    base_digest, _base_build_id, _base_image_id = resolve_base(base_ref)
+    listing = run_podman(
+        ["images", "--no-trunc", "--format", "{{.ID}} {{.Repository}}"]
+    ).stdout
+    seen: dict[str, str] = {}
+    for line in listing.splitlines():
+        fields = line.split(None, 1)
+        if len(fields) == 2 and fields[1] == display_ref:
+            seen[fields[0].removeprefix("sha256:")] = fields[1]
+    best: tuple[tuple[int, ...], str, str] | None = None
+    for image_id in seen:
+        info = image_inspect(
+            image_id,
+            '{{index .Labels "%s.build-id"}}|{{index .Labels "%s.base-digest"}}'
+            % (LABEL_PREFIX, LABEL_PREFIX),
+        )
+        build_id, _, base_label = info.partition("|")
+        match = _BUILD_ID.match(build_id)
+        if not match or base_label != base_digest:
+            continue
+        key = tuple(int(part) for part in match.groups())
+        if best is None or key > best[0]:
+            best = (key, image_id, build_id)
+    if best is None:
+        stale = [
+            image_id for image_id in seen
+            if _BUILD_ID.match(image_inspect(
+                image_id, '{{index .Labels "%s.build-id"}}' % LABEL_PREFIX))
+        ]
+        if stale:
+            raise EnvError(
+                f"DISPLAY-STALE {display_ref}: 现有 display 层基于旧 base, "
+                "请先 build-display 重建 (D039)"
+            )
+        raise EnvError(f"NO-DISPLAY {display_ref}: 请先 build-display (D039)")
     digest = image_inspect(best[1], "{{.Digest}}")
     return digest, best[2], best[1]
 
@@ -499,9 +569,110 @@ def cmd_build_base(args: argparse.Namespace) -> int:
     return 0
 
 
+def _build_child_layer(
+    *, kind: str, slug: str, project_id: str,
+    parent_ref: str, parent_digest: str, parent_build_id: str,
+    parent_image_id: str,
+    requirements_text: str, entries: list[RequirementEntry],
+    records_root: Path, image_ref_prefix: str,
+) -> int:
+    """display/项目层共用构建 (D039): FROM parent@digest + install 指令按序,
+    实测验证, 贴标签 (base-digest = 直接父层 digest, 匹配谓词对象).
+    display 层 slug=display 落 records/display/; 项目层 slug 随项目."""
+    builds_root = records_root / slug / "builds"
+    build_id = allocate_build_id(builds_root)
+    record_dir = builds_root / build_id
+    context_dir = record_dir / "context"
+    context_dir.mkdir(parents=True, exist_ok=True)
+    (record_dir / "requirements.md").write_text(requirements_text)
+    containerfile = record_dir / "Containerfile"
+    containerfile.write_text(
+        generate_project_containerfile(parent_ref, parent_digest, entries)
+    )
+    image_ref = f"{image_ref_prefix}:{build_id}"
+
+    print(f"[BUILD] phase-1 build from {parent_ref}@{parent_digest} (parent {parent_build_id})")
+    image_id = podman_build(context_dir, containerfile, [], {})
+
+    measured = measure(image_id, entries)
+    failures = verify_entries(entries, measured)
+    if failures:
+        (record_dir / "probe-report.txt").write_text(
+            "\n".join(failures) + "\n" + json.dumps(measured, indent=2) + "\n"
+        )
+        if image_id != parent_image_id:
+            run_podman(["rmi", "-f", image_id], check=False)
+        for failure in failures:
+            print(failure, file=sys.stderr)
+        return 1
+
+    contents = contents_text(build_id, project_id, image_ref, measured)
+    (record_dir / "contents.md").write_text(contents)
+    contents_digest = hashlib.sha256(contents.encode()).hexdigest()
+    label_keys = ["schema-version", "contents-digest", "build-id", "base-digest"]
+    labels = {
+        f"{LABEL_PREFIX}.schema-version": SCHEMA_VERSION,
+        f"{LABEL_PREFIX}.contents-digest": contents_digest,
+        f"{LABEL_PREFIX}.build-id": build_id,
+        f"{LABEL_PREFIX}.base-digest": parent_digest,
+    }
+    if kind == "project":
+        labels[f"{LABEL_PREFIX}.project-id"] = project_id
+        label_keys.insert(0, "project-id")
+    podman_build(context_dir, containerfile, [image_ref], labels)
+    if image_id != parent_image_id:
+        run_podman(["rmi", "-f", image_id], check=False)
+    digest = image_inspect(image_ref, "{{.Digest}}")
+    write_build_manifest(
+        record_dir, kind=kind, project_id=project_id, slug=slug, build_id=build_id,
+        image_ref=image_ref, digest=digest, contents_digest=contents_digest,
+        base_ref=parent_ref, base_digest=parent_digest, label_keys=label_keys,
+    )
+    print(f"kind={kind}")
+    if kind == "project":
+        print(f"slug={slug}")
+        print(f"project-id={project_id}")
+    print(f"build-id={build_id}")
+    print(f"image={image_ref}")
+    print(f"digest={digest}")
+    print(f"record={record_dir}")
+    return 0
+
+
+def cmd_build_display(args: argparse.Namespace) -> int:
+    """display 层构建 (D039): FROM 当前 base, 内容缺省 requirements-browser.md.
+    记录落 <records-root>/display/builds/<build-id>/; 只在用户明说时运行."""
+    prefix: str = args.prefix
+    base_ref = args.base_ref or f"{prefix}/base"
+    display_ref = args.display_ref or f"{prefix}/display"
+    records_root = Path(args.records_root).expanduser()
+    requirements_path = (
+        Path(args.requirements).expanduser() if args.requirements
+        else DEFAULT_DISPLAY_REQUIREMENTS
+    )
+    try:
+        requirements_text = requirements_path.read_text()
+    except OSError as error:
+        raise EnvError(f"BAD-REQUIREMENTS {error}")
+    try:
+        entries = parse_requirements(requirements_text)
+    except ValueError as error:
+        raise EnvError(f"BAD-REQUIREMENTS {error}")
+
+    base_digest, base_build_id, base_image_id = resolve_base(base_ref)
+    return _build_child_layer(
+        kind="display", slug=DISPLAY_SLUG, project_id=DISPLAY_SLUG,
+        parent_ref=base_ref, parent_digest=base_digest,
+        parent_build_id=base_build_id, parent_image_id=base_image_id,
+        requirements_text=requirements_text, entries=entries,
+        records_root=records_root, image_ref_prefix=display_ref,
+    )
+
+
 def cmd_build(args: argparse.Namespace) -> int:
     prefix: str = args.prefix
     base_ref = args.base_ref or f"{prefix}/base"
+    display_ref = args.display_ref or f"{prefix}/display"
     records_root = Path(args.records_root).expanduser()
     repo_path = Path(args.repo).expanduser()
     if not args.requirements:
@@ -516,68 +687,21 @@ def cmd_build(args: argparse.Namespace) -> int:
     except ValueError as error:
         raise EnvError(f"BAD-REQUIREMENTS {error}")
 
-    base_digest, base_build_id, base_image_id = resolve_base(base_ref)
+    display_digest, display_build_id, display_image_id = resolve_display(base_ref, display_ref)
     slug, project_id = resolve_slug(records_root, repo_path)
-    builds_root = records_root / slug / "builds"
-    build_id = allocate_build_id(builds_root)
-    record_dir = builds_root / build_id
-    context_dir = record_dir / "context"
-    context_dir.mkdir(parents=True, exist_ok=True)
-    (record_dir / "requirements.md").write_text(requirements_text)
-    containerfile = record_dir / "Containerfile"
-    containerfile.write_text(
-        generate_project_containerfile(base_ref, base_digest, entries)
+    return _build_child_layer(
+        kind="project", slug=slug, project_id=project_id,
+        parent_ref=display_ref, parent_digest=display_digest,
+        parent_build_id=display_build_id, parent_image_id=display_image_id,
+        requirements_text=requirements_text, entries=entries,
+        records_root=records_root, image_ref_prefix=f"{prefix}/{slug}",
     )
-
-    print(f"[BUILD] phase-1 build from {base_ref}@{base_digest} (base {base_build_id})")
-    image_id = podman_build(context_dir, containerfile, [], {})
-
-    measured = measure(image_id, entries)
-    failures = verify_entries(entries, measured)
-    if failures:
-        (record_dir / "probe-report.txt").write_text(
-            "\n".join(failures) + "\n" + json.dumps(measured, indent=2) + "\n"
-        )
-        if image_id != base_image_id:
-            run_podman(["rmi", "-f", image_id], check=False)
-        for failure in failures:
-            print(failure, file=sys.stderr)
-        return 1
-
-    image_ref = f"{prefix}/{slug}:{build_id}"
-    contents = contents_text(build_id, project_id, image_ref, measured)
-    (record_dir / "contents.md").write_text(contents)
-    contents_digest = hashlib.sha256(contents.encode()).hexdigest()
-    label_keys = ["project-id", "schema-version", "contents-digest", "build-id",
-                  "base-digest"]
-    podman_build(context_dir, containerfile, [image_ref], {
-        f"{LABEL_PREFIX}.project-id": project_id,
-        f"{LABEL_PREFIX}.schema-version": SCHEMA_VERSION,
-        f"{LABEL_PREFIX}.contents-digest": contents_digest,
-        f"{LABEL_PREFIX}.build-id": build_id,
-        f"{LABEL_PREFIX}.base-digest": base_digest,
-    })
-    if image_id != base_image_id:
-        run_podman(["rmi", "-f", image_id], check=False)
-    digest = image_inspect(image_ref, "{{.Digest}}")
-    write_build_manifest(
-        record_dir, kind="project", project_id=project_id, slug=slug, build_id=build_id,
-        image_ref=image_ref, digest=digest, contents_digest=contents_digest,
-        base_ref=base_ref, base_digest=base_digest, label_keys=label_keys,
-    )
-    print(f"kind=project")
-    print(f"slug={slug}")
-    print(f"project-id={project_id}")
-    print(f"build-id={build_id}")
-    print(f"image={image_ref}")
-    print(f"digest={digest}")
-    print(f"record={record_dir}")
-    return 0
 
 
 def cmd_match(args: argparse.Namespace) -> int:
     prefix: str = args.prefix
     base_ref = args.base_ref or f"{prefix}/base"
+    display_ref = args.display_ref or f"{prefix}/display"
     records_root = Path(args.records_root).expanduser()
     repo_path = Path(args.repo).expanduser()
     if not args.requirements:
@@ -589,6 +713,16 @@ def cmd_match(args: argparse.Namespace) -> int:
 
     base_digest, _base_build_id, _base_image_id = resolve_base(base_ref)
     slug, project_id = resolve_slug(records_root, repo_path)
+    # D039 匹配谓词: 项目层候选的 base-digest 必须 == 当前 display 层 digest
+    # (display 缺失/过期 → 无候选, 报 BUILD-NEW + reason, 由 build 前置挡住)
+    try:
+        display_digest, _display_build_id, _display_image_id = resolve_display(base_ref, display_ref)
+    except EnvError as error:
+        print("verdict=BUILD-NEW")
+        print(f"reason=no-display:{error}")
+        print(f"slug={slug}")
+        print(f"project-id={project_id}")
+        return 0
 
     listing = run_podman(
         ["images", "--filter", f"label={LABEL_PREFIX}.project-id={project_id}",
@@ -645,8 +779,8 @@ def cmd_match(args: argparse.Namespace) -> int:
                 '{{index .Labels "%s.base-digest"}}' % LABEL_PREFIX,
             )
             candidate["base-digest"] = base_label = info.strip()
-        if base_label != base_digest:
-            print(f"reason=base-digest:{build_id}")
+        if base_label != display_digest:
+            print(f"reason=parent-digest:{build_id}")
             continue
         wanted = f"{prefix}/{slug}:{build_id}"
         image = wanted if wanted in candidate["tags"] else (
@@ -669,21 +803,29 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     subparsers = parser.add_subparsers(dest="command", required=True)
 
-    for name in ("build-base", "match", "build"):
+    for name in ("build-base", "build-display", "match", "build"):
         sub = subparsers.add_parser(name)
         sub.add_argument("--records-root",
                          default=str(Path.home() / ".agents" / "sandbox-worktree"))
         sub.add_argument("--prefix", default=DEFAULT_PREFIX)
         sub.add_argument("--base-ref", default=None)
+        if name in ("build-display", "match", "build"):
+            sub.add_argument("--display-ref", default=None)
         if name == "build-base":
             sub.add_argument("--skills-dir", default=str(DEFAULT_SKILLS_DIR))
             sub.add_argument("--pi-agent-dir", default=str(DEFAULT_PI_AGENT_DIR))
             sub.add_argument("--requirements", default=None)
+        if name == "build-display":
+            sub.add_argument("--requirements", default=None)
         if name in ("match", "build"):
             sub.add_argument("--repo")
             sub.add_argument("--requirements")
-        sub.set_defaults(handler={"build-base": cmd_build_base, "match": cmd_match,
-                                  "build": cmd_build}[name])
+        sub.set_defaults(handler={
+            "build-base": cmd_build_base,
+            "build-display": cmd_build_display,
+            "match": cmd_match,
+            "build": cmd_build,
+        }[name])
 
     args = parser.parse_args(argv)
     try:

@@ -581,6 +581,12 @@ class SwtBirthFixture(SwtFixture):
             ["podman", "rm", "-f", "--all", "--filter", f"label=sandbox-worktree.repo={self.repo.resolve()}"],
             capture_output=True, text=True, check=False,
         )
+        # 测试卫生 (F6): 兑底收走指向本测试主仓父目录的孤儿 git daemon
+        # (DECIDE 中途/异常路径下 runtime 未记录的 daemon, 退出后仍监听)
+        subprocess.run(
+            ["pkill", "-f", f"git daemon.*--base-path={self.repo.parent}"],
+            capture_output=True, text=True, check=False,
+        )
         super().tearDown()
 
     def birth_ready(self, name: str | None = None, mode: str = "whitelist") -> dict:
@@ -684,6 +690,39 @@ class TestTS201BirthChain(SwtBirthFixture):
         self.assertEqual(branch, self.ssh_run(
             state, f"git -C /home/bolo/Workspace/{branch} branch --show-current"
         ).stdout.strip())
+        # D040/D041: 显示栈发布与门禁 (m03 极简镜像无 swt-vnc → absent 跳过)
+        self.assertTrue(list(state["containers"]))
+        container = state["containers"][0]
+        self.assertEqual("absent", container["display"])
+        self.assertEqual(6080, container["vnc-port"])
+        inspect_out = subprocess.run(
+            ["podman", "inspect", container["name"], "--format",
+             "{{json .HostConfig.PortBindings}}|{{.HostConfig.ShmSize}}"],
+            capture_output=True, text=True, check=True,
+        ).stdout.strip()
+        bindings_json, shm_size = inspect_out.split("|")
+        bindings = json.loads(bindings_json)
+        self.assertEqual(int(shm_size), 1 << 30)  # --shm-size=1g (chromium 必需)
+        self.assertEqual(bindings["6080/tcp"][0]["HostIp"], "127.0.0.1")  # 只绑回环
+        # D044: auth.json 运行时只读挂载 (host 缺失时跳过)
+        binds = json.loads(subprocess.run(
+            ["podman", "inspect", container["name"], "--format", "{{json .HostConfig.Binds}}"],
+            capture_output=True, text=True, check=True,
+        ).stdout)
+        if (Path.home() / ".pi" / "agent" / "auth.json").is_file():
+            self.assertTrue(
+                any(bind.split(",")[0].endswith("/auth.json:ro") for bind in binds),
+                msg=str(binds))  # podman 会在 bind 串尾追加 ,rprivate,rbind 等挂载选项
+        # 决策 8 + 补充: 交付固定项 — ssh 双入口 + herdr 双命令, 直连形式废除;
+        # 隧道命令仅在显示栈 ok 时随发 (absent 时为降级说明, 无可随道)
+        self.assertIn("ssh 入口 (本机)", result.stdout)
+        self.assertIn("ssh 入口 (局域网)", result.stdout)
+        self.assertNotIn("ssh bolo@", result.stdout)
+        self.assertEqual(2, result.stdout.count("herdr --remote"))
+        if container["display"] == "ok":
+            self.assertIn("-L 6080:127.0.0.1:", result.stdout)
+        else:
+            self.assertIn("无 noVNC 交付", result.stdout)
         self.assertTrue(list((self.records / "runtime").glob("*.json")))
 
 class TestTS212Environment(TestTS201BirthChain):
@@ -742,6 +781,18 @@ class TestTS210NftMerge(TestTS201BirthChain):
         ).stdout
         for item in state["containers"]:
             self.assertIn(f"ip saddr {item['network-ip']}", table)
+        # D040: 第二容器诞生时宿主 6080 已被首容器占用 → 回落同回环动态端口
+        first = next(item for item in state["containers"] if item["name"] != "swt-m12-merge-second")
+        second = next(item for item in state["containers"] if item["name"] == "swt-m12-merge-second")
+        self.assertEqual(6080, first["vnc-port"])
+        self.assertIsNotNone(second["vnc-port"])
+        self.assertNotEqual(6080, second["vnc-port"])
+        second_bindings = json.loads(subprocess.run(
+            ["podman", "inspect", second["name"], "--format",
+             "{{json .HostConfig.PortBindings}}"],
+            capture_output=True, text=True, check=True,
+        ).stdout)
+        self.assertEqual(second_bindings["6080/tcp"][0]["HostIp"], "127.0.0.1")
 
 class TestTS211Partial(TestTS201BirthChain):
     def test_port_start_failure_leaves_runtime_and_second_birth_converges(self) -> None:
@@ -1954,3 +2005,66 @@ class TestTS5Resume(SwtBirthFixture):
         retry = self.resume()
         self.assertEqual(0, retry.returncode, retry.stderr)
         self.assertEqual("running", next(item for item in self.state(retry)["containers"] if item["name"] == name)["state"])
+
+
+class TestDisplayGateReentry(SwtBirthFixture):
+    """D041 显示栈门禁重入路径 (m03 极简镜像 + 伪造 display-fail runtime,
+    不需真 swt-vnc): (b) --display-continue 落 degraded 并消费票据;
+    (d) 票据缺失 + 带 flag 报前置失败, 绝不套用旧答案."""
+
+    def make_display_fail(self, with_receipt: bool = True) -> str:
+        """把 born runtime 伪造为显示栈失败态; with_receipt 时开出匹配票据.
+        返回容器名."""
+        swt = self.load_swt()
+        runtime = self.runtime_data()
+        container = runtime["containers"][0]
+        name = container["name"]
+        runtime["display"] = {"status": "fail", "container": name,
+                              "question": "显示栈验证未通过 (测试伪造)"}
+        container["display"] = "fail"
+        self.runtime_file().write_text(json.dumps(runtime), encoding="utf-8")
+        if with_receipt:
+            fingerprint = swt.birth_display_fingerprint(
+                self.repo, runtime, runtime.get("image") or {}, name)
+            swt.create_receipt(
+                self.records, self.runtime_file().stem, "display-verify",
+                fingerprint, ["--display-continue", "--display-recheck"],
+            )
+        return name
+
+    def birth_reentry(self, *extra: str) -> subprocess.CompletedProcess[str]:
+        return self.run_swt(
+            "birth", "--repo", str(self.repo), "--records-root", str(self.records),
+            "--branch", "feature/m12", "--image", "localhost/swt-m03:latest",
+            "--mode", "whitelist", "--allow", "127.0.0.1",
+            "--reuse-mother", "--name", self.container_name, *extra,
+        )
+
+    def test_display_continue_lands_degraded_and_consumes_receipt(self) -> None:
+        self.birth_ready()
+        self.container_name = self.make_display_fail(with_receipt=True)
+        result = self.birth_reentry("--display-continue")
+        self.assertEqual(0, result.returncode, result.stderr)
+        runtime = self.runtime_data()
+        self.assertEqual("degraded", runtime["display"]["status"])
+        state = self.state(result)
+        container = next(item for item in state["containers"] if item["name"] == self.container_name)
+        self.assertEqual("degraded", container["display"])
+        self.assertIn("显示栈: 降级", result.stdout)
+        # 票据一次性: 消费后 decisions 目录无残余
+        decisions = next((self.records / "runtime").glob("*/decisions"))
+        self.assertFalse(list(decisions.glob("d-*.json")))
+        # 降级态重入: 无 fail 记录, 不再问 (幂等)
+        again = self.birth_reentry("--display-continue")
+        self.assertEqual(0, again.returncode, again.stderr)
+        self.assertNotIn("DECIDE ", again.stdout)
+
+    def test_display_flag_without_receipt_is_precondition_error(self) -> None:
+        self.birth_ready()
+        self.container_name = self.make_display_fail(with_receipt=False)
+        result = self.birth_reentry("--display-continue")
+        self.assertEqual(2, result.returncode)
+        self.assertIn("没有匹配的 display-verify 决策收据", result.stderr)
+        # 状态未被套用旧答案: display 仍为 fail
+        runtime = self.runtime_data()
+        self.assertEqual("fail", runtime["display"]["status"])

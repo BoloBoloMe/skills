@@ -1,4 +1,9 @@
-"""M09 login-wall tests (ISSUE-04).
+"""M10 display-stack tests (ISSUE-04 → D039/D040/D041/D042 重写).
+
+原 M09 login-wall 测试迁家: login-wall.py 已整删, 通道检查迁为
+scripts/swt-display.py (被 swt display-check 子命令调用); 浏览器栈
+从独立项目层改烘 display 层 (image-prep build-display); 容器生命周期
+归 swt birth, 本文件用裸 podman run 直驱容器验证 swt-vnc 与检查链.
 
 TS-001 slice: pure RFB client logic. A fake RFB 3.8 server (test-side,
 independent truth: RFC 6143 byte layout) feeds banner / Security /
@@ -6,16 +11,14 @@ SecurityResult / ServerInit / framebuffer update. Expected client byte
 streams are hand-computed literals, never derived from implementation
 symbols (anti-pattern: tautology).
 
-TS-002 slice (TestBrowserImageE2E): isolated real base + project build with
-requirements-browser.md; network heavy, class-level shared fixtures.
+TS-002 slice (TestDisplayLayerBuildE2E): isolated real base + display build
+with requirements-browser.md; network heavy, class-level shared fixtures.
 """
 from __future__ import annotations
 
 import atexit
 import contextlib
 import importlib.util
-import io
-import json
 import re
 import secrets
 import socket
@@ -30,7 +33,8 @@ from shutil import rmtree
 from tempfile import mkdtemp
 
 ROOT = Path(__file__).resolve().parents[1]
-SCRIPT = ROOT / "workflow/use-sandbox-worktree/scripts/login-wall.py"
+DISPLAY_SCRIPT = ROOT / "workflow/use-sandbox-worktree/scripts/swt-display.py"
+SWT_SCRIPT = ROOT / "workflow/use-sandbox-worktree/scripts/swt.py"
 IMAGE_PREP = ROOT / "workflow/use-sandbox-worktree/scripts/image-prep.py"
 REQ_BROWSER = ROOT / "workflow/use-sandbox-worktree/image/requirements-browser.md"
 
@@ -39,9 +43,9 @@ TIMEOUT = 5.0
 
 
 def _load_module():
-    spec = importlib.util.spec_from_file_location("login_wall", SCRIPT)
+    spec = importlib.util.spec_from_file_location("swt_display", DISPLAY_SCRIPT)
     module = importlib.util.module_from_spec(spec)
-    sys.modules["login_wall"] = module
+    sys.modules["swt_display"] = module
     spec.loader.exec_module(module)
     return module
 
@@ -253,7 +257,7 @@ def test_handshake_sends_protocol_bytes_and_parses_server_init():
     assert info.name == "swt-test"
 
 
-# --------------------------------------------------------------- TS-002 e2e
+# ------------------------------------------------------- TS-002 e2e (display 层)
 
 
 def _run_ip(args: list[str], timeout: int = 1800) -> subprocess.CompletedProcess:
@@ -275,7 +279,7 @@ def _kv(stdout: str) -> dict[str, str]:
 
 def _build_image_fixtures(records_root: Path, repo: Path, prefix: str,
                           base_ref: str) -> tuple[dict, dict]:
-    """One isolated build-base + one project build (network heavy, cached).
+    """One isolated build-base + one display build (network heavy, cached).
 
     Raises unittest.SkipTest on build failure so classes degrade to skips.
     """
@@ -288,24 +292,23 @@ def _build_image_fixtures(records_root: Path, repo: Path, prefix: str,
     ])
     if base.returncode != 0:
         raise unittest.SkipTest(f"base build failed: {base.stderr[-800:]}")
-    build = _run_ip([
-        "build",
-        "--repo", str(repo),
+    display = _run_ip([
+        "build-display",
         "--requirements", str(REQ_BROWSER),
         "--records-root", str(records_root),
         "--prefix", prefix,
         "--base-ref", base_ref,
     ])
-    if build.returncode != 0:
-        raise unittest.SkipTest(f"browser build failed: {build.stderr[-800:]}")
-    return _kv(base.stdout), _kv(build.stdout)
+    if display.returncode != 0:
+        raise unittest.SkipTest(f"display build failed: {display.stderr[-800:]}")
+    return _kv(base.stdout), _kv(display.stdout)
 
 
 _SHARED_FIXTURES: dict | None = None
 
 
 def _shared_image_fixtures() -> dict:
-    """模块级一次性构建夹具: 两个 e2e 类共享同一套 base+项目镜像.
+    """模块级一次性构建夹具: 各 e2e 类共享同一套 base+display 镜像.
 
     首次调用真实构建 (cached 层可加速), 后续调用直接复用; 镜像与
     records 的清理注册在 atexit, 进程退出时执行一次, 类间不互相拆除.
@@ -325,7 +328,7 @@ def _shared_image_fixtures() -> dict:
 
     def _cleanup_shared():
         # SIGKILL 场景下本函数不执行: 构建/失败时已把 prefix 打到 stderr 供人工清
-        # reference glob 不跨 "/": prefix*/* 才能命中 prefix/base:tag 与 prefix/repo:tag
+        # reference glob 不跨 "/": prefix*/* 才能命中 prefix/base:tag 与 prefix/display:tag
         print(f"[swt-m09-fixtures] cleanup prefix={fixtures['prefix']}",
               file=sys.stderr)
         subprocess.run(
@@ -341,25 +344,22 @@ def _shared_image_fixtures() -> dict:
     print(f"[swt-m09-fixtures] prefix={fixtures['prefix']} "
           f"records-root={fixtures['records_root']} "
           "(进程被杀时的残留可按此人工清理)", file=sys.stderr)
-    base_values, build_values = _build_image_fixtures(
+    base_values, display_values = _build_image_fixtures(
         fixtures["records_root"], fixtures["repo"], fixtures["prefix"],
         fixtures["base_ref"],
     )
     fixtures["base_values"] = base_values
-    fixtures["build_values"] = build_values
-    fixtures["image"] = build_values["image"]
+    fixtures["display_values"] = display_values
+    fixtures["image"] = display_values["image"]
     _SHARED_FIXTURES = fixtures
     return _SHARED_FIXTURES
 
 
-class TestBrowserImageE2E(unittest.TestCase):
-    """TS-002: isolated real base + browser project build.
+class TestDisplayLayerBuildE2E(unittest.TestCase):
+    """TS-002: isolated real base + display layer build (D039).
 
     Isolation: --prefix localhost/swt-m09-<random> and records root under
     /tmp/swt-m09-<random>; never touches user images or real records.
-    setUpClass performs the single base build and the single project build
-    (network heavy, class-level shared); each test only asserts its own
-    contract, so any test can run alone without skipping the other.
     """
 
     @classmethod
@@ -372,7 +372,7 @@ class TestBrowserImageE2E(unittest.TestCase):
         cls.base_ref = fixtures["base_ref"]
         cls.records_root = fixtures["records_root"]
         cls.base_values: dict[str, str] = fixtures["base_values"]
-        cls.build_values: dict[str, str] = fixtures["build_values"]
+        cls.display_values: dict[str, str] = fixtures["display_values"]
 
     def _podman_sh(self, image: str, command: str) -> subprocess.CompletedProcess:
         return subprocess.run(
@@ -390,12 +390,19 @@ class TestBrowserImageE2E(unittest.TestCase):
              / "contents.md").is_file(),
         )
 
-    def test_browser_image_probes_and_artifacts(self):
-        """build 全 probe 过 + swt-vnc 可执行 + fonts 在位 + chromium 版本."""
-        values = type(self).build_values
+    def test_display_layer_probes_and_artifacts(self):
+        """display 层全 probe 过 + swt-vnc 可执行 + fonts 在位 + chromium 版本
+        + 记录落 display/builds + Containerfile FROM 当前 base@digest."""
+        values = type(self).display_values
         assert values is not None
         image = values["image"]
-        contents = (Path(values["record"]) / "contents.md").read_text()
+        self.assertTrue(image.startswith(f"{self.prefix}/display:"))
+        record = Path(values["record"])
+        self.assertEqual(record.parents[1].name, "display")
+        containerfile = (record / "Containerfile").read_text()
+        self.assertTrue(containerfile.startswith(
+            f"FROM {self.base_ref}@"))
+        contents = (record / "contents.md").read_text()
         for name in ("xvfb", "x11vnc", "websockify", "novnc",
                      "fonts-noto-cjk", "chromium", "swt-vnc"):
             self.assertRegex(contents, rf"(?m)^{name}: (?!MISSING)\S", msg=contents)
@@ -424,17 +431,18 @@ class TestBrowserImageE2E(unittest.TestCase):
 # ---------------------------------------------------------------- TS-003 e2e
 
 
-def _run_lw(args: list[str], timeout: int = 600) -> subprocess.CompletedProcess:
+def _run_swt(args: list[str], timeout: int = 900) -> subprocess.CompletedProcess:
     return subprocess.run(
-        [sys.executable, str(SCRIPT), *args],
+        [sys.executable, str(SWT_SCRIPT), *args],
         capture_output=True, text=True, check=False, timeout=timeout,
     )
 
 
-class TestUpFlowE2E(unittest.TestCase):
-    """TS-003: up -> swt-vnc start -> GEOM resolution, 0.0.0.0 listeners,
-    dynamic host port discovery; swt-vnc status/stop idempotency; down.
-    """
+class _DisplayContainerTestCase(unittest.TestCase):
+    """display 层容器直驱夹具: 裸 podman run (回环发布 + shm 1g) +
+    swt-vnc start, 模拟 swt birth 的容器形态; 类级共享镜像."""
+
+    image: str = ""
 
     @classmethod
     def setUpClass(cls):
@@ -452,22 +460,26 @@ class TestUpFlowE2E(unittest.TestCase):
                 ["podman", "rm", "-f", name], capture_output=True,
             )
 
-    def _up(self, name: str, geom: str | None = None) -> dict:
-        args = ["up", "--image", self.image, "--name", name]
+    def _start_container(self, name: str, geom: str | None = None) -> None:
+        """swt birth 同型: -p 127.0.0.1::6080 回环动态 (测试互不抢 6080)
+        + --shm-size=1g, 然后 exec swt-vnc start."""
+        args = ["podman", "run", "-d", "--shm-size", "1g", "--name", name,
+                "-p", "127.0.0.1::6080"]
         if geom:
-            args += ["--geom", geom]
-        result = _run_lw(args, timeout=1800)
+            args += ["-e", f"GEOM={geom}"]
+        args.append(self.image)
+        run_result = subprocess.run(args, capture_output=True, text=True,
+                                    check=False, timeout=300)
         type(self).containers.append(name)  # 断言前登记, 失败也兜底清理
         self.addCleanup(
             subprocess.run, ["podman", "rm", "-f", name], capture_output=True,
         )
-        if result.returncode != 0:
-            self.fail(f"up --name {name} failed: {result.stderr[-2000:]}")
-        try:
-            return json.loads(result.stdout)
-        except json.JSONDecodeError as error:
-            self.fail(
-                f"up --name {name} 输出非 json ({error}): {result.stdout[:200]}")
+        self.assertEqual(run_result.returncode, 0, run_result.stderr)
+        started = subprocess.run(
+            ["podman", "exec", name, "swt-vnc", "start"],
+            capture_output=True, text=True, check=False, timeout=300,
+        )
+        self.assertEqual(started.returncode, 0, started.stderr)
 
     def _exec(self, name: str, command: str, check: bool = False):
         return subprocess.run(
@@ -478,12 +490,12 @@ class TestUpFlowE2E(unittest.TestCase):
     def _rfb_frame_size(self, name: str) -> tuple[int, int]:
         """RFB 单一真相源: cp 纯逻辑进容器, 容器内 python3 握手读尺寸."""
         subprocess.run(
-            ["podman", "cp", str(SCRIPT), f"{name}:/tmp/lw.py"],
+            ["podman", "cp", str(DISPLAY_SCRIPT), f"{name}:/tmp/swt_display.py"],
             capture_output=True, text=True, check=True,
         )
         probe = (
             "import importlib.util,socket;"
-            "spec=importlib.util.spec_from_file_location('lw','/tmp/lw.py');"
+            "spec=importlib.util.spec_from_file_location('swt_display','/tmp/swt_display.py');"
             "m=importlib.util.module_from_spec(spec);spec.loader.exec_module(m);"
             "s=socket.create_connection(('127.0.0.1',5900),10);"
             "i=m.RfbClient(s).handshake();"
@@ -497,18 +509,23 @@ class TestUpFlowE2E(unittest.TestCase):
         width, height = (int(part) for part in result.stdout.split())
         return width, height
 
-    def test_up_state_contract_and_default_resolution(self):
-        name = f"swt-m09-{secrets.token_hex(4)}"
-        state = self._up(name)
-        self.assertEqual(state["container"], name)
-        self.assertEqual(state["image"], self.image)
-        self.assertTrue(state["ports"].get("22/tcp"))
-        host_6080 = state["ports"].get("6080/tcp")
-        self.assertTrue(host_6080)
-        self.assertEqual(
-            state["url"],
-            f"http://127.0.0.1:{host_6080}/vnc.html?resize=scale",
+
+class TestDisplayContainerE2E(_DisplayContainerTestCase):
+    """TS-003: 回环发布容器 + swt-vnc start -> GEOM resolution,
+    5900 0.0.0.0 监听, 宿主端口回环发现; swt-vnc status/stop 幂等."""
+
+    def _host_vnc_port(self, name: str) -> int:
+        result = subprocess.run(
+            ["podman", "port", name, "6080"],
+            capture_output=True, text=True, check=True,
         )
+        match = re.search(r":(\d+)\s*$", result.stdout.strip(), re.MULTILINE)
+        self.assertIsNotNone(match, result.stdout)
+        return int(match.group(1))
+
+    def test_container_contract_and_default_resolution(self):
+        name = f"swt-m09-{secrets.token_hex(4)}"
+        self._start_container(name)
         inspect = subprocess.run(
             ["podman", "inspect", name, "--format",
              "{{.State.Running}}|{{.HostConfig.ShmSize}}"],
@@ -517,8 +534,9 @@ class TestUpFlowE2E(unittest.TestCase):
         running, shm_size = inspect.split("|")
         self.assertEqual(running, "true")
         self.assertEqual(int(shm_size), 1 << 30)  # --shm-size 1g
-        # 宿主侧经动态发现的 6080 可 TCP 连上 (0.0.0.0 监听佐证)
-        with socket.create_connection(("127.0.0.1", int(host_6080)), timeout=10):
+        # 宿主侧经回环映射的 6080 可 TCP 连上
+        host_port = self._host_vnc_port(name)
+        with socket.create_connection(("127.0.0.1", host_port), timeout=10):
             pass
         # RFB 缺省 GEOM: 1920x1080
         self.assertEqual(self._rfb_frame_size(name), (1920, 1080))
@@ -536,15 +554,14 @@ class TestUpFlowE2E(unittest.TestCase):
             msg=f"5900 未绑 0.0.0.0: {sorted(local_addrs)}",
         )
 
-    def test_up_geom_env_controls_resolution(self):
+    def test_geom_env_controls_resolution(self):
         name = f"swt-m09-{secrets.token_hex(4)}"
-        state = self._up(name, geom="1280x720")
-        self.assertEqual(state["geom"], "1280x720")  # up 原样透传, 脚本负责归一
+        self._start_container(name, geom="1280x720")
         self.assertEqual(self._rfb_frame_size(name), (1280, 720))  # 生效值经 RFB 读出
 
     def test_start_status_stop_idempotent(self):
         name = f"swt-m09-{secrets.token_hex(4)}"
-        self._up(name)  # up 已含首轮 start
+        self._start_container(name)  # 启动已含首轮 start
         second = self._exec(name, "swt-vnc start")
         self.assertEqual(second.returncode, 0, msg=second.stderr)
         for process in ("xvfb", "x11vnc", "websockify"):
@@ -569,19 +586,6 @@ class TestUpFlowE2E(unittest.TestCase):
 
         stop_again = self._exec(name, "swt-vnc stop")
         self.assertEqual(stop_again.returncode, 0, msg=stop_again.stderr)
-
-    def test_down_removes_container_idempotent(self):
-        name = f"swt-m09-{secrets.token_hex(4)}"
-        self._up(name)
-        down_first = _run_lw(["down", "--name", name])
-        self.assertEqual(down_first.returncode, 0, msg=down_first.stderr)
-        inspect = subprocess.run(
-            ["podman", "inspect", name, "--format", "{{.State.Running}}"],
-            capture_output=True, text=True, check=False,
-        )
-        self.assertNotEqual(inspect.returncode, 0)  # 容器已不存在
-        down_again = _run_lw(["down", "--name", name])
-        self.assertEqual(down_again.returncode, 0, msg=down_again.stderr)
 
 
 # ---------------------------------------------------------------- TS-004 e2e
@@ -698,49 +702,17 @@ class TestWsFrameDecode(unittest.TestCase):
                 4, 2, [self.lw.FrameRect(0, 0, 2, 2, b"\x00" * 6)])
 
 
-class TestVerifyChannelE2E(unittest.TestCase):
-    """TS-004: host 侧 noVNC HTTP 200 + ws 握手 101 + ws 帧 RFB banner;
-    容器内空白 framebuffer 基线 (非黑 < 1%) + PPM 证据回 host."""
+class TestDisplayCheckChannelE2E(_DisplayContainerTestCase):
+    """TS-004: swt display-check 通道检查 — noVNC HTTP 200 + ws 握手 101
+    + ws 帧 RFB banner; 容器内空白 framebuffer 基线 (非黑 < 1%) + PPM 证据."""
 
-    @classmethod
-    def setUpClass(cls):
-        info = subprocess.run(["podman", "info"], capture_output=True, text=True)
-        if info.returncode != 0:
-            raise unittest.SkipTest(f"podman unavailable: {info.stderr.strip()}")
-        fixtures = _shared_image_fixtures()
-        cls.image = fixtures["image"]
-        cls.containers: list[str] = []
-
-    @classmethod
-    def tearDownClass(cls):
-        for name in getattr(cls, "containers", []):
-            subprocess.run(
-                ["podman", "rm", "-f", name], capture_output=True,
-            )
-
-    def _up(self, name: str) -> None:
-        result = _run_lw(["up", "--image", self.image, "--name", name],
-                         timeout=1800)
-        type(self).containers.append(name)
-        self.addCleanup(
-            subprocess.run, ["podman", "rm", "-f", name], capture_output=True,
-        )
-        if result.returncode != 0:
-            self.fail(f"up --name {name} failed: {result.stderr[-2000:]}")
-
-    def _exec(self, name: str, command: str):
-        return subprocess.run(
-            ["podman", "exec", name, "sh", "-c", command],
-            capture_output=True, text=True, check=False, timeout=300,
-        )
-
-    def test_verify_channels_pass_and_evidence(self):
+    def test_display_check_channels_pass_and_evidence(self):
         name = f"swt-m09-{secrets.token_hex(4)}"
-        self._up(name)
+        self._start_container(name)
         evidence = Path(mkdtemp(prefix="swt-m09-verify-"))
         self.addCleanup(rmtree, evidence, True)
-        result = _run_lw([
-            "verify", "--name", name, "--evidence-dir", str(evidence),
+        result = _run_swt([
+            "display-check", "--name", name, "--evidence-dir", str(evidence),
         ], timeout=600)
         self.assertEqual(result.returncode, 0,
                          msg=result.stdout + result.stderr[-2000:])
@@ -753,13 +725,13 @@ class TestVerifyChannelE2E(unittest.TestCase):
         self.assertTrue(ppm_path.read_bytes().startswith(b"P6\n1920 1080\n255\n"),
                         msg=ppm_path.read_bytes()[:32])
 
-    def test_verify_fails_after_stack_stop(self):
-        """负例: VNC 栈停后 verify 必须红 (证明检查真的在测)."""
+    def test_display_check_fails_after_stack_stop(self):
+        """负例: VNC 栈停后 display-check 必须红 (证明检查真的在测)."""
         name = f"swt-m09-{secrets.token_hex(4)}"
-        self._up(name)
+        self._start_container(name)
         stop = self._exec(name, "swt-vnc stop")
         self.assertEqual(stop.returncode, 0, msg=stop.stderr)
-        result = _run_lw(["verify", "--name", name], timeout=600)
+        result = _run_swt(["display-check", "--name", name], timeout=600)
         self.assertEqual(result.returncode, 1, msg=result.stdout)
         self.assertIn("FAIL", result.stdout, msg=result.stdout)
 
@@ -767,44 +739,18 @@ class TestVerifyChannelE2E(unittest.TestCase):
 # ---------------------------------------------------------------- TS-005 e2e
 
 
-class TestRenderE2E(unittest.TestCase):
+class TestDisplayRenderE2E(_DisplayContainerTestCase):
     """TS-005: headed chromium 渲染高对比页 -> framebuffer 非黑超阈值
-    + PPM 证据回 host; headless 回切 (换 cwd, 无 DISPLAY); down 后无残留."""
+    + PPM 证据回 host; headless 回切 (换 cwd, 无 DISPLAY)."""
 
-    @classmethod
-    def setUpClass(cls):
-        info = subprocess.run(["podman", "info"], capture_output=True, text=True)
-        if info.returncode != 0:
-            raise unittest.SkipTest(f"podman unavailable: {info.stderr.strip()}")
-        fixtures = _shared_image_fixtures()
-        cls.image = fixtures["image"]
-        cls.containers: list[str] = []
-
-    @classmethod
-    def tearDownClass(cls):
-        for name in getattr(cls, "containers", []):
-            subprocess.run(
-                ["podman", "rm", "-f", name], capture_output=True,
-            )
-
-    def _up(self, name: str) -> None:
-        result = _run_lw(["up", "--image", self.image, "--name", name],
-                         timeout=1800)
-        type(self).containers.append(name)
-        self.addCleanup(
-            subprocess.run, ["podman", "rm", "-f", name], capture_output=True,
-        )
-        if result.returncode != 0:
-            self.fail(f"up --name {name} failed: {result.stderr[-2000:]}")
-
-    def test_verify_render_checks_pass_with_evidence(self):
+    def test_display_check_render_checks_pass_with_evidence(self):
         name = f"swt-m09-{secrets.token_hex(4)}"
-        self._up(name)
+        self._start_container(name)
         # 嵌套不存在路径: evidence-dir 需自行创建 (podman cp 不建宿主目录)
         evidence = Path(mkdtemp(prefix="swt-m09-render-")) / "a" / "b"
         self.addCleanup(rmtree, evidence.parent.parent, True)
-        result = _run_lw([
-            "verify", "--name", name, "--evidence-dir", str(evidence),
+        result = _run_swt([
+            "display-check", "--name", name, "--evidence-dir", str(evidence),
         ], timeout=1800)
         self.assertEqual(result.returncode, 0,
                          msg=result.stdout + result.stderr[-2000:])
@@ -815,71 +761,6 @@ class TestRenderE2E(unittest.TestCase):
         self.assertTrue(ppm.read_bytes().startswith(b"P6\n1920 1080\n255\n"),
                         msg=ppm.read_bytes()[:32])
 
-    def test_down_leaves_no_container(self):
-        name = f"swt-m09-{secrets.token_hex(4)}"
-        self._up(name)
-        down = _run_lw(["down", "--name", name])
-        self.assertEqual(down.returncode, 0, msg=down.stderr)
-        ps = subprocess.run(
-            ["podman", "ps", "-a", "--format", "{{.Names}}"],
-            capture_output=True, text=True, check=True,
-        )
-        self.assertNotIn(name, ps.stdout.splitlines())
 
-
-# ------------------------------------------------- build 子命令 (加餐轮)
-
-
-class TestBuildCommand(unittest.TestCase):
-    """build = image-prep build 的薄封装: mock subprocess.run 接缝,
-    断言 argv 组装与透传; 缺省 requirements = 仓库内 image/requirements-browser.md."""
-
-    @classmethod
-    def setUpClass(cls):
-        cls.lw = _load_module()
-
-    def _argv_of(self, extra_args, completed):
-        fake = unittest.mock.MagicMock(return_value=completed)
-        buf = io.StringIO()
-        with unittest.mock.patch.object(self.lw.subprocess, "run", fake), \
-                contextlib.redirect_stdout(buf):
-            rc = self.lw.main(["build", *extra_args])
-        return rc, fake.call_args.args[0], buf.getvalue()
-
-    def test_default_requirements_and_passthrough(self):
-        rc, argv, out = self._argv_of(
-            ["--repo", "/some/repo",
-             "--prefix", "localhost/swt-x",
-             "--records-root", "/tmp/recs"],
-            subprocess.CompletedProcess([], 0, stdout="kind=project\n"),
-        )
-        self.assertEqual(rc, 0)
-        self.assertEqual(argv[0], sys.executable)
-        self.assertEqual(Path(argv[1]), IMAGE_PREP)
-        self.assertIn("build", argv)
-        self.assertEqual(argv[argv.index("--requirements") + 1],
-                         str(REQ_BROWSER))  # 缺省 = 仓库内清单绝对路径
-        self.assertEqual(argv[argv.index("--prefix") + 1], "localhost/swt-x")
-        self.assertEqual(argv[argv.index("--records-root") + 1], "/tmp/recs")
-        self.assertEqual(argv[argv.index("--repo") + 1], "/some/repo")
-        self.assertIn("kind=project", out)  # 输出透传
-
-    def test_custom_requirements_overrides_default(self):
-        rc, argv, _ = self._argv_of(
-            ["--repo", "/some/repo", "--prefix", "p", "--records-root", "/tmp/r",
-             "--requirements", "/tmp/custom.md"],
-            subprocess.CompletedProcess([], 0, stdout=""),
-        )
-        self.assertEqual(rc, 0)
-        self.assertEqual(argv[argv.index("--requirements") + 1], "/tmp/custom.md")
-
-    def test_rc_and_stderr_passthrough(self):
-        rc, _, out = self._argv_of(
-            ["--repo", "/some/repo", "--prefix", "p", "--records-root", "/tmp/r"],
-            subprocess.CompletedProcess([], 7, stdout="", stderr="VERIFY-FAIL x\n"),
-        )
-        self.assertEqual(rc, 7)  # image-prep 退出码原样透传
-
-    def test_missing_repo_is_argparse_error(self):
-        with self.assertRaises(SystemExit):
-            self.lw.main(["build", "--prefix", "p", "--records-root", "/tmp/r"])
+if __name__ == "__main__":
+    unittest.main()

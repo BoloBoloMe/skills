@@ -110,7 +110,7 @@
 - 预计影响: use-sandbox-worktree skill 诞生步骤 (镜像比对提示)
 
 ### D014 两层镜像结构与门禁扩展归属
-- 状态: 当前有效
+- 状态: 部分修订 (层数 → D039 三层; 扩展名单 → D043 repetition-guard 改判进容器; 其余有效)
 - 约束性: 必须遵守
 - 内容: 镜像分两层. **base 层**固定且跨项目共享: OS + pi CLI + skill 库全量 (含 access-web) + fd/rg 等 bin; **项目层**由 host llm 读项目信号 (AGENTS.md/README/package.json/pyproject.toml 等) 推导依赖件叠加. 诞生时向用户展示推导清单, 确认后才构建 ("容器之外用户说了算"). 门禁类扩展 (filesystem-operation-gate, git-operation-gate, python-operation-hook, repetition-guard) **留 host 不进容器** — 回归调研 §3 原结论 (2026-09-01-research.md: 容器内 pi 不装门禁类扩展), 反方攻击成立项: gate 弹确认会阻塞 herdr 委派回路, 且容器内硬约束已由 D008 daemon/config 拓扑承担, gate 扩展在容器内只增行为耦合. 排除单层自由推导: base 复用率低. 构建期安装项目依赖的传递依赖/postinstall 风险与日常开发同级 (装依赖即工作流目的), 不入威胁模型, 但清单确认时应提示.
 - 预计影响: MILESTONE-07 镜像制备实现; use-sandbox-worktree skill 诞生步骤 (清单确认环节)
@@ -130,7 +130,7 @@
 - 预计影响: MILESTONE-07; skill 诞生步骤 (镜像查询/构建记录)
 
 ### D025 场景脚本总体形态: 单 module `swt` 五子命令
-- 状态: 当前有效
+- 状态: 部分修订 (→ D041: 新增诊断子命令 display-check, 不改资源状态; 五子命令生命周期本体有效)
 - 约束性: 必须遵守
 - 内容: host 侧生命周期编排收敛为**一个 module** (`workflow/use-sandbox-worktree/scripts/swt.py`), 对外五个子命令: `birth` (诞生: 建/复用母体 + config + daemon + nft + 容器就绪) / `resume` (恢复, 带 DECIDE gate, 见 D030) / `status` (只读盘点, 永不改状态) / `terminate` (按容器终结, D029) / `switch` (换活动母体, 独立危险入口, D028). 五场景共享同一套探测, D008 config 模板, runtime 状态文件与输出协议, 拆成五个独立脚本会把它们复制五份 (locality 崩坏), 故为单 module 五子命令. 形态经 Design It Twice 三分支比较拍板 ([design-min](milestone-11-design-min.md) 2 入口 / [design-flex](milestone-11-design-flex.md) 9 入口 / [design-caller](milestone-11-design-caller.md) 5 子命令), 取 caller 骨架. 与现有脚本的关系: image-prep.py / net-firewall.py 复用不吞并 (各自 interface 已被 M04/M07 测试钉住, 包一层是透传浅 module); login-wall.py 不统辖 (登录墙是存续期可选环节); e2e-smoke.py 下沉缓退役 (D036). 目标定位: 显式 `--repo` 优先, 缺省从 cwd 推导主仓 (`git rev-parse --git-common-dir`), **废弃 M03 的跨命令注册表索引契约** (M03 遗留缺口 (1) 就此消解: 多一份跨命令状态 = 多一类不一致). 命名消歧: 容器内已有 swt-vnc (M09), SKILL.md 首次出现处各写全称.
 - 依赖事实: F006, F007, F011
@@ -225,7 +225,7 @@
 - 预计影响: MILESTONE-12; MILESTONE-10 SKILL.md 结构
 
 ### D017 镜像匹配规则
-- 状态: 当前有效
+- 状态: 部分修订 (谓词对象 → D039: 项目层硬性条件的比对对象从当前 base 改为当前 display; 规则本体有效)
 - 约束性: 必须遵守
 - 内容: `podman images --filter label=run.sandbox-worktree.project-id=<主仓路径>` 取候选 → digest 去重 (同镜像多 tag 会去重) → 按 build-id 排序取最新. 判定: 需求逐项**版本满足** (含谓词) + **base-digest = 当前 base** (硬谓词 — 反方攻击成立项: 用户更新 base 后旧项目镜像须自然淘汰, 不能仅靠提示) → 复用. 同名条目版本不满足即不可用; 多余项容忍; 缺任意项 → 推导新清单构建新版; 旧镜像保留不删 (GC 在未决迷雾).
 - 预计影响: MILESTONE-07 (候选选择逻辑)
@@ -275,6 +275,60 @@
 - 替代: D016
 - 内容: 构建输入 (Containerfile) + 需求清单 requirements.md + 实测内容物清单 contents.md 落 `~/.agents/sandbox-worktree/<project-slug>/builds/<build-id>/` (环境信息不落项目 git; 与 skills 库同屋, 区别于 pi 运行时配置 ~/.pi). label 前缀 `run.sandbox-worktree.*`: image 存 project-id/schema-version/contents-digest/build-id/base-digest; 容器存 identity/worktree-path/image-digest. **身份规则** (承接 D016 不变): project-id = 主仓绝对路径 (唯一主键, 防同名目录碰撞); slug = 目录名规范化, 仅作展示索引与目录名, 冲突时加短 hash; build-id 构建前查重 (防两会话并发同号).
 - 预计影响: MILESTONE-07; skill 诞生步骤 (镜像查询/构建记录)
+
+### D039 三层镜像: base → display → 项目层
+- 状态: 当前有效
+- 约束性: 必须遵守
+- 替代: ISSUE-04 的 "浏览器栈进项目层" 形态 (项目层不再直接 FROM base); D014 分层结构延伸; D017 谓词对象延伸 (项目层硬性条件从 "基于当前 base" 改为 "基于当前 display")
+- 内容: 镜像分三层. **base 层**内容不变 (OS/git/sshd/node/pi CLI/uv/fd/rg/python3/herdr + skill 库 COPY + ~/.pi/agent 复制; 另烘配 sshd_config `SetEnv PATH=.../home/bolo/.local/bin/...` 使 ssh 非交互 shell 可解析 ~/.local/bin, 见 F012 — 实测 sshd 对每个会话重设 PATH 为编译缺省, 镜像 ENV 不生效); 新增 **display 层** FROM 当前 base, 内容 = image/requirements-browser.md 全量 (xvfb/x11vnc/websockify/noVNC/fonts-noto-cjk + playwright chromium + swt-vnc), 记录落 `<records-root>/display/builds/`; **项目层** FROM 当前 display. 匹配谓词链: display 层自身须基于当前 base (base-digest == 当前 base), 项目层须基于当前 display — base 更新后旧 display 自然淘汰 (DISPLAY-STALE), display 更新后旧项目镜像自然淘汰, D017 硬谓词的自然延伸. base 与 display 都只在用户明说时重建 (D020 延伸). 工具面: image-prep 新增 `build-display` 子命令与 `resolve_display`; match 在 display 缺失/过期时软失败 BUILD-NEW + reason (不硬崩), build 时硬报 NO-DISPLAY. 理由: 显示栈是环境不是项目依赖 (任何项目都可能撞登录墙, 处处可得消除独立容器割裂), 但 chromium 上游安全更新与 access-web 登录墙适配是镜像内容里搅动最频繁的部分 — 放进 base 会让最常变的内容住进最不该常变的层 (base 搅动半径 = 全部项目层陪葬, D017), 放进项目层又回到每项目重复安装; 独立中间层同时保住 "环境层处处都有" 与爆炸半径隔离 (display 搅动只淘汰项目层).
+- 依赖事实: 反方报告 A4 (最常变内容放最稳定层的两难); M09 实测 (chromium 下载占浏览器栈构建大头; base 自身真实摆动频率高)
+- 预计影响: image-prep (build-display/resolve_display/match/build); SKILL.md 镜像管理节; display 层构建记录
+
+### D040 6080 回环发布 + shm-size + 显示栈自动拉起
+- 状态: 当前有效
+- 约束性: 必须遵守
+- 替代: ISSUE-04 login-wall up 的 0.0.0.0 发布 + 临时容器形态
+- 内容: swt 容器 create 固定 `-p 127.0.0.1:6080:6080` (只绑宿主回环, 局域网不可达) + `--shm-size=1g` (chromium 必需, A5 欠规格项); 宿主 6080 已被占 (多容器并存, D009) 时回落 `-p 127.0.0.1::6080` 动态回环端口 — 回环约束不动摇, noVNC URL 与隧道命令按实际端口交付 (STATE `vnc-port`). birth 启动后自动 `podman exec <容器> swt-vnc start`; resume 在与防火墙重注入同位置自动重拉. 交付固定附 noVNC URL + 局域网隧道命令. 理由: 反方 A1 — 常开无认证桌面通道对局域网 24/7 暴露不在任何已接受风险清单 (x11vnc -nopw; nft 管出向不纳入向发布), 而回环化修复近乎免费; 局域远程观看由现成 ssh 通道转发 (`ssh -p <宿主端口> -L 6080:127.0.0.1:<vnc宿主端口> bolo@<host-LAN-IP>`), 交付体验几乎不变, 责任面归零.
+- 依赖事实: F012 (pasta 映射监听 *, 局域网可达); research §8 (--shm-size=1g); requirements-browser.md (swt-vnc 无认证三动作)
+- 注: 多容器并存时的动态回落是对 "固定 6080" 字面与 D009 多容器语义的技术调和 (pasta 端口绑定互斥), 用户拍板的两条硬约束 (只绑回环, chromium shm) 不变.
+- 预计影响: swt.py (create 参数/交付打印); SKILL.md 交付节/风险明示
+
+### D041 显示栈 verify 门禁语义: birth 全量 + DECIDE, resume 秒级降级
+- 状态: 当前有效
+- 约束性: 必须遵守
+- 内容: login-wall.py 的通道检查 (noVNC HTTP/ws 握手/RFB banner + 空白基线 + 渲染基线 0.2 + headless 回切) 迁为独立模块 `scripts/swt-display.py`; swt 新增 **display-check** 子命令调用 (诊断用; 0 全过/1 检查未过/2 传输层失败, 非 DECIDE 语义, 不改状态不持锁). 门禁拆两级: **birth** 跑全量 verify (证明的是镜像常量, 人在场 fail-fast 合理), 失败出 DECIDE — 选项 继续只开终端 (`--display-continue`, 显示栈降级) / 重验一次 (`--display-recheck`) / 终结 (terminate); **resume** 只跑 swt-vnc status 级秒级检查 (自动重拉 + 三进程/端口确认), 失败降级 — STATE 标显示栈状态 + 汇报注明一行, 不阻断终端工作. 容器镜像未含 swt-vnc (旧镜像/极简镜像) → 显示栈缺席 (STATE 标 absent), 跳过检查不判失败. 对 D026 的修订: display-verify 是执行完成后的追加 DECIDE (票据绑定容器 podman-id + 镜像 digest), 不受 "首次改资源前一次列全" 约束 — 用户拍板的明示例外. 理由: 反方 A2/A3 — 防火墙规则是状态性的 (stop 后必然全失, 验不过 = 裸奔 = 必须挡), 显示栈能力是镜像性的 (birth 验过一次, 镜像不变则能力恒在); resume 全量渲染轮询重证已证常量, 且把偶发失败 (chrome 冷启动/轮询时序) 放在硬门禁上 = 让便利特性当全部工作负载的人质.
+- 依赖事实: 反方报告 A2/A3 (类比不成立 + 门禁语义错位); M09 实测 (verify 六检查 31 用例全绿, 迁家即复用)
+- 预计影响: swt-display.py (新模块); swt.py (display-check 子命令/birth 尾部门禁/resume 降级); SKILL.md 显示栈节
+
+### D042 login-wall.py 整删, 测试迁家重写
+- 状态: 当前有效
+- 约束性: 必须遵守
+- 内容: `scripts/login-wall.py` 整删 (up/down/build 编排随独立登录墙容器形态一并废弃; 其 verify 通道检查已迁 swt-display.py, 见 D041). `tests/test_swt_m09.py` 重写适配: RFB/ws 帧纯逻辑测试原样改指 swt-display.py; 浏览器镜像 e2e 改跑 build-display (断言 display 层记录/labels/contents); 容器生命周期测试改用裸 podman run (回环发布 + shm 1g, swt birth 同型) 直驱 swt-vnc; verify e2e 改经 `swt display-check`.
+- 依赖事实: 用户拍板 (决策 4)
+- 预计影响: scripts/, tests/test_swt_m09.py
+
+### D043 扩展过滤白名单心智
+- 状态: 当前有效
+- 约束性: 必须遵守
+- 修订: D014 (门禁扩展名单: repetition-guard 从 "留 host" 改判 "进容器")
+- 内容: image-prep 复制 ~/.pi/agent 时, extensions/ 只排除显式点名名单 — filesystem-operation-gate.ts / git-operation-gate.ts / python-operation-hook.ts (名单落 image-prep.py 注释), 其余扩展 (repetition-guard.ts, herdr-agent-state.ts) 与未来新扩展**默认进容器**, 留 host 才需点名 (白名单心智反向: 名单 = 留 host 名单). 理由: 容器内硬约束已由 daemon/config 拓扑承担 (D014), 门禁类扩展在容器内只增行为耦合, 这一定位不变; 但 repetition-guard/herdr-agent-state 属行为辅助非门禁, 随行走容器内 pi 的日常体验反而需要它们, 因除外面不是包含面.
+- 依赖事实: 用户拍板 (决策 5); ~/.pi/agent/extensions 实测清单
+- 预计影响: image-prep.py stage_context; SKILL.md 镜像管理节
+
+### D044 auth.json 运行时只读挂载
+- 状态: 当前有效
+- 约束性: 必须遵守
+- 承接: D018/D019 (风险语义不变)
+- 内容: swt 容器 create 加 `-v <host>/.pi/agent/auth.json:/home/bolo/.pi/agent/auth.json:ro`; host 缺失时跳过挂载并 stderr 警告 (不阻塞 birth); 镜像复制继续排除 auth.json (不烤镜像层, D018 不变); models-store.json 维持随 ~/.pi/agent 复制. 换 key 无需重建镜像或容器, 下次 create 自动带新值; 运行中容器不热换.
+- 依赖事实: 用户拍板 (决策 6)
+- 预计影响: swt.py create; SKILL.md 风险明示
+
+### D045 容器不设内存/CPU 上限
+- 状态: 当前有效
+- 约束性: 默认如此
+- 内容: 容器维持现状不设 `--memory`/`--cpus` 限额, 本条仅落簿记. 理由: 沙盒的隔离目标是网络出向与写面拓扑 (nft + daemon/config), 不是资源配额; 容器内是用户自己的 agent 工作负载 (构建/编译/测试), 限额只会制造人工饥饿. 若未来多容器互相挤占成为真问题, 再重开.
+- 依赖事实: 用户拍板 (决策 7)
+- 预计影响: SKILL.md 容器命令收拢节
 
 ## 事实
 
@@ -332,3 +386,8 @@
 - 状态: 当前有效
 - 来源: docs/changes/use-sandbox-worktree/milestone-11-opposing-review.md (opposing-viewpoint 对抗分析, gpt-5.6-luna; 产出方为 glm-5.3-flash 三设计分支, 对抗对不同模型)
 - 内容: 对五场景方案 (Design It Twice 三分支 + 用户拍板的 caller 骨架混合案) 的反方攻击, 10 项攻击 9 项成立或部分成立, 全部已转为修正: (1)(3) DECIDE 重探测与决策不过期矛盾 + 锁不跨空窗 → D026 决策收据指纹; (2) 一次列全与示例矛盾 → D026 定义收紧 (首次改状态前列全); (4) 端口被占非 exit 2 → D027 exit 2/3 重划; (5) resume 无 gate 违背 D011 → D030; (6) net-firewall clear 删共享整表与多容器冲突 (硬事实) → D032; (7) 多容器身份未落地 → D031; (8) switch 后旧容器 resume 归属丢失 → D033; (9) 脏检查 ahead/behind 与 TOCTOU → D029 (behind 不算脏, 残余窗口知情接受); (10) 下沉不继承覆盖 → D036 缓退役.
+
+### F012 M10 演练 ssh 入口踩坑三连 (2026-09-10, birth 交付后实测)
+- 状态: 当前有效
+- 来源: M10 全链演练本会话实测 (base 2026.09.09-3, 项目层 skills:2026.09.10-1, blacklist)
+- 内容: (1) **pasta 下容器无独立 IP**: STATE `network-ip` 实测 = host 本机 LAN IP (192.168.31.252), birth 交付的 "容器 IP: ssh bolo@<IP>" 直连 22 必撞 host 自身 sshd — 已知 host key 报 "known by other names", ssh-agent 多 key 试满 MaxAuthTries 报 "Too many authentication failures", 密码都轮不到. 修复方向: birth 交付逻辑检测 network-ip == host IP 时改打 "本机 127.0.0.1:<port> / 局域网 <host-LAN-IP>:<port>" 两条带端口入口 (映射端口本就监听 *, 远程机同样走端口); SKILL.md 第四步同步措辞并要求交付前 `podman port` 核对. (2) **容器 ssh 非交互 shell PATH 缺 ~/.local/bin**: herdr remote 自动装远端 binary 到 ~/.local/bin/herdr 后报 "remote shell does not resolve herdr to that path". 修复方向: base 镜像烘配 PATH (下次用户明说重建 base 时带上). (3) **herdr --remote 在已有 herdr 会话内被套娃禁用拦下** ("nested herdr is disabled by default"): SKILL.md herdr remote 节需注明该命令须在非 herdr 终端运行, 已在 herdr 里则走开窗格配方. 另: 本次 birth 前发现主仓 config 残留上一次演练的 uploadpack.hideRefs 旧值 (指向已删旧分支), birth 拒覆盖 exit 2, 手工 `git config --unset-all uploadpack.hideRefs` 后重跑即过 — 修配置归属前的救场路径, 值得在 SKILL.md 救场节补一笔. 修复执行时点: M10 全链跑完后统一改 (演练中途不改被测对象).

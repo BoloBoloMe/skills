@@ -1,6 +1,6 @@
 ---
 name: use-sandbox-worktree
-description: 管理 sandbox-worktree (host git worktree 母体 + sandbox 容器绑定对) 的生命周期 — 诞生/存续/恢复/换母体/终结, 镜像制备, 网络黑白名单, 展示链与登录墙.
+description: 管理 sandbox-worktree (host git worktree 母体 + sandbox 容器绑定对) 的生命周期 — 诞生/存续/恢复/换母体/终结, 三层镜像制备, 网络黑白名单, 内置显示栈.
 disable-model-invocation: true
 ---
 
@@ -13,10 +13,10 @@ disable-model-invocation: true
 - **git 守护进程 (daemon)**: 随容器生灭临时起的 `git daemon` 进程, 容器碰到代码的唯一通道, 无认证.
 - **决策收据**: 脚本向我提问时开出的一次性票据, 绑定当时的资源状态; 我答后重跑时先核对状态没变才采用, 变了就重新问.
 - **retired 容器**: 换母体后被停下的旧容器, 只准终结不准恢复.
-- **base 层 / 项目层**: 镜像分两层 — 固定且跨项目共享的底层; 按项目推导依赖件加装的上层.
+- **base 层 / display 层 / 项目层**: 镜像分三层 — 固定且跨项目共享的底层; 夹在中间的显示栈层 (VNC 栈 + chromium, 全项目共用); 按项目推导依赖件加装的上层 (FROM display 层).
 
 固定偏好: 硬约束交给环境 (git 配置/防火墙/拓扑); 容器内 agent 自由驰骋; 容器之外我说了算.
-**命名消歧**: `swt` = host 编排脚本 `scripts/swt.py`; `swt-vnc` = 容器内 VNC helper (见登录墙节), 两者无关.
+**命名消歧**: `swt` = host 编排脚本 `scripts/swt.py`; `swt-vnc` = 容器内 VNC 栈 helper (见显示栈节), 两者无关.
 
 ## 角色边界
 
@@ -54,7 +54,7 @@ uv run python scripts/swt.py status [--repo <主仓>]
 birth 内部自动跑 image-prep `match`, 需求清单取 `<records-root>/<项目slug>/requirements.md` (或 `--requirements` 指定):
 - **清单文件不存在 → birth exit 2, 这是首次为项目建镜像的入口**: 你读项目信号 (AGENTS.md/README/package.json/pyproject.toml 等) 推导依赖件写成需求清单 (格式见镜像管理节), **展示清单与我确认后才落盘** — 装依赖会运行其安装脚本, 风险与日常装包同级, 确认时向我明示; 落盘后重跑 birth.
 - REUSE → 直接用.
-- BUILD-NEW → birth 停出 DECIDE 并附清单; 我确认后由你跑 `image-prep build` (见镜像管理节), birth 不吞构建环节, 构建完成带 `--image <ref>` 重跑 birth.
+- BUILD-NEW → birth 停出 DECIDE 并附清单; 我确认后由你跑 `image-prep build` (见镜像管理节), birth 不吞构建环节, 构建完成带 `--image <ref>` 重跑 birth. 项目层 FROM display 层: display 缺失或过期 (base 更新后旧 display 淘汰) 时先 `image-prep build-display` 再 `image-prep build`, 两者都只在我明说时重建.
 在跑容器镜像有新版只在 STATE 标 `newer-available`, 不动存活容器.
 
 **第三步: 执行 birth**
@@ -67,16 +67,18 @@ uv run python scripts/swt.py birth [--repo <主仓>] --branch <母体分支名�
 母体分支名 = use-worktree 目标分支名原文, 母体目录名 = 它的 slug 规则生成; 容器缺省名 `swt-<分支名>`, 同母体第二个容器须显式 `--name`. 首次执行通常出 DECIDE (母体新建/复用, 网络模式, 镜像), 按决策协议节应答.
 
 **第四步: 交付汇报**
-向我报告:
-- ssh 入口 (两种等价, 总是同时交付):
-  - 端口映射: `ssh -p <宿主端口> bolo@127.0.0.1` — 跨 stop/start 稳定, 用 `podman port <容器名>` 或 STATE 的 `ssh-port` 发现, 不记录端口 (rm 重建才变).
-  - 容器 IP: `ssh bolo@<容器IP>` — STATE 的 `network-ip`, rm 重建后可能变.
+向我报告 (固定交付项, 每次 birth/resume 交付齐发, 禁止遗漏):
+- ssh 入口 (两条带端口, 总是同时交付; pasta 下容器无独立 IP — STATE 的 `network-ip` = host 本机 IP, 直连形式已废除, F012):
+  - 本机: `ssh -p <宿主端口> bolo@127.0.0.1` — 跨 stop/start 稳定, 用 `podman port <容器名>` 或 STATE 的 `ssh-port` 发现, 不记录端口 (rm 重建才变).
+  - 局域网: `ssh -p <宿主端口> bolo@<host-LAN-IP>` — 远程机走同一条带端口命令.
+- noVNC URL (本机浏览器直接开): `http://127.0.0.1:<vnc宿主端口>/vnc.html?resize=scale` — 容器内显示栈已自动拉起并经 birth 全量检查; 6080 只发布到宿主回环, 缺省 vnc 宿主端口 6080, 被占 (多容器并存) 时动态回落, 实际端口看 STATE 的 `vnc-port`.
+- 局域网隧道命令 (固定交付项, 禁止遗漏): `ssh -p <宿主端口> -L 6080:127.0.0.1:<vnc宿主端口> bolo@<host-LAN-IP>` — 我在远程机开这条隧道后, 浏览器开 `http://127.0.0.1:6080/vnc.html?resize=scale`; noVNC 无密码, 隧道 (即容器 ssh 凭据) 就是门槛.
 - 登录凭证 (两种, 都随 terminate 清除, 落 `<records-root>/runtime/<identity>/ssh/`, 0600):
   - 密码: 固定 `sandbox` (用户拍板, 风险见风险明示节), `<容器名>.password` 留档; 人登录用.
   - 密钥: `<容器名>.ed25519` (`ssh -i <私钥> ...`), 脚本/herdr 的 BatchMode 走它.
-- herdr remote (走 ssh, 容器无需预启 server, remote attach 按需拉起): birth 收尾必须打印两条完整可直接复制的命令, 一条不漏 — 我在本机用 `herdr --remote ssh://bolo@127.0.0.1:<宿主端口>`, 我在局域网远程机上用 `herdr --remote ssh://bolo@<host-LAN-IP>:<宿主端口>`. 我会在本机和远程机之间来回切换, 每次 birth 交付都必须两条齐发, 禁止只发本机那条; 远程机上 ssh 用的私钥需先从 host 拷贝 (路径见上), 或直接用密码.
+- herdr remote (走 ssh, 容器无需预启 server, remote attach 按需拉起): birth 收尾必须打印两条完整可直接复制的命令, 一条不漏 — 我在本机用 `herdr --remote ssh://bolo@127.0.0.1:<宿主端口>`, 我在局域网远程机上用 `herdr --remote ssh://bolo@<host-LAN-IP>:<宿主端口>`. 我会在本机和远程机之间来回切换, 每次 birth 交付都必须两条齐发, 禁止只发本机那条; 远程机上 ssh 用的私钥需先从 host 拷贝 (路径见上), 或直接用密码. 该命令须在非 herdr 终端运行 (herdr 会话内被套娃禁用拦截, F012); 已在 herdr 里则走开窗格配方 (存续节).
 - 容器内路径契约: 用户 `bolo` (home 与 host 字面相同), 代码固定克隆在 `/home/bolo/Workspace/<母体目录名>` — 与 host 母体路径字面一致 (当前分支 = 母体分支); skill 库在 `~/.agents/skills/`, pi 配置在 `~/.pi/agent/`.
-完成标准: STATE `stage=born`, 容器内检出分支 = 母体分支, ssh 入口与端口发现方式已汇报给我.
+完成标准: STATE `stage=born`, 容器内检出分支 = 母体分支, ssh 双入口与端口发现方式, noVNC URL, 隧道命令, herdr 双命令已汇报给我 (显示栈降级/缺席时相应项改为降级说明, 其余照发).
 
 ## 存续
 
@@ -91,14 +93,7 @@ uv run python scripts/swt.py birth [--repo <主仓>] --branch <母体分支名�
 
 **展示链**: 容器内展示由 `present` skill 的容器分支全权负责 (判定/bind/端口/url 语义见其 "容器内分支" 节), 你侧只剩一项: host 侧用 `podman port` 发现映射端口, 组装交付 URL 给我.
 
-**登录墙 (可选环节)**: 容器内需 headed 浏览器过登录墙时:
-```text
-uv run python scripts/login-wall.py build  --repo <主仓> --prefix localhost/sandbox-worktree --records-root <记录根>   # 浏览器项目层镜像
-uv run python scripts/login-wall.py up     --image <项目层镜像> [--name <名>] [--geom 1920x1080x24]
-uv run python scripts/login-wall.py verify --name <名> [--evidence-dir <目录>]
-uv run python scripts/login-wall.py down   --name <名>          # 幂等
-```
-up 起容器并启动 VNC 栈 (Xvfb + x11vnc + websockify/noVNC), 交付 noVNC URL 给我浏览器操作; verify 做通道检查 (HTTP/ws/RFB/空白基线), 渲染阈值 0.2. 浏览器项目层清单 = `image/requirements-browser.md`; chromium 为 playwright 管理 (与 access-web 同源). 登录态 profile 落容器内 /tmp, 容器存续期内跨 ssh 会话复用, rm 即失. `build` 必传 `--repo` (image-prep build 缺省裸崩, 已知限制).
+**显示栈 (内置)**: 每个工作容器内置 VNC 显示栈 (Xvfb + x11vnc + websockify/noVNC + 中文字体 + playwright chromium + swt-vnc helper, 来自 display 层镜像), 6080 只发布到宿主回环 (127.0.0.1, 多容器并存时动态回落, D040). birth/resume 自动 `podman exec <容器> swt-vnc start` 拉起; 手动开关: `podman exec <容器名> swt-vnc start|stop|status`. headed 浏览器过登录墙: 容器内约定 `BROWSER_HEADED=true DISPLAY=:99` (access-web 同源), 登录弹窗由你经 noVNC 或 ssh 人工操作; 登录态 profile 落容器内 /tmp, 容器存续期内跨 ssh 会话复用, rm 即失. 通道体检: `uv run python scripts/swt.py display-check [--name <容器>]` (noVNC HTTP/ws/RFB banner/空白基线/渲染基线 0.2/headless 回切, PPM 证据落 evidence 目录; 退出码 0 过/1 检查未过/2 传输失败, 诊断语义非 DECIDE). 门禁语义 (D041): birth 跑全量检查, 失败出 DECIDE (继续只开终端 --display-continue / 重验 --display-recheck / terminate 终结); resume 只做 swt-vnc status 级秒级检查, 失败降级不阻断终端工作, STATE 标显示栈状态 + 汇报注明. 容器镜像未含 swt-vnc (旧镜像/极简镜像) → 显示栈缺席 (STATE 标 absent), 跳过不判失败.
 
 **多容器共推同一母体**: 允许. 容器只准快进推送, 后推的那个会被 git 以历史分叉为由拒绝: 容器内 `git fetch` → 解冲突 → 重推 (git 原生串行化, 无新机制).
 
@@ -110,8 +105,8 @@ up 起容器并启动 VNC 栈 (Xvfb + x11vnc + websockify/noVNC), 交付 noVNC U
 uv run python scripts/swt.py resume [--repo <主仓>] [--name <容器名>] [--confirm]
 ```
 
-有 CLI 级 DECIDE gate: 检测到可恢复对象先 exit 1, 我确认后带 `--confirm` 重跑. 序列: 收残留 daemon → start 容器 → **start 后立即重注入防火墙规则** (合并式 `--merge`, 不做整表清空重建) → 校验通过前不开放工作负载. retired 容器 resume 直接 exit 2; 运行记录里的母体分支 ≠ 当前放行分支也 exit 2.
-完成标准: 容器 running, 防火墙规则已重注入, daemon 可达, STATE 反映当前放行的母体分支.
+有 CLI 级 DECIDE gate: 检测到可恢复对象先 exit 1, 我确认后带 `--confirm` 重跑. 序列: 收残留 daemon → start 容器 → **start 后立即重注入防火墙规则** (合并式 `--merge`, 不做整表清空重建) → **同位置自动重拉显示栈** (幂等 `swt-vnc start` + status 级秒级检查, 失败降级不阻断, D040/D041) → 校验通过前不开放工作负载. retired 容器 resume 直接 exit 2; 运行记录里的母体分支 ≠ 当前放行分支也 exit 2. 交付: ssh 双入口 + noVNC URL + 局域网隧道命令 + herdr 双命令与 birth 同规格齐发.
+完成标准: 容器 running, 防火墙规则已重注入, daemon 可达, 显示栈状态已标注, STATE 反映当前放行的母体分支.
 
 ## 换母体 (switch, 危险独立入口)
 
@@ -134,19 +129,21 @@ uv run python scripts/swt.py terminate [--repo <主仓>] [--name <容器名>] [-
 ## 镜像管理 (image-prep)
 
 ```text
-uv run python scripts/image-prep.py build-base [--requirements <file>]   # base 层
+uv run python scripts/image-prep.py build-base    [--requirements <file>]   # base 层
+uv run python scripts/image-prep.py build-display [--requirements <file>]   # display 层 (缺省 image/requirements-browser.md)
 uv run python scripts/image-prep.py match      --repo <主仓> [--requirements <file>]
 uv run python scripts/image-prep.py build      --repo <主仓> [--requirements <file>]
 ```
 
-- 两层结构: **base 层** (OS+git+sshd+node+pi CLI+uv+fd+rg+python3+herdr + skill 库全量 COPY + `~/.pi/agent` 复制, 排除 auth.json/sessions) 固定且跨项目共享; **项目层**由你读项目信号推导依赖件叠加, 清单与我确认后才构建.
+- 三层结构 (D039): **base 层** (OS+git+sshd+node+pi CLI+uv+fd+rg+python3+herdr + skill 库全量 COPY + `~/.pi/agent` 复制 (排除 auth.json/sessions), sshd_config SetEnv 烘配非交互 PATH 含 `~/.local/bin`, F012) 固定且跨项目共享; **display 层** FROM 当前 base (VNC 栈 + chromium + swt-vnc, 清单缺省 `image/requirements-browser.md`), 记录落 `<records-root>/display/builds/`; **项目层** FROM 当前 display, 由你读项目信号推导依赖件叠加, 清单与我确认后才构建.
+- 匹配谓词链 (D017 延伸): display 层自身须基于当前 base, 项目层须基于当前 display — base 更新后旧 display 自然淘汰, display 更新后旧项目镜像自然淘汰.
+- **base 与 display 都只在我明说时重建** (D020 延伸), 无自动检测; display 缺失/过期时项目构建报 `NO-DISPLAY`/`DISPLAY-STALE`, 先 build-display 再 build.
 - 需求清单条目 = 名称 + 版本要求 (`>= <= > < ==` 或裸名称), 指令 `install=`/`probe=` (探测缺省 `<name> --version`); apt 条目必须写 `install=` (只写 probe 不装包).
 - **推导规则: 项目层清单含 codex (或其他支持 env_key 的 llm CLI) 时, 必须附静态配置条目** — 以 codex 为例: `codex-config install="mkdir -p /home/bolo/.codex && echo <config.toml 的 base64> | base64 -d > /home/bolo/.codex/config.toml && chown -R bolo:bolo /home/bolo/.codex" probe="grep -c . /home/bolo/.codex/config.toml"`; 配置文件零秘密, 密钥走 `env_key` 指向 env.conf 继承的环境变量, 禁止把密钥写进清单/镜像/文件. 参照实现: `<records-root>/skills/requirements.md`.
-- 匹配规则: 按镜像 label 找候选取最新构建 → 需求逐项版本满足 + 硬性条件 "基于当前 base 构建" (base 更新后旧项目镜像自然淘汰) → REUSE, 否则 BUILD-NEW. 旧镜像保留不删.
+- 匹配规则: 按镜像 label 找候选取最新构建 → 需求逐项版本满足 + 硬性条件 "基于当前 display 构建" → REUSE, 否则 BUILD-NEW (display 缺失时报 BUILD-NEW + reason, 不硬崩). 旧镜像保留不删.
 - 版本语义: tag = 日期-序号 (人读索引), digest = 镜像内容哈希即精确版本; contents.md = 构建后**实测**清单.
-- **base 只在我明说 "更新 base" 时重建**, 无自动检测.
 - 记录落 `<records-root>/<slug>/builds/<build-id>/` (Containerfile/requirements.md/contents.md/build.json), 不落项目 git.
-- 门禁类扩展 (filesystem-operation-gate 等) 留 host 不进容器; host 环境文档 (`~/AGENTS.md`/`~/docs/`) 不进容器.
+- 扩展过滤 (D043 白名单心智): 复制 `~/.pi/agent` 时 extensions/ 只排除显式点名的门禁类扩展 (filesystem-operation-gate / git-operation-gate / python-operation-hook, 名单落 image-prep.py 注释), 其余扩展 (含 repetition-guard/herdr-agent-state) 与未来新扩展默认进容器; host 环境文档 (`~/AGENTS.md`/`~/docs/`) 不进容器 (D023).
 
 ## 环境变量继承 (env.conf)
 
@@ -167,7 +164,7 @@ uv run python scripts/net-firewall.py clear                   # 删整表 (幂�
 
 ## 决策协议 (DECIDE + 收据)
 
-swt 五子命令非交互, 一切拍板点:
+swt 生命周期五子命令 (birth/resume/status/terminate/switch) 非交互, 一切拍板点:
 1. **exit 1 + stdout DECIDE 行**: `DECIDE <id> <kind> <问题人话> 选项: <flag 形态>`; 首次改任何资源前一次列全.
 2. 逐字转述给我; 我答后带对应 flag **重跑同一命令**.
 3. **决策收据** (定义见文首术语): 重跑先比对资源状态, 变了就废票重新问 — 旧答案绝不套到新状态上.
@@ -184,6 +181,7 @@ exit code 全子命令统一:
 | 4 | 环境错误 (podman/git/nft 缺失或版本不支持) |
 
 stdout 末行 `STATE {...}` 单行 json (只加字段不改名); stderr 首行 `FAIL|PARTIAL|ENV <人话>`, 原生报错原文透传.
+例外: 诊断子命令 `display-check` 不参与本表 — 0 全过/1 检查未过/2 传输失败, 无 DECIDE, 无 STATE 行 (见显示栈节).
 
 ## 原生报错译解表
 
@@ -197,7 +195,8 @@ stdout 末行 `STATE {...}` 单行 json (只加字段不改名); stderr 首行 `
 
 ## 风险明示 (向我声明)
 
-- **auth.json 只读挂载**进容器: 防写回 host, 不防读 — 容器内恶意依赖可读 token 并经白名单内 LLM 域名外传, 已接受.
+- **auth.json 运行时只读挂载**进容器 (create 时 `-v .../auth.json:...:ro`, host 缺失则跳过并警告): 防写回 host, 不防读 — 容器内恶意依赖可读 token 并经白名单内 LLM 域名外传, 已接受. 不烤镜像层, 换 key 不重建镜像 (D044).
+- **noVNC 无认证但只发布到宿主回环**: x11vnc `-nopw`, 门槛 = 本机账户或容器 ssh 凭据持有者 (隧道命令即交付物); 局域网内其他设备直接够不着 6080 (D040). 这不是零风险: 拿到容器 ssh 凭据的人同时拿到一个已登录浏览器的完全控制.
 - **git 守护进程无认证/审计**: 只靠 "同一时刻只有一个分支可写" 的拓扑防容器 agent 越权; 监听落 0.0.0.0 时, 局域网内其他机器也够得着这个受限写入口 (只能快进推母体分支).
 - **whitelist 自动放行 daemon 地址** = 容器可经网关地址访问 host 全部对外监听 (非仅本机回环) 的端口, 按 IP 放行无法收窄到单端口; 出访互联网方向仍收敛.
 - 容器物理可读主分支最新提交 (git 协议广告藏不掉), 已接受.
@@ -207,12 +206,15 @@ stdout 末行 `STATE {...}` 单行 json (只加字段不改名); stderr 首行 `
 ## 容器命令收拢 (provider 扩展点)
 
 全部容器操作命令集中此节, 换/加 provider 时只改这里:
-- 生命周期: `podman create --name <名> --label ... -p 22 [-p 8800] [-p 6080] <镜像>` / `podman start|stop|rm -f`
-- 端口发现: `podman port <容器名>`; 状态: `podman ps -a --filter label=sandbox-worktree.repo=<主仓>`
+- 生命周期: `podman create --name <名> --label ... -p 22 -p 127.0.0.1:6080:6080 (被占时 -p 127.0.0.1::6080) --shm-size=1g -v <host-auth.json>:/home/bolo/.pi/agent/auth.json:ro [-e 继承env] <镜像>` / `podman start|stop|rm -f` (容器不设内存/CPU 上限, D045)
+- 端口发现: `podman port <容器名>` (22 = ssh, 6080 = noVNC); 状态: `podman ps -a --filter label=sandbox-worktree.repo=<主仓>`
 - 镜像: `podman build` / `podman images --filter label=run.sandbox-worktree.project-id=<主仓路径>` / `podman inspect`
-- 容器内操作: `podman exec` (key 注入/swt-vnc); 防火墙注入: `podman unshare nsenter --net=<容器网络命名空间> nft -f -`
+- 容器内操作: `podman exec` (key 注入 / swt-vnc start|stop|status / display 检查经 swt-display.py); 防火墙注入: `podman unshare nsenter --net=<容器网络命名空间> nft -f -`
 - daemon 发现: `pgrep -f 'git daemon.*<主仓路径>'`
 
 ## 救场 (无修复原语)
 
-swt 无 config/daemon 修复子命令. exit 3 的 PARTIAL 文案给出该半状态的唯一人工恢复路径; 更深的救场由你敲原生命令: `git config --get-all` / `pgrep -f 'git daemon'` / `net-firewall.py show` / `podman ps -a`, 诊断后手工收敛. 真实救场需求暴露时回报我.
+swt 无 config/daemon 修复子命令. exit 3 的 PARTIAL 文案给出该半状态的唯一人工恢复路径; 更深的救场由你敲原生命令: `git config --get-all` / `pgrep -f 'git daemon'` / `net-firewall.py show` / `podman ps -a`, 诊断后手工收敛. 已知救场场景:
+- **主仓 config 残留旧 hideRefs** (上一次演练/换母体遗留, 指向已删旧分支) → birth 校验拒覆盖 **exit 2** (报 `git config ... 已有错误值`): 手工 `git config --unset-all uploadpack.hideRefs` (如有 receive.hideRefs 残留一并 unset) 后重跑 birth (F012 实测).
+- 显示栈降级/失联: `podman exec <容器名> swt-vnc start` 手动重拉; 深度诊断跑 `swt display-check --name <容器名>` (PPM 证据落 evidence 目录).
+真实救场需求暴露时回报我.

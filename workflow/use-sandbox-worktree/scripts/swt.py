@@ -673,6 +673,150 @@ def container_ssh_port(name: str) -> int:
     return int(match.group(1))
 
 
+def parse_podman_ports(stdout: str) -> dict[str, int]:
+    """podman port 全量输出 -> {容器端口: 宿主端口}.
+
+    同一容器端口多表项时优先 0.0.0.0/[::]; 回环发布 (127.0.0.1) 落
+    fallback. 多映射容器 (22 + 6080) 不能再用 '取末行' 旧法.
+    """
+    preferred: dict[str, int] = {}
+    fallback: dict[str, int] = {}
+    for line in stdout.splitlines():
+        if "->" not in line:
+            continue
+        container_side, _, host_side = (part.strip() for part in line.partition("->"))
+        container_port = container_side.split("/")[0]
+        _host_ip, _, host_port = host_side.rpartition(":")
+        if not host_port.isdigit():
+            continue
+        if _host_ip in ("0.0.0.0", "[::]"):
+            preferred.setdefault(container_port, int(host_port))
+        else:
+            fallback.setdefault(container_port, int(host_port))
+    return {**fallback, **preferred}
+
+
+def container_vnc_port(name: str) -> int | None:
+    """容器 6080 (noVNC) 的宿主映射端口; 无映射返回 None (缺省镜像无显示栈也允许).
+
+    定向查询 `podman port <名> 6080` 输出无 '->' (形如 127.0.0.1:6080),
+    直接取行尾端口号; 注意不能套全量输出的箭头解析.
+    """
+    result = run(["podman", "port", name, "6080"])
+    if result.returncode != 0:
+        return None
+    ports = []
+    for line in result.stdout.splitlines():
+        _host_ip, _, host_port = line.strip().rpartition(":")
+        if host_port.isdigit():
+            ports.append(int(host_port))
+    return ports[0] if ports else None
+
+
+DISPLAY_SCRIPT = Path(__file__).with_name("swt-display.py")
+SWT_VNC_PATH = "/usr/local/bin/swt-vnc"
+
+
+def container_has_swt_vnc(name: str) -> bool:
+    """容器镜像是否内置显示栈 (swt-vnc 可执行). 未内置 = 显示栈缺席, 跳过不判失败."""
+    return run(["podman", "exec", name, "sh", "-c", f"test -x {SWT_VNC_PATH}"]).returncode == 0
+
+
+def start_display_stack(name: str, geom: str | None = None) -> tuple[bool, str]:
+    """podman exec swt-vnc start (幂等); 返回 (成功, 输出摘要)."""
+    command = ["podman", "exec"]
+    if geom:
+        command.extend(["-e", f"GEOM={geom}"])
+    command.extend([name, "swt-vnc", "start"])
+    result = run(command, timeout=120)
+    return result.returncode == 0, (result.stdout + result.stderr).strip()
+
+
+def display_stack_status(name: str) -> tuple[bool, str]:
+    """swt-vnc status 级秒级检查 (三进程 + 5900/6080 端口)."""
+    result = run(["podman", "exec", name, "swt-vnc", "status"], timeout=60)
+    return result.returncode == 0, (result.stdout + result.stderr).strip()
+
+
+def run_display_verify(name: str, evidence_dir: Path) -> tuple[bool, str]:
+    """全量通道检查 (HTTP/ws/RFB/空白基线/渲染基线 0.2/headless 回切), 独立模块."""
+    result = run(
+        ["uv", "run", "python", str(DISPLAY_SCRIPT), "verify",
+         "--name", name, "--evidence-dir", str(evidence_dir)],
+        timeout=900,
+    )
+    return result.returncode == 0, ((result.stdout or "") + (result.stderr or "")).strip()
+
+
+def host_port_free(port: int) -> bool:
+    """宿主回环端口是否可绑 (pasta 发布端口占用检测, 多容器回落动态用)."""
+    probe = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    probe.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    try:
+        probe.bind(("127.0.0.1", port))
+        return True
+    except OSError:
+        return False
+    finally:
+        probe.close()
+
+
+def auth_json_mount_args() -> list[str]:
+    """auth.json 运行时只读挂载 (D044): host 缺失时跳过并 stderr 警告."""
+    source = Path.home() / ".pi" / "agent" / "auth.json"
+    if source.is_file():
+        return ["-v", f"{source}:/home/bolo/.pi/agent/auth.json:ro"]
+    print(f"[SWT] auth.json 不存在 ({source}), 跳过只读挂载; 容器内 LLM 凭据需另行注入", file=sys.stderr)
+    return []
+
+
+def print_delivery_lines(
+    heading: str,
+    ssh_port: int | None,
+    vnc_port: int | None,
+    display_status: str | None,
+    key_path: Path | None,
+    lan: str | None,
+) -> None:
+    """固定交付项 (每次 birth/resume 交付齐发, 禁止遗漏, D039/决策 8):
+    ssh 双入口 (本机/局域网, 都带端口) + noVNC URL + 局域网隧道命令
+    + herdr remote 双命令.
+    无法附发的项显式打一行原因, 不静默丢失 (F3)."""
+    print(f"[SWT] {heading}")
+    if ssh_port is None:
+        return
+    print(f"[SWT] ssh 入口 (本机):   ssh -p {ssh_port} bolo@127.0.0.1  (用户 bolo, 密码 sandbox)")
+    if lan:
+        print(f"[SWT] ssh 入口 (局域网): ssh -p {ssh_port} bolo@{lan}  (用户 bolo, 密码 sandbox)")
+    tunnel_printed = False
+    if display_status == "ok" and vnc_port:
+        print(f"[SWT] noVNC (本机):      http://127.0.0.1:{vnc_port}/vnc.html?resize=scale")
+        if lan:
+            tunnel_target = f"-L 6080:127.0.0.1:{vnc_port}"
+            print(f"[SWT] noVNC (局域网隧道): ssh -p {ssh_port} {tunnel_target} bolo@{lan}"
+                  "  然后浏览器开 http://127.0.0.1:6080/vnc.html?resize=scale")
+            tunnel_printed = True
+        else:
+            print(f"[SWT] noVNC (局域网隧道) 未附发: host 局域网地址不可知, 请人工确认"
+                  f" host-LAN-IP 后组装: ssh -p {ssh_port} -L 6080:127.0.0.1:{vnc_port}"
+                  " bolo@<host-LAN-IP>")
+    elif display_status == "absent":
+        print("[SWT] 显示栈: 该容器镜像未内置 swt-vnc, 无 noVNC 交付, 亦无隧道命令可附发")
+    elif display_status in ("degraded", "fail"):
+        print("[SWT] 显示栈: 降级 (检查未过, 可用 swt display-check 诊断); 终端工作不受影响,"
+              " 隧道命令待显示栈恢复后随下次交付附发")
+    elif display_status == "ok":
+        print("[SWT] 显示栈 ok 但容器无 6080 映射, 隧道命令未附发 (异常形态, 可跑 swt display-check 诊断)")
+    print(f"[SWT] herdr remote (host):    herdr --remote ssh://bolo@127.0.0.1:{ssh_port}")
+    if lan:
+        print(f"[SWT] herdr remote (局域网): herdr --remote ssh://bolo@{lan}:{ssh_port}")
+    if lan is None:
+        print("[SWT] 局域网 ssh/herdr 入口未附发: host 局域网地址不可知,"
+              " 请人工确认 host-LAN-IP 后组装对应命令")
+    if key_path:
+        print(f"[SWT] ssh 私钥: {key_path}")
+
+
 def image_digest(ref: str) -> str:
     result = run(["podman", "inspect", ref, "--format", "{{.Digest}}"])
     if result.returncode != 0:
@@ -1005,8 +1149,9 @@ def refresh_container(
         if started.returncode != 0:
             raise SwtError(3, "PARTIAL", f"PARTIAL container-start {name}; 请释放占用端口后重跑 birth: {started.stderr.strip()}")
     port = container_ssh_port(name)
+    vnc_port = container_vnc_port(name)
     detail = inspect_container(name)
-    record.update({"podman-id": detail.get("Id"), "state": "running", "ssh-port": port})
+    record.update({"podman-id": detail.get("Id"), "state": "running", "ssh-port": port, "vnc-port": vnc_port})
     runtime["stage"] = "container-started"
     upsert_container_record(runtime, record, runtime_file)
     return {"name": name, "port": port, "record": record, "detail": detail}
@@ -1044,6 +1189,15 @@ def create_and_start_container(args: argparse.Namespace, repo: Path, image: dict
     # 环境变量继承 (创建时烘入镜像 env, ssh 面由 inject_ssh_key 写 ~/.ssh/environment)
     for env_name, env_value in env.items():
         command.extend(["-e", f"{env_name}={env_value}"])
+    # 显示栈发布 (D040): 只绑宿主回环; chromium 必需 --shm-size=1g;
+    # 宿主 6080 已被占 (多容器并存) 时回落同回环动态端口, URL/隧道按实际端口交付
+    if host_port_free(6080):
+        command.extend(["-p", "127.0.0.1:6080:6080"])
+    else:
+        command.extend(["-p", "127.0.0.1::6080"])
+    command.extend(["--shm-size", "1g"])
+    # auth.json 运行时只读挂载 (D044), 不烤镜像层
+    command.extend(auth_json_mount_args())
     command.extend(["-p", "22", str(image["ref"])])
     created = run(command)
     if created.returncode != 0:
@@ -1051,8 +1205,8 @@ def create_and_start_container(args: argparse.Namespace, repo: Path, image: dict
     detail = inspect_container(name)
     record = {
         "name": name, "branch": branch, "podman-id": detail.get("Id"), "state": "created",
-        "ssh-port": None, "image-digest": image.get("digest"), "retired": False,
-        "dirty": {"uncommitted": None, "unpushed": None, "relation": None, "reachable": False},
+        "ssh-port": None, "vnc-port": None, "image-digest": image.get("digest"), "retired": False,
+        "display": "pending", "dirty": {"uncommitted": None, "unpushed": None, "relation": None, "reachable": False},
     }
     runtime["stage"] = "container-created"
     upsert_container_record(runtime, record, runtime_file)
@@ -1132,6 +1286,150 @@ def assert_container_clone(container: dict[str, Any], key: Path, branch: str, re
         raise SwtError(3, "PARTIAL", f"daemon 读面越权: {advertised!r}")
 
 
+def birth_display_gate_reentry(
+    args: argparse.Namespace,
+    repo: Path,
+    records_root: Path,
+    runtime: dict[str, Any] | None,
+    runtime_file: Path,
+) -> int | None:
+    """处理显示栈门禁的 DECIDE 重入; 非重入场景返回 None."""
+    if not runtime or runtime.get("stage") != "born":
+        return None
+    display = runtime.get("display") if isinstance(runtime.get("display"), dict) else None
+    if not display or display.get("status") != "fail":
+        return None
+    identity = runtime_file.stem
+    image = runtime.get("image") if isinstance(runtime.get("image"), dict) else {}
+    fingerprint = birth_display_fingerprint(repo, runtime, image, display.get("container"))
+    receipt = matching_receipt(records_root, identity, "display-verify", fingerprint)
+    answered = args.display_continue or args.display_recheck
+    if not answered:
+        # 未带答案重跑同一命令: 重问 (沿用已开票据, 无票据则新开)
+        if receipt is None:
+            receipt = create_receipt(
+                records_root, identity, "display-verify", fingerprint,
+                DISPLAY_VERIFY_OPTIONS,
+            )
+        print(decision_line(receipt, "display-verify", str(display.get("question", "显示栈验证未通过")), DISPLAY_VERIFY_OPTIONS))
+        print_birth_state(repo, records_root, runtime, runtime.get("mother") or {}, image, runtime.get("network"), "[SWT] birth: 等待用户决定 (显示栈)")
+        return 1
+    if receipt is None:
+        raise PreconditionError("没有匹配的 display-verify 决策收据, 状态已变化, 请重跑 birth 重新判定")
+    consume_receipt(records_root, identity, "display-verify", fingerprint)
+    name = display.get("container")
+    if not isinstance(name, str):
+        raise PreconditionError("display 门禁记录缺容器名, 请人工检查后重跑")
+    record = next((item for item in runtime.get("containers", [])
+                   if isinstance(item, dict) and item.get("name") == name), None)
+    if record is None:
+        raise PreconditionError(f"容器 {name} 缺少 runtime 记录")
+    if args.display_continue:
+        display["status"] = "degraded"
+        record["display"] = "degraded"
+        upsert_container_record(runtime, record, runtime_file)
+        print_delivery_lines(
+            "birth: 完成 (显示栈降级, 终端工作不受影响)",
+            record.get("ssh-port"), record.get("vnc-port"), "degraded",
+            Path(record["ssh_private_key"]) if record.get("ssh_private_key") else None,
+            lan_ip(),
+        )
+        print_birth_state(repo, records_root, runtime, runtime.get("mother") or {}, image, runtime.get("network"), "[SWT] birth: 已完成 (显示栈降级)")
+        return 0
+    # --display-recheck: 重验一次
+    started, start_output = start_display_stack(name)
+    ok = started
+    detail = start_output
+    if ok:
+        ok, detail = run_display_verify(name, records_root / "runtime" / identity / "display")
+    if ok:
+        display["status"] = "ok"
+        record["display"] = "ok"
+        upsert_container_record(runtime, record, runtime_file)
+        print_delivery_lines(
+            "birth: 完成 (显示栈重验通过)",
+            record.get("ssh-port"), record.get("vnc-port"), "ok",
+            Path(record["ssh_private_key"]) if record.get("ssh_private_key") else None,
+            lan_ip(),
+        )
+        print_birth_state(repo, records_root, runtime, runtime.get("mother") or {}, image, runtime.get("network"), "[SWT] birth: 已完成 (显示栈重验通过)")
+        return 0
+    # 重验仍失败: 开新票据重新 DECIDE
+    display["status"] = "fail"
+    display["question"] = f"显示栈重验仍未通过: {detail[-200:]}"
+    atomic_write_json(runtime_file, runtime)
+    receipt = create_receipt(records_root, identity, "display-verify", fingerprint, DISPLAY_VERIFY_OPTIONS)
+    print(decision_line(receipt, "display-verify", str(display.get("question")), DISPLAY_VERIFY_OPTIONS))
+    print_birth_state(repo, records_root, runtime, runtime.get("mother") or {}, image, runtime.get("network"), "[SWT] birth: 等待用户决定 (显示栈重验未过)")
+    return 1
+
+
+DISPLAY_VERIFY_OPTIONS = [
+    "--display-continue (继续, 只开终端)",
+    "--display-recheck (重验一次)",
+    "terminate --name <容器> (终结)",
+]
+
+
+def birth_display_fingerprint(
+    repo: Path,
+    runtime: dict[str, Any],
+    image: dict[str, Any],
+    container_name: object,
+) -> dict[str, Any]:
+    branch, mother_dir = runtime_mother(runtime)
+    fingerprint = decision_fingerprint(repo, branch or "", mother_dir, image)
+    record = next((item for item in runtime.get("containers", [])
+                   if isinstance(item, dict) and item.get("name") == container_name), {})
+    fingerprint["container"] = container_name
+    fingerprint["podman-id"] = record.get("podman-id")
+    return fingerprint
+
+
+def birth_display_gate(
+    args: argparse.Namespace,
+    repo: Path,
+    records_root: Path,
+    identity: str,
+    runtime: dict[str, Any],
+    runtime_file: Path,
+    container: dict[str, Any],
+) -> str:
+    """birth 尾部显示栈门禁 (D040/D041): 未内置 swt-vnc → absent 跳过;
+    自动 swt-vnc start 后跑全量 verify. 失败开 DECIDE 票据并返回 "fail"
+    (由调用方 exit 1). 返回: ok / degraded / absent / fail."""
+    name = container["record"]["name"]
+    record = container["record"]
+    if not container_has_swt_vnc(name):
+        record["display"] = "absent"
+        upsert_container_record(runtime, record, runtime_file)
+        print("[SWT] 显示栈: 容器镜像未内置 swt-vnc, 跳过 (absent)")
+        return "absent"
+    started, start_output = start_display_stack(name)
+    ok = started
+    detail = start_output
+    if ok:
+        ok, detail = run_display_verify(name, records_root / "runtime" / identity / "display")
+    if ok:
+        record["display"] = "ok"
+        upsert_container_record(runtime, record, runtime_file)
+        return "ok"
+    # 失败 → DECIDE (决策 3; 执行完成后的追加 DECIDE, D026 一次列全的例外)
+    question = (
+        f"显示栈验证未通过 ({detail[-200:] or 'start 失败'}); "
+        "可继续只开终端, 重验一次, 或终结容器"
+    )
+    runtime["display"] = {"status": "fail", "container": name, "question": question}
+    record["display"] = "fail"
+    upsert_container_record(runtime, record, runtime_file)
+    image = runtime.get("image") if isinstance(runtime.get("image"), dict) else {}
+    fingerprint = birth_display_fingerprint(repo, runtime, image, name)
+    receipt = create_receipt(records_root, identity, "display-verify", fingerprint, DISPLAY_VERIFY_OPTIONS)
+    print(decision_line(receipt, "display-verify", question, DISPLAY_VERIFY_OPTIONS))
+    print_birth_state(repo, records_root, runtime, runtime.get("mother") or {}, image, runtime.get("network"), "[SWT] birth: 等待用户决定 (显示栈)")
+    return "fail"
+
+
 def birth(args: argparse.Namespace, repo: Path) -> int:
     records_root = args.records_root.expanduser().resolve()
     if args.base and not any((args.mode, args.image, args.requirements, args.new_mother, args.reuse_mother)):
@@ -1152,6 +1450,12 @@ def birth(args: argparse.Namespace, repo: Path) -> int:
     mother_dir, dirty = find_mother(repo, branch)
     if dirty:
         raise PreconditionError(f"母体工作树脏, 请先人工处理: {mother_dir}")
+    # 显示栈门禁重入 (D041): 上次 birth 已 born 但 display-verify 失败,
+    # 带 --display-continue/--display-recheck (或不带 flag 重问) 只处理显示段,
+    # 不重走全链 (全链重入会 re-clone, 丢容器内未提交工作).
+    reentry = birth_display_gate_reentry(args, repo, records_root, runtime_existing, runtime_file)
+    if reentry is not None:
+        return reentry
     image = mark_newer_available(prepare_image(args, repo, records_root), runtime_existing)
     network_input = {"mode": args.mode, "allow": list(args.allow), "deny": list(args.deny)}
     identity = runtime_file.stem
@@ -1325,23 +1629,27 @@ def birth(args: argparse.Namespace, repo: Path) -> int:
         runtime["stage"] = "born"
         runtime["network"] = {**runtime["network"], "gateway": gateway_address, "container-ip": ip_value, "netns": shared_netns}
         atomic_write_json(runtime_file, runtime)
+        display_status = birth_display_gate(args, repo, records_root, identity, runtime, runtime_file, container)
+        if display_status == "fail":
+            return 1
     except SwtError:
         raise
     except (OSError, subprocess.TimeoutExpired) as exc:
         raise SwtError(3, "PARTIAL", f"birth 在 {runtime.get('stage')} 阶段失败, 请按现有 runtime/容器状态恢复: {exc}") from exc
+    port = container["record"].get("ssh-port") or container.get("port")
+    print_delivery_lines(
+        "birth: 已完成",
+        port,
+        container["record"].get("vnc-port"),
+        display_status,
+        key,
+        lan_ip(),
+    )
     state = empty_state(repo)
     observed_daemon = daemon_state(repo, runtime)
     state.update({"stage": "born", "mother": {"branch": branch, "dir": str(mother_dir), "exists": True, "worktree-dirty": False},
                   "config": {"swt-form": True}, "daemon": observed_daemon or {**runtime["daemon"], "orphan": True}, "containers": runtime["containers"],
-                  "image": runtime["image"], "network": runtime["network"]})
-    port = container["record"].get("ssh-port") or container.get("port")
-    lan = lan_ip()
-    print(f"[SWT] ssh 入口 (端口映射): ssh -p {port} bolo@127.0.0.1  (用户 bolo, 密码 sandbox)")
-    print(f"[SWT] ssh 入口 (容器 IP):  ssh bolo@{ip_value}  (用户 bolo, 密码 sandbox)")
-    print(f"[SWT] herdr remote (host):    herdr --remote ssh://bolo@127.0.0.1:{port}")
-    if lan:
-        print(f"[SWT] herdr remote (局域网): herdr --remote ssh://bolo@{lan}:{port}")
-    print(f"[SWT] ssh 私钥: {key}")
+                  "image": runtime["image"], "network": runtime["network"], "display": runtime.get("display")})
     print_state(state, "[SWT] birth: 已完成")
     return 0
 
@@ -1376,6 +1684,17 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     subparsers.choices["terminate"].add_argument("--force", action="store_true")
     subparsers.choices["switch"].add_argument("--to")
     subparsers.choices["switch"].add_argument("--force", action="store_true")
+    subparsers.choices["birth"].add_argument("--display-continue", action="store_true",
+                                             help="显示栈验证失败后选择继续 (显示栈降级)")
+    subparsers.choices["birth"].add_argument("--display-recheck", action="store_true",
+                                             help="显示栈验证失败后选择重验一次")
+    display_check_parser = subparsers.add_parser(
+        "display-check", help="显示栈全量通道检查 (诊断, 非 DECIDE)")
+    display_check_parser.add_argument("--repo")
+    display_check_parser.add_argument("--records-root", type=Path,
+                                      default=Path.home() / ".agents" / "sandbox-worktree")
+    display_check_parser.add_argument("--name")
+    display_check_parser.add_argument("--evidence-dir")
     return parser.parse_args(argv)
 
 
@@ -1529,11 +1848,11 @@ def podman_container_state(
             or row.get("Image")
         )
         port_result = run(["podman", "port", name])
-        ssh_port: int | None = None
+        mapped_ports: dict[str, int] = {}
         if port_result.returncode == 0:
-            match = re.search(r":(\d+)\s*$", port_result.stdout.strip(), re.MULTILINE)
-            if match:
-                ssh_port = int(match.group(1))
+            mapped_ports = parse_podman_ports(port_result.stdout)
+        ssh_port = mapped_ports.get("22")
+        vnc_port = mapped_ports.get("6080")
         retired_record = runtime_container(runtime, name, podman_id)
         dirty: dict[str, Any] = {
             "uncommitted": None,
@@ -1559,6 +1878,8 @@ def podman_container_state(
                 "podman-id": podman_id or None,
                 "state": state.get("Status") or row.get("State") or row.get("Status"),
                 "ssh-port": ssh_port,
+                "vnc-port": vnc_port or retired_record.get("vnc-port"),
+                "display": retired_record.get("display"),
                 "network-ip": network_ip,
                 "image-digest": image_digest,
                 "retired": bool(retired_record.get("retired", False)),
@@ -2195,6 +2516,35 @@ def resume_container_candidates(
     raise PreconditionError("当前母体没有可恢复容器")
 
 
+def ensure_display_after_resume(
+    runtime: dict[str, Any],
+    runtime_file: Path,
+    record: dict[str, Any],
+) -> str:
+    """resume 显示栈重拉 (D040, 与防火墙重注入同位置) + status 级秒级检查
+    (D041). 失败降级: 更新 STATE 显示栈状态并汇报注明, 不阻断终端工作.
+    返回: ok / degraded / absent."""
+    name = str(record.get("name"))
+    if not container_has_swt_vnc(name):
+        record["display"] = "absent"
+        upsert_container_record(runtime, record, runtime_file)
+        print("[SWT] 显示栈: 容器镜像未内置 swt-vnc, 跳过 (absent)")
+        return "absent"
+    started, start_output = start_display_stack(name)
+    ok = started
+    detail = start_output
+    if ok:
+        ok, detail = display_stack_status(name)
+    if ok:
+        record["display"] = "ok"
+        upsert_container_record(runtime, record, runtime_file)
+        return "ok"
+    record["display"] = "degraded"
+    upsert_container_record(runtime, record, runtime_file)
+    print(f"[SWT] 显示栈降级 (重拉/状态检查未过: {detail[-160:]}); 终端工作不受影响", file=sys.stderr)
+    return "degraded"
+
+
 def resume_daemon_stale(daemon: dict[str, Any] | None, runtime: dict[str, Any]) -> bool:
     recorded = runtime.get("daemon")
     if not isinstance(recorded, dict) or not process_alive(recorded.get("pid")):
@@ -2323,8 +2673,17 @@ def resume(args: argparse.Namespace, repo: Path) -> int:
         runtime.pop("resume", None)
         runtime["stage"] = "born"
         atomic_write_json(runtime_file, runtime)
+        display_status = ensure_display_after_resume(runtime, runtime_file, target)
+        print_delivery_lines(
+            "resume: 已就绪, 什么都没有需要恢复",
+            target.get("ssh-port"), target.get("vnc-port"), display_status,
+            Path(target["ssh_private_key"]) if target.get("ssh_private_key") else None,
+            lan_ip(),
+        )
+        # STATE 用刚写盘的 runtime 容器记录 (含本分支刚更新的 display),
+        # 不用函数头取的 observed 快照 — 那是显示栈检查前的旧值, 会与交付行自相矛盾
         print_state(
-            build_state(repo, records_root, runtime, mother=_UNSET, containers=observed,
+            build_state(repo, records_root, runtime, mother=_UNSET, containers=runtime["containers"],
                         daemon=daemon_observed, image=_UNSET, network=_UNSET),
             "[SWT] resume: 已就绪, 什么都没有需要恢复",
         )
@@ -2438,6 +2797,8 @@ def resume(args: argparse.Namespace, repo: Path) -> int:
         runtime["stage"] = "resume-network"
         atomic_write_json(runtime_file, runtime)
 
+        ensure_display_after_resume(runtime, runtime_file, record)
+
         record["daemon-addr"] = daemon_address
         record["remote"] = f"git://{daemon_address}:{int(daemon_record['port'])}/{repo.name}"
         record["ssh-port"] = container_ssh_port(target_name)
@@ -2462,6 +2823,12 @@ def resume(args: argparse.Namespace, repo: Path) -> int:
         raise SwtError(3, "PARTIAL", f"resume 中途失败: {exc}") from exc
 
     observed = podman_container_state(repo, runtime)
+    print_delivery_lines(
+        "resume: 已完成 fail-closed 恢复",
+        record.get("ssh-port"), record.get("vnc-port"), record.get("display"),
+        Path(record["ssh_private_key"]) if record.get("ssh_private_key") else None,
+        lan_ip(),
+    )
     print_state(
         build_state(repo, records_root, runtime, mother=_UNSET, containers=observed,
                     daemon=daemon_record, image=_UNSET, network=_UNSET),
@@ -2542,6 +2909,8 @@ def build_state(
     state["daemon"] = observed_daemon
     state["image"] = observed_image
     state["network"] = observed_network
+    runtime_display = (runtime or {}).get("display") if runtime else None
+    state["display"] = runtime_display if isinstance(runtime_display, dict) else None
     if runtime:
         state["stage"] = runtime.get("stage")
     return state
@@ -2570,6 +2939,45 @@ def status(args: argparse.Namespace, repo: Path) -> int:
     else:
         print_state(state, "[SWT] status: 已完成只读盘点")
     return 0
+
+
+def display_check(args: argparse.Namespace, repo: Path | None) -> int:
+    """诊断子命令 (D041): 对容器跑显示栈全量通道检查 (独立模块).
+    退出码: 0 全过 / 1 有检查未过 / 2 传输层失败 — 诊断语义, 非 DECIDE.
+    不改 runtime 状态, 不持锁."""
+    name = args.name
+    if not name:
+        if repo is None:
+            raise PreconditionError("display-check 需要 --name 或可推导主仓的 --repo/cwd")
+        records_root = args.records_root.expanduser().resolve()
+        runtime = load_runtime(runtime_path(records_root, repo))
+        if runtime is None:
+            raise PreconditionError("没有 runtime 记录, 请用 --name 指定容器或先 birth")
+        active = [item for item in runtime.get("containers", [])
+                  if isinstance(item, dict) and item.get("name") and not item.get("retired")]
+        if not active:
+            raise PreconditionError("当前母体没有活动容器")
+        if len(active) > 1:
+            names = ", ".join(str(item["name"]) for item in active)
+            raise PreconditionError(f"当前母体有多个容器, 请使用 --name; 候选: {names}")
+        name = str(active[0]["name"])
+    if not container_has_swt_vnc(name):
+        print("[SWT] display-check: 容器镜像未内置 swt-vnc (absent), 无通道可检查")
+        return 1
+    evidence = args.evidence_dir
+    if evidence:
+        evidence_arg = ["--evidence-dir", str(evidence)]
+    else:
+        evidence_arg = []
+    result = run(
+        ["uv", "run", "python", str(DISPLAY_SCRIPT), "verify", "--name", name, *evidence_arg],
+        timeout=900,
+    )
+    if result.stdout:
+        sys.stdout.write(result.stdout)
+    if result.stderr:
+        sys.stderr.write(result.stderr)
+    return result.returncode
 
 
 def canonical_json(value: Any) -> str:
@@ -2653,9 +3061,12 @@ def main(argv: list[str]) -> int:
             for command in ("podman", "nft", "ssh", "ssh-keygen", "uv"):
                 require_command(command)
             validate_git_hide_refs_syntax()
-        repo = resolve_repo(args.repo)
         if args.command == "status":
-            return status(args, repo)
+            return status(args, resolve_repo(args.repo))
+        if args.command == "display-check":
+            repo = None if args.name else resolve_repo(args.repo)
+            return display_check(args, repo)
+        repo = resolve_repo(args.repo)
         lock = acquire_lock(repo, args.records_root)
         try:
             if args.command == "birth":

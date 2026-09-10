@@ -1,4 +1,4 @@
-# M09 项目层需求清单: 登录墙 VNC 栈 + playwright chromium (ISSUE-04, D015 格式)
+# display 层需求清单 (D039, 原 M09 项目层浏览器清单): VNC 栈 + playwright chromium + swt-vnc
 # install/probe 都在容器内经 sh -c 执行: ${...} 用单引号防展开, 管道可用.
 # apt 条目 probe: dpkg-query 取 Debian 版本, cut 去掉可能的 epoch 前缀 (如 2:1.8.0).
 xvfb>=1.0 install="apt-get update && apt-get install --no-install-recommends -y xvfb" probe="dpkg-query -W -f='${Version}' xvfb | cut -d: -f2-"

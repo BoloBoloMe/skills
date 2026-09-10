@@ -2,6 +2,9 @@
 # 类型: task
 # 阻塞于: MILESTONE-04, MILESTONE-07, MILESTONE-08, MILESTONE-09, MILESTONE-12
 
+> 2026-09-10: 显示栈内置化改造 (D039-D045) 完成后, 全链演示在新会话
+> 从零重跑 (旧演练现场不复用); 本文件保持进行中.
+
 ## 问题
 
 SKILL.md 定稿 + 全链演练 (路线 A 的收口):
