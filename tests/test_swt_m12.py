@@ -1405,6 +1405,17 @@ class TestTS301Terminate(SwtBirthFixture):
         sibling = next(item for item in runtime["containers"] if item["name"] == "swt-m12-second")
         sibling_netns_before = self.container_netns("swt-m12-second")
         sibling_before = self.nft_table(sibling_netns_before, source=sibling["network-ip"])
+        target_record = next(item for item in runtime["containers"] if item["name"] == first_name)
+        target_credentials = (
+            Path(target_record["ssh_private_key"]),
+            Path(target_record["password_file"]),
+            Path(target_record["ssh_private_key"] + ".pub"),
+        )
+        sibling_credentials = (
+            Path(sibling["ssh_private_key"]),
+            Path(sibling["password_file"]),
+            Path(sibling["ssh_private_key"] + ".pub"),
+        )
         self.assertIn(f"ip saddr {first_ip}", before)
         self.assertIn(f"ip saddr {sibling['network-ip']}", sibling_before)
         selected = self.terminate("--name", first_name)
@@ -1423,6 +1434,10 @@ class TestTS301Terminate(SwtBirthFixture):
         else:
             self.assertNotIn(f"ip saddr {first_ip}", after)
         self.assertEqual(0, subprocess.run(["podman", "inspect", "swt-m12-second"], capture_output=True).returncode)
+        for credential in target_credentials:
+            self.assertFalse(credential.exists(), credential)
+        for credential in sibling_credentials:
+            self.assertTrue(credential.exists(), credential)
         if first_netns == sibling_netns_before and first_ip != sibling["network-ip"]:
             self.assertNotEqual(before, after)
 
@@ -1456,6 +1471,12 @@ class TestTS301Terminate(SwtBirthFixture):
         runtime_file = self.runtime_file()
         runtime_before = self.runtime_data()
         container_name = state["containers"][0]["name"]
+        target_record = next(item for item in runtime_before["containers"] if item["name"] == container_name)
+        credentials = (
+            Path(target_record["ssh_private_key"]),
+            Path(target_record["password_file"]),
+            Path(target_record["ssh_private_key"] + ".pub"),
+        )
         terminate = self.run_swt(
             "terminate", "--repo", str(self.repo), "--records-root", str(self.records),
         )
@@ -1487,6 +1508,8 @@ class TestTS301Terminate(SwtBirthFixture):
         self.assertFalse(
             any(item.get("name") == container_name for item in json.loads(runtime_file.read_text(encoding="utf-8")).get("containers", []))
         )
+        for credential in credentials:
+            self.assertFalse(credential.exists(), credential)
 
 
 class TestTS401SwitchExistingMother(SwtBirthFixture):

@@ -427,3 +427,10 @@
 - 状态: 当前有效
 - 来源: m12 并存容器回归 `TestTS5Resume.test_birth_and_resume_use_target_netns_with_interference_container` 与原验收现场复现
 - 内容: 同时运行干扰容器和目标容器时, `pgrep -af 'pasta --config-net'` 能返回多个实例. 旧实现取首个实例的 `--netns`, 会把目标容器的 nft 规则注入干扰容器 netns, 目标容器反而没有规则; 目标容器 `podman inspect` 的 `NetworkSettings.SandboxKey` 可稳定指向其当前 netns, 但 stop/start 后该路径可能变化. 修复后 birth/resume/terminate/switch 均按目标容器当前 SandboxKey 操作, 多实例全局兜底直接拒绝.
+
+### F016 terminate 成功路径凭证残留 (2026-09-11, M12 凭证卫生回归)
+- 状态: 当前有效
+- 来源: m12 单容器 terminate 回归实测
+- 内容: terminate 成功 rm 容器并收尾 runtime 后, `runtime/<identity>/ssh/<容器名>.ed25519`, 对应 `.pub` 与 `.password` 仍存在; 多容器按名终结也没有按容器清理. 这违反 SKILL.md 终结完成标准, 形成 host 侧凭证残留. 修复要求: 成功路径按目标 runtime 记录删除私钥, 公钥和密码文件, 缺席按幂等成功处理, 兄弟容器凭证保留.
+- 承接: F014 (凭证卫生面)
+- 预计影响: swt.py terminate; tests/test_swt_m12.py; SKILL.md 终结完成标准

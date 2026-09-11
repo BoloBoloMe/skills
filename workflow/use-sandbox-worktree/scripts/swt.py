@@ -2152,6 +2152,22 @@ def remove_container_firewall(
     raise SwtError(3, "PARTIAL", f"nft remove 失败: {result.stderr.strip()}")
 
 
+def remove_container_credentials(target: dict[str, Any]) -> None:
+    paths: set[Path] = set()
+    private_key = target.get("ssh_private_key") or target.get("ssh-private-key")
+    if isinstance(private_key, str) and private_key:
+        key_path = Path(private_key)
+        paths.update((key_path, Path(str(key_path) + ".pub")))
+    password_file = target.get("password_file") or target.get("password-file")
+    if isinstance(password_file, str) and password_file:
+        paths.add(Path(password_file))
+    for path in paths:
+        try:
+            path.unlink(missing_ok=True)
+        except OSError as exc:
+            raise SwtError(3, "PARTIAL", f"凭证清理失败: {path}: {exc}") from exc
+
+
 def terminate(args: argparse.Namespace, repo: Path) -> int:
     records_root = args.records_root.expanduser().resolve()
     runtime_file = runtime_path(records_root, repo)
@@ -2229,6 +2245,7 @@ def terminate(args: argparse.Namespace, repo: Path) -> int:
     if not has_siblings:
         stop_repo_daemons(repo, runtime)
 
+    remove_container_credentials(target)
     runtime["containers"] = runtime_records
     if has_siblings:
         runtime["stage"] = "born"
