@@ -302,6 +302,9 @@ def generate_project_containerfile(
     for entry in requirements:
         if entry.install:
             lines.append(f"RUN {entry.install}")
+    # F013 兜底: install 步骤多以 root 跑且 HOME 可能指 bolo, 收尾统一归还
+    # home 属主, 把 "home 内全归 bolo" 固化为镜像级不变量, 不靠逐目录打地鼠
+    lines.append("RUN chown -R bolo:bolo /home/bolo")
     return "\n".join(lines) + "\n"
 
 

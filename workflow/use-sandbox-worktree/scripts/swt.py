@@ -761,13 +761,24 @@ def host_port_free(port: int) -> bool:
         probe.close()
 
 
-def auth_json_mount_args() -> list[str]:
-    """auth.json 运行时只读挂载 (D044): host 缺失时跳过并 stderr 警告."""
+def inject_auth_json(container_name: str) -> None:
+    """auth.json 启动后注入 (D046, 替代 D044 只读挂载): rootless uid_map 下 host bolo
+    (uid 1000) 的文件在容器内呈现为 root 属主, ro 挂载 + 0600 = 容器 bolo 永不可读
+    (F014). 改经 stdin 注入 + chown bolo: 不烤镜像层, 物理上不可能写回 host,
+    resume 重注顺带支持换 key; host 缺失时跳过并 stderr 警告 (语义不变)."""
     source = Path.home() / ".pi" / "agent" / "auth.json"
-    if source.is_file():
-        return ["-v", f"{source}:/home/bolo/.pi/agent/auth.json:ro"]
-    print(f"[SWT] auth.json 不存在 ({source}), 跳过只读挂载; 容器内 LLM 凭据需另行注入", file=sys.stderr)
-    return []
+    if not source.is_file():
+        print(f"[SWT] auth.json 不存在 ({source}), 跳过注入; 容器内 LLM 凭据需另行注入", file=sys.stderr)
+        return
+    result = subprocess.run([
+        "podman", "exec", "-i", container_name, "sh", "-c",
+        "install -d -m 755 -o bolo -g bolo /home/bolo/.pi/agent && "
+        "cat > /home/bolo/.pi/agent/auth.json && "
+        "chown bolo:bolo /home/bolo/.pi/agent/auth.json && "
+        "chmod 600 /home/bolo/.pi/agent/auth.json",
+    ], input=source.read_text(encoding="utf-8"), capture_output=True, text=True, check=False)
+    if result.returncode != 0:
+        raise SwtError(3, "PARTIAL", f"auth.json 注入失败: {result.stderr.strip()}")
 
 
 def print_delivery_lines(
@@ -1186,6 +1197,8 @@ def create_and_start_container(args: argparse.Namespace, repo: Path, image: dict
     command = ["podman", "create", "--name", name]
     for label in labels:
         command.extend(["--label", label])
+    # 主机名 (D047): birth 经 DECIDE 确认后必带; 不设则 podman 拿容器 ID 充数
+    command.extend(["--hostname", args.hostname])
     # 环境变量继承 (创建时烘入镜像 env, ssh 面由 inject_ssh_key 写 ~/.ssh/environment)
     for env_name, env_value in env.items():
         command.extend(["-e", f"{env_name}={env_value}"])
@@ -1196,8 +1209,6 @@ def create_and_start_container(args: argparse.Namespace, repo: Path, image: dict
     else:
         command.extend(["-p", "127.0.0.1::6080"])
     command.extend(["--shm-size", "1g"])
-    # auth.json 运行时只读挂载 (D044), 不烤镜像层
-    command.extend(auth_json_mount_args())
     command.extend(["-p", "22", str(image["ref"])])
     created = run(command)
     if created.returncode != 0:
@@ -1464,7 +1475,7 @@ def birth(args: argparse.Namespace, repo: Path) -> int:
     pending: list[tuple[str, str, list[str]]] = []
 
     stale_receipts: dict[str, bool] = {}
-    for decision_kind in ("network-mode", "mother-reuse", "mother-create", "image-build"):
+    for decision_kind in ("network-mode", "mother-reuse", "mother-create", "image-build", "hostname"):
         stale_receipts[decision_kind] = expire_receipts(records_root, identity, decision_kind, fingerprint)
 
     network_decision = decision_pending(
@@ -1493,6 +1504,20 @@ def birth(args: argparse.Namespace, repo: Path) -> int:
     )
     if mother_decision:
         pending.append(mother_decision)
+
+    # 主机名确认 (D047): 候选 = 容器名, host-llm 转述时可附推荐, 用户拍板后
+    # 带 --hostname <名> 重跑; 缺省不答 (不放行默认), 保证每个容器名都经人确认
+    hostname_candidate = args.name or container_default_name(branch)
+    if args.hostname is not None and not re.fullmatch(r"[a-zA-Z0-9]([a-zA-Z0-9.-]{0,61}[a-zA-Z0-9])?", args.hostname):
+        raise PreconditionError(f"--hostname 非法 (须为 RFC1123 主机名): {args.hostname}")
+    hostname_decision = decision_pending(
+        records_root, identity, "hostname", fingerprint, args.hostname is not None,
+        f"容器主机名确认 (候选: {hostname_candidate})", "状态已变化, 请重新确认主机名",
+        [f"--hostname {hostname_candidate}"],
+        stale_receipts["hostname"],
+    )
+    if hostname_decision:
+        pending.append(hostname_decision)
 
     if not args.image and image.get("verdict") == "BUILD-NEW":
         pending.append(("image-build", "没有满足需求的镜像, 请按 reason 构建后重跑并指定 --image", ["--image <ref>"]))
@@ -1620,6 +1645,7 @@ def birth(args: argparse.Namespace, repo: Path) -> int:
         runtime["stage"] = "network"
         atomic_write_json(runtime_file, runtime)
         key = inject_ssh_key(container, records_root, identity, runtime, runtime_file, env_map)
+        inject_auth_json(container["name"])
         remote = f"git://{daemon_address}:{int(daemon_record['port'])}/{repo.name}"
         container["record"]["remote"] = remote
         container["record"]["daemon-addr"] = daemon_address
@@ -1678,6 +1704,7 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     subparsers.choices["birth"].add_argument("--requirements")
     subparsers.choices["birth"].add_argument("--new-mother", action="store_true")
     subparsers.choices["birth"].add_argument("--reuse-mother", action="store_true")
+    subparsers.choices["birth"].add_argument("--hostname")
     subparsers.choices["resume"].add_argument("--name")
     subparsers.choices["resume"].add_argument("--confirm", action="store_true")
     subparsers.choices["terminate"].add_argument("--name")
@@ -2798,6 +2825,8 @@ def resume(args: argparse.Namespace, repo: Path) -> int:
         atomic_write_json(runtime_file, runtime)
 
         ensure_display_after_resume(runtime, runtime_file, record)
+        # auth.json 重注入 (D046): 幂等, 顺带让换 key 在 resume 后生效
+        inject_auth_json(target_name)
 
         record["daemon-addr"] = daemon_address
         record["remote"] = f"git://{daemon_address}:{int(daemon_record['port'])}/{repo.name}"

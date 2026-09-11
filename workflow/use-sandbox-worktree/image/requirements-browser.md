@@ -7,9 +7,11 @@ websockify>=0.10 install="apt-get update && apt-get install --no-install-recomme
 novnc>=1.3 install="apt-get update && apt-get install --no-install-recommends -y novnc" probe="dpkg-query -W -f='${Version}' novnc | cut -d: -f2-"
 fonts-noto-cjk install="apt-get update && apt-get install --no-install-recommends -y fonts-noto-cjk" probe="dpkg-query -W -f='${Version}' fonts-noto-cjk | cut -d: -f2-"
 # chromium 归 playwright 管 (access-web 同源, 接缝补钉 5): 浏览器缓存落
-# /home/bolo/.cache, build RUN 以 root 跑, 装完 chown 回 bolo.
+# /home/bolo/.cache, build RUN 以 root 跑, 装完 chown 回 bolo. chromium 安装期
+# 可能还在 /home/bolo/.local/share/pki 建 nssdb 与 /home/bolo/.config 建
+# google-chrome-for-testing (均 root 属主), 存在才 chown (目录非必现, F013).
 # probe 的 chrome-linux* 同时兼容新旧布局 (chrome-linux64 / chrome-linux).
-chromium>=100 install="cd /home/bolo/.agents/skills/access-web/browse && HOME=/home/bolo uv run playwright install --with-deps chromium && chown -R bolo:bolo /home/bolo/.cache" probe="/home/bolo/.cache/ms-playwright/chromium-*/chrome-linux*/chrome --version"
+chromium>=100 install="cd /home/bolo/.agents/skills/access-web/browse && HOME=/home/bolo uv run playwright install --with-deps chromium && chown -R bolo:bolo /home/bolo/.cache && for d in /home/bolo/.local /home/bolo/.config; do [ ! -e \"$d\" ] || chown -R bolo:bolo \"$d\"; done" probe="/home/bolo/.cache/ms-playwright/chromium-*/chrome-linux*/chrome --version"
 # swt-vnc = ISSUE-04 #2 的三动作脚本, install 一行写不完, base64 内嵌
 # (解码命令: echo <串> | base64 -d). 内嵌的适用边界: 内容小到单行可容且
 # 稳定少改; 若脚本继续增长, 或需要高频评审其 diff, 应改走独立通道

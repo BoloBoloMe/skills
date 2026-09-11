@@ -55,6 +55,10 @@ class SwtFixture(unittest.TestCase):
         shutil.rmtree(self.root, ignore_errors=True)
 
     def run_swt(self, *args: str, cwd: Path | None = None, env: dict[str, str] | None = None) -> subprocess.CompletedProcess[str]:
+        # D047: birth 缺 --hostname 会出 DECIDE; 非主机名专项用例统一自动应答,
+        # 专项用例 (test_ts1xx_hostname_*) 显式控制该 flag, 不受此兜底影响
+        if args and args[0] == "birth" and "--hostname" not in args:
+            args = (*args, "--hostname", "swt-m12-host")
         return subprocess.run(
             ["uv", "run", "python", str(SCRIPT), *args],
             cwd=cwd or ROOT,
@@ -704,15 +708,15 @@ class TestTS201BirthChain(SwtBirthFixture):
         bindings = json.loads(bindings_json)
         self.assertEqual(int(shm_size), 1 << 30)  # --shm-size=1g (chromium 必需)
         self.assertEqual(bindings["6080/tcp"][0]["HostIp"], "127.0.0.1")  # 只绑回环
-        # D044: auth.json 运行时只读挂载 (host 缺失时跳过)
-        binds = json.loads(subprocess.run(
-            ["podman", "inspect", container["name"], "--format", "{{json .HostConfig.Binds}}"],
-            capture_output=True, text=True, check=True,
-        ).stdout)
+        # D046: auth.json 启动后注入 (bolo 属主 600, 非只读挂载 — rootless
+        # uid_map 下挂载会让 host bolo 文件在容器内呈现为 root 属主, F014)
         if (Path.home() / ".pi" / "agent" / "auth.json").is_file():
-            self.assertTrue(
-                any(bind.split(",")[0].endswith("/auth.json:ro") for bind in binds),
-                msg=str(binds))  # podman 会在 bind 串尾追加 ,rprivate,rbind 等挂载选项
+            stat_out = subprocess.run(
+                ["podman", "exec", container["name"], "stat", "-c", "%U %a",
+                 "/home/bolo/.pi/agent/auth.json"],
+                capture_output=True, text=True, check=True,
+            ).stdout.strip()
+            self.assertEqual("bolo 600", stat_out)
         # 决策 8 + 补充: 交付固定项 — ssh 双入口 + herdr 双命令, 直连形式废除;
         # 隧道命令仅在显示栈 ok 时随发 (absent 时为降级说明, 无可随道)
         self.assertIn("ssh 入口 (本机)", result.stdout)

@@ -420,12 +420,13 @@ def cmd_verify(args: argparse.Namespace) -> int:
         print("evidence: unavailable (baseline probe failed)")
 
     # (5) headed chromium 渲染 -> framebuffer 非黑超阈值 + PPM 证据
-    # HOME=/home/bolo: chromium 由 display 层装在该处缓存; root 直跑会找错
+    # --user bolo + HOME=/home/bolo: root 直跑会把 .local/.config/.venv 写成
+    # root 属主 (F013 同类, 运行期版); chromium 缓存也装在 bolo home
     try:
-        _podman(["exec", args.name, "mkdir", "-p", "/tmp/headless-session"],
+        _podman(["exec", "--user", "bolo", args.name, "mkdir", "-p", "/tmp/headless-session"],
                 timeout=60)
         headed = _podman([
-            "exec", "-w", BROWSE_DIR,
+            "exec", "--user", "bolo", "-w", BROWSE_DIR,
             "-e", "HOME=/home/bolo",
             "-e", "BROWSER_HEADED=true", "-e", "DISPLAY=:99",
             args.name, "uv", "run", "python", "-c",
@@ -460,7 +461,7 @@ def cmd_verify(args: argparse.Namespace) -> int:
     # BROWSER_HEADED; headless 不依赖 X, 成功即证明环境变量回切生效
     try:
         headless = _podman([
-            "exec", "-w", "/tmp/headless-session",
+            "exec", "--user", "bolo", "-w", "/tmp/headless-session",
             "-e", "HOME=/home/bolo",
             args.name, "uv", "run", "--project", BROWSE_DIR,
             "python", "-c", _navigate_script(),

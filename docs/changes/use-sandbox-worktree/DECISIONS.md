@@ -316,7 +316,7 @@
 - 预计影响: image-prep.py stage_context; SKILL.md 镜像管理节
 
 ### D044 auth.json 运行时只读挂载
-- 状态: 当前有效
+- 状态: 已作废 (→ D046; F014 证伪: rootless uid_map 下 ro+0600 挂载使容器 bolo 永不可读)
 - 约束性: 必须遵守
 - 承接: D018/D019 (风险语义不变)
 - 内容: swt 容器 create 加 `-v <host>/.pi/agent/auth.json:/home/bolo/.pi/agent/auth.json:ro`; host 缺失时跳过挂载并 stderr 警告 (不阻塞 birth); 镜像复制继续排除 auth.json (不烤镜像层, D018 不变); models-store.json 维持随 ~/.pi/agent 复制. 换 key 无需重建镜像或容器, 下次 create 自动带新值; 运行中容器不热换.
@@ -391,3 +391,21 @@
 - 状态: 当前有效
 - 来源: M10 全链演练本会话实测 (base 2026.09.09-3, 项目层 skills:2026.09.10-1, blacklist)
 - 内容: (1) **pasta 下容器无独立 IP**: STATE `network-ip` 实测 = host 本机 LAN IP (192.168.31.252), birth 交付的 "容器 IP: ssh bolo@<IP>" 直连 22 必撞 host 自身 sshd — 已知 host key 报 "known by other names", ssh-agent 多 key 试满 MaxAuthTries 报 "Too many authentication failures", 密码都轮不到. 修复方向: birth 交付逻辑检测 network-ip == host IP 时改打 "本机 127.0.0.1:<port> / 局域网 <host-LAN-IP>:<port>" 两条带端口入口 (映射端口本就监听 *, 远程机同样走端口); SKILL.md 第四步同步措辞并要求交付前 `podman port` 核对. (2) **容器 ssh 非交互 shell PATH 缺 ~/.local/bin**: herdr remote 自动装远端 binary 到 ~/.local/bin/herdr 后报 "remote shell does not resolve herdr to that path". 修复方向: base 镜像烘配 PATH (下次用户明说重建 base 时带上). (3) **herdr --remote 在已有 herdr 会话内被套娃禁用拦下** ("nested herdr is disabled by default"): SKILL.md herdr remote 节需注明该命令须在非 herdr 终端运行, 已在 herdr 里则走开窗格配方. 另: 本次 birth 前发现主仓 config 残留上一次演练的 uploadpack.hideRefs 旧值 (指向已删旧分支), birth 拒覆盖 exit 2, 手工 `git config --unset-all uploadpack.hideRefs` 后重跑即过 — 修配置归属前的救场路径, 值得在 SKILL.md 救场节补一笔. 修复执行时点: M10 全链跑完后统一改 (演练中途不改被测对象).
+
+### F013 构建期 root 写 bolo home 的属主残留 (2026-09-11, M10 重跑实测)
+- 状态: 当前有效
+- 来源: M10 全链重跑, herdr --remote 进容器实测暴露
+- 内容: display 层 chromium 安装以 root + `HOME=/home/bolo` 跑 `playwright install --with-deps chromium`, 除 `.cache` 外还会在 `/home/bolo/.local/share/pki` 建 nssdb, 在 `/home/bolo/.config` 建 google-chrome-for-testing, 全部 root 属主 700 — bolo 对自身 `~/.local`/`~/.config` 无写权限, 直接炸 herdr remote (装二进制 mkdir `.local` 拒; server status 连 `~/.config/herdr/herdr.sock` EACCES) 及一切写这两个目录的运行时软件. 且这两个目录非必现 (有缓存的重建不产生), 修复不能写无条件 chown. 修复: requirements-browser.md chromium 安装行 `.cache` 无条件 chown + `.local`/`.config` 存在才 chown; display 层 2026.09.11-2 与 skills 项目层 2026.09.11-2 已带修复重建. 教训普适化: 任何以 root 跑且 HOME 指 bolo 的构建步骤, 收尾必须把它可能写的 home 子树全量 chown 回 bolo, 且按 "存在才处理" 写法.
+
+### D046 auth.json 启动后注入 (替代 D044 只读挂载)
+- 状态: 当前有效
+- 约束性: 必须遵守
+- 替代: D044 (ro bind mount) — F014 实测证伪
+- 内容: swt 不再在 create 挂 `-v auth.json:ro`; 改为 birth/resume 容器启动后经 `podman exec -i ... sh -c 'install -d -o bolo -g bolo; cat > auth.json; chown bolo:bolo; chmod 600' < host-auth.json` 注入. 语义对照 D044: 不烤镜像层 (仍由 D018 排除) ✓; 防写回 host 更强 (拷贝物理隔离, 容器内随便改都到不了 host) ✓; host 缺失跳过并警告 ✓; 换 key 生效面从 "下次 create" 扩到 "下次 birth/resume" (resume 重注入幂等). 配套: image-prep 生成的 display/项目层 Containerfile 收尾统一 `RUN chown -R bolo:bolo /home/bolo` 兜底 (F013 类问题的镜像级不变量, 不再靠清单逐目录打地鼠). 理由: rootless podman uid_map 是环境常量 (容器 root = host bolo uid 1000, 容器其他 uid 映射 100000+ 假 uid), host 文件 bind mount 进容器必然呈现为 root 属主; 凡是 "容器 bolo 要读写的 host 文件", bind mount 形态在 rootless 下整体不成立, 注入制是唯一无 mapping 魔改的稳态解.
+- 依赖事实: F014 (uid_map 实测 + pi EACCES); F013 (构建期 root 残留同类)
+- 预计影响: swt.py (inject_auth_json/birth/resume); image-prep.py (normalize RUN); SKILL.md 风险明示/容器命令收拢; m12 断言
+
+### F014 rootless uid_map 下 host bind mount 的属主错配 (2026-09-11, M10 重跑实测)
+- 状态: 当前有效
+- 来源: M10 全链重跑, 用户 herdr/ssh 进容器跑 pi 报 `EACCES: permission denied, open '/home/bolo/.pi/agent/auth.json'`
+- 内容: 实测容器 uid_map: `0→1000 (host bolo), 1..65536→100000+`; 容器内 bolo = uid 1001. 推论: host 上 bolo (uid 1000) 拥有的文件经 bind mount 进容器后属主呈现为 root; D044 的 `-v auth.json:...:ro` 叠加 host 0600 权限 = 容器 bolo 永远读不了, pi 启动即崩. 且该挂载在运行容器内不可拆 (容器内 umount 无权限; host 侧 nsenter -m 亦失败), 只能重建容器. 通用规则: rootless 下任何挂给容器非 root 用户读写的 host 文件, 都必须走注入 (cp/stdin + chown) 而非 bind mount; 或文件属主换成对应 subuid (脆, 不取). 处置: D046 注入制 + m12 断言改写.

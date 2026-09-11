@@ -195,7 +195,7 @@ stdout 末行 `STATE {...}` 单行 json (只加字段不改名); stderr 首行 `
 
 ## 风险明示 (向我声明)
 
-- **auth.json 运行时只读挂载**进容器 (create 时 `-v .../auth.json:...:ro`, host 缺失则跳过并警告): 防写回 host, 不防读 — 容器内恶意依赖可读 token 并经白名单内 LLM 域名外传, 已接受. 不烤镜像层, 换 key 不重建镜像 (D044).
+- **auth.json 启动后经 stdin 注入**进容器 (birth/resume 时 `podman exec` 写入 + chown bolo 600, host 缺失则跳过并警告): 是拷贝不是挂载, 物理上不可能写回 host, 不防读 — 容器内恶意依赖可读 token 并经白名单内 LLM 域名外传, 已接受. 不烤镜像层, 换 key 后下次 birth/resume 自动带新值 (D046; D044 的 ro 挂载形态已被 F014 证伪: rootless uid_map 下 host bolo 文件在容器内呈现为 root 属主, ro+0600 挂载 = 容器 bolo 永不可读).
 - **noVNC 无认证但只发布到宿主回环**: x11vnc `-nopw`, 门槛 = 本机账户或容器 ssh 凭据持有者 (隧道命令即交付物); 局域网内其他设备直接够不着 6080 (D040). 这不是零风险: 拿到容器 ssh 凭据的人同时拿到一个已登录浏览器的完全控制.
 - **git 守护进程无认证/审计**: 只靠 "同一时刻只有一个分支可写" 的拓扑防容器 agent 越权; 监听落 0.0.0.0 时, 局域网内其他机器也够得着这个受限写入口 (只能快进推母体分支).
 - **whitelist 自动放行 daemon 地址** = 容器可经网关地址访问 host 全部对外监听 (非仅本机回环) 的端口, 按 IP 放行无法收窄到单端口; 出访互联网方向仍收敛.
@@ -206,7 +206,7 @@ stdout 末行 `STATE {...}` 单行 json (只加字段不改名); stderr 首行 `
 ## 容器命令收拢 (provider 扩展点)
 
 全部容器操作命令集中此节, 换/加 provider 时只改这里:
-- 生命周期: `podman create --name <名> --label ... -p 22 -p 127.0.0.1:6080:6080 (被占时 -p 127.0.0.1::6080) --shm-size=1g -v <host-auth.json>:/home/bolo/.pi/agent/auth.json:ro [-e 继承env] <镜像>` / `podman start|stop|rm -f` (容器不设内存/CPU 上限, D045)
+- 生命周期: `podman create --name <名> --label ... -p 22 -p 127.0.0.1:6080:6080 (被占时 -p 127.0.0.1::6080) --shm-size=1g [-e 继承env] <镜像>` / `podman start|stop|rm -f` (容器不设内存/CPU 上限, D045); auth.json 不走挂载, 启动后 `podman exec -i <容器> sh -c 'install -d -o bolo -g bolo ...; cat > .../auth.json; chown bolo:bolo; chmod 600' < host-auth.json` 注入 (D046)
 - 端口发现: `podman port <容器名>` (22 = ssh, 6080 = noVNC); 状态: `podman ps -a --filter label=sandbox-worktree.repo=<主仓>`
 - 镜像: `podman build` / `podman images --filter label=run.sandbox-worktree.project-id=<主仓路径>` / `podman inspect`
 - 容器内操作: `podman exec` (key 注入 / swt-vnc start|stop|status / display 检查经 swt-display.py); 防火墙注入: `podman unshare nsenter --net=<容器网络命名空间> nft -f -`
