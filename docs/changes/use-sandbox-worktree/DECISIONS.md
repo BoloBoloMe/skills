@@ -409,3 +409,21 @@
 - 状态: 当前有效
 - 来源: M10 全链重跑, 用户 herdr/ssh 进容器跑 pi 报 `EACCES: permission denied, open '/home/bolo/.pi/agent/auth.json'`
 - 内容: 实测容器 uid_map: `0→1000 (host bolo), 1..65536→100000+`; 容器内 bolo = uid 1001. 推论: host 上 bolo (uid 1000) 拥有的文件经 bind mount 进容器后属主呈现为 root; D044 的 `-v auth.json:...:ro` 叠加 host 0600 权限 = 容器 bolo 永远读不了, pi 启动即崩. 且该挂载在运行容器内不可拆 (容器内 umount 无权限; host 侧 nsenter -m 亦失败), 只能重建容器. 通用规则: rootless 下任何挂给容器非 root 用户读写的 host 文件, 都必须走注入 (cp/stdin + chown) 而非 bind mount; 或文件属主换成对应 subuid (脆, 不取). 处置: D046 注入制 + m12 断言改写.
+
+### D047 容器主机名必须经 DECIDE 确认
+- 状态: 当前有效
+- 约束性: 必须遵守
+- 内容: `birth` 不带 `--hostname` 时先输出 `DECIDE` 并停止, 不让 Podman 用容器 ID 充当主机名. 用户确认后带 `--hostname <RFC1123 主机名>` 重跑; 非法值在资源创建前 exit 2. 主机名写入 `podman create --hostname`, m12 以 `podman inspect .Config.Hostname` 复核.
+- 预计影响: swt.py birth/create; tests/test_swt_m12.py
+
+### D048 目标容器 netns 绑定与全局兜底禁猜
+- 状态: 当前有效
+- 约束性: 必须遵守
+- 内容: nft 目标 netns 全部由目标容器 `podman inspect` 的 `NetworkSettings.SandboxKey` 定位, 覆盖 birth/resume/resume 网络状态检查/terminate/switch 清理. runtime 中记录的旧 netns 只作状态信息, 不作为 stop/start 后的目标定位; `pgrep -af 'pasta --config-net'` 仅保留兼容诊断兜底, 且全机多于一个 pasta 实例时直接报错, 禁止取首个或任意猜测. 多容器时兄弟容器规则只在各自 inspect 得到的 netns 中处理.
+- 依赖事实: F015
+- 预计影响: swt.py; tests/test_swt_m12.py; SKILL.md 风险说明
+
+### F015 pasta 多实例串台与 SandboxKey 实测 (2026-09-11)
+- 状态: 当前有效
+- 来源: m12 并存容器回归 `TestTS5Resume.test_birth_and_resume_use_target_netns_with_interference_container` 与原验收现场复现
+- 内容: 同时运行干扰容器和目标容器时, `pgrep -af 'pasta --config-net'` 能返回多个实例. 旧实现取首个实例的 `--netns`, 会把目标容器的 nft 规则注入干扰容器 netns, 目标容器反而没有规则; 目标容器 `podman inspect` 的 `NetworkSettings.SandboxKey` 可稳定指向其当前 netns, 但 stop/start 后该路径可能变化. 修复后 birth/resume/terminate/switch 均按目标容器当前 SandboxKey 操作, 多实例全局兜底直接拒绝.

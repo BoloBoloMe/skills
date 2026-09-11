@@ -267,13 +267,21 @@ class TestGenerate(unittest.TestCase):
         lines = [ln for ln in text.splitlines() if ln.strip()]
         self.assertEqual(lines[0], "FROM localhost/x/display@sha256:abc")
         run_lines = [ln for ln in lines if ln.startswith("RUN ")]
-        self.assertEqual(run_lines, ["RUN apt-get install -y jdk"])
+        self.assertEqual(run_lines, [
+            "RUN apt-get install -y jdk",
+            "RUN chown -R bolo:bolo /home/bolo",
+        ])
+
 
     def test_project_containerfile_no_install_lines(self):
         text = self.m.generate_project_containerfile(
             "localhost/x/display", "sha256:abc", self.m.parse_requirements("node>=20\n")
         )
-        self.assertNotIn("RUN ", text)
+        self.assertEqual(
+            text.splitlines(),
+            ["FROM localhost/x/display@sha256:abc", "RUN chown -R bolo:bolo /home/bolo"],
+        )
+
 
 
 class TestStageContextExcludes(unittest.TestCase):
@@ -496,7 +504,8 @@ class TestBuildFlowE2E(_PodmanTestCase):
             ctx = Path(tmp)
             (ctx / "Containerfile").write_text(
                 "FROM alpine:latest\n"
-                "RUN printf '#!/bin/sh\\necho fake 1.2.3\\n' > /usr/local/bin/fake "
+                "RUN adduser -D bolo && "
+                "printf '#!/bin/sh\\necho fake 1.2.3\\n' > /usr/local/bin/fake "
                 "&& chmod +x /usr/local/bin/fake\n"
             )
             result = subprocess.run(
@@ -644,6 +653,7 @@ class TestDisplayBuildE2E(_PodmanTestCase):
             ctx = Path(tmp)
             (ctx / "Containerfile").write_text(
                 "FROM alpine:latest\n"
+                "RUN adduser -D bolo\n"
                 "RUN printf '#!/bin/sh\\necho fake 1.2.3\\n' > /usr/local/bin/fake "
                 "&& chmod +x /usr/local/bin/fake\n"
             )

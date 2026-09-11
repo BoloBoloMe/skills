@@ -638,18 +638,51 @@ def container_gateway(name: str, daemon_address: str) -> str:
     return "169.254.1.2"
 
 
-def pasta_netns() -> str | None:
+def pasta_netns(detail: dict[str, Any] | None = None) -> str | None:
+    """返回目标容器的 SandboxKey, 仅保留安全的单实例兼容兜底.
+
+    生产调用必须传入 podman inspect 结果. 未传目标时, 只有全机唯一 pasta
+    实例才允许使用其 netns, 多实例时宁可失败也不猜别的容器.
+    """
+    if detail is not None:
+        return container_netns(detail)
     try:
         result = run(["pgrep", "-af", "pasta --config-net"])
     except SwtEnvError:
         return None
     if result.returncode != 0:
         return None
-    for line in result.stdout.splitlines():
-        match = re.search(r"--netns\s+(\S+)", line)
-        if match:
-            return match.group(1)
-    return None
+    paths = [
+        match.group(1)
+        for line in result.stdout.splitlines()
+        if (match := re.search(r"--netns\s+(\S+)", line))
+    ]
+    if len(paths) <= 1:
+        return paths[0] if paths else None
+    unique_paths = sorted(set(paths))
+    raise SwtError(
+        3,
+        "PARTIAL",
+        f"发现多个 pasta 实例, 无法安全猜测目标: {', '.join(unique_paths)}; 请改用 podman inspect 的 SandboxKey",
+    )
+
+
+def live_container_netns(name: str) -> str | None:
+    """只从指定存活容器的 inspect 结果取得当前 SandboxKey."""
+    result = run(["podman", "inspect", name])
+    if result.returncode != 0:
+        return None
+    try:
+        rows = json.loads(result.stdout)
+    except json.JSONDecodeError:
+        return None
+    if not isinstance(rows, list) or not rows or not isinstance(rows[0], dict):
+        return None
+    detail = rows[0]
+    state = detail.get("State") if isinstance(detail.get("State"), dict) else {}
+    if state.get("Status") != "running":
+        return None
+    return pasta_netns(detail)
 
 
 def container_route_gateway(detail: dict[str, Any]) -> str | None:
@@ -1490,7 +1523,6 @@ def birth(args: argparse.Namespace, repo: Path) -> int:
 
     mother_kind = "mother-reuse" if mother_dir else "mother-create"
     partial_runtime = bool(runtime_existing and runtime_existing.get("stage") != "born")
-    prefer_container_netns = False
     if mother_dir and args.new_mother and not partial_runtime:
         raise PreconditionError("母体已存在, 不能使用 --new-mother")
     if not mother_dir and args.reuse_mother:
@@ -1557,7 +1589,6 @@ def birth(args: argparse.Namespace, repo: Path) -> int:
         runtime["mother_dir"] = str(mother_dir)
         runtime["config"] = {"swt-form": config_matches(repo, branch)}
         runtime["network"] = network_input
-        prefer_container_netns = True
         daemon = start_daemon(repo)
         daemon_record = {
             "pid": daemon.process.pid, "addr": daemon.address, "port": daemon.port,
@@ -1619,7 +1650,10 @@ def birth(args: argparse.Namespace, repo: Path) -> int:
         gateway_address = container_gateway(container["name"], daemon_address)
         route_gateway = container_route_gateway(container["detail"])
         ip_value = container_ip(container["detail"])
-        shared_netns = (container_netns(container["detail"]) if prefer_container_netns else None) or pasta_netns() or container_netns(container["detail"])
+        target_netns = pasta_netns(container["detail"])
+        if not target_netns:
+            raise SwtError(3, "PARTIAL", f"容器 {container['name']} 的 inspect 没有 SandboxKey")
+        shared_netns = target_netns
         container["record"]["network-ip"] = ip_value
         runtime["network"] = apply_network(
             NetworkPlan(
@@ -2104,11 +2138,11 @@ def remove_container_firewall(
         return
     script = Path(__file__).with_name("net-firewall.py")
     command = ["uv", "run", "python", str(script), "remove", "--container-ip", container_ip]
-    if not netns:
-        network = runtime.get("network") if isinstance(runtime, dict) else None
-        netns = network.get("netns") if isinstance(network, dict) else None
     if isinstance(netns, str) and netns:
         command.extend(["--netns", netns])
+    else:
+        # 没有目标容器的当前 SandboxKey 时, 不得退回 runtime 或全局 pasta 猜测.
+        return
     result = run(command, timeout=30)
     if result.returncode == 0:
         return
@@ -2168,18 +2202,13 @@ def terminate(args: argparse.Namespace, repo: Path) -> int:
         sibling_name = sibling.get("name") if isinstance(sibling, dict) else None
         if not isinstance(sibling_name, str):
             continue
-        detail = podman_json(["podman", "inspect", sibling_name])
-        if detail:
-            sibling_netns = container_netns(detail[0])
-            if sibling_netns:
-                sibling_netnses.add(sibling_netns)
-    netns_candidates = set(sibling_netnses)
-    recorded_netns = network.get("netns") if isinstance(network, dict) else None
-    if isinstance(recorded_netns, str) and recorded_netns:
-        netns_candidates.add(recorded_netns)
-    live_pasta = pasta_netns()
-    if live_pasta:
-        netns_candidates.add(live_pasta)
+        sibling_netns = live_container_netns(sibling_name)
+        if sibling_netns:
+            sibling_netnses.add(sibling_netns)
+    netns_candidates: set[str] = set(sibling_netnses)
+    target_netns = live_container_netns(target_name) if target_name in observed_names else None
+    if target_netns:
+        netns_candidates.add(target_netns)
     remove_errors: list[str] = []
     for netns in sorted(netns_candidates):
         try:
@@ -2380,11 +2409,14 @@ def switch(args: argparse.Namespace, repo: Path) -> int:
     atomic_write_json(runtime_file, runtime)
     try:
         network = runtime.get("network") if isinstance(runtime.get("network"), dict) else {}
-        netns = network.get("netns") if isinstance(network, dict) else None
         if not partial_switch:
             for record in active_records:
-                target = dict(record)
-                remove_container_firewall(runtime, target, True, netns if isinstance(netns, str) else None)
+                name = record.get("name")
+                if not isinstance(name, str):
+                    continue
+                netns = live_container_netns(name)
+                if netns:
+                    remove_container_firewall(runtime, dict(record), True, netns)
         runtime["stage"] = "switch-network"
         atomic_write_json(runtime_file, runtime)
 
@@ -2579,13 +2611,30 @@ def resume_daemon_stale(daemon: dict[str, Any] | None, runtime: dict[str, Any]) 
     return daemon is None or bool(daemon.get("orphan"))
 
 
-def resume_network_status(runtime: dict[str, Any], container_ip_value: object) -> tuple[bool, str]:
+def resume_network_status(runtime: dict[str, Any], target: dict[str, Any]) -> tuple[bool, str]:
     network = runtime.get("network")
-    if not isinstance(network, dict) or not isinstance(container_ip_value, str):
+    container_name = target.get("name")
+    container_ip_value = target.get("network-ip")
+    if (
+        not isinstance(network, dict)
+        or not isinstance(container_name, str)
+        or not isinstance(container_ip_value, str)
+    ):
         return False, ""
-    netns = network.get("netns")
-    if not isinstance(netns, str) or not netns:
-        netns = pasta_netns()
+    inspected = run(["podman", "inspect", container_name])
+    if inspected.returncode != 0:
+        return False, ""
+    try:
+        rows = json.loads(inspected.stdout)
+    except json.JSONDecodeError:
+        return False, ""
+    if not isinstance(rows, list) or not rows or not isinstance(rows[0], dict):
+        return False, ""
+    detail = rows[0]
+    state = detail.get("State") if isinstance(detail.get("State"), dict) else {}
+    if state.get("Status") != "running":
+        return False, ""
+    netns = pasta_netns(detail)
     if not netns:
         return False, ""
     script = Path(__file__).with_name("net-firewall.py")
@@ -2689,7 +2738,7 @@ def resume(args: argparse.Namespace, repo: Path) -> int:
         )
     daemon_observed = daemon_state(repo, runtime)
     daemon_ready = not resume_daemon_stale(daemon_observed, runtime)
-    network_ready, _network_output = resume_network_status(runtime, target.get("network-ip"))
+    network_ready, _network_output = resume_network_status(runtime, target)
     active_observed = [item for item in candidates if not item.get("retired")]
     fingerprint = resume_decision_fingerprint(
         repo, runtime, active_observed, target, network_ready,
@@ -2803,9 +2852,9 @@ def resume(args: argparse.Namespace, repo: Path) -> int:
         runtime["stage"] = "resume-daemon"
         atomic_write_json(runtime_file, runtime)
 
-        netns = container_netns(detail) or pasta_netns()
+        netns = pasta_netns(detail)
         if not netns:
-            raise SwtError(3, "PARTIAL", "resume 找不到容器 netns")
+            raise SwtError(3, "PARTIAL", "resume 的 inspect 没有 SandboxKey")
         network = runtime.get("network") if isinstance(runtime.get("network"), dict) else {}
         daemon_address = daemon_container_address(str(daemon_record["addr"]))
         gateway = container_gateway(target_name, daemon_address)

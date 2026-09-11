@@ -68,6 +68,28 @@ class SwtFixture(unittest.TestCase):
             env=env,
         )
 
+    def run_swt_exact(self, *args: str, cwd: Path | None = None, env: dict[str, str] | None = None) -> subprocess.CompletedProcess[str]:
+        return subprocess.run(
+            ["uv", "run", "python", str(SCRIPT), *args],
+            cwd=cwd or ROOT,
+            capture_output=True,
+            text=True,
+            check=False,
+            env=env,
+        )
+
+    @staticmethod
+    def host_port_free(port: int) -> bool:
+        probe = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        probe.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        try:
+            probe.bind(("127.0.0.1", port))
+            return True
+        except OSError:
+            return False
+        finally:
+            probe.close()
+
     @staticmethod
     def state(result: subprocess.CompletedProcess[str]) -> dict:
         line = next(line for line in result.stdout.splitlines() if line.startswith("STATE "))
@@ -619,6 +641,23 @@ class SwtBirthFixture(SwtFixture):
         )
         return branch, mother
 
+    def container_netns(self, name: str) -> str:
+        detail = json.loads(subprocess.run(
+            ["podman", "inspect", name], capture_output=True, text=True, check=True,
+        ).stdout)[0]
+        value = detail.get("NetworkSettings", {}).get("SandboxKey")
+        self.assertIsInstance(value, str)
+        return value
+
+    def nft_table(self, netns: str, source: str | None = None) -> str:
+        result = subprocess.run(
+            ["podman", "unshare", "nsenter", f"--net={netns}", "nft", "list", "table", "inet", "swt"],
+            capture_output=True, text=True, check=False,
+        )
+        if result.returncode == 0 and (source is None or f"ip saddr {source}" in result.stdout):
+            return result.stdout
+        self.fail(f"未找到 nft 表或源地址: {source}")
+
     def config_values(self, key: str) -> list[str]:
         return subprocess.run(
             ["git", "-C", str(self.repo), "config", "--get-all", key],
@@ -657,6 +696,7 @@ class TestTS201BirthChain(SwtBirthFixture):
         self.assertIn("mother-create", decide.stdout)
         self.assertTrue(list((self.records / "runtime").glob("*/decisions/d-*.json")))
 
+        port_6080_free = self.host_port_free(6080)
         result = self.run_swt(
             *common, "--mode", "whitelist", "--allow", "127.0.0.1", "--new-mother",
         )
@@ -698,7 +738,12 @@ class TestTS201BirthChain(SwtBirthFixture):
         self.assertTrue(list(state["containers"]))
         container = state["containers"][0]
         self.assertEqual("absent", container["display"])
-        self.assertEqual(6080, container["vnc-port"])
+        self.assertIsInstance(container["vnc-port"], int)
+        if port_6080_free:
+            self.assertEqual(6080, container["vnc-port"])
+        else:
+            self.assertGreater(container["vnc-port"], 0)
+            self.assertNotEqual(6080, container["vnc-port"])
         inspect_out = subprocess.run(
             ["podman", "inspect", container["name"], "--format",
              "{{json .HostConfig.PortBindings}}|{{.HostConfig.ShmSize}}"],
@@ -729,6 +774,46 @@ class TestTS201BirthChain(SwtBirthFixture):
             self.assertIn("无 noVNC 交付", result.stdout)
         self.assertTrue(list((self.records / "runtime").glob("*.json")))
 
+class TestTS1xxHostname(SwtBirthFixture):
+    def birth_args(self) -> tuple[str, ...]:
+        return (
+            "birth", "--repo", str(self.repo), "--records-root", str(self.records),
+            "--branch", "feature/m12", "--image", "localhost/swt-m03:latest",
+            "--mode", "whitelist", "--allow", "127.0.0.1", "--new-mother",
+        )
+
+    def test_ts101_hostname_without_flag_decides(self) -> None:
+        result = self.run_swt_exact(*self.birth_args())
+        self.assertEqual(1, result.returncode, result.stderr)
+        self.assertIn("DECIDE ", result.stdout)
+        self.assertIn("hostname", result.stdout)
+        self.assertFalse((self.repo.parent / "demo-main-feature-m12").exists())
+        self.assertEqual([], subprocess.run(
+            ["podman", "ps", "-a", "--filter", f"label=sandbox-worktree.repo={self.repo.resolve()}",
+             "--format", "{{.Names}}"], capture_output=True, text=True, check=True,
+        ).stdout.splitlines())
+
+    def test_ts102_hostname_explicit_lands(self) -> None:
+        result = self.run_swt_exact(*self.birth_args(), "--hostname", "swt-m12-explicit")
+        self.assertEqual(0, result.returncode, result.stderr)
+        name = self.state(result)["containers"][0]["name"]
+        detail = json.loads(subprocess.run(
+            ["podman", "inspect", name], capture_output=True, text=True, check=True,
+        ).stdout)[0]
+        self.assertEqual("swt-m12-explicit", detail["Config"]["Hostname"])
+
+    def test_ts103_hostname_invalid_is_exit_2_before_resources(self) -> None:
+        result = self.run_swt_exact(*self.birth_args(), "--hostname", "invalid_hostname")
+        self.assertEqual(2, result.returncode)
+        self.assertTrue(result.stderr.startswith("FAIL "))
+        self.assertIn("--hostname 非法", result.stderr)
+        self.assertFalse((self.repo.parent / "demo-main-feature-m12").exists())
+        self.assertEqual([], subprocess.run(
+            ["podman", "ps", "-a", "--filter", f"label=sandbox-worktree.repo={self.repo.resolve()}",
+             "--format", "{{.Names}}"], capture_output=True, text=True, check=True,
+        ).stdout.splitlines())
+
+
 class TestTS212Environment(TestTS201BirthChain):
     def test_missing_podman_is_environment_error_before_state_change(self) -> None:
         fake = self.root / "path"
@@ -758,7 +843,8 @@ class TestTS213SshKey(TestTS201BirthChain):
 
 
 class TestTS210NftMerge(TestTS201BirthChain):
-    def test_second_container_merge_keeps_both_source_rules(self) -> None:
+    def test_second_container_rules_stay_in_each_container_netns(self) -> None:
+        first_6080_free = self.host_port_free(6080)
         first = self.birth_ready()
         second_result = self.run_swt(
             "birth", "--repo", str(self.repo), "--records-root", str(self.records), "--branch", "feature/m12",
@@ -768,27 +854,21 @@ class TestTS210NftMerge(TestTS201BirthChain):
         self.assertEqual(0, second_result.returncode, second_result.stderr)
         state = self.state(second_result)
         self.assertEqual(2, len(state["containers"]))
-        netns_lines = [
-            line for line in subprocess.run(
-                ["pgrep", "-af", "pasta --config-net"],
-                capture_output=True, text=True, check=False,
-            ).stdout.splitlines()
-            if "--netns" in line
-        ]
-        self.assertTrue(netns_lines, "未找到 pasta netns")
-        match = re.search(r"--netns\s+(\S+)", netns_lines[0])
-        self.assertIsNotNone(match, netns_lines[0])
-        netns = match.group(1)
-        table = subprocess.run(
-            ["podman", "unshare", "nsenter", f"--net={netns}", "nft", "list", "table", "inet", "swt"],
-            capture_output=True, text=True, check=True,
-        ).stdout
+        # 每个容器的规则必须在它自己的 SandboxKey 中可见,
+        # 不能靠全局 pasta 进程顺序判断.
         for item in state["containers"]:
+            netns = self.container_netns(item["name"])
+            table = self.nft_table(netns, source=item["network-ip"])
             self.assertIn(f"ip saddr {item['network-ip']}", table)
-        # D040: 第二容器诞生时宿主 6080 已被首容器占用 → 回落同回环动态端口
         first = next(item for item in state["containers"] if item["name"] != "swt-m12-merge-second")
         second = next(item for item in state["containers"] if item["name"] == "swt-m12-merge-second")
-        self.assertEqual(6080, first["vnc-port"])
+        if first_6080_free:
+            self.assertEqual(6080, first["vnc-port"])
+        else:
+            self.assertGreater(first["vnc-port"], 0)
+            self.assertNotEqual(6080, first["vnc-port"])
+        # D040: 第二容器诞生时宿主 6080 已被首容器或外部容器占用,
+        # 回落到回环动态端口.
         self.assertIsNotNone(second["vnc-port"])
         self.assertNotEqual(6080, second["vnc-port"])
         second_bindings = json.loads(subprocess.run(
@@ -1293,21 +1373,13 @@ class TestTS301Terminate(SwtBirthFixture):
         self.assertEqual([second_id + ".json"], [path.name for path in receipt_files])
 
     def nft_table(self, netns: str | None = None, source: str | None = None) -> str:
-        # pasta 的 --netns 参数对应容器 rootless netns; 不同 netns 可能复用同一个源 IP.
-        netnses = [netns] if netns else []
-        for line in subprocess.run(
-            ["pgrep", "-af", "pasta --config-net"], capture_output=True, text=True, check=False,
-        ).stdout.splitlines():
-            match = re.search(r"--netns\s+(\S+)", line)
-            if match and match.group(1) not in netnses:
-                netnses.append(match.group(1))
-        for candidate in netnses:
-            result = subprocess.run(
-                ["podman", "unshare", "nsenter", f"--net={candidate}", "nft", "list", "table", "inet", "swt"],
-                capture_output=True, text=True, check=False,
-            )
-            if result.returncode == 0 and (source is None or f"ip saddr {source}" in result.stdout):
-                return result.stdout
+        self.assertIsNotNone(netns, "测试必须显式提供目标容器 SandboxKey")
+        result = subprocess.run(
+            ["podman", "unshare", "nsenter", f"--net={netns}", "nft", "list", "table", "inet", "swt"],
+            capture_output=True, text=True, check=False,
+        )
+        if result.returncode == 0 and (source is None or f"ip saddr {source}" in result.stdout):
+            return result.stdout
         self.fail(f"未找到 nft 表或源地址: {source}")
 
     def test_multiple_containers_require_name_and_remove_only_selected_network_rule(self) -> None:
@@ -1326,32 +1398,32 @@ class TestTS301Terminate(SwtBirthFixture):
         self.assertIn("--name", missing_name.stderr)
         self.assertIn(first["containers"][0]["name"], missing_name.stderr)
         runtime = self.runtime_data()
-        netns = runtime["network"]["netns"]
-        before = self.nft_table(netns)
-        first_ip = first["containers"][0]["network-ip"] if "network-ip" in first["containers"][0] else runtime["containers"][0]["network-ip"]
+        first_name = first["containers"][0]["name"]
+        first_ip = first["containers"][0]["network-ip"]
+        first_netns = self.container_netns(first_name)
+        before = self.nft_table(first_netns, source=first_ip)
         sibling = next(item for item in runtime["containers"] if item["name"] == "swt-m12-second")
-        sibling_netns_before = json.loads(
-            subprocess.run(["podman", "inspect", "swt-m12-second"], capture_output=True, text=True, check=True).stdout
-        )[0].get("NetworkSettings", {}).get("SandboxKey")
+        sibling_netns_before = self.container_netns("swt-m12-second")
         sibling_before = self.nft_table(sibling_netns_before, source=sibling["network-ip"])
-        self.assertIn(f"ip saddr {first_ip}", sibling_before)
-        selected = self.terminate("--name", first["containers"][0]["name"])
+        self.assertIn(f"ip saddr {first_ip}", before)
+        self.assertIn(f"ip saddr {sibling['network-ip']}", sibling_before)
+        selected = self.terminate("--name", first_name)
         self.assertEqual(0, selected.returncode, selected.stderr)
-        sibling_detail = json.loads(
-            subprocess.run(["podman", "inspect", "swt-m12-second"], capture_output=True, text=True, check=True).stdout
-        )[0]
-        sibling_netns = sibling_detail.get("NetworkSettings", {}).get("SandboxKey")
+        sibling_netns = self.container_netns("swt-m12-second")
         after = self.nft_table(sibling_netns, source=sibling["network-ip"])
         self.assertIn(f"ip saddr {sibling['network-ip']}", after)
-        if first_ip != sibling["network-ip"]:
+        if first_ip == sibling["network-ip"]:
+            # pasta 映射下多个容器可能共享宿主源 IP, 规则文本无法区分容器.
+            self.assertIn(f"ip saddr {first_ip}", after)
+        elif first_netns == sibling_netns_before:
             self.assertLess(
                 after.count(f"ip saddr {first_ip}"),
                 sibling_before.count(f"ip saddr {first_ip}"),
             )
         else:
-            self.assertIn(f"ip saddr {sibling['network-ip']}", after)
+            self.assertNotIn(f"ip saddr {first_ip}", after)
         self.assertEqual(0, subprocess.run(["podman", "inspect", "swt-m12-second"], capture_output=True).returncode)
-        if first_ip != sibling["network-ip"]:
+        if first_netns == sibling_netns_before and first_ip != sibling["network-ip"]:
             self.assertNotEqual(before, after)
 
     def test_missing_container_with_daemon_residue_converges(self) -> None:
@@ -1775,20 +1847,13 @@ class TestTS5Resume(SwtBirthFixture):
         return next(line.split()[1] for line in result.stdout.splitlines() if line.startswith("DECIDE "))
 
     def nft_table(self, netns: str | None = None, source: str | None = None) -> str:
-        candidates = [netns] if netns else []
-        for line in subprocess.run(
-            ["pgrep", "-af", "pasta --config-net"], capture_output=True, text=True, check=False,
-        ).stdout.splitlines():
-            match = re.search(r"--netns\s+(\S+)", line)
-            if match and match.group(1) not in candidates:
-                candidates.append(match.group(1))
-        for candidate in candidates:
-            result = subprocess.run(
-                ["podman", "unshare", "nsenter", f"--net={candidate}", "nft", "list", "table", "inet", "swt"],
-                capture_output=True, text=True, check=False,
-            )
-            if result.returncode == 0 and (source is None or f"ip saddr {source}" in result.stdout):
-                return result.stdout
+        self.assertIsNotNone(netns, "测试必须显式提供目标容器 SandboxKey")
+        result = subprocess.run(
+            ["podman", "unshare", "nsenter", f"--net={netns}", "nft", "list", "table", "inet", "swt"],
+            capture_output=True, text=True, check=False,
+        )
+        if result.returncode == 0 and (source is None or f"ip saddr {source}" in result.stdout):
+            return result.stdout
         self.fail(f"未找到 nft 表或源地址: {source}")
 
     def delete_source_rules(self, netns: str, source: str) -> None:
@@ -1814,6 +1879,42 @@ class TestTS5Resume(SwtBirthFixture):
                 check=False, capture_output=True, text=True,
             )
             self.assertEqual(0, deleted.returncode, deleted.stderr)
+
+    def test_birth_and_resume_use_target_netns_with_interference_container(self) -> None:
+        interference = f"swt-m12-interference-{self.root.name[-6:]}"
+        created = subprocess.run(
+            ["podman", "create", "--name", interference, self.IMAGE_REF, "sleep", "3600"],
+            capture_output=True, text=True, check=False,
+        )
+        self.assertEqual(0, created.returncode, created.stderr)
+        self.container_names.append(interference)
+        started = subprocess.run(["podman", "start", interference], capture_output=True, text=True, check=False)
+        self.assertEqual(0, started.returncode, started.stderr)
+        interference_netns = self.container_netns(interference)
+
+        born = self.birth_ready()
+        target = born["containers"][0]
+        target_netns = self.container_netns(target["name"])
+        self.assertNotEqual(interference_netns, target_netns)
+        target_rule = f"ip saddr {target['network-ip']}"
+        self.assertIn(target_rule, self.nft_table(target_netns, source=target["network-ip"]))
+        foreign = subprocess.run(
+            ["podman", "unshare", "nsenter", f"--net={interference_netns}", "nft",
+             "list", "table", "inet", "swt"], capture_output=True, text=True, check=False,
+        )
+        self.assertNotIn(target_rule, foreign.stdout)
+
+        subprocess.run(["podman", "stop", target["name"]], check=True, capture_output=True, text=True)
+        self.assertEqual(1, self.resume("--name", target["name"]).returncode)
+        resumed = self.resume("--name", target["name"], "--confirm")
+        self.assertEqual(0, resumed.returncode, resumed.stderr)
+        resumed_netns = self.container_netns(target["name"])
+        self.assertIn(target_rule, self.nft_table(resumed_netns, source=target["network-ip"]))
+        foreign_after = subprocess.run(
+            ["podman", "unshare", "nsenter", f"--net={interference_netns}", "nft",
+             "list", "table", "inet", "swt"], capture_output=True, text=True, check=False,
+        )
+        self.assertNotIn(target_rule, foreign_after.stdout)
 
     def test_cold_confirm_without_receipt_still_decides(self) -> None:
         before = self.birth_ready()
@@ -1873,7 +1974,7 @@ class TestTS5Resume(SwtBirthFixture):
         self.assertEqual("running", container["state"])
         self.assertTrue(state["daemon"]["pid"] != old_pid)
         self.assertEqual(0, subprocess.run(["kill", "-0", str(state["daemon"]["pid"])], check=False).returncode)
-        table = self.nft_table(state["network"].get("netns"), source=container["network-ip"])
+        table = self.nft_table(self.container_netns(name), source=container["network-ip"])
         self.assertIn(f"ip saddr {container['network-ip']}", table)
         self.assertEqual(0, self.ssh_run(state, "true").returncode)
         fetched = self.ssh_run(state, "git -C /home/bolo/Workspace/feature/m12 fetch --quiet origin")
@@ -1983,9 +2084,12 @@ class TestTS5Resume(SwtBirthFixture):
         self.assertEqual(1, decide.returncode, decide.stderr)
         completed = self.resume("--name", target["name"], "--confirm")
         self.assertEqual(0, completed.returncode, completed.stderr)
-        table = self.nft_table(self.runtime_data()["network"]["netns"])
-        self.assertIn(f"ip saddr {target['network-ip']}", table)
-        self.assertIn(f"ip saddr {sibling['network-ip']}", table)
+        target_netns = self.container_netns(target["name"])
+        sibling_netns = self.container_netns(sibling["name"])
+        target_table = self.nft_table(target_netns, source=target["network-ip"])
+        sibling_table = self.nft_table(sibling_netns, source=sibling["network-ip"])
+        self.assertIn(f"ip saddr {target['network-ip']}", target_table)
+        self.assertIn(f"ip saddr {sibling['network-ip']}", sibling_table)
         self.assertEqual("running", next(item for item in self.state(completed)["containers"] if item["name"] == sibling["name"])["state"])
 
     def test_ts508_port_collision_is_partial_and_release_allows_retry(self) -> None:
