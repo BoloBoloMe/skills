@@ -967,6 +967,68 @@ def display_stack_status(name: str) -> tuple[bool, str]:
     return result.returncode == 0, (result.stdout + result.stderr).strip()
 
 
+WAYLAND_CONTAINER_DIR = "/run/swt-wayland"  # 宿主机 wayland socket 直挂目录 (D051)
+
+
+def host_wayland_socket() -> Path | None:
+    """宿主机 wayland socket 路径 (D051 本机直通); 缺席返回 None."""
+    xdg = os.environ.get("XDG_RUNTIME_DIR") or f"/run/user/{os.getuid()}"
+    display = os.environ.get("WAYLAND_DISPLAY") or "wayland-0"
+    candidate = Path(xdg) / display
+    try:
+        return candidate if candidate.is_socket() else None
+    except OSError:
+        return None
+
+
+def relax_host_wayland_perms(socket_path: Path) -> None:
+    """chmod 0777 宿主机 wayland socket (D051 权限解法): rootless uid_map 下直挂
+    socket 在容器内属主映射为 root, 0755 属主权下 bolo 连不上; 777 后 bolo 可连.
+    宿主暴露面 ≈ 零: 父目录 /run/user/<uid> 是 0700, 其他用户够不着路径; 本机
+    同账户进程本来就以 bolo 身份可连. 登录会话重启会重置权限, 故 birth/resume
+    都重保. 失败只警不阻 (回退 noVNC 由后续 probe 判定)."""
+    try:
+        os.chmod(socket_path, 0o777)
+    except OSError as exc:
+        print(f"[SWT] chmod 0777 {socket_path} 失败: {exc}; 本机直通可能降级", file=sys.stderr)
+
+
+def host_display_probe(name: str) -> tuple[bool, str]:
+    """wayland 直通实测 (D051): 以 bolo 身份 unix connect 直挂 socket, 验证整条
+    权限链; python3 缺席 (极简镜像) 时回退 test -S 存在性检查."""
+    script = (
+        "import socket; s = socket.socket(socket.AF_UNIX); s.settimeout(3); "
+        f"s.connect('{WAYLAND_CONTAINER_DIR}/wayland-0'); print('connect-ok')"
+    )
+    result = run(["podman", "exec", "--user", "bolo", name, "python3", "-c", script], timeout=30)
+    if result.returncode == 0:
+        return True, result.stdout.strip()
+    fallback = run([
+        "podman", "exec", "--user", "bolo", name, "test", "-S",
+        f"{WAYLAND_CONTAINER_DIR}/wayland-0",
+    ], timeout=30)
+    if fallback.returncode == 0:
+        return True, "socket 存在 (python3 缺席, 未做 connect 实测)"
+    return False, (result.stderr or result.stdout).strip()[-160:]
+
+
+def ensure_host_display(runtime: dict[str, Any], runtime_file: Path, record: dict[str, Any]) -> str:
+    """birth/resume 共用的本机直通重保 + 实测 (D051). 失败降级回退 noVNC, 不阻断
+    终端工作. 返回 ok / degraded / absent."""
+    if record.get("host-display") != "mounted":
+        return "absent"
+    name = str(record.get("name"))
+    socket_path = host_wayland_socket()
+    if socket_path is not None:
+        relax_host_wayland_perms(socket_path)
+    ok, detail = host_display_probe(name)
+    record["host-display"] = "ok" if ok else "degraded"
+    upsert_container_record(runtime, record, runtime_file)
+    if not ok:
+        print(f"[SWT] 本机直通降级 (wayland 实测未过: {detail}); 回退 noVNC, 终端工作不受影响", file=sys.stderr)
+    return str(record["host-display"])
+
+
 def run_display_verify(name: str, evidence_dir: Path) -> tuple[bool, str]:
     """全量通道检查 (HTTP/ws/RFB/空白基线/渲染基线 0.2/headless 回切), 独立模块."""
     result = run(
@@ -1017,6 +1079,7 @@ def print_delivery_lines(
     display_status: str | None,
     key_path: Path | None,
     lan: str | None,
+    host_display: str | None = None,
 ) -> None:
     """固定交付项 (每次 birth/resume 交付齐发, 禁止遗漏, D039/决策 8):
     ssh 双入口 (本机/局域网, 都带端口) + noVNC URL + 局域网隧道命令
@@ -1047,6 +1110,11 @@ def print_delivery_lines(
               " 隧道命令待显示栈恢复后随下次交付附发")
     elif display_status == "ok":
         print("[SWT] 显示栈 ok 但容器无 6080 映射, 隧道命令未附发 (异常形态, 可跑 swt display-check 诊断)")
+    if host_display == "ok":
+        print("[SWT] 本机直通: wayland 已接通 — 容器内 headed 窗口 (登录墙等) 将直接弹在宿主机桌面,"
+              " 本机场景可不开 noVNC; 远程仍走上方隧道")
+    elif host_display == "degraded":
+        print("[SWT] 本机直通: 降级 (wayland 实测未过, 已回退 noVNC; 可用 swt display-check 诊断)")
     print(f"[SWT] herdr remote (host):    herdr --remote ssh://bolo@127.0.0.1:{ssh_port}")
     if lan:
         print(f"[SWT] herdr remote (局域网): herdr --remote ssh://bolo@{lan}:{ssh_port}")
@@ -1442,6 +1510,18 @@ def create_and_start_container(args: argparse.Namespace, repo: Path, image: dict
     bridge_dir = git_bridge_dir(records_root, identity)
     bridge_dir.mkdir(parents=True, exist_ok=True)
     command.extend(["-v", f"{bridge_dir}:{GIT_BRIDGE_CONTAINER_DIR}"])
+    # 本机 wayland 直通 (D051): 宿主机 socket 存在即恒挂 + 放宽属主权 (容器 bolo
+    # 可连), 网络白名单语义不受影响 (socket 非网络通道). env 写入 env map, ssh 面
+    # 经 ~/.ssh/environment 同步.
+    wayland_socket = host_wayland_socket()
+    if wayland_socket is not None:
+        relax_host_wayland_perms(wayland_socket)
+        command.extend(["-v", f"{wayland_socket}:{WAYLAND_CONTAINER_DIR}/wayland-0"])
+        command.extend(["-e", f"XDG_RUNTIME_DIR={WAYLAND_CONTAINER_DIR}", "-e", "WAYLAND_DISPLAY=wayland-0"])
+        env["XDG_RUNTIME_DIR"] = WAYLAND_CONTAINER_DIR
+        env["WAYLAND_DISPLAY"] = "wayland-0"
+        if Path("/dev/dri").is_dir():
+            command.extend(["--device", "/dev/dri"])
     # agent 提示词母本只读单文件挂载 (P1-6): 每容器留档副本, rootless 下呈现为
     # root 属主 0644, 容器 bolo 可读不可写
     prompts_dir = stage_agent_prompts(records_root, identity, name)
@@ -1456,6 +1536,7 @@ def create_and_start_container(args: argparse.Namespace, repo: Path, image: dict
         "name": name, "branch": branch, "podman-id": detail.get("Id"), "state": "created",
         "ssh-port": None, "vnc-port": None, "image-digest": image.get("digest"), "retired": False,
         "display": "pending", "dirty": {"uncommitted": None, "unpushed": None, "relation": None, "reachable": False},
+        "host-display": "mounted" if wayland_socket is not None else "absent",
     }
     runtime["stage"] = "container-created"
     upsert_container_record(runtime, record, runtime_file)
@@ -1581,7 +1662,7 @@ def birth_display_gate_reentry(
             "birth: 完成 (显示栈降级, 终端工作不受影响)",
             record.get("ssh-port"), record.get("vnc-port"), "degraded",
             Path(record["ssh_private_key"]) if record.get("ssh_private_key") else None,
-            lan_ip(),
+            lan_ip(), record.get("host-display"),
         )
         print_birth_state(repo, records_root, runtime, runtime.get("mother") or {}, image, runtime.get("network"), "[SWT] birth: 已完成 (显示栈降级)")
         return 0
@@ -1599,7 +1680,7 @@ def birth_display_gate_reentry(
             "birth: 完成 (显示栈重验通过)",
             record.get("ssh-port"), record.get("vnc-port"), "ok",
             Path(record["ssh_private_key"]) if record.get("ssh_private_key") else None,
-            lan_ip(),
+            lan_ip(), record.get("host-display"),
         )
         print_birth_state(repo, records_root, runtime, runtime.get("mother") or {}, image, runtime.get("network"), "[SWT] birth: 已完成 (显示栈重验通过)")
         return 0
@@ -1895,6 +1976,7 @@ def birth(args: argparse.Namespace, repo: Path) -> int:
         runtime["stage"] = "born"
         runtime["network"] = {**runtime["network"], "gateway": gateway_address, "container-ip": ip_value, "netns": shared_netns}
         atomic_write_json(runtime_file, runtime)
+        host_display_status = ensure_host_display(runtime, runtime_file, container["record"])
         display_status = birth_display_gate(args, repo, records_root, identity, runtime, runtime_file, container)
         if display_status == "fail":
             return 1
@@ -1910,6 +1992,7 @@ def birth(args: argparse.Namespace, repo: Path) -> int:
         display_status,
         key,
         lan_ip(),
+        host_display_status,
     )
     state = empty_state(repo)
     observed_daemon = daemon_state(repo, runtime)
@@ -3024,11 +3107,13 @@ def resume(args: argparse.Namespace, repo: Path) -> int:
         runtime["stage"] = "born"
         atomic_write_json(runtime_file, runtime)
         display_status = ensure_display_after_resume(runtime, runtime_file, target)
+        host_display_status = ensure_host_display(runtime, runtime_file, target)
         print_delivery_lines(
             "resume: 已就绪, 什么都没有需要恢复",
             target.get("ssh-port"), target.get("vnc-port"), display_status,
             Path(target["ssh_private_key"]) if target.get("ssh_private_key") else None,
             lan_ip(),
+            host_display_status,
         )
         # STATE 用刚写盘的 runtime 容器记录 (含本分支刚更新的 display),
         # 不用函数头取的 observed 快照 — 那是显示栈检查前的旧值, 会与交付行自相矛盾
@@ -3149,6 +3234,7 @@ def resume(args: argparse.Namespace, repo: Path) -> int:
         atomic_write_json(runtime_file, runtime)
 
         ensure_display_after_resume(runtime, runtime_file, record)
+        ensure_host_display(runtime, runtime_file, record)
         # auth.json 重注入 (D046): 幂等, 顺带让换 key 在 resume 后生效
         inject_auth_json(target_name)
         ensure_container_git_forward(target_name)
@@ -3181,6 +3267,7 @@ def resume(args: argparse.Namespace, repo: Path) -> int:
         record.get("ssh-port"), record.get("vnc-port"), record.get("display"),
         Path(record["ssh_private_key"]) if record.get("ssh_private_key") else None,
         lan_ip(),
+        record.get("host-display"),
     )
     print_state(
         build_state(repo, records_root, runtime, mother=_UNSET, containers=observed,

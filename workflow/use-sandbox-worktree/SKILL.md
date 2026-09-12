@@ -73,6 +73,7 @@ uv run python scripts/swt.py birth [--repo <主仓>] --branch <母体分支名�
   - 本机: `ssh -p <宿主端口> bolo@127.0.0.1` — 跨 stop/start 稳定, 用 `podman port <容器名>` 或 STATE 的 `ssh-port` 发现, 不记录端口 (rm 重建才变).
   - 局域网: `ssh -p <宿主端口> bolo@<host-LAN-IP>` — 远程机走同一条带端口命令.
 - noVNC URL (本机浏览器直接开): `http://127.0.0.1:<vnc宿主端口>/vnc.html?resize=scale` — 容器内显示栈已自动拉起并经 birth 全量检查; 6080 只发布到宿主回环, 缺省 vnc 宿主端口 6080, 被占 (多容器并存) 时动态回落, 实际端口看 STATE 的 `vnc-port`.
+- 本机直通状态 (D051): STATE 容器记录 `host-display=ok` 时交付注明 — 登录墙等 headed 窗口直接弹宿主机桌面, 本机可不开 noVNC; `degraded` 注明已回退 noVNC; `absent` 不打 (远程/纯服务器宿主常态).
 - 局域网隧道命令 (固定交付项, 禁止遗漏): `ssh -p <宿主端口> -L 6080:127.0.0.1:<vnc宿主端口> bolo@<host-LAN-IP>` — 我在远程机开这条隧道后, 浏览器开 `http://127.0.0.1:6080/vnc.html?resize=scale`; noVNC 无密码, 隧道 (即容器 ssh 凭据) 就是门槛.
 - 登录凭证 (两种, 都随 terminate 清除, 落 `<records-root>/runtime/<identity>/ssh/`, 0600):
   - 密码: 固定 `sandbox` (用户拍板, 风险见风险明示节), `<容器名>.password` 留档; 人登录用.
@@ -94,7 +95,9 @@ uv run python scripts/swt.py birth [--repo <主仓>] --branch <母体分支名�
 
 **展示链**: 容器内展示由 `present` skill 的容器分支全权负责 (判定/bind/端口/url 语义见其 "容器内分支" 节), 你侧只剩一项: host 侧用 `podman port` 发现映射端口, 组装交付 URL 给我.
 
-**显示栈 (内置)**: 每个工作容器内置 VNC 显示栈 (Xvfb + x11vnc + websockify/noVNC + 中文字体 + playwright chromium + swt-vnc helper, 来自 display 层镜像), 6080 只发布到宿主回环 (127.0.0.1, 多容器并存时动态回落, D040). birth/resume 自动 `podman exec <容器> swt-vnc start` 拉起; 手动开关: `podman exec <容器名> swt-vnc start|stop|status`. headed 浏览器过登录墙: 容器内约定 `BROWSER_HEADED=true DISPLAY=:99` (access-web 同源), 登录弹窗由你经 noVNC 或 ssh 人工操作; 登录态 profile 落容器内 /tmp, 容器存续期内跨 ssh 会话复用, rm 即失. 通道体检: `uv run python scripts/swt.py display-check [--name <容器>]` (noVNC HTTP/ws/RFB banner/空白基线/渲染基线 0.2/headless 回切, PPM 证据落 evidence 目录; 退出码 0 过/1 检查未过/2 传输失败, 诊断语义非 DECIDE). 门禁语义 (D041): birth 跑全量检查, 失败出 DECIDE (继续只开终端 --display-continue / 重验 --display-recheck / terminate 终结); resume 只做 swt-vnc status 级秒级检查, 失败降级不阻断终端工作, STATE 标显示栈状态 + 汇报注明. 容器镜像未含 swt-vnc (旧镜像/极简镜像) → 显示栈缺席 (STATE 标 absent), 跳过不判失败.
+**显示栈 (内置)**: 每个工作容器内置 VNC 显示栈 (Xvfb + x11vnc + websockify/noVNC + 中文字体 + playwright chromium + swt-vnc helper, 来自 display 层镜像), 6080 只发布到宿主回环 (127.0.0.1, 多容器并存时动态回落, D040). birth/resume 自动 `podman exec <容器> swt-vnc start` 拉起; 手动开关: `podman exec <容器名> swt-vnc start|stop|status`. headed 浏览器过登录墙: 容器内约定 `BROWSER_HEADED=true` + 选路环境变量 (直通在场用 wayland, 缺席用 `DISPLAY=:99`, 见下段), 登录弹窗由你经弹出的窗口/noVNC 或 ssh 人工操作; 登录态 profile 落容器内 /tmp, 容器存续期内跨 ssh 会话复用, rm 即失. 通道体检: `uv run python scripts/swt.py display-check [--name <容器>]` (noVNC HTTP/ws/RFB banner/空白基线/渲染基线 0.2/headless 回切 + wayland 直通探测, PPM 证据落 evidence 目录; 退出码 0 过/1 检查未过/2 传输失败, 诊断语义非 DECIDE). 门禁语义 (D041): birth 跑全量检查, 失败出 DECIDE (继续只开终端 --display-continue / 重验 --display-recheck / terminate 终结); resume 只做 swt-vnc status 级秒级检查, 失败降级不阻断终端工作, STATE 标显示栈状态 + 汇报注明. 容器镜像未含 swt-vnc (旧镜像/极简镜像) → 显示栈缺席 (STATE 标 absent), 跳过不判失败.
+
+**本机直通 (D051)**: 宿主机存在 wayland socket (本机桌面会话) 时, birth 恒挂进容器 (`-v <宿主 socket>:/run/swt-wayland/wayland-0`) 并烘 `XDG_RUNTIME_DIR=/run/swt-wayland`/`WAYLAND_DISPLAY=wayland-0` (+ `--device /dev/dri` GPU, 缺席不挂). 直挂 socket 属主经 rootless uid_map 映射为容器 root, 0755 属主权下 bolo 连不上 — 解法是 **host 侧 `chmod 0777` 宿主机 socket** (birth/resume 都重保, 登录会话重启会重置); 父目录 `/run/user/<uid>` 为 0700, 其他用户够不着路径, 暴露面≈零. **禁用 socat 中继**: wayland 靠 SCM_RIGHTS 传 fd, 中继截断 fd 传递, chromium 必报 Fatal Wayland communication error (F019). headed 浏览器优先 `--ozone-platform=wayland` 走宿主机桌面 (原生窗口/GPU/fcitx 中文输入/剪贴板互通), 实测不过回退 `DISPLAY=:99` noVNC. **直通只走 wayland, 禁挂 X11 socket** (X11 协议允许跨客户端键盘嗅探/注入). 状态值 ok/degraded/absent 落 STATE 容器记录 `host-display`; 无 socket 环境 (纯服务器宿主) 恒 absent, 行为 = 旧形态.
 
 **多容器共推同一母体**: 允许. 容器只准快进推送, 后推的那个会被 git 以历史分叉为由拒绝: 容器内 `git fetch` → 解冲突 → 重推 (git 原生串行化, 无新机制).
 
@@ -206,6 +209,7 @@ stdout 末行 `STATE {...}` 单行 json (只加字段不改名); stderr 首行 `
 
 - **auth.json 启动后经 stdin 注入**进容器 (birth/resume 时 `podman exec` 写入 + chown bolo 600, host 缺失则跳过并警告): 是拷贝不是挂载, 物理上不可能写回 host, 不防读 — 容器内恶意依赖可读 token 并经白名单内 LLM 域名外传, 已接受. 不烤镜像层, 换 key 后下次 birth/resume 自动带新值 (D046; D044 的 ro 挂载形态已被 F014 证伪: rootless uid_map 下 host bolo 文件在容器内呈现为 root 属主, ro+0600 挂载 = 容器 bolo 永不可读).
 - **noVNC 无认证但只发布到宿主回环**: x11vnc `-nopw`, 门槛 = 本机账户或容器 ssh 凭据持有者 (隧道命令即交付物); 局域网内其他设备直接够不着 6080 (D040). 这不是零风险: 拿到容器 ssh 凭据的人同时拿到一个已登录浏览器的完全控制.
+- **本机直通信任面 (D051)**: 挂 wayland socket 后容器内任意进程可在宿主机桌面开窗口/读剪贴板 (distrobox 同级信任), 用户已拍板接受; 只走 wayland 协议 (按客户端隔离), 永不挂 X11 socket. 网络白名单语义零变化 (socket 非网络通道).
 - **git 守护进程无认证/审计**: 只靠 "同一时刻只有一个分支可写" 的拓扑防容器 agent 越权; daemon 只听宿主回环 (P0-1 起), 局域网够不着, 暴露面收窄为宿主本机账户 (本机任何进程可连回环端口快进推母体分支).
 - **whitelist 自动放行网关地址** (DNS 依赖) = 容器可经网关地址访问 host 全部对外监听 (非仅本机回环) 的端口, 按 IP 放行无法收窄到单端口; 出访互联网方向仍收敛.
 - **netns 身份绑定**: nft 规则只允许写入目标容器当前 `podman inspect` 的 `NetworkSettings.SandboxKey`. stop/start 后旧路径可能失效, runtime 记录不用于猜测; 全局 `pgrep -af 'pasta --config-net'` 只在唯一实例时可作兼容兜底, 发现多个实例直接失败, 防止规则误写到别的容器.
@@ -218,6 +222,7 @@ stdout 末行 `STATE {...}` 单行 json (只加字段不改名); stderr 首行 `
 全部容器操作命令集中此节, 换/加 provider 时只改这里:
 - 生命周期: `podman create --name <名> --label ... -p 22 -p 127.0.0.1:6080:6080 (被占时 -p 127.0.0.1::6080) --shm-size=1g -v <records-root>/runtime/<identity>/git-bridge:/run/swt-git -v <母本留档>/<f>_AGENTS.md:<agent 配置路径>/AGENTS.md:ro [-e 继承env] <镜像>` / `podman start|stop|rm -f` (容器不设内存/CPU 上限, D045); auth.json 不走挂载, 启动后 `podman exec -i <容器> sh -c 'install -d -o bolo -g bolo ...; cat > .../auth.json; chown bolo:bolo; chmod 600' < host-auth.json` 注入 (D046)
 - git 通道 (P0-1): host 侧 `socat UNIX-LISTEN:<git-bridge>/git.sock,fork,mode=600 TCP:127.0.0.1:<daemon端口>`; 容器内 `podman exec -d <容器> socat TCP-LISTEN:9418,bind=127.0.0.1,fork,reuseaddr UNIX-CONNECT:/run/swt-git/git.sock`; 桥进程发现: `pgrep -f 'socat.*UNIX-LISTEN:.*git-bridge/git.sock'`
+- 本机直通 (D051): create 时 `-v <宿主wayland socket>:/run/swt-wayland/wayland-0 -e XDG_RUNTIME_DIR=/run/swt-wayland -e WAYLAND_DISPLAY=wayland-0 [--device /dev/dri]` (宿主机 socket 存在才挂); host 侧 `chmod 0777 <宿主wayland socket>` (birth/resume 重保, 会话重启重置); 禁 socat 中继 (F019)
 - 端口发现: `podman port <容器名>` (22 = ssh, 6080 = noVNC); 状态: `podman ps -a --filter label=sandbox-worktree.repo=<主仓>`
 - 镜像: `podman build` / `podman images --filter label=run.sandbox-worktree.project-id=<主仓路径>` / `podman inspect`
 - 容器内操作: `podman exec` (key 注入 / swt-vnc start|stop|status / display 检查经 swt-display.py); 防火墙注入: `podman unshare nsenter --net=<容器网络命名空间> nft -f -`

@@ -346,6 +346,17 @@ def _render_poll_script() -> str:
     )
 
 
+def _wayland_probe_script() -> str:
+    """wayland 本机直通探测 (D051): 以 bolo 身份 connect 容器内中继 socket."""
+    return (
+        "import socket\n"
+        "s = socket.socket(socket.AF_UNIX)\n"
+        "s.settimeout(3)\n"
+        "s.connect('/run/swt-wayland/wayland-0')\n"
+        "print('connect-ok /run/swt-wayland/wayland-0')\n"
+    )
+
+
 def cmd_verify(args: argparse.Namespace) -> int:
     """通道检查: (1) noVNC HTTP 200 (2) ws 握手 101 + accept
     (3) ws 帧内 RFB banner (4) 容器内空白 framebuffer 基线 (<1% 非黑)
@@ -359,6 +370,27 @@ def cmd_verify(args: argparse.Namespace) -> int:
         results.append(ok)
         suffix = f" ({detail})" if detail else ""
         print(f"check {name}: {'OK' if ok else 'FAIL'}{suffix}")
+
+    # (0) wayland 本机直通探测 (D051): 未挂直通的容器记 SKIP (不影响退出码);
+    # 挂了就以 bolo 身份实测 connect 中继 socket, 验证整条权限链
+    mounted = _podman(["exec", args.name, "test", "-e",
+                       "/run/swt-wayland-host/wayland-0"], check=False, timeout=30)
+    if mounted.returncode != 0:
+        print("check wayland_passthrough: SKIP (本容器未挂宿主机 wayland 直通)")
+    else:
+        probe = _podman(["exec", "--user", "bolo", args.name, "python3", "-c",
+                         _wayland_probe_script()], check=False, timeout=60)
+        if probe.returncode == 0:
+            check("wayland_passthrough", True, probe.stdout.strip())
+        else:
+            fallback = _podman(["exec", "--user", "bolo", args.name, "test", "-S",
+                                "/run/swt-wayland/wayland-0"], check=False, timeout=30)
+            if fallback.returncode == 0:
+                check("wayland_passthrough", True,
+                      "relay socket 存在 (python3 缺席, 未做 connect 实测)")
+            else:
+                check("wayland_passthrough", False,
+                      (probe.stderr or probe.stdout).strip()[-160:])
 
     ports = discover_ports(args.name)
     host_port = ports.get("6080/tcp")

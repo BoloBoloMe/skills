@@ -54,6 +54,7 @@ use-sandbox-worktree skill 落地并经端到端演练验证可用 — 它管理
 
 <!-- 开放 + 已解除阻塞 + 未被认领的 Milestone -->
 - [MILESTONE-10](MILESTONE-10.md) — `task` — SKILL.md 定稿 + 全链演练 (全部阻塞项已关闭)
+- [MILESTONE-13](MILESTONE-13.md) — `task` — 双模显示栈实现 (D051: 本机 wayland 直通 + VNC 兜底), 与 M10 并行无阻塞
 
 ## 未决迷雾
 
@@ -79,5 +80,5 @@ M02(已关闭) ──┘                 │                       │
 M05(已关闭) ─→ M06(已关闭) ────┴─→ M07(已关闭) ─→ M09(已关闭) ┴─→ M10 ─→ 目的地
 ```
 
-- M01..M12 全部已关闭; 前沿 = MILESTONE-10 (最后一个 Milestone, 关闭即达目的地)
+- M01..M12 全部已关闭; 前沿 = MILESTONE-10 (关闭即达目的地) + MILESTONE-13 (D051 显示栈增强, 独立于主线, 不阻塞目的地)
 - M12 已交付 swt 五子命令实现 (ISSUE-05..11), M10 的 SKILL.md 引用对象已就绪

@@ -457,3 +457,24 @@
 ### F018 kimi OAuth refresh token 一次性轮换 (2026-09-11, G 轮实测)
 - 状态: 当前有效
 - 内容: 容器内 kimi 与 host 共用同一份 OAuth 凭证 (复制 `~/.pi/agent/auth.json`) 时, 先用者刷新成功, 另一边报 400 invalid grant. 结论: 容器内 kimi (Kimi Code CLI) 必须独立登录, 禁止复制 host kimi 凭证进容器共用; 已写入 SKILL.md 存续节. 另: Python 版 kimi-cli 官方停维护, 项目层换代为 Node 版 Kimi Code CLI (install.sh, KIMI_VERSION 钉 0.42.0, KIMI_INSTALL_DIR=/usr/local 系统级), 同层清旧 uv 版残留.
+
+### D051 双模显示栈: 本机 wayland 直通 + VNC 保留兜底
+- 状态: 当前有效
+- 约束性: 必须遵守
+- 依据: `容器GUI无感访问技术报告.md` (2026-09-12, 同目录); 本机环境实测: GNOME Wayland 会话在线, 无 SELinux (报告坑 2 不适用), `/dev/dri` 可直挂 (非 NVIDIA, 免 CDI). 机制与 D049 git 桥同族 (host unix socket bind-mount 进容器), 工程手法有现成参照.
+- 内容:
+  1. **本机直通 (新增)**: 检测到宿主机 `$XDG_RUNTIME_DIR/wayland-0` 存在时, `podman create` 恒挂 — `-v $XDG_RUNTIME_DIR/wayland-0:$XDG_RUNTIME_DIR/wayland-0` + `-e WAYLAND_DISPLAY=wayland-0 -e XDG_RUNTIME_DIR=<宿主机值>` + `--device /dev/dri` (pulse socket 可选, 声音需求出现时再加). 检测是 host 侧静态条件, 与会话从本机还是远程发起无关, 挂了远程也不碍事, 故恒挂不设 DECIDE.
+  2. **VNC 栈保留不降级**: noVNC 仍是局域网远程访问的唯一通道, 也是直通失效时的兜底. 6080 发布/隧道命令/交付规格照旧.
+  3. **容器内选路**: headed 浏览器等 GUI app 优先走 `WAYLAND_DISPLAY` (`chromium --ozone-platform=wayland`), 不可达回退 `DISPLAY=:99` (Xvfb). 本机在场 = 窗口直接弹在宿主机桌面; 远程 = 照旧 noVNC.
+  4. **display-check 加一路**: wayland 直通探测 (容器内连 socket 实测), 与现有 noVNC 检查并列报告, 失败按 D041 降级不阻断终端工作.
+  5. **禁挂 X11 socket**: X11 协议允许跨客户端键盘嗅探/按键注入, 直通只走 wayland, 不通就回 noVNC, 永不以挂 X socket 兜底.
+- 信任面明示 (用户已拍板接受, 2026-09-12): 挂 wayland socket 后容器内任意进程可在宿主机桌面开窗口/读剪贴板, 接近 distrobox 信任级别; 网络白名单语义零变化 (socket 非网络通道). 收益: 登录墙原生窗口 + GPU 渲染 + fcitx 中文输入 + 剪贴板互通, noVNC 窗口套窗口/软渲染/无法输中文三个短板全消.
+- 预计影响: swt.py (create 参数组/display-check); SKILL.md (显示栈节/容器命令收拢/风险明示/交付汇报); display 层镜像基本不动 (chromium 自带 wayland 后端); tests. 范围外: waypipe 远程直通 (noVNC 够用前不引入).
+
+### F019 socat 中继对 wayland 无效 (SCM_RIGHTS fd 传递被截断) (2026-09-12, M13 实测)
+- 状态: 当前有效
+- 内容: wayland 客户端与合成器靠 unix socket  ancillary data (SCM_RIGHTS) 传共享显存 fd; socat 这类字节流中继不传 fd, chromium 经中继连接必崩 (`Fatal Wayland communication error: Invalid argument`). 结论: wayland 直通只能直挂 socket 本体, 权限问题在属主权上解 (chmod 0777, 见 D051 实现修订), 禁用中继. 另: `--screenshot` 会强制 headless 模式, 不能用作 wayland 通路的验证手段; 验证 = headed 进程存活 + 无 fatal (直挂方案实测: bolo 身份 chromium `--ozone-platform=wayland` 存活 25s+ 零 fatal, 窗口落宿主机桌面).
+
+### D051 实现修订 (M13, 2026-09-12)
+- 状态: 当前有效
+- 内容: D051 第 1 条落地参数定为 `-v <宿主socket>:/run/swt-wayland/wayland-0 -e XDG_RUNTIME_DIR=/run/swt-wayland -e WAYLAND_DISPLAY=wayland-0 [--device /dev/dri]`. 权限解法: rootless uid_map 下直挂 socket 在容器内属主映射为 root, 0755 属主权下 bolo 连不上 → host 侧 `chmod 0777` 该 socket (birth/resume 都重保, GNOME 登录会话重启重置权限); 父目录 `/run/user/<uid>` 为 0700, 其他用户够不着路径, 宿主暴露面≈零. 不采用容器内 socat 中继 (F019). GPU 补充: 非 NVIDIA 宿主 `/dev/dri` 直挂即可, 但 render 节点属主权同样受限, chromium 不可用时自动回软渲染, 不阻断.

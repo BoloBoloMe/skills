@@ -2320,3 +2320,59 @@ class TestPastaNetworkMismatch(SwtFixture):
             self.assertIsNone(self.swt.pasta_network_mismatch(self.DETAIL))
         with self._patched("2: wlp1s0    inet 192.168.31.252/24 scope global wlp1s0\n", "garbage\n"):
             self.assertIsNone(self.swt.pasta_network_mismatch(self.DETAIL))
+
+
+class TestS7HostWaylandSocket(SwtFixture):
+    """D051: 宿主机 wayland socket 检测 (纯函数, mock env)."""
+
+    def setUp(self) -> None:
+        super().setUp()
+        self.swt = self.load_swt()
+
+    def _bind_socket(self, directory: Path, name: str) -> Path:
+        path = directory / name
+        server = socket.socket(socket.AF_UNIX)
+        server.bind(str(path))
+        self.addCleanup(server.close)
+        return path
+
+    def test_socket_detected(self) -> None:
+        from unittest import mock
+        directory = self.root / "xdg"
+        directory.mkdir()
+        expected = self._bind_socket(directory, "wayland-0")
+        with mock.patch.dict(os.environ, {"XDG_RUNTIME_DIR": str(directory), "WAYLAND_DISPLAY": "wayland-0"}):
+            self.assertEqual(expected, self.swt.host_wayland_socket())
+
+    def test_missing_socket_returns_none(self) -> None:
+        from unittest import mock
+        directory = self.root / "xdg-empty"
+        directory.mkdir()
+        with mock.patch.dict(os.environ, {"XDG_RUNTIME_DIR": str(directory), "WAYLAND_DISPLAY": "wayland-9"}):
+            self.assertIsNone(self.swt.host_wayland_socket())
+
+
+class TestTS214HostDisplay(SwtBirthFixture):
+    """D051: birth 直通参数注入 + bolo 权限链实测 (e2e, 真实容器)."""
+
+    def test_birth_records_host_display_and_probe(self) -> None:
+        state = self.birth_ready()
+        record = state["containers"][-1]
+        swt = self.load_swt()
+        if swt.host_wayland_socket() is None:
+            self.assertEqual("absent", record.get("host-display"))
+            return
+        self.assertEqual("ok", record.get("host-display"))
+        name = record["name"]
+        # 直通参数注入: 直挂点 + env 入 create 结果
+        detail = json.loads(subprocess.run(
+            ["podman", "inspect", name], capture_output=True, text=True, check=True,
+        ).stdout)[0]
+        destinations = [mount.get("Destination") or mount.get("destination") for mount in detail.get("Mounts", [])]
+        self.assertIn("/run/swt-wayland/wayland-0", destinations)
+        envs = detail.get("Config", {}).get("Env", [])
+        self.assertIn("XDG_RUNTIME_DIR=/run/swt-wayland", envs)
+        self.assertIn("WAYLAND_DISPLAY=wayland-0", envs)
+        # bolo 权限链: 中继 socket 对 bolo 可连 (ssh 面实测)
+        probe = self.ssh_run(state, "test -S /run/swt-wayland/wayland-0")
+        self.assertEqual(0, probe.returncode, probe.stderr)
