@@ -1115,6 +1115,8 @@ def print_delivery_lines(
               " 本机场景可不开 noVNC; 远程仍走上方隧道")
     elif host_display == "degraded":
         print("[SWT] 本机直通: 降级 (wayland 实测未过, 已回退 noVNC; 可用 swt display-check 诊断)")
+    elif host_display == "absent":
+        print("[SWT] 本机直通: absent (无宿主机桌面会话/纯服务器宿主常态, 显示走 noVNC)")
     print(f"[SWT] herdr remote (host):    herdr --remote ssh://bolo@127.0.0.1:{ssh_port}")
     if lan:
         print(f"[SWT] herdr remote (局域网): herdr --remote ssh://bolo@{lan}:{ssh_port}")

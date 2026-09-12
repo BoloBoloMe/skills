@@ -66,12 +66,12 @@ uv run python scripts/swt.py birth [--repo <主仓>] --branch <母体分支名�
 母体分支名 = use-worktree 目标分支名原文, 母体目录名 = 它的 slug 规则生成; 容器缺省名 `swt-<分支名>`, 同母体第二个容器须显式 `--name`. 首次执行通常出 DECIDE (母体新建/复用, 网络模式, 镜像), 按决策协议节应答.
 
 **第四步: 交付包**
-交付包逐项向我报告 (各项形态定义如下; 某项缺发时显式打原因, 不静默丢失):
+交付包逐项向我报告 (缺发只允许以一种形式发生: 显式打原因; 不静默丢失):
 - ssh 入口 (两条带端口, 总是同时交付; pasta 下容器无独立 IP — STATE 的 `network-ip` = host 本机 IP, 直连形式已废除, F012):
   - 本机: `ssh -p <宿主端口> bolo@127.0.0.1` — 跨 stop/start 稳定, 用 `podman port <容器名>` 或 STATE 的 `ssh-port` 发现, 不记录端口 (rm 重建才变).
   - 局域网: `ssh -p <宿主端口> bolo@<host-LAN-IP>` — 远程机走同一条带端口命令.
 - noVNC URL (本机浏览器直接开): `http://127.0.0.1:<vnc宿主端口>/vnc.html?resize=scale` — 容器内显示栈已自动拉起并经 birth 全量检查; 实际端口看 STATE 的 `vnc-port`.
-- 本机直通状态 (D051): STATE 容器记录 `host-display=ok` 时交付注明 — 登录墙等 headed 窗口直接弹宿主机桌面, 本机可不开 noVNC; `degraded` 注明已回退 noVNC; `absent` 不打 (远程/纯服务器宿主常态).
+- 本机直通状态 (D051): STATE 容器记录 `host-display=ok` 时交付注明 — 登录墙等 headed 窗口直接弹宿主机桌面, 本机可不开 noVNC; `degraded` 注明已回退 noVNC; `absent` 打一行常态说明 (远程/纯服务器宿主).
 - 局域网隧道命令: `ssh -p <宿主端口> -L 6080:127.0.0.1:<vnc宿主端口> bolo@<host-LAN-IP>` — 我在远程机开这条隧道后, 浏览器开 `http://127.0.0.1:6080/vnc.html?resize=scale`; noVNC 无密码, 隧道 (即容器 ssh 凭据) 就是门槛.
 - 登录凭证 (两种, 都随 terminate 清除, 落 `<records-root>/runtime/<identity>/ssh/`, 0600):
   - 密码: 固定 `sandbox` (用户拍板, 风险见 reference/risks.md), `<容器名>.password` 留档; 人登录用.
@@ -155,6 +155,7 @@ uv run python scripts/image-prep.py build      --repo <主仓> [--requirements <
 - 母本在仓库内 `agent-prompts/{pi,codex,kimi-code}_AGENTS.md` — 改它 = 改容器内 agent 的行为基线.
 - birth 时拷贝到 `<records-root>/runtime/<identity>/agent-prompts/<容器>/` 留档 (可追溯每容器用了哪版), 再只读单文件挂载进容器: pi → `/home/bolo/.pi/agent/AGENTS.md`, codex → `/home/bolo/.codex/AGENTS.md`, kimi-code → `/home/bolo/.kimi-code/AGENTS.md` (官方文档: 全局指令文件随 KIMI_CODE_HOME, 缺省 `~/.kimi-code/`).
 - 生效语义: 母本更新只对新 birth 的容器生效, 不动运行中容器 (每容器一份留档副本, 互不影响).
+- 维护纪律: 三母本的通用核逐字相同, 改通用核必须三份同步.
 
 ## 环境变量继承 (env.conf)
 
@@ -165,8 +166,7 @@ uv run python scripts/image-prep.py build      --repo <主仓> [--requirements <
 
 ## 网络控制 / 容器命令 / 救场
 
-正常路径不需要直接调用 net-firewall — birth/resume/terminate/switch 自动注入与回收. 手救场, 换/加容器 provider, 或需要全部容器操作原生命令时读 reference/ops.md.
-脚本 stderr 的原生报错看不懂时读 reference/errors.md (译解表).
+手救场 (防火墙/daemon/config), 换/加容器 provider, 或需要容器操作原生命令时 → reference/ops.md; 脚本原生报错看不懂时 → reference/errors.md (译解表).
 
 ## 决策协议 (DECIDE + 收据)
 
