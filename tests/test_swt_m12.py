@@ -743,10 +743,11 @@ class TestTS201BirthChain(SwtBirthFixture):
         self.assertEqual(0, self.ssh_run(
             state, f"git -C /home/bolo/Workspace/{branch} ls-remote origin"
         ).returncode)
-        # P1-6: agent 提示词母本只读单文件挂载 (内容 = 仓库母本, 写被拒)
-        master = (ROOT / "workflow/use-sandbox-worktree/agent-prompts/pi_AGENTS.md").read_bytes()
-        for target in ("/home/bolo/.pi/agent/AGENTS.md", "/home/bolo/.codex/AGENTS.md",
-                       "/home/bolo/.kimi-code/AGENTS.md"):
+        # P1-6: agent 提示词母本只读单文件挂载 (内容 = 各自仓库母本, 写被拒)
+        for master_name, target in (("pi", "/home/bolo/.pi/agent/AGENTS.md"),
+                                    ("codex", "/home/bolo/.codex/AGENTS.md"),
+                                    ("kimi-code", "/home/bolo/.kimi-code/AGENTS.md")):
+            master = (ROOT / f"workflow/use-sandbox-worktree/agent-prompts/{master_name}_AGENTS.md").read_bytes()
             got = subprocess.run(
                 ["podman", "exec", container["name"], "cat", target],
                 capture_output=True, check=False,

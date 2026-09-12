@@ -478,3 +478,9 @@
 ### D051 实现修订 (M13, 2026-09-12)
 - 状态: 当前有效
 - 内容: D051 第 1 条落地参数定为 `-v <宿主socket>:/run/swt-wayland/wayland-0 -e XDG_RUNTIME_DIR=/run/swt-wayland -e WAYLAND_DISPLAY=wayland-0 [--device /dev/dri]`. 权限解法: rootless uid_map 下直挂 socket 在容器内属主映射为 root, 0755 属主权下 bolo 连不上 → host 侧 `chmod 0777` 该 socket (birth/resume 都重保, GNOME 登录会话重启重置权限); 父目录 `/run/user/<uid>` 为 0700, 其他用户够不着路径, 宿主暴露面≈零. 不采用容器内 socat 中继 (F019). GPU 补充: 非 NVIDIA 宿主 `/dev/dri` 直挂即可, 但 render 节点属主权同样受限, chromium 不可用时自动回软渲染, 不阻断.
+
+### D052 agent 母本按容器环境重写 + 容器契约 (writing-for-llm 审核)
+- 状态: 当前有效
+- 约束性: 必须遵守
+- 内容: 三母本不再是 host `~/.pi/agent/AGENTS.md` 的字节拷贝 (原形态 = 容器内多处失效的死指针, 且 codex/kimi 母本带 pi 专属内容诱发幻觉调用). 母本按容器环境撰写: 通用核 (风格/uv/skill 读取) + 容器契约 (沙盒身份/网络白名单预期拒/固定 git remote 快进推即交付/真远端不可达/密钥不落 push 面); pi 母本额外带 herdr/llm-select 段, codex/kimi 母本不带. 三份允许合理分化, 通用核改动需同步三份.
+- 预计影响: agent-prompts/; tests/test_swt_m12.py (P1-6 断言改为按各自母本比对)
