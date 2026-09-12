@@ -44,6 +44,22 @@ _SLUG_CACHE: dict[Path, str] = {}
 MUTATING_COMMANDS = ("podman", "nft", "ssh", "uv", "pgrep")
 _UNSET = object()
 
+# P0-1 git 通道: 容器不再经 pasta 映射访问 host daemon (宿主换网络后映射失效).
+# 改为: host 侧 socat 把 unix socket (落容器挂载目录) 桥到 daemon 回环端口;
+# 容器内 socat 监听固定回环端口转发到该 socket, remote 恒定, 永不失配.
+GIT_CONTAINER_PORT = 9418
+GIT_BRIDGE_CONTAINER_DIR = "/run/swt-git"
+GIT_BRIDGE_SOCK = "git.sock"
+
+# P1-6 agent 系统提示词母本制: 母本在 <skill>/agent-prompts/, birth 留档到
+# runtime/<identity>/agent-prompts/<容器>/ 后只读单文件挂载进容器.
+AGENT_PROMPT_SOURCE_DIR = Path(__file__).resolve().parents[1] / "agent-prompts"
+AGENT_PROMPT_MOUNTS = (
+    ("pi_AGENTS.md", "/home/bolo/.pi/agent/AGENTS.md"),
+    ("codex_AGENTS.md", "/home/bolo/.codex/AGENTS.md"),
+    ("kimi-code_AGENTS.md", "/home/bolo/.kimi-code/AGENTS.md"),
+)
+
 
 class SwtError(Exception):
     def __init__(self, code: int, tag: str, message: str) -> None:
@@ -526,21 +542,6 @@ class NetworkPlan(NamedTuple):
     route_gateway: str | None = None
 
 
-def pasta_addresses() -> list[str]:
-    result = run(["ip", "-o", "-4", "addr", "show"])
-    if result.returncode != 0:
-        return []
-    addresses: list[str] = []
-    for line in result.stdout.splitlines():
-        fields = line.split()
-        if len(fields) < 4 or not fields[1].startswith("pasta"):
-            continue
-        address = fields[3].split("/", 1)[0]
-        if address not in addresses:
-            addresses.append(address)
-    return addresses
-
-
 def reserve_port(address: str) -> tuple[socket.socket, int]:
     reservation = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     reservation.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
@@ -551,48 +552,215 @@ def reserve_port(address: str) -> tuple[socket.socket, int]:
 def start_daemon(repo: Path) -> DaemonHandle:
     base_path = repo.parent.resolve()
     last_error = ""
-    for address in [*pasta_addresses(), "0.0.0.0"]:
-        for _ in range(3):
-            try:
-                reservation, port = reserve_port(address)
-            except OSError as exc:
-                last_error = str(exc)
-                continue
-            # 允许目录只给主仓本身: 兄弟仓库由 daemon 原生拒绝 (行为已实测),
-            # export-ok 标记 (无 --export-all) 是第二道闸.
-            command = [
-                "git", "daemon", "--enable=receive-pack", f"--base-path={base_path}",
-                f"--listen={address}", f"--port={port}", "--reuseaddr",
-                "--log-destination=none", str(repo.resolve()),
-            ]
-            try:
-                process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-            except OSError as exc:
-                reservation.close()
-                last_error = str(exc)
-                continue
+    # 只听宿主回环 (P0-1): 容器经 unix socket 桥访问, 无需对外监听;
+    # 局域网够不着, host 换网络/换接口也不影响通道.
+    for _ in range(5):
+        try:
+            reservation, port = reserve_port("127.0.0.1")
+        except OSError as exc:
+            last_error = str(exc)
+            continue
+        # 允许目录只给主仓本身: 兄弟仓库由 daemon 原生拒绝 (行为已实测),
+        # export-ok 标记 (无 --export-all) 是第二道闸.
+        command = [
+            "git", "daemon", "--enable=receive-pack", f"--base-path={base_path}",
+            "--listen=127.0.0.1", f"--port={port}", "--reuseaddr",
+            "--log-destination=none", str(repo.resolve()),
+        ]
+        try:
+            process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        except OSError as exc:
             reservation.close()
-            time.sleep(0.15)
-            if process.poll() is not None:
-                last_error = process.stderr.read().strip() if process.stderr else "daemon exited"
-                continue
-            connect_address = "127.0.0.1" if address in {"0.0.0.0", "::"} else address
+            last_error = str(exc)
+            continue
+        reservation.close()
+        time.sleep(0.15)
+        if process.poll() is not None:
+            last_error = process.stderr.read().strip() if process.stderr else "daemon exited"
+            continue
+        try:
+            with socket.create_connection(("127.0.0.1", port), timeout=1):
+                return DaemonHandle(process, "127.0.0.1", port, base_path)
+        except OSError as exc:
+            last_error = str(exc)
+            process.terminate()
             try:
-                with socket.create_connection((connect_address, port), timeout=1):
-                    return DaemonHandle(process, address, port, base_path)
-            except OSError as exc:
-                last_error = str(exc)
-                process.terminate()
-                try:
-                    process.wait(timeout=2)
-                except subprocess.TimeoutExpired:
-                    process.kill()
-                    process.wait(timeout=2)
+                process.wait(timeout=2)
+            except subprocess.TimeoutExpired:
+                process.kill()
+                process.wait(timeout=2)
     raise SwtError(3, "PARTIAL", f"daemon 启动失败: {last_error}; 请释放端口后重跑 birth")
 
 
-def daemon_container_address(address: str) -> str:
-    return "host.containers.internal" if address in {"0.0.0.0", "::"} else address
+def git_bridge_dir(records_root: Path, identity: str) -> Path:
+    return records_root / "runtime" / identity / "git-bridge"
+
+
+def git_bridge_socket_path(records_root: Path, identity: str) -> Path:
+    return git_bridge_dir(records_root, identity) / GIT_BRIDGE_SOCK
+
+
+def git_bridge_pids(socket_path: Path) -> list[int]:
+    """按 socket 路径找 host 侧桥进程 (含 runtime 未记录的孤儿)."""
+    result = run(["pgrep", "-af", rf"socat.*UNIX-LISTEN:{re.escape(str(socket_path))}"])
+    if result.returncode not in (0, 1):
+        return []
+    pids: list[int] = []
+    for line in result.stdout.splitlines():
+        fields = line.strip().split(None, 1)
+        if fields and fields[0].isdigit() and int(fields[0]) != os.getpid():
+            pids.append(int(fields[0]))
+    return pids
+
+
+def start_git_bridge(records_root: Path, identity: str, daemon_port: int) -> dict[str, Any]:
+    """host 侧桥 (P0-1): socat 把 unix socket (容器挂载目录内) 桥到 daemon 回环端口.
+    重入幂等: 同路径旧桥 (含孤儿) 先收, socket 文件重建."""
+    require_command("socat")
+    directory = git_bridge_dir(records_root, identity)
+    directory.mkdir(parents=True, exist_ok=True)
+    os.chmod(directory, 0o700)
+    socket_path = git_bridge_socket_path(records_root, identity)
+    for pid in git_bridge_pids(socket_path):
+        try:
+            os.kill(pid, signal.SIGTERM)
+        except ProcessLookupError:
+            continue
+    socket_path.unlink(missing_ok=True)
+    process = subprocess.Popen(
+        [
+            "socat",
+            f"UNIX-LISTEN:{socket_path},fork,mode=600",
+            f"TCP:127.0.0.1:{daemon_port}",
+        ],
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.PIPE,
+        text=True,
+    )
+    deadline = time.monotonic() + 3
+    while time.monotonic() < deadline:
+        if process.poll() is not None:
+            detail = process.stderr.read().strip() if process.stderr else "socat exited"
+            raise SwtError(3, "PARTIAL", f"git 桥 socat 启动失败: {detail}")
+        if socket_path.exists():
+            try:
+                with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as probe:
+                    probe.connect(str(socket_path))
+                return {"pid": process.pid, "socket": str(socket_path), "daemon-port": daemon_port}
+            except OSError:
+                pass
+        time.sleep(0.05)
+    process.terminate()
+    try:
+        process.wait(timeout=2)
+    except subprocess.TimeoutExpired:
+        process.kill()
+        process.wait(timeout=2)
+    raise SwtError(3, "PARTIAL", "git 桥 socat 启动超时 (socket 未就绪)")
+
+
+def stop_git_bridge(runtime: dict[str, Any] | None, records_root: Path, identity: str) -> list[int]:
+    """收 host 侧桥: 记录 pid + 同路径孤儿一并收, socket 文件删除. 幂等."""
+    pids: set[int] = set()
+    daemon = runtime.get("daemon") if isinstance(runtime, dict) else None
+    bridge = daemon.get("bridge") if isinstance(daemon, dict) else None
+    if isinstance(bridge, dict) and isinstance(bridge.get("pid"), int):
+        pids.add(bridge["pid"])
+    socket_path = git_bridge_socket_path(records_root, identity)
+    pids.update(git_bridge_pids(socket_path))
+    killed: list[int] = []
+    for pid in sorted(pids):
+        if pid == os.getpid() or not process_alive(pid):
+            continue
+        killed.append(pid)
+        try:
+            os.kill(pid, signal.SIGTERM)
+        except ProcessLookupError:
+            continue
+    deadline = time.monotonic() + 2
+    while time.monotonic() < deadline and any(process_alive(pid) for pid in pids):
+        time.sleep(0.05)
+    for pid in sorted(pids):
+        if process_alive(pid):
+            try:
+                os.kill(pid, signal.SIGKILL)
+            except ProcessLookupError:
+                pass
+    socket_path.unlink(missing_ok=True)
+    return killed
+
+
+def ensure_git_bridge(records_root: Path, identity: str, runtime: dict[str, Any]) -> dict[str, Any]:
+    """daemon 记录在位时保证桥存活 (birth 各重入分支共用); 死了就地重建."""
+    daemon_record = runtime.get("daemon")
+    if not isinstance(daemon_record, dict) or not isinstance(daemon_record.get("port"), int):
+        raise SwtError(3, "PARTIAL", "daemon runtime 记录缺失, 无法建 git 桥")
+    bridge = daemon_record.get("bridge")
+    socket_value = bridge.get("socket") if isinstance(bridge, dict) else None
+    if (
+        isinstance(bridge, dict)
+        and process_alive(bridge.get("pid"))
+        and isinstance(socket_value, str)
+        and Path(socket_value).exists()
+    ):
+        return bridge
+    bridge = start_git_bridge(records_root, identity, int(daemon_record["port"]))
+    daemon_record["bridge"] = bridge
+    return bridge
+
+
+def fixed_git_remote(repo: Path) -> str:
+    """容器内恒定 remote (P0-1): 走容器内转发器, 与 daemon 端口/宿主网络脱钩."""
+    return f"git://127.0.0.1:{GIT_CONTAINER_PORT}/{repo.name}"
+
+
+def container_git_forward_up(name: str) -> bool:
+    """容器内转发器是否在监听: 直接读 /proc/net/tcp{,6} (与 swt-vnc 同法, 无额外依赖)."""
+    hex_port = f"{GIT_CONTAINER_PORT:04X}"
+    result = run([
+        "podman", "exec", name, "sh", "-c",
+        f"grep -qiE ':{hex_port}[[:space:]]+[0-9A-F]+:[0-9A-F]+[[:space:]]+0A[[:space:]]'"
+        " /proc/net/tcp /proc/net/tcp6 2>/dev/null",
+    ])
+    return result.returncode == 0
+
+
+def ensure_container_git_forward(name: str) -> None:
+    """容器内 socat 转发器 (P0-1): 127.0.0.1:9418 -> 桥 socket. 幂等;
+    容器 stop/start 后进程消失, birth/resume 都必须重保. 以 root 跑:
+    rootless 下桥 socket (host bolo 属主) 在容器内呈现为 root 属主."""
+    if container_git_forward_up(name):
+        return
+    result = run([
+        "podman", "exec", "-d", name, "socat",
+        f"TCP-LISTEN:{GIT_CONTAINER_PORT},bind=127.0.0.1,fork,reuseaddr",
+        f"UNIX-CONNECT:{GIT_BRIDGE_CONTAINER_DIR}/{GIT_BRIDGE_SOCK}",
+    ])
+    if result.returncode != 0:
+        raise SwtError(3, "PARTIAL", f"容器 git 转发器启动失败: {result.stderr.strip()}")
+    deadline = time.monotonic() + 5
+    while time.monotonic() < deadline:
+        if container_git_forward_up(name):
+            return
+        time.sleep(0.1)
+    raise SwtError(3, "PARTIAL", "容器 git 转发器未进入监听 (socat 缺失? 镜像须含 socat)")
+
+
+def stage_agent_prompts(records_root: Path, identity: str, container_name: str) -> Path:
+    """P1-6: birth 时把母本拷到 runtime/<identity>/agent-prompts/<容器>/ 留档,
+    返回挂载源目录. 每容器一份: 母本更新只对新 birth 的容器生效, 不动运行中容器."""
+    if not AGENT_PROMPT_SOURCE_DIR.is_dir():
+        raise SwtEnvError(f"agent 提示词母本目录缺失: {AGENT_PROMPT_SOURCE_DIR}")
+    target_dir = records_root / "runtime" / identity / "agent-prompts" / container_name
+    target_dir.mkdir(parents=True, exist_ok=True)
+    for name, _target in AGENT_PROMPT_MOUNTS:
+        source = AGENT_PROMPT_SOURCE_DIR / name
+        if not source.is_file():
+            raise SwtEnvError(f"agent 提示词母本缺失: {source}")
+        staged = target_dir / name
+        if not staged.is_file() or staged.read_bytes() != source.read_bytes():
+            staged.write_bytes(source.read_bytes())
+    return target_dir
 
 
 def inspect_container(name: str) -> dict[str, Any]:
@@ -627,15 +795,43 @@ def container_netns(detail: dict[str, Any]) -> str | None:
     return value if isinstance(value, str) and value else None
 
 
-def container_gateway(name: str, daemon_address: str) -> str:
-    if re.fullmatch(r"(?:\d{1,3}\.){3}\d{1,3}", daemon_address):
-        return daemon_address
+def container_gateway(name: str) -> str:
+    """容器视角的宿主网关 (pasta 映射地址, DNS 走它); 与 daemon 无关 (P0-1 后 daemon 只听回环)."""
     result = run(["podman", "exec", name, "getent", "hosts", "host.containers.internal"])
     if result.returncode == 0:
         match = re.search(r"(?m)^([0-9.]+)\s+", result.stdout)
         if match:
             return match.group(1)
     return "169.254.1.2"
+
+
+def pasta_network_mismatch(detail: dict[str, Any]) -> str | None:
+    """P1-2: pasta --config-net 复制的是容器创建时的宿主接口名/地址; 宿主换网络后
+    两者失配 (例: 容器 tun0 192.168.216.x, 宿主现 wlp1s0 192.168.31.x).
+    返回人话描述; 无法判定或不失配返回 None."""
+    sandbox = container_netns(detail)
+    if not sandbox:
+        return None
+    inside = run(["podman", "unshare", "nsenter", f"--net={sandbox}", "ip", "-o", "-4", "addr", "show"])
+    if inside.returncode != 0:
+        return None
+    container_ifaces: list[tuple[str, str]] = []
+    for line in inside.stdout.splitlines():
+        fields = line.split()
+        if len(fields) >= 4 and fields[1] != "lo":
+            container_ifaces.append((fields[1], fields[3].split("/", 1)[0]))
+    if not container_ifaces:
+        return None
+    host = run(["ip", "-o", "-4", "route", "get", "1.1.1.1"])
+    match = re.search(r"dev (\S+).*?src (\d+\.\d+\.\d+\.\d+)", host.stdout)
+    if not match:
+        return None
+    host_dev, host_src = match.groups()
+    for name, address in container_ifaces:
+        if name == host_dev and address == host_src:
+            return None
+    inner = ", ".join(f"{iface} {address}" for iface, address in container_ifaces)
+    return f"容器网卡仍为 {inner}, 宿主当前为 {host_dev} {host_src}"
 
 
 def pasta_netns(detail: dict[str, Any] | None = None) -> str | None:
@@ -1214,7 +1410,7 @@ def container_default_name(branch: str) -> str:
     return f"swt-{clean}"
 
 
-def create_and_start_container(args: argparse.Namespace, repo: Path, image: dict[str, Any], branch: str, runtime: dict[str, Any], runtime_file: Path, env: dict[str, str]) -> dict[str, Any]:
+def create_and_start_container(args: argparse.Namespace, repo: Path, image: dict[str, Any], branch: str, runtime: dict[str, Any], runtime_file: Path, env: dict[str, str], records_root: Path, identity: str) -> dict[str, Any]:
     name = args.name or container_default_name(branch)
     existing = run(["podman", "inspect", name])
     if existing.returncode == 0:
@@ -1242,6 +1438,15 @@ def create_and_start_container(args: argparse.Namespace, repo: Path, image: dict
     else:
         command.extend(["-p", "127.0.0.1::6080"])
     command.extend(["--shm-size", "1g"])
+    # git 桥 socket 目录 (P0-1): host 侧 socat 在此建 git.sock, 容器转发器连它
+    bridge_dir = git_bridge_dir(records_root, identity)
+    bridge_dir.mkdir(parents=True, exist_ok=True)
+    command.extend(["-v", f"{bridge_dir}:{GIT_BRIDGE_CONTAINER_DIR}"])
+    # agent 提示词母本只读单文件挂载 (P1-6): 每容器留档副本, rootless 下呈现为
+    # root 属主 0644, 容器 bolo 可读不可写
+    prompts_dir = stage_agent_prompts(records_root, identity, name)
+    for master_name, target in AGENT_PROMPT_MOUNTS:
+        command.extend(["-v", f"{prompts_dir / master_name}:{target}:ro"])
     command.extend(["-p", "22", str(image["ref"])])
     created = run(command)
     if created.returncode != 0:
@@ -1513,7 +1718,7 @@ def birth(args: argparse.Namespace, repo: Path) -> int:
 
     network_decision = decision_pending(
         records_root, identity, "network-mode", fingerprint, args.mode is not None,
-        "请选择网络模式; whitelist 会自动放行 daemon 地址",
+        "请选择网络模式; whitelist 会自动放行网关地址 (DNS); git 走 unix socket 桥, 不占网络白名单",
         "网络/配置状态已变化, 请重新确认",
         ["--mode whitelist --allow ...", "--mode blacklist [--deny ...]"],
         stale_receipts["network-mode"],
@@ -1598,7 +1803,7 @@ def birth(args: argparse.Namespace, repo: Path) -> int:
         runtime["stage"] = "daemon"
         atomic_write_json(runtime_file, runtime)
     elif runtime_existing:
-        if runtime_existing.get("stage") not in {"container-created", "container-started", "network", "ssh-ready"}:
+        if runtime_existing.get("stage") not in {"daemon", "container-created", "container-started", "network", "ssh-ready"}:
             raise PreconditionError("已有未完成 birth runtime, 请按 PARTIAL 指引处理")
         runtime = runtime_existing
         mother_dir = Path(runtime["mother_dir"]).resolve()
@@ -1644,10 +1849,11 @@ def birth(args: argparse.Namespace, repo: Path) -> int:
     runtime["image"] = image
     atomic_write_json(runtime_file, runtime)
     try:
+        ensure_git_bridge(records_root, identity, runtime)
+        atomic_write_json(runtime_file, runtime)
         env_map = load_inherited_env(records_root, resolve_project_slug(repo))
-        container = create_and_start_container(args, repo, image, branch, runtime, runtime_file, env_map)
-        daemon_address = daemon_container_address(str(daemon_record["addr"]))
-        gateway_address = container_gateway(container["name"], daemon_address)
+        container = create_and_start_container(args, repo, image, branch, runtime, runtime_file, env_map, records_root, identity)
+        gateway_address = container_gateway(container["name"])
         route_gateway = container_route_gateway(container["detail"])
         ip_value = container_ip(container["detail"])
         target_netns = pasta_netns(container["detail"])
@@ -1680,9 +1886,9 @@ def birth(args: argparse.Namespace, repo: Path) -> int:
         atomic_write_json(runtime_file, runtime)
         key = inject_ssh_key(container, records_root, identity, runtime, runtime_file, env_map)
         inject_auth_json(container["name"])
-        remote = f"git://{daemon_address}:{int(daemon_record['port'])}/{repo.name}"
+        ensure_container_git_forward(container["name"])
+        remote = fixed_git_remote(repo)
         container["record"]["remote"] = remote
-        container["record"]["daemon-addr"] = daemon_address
         atomic_write_json(runtime_file, runtime)
         wait_for_ssh(key, container["port"])
         assert_container_clone(container, key, branch, remote)
@@ -2244,6 +2450,9 @@ def terminate(args: argparse.Namespace, repo: Path) -> int:
         apply_sibling_networks(network, runtime_records, sibling_netnses)
     if not has_siblings:
         stop_repo_daemons(repo, runtime)
+        stop_git_bridge(runtime, records_root, identity)
+        if isinstance(runtime.get("daemon"), dict):
+            runtime["daemon"].pop("bridge", None)
 
     remove_container_credentials(target)
     runtime["containers"] = runtime_records
@@ -2447,6 +2656,7 @@ def switch(args: argparse.Namespace, repo: Path) -> int:
                 if stopped.returncode != 0:
                     raise SwtError(3, "PARTIAL", f"停止旧容器 {name} 失败: {stopped.stderr.strip()}")
         stop_repo_daemons(repo, runtime)
+        stop_git_bridge(runtime, records_root, identity)
         runtime["daemon"] = None
         runtime["stage"] = "switch-stopped"
         atomic_write_json(runtime_file, runtime)
@@ -2524,6 +2734,13 @@ def daemon_state(repo: Path, runtime: dict[str, Any] | None) -> dict[str, Any] |
     result = {"addr": addr, "port": port, "orphan": not alive or recorded is None}
     if recorded is not None:
         result.update({"pid": pid, "base-path": base_path})
+        bridge = recorded.get("bridge")
+        if isinstance(bridge, dict):
+            result["bridge"] = {
+                "pid": bridge.get("pid"),
+                "socket": bridge.get("socket"),
+                "alive": process_alive(bridge.get("pid")),
+            }
     return result
 
 
@@ -2628,6 +2845,37 @@ def resume_daemon_stale(daemon: dict[str, Any] | None, runtime: dict[str, Any]) 
     return daemon is None or bool(daemon.get("orphan"))
 
 
+def git_bridge_ready(runtime: dict[str, Any]) -> bool:
+    daemon = runtime.get("daemon")
+    bridge = daemon.get("bridge") if isinstance(daemon, dict) else None
+    if not isinstance(bridge, dict) or not process_alive(bridge.get("pid")):
+        return False
+    socket_value = bridge.get("socket")
+    return isinstance(socket_value, str) and Path(socket_value).exists()
+
+
+def resume_git_ready(record: dict[str, Any], remote: str) -> bool:
+    """git 通道就绪 (P0-1/P1-4): 记录 remote 已是固定桥地址, 容器内 origin 实际指向它,
+    且经桥 ls-remote 通. 旧形态 remote (host.containers.internal:端口) 一律判未就绪,
+    由恢复路径收敛."""
+    if record.get("remote") != remote:
+        return False
+    key_value = record.get("ssh_private_key") or record.get("ssh-private-key")
+    port = record.get("ssh-port")
+    if not isinstance(key_value, str) or not isinstance(port, int) or not Path(key_value).is_file():
+        return False
+    clone_dir = record.get("clone_dir") or record.get("clone-dir") or f"/home/bolo/Workspace/{record.get('branch')}"
+    probe = ssh_command(
+        Path(key_value), port,
+        f"git -C {shlex.quote(str(clone_dir))} remote get-url origin && git ls-remote {shlex.quote(remote)}",
+        timeout=8,
+    )
+    if probe.returncode != 0:
+        return False
+    first_line = probe.stdout.splitlines()[0].strip() if probe.stdout.splitlines() else ""
+    return first_line == remote
+
+
 def resume_network_status(runtime: dict[str, Any], target: dict[str, Any]) -> tuple[bool, str]:
     network = runtime.get("network")
     container_name = target.get("name")
@@ -2659,8 +2907,8 @@ def resume_network_status(runtime: dict[str, Any], target: dict[str, Any]) -> tu
     return result.returncode == 0 and f"ip saddr {container_ip_value} " in result.stdout, result.stdout
 
 
-def resume_ready(target: dict[str, Any], daemon_ready: bool, network_ready: bool) -> bool:
-    return target.get("state") == "running" and daemon_ready and network_ready
+def resume_ready(target: dict[str, Any], daemon_ready: bool, network_ready: bool, git_ready: bool) -> bool:
+    return target.get("state") == "running" and daemon_ready and network_ready and git_ready
 
 
 def collect_resume_daemons(repo: Path, runtime: dict[str, Any]) -> list[int]:
@@ -2692,11 +2940,8 @@ def collect_resume_daemons(repo: Path, runtime: dict[str, Any]) -> list[int]:
     return killed
 
 
-def resume_probe(
-    record: dict[str, Any],
-    daemon_address: str,
-    daemon_port: int,
-) -> None:
+def resume_probe(record: dict[str, Any], remote: str) -> None:
+    """resume 的 git 校验 (P0-1): 固定 remote 经容器转发器 + host 桥到 daemon, 全程实测."""
     key_value = record.get("ssh_private_key") or record.get("ssh-private-key")
     port = record.get("ssh-port")
     if not isinstance(key_value, str) or not isinstance(port, int):
@@ -2704,16 +2949,10 @@ def resume_probe(
     key = Path(key_value)
     if not key.is_file():
         raise SwtError(3, "PARTIAL", f"resume SSH 私钥不存在: {key}")
-    remote = record.get("remote")
-    if not isinstance(remote, str):
-        repo_name = record.get("repo-name") or ""
-        remote = f"git://{daemon_address}:{daemon_port}/{repo_name}" if repo_name else None
-    if not isinstance(remote, str):
-        raise SwtError(3, "PARTIAL", "resume 缺少 daemon 远端地址")
     wait_for_ssh(key, port)
     probe = ssh_command(key, port, f"git ls-remote {shlex.quote(remote)}", timeout=10)
     if probe.returncode != 0:
-        raise SwtError(3, "PARTIAL", f"daemon probe 失败: {probe.stderr.strip()}")
+        raise SwtError(3, "PARTIAL", f"git 桥 probe 失败: {probe.stderr.strip()}")
     clone_dir = record.get("clone_dir") or record.get("clone-dir") or f"/home/bolo/Workspace/{record.get('branch')}"
     set_remote = ssh_command(
         key, port,
@@ -2753,15 +2992,33 @@ def resume(args: argparse.Namespace, repo: Path) -> int:
         raise PreconditionError(
             f"容器 {target.get('name')} 已 retired, resume 被拒绝; 唯一出路是 terminate"
         )
+    # P1-2: pasta --config-net 复制宿主换网络前的接口名/地址, 失配时告警提示重建 (不强制)
+    if target.get("name"):
+        inspected = run(["podman", "inspect", str(target["name"])])
+        try:
+            rows = json.loads(inspected.stdout) if inspected.returncode == 0 else []
+        except json.JSONDecodeError:
+            rows = []
+        if rows and isinstance(rows[0], dict):
+            mismatch = pasta_network_mismatch(rows[0])
+            if mismatch:
+                print(
+                    f"[SWT] 告警: pasta 网络配置与宿主失配 ({mismatch}); "
+                    "建议 terminate 后重新 birth (当前不强制)",
+                    file=sys.stderr,
+                )
     daemon_observed = daemon_state(repo, runtime)
-    daemon_ready = not resume_daemon_stale(daemon_observed, runtime)
+    daemon_ready = not resume_daemon_stale(daemon_observed, runtime) and git_bridge_ready(runtime)
     network_ready, _network_output = resume_network_status(runtime, target)
+    git_ready = resume_git_ready(target, fixed_git_remote(repo)) if (
+        target.get("state") == "running" and daemon_ready and network_ready
+    ) else False
     active_observed = [item for item in candidates if not item.get("retired")]
     fingerprint = resume_decision_fingerprint(
         repo, runtime, active_observed, target, network_ready,
     )
     identity = runtime_file.stem
-    recoverable = not resume_ready(target, daemon_ready, network_ready)
+    recoverable = not resume_ready(target, daemon_ready, network_ready, git_ready)
     if not recoverable:
         runtime.pop("resume", None)
         runtime["stage"] = "born"
@@ -2846,6 +3103,7 @@ def resume(args: argparse.Namespace, repo: Path) -> int:
     )
     try:
         killed = collect_resume_daemons(repo, runtime)
+        stop_git_bridge(runtime, records_root, identity)
         detail = inspect_container(target_name)
         state = detail.get("State") if isinstance(detail.get("State"), dict) else {}
         if state.get("Status") != "running":
@@ -2865,6 +3123,7 @@ def resume(args: argparse.Namespace, repo: Path) -> int:
             "pid": daemon.process.pid, "addr": daemon.address, "port": daemon.port,
             "base-path": str(daemon.base_path), "orphan": False,
         }
+        daemon_record["bridge"] = start_git_bridge(records_root, identity, daemon.port)
         runtime["daemon"] = daemon_record
         runtime["stage"] = "resume-daemon"
         atomic_write_json(runtime_file, runtime)
@@ -2873,8 +3132,7 @@ def resume(args: argparse.Namespace, repo: Path) -> int:
         if not netns:
             raise SwtError(3, "PARTIAL", "resume 的 inspect 没有 SandboxKey")
         network = runtime.get("network") if isinstance(runtime.get("network"), dict) else {}
-        daemon_address = daemon_container_address(str(daemon_record["addr"]))
-        gateway = container_gateway(target_name, daemon_address)
+        gateway = container_gateway(target_name)
         route_gateway = container_route_gateway(detail)
         network.update({"gateway": gateway, "route-gateway": route_gateway, "netns": netns})
         plan = network_plan_from_record(network, record, netns)
@@ -2893,11 +3151,11 @@ def resume(args: argparse.Namespace, repo: Path) -> int:
         ensure_display_after_resume(runtime, runtime_file, record)
         # auth.json 重注入 (D046): 幂等, 顺带让换 key 在 resume 后生效
         inject_auth_json(target_name)
+        ensure_container_git_forward(target_name)
 
-        record["daemon-addr"] = daemon_address
-        record["remote"] = f"git://{daemon_address}:{int(daemon_record['port'])}/{repo.name}"
+        record["remote"] = fixed_git_remote(repo)
         record["ssh-port"] = container_ssh_port(target_name)
-        resume_probe(record, daemon_address, int(daemon_record["port"]))
+        resume_probe(record, record["remote"])
         runtime["stage"] = "born"
         runtime.pop("resume", None)
         runtime["network"]["table-present"] = True

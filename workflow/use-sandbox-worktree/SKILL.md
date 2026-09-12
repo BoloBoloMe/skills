@@ -10,7 +10,8 @@ disable-model-invocation: true
 - **sandbox-worktree**: 一个 host 上的 git worktree (**母体**) + 一个 sandbox 容器的绑定对, 本 skill 管理的生命周期单元.
 - **母体**: 主仓在 host 上的一个 worktree 目录 (与主仓同级的兄弟目录, 目录名 = 母体分支名), 身兼两职: 容器诞生时从它克隆代码; 容器 push 的成果直接落进它, 打开就能审阅/试跑.
 - **推送落地**: 容器 `git push` 被接受的瞬间, 母体目录里的文件自动更新成 push 内容, 不用手动 pull.
-- **git 守护进程 (daemon)**: 随容器生灭临时起的 `git daemon` 进程, 容器碰到代码的唯一通道, 无认证.
+- **git 守护进程 (daemon)**: 随容器生灭临时起的 `git daemon` 进程, 只听宿主回环 (127.0.0.1 动态端口), 容器碰到代码的唯一通道, 无认证.
+- **git 桥**: 容器访问 daemon 的固定通道 (P0-1). host 侧 socat 把 unix socket (`<records-root>/runtime/<identity>/git-bridge/git.sock`, 挂载进容器 `/run/swt-git/`) 桥到 daemon 当前回环端口; 容器内 socat 转发器监听固定 `127.0.0.1:9418` 转发到该 socket. 容器 remote 恒定 `git://127.0.0.1:9418/<仓库名>` — daemon 端口漂移, host 换网络都不再失配.
 - **决策收据**: 脚本向我提问时开出的一次性票据, 绑定当时的资源状态; 我答后重跑时先核对状态没变才采用, 变了就重新问.
 - **retired 容器**: 换母体后被停下的旧容器, 只准终结不准恢复.
 - **base 层 / display 层 / 项目层**: 镜像分三层 — 固定且跨项目共享的底层; 夹在中间的显示栈层 (VNC 栈 + chromium, 全项目共用); 按项目推导依赖件加装的上层 (FROM display 层).
@@ -46,7 +47,7 @@ uv run python scripts/swt.py status [--repo <主仓>]
 
 **第一步: 网络模式与白名单盘点 (固定环节, 不可跳过)**
 创建容器前必须与我确认网络模式, 运行期不切换:
-- **whitelist** (默认拒, 推荐): 只放行 网关 DNS + `--allow` 条目 + 已建立连接的返程流量 (保住 host 发起的 ssh), 其余容器流出全断. birth 自动把容器可达的 daemon 地址并入 allow (否则容器内 clone 物理不通), 该自动条目的残余暴露见风险明示节.
+- **whitelist** (默认拒, 推荐): 只放行 网关 DNS + `--allow` 条目 + 已建立连接的返程流量 (保住 host 发起的 ssh), 其余容器流出全断. git 走 unix socket 桥, 不占网络白名单; 网关自动放行的残余暴露见风险明示节.
 - **blacklist** (默认放行): 只断 `--deny` 条目, 护 host 侧特定服务 (数据库/redis 等) 场景.
 盘点方法论: 与我一起列出容器工作所需站点, **域名须解析为具体 IP/CIDR 后传入** (防火墙规则只认 IP, 脚本拒收域名); 条目是 IP 级, 放行即全端口. 站点换 IP 失效时重新盘点. 运行期新站点需求的处理形态未定, 发生时带回本会话问我.
 
@@ -97,6 +98,8 @@ uv run python scripts/swt.py birth [--repo <主仓>] --branch <母体分支名�
 
 **多容器共推同一母体**: 允许. 容器只准快进推送, 后推的那个会被 git 以历史分叉为由拒绝: 容器内 `git fetch` → 解冲突 → 重推 (git 原生串行化, 无新机制).
 
+**kimi 凭证 (G 轮实测)**: 容器内 kimi (Kimi Code CLI) 必须独立登录 (容器内 `kimi` → `/login` 走 OAuth), 禁止把 host 的 kimi 凭证复制进容器两处共用: OAuth refresh token 一次性轮换, 同一份两处用时先刷新者生效, 另一边报 400 invalid grant. swt 注入的 host `~/.pi/agent/auth.json` 若含 kimi OAuth 条目同理 — 容器内要用 kimi 就独立登录, 别复用注入文件里的 kimi 条目.
+
 **母体使用纪律 (转述给我)**: 母体目录是审阅现场: 只读/diff/试跑随意, **禁止编辑跟踪文件** — 母体工作区脏会拒容器 push (推送落地机制自带行为); 未跟踪文件 (编译产物等) 不阻塞. 审阅时不开会自动写文件的工具.
 
 ## 恢复 (resume)
@@ -105,8 +108,8 @@ uv run python scripts/swt.py birth [--repo <主仓>] --branch <母体分支名�
 uv run python scripts/swt.py resume [--repo <主仓>] [--name <容器名>] [--confirm]
 ```
 
-有 CLI 级 DECIDE gate: 检测到可恢复对象先 exit 1, 我确认后带 `--confirm` 重跑. 序列: 收残留 daemon → start 容器 → **start 后立即重注入防火墙规则** (合并式 `--merge`, 不做整表清空重建) → **同位置自动重拉显示栈** (幂等 `swt-vnc start` + status 级秒级检查, 失败降级不阻断, D040/D041) → 校验通过前不开放工作负载. retired 容器 resume 直接 exit 2; 运行记录里的母体分支 ≠ 当前放行分支也 exit 2. 交付: ssh 双入口 + noVNC URL + 局域网隧道命令 + herdr 双命令与 birth 同规格齐发.
-完成标准: 容器 running, 防火墙规则已重注入, daemon 可达, 显示栈状态已标注, STATE 反映当前放行的母体分支.
+有 CLI 级 DECIDE gate: 检测到可恢复对象先 exit 1, 我确认后带 `--confirm` 重跑. 序列: 收残留 daemon + 旧 git 桥 → start 容器 → 重拉 daemon 并重建桥 → **start 后立即重注入防火墙规则** (合并式 `--merge`, 不做整表清空重建) → **同位置自动重拉显示栈** (幂等 `swt-vnc start` + status 级秒级检查, 失败降级不阻断, D040/D041) → 重保容器内 git 转发器 → 经桥 git 校验 (固定 remote ls-remote + fetch), 校验通过前不开放工作负载. 就绪判定含 git 通道实测, daemon/桥活但容器 remote 失配 (中途失败留下的中间态) 会判为可恢复并重跑收敛, 不卡死. retired 容器 resume 直接 exit 2; 运行记录里的母体分支 ≠ 当前放行分支也 exit 2. pasta 复制配置与宿主当前网络失配 (宿主换过网络) 时打印告警提示重建, 不强制. 交付: ssh 双入口 + noVNC URL + 局域网隧道命令 + herdr 双命令与 birth 同规格齐发.
+完成标准: 容器 running, 防火墙规则已重注入, git 桥校验通过, 显示栈状态已标注, STATE 反映当前放行的母体分支.
 
 ## 换母体 (switch, 危险独立入口)
 
@@ -135,7 +138,7 @@ uv run python scripts/image-prep.py match      --repo <主仓> [--requirements <
 uv run python scripts/image-prep.py build      --repo <主仓> [--requirements <file>]
 ```
 
-- 三层结构 (D039): **base 层** (OS+git+sshd+node+pi CLI+uv+fd+rg+python3+herdr + skill 库全量 COPY + `~/.pi/agent` 复制 (排除 auth.json/sessions), sshd_config SetEnv 烘配非交互 PATH 含 `~/.local/bin`, F012) 固定且跨项目共享; **display 层** FROM 当前 base (VNC 栈 + chromium + swt-vnc, 清单缺省 `image/requirements-browser.md`), 记录落 `<records-root>/display/builds/`; **项目层** FROM 当前 display, 由你读项目信号推导依赖件叠加, 清单与我确认后才构建.
+- 三层结构 (D039): **base 层** (OS+git+sshd+node+pi CLI+uv+fd+rg+python3+herdr+socat (git 桥双端, P0-1)+iproute2 (容器内排障, P2-7) + skill 库全量 COPY + `~/.pi/agent` 复制 (排除 auth.json/sessions/AGENTS.md — AGENTS.md 走母本制, 见下节), sshd_config SetEnv 烘配非交互 PATH 含 `~/.local/bin`, F012) 固定且跨项目共享; **display 层** FROM 当前 base (VNC 栈 + chromium + swt-vnc, 清单缺省 `image/requirements-browser.md`), 记录落 `<records-root>/display/builds/`; **项目层** FROM 当前 display, 由你读项目信号推导依赖件叠加, 清单与我确认后才构建.
 - 匹配谓词链 (D017 延伸): display 层自身须基于当前 base, 项目层须基于当前 display — base 更新后旧 display 自然淘汰, display 更新后旧项目镜像自然淘汰.
 - **base 与 display 都只在我明说时重建** (D020 延伸), 无自动检测; display 缺失/过期时项目构建报 `NO-DISPLAY`/`DISPLAY-STALE`, 先 build-display 再 build.
 - 需求清单条目 = 名称 + 版本要求 (`>= <= > < ==` 或裸名称), 指令 `install=`/`probe=` (探测缺省 `<name> --version`); apt 条目必须写 `install=` (只写 probe 不装包).
@@ -144,6 +147,12 @@ uv run python scripts/image-prep.py build      --repo <主仓> [--requirements <
 - 版本语义: tag = 日期-序号 (人读索引), digest = 镜像内容哈希即精确版本; contents.md = 构建后**实测**清单.
 - 记录落 `<records-root>/<slug>/builds/<build-id>/` (Containerfile/requirements.md/contents.md/build.json), 不落项目 git.
 - 扩展过滤 (D043 白名单心智): 复制 `~/.pi/agent` 时 extensions/ 只排除显式点名的门禁类扩展 (filesystem-operation-gate / git-operation-gate / python-operation-hook, 名单落 image-prep.py 注释), 其余扩展 (含 repetition-guard/herdr-agent-state) 与未来新扩展默认进容器; host 环境文档 (`~/AGENTS.md`/`~/docs/`) 不进容器 (D023).
+
+## agent 系统提示词母本制 (P1-6)
+
+- 母本在仓库内 `agent-prompts/{pi,codex,kimi-code}_AGENTS.md` — 改它 = 改容器内 agent 的行为基线, 走本仓库正常评审流程.
+- birth 时拷贝到 `<records-root>/runtime/<identity>/agent-prompts/<容器>/` 留档 (可追溯每容器用了哪版), 再只读单文件挂载进容器: pi → `/home/bolo/.pi/agent/AGENTS.md`, codex → `/home/bolo/.codex/AGENTS.md`, kimi-code → `/home/bolo/.kimi-code/AGENTS.md` (官方文档: 全局指令文件随 KIMI_CODE_HOME, 缺省 `~/.kimi-code/`).
+- 生效语义: 母本更新只对新 birth 的容器生效, 不动运行中容器 (每容器一份留档副本, 互不影响). base 镜像不再烘 AGENTS.md.
 
 ## 环境变量继承 (env.conf)
 
@@ -197,8 +206,8 @@ stdout 末行 `STATE {...}` 单行 json (只加字段不改名); stderr 首行 `
 
 - **auth.json 启动后经 stdin 注入**进容器 (birth/resume 时 `podman exec` 写入 + chown bolo 600, host 缺失则跳过并警告): 是拷贝不是挂载, 物理上不可能写回 host, 不防读 — 容器内恶意依赖可读 token 并经白名单内 LLM 域名外传, 已接受. 不烤镜像层, 换 key 后下次 birth/resume 自动带新值 (D046; D044 的 ro 挂载形态已被 F014 证伪: rootless uid_map 下 host bolo 文件在容器内呈现为 root 属主, ro+0600 挂载 = 容器 bolo 永不可读).
 - **noVNC 无认证但只发布到宿主回环**: x11vnc `-nopw`, 门槛 = 本机账户或容器 ssh 凭据持有者 (隧道命令即交付物); 局域网内其他设备直接够不着 6080 (D040). 这不是零风险: 拿到容器 ssh 凭据的人同时拿到一个已登录浏览器的完全控制.
-- **git 守护进程无认证/审计**: 只靠 "同一时刻只有一个分支可写" 的拓扑防容器 agent 越权; 监听落 0.0.0.0 时, 局域网内其他机器也够得着这个受限写入口 (只能快进推母体分支).
-- **whitelist 自动放行 daemon 地址** = 容器可经网关地址访问 host 全部对外监听 (非仅本机回环) 的端口, 按 IP 放行无法收窄到单端口; 出访互联网方向仍收敛.
+- **git 守护进程无认证/审计**: 只靠 "同一时刻只有一个分支可写" 的拓扑防容器 agent 越权; daemon 只听宿主回环 (P0-1 起), 局域网够不着, 暴露面收窄为宿主本机账户 (本机任何进程可连回环端口快进推母体分支).
+- **whitelist 自动放行网关地址** (DNS 依赖) = 容器可经网关地址访问 host 全部对外监听 (非仅本机回环) 的端口, 按 IP 放行无法收窄到单端口; 出访互联网方向仍收敛.
 - **netns 身份绑定**: nft 规则只允许写入目标容器当前 `podman inspect` 的 `NetworkSettings.SandboxKey`. stop/start 后旧路径可能失效, runtime 记录不用于猜测; 全局 `pgrep -af 'pasta --config-net'` 只在唯一实例时可作兼容兜底, 发现多个实例直接失败, 防止规则误写到别的容器.
 - 容器物理可读主分支最新提交 (git 协议广告藏不掉), 已接受.
 - 容器 sshd 同时开密码登录且**密码固定为 sandbox**; 容器 ssh 端口经宿主机映射对局域网开放, 同网段任何人可进沙盒容器 — 用户知情接受.
@@ -207,7 +216,8 @@ stdout 末行 `STATE {...}` 单行 json (只加字段不改名); stderr 首行 `
 ## 容器命令收拢 (provider 扩展点)
 
 全部容器操作命令集中此节, 换/加 provider 时只改这里:
-- 生命周期: `podman create --name <名> --label ... -p 22 -p 127.0.0.1:6080:6080 (被占时 -p 127.0.0.1::6080) --shm-size=1g [-e 继承env] <镜像>` / `podman start|stop|rm -f` (容器不设内存/CPU 上限, D045); auth.json 不走挂载, 启动后 `podman exec -i <容器> sh -c 'install -d -o bolo -g bolo ...; cat > .../auth.json; chown bolo:bolo; chmod 600' < host-auth.json` 注入 (D046)
+- 生命周期: `podman create --name <名> --label ... -p 22 -p 127.0.0.1:6080:6080 (被占时 -p 127.0.0.1::6080) --shm-size=1g -v <records-root>/runtime/<identity>/git-bridge:/run/swt-git -v <母本留档>/<f>_AGENTS.md:<agent 配置路径>/AGENTS.md:ro [-e 继承env] <镜像>` / `podman start|stop|rm -f` (容器不设内存/CPU 上限, D045); auth.json 不走挂载, 启动后 `podman exec -i <容器> sh -c 'install -d -o bolo -g bolo ...; cat > .../auth.json; chown bolo:bolo; chmod 600' < host-auth.json` 注入 (D046)
+- git 通道 (P0-1): host 侧 `socat UNIX-LISTEN:<git-bridge>/git.sock,fork,mode=600 TCP:127.0.0.1:<daemon端口>`; 容器内 `podman exec -d <容器> socat TCP-LISTEN:9418,bind=127.0.0.1,fork,reuseaddr UNIX-CONNECT:/run/swt-git/git.sock`; 桥进程发现: `pgrep -f 'socat.*UNIX-LISTEN:.*git-bridge/git.sock'`
 - 端口发现: `podman port <容器名>` (22 = ssh, 6080 = noVNC); 状态: `podman ps -a --filter label=sandbox-worktree.repo=<主仓>`
 - 镜像: `podman build` / `podman images --filter label=run.sandbox-worktree.project-id=<主仓路径>` / `podman inspect`
 - 容器内操作: `podman exec` (key 注入 / swt-vnc start|stop|status / display 检查经 swt-display.py); 防火墙注入: `podman unshare nsenter --net=<容器网络命名空间> nft -f -`

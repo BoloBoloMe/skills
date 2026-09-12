@@ -434,3 +434,26 @@
 - 内容: terminate 成功 rm 容器并收尾 runtime 后, `runtime/<identity>/ssh/<容器名>.ed25519`, 对应 `.pub` 与 `.password` 仍存在; 多容器按名终结也没有按容器清理. 这违反 SKILL.md 终结完成标准, 形成 host 侧凭证残留. 修复要求: 成功路径按目标 runtime 记录删除私钥, 公钥和密码文件, 缺席按幂等成功处理, 兄弟容器凭证保留.
 - 承接: F014 (凭证卫生面)
 - 预计影响: swt.py terminate; tests/test_swt_m12.py; SKILL.md 终结完成标准
+
+### D049 git 通道 unix socket 双端桥 (替代 pasta 映射直连)
+- 状态: 当前有效
+- 约束性: 必须遵守
+- 替代: 容器 remote 直连 `git://host.containers.internal:<daemon端口>` (pasta map-guest-addr 映射)
+- 内容: daemon 只听宿主回环 (127.0.0.1 动态端口); host 侧 socat 把 unix socket (`runtime/<identity>/git-bridge/git.sock`, 挂载进容器 `/run/swt-git/`) 桥到 daemon 当前端口; 容器内 socat 转发器 (`podman exec -d`, root) 监听固定 127.0.0.1:9418 转发到该 socket. 容器 remote 恒定 `git://127.0.0.1:9418/<仓库名>`, birth/resume 都重保桥与转发器; resume 就绪判定新增 git 通道实测 (记录 remote 为固定地址 + 容器 origin 实际指向它 + 经桥 ls-remote 通), 任一不满足判可恢复并重跑收敛 (G 轮中途失败中间态不再卡死). resume 同时检测 pasta --config-net 复制配置与宿主当前网络失配并告警 (不强制重建). 配套: base 镜像 +socat (双端桥) +iproute2 (容器内排障); host 需 socat (start_git_bridge ENV 检查).
+- 依赖事实: F017
+- 预计影响: swt.py (daemon/birth/resume/terminate/switch/容器 create 挂载); image-prep.py (base); SKILL.md (术语/恢复/风险/命令收拢); tests/test_swt_m12.py
+
+### F017 pasta map-guest-addr 在宿主换网络后失效 (2026-09-11, G 轮 M10 验收获评)
+- 状态: 当前有效
+- 来源: G 轮 M10 验收, 宿主从 wlp1s0 换到 tun0 (VPN) 后容器 push 超时
+- 内容: 容器出网/DNS 正常, 唯独容器到 `host.containers.internal` (169.254.1.2) 的映射通道超时 — 旧 pasta 进程在宿主换网络后不死不重建, 其映射的是创建时接口状态; 同时 resume 重拉 daemon 端口漂移 (40629→45469), 容器内 remote 失配, resume 就绪判定不含 git 通道实测, 把 "daemon 活 + 容器跑" 误判为就绪, 中途失败留下 "新 daemon + 旧 remote" 中间态后重跑卡 "已就绪" 不再修复. 另实测 pasta --config-net 复制的接口名/地址在宿主换网络后与容器内不一致 (容器 tun0 192.168.216.x vs 宿主 wlp1s0 192.168.31.x).
+
+### D050 agent 系统提示词母本制
+- 状态: 当前有效
+- 约束性: 必须遵守
+- 内容: 母本在仓库 `agent-prompts/{pi,codex,kimi-code}_AGENTS.md`; birth 拷贝到 `runtime/<identity>/agent-prompts/<容器>/` 留档 (每容器一份, 可追溯版本), 只读单文件挂载进容器: pi → `~/.pi/agent/AGENTS.md`, codex → `~/.codex/AGENTS.md`, kimi-code → `~/.kimi-code/AGENTS.md` (官方文档: 全局指令文件随 KIMI_CODE_HOME, 缺省 `~/.kimi-code/`). 生效语义: 母本更新只对新 birth 的容器生效, 不动运行中容器. base 镜像不再烘 host 的 `~/.pi/agent/AGENTS.md` (image-prep IGNORE_PI_AGENT 加排除). 只读挂载只防写, 容器内可读 — 与镜像内其他配置同级, 无秘密.
+- 预计影响: swt.py (stage_agent_prompts/create 挂载); image-prep.py (IGNORE_PI_AGENT); agent-prompts/ (新增); SKILL.md 新节; tests/test_swt_m12.py
+
+### F018 kimi OAuth refresh token 一次性轮换 (2026-09-11, G 轮实测)
+- 状态: 当前有效
+- 内容: 容器内 kimi 与 host 共用同一份 OAuth 凭证 (复制 `~/.pi/agent/auth.json`) 时, 先用者刷新成功, 另一边报 400 invalid grant. 结论: 容器内 kimi (Kimi Code CLI) 必须独立登录, 禁止复制 host kimi 凭证进容器共用; 已写入 SKILL.md 存续节. 另: Python 版 kimi-cli 官方停维护, 项目层换代为 Node 版 Kimi Code CLI (install.sh, KIMI_VERSION 钉 0.42.0, KIMI_INSTALL_DIR=/usr/local 系统级), 同层清旧 uv 版残留.

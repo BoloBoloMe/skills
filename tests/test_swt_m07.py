@@ -218,6 +218,9 @@ class TestGenerate(unittest.TestCase):
         self.assertIn("npm i -g @earendil-works/pi-coding-agent", text)
         self.assertIn("fd-find", text)
         self.assertIn("ripgrep", text)
+        # P0-1 git 桥双端 + P2-7 容器内排障
+        self.assertIn("socat", text)
+        self.assertIn("iproute2", text)
         self.assertIn("uv", text)
         self.assertIn("useradd", text)
         self.assertIn("ssh-keygen -A", text)
@@ -299,7 +302,7 @@ class TestStageContextExcludes(unittest.TestCase):
         (self.skills / "__pycache__").mkdir()
         (self.skills / "__pycache__" / "junk.pyc").write_text("x")
         self.pi_agent.mkdir()
-        for name in ("auth.json", "settings.json", "keybindings.json"):
+        for name in ("auth.json", "settings.json", "keybindings.json", "AGENTS.md"):
             (self.pi_agent / name).write_text("{}")
         (self.pi_agent / "sessions").mkdir()
         (self.pi_agent / "sessions" / "s1.json").write_text("{}")
@@ -320,6 +323,8 @@ class TestStageContextExcludes(unittest.TestCase):
         self.assertTrue((staged_pi / "keybindings.json").exists())
         self.assertFalse((staged_pi / "auth.json").exists())
         self.assertFalse((staged_pi / "sessions").exists())
+        # P1-6: AGENTS.md 不进镜像, 走母本制 birth 挂载
+        self.assertFalse((staged_pi / "AGENTS.md").exists())
 
     def test_staging_filters_host_only_extensions(self):
         """D043 白名单心智: 留 host 名单排除, 其余 (含新扩展) 默认进容器."""

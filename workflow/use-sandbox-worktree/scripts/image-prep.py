@@ -45,7 +45,7 @@ HOST_ONLY_EXTENSIONS = (
 )
 HEADER_KEYS = {"build-id", "project-id", "image-ref", "measured-at"}
 IGNORE_SKILLS = shutil.ignore_patterns("__pycache__", ".venv", ".pytest_cache", "*.pyc")
-IGNORE_PI_AGENT = shutil.ignore_patterns("auth.json", "sessions", "*.bak")
+IGNORE_PI_AGENT = shutil.ignore_patterns("auth.json", "sessions", "*.bak", "AGENTS.md")
 IGNORE_HOST_ONLY_EXT = shutil.ignore_patterns(
     *(f"{name}*" for name in HOST_ONLY_EXTENSIONS)
 )
@@ -59,6 +59,7 @@ DEFAULT_DISPLAY_REQUIREMENTS = (
 )
 
 # base 层实测清单 (D014: OS + pi CLI + skill 库全量 + fd/rg; uv 供容器内 uv sync)
+# socat: git 通道双端桥 (P0-1); iproute2: 容器内排障 (P2-7)
 DEFAULT_BASE_REQUIREMENTS = """\
 # base 层需求清单 (D014)
 git>=2.30
@@ -69,6 +70,8 @@ fd>=1.0 probe="fd --version"
 rg>=13.0
 sshd>=8.0 probe="/usr/sbin/sshd -V"
 herdr>=0.9 probe="herdr --version"
+socat>=1.7 probe="dpkg-query -W -f='${Version}' socat | cut -d: -f2-"
+iproute2>=6.0 probe="dpkg-query -W -f='${Version}' iproute2 | cut -d: -f2-"
 codex-config probe="grep -c . /home/bolo/.codex/config.toml"
 """
 
@@ -241,7 +244,7 @@ FROM docker.io/library/node:24-bookworm-slim
 
 # 稳定层: 系统 bin 与 sshd (M03 镜像契约)
 RUN apt-get update \\
-    && apt-get install --no-install-recommends -y git openssh-server fd-find ripgrep python3 ca-certificates curl \\
+    && apt-get install --no-install-recommends -y git openssh-server fd-find ripgrep python3 ca-certificates curl socat iproute2 \\
     && rm -rf /var/lib/apt/lists/* \\
     && ln -s /usr/bin/fdfind /usr/local/bin/fd
 
@@ -273,7 +276,8 @@ RUN mkdir -p /home/bolo/.codex \\
 RUN printf 'SetEnv PATH=/home/bolo/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin\\n' >> /etc/ssh/sshd_config
 
 # 常变层: skill 库全量 COPY (D014/D018); ~/.pi/agent 机械复制 (D018/D023);
-# auth.json/sessions 不进镜像 (D018); 门禁类扩展留 host (D043 stage 过滤)
+# auth.json/sessions 不进镜像 (D018); AGENTS.md 不进镜像 (P1-6 母本制, birth 只读挂载);
+# 门禁类扩展留 host (D043 stage 过滤)
 COPY --chown=bolo:bolo skills/ /home/bolo/.agents/skills/
 COPY --chown=bolo:bolo pi-agent/ /home/bolo/.pi/agent/
 

@@ -731,6 +731,33 @@ class TestTS201BirthChain(SwtBirthFixture):
         command_line = Path(f"/proc/{pid}/cmdline").read_bytes().decode(errors="replace").split("\0")
         self.assertNotIn("--export-all", command_line)
         self.assertEqual(str(self.repo.parent), state["daemon"]["base-path"])
+        # P0-1: daemon 只听宿主回环; git 桥存活且 socket 落 runtime; 容器 remote 恒定走桥
+        self.assertEqual("127.0.0.1", state["daemon"]["addr"])
+        bridge = state["daemon"].get("bridge") or {}
+        self.assertTrue(bridge.get("alive"), msg=state["daemon"])
+        self.assertTrue(Path(bridge["socket"]).is_socket())
+        remote_url = self.ssh_run(
+            state, f"git -C /home/bolo/Workspace/{branch} remote get-url origin"
+        ).stdout.strip()
+        self.assertEqual(f"git://127.0.0.1:9418/{self.repo.name}", remote_url)
+        self.assertEqual(0, self.ssh_run(
+            state, f"git -C /home/bolo/Workspace/{branch} ls-remote origin"
+        ).returncode)
+        # P1-6: agent 提示词母本只读单文件挂载 (内容 = 仓库母本, 写被拒)
+        master = (ROOT / "workflow/use-sandbox-worktree/agent-prompts/pi_AGENTS.md").read_bytes()
+        for target in ("/home/bolo/.pi/agent/AGENTS.md", "/home/bolo/.codex/AGENTS.md",
+                       "/home/bolo/.kimi-code/AGENTS.md"):
+            got = subprocess.run(
+                ["podman", "exec", container["name"], "cat", target],
+                capture_output=True, check=False,
+            ).stdout
+            self.assertEqual(master, got, msg=target)
+        ro_write = subprocess.run(
+            ["podman", "exec", container["name"], "sh", "-c",
+             "echo x >> /home/bolo/.pi/agent/AGENTS.md"],
+            capture_output=True, text=True, check=False,
+        )
+        self.assertNotEqual(0, ro_write.returncode)
         self.assertEqual(branch, self.ssh_run(
             state, f"git -C /home/bolo/Workspace/{branch} branch --show-current"
         ).stdout.strip())
@@ -892,7 +919,7 @@ class TestTS211Partial(TestTS201BirthChain):
             encoding="utf-8",
         )
         (fake / "podman").chmod(0o755)
-        for command in ("uv", "git", "nft", "ssh", "ssh-keygen", "ip", "pgrep", "pasta", "nsenter"):
+        for command in ("uv", "git", "nft", "ssh", "ssh-keygen", "ip", "pgrep", "pasta", "nsenter", "socat"):
             target = shutil.which(command)
             self.assertIsNotNone(target)
             (fake / command).symlink_to(target)
@@ -2199,3 +2226,97 @@ class TestDisplayGateReentry(SwtBirthFixture):
         # 状态未被套用旧答案: display 仍为 fail
         runtime = self.runtime_data()
         self.assertEqual("fail", runtime["display"]["status"])
+
+
+class TestP01GitBridgeResume(SwtBirthFixture):
+    """P0-1/P1-4: G 轮中间态 (桥死 + 容器 remote 失配) 不再卡死, resume 可收敛."""
+
+    def resume(self, *extra: str) -> subprocess.CompletedProcess[str]:
+        return self.run_swt(
+            "resume", "--repo", str(self.repo), "--records-root", str(self.records), *extra,
+        )
+
+    def test_resume_converges_stale_remote_and_dead_bridge(self) -> None:
+        before = self.birth_ready()
+        name = before["containers"][0]["name"]
+        branch = before["mother"]["branch"]
+        # 制造中间态: 杀桥 + 容器 remote 指向失效地址 + 记录 remote 为旧形态
+        bridge_pid = before["daemon"]["bridge"]["pid"]
+        subprocess.run(["kill", str(bridge_pid)], capture_output=True, text=True, check=False)
+        self.assertEqual(0, self.ssh_run(
+            before, f"git -C /home/bolo/Workspace/{branch} remote set-url origin git://127.0.0.1:1/{self.repo.name}"
+        ).returncode)
+        runtime = self.runtime_data()
+        runtime["containers"][0]["remote"] = f"git://host.containers.internal:1/{self.repo.name}"
+        self.runtime_file().write_text(json.dumps(runtime), encoding="utf-8")
+
+        decide = self.resume("--name", name)
+        self.assertEqual(1, decide.returncode, decide.stderr)
+        self.assertIn("DECIDE ", decide.stdout)
+        completed = self.resume("--name", name, "--confirm")
+        self.assertEqual(0, completed.returncode, completed.stderr)
+        state = self.state(completed)
+        bridge = state["daemon"].get("bridge") or {}
+        self.assertTrue(bridge.get("socket"), msg=state["daemon"])
+        self.assertTrue(Path(bridge["socket"]).is_socket())
+        self.assertEqual(0, subprocess.run(["kill", "-0", str(bridge["pid"])], check=False).returncode)
+        url = self.ssh_run(
+            state, f"git -C /home/bolo/Workspace/{branch} remote get-url origin"
+        ).stdout.strip()
+        self.assertEqual(f"git://127.0.0.1:9418/{self.repo.name}", url)
+        fetched = self.ssh_run(state, f"git -C /home/bolo/Workspace/{branch} fetch --quiet origin")
+        self.assertEqual(0, fetched.returncode, fetched.stderr)
+
+    def test_ready_resume_probes_git_channel(self) -> None:
+        """git 通道断 (桥死) 时 ready resume 不再误判 '已就绪'."""
+        before = self.birth_ready()
+        name = before["containers"][0]["name"]
+        bridge_pid = before["daemon"]["bridge"]["pid"]
+        subprocess.run(["kill", str(bridge_pid)], capture_output=True, text=True, check=False)
+        decide = self.resume("--name", name)
+        self.assertEqual(1, decide.returncode, decide.stderr)
+        self.assertIn("DECIDE ", decide.stdout)
+
+
+class TestPastaNetworkMismatch(SwtFixture):
+    """P1-2: pasta 复制配置 vs 宿主当前网络 的失配检测 (mock 命令输出)."""
+
+    DETAIL = {"NetworkSettings": {"SandboxKey": "/run/netns/x"}}
+
+    def setUp(self) -> None:
+        super().setUp()
+        self.swt = self.load_swt()
+
+    def _patched(self, inside: str, host: str):
+        from unittest import mock
+
+        def fake_run(command, **_kwargs):
+            result = subprocess.CompletedProcess(command, 0, "", "")
+            if "nsenter" in command:
+                result.stdout = inside
+            else:
+                result.stdout = host
+            return result
+
+        return mock.patch.object(self.swt, "run", fake_run)
+
+    def test_mismatch_detected(self) -> None:
+        inside = "2: tun0    inet 192.168.216.67/21 brd 192.168.223.255 scope global tun0\n"
+        host = "1.1.1.1 via 192.168.31.1 dev wlp1s0 src 192.168.31.252 uid 1000\n"
+        with self._patched(inside, host):
+            message = self.swt.pasta_network_mismatch(self.DETAIL)
+        self.assertIsNotNone(message)
+        self.assertIn("tun0", message)
+        self.assertIn("wlp1s0", message)
+
+    def test_match_is_silent(self) -> None:
+        inside = "2: wlp1s0    inet 192.168.31.252/24 brd 192.168.31.255 scope global wlp1s0\n"
+        host = "1.1.1.1 via 192.168.31.1 dev wlp1s0 src 192.168.31.252 uid 1000\n"
+        with self._patched(inside, host):
+            self.assertIsNone(self.swt.pasta_network_mismatch(self.DETAIL))
+
+    def test_undecidable_is_silent(self) -> None:
+        with self._patched("", "no route\n"):
+            self.assertIsNone(self.swt.pasta_network_mismatch(self.DETAIL))
+        with self._patched("2: wlp1s0    inet 192.168.31.252/24 scope global wlp1s0\n", "garbage\n"):
+            self.assertIsNone(self.swt.pasta_network_mismatch(self.DETAIL))
