@@ -1,4 +1,4 @@
-# display 层需求清单 (D039, 原 M09 项目层浏览器清单): VNC 栈 + playwright chromium + swt-vnc
+# display 层需求清单: VNC 栈 + playwright chromium + swt-vnc
 # install/probe 都在容器内经 sh -c 执行: ${...} 用单引号防展开, 管道可用.
 # apt 条目 probe: dpkg-query 取 Debian 版本, cut 去掉可能的 epoch 前缀 (如 2:1.8.0).
 xvfb>=1.0 install="apt-get update && apt-get install --no-install-recommends -y xvfb" probe="dpkg-query -W -f='${Version}' xvfb | cut -d: -f2-"
@@ -9,7 +9,7 @@ fonts-noto-cjk install="apt-get update && apt-get install --no-install-recommend
 # chromium 归 playwright 管 (access-web 同源, 接缝补钉 5): 浏览器缓存落
 # /home/bolo/.cache, build RUN 以 root 跑, 装完 chown 回 bolo. chromium 安装期
 # 可能还在 /home/bolo/.local/share/pki 建 nssdb 与 /home/bolo/.config 建
-# google-chrome-for-testing (均 root 属主), 存在才 chown (目录非必现, F013).
+# google-chrome-for-testing (均 root 属主), 存在才 chown (目录非必现).
 # probe 的 chrome-linux* 同时兼容新旧布局 (chrome-linux64 / chrome-linux).
 chromium>=100 install="cd /home/bolo/.agents/skills/access-web/browse && HOME=/home/bolo uv run playwright install --with-deps chromium && chown -R bolo:bolo /home/bolo/.cache && for d in /home/bolo/.local /home/bolo/.config; do [ ! -e \"$d\" ] || chown -R bolo:bolo \"$d\"; done" probe="/home/bolo/.cache/ms-playwright/chromium-*/chrome-linux*/chrome --version"
 # swt-vnc = ISSUE-04 #2 的三动作脚本, install 一行写不完, base64 内嵌
