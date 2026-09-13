@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>跨主机无感访问 — Roadmap</title>
+<style>
+  :root {
+    --ink: #2c2a26;
+    --ink-soft: #6b675f;
+    --paper: #faf7f0;
+    --accent: #a4512e;
+    --path: #7a8b6f;
+    --mist: #b9b3a5;
+    --water: #5f7a8b;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: "Spectral", "Noto Serif SC", "Source Han Serif SC", serif;
+    line-height: 1.75;
+    padding: 2.5rem clamp(1.2rem, 6vw, 5rem);
+    max-width: 1180px;
+    margin: 0 auto;
+  }
+  h1 { font-size: 1.9rem; font-weight: 600; letter-spacing: .02em; }
+  h2 { font-size: 1.3rem; font-weight: 600; margin: 2.6rem 0 .8rem; }
+  h2 .mark { color: var(--accent); margin-right: .5em; }
+  p, li { font-size: .98rem; }
+  ul { padding-left: 1.4em; }
+  .sub { color: var(--ink-soft); font-size: .92rem; margin-top: .3rem; }
+  .toc { margin: 1.2rem 0 0; color: var(--ink-soft); font-size: .9rem; }
+  .toc a { color: var(--ink-soft); text-decoration: none; border-bottom: 1px dashed var(--mist); }
+  .callout {
+    border-left: 2px solid var(--accent);
+    padding: .2rem 0 .2rem 1rem;
+    margin: 1rem 0;
+    color: var(--ink);
+  }
+  .callout .tag { color: var(--accent); font-size: .85rem; letter-spacing: .1em; }
+  .mist { color: var(--ink-soft); }
+  .mist li { margin-bottom: .25rem; }
+  .out li { margin-bottom: .25rem; color: var(--ink-soft); }
+  .decided li { margin-bottom: .3rem; }
+  code { font-family: ui-monospace, monospace; font-size: .88em; background: #f0ebe0; padding: 0 .3em; border-radius: 3px; }
+  .map-wrap { margin: 1.4rem 0 .4rem; overflow-x: auto; }
+  svg text { font-family: "Spectral", "Noto Serif SC", "Source Han Serif SC", serif; }
+  .legend { font-size: .85rem; color: var(--ink-soft); margin-top: .2rem; }
+  .note { font-size: .88rem; color: var(--ink-soft); margin-top: .6rem; }
+  footer { margin-top: 3rem; font-size: .82rem; color: var(--mist); }
+</style>
+</head>
+<body>
+
+<h1>跨主机无感访问 · 路线图</h1>
+<p class="sub">use-sandbox-worktree 第二阶段 — 容器里的东西, 不管我坐在哪台机器前, 都像本地一样出现 · 2026-09-14 绘制</p>
+
+<nav class="toc">
+  <a href="#map">地图</a> · <a href="#decided">已拍板</a> · <a href="#mist">未决迷雾</a> · <a href="#out">范围外</a> · <a href="#milestones">里程碑清单</a>
+</nav>
+
+<h2 id="dest"><span class="mark">◆</span>目的地</h2>
+<p>三类场景 (弹浏览器过登录墙 / 展示网页 / 容器里起网站) × 两个位置 (宿主机本机 / 局域网内另一台 Linux 电脑), 全部零手工命令. Linux 桌面 = 原生体验; Mac/Windows 继续用 noVNC 网页兜底. 路线图排到实施与真机验证完成, 不是只到方案定稿.</p>
+
+<h2 id="map"><span class="mark">◈</span>地图</h2>
+<p>三条小径上山. <strong>信箱</strong>是另外两条的加速器: 有了它, "开窗/开网页" 这类动作由桌前常驻 AI 代劳. 网页直达与窗口直飞互不相干, 可并行推进.</p>
+
+<div class="map-wrap">
+<svg viewBox="0 0 1100 640" width="100%" role="img" aria-label="路线地图: 三条小径通往目的地">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="none" stroke="#7a8b6f" stroke-width="1.6"/>
+    </marker>
+  </defs>
+
+  <!-- 山峰 (目的地) -->
+  <path d="M850 90 L920 210 L780 210 Z" fill="none" stroke="#2c2a26" stroke-width="1.6" stroke-linejoin="round"/>
+  <path d="M850 90 L872 128 L850 118 L828 128 Z" fill="#faf7f0" stroke="#2c2a26" stroke-width="1.4"/>
+  <text x="850" y="72" text-anchor="middle" font-size="17" fill="#2c2a26">无感: 像本地一样</text>
+  <text x="850" y="236" text-anchor="middle" font-size="12.5" fill="#6b675f">M09 真机验收 · 三场景 × 两位置</text>
+
+  <!-- 出发点 -->
+  <circle cx="90" cy="540" r="7" fill="#faf7f0" stroke="#2c2a26" stroke-width="1.8"/>
+  <text x="90" y="572" text-anchor="middle" font-size="13.5" fill="#2c2a26">现状</text>
+  <text x="90" y="590" text-anchor="middle" font-size="11.5" fill="#6b675f">看东西要手工敲命令</text>
+
+  <!-- 小径 1: 信箱通道 -->
+  <path d="M100 534 C 210 500, 240 470, 330 452 S 470 430, 560 402" fill="none" stroke="#7a8b6f" stroke-width="1.8" stroke-dasharray="1 7" stroke-linecap="round"/>
+  <g font-size="13">
+    <circle cx="330" cy="452" r="15" fill="#faf7f0" stroke="#a4512e" stroke-width="2"/>
+    <text x="330" y="457" text-anchor="middle" fill="#a4512e">M01</text>
+    <text x="330" y="486" text-anchor="middle" fill="#2c2a26">信箱设计盘问</text>
+    <text x="330" y="502" text-anchor="middle" font-size="11" fill="#6b675f">deliberate · HITL</text>
+
+    <circle cx="452" cy="425" r="15" fill="#faf7f0" stroke="#a4512e" stroke-width="2"/>
+    <text x="452" y="430" text-anchor="middle" fill="#a4512e">M02</text>
+    <text x="452" y="392" text-anchor="middle" fill="#2c2a26">信箱原型</text>
+    <text x="452" y="376" text-anchor="middle" font-size="11" fill="#6b675f">prototype · HITL</text>
+
+    <circle cx="560" cy="402" r="15" fill="#faf7f0" stroke="#2c2a26" stroke-width="1.8"/>
+    <text x="560" y="407" text-anchor="middle" fill="#2c2a26">M03</text>
+    <text x="560" y="436" text-anchor="middle" fill="#2c2a26">信箱实施</text>
+    <text x="560" y="452" text-anchor="middle" font-size="11" fill="#6b675f">task · AFK</text>
+  </g>
+  <text x="300" y="416" font-size="14" fill="#7a8b6f" font-style="italic">小径一 · 信箱通道</text>
+
+  <!-- 小径 2: 网页/网站直达 -->
+  <path d="M100 548 C 220 556, 300 560, 420 556 S 540 548, 620 540" fill="none" stroke="#7a8b6f" stroke-width="1.8" stroke-dasharray="1 7" stroke-linecap="round"/>
+  <g font-size="13">
+    <circle cx="420" cy="556" r="15" fill="#faf7f0" stroke="#a4512e" stroke-width="2"/>
+    <text x="420" y="561" text-anchor="middle" fill="#a4512e">M04</text>
+    <text x="420" y="590" text-anchor="middle" fill="#2c2a26">网页/网站盘问</text>
+    <text x="420" y="606" text-anchor="middle" font-size="11" fill="#6b675f">deliberate · HITL · 方向已拍: 直达</text>
+
+    <circle cx="620" cy="540" r="15" fill="#faf7f0" stroke="#2c2a26" stroke-width="1.8"/>
+    <text x="620" y="545" text-anchor="middle" fill="#2c2a26">M05</text>
+    <text x="620" y="574" text-anchor="middle" fill="#2c2a26">网页/网站实施</text>
+    <text x="620" y="590" text-anchor="middle" font-size="11" fill="#6b675f">task · AFK · 修 8800 缺口</text>
+  </g>
+  <text x="240" y="542" font-size="14" fill="#7a8b6f" font-style="italic">小径二 · 网页与网站直达</text>
+
+  <!-- 小径 3: 窗口直飞 -->
+  <path d="M96 532 C 150 440, 190 370, 280 330 S 420 290, 520 268" fill="none" stroke="#7a8b6f" stroke-width="1.8" stroke-dasharray="1 7" stroke-linecap="round"/>
+  <g font-size="13">
+    <circle cx="280" cy="330" r="15" fill="#faf7f0" stroke="#a4512e" stroke-width="2"/>
+    <text x="280" y="335" text-anchor="middle" fill="#a4512e">M06</text>
+    <text x="280" y="300" text-anchor="middle" fill="#2c2a26">窗口直飞盘问</text>
+    <text x="280" y="284" text-anchor="middle" font-size="11" fill="#6b675f">deliberate · HITL</text>
+
+    <circle cx="400" cy="292" r="15" fill="#faf7f0" stroke="#a4512e" stroke-width="2"/>
+    <text x="400" y="297" text-anchor="middle" fill="#a4512e">M07</text>
+    <text x="400" y="326" text-anchor="middle" fill="#2c2a26">双机实测</text>
+    <text x="400" y="342" text-anchor="middle" font-size="11" fill="#6b675f">task · HITL · 音频隧道等 7 项</text>
+
+    <circle cx="520" cy="268" r="15" fill="#faf7f0" stroke="#2c2a26" stroke-width="1.8"/>
+    <text x="520" y="273" text-anchor="middle" fill="#2c2a26">M08</text>
+    <text x="520" y="240" text-anchor="middle" fill="#2c2a26">直飞实施</text>
+    <text x="520" y="224" text-anchor="middle" font-size="11" fill="#6b675f">task · AFK · 镜像级联重建</text>
+  </g>
+  <text x="172" y="392" font-size="14" fill="#7a8b6f" font-style="italic">小径三 · 窗口直飞 (waypipe)</text>
+
+  <!-- 汇入山顶 -->
+  <path d="M575 394 C 650 360, 720 300, 782 222" fill="none" stroke="#7a8b6f" stroke-width="1.6" marker-end="url(#arrow)"/>
+  <path d="M635 532 C 700 480, 760 380, 800 222" fill="none" stroke="#7a8b6f" stroke-width="1.6" marker-end="url(#arrow)"/>
+  <path d="M535 260 C 620 240, 700 225, 772 212" fill="none" stroke="#7a8b6f" stroke-width="1.6" marker-end="url(#arrow)"/>
+  <!-- M08 依赖 M03 -->
+  <path d="M560 388 C 552 340, 540 310, 524 284" fill="none" stroke="#b9b3a5" stroke-width="1.4" stroke-dasharray="4 4" marker-end="url(#arrow)"/>
+  <text x="528" y="340" font-size="10.5" fill="#b9b3a5">直飞集成信箱</text>
+
+  <!-- 迷雾 -->
+  <g opacity="0.85">
+    <ellipse cx="950" cy="420" rx="105" ry="58" fill="none" stroke="#b9b3a5" stroke-width="1.6" stroke-dasharray="2 6" stroke-linecap="round"/>
+    <ellipse cx="980" cy="380" rx="80" ry="45" fill="none" stroke="#b9b3a5" stroke-width="1.4" stroke-dasharray="2 6" stroke-linecap="round"/>
+    <text x="955" y="416" text-anchor="middle" font-size="13" fill="#6b675f">未决迷雾</text>
+    <text x="955" y="436" text-anchor="middle" font-size="11" fill="#6b675f">实时性升级 · 新版 waypipe</text>
+  </g>
+</svg>
+</div>
+<p class="legend">图例: 红圈 = 需要你在场的讨论; 墨圈 = 代理独立干活; 虚线小径 = 待走的路; 灰虚线 = 跨小径依赖.</p>
+
+<h2 id="decided"><span class="mark">✓</span>已拍板 (本次会话)</h2>
+<ul class="decided">
+  <li><strong>三方向都立项</strong>: 信箱通道 / 网页与网站直达 / 窗口直飞, 一图排完.</li>
+  <li><strong>网站服务直达局域网</strong>: 不要密码, 方便随手发给同事看. 取舍 (网段内任何人可访问) 用户明示接受.</li>
+  <li><strong>零手工命令</strong>: 一切命令由桌前常驻 AI 或自动化代执行; 手工命令只作底层零件存在, 不经人手.</li>
+  <li><strong>排除项</strong>: 容器直驱桌前 herdr (凭证+防火墙双违背) / pasta 自动端口转发 (暴露面隐性扩大) / 固定宿主端口 (多容器必撞) / 容器主动拨出建隧道 (白名单冲突).</li>
+</ul>
+
+<h2 id="mist"><span class="mark">?</span>未决迷雾</h2>
+<ul class="mist">
+  <li><strong>信箱实时性</strong>: 先定时取 (5-10 秒延迟), 不够用再升级长连推送 — 实时性诉求暴露时回访.</li>
+  <li><strong>新版 waypipe</strong>: Debian 现在装的 0.8.2 有断线重连, 未来换 Rust 版该功能消失 — base 换发行版时回访.</li>
+  <li><strong>Mac/Windows 的 noVNC 隧道也要手工</strong>: 目的地已排除, 但信箱落地后可顺带自动化 — 用户改主意时回访.</li>
+  <li><strong>分享给同事的 URL 稳定性</strong>: 端口每次重建会变, 链接会失效 — 先由 M04 盘问消化, 消化不掉再立里程碑.</li>
+</ul>
+
+<h2 id="out"><span class="mark">✕</span>范围外</h2>
+<ul class="out">
+  <li>Mac/Windows 无感化 — 目的地明确排除, noVNC 网页兜底.</li>
+  <li>跨互联网访问 — 只覆盖局域网.</li>
+  <li>网站服务加认证/TLS — 与 "直达开放" 的拍板相反.</li>
+  <li>present 常驻展示服务自身的改造 (另一会话跟踪), 本路线只消费其结果.</li>
+</ul>
+
+<h2 id="milestones"><span class="mark">≡</span>里程碑清单</h2>
+<ul>
+  <li><strong>M01 信箱设计盘问</strong> (deliberate, 你在场): 队列格式 / 消息类型与审批边界 / 常驻会话形态 / 多容器.</li>
+  <li><strong>M02 信箱原型</strong> (prototype): 粗糙可跑的 pi 扩展 + 容器内队列, 提升讨论保真度. ← M01</li>
+  <li><strong>M03 信箱实施</strong> (AFK): 双端扩展 + 队列约定 + 文档. ← M02</li>
+  <li><strong>M04 网页/网站盘问</strong> (deliberate, 你在场): 8800 钉死 / STATE 登记 / 交付包双 URL / 本机自动打开 / dev server 约定 / 分享形态.</li>
+  <li><strong>M05 网页/网站实施</strong> (AFK): birth 补发布 + SKILL + 交付包. ← M04</li>
+  <li><strong>M06 窗口直飞盘问</strong> (deliberate, 你在场): 触发链路 / 三态选路 / 音频形态 / 脚本母本制 / base 层改动与级联成本 / B 端前提.</li>
+  <li><strong>M07 双机实测</strong> (你在场): 音频 ssh -R / 常驻隧道 / 跨版本兼容, 7 项必测清单. ← M06</li>
+  <li><strong>M08 直飞实施</strong> (AFK): base/display 镜像 + 级联重建 + SKILL + 交付包. ← M07, M03</li>
+  <li><strong>M09 真机验收</strong> (你在场): 三场景 × 两位置各跑通一次. ← M03, M05, M08</li>
+</ul>
+<p class="note">前沿 = M01 / M04 / M06 三个盘问, 互不阻塞, 可安排顺序逐个进行.</p>
+
+<footer>probe 绘制 · 方向侦查结论见 docs/changes/swt-cross-host-access/recon/ (01 信箱 / 02 网页 / 03 直飞)</footer>
+
+<script>
+window.__PRESENTATION_STATE__ = { version: 1, values: {} };
+</script>
+</body>
+</html>
