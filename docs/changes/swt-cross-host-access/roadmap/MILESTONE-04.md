@@ -8,6 +8,7 @@
 
 待盘点 (依据 [recon/02](../recon/02-present-web.md)):
 
+- **移交项**: 旧图 MILESTONE-14 第 2 项 (展示端口预留, D053 回环发布) 由本路线吸收 — 用户拍板 0.0.0.0 直达取代回环-only, D053 已标替代; 盘问时按直达形态讨论, 不再回退回环
 - 8800 钉死为容器对外 web 端口 (present/dev server 共形) 的细节: dev server 绑 0.0.0.0 的约定写在哪 (容器 agent 母本 / SKILL)
 - birth 补 `-p 8800` + STATE 登记 web-port + 交付包本机/局域网双 URL
 - 本机场景 host 侧 xdg-open 的触发时机 (页面就绪后)
