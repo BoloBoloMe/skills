@@ -6,12 +6,12 @@
 
 用法: uv run check-ac.py <PRODUCT.md 路径>
 
-校验五项, 规则与同目录 SKILL.md / GHERKIN.md 对齐:
+校验六项, 规则与同目录 SKILL.md / GHERKIN.md 对齐:
 1. 解析: gherkin-official parser 必须成功解析 gherkin 块.
-2. 标签封闭集与 @AC 唯一性 (D003/D007): 只允许 @AC-NNN / @G-NNN / @US-NNN /
+2. 标签封闭集与 @AC 唯一性 (D003/D007): 只允许 @AC-NNN / @G-NNN /
    @BR-NNN / @normal / @failure / @edge; 每场景 (含场景大纲) 恰好一个 @AC-NNN.
 3. 覆盖完整性 (D003): 每个出现过的 @AC-NNN 至少挂在一个场景上; 每场景至少一个
-   覆盖标签 (@G-NNN / @US-NNN / @BR-NNN).
+   覆盖标签 (@G-NNN / @BR-NNN).
 4. 关键字子集白名单 (D005/D008): 禁 规则: (Rule); 禁官方同义变体
    (假如/假设/剧本/剧本大纲/并且/同时), 节点与步骤关键字只允许唯一写法
    (背景/场景/场景大纲, 假定/当/那么/而且/但是).
@@ -19,6 +19,8 @@
    "描述非空" 视为存在非关键字行 (如 给定/则/英文关键字), 判为违规.
 5. 标签位置: 标签只允许出现在场景/场景大纲行; 功能级/例子块级标签会
    向下继承, 破坏每场景恰好一个 @AC 的语义, 一律判为违规.
+6. 编号对账: 场景引用的 @G-NNN/@BR-NNN 必须在 PRODUCT.md 的 目标/业务规则 节
+   真实存在; @BR 不得指向标 (审计) 的审计式断言.
 """
 
 from __future__ import annotations
@@ -36,7 +38,6 @@ FENCE_RE = re.compile(r"^```gherkin[^\n]*\n(.*?)^```", re.S | re.M)
 AC_TAG_RE = re.compile(r"^@AC-\d{3}$")
 COVER_TAG_RES = (
     re.compile(r"^@G-\d{3}$"),
-    re.compile(r"^@US-\d{3}$"),
     re.compile(r"^@BR-\d{3}$"),
 )
 TYPE_TAGS = ("@normal", "@failure", "@edge")
@@ -46,6 +47,31 @@ TYPE_TAGS = ("@normal", "@failure", "@edge")
 BACKGROUND_KEYWORDS = ("背景",)
 SCENARIO_KEYWORDS = ("场景", "场景大纲")
 STEP_KEYWORDS = ("假定", "当", "那么", "而且", "但是")
+
+# 编号对账 (校验 6): 从 PRODUCT.md 正文节提取 G/BR 条目
+ENTRY_RE = re.compile(r"^\s*[-*]\s*(G|BR)-(\d{3})\s*[:：]")
+AUDIT_MARKS = ("(审计)", "（审计）")
+
+
+def extract_entries(markdown: str, section: str) -> dict[str, bool]:
+    """提取 `## <section>` 节中的 G/BR 条目, 返回 {编号: 是否 (审计) 条目}.
+
+    节不存在视为空集 (模板允许 业务规则 节无内容), 引用自然全部判为悬挂.
+    """
+    m = re.search(rf"^##\s*{re.escape(section)}\s*$", markdown, re.M)
+    if m is None:
+        return {}
+    body_start = m.end()
+    nxt = re.search(r"^##\s", markdown[body_start:], re.M)
+    body = markdown[body_start : body_start + nxt.start()] if nxt else markdown[body_start:]
+    entries: dict[str, bool] = {}
+    for line in body.splitlines():
+        em = ENTRY_RE.match(line)
+        if em:
+            entries[f"{em.group(1)}-{em.group(2)}"] = any(
+                mark in line for mark in AUDIT_MARKS
+            )
+    return entries
 
 
 class Violations:
@@ -120,7 +146,7 @@ def check_tags(
             v.add(
                 "标签封闭集",
                 f"{loc(tag)} ({where})",
-                f"非法标签 {name} (封闭集: @AC-NNN/@G-NNN/@US-NNN/@BR-NNN/"
+                f"非法标签 {name} (封闭集: @AC-NNN/@G-NNN/@BR-NNN/"
                 "@normal/@failure/@edge)",
             )
     return ac_names, cover_names
@@ -177,7 +203,7 @@ def walk(gdt: dict, v: Violations) -> tuple[int, int]:
     feature = gdt.get("feature")
     if feature is None:
         v.add("关键字白名单", "gherkin 块", "缺少 `功能:` 行")
-        return 0, 0
+        return 0, 0, []
     if feature.get("keyword") != "功能":
         v.add(
             "关键字白名单",
@@ -189,7 +215,7 @@ def walk(gdt: dict, v: Violations) -> tuple[int, int]:
     # W2: 功能级不允许挂任何标签 (会向所有场景继承)
     check_tag_position(feature, v, "功能级")
 
-    state = {"scenarios": 0, "ac_on": set()}
+    state = {"scenarios": 0, "ac_on": set(), "cover_refs": []}
 
     def handle_children(children: list[dict]) -> None:
         for child in children:
@@ -222,11 +248,14 @@ def walk(gdt: dict, v: Violations) -> tuple[int, int]:
                         "每场景必须恰好一个 @AC-NNN",
                     )
                 state["ac_on"].update(ac_names)
+                for tag in sc.get("tags") or []:
+                    if any(r.match(tag["name"]) for r in COVER_TAG_RES):
+                        state["cover_refs"].append((tag["name"], loc(tag), sc_where))
                 if not cover_names:
                     v.add(
                         "覆盖完整性",
                         f"{loc(sc)} ({sc_where})",
-                        "缺少覆盖标签, 每场景至少一个 @G-NNN/@US-NNN/@BR-NNN",
+                        "缺少覆盖标签, 每场景至少一个 @G-NNN/@BR-NNN",
                     )
                 for ex in sc.get("examples") or []:
                     # W2: 例子块级不允许挂任何标签
@@ -234,7 +263,7 @@ def walk(gdt: dict, v: Violations) -> tuple[int, int]:
                     check_description(ex, v, f"{sc_where} 的例子")
 
     handle_children(feature.get("children") or [])
-    return state["scenarios"], len(state["ac_on"])
+    return state["scenarios"], len(state["ac_on"]), state["cover_refs"]
 
 
 def main() -> int:
@@ -258,7 +287,33 @@ def main() -> int:
         return 1
 
     v = Violations()
-    n_scenarios, n_acs = walk(gdt, v)
+    n_scenarios, n_acs, cover_refs = walk(gdt, v)
+
+    # 校验 6: 编号对账 — 引用的 G/BR 必须在正文节真实存在且类别正确
+    g_entries = extract_entries(markdown, "目标")
+    br_entries = extract_entries(markdown, "业务规则")
+    for name, where, sc_where in cover_refs:
+        key = name.lstrip("@")
+        if name.startswith("@G-"):
+            if key not in g_entries:
+                v.add(
+                    "编号对账",
+                    f"{where} ({sc_where})",
+                    f"{name} 在 `## 目标` 节不存在 (对账来源: 该节的 `- G-NNN:` 列表项)",
+                )
+        elif name.startswith("@BR-"):
+            if key not in br_entries:
+                v.add(
+                    "编号对账",
+                    f"{where} ({sc_where})",
+                    f"{name} 在 `## 业务规则` 节不存在 (对账来源: 该节的 `- BR-NNN:` 列表项)",
+                )
+            elif br_entries[key]:
+                v.add(
+                    "编号对账",
+                    f"{where} ({sc_where})",
+                    f"{name} 指向 (审计) 条目, 审计式断言禁止进 Gherkin, 由覆盖矩阵承接",
+                )
     if v:
         for item in v.items:
             print(item, file=sys.stderr)
