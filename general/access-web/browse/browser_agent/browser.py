@@ -325,6 +325,11 @@ class Browser:
             args.append("--no-sandbox")
         # 无头模式下不保留默认窗口大小限制
         args.append("--window-size=1280,720")
+        # 环境补参口: 桌面探测失败的场景 (如无 DISPLAY 的 Wayland 会话,
+        # ozone auto 误选 x11 必崩) 由调用方经 BROWSER_EXTRA_ARGS 注入
+        # 显式平台等 flag, 空格分隔.
+        extra = os.environ.get("BROWSER_EXTRA_ARGS", "").split()
+        args.extend(extra)
         return args
 
     def _resolve_context(self, browser: PWBrowser) -> BrowserContext:
