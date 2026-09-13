@@ -1,4 +1,4 @@
-# 状态: 进行中
+# 状态: 已关闭 (2026-09-13 终轮全链演练跑通, 产物 [../milestone-10-full-chain-run.md](../milestone-10-full-chain-run.md))
 # 类型: task
 # 阻塞于: MILESTONE-04, MILESTONE-07, MILESTONE-08, MILESTONE-09, MILESTONE-12
 

@@ -475,6 +475,11 @@
 - 状态: 当前有效
 - 内容: wayland 客户端与合成器靠 unix socket  ancillary data (SCM_RIGHTS) 传共享显存 fd; socat 这类字节流中继不传 fd, chromium 经中继连接必崩 (`Fatal Wayland communication error: Invalid argument`). 结论: wayland 直通只能直挂 socket 本体, 权限问题在属主权上解 (chmod 0777, 见 D051 实现修订), 禁用中继. 另: `--screenshot` 会强制 headless 模式, 不能用作 wayland 通路的验证手段; 验证 = headed 进程存活 + 无 fatal (直挂方案实测: bolo 身份 chromium `--ozone-platform=wayland` 存活 25s+ 零 fatal, 窗口落宿主机桌面).
 
+### F020 x11vnc 与 WAYLAND_DISPLAY 冲突 (2026-09-13, M10 终轮演练实测)
+- 状态: 当前有效 (已修复, commit aaf1572)
+- 内容: D051 给容器烘入 WAYLAND_DISPLAY/XDG_RUNTIME_DIR 后, x11vnc 0.9.16 探测到 WAYLAND_DISPLAY 即误判自己跑在 wayland 会话 ("Wayland display server detected... Exiting") 直接退出, 尽管其目标是 Xvfb :99 — 有直通的容器 noVNC 兜底链必断, D051 第 2 条 "VNC 保留兜底" 实际不成立. 修复: swt-vnc 启动 x11vnc 时 `env -u WAYLAND_DISPLAY -u XDG_RUNTIME_DIR` (修复落 image/requirements-browser.md 内嵌 swt-vnc, display+项目层镜像重建后 birth display=ok 验证通过). 教训: 给容器烘显示类环境变量时, 栈内老工具可能拿它做会话类型误判.
+- 承接: D051 (直通引入的变量), D040 (VNC 兜底语义)
+
 ### D051 实现修订 (M13, 2026-09-12)
 - 状态: 当前有效
 - 内容: D051 第 1 条落地参数定为 `-v <宿主socket>:/run/swt-wayland/wayland-0 -e XDG_RUNTIME_DIR=/run/swt-wayland -e WAYLAND_DISPLAY=wayland-0 [--device /dev/dri]`. 权限解法: rootless uid_map 下直挂 socket 在容器内属主映射为 root, 0755 属主权下 bolo 连不上 → host 侧 `chmod 0777` 该 socket (birth/resume 都重保, GNOME 登录会话重启重置权限); 父目录 `/run/user/<uid>` 为 0700, 其他用户够不着路径, 宿主暴露面≈零. 不采用容器内 socat 中继 (F019). GPU 补充: 非 NVIDIA 宿主 `/dev/dri` 直挂即可, 但 render 节点属主权同样受限, chromium 不可用时自动回软渲染, 不阻断.
@@ -484,3 +489,10 @@
 - 约束性: 必须遵守
 - 内容: 三母本不再是 host `~/.pi/agent/AGENTS.md` 的字节拷贝 (原形态 = 容器内多处失效的死指针, 且 codex/kimi 母本带 pi 专属内容诱发幻觉调用). 母本按容器环境撰写: 通用核 (风格/uv/skill 读取) + 容器契约 (沙盒身份/网络白名单预期拒/固定 git remote 快进推即交付/真远端不可达/密钥不落 push 面); pi 母本额外带 herdr/llm-select 段, codex/kimi 母本不带. 三份允许合理分化, 通用核改动需同步三份.
 - 预计影响: agent-prompts/; tests/test_swt_m12.py (P1-6 断言改为按各自母本比对)
+
+### D053 展示链固定形态: swt create 预留展示端口映射 (2026-09-13, M10 终轮演练拍板)
+- 状态: 当前有效
+- 约束性: 必须遵守
+- 内容: swt 容器 create 时除 22/6080 外预留一个展示端口映射 (宿主回环), present 容器分支复用该已映射端口起服, host 侧 `podman port` 发现组装 URL 交付. 背景: M10 演练实锤 F 轮挂账的 known gap — present 容器分支要求 "复用容器创建时已映射的那个端口", 而 swt 只映射 22 (sshd) 与 6080 (noVNC), 均被占, web 交付结构性走不通, 只能走失败出口拷文件. 排除项: B (每次 ssh -L 临时隧道, 多一步人工/AI 操作) 与 C (失败出口拷文件, 丢 live 服务) 均为降级形态; A 与 D040 noVNC 回环映射同构, 成本近零. 注意: 端口映射 create 时钉死, 实现后须重建容器生效. 补充形态 (不冲突): 本机直通/noVNC 看一眼页面随时可用, 但属 "看图" 非 "用网页", 且依赖显示栈存活, 不作固定交付路径.
+- 依赖事实: M10 终轮演练实测 ([milestone-10-full-chain-run.md](milestone-10-full-chain-run.md) 发现 5)
+- 预计影响: MILESTONE-14 实现; swt.py create; present skill 容器分支; SKILL.md 存续节展示链段

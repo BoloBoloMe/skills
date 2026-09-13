@@ -77,7 +77,7 @@ uv run python scripts/swt.py birth [--repo <主仓>] --branch <母体分支名�
   - 密码: 固定 `sandbox` (用户拍板, 风险见 reference/risks.md), `<容器名>.password` 留档; 人登录用.
   - 密钥: `<容器名>.ed25519` (`ssh -i <私钥> ...`), 脚本/herdr 的 BatchMode 走它.
 - herdr remote (走 ssh, 容器无需预启 server, remote attach 按需拉起): 两条完整可直接复制的命令 — 我在本机用 `herdr --remote ssh://bolo@127.0.0.1:<宿主端口>`, 我在局域网远程机上用 `herdr --remote ssh://bolo@<host-LAN-IP>:<宿主端口>`. 我会在本机和远程机之间来回切换; 远程机上 ssh 用的私钥需先从 host 拷贝 (路径见上), 或直接用密码. 该命令须在非 herdr 终端运行 (herdr 会话内被套娃禁用拦截); 已在 herdr 里则走开窗格配方 (存续节).
-- 容器内路径契约: 用户 `bolo` (home 与 host 字面相同), 代码固定克隆在 `/home/bolo/Workspace/<母体目录名>` — 与 host 母体路径字面一致 (当前分支 = 母体分支); skill 库在 `~/.agents/skills/`, pi 配置在 `~/.pi/agent/`.
+- 容器内路径契约: 用户 `bolo` (home 与 host 字面相同), 代码固定克隆在 `/home/bolo/Workspace/<分支名>` (当前分支 = 母体分支); skill 库在 `~/.agents/skills/`, pi 配置在 `~/.pi/agent/`.
 - 风险声明: 连同 reference/risks.md 的风险项一起声明.
 完成标准: STATE `stage=born`, 容器内检出分支 = 母体分支, 交付包齐发 (显示栈降级/缺席时相应项改为降级/常态说明, 其余照发).
 
@@ -144,6 +144,7 @@ uv run python scripts/image-prep.py build      --repo <主仓> [--requirements <
 - 匹配谓词链: display 层自身须基于当前 base, 项目层须基于当前 display — base 更新后旧 display 自然淘汰, display 更新后旧项目镜像自然淘汰.
 - **base 与 display 都只在我明说时重建**, 无自动检测; display 缺失/过期时项目构建报 `NO-DISPLAY`/`DISPLAY-STALE`, 先 build-display 再 build.
 - 需求清单条目 = 名称 + 版本要求 (`>= <= > < ==` 或裸名称), 指令 `install=`/`probe=` (探测缺省 `<name> --version`); apt 条目必须写 `install=` (只写 probe 不装包).
+- image-prep 直用时 match/build 的 `--requirements` 为必填 (birth 内部会自动代填缺省路径 `<records-root>/<项目slug>/requirements.md`, 只有绕开 birth 手敲 image-prep 时才需显式给).
 - **推导规则: 项目层清单含 codex (或其他支持 env_key 的 llm CLI) 时, 必须附静态配置条目** — 以 codex 为例: `codex-config install="mkdir -p /home/bolo/.codex && echo <config.toml 的 base64> | base64 -d > /home/bolo/.codex/config.toml && chown -R bolo:bolo /home/bolo/.codex" probe="grep -c . /home/bolo/.codex/config.toml"`; 配置文件零秘密, 密钥走 `env_key` 指向 env.conf 继承的环境变量, 禁止把密钥写进清单/镜像/文件. 参照实现: `<records-root>/skills/requirements.md`.
 - 匹配规则: 按镜像 label 找候选取最新构建 → 需求逐项版本满足 + 硬性条件 "基于当前 display 构建" → REUSE, 否则 BUILD-NEW (display 缺失时报 BUILD-NEW + reason, 不硬崩). 旧镜像保留不删.
 - 版本语义: tag = 日期-序号 (人读索引), digest = 镜像内容哈希即精确版本; contents.md = 构建后**实测**清单.

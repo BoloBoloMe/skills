@@ -6,6 +6,8 @@ use-sandbox-worktree skill 落地并经端到端演练验证可用 — 它管理
 
 完成判据: 端到端演练跑通 建 → 干 → 回流 → 拆. 交付物是可工作的 skill, 不是又一份设计文档.
 
+**目的地已到达 (2026-09-13)**: M10 终轮全链演练跑通 (建 → 干 → 回流 → 展示链 → 登录墙 → 拆), 报告 [../milestone-10-full-chain-run.md](../milestone-10-full-chain-run.md); 演练暴露的代码侧缺陷路由 MILESTONE-14.
+
 ## 笔记
 
 - 背景调研: [2026-09-01-research.md](../2026-09-01-research.md) (硬约束实测: nft 白名单注入点 / git gate 门禁 / VNC 通道, 全部已验证); [2026-08-31-sandcastle-design.html](../2026-08-31-sandcastle-design.html)
@@ -19,6 +21,7 @@ use-sandbox-worktree skill 落地并经端到端演练验证可用 — 它管理
 - MILESTONE-03 实跑新事实 (2026-09): updateInstead 推送落地存在短延迟 (push 返回成功后 linked worktree 文件稍后可读, 编排器以 ≤3s 轮询消解); 本机无 pasta 网关接口, daemon 监听按兜底顺序落 0.0.0.0 + `host.containers.internal` 配对; 硬中断 (进程被杀级) 会留 daemon 僵尸, 已知限制未做 atexit 兜底
 - MILESTONE-03 遗留缺口 (待路由): (1) TECHNICAL.md 的 `/tmp/swt-m03-index.json` 索引契约 (缺省 --repo 跨命令定位/同名冲突拒绝) 未被 EXECUTION 任何切片认领, 未实现 — 须决定补 ISSUE 或改 spec; (2) 运行时 JSON container 段为 schema 超集 (ssh_private_key/ssh_host/daemon_addr/clone_dir/remote), TECHNICAL.md 字面宜补记; (3) 仓库根无 pytest 依赖, 测试实际以 `uv run --with pytest` 运行, EXECUTION.md 的 `uv run pytest` 字面与现实不符
 - MILESTONE-09 实跑新事实 (2026-09-06): 登录墙 6 检查真链路全过 (空白基线 0.0019% / headed 渲染 30.19% / headless 回切); 渲染窗口固定 1280x720 使阈值定 0.2; image-prep `build` 缺 --repo 裸崩 (M07 领地待补); 接缝补钉五条待用户追认 (见 [../milestone-09-login-wall-run.md](../milestone-09-login-wall-run.md)); 3840 翻倍疑点挂起 (0/21 复现, 档案在该报告内, 复现时留容器验尸)
+- MILESTONE-10 终轮演练 (2026-09-13): 全链从零跑通 (含三层镜像从零制备), 用户 ssh 实操 6 提交回流母体并合流 v2; 抓获 M13 真回归 (x11vnc×WAYLAND_DISPLAY, F020, 已修) 与展示链 known gap 实锤 (拍板 D053 预留展示端口); 7 条发现全录 [../milestone-10-full-chain-run.md](../milestone-10-full-chain-run.md), 代码侧 4 项路由 MILESTONE-14; 迷雾回访: D037 维持 (救场靠原生命令够用, kimi 父目录热修即例), 运行期新站点需求保留 (blacklist 模式未触发)
 - MILESTONE-11 盘问 (2026-09-06): 五场景抽取方案拍完 (D025-D038) — 单 module `swt` 五子命令 + 决策收据协议; Design It Twice 三分支 (glm-5.3-flash: min/flex/caller) 取 caller 骨架; 反方攻击 (gpt-5.6-luna) 10 项 9 成立全部转为修正; 校验代理 6 项属实已修. M03 遗留缺口 (1) 注册表索引契约由 D025 废弃 (改显式 --repo + cwd 探测); 缺口 (2)(3) (TECHNICAL.md 字面修补) 留 MILESTONE-12 顺手处理
 - MILESTONE-06 盘问 (2026-09-04): 镜像制备策略拍完 (D014-D020) + herdr 集成形态 d 拍完 (D021); 反方攻击 6 项成立已转为修正 (门禁扩展留 host/清单带版本谓词/base-digest 硬谓词/home 完美复刻取代适配版/委派配方加就绪 guard 与动态提交键/定位收窄为交互式编排适配层); 关键实测 (F009/F010): herdr 经 HERDR_AGENT=pi 提示识别 ssh 后的 pi, 委派全链路 (send-text + alt+\ → working→done→read) 跑通, 提交键取决于容器内 keybindings (键位即接口), pi -p 批处理为保底形态; 后续修订: D023 推翻 host 环境文档 (~/AGENTS.md/~/docs) 注入 — host 环境文档不进独立环境
 
@@ -49,17 +52,18 @@ use-sandbox-worktree skill 落地并经端到端演练验证可用 — 它管理
 - [MILESTONE-09](MILESTONE-09.md) — 登录墙闭环已实现并真链路实测: login-wall build/up/down/verify + 浏览器项目层清单 + 容器内 swt-vnc, 31 项测试全绿, 真记录根 dogfood 6 检查全过 — 详见 [../milestone-09-login-wall-run.md](../milestone-09-login-wall-run.md)
 - [MILESTONE-11](MILESTONE-11.md) — 五场景抽取方案拍完: 单 module `swt` 五子命令 (birth/resume/status/terminate/switch) + 决策收据协议 + 危险操作显式独立; 反方攻击 9 项成立已转为修正 (D025-D038) — 详见 [../DECISIONS.md](../DECISIONS.md) D025-D038, [反方审查](../milestone-11-opposing-review.md), 设计稿 [min](../milestone-11-design-min.md)/[flex](../milestone-11-design-flex.md)/[caller](../milestone-11-design-caller.md), [ADR 0009](../../adr/0009-swt-five-subcommands-decision-receipt.md)
 - [MILESTONE-12](MILESTONE-12.md) — swt 五子命令已实现 (ISSUE-05..11, commit 01d6146..3b92b21): 骨架/status/net-firewall 扩展 (remove+--merge)/birth/terminate/switch/resume 全链 TDD, tests/test_swt_m12.py 84 用例全绿 + m04/m07/m09 回归绿; D036 等价矩阵 13/13 后 e2e-smoke 退役; TECHNICAL.md 字面缺口 (2)(3) 已补 — 详见 [../EXECUTION-M12.md](../EXECUTION-M12.md), [../issues/](../issues/), [AFK 补钉 U-001..013](../UNAUTHORIZED_DECISIONS.md)
+- [MILESTONE-10](MILESTONE-10.md) — SKILL.md 定稿 + 终轮全链演练跑通 (含三层镜像从零制备/用户 ssh 实操 6 提交回流/登录墙 headed 弹宿主机桌面亲验): 抓获并修复 F020 (x11vnc×wayland), 拍板 D053 (展示链预留端口), 发现路由 MILESTONE-14 — 详见 [../milestone-10-full-chain-run.md](../milestone-10-full-chain-run.md)
 
 ## 前沿
 
 <!-- 开放 + 已解除阻塞 + 未被认领的 Milestone -->
-- [MILESTONE-10](MILESTONE-10.md) — `task` — SKILL.md 定稿 + 全链演练 (全部阻塞项已关闭)
 - [MILESTONE-13](MILESTONE-13.md) — `task` — 双模显示栈实现 (D051: 本机 wayland 直通 + VNC 兜底), 与 M10 并行无阻塞
+- [MILESTONE-14](MILESTONE-14.md) — `task` — M10 演练发现的代码侧缺陷修复 (母本挂载父目录根修/展示端口预留 D053/局域网 IP 选取/swt-vnc status 误报)
 
 ## 未决迷雾
 
-- 运行期新站点需求的处理流程形态 (回父会话确认 → 更新容器的具体动作)
-- 修复原语 (config/daemon 子命令) 是否需要 — M12 实现或 M10 演练暴露真实救场需求时回访 D037
+- 运行期新站点需求的处理流程形态 (回父会话确认 → 更新容器的具体动作) — M10 终轮 blacklist 模式未触发, 保留
+- 修复原语 (config/daemon 子命令) 是否需要 — M10 终轮回访: 两次救场 (x11vnc 修镜像/kimi 父目录 chown) 均靠原生命令完成且顺畅, D037 维持, 不重开
 
 ## 范围外
 
@@ -77,8 +81,8 @@ M02(已关闭) ──┘                 │                       │
                                 ├─→ M08(已关闭) ─────────┤
                                 │                       │
                                 └─→ M11(已关闭) ─→ M12(已关闭) ──┤
-M05(已关闭) ─→ M06(已关闭) ────┴─→ M07(已关闭) ─→ M09(已关闭) ┴─→ M10 ─→ 目的地
+M05(已关闭) ─→ M06(已关闭) ────┴─→ M07(已关闭) ─→ M09(已关闭) ┴─→ M10(已关闭) ─→ 目的地已到达
 ```
 
-- M01..M12 全部已关闭; 前沿 = MILESTONE-10 (关闭即达目的地) + MILESTONE-13 (D051 显示栈增强, 独立于主线, 不阻塞目的地)
-- M12 已交付 swt 五子命令实现 (ISSUE-05..11), M10 的 SKILL.md 引用对象已就绪
+- M01..M12 与 M10 全部已关闭, 目的地已到达 (2026-09-13, 见上方目的地节)
+- 前沿 = MILESTONE-13 (D051 显示栈增强, 主线外独立) + MILESTONE-14 (M10 演练发现路由, 缺陷修复)
