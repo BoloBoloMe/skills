@@ -9,7 +9,7 @@
 开新会话时:
 1. 我没指定的项 (llm/思考深度), 用 `llm-select` skill 选定; 
 2. 开在父会话所在工作空间的新标签页; 我没指定标签名时, 按默认格式 `S-<子代理名>-<序号>` 生成.
-3. 选定 agent: openai 的 llm 用 `codex`, kimi 的 llm 用 `kimi`, 其他 llm 用 `pi`.
+3. 选定 agent: openai 的 llm 用 `codex`, kimi 的 llm 用 `kimi`, 其他 llm 用 `pi`. 总是以 yolo 模式启动 codex/kimi: 全全自动执行, 不进行任何人工审批的全权访问模式.
 
 你在 sandbox 容器内, 不是宿主机.   
 网络受宿主机管控: 访问不通先怀疑管控而非故障, 列出所需站点报给我; 长时间排查网络故障是浪费.
