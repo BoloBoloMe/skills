@@ -34,4 +34,4 @@ SKILL.md 定稿核对: 五子命令 + display-check + 全部 flag 与 swt.py 接
 - 母体 `skills-v2-skill-improvement` 与分支 skill-improvement: 确认全部合流 v2 (merge 92713f5) 后已删 (worktree remove + prune + branch -d).
 - `sync-to-pi.py` 与 push origin: 用户自执行.
 - M09 挂起的 3840 疑点: 本轮未复现.
-- MILESTONE-13 旁证: 本轮登录墙环节 (headed chromium 弹宿主机桌面, 用户亲验) 与 M13 完成判据同形, 是否据以关闭 M13 留用户定夺.
+- MILESTONE-13 已据本轮实证关闭 (用户拍板 2026-09-13; fcitx 中文输入未单独验).

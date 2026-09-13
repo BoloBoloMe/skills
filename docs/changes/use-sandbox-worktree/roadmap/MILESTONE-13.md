@@ -1,4 +1,4 @@
-# 状态: 开放
+# 状态: 已关闭 (2026-09-13, 用户拍板; 实证见 [../milestone-10-full-chain-run.md](../milestone-10-full-chain-run.md): birth host-display=ok, headed chromium wayland 直通弹宿主机桌面用户亲验, F020 修复后 noVNC 兕底 display=ok. 注: fcitx 中文输入未单独验)
 # 类型: task
 # 阻塞于: 无 (与 MILESTONE-10 并行)
 
