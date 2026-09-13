@@ -8,7 +8,9 @@ disable-model-invocation: true
 
 目标: 编写 Execution Spec: `EXECUTION.md` 和 issues. 常规工作拆成可独立领取的垂直切片; 宽重构按扩展-收缩特例处理. 文档只供 LLM 使用, 不要求我阅读文档后确认.
 
-按信源顺序收集 `EXECUTION.md` 需要的信息: `PRODUCT.md`, `TECHNICAL.md`, `DECISIONS.md`, 领域文档, 代码事实. Product/Technical/Decisions 定义意图; 代码事实只验证可行性和既有形状. 信源冲突, 或需要新增/改变决策内容时, 调用 `grilling` skill 盘问我.
+先检查权威输入中是否已有 `to-spec` 的产物 (`PRODUCT.md`/`TECHNICAL.md`, 默认位于产物根目录 `docs/changes/<feature-slug>/`, 写哪几份由 to-spec 的层面判定决定); 缺失时先调用 `to-spec` skill 生成, 再继续.
+
+按信源顺序收集 `EXECUTION.md` 需要的信息: `PRODUCT.md`, `TECHNICAL.md`, `DECISIONS.md`, 领域文档, 代码事实. Product/Technical/Decisions 定义意图; 代码事实只验证可行性和既有形状. 信源冲突, 或需要新增/改变决策内容时, 调用 `deliberate` skill 敲定并固化, 再继续.
 
 输出:
 `<产物根目录>/EXECUTION.md`
