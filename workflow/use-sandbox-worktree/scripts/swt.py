@@ -423,7 +423,21 @@ def load_inherited_env(records_root: Path, slug: str) -> dict[str, str]:
     return inherited
 
 
+# 隧道/虚拟接口前缀: 这些接口上的全局地址局域网够不着, 不得作局域网入口交付
+# (VPN 在场时默认路由指向隧道, 跟默认路由必取错 — M14 发现 4)
+TUNNEL_INTERFACE_PREFIXES = (
+    "tun", "tap", "wg", "ppp", "utun", "ts", "tailscale",
+    "docker", "veth", "br-", "virbr", "zt", "podman",
+)
+
+
 def lan_ip() -> str | None:
+    """局域网入口 IP: 优先非隧道接口的全局 IPv4; 全是隧道/虚拟接口时退回默认路由口径."""
+    addr = run(["ip", "-o", "-4", "addr", "show", "scope", "global"])
+    for line in addr.stdout.splitlines():
+        match = re.match(r"\d+: (\S+)\s+inet (\d+\.\d+\.\d+\.\d+)/", line)
+        if match and not match.group(1).startswith(TUNNEL_INTERFACE_PREFIXES):
+            return match.group(2)
     result = run(["ip", "-o", "-4", "route", "get", "1.1.1.1"])
     match = re.search(r"src (\d+\.\d+\.\d+\.\d+)", result.stdout)
     return match.group(1) if match else None
@@ -1050,6 +1064,21 @@ def host_port_free(port: int) -> bool:
         return False
     finally:
         probe.close()
+
+
+def ensure_agent_prompt_parents(container_name: str) -> None:
+    """M14 发现 2: 母本单文件挂载的目标父目录若镜像内不存在, podman 会为挂载
+    自动建成 root 属主 755, 容器 bolo 在其中无写权限 (kimi ~/.kimi-code 起步即
+    EACCES). 启动后逐个保证父目录存在且 bolo 属主 — 与 D046 注入同模式,
+    install -d 对已存在目录也会应用属主, 幂等."""
+    parents = sorted({target.rsplit("/", 1)[0] for _master, target in AGENT_PROMPT_MOUNTS})
+    script = " && ".join(f"install -d -o bolo -g bolo {shlex.quote(parent)}" for parent in parents)
+    result = subprocess.run(
+        ["podman", "exec", container_name, "sh", "-c", script],
+        capture_output=True, text=True, check=False,
+    )
+    if result.returncode != 0:
+        raise SwtError(3, "PARTIAL", f"母本挂载父目录属主修正失败: {result.stderr.strip()}")
 
 
 def inject_auth_json(container_name: str) -> None:
@@ -1969,6 +1998,7 @@ def birth(args: argparse.Namespace, repo: Path) -> int:
         atomic_write_json(runtime_file, runtime)
         key = inject_ssh_key(container, records_root, identity, runtime, runtime_file, env_map)
         inject_auth_json(container["name"])
+        ensure_agent_prompt_parents(container["name"])
         ensure_container_git_forward(container["name"])
         remote = fixed_git_remote(repo)
         container["record"]["remote"] = remote

@@ -1,4 +1,4 @@
-# 状态: 开放
+# 状态: 已关闭 (2026-09-13: 三项修复 + 测试落地, m04 14 / m07 35 / m09 26 / m12 102 全绿; 展示端口项移交 swt-cross-host-access M05)
 # 类型: task
 # 阻塞于: 无 (MILESTONE-10 已关闭后路由)
 
@@ -18,3 +18,13 @@ M10 终轮全链演练 (见 [../milestone-10-full-chain-run.md](../milestone-10-
 - kimi 根修后: 新 birth 的容器内 `kimi` 直接可起 (不再 EACCES).
 - 展示端口实现后: 容器内 present 起服, host 侧 `podman port` 发现映射端口组装 URL 可点开 (端到端复验一次).
 - SKILL.md 与实现字面一致.
+
+## 关闭记录 (2026-09-13)
+
+- 发现 2 (母本挂载父目录): swt.py 新增 `ensure_agent_prompt_parents` (birth 启动后 `install -d -o bolo -g bolo` 逐父目录, 与 D046 同模式); m12 TS201 扩断言 (三个挂载点父目录 bolo 可写) 绿.
+- 发现 4 (局域网 IP): lan_ip 改枚举全局 IPv4 排除隧道/虚拟接口前缀, 兜底回原口径 (F022); 4 个 mock 单测绿 (先红后绿).
+- 发现 7 (swt-vnc status 误报): alive() 存活判定改 /proc 存在性 (F021); m09 新增 bolo 身份 status 用例绿.
+- 回归: m04 14 / m07 35 / m09 26 / m12 102 全绿 (2026-09-13).
+- 真实镜像重建: 代码/清单已修且 m09 测试镜像实证; 正式 display+项目层重建因 chromium 下载直连 Google 被限速到 ~12KB/s (两轮重试同样) 挂起, 待网络恢复后重跑 `build-display` + `build` 即生效 — 不影响 M14 代码关闭.
+- 移交项: 展示端口预留 → swt-cross-host-access M05 (D053 已标替代).
+- 测试基建提速另立 MILESTONE-15 (优先级最高).

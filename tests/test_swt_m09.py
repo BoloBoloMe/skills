@@ -559,6 +559,20 @@ class TestDisplayContainerE2E(_DisplayContainerTestCase):
         self._start_container(name, geom="1280x720")
         self.assertEqual(self._rfb_frame_size(name), (1280, 720))  # 生效值经 RFB 读出
 
+    def test_status_as_bolo_reports_running(self):
+        """M14 发现 7: 栈由 root 拉起 (swt birth 的 podman exec 缺省身份) 时,
+        bolo 跑 swt-vnc status 不得误报 down — kill -0 对 root 进程吃 EPERM,
+        存活判定须与属主无关."""
+        name = f"swt-m09-{secrets.token_hex(4)}"
+        self._start_container(name)
+        status = subprocess.run(
+            ["podman", "exec", "--user", "bolo", name, "swt-vnc", "status"],
+            capture_output=True, text=True, check=False, timeout=60,
+        )
+        self.assertEqual(status.returncode, 0, msg=status.stdout + status.stderr)
+        for process in ("xvfb", "x11vnc", "websockify"):
+            self.assertIn(f"{process}: running", status.stdout, msg=status.stdout)
+
     def test_start_status_stop_idempotent(self):
         name = f"swt-m09-{secrets.token_hex(4)}"
         self._start_container(name)  # 启动已含首轮 start

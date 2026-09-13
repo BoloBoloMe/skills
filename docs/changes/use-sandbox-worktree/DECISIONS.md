@@ -480,6 +480,14 @@
 - 内容: D051 给容器烘入 WAYLAND_DISPLAY/XDG_RUNTIME_DIR 后, x11vnc 0.9.16 探测到 WAYLAND_DISPLAY 即误判自己跑在 wayland 会话 ("Wayland display server detected... Exiting") 直接退出, 尽管其目标是 Xvfb :99 — 有直通的容器 noVNC 兜底链必断, D051 第 2 条 "VNC 保留兜底" 实际不成立. 修复: swt-vnc 启动 x11vnc 时 `env -u WAYLAND_DISPLAY -u XDG_RUNTIME_DIR` (修复落 image/requirements-browser.md 内嵌 swt-vnc, display+项目层镜像重建后 birth display=ok 验证通过). 教训: 给容器烘显示类环境变量时, 栈内老工具可能拿它做会话类型误判.
 - 承接: D051 (直通引入的变量), D040 (VNC 兜底语义)
 
+### F021 kill -0 对跨属主进程吃 EPERM (2026-09-13, M14)
+- 状态: 当前有效
+- 内容: swt-vnc 栈由 birth 经 podman exec (root) 拉起, bolo 身份跑 `swt-vnc status` 时 `kill -0` 对 root 进程返回 EPERM, 被误判为 down (而端口检查正确报 listening, 输出自相矛盾). 修法: 存活判定改 `/proc/<pid>` 存在性检查 (与属主无关). kill -0 的 EPERM/ESRCH 语义区分在 shell 里不可靠, 进程存在性检查优先走 /proc.
+
+### F022 默认路由接口 IP ≠ 局域网入口 IP (2026-09-13, M14)
+- 状态: 当前有效
+- 内容: VPN (tun0 等) 在场时默认路由指向隧道, `ip route get 1.1.1.1` 取到的 src 是隧道地址, 局域网机器够不着 — 用它作 "局域网入口" 交付必错 (M10 演练实锤: 交付了 tun0 地址 192.168.216.53, 正确值是 wlp1s0 的 192.168.31.252). 修法 (swt.py lan_ip): 枚举 `ip -o -4 addr show scope global`, 排除隧道/虚拟接口前缀 (tun/tap/wg/ppp/utun/ts/docker/veth/br-/virbr/zt/podman) 取首个; 全是隧道时退回默认路由口径.
+
 ### D051 实现修订 (M13, 2026-09-12)
 - 状态: 当前有效
 - 内容: D051 第 1 条落地参数定为 `-v <宿主socket>:/run/swt-wayland/wayland-0 -e XDG_RUNTIME_DIR=/run/swt-wayland -e WAYLAND_DISPLAY=wayland-0 [--device /dev/dri]`. 权限解法: rootless uid_map 下直挂 socket 在容器内属主映射为 root, 0755 属主权下 bolo 连不上 → host 侧 `chmod 0777` 该 socket (birth/resume 都重保, GNOME 登录会话重启重置权限); 父目录 `/run/user/<uid>` 为 0700, 其他用户够不着路径, 宿主暴露面≈零. 不采用容器内 socat 中继 (F019). GPU 补充: 非 NVIDIA 宿主 `/dev/dri` 直挂即可, 但 render 节点属主权同样受限, chromium 不可用时自动回软渲染, 不阻断.

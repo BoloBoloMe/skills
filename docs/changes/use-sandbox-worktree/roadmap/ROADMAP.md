@@ -54,11 +54,12 @@ use-sandbox-worktree skill 落地并经端到端演练验证可用 — 它管理
 - [MILESTONE-12](MILESTONE-12.md) — swt 五子命令已实现 (ISSUE-05..11, commit 01d6146..3b92b21): 骨架/status/net-firewall 扩展 (remove+--merge)/birth/terminate/switch/resume 全链 TDD, tests/test_swt_m12.py 84 用例全绿 + m04/m07/m09 回归绿; D036 等价矩阵 13/13 后 e2e-smoke 退役; TECHNICAL.md 字面缺口 (2)(3) 已补 — 详见 [../EXECUTION-M12.md](../EXECUTION-M12.md), [../issues/](../issues/), [AFK 补钉 U-001..013](../UNAUTHORIZED_DECISIONS.md)
 - [MILESTONE-10](MILESTONE-10.md) — SKILL.md 定稿 + 终轮全链演练跑通 (含三层镜像从零制备/用户 ssh 实操 6 提交回流/登录墙 headed 弹宿主机桌面亲验): 抓获并修复 F020 (x11vnc×wayland), 拍板 D053 (展示链预留端口), 发现路由 MILESTONE-14 — 详见 [../milestone-10-full-chain-run.md](../milestone-10-full-chain-run.md)
 - [MILESTONE-13](MILESTONE-13.md) — 双模显示栈已实现 (commit 81234e6): 本机 wayland 直通 (D051) + VNC 兕底, F019 中继证伪, F020 冲突修复后 M10 演练实证 (host-display=ok / headed 弹桌面 / 兕底 display=ok); fcitx 中文输入未单独验
+- [MILESTONE-14](MILESTONE-14.md) — M10 演练发现修复: 母本挂载父目录根修 (ensure_agent_prompt_parents) / lan_ip 排除隧道接口 (F022) / swt-vnc status 存活判定改 /proc (F021); m04+m07+m09+m12 回归 177 用例全绿; 展示端口项移交 swt-cross-host-access M05
 
 ## 前沿
 
 <!-- 开放 + 已解除阻塞 + 未被认领的 Milestone -->
-- [MILESTONE-14](MILESTONE-14.md) — `task` — M10 演练发现的代码侧缺陷修复 (母本挂载父目录根修/展示端口预留 D053/局域网 IP 选取/swt-vnc status 误报)
+- [MILESTONE-15](MILESTONE-15.md) — `task` — **优先级高于后续所有里程碑** (用户拍板 2026-09-13): 测试基建提速 (分层跑法/birth 夹具合并), 全量回归太慢 (m09 ~10min + m12 20-40min)
 
 ## 未决迷雾
 
@@ -84,5 +85,5 @@ M02(已关闭) ──┘                 │                       │
 M05(已关闭) ─→ M06(已关闭) ────┴─→ M07(已关闭) ─→ M09(已关闭) ┴─→ M10(已关闭) ─→ 目的地已到达
 ```
 
-- M01..M13 全部已关闭, 目的地已到达 (2026-09-13, 见上方目的地节)
-- 前沿 = MILESTONE-14 (M10 演练发现路由, 缺陷修复)
+- M01..M14 全部已关闭, 目的地已到达 (2026-09-13, 见上方目的地节)
+- 前沿 = MILESTONE-15 (测试基建提速, 优先级最高)

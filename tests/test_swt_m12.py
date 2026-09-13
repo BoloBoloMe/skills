@@ -759,6 +759,15 @@ class TestTS201BirthChain(SwtBirthFixture):
             capture_output=True, text=True, check=False,
         )
         self.assertNotEqual(0, ro_write.returncode)
+        # M14 发现 2: 母本挂载点父目录须 bolo 可写 (镜像缺该目录时 podman 为单文件
+        # 挂载自建的父目录是 root 属主, kimi 类 agent 起步即 EACCES)
+        for parent in ("/home/bolo/.pi/agent", "/home/bolo/.codex", "/home/bolo/.kimi-code"):
+            writable = subprocess.run(
+                ["podman", "exec", "--user", "bolo", container["name"], "sh", "-c",
+                 f'touch "{parent}/.m14-write-probe" && rm "{parent}/.m14-write-probe"'],
+                capture_output=True, text=True, check=False,
+            )
+            self.assertEqual(0, writable.returncode, msg=f"{parent}: {writable.stderr}")
         self.assertEqual(branch, self.ssh_run(
             state, f"git -C /home/bolo/Workspace/{branch} branch --show-current"
         ).stdout.strip())
@@ -2321,6 +2330,53 @@ class TestPastaNetworkMismatch(SwtFixture):
             self.assertIsNone(self.swt.pasta_network_mismatch(self.DETAIL))
         with self._patched("2: wlp1s0    inet 192.168.31.252/24 scope global wlp1s0\n", "garbage\n"):
             self.assertIsNone(self.swt.pasta_network_mismatch(self.DETAIL))
+
+
+class TestLanIp(SwtFixture):
+    """M14 发现 4: 局域网入口 IP — VPN 隧道在场时默认路由指向隧道接口,
+    跟默认路由会把隧道地址 (局域网够不着) 交付出去; 应优先物理/局域网接口."""
+
+    def setUp(self) -> None:
+        super().setUp()
+        self.swt = self.load_swt()
+
+    def _patched(self, addr_output: str, route_output: str):
+        from unittest import mock
+
+        def fake_run(command, **_kwargs):
+            result = subprocess.CompletedProcess(command, 0, "", "")
+            if "addr" in command:
+                result.stdout = addr_output
+            elif "route" in command:
+                result.stdout = route_output
+            return result
+
+        return mock.patch.object(self.swt, "run", fake_run)
+
+    ADDR_TUN_FIRST = (
+        "13: tun0    inet 192.168.216.53/21 brd 192.168.223.255 scope global tun0\n"
+        "2: wlp1s0    inet 192.168.31.252/24 brd 192.168.31.255 scope global dynamic noprefixroute wlp1s0\n"
+    )
+    ROUTE_VIA_TUN = "1.1.1.1 via 192.168.216.1 dev tun0 src 192.168.216.53 uid 1000\n"
+
+    def test_prefers_lan_interface_over_tunnel(self) -> None:
+        with self._patched(self.ADDR_TUN_FIRST, self.ROUTE_VIA_TUN):
+            self.assertEqual("192.168.31.252", self.swt.lan_ip())
+
+    def test_only_tunnel_falls_back_to_default_route(self) -> None:
+        with self._patched("13: tun0    inet 192.168.216.53/21 scope global tun0\n", self.ROUTE_VIA_TUN):
+            self.assertEqual("192.168.216.53", self.swt.lan_ip())
+
+    def test_single_lan_unchanged(self) -> None:
+        with self._patched(
+            "2: wlp1s0    inet 192.168.31.252/24 scope global wlp1s0\n",
+            "1.1.1.1 via 192.168.31.1 dev wlp1s0 src 192.168.31.252 uid 1000\n",
+        ):
+            self.assertEqual("192.168.31.252", self.swt.lan_ip())
+
+    def test_no_address_returns_none(self) -> None:
+        with self._patched("", "garbage\n"):
+            self.assertIsNone(self.swt.lan_ip())
 
 
 class TestS7HostWaylandSocket(SwtFixture):
