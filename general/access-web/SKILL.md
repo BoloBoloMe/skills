@@ -23,6 +23,7 @@ description: 网页访问, 支持搜索, 正文提取, 文件下载, 截图, 登
 ## 交互浏览
 
 点击, 输入, 截图, 登录, JS 渲染页面. 全浏览器, 有 session.
+打开浏览器窗口时总是最大化, 填满整个屏幕.
 
 读 [browse/browse.md](browse/browse.md).
 

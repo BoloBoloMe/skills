@@ -318,13 +318,16 @@ class Browser:
         ]
         if headless:
             args.append("--headless=new")
+            # 无头模式固定视口, 截图与布局确定
+            args.append("--window-size=1280,720")
+        else:
+            # headed 窗口供人操作, 总是最大化填满屏幕
+            args.append("--start-maximized")
         if no_sandbox:
             # Chromium zygote sandbox 依赖 unprivileged userns, 受限环境
             # (Ubuntu 23.10+ AppArmor / 容器) 初始化即 FATAL; 本 skill 的
             # profile 目录独立隔离, 退化关停 sandbox 风险可控
             args.append("--no-sandbox")
-        # 无头模式下不保留默认窗口大小限制
-        args.append("--window-size=1280,720")
         return args
 
     def _resolve_context(self, browser: PWBrowser) -> BrowserContext:
