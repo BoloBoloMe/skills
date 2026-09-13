@@ -8,7 +8,9 @@ disable-model-invocation: true
 
 目标: 编写 Execution Spec: `EXECUTION.md` 和 issues. 常规工作拆成可独立领取的垂直切片; 宽重构按扩展-收缩特例处理. 文档只供 LLM 使用, 不要求我阅读文档后确认.
 
-按信源顺序收集 `EXECUTION.md` 需要的信息: `PRODUCT.md`, `TECHNICAL.md`, `DECISIONS.md`, 领域文档, 代码事实. Product/Technical/Decisions 定义意图; 代码事实只验证可行性和既有形状. 信源冲突, 或需要新增/改变决策内容时, 调用 `grilling` skill 盘问我.
+先检查权威输入中是否已有 `to-spec` 的产物 (`PRODUCT.md`/`TECHNICAL.md`, 默认位于产物根目录 `docs/changes/<feature-slug>/`, 写哪几份由 to-spec 的层面判定决定); 缺失时先调用 `to-spec` skill 生成, 再继续.
+
+按信源顺序收集 `EXECUTION.md` 需要的信息: `PRODUCT.md`, `TECHNICAL.md`, `DECISIONS.md`, 领域文档, 代码事实. Product/Technical/Decisions 定义意图; 代码事实只验证可行性和既有形状. 信源冲突, 或需要新增/改变决策内容时, 调用 `deliberate` skill 敲定并固化, 再继续.
 
 输出:
 `<产物根目录>/EXECUTION.md`
@@ -32,7 +34,7 @@ disable-model-invocation: true
 
 **宽重构是垂直切片的例外.** 宽重构是一次机械改动. 例如重命名列, 或修改共享符号类型. 
 它的 **blast radius** 会扩散到整个代码库. 一次编辑会打断成千上万个调用点. 没有任何垂直切片能独立保持绿色. 切勿强塞成 tracer bullet. 
-宽重构按 **扩展-收缩** (先兼容新增, 再迁移旧用法, 最后清理旧形式) 处理: 先让新旧两种形式并存, 再分批迁移调用者, 最后删除旧形式. 这样每一批迁移后都有机会保持项目可验证.
+宽重构按 **扩展-收缩** 处理: 先让新旧两种形式并存, 再分批迁移调用者, 最后删除旧形式. 这样每一批迁移后都有机会保持项目可验证.
 
 - 兼容扩展 issue: 添加新形式, 保留旧形式, 不大批迁移调用者. 完成后现有路径仍然可用
 - 分批迁移 issues: 按 package, 目录或调用者类型分批把使用处从旧形式改到新形式. 每批都是一张 issue, 且由兼容扩展 issue 阻塞. 因为旧形式仍存在, 每批完成后都应能通过验证
