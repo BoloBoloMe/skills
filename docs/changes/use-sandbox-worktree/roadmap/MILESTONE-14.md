@@ -25,6 +25,6 @@ M10 终轮全链演练 (见 [../milestone-10-full-chain-run.md](../milestone-10-
 - 发现 4 (局域网 IP): lan_ip 改枚举全局 IPv4 排除隧道/虚拟接口前缀, 兜底回原口径 (F022); 4 个 mock 单测绿 (先红后绿).
 - 发现 7 (swt-vnc status 误报): alive() 存活判定改 /proc 存在性 (F021); m09 新增 bolo 身份 status 用例绿.
 - 回归: m04 14 / m07 35 / m09 26 / m12 102 全绿 (2026-09-13).
-- 真实镜像重建: 代码/清单已修且 m09 测试镜像实证; 正式 display+项目层重建因 chromium 下载直连 Google 被限速到 ~12KB/s (两轮重试同样) 挂起, 待网络恢复后重跑 `build-display` + `build` 即生效 — 不影响 M14 代码关闭.
+- 真实镜像已重建携带修复 (网络恢复后重跑成功): display:2026.09.13-5 + skills:2026.09.13-3, match=REUSE 指向新链, swt-vnc 新版已验证; 被取代的 -2 旧镜像已清.
 - 移交项: 展示端口预留 → swt-cross-host-access M05 (D053 已标替代).
 - 测试基建提速另立 MILESTONE-15 (优先级最高).
