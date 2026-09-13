@@ -1,9 +1,9 @@
 # 状态: 待处理
 # 类型: prototype
-# 阻塞于: MILESTONE-01
+# 阻塞于: 无
 
 ## 问题
 
-信箱通道粗糙原型: pi 扩展 (watcher/timer + triggerTurn 自循环) + 容器内文件队列 + 设备侧经 ssh 拉取, 与用户做一轮真跑, 验证 "pop→处理→pop 常驻循环" 的实际手感 (延迟/成本/herdr 咬合), 提升后续实施保真度.
+信箱通道粗糙原型 (形态已按 M01 账本 D001-D008 改为 web 服务单体): 最小版基础服务信箱接口 (投信/长轮询取信/签名验签) + 阻塞取信脚本 + pi 扩展 triggerTurn 唤醒 + herdr 咬合 (host 上 pane / 远程固定 tab 两种会话形态), 与用户做一轮真跑, 验证 "来信→唤醒→处理" 常驻循环的实际手感 (延迟/成本/会话形态), 提升后续实施保真度.
 
-依据: [recon/01](../recon/01-llm-channel.md) 考察点 1 (能力面) 与遗留疑问 (容器内 reply 注入的生命周期需实测).
+依据: [M01 决策账本](../milestone-01/DECISIONS.md) + [recon/01](../recon/01-llm-channel.md) 考察点 1 (能力面).
