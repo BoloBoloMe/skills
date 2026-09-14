@@ -1,6 +1,6 @@
 # 状态: 待处理
 # 类型: task
-# 阻塞于: MILESTONE-03, MILESTONE-07
+# 阻塞于: MILESTONE-07 (MILESTONE-03 已关闭)
 
 ## 问题
 

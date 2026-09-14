@@ -27,20 +27,20 @@ use-sandbox-worktree 的容器 GUI/内容无感访问能力完整固化进 skill
 <!-- 每个已关闭 Milestone 一行: 链接 + 一句话摘要 -->
 - [MILESTONE-01](MILESTONE-01.md) — 信箱通道设计定稿 ([账本](../milestone-01/DECISIONS.md), ADR [0010](../../../adr/0010-mailbox-centralized-web-monolith.md)/[0011](../../../adr/0011-mailbox-exec-instruction-allowlist.md)): 信箱与 llm-proxy 合并为 host 常驻 web 单体 swt-base-server (端口区间+身份探测); 队列纯单向容器投/设备长轮询取, 回信走既有 ssh; 纯文本 4 类型, exec 限服务端指令白名单, 之外降级 request; 设备 HMAC 签名+容器 key 作用域+双向签名防重放; 跨机 ssh -L; 取信会话 host 上 pane/远程固定 tab 手动首启. 反方攻击推翻 exec 任意直批并修复响应未签名漏洞; "信箱实时性"迷雾随之关闭 (长轮询秒级)
 - [MILESTONE-02](MILESTONE-02.md) — 信箱原型真跑通过: "来信→唤醒→处理"状态模型成立, 本机唤醒 2ms/空转零 token/缺省路由可用, 白名单直批/降级问人/越权 403/防重放全符合设计; 移交 M03: 投信错误响应也要签名, 扩展忽略非 message 触发事件, 端口区间首空闲 38417; 原型 `prototypes/mailbox-loop/` 保留作参考答案
+- [MILESTONE-03](MILESTONE-03.md) — 信箱实施收口 (8 ISSUE, 213 测试全绿): swt-base-server.py 单体 (信箱+llm 中转, stdlib 零依赖) + 设备侧 pi 扩展/取信脚本 + birth 自动接线 + e2e 门禁 (D010 全覆盖) + SKILL.md 章节 + 驻留件; 评审驱动演进 14 条 UD ([账本](../milestone-03/UNAUTHORIZED_DECISIONS.md)), 含 post 响应用容器 key 签名/响应密钥每设备一份/ack 闭环/缺省路由过作用域; 指令集空集待 M08 填
 
 ## 前沿
 
 <!-- 开放 + 已解除阻塞 + 未被认领的 Milestone -->
 - [MILESTONE-04](MILESTONE-04.md) — `deliberate` — 网页/网站无感盘问: 8800 钉死 / STATE 登记 / 交付包双 URL / 本机自动打开 / dev server 约定 / 分享形态
 - [MILESTONE-06](MILESTONE-06.md) — `deliberate` — 窗口直飞盘问: 触发链路 / 三态选路 / 音频形态 / 脚本母本制 / base 层改动与级联成本 / B 端前提
-- [MILESTONE-03](MILESTONE-03.md) — 信箱实施 (M02 已关闭, 阻塞解除)
 
 ## 未决迷雾
 
 <!-- 范围内但尚无法精确表述为 Milestone 的模糊视图; 随前沿推进而转化 -->
 - ~~信箱实时性~~ — 已关闭 (M01 D008: 长轮询秒级, 无需 inotifywait/ssh -R 升级)
 - Rust 版 waypipe (0.10+) 删除了断线重连 (recon/--control): base 层未来换发行版时回访重连策略
-- mac/windows 的 noVNC 隧道仍手工: 目的地已排除, 但信箱落地后可顺带自动化 — 用户改主意时回访
+- mac/windows 的 noVNC 隧道仍手工: 目的地已排除, 信箱已落地 (M03✅) 自动化前提就绪 — 用户改主意时回访
 - 分享给同事的 URL 稳定性: 动态宿主端口每次重建会变, 链接失效 — 先由 MILESTONE-04 盘问消化, 消化不掉再立 Milestone
 
 ## 范围外
@@ -55,12 +55,11 @@ use-sandbox-worktree 的容器 GUI/内容无感访问能力完整固化进 skill
 ## 阻塞关系
 
 ```
-M01(信箱盘问)✅ ──→ M02(信箱原型)✅ ──→ M03(信箱实施) ──────────────┐
+M01(信箱盘问)✅ ──→ M02(信箱原型)✅ ──→ M03(信箱实施)✅ ────────────┐
                                                                 ├─→ M08(直飞实施) ──┐
 M06(直飞盘问) ──→ M07(双机实测) ────────────────────────────────┘                  │
                                                                                    ├─→ M09(真机验收) ──→ 目的地
 M04(网页盘问) ──→ M05(网页实施) ──────────────────────────────────────────────────┘
 ```
 
-- 前沿: M03/M04/M06 互不阻塞
-- M08 依赖 M03: 窗口直飞的 "经信箱通知设备侧拉起" 集成需要信箱就位
+- 前沿: M04/M06 互不阻塞 (均 HITL 盘问); M08 仍被 M07 阻塞 (M03 侧已通)
