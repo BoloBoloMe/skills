@@ -41,3 +41,10 @@
 - 理由: 容器 key 是容器与服务间的共享密钥, 用它签名才真正防住 D007 的局域网中间人伪造响应; response_key 给容器等于授予伪造设备侧响应的能力, 不能分发.
 - 影响: post 响应签名式改为 sign(container_key, container_name, nonce, canonical(payload)); ISSUE-05 容器侧投信代码与 ISSUE-07 e2e 按此验签.
 - 风险: 无新增; 共享密钥模型与请求签名同源.
+
+## UD-07 admin HTTP 面统一归 ISSUE-04; /v1/models 回白名单模型
+- 问题: EXECUTION.md 把 relay key 的 admin 管理写进 ISSUE-03 范围, 但 ISSUE-04 才是 admin 管理面 (独立 127.0.0.1 端口), 两面分离会产生两个 admin 面; 另 /v1/models 返回 key 白名单模型而非上游全量列表, 执行者未申报.
+- 决策: (1) relay key 的发 key/吊销/查用量 admin HTTP 端点移入 ISSUE-04, ISSUE-03 只留 RelayStore 内部接缝; (2) /v1/models 回白名单模型列表的行为确认采纳 (D006 同一心智: key 持有者只见自己被授权的模型).
+- 理由: admin 单端口单管理面符合 D002(4); 白名单裁剪与缺省拒绝一致.
+- 影响: EXECUTION.md ISSUE-04 范围扩为 "relay key 管理 + 信箱凭证管理"; ISSUE-03 实际交付不变.
+- 风险: 无.

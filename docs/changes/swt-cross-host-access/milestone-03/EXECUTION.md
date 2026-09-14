@@ -21,11 +21,11 @@
 - [x] ISSUE-02: HTTP 服务面与生命周期
   - 范围: 端口区间 38417-38426 首空闲绑定 (D002) / `GET /__identity__` / `POST /mailbox/post` (错误响应也签名) / `POST /mailbox/poll` (长轮询 hold 20s) / 全响应签名 + nonce / 实际绑定端口写 host 固定路径状态文件.
   - 依据: D002/D007/D008 + server.py 对照. 接缝: HTTP 端点.
-- [ ] ISSUE-03: llm 中转面 (吸收 llm-proxy)
+- [x] ISSUE-03: llm 中转面 (吸收 llm-proxy)
   - 范围: OpenAI 兼容 `POST /v1/chat/completions` + `GET /v1/models`, sk- key 认证, keys 表 (模型白名单/quota/用量/过期/吊销), 假上游测试. admin 侧发 key/吊销/查用量.
   - 依据: F001 (原码不可达, 按规格重写). 接缝: HTTP /v1 端点 + admin 端点.
 - [ ] ISSUE-04: admin 管理面 (信箱凭证)
-  - 范围: 独立端口硬绑 127.0.0.1 (固定可配, 不参与区间) + X-Admin-Token; 发设备凭证 (设备名 + 签名密钥 + 响应签名密钥一并分发) / 发容器 key (声明可投类型与目标设备, 缺省拒绝) / 吊销 / 查队列与统计.
+  - 范围: 独立端口硬绑 127.0.0.1 (固定可配, 不参与区间) + X-Admin-Token; relay key 管理 (发 key 含模型白名单/quota/过期 / 吊销 / 查用量, UD-07 自 ISSUE-03 移入) + 发设备凭证 (设备名 + 签名密钥 + 响应签名密钥一并分发) / 发容器 key (声明可投类型与目标设备, 缺省拒绝) / 吊销 / 查队列与统计.
   - 依据: D002(4)/D006. 接缝: admin HTTP 端点 + 拒绝非 loopback 来源.
 - [ ] ISSUE-05: 设备侧取信 (阻塞脚本 + pi 扩展)
   - 范围: 正式版阻塞取信脚本 (请求签名/响应验签/nonce 去重/触发文件: message 事件 + 生命周期事件, 空转零 token, 断线重试) + pi 扩展 `pi/extensions/` 新增 (session_start 后台拉起脚本, 监听触发文件, 忽略非 message 事件, message → sendMessage(triggerTurn), agent_settled + ctx.isIdle() 防重入, 自带去重退避, session_shutdown 清理).
