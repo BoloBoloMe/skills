@@ -55,3 +55,29 @@
 - 理由: (1) 每设备一份后, 泄露一台设备的密钥不波及其他设备, 且与 D006 成对语义对齐; 原型全局 response_key 是简化. (2) 显式目标已吊销时 fail-fast 比攒死信清晰.
 - 影响: devices 表加 response_key 列; Mailbox.sign_response 签名密钥按设备取; ISSUE-05 取信脚本配置 = 每设备三元组; ISSUE-07 e2e 按每设备验签.
 - 风险: 无; 服务未真部署, 无旧凭证迁移问题.
+
+## UD-09 设备处理回报: POST /mailbox/ack 端点
+- 问题: D004 存续语义 queued→delivered→processed + 已处理 7 天清理, 原型 processed 由 in-process TUI 直接标记; 正式版设备与服务分离, 无回报通道则消息永卡 delivered, 清理永不生效.
+- 决策: 服务端加 `POST /mailbox/ack`: 设备签名 (同 poll 验签式), 体 `{device, ts, sig, id, outcome}`, 把 delivered 消息转 processed 记 outcome; 已 processed 幂等 200; 未验签/未知设备 403; 对 queued/未知 id 409 不转. 设备侧 ack 时机: 取信扩展在来信触发的 LLM 轮 agent_settled 后发 ack.
+- 理由: 补全 D004 生命周期闭环的最小面; 签名与 poll 同式, 无新凭证.
+- 影响: 服务端 +1 端点; ISSUE-05 扩展在 settle 后回 ack; e2e 覆盖.
+- 风险: processed 语义实为 "已交 LLM 且该轮收尾", 不等于 "用户已读"; 可接受 (清理只依赖 processed, 语义文档注明).
+
+## UD-10 取信脚本用 Node .mjs 而非 Python
+- 问题: D008 定的是 "阻塞取信脚本由扩展拉起", 原型 fetch_loop.py 是 Python; 设备侧 (host/远程 Linux) 不保证有 python/uv, 但必然有 Node (pi 本体就跑在 Node 上).
+- 决策: 正式版取信脚本写 Node .mjs (`pi/extensions/swt-mailbox-fetch.mjs`), 扩展 spawn `node` 拉起; 协议字段与签名式与服务端对齐 (UD-06/UD-08).
+- 理由: 运行时是设备侧唯一硬保证; 消除 python 依赖问题.
+- 影响: fetch_loop.py 仅作协议对照参考; SKILL.md 记录脚本形态.
+- 风险: 无; 协议已在原型验证.
+
+## UD-11 取信配置路径/格式 + 触发文件事件分类 (ISSUE-05)
+- 问题: 设备三元组与服务地址的落盘位置 D006 只说 "手工复制到设备配置", 未定路径与格式; 原型验签失败也写 message 事件 (verify:"FAIL"), 与 M02 "扩展只对 message 事件 triggerTurn" 相碰.
+- 决策: (1) 配置 `~/.config/swt/mailbox.json` (env `SWT_MAILBOX_CONFIG` 覆盖, 脚本 argv 优先), 字段 `{server, device, signing_key, response_key, trigger_file?}`, trigger_file 缺省 `~/.local/state/swt/mailbox-trigger.jsonl`, 日志 = 触发文件去扩展名 + `.log`; 配置缺失/缺字段退出码 2 并报缺哪个字段. (2) 触发文件 JSONL 事件分类: `identity` (D002 探测) / `verify_fail` (验签失败或 nonce 重放, 原型 verify:"FAIL" 改为此, message 事件因此恒为已验签) / `message` (带 id/from/type/body/ts/downgraded/note/latency_ms/nonce 全字段). (3) 扩展 ack 的 outcome 固定 "handled"; 扩展防滥用 = 按消息 id 去重 + 两次 triggerTurn 最小间隔 1s 退避 + agent_settled 且 isIdle 才补发/回报.
+- 理由: 配置路径沿用 XDG 惯例, 与服务端状态文件 (`~/.local/state/swt-base-server/`) 同族; verify_fail 单列事件让 "只对 message triggerTurn" 的判定无歧义; 验签失败的信不注入会话是安全默认 (D007).
+- 影响: ISSUE-08 文档按此配置样例写; 扩展与脚本共用同一配置文件.
+- 风险: pyJsonDumps (python json.dumps sort_keys 等价) 对整数值浮点丢 ".0" 是已知边角 — 投信方 ts 用 time.time() 带小数即不触发.
+
+## UD-11 补记 (评审后)
+- deliverAs: "followUp" (当前轮干完再投递) 为扩展 triggerTurn 的投递模式, 官方骨架同款, 评审确认良性, 补申报.
+- 触发文件只增不删无轮转: 信箱量级 (条/天) 下可接受, 记录在案; drain 逻辑已加截断守卫 (见 ISSUE-05 修复).
+- loadConfig 在 .mjs 脚本与 .ts 扩展双写: 跨进程运行时边界 (pi 只加载 .ts, 脚本由 node 直接跑) 无法共享 import, 两文件互加交叉引用注释防协议漂移.
