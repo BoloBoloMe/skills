@@ -18,7 +18,7 @@
 - [x] ISSUE-01: 信箱核心状态模型 + SQLite 持久化
   - 范围: Mailbox 类 (投信判定/容器 key 作用域/时间窗/防重放/exec 指令集分类降级/缺省路由冷启动/设备验签/try_deliver/process) + SQLite 存储 (消息 queued→delivered→processed, 设备/容器 key/已见 id 持久, 重启恢复, 已处理 7 天滚动清理).
   - 依据: D003/D004/D005/D006/D007 + mailbox_logic.py. 接缝: Mailbox 公开方法.
-- [ ] ISSUE-02: HTTP 服务面与生命周期
+- [x] ISSUE-02: HTTP 服务面与生命周期
   - 范围: 端口区间 38417-38426 首空闲绑定 (D002) / `GET /__identity__` / `POST /mailbox/post` (错误响应也签名) / `POST /mailbox/poll` (长轮询 hold 20s) / 全响应签名 + nonce / 实际绑定端口写 host 固定路径状态文件.
   - 依据: D002/D007/D008 + server.py 对照. 接缝: HTTP 端点.
 - [ ] ISSUE-03: llm 中转面 (吸收 llm-proxy)
