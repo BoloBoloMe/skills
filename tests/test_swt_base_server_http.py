@@ -52,6 +52,7 @@ class HttpCase(unittest.TestCase):
         self.state_path = Path(self.dir) / "state.json"
         self.mb = swt.Mailbox(self.db)
         self.mb.response_key = self.RESP_KEY
+        self.relay = swt.RelayStore(self.db)
         self.server = None
 
     def tearDown(self):
@@ -60,7 +61,7 @@ class HttpCase(unittest.TestCase):
 
     def start(self, ports=(0,), hold=swt.HOLD_SECONDS, state_path=None):
         self.server = swt.MailboxHttpServer.bind_first_free(
-            self.mb, host="127.0.0.1", ports=ports)
+            self.mb, host="127.0.0.1", ports=ports, relay=self.relay)
         self.server.hold_seconds = hold
         self.server.start(state_path=state_path)
         return self.server.port
@@ -98,11 +99,11 @@ class TestIdentityAndLifecycle(HttpCase):
             self.assertEqual(code, 200)
             self.server.stop()
             # 停止后端口确实释放, 可立即再绑
-            swt.MailboxHttpServer(self.mb, "127.0.0.1", port).server_close()
+            swt.MailboxHttpServer(self.mb, "127.0.0.1", port, relay=self.relay).server_close()
             self.server = None
 
     def test_未start直接stop幂等(self):
-        srv = swt.MailboxHttpServer(self.mb, "127.0.0.1", 0)
+        srv = swt.MailboxHttpServer(self.mb, "127.0.0.1", 0, relay=self.relay)
         srv.stop()  # 未 start 不炸
         srv.server_close()
 
@@ -131,7 +132,8 @@ class TestPortRange(HttpCase):
         holder, p1 = _hold_port()
         self.addCleanup(holder.close)
         with self.assertRaises(RuntimeError):
-            swt.MailboxHttpServer.bind_first_free(self.mb, host="127.0.0.1", ports=(p1,))
+            swt.MailboxHttpServer.bind_first_free(self.mb, host="127.0.0.1",
+                                                  ports=(p1,), relay=self.relay)
 
 
 class TestStateFile(HttpCase):
