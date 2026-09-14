@@ -26,13 +26,14 @@ use-sandbox-worktree 的容器 GUI/内容无感访问能力完整固化进 skill
 
 <!-- 每个已关闭 Milestone 一行: 链接 + 一句话摘要 -->
 - [MILESTONE-01](MILESTONE-01.md) — 信箱通道设计定稿 ([账本](../milestone-01/DECISIONS.md), ADR [0010](../../../adr/0010-mailbox-centralized-web-monolith.md)/[0011](../../../adr/0011-mailbox-exec-instruction-allowlist.md)): 信箱与 llm-proxy 合并为 host 常驻 web 单体 swt-base-server (端口区间+身份探测); 队列纯单向容器投/设备长轮询取, 回信走既有 ssh; 纯文本 4 类型, exec 限服务端指令白名单, 之外降级 request; 设备 HMAC 签名+容器 key 作用域+双向签名防重放; 跨机 ssh -L; 取信会话 host 上 pane/远程固定 tab 手动首启. 反方攻击推翻 exec 任意直批并修复响应未签名漏洞; "信箱实时性"迷雾随之关闭 (长轮询秒级)
+- [MILESTONE-02](MILESTONE-02.md) — 信箱原型真跑通过: "来信→唤醒→处理"状态模型成立, 本机唤醒 2ms/空转零 token/缺省路由可用, 白名单直批/降级问人/越权 403/防重放全符合设计; 移交 M03: 投信错误响应也要签名, 扩展忽略非 message 触发事件, 端口区间首空闲 38417; 原型 `prototypes/mailbox-loop/` 保留作参考答案
 
 ## 前沿
 
 <!-- 开放 + 已解除阻塞 + 未被认领的 Milestone -->
-- [MILESTONE-02](MILESTONE-02.md) — `prototype` — 信箱原型: 最小信箱接口 + 阻塞取信脚本 + triggerTurn 唤醒 + 两种会话形态真跑
 - [MILESTONE-04](MILESTONE-04.md) — `deliberate` — 网页/网站无感盘问: 8800 钉死 / STATE 登记 / 交付包双 URL / 本机自动打开 / dev server 约定 / 分享形态
 - [MILESTONE-06](MILESTONE-06.md) — `deliberate` — 窗口直飞盘问: 触发链路 / 三态选路 / 音频形态 / 脚本母本制 / base 层改动与级联成本 / B 端前提
+- [MILESTONE-03](MILESTONE-03.md) — 信箱实施 (M02 已关闭, 阻塞解除)
 
 ## 未决迷雾
 
@@ -54,12 +55,12 @@ use-sandbox-worktree 的容器 GUI/内容无感访问能力完整固化进 skill
 ## 阻塞关系
 
 ```
-M01(信箱盘问)✅ ──→ M02(信箱原型) ──→ M03(信箱实施) ──────────────┐
+M01(信箱盘问)✅ ──→ M02(信箱原型)✅ ──→ M03(信箱实施) ──────────────┐
                                                                 ├─→ M08(直飞实施) ──┐
 M06(直飞盘问) ──→ M07(双机实测) ────────────────────────────────┘                  │
                                                                                    ├─→ M09(真机验收) ──→ 目的地
 M04(网页盘问) ──→ M05(网页实施) ──────────────────────────────────────────────────┘
 ```
 
-- 前沿: M02/M04/M06 互不阻塞
+- 前沿: M03/M04/M06 互不阻塞
 - M08 依赖 M03: 窗口直飞的 "经信箱通知设备侧拉起" 集成需要信箱就位
