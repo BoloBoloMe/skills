@@ -4,8 +4,9 @@
 当前含: ISSUE-01 信箱核心状态模型 + SQLite 持久化; ISSUE-02 HTTP 服务面与生命周期
 (端口区间首空闲绑定 / __identity__ 探测 / mailbox post+长轮询 poll, 全响应签名 /
 状态文件 / 可起可停); ISSUE-03 llm 中转面 (OpenAI 兼容 /v1/chat/completions +
-/v1/models, sk- key 认证, keys 表: 模型白名单/quota/用量/过期/吊销).
-admin 面归 ISSUE-04.
+/v1/models, sk- key 认证, keys 表: 模型白名单/quota/用量/过期/吊销);
+ISSUE-04 admin 管理面 (独立服务硬绑 127.0.0.1, X-Admin-Token; relay key /
+设备凭证 / 容器 key / 队列与统计).
 
 信箱语义以 docs/changes/swt-cross-host-access/prototypes/mailbox-loop/mailbox_logic.py
 (用户真跑验证) 为准, 内存存储换成 SQLite 持久化:
@@ -31,7 +32,7 @@ import uuid
 from datetime import datetime
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from urllib.parse import urlparse
+from urllib.parse import parse_qs, urlparse
 
 TS_WINDOW = 300.0  # D007: 签名时间窗 ±5min
 MSG_TYPES = ("notify", "open_url", "exec", "request")  # D004
@@ -40,21 +41,25 @@ PROCESSED_RETENTION = 7 * 86400.0  # D004: 已处理消息 7 天滚动删除
 PORT_RANGE = range(38417, 38427)  # D002: 冷门区间, 绑首个空闲端口
 HOLD_SECONDS = 20.0               # D008: 长轮询 hold 时长, 超时由脚本循环重发
 SERVICE_NAME = "swt-base-server"
-VERSION = "0.3.0"
+VERSION = "0.4.0"
 STATE_DIR = Path.home() / ".local/state/swt-base-server"
 STATE_PATH = STATE_DIR / "state.json"  # D002(3): 实际绑定端口写 host 固定路径
 
+# pre-release: schema 变更无迁移路径, 删库重建即可 (服务未真部署, 无旧库)
 _SCHEMA = """
 CREATE TABLE IF NOT EXISTS devices (
     name TEXT PRIMARY KEY,
     signing_key TEXT NOT NULL,
-    last_poll REAL NOT NULL DEFAULT 0.0
+    last_poll REAL NOT NULL DEFAULT 0.0,
+    revoked INTEGER NOT NULL DEFAULT 0,
+    response_key TEXT NOT NULL DEFAULT ''
 );
 CREATE TABLE IF NOT EXISTS container_keys (
     key TEXT PRIMARY KEY,
     container TEXT NOT NULL,
     allow_types TEXT NOT NULL,
-    allow_targets TEXT NOT NULL
+    allow_targets TEXT NOT NULL,
+    revoked INTEGER NOT NULL DEFAULT 0
 );
 CREATE TABLE IF NOT EXISTS messages (
     id TEXT PRIMARY KEY,
@@ -76,10 +81,6 @@ CREATE TABLE IF NOT EXISTS seen_ids (
 CREATE TABLE IF NOT EXISTS whitelist (
     instruction TEXT PRIMARY KEY
 );
-CREATE TABLE IF NOT EXISTS meta (
-    key TEXT PRIMARY KEY,
-    value TEXT NOT NULL
-);
 """
 
 
@@ -96,18 +97,23 @@ def _canonical(obj) -> str:
 
 
 class Device:
-    def __init__(self, name: str, signing_key: str, last_poll: float = 0.0):
+    def __init__(self, name: str, signing_key: str, last_poll: float = 0.0,
+                 revoked: bool = False, response_key: str = ""):
         self.name = name
-        self.signing_key = signing_key  # HMAC 请求签名密钥, admin 发 key 时手工复制 (D006)
-        self.last_poll = last_poll      # 最近取信时间, 缺省路由依据 (D004)
+        self.signing_key = signing_key    # HMAC 请求签名密钥, admin 发 key 时手工复制 (D006)
+        self.last_poll = last_poll        # 最近取信时间, 缺省路由依据 (D004)
+        self.revoked = revoked
+        self.response_key = response_key  # 响应签名密钥, 每设备一份 (UD-08)
 
 
 class ContainerKey:
-    def __init__(self, key: str, container: str, allow_types, allow_targets):
+    def __init__(self, key: str, container: str, allow_types, allow_targets,
+                 revoked: bool = False):
         self.key = key
         self.container = container
         self.allow_types = frozenset(allow_types)      # D006 作用域: 可投类型
         self.allow_targets = frozenset(allow_targets)  # D006 作用域: 可投设备, "*" = 全部
+        self.revoked = revoked
 
 
 class StoredMessage:
@@ -132,7 +138,6 @@ class Mailbox:
 
     def __init__(self, db_path: str, now=time.time):
         self._now = now
-        self._response_key = ""  # 服务响应签名密钥, 发设备凭证时一并分发 (D007)
         self.devices: dict[str, Device] = {}
         self.container_keys: dict[str, ContainerKey] = {}
         self.messages: dict[str, StoredMessage] = {}
@@ -144,27 +149,19 @@ class Mailbox:
         self._db.executescript(_SCHEMA)
         self._load()
 
-    @property
-    def response_key(self) -> str:
-        return self._response_key
-
-    @response_key.setter
-    def response_key(self, value: str) -> None:
-        self._response_key = value
-        self._db.execute(
-            "INSERT OR REPLACE INTO meta (key, value) VALUES ('response_key', ?)",
-            (value,))
-        self._db.commit()
-
     # -- 持久化 -------------------------------------------------------------
     def _load(self) -> None:
-        for name, signing_key, last_poll in self._db.execute(
-                "SELECT name, signing_key, last_poll FROM devices"):
-            self.devices[name] = Device(name, signing_key, last_poll)
-        for key, container, allow_types, allow_targets in self._db.execute(
-                "SELECT key, container, allow_types, allow_targets FROM container_keys"):
+        for name, signing_key, last_poll, revoked, response_key in self._db.execute(
+                "SELECT name, signing_key, last_poll, revoked, response_key"
+                " FROM devices"):
+            self.devices[name] = Device(name, signing_key, last_poll, bool(revoked),
+                                        response_key)
+        for key, container, allow_types, allow_targets, revoked in self._db.execute(
+                "SELECT key, container, allow_types, allow_targets, revoked"
+                " FROM container_keys"):
             self.container_keys[key] = ContainerKey(
-                key, container, json.loads(allow_types), json.loads(allow_targets))
+                key, container, json.loads(allow_types), json.loads(allow_targets),
+                bool(revoked))
         for row in self._db.execute(
                 "SELECT id, env, status, routed_to, delivered_at, processed_at,"
                 " latency_ms, downgraded, note, outcome, allow_targets FROM messages"):
@@ -177,23 +174,24 @@ class Mailbox:
             self.seen_ids[msg_id] = ts
         for (instruction,) in self._db.execute("SELECT instruction FROM whitelist"):
             self.whitelist.add(instruction)
-        row = self._db.execute(
-            "SELECT value FROM meta WHERE key = 'response_key'").fetchone()
-        if row is not None:
-            self._response_key = row[0]
 
     def _save_device(self, dev: Device) -> None:
         self._db.execute(
-            "INSERT OR REPLACE INTO devices (name, signing_key, last_poll)"
-            " VALUES (?, ?, ?)", (dev.name, dev.signing_key, dev.last_poll))
+            "INSERT OR REPLACE INTO devices"
+            " (name, signing_key, last_poll, revoked, response_key)"
+            " VALUES (?, ?, ?, ?, ?)",
+            (dev.name, dev.signing_key, dev.last_poll, int(dev.revoked),
+             dev.response_key))
         self._db.commit()
 
     def _save_container_key(self, ck: ContainerKey) -> None:
         self._db.execute(
             "INSERT OR REPLACE INTO container_keys"
-            " (key, container, allow_types, allow_targets) VALUES (?, ?, ?, ?)",
+            " (key, container, allow_types, allow_targets, revoked)"
+            " VALUES (?, ?, ?, ?, ?)",
             (ck.key, ck.container,
-             json.dumps(sorted(ck.allow_types)), json.dumps(sorted(ck.allow_targets))))
+             json.dumps(sorted(ck.allow_types)), json.dumps(sorted(ck.allow_targets)),
+             int(ck.revoked)))
         self._db.commit()
 
     def _save_message(self, msg: StoredMessage) -> None:
@@ -214,14 +212,22 @@ class Mailbox:
         self._db.commit()
 
     # -- 管理面 (正式版走只听 127.0.0.1 的 admin 端口) -----------------------
-    def add_device(self, name: str, signing_key: str) -> Device:
-        dev = Device(name, signing_key)
+    def add_device(self, name: str, signing_key: str,
+                   response_key: str | None = None) -> Device:
+        # UD-08: 响应签名密钥每设备一份, 登记时生成
+        dev = Device(name, signing_key,
+                     response_key=response_key or uuid.uuid4().hex)
         self.devices[name] = dev
         self._save_device(dev)
         return dev
 
     def get_device(self, name: str) -> Device | None:
         return self.devices.get(name)
+
+    def revoke_device(self, name: str) -> None:
+        dev = self.devices[name]
+        dev.revoked = True
+        self._save_device(dev)
 
     def add_container_key(self, key: str, container: str, allow_types, allow_targets) -> None:
         ck = ContainerKey(key, container, allow_types, allow_targets)
@@ -230,6 +236,11 @@ class Mailbox:
 
     def get_container_key(self, key: str) -> ContainerKey | None:
         return self.container_keys.get(key)
+
+    def revoke_container_key(self, key: str) -> None:
+        ck = self.container_keys[key]
+        ck.revoked = True
+        self._save_container_key(ck)
 
     def add_whitelist(self, instruction: dict) -> None:
         canonical = _canonical(instruction)
@@ -244,6 +255,10 @@ class Mailbox:
     def get_message(self, msg_id: str) -> StoredMessage | None:
         return self.messages.get(msg_id)
 
+    def list_messages(self, status: str | None = None) -> list[StoredMessage]:
+        msgs = sorted(self.messages.values(), key=lambda m: float(m.env["ts"]))
+        return [m for m in msgs if status is None or m.status == status]
+
     # -- 投信 (容器侧) -----------------------------------------------------
     def post(self, key: str, env: dict, sig_ts, sig: str) -> StoredMessage:
         self._cleanup_processed()
@@ -251,6 +266,8 @@ class Mailbox:
         ck = self.container_keys.get(key)
         if ck is None:
             raise MailboxError("未知容器 key (认证失败)")
+        if ck.revoked:
+            raise MailboxError("容器 key 已吊销")
         self._check_ts_window(sig_ts)
         expect = sign(key, str(sig_ts), env["id"], env["body"])
         if not hmac.compare_digest(expect, sig):
@@ -264,6 +281,9 @@ class Mailbox:
         targets = ck.allow_targets
         if env.get("to") and "*" not in targets and env["to"] not in targets:
             raise MailboxError("目标越权: 设备不在容器 key 作用域 (D006)")
+        to_dev = self.devices.get(env["to"]) if env.get("to") else None
+        if to_dev is not None and to_dev.revoked:
+            raise MailboxError(f"目标设备已吊销: {env['to']} (UD-08)")
 
         msg = StoredMessage(dict(env), ck.allow_targets)  # 目标作用域快照 (UD-05)
         if env["type"] == "exec":
@@ -298,6 +318,8 @@ class Mailbox:
         dev = self.devices.get(name)
         if dev is None:
             raise MailboxError(f"未知设备 {name}")
+        if dev.revoked:
+            raise MailboxError(f"设备已吊销: {name}")
         self._check_ts_window(sig_ts)
         expect = sign(dev.signing_key, name, str(sig_ts))
         if not hmac.compare_digest(expect, sig):
@@ -307,7 +329,8 @@ class Mailbox:
         return dev
 
     def _default_device(self) -> str | None:
-        polled = [d for d in self.devices.values() if d.last_poll > 0]
+        polled = [d for d in self.devices.values()
+                  if d.last_poll > 0 and not d.revoked]
         return max(polled, key=lambda d: d.last_poll).name if polled else None
 
     def _deliverable(self, msg: StoredMessage, dev: Device) -> bool:
@@ -342,18 +365,18 @@ class Mailbox:
             "latency_ms": msg.latency_ms,
             "nonce": uuid.uuid4().hex,
         }
-        return payload, self.sign_response(dev.name, payload)
+        return payload, self.sign_response(dev.name, payload, dev.response_key)
 
     def empty_payload(self, dev: Device):
         self.stats["empty_polls"] += 1
         payload = {"message": None, "nonce": uuid.uuid4().hex}
-        return payload, self.sign_response(dev.name, payload)
+        return payload, self.sign_response(dev.name, payload, dev.response_key)
 
-    def sign_response(self, party: str, payload: dict, key: str | None = None) -> str:
-        """D007 全响应签名公开口. key 缺省 = 响应签名密钥 (设备方向);
-        post 方向传投信容器 key (UD-06)."""
-        return sign(key if key is not None else self.response_key, party,
-                    payload["nonce"], json.dumps(payload, sort_keys=True))
+    def sign_response(self, party: str, payload: dict, key: str) -> str:
+        """D007 全响应签名公开口. key: poll 方向 = 该设备专属 response_key (UD-08),
+        post 方向 = 投信容器 key (UD-06); 无法确认对端身份时传 "" 留形式."""
+        return sign(key, party, payload["nonce"],
+                    json.dumps(payload, sort_keys=True))
 
     # -- 处理 (设备侧 LLM 轮) ---------------------------------------------
     def process(self, msg_id: str, outcome: str) -> StoredMessage:
@@ -493,13 +516,23 @@ def _now_iso() -> str:
     return datetime.now().astimezone().isoformat(timespec="seconds")
 
 
-def write_state_file(port: int, started_at: str, path=STATE_PATH) -> None:
-    """D002(3): 实际绑定端口写 host 固定路径状态文件, 同机组件读文件免扫描."""
+def write_state_file(port: int, started_at: str, path=STATE_PATH,
+                     admin_port: int | None = None,
+                     admin_token: str | None = None) -> None:
+    """D002(3): 实际绑定端口写 host 固定路径状态文件, 同机组件读文件免扫描.
+    admin_port/admin_token 供本机组件 (如 swt birth) 申领凭证用, 文件 600."""
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps({
-        "service": SERVICE_NAME, "version": VERSION,
-        "port": port, "started_at": started_at}, ensure_ascii=False))
+    data = {"service": SERVICE_NAME, "version": VERSION,
+            "port": port, "started_at": started_at}
+    if admin_port is not None:
+        data["admin_port"] = admin_port
+    if admin_token is not None:
+        data["admin_token"] = admin_token
+    fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+    os.fchmod(fd, 0o600)  # 复写既有宽松权限文件也收紧
+    with os.fdopen(fd, "w") as f:  # 落盘即 600, 无明文 644 窗口
+        f.write(json.dumps(data, ensure_ascii=False))
 
 
 def clear_state_file(path=STATE_PATH) -> None:
@@ -567,7 +600,9 @@ class _NoRedirect(urllib.request.HTTPRedirectHandler):
 _OPENER = urllib.request.build_opener(_NoRedirect)
 
 
-class _Handler(BaseHTTPRequestHandler):
+class _JsonHandler(BaseHTTPRequestHandler):
+    """_Handler 与 _AdminHandler 共享的 JSON 收发底座."""
+
     server_version = f"{SERVICE_NAME}/{VERSION}"
 
     def log_message(self, *args):
@@ -581,20 +616,24 @@ class _Handler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(body)
 
-    def _signed(self, code: int, party: str, payload: dict, key: str | None = None):
+    def _body(self) -> dict:
+        raw = self.rfile.read(int(self.headers.get("Content-Length", 0)))
+        return json.loads(raw or b"{}")
+
+
+class _Handler(_JsonHandler):
+
+    def _signed(self, code: int, party: str, payload: dict, key: str = ""):
         """D007 全响应签名: 错误体与成功响应同构, 带 nonce + 签名.
-        key 缺省 = response_key; post 方向已知容器 key 时传容器 key (UD-06)."""
+        key: 设备方向 = 设备专属 response_key (UD-08), post 方向 = 容器 key (UD-06);
+        对端身份不可确认时 "" 留形式."""
         payload = dict(payload)
         payload.setdefault("nonce", uuid.uuid4().hex)
         sig = self.server.mailbox.sign_response(party, payload, key)
         self._json(code, {"payload": payload, "sig": sig})
 
-    def _bad_request(self, party: str, error: str, key: str | None = None):
+    def _bad_request(self, party: str, error: str, key: str = ""):
         return self._signed(400, party, {"ok": False, "error": error}, key)
-
-    def _body(self) -> dict:
-        raw = self.rfile.read(int(self.headers.get("Content-Length", 0)))
-        return json.loads(raw or b"{}")
 
     def do_GET(self):
         path = urlparse(self.path).path
@@ -687,11 +726,11 @@ class _Handler(BaseHTTPRequestHandler):
 
         if path == "/mailbox/post":
             # UD-06: 已知容器 key → 响应用该 key 签名, party = 容器名, 容器可验;
-            # 未知 key → response_key 留形式, party = 端点名 (容器不可验).
+            # 未知 key → 空 key 留形式, party = 端点名 (容器不可验).
             key = str(body.get("key", ""))
             ck = m.get_container_key(key)
             party = ck.container if ck is not None else endpoint
-            skey = key if ck is not None else None
+            skey = key if ck is not None else ""
             with self.server.cond:
                 try:
                     msg = m.post(key, body["envelope"], body["sig_ts"], body["sig"])
@@ -708,19 +747,22 @@ class _Handler(BaseHTTPRequestHandler):
                                 skey)
 
         if path == "/mailbox/poll":
-            # 能解析出 device 就用设备名作 party (对齐取信脚本验签式), 否则退回端点名
+            # 能解析出 device 就用设备名作 party (对齐取信脚本验签式), 否则退回端点名;
+            # 签名用该设备专属 response_key (UD-08), 未知设备 "" 留形式
             device = body.get("device")
             party = str(device) if device else endpoint
+            known = m.get_device(str(device)) if device else None
+            skey = known.response_key if known is not None else ""
             with self.server.cond:
                 try:
                     dev = m.verify_poller(body["device"], body["ts"], body["sig"])
                 except KeyError as e:
-                    return self._bad_request(party, f"缺字段: {e}")
+                    return self._bad_request(party, f"缺字段: {e}", skey)
                 except (ValueError, TypeError) as e:
-                    return self._bad_request(party, f"字段畸形: {e}")
+                    return self._bad_request(party, f"字段畸形: {e}", skey)
                 except MailboxError as e:
                     m.stats["rejected"] += 1
-                    return self._signed(403, party, {"ok": False, "error": str(e)})
+                    return self._signed(403, party, {"ok": False, "error": str(e)}, skey)
                 m.stats["polls"] += 1
                 deadline = time.time() + self.server.hold_seconds
                 while True:
@@ -737,27 +779,217 @@ class _Handler(BaseHTTPRequestHandler):
         self._json(404, {"error": "not found"})
 
 
+# ======================================================================
+# admin 管理面 (ISSUE-04): 独立服务硬绑 127.0.0.1 (D002(4)), X-Admin-Token
+# ======================================================================
+
+ADMIN_PORT = 38416  # 固定可配 (env SWT_ADMIN_PORT), 不参与信箱区间 38417-38426
+
+
+class AdminHttpServer(ThreadingHTTPServer):
+    daemon_threads = True
+    allow_reuse_address = True
+
+    def __init__(self, mailbox: Mailbox, relay: RelayStore, token: str,
+                 port: int = ADMIN_PORT):
+        self.mailbox = mailbox
+        self.relay = relay
+        self.admin_token = token
+        self._thread = None
+        super().__init__(("127.0.0.1", port), _AdminHandler)  # 硬绑 loopback
+
+    @property
+    def port(self) -> int:
+        return self.server_address[1]
+
+    def start(self) -> None:
+        self._thread = threading.Thread(target=self.serve_forever, daemon=True)
+        self._thread.start()
+
+    def stop(self) -> None:
+        if self._thread is None:
+            return
+        self.shutdown()
+        self.server_close()
+        self._thread.join()
+        self._thread = None
+
+
+class _AdminHandler(_JsonHandler):
+
+    def _auth(self) -> bool:
+        token = self.headers.get("X-Admin-Token", "")
+        if not self.server.admin_token \
+                or not hmac.compare_digest(token, self.server.admin_token):
+            self._json(401, {"error": "admin token 无效"})
+            return False
+        return True
+
+    def do_GET(self):
+        if not self._auth():
+            return
+        path = urlparse(self.path).path
+        if path == "/admin/stats":
+            self._json(200, dict(self.server.mailbox.stats))
+        elif path == "/admin/relay-keys":
+            self._json(200, {"keys": [
+                {"key": rk.key, "models": sorted(rk.models), "quota": rk.quota,
+                 "used": rk.used, "expires_at": rk.expires_at, "revoked": rk.revoked}
+                for rk in self.server.relay.keys.values()]})
+        elif path == "/admin/devices":
+            self._json(200, {"devices": [
+                {"name": d.name, "last_poll": d.last_poll, "revoked": d.revoked}
+                for d in self.server.mailbox.devices.values()]})
+        elif path == "/admin/container-keys":
+            self._json(200, {"keys": [
+                {"key": ck.key, "container": ck.container,
+                 "allow_types": sorted(ck.allow_types),
+                 "allow_targets": sorted(ck.allow_targets), "revoked": ck.revoked}
+                for ck in self.server.mailbox.container_keys.values()]})
+        elif path == "/admin/messages":
+            query = parse_qs(urlparse(self.path).query)
+            status = query.get("status", [None])[0]
+            self._json(200, {"messages": [
+                {"id": m.env["id"], "from": m.env["from"], "type": m.env["type"],
+                 "to": m.env.get("to"), "ts": m.env["ts"], "status": m.status,
+                 "routed_to": m.routed_to, "downgraded": m.downgraded,
+                 "note": m.note, "outcome": m.outcome,
+                 "delivered_at": m.delivered_at, "processed_at": m.processed_at}
+                for m in self.server.mailbox.list_messages(status)]})
+        else:
+            self._json(404, {"error": "not found"})
+
+    def do_POST(self):
+        if not self._auth():
+            return
+        path = urlparse(self.path).path
+        try:
+            body = self._body()
+        except json.JSONDecodeError:
+            return self._json(400, {"error": "bad json"})
+        if not isinstance(body, dict):
+            return self._json(400, {"error": "bad json"})
+
+        if path == "/admin/relay-keys":
+            return self._create_relay_key(body)
+        if path == "/admin/relay-keys/revoke":
+            return self._revoke_relay_key(body)
+        if path == "/admin/devices":
+            return self._create_device(body)
+        if path == "/admin/devices/revoke":
+            return self._revoke_device(body)
+        if path == "/admin/container-keys":
+            return self._create_container_key(body)
+        if path == "/admin/container-keys/revoke":
+            return self._revoke_container_key(body)
+        self._json(404, {"error": "not found"})
+
+    # -- relay key 管理 (UD-07) ----------------------------------------------
+    def _create_relay_key(self, body: dict):
+        models = body.get("models")
+        if not isinstance(models, list) or not models \
+                or not all(isinstance(m, str) for m in models):
+            return self._json(400, {"error": "models 须为非空字符串列表"})
+        quota = body.get("quota")
+        if quota is not None and not isinstance(quota, int):
+            return self._json(400, {"error": "quota 须为整数"})
+        ttl = body.get("ttl_seconds")
+        expires_at = time.time() + ttl if isinstance(ttl, (int, float)) else 0.0
+        key = "sk-" + uuid.uuid4().hex
+        rk = self.server.relay.add_key(key, models, quota, expires_at)
+        self._json(200, {"key": rk.key, "models": sorted(rk.models),
+                         "quota": rk.quota, "expires_at": rk.expires_at})
+
+    def _revoke_relay_key(self, body: dict):
+        key = body.get("key")
+        if self.server.relay.get_key(key) is None:
+            return self._json(404, {"error": f"未知 key: {key}"})
+        self.server.relay.revoke_key(key)
+        self._json(200, {"ok": True})
+
+    # -- 设备凭证管理 (D006) ---------------------------------------------------
+    def _create_device(self, body: dict):
+        mb = self.server.mailbox
+        name = body.get("name")
+        if not isinstance(name, str) or not name:
+            return self._json(400, {"error": "name 须为非空字符串"})
+        if mb.get_device(name) is not None:
+            return self._json(409, {"error": f"设备已存在: {name}"})
+        dev = mb.add_device(name, uuid.uuid4().hex)
+        # D006/UD-08: 设备名 + 签名密钥 + 该设备专属响应签名密钥一并分发
+        self._json(200, {"device": dev.name, "signing_key": dev.signing_key,
+                         "response_key": dev.response_key})
+
+    def _revoke_device(self, body: dict):
+        name = body.get("name")
+        if self.server.mailbox.get_device(name) is None:
+            return self._json(404, {"error": f"未知设备: {name}"})
+        self.server.mailbox.revoke_device(name)
+        self._json(200, {"ok": True})
+
+    # -- 容器 key 管理 (D006: 声明可投类型与目标设备, 缺省拒绝) -----------------
+    def _create_container_key(self, body: dict):
+        container = body.get("container")
+        allow_types = body.get("allow_types")
+        allow_targets = body.get("allow_targets")
+        if not isinstance(container, str) or not container:
+            return self._json(400, {"error": "container 须为非空字符串"})
+        for field, value in (("allow_types", allow_types),
+                             ("allow_targets", allow_targets)):
+            if not isinstance(value, list) or not value \
+                    or not all(isinstance(v, str) for v in value):
+                return self._json(400, {"error": f"{field} 须为非空字符串列表"})
+        unknown = [t for t in allow_types if t not in MSG_TYPES]
+        if unknown:
+            return self._json(400, {"error": f"枚举外类型: {unknown} (D004)"})
+        key = "sk-" + uuid.uuid4().hex
+        self.server.mailbox.add_container_key(key, container, allow_types, allow_targets)
+        self._json(200, {"key": key, "container": container,
+                         "allow_types": allow_types, "allow_targets": allow_targets})
+
+    def _revoke_container_key(self, body: dict):
+        key = body.get("key")
+        if self.server.mailbox.get_container_key(key) is None:
+            return self._json(404, {"error": f"未知 key: {key}"})
+        self.server.mailbox.revoke_container_key(key)
+        self._json(200, {"ok": True})
+
+
+def _term(*_):
+    raise KeyboardInterrupt()
+
+
 def main() -> None:
+    import signal
+
     STATE_DIR.mkdir(parents=True, exist_ok=True)
     db = str(STATE_DIR / "server.db")
     mailbox = Mailbox(db)
     relay = RelayStore(db)
+    admin_token = os.environ.get("SWT_ADMIN_TOKEN") or uuid.uuid4().hex
+    admin_port = int(os.environ.get("SWT_ADMIN_PORT", str(ADMIN_PORT)))
     try:
         server = MailboxHttpServer.bind_first_free(
             mailbox, relay=relay,
             upstream_base=os.environ.get("SWT_UPSTREAM_BASE",
                                          "https://api.openai.com"),
             upstream_key=os.environ.get("SWT_UPSTREAM_KEY", ""))
-    except RuntimeError as e:
+        admin = AdminHttpServer(mailbox, relay, admin_token, port=admin_port)
+    except (RuntimeError, OSError) as e:
         print(e, file=sys.stderr)
         sys.exit(1)
-    write_state_file(server.port, _now_iso())
-    print(f"{SERVICE_NAME} {VERSION} listening on :{server.port}", file=sys.stderr)
+    write_state_file(server.port, _now_iso(), admin_port=admin.port,
+                     admin_token=admin_token)
+    admin.start()
+    print(f"{SERVICE_NAME} {VERSION} mailbox/relay on :{server.port},"
+          f" admin on 127.0.0.1:{admin.port}", file=sys.stderr)
+    signal.signal(signal.SIGTERM, _term)
     try:
         server.serve_forever()
     except KeyboardInterrupt:
         pass
     finally:
+        admin.stop()
         server.server_close()
         clear_state_file()
 

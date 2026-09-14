@@ -66,11 +66,19 @@ class TestDeviceRegistration(MailboxCase):
         mb = self.mailbox()
         self.assertIsNone(mb.get_device("ghost"))
 
-    def test_response_key重启后仍在(self):
+    def test_设备response_key随设备落库重启后仍在(self):
         mb = self.mailbox()
-        mb.response_key = "resp-secret"
+        dev = mb.add_device("laptop", "dev-secret")
+        self.assertTrue(dev.response_key)  # 每设备一份, 登记时生成 (UD-08)
+
         mb2 = self.mailbox()
-        self.assertEqual(mb2.response_key, "resp-secret")
+        self.assertEqual(mb2.get_device("laptop").response_key, dev.response_key)
+
+    def test_两设备response_key不同(self):
+        mb = self.mailbox()
+        a = mb.add_device("dev-a", "key-a")
+        b = mb.add_device("dev-b", "key-b")
+        self.assertNotEqual(a.response_key, b.response_key)
 
 
 def make_env(msg_id="m-1", type="notify", to=None, body="hello", ts=1_000_000.0,
@@ -215,6 +223,13 @@ class TestScope(MailboxCase):
         msg = self.post(make_env(msg_id="m-9", to="any-dev"), key="sk-ct-2")
         self.assertEqual(msg.status, "queued")
 
+    def test_to指名已吊销设备拒投(self):
+        # UD-08: 显式目标已吊销, fail-fast 拒投而非攒死信
+        self.mb.add_device("dev-a", "key-a")
+        self.mb.revoke_device("dev-a")
+        with self.assertRaises(swt.MailboxError):
+            self.post(make_env(to="dev-a"))
+
 
 class TestExecWhitelist(MailboxCase):
     """D005: exec 指令集规范形比对, 命中直批, 之外降级 request. 注册表起步为空 (UD-03)."""
@@ -276,7 +291,6 @@ class DeliverCase(MailboxCase):
     def setUp(self):
         super().setUp()
         self.mb = self.mailbox()
-        self.mb.response_key = "resp-secret"
         self.mb.add_container_key(self.KEY, "ct-1", ["notify"], ["*"])
         self.dev_a = self.mb.add_device("dev-a", "key-a")
         self.dev_b = self.mb.add_device("dev-b", "key-b")
@@ -357,6 +371,16 @@ class TestRouting(DeliverCase):
         payload, _ = self.mb.try_deliver(self.dev_b)
         self.assertEqual(payload["message"]["id"], "m-1")
 
+    def test_缺省路由剔除吊销设备(self):
+        # 唯一活跃设备被吊销后缺省信留在 queued; 新设备活跃后取走
+        self.post("m-1")
+        self.poll("dev-a")
+        self.mb.revoke_device("dev-a")
+        self.assertIsNone(self.mb.try_deliver(self.dev_b))  # 无合格缺省设备
+        self.poll("dev-b")
+        payload, _ = self.mb.try_deliver(self.dev_b)
+        self.assertEqual(payload["message"]["id"], "m-1")
+
     def test_冷启动攒信第一台取信设备收走全部缺省信(self):
         # 无任何设备活跃时投的缺省信先攒着
         self.post("m-1")
@@ -376,15 +400,24 @@ class TestRouting(DeliverCase):
         self.post("m-1", to="dev-a")
         self.poll("dev-a")
         payload, sig = self.mb.try_deliver(self.dev_a)
-        expect = swt.sign(self.mb.response_key, "dev-a", payload["nonce"],
+        expect = swt.sign(self.dev_a.response_key, "dev-a", payload["nonce"],
                           json.dumps(payload, sort_keys=True))
         self.assertEqual(sig, expect)
+
+    def test_设备只能验发给自己的响应(self):
+        # UD-08: 响应签名密钥每设备一份, 用别台设备的 key 验不过
+        self.post("m-1", to="dev-a")
+        self.poll("dev-a")
+        payload, sig = self.mb.try_deliver(self.dev_a)
+        wrong = swt.sign(self.dev_b.response_key, "dev-a", payload["nonce"],
+                         json.dumps(payload, sort_keys=True))
+        self.assertNotEqual(sig, wrong)
 
     def test_空取信返回空载荷且带签名(self):
         self.poll("dev-a")
         payload, sig = self.mb.empty_payload(self.dev_a)
         self.assertIsNone(payload["message"])
-        expect = swt.sign(self.mb.response_key, "dev-a", payload["nonce"],
+        expect = swt.sign(self.dev_a.response_key, "dev-a", payload["nonce"],
                           json.dumps(payload, sort_keys=True))
         self.assertEqual(sig, expect)
 

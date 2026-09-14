@@ -43,15 +43,12 @@ def sign(key, *parts):
 class HttpCase(unittest.TestCase):
     """公用底座: 临时 db/state + 真服务起停."""
 
-    RESP_KEY = "resp-secret"
-
     def setUp(self):
         self.dir = mkdtemp()
         self.addCleanup(rmtree, self.dir)
         self.db = str(Path(self.dir) / "mailbox.db")
         self.state_path = Path(self.dir) / "state.json"
         self.mb = swt.Mailbox(self.db)
-        self.mb.response_key = self.RESP_KEY
         self.relay = swt.RelayStore(self.db)
         self.server = None
 
@@ -156,6 +153,11 @@ class TestStateFile(HttpCase):
         self.start(state_path=deep)
         self.assertTrue(deep.exists())
 
+    def test_状态文件权限600(self):
+        # 含 admin_token, 落盘即 600, 无明文 644 窗口
+        self.start(state_path=self.state_path)
+        self.assertEqual(self.state_path.stat().st_mode & 0o777, 0o600)
+
 
 def make_envelope(msg_id="m-1", to="dev-a", type="notify", body="hi", from_="ct-1"):
     return {"id": msg_id, "ts": time.time(), "from": from_,
@@ -172,11 +174,12 @@ class MailboxEndpointCase(HttpCase):
     def setUp(self):
         super().setUp()
         self.mb.add_container_key(self.KEY, "ct-1", ["notify", "exec"], ["*"])
-        self.mb.add_device(self.DEV, self.DEV_KEY)
+        self.dev = self.mb.add_device(self.DEV, self.DEV_KEY)
         self.start()
 
     def verify_resp(self, party, resp):
-        return self.verify_key_resp(self.RESP_KEY, party, resp)
+        """poll 方向: 用该设备自己的 response_key 验 (UD-08)."""
+        return self.verify_key_resp(self.dev.response_key, party, resp)
 
     def verify_key_resp(self, key, party, resp):
         payload = resp["payload"]
@@ -217,12 +220,12 @@ class TestPostEndpoint(MailboxEndpointCase):
         self.assertTrue(resp["payload"]["error"])
         self.assertTrue(self.verify_key_resp(self.KEY, self.CT, resp))
 
-    def test_未知key403响应用response_key留形式(self):
-        # UD-06: 未知 key 无法用其签名, 退回 response_key, 协议视为容器不可验
+    def test_未知key403响应留形式签名(self):
+        # UD-06: 未知 key 无法用其签名, 退回空 key 形式签名 (容器不可验, 等同无签名)
         code, resp = self.post_msg(make_envelope(), key="sk-evil")
         self.assertEqual(code, 403)
         self.assertFalse(resp["payload"]["ok"])
-        self.assertTrue(self.verify_resp(self.PARTY, resp))
+        self.assertTrue(self.verify_key_resp("", self.PARTY, resp))
 
     def test_重放403且容器key可验签(self):
         env = make_envelope()
@@ -246,7 +249,7 @@ class TestPostEndpoint(MailboxEndpointCase):
         body = json.loads(resp.read())
         conn.close()
         self.assertEqual(resp.status, 400)
-        self.assertTrue(self.verify_resp(self.PARTY, body))
+        self.assertTrue(self.verify_key_resp("", self.PARTY, body))
 
     def test_exec指令集外投信响应标downgraded(self):
         env = make_envelope(type="exec", body=json.dumps({"tool": "x", "args": []}))
@@ -300,9 +303,10 @@ class TestPollEndpoint(MailboxEndpointCase):
         self.assertTrue(self.verify_resp(self.DEV, resp))
 
     def test_未知设备403(self):
+        # 未知设备无专属 response_key, 空 key 形式签名 (不可验, UD-08)
         code, resp = self.poll_req(device="ghost", key="k")
         self.assertEqual(code, 403)
-        self.assertTrue(self.verify_resp("ghost", resp))
+        self.assertTrue(self.verify_key_resp("", "ghost", resp))
 
     def test_取信时间戳超窗403(self):
         code, resp = self.poll_req(ts=time.time() - 301)
