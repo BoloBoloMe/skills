@@ -25,6 +25,8 @@ import subprocess
 import sys
 import tempfile
 import time
+import urllib.error
+import urllib.request
 from collections import Counter
 from datetime import datetime, timezone
 from pathlib import Path
@@ -1509,6 +1511,138 @@ def container_default_name(branch: str) -> str:
     return f"swt-{clean}"
 
 
+# ISSUE-06 birth 信箱接线 (D002/D006/D009): 探测 host 基础服务 → admin 申领容器 key
+# → 注入容器 env → runtime 登记. 信箱是增强不是命脉: 任一步失败只告警跳过, 不阻断 birth.
+BASE_SERVER_STATE_PATH = Path.home() / ".local/state/swt-base-server/state.json"
+BASE_SERVER_PORT_RANGE = range(38417, 38427)  # D002 区间, 与服务端 PORT_RANGE 一致
+BASE_SERVER_SERVICE = "swt-base-server"       # D002(2) __identity__ 应答名
+MAILBOX_ALLOW_TYPES = ("notify", "open_url", "exec", "request")  # 全 4 类型; exec 由服务端指令集兜底降级 (UD-03)
+MAILBOX_ENV_URL = "SWT_BASE_URL"
+MAILBOX_ENV_KEY = "SWT_MAILBOX_KEY"
+MAILBOX_ENV_NAME = "SWT_CONTAINER_NAME"
+
+
+class MailboxWireError(Exception):
+    """申领容器 key 失败; wire_container_mailbox 捕获后降级为 skipped, 不阻断 birth."""
+
+
+def identity_probe(port: int, timeout: float = 0.5) -> bool:
+    """D002(2): 无认证 GET /__identity__, 确认目标端口是 swt 基础服务."""
+    try:
+        with urllib.request.urlopen(
+                f"http://127.0.0.1:{port}/__identity__", timeout=timeout) as response:
+            payload = json.loads(response.read() or b"{}")
+    except (urllib.error.URLError, OSError, json.JSONDecodeError):
+        return False
+    return isinstance(payload, dict) and payload.get("service") == BASE_SERVER_SERVICE
+
+
+def probe_base_server(
+    state_path: Path = BASE_SERVER_STATE_PATH,
+    ports=BASE_SERVER_PORT_RANGE,
+) -> dict[str, Any] | None:
+    """D002(3): 读 host 状态文件免扫描; 文件缺席/失活/畸形时扫区间 __identity__ 兜底.
+    返回 {"port", "admin_port", "admin_token"}; 扫描命中时 admin 字段为 None
+    (扫描拿不到凭证, 失活状态文件里的 admin 字段不可信弃用); 完全未发现返回 None."""
+    state: Any = None
+    try:
+        state = json.loads(Path(state_path).read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        state = None
+    if isinstance(state, dict):
+        port = state.get("port")
+        if isinstance(port, int) and identity_probe(port):
+            return {"port": port,
+                    "admin_port": state.get("admin_port"),
+                    "admin_token": state.get("admin_token")}
+    for port in ports:
+        if identity_probe(port):
+            return {"port": port, "admin_port": None, "admin_token": None}
+    return None
+
+
+def claim_container_key(admin_port: int, admin_token: str, container: str) -> str:
+    """D006: 经 admin 口 (硬绑 127.0.0.1, X-Admin-Token) 申领容器 key.
+    作用域: 全 4 消息类型 + 全目标 ("*" 覆盖缺省路由). 失败抛 MailboxWireError."""
+    request = urllib.request.Request(
+        f"http://127.0.0.1:{admin_port}/admin/container-keys",
+        data=json.dumps({"container": container,
+                         "allow_types": list(MAILBOX_ALLOW_TYPES),
+                         "allow_targets": ["*"]}).encode(),
+        headers={"Content-Type": "application/json",
+                 "X-Admin-Token": admin_token},
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=5.0) as response:
+            payload = json.loads(response.read() or b"{}")
+    except urllib.error.HTTPError as exc:
+        try:
+            detail = json.loads(exc.read() or b"{}").get("error", "")
+        except (json.JSONDecodeError, OSError):
+            detail = ""
+        raise MailboxWireError(f"admin 拒绝 (HTTP {exc.code}): {detail}") from exc
+    except (urllib.error.URLError, OSError, json.JSONDecodeError) as exc:
+        raise MailboxWireError(f"admin 口不可达/应答畸形: {exc}") from exc
+    key = payload.get("key") if isinstance(payload, dict) else None
+    if not isinstance(key, str) or not key:
+        raise MailboxWireError(f"admin 应答缺 key: {payload!r}")
+    return key
+
+
+def wire_container_mailbox(
+    env: dict[str, str],
+    container_name: str,
+    *,
+    state_path: Path = BASE_SERVER_STATE_PATH,
+    ports=BASE_SERVER_PORT_RANGE,
+) -> dict[str, Any]:
+    """ISSUE-06 birth 信箱接线: 探测 → 申领 → 注入 env, 返回待登记的 mailbox 段.
+    任何一步失败: stderr 告警 + status skipped, 不阻断 birth (信箱是增强不是命脉).
+    完整 key 只进 env (podman -e + ssh 面 ~/.ssh/environment 双通道既有机制),
+    登记只留前 8 位前缀, 不落 runtime 明文."""
+    found = probe_base_server(state_path, ports)
+    if found is None:
+        record: dict[str, Any] = {
+            "status": "skipped", "container": container_name,
+            "reason": "基础服务未发现 (状态文件缺席且区间 __identity__ 扫描无应答)",
+        }
+    elif not found.get("admin_port") or not found.get("admin_token"):
+        record = {
+            "status": "skipped", "container": container_name,
+            "reason": f"基础服务在线 (:{found['port']}) 但 admin 凭证不可得, 无法申领容器 key",
+        }
+    else:
+        try:
+            key = claim_container_key(
+                int(found["admin_port"]), str(found["admin_token"]), container_name)
+        except MailboxWireError as exc:
+            record = {"status": "skipped", "container": container_name,
+                      "reason": f"申领容器 key 失败: {exc}"}
+        else:
+            # D002(5): 容器内地址恒 host.containers.internal + 探测端口
+            base_url = f"http://host.containers.internal:{found['port']}"
+            env[MAILBOX_ENV_URL] = base_url
+            env[MAILBOX_ENV_KEY] = key
+            env[MAILBOX_ENV_NAME] = container_name
+            record = {
+                "status": "connected", "container": container_name,
+                "base_url": base_url, "key_prefix": key[:8],
+                "allow_types": list(MAILBOX_ALLOW_TYPES), "allow_targets": ["*"],
+            }
+    if record["status"] == "skipped":
+        print(f"[SWT] 信箱接线跳过: {record['reason']} (不影响 birth)", file=sys.stderr)
+    else:
+        print(f"[SWT] 信箱接线完成: {record['base_url']} (key {record['key_prefix']}...)",
+              file=sys.stderr)
+    return record
+
+
+def container_exists(name: str) -> bool:
+    """podman 是否已有同名容器 (birth 重入判定, 与 create_and_start_container 同口径)."""
+    return run(["podman", "inspect", name]).returncode == 0
+
+
 def create_and_start_container(args: argparse.Namespace, repo: Path, image: dict[str, Any], branch: str, runtime: dict[str, Any], runtime_file: Path, env: dict[str, str], records_root: Path, identity: str) -> dict[str, Any]:
     name = args.name or container_default_name(branch)
     existing = run(["podman", "inspect", name])
@@ -1964,7 +2098,24 @@ def birth(args: argparse.Namespace, repo: Path) -> int:
         ensure_git_bridge(records_root, identity, runtime)
         atomic_write_json(runtime_file, runtime)
         env_map = load_inherited_env(records_root, resolve_project_slug(repo))
+        # ISSUE-06 信箱接线: 须在 create 之前 (podman -e 只在创建时烘入);
+        # 失败只告警跳过, 不阻断 birth. 登记落容器记录 (多容器并存各自一段).
+        # 容器名单源 (评审修复): 推导一次写回 args, wire 与 create 共用同一值.
+        args.name = args.name or container_default_name(branch)
+        # 重入 (评审修复): 容器已存在时 create 走 refresh 早退, env 不重烘;
+        # 此时申领新 key 只会在服务端累积有效 key 且 connected 登记与实况不符 —
+        # 跳过 wire, 不动既有 mailbox 登记; 仅给无登记的老记录补一条 skipped 说明.
+        mailbox_record = None if container_exists(args.name) else wire_container_mailbox(env_map, args.name)
         container = create_and_start_container(args, repo, image, branch, runtime, runtime_file, env_map, records_root, identity)
+        if mailbox_record is not None:
+            container["record"]["mailbox"] = mailbox_record
+            upsert_container_record(runtime, container["record"], runtime_file)
+        elif "mailbox" not in container["record"]:
+            container["record"]["mailbox"] = {
+                "status": "skipped", "container": args.name,
+                "reason": "container-exists: 重入不重复申领 key (env 不重烘)",
+            }
+            upsert_container_record(runtime, container["record"], runtime_file)
         gateway_address = container_gateway(container["name"])
         route_gateway = container_route_gateway(container["detail"])
         ip_value = container_ip(container["detail"])
