@@ -165,6 +165,61 @@ uv run python scripts/image-prep.py build      --repo <主仓> [--requirements <
 - 每行一条: `NAME` = 值取 host 当前环境 (**文件不存秘密值**); `NAME=value` = 固定值 (仅限非秘密). `#` 开头为注释.
 - `NAME` 在 host 未设置: stderr 警告并跳过, 不阻塞 birth.
 
+## 基础服务 (信箱 + LLM 中转)
+
+**是什么**: host 常驻单体 web 服务 `scripts/swt-base-server.py` (纯 stdlib, 零第三方依赖), 二合一: **信箱** (容器→设备单向传话, 无回程队列 — 设备回话走既有 ssh/herdr 通道) + LLM 中转 (OpenAI 兼容 `/v1/chat/completions` 与 `/v1/models`, sk- key 认证, 模型白名单/quota/用量/过期/吊销, 响应上游不透 stream). 消息/设备/容器 key/已见 id/指令集全落 host SQLite (`~/.local/state/swt-base-server/server.db`), 重启完整恢复; 已处理消息 7 天滚动删除. 端口: 服务口区间 38417-38426 启动绑首个空闲, 无认证 `GET /__identity__` 供探测身份; admin 口默认 38416 (`SWT_ADMIN_PORT` 可配) 硬绑 127.0.0.1 (header `X-Admin-Token`, 容器够不着). 实际端口与 admin token 写状态文件 `~/.local/state/swt-base-server/state.json` (0600), 同机组件读文件免扫描. 上游配置走 env `SWT_UPSTREAM_BASE`/`SWT_UPSTREAM_KEY`.
+
+**怎么起**: systemd user unit 常驻, 单元文件 `scripts/swt-base-server.service`, 部署命令见文件头注释 (cp 到 `~/.config/systemd/user/` + `systemctl --user` + linger). 手动起 (调试): `uv run python scripts/swt-base-server.py`.
+
+**容器侧怎么投信**: birth 自动接线, 零手工 — 探测服务 (读状态文件, 缺席扫区间 `__identity__`; 状态文件命中也先做一次 `__identity__` 验活, 失活则弃文件退扫描 — 重启换 admin token, 旧文件凭证不可信) → 经 admin 口申领容器 key (作用域 = 全 4 类型 + 全目标) → env 烘入容器 (`SWT_BASE_URL`/`SWT_MAILBOX_KEY`/`SWT_CONTAINER_NAME`, podman -e + ssh 面 `~/.ssh/environment` 双通道). 服务缺席或 admin 凭证不可得 → stderr 告警 + runtime 记 skipped, 不阻断 birth; 重入不重复申领 (容器已存在则 env 不重烘). 网络面 whitelist 已自动放行宿主网关, 无额外 `--allow`. 投信 = `POST $SWT_BASE_URL/mailbox/post`, 4 类型 `notify`/`open_url`/`exec`/`request`; 签名式 `sig = HMAC(SWT_MAILBOX_KEY, sig_ts\nid\nbody)`, 响应用同 key 签名可验. 最小示例 (容器内 stdlib):
+
+```python
+import hashlib, hmac, json, os, time, urllib.request, uuid
+base, key = os.environ["SWT_BASE_URL"], os.environ["SWT_MAILBOX_KEY"]
+envelope = {"id": uuid.uuid4().hex, "ts": time.time(),
+            "from": os.environ["SWT_CONTAINER_NAME"], "to": "",  # 空 = 最近活跃设备
+            "type": "notify", "body": "任务完成, 请过目"}
+sig_ts = str(time.time())
+sig = hmac.new(key.encode(), f"{sig_ts}\n{envelope['id']}\n{envelope['body']}".encode(),
+               hashlib.sha256).hexdigest()
+req = urllib.request.Request(base + "/mailbox/post",
+    data=json.dumps({"key": key, "envelope": envelope, "sig_ts": sig_ts, "sig": sig}).encode(),
+    headers={"Content-Type": "application/json"}, method="POST")
+print(json.load(urllib.request.urlopen(req)))
+```
+
+协议细节 (错误响应也签名/时间窗 ±5min/防重放) 以 `swt-base-server.py` docstring 与 `tests/test_swt_base_server.py` e2e 为准.
+
+**设备侧怎么收取信会话**: 组件 = pi 扩展 `swt-mailbox-relay.ts` + 阻塞取信脚本 `swt-mailbox-fetch.mjs` (同目录, 经仓库根 `sync-to-pi.py` 同步到 pi 扩展目录). 先经 admin 口发设备凭证 (三元组手工复制一次):
+
+```bash
+TOKEN=$(jq -r .admin_token ~/.local/state/swt-base-server/state.json)
+curl -s -H "X-Admin-Token: $TOKEN" -H "Content-Type: application/json" \
+  -X POST http://127.0.0.1:38416/admin/devices -d '{"name":"<设备名>"}'
+# 应答: {device, signing_key, response_key}
+```
+
+配置落设备 `~/.config/swt/mailbox.json` (env `SWT_MAILBOX_CONFIG` 覆盖路径):
+
+```json
+{
+  "server": "http://127.0.0.1:38417",
+  "device": "<设备名>",
+  "signing_key": "<发放值>",
+  "response_key": "<发放值>"
+}
+```
+
+跨机取信推荐 `ssh -L 38417:127.0.0.1:<host端口> bolo@<host-LAN-IP>` 本地转发 (全程加密), 配置 server 指本地端口; 裸连局域网+签名是降级路径. **取信会话**全部手动首启, 不开机自启: host 上开在当前会话 tab 的窗格, 其他设备开固定命名 tab `S-swt-relay-1`; 扩展 session_start 自动后台拉起脚本长轮询 (空转零 token), 来信经 triggerTurn 唤醒 LLM 处理, 该轮收尾后自动 ack 回报服务端.
+
+**admin 口速查** (127.0.0.1:38416, header `X-Admin-Token`, token 读状态文件):
+- 发凭证: `POST /admin/devices {name}` / `POST /admin/container-keys {container, allow_types, allow_targets}` / `POST /admin/relay-keys {models, quota?, ttl_seconds?}`
+- 吊销: `POST /admin/{devices,container-keys,relay-keys}/revoke` (体 `{name}` 或 `{key}`)
+- 查询: `GET /admin/stats`, `/admin/devices`, `/admin/container-keys`, `/admin/relay-keys`, `/admin/messages[?status=queued|delivered|processed]`
+- **指令集**注册: `POST /admin/whitelist {instruction}` (instruction = 含 `tool` 的结构化指令对象)
+
+**指令集现状**: 机制已落地 (服务端注册表持久化 + 规范形比对: 命中直批执行, 集合外降级 request 走设备侧 pi 权限流程), 当前为空集; 首个真实成员 (waypipe 拉起命令) 待 M08 填充. 成员变动即安全策略变动, 必过 e2e 门禁 (`uv run pytest tests/test_swt_base_server.py`).
+
 ## 网络控制 / 容器命令 / 救场
 
 手救场 (防火墙/daemon/config), 换/加容器 provider, 或需要容器操作原生命令时 → reference/ops.md; 脚本原生报错看不懂时 → reference/errors.md (译解表).

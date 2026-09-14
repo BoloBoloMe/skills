@@ -1,0 +1,31 @@
+# swt-base-server systemd user unit (UD-14: 驻留机制, D001 的 host 常驻单体语义不变;
+# D001 写 Quadlet 是因 llm-proxy 当时容器化部署, 本服务是 host 直跑的 stdlib 脚本).
+#
+# 部署 (host 上, 一次):
+#   mkdir -p ~/.config/systemd/user
+#   cp <本文件> ~/.config/systemd/user/swt-base-server.service
+#   按仓库实际 checkout 位置改下方 ExecStart 路径 (%h = 用户 home)
+#   systemctl --user daemon-reload
+#   systemctl --user enable --now swt-base-server.service
+#   loginctl enable-linger "$USER"   # 未登录也常驻的前提
+#
+# 状态: 容器内无法验证, 本文件未经真机实测 — 真机部署验证归 M09.
+#
+# 注意:
+# - 服务代码在 workflow 仓库, 切换分支会无声改变运行中的安全策略 (D010 纪律);
+#   变更后 `systemctl --user restart swt-base-server` 才生效.
+# - 上游 LLM 凭证 SWT_UPSTREAM_BASE/SWT_UPSTREAM_KEY 不入库, 经 drop-in
+#   (systemctl --user edit swt-base-server) 的 Environment= 提供.
+# - admin token 缺省每次启动随机生成并落 state.json (0600);
+#   要固定就同样在 drop-in 设 SWT_ADMIN_TOKEN.
+# - systemd 单元 PATH 极简, uv 若在 ~/.local/bin 需在 drop-in 补 Environment=PATH=...
+
+[Unit]
+Description=swt 基础服务 (信箱 + LLM 中转)
+
+[Service]
+ExecStart=%h/.local/bin/uv run python %h/Workspace/swt-cross-host-access/workflow/use-sandbox-worktree/scripts/swt-base-server.py
+Restart=on-failure
+
+[Install]
+WantedBy=default.target
