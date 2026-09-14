@@ -14,4 +14,6 @@ use-sandbox-worktree 的五个生命周期场景 (诞生/恢复/查询/终结/�
 - resume 带 DECIDE gate (D030), D011 的确认义务在代码里不在文档里.
 - 多容器身份分两层 (母体 id + 容器实例名, D031), D007 一名贯穿在单容器缺省名下保留.
 
+2026-09-14 补充: [D054](../changes/use-sandbox-worktree/DECISIONS.md#d054-一母体一个活跃容器-2026-09-14-m04) 收窄新 birth 为一母体至多一个活跃容器. 上述身份区分和既有多容器清理/隔离保障保留, 不再以 D031 授权新建同母体第二个活跃容器; 现有容器不迁移, 实施归 M05.
+
 详见 [DECISIONS.md](../changes/use-sandbox-worktree/DECISIONS.md) D025-D038 与 [反方审查](../changes/use-sandbox-worktree/milestone-11-opposing-review.md).

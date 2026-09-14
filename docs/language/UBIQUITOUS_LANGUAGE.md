@@ -37,7 +37,7 @@ git worktree + sandbox 容器的绑定对, use-sandbox-worktree skill 管理的�
 _避免_: 沙盒 (未含 worktree 绑定语义), 容器工作区
 
 **母体**:
-**sandbox-worktree** 中 host 上的 git worktree (主仓 linked worktree, use-worktree 所建), 容器代码的克隆源与产物回流落地窗口二合一: 容器诞生时经 **git 守护进程**克隆母体分支, 工作成果 push 直写主仓的母体分支 ref, **推送落地**使母体目录文件即时更新可审阅可运行. 母体存活/删除/复用由用户自决, 与 sandbox-worktree 解耦; 同一主仓同一时刻至多一个活动母体.
+**sandbox-worktree** 中 host 上的 git worktree (主仓 linked worktree, use-worktree 所建), 容器代码的克隆源与产物回流落地窗口二合一: 容器诞生时经 **git 守护进程**克隆母体分支, 工作成果 push 直写主仓的母体分支 ref, **推送落地**使母体目录文件即时更新可审阅可运行. 母体存活/删除/复用由用户自决, 与 sandbox-worktree 解耦; 同一主仓同一时刻至多一个活动母体. 每个母体同一时刻至多对应一个活跃容器, 不同母体各自交付和访问, 不合并为一个容器清单. 此为 [M04 新建约定](../changes/swt-cross-host-access/milestone-04/DECISIONS.md#d003-一母体一个活跃容器-每次交付只列自身双-url), 实施待 M05, 不追溯处理现有容器.
 _避免_: gate (旧称, 原指独立 clone 中转仓, 该形态已废), 中转仓
 
 **git 守护进程**:
