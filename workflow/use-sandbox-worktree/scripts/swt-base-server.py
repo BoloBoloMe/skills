@@ -1,13 +1,15 @@
 #!/usr/bin/env python3
 """swt 基础服务 (sandbox-worktree base server).
 
-本文件当前含 ISSUE-01 切片: 信箱核心状态模型 + SQLite 持久化.
-HTTP 层 / llm 中转面 / admin 面归后续 ISSUE, 此处不实现.
+当前含: ISSUE-01 信箱核心状态模型 + SQLite 持久化; ISSUE-02 HTTP 服务面与生命周期
+(端口区间首空闲绑定 / __identity__ 探测 / mailbox post+长轮询 poll, 全响应签名 /
+状态文件 / 可起可停). llm 中转面与 admin 面归后续 ISSUE.
 
-语义以 docs/changes/swt-cross-host-access/prototypes/mailbox-loop/mailbox_logic.py
+信箱语义以 docs/changes/swt-cross-host-access/prototypes/mailbox-loop/mailbox_logic.py
 (用户真跑验证) 为准, 内存存储换成 SQLite 持久化:
 消息/设备/容器 key/已见 id/指令集全部落库, 进程重启后状态完整恢复;
 已处理消息保留 7 天滚动删除 (D004 存续语义), 每次 post/verify_poller 顺手清理.
+HTTP 协议字段名对齐原型 server.py / fetch_loop.py.
 """
 
 from __future__ import annotations
@@ -16,12 +18,25 @@ import hashlib
 import hmac
 import json
 import sqlite3
+import sys
+import threading
 import time
 import uuid
+from datetime import datetime
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from pathlib import Path
+from urllib.parse import urlparse
 
 TS_WINDOW = 300.0  # D007: 签名时间窗 ±5min
 MSG_TYPES = ("notify", "open_url", "exec", "request")  # D004
 PROCESSED_RETENTION = 7 * 86400.0  # D004: 已处理消息 7 天滚动删除
+
+PORT_RANGE = range(38417, 38427)  # D002: 冷门区间, 绑首个空闲端口
+HOLD_SECONDS = 20.0               # D008: 长轮询 hold 时长, 超时由脚本循环重发
+SERVICE_NAME = "swt-base-server"
+VERSION = "0.2.0"
+STATE_DIR = Path.home() / ".local/state/swt-base-server"
+STATE_PATH = STATE_DIR / "state.json"  # D002(3): 实际绑定端口写 host 固定路径
 
 _SCHEMA = """
 CREATE TABLE IF NOT EXISTS devices (
@@ -117,8 +132,9 @@ class Mailbox:
         self.messages: dict[str, StoredMessage] = {}
         self.seen_ids: dict[str, float] = {}  # 防重放 (D007)
         self.whitelist: set[str] = set()      # exec 指令集规范形 (D005)
-        self.stats = {"posts": 0, "empty_polls": 0, "deliveries": 0, "processed": 0}
-        self._db = sqlite3.connect(db_path)
+        self.stats = {"posts": 0, "empty_polls": 0, "deliveries": 0, "processed": 0,
+                      "identity_probes": 0, "rejected": 0, "polls": 0}
+        self._db = sqlite3.connect(db_path, check_same_thread=False)
         self._db.executescript(_SCHEMA)
         self._load()
 
@@ -205,6 +221,9 @@ class Mailbox:
         ck = ContainerKey(key, container, allow_types, allow_targets)
         self.container_keys[key] = ck
         self._save_container_key(ck)
+
+    def get_container_key(self, key: str) -> ContainerKey | None:
+        return self.container_keys.get(key)
 
     def add_whitelist(self, instruction: dict) -> None:
         canonical = _canonical(instruction)
@@ -317,16 +336,18 @@ class Mailbox:
             "latency_ms": msg.latency_ms,
             "nonce": uuid.uuid4().hex,
         }
-        return payload, self._sign_response(dev.name, payload)
+        return payload, self.sign_response(dev.name, payload)
 
     def empty_payload(self, dev: Device):
         self.stats["empty_polls"] += 1
         payload = {"message": None, "nonce": uuid.uuid4().hex}
-        return payload, self._sign_response(dev.name, payload)
+        return payload, self.sign_response(dev.name, payload)
 
-    def _sign_response(self, device: str, payload: dict) -> str:
-        return sign(self.response_key, device, payload["nonce"],
-                    json.dumps(payload, sort_keys=True))
+    def sign_response(self, party: str, payload: dict, key: str | None = None) -> str:
+        """D007 全响应签名公开口. key 缺省 = 响应签名密钥 (设备方向);
+        post 方向传投信容器 key (UD-06)."""
+        return sign(key if key is not None else self.response_key, party,
+                    payload["nonce"], json.dumps(payload, sort_keys=True))
 
     # -- 处理 (设备侧 LLM 轮) ---------------------------------------------
     def process(self, msg_id: str, outcome: str) -> StoredMessage:
@@ -349,3 +370,195 @@ class Mailbox:
             self._db.executemany("DELETE FROM messages WHERE id = ?",
                                  [(mid,) for mid in stale])
             self._db.commit()
+
+
+# ======================================================================
+# HTTP 服务面 (ISSUE-02): stdlib http.server, 协议对齐原型 server.py
+# ======================================================================
+
+
+def _now_iso() -> str:
+    return datetime.now().astimezone().isoformat(timespec="seconds")
+
+
+def write_state_file(port: int, started_at: str, path=STATE_PATH) -> None:
+    """D002(3): 实际绑定端口写 host 固定路径状态文件, 同机组件读文件免扫描."""
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps({
+        "service": SERVICE_NAME, "version": VERSION,
+        "port": port, "started_at": started_at}, ensure_ascii=False))
+
+
+def clear_state_file(path=STATE_PATH) -> None:
+    Path(path).unlink(missing_ok=True)
+
+
+class MailboxHttpServer(ThreadingHTTPServer):
+    daemon_threads = True
+    allow_reuse_address = True
+
+    def __init__(self, mailbox: Mailbox, host: str, port: int):
+        self.mailbox = mailbox
+        self.cond = threading.Condition()  # D008: 长轮询 hold, 投信 notify 唤醒
+        self.hold_seconds = HOLD_SECONDS
+        self._state_path = None
+        self._thread = None
+        super().__init__((host, port), _Handler)
+
+    @property
+    def port(self) -> int:
+        return self.server_address[1]
+
+    @classmethod
+    def bind_first_free(cls, mailbox: Mailbox, host: str = "0.0.0.0",
+                        ports=PORT_RANGE) -> "MailboxHttpServer":
+        """D002: 从区间首端口起绑首个空闲; 区间全占直接报错 (调用方退出)."""
+        for port in ports:
+            try:
+                return cls(mailbox, host, port)
+            except OSError:
+                continue
+        raise RuntimeError(f"端口区间全占, 无可用端口 (D002): {list(ports)}")
+
+    def start(self, state_path=None) -> None:
+        if state_path is not None:
+            write_state_file(self.port, _now_iso(), state_path)
+        self._state_path = state_path
+        self._thread = threading.Thread(target=self.serve_forever, daemon=True)
+        self._thread.start()
+
+    def stop(self) -> None:
+        if self._thread is None:
+            return  # 未 start, 幂等
+        self.shutdown()
+        self.server_close()
+        self._thread.join()
+        self._thread = None
+        if self._state_path is not None:
+            clear_state_file(self._state_path)
+
+
+class _Handler(BaseHTTPRequestHandler):
+    server_version = f"{SERVICE_NAME}/{VERSION}"
+
+    def log_message(self, *args):
+        pass
+
+    def _json(self, code: int, obj: dict):
+        body = json.dumps(obj, ensure_ascii=False).encode()
+        self.send_response(code)
+        self.send_header("Content-Type", "application/json")
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
+
+    def _signed(self, code: int, party: str, payload: dict, key: str | None = None):
+        """D007 全响应签名: 错误体与成功响应同构, 带 nonce + 签名.
+        key 缺省 = response_key; post 方向已知容器 key 时传容器 key (UD-06)."""
+        payload = dict(payload)
+        payload.setdefault("nonce", uuid.uuid4().hex)
+        sig = self.server.mailbox.sign_response(party, payload, key)
+        self._json(code, {"payload": payload, "sig": sig})
+
+    def _bad_request(self, party: str, error: str, key: str | None = None):
+        return self._signed(400, party, {"ok": False, "error": error}, key)
+
+    def _body(self) -> dict:
+        raw = self.rfile.read(int(self.headers.get("Content-Length", 0)))
+        return json.loads(raw or b"{}")
+
+    def do_GET(self):
+        path = urlparse(self.path).path
+        if path == "/__identity__":
+            self.server.mailbox.stats["identity_probes"] += 1
+            # D002(2): 无认证身份探测, 连上先确认"是 swt 基础服务"
+            self._json(200, {"service": SERVICE_NAME, "version": VERSION,
+                             "capabilities": ["llm-relay", "mailbox"]})
+        else:
+            self._json(404, {"error": "not found"})
+
+    def do_POST(self):
+        m = self.server.mailbox
+        path = urlparse(self.path).path
+        endpoint = path.lstrip("/")
+        try:
+            body = self._body()
+        except json.JSONDecodeError:
+            return self._bad_request(endpoint, "bad json")
+        if not isinstance(body, dict):
+            return self._bad_request(endpoint, "bad json")
+
+        if path == "/mailbox/post":
+            # UD-06: 已知容器 key → 响应用该 key 签名, party = 容器名, 容器可验;
+            # 未知 key → response_key 留形式, party = 端点名 (容器不可验).
+            key = str(body.get("key", ""))
+            ck = m.get_container_key(key)
+            party = ck.container if ck is not None else endpoint
+            skey = key if ck is not None else None
+            with self.server.cond:
+                try:
+                    msg = m.post(key, body["envelope"], body["sig_ts"], body["sig"])
+                except KeyError as e:
+                    return self._bad_request(party, f"缺字段: {e}", skey)
+                except (ValueError, TypeError) as e:
+                    return self._bad_request(party, f"字段畸形: {e}", skey)
+                except MailboxError as e:
+                    m.stats["rejected"] += 1
+                    return self._signed(403, party, {"ok": False, "error": str(e)}, skey)
+                self.server.cond.notify_all()
+            return self._signed(200, party,
+                                {"ok": True, "note": msg.note, "downgraded": msg.downgraded},
+                                skey)
+
+        if path == "/mailbox/poll":
+            # 能解析出 device 就用设备名作 party (对齐取信脚本验签式), 否则退回端点名
+            device = body.get("device")
+            party = str(device) if device else endpoint
+            with self.server.cond:
+                try:
+                    dev = m.verify_poller(body["device"], body["ts"], body["sig"])
+                except KeyError as e:
+                    return self._bad_request(party, f"缺字段: {e}")
+                except (ValueError, TypeError) as e:
+                    return self._bad_request(party, f"字段畸形: {e}")
+                except MailboxError as e:
+                    m.stats["rejected"] += 1
+                    return self._signed(403, party, {"ok": False, "error": str(e)})
+                m.stats["polls"] += 1
+                deadline = time.time() + self.server.hold_seconds
+                while True:
+                    got = m.try_deliver(dev)
+                    if got is not None:
+                        payload, sig = got
+                        break
+                    if time.time() >= deadline:
+                        payload, sig = m.empty_payload(dev)
+                        break
+                    self.server.cond.wait(timeout=max(0.0, deadline - time.time()))
+            return self._json(200, {"payload": payload, "sig": sig})
+
+        self._json(404, {"error": "not found"})
+
+
+def main() -> None:
+    STATE_DIR.mkdir(parents=True, exist_ok=True)
+    mailbox = Mailbox(str(STATE_DIR / "mailbox.db"))
+    try:
+        server = MailboxHttpServer.bind_first_free(mailbox)
+    except RuntimeError as e:
+        print(e, file=sys.stderr)
+        sys.exit(1)
+    write_state_file(server.port, _now_iso())
+    print(f"{SERVICE_NAME} {VERSION} listening on :{server.port}", file=sys.stderr)
+    try:
+        server.serve_forever()
+    except KeyboardInterrupt:
+        pass
+    finally:
+        server.server_close()
+        clear_state_file()
+
+
+if __name__ == "__main__":
+    main()
