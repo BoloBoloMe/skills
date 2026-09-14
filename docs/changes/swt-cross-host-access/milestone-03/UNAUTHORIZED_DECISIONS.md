@@ -81,3 +81,10 @@
 - deliverAs: "followUp" (当前轮干完再投递) 为扩展 triggerTurn 的投递模式, 官方骨架同款, 评审确认良性, 补申报.
 - 触发文件只增不删无轮转: 信箱量级 (条/天) 下可接受, 记录在案; drain 逻辑已加截断守卫 (见 ISSUE-05 修复).
 - loadConfig 在 .mjs 脚本与 .ts 扩展双写: 跨进程运行时边界 (pi 只加载 .ts, 脚本由 node 直接跑) 无法共享 import, 两文件互加交叉引用注释防协议漂移.
+
+## UD-12 birth 信箱接线的实现自决 (ISSUE-06, 评审后补录)
+- 问题: ISSUE-06 执行者的 6 条实现自决未及时落账本 (评审 Spec-1 补录).
+- 决策: (1) env 变量名 SWT_BASE_URL/SWT_MAILBOX_KEY/SWT_CONTAINER_NAME; (2) 状态文件命中也做一次 __identity__ 验活, 失活弃文件退扫描 (重启换 token, 旧文件凭证不可信); (3) 扫描命中但无 admin 凭证 → skipped 不静默注入; (4) mailbox 段落容器记录 (多容器并存各自一段); (5) 重入不重复申领 — 评审发现重入路径 env 不重烘+凭证累积, 改为重入跳过 wire (见修复); (6) 探测超时 identity 0.5s/口, 申领 5s.
+- 理由: 逐条见各决策语境; 总体原则 = 信箱是增强不阻断 birth, 凭证最小持有.
+- 影响: birth 行为如 ISSUE-06 输出摘要.
+- 风险: 容器重建 (非重入) 才申领新 key, 旧 key 服务端仍有效, terminate 不吊销 (不存完整 key), 泄露面随容器生灭累积 — 可定期经 admin 口按容器名清理, 记入风险.

@@ -30,7 +30,7 @@
 - [x] ISSUE-05: 设备侧取信 (阻塞脚本 + pi 扩展)
   - 范围: 正式版阻塞取信脚本 (请求签名/响应验签/nonce 去重/触发文件: message 事件 + 生命周期事件, 空转零 token, 断线重试) + pi 扩展 `pi/extensions/` 新增 (session_start 后台拉起脚本, 监听触发文件, 忽略非 message 事件, message → sendMessage(triggerTurn), agent_settled + ctx.isIdle() 防重入, 自带去重退避, session_shutdown 清理).
   - 依据: D008/F006 + fetch_loop.py + recon/01 考察点 1 + file-trigger.ts 骨架. 接缝: 脚本对假服务的端到端行为; 扩展按 tests/pi/ 既有约定测试.
-- [ ] ISSUE-06: swt.py birth 集成
+- [x] ISSUE-06: swt.py birth 集成
   - 范围: birth 探测基础服务 (读状态文件, 缺席扫区间 __identity__) → 经 admin 申领容器 key (作用域按容器名) → 注入容器 env (服务地址/key/容器名, 含 ssh 面 environment 通道) → runtime 登记. 网络面零改动: apply_network 已自动放行 gateway/32 (D009 天然满足), 只验证.
   - 依据: D002(5)/D009/F002 + swt.py create_and_start_container/apply_network. 接缝: birth 单元级 (mock podman 边界按 tests/ 既有约定).
 - [ ] ISSUE-07: e2e 门禁测试
