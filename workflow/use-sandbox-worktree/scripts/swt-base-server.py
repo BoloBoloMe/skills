@@ -13,6 +13,9 @@ ISSUE-04 admin 管理面 (独立服务硬绑 127.0.0.1, X-Admin-Token; relay key
 消息/设备/容器 key/已见 id/指令集全部落库, 进程重启后状态完整恢复;
 已处理消息保留 7 天滚动删除 (D004 存续语义), 每次 post/verify_poller 顺手清理.
 HTTP 协议字段名对齐原型 server.py / fetch_loop.py.
+
+UD-13 (ISSUE-07 期间增补, 评审已接受): admin /admin/whitelist 指令集注册端点;
+env SWT_HOLD_SECONDS / SWT_TIME_OFFSET 仅供测试注入 (缩短长轮询 hold / 偏移时钟).
 """
 
 from __future__ import annotations
@@ -482,6 +485,10 @@ class RelayStore:
              rk.expires_at, int(rk.revoked)))
         self._db.commit()
 
+    def now(self) -> float:
+        """公开时钟口: 管理面算 expires_at 等与数据面过期判定同钟."""
+        return self._now()
+
     # -- 管理接缝 (ISSUE-04 admin 端点直接调) --------------------------------
     def add_key(self, key: str, models, quota=None, expires_at: float = 0.0) -> RelayKey:
         rk = RelayKey(key, models, quota, 0, expires_at)
@@ -933,6 +940,8 @@ class _AdminHandler(_JsonHandler):
             return self._create_container_key(body)
         if path == "/admin/container-keys/revoke":
             return self._revoke_container_key(body)
+        if path == "/admin/whitelist":
+            return self._add_whitelist(body)
         self._json(404, {"error": "not found"})
 
     # -- relay key 管理 (UD-07) ----------------------------------------------
@@ -945,7 +954,9 @@ class _AdminHandler(_JsonHandler):
         if quota is not None and not isinstance(quota, int):
             return self._json(400, {"error": "quota 须为整数"})
         ttl = body.get("ttl_seconds")
-        expires_at = time.time() + ttl if isinstance(ttl, (int, float)) else 0.0
+        # 与 RelayStore 数据面过期判定同钟 (注入时钟偏移时不双钟错位)
+        expires_at = self.server.relay.now() + ttl \
+            if isinstance(ttl, (int, float)) else 0.0
         key = "sk-" + uuid.uuid4().hex
         rk = self.server.relay.add_key(key, models, quota, expires_at)
         self._json(200, {"key": rk.key, "models": sorted(rk.models),
@@ -1005,6 +1016,14 @@ class _AdminHandler(_JsonHandler):
         self.server.mailbox.revoke_container_key(key)
         self._json(200, {"ok": True})
 
+    # -- exec 指令集 (D005: 成员注册即安全策略变动, 过 e2e 门禁) ----------------
+    def _add_whitelist(self, body: dict):
+        ins = body.get("instruction")
+        if not isinstance(ins, dict) or not isinstance(ins.get("tool"), str):
+            return self._json(400, {"error": "instruction 须为含 tool 的对象"})
+        self.server.mailbox.add_whitelist(ins)
+        self._json(200, {"ok": True})
+
 
 def _term(*_):
     raise KeyboardInterrupt()
@@ -1015,8 +1034,10 @@ def main() -> None:
 
     STATE_DIR.mkdir(parents=True, exist_ok=True)
     db = str(STATE_DIR / "server.db")
-    mailbox = Mailbox(db)
-    relay = RelayStore(db)
+    time_offset = float(os.environ.get("SWT_TIME_OFFSET", "0"))
+    real_time = time.time
+    mailbox = Mailbox(db, now=lambda: real_time() + time_offset)
+    relay = RelayStore(db, now=lambda: real_time() + time_offset)
     admin_token = os.environ.get("SWT_ADMIN_TOKEN") or uuid.uuid4().hex
     admin_port = int(os.environ.get("SWT_ADMIN_PORT", str(ADMIN_PORT)))
     try:
@@ -1025,6 +1046,8 @@ def main() -> None:
             upstream_base=os.environ.get("SWT_UPSTREAM_BASE",
                                          "https://api.openai.com"),
             upstream_key=os.environ.get("SWT_UPSTREAM_KEY", ""))
+        server.hold_seconds = float(os.environ.get("SWT_HOLD_SECONDS",
+                                                   str(HOLD_SECONDS)))
         admin = AdminHttpServer(mailbox, relay, admin_token, port=admin_port)
     except (RuntimeError, OSError) as e:
         print(e, file=sys.stderr)

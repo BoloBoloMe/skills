@@ -155,6 +155,15 @@ class TestAdminRelayKeys(AdminHttpCase):
         code, _ = self.req("POST", "/admin/relay-keys", {"quota": 1})
         self.assertEqual(code, 400)
 
+    def test_发key过期判定与数据面同钟(self):
+        # ISSUE-07 评审: expires_at 曾用裸 time.time(), 与 RelayStore 注入钟
+        # 双钟; ttl 须以 relay.now() 为基, 否则注入时钟偏移后过期判定错位
+        self.admin.relay = swt.RelayStore(self.db, now=lambda: 1_000_000.0)
+        code, body = self.req("POST", "/admin/relay-keys",
+                              {"models": ["gpt-x"], "ttl_seconds": 3600})
+        self.assertEqual(code, 200)
+        self.assertEqual(body["expires_at"], 1_000_000.0 + 3600)
+
     def test_吊销key(self):
         _, created = self.req("POST", "/admin/relay-keys", {"models": ["gpt-x"]})
         code, _ = self.req("POST", "/admin/relay-keys/revoke", {"key": created["key"]})
