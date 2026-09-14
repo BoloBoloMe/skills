@@ -95,3 +95,10 @@
 - 理由: 指令集管理本来就需要 admin 入口 (M08 填成员同用); env 注入口与既有 SWT_ADMIN_PORT/SWT_UPSTREAM_BASE 同构.
 - 影响: admin API +1 端点; 服务端 docstring 记录测试 env.
 - 风险: 无新增暴露面 (admin 口本就 loopback+token).
+
+## UD-14 驻留件用 systemd user .service 而非 Quadlet .container (待用户确认)
+- 问题: D001 写 "host 上 Quadlet 常驻", 但 Quadlet .container 是跑容器的单元, 而 swt-base-server 是 host 直跑的 stdlib python 脚本; 写成 .container 需要镜像/podman 化, 徒增复杂度且评审确认该文件语法上不可用.
+- 决策: 驻留件改普通 systemd user unit `swt-base-server.service`; D001 的约束语义 (host 常驻单体) 不变, 变的只是驻留机制名词 — D001 写 Quadlet 是因 llm-proxy 当时是容器化部署.
+- 理由: 零依赖脚本跑 user service 最简; SQLite/状态文件直接落 host 文件系统, 无容器卷/端口映射问题.
+- 影响: 驻留件文件名与部署说明变化; SKILL.md 对应段改写.
+- 风险: 偏离 D001 字面 (机制名词), 若用户坚持 Quadlet 容器化则需返工 — 列入收尾待确认清单.
