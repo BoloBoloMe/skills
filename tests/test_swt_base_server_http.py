@@ -349,3 +349,78 @@ class TestMalformedInput(MailboxEndpointCase):
         code, resp = self.poll_req(ts="abc")
         self.assertEqual(code, 400)
         self.assertTrue(self.verify_resp(self.DEV, resp))
+
+
+class TestAckEndpoint(MailboxEndpointCase):
+    """UD-09: 设备处理回报. 签名式 sign(dev_key, device, str(ts), id) —
+    与 poll 不同式是故意的: 消息 id 入签名材料, 防篡改绑定."""
+
+    def setUp(self):
+        super().setUp()
+        self.server.hold_seconds = 0.3
+
+    def ack_req(self, msg_id, device=None, key=None, ts=None, outcome="ok",
+                sig=None, poll_style_sig=False):
+        device = device or self.DEV
+        key = key or self.DEV_KEY
+        ts = time.time() if ts is None else ts
+        if sig is None:
+            parts = (key, device, str(ts)) if poll_style_sig \
+                else (key, device, str(ts), msg_id)
+            sig = sign(*parts)
+        body = {"device": device, "ts": ts, "sig": sig, "id": msg_id,
+                "outcome": outcome}
+        return self.request("POST", "/mailbox/ack", body)
+
+    def _deliver(self, msg_id="m-1"):
+        code, _ = self.post_msg(make_envelope(msg_id=msg_id, to=self.DEV))
+        self.assertEqual(code, 200)
+        code, resp = self.poll_req()
+        self.assertEqual(resp["payload"]["message"]["id"], msg_id)
+
+    def test_delivered转processed记outcome且响应签名可验(self):
+        self._deliver()
+        code, resp = self.ack_req("m-1", outcome="done")
+        self.assertEqual(code, 200)
+        self.assertTrue(resp["payload"]["ok"])
+        self.assertEqual(resp["payload"]["status"], "processed")
+        msg = self.mb.get_message("m-1")
+        self.assertEqual(msg.status, "processed")
+        self.assertEqual(msg.outcome, "done")
+        self.assertTrue(self.verify_resp(self.DEV, resp))
+
+    def test_已processed同id幂等200(self):
+        self._deliver()
+        self.ack_req("m-1")
+        code, resp = self.ack_req("m-1")
+        self.assertEqual(code, 200)
+        self.assertEqual(resp["payload"]["status"], "processed")
+
+    def test_queued消息409(self):
+        self.post_msg(make_envelope(to=self.DEV))
+        code, resp = self.ack_req("m-1")
+        self.assertEqual(code, 409)
+        self.assertTrue(self.verify_resp(self.DEV, resp))
+
+    def test_未知id_409(self):
+        code, resp = self.ack_req("m-ghost")
+        self.assertEqual(code, 409)
+
+    def test_未知设备403(self):
+        code, resp = self.ack_req("m-1", device="ghost", key="k")
+        self.assertEqual(code, 403)
+        self.assertTrue(self.verify_key_resp("", "ghost", resp))
+
+    def test_超窗403(self):
+        code, _ = self.ack_req("m-1", ts=time.time() - 301)
+        self.assertEqual(code, 403)
+
+    def test_错签403(self):
+        code, _ = self.ack_req("m-1", sig="0" * 64)
+        self.assertEqual(code, 403)
+
+    def test_poll式签名缺id绑定也403(self):
+        # 签名材料必须含消息 id, poll 同式签名不予接受
+        self._deliver()
+        code, _ = self.ack_req("m-1", poll_style_sig=True)
+        self.assertEqual(code, 403)

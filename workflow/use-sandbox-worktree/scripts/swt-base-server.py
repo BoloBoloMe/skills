@@ -88,6 +88,10 @@ class MailboxError(Exception):
     """投信/取信被拒的原因, 原样展示给用户看."""
 
 
+class AckConflict(Exception):
+    """UD-09: ack 状态冲突 (queued/未知 id), HTTP 层映射 409."""
+
+
 def sign(key: str, *parts: str) -> str:
     return hmac.new(key.encode(), "\n".join(parts).encode(), hashlib.sha256).hexdigest()
 
@@ -379,6 +383,28 @@ class Mailbox:
                     json.dumps(payload, sort_keys=True))
 
     # -- 处理 (设备侧 LLM 轮) ---------------------------------------------
+    def ack(self, name: str, sig_ts, sig: str, msg_id: str,
+            outcome: str) -> StoredMessage:
+        """UD-09: 设备处理回报. 签名材料含消息 id (与 poll 不同式是故意
+        的: 绑定 id 防篡改). delivered → processed; 已 processed 幂等."""
+        dev = self.devices.get(name)
+        if dev is None:
+            raise MailboxError(f"未知设备 {name}")
+        if dev.revoked:
+            raise MailboxError(f"设备已吊销: {name}")
+        self._check_ts_window(sig_ts)
+        expect = sign(dev.signing_key, name, str(sig_ts), msg_id)
+        if not hmac.compare_digest(expect, sig):
+            raise MailboxError("ack 签名无效 (UD-09)")
+        msg = self.messages.get(msg_id)
+        if msg is None:
+            raise AckConflict(f"未知消息 id: {msg_id}")
+        if msg.status == "queued":
+            raise AckConflict(f"消息未投递, 不可回报: {msg_id}")
+        if msg.status == "processed":
+            return msg  # 幂等
+        return self.process(msg_id, outcome)
+
     def process(self, msg_id: str, outcome: str) -> StoredMessage:
         msg = self.messages[msg_id]
         msg.status = "processed"
@@ -775,6 +801,31 @@ class _Handler(_JsonHandler):
                         break
                     self.server.cond.wait(timeout=max(0.0, deadline - time.time()))
             return self._json(200, {"payload": payload, "sig": sig})
+
+        if path == "/mailbox/ack":
+            # UD-09: party/签名密钥规则与 poll 一致
+            device = body.get("device")
+            party = str(device) if device else endpoint
+            known = m.get_device(str(device)) if device else None
+            skey = known.response_key if known is not None else ""
+            with self.server.cond:
+                try:
+                    msg = m.ack(body["device"], body["ts"], body["sig"],
+                                body["id"], body.get("outcome", ""))
+                except KeyError as e:
+                    return self._bad_request(party, f"缺字段: {e}", skey)
+                except (ValueError, TypeError) as e:
+                    return self._bad_request(party, f"字段畸形: {e}", skey)
+                except AckConflict as e:
+                    return self._signed(409, party, {"ok": False, "error": str(e)},
+                                        skey)
+                except MailboxError as e:
+                    m.stats["rejected"] += 1
+                    return self._signed(403, party, {"ok": False, "error": str(e)},
+                                        skey)
+            return self._signed(200, party,
+                                {"ok": True, "id": msg.env["id"],
+                                 "status": msg.status}, skey)
 
         self._json(404, {"error": "not found"})
 
