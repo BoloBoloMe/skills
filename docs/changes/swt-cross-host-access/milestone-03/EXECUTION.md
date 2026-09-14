@@ -24,7 +24,7 @@
 - [x] ISSUE-03: llm 中转面 (吸收 llm-proxy)
   - 范围: OpenAI 兼容 `POST /v1/chat/completions` + `GET /v1/models`, sk- key 认证, keys 表 (模型白名单/quota/用量/过期/吊销), 假上游测试. admin 侧发 key/吊销/查用量.
   - 依据: F001 (原码不可达, 按规格重写). 接缝: HTTP /v1 端点 + admin 端点.
-- [ ] ISSUE-04: admin 管理面 (信箱凭证)
+- [x] ISSUE-04: admin 管理面 (信箱凭证)
   - 范围: 独立端口硬绑 127.0.0.1 (固定可配, 不参与区间) + X-Admin-Token; relay key 管理 (发 key 含模型白名单/quota/过期 / 吊销 / 查用量, UD-07 自 ISSUE-03 移入) + 发设备凭证 (设备名 + 签名密钥 + 响应签名密钥一并分发) / 发容器 key (声明可投类型与目标设备, 缺省拒绝) / 吊销 / 查队列与统计.
   - 依据: D002(4)/D006. 接缝: admin HTTP 端点 + 拒绝非 loopback 来源.
 - [ ] ISSUE-05: 设备侧取信 (阻塞脚本 + pi 扩展)
