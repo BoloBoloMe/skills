@@ -14,7 +14,9 @@ import pathlib
 import select
 import subprocess
 import sys
+import termios
 import time
+import tty
 import urllib.error
 import urllib.request
 import uuid
@@ -76,6 +78,9 @@ class Tui:
 
     # -- 生命周期 ---------------------------------------------------------
     def start(self):
+        self._saved_tty = termios.tcgetattr(sys.stdin.fileno()) if sys.stdin.isatty() else None
+        if self._saved_tty:
+            tty.setcbreak(sys.stdin.fileno())   # 单键即响应, 不用回车
         threading_srv = __import__("threading").Thread(target=self.server.serve_forever, daemon=True)
         threading_srv.start()
         self.fetch = subprocess.Popen(
@@ -88,8 +93,20 @@ class Tui:
         self.fetch.wait(timeout=5)
         self.server.shutdown()
         self.server.server_close()
+        if self._saved_tty:
+            termios.tcsetattr(sys.stdin.fileno(), termios.TCSADRAIN, self._saved_tty)
         for f in (TRIGGER, TRIGGER.with_suffix(".log")):
             f.unlink(missing_ok=True)
+
+    def prompt(self, text: str) -> str:
+        """问答式输入期间切回行模式 (回车提交), 答完恢复单键模式."""
+        if self._saved_tty:
+            termios.tcsetattr(sys.stdin.fileno(), termios.TCSADRAIN, self._saved_tty)
+        try:
+            return input(text)
+        finally:
+            if self._saved_tty:
+                tty.setcbreak(sys.stdin.fileno())
 
     # -- 事件 -------------------------------------------------------------
     def log(self, text: str, color: str = ""):
@@ -130,13 +147,13 @@ class Tui:
             self.log(f"REJECTED ({code}): {resp.get('error')}", RED)
 
     def inject(self):
-        container = input(f"容器 [{BOLD}ct-alpha{RESET}] (ct-evil=越权演示): ").strip() or "ct-alpha"
-        mtype = input(f"类型 [{BOLD}notify/open_url/exec/request{RESET}]: ").strip() or "notify"
+        container = self.prompt(f"容器 [{BOLD}ct-alpha{RESET}] (ct-evil=越权演示): ").strip() or "ct-alpha"
+        mtype = self.prompt(f"类型 [{BOLD}notify/open_url/exec/request{RESET}]: ").strip() or "notify"
         if mtype == "exec":
             demo = json.dumps(WHITELIST_DEMO, ensure_ascii=False)
             print(f"{DIM}exec 演示: 白名单指令 = {demo}{RESET}")
             print(f"{DIM}          输入任意其他命令则演示服务端降级为 request (D005){RESET}")
-        body = input("正文: ")
+        body = self.prompt("正文: ")
         if mtype not in MSG_TYPES:
             self.log(f"未知类型 {mtype}, 未投出", RED)
             return
@@ -149,7 +166,7 @@ class Tui:
             return
         env = nxt.env
         if nxt.downgraded:
-            ans = input(f"{BOLD}[y/n]{RESET} 原 exec 指令集外, 容器请求: {env['body']!r} — 允许执行? ")
+            ans = self.prompt(f"{BOLD}[y/n]{RESET} 原 exec 指令集外, 容器请求: {env['body']!r} — 允许执行? ")
             outcome = "用户批准执行 (设备侧权限流程, D005)" if ans.lower().startswith("y") else "用户拒绝"
         elif env["type"] == "exec":
             outcome = "指令集命中, 设备直批: " + env["body"]
@@ -158,7 +175,7 @@ class Tui:
         elif env["type"] == "open_url":
             outcome = "直批: xdg-open " + env["body"]
         else:
-            reply = input("request 回应 (将经 ssh+herdr 回容器, D003): ")
+            reply = self.prompt("request 回应 (将经 ssh+herdr 回容器, D003): ")
             outcome = f"已回应 (ssh 通道): {reply}"
         self.mailbox.process(env["id"], outcome)
         self.log(f"处理 {env['id']}: {outcome}")
@@ -186,7 +203,7 @@ class Tui:
         m = self.mailbox
         s = m.stats
         lines = []
-        lines.append(f"{BOLD}swt 信箱原型 — 来信→唤醒→处理 常驻循环{RESET}  (端口 {self.server.server_address[1]}, hold {HOLD_SECONDS:.0f}s)")
+        lines.append(f"{BOLD}swt 信箱原型 — 来信→唤醒→处理 常驻循环{RESET}  (端口 {self.server.server_address[1]}, hold {HOLD_SECONDS:.0f}s) [r2 单键版: p/x/s/a/k/q 按下即生效]")
         lines.append(f"{DIM}{SESSION_FORMS[self.session_form]}; 取信会话手动首启, 不开机自启 (D008){RESET}")
         poll_start = s["poll_start"]
         blocked = f"阻塞 {time.time() - poll_start:.1f}s / {HOLD_SECONDS:.0f}s" if poll_start else "poll 间隙"
@@ -232,10 +249,9 @@ class Tui:
                 ready, _, _ = select.select([sys.stdin], [], [], 0.25)
                 if not ready:
                     continue
-                key = sys.stdin.readline()
-                if not key:
+                key = os.read(sys.stdin.fileno(), 1).decode(errors="ignore")
+                if not key:          # stdin 关闭 (管道喂完)
                     break
-                key = key.strip()
                 if key == "q":
                     break
                 if key == "p":
