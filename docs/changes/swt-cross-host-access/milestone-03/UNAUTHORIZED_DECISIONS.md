@@ -88,3 +88,10 @@
 - 理由: 逐条见各决策语境; 总体原则 = 信箱是增强不阻断 birth, 凭证最小持有.
 - 影响: birth 行为如 ISSUE-06 输出摘要.
 - 风险: 容器重建 (非重入) 才申领新 key, 旧 key 服务端仍有效, terminate 不吊销 (不存完整 key), 泄露面随容器生灭累积 — 可定期经 admin 口按容器名清理, 记入风险.
+
+## UD-13 admin 补 /admin/whitelist 端点; 测试注入 env
+- 问题: e2e 需要从进程边界注册指令集成员验证 "成员变动即策略变动" 门禁, 但 admin 面无此端点; 且真实 20s hold 与 7 天 TTL 在进程边界不可测.
+- 决策: (1) admin 加 `POST /admin/whitelist {instruction}` (Mailbox.add_whitelist 既有接缝的最小 HTTP 化, 只挂 127.0.0.1 admin 口); (2) main 读 `SWT_HOLD_SECONDS`/`SWT_TIME_OFFSET` 测试注入 env, 生产不设即原行为.
+- 理由: 指令集管理本来就需要 admin 入口 (M08 填成员同用); env 注入口与既有 SWT_ADMIN_PORT/SWT_UPSTREAM_BASE 同构.
+- 影响: admin API +1 端点; 服务端 docstring 记录测试 env.
+- 风险: 无新增暴露面 (admin 口本就 loopback+token).

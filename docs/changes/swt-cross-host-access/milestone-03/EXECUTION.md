@@ -33,7 +33,7 @@
 - [x] ISSUE-06: swt.py birth 集成
   - 范围: birth 探测基础服务 (读状态文件, 缺席扫区间 __identity__) → 经 admin 申领容器 key (作用域按容器名) → 注入容器 env (服务地址/key/容器名, 含 ssh 面 environment 通道) → runtime 登记. 网络面零改动: apply_network 已自动放行 gateway/32 (D009 天然满足), 只验证.
   - 依据: D002(5)/D009/F002 + swt.py create_and_start_container/apply_network. 接缝: birth 单元级 (mock podman 边界按 tests/ 既有约定).
-- [ ] ISSUE-07: e2e 门禁测试
+- [x] ISSUE-07: e2e 门禁测试
   - 范围: `tests/test_swt_base_server.py`, llm-proxy test_e2e 风格 (假上游/假客户端 + 全流程断言). 覆盖 D010 清单: 投信/阻塞取信/双向签名验签/防重放/按设备路由/白名单降级/7 天清理/端口区间绑定与身份探测.
   - 依据: D010. 必过门禁, 指令集成员变动即安全策略变动.
 - [ ] ISSUE-08: 文档与驻留件
