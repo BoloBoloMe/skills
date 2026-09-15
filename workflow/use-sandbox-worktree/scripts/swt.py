@@ -97,15 +97,20 @@ def run(
     *,
     cwd: Path | None = None,
     timeout: float | None = None,
+    input: str | None = None,
 ) -> subprocess.CompletedProcess[str]:
     try:
+        # input 仅在需要 stdin 的调用点传入 (M08 ISSUE-06 enroll-device-key),
+        # 不污染既有 fake run 边界签名
+        options: dict[str, Any] = {"cwd": cwd, "timeout": timeout}
+        if input is not None:
+            options["input"] = input
         return subprocess.run(
             command,
-            cwd=cwd,
             capture_output=True,
             text=True,
             check=False,
-            timeout=timeout,
+            **options,
         )
     except FileNotFoundError as exc:
         raise SwtEnvError(f"缺少环境命令: {command[0]}") from exc
@@ -1264,6 +1269,66 @@ def inject_auth_json(container_name: str) -> None:
         raise SwtError(3, "PARTIAL", f"auth.json 注入失败: {result.stderr.strip()}")
 
 
+# M08 ISSUE-06 (N4): 设备→容器当前是密码登录, 取信会话自动化代执行不能每次输密码.
+# 单次 podman exec -i: 公钥经 stdin 进容器, 容器内 sh 完成目录保障 + 精确行去重合并.
+DEVICE_PUBKEY_CONTAINER_SCRIPT = (
+    "key=$(cat); "
+    "install -d -m 700 -o bolo -g bolo /home/bolo/.ssh || exit 1; "
+    "touch /home/bolo/.ssh/authorized_keys || exit 1; "
+    "chown bolo:bolo /home/bolo/.ssh/authorized_keys || exit 1; "
+    "chmod 600 /home/bolo/.ssh/authorized_keys || exit 1; "
+    'grep -qxF "$key" /home/bolo/.ssh/authorized_keys || '
+    "printf '%s\\n' \"$key\" >> /home/bolo/.ssh/authorized_keys"
+)
+
+
+def validate_device_pubkey(pubkey_text: str) -> str:
+    """设备公钥校验: 单行、非注释、至少 2 字段 (openssh 公钥 type base64 [comment])."""
+    key = pubkey_text.strip()
+    if not key or "\n" in key or "\r" in key or key.startswith("#") or len(key.split()) < 2:
+        raise PreconditionError(
+            "设备公钥非法: 须单行、非注释、至少 2 字段 (openssh 公钥格式 type base64 [comment])")
+    return key
+
+
+def enroll_device_pubkey(container_name: str, pubkey_text: str) -> None:
+    """公钥合并进容器 bolo 的 authorized_keys (grep -qxF 逐行去重, 幂等可重跑).
+    容器不在 / 容器内命令失败 → 既有错误通道明报 (操作类错误, 非 DECIDE 协议)."""
+    key = validate_device_pubkey(pubkey_text)
+    result = run(
+        ["podman", "exec", "-i", container_name, "sh", "-c", DEVICE_PUBKEY_CONTAINER_SCRIPT],
+        input=key + "\n",
+    )
+    if result.returncode != 0:
+        raise PreconditionError(
+            f"设备公钥 enroll 失败 (容器 {container_name} 不在或容器内命令出错): {result.stderr.strip()}")
+
+
+def cmd_enroll_device_key(args: argparse.Namespace) -> int:
+    """enroll-device-key 子命令: 读公钥 (--pubkey-file 路径 / - 或缺省 stdin),
+    校验后单次 exec 合并, 打印确认与设备侧测试提示."""
+    if args.pubkey_file in (None, "-"):
+        pubkey_text = sys.stdin.read()
+    else:
+        path = Path(args.pubkey_file)
+        if not path.is_file():
+            raise PreconditionError(f"公钥文件不存在: {path}")
+        pubkey_text = path.read_text(encoding="utf-8")
+    enroll_device_pubkey(args.container, pubkey_text)
+    print(f"[SWT] 设备公钥已 enroll: 容器 {args.container} 的 authorized_keys 已合并"
+          " (grep -qxF 逐行去重, 幂等可重跑)")
+    try:
+        port = container_ssh_port(args.container)
+    except SwtError:
+        port = None
+    if port is not None:
+        print(f"[SWT] 设备侧验证: ssh -p {port} bolo@127.0.0.1 'echo ok'"
+              "  (通过后设备→容器免密, 取信会话可自动化代执行, 不再每次输密码)")
+    else:
+        print("[SWT] 设备侧验证: ssh bolo@<容器入口> 'echo ok'  (端口见 swt status)")
+    return 0
+
+
 def web_delivery_lines(web_port: int | None, lan: str | None, label: str | None = None) -> list[str]:
     """web 双 URL 交付行 (D003/D007/UD-04): birth/resume/status 同源组装.
     仅当容器有 web-port 才产行; 本机 URL 照打, 局域网只用已确认值 (D010/UD-03),
@@ -1278,6 +1343,47 @@ def web_delivery_lines(web_port: int | None, lan: str | None, label: str | None 
         lines.append(f"[SWT] web 入口{tag} (局域网) 未附发: host 局域网地址无已确认值,"
                      " 确认 (--lan-ip) 后随下次交付附发")
     return lines
+
+
+def headed_delivery_lines(ssh_port: int | None, lan: str | None, headed_script: str | None) -> list[str]:
+    """窗口直飞交付行 (M08 ISSUE-07, D001(a) 底层零件命令模板, UD-09 -R 远端路径
+    用 $(id -u) 由设备 shell 展开): 有实例脚本 → 前提行 + waypipe 模板行;
+    lan 无已确认值 → 模板行改未附发 reason (F3, 附组装模板, 不静默丢失);
+    无实例脚本 (chromium 解析失败/旧容器) → 一行 reason; 无 ssh 面 → 无行."""
+    if ssh_port is None:
+        return []
+    if headed_script:
+        template = (
+            f"waypipe ssh -p {ssh_port} -R /tmp/swt/pulse-b.sock:/run/user/$(id -u)/pulse/native"
+            f" bolo@{{lan}} {HEADED_BROWSER_CONTAINER_PATH}"
+        )
+        if lan:
+            return [
+                f"[SWT] 窗口直飞 (设备侧执行): {template.format(lan=lan)}",
+                "[SWT] 窗口直飞前提: 设备须 Linux Wayland 桌面 + waypipe 客户端"
+                " (waypipe --version 检查, 缺则安装, Atomic 系走 distrobox);"
+                " 设备→容器免密先跑: swt enroll-device-key <容器名>",
+            ]
+        return [
+            f"[SWT] 窗口直飞命令未附发: host 局域网地址不可知,"
+            f" 请人工确认 host-LAN-IP 后组装: {template.format(lan='<host-LAN-IP>')}",
+        ]
+    return [
+        "[SWT] 窗口直飞未附发: 容器无实例启动脚本 (chromium 路径解析失败或旧容器),"
+        " 终端与 noVNC 不受影响",
+    ]
+
+
+def print_status_headed_lines(containers: list[dict[str, Any]], lan: str | None) -> None:
+    """status 的窗口直飞交付 (ISSUE-07): running 且有 ssh-port 的容器逐个产行
+    (有实例脚本 → 模板+前提, 无 → reason, 不静默丢失); 停止容器不附 (UD-11 同语义:
+    不交付不可达链接)."""
+    for entry in containers:
+        if entry.get("state") != "running":
+            continue
+        for line in headed_delivery_lines(
+                entry.get("ssh-port"), lan, entry.get("headed-script")):
+            print(line)
 
 
 def print_status_web_lines(containers: list[dict[str, Any]], lan: str | None) -> None:
@@ -1302,10 +1408,12 @@ def print_delivery_lines(
     lan: str | None,
     host_display: str | None = None,
     web_port: int | None = None,
+    headed_script: str | None = None,
 ) -> None:
     """固定交付项 (每次 birth/resume 交付齐发, 禁止遗漏, D039/决策 8):
     ssh 双入口 (本机/局域网, 都带端口) + noVNC URL + 局域网隧道命令
-    + herdr remote 双命令 + web 双 URL (仅 web-port 容器, D003/D007).
+    + herdr remote 双命令 + web 双 URL (仅 web-port 容器, D003/D007)
+    + 窗口直飞行 (仅实例脚本在场的容器, ISSUE-07).
     无法附发的项显式打一行原因, 不静默丢失 (F3)."""
     print(f"[SWT] {heading}")
     if ssh_port is None:
@@ -1340,6 +1448,8 @@ def print_delivery_lines(
     elif host_display == "absent":
         print("[SWT] 本机直通: absent (无宿主机桌面会话/纯服务器宿主常态, 显示走 noVNC)")
     for line in web_delivery_lines(web_port, lan):
+        print(line)
+    for line in headed_delivery_lines(ssh_port, lan, headed_script):
         print(line)
     print(f"[SWT] herdr remote (host):    herdr --remote ssh://bolo@127.0.0.1:{ssh_port}")
     if lan:
@@ -1846,7 +1956,7 @@ def create_and_start_container(args: argparse.Namespace, repo: Path, image: dict
         if record is None:
             raise PreconditionError(f"容器名已存在: {name}, 但不属于当前 runtime")
         refreshed = refresh_container(name, record, runtime, runtime_file)
-        refreshed["headed-script"] = None
+        refreshed["headed-script"] = record.get("headed-script")
         return refreshed
     labels = [
         f"sandbox-worktree.repo={repo.resolve()}", f"sandbox-worktree.mother={branch}",
@@ -1904,12 +2014,14 @@ def create_and_start_container(args: argparse.Namespace, repo: Path, image: dict
         "ssh-port": None, "vnc-port": None, "web-port": None, "image-digest": image.get("digest"), "retired": False,
         "display": "pending", "dirty": {"uncommitted": None, "unpushed": None, "relation": None, "reachable": False},
         "host-display": "mounted" if wayland_socket is not None else "absent",
+        "headed-script": str(headed_script) if headed_script is not None else None,
     }
     runtime["stage"] = "container-created"
     upsert_container_record(runtime, record, runtime_file)
     refreshed = refresh_container(name, record, runtime, runtime_file)
-    # M08 ISSUE-07 消费: 脚本有无经返回值传递 (None = 无直飞, 交付打 reason 行)
-    refreshed["headed-script"] = str(headed_script) if headed_script is not None else None
+    # M08 ISSUE-07 消费: 脚本有无经返回值与 runtime 容器记录双通道传递
+    # (None = 无直飞, 交付打 reason 行)
+    refreshed["headed-script"] = record.get("headed-script")
     return refreshed
 
 
@@ -2034,6 +2146,7 @@ def birth_display_gate_reentry(
             Path(record["ssh_private_key"]) if record.get("ssh_private_key") else None,
             read_confirmed_lan_address(records_root), record.get("host-display"),
             record.get("web-port"),
+            headed_script=record.get("headed-script"),
         )
         print_birth_state(repo, records_root, runtime, runtime.get("mother") or {}, image, runtime.get("network"), "[SWT] birth: 已完成 (显示栈降级)")
         return 0
@@ -2053,6 +2166,7 @@ def birth_display_gate_reentry(
             Path(record["ssh_private_key"]) if record.get("ssh_private_key") else None,
             read_confirmed_lan_address(records_root), record.get("host-display"),
             record.get("web-port"),
+            headed_script=record.get("headed-script"),
         )
         print_birth_state(repo, records_root, runtime, runtime.get("mother") or {}, image, runtime.get("network"), "[SWT] birth: 已完成 (显示栈重验通过)")
         return 0
@@ -2415,6 +2529,7 @@ def birth(args: argparse.Namespace, repo: Path) -> int:
         read_confirmed_lan_address(records_root),
         host_display_status,
         container["record"].get("web-port"),
+        headed_script=container.get("headed-script"),
     )
     state = empty_state(repo)
     observed_daemon = daemon_state(repo, runtime)
@@ -2469,6 +2584,11 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
                                       default=Path.home() / ".agents" / "sandbox-worktree")
     display_check_parser.add_argument("--name")
     display_check_parser.add_argument("--evidence-dir")
+    enroll_parser = subparsers.add_parser(
+        "enroll-device-key", help="设备侧公钥并入容器 authorized_keys (设备→容器免密, N4)")
+    enroll_parser.add_argument("container", metavar="容器名")
+    enroll_parser.add_argument("--pubkey-file", dest="pubkey_file", metavar="路径|-", default=None,
+                               help="公钥文件路径; - 或缺省读 stdin")
     return parser.parse_args(argv)
 
 
@@ -3537,6 +3657,7 @@ def resume(args: argparse.Namespace, repo: Path) -> int:
             read_confirmed_lan_address(records_root),
             host_display_status,
             target.get("web-port"),
+            headed_script=target.get("headed-script"),
         )
         # STATE 用刚写盘的 runtime 容器记录 (含本分支刚更新的 display),
         # 不用函数头取的 observed 快照 — 那是显示栈检查前的旧值, 会与交付行自相矛盾
@@ -3692,6 +3813,7 @@ def resume(args: argparse.Namespace, repo: Path) -> int:
         read_confirmed_lan_address(records_root),
         record.get("host-display"),
         record.get("web-port"),
+        headed_script=record.get("headed-script"),
     )
     print_state(
         build_state(repo, records_root, runtime, mother=_UNSET, containers=observed,
@@ -3803,6 +3925,7 @@ def status(args: argparse.Namespace, repo: Path) -> int:
     else:
         print_state(state, "[SWT] status: 已完成只读盘点")
     print_status_web_lines(containers, read_confirmed_lan_address(records_root))
+    print_status_headed_lines(containers, read_confirmed_lan_address(records_root))
     return 0
 
 
@@ -3931,6 +4054,9 @@ def main(argv: list[str]) -> int:
         if args.command == "display-check":
             repo = None if args.name else resolve_repo(args.repo)
             return display_check(args, repo)
+        if args.command == "enroll-device-key":
+            require_command("podman")
+            return cmd_enroll_device_key(args)
         repo = resolve_repo(args.repo)
         lock = acquire_lock(repo, args.records_root)
         try:
