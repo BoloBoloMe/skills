@@ -7,12 +7,12 @@ disable-model-invocation: true
 # use-sandbox-worktree
 
 **术语**:
-- **sandbox-worktree**: 一个 host 上的 git worktree (**母体**) + 一个 sandbox 容器的绑定对, 本 skill 管理的生命周期单元.
+- **sandbox-worktree**: 一个 host 上的 git worktree (**母体**) + 一个 sandbox 容器的绑定对, 本 skill 管理的生命周期单元. 一母体同一时刻至多一个活跃容器 (活跃 = 非 retired, 含停止未终结): birth 拒绝同母体已有活跃容器, 想换容器须先 terminate; 一台 host 可有多个母体, 各自独立; 改动前已存在的容器不追溯处置.
 - **母体**: 主仓在 host 上的一个 worktree 目录 (与主仓同级的兄弟目录, 目录名 = 母体分支名), 身兼两职: 容器诞生时从它克隆代码; 容器 push 的成果直接落进它, 打开就能审阅/试跑.
 - **推送落地**: 容器 `git push` 被接受的瞬间, 母体目录里的文件自动更新成 push 内容, 不用手动 pull.
 - **git 守护进程 (daemon)**: 随容器生灭临时起的 `git daemon` 进程, 只听宿主回环 (127.0.0.1 动态端口), 容器碰到代码的唯一通道, 无认证.
 - **git 桥**: 容器访问 daemon 的固定通道; 容器 remote 恒定 `git://127.0.0.1:9418/<仓库名>`, daemon 端口漂移/host 换网络都不再失配 (机制见 reference/ops.md).
-- **交付包**: birth/resume 收尾必须齐发的一组交付 — ssh 双入口 + noVNC URL + 局域网隧道命令 + herdr remote 双命令 + 本机直通状态 + 登录凭证 + 容器内路径契约 + 风险声明 (reference/risks.md). 各项形态见 birth 第四步.
+- **交付包**: birth/resume 收尾必须齐发的一组交付 — ssh 双入口 + noVNC URL + web 双 URL + 局域网隧道命令 + herdr remote 双命令 + 本机直通状态 + 登录凭证 + 容器内路径契约 + 风险声明 (reference/risks.md). web 双 URL = 本机 `http://127.0.0.1:<web-port>` 与局域网 `http://<已确认地址>:<web-port>`, 只列当前母体自身容器, 不汇总其他母体; 分享出去的 URL 不保证跨容器重建稳定 (容器 rm 重建后宿主端口会变, 须重新取新 URL). 各项形态见 birth 第四步.
 
 元规则: 本文件机制细节与环境现实冲突时, 以环境硬约束 (git 配置/防火墙/拓扑) 为准并报告我.
 **命名消歧**: `swt` = host 编排脚本 `scripts/swt.py`; `swt-vnc` = 容器内 VNC 栈 helper (见显示栈节), 两者无关.
@@ -61,16 +61,17 @@ birth 内部自动跑 image-prep `match`, 需求清单取 `<records-root>/<项�
 uv run python scripts/swt.py birth [--repo <主仓>] --branch <母体分支名原文>
     [--base <源 ref>] [--name <容器名>]
     [--mode whitelist --allow <CIDR>]... | [--mode blacklist [--deny <CIDR>]...]
-    [--image <ref>] [--requirements <file>] [--new-mother | --reuse-mother]
+    [--image <ref>] [--requirements <file>] [--new-mother | --reuse-mother] [--lan-ip <ipv4>]
 ```
-母体分支名 = use-worktree 目标分支名原文, 母体目录名 = 它的 slug 规则生成; 容器缺省名 `swt-<分支名>`, 同母体第二个容器须显式 `--name`. 首次执行通常出 DECIDE (母体新建/复用, 网络模式, 镜像), 按决策协议节应答.
+母体分支名 = use-worktree 目标分支名原文, 母体目录名 = 它的 slug 规则生成; 容器缺省名 `swt-<分支名>`, `--name` 只用于自定义名 — 同母体活跃容器唯一 (见术语), 它不再是放行第二个容器的开关. 首次执行通常出 DECIDE (母体新建/复用, 网络模式, 镜像), 按决策协议节应答.
 
 **第四步: 交付包**
 交付包逐项向我报告 (缺发只允许以一种形式发生: 显式打原因; 不静默丢失):
 - ssh 入口 (两条带端口, 总是同时交付; pasta 下容器无独立 IP — STATE 的 `network-ip` = host 本机 IP, 直连形式已废除):
   - 本机: `ssh -p <宿主端口> bolo@127.0.0.1` — 跨 stop/start 稳定, 用 `podman port <容器名>` 或 STATE 的 `ssh-port` 发现, 不记录端口 (rm 重建才变).
-  - 局域网: `ssh -p <宿主端口> bolo@<host-LAN-IP>` — 远程机走同一条带端口命令.
+  - 局域网: `ssh -p <宿主端口> bolo@<host-LAN-IP>` — 远程机走同一条带端口命令. `<host-LAN-IP>` 一律取已确认值, 不猜首个网卡: 确认值持久化在 records_root 根级, 首次 birth 无确认值时出 DECIDE 问 (现算候选只作提示, 不当可达交付), 我答后带 `--lan-ip <ipv4>` 重跑即确认; 换网络环境后用同一 flag 覆盖.
 - noVNC URL (本机浏览器直接开): `http://127.0.0.1:<vnc宿主端口>/vnc.html?resize=scale` — 容器内显示栈已自动拉起并经 birth 全量检查; 实际端口看 STATE 的 `vnc-port`.
+- web 双 URL (容器对外展示入口, 容器有 web-port 才发): 本机 `http://127.0.0.1:<web-port>` / 局域网 `http://<已确认地址>:<web-port>` — web-port 看 STATE 容器记录; 只列本容器; 无已确认局域网地址时打 "未附发" 提示行, 不猜地址; birth 只交付入口, 不因容器出生自动打开页面.
 - 本机直通状态: STATE 容器记录 `host-display=ok` 时交付注明 — 登录墙等 headed 窗口直接弹宿主机桌面, 本机可不开 noVNC; `degraded` 注明已回退 noVNC; `absent` 打一行常态说明 (远程/纯服务器宿主).
 - 局域网隧道命令: `ssh -p <宿主端口> -L 6080:127.0.0.1:<vnc宿主端口> bolo@<host-LAN-IP>` — 我在远程机开这条隧道后, 浏览器开 `http://127.0.0.1:6080/vnc.html?resize=scale`; noVNC 无密码, 隧道 (即容器 ssh 凭据) 就是门槛.
 - 登录凭证 (两种, 都随 terminate 清除, 落 `<records-root>/runtime/<identity>/ssh/`, 0600):
@@ -92,13 +93,13 @@ uv run python scripts/swt.py birth [--repo <主仓>] --branch <母体分支名�
 4. `herdr agent wait` / `agent read` 收结果.
 这套做法只是一层交互式编排的适配: 没有任务 id/退出码/重试保证; 需要这些保证时用保底形态 `pi -p "<任务>"` 批处理 (绕开 TUI 键位注入, 一轮一进程).
 
-**展示链**: 容器内展示由 `present` skill 的容器分支全权负责 (判定/bind/端口/url 语义见其 "容器内分支" 节), 你侧只剩一项: host 侧用 `podman port` 发现映射端口, 组装交付 URL 给我.
+**展示链**: 容器内展示由 `present` skill 的容器分支全权负责 (判定/bind/端口/url 语义见其 "容器内分支" 节): 容器对外 web 端口固定 8800, birth 把它发布到宿主 0.0.0.0 动态端口 (直达局域网, 映射登记 STATE 容器记录 `web-port`), present 容器分支钉 `start 8800 <root> --bind 0.0.0.0 --fixed-port` (锁定不换端口, 多张展示页经 add-dir 复用同一实例). 你侧不再只靠 `podman port` 发现 — birth/resume 交付包与 status 输出对有 web-port 的容器直接附 web 双 URL (本机 + 局域网已确认地址), 组装转交给我即可; 容器停止时 status 不附 URL 行, 走 STATE/`podman port <容器名> 8800` 查.
 
-**显示栈 (内置)**: 每个工作容器内置 VNC 显示栈 (Xvfb + x11vnc + websockify/noVNC + 中文字体 + playwright chromium + swt-vnc helper, 来自 display 层镜像), 6080 只发布到宿主回环 (127.0.0.1, 多容器并存时动态回落). birth/resume 自动 `podman exec <容器> swt-vnc start` 拉起; 手动开关: `podman exec <容器名> swt-vnc start|stop|status`. headed 浏览器过登录墙: 容器内约定 `BROWSER_HEADED=true` + 选路环境变量 (直通在场用 wayland, 缺席用 `DISPLAY=:99`, 见下段), 登录弹窗由你经弹出的窗口/noVNC 或 ssh 人工操作; 登录态 profile 落容器内 /tmp, 容器存续期内跨 ssh 会话复用, rm 即失. 通道体检: `uv run python scripts/swt.py display-check [--name <容器>]` (noVNC HTTP/ws/RFB banner/空白基线/渲染基线 0.2/headless 回切 + wayland 直通探测, PPM 证据落 evidence 目录; 退出码语义见决策协议节例外, 诊断语义非 DECIDE). 门禁语义: birth 跑全量检查, 失败出 DECIDE (继续只开终端 --display-continue / 重验 --display-recheck / terminate 终结); resume 只做 swt-vnc status 级秒级检查, 失败降级不阻断终端工作, STATE 标显示栈状态 + 汇报注明. 容器镜像未含 swt-vnc (旧镜像/极简镜像) → 显示栈缺席 (STATE 标 absent), 跳过不判失败.
+**显示栈 (内置)**: 每个工作容器内置 VNC 显示栈 (Xvfb + x11vnc + websockify/noVNC + 中文字体 + playwright chromium + swt-vnc helper, 来自 display 层镜像), 6080 只发布到宿主回环 (127.0.0.1, 多容器并存时动态回落). 对照: web 8800 发布到宿主 0.0.0.0 动态端口, 直达局域网 (无认证, 已接受对同网段开放, 见展示链节), 与 6080 回环-only 不同. birth/resume 自动 `podman exec <容器> swt-vnc start` 拉起; 手动开关: `podman exec <容器名> swt-vnc start|stop|status`. headed 浏览器过登录墙: 容器内约定 `BROWSER_HEADED=true` + 选路环境变量 (直通在场用 wayland, 缺席用 `DISPLAY=:99`, 见下段), 登录弹窗由你经弹出的窗口/noVNC 或 ssh 人工操作; 登录态 profile 落容器内 /tmp, 容器存续期内跨 ssh 会话复用, rm 即失. 通道体检: `uv run python scripts/swt.py display-check [--name <容器>]` (noVNC HTTP/ws/RFB banner/空白基线/渲染基线 0.2/headless 回切 + wayland 直通探测, PPM 证据落 evidence 目录; 退出码语义见决策协议节例外, 诊断语义非 DECIDE). 门禁语义: birth 跑全量检查, 失败出 DECIDE (继续只开终端 --display-continue / 重验 --display-recheck / terminate 终结); resume 只做 swt-vnc status 级秒级检查, 失败降级不阻断终端工作, STATE 标显示栈状态 + 汇报注明. 容器镜像未含 swt-vnc (旧镜像/极简镜像) → 显示栈缺席 (STATE 标 absent), 跳过不判失败.
 
 **本机直通**: 宿主机存在 wayland socket (本机桌面会话) 时, birth 恒挂进容器并烘 wayland 环境变量 (+ GPU 设备, 缺席不挂; 命令字面见 reference/ops.md). 直挂 socket 属主经 rootless uid_map 映射为容器 root, 0755 属主权下 bolo 连不上 — 解法是 **host 侧 `chmod 0777` 宿主机 socket** (birth/resume 都重保, 登录会话重启会重置); 父目录 `/run/user/<uid>` 为 0700, 其他用户够不着路径, 暴露面≈零. **禁用 socat 中继**: wayland 靠 SCM_RIGHTS 传 fd, 中继截断 fd 传递, chromium 必报 Fatal Wayland communication error. headed 浏览器优先 `--ozone-platform=wayland` 走宿主机桌面 (原生窗口/GPU/fcitx 中文输入/剪贴板互通), 实测不过回退 `DISPLAY=:99` noVNC. **直通只走 wayland, 禁挂 X11 socket** (X11 协议允许跨客户端键盘嗅探/注入). 状态值 ok/degraded/absent 落 STATE 容器记录 `host-display`; 无 socket 环境 (纯服务器宿主) 恒 absent, 行为 = 旧形态.
 
-**多容器共推同一母体**: 允许. 容器只准快进推送, 后推的那个会被 git 以历史分叉为由拒绝: 容器内 `git fetch` → 解冲突 → 重推 (git 原生串行化, 无新机制).
+**同母体多容器**: 新规则下同母体活跃容器唯一 (见术语), 常态不再出现多容器共推同一母体; 改动前已存在的容器不追溯处置, 历史残留仍可能多容器并存. 若真有两个容器同推一母体: 容器只准快进推送, 后推的那个会被 git 以历史分叉为由拒绝: 容器内 `git fetch` → 解冲突 → 重推 (git 原生串行化, 无新机制).
 
 **kimi 凭证**: 容器内 kimi (Kimi Code CLI) 必须独立登录 (容器内 `kimi` → `/login` 走 OAuth), 禁止把 host 的 kimi 凭证复制进容器两处共用: OAuth refresh token 一次性轮换, 同一份两处用时先刷新者生效, 另一边报 400 invalid grant. swt 注入的 host `~/.pi/agent/auth.json` 若含 kimi OAuth 条目同理 — 容器内要用 kimi 就独立登录, 别复用注入文件里的 kimi 条目.
 
@@ -119,7 +120,7 @@ uv run python scripts/swt.py resume [--repo <主仓>] [--name <容器名>] [--co
 uv run python scripts/swt.py switch [--repo <主仓>] --to <目标分支名原文> [--force]
 ```
 
-同一主仓同一时刻只有一个分支对容器开放写. 换母体 = 停旧母体全部容器+daemon → 删防火墙规则 → 校验目标 → 改主仓 config 里放行的分支名. 旧容器**不删**, 标 **retired**: status 可见, resume 拒绝, 唯一出路 terminate (走正常脏检查). 想捡回旧分支 → switch 回去或重新 birth. 旧母体全部容器先脏检查, 脏 → DECIDE + `--force`. 目标母体分支不存在: 允许 (写面对象暂缺, 随后 birth 再建); 分支存在但母体工作区脏 / 无对应 worktree → exit 2.
+同一主仓同一时刻只有一个分支对容器开放写. 换母体 = 停旧母体容器 (常态唯一, 历史残留可能多个) +daemon → 删防火墙规则 → 校验目标 → 改主仓 config 里放行的分支名. 旧容器**不删**, 标 **retired**: status 可见, resume 拒绝, 唯一出路 terminate (走正常脏检查). 想捡回旧分支 → switch 回去或重新 birth. 旧母体容器先脏检查, 脏 → DECIDE + `--force`. 目标母体分支不存在: 允许 (写面对象暂缺, 随后 birth 再建); 分支存在但母体工作区脏 / 无对应 worktree → exit 2.
 完成标准: 旧容器全停并标 retired, config 里放行的分支已指向新目标, status 显示新母体.
 
 ## 终结 (terminate)
@@ -128,7 +129,7 @@ uv run python scripts/swt.py switch [--repo <主仓>] --to <目标分支名原�
 uv run python scripts/swt.py terminate [--repo <主仓>] [--name <容器名>] [--force]
 ```
 
-按容器粒度; `--name` 缺省 = 该母体唯一容器, 多容器必填. **脏检查口径**: 未提交改动 (含未跟踪文件) 算脏; 容器里有而母体没有的提交 (领先或分叉) 算脏, 只是落后于母体不算脏; 查不了 (ssh 不通/容器已停) 一律按脏处理. 脏 → DECIDE 出示脏概要, 文案含 "确认容器内 agent 已停手"; 我确认带 `--force` 重跑, 先写 `audit.jsonl` 审计登记再删. 成功后: 删防火墙规则 → rm 容器 → 最后一个容器终结才收 daemon. **母体目录与主仓 config 不动**; 母体存删我自决 (删母体走 use-worktree 流程).
+按容器粒度; `--name` 缺省 = 该母体只有一个候选容器时免填, 多个候选 (含 switch 往返留下的 retired 残留 + 新活跃容器) 必须 `--name` 指定 (`--name` 兼容保留, 但多容器不再是常态). **脏检查口径**: 未提交改动 (含未跟踪文件) 算脏; 容器里有而母体没有的提交 (领先或分叉) 算脏, 只是落后于母体不算脏; 查不了 (ssh 不通/容器已停) 一律按脏处理. 脏 → DECIDE 出示脏概要, 文案含 "确认容器内 agent 已停手"; 我确认带 `--force` 重跑, 先写 `audit.jsonl` 审计登记再删. 成功后: 删防火墙规则 → rm 容器 → 最后一个容器终结才收 daemon. **母体目录与主仓 config 不动**; 母体存删我自决 (删母体走 use-worktree 流程).
 完成标准: 目标容器与 (最后一个容器时) daemon 已灭, 母体目录与主仓 config 原样留存, 运行记录与 ssh 私钥已清除.
 
 ## 镜像管理 (image-prep)
@@ -256,6 +257,13 @@ envelope = {"id": uuid.uuid4().hex, "ts": time.time(),
 **降级路径**: 信箱未运行时没有自动沟通与代开, 我仍可点 host 交付包里的 web 双 URL (本机 + 局域网) 访问已就绪页面; 交付与汇报只写 "可点击链接", 不写成已自动打开. birth 只交付入口, 不因容器出生自动打开页面.
 
 **本节不新增的东西**: 无 URL 查询端点, 无给容器挂载的 URL 文件, 无回程队列 (回话走既有 ssh/herdr); 双设备同时取信 + 换电脑的真机验证归 M09.
+
+## 分发与生效
+
+仓库里的改动到达使用现场有两条路, 别混淆:
+
+- **swt.py 与本 SKILL.md** (host 侧): 仓库根 `uv run python sync-to-pi.py` 同步到 host 的 skills 目录即生效 — 脚本由 host 侧 agent 直接跑, 本文档由 host 侧 agent 直接读, 无其他环节.
+- **present skill** (容器内): 它是 base 镜像构建期 COPY 进镜像的, 只改仓库文件容器拿不到. 流程: sync-to-pi 同步到 host skills 目录 → 重建 base (`image-prep build-base`, 按镜像管理节级联 display/项目层) → 之后 birth 的新容器才拿到新版规则. 现有容器不受影响也不补 (不追溯); 真机验证归 M09.
 
 ## 网络控制 / 容器命令 / 救场
 

@@ -35,7 +35,7 @@
 - [x] ISSUE-06: 信箱查网址/回话/代开指引 + 当前设备 (文档级)
   - 范围: use-sandbox-worktree/SKILL.md 信箱章节增补: 当前设备确定流程 (UD-06); 展示信件 `to` 显式填当前设备, body 必带容器名+宿主定位+原会话标识; 设备侧配方 (收信 → ssh/herdr 查 STATE/podman port → 回话原会话 → xdg-open 一次); open_url 用法示例; 信箱未运行时交付包链接降级路径 (D007); 不以缺省轮询路由冒充当前设备 (F007).
   - 依据: D005/D006/D007/D012/F005. 无代码接缝; 真链验证归 M09 (TC-004).
-- [ ] ISSUE-07: use-sandbox-worktree SKILL.md 修正与分发说明
+- [x] ISSUE-07: use-sandbox-worktree SKILL.md 修正与分发说明
   - 范围: 修正与 D003 冲突的多容器说法 (L10/L66/L101/L122/L131 段); 交付包定义加 web 双 URL (L15 段); 8800 发布说明 (L97 段, 0.0.0.0 动态, 与 6080 回环对照); 展示链段更新 (L95 段); 分发说明 (D013: swt/SKILL 经 sync-to-pi 到 host 即效, present 改动需 base 重建级联, UD-08).
   - 依据: D001/D003/D013. 文档 ISSUE.
 - [ ] ISSUE-08: e2e 门禁测试
