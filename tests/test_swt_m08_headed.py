@@ -158,30 +158,25 @@ class TestInstanceScriptBehavior(M08Case):
         env = {"WAYLAND_DISPLAY": "wayland-0", "XDG_RUNTIME_DIR": str(runtime_dir)}
         pulse = Path("/tmp/swt/pulse-b.sock")
         pulse.parent.mkdir(exist_ok=True)
-        had_pulse = pulse.exists()
-        moved = self.root / "pulse-b.sock.bak"
-        if had_pulse:
-            pulse.rename(moved)
+        if pulse.exists():
+            # 测试隔离守卫: host 全局 socket 在场 (窗口直飞活跃) 时不去扰动真实状态
+            self.skipTest("host 全局 socket /tmp/swt/pulse-b.sock 在场, 避免扰动真实状态")
+        # chromium 替身: 垫片打印自身环境变量且忽略启动参数 (env 会把参数当选项)
+        shim = self.root / "chromium-shim.sh"
+        shim.write_text("#!/bin/sh\nenv\n", encoding="utf-8")
+        shim.chmod(0o755)
+        instance = _make_instance(self.root, str(shim))
+        absent = self._run(instance, env)
+        self.assertEqual(absent.returncode, 0, absent.stderr)
+        self.assertNotIn("PULSE_SERVER=", absent.stdout)
+        plisten = _listen_unix(pulse)
         try:
-            # chromium 替身: 垫片打印自身环境变量且忽略启动参数 (env 会把参数当选项)
-            shim = self.root / "chromium-shim.sh"
-            shim.write_text("#!/bin/sh\nenv\n", encoding="utf-8")
-            shim.chmod(0o755)
-            instance = _make_instance(self.root, str(shim))
-            absent = self._run(instance, env)
-            self.assertEqual(absent.returncode, 0, absent.stderr)
-            self.assertNotIn("PULSE_SERVER=", absent.stdout)
-            plisten = _listen_unix(pulse)
-            try:
-                present = self._run(instance, env)
-                self.assertEqual(present.returncode, 0, present.stderr)
-                self.assertIn("PULSE_SERVER=unix:/tmp/swt/pulse-b.sock", present.stdout)
-            finally:
-                plisten.close()
-                pulse.unlink()
+            present = self._run(instance, env)
+            self.assertEqual(present.returncode, 0, present.stderr)
+            self.assertIn("PULSE_SERVER=unix:/tmp/swt/pulse-b.sock", present.stdout)
         finally:
-            if had_pulse:
-                moved.rename(pulse)
+            plisten.close()
+            pulse.unlink()
 
 
 class TestResolveChromiumPath(M08Case):
