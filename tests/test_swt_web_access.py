@@ -531,5 +531,127 @@ class TestDeliveryCallSitesUseConfirmedAddress(unittest.TestCase):
                           f"交付调用点未接入 web-port: {segment[:120]}")
 
 
+class TestBirthSingleActiveContainer(unittest.TestCase):
+    """ISSUE-04: 一母体一活跃容器 (D003/F004) — birth 时同母体已有活跃容器
+    (异名) → 拒绝并指明旧容器名与 terminate 指引; 同名重入 (失败重试) 仍允许;
+    retired 容器不算活跃; 别的母体容器不影响本检查.
+
+    活跃语义以 is_active_container 为准 (记录未 retired; 停止但未终结仍算活跃,
+    同样拒绝 — 不放行双活). 不追溯处置既有容器 (D009), 只拒绝本次新建.
+
+    接缝: 模块级小函数 birth_active_container_conflict 单测 (输入 runtime 记录
+    + podman live 实况, 输出拒绝原因或 None) + birth 主流程源码接缝守卫
+    (同 TestBirthLanAddressDecide 约定)."""
+
+    def setUp(self):
+        self.m = _load_swt()
+
+    @staticmethod
+    def _runtime(*records: dict) -> dict:
+        return {"schema": "test", "stage": "born", "containers": list(records)}
+
+    @staticmethod
+    def _record(name: str, retired: bool = False, state: str = "running") -> dict:
+        return {"name": name, "retired": retired, "state": state}
+
+    @staticmethod
+    def _live_row(name: str, branch: str) -> dict:
+        return {"Names": [name], "State": "running",
+                "Labels": {"sandbox-worktree.repo": "/repo",
+                           "sandbox-worktree.mother": branch,
+                           "sandbox-worktree.branch": branch}}
+
+    def _conflict(self, runtime, live_rows, branch="feat-x", new_name="swt-new"):
+        return self.m.birth_active_container_conflict(runtime, live_rows, branch, new_name)
+
+    def test_active_container_different_name_rejected(self):
+        """切片 1a: 母体已有一个活跃容器 (异名, runtime 记录) → 拒绝,
+        原因含旧容器名与 terminate 指引."""
+        runtime = self._runtime(self._record("swt-old"))
+        reason = self._conflict(runtime, [], new_name="swt-new")
+        self.assertIsNotNone(reason)
+        self.assertIn("swt-old", reason)
+        self.assertIn("terminate", reason)
+
+    def test_active_container_from_live_rows_rejected(self):
+        """切片 1b: runtime 记录缺失但 podman live 实况有本母体运行中容器
+        (异名) → 同样拒绝 (live 行兜底)."""
+        reason = self._conflict(None, [self._live_row("swt-old", "feat-x")],
+                                new_name="swt-new")
+        self.assertIsNotNone(reason)
+        self.assertIn("swt-old", reason)
+        self.assertIn("terminate", reason)
+
+    def test_retired_container_not_rejected(self):
+        """切片 2: 已有容器已 retired (D033, 非活跃) → 不因此拒绝.
+        retired 记录与 live 行交叉: 记录标 retired 的同名 live 行也不算活跃."""
+        runtime = self._runtime(self._record("swt-old", retired=True, state="exited"))
+        self.assertIsNone(self._conflict(runtime, [], new_name="swt-new"))
+        self.assertIsNone(
+            self._conflict(runtime, [self._live_row("swt-old", "feat-x")],
+                           new_name="swt-new"))
+
+    def test_stopped_but_not_retired_still_rejected(self):
+        """is_active_container 语义锁定: 停止 (state=exited) 但未终结
+        (未 retired) 的容器仍算活跃 → 拒绝, 不放行双活."""
+        runtime = self._runtime(self._record("swt-old", retired=False, state="exited"))
+        reason = self._conflict(runtime, [], new_name="swt-new")
+        self.assertIsNotNone(reason)
+        self.assertIn("swt-old", reason)
+
+    def test_same_name_reentry_allowed(self):
+        """切片 3: 同名重入 (失败重试, 已有活跃记录同名) → 不冲突, 仍允许."""
+        runtime = self._runtime(self._record("swt-same"))
+        self.assertIsNone(self._conflict(runtime, [self._live_row("swt-same", "feat-x")],
+                                         new_name="swt-same"))
+
+    def test_other_mother_containers_ignored(self):
+        """切片 4: 不同母体各有容器互不影响 — live 实况里别的分支的容器
+        不计入本母体冲突; 本母体无记录 → 放行."""
+        live = [self._live_row("swt-other", "feat-other"),
+                self._live_row("swt-yet-another", "bugfix-y")]
+        self.assertIsNone(self._conflict(None, live, new_name="swt-new"))
+
+    def test_birth_seam_guard(self):
+        """接缝守卫: birth 主流程接入 birth_active_container_conflict —
+        在显示门禁重入之后 (不重伤 display 重入流), 在容器创建之前拒绝;
+        冲突抛 PreconditionError; live 实况取 live_repo_containers(repo)."""
+        source = SCRIPT.read_text(encoding="utf-8")
+        birth_segment = source[source.index("def birth("):]
+        reentry_at = birth_segment.index("birth_display_gate_reentry(")
+        check_at = birth_segment.index("birth_active_container_conflict(")
+        create_at = birth_segment.index("container = create_and_start_container(")
+        self.assertLess(reentry_at, check_at)
+        self.assertLess(check_at, create_at)
+        self.assertIn("live_repo_containers(repo)", birth_segment)
+        raise_at = birth_segment.index("raise PreconditionError", check_at)
+        self.assertLess(raise_at, create_at)
+
+    def test_name_writeback_single_source_before_conflict_check(self):
+        """评审修复守卫: 容器名推导一次写回 args.name, 位置在冲突检查之前
+        (冲突检查/hostname 候选/wire/create 复用同一值, 不再各自 fork slug
+        子进程); born 重入守卫改用写回前捕获的 name_explicit, 不受缺省回填
+        影响 (同母体重入仍必须显式 --name)."""
+        source = SCRIPT.read_text(encoding="utf-8")
+        birth_segment = source[source.index("def birth("):]
+        writeback_at = birth_segment.index(
+            "args.name = args.name or container_default_name(branch)")
+        check_at = birth_segment.index("birth_active_container_conflict(")
+        self.assertLess(writeback_at, check_at,
+                        "名字写回必须先于冲突检查, 检查直接用 args.name")
+        # 写回唯一: birth 内其余处不再重复推导 (create_and_start_container 自身
+        # 的防御性回退不算 birth 内推导点)
+        self.assertEqual(
+            birth_segment.count("args.name or container_default_name(branch)"), 1,
+            "birth 内只允许一处名字推导 (写回点), 其余复用 args.name")
+        capture_at = birth_segment.index("name_explicit = bool(args.name)")
+        self.assertLess(capture_at, writeback_at,
+                        "name_explicit 必须在写回之前捕获, 否则 born 重入守卫失效")
+        born_at = birth_segment.index('runtime_existing.get("stage") == "born"')
+        born_segment = birth_segment[born_at:born_at + 400]
+        self.assertIn("not name_explicit", born_segment)
+        self.assertNotIn("not args.name", born_segment)
+
+
 if __name__ == "__main__":
     unittest.main()

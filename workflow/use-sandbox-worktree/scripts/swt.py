@@ -558,6 +558,53 @@ def assert_single_active_mother(repo: Path, target_branch: str, runtime: dict[st
         raise PreconditionError(f"已有活动母体 {old}, 请先使用 switch 切换")
 
 
+def birth_active_container_conflict(
+    runtime: dict[str, Any] | None,
+    live_rows: list[dict[str, Any]],
+    branch: str,
+    new_name: str,
+) -> str | None:
+    """D003: 同母体已有活跃容器 → 返回拒绝原因 (含旧容器名与 terminate 指引), 否则 None.
+    活跃语义 = is_active_container (记录未 retired); 同名重入 (失败重试) 不算冲突;
+    别的母体容器不影响本检查. 不追溯处置既有容器 (D009), 只拒绝本次新建.
+    覆盖范围 (UD-12): live 兜底只认运行中容器 (live_repo_containers 走 `podman ps`,
+    无 -a), 与 assert_single_active_mother 同限制; "停止但未终结仍算活跃" 的拒绝
+    由 runtime 记录保证 (记录不看运行态, 未 retired 即活跃), 不依赖 live 行."""
+    records = runtime.get("containers", []) if isinstance(runtime, dict) else []
+    if not isinstance(records, list):
+        records = []
+    retired_names = {
+        str(record.get("name")) for record in records
+        if isinstance(record, dict) and record.get("retired") and record.get("name")
+    }
+    active: set[str] = set()
+    for record in records:
+        if is_active_container(record) and record.get("name"):
+            active.add(str(record["name"]))
+    for row in live_rows:
+        if not isinstance(row, dict):
+            continue
+        labels = row.get("Labels") if isinstance(row.get("Labels"), dict) else {}
+        row_branch = labels.get("sandbox-worktree.mother") or labels.get("sandbox-worktree.branch")
+        if row_branch != branch:
+            continue
+        names = row.get("Names") or row.get("Name") or []
+        if isinstance(names, list):
+            name = names[0] if names else ""
+        else:
+            name = str(names).lstrip("/")
+        if name and str(name) not in retired_names:
+            active.add(str(name))
+    active.discard(new_name)
+    if not active:
+        return None
+    old = sorted(active)[0]
+    return (
+        f"母体 {branch} 已有活跃容器 {old} (一母体同一时刻只允许一个活跃容器); "
+        f"请先 terminate --name {old} 再重新 birth"
+    )
+
+
 def find_mother(repo: Path, branch: str) -> tuple[Path | None, bool]:
     target = mother_path(repo, branch)
     for entry in worktree_entries(repo):
@@ -2066,6 +2113,19 @@ def birth(args: argparse.Namespace, repo: Path) -> int:
     reentry = birth_display_gate_reentry(args, repo, records_root, runtime_existing, runtime_file)
     if reentry is not None:
         return reentry
+    # 容器名单源 (评审修复): 推导一次写回 args, 后续冲突检查/hostname 候选/
+    # wire/create 复用同一值, 不再各自 fork slug 子进程. name_explicit 在写回前
+    # 捕获 — born 重入守卫仍要求显式 --name, 不受缺省回填影响.
+    name_explicit = bool(args.name)
+    args.name = args.name or container_default_name(branch)
+    # D003: 一母体同一时刻只有一个活跃容器 — 同母体已有活跃容器 (异名) 时拒绝
+    # 新建 (含 born 重入加新 --name 路径); 同名重入 (失败重试) 与 retired 容器
+    # 不算冲突; 只拒绝本次新建, 不追溯处置既有容器 (D009). 放在显示门禁重入之后,
+    # 不重伤 display 重入流.
+    conflict = birth_active_container_conflict(
+        runtime_existing, live_repo_containers(repo), branch, args.name)
+    if conflict:
+        raise PreconditionError(conflict)
     image = mark_newer_available(prepare_image(args, repo, records_root), runtime_existing)
     network_input = {"mode": args.mode, "allow": list(args.allow), "deny": list(args.deny)}
     identity = runtime_file.stem
@@ -2105,7 +2165,7 @@ def birth(args: argparse.Namespace, repo: Path) -> int:
 
     # 主机名确认 (D047): 候选 = 容器名, host-llm 转述时可附推荐, 用户拍板后
     # 带 --hostname <名> 重跑; 缺省不答 (不放行默认), 保证每个容器名都经人确认
-    hostname_candidate = args.name or container_default_name(branch)
+    hostname_candidate = args.name
     if args.hostname is not None and not re.fullmatch(r"[a-zA-Z0-9]([a-zA-Z0-9.-]{0,61}[a-zA-Z0-9])?", args.hostname):
         raise PreconditionError(f"--hostname 非法 (须为 RFC1123 主机名): {args.hostname}")
     hostname_decision = decision_pending(
@@ -2140,7 +2200,7 @@ def birth(args: argparse.Namespace, repo: Path) -> int:
         return 1
 
     if runtime_existing and runtime_existing.get("stage") == "born":
-        if not args.reuse_mother or not args.name:
+        if not args.reuse_mother or not name_explicit:
             raise PreconditionError("已有 birth runtime, 同母体重入必须带 --reuse-mother 和新的 --name")
         runtime = runtime_existing
         mother_dir = Path(runtime["mother_dir"]).resolve()
@@ -2222,8 +2282,7 @@ def birth(args: argparse.Namespace, repo: Path) -> int:
         env_map = load_inherited_env(records_root, resolve_project_slug(repo))
         # ISSUE-06 信箱接线: 须在 create 之前 (podman -e 只在创建时烘入);
         # 失败只告警跳过, 不阻断 birth. 登记落容器记录 (多容器并存各自一段).
-        # 容器名单源 (评审修复): 推导一次写回 args, wire 与 create 共用同一值.
-        args.name = args.name or container_default_name(branch)
+        # 容器名已于上方单源写回 args.name, wire 与 create 共用同一值.
         # 重入 (评审修复): 容器已存在时 create 走 refresh 早退, env 不重烘;
         # 此时申领新 key 只会在服务端累积有效 key 且 connected 登记与实况不符 —
         # 跳过 wire, 不动既有 mailbox 登记; 仅给无登记的老记录补一条 skipped 说明.

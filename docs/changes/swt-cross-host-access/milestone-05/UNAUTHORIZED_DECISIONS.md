@@ -76,3 +76,10 @@
 - 理由: 与 D010 "不把不可用当可用交付" 同一精神; 停止容器的映射虽存续但点击即失败, 附行误导.
 - 影响: print_status_web_lines 增运行态过滤 + 对应测试.
 - 风险: 低; 停止容器信息仍在 STATE JSON 中可查.
+
+## UD-12 "活跃"语义 = 非 retired (不看运行态), 停止未终结仍拒绝
+- 问题: D003 "一母体一个活跃容器" 未定义 "活跃" 是否看运行态; 停止但未终结的容器算不算活跃直接影响 birth 放行.
+- 决策: 以 is_active_container 语义为准 — 非 retired 即活跃, 不看运行态; 停止未终结容器照样拒绝新 birth; retired (D033) 豁免. 另加 podman live 实况兜底 (runtime 记录丢失时拦运行中的同母体容器).
+- 理由: 词汇表 retired 条 (D033) 反向支撑 "非 retired 即活跃" 读法; 停止未终结容器若放行, 之后 resume 拉起旧容器即成双活, 拒绝是安全方向; 正常流程 (switch 标 retired/terminate 删记录) 不会误伤.
+- 影响: 用户想换容器须先 terminate 旧容器 (拒绝信息含指引); 已知边界: live 兜底用 `podman ps` 无 -a, "记录丢失 + 容器停止" 的极端组合漏检, 与 assert_single_active_mother 同限制, 接受.
+- 风险: 低; 偏严不偏松, 误拒可通过 terminate 解除.
