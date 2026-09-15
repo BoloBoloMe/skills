@@ -63,6 +63,16 @@ AGENT_PROMPT_MOUNTS = (
     ("kimi-code_AGENTS.md", "/home/bolo/.kimi-code/AGENTS.md"),
 )
 
+# M08 D003 启动脚本母本制: 母本在 <skill>/headed-browser/, birth 解析 chromium
+# 精确路径 (F006) 生成实例留档 runtime/<identity>/ 后只读单文件挂载进容器固定路径.
+HEADED_BROWSER_MASTER = Path(__file__).resolve().parents[1] / "headed-browser" / "swt-headed-browser.sh"
+HEADED_BROWSER_CONTAINER_PATH = "/home/bolo/.local/bin/swt-headed-browser.sh"
+CHROMIUM_PATH_PLACEHOLDER = "__CHROMIUM__"
+# UD-06: 多 rev 并存取最高 (sort -V | tail -1), throwaway 一次性成本约 1s.
+CHROMIUM_RESOLVE_PIPELINE = (
+    "ls -d /home/bolo/.cache/ms-playwright/chromium-*/chrome-linux*/chrome | sort -V | tail -1"
+)
+
 
 class SwtError(Exception):
     def __init__(self, code: int, tag: str, message: str) -> None:
@@ -885,6 +895,40 @@ def stage_agent_prompts(records_root: Path, identity: str, container_name: str) 
         if not staged.is_file() or staged.read_bytes() != source.read_bytes():
             staged.write_bytes(source.read_bytes())
     return target_dir
+
+
+def resolve_container_chromium_path(image_ref: str) -> str | None:
+    """M08 F006/UD-06: throwaway 容器解析 playwright chromium 精确字面路径.
+    解析失败 (非零退出/空输出) → stderr 告警 + None, birth 不因此失败
+    (该容器仍可终端工作 + noVNC, 仅无直飞)."""
+    result = run([
+        "podman", "run", "--rm", "--entrypoint", "/bin/sh", image_ref,
+        "-c", CHROMIUM_RESOLVE_PIPELINE,
+    ])
+    path = result.stdout.strip()
+    if result.returncode != 0 or not path:
+        print(
+            f"[SWT] chromium 路径解析失败, 跳过窗口直飞脚本与挂载: {result.stderr.strip() or '空输出'}",
+            file=sys.stderr,
+        )
+        return None
+    return path
+
+
+def stage_headed_browser_script(records_root: Path, identity: str, chromium_path: str) -> Path:
+    """M08 D003: 母本 + chromium 精确路径 → 实例脚本落 runtime/<identity>/
+    留档 (0755), 返回实例路径. 每容器一份: 母本更新只对新 birth 的容器生效."""
+    if not HEADED_BROWSER_MASTER.is_file():
+        raise SwtEnvError(f"headed 浏览器启动脚本母本缺失: {HEADED_BROWSER_MASTER}")
+    master = HEADED_BROWSER_MASTER.read_text(encoding="utf-8")
+    if CHROMIUM_PATH_PLACEHOLDER not in master:
+        raise SwtEnvError(f"母本缺占位符 {CHROMIUM_PATH_PLACEHOLDER}: {HEADED_BROWSER_MASTER}")
+    target_dir = records_root / "runtime" / identity
+    target_dir.mkdir(parents=True, exist_ok=True)
+    instance = target_dir / HEADED_BROWSER_MASTER.name
+    instance.write_text(master.replace(CHROMIUM_PATH_PLACEHOLDER, chromium_path), encoding="utf-8")
+    instance.chmod(0o755)
+    return instance
 
 
 def inspect_container(name: str) -> dict[str, Any]:
@@ -1793,7 +1837,7 @@ def container_exists(name: str) -> bool:
     return run(["podman", "inspect", name]).returncode == 0
 
 
-def create_and_start_container(args: argparse.Namespace, repo: Path, image: dict[str, Any], branch: str, runtime: dict[str, Any], runtime_file: Path, env: dict[str, str], records_root: Path, identity: str) -> dict[str, Any]:
+def create_and_start_container(args: argparse.Namespace, repo: Path, image: dict[str, Any], branch: str, runtime: dict[str, Any], runtime_file: Path, env: dict[str, str], records_root: Path, identity: str, headed_script: Path | None = None) -> dict[str, Any]:
     name = args.name or container_default_name(branch)
     existing = run(["podman", "inspect", name])
     if existing.returncode == 0:
@@ -1801,7 +1845,9 @@ def create_and_start_container(args: argparse.Namespace, repo: Path, image: dict
         record = next((item for item in records if isinstance(item, dict) and item.get("name") == name), None)
         if record is None:
             raise PreconditionError(f"容器名已存在: {name}, 但不属于当前 runtime")
-        return refresh_container(name, record, runtime, runtime_file)
+        refreshed = refresh_container(name, record, runtime, runtime_file)
+        refreshed["headed-script"] = None
+        return refreshed
     labels = [
         f"sandbox-worktree.repo={repo.resolve()}", f"sandbox-worktree.mother={branch}",
         f"sandbox-worktree.name={name}", f"sandbox-worktree.branch={branch}",
@@ -1842,6 +1888,11 @@ def create_and_start_container(args: argparse.Namespace, repo: Path, image: dict
     prompts_dir = stage_agent_prompts(records_root, identity, name)
     for master_name, target in AGENT_PROMPT_MOUNTS:
         command.extend(["-v", f"{prompts_dir / master_name}:{target}:ro"])
+    # 启动脚本母本只读单文件挂载 (M08 D003): 实例由 birth 流程解析 chromium
+    # 精确路径后落 runtime/<identity>/ 留档, 此处只负责挂载 (UD-06: 解析失败时
+    # birth 传 None, 容器仍可终端工作 + noVNC, 仅无直飞).
+    if headed_script is not None:
+        command.extend(["-v", f"{headed_script}:{HEADED_BROWSER_CONTAINER_PATH}:ro"])
     # web 服务端口 (D001): 与 22 同款宿主 0.0.0.0 动态分配, 直达局域网, 禁止绑回环
     command.extend(["-p", "22", "-p", "8800", str(image["ref"])])
     created = run(command)
@@ -1856,7 +1907,10 @@ def create_and_start_container(args: argparse.Namespace, repo: Path, image: dict
     }
     runtime["stage"] = "container-created"
     upsert_container_record(runtime, record, runtime_file)
-    return refresh_container(name, record, runtime, runtime_file)
+    refreshed = refresh_container(name, record, runtime, runtime_file)
+    # M08 ISSUE-07 消费: 脚本有无经返回值传递 (None = 无直飞, 交付打 reason 行)
+    refreshed["headed-script"] = str(headed_script) if headed_script is not None else None
+    return refreshed
 
 
 def inject_ssh_key(container: dict[str, Any], records_root: Path, identity: str, runtime: dict[str, Any], runtime_file: Path, env: dict[str, str]) -> Path:
@@ -2281,8 +2335,16 @@ def birth(args: argparse.Namespace, repo: Path) -> int:
         # 重入 (评审修复): 容器已存在时 create 走 refresh 早退, env 不重烘;
         # 此时申领新 key 只会在服务端累积有效 key 且 connected 登记与实况不符 —
         # 跳过 wire, 不动既有 mailbox 登记; 仅给无登记的老记录补一条 skipped 说明.
-        mailbox_record = None if container_exists(args.name) else wire_container_mailbox(env_map, args.name)
-        container = create_and_start_container(args, repo, image, branch, runtime, runtime_file, env_map, records_root, identity)
+        container_existed = container_exists(args.name)
+        mailbox_record = None if container_existed else wire_container_mailbox(env_map, args.name)
+        # M08 D003: 解析 chromium 精确路径 (UD-06, 失败跳过不阻断) → 实例落档;
+        # 重入 (容器已在) 不重生成, 挂载维持旧容器既有状态.
+        headed_script = None
+        if not container_existed:
+            chromium_path = resolve_container_chromium_path(image["ref"])
+            if chromium_path is not None:
+                headed_script = stage_headed_browser_script(records_root, identity, chromium_path)
+        container = create_and_start_container(args, repo, image, branch, runtime, runtime_file, env_map, records_root, identity, headed_script=headed_script)
         if mailbox_record is not None:
             container["record"]["mailbox"] = mailbox_record
             upsert_container_record(runtime, container["record"], runtime_file)
