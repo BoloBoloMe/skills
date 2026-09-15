@@ -12,9 +12,7 @@ test = [
     "pytest",
 ]
 
-[build-system]
-requires = ["setuptools"]
-build-backend = "setuptools.build_meta"
-
-[tool.setuptools.packages.find]
-include = ["browser_agent*"]
+# 虚拟项目: 不安装自身 (源码经 cwd / PYTHONPATH 导入), uv 只管依赖 venv.
+# 容器内 skill 树是只读挂载, 可编辑安装需要向源码树写 egg-info, 会被拦.
+[tool.uv]
+package = false

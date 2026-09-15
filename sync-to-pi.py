@@ -28,8 +28,9 @@ _SYNC_IGNORE = shutil.ignore_patterns(
     # 测试目录 (agent 运行不需要; ignore_patterns 按 basename 全层级匹配,
     # 同步范围 (general/workflow/pi) 内无需要保留的同名目录)
     "tests",
-    # 包管理器锁文件 (从 pyproject.toml 可重建)
-    "uv.lock", "poetry.lock", "Pipfile.lock",
+    # 包管理器锁文件 (poetry/pipfile 从 pyproject 可重建; uv.lock 必须部署:
+    # 容器内 skill 树只读, 离线环境靠它对齐镜像 venv)
+    "poetry.lock", "Pipfile.lock",
     # macOS
     ".DS_Store",
     # Node

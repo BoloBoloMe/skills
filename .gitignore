@@ -21,8 +21,11 @@ venv/
 # 测试 & 缓存
 .pytest_cache/
 
-# 包管理器锁文件 (从 pyproject.toml 可重建)
+# 包管理器锁文件 (从 pyproject.toml 可重建);
+# 例外: general/ 下 skill 项目的 uv.lock 必须入库并部署 — 容器内 skill 树只读,
+# 离线环境靠 lock 对齐镜像 venv, 现场重解析既写不进也无网.
 uv.lock
+!general/**/uv.lock
 poetry.lock
 Pipfile.lock
 

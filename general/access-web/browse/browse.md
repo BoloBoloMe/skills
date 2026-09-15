@@ -63,7 +63,7 @@ print(r.success, r.url, r.error)
 "
 ```
 
-**注意**: session-key 由执行进程的 cwd 派生. 在 `browse/` 下运行时浏览器会话绑定 `browse/` 目录; 需要绑定其他工作目录时, 切到该目录后用 `uv run --project <browse/ 绝对路径> python ...` 调用.
+**注意**: session-key 由执行进程的 cwd 派生. 在 `browse/` 下运行时浏览器会话绑定 `browse/` 目录; 需要绑定其他工作目录时, 切到该目录后用 `PYTHONPATH=<browse/ 绝对路径> uv run --project <browse/ 绝对路径> python ...` 调用 (本项目是虚拟项目, `browser_agent` 不装进 venv, 靠 PYTHONPATH 导入).
 
 ## 快速开始
 

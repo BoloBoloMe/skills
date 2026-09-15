@@ -60,6 +60,13 @@ AGENT_PROMPT_MOUNTS = (
     ("kimi-code_AGENTS.md", "/home/bolo/.kimi-code/AGENTS.md"),
 )
 
+# skill 库运行期挂载: host ~/.agents/skills 只读挂进容器同路径, 遮蔽镜像烤入
+# 副本 (实时跟随 host 版本); 每个带 pyproject 的项目另挂 .venv 匿名卷 — 从镜像
+# 播种可写, 源码树保持 ro. 依赖锁定靠已部署的 uv.lock, venv 种子与 lock 不匹配
+# 时容器内无法联网重装, 需重建 base.
+SKILLS_HOST_DIR = Path.home() / ".agents" / "skills"
+SKILLS_CONTAINER_DIR = "/home/bolo/.agents/skills"
+
 
 class SwtError(Exception):
     def __init__(self, code: int, tag: str, message: str) -> None:
@@ -1509,6 +1516,35 @@ def container_default_name(branch: str) -> str:
     return f"swt-{clean}"
 
 
+def assert_skills_mountable(skills_dir: Path) -> list[str]:
+    """前置检查 host skill 库并返回 pyproject 项目相对路径列表 (供 .venv 匿名卷挂载).
+
+    rootless uid 映射下容器 bolo 只能靠 other 权限位读 host 树, 任何非全局可读
+    路径都会在容器内变成不可读, 提前拦下并点名.
+    """
+    if not skills_dir.is_dir():
+        raise PreconditionError(f"host skill 库不存在: {skills_dir}")
+    projects: list[str] = []
+    offenders: list[str] = []
+    for root, dirs, files in os.walk(skills_dir):
+        rel_root = Path(root).relative_to(skills_dir)
+        if not (os.stat(root).st_mode & 0o005):
+            offenders.append(f"{rel_root}/ (目录需 o+rx)")
+        if "pyproject.toml" in files:
+            projects.append(str(rel_root))
+        for name in files:
+            if not (os.stat(Path(root) / name).st_mode & 0o004):
+                offenders.append(f"{rel_root / name} (文件需 o+r)")
+        dirs[:] = [d for d in dirs if d not in (".venv", "venv", "__pycache__", ".git")]
+    if offenders:
+        shown = ", ".join(offenders[:5])
+        more = f" ...等共 {len(offenders)} 项" if len(offenders) > 5 else ""
+        raise PreconditionError(
+            f"host skill 库存在非全局可读路径: {shown}{more}; chmod o+rX 后重跑"
+        )
+    return projects
+
+
 def create_and_start_container(args: argparse.Namespace, repo: Path, image: dict[str, Any], branch: str, runtime: dict[str, Any], runtime_file: Path, env: dict[str, str], records_root: Path, identity: str) -> dict[str, Any]:
     name = args.name or container_default_name(branch)
     existing = run(["podman", "inspect", name])
@@ -1558,6 +1594,12 @@ def create_and_start_container(args: argparse.Namespace, repo: Path, image: dict
     prompts_dir = stage_agent_prompts(records_root, identity, name)
     for master_name, target in AGENT_PROMPT_MOUNTS:
         command.extend(["-v", f"{prompts_dir / master_name}:{target}:ro"])
+    # skill 库只读挂载 (遮蔽镜像烤入副本, 实时跟随 host) + 项目 .venv 匿名卷
+    # (从镜像播种, 可写): 外层 ro 先挂, 内层卷后挂, 嵌套遮蔽出可写的 .venv
+    skill_projects = assert_skills_mountable(SKILLS_HOST_DIR)
+    command.extend(["-v", f"{SKILLS_HOST_DIR}:{SKILLS_CONTAINER_DIR}:ro"])
+    for rel_project in skill_projects:
+        command.extend(["-v", f"{SKILLS_CONTAINER_DIR}/{rel_project}/.venv"])
     command.extend(["-p", "22", str(image["ref"])])
     created = run(command)
     if created.returncode != 0:
