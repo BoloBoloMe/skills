@@ -220,6 +220,43 @@ curl -s -H "X-Admin-Token: $TOKEN" -H "Content-Type: application/json" \
 
 **指令集现状**: 机制已落地 (服务端注册表持久化 + 规范形比对: 命中直批执行, 集合外降级 request 走设备侧 pi 权限流程), 当前为空集; 首个真实成员 (waypipe 拉起命令) 待 M08 填充. 成员变动即安全策略变动, 必过 e2e 门禁 (`uv run pytest tests/test_swt_base_server.py`).
 
+**展示页网址沟通与代开 (容器与设备 agent 行为指引)**: 容器内展示页就绪后要到我当前用的电脑上打开一次, 网址容器自己查不到 (host 才知道映射), 靠信箱问设备侧取信会话代查代开. 本节全部是指引, 不新增任何接口.
+
+容器侧 (投信方) 检查清单:
+1. **先定当前设备**: 每次开始工作时确定本次使用的电脑 — 会话已有信息或我明示的优先, 不能确定才问我一次并记住; 我换电脑时更新.
+2. **展示相关信件 `to` 显式填该设备名, 禁止留空**: 缺省路由 = 最近轮询的设备, 最近取信不等于我坐在那台设备前 (两台设备同时取信时落在哪台纯看轮询时序). 其它与设备无关的信件仍按原协议, `to` 留空走缺省.
+3. **body 必带四样**: (a) 容器名; (b) 宿主定位 — 目的是让设备 agent 能在 host 上定位到该容器: 容器报自己可见的主仓路径与容器名作线索 (容器内 home 与 host 字面相同, 但 records_root 是 host 侧路径且可被 `--records-root` 覆盖, 容器只能按默认值推断, 设备侧不把容器报的路径当必然可解析, 查不到时用容器名 + podman/STATE 兜底); (c) 原会话标识 — 使回话能回到发起会话; (d) 请求动作 — 查网址 / 就绪代开.
+4. 完整示例信 (request 类型, 签名与发送代码同上文 notify 最小示例, 只换 envelope):
+
+```python
+envelope = {"id": uuid.uuid4().hex, "ts": time.time(),
+            "from": os.environ["SWT_CONTAINER_NAME"], "to": "<当前设备名>",
+            "type": "request",
+            "body": ("container=<容器名>\n"
+                     "host-repo=<主仓在 host 的路径>\n"
+                     "records=<records_root 路径>\n"
+                     "session=<原会话标识, 回话时引用>\n"
+                     "action=查该容器 web 入口双 URL 并回告本会话; 页面就绪后在本设备打开一次")}
+```
+
+设备侧 (取信会话) 检查清单:
+1. **来信不是网址**: 收到容器名不等于能查到状态, 必须实际去 host 查, 不把信里任何字段当现成 URL.
+2. **查网址**: 经既有 ssh/herdr 通道到 host, 依次可用 — `uv run python scripts/swt.py status --repo <主仓>` 输出的 web 双 URL 行 / STATE 容器记录的 `web-port` / `podman port <容器名> 8800`; 注意 status 只对 running 容器附双 URL 行, 容器停止时走 STATE/podman port. 局域网用址取已确认值 (status 局域网行 / `<records_root>/lan-address`), 不用现算猜测.
+3. **回话**: 经既有 ssh/herdr 回话通道回到 body 里 session 指明的原会话, 告知双 URL.
+4. **代开**: 页面就绪后在本设备 `xdg-open <URL>` 一次; 开不了就把可点击链接交给我, 不说成已打开.
+
+**已知 URL 时直接投 `open_url`**: body 就是 URL 本身, 取信会话收到直接在本设备打开, 省掉查询回话一轮. 与 request 的区别: request = "帮我查并办" (网址未知), open_url = "网址在这, 直接开" (网址已知, 如回话已拿到). `to` 同样显式填当前设备. 示例 (发送代码同上, 只换 envelope):
+
+```python
+envelope = {"id": uuid.uuid4().hex, "ts": time.time(),
+            "from": os.environ["SWT_CONTAINER_NAME"], "to": "<当前设备名>",
+            "type": "open_url", "body": "http://<已确认地址>:<web-port>/<页面路径>"}
+```
+
+**降级路径**: 信箱未运行时没有自动沟通与代开, 我仍可点 host 交付包里的 web 双 URL (本机 + 局域网) 访问已就绪页面; 交付与汇报只写 "可点击链接", 不写成已自动打开. birth 只交付入口, 不因容器出生自动打开页面.
+
+**本节不新增的东西**: 无 URL 查询端点, 无给容器挂载的 URL 文件, 无回程队列 (回话走既有 ssh/herdr); 双设备同时取信 + 换电脑的真机验证归 M09.
+
 ## 网络控制 / 容器命令 / 救场
 
 手救场 (防火墙/daemon/config), 换/加容器 provider, 或需要容器操作原生命令时 → reference/ops.md; 脚本原生报错看不懂时 → reference/errors.md (译解表).

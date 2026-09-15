@@ -32,7 +32,7 @@
 - [x] ISSUE-05: present 容器分支钉 8800 + 锁端口
   - 范围: web_server.py start 增 `--fixed-port` (锁定态持久化, status 重建遇锁定实例端口被占 → 报错不换端口, UD-05); general/present/SKILL.md 容器分支钉 `start 8800 <root> --bind 0.0.0.0 --fixed-port`, 多页复用 add-dir 单实例; 非锁定用法行为不变.
   - 依据: D001/D002/F002. 接缝: present 公开命令 + HTTP 行为 (锁定重建报错/复用 add-dir/bind 冲突).
-- [ ] ISSUE-06: 信箱查网址/回话/代开指引 + 当前设备 (文档级)
+- [x] ISSUE-06: 信箱查网址/回话/代开指引 + 当前设备 (文档级)
   - 范围: use-sandbox-worktree/SKILL.md 信箱章节增补: 当前设备确定流程 (UD-06); 展示信件 `to` 显式填当前设备, body 必带容器名+宿主定位+原会话标识; 设备侧配方 (收信 → ssh/herdr 查 STATE/podman port → 回话原会话 → xdg-open 一次); open_url 用法示例; 信箱未运行时交付包链接降级路径 (D007); 不以缺省轮询路由冒充当前设备 (F007).
   - 依据: D005/D006/D007/D012/F005. 无代码接缝; 真链验证归 M09 (TC-004).
 - [ ] ISSUE-07: use-sandbox-worktree SKILL.md 修正与分发说明
