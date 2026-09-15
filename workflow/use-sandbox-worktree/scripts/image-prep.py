@@ -273,7 +273,11 @@ RUN mkdir -p /home/bolo/.codex \\
 # F012: ssh 非交互 shell 的 PATH 须含 ~/.local/bin (herdr remote 把 binary
 # 装到 ~/.local/bin 后, 远端 shell 要能解析). sshd 对每个会话重设 PATH 为
 # 编译缺省, 镜像 ENV PATH 不生效, 必须烘进 sshd_config SetEnv.
-RUN printf 'SetEnv PATH=/home/bolo/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin\\n' >> /etc/ssh/sshd_config
+# M08 D004/UD-03: 同一 SetEnv 行合并 XDG_RUNTIME_DIR (固定常量 1001, 与
+# entrypoint 同源, UD-04 不走 ~/.ssh/environment); StreamLocalBindUnlink
+# 治理残留 socket (如 pulse-b.sock), 不加 waypipe 残尸清理 (UD-12).
+RUN printf 'SetEnv PATH=/home/bolo/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin XDG_RUNTIME_DIR=/tmp/xdg-1001\\n' >> /etc/ssh/sshd_config \
+    && printf 'StreamLocalBindUnlink yes\\n' >> /etc/ssh/sshd_config
 
 # 常变层: skill 库全量 COPY (D014/D018); ~/.pi/agent 机械复制 (D018/D023);
 # auth.json/sessions 不进镜像 (D018); AGENTS.md 不进镜像 (P1-6 母本制, birth 只读挂载);
@@ -290,7 +294,11 @@ RUN for p in $(find /home/bolo/.agents/skills -name pyproject.toml 2>/dev/null);
 # 容器内端口固定 (22 ssh / 8800 present / 6080 noVNC); 宿主端口不钉, 诞生时 -p <容器端口> 动态分配
 EXPOSE 22 8800 6080
 
-CMD ["/usr/sbin/sshd", "-D", "-e"]
+# M08 D004: entrypoint 先以 bolo 属主 0700 建 XDG 运行时目录与 swt 信箱
+# 目录 (UD-03 固定常量 1001), 再 exec sshd; CMD 由 entrypoint 取代.
+RUN printf '#!/bin/sh\\ninstall -d -o bolo -g bolo -m 0700 /tmp/xdg-1001 /tmp/swt\\nexec /usr/sbin/sshd -D -e "$@"\\n' > /usr/local/bin/swt-entrypoint \
+    && chmod 755 /usr/local/bin/swt-entrypoint
+ENTRYPOINT ["/usr/local/bin/swt-entrypoint"]
 """
 
 

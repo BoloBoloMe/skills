@@ -6,6 +6,10 @@ x11vnc>=0.9 install="apt-get update && apt-get install --no-install-recommends -
 websockify>=0.10 install="apt-get update && apt-get install --no-install-recommends -y websockify" probe="dpkg-query -W -f='${Version}' websockify | cut -d: -f2-"
 novnc>=1.3 install="apt-get update && apt-get install --no-install-recommends -y novnc" probe="dpkg-query -W -f='${Version}' novnc | cut -d: -f2-"
 fonts-noto-cjk install="apt-get update && apt-get install --no-install-recommends -y fonts-noto-cjk" probe="dpkg-query -W -f='${Version}' fonts-noto-cjk | cut -d: -f2-"
+# M08 (N6): 窗口直飞 — 容器侧 waypipe 服务端 (apt 0.8.4, N5); libpulse0 供
+# chromium 走 /tmp/swt/pulse-b.sock 设备音频. 置于 chromium 条目前.
+waypipe>=0.8 install="apt-get update && apt-get install --no-install-recommends -y waypipe" probe="waypipe --version"
+libpulse0 install="apt-get update && apt-get install --no-install-recommends -y libpulse0" probe="dpkg-query -W -f='${Version}' libpulse0 | cut -d: -f2-"
 # chromium 归 playwright 管 (access-web 同源, 接缝补钉 5): 浏览器缓存落
 # /home/bolo/.cache, build RUN 以 root 跑, 装完 chown 回 bolo. chromium 安装期
 # 可能还在 /home/bolo/.local/share/pki 建 nssdb 与 /home/bolo/.config 建

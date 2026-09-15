@@ -155,6 +155,40 @@ class TestRequirementsParse(unittest.TestCase):
             self.m.parse_requirements('node>=20 bogus="x"\n')
 
 
+class TestDisplayRequirementsBrowser(unittest.TestCase):
+    """M08 ISSUE-02: display 层真实清单 (requirements-browser.md) 含
+    waypipe / libpulse0 条目, 位于 chromium 条目之前."""
+
+    @classmethod
+    def setUpClass(cls):
+        path = ROOT / "workflow/use-sandbox-worktree/image/requirements-browser.md"
+        cls.m = _load_module()
+        cls.entries = cls.m.parse_requirements(path.read_text(encoding="utf-8"))
+
+    def _entry(self, name: str):
+        found = [e for e in self.entries if e.name == name]
+        self.assertTrue(found, f"missing requirement entry: {name}")
+        return found[0]
+
+    def test_waypipe_entry(self):
+        entry = self._entry("waypipe")
+        self.assertIsNotNone(entry.install)
+        self.assertIn("apt-get", entry.install)
+        self.assertTrue(entry.probe, "probe must be non-empty")
+        self.assertEqual(entry.probe, "waypipe --version")
+
+    def test_libpulse0_entry(self):
+        entry = self._entry("libpulse0")
+        self.assertIsNotNone(entry.install)
+        self.assertIn("apt-get", entry.install)
+        self.assertTrue(entry.probe, "probe must be non-empty")
+
+    def test_waypipe_and_libpulse0_before_chromium(self):
+        names = [e.name for e in self.entries]
+        self.assertLess(names.index("waypipe"), names.index("chromium"))
+        self.assertLess(names.index("libpulse0"), names.index("chromium"))
+
+
 class TestBuildIdAndSlug(unittest.TestCase):
     def setUp(self):
         self.m = _load_module()
@@ -228,12 +262,33 @@ class TestGenerate(unittest.TestCase):
         self.assertIn("COPY --chown=bolo:bolo pi-agent/ /home/bolo/.pi/agent/", text)
         self.assertIn("/home/bolo/.codex/config.toml", text)
         self.assertIn("EXPOSE 22 8800 6080", text)
-        self.assertIn('CMD ["/usr/sbin/sshd", "-D", "-e"]', text)
+        self.assertIn('ENTRYPOINT ["/usr/local/bin/swt-entrypoint"]', text)
         self.assertIn("uv sync", text)
-        # F012: ssh 非交互 shell 的 PATH 烘配在 sshd_config SetEnv (sshd 重设会话 PATH,
-        # 镜像 ENV 不生效)
-        self.assertIn("RUN printf 'SetEnv PATH=/home/bolo/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin", text)
+        # F012 + M08 UD-03: ssh 非交互 shell 的 PATH 与 XDG_RUNTIME_DIR 烘配在
+        # sshd_config SetEnv 单行 (sshd 重设会话 PATH, 镜像 ENV 不生效)
+        self.assertIn(
+            "RUN printf 'SetEnv PATH=/home/bolo/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin XDG_RUNTIME_DIR=/tmp/xdg-1001\\n' >> /etc/ssh/sshd_config",
+            text,
+        )
         self.assertIn("sshd_config", text)
+
+    def test_base_containerfile_sshd_streamlocal_and_entrypoint(self):
+        """M08 D004: StreamLocalBindUnlink 行 + entrypoint 先建目录再 exec sshd."""
+        text = self.m.generate_base_containerfile()
+        # D004: 脉冲 socket 残渣由 StreamLocalBindUnlink 治理
+        self.assertIn("printf 'StreamLocalBindUnlink yes\\n' >> /etc/ssh/sshd_config", text)
+        # UD-03: XDG_RUNTIME_DIR 固定常量 /tmp/xdg-1001, 与 entrypoint 同源
+        self.assertIn("XDG_RUNTIME_DIR=/tmp/xdg-1001", text)
+        # UD-12: 不加 waypipe 残尸清理
+        self.assertNotIn("waypipe-server", text)
+        # entrypoint: install -d bolo 0700 建 /tmp/xdg-1001 与 /tmp/swt 后 exec sshd
+        self.assertIn("/usr/local/bin/swt-entrypoint", text)
+        self.assertIn(
+            "install -d -o bolo -g bolo -m 0700 /tmp/xdg-1001 /tmp/swt",
+            text,
+        )
+        self.assertIn('exec /usr/sbin/sshd -D -e "$@"', text)
+        self.assertIn('ENTRYPOINT ["/usr/local/bin/swt-entrypoint"]', text)
     def test_base_containerfile_fat_layering(self):
         """Stable layers before volatile copies (D014 fat principle)."""
         text = self.m.generate_base_containerfile()
