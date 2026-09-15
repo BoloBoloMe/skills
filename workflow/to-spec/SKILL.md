@@ -6,10 +6,8 @@ disable-model-invocation: true
 
 开始前, 调用 `domain-awareness` skill 只读感知当前工作目录的领域模型.
 
-目标: 编写当前变更的两份 spec: 产品写 `PRODUCT.md`, 技术写 `TECHNICAL.md`.
-spec 是下游执行的权威输入, 缺一份执行链就缺信源. ID 在 feature 内稳定且连续. 
-输出为 `<产物根目录>/PRODUCT.md` 与 `<产物根目录>/TECHNICAL.md`;
-产物根目录默认 `docs/changes/<feature-slug>/`, 调用方可指定其他根目录.
+目标: 编写当前变更的两份 spec: 产品写 `PRODUCT.md`, 技术写 `TECHNICAL.md`. spec 是下游执行的权威输入, 缺一份执行链就缺信源. ID 在 feature 内稳定且连续.
+输出为 `<产物根目录>/PRODUCT.md` 与 `<产物根目录>/TECHNICAL.md`; 产物根目录默认 `docs/changes/<feature-slug>/`, 调用方可指定其他根目录.
 
 写作前, 逐项检查已确认决策与事实是否已包含编写 spec 所需的全部内容. 标准是: 仅通过转述已定决策和事实便可将 spec 中的每一项内容都填出来, 填不出就是有缺口.
 存在缺口或冲突 → 调用 `deliberate` skill 敲定并固化, 把下方缺口盘问要求作为盘问重点传达; deliberate 固化产物后, 以更新后的决策与事实继续.
@@ -20,7 +18,7 @@ spec 是下游执行的权威输入, 缺一份执行链就缺信源. ID 在 feat
 
 # Product Spec: PRODUCT.md
 
-使用下方模板写 `PRODUCT.md`. 书写 `验收标准` 节前, 必读同目录 `GHERKIN.md` (语法子集/标签约定/书写纪律).
+使用下方模板写 `PRODUCT.md`. 书写 `验收标准` 节前, 必读同目录 `GHERKIN.md`.
 
 ````markdown
 # <变更标题> Product Spec
@@ -72,14 +70,11 @@ eg:
 
 # Technical Spec: TECHNICAL.md
 
-使用下方模板写 `TECHNICAL.md`. 节名是下游引用的稳定锚, 逐字固定; 标注 (条件保留) 的节不满足保留条件时整节省略, 满足时落盘标题不写该标注.
+使用下方模板写 `TECHNICAL.md`. 写 `架构与组件` 前调用 `codebase-design` skill, 设计必须符合其 深模块 要求; 检查已定决策是否满足, 不满足时视为缺口, 调用 `deliberate` skill 修订决策后再写.
+节名是下游引用的稳定锚, 逐字固定; 标注 (条件保留) 的节不满足保留条件时整节省略, 满足时落盘标题不写该标注.
 
 ````markdown
 # <变更标题> Technical Spec
-
-## 技术目标
-
-一句话锚定支撑哪个产品结果 (引用 G 编号), 可验证, 不展开产品行为.
 
 ## 架构与组件
 
@@ -122,7 +117,6 @@ eg:
 ## 决策引用
 
 - <账本路径>: D001, D002. 多账本时每份账本一行. 无则写"无".
-
 ````
 
 完成 TECHNICAL.md 后, 执行本 skill 同目录的 check-tech.py (`uv run <skill 目录>/check-tech.py <TECHNICAL.md 路径>`), 退出码 0; 节名与节序校验一律以脚本结果为准, 禁止目检替代脚本.

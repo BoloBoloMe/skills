@@ -28,6 +28,7 @@ disable-model-invocation: true
 - rootless podman (pasta 网络), nftables, git (须支持配置里 "隐藏所有分支、只放行一个" 的 `hideRefs` 写法; birth 每次会建一次性小仓库实测确认, 不支持则 exit 4).
 - `uv run python` 运行全部脚本; 脚本路径相对本 skill 目录引用.
 - 记录根缺省 `~/.agents/sandbox-worktree/` (运行状态/决策收据/审计/镜像构建记录同屋), 全部脚本支持 `--records-root` 覆盖.
+- host skill 库 `~/.agents/skills/` 全树全局可读 (容器 bolo 经 rootless uid 映射只靠 other 位读它); 带依赖的 skill 项目须携带已部署的 uv.lock.
 
 ## 入口: status 先行
 
@@ -78,7 +79,7 @@ uv run python scripts/swt.py birth [--repo <主仓>] --branch <母体分支名�
   - 密码: 固定 `sandbox` (用户拍板, 风险见 reference/risks.md), `<容器名>.password` 留档; 人登录用.
   - 密钥: `<容器名>.ed25519` (`ssh -i <私钥> ...`), 脚本/herdr 的 BatchMode 走它.
 - herdr remote (走 ssh, 容器无需预启 server, remote attach 按需拉起): 两条完整可直接复制的命令 — 我在本机用 `herdr --remote ssh://bolo@127.0.0.1:<宿主端口>`, 我在局域网远程机上用 `herdr --remote ssh://bolo@<host-LAN-IP>:<宿主端口>`. 我会在本机和远程机之间来回切换; 远程机上 ssh 用的私钥需先从 host 拷贝 (路径见上), 或直接用密码. 该命令须在非 herdr 终端运行 (herdr 会话内被套娃禁用拦截); 已在 herdr 里则走开窗格配方 (存续节).
-- 容器内路径契约: 用户 `bolo` (home 与 host 字面相同), 代码固定克隆在 `/home/bolo/Workspace/<分支名>` (当前分支 = 母体分支); skill 库在 `~/.agents/skills/`, pi 配置在 `~/.pi/agent/`.
+- 容器内路径契约: 用户 `bolo` (home 与 host 字面相同), 代码固定克隆在 `/home/bolo/Workspace/<分支名>` (当前分支 = 母体分支); skill 库在 `~/.agents/skills/` (运行期从 host 同路径只读挂载, 实时跟随 host 版本; 项目 `.venv` 是镜像播种的可写匿名卷), pi 配置在 `~/.pi/agent/`.
 - 风险声明: 连同 reference/risks.md 的风险项一起声明.
 完成标准: STATE `stage=born`, 容器内检出分支 = 母体分支, 交付包齐发 (显示栈降级/缺席时相应项改为降级/常态说明, 其余照发).
 
@@ -158,9 +159,9 @@ uv run python scripts/image-prep.py match      --repo <主仓> [--requirements <
 uv run python scripts/image-prep.py build      --repo <主仓> [--requirements <file>]
 ```
 
-- 三层结构: **base 层** (OS+git+sshd+node+pi CLI+uv+fd+rg+python3+herdr+socat (git 桥双端)+iproute2 (容器内排障) + skill 库全量 COPY + `~/.pi/agent` 复制 (排除 auth.json/sessions/AGENTS.md — AGENTS.md 走母本制, 见下节), sshd_config SetEnv 烘配非交互 PATH 含 `~/.local/bin`) 固定且跨项目共享; **display 层** FROM 当前 base (VNC 栈 + chromium + swt-vnc, 清单缺省 `image/requirements-browser.md`), 记录落 `<records-root>/display/builds/`; **项目层** FROM 当前 display, 由你读项目信号推导依赖件叠加, 清单与我确认后才构建.
+- 三层结构: **base 层** (OS+git+sshd+node+pi CLI+uv+fd+rg+python3+herdr+socat (git 桥双端)+iproute2 (容器内排障) + skill 库全量 COPY (运行期被 host 只读挂载遮蔽, 退化为兜底快照) + `~/.pi/agent` 复制 (排除 auth.json/sessions/AGENTS.md — AGENTS.md 走母本制, 见下节), sshd_config SetEnv 烘配非交互 PATH 含 `~/.local/bin`) 固定且跨项目共享; **display 层** FROM 当前 base (VNC 栈 + chromium + swt-vnc, 清单缺省 `image/requirements-browser.md`), 记录落 `<records-root>/display/builds/`; **项目层** FROM 当前 display, 由你读项目信号推导依赖件叠加, 清单与我确认后才构建.
 - 匹配谓词链: display 层自身须基于当前 base, 项目层须基于当前 display — base 更新后旧 display 自然淘汰, display 更新后旧项目镜像自然淘汰.
-- **base 与 display 都只在我明说时重建**, 无自动检测; display 缺失/过期时项目构建报 `NO-DISPLAY`/`DISPLAY-STALE`, 先 build-display 再 build.
+- **base 与 display 都只在我明说时重建**, 无自动检测; display 缺失/过期时项目构建报 `NO-DISPLAY`/`DISPLAY-STALE`, 先 build-display 再 build. skill 纯内容变更不需重建 base (挂载实时生效); pyproject/uv.lock 依赖变更需重建, 否则容器内 venv 种子与 lock 失配且无网重装.
 - 需求清单条目 = 名称 + 版本要求 (`>= <= > < ==` 或裸名称), 指令 `install=`/`probe=` (探测缺省 `<name> --version`); apt 条目必须写 `install=` (只写 probe 不装包).
 - image-prep 直用时 match/build 的 `--requirements` 为必填 (birth 内部会自动代填缺省路径 `<records-root>/<项目slug>/requirements.md`, 只有绕开 birth 手敲 image-prep 时才需显式给).
 - **推导规则: 项目层清单含 codex (或其他支持 env_key 的 llm CLI) 时, 必须附静态配置条目** — 以 codex 为例: `codex-config install="mkdir -p /home/bolo/.codex && echo <config.toml 的 base64> | base64 -d > /home/bolo/.codex/config.toml && chown -R bolo:bolo /home/bolo/.codex" probe="grep -c . /home/bolo/.codex/config.toml"`; 配置文件零秘密, 密钥走 `env_key` 指向 env.conf 继承的环境变量, 禁止把密钥写进清单/镜像/文件. 参照实现: `<records-root>/skills/requirements.md`.
