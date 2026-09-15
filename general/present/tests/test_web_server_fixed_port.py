@@ -296,5 +296,45 @@ class TestFixedPortReuseWarning(FixedPortTestCase):
         )
 
 
+class TestFixedPortMultiPageSingleInstance(FixedPortTestCase):
+    """TC-002 可自动化部分 (D001/D002): 钉端口形态下多页复用单实例 —
+
+    start --fixed-port 起首页, add-dir 挂第二页: 同一进程同一端口,
+    两页均经 HTTP 可访问, 不起第二个服务, 锁定态保持."""
+
+    def test_multi_page_reuse_on_fixed_port_single_instance(self):
+        root1 = self._make_root("root1", "a.txt", "aaa")
+        root2 = self._make_root("root2", "b.txt", "bbb")
+        port = self._free_port("127.0.0.1")
+
+        obj, code, proc = self._run_subprocess(
+            "start", str(port), str(root1), "--bind", "127.0.0.1", "--fixed-port"
+        )
+        self.assertEqual(code, 0, f"stdout={proc.stdout} stderr={proc.stderr}")
+        self.assertTrue(obj["success"])
+        sj = self._read_server_json()
+        pid = sj["pid"]
+        self._server_pids.append(pid)
+        self.assertTrue(sj.get("fixed_port"))
+
+        add_obj, code, proc = self._run_subprocess("add-dir", str(root2))
+        self.assertEqual(code, 0, f"stdout={proc.stdout} stderr={proc.stderr}")
+        self.assertTrue(add_obj["success"])
+
+        # 单实例复用: pid/端口不变, 锁定态保持, 未另起服务
+        sj2 = self._read_server_json()
+        self.assertEqual(sj2["pid"], pid)
+        self.assertEqual(sj2["port"], port)
+        self.assertTrue(sj2.get("fixed_port"))
+
+        # 两页经同一端口均可访问 (D002: 共用 present 服务和端口)
+        body, status = self._wait_for_url(f"http://127.0.0.1:{port}/a.txt")
+        self.assertEqual(status, 200)
+        self.assertEqual(body, "aaa")
+        body, status = self._wait_for_url(f"http://127.0.0.1:{port}/b.txt")
+        self.assertEqual(status, 200)
+        self.assertEqual(body, "bbb")
+
+
 if __name__ == "__main__":
     unittest.main()

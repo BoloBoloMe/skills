@@ -38,7 +38,7 @@
 - [x] ISSUE-07: use-sandbox-worktree SKILL.md 修正与分发说明
   - 范围: 修正与 D003 冲突的多容器说法 (L10/L66/L101/L122/L131 段); 交付包定义加 web 双 URL (L15 段); 8800 发布说明 (L97 段, 0.0.0.0 动态, 与 6080 回环对照); 展示链段更新 (L95 段); 分发说明 (D013: swt/SKILL 经 sync-to-pi 到 host 即效, present 改动需 base 重建级联, UD-08).
   - 依据: D001/D003/D013. 文档 ISSUE.
-- [ ] ISSUE-08: e2e 门禁测试
+- [x] ISSUE-08: e2e 门禁测试
   - 范围: tests/test_swt_web_access.py (UD-07): 覆盖 D011 可在本环境自动化部分 — ISSUE-01/02/03/04 全行为 + present 钉端口/复用; TC-001/TC-004 真机双机部分标注待 M09, 不记通过.
   - 依据: D011. 必过门禁.
 

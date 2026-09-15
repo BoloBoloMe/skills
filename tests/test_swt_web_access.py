@@ -1,11 +1,41 @@
-"""ISSUE-01: swt birth 发布容器 web 端口 8800 (D001/F001) + web-port 登记 (D003).
+"""M05 e2e 门禁测试 (UD-02: D011 六项完成标准即验收清单; UD-07 命名).
 
-接缝: 公开函数 create_and_start_container, fake `run` 替换 podman 边界,
-断言 podman create 参数含 `-p 8800` (宿主 0.0.0.0 动态, 与 `-p 22` 同款)
-且不绑回环地址; 持久化容器记录的 `web-port` 等于 `podman port <名> 8800`
-回读的宿主端口, 旧容器无 8800 映射时回读为 None 不报错.
-另覆盖 podman_container_state 的 status 重建条目 (D003 交付一致):
-有 8800 映射的容器条目 web-port 等于实际宿主端口, 无映射的旧容器为 None.
+本文件即 M05 网页访问的 e2e 门禁: 覆盖 D011 可在本环境 (sandbox, 无 podman)
+自动化的部分. 接缝 = swt CLI 可观察行为 (fake `run` 替换 podman 边界,
+tmpdir 当 records_root, 不依赖真 podman) 与交付输出文本; present 侧
+(钉 8800/多页复用单实例) 归 general/present/tests/test_web_server_fixed_port.py
+(真实 HTTP 回环). 真实 podman/真机路径不在本文件宣称通过.
+
+D011 TC 映射 (本文件类名 + present 测试文件):
+- TC-001 (交付链接在宿主/局域网另一台电脑看到实际页面):
+  可自动化部分 = 双 URL 交付文本 (TestWebDeliveryUrls/TestStatusWebUrls/
+  TestDeliveryCallSitesUseConfirmedAddress) + 8800 发布与 web-port 登记
+  (TestBirthPublishesWebPort/TestStatusRebuildsWebPort) + present 真实 HTTP
+  回环可达 (fixed_port 文件). 真机点击 (宿主浏览器/局域网另一台电脑打开)
+  待 M09 真机验收, 本文件不记通过.
+- TC-002 (连续多张展示页共用 present 服务与 8800, 不起重复服务):
+  可自动化部分归 fixed_port 文件 TestFixedPortMultiPageSingleInstance
+  (钉端口形态下 add-dir 复用单实例, 双页经同一端口 HTTP 可达, pid/端口不变)
+  + lifecycle 文件 TC-006/TC-013 (复用/add-dir 通用行为).
+- TC-003 (每次交付只含自身两条 URL, 不汇总/不串其他母体):
+  TestWebDeliveryUrls (print_delivery_lines 只收单容器参数, 结构性) +
+  TestStatusWebUrls.test_every_web_url_line_carries_own_container_name +
+  TestStatusWebUrls.test_status_web_lines_fed_from_repo_scoped_inventory +
+  TestStatusRebuildsWebPort.test_status_query_scoped_to_repo_label.
+  内容不指向其他项目 = 各容器独立动态宿主端口 (TestBirthPublishesWebPort 的
+  动态映射) + 上述按容器名/端口隔离的交付行.
+- TC-004 (信箱可用时两边 agent 自行沟通取址/回话, 在用户当前电脑代开一次):
+  依赖 M03 真实设备会话与信箱, 且按 D012 必须含双设备同时取信 + 用户换电脑
+  的验证条件 — 待 M09 真机验收, 本文件不记通过.
+- TC-005 (信箱未运行仍能点击事先交付的 URL):
+  可自动化部分 = 交付行由 birth/resume/status 直接输出, 不依赖信箱
+  (TestWebDeliveryUrls/TestStatusWebUrls/TestDeliveryCallSitesUseConfirmedAddress)
+  + present HTTP 回环可达 (fixed_port 文件). 真机点击随 TC-001 待 M09.
+- TC-006 (无法确定宿主地址时问用户, 不交付猜测地址):
+  TestConfirmedLanAddress + TestBirthLanAddressDecide +
+  TestLanIpFormatValidation +
+  TestWebDeliveryUrls.test_no_guessed_lan_url_when_address_unconfirmed +
+  TestDeliveryCallSitesUseConfirmedAddress.
 
 约定沿用 test_swt_birth_mailbox.py: importlib 按路径加载 swt.py,
 模块级 `m.run` 换成 scripted fake, tmpdir 当 records_root, 不依赖真 podman.
@@ -215,6 +245,28 @@ class TestStatusRebuildsWebPort(unittest.TestCase):
         entries = self._rebuild_entries(web_mapping=None)
         self.assertEqual(len(entries), 1)
         self.assertIsNone(entries[0]["web-port"])
+
+    def test_status_query_scoped_to_repo_label(self):
+        """TC-003 结构性守卫: status 的容器盘点经 podman label 过滤限定本 repo
+        (一宿主多母体各自独立), 其他母体/项目的容器不进盘点,
+        自然不会混入 web 交付行 (D003)."""
+        m = self.m
+        repo = self.root / "repo"
+        repo.mkdir(exist_ok=True)
+        runtime = {"schema": m.SCHEMA, "containers": [],
+                   "mother": {"branch": "feat-x", "dir": str(repo)}}
+        fake = _FakeStatusRun("swt-demo")
+        original_run = m.run
+        m.run = fake
+        try:
+            m.podman_container_state(repo, runtime, mother_tip="faketip")
+        finally:
+            m.run = original_run
+        ps_calls = [c for c in fake.calls if c[:2] == ["podman", "ps"]]
+        self.assertEqual(len(ps_calls), 1, f"预期一次 podman ps 盘点: {fake.calls}")
+        command = " ".join(ps_calls[0])
+        self.assertIn(f"label=sandbox-worktree.repo={repo}", command,
+                      f"盘点未按 repo label 过滤, 可能混入其他母体容器: {command}")
 
 
 class TestConfirmedLanAddress(unittest.TestCase):
@@ -488,6 +540,40 @@ class TestStatusWebUrls(unittest.TestCase):
         self.assertIn("print_status_web_lines(", segment)
         self.assertIn("read_confirmed_lan_address(records_root)", segment)
         self.assertNotIn("lan_ip()", segment)
+
+    def test_every_web_url_line_carries_own_container_name(self):
+        """TC-003 status 侧断言: 每个容器的 web 交付恰为自身两条 URL
+        (本机+局域网), 行内钉容器名, 无跨容器汇总/无名总览行;
+        各容器只出现自身的 web-port, 端口不串行 (D003)."""
+        entries = [
+            {"name": "swt-alpha", "web-port": 49155, "state": "running"},
+            {"name": "swt-beta", "web-port": 49160, "state": "running"},
+        ]
+        buffer = io.StringIO()
+        with redirect_stdout(buffer):
+            self.m.print_status_web_lines(entries, "192.168.1.10")
+        output = buffer.getvalue()
+        url_lines = [line for line in output.splitlines() if "http://" in line]
+        self.assertEqual(len(url_lines), 4, f"每容器恰两条 URL: {output}")
+        for line in url_lines:
+            self.assertRegex(line, r"^\[SWT\] web 入口 \(swt-(alpha|beta)\) ",
+                             f"存在不带容器名的 web URL 行 (汇总/总览): {line}")
+        alpha_lines = [line for line in url_lines if "(swt-alpha)" in line]
+        self.assertEqual(len(alpha_lines), 2)
+        for line in alpha_lines:
+            self.assertIn(":49155", line)
+            self.assertNotIn("49160", line, f"swt-alpha 的行串入 swt-beta 端口: {line}")
+
+    def test_status_web_lines_fed_from_repo_scoped_inventory(self):
+        """TC-003 结构性守卫: status 的 web 行数据源就是
+        podman_container_state(repo, runtime) 的 repo label 过滤盘点结果,
+        不另查全局容器, 其他母体容器无入口混入."""
+        source = SCRIPT.read_text(encoding="utf-8")
+        segment = source[source.index("def status("):]
+        inventory_at = segment.index("containers = podman_container_state(repo, runtime)")
+        lines_at = segment.index("print_status_web_lines(containers,")
+        self.assertLess(inventory_at, lines_at,
+                        "web 行必须直接消费 repo 过滤盘点, 不得另起数据源")
 
 
 class TestDeliveryCallSitesUseConfirmedAddress(unittest.TestCase):

@@ -302,14 +302,16 @@ def load_runtime(path: Path) -> dict[str, Any] | None:
     return data
 
 
-def atomic_write_json(path: Path, value: dict[str, Any]) -> None:
+def atomic_write_text(path: Path, content: str) -> None:
+    """原子写文本: 同目录临时文件 + replace, 杜绝半截文件."""
     path.parent.mkdir(parents=True, exist_ok=True)
     temporary = path.with_name(f".{path.name}.{os.getpid()}.tmp")
-    temporary.write_text(
-        json.dumps(value, ensure_ascii=False, indent=2) + "\n",
-        encoding="utf-8",
-    )
+    temporary.write_text(content, encoding="utf-8")
     os.replace(temporary, path)
+
+
+def atomic_write_json(path: Path, value: dict[str, Any]) -> None:
+    atomic_write_text(path, json.dumps(value, ensure_ascii=False, indent=2) + "\n")
 
 
 def expected_config(branch: str) -> dict[str, list[str]]:
@@ -461,12 +463,8 @@ def read_confirmed_lan_address(records_root: Path) -> str | None:
 
 
 def write_confirmed_lan_address(records_root: Path, address: str) -> None:
-    """写入已确认局域网地址 (纯文本一行), 原子写 (tmp + replace, 同 atomic_write_json)."""
-    path = confirmed_lan_address_path(records_root)
-    path.parent.mkdir(parents=True, exist_ok=True)
-    temporary = path.with_name(f".{path.name}.{os.getpid()}.tmp")
-    temporary.write_text(address + "\n", encoding="utf-8")
-    os.replace(temporary, path)
+    """写入已确认局域网地址 (纯文本一行), 原子写 (与 atomic_write_json 共用骨架)."""
+    atomic_write_text(confirmed_lan_address_path(records_root), address + "\n")
 
 
 def require_valid_lan_ip(address: str) -> str:
@@ -538,6 +536,14 @@ def configured_mother_branch(repo: Path) -> str | None:
     return None
 
 
+def podman_row_name(row: dict[str, Any]) -> str:
+    """podman ps 行的容器名: Names 列表取首项, 单名字符串剥前导 '/'; 无名返回 ''."""
+    names = row.get("Names") or row.get("Name") or []
+    if isinstance(names, list):
+        return names[0] if names else ""
+    return str(names).lstrip("/")
+
+
 def assert_single_active_mother(repo: Path, target_branch: str, runtime: dict[str, Any] | None) -> None:
     candidates: set[str] = set()
     configured = configured_mother_branch(repo)
@@ -588,11 +594,7 @@ def birth_active_container_conflict(
         row_branch = labels.get("sandbox-worktree.mother") or labels.get("sandbox-worktree.branch")
         if row_branch != branch:
             continue
-        names = row.get("Names") or row.get("Name") or []
-        if isinstance(names, list):
-            name = names[0] if names else ""
-        else:
-            name = str(names).lstrip("/")
+        name = podman_row_name(row)
         if name and str(name) not in retired_names:
             active.add(str(name))
     active.discard(new_name)
@@ -1014,14 +1016,28 @@ def container_route_gateway(detail: dict[str, Any]) -> str | None:
     return match.group(1) if match else None
 
 
+def _directed_port_query(name: str, container_port: str) -> tuple[subprocess.CompletedProcess, int | None]:
+    """定向 `podman port <名> <容器端口>` 查询 + 行尾端口解析.
+
+    定向查询输出无 '->' (形如 0.0.0.0:49155, 注意不能套全量输出的箭头解析),
+    逐行取行尾端口号, 首个可解析行即结果; 查询失败或全无可解析行时端口为 None."""
+    result = run(["podman", "port", name, container_port])
+    if result.returncode != 0:
+        return result, None
+    for line in result.stdout.splitlines():
+        _host_ip, _, host_port = line.strip().rpartition(":")
+        if host_port.isdigit():
+            return result, int(host_port)
+    return result, None
+
+
 def container_ssh_port(name: str) -> int:
-    result = run(["podman", "port", name, "22"])
+    result, port = _directed_port_query(name, "22")
     if result.returncode != 0:
         raise SwtError(3, "PARTIAL", f"podman port 失败: {result.stderr.strip()}")
-    match = re.search(r":(\d+)\s*$", result.stdout.strip(), re.MULTILINE)
-    if not match:
+    if port is None:
         raise SwtError(3, "PARTIAL", f"podman port 没有返回 22 端口: {result.stdout.strip()!r}")
-    return int(match.group(1))
+    return port
 
 
 def parse_podman_ports(stdout: str) -> dict[str, int]:
@@ -1048,36 +1064,15 @@ def parse_podman_ports(stdout: str) -> dict[str, int]:
 
 
 def container_vnc_port(name: str) -> int | None:
-    """容器 6080 (noVNC) 的宿主映射端口; 无映射返回 None (缺省镜像无显示栈也允许).
-
-    定向查询 `podman port <名> 6080` 输出无 '->' (形如 127.0.0.1:6080),
-    直接取行尾端口号; 注意不能套全量输出的箭头解析.
-    """
-    result = run(["podman", "port", name, "6080"])
-    if result.returncode != 0:
-        return None
-    ports = []
-    for line in result.stdout.splitlines():
-        _host_ip, _, host_port = line.strip().rpartition(":")
-        if host_port.isdigit():
-            ports.append(int(host_port))
-    return ports[0] if ports else None
+    """容器 6080 (noVNC) 的宿主映射端口; 无映射返回 None (缺省镜像无显示栈也允许)."""
+    _result, port = _directed_port_query(name, "6080")
+    return port
 
 
 def container_web_port(name: str) -> int | None:
-    """容器 8800 (web) 的宿主映射端口; 无映射返回 None (D009 前旧容器无 8800 发布).
-
-    与 container_vnc_port 同范式: 定向查询输出形如 0.0.0.0:49155, 取行尾端口号.
-    """
-    result = run(["podman", "port", name, "8800"])
-    if result.returncode != 0:
-        return None
-    ports = []
-    for line in result.stdout.splitlines():
-        _host_ip, _, host_port = line.strip().rpartition(":")
-        if host_port.isdigit():
-            ports.append(int(host_port))
-    return ports[0] if ports else None
+    """容器 8800 (web) 的宿主映射端口; 无映射返回 None (D009 前旧容器无 8800 发布)."""
+    _result, port = _directed_port_query(name, "8800")
+    return port
 
 
 DISPLAY_SCRIPT = Path(__file__).with_name("swt-display.py")
@@ -2547,11 +2542,7 @@ def podman_container_state(
     branch, _mother_dir = runtime_mother(runtime)
     mother_tip = mother_tip or ref_tip(repo, branch or "")
     for row in rows:
-        names = row.get("Names") or row.get("Name") or []
-        if isinstance(names, list):
-            name = names[0] if names else ""
-        else:
-            name = str(names).lstrip("/")
+        name = podman_row_name(row)
         if not name:
             continue
         inspected = podman_json(["podman", "inspect", name])
