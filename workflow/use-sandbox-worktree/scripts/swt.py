@@ -14,6 +14,7 @@ from __future__ import annotations
 import argparse
 import fcntl
 import hashlib
+import ipaddress
 import json
 import os
 import re
@@ -443,6 +444,64 @@ def lan_ip() -> str | None:
     result = run(["ip", "-o", "-4", "route", "get", "1.1.1.1"])
     match = re.search(r"src (\d+\.\d+\.\d+\.\d+)", result.stdout)
     return match.group(1) if match else None
+
+
+def confirmed_lan_address_path(records_root: Path) -> Path:
+    """已确认局域网地址持久文件 (D010/UD-03): host 级, 放 records_root 根级."""
+    return records_root / "lan-address"
+
+
+def read_confirmed_lan_address(records_root: Path) -> str | None:
+    """读取已确认局域网地址; 无持久文件或内容为空返回 None (无值, 不猜测)."""
+    path = confirmed_lan_address_path(records_root)
+    if not path.is_file():
+        return None
+    value = path.read_text(encoding="utf-8").strip()
+    return value or None
+
+
+def write_confirmed_lan_address(records_root: Path, address: str) -> None:
+    """写入已确认局域网地址 (纯文本一行), 原子写 (tmp + replace, 同 atomic_write_json)."""
+    path = confirmed_lan_address_path(records_root)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temporary = path.with_name(f".{path.name}.{os.getpid()}.tmp")
+    temporary.write_text(address + "\n", encoding="utf-8")
+    os.replace(temporary, path)
+
+
+def require_valid_lan_ip(address: str) -> str:
+    """--lan-ip 格式门禁 (仿 --hostname RFC1123 校验先例): 非法 IPv4 → PreconditionError."""
+    try:
+        ipaddress.IPv4Address(address)
+    except ipaddress.AddressValueError:
+        raise PreconditionError(f"--lan-ip 非法 (须为 IPv4 地址): {address}")
+    return address
+
+
+def lan_address_decision(
+    records_root: Path,
+    identity: str,
+    fingerprint: dict[str, Any],
+    lan_ip_arg: str | None,
+    stale: bool,
+) -> tuple[str, str, list[str]] | None:
+    """D010/UD-03: 无已确认地址且未给 --lan-ip → lan-address 待决 (DECIDE + exit 1).
+    走 decision_pending 收据闭环 (与其他 kind 同款): 指纹失配废票重问, 匹配即消费.
+    已确认值优先 (持久文件或本次 flag 均视为已答); lan_ip() 现算值仅作候选提示
+    (明确标注未确认, F006: 猜测不冒充可达), 不落确认值, 不作交付用址."""
+    answered = bool(lan_ip_arg) or read_confirmed_lan_address(records_root) is not None
+    if answered:
+        return decision_pending(
+            records_root, identity, "lan-address", fingerprint, True,
+            "", "网络/配置状态已变化, 请重新确认宿主局域网地址",
+            ["--lan-ip <addr>"], stale)
+    candidate = lan_ip()
+    hint = f"; 候选: {candidate} (候选, 未确认)" if candidate else ""
+    return decision_pending(
+        records_root, identity, "lan-address", fingerprint, False,
+        f"请确认宿主局域网地址 (交付局域网 URL 用址){hint}",
+        "网络/配置状态已变化, 请重新确认宿主局域网地址",
+        ["--lan-ip <addr>"], stale)
 
 
 def create_mother_worktree(repo: Path, branch: str, base: str | None = None) -> Path:
@@ -1945,6 +2004,10 @@ def birth_display_gate(
 
 def birth(args: argparse.Namespace, repo: Path) -> int:
     records_root = args.records_root.expanduser().resolve()
+    if args.lan_ip:
+        # D010/UD-03: 用户确认的局域网地址即持久化 (host 级), 之后读取优先用已确认值;
+        # 格式校验先于写入 (仿 --hostname 先例), 非法值不落盘
+        write_confirmed_lan_address(records_root, require_valid_lan_ip(args.lan_ip))
     if args.base and not any((args.mode, args.image, args.requirements, args.new_mother, args.reuse_mother)):
         raise PreconditionError("NOT-IMPLEMENTED birth")
     branch = resolve_mother_branch(repo, args.branch)
@@ -1977,7 +2040,7 @@ def birth(args: argparse.Namespace, repo: Path) -> int:
     pending: list[tuple[str, str, list[str]]] = []
 
     stale_receipts: dict[str, bool] = {}
-    for decision_kind in ("network-mode", "mother-reuse", "mother-create", "image-build", "hostname"):
+    for decision_kind in ("network-mode", "mother-reuse", "mother-create", "image-build", "hostname", "lan-address"):
         stale_receipts[decision_kind] = expire_receipts(records_root, identity, decision_kind, fingerprint)
 
     network_decision = decision_pending(
@@ -2019,6 +2082,13 @@ def birth(args: argparse.Namespace, repo: Path) -> int:
     )
     if hostname_decision:
         pending.append(hostname_decision)
+
+    # 局域网地址确认 (D010/UD-03): 顶部已把 --lan-ip 写入持久文件, 带 flag 重跑
+    # 先持久化再判定; 无已确认值才问; 收据闭环同其他 kind (失配重问/匹配消费)
+    lan_address = lan_address_decision(records_root, identity, fingerprint, args.lan_ip,
+                                       stale_receipts["lan-address"])
+    if lan_address:
+        pending.append(lan_address)
 
     if not args.image and image.get("verdict") == "BUILD-NEW":
         pending.append(("image-build", "没有满足需求的镜像, 请按 reason 构建后重跑并指定 --image", ["--image <ref>"]))
@@ -2229,6 +2299,8 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     subparsers.choices["birth"].add_argument("--new-mother", action="store_true")
     subparsers.choices["birth"].add_argument("--reuse-mother", action="store_true")
     subparsers.choices["birth"].add_argument("--hostname")
+    subparsers.choices["birth"].add_argument("--lan-ip", dest="lan_ip", metavar="IPV4",
+                                             help="确认宿主局域网地址 (D010), 持久化后交付优先用已确认值")
     subparsers.choices["resume"].add_argument("--name")
     subparsers.choices["resume"].add_argument("--confirm", action="store_true")
     subparsers.choices["terminate"].add_argument("--name")

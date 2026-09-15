@@ -214,5 +214,185 @@ class TestStatusRebuildsWebPort(unittest.TestCase):
         self.assertIsNone(entries[0]["web-port"])
 
 
+class TestConfirmedLanAddress(unittest.TestCase):
+    """ISSUE-02 切片: --lan-ip 确认值持久化与读取 (D010/UD-03).
+
+    持久文件 = <records_root>/lan-address (根级, host 级, 纯文本一行);
+    lan_ip() 现算值保持原样只作候选提示, 不作已确认值."""
+
+    def setUp(self):
+        self.m = _load_swt()
+        self.root = Path(mkdtemp(prefix="swt-lan-address-"))
+        self.addCleanup(rmtree, self.root, True)
+        self.records_root = self.root / "records"
+
+    def test_birth_lan_ip_flag_persists_confirmed_address(self):
+        """切片 1: birth 带 --lan-ip 时, 地址写入 records_root 根级持久文件."""
+        args = self.m.parse_args(["birth", "--records-root", str(self.records_root),
+                                  "--lan-ip", "192.168.1.10"])
+        self.assertEqual(args.lan_ip, "192.168.1.10")
+        # birth 主流程接缝守卫 (同 test_swt_birth_mailbox 约定): flag 消费接写持久化
+        source = SCRIPT.read_text(encoding="utf-8")
+        birth_segment = source[source.index("def birth("):]
+        self.assertIn("write_confirmed_lan_address(records_root, require_valid_lan_ip(args.lan_ip))", birth_segment)
+        # 写函数行为: 与 birth 内调用同款实参
+        self.m.write_confirmed_lan_address(self.records_root, args.lan_ip)
+        persisted = self.records_root / "lan-address"
+        self.assertTrue(persisted.is_file())
+        self.assertEqual(persisted.read_text(encoding="utf-8").strip(), "192.168.1.10")
+
+    def test_read_confirmed_address_returns_persisted_value(self):
+        """切片 2: 持久文件已有值时, 读取已确认地址返回该值 (不再需要 --lan-ip)."""
+        self.m.write_confirmed_lan_address(self.records_root, "192.168.1.10")
+        self.assertEqual(self.m.read_confirmed_lan_address(self.records_root), "192.168.1.10")
+
+    def test_read_confirmed_address_none_when_absent(self):
+        """切片 3: 持久文件不存在且未给 flag 时, 读取返回 None (无值, 不是猜测)."""
+        args = self.m.parse_args(["birth", "--records-root", str(self.records_root)])
+        self.assertIsNone(args.lan_ip)
+        self.assertIsNone(self.m.read_confirmed_lan_address(self.records_root))
+
+
+class TestBirthLanAddressDecide(unittest.TestCase):
+    """ISSUE-02 末切片: birth 无已确认地址且未给 --lan-ip → kind lan-address 的
+    DECIDE 行 + exit 1 (D010/UD-03); lan_ip() 现算值仅作候选提示 (标注未确认),
+    不落确认值; 已有确认值 (或带 flag) 时不再为该 kind 打 DECIDE.
+    收据闭环 (评审修复): 走 decision_pending 既有机制 — 指纹漂移废票重问,
+    答案匹配即消费旧收据, 不残留; "lan-address" 入 birth 的 stale 清理名单.
+
+    接缝: lan_address_decision 小函数单测 (真实 create_receipt/decision_line/
+    expire_receipts 走收据路径) + birth 主流程源码接缝守卫
+    (同 TestConfirmedLanAddress 与 test_swt_birth_mailbox.py:438 约定)."""
+
+    IDENTITY = "testid"
+    OPTIONS = ["--lan-ip <addr>"]
+
+    def setUp(self):
+        self.m = _load_swt()
+        self.root = Path(mkdtemp(prefix="swt-lan-decide-"))
+        self.addCleanup(rmtree, self.root, True)
+        self.records_root = self.root / "records"
+        original_lan_ip = self.m.lan_ip
+        self.m.lan_ip = lambda: "10.0.0.5"
+        self.addCleanup(setattr, self.m, "lan_ip", original_lan_ip)
+
+    def _decide(self, lan_ip_arg, fingerprint, stale=False):
+        return self.m.lan_address_decision(
+            self.records_root, self.IDENTITY, fingerprint, lan_ip_arg, stale)
+
+    def test_pending_decide_line_exit1_when_unconfirmed(self):
+        """切片 1: 无确认值且无 flag → lan-address 待决; DECIDE 行含候选提示
+        (明确标注未确认) 与 --lan-ip 选项; 候选不落确认文件; birth 接法 exit 1."""
+        fingerprint = {"repo": str(self.root / "repo"), "image-digest": "sha256:fake"}
+        decision = self._decide(None, fingerprint)
+        self.assertIsNotNone(decision)
+        kind, question, options = decision
+        self.assertEqual(kind, "lan-address")
+        # 候选提示在问题里, 且明确标注未确认 (F006: 猜测值不冒充确认值)
+        self.assertIn("10.0.0.5", question)
+        self.assertIn("未确认", question)
+        self.assertTrue(any("--lan-ip" in option for option in options))
+        # 候选只是提示: 确认文件仍为空 (未把候选当确认值交付)
+        self.assertIsNone(self.m.read_confirmed_lan_address(self.records_root))
+        # DECIDE 行走真实收据路径 (与 birth pending 汇总段同一对调用)
+        receipt = self.m.create_receipt(self.records_root, self.IDENTITY, kind,
+                                        fingerprint, options)
+        line = self.m.decision_line(receipt, kind, question, options)
+        self.assertTrue(line.startswith("DECIDE "), line)
+        self.assertIn(" lan-address ", line)
+        self.assertIn(question, line)
+        self.assertIn("--lan-ip", line)
+        # 接缝守卫: birth pending 段接入 lan-address 并过 decision_pending 闭环;
+        # flag 写入 (顶部) 在判定之前, 保证带 --lan-ip 重跑先持久化再判定;
+        # pending 块 exit 1 在任何容器创建之前 (DECIDE 一次列全, 不动资源)
+        source = SCRIPT.read_text(encoding="utf-8")
+        birth_segment = source[source.index("def birth("):]
+        write_at = birth_segment.index("write_confirmed_lan_address(records_root,")
+        decide_at = birth_segment.index("lan_address_decision(records_root, identity,")
+        pending_at = birth_segment.index("if pending:")
+        self.assertLess(write_at, decide_at)
+        self.assertLess(decide_at, pending_at)
+        self.assertIn("pending.append(lan_address)", birth_segment)
+        pending_return = birth_segment.index("return 1", pending_at)
+        create_at = birth_segment.index("container = create_and_start_container(")
+        self.assertLess(pending_return, create_at)
+        # "lan-address" 入 stale_receipts 清理名单 (与其他 kind 同一份名单)
+        loop_at = birth_segment.index("for decision_kind in (")
+        loop_line = birth_segment[loop_at:birth_segment.index("\n", loop_at)]
+        self.assertIn('"lan-address"', loop_line)
+
+    def test_no_decide_when_confirmed_address_exists(self):
+        """切片 2: 持久文件已有确认值 → 不打 lan-address DECIDE (D010 优先沿用);
+        候选算法根本不被调用 (确认值优先, 无需现算猜测)."""
+        self.m.write_confirmed_lan_address(self.records_root, "192.168.1.10")
+
+        def _explode():
+            raise AssertionError("已有确认值时不应再调用 lan_ip() 现算候选")
+
+        self.m.lan_ip = _explode
+        fingerprint = {"repo": "r", "image-digest": "d"}
+        self.assertIsNone(self._decide(None, fingerprint))
+        # 带 --lan-ip 时同样不待决 (顶部写入已消费)
+        self.assertIsNone(self._decide("192.168.1.11", fingerprint))
+
+    def test_fingerprint_drift_reasks_even_with_flag(self):
+        """收据闭环: DECIDE 开出后指纹漂移, 用户带 --lan-ip 重跑 →
+        废票重问 (drift), 不直接接受; 旧收据已被 expire 清除."""
+        f_before = {"repo": "r", "image-digest": "sha256:old"}
+        f_after = {"repo": "r", "image-digest": "sha256:new"}
+        # 首轮 DECIDE: birth pending 汇总段开收据 (绑定当时指纹)
+        receipt = self.m.create_receipt(self.records_root, self.IDENTITY,
+                                        "lan-address", f_before, self.OPTIONS)
+        self.assertTrue(receipt.is_file())
+        # 指纹漂移: birth stale 清理段 expire 旧票
+        stale = self.m.expire_receipts(self.records_root, self.IDENTITY,
+                                       "lan-address", f_after)
+        self.assertTrue(stale)
+        self.assertFalse(receipt.exists(), "失配旧收据应被废掉")
+        # 用户带 --lan-ip 重跑: 已答但票已废 → drift 重问, 不放行
+        decision = self._decide("192.168.1.10", f_after, stale=stale)
+        self.assertIsNotNone(decision, "指纹漂移后带 flag 重跑仍须重问, 不得直接接受")
+        kind, question, _ = decision
+        self.assertEqual(kind, "lan-address")
+        self.assertIn("重新确认", question)
+
+    def test_matching_answer_consumes_receipt(self):
+        """收据闭环: 指纹未变, 用户带 --lan-ip 重跑 → 不待决, 旧收据被消费不残留."""
+        fingerprint = {"repo": "r", "image-digest": "sha256:same"}
+        receipt = self.m.create_receipt(self.records_root, self.IDENTITY,
+                                        "lan-address", fingerprint, self.OPTIONS)
+        decision = self._decide("192.168.1.10", fingerprint, stale=False)
+        self.assertIsNone(decision)
+        self.assertFalse(receipt.exists(), "答案匹配后旧收据介绍消费, 不得残留")
+        self.assertEqual(self.m.receipt_files(self.records_root, self.IDENTITY,
+                                              "lan-address"), [])
+
+
+class TestLanIpFormatValidation(unittest.TestCase):
+    """评审修复: --lan-ip IPv4 格式校验 (仿 --hostname RFC1123 先例):
+    非法值 PreconditionError, 不持久化."""
+
+    def setUp(self):
+        self.m = _load_swt()
+        self.root = Path(mkdtemp(prefix="swt-lan-ip-validate-"))
+        self.addCleanup(rmtree, self.root, True)
+        self.records_root = self.root / "records"
+
+    def test_invalid_lan_ip_rejected_and_not_persisted(self):
+        for bad in ("not-an-ip", "999.1.2.3", "10.0.0", "1.2.3.4.5", ""):
+            with self.assertRaises(self.m.PreconditionError, msg=bad):
+                self.m.require_valid_lan_ip(bad)
+        # 校验先于写入 (birth 顶部写调用内嵌校验), 非法值不落持久文件
+        self.assertIsNone(self.m.read_confirmed_lan_address(self.records_root))
+        source = SCRIPT.read_text(encoding="utf-8")
+        birth_segment = source[source.index("def birth("):]
+        self.assertIn(
+            "write_confirmed_lan_address(records_root, require_valid_lan_ip(args.lan_ip))",
+            birth_segment)
+
+    def test_valid_lan_ip_passes(self):
+        self.assertEqual(self.m.require_valid_lan_ip("192.168.1.10"), "192.168.1.10")
+
+
 if __name__ == "__main__":
     unittest.main()

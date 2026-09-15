@@ -20,7 +20,7 @@
 - [x] ISSUE-01: swt birth 发布 8800 + STATE web-port 登记
   - 范围: `create_and_start_container` 加 `-p 8800` (宿主 0.0.0.0 动态, 与 `-p 22` 同款); 新增 web 端口回读 (仿 container_vnc_port, 无映射容错 None); `web-port` 登记三处: record 初始化 / refresh_container / podman_container_state (status 重建条目). 旧容器无映射时 web-port=None 不崩.
   - 依据: D001/D003/F001. 接缝: fake-run 断言 create 参数含 `-p 8800` 且无回环绑定; `podman port <名> 8800` 回读入 record/STATE.
-- [ ] ISSUE-02: LAN 地址确认机制 (D010)
+- [x] ISSUE-02: LAN 地址确认机制 (D010)
   - 范围: `--lan-ip <ipv4>` flag; 已确认值持久化到 records_root 根级文件; birth 无已确认值且未给 flag → 决策收据新增 kind `lan-address`, DECIDE 行 exit 1 (候选 = lan_ip() 现算值仅作提示, 不交付); 确认后写入; 交付用址一律取已确认值 (UD-03).
   - 依据: D010/F006 + 旧图 M14 第 3 项移交 (顺带取代其猜测式选址). 接缝: swt CLI 行为 (DECIDE 行/flag 消费/持久化/指纹失配重问).
 - [ ] ISSUE-03: 双 URL 交付 (birth/resume/status)
