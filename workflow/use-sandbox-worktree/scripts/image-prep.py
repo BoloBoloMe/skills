@@ -301,7 +301,7 @@ EXPOSE 22 8800 6080
 
 # M08 D004: entrypoint 先以 bolo 属主 0700 建 XDG 运行时目录与 swt 信箱
 # 目录 (UD-03 固定常量 1001), 再 exec sshd; CMD 由 entrypoint 取代.
-RUN printf '#!/bin/sh\\ninstall -d -o bolo -g bolo -m 0700 /tmp/xdg-1001 /tmp/swt\\nexec /usr/sbin/sshd -D -e "$@"\\n' > /usr/local/bin/swt-entrypoint \
+RUN printf '#!/bin/sh\\ninstall -d -o bolo -g bolo -m 0700 /tmp/xdg-1001 /tmp/swt\\nif [ "$#" -gt 0 ]; then exec "$@"; fi\\nexec /usr/sbin/sshd -D -e\\n' > /usr/local/bin/swt-entrypoint \
     && chmod 755 /usr/local/bin/swt-entrypoint
 ENTRYPOINT ["/usr/local/bin/swt-entrypoint"]
 """

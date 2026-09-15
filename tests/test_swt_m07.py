@@ -281,13 +281,15 @@ class TestGenerate(unittest.TestCase):
         self.assertIn("XDG_RUNTIME_DIR=/tmp/xdg-1001", text)
         # UD-12: 不加 waypipe 残尸清理
         self.assertNotIn("waypipe-server", text)
-        # entrypoint: install -d bolo 0700 建 /tmp/xdg-1001 与 /tmp/swt 后 exec sshd
+        # entrypoint: install -d bolo 0700 建 /tmp/xdg-1001 与 /tmp/swt 后;
+        # M09: 有参透传 exec "$@" (调试/probe 可跑), 无参才 exec sshd
         self.assertIn("/usr/local/bin/swt-entrypoint", text)
         self.assertIn(
             "install -d -o bolo -g bolo -m 0700 /tmp/xdg-1001 /tmp/swt",
             text,
         )
-        self.assertIn('exec /usr/sbin/sshd -D -e "$@"', text)
+        self.assertIn('if [ "$#" -gt 0 ]; then exec "$@"; fi', text)
+        self.assertIn("exec /usr/sbin/sshd -D -e", text)
         self.assertIn('ENTRYPOINT ["/usr/local/bin/swt-entrypoint"]', text)
     def test_base_containerfile_fat_layering(self):
         """Stable layers before volatile copies (D014 fat principle)."""
