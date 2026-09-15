@@ -1,6 +1,10 @@
-# 状态: 进行中
+# 状态: 已关闭
 # 类型: task
 # 阻塞于: 无 (M03/M04 均已关闭)
+
+## 关闭摘要 (2026-09-15)
+
+8 ISSUE 全部收口, 82 项契约测试全绿 ([EXECUTION](../milestone-05/EXECUTION.md), 13 条 UD [账本](../milestone-05/UNAUTHORIZED_DECISIONS.md)): birth 发布 8800 + STATE web-port; `--lan-ip` 已确认地址机制 (DECIDE kind lan-address 入收据闭环); birth/resume/status 双 URL 交付 (只列自身, 未确认地址打未附发提示, status 只对 running 附行); 一母体一活跃容器 (活跃=非 retired); present `--fixed-port` 锁端口 + 容器分支钉 8800; SKILL.md 展示沟通指引 (当前设备/宿主定位/降级) 与新规则对齐 + 分发与生效节. 待验收 (不记通过): TC-001/TC-004 真机双机归 M09; present 规则入容器需 host 侧 sync-to-pi + base 重建 (UD-08, 与 M08/M09 协调).
 
 ## 问题
 

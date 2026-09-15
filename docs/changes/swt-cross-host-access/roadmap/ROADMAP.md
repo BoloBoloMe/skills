@@ -30,6 +30,7 @@ use-sandbox-worktree 的容器 GUI/内容无感访问能力完整固化进 skill
 - [MILESTONE-03](MILESTONE-03.md) — 信箱实施收口 (8 ISSUE, 213 测试全绿): swt-base-server.py 单体 (信箱+llm 中转, stdlib 零依赖) + 设备侧 pi 扩展/取信脚本 + birth 自动接线 + e2e 门禁 (D010 全覆盖) + SKILL.md 章节 + 驻留件; 评审驱动演进 14 条 UD ([账本](../milestone-03/UNAUTHORIZED_DECISIONS.md)), 含 post 响应用容器 key 签名/响应密钥每设备一份/ack 闭环/缺省路由过作用域; 指令集空集待 M08 填
 
 - [MILESTONE-04](MILESTONE-04.md) - 网页访问设计关闭 ([账本](../milestone-04/DECISIONS.md), ADR [0012](../../../adr/0012-container-web-direct-access.md)): 新容器 8800 直达 + present 单实例 + 自身双 URL; 一母体一个活跃容器, 现有容器不处理; 信箱询问设备 agent 查网址并回话/代开, 明确当前设备而非按轮询猜; 接受重建后重新分享 URL, LAN 地址不确定才问. 六项验收已确认, 实施归 M05, 真机验收归 M09.
+- [MILESTONE-05](MILESTONE-05.md) — 网页访问实施收口 (8 ISSUE, 82 契约测试全绿, 13 条 UD [账本](../milestone-05/UNAUTHORIZED_DECISIONS.md)): birth `-p 8800` (0.0.0.0 动态) + STATE web-port; `--lan-ip` 已确认地址 (DECIDE kind lan-address 入收据闭环, 不猜首个网卡); birth/resume/status 双 URL (只列自身/未确认打未附发行/status 只对 running 附行); 一母体一活跃容器 (birth 拒绝, 活跃=非 retired); present `--fixed-port` 锁端口 + 容器分支钉 8800; SKILL.md 展示沟通指引 (当前设备/宿主定位/open_url/降级) + 分发与生效节. 待验收: TC-001/TC-004 真机归 M09; present 规则入容器须 host sync-to-pi + base 重建 (UD-08)
 - [MILESTONE-06](MILESTONE-06.md) — 窗口直飞设计关闭 ([账本](../milestone-06/DECISIONS.md), ADR [0013](../../../adr/0013-waypipe-trigger-via-mailbox-zero-param-exec.md)): 触发走信箱 exec 零参数指令 (幂等+限频, 删 URL 参数防注入), (c3) 常驻隧道仅文档备选; 音频同条 ssh -R unix 为主/独立 -R 为备/TCP 救场, 排序挂 M07 必测; 启动脚本母本制 (birth 解析 chromium 路径, records-root 留档, 只读挂载) + preflight 管机械判定; base 层三项 (SetEnv 合并单行/目录保障/StreamLocalBindUnlink yes) 搭车 D017 级联; STATE 不动; 三态选路默认投信, ack 后轮询容器内会话 socket 判活, 超时落 noVNC; B 端前提文档声明+设备侧执行前自动检查本地通知. 反方攻击 6 条 5 采纳 (堵 ack 静默黑洞, 白名单零参数加严). 双机实测归 M07, 实施归 M08.
 
 ## 前沿
@@ -39,7 +40,7 @@ use-sandbox-worktree 的容器 GUI/内容无感访问能力完整固化进 skill
 
 ## 进行中
 
-- [MILESTONE-05](MILESTONE-05.md) — 网页访问实施 (另一会话)
+- (空)
 
 ## 未决迷雾
 
@@ -67,9 +68,9 @@ M01(信箱盘问)✅ ──→ M02(信箱原型)✅ ──→ M03(信箱实施)�
                                                                 ├─→ M08(直飞实施) ──┐
 M06(直飞盘问)✅ ──→ M07(双机实测) ────────────────────────────────┘                  │
                                                                                    ├─→ M09(真机验收) ──→ 目的地
-M04(网页盘问)✅ ──→ M05(网页实施, 进行中) -------------------------------------------┘
+M04(网页盘问)✅ ──→ M05(网页实施)✅ --------------------------------------------------┘
 ```
 
-- 前沿: M07 (M06 关闭后解除阻塞); M05 进行中 (另一会话), 与 M07 互不阻塞; M08 仍被 M07 阻塞 (M03 侧已通)
-- M05 网页直达不依赖信箱运行, 自动查网址/回话/代开复用已交付的 M03 能力; M09 验证实际双机路径
-- M05 不再保证无镜像更新: 修改的规则必须实际进入新容器, 如涉及镜像更新则与 M08/M09 协调; 现有容器仍不处理
+- 前沿: M07 (M06 关闭后解除阻塞); M08 仍被 M07 阻塞 (M03 侧已通)
+- M05 已关闭: 网页直达不依赖信箱运行, 自动查网址/回话/代开复用已交付的 M03 能力; M09 验证实际双机路径
+- M05 遗留 host 侧待办 (UD-08): present 规则入容器须 sync-to-pi + base 重建 (级联 D017), 与 M08 的 base 层三项 (M06 已定搭车 D017) 同批处理; 现有容器仍不处理
