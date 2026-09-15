@@ -958,6 +958,22 @@ def container_vnc_port(name: str) -> int | None:
     return ports[0] if ports else None
 
 
+def container_web_port(name: str) -> int | None:
+    """容器 8800 (web) 的宿主映射端口; 无映射返回 None (D009 前旧容器无 8800 发布).
+
+    与 container_vnc_port 同范式: 定向查询输出形如 0.0.0.0:49155, 取行尾端口号.
+    """
+    result = run(["podman", "port", name, "8800"])
+    if result.returncode != 0:
+        return None
+    ports = []
+    for line in result.stdout.splitlines():
+        _host_ip, _, host_port = line.strip().rpartition(":")
+        if host_port.isdigit():
+            ports.append(int(host_port))
+    return ports[0] if ports else None
+
+
 DISPLAY_SCRIPT = Path(__file__).with_name("swt-display.py")
 SWT_VNC_PATH = "/usr/local/bin/swt-vnc"
 
@@ -1491,8 +1507,9 @@ def refresh_container(
             raise SwtError(3, "PARTIAL", f"PARTIAL container-start {name}; 请释放占用端口后重跑 birth: {started.stderr.strip()}")
     port = container_ssh_port(name)
     vnc_port = container_vnc_port(name)
+    web_port = container_web_port(name)
     detail = inspect_container(name)
-    record.update({"podman-id": detail.get("Id"), "state": "running", "ssh-port": port, "vnc-port": vnc_port})
+    record.update({"podman-id": detail.get("Id"), "state": "running", "ssh-port": port, "vnc-port": vnc_port, "web-port": web_port})
     runtime["stage"] = "container-started"
     upsert_container_record(runtime, record, runtime_file)
     return {"name": name, "port": port, "record": record, "detail": detail}
@@ -1692,14 +1709,15 @@ def create_and_start_container(args: argparse.Namespace, repo: Path, image: dict
     prompts_dir = stage_agent_prompts(records_root, identity, name)
     for master_name, target in AGENT_PROMPT_MOUNTS:
         command.extend(["-v", f"{prompts_dir / master_name}:{target}:ro"])
-    command.extend(["-p", "22", str(image["ref"])])
+    # web 服务端口 (D001): 与 22 同款宿主 0.0.0.0 动态分配, 直达局域网, 禁止绑回环
+    command.extend(["-p", "22", "-p", "8800", str(image["ref"])])
     created = run(command)
     if created.returncode != 0:
         raise SwtError(3, "PARTIAL", f"容器 create 失败: {created.stderr.strip()}")
     detail = inspect_container(name)
     record = {
         "name": name, "branch": branch, "podman-id": detail.get("Id"), "state": "created",
-        "ssh-port": None, "vnc-port": None, "image-digest": image.get("digest"), "retired": False,
+        "ssh-port": None, "vnc-port": None, "web-port": None, "image-digest": image.get("digest"), "retired": False,
         "display": "pending", "dirty": {"uncommitted": None, "unpushed": None, "relation": None, "reachable": False},
         "host-display": "mounted" if wayland_socket is not None else "absent",
     }
@@ -2386,6 +2404,7 @@ def podman_container_state(
             mapped_ports = parse_podman_ports(port_result.stdout)
         ssh_port = mapped_ports.get("22")
         vnc_port = mapped_ports.get("6080")
+        web_port = mapped_ports.get("8800")
         retired_record = runtime_container(runtime, name, podman_id)
         dirty: dict[str, Any] = {
             "uncommitted": None,
@@ -2412,6 +2431,7 @@ def podman_container_state(
                 "state": state.get("Status") or row.get("State") or row.get("Status"),
                 "ssh-port": ssh_port,
                 "vnc-port": vnc_port or retired_record.get("vnc-port"),
+                "web-port": web_port or retired_record.get("web-port"),
                 "display": retired_record.get("display"),
                 "network-ip": network_ip,
                 "image-digest": image_digest,

@@ -11,13 +11,13 @@
 - swt 测试沿用 test_swt_birth_mailbox.py 约定: importlib 加载 swt.py, fake `run` 替换 podman 边界, tmpdir 当 records_root, 不依赖 podman.
 - present 测试沿用 general/present/tests 既有约定 (真实 HTTP 回环).
 - 服务端/swt 零新增第三方依赖, Python 标准库.
-- 测试命令 `uv run pytest tests/...`; 本环境 (sandbox) 无 podman, 需真 podman 的路径不宣称通过, 留 M09.
+- 测试命令 `uv run --with pytest python -m pytest tests/...` (本环境无 pytest 可执行, `--with` 临时供给); 本环境 (sandbox) 无 podman, 需真 podman 的路径不宣称通过, 留 M09.
 - 镜像重建/分发超出本环境能力: 交付仓库改动 + 分发步骤文档, 实际重建留 host/M09 (UD-08).
 - 提交粒度: 每 ISSUE 一次 `feat: ISSUE-<NN>: <描述>` (文档类 ISSUE 用 `doc:`), 只 stage 本 ISSUE 文件; MILESTONE-06.md 为另一会话脏文件, 永不 stage.
 
 ## ISSUE 列表
 
-- [ ] ISSUE-01: swt birth 发布 8800 + STATE web-port 登记
+- [x] ISSUE-01: swt birth 发布 8800 + STATE web-port 登记
   - 范围: `create_and_start_container` 加 `-p 8800` (宿主 0.0.0.0 动态, 与 `-p 22` 同款); 新增 web 端口回读 (仿 container_vnc_port, 无映射容错 None); `web-port` 登记三处: record 初始化 / refresh_container / podman_container_state (status 重建条目). 旧容器无映射时 web-port=None 不崩.
   - 依据: D001/D003/F001. 接缝: fake-run 断言 create 参数含 `-p 8800` 且无回环绑定; `podman port <名> 8800` 回读入 record/STATE.
 - [ ] ISSUE-02: LAN 地址确认机制 (D010)
