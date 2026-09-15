@@ -1,7 +1,8 @@
 """present web server helper.
 
 CLI commands:
-  start  <port> <root> --bind <addr>  - Start / reuse daemonized web server
+  start  <port> <root> --bind <addr> [--fixed-port]
+                                     - Start / reuse daemonized web server
   status                             - Check server alive status
   stop                               - Stop server and remove runtime files
   add-dir <dir>                      - Mount a directory via control endpoint
@@ -88,15 +89,20 @@ def _lock_runtime(runtime_dir):
 # ---------------------------------------------------------------------------
 
 def _parse_start(argv):
-    """Parse start argv. Return (port, root, bind) or None if malformed."""
-    if len(argv) != 4:
+    """Parse start argv. Return (port, root, bind, fixed_port) or None if malformed."""
+    if len(argv) not in (4, 5):
         return None
-    port, root, dash, bind = argv
+    port, root, dash, bind = argv[:4]
+    fixed_port = False
+    if len(argv) == 5:
+        if argv[4] != "--fixed-port":
+            return None
+        fixed_port = True
     if dash != "--bind":
         return None
     if not port or not root or not bind:
         return None
-    return port, root, bind
+    return port, root, bind, fixed_port
 
 
 # ---------------------------------------------------------------------------
@@ -332,11 +338,12 @@ def _atomic_write_json(path, data):
     os.chmod(path, 0o600)
 
 
-def _spawn_serve(port, roots, bind):
+def _spawn_serve(port, roots, bind, fixed_port=False):
     """re-exec 自身以隐藏子命令 __serve__ 起子进程.
 
     roots 为挂载目录列表 (保序), 以 JSON 数组编码进 argv;
     冷启动传单元素列表, 与旧单 root 行为兼容.
+    fixed_port 为锁端口标志 (UD-05): 追加进 argv 由子进程持久化.
     """
     script_path = Path(__file__).resolve()
     cmd = [
@@ -347,6 +354,8 @@ def _spawn_serve(port, roots, bind):
         json.dumps(list(roots)),
         bind,
     ]
+    if fixed_port:
+        cmd.append("--fixed-port")
     env = os.environ.copy()
     return subprocess.Popen(
         cmd,
@@ -738,11 +747,12 @@ def _idle_ttl_seconds(runtime_dir):
 # Serve entry (child process only)
 # ---------------------------------------------------------------------------
 
-def _serve(port, roots, bind):
+def _serve(port, roots, bind, fixed_port=False):
     """子进程入口: 绑定端口, 写 server.json, 开 HTTP 服务.
 
     roots 为挂载目录绝对路径列表, 顺序即遮蔽优先级; 逐个 resolve 后
     完整保序写入 server.json, 作为 status 重建的权威清单.
+    fixed_port 为锁端口标志 (UD-05), 持久化进 server.json 供重建读取.
     """
     port = int(port)
     roots_resolved = [str(Path(r).resolve()) for r in roots]
@@ -777,6 +787,7 @@ def _serve(port, roots, bind):
         "bind": bind,
         "roots": roots_resolved,
         "started_at": started_at,
+        "fixed_port": bool(fixed_port),
     }
     _atomic_write_json(runtime_dir / "server.json", data)
 
@@ -813,7 +824,7 @@ def _serve(port, roots, bind):
 # Core commands
 # ---------------------------------------------------------------------------
 
-def run_start(port, root, bind):
+def run_start(port, root, bind, fixed_port=False):
     """Start or reuse the daemonized web server."""
     err = _validate_root(root, command="start")
     if err is not None:
@@ -875,6 +886,12 @@ def run_start(port, root, bind):
             ex_port = int(existing["port"])
             ex_bind = existing["bind"]
             warnings = []
+            if fixed_port and not existing.get("fixed_port", False):
+                # UD-13: 锁定仅冷启动持久化; 复用不升级锁, 不一致须有声.
+                warnings.append(
+                    "--fixed-port ignored on reuse: lock only takes effect on "
+                    "cold start; existing instance is not locked"
+                )
             if port_int != ex_port:
                 warnings.append(
                     f"requested port {port_int} differs from existing instance "
@@ -909,7 +926,7 @@ def run_start(port, root, bind):
             except Exception:
                 pass
 
-        child = _spawn_serve(port_int, [root_resolved], bind)
+        child = _spawn_serve(port_int, [root_resolved], bind, fixed_port)
         # R1: 就绪 ping 带 pid 指纹, 防端口竞态窗口内 ping 命中占用者误判就绪
         # (防御性加固, 正常路径行为不变).
         if not _wait_child_ready(child, bind, port_int, expected_pid=child.pid):
@@ -956,17 +973,20 @@ def _status_alive_payload(data, rebuilt):
     return _success("status", result)
 
 
-def _rebuild_spawn(runtime_dir, bind, old_port, roots):
+def _rebuild_spawn(runtime_dir, bind, old_port, roots, fixed_port=False):
     """按 roots 保序重 spawn 服务子进程.
 
     先试原端口; 被占 (预检或子进程绑定失败) 则 49152-65534 随机换端口
     重试 ≤10 次 (D005). 成功时子进程已写新 server.json, 读回并返回
     rebuilt 载荷; 全部失败返回 port_in_use / internal_error.
+    fixed_port (UD-05): 锁定实例只试原端口, 被占即报错, 不换端口.
     """
     json_path = runtime_dir / "server.json"
-    candidates = [old_port] + [
-        random.randint(49152, 65534) for _ in range(_REBUILD_RANDOM_ATTEMPTS)
-    ]
+    candidates = [old_port]
+    if not fixed_port:
+        candidates += [
+            random.randint(49152, 65534) for _ in range(_REBUILD_RANDOM_ATTEMPTS)
+        ]
     startup_err_path = _startup_error_path(runtime_dir)
     last_code, last_error = "internal_error", "no candidate port could bind"
     for port in candidates:
@@ -975,7 +995,7 @@ def _rebuild_spawn(runtime_dir, bind, old_port, roots):
                 startup_err_path.unlink()
             except Exception:
                 pass
-        child = _spawn_serve(port, roots, bind)
+        child = _spawn_serve(port, roots, bind, fixed_port)
         if _wait_child_ready(child, bind, port, expected_pid=child.pid):
             try:
                 new_data = json.loads(json_path.read_text(encoding="utf-8"))
@@ -1011,6 +1031,12 @@ def _rebuild_spawn(runtime_dir, bind, old_port, roots):
                 "status", "internal_error",
                 "rebuild failed: server did not become ready within timeout",
             )
+    if fixed_port:
+        return _err(
+            "status", "port_in_use",
+            f"rebuild failed: fixed port {old_port} is in use "
+            f"(--fixed-port); refusing to switch ports (last: {last_error})",
+        )
     return _err(
         "status", "port_in_use",
         f"rebuild failed: all candidate ports in use (last: {last_error})",
@@ -1059,7 +1085,10 @@ def _rebuild_status(runtime_dir, json_path):
                 "status", "internal_error",
                 "server.json has invalid port; cannot rebuild",
             )
-        return _rebuild_spawn(runtime_dir, bind, old_port, [str(r) for r in roots])
+        return _rebuild_spawn(
+            runtime_dir, bind, old_port, [str(r) for r in roots],
+            fixed_port=bool(data.get("fixed_port", False)),
+        )
     finally:
         if lock_fd is not None:
             fcntl.flock(lock_fd.fileno(), fcntl.LOCK_UN)
@@ -1235,9 +1264,9 @@ def main(argv=None):
 
     # 隐藏子命令: 子进程入口, 不输出 JSON
     if command == "__serve__":
-        if len(argv) != 4:
+        if len(argv) not in (4, 5) or (len(argv) == 5 and argv[4] != "--fixed-port"):
             sys.stderr.write(
-                "Usage: web_server.py __serve__ <port> <roots_json> <bind>\n"
+                "Usage: web_server.py __serve__ <port> <roots_json> <bind> [--fixed-port]\n"
             )
             sys.exit(1)
         try:
@@ -1248,11 +1277,11 @@ def main(argv=None):
                 raise ValueError("roots must be a JSON array of strings")
         except Exception:
             sys.stderr.write(
-                "Usage: web_server.py __serve__ <port> <roots_json> <bind>\n"
+                "Usage: web_server.py __serve__ <port> <roots_json> <bind> [--fixed-port]\n"
             )
             sys.exit(1)
         try:
-            _serve(argv[1], roots, argv[3])
+            _serve(argv[1], roots, argv[3], fixed_port=len(argv) == 5)
         except Exception as e:
             sys.stderr.write(f"serve failed: {e}\n")
             sys.exit(1)
@@ -1267,11 +1296,11 @@ def main(argv=None):
                 obj = _err(
                     "start",
                     "invalid_args",
-                    "Usage: web_server.py start <port> <root> --bind <addr>",
+                    "Usage: web_server.py start <port> <root> --bind <addr> [--fixed-port]",
                 )
             else:
-                port, root, bind = parsed
-                obj = run_start(port, root, bind)
+                port, root, bind, fixed_port = parsed
+                obj = run_start(port, root, bind, fixed_port)
         elif command == "status":
             obj = run_status()
         elif command == "stop":

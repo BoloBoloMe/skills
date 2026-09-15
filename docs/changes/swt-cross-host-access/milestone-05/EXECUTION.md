@@ -29,7 +29,7 @@
 - [x] ISSUE-04: 一母体一活跃容器 (D003)
   - 范围: birth 时同母体已有活跃容器 → 拒绝 (含 born 重入加新 --name 路径); 同名重入 (失败重试) 仍允许; 报错信息指引先 terminate 旧容器; 不追溯既有容器; resume/terminate/switch 的多容器兼容逻辑不动.
   - 依据: D003/F004. 接缝: birth 拒绝/放行行为.
-- [ ] ISSUE-05: present 容器分支钉 8800 + 锁端口
+- [x] ISSUE-05: present 容器分支钉 8800 + 锁端口
   - 范围: web_server.py start 增 `--fixed-port` (锁定态持久化, status 重建遇锁定实例端口被占 → 报错不换端口, UD-05); general/present/SKILL.md 容器分支钉 `start 8800 <root> --bind 0.0.0.0 --fixed-port`, 多页复用 add-dir 单实例; 非锁定用法行为不变.
   - 依据: D001/D002/F002. 接缝: present 公开命令 + HTTP 行为 (锁定重建报错/复用 add-dir/bind 冲突).
 - [ ] ISSUE-06: 信箱查网址/回话/代开指引 + 当前设备 (文档级)

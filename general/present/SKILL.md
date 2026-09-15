@@ -25,10 +25,15 @@ cd <access-web>/browse && uv sync && uv run playwright install chromium
 
 远程判定命中且 `/run/.containerenv` 存在 (podman 容器内, 即 sandbox-worktree 场景) 时走本分支: 完全不起 Chromium, HTML 生成与挂载复用与远程模式相同, 仅两处容器特有规则:
 
-- bind 必须 `0.0.0.0` (端口映射只达容器公网监听, loopback bind 不可达); 容器端口必须复用容器创建时已映射的那个端口 — 映射在 create 时钉死容器端口, 服务换端口重启 host 侧即不可达 (实测), 不适用上方 "port_in_use 换端口重试" 的自由度.
+- bind 必须 `0.0.0.0` (端口映射只达容器公网监听, loopback bind 不可达); 容器端口钉死 8800 (容器创建时已映射的那个端口) 并加 `--fixed-port` 锁定 — 映射在 create 时钉死容器端口, 服务换端口重启 host 侧即不可达 (实测), 不适用上方 "port_in_use 换端口重试" 的自由度. 锁定后 status 重建只试 8800, 被占时报错退出而不换端口:
+
+```bash
+uv run python <web-server> start 8800 <页面所在目录绝对路径> --bind 0.0.0.0 --fixed-port
+```
+
 - 输出 JSON 的 `url`/`hostname`/`lan_ip` 是容器视角, 不可直接交付: 在 chat 报告容器内端口与挂载根目录, 由 host 侧会话 `podman port <容器> <端口>` 发现映射端口并组装交付 URL, 容器内不猜测 host 地址.
 
-add-dir/复用/stop 语义与远程模式一致 (容器内实测可用); 服务与运行时状态随容器生灭, 终结容器不必先 `stop`.
+add-dir/复用/stop 语义与远程模式一致 (容器内实测可用); 多张展示页复用这同一个锁定实例, 后续页面一律 `add-dir <dir>` (或对存活实例重复 start 触发幂等复用) 挂载到 8800, 不另起服务; 服务与运行时状态随容器生灭, 终结容器不必先 `stop`. 锁定仅在冷启动生效: 若实例启动时未带 `--fixed-port`, 后续复用路径再带该 flag 不会补锁, 只在输出 warning 中明示实例未锁定, 此时应 `stop` 后按上方命令重起.
 
 ### 挂载或复用
 
@@ -50,7 +55,7 @@ uv run python <web-server> start <port> <页面所在目录绝对路径> --bind 
 
 ### 服务生命周期
 
-- `status`: 探活; 服务已死时按原挂载清单重建, 可能换端口, 以输出 `port`/`rebuilt` 为准更新交付 URL.
+- `status`: 探活; 服务已死时按原挂载清单重建, 可能换端口, 以输出 `port`/`rebuilt` 为准更新交付 URL. `--fixed-port` 锁定实例 (容器分支) 重建不换端口: 原端口空闲则沿用原端口, 被占则报错退出 (`port_in_use`), 须先释放被占端口再重试, 交付 URL 不变.
 - `add-dir <dir>`: 增挂目录, 同目录幂等.
 - `stop`: 终止服务并删除运行时文件.
 - 服务空闲 24h 自退; 运行时文件在系统临时目录, 重启后归零, 不承诺跨重启.
