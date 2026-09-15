@@ -12,7 +12,7 @@ disable-model-invocation: true
 - **推送落地**: 容器 `git push` 被接受的瞬间, 母体目录里的文件自动更新成 push 内容, 不用手动 pull.
 - **git 守护进程 (daemon)**: 随容器生灭临时起的 `git daemon` 进程, 只听宿主回环 (127.0.0.1 动态端口), 容器碰到代码的唯一通道, 无认证.
 - **git 桥**: 容器访问 daemon 的固定通道; 容器 remote 恒定 `git://127.0.0.1:9418/<仓库名>`, daemon 端口漂移/host 换网络都不再失配 (机制见 reference/ops.md).
-- **交付包**: birth/resume 收尾必须齐发的一组交付 — ssh 双入口 + noVNC URL + web 双 URL + 局域网隧道命令 + herdr remote 双命令 + 本机直通状态 + 登录凭证 + 容器内路径契约 + 风险声明 (reference/risks.md). web 双 URL = 本机 `http://127.0.0.1:<web-port>` 与局域网 `http://<已确认地址>:<web-port>`, 只列当前母体自身容器, 不汇总其他母体; 分享出去的 URL 不保证跨容器重建稳定 (容器 rm 重建后宿主端口会变, 须重新取新 URL). 各项形态见 birth 第四步.
+- **交付包**: birth/resume 收尾必须齐发的一组交付 — ssh 双入口 + noVNC URL + web 双 URL + 局域网隧道命令 + herdr remote 双命令 + 本机直通状态 + 远程直飞命令模板 (容器带 headed 启动脚本时; 见存续节 窗口直飞) + 登录凭证 + 容器内路径契约 + 风险声明 (reference/risks.md). web 双 URL = 本机 `http://127.0.0.1:<web-port>` 与局域网 `http://<已确认地址>:<web-port>`, 只列当前母体自身容器, 不汇总其他母体; 分享出去的 URL 不保证跨容器重建稳定 (容器 rm 重建后宿主端口会变, 须重新取新 URL). 各项形态见 birth 第四步.
 
 元规则: 本文件机制细节与环境现实冲突时, 以环境硬约束 (git 配置/防火墙/拓扑) 为准并报告我.
 **命名消歧**: `swt` = host 编排脚本 `scripts/swt.py`; `swt-vnc` = 容器内 VNC 栈 helper (见显示栈节), 两者无关.
@@ -98,6 +98,23 @@ uv run python scripts/swt.py birth [--repo <主仓>] --branch <母体分支名�
 **显示栈 (内置)**: 每个工作容器内置 VNC 显示栈 (Xvfb + x11vnc + websockify/noVNC + 中文字体 + playwright chromium + swt-vnc helper, 来自 display 层镜像), 6080 只发布到宿主回环 (127.0.0.1, 多容器并存时动态回落). 对照: web 8800 发布到宿主 0.0.0.0 动态端口, 直达局域网 (无认证, 已接受对同网段开放, 见展示链节), 与 6080 回环-only 不同. birth/resume 自动 `podman exec <容器> swt-vnc start` 拉起; 手动开关: `podman exec <容器名> swt-vnc start|stop|status`. headed 浏览器过登录墙: 容器内约定 `BROWSER_HEADED=true` + 选路环境变量 (直通在场用 wayland, 缺席用 `DISPLAY=:99`, 见下段), 登录弹窗由你经弹出的窗口/noVNC 或 ssh 人工操作; 登录态 profile 落容器内 /tmp, 容器存续期内跨 ssh 会话复用, rm 即失. 通道体检: `uv run python scripts/swt.py display-check [--name <容器>]` (noVNC HTTP/ws/RFB banner/空白基线/渲染基线 0.2/headless 回切 + wayland 直通探测, PPM 证据落 evidence 目录; 退出码语义见决策协议节例外, 诊断语义非 DECIDE). 门禁语义: birth 跑全量检查, 失败出 DECIDE (继续只开终端 --display-continue / 重验 --display-recheck / terminate 终结); resume 只做 swt-vnc status 级秒级检查, 失败降级不阻断终端工作, STATE 标显示栈状态 + 汇报注明. 容器镜像未含 swt-vnc (旧镜像/极简镜像) → 显示栈缺席 (STATE 标 absent), 跳过不判失败.
 
 **本机直通**: 宿主机存在 wayland socket (本机桌面会话) 时, birth 恒挂进容器并烘 wayland 环境变量 (+ GPU 设备, 缺席不挂; 命令字面见 reference/ops.md). 直挂 socket 属主经 rootless uid_map 映射为容器 root, 0755 属主权下 bolo 连不上 — 解法是 **host 侧 `chmod 0777` 宿主机 socket** (birth/resume 都重保, 登录会话重启会重置); 父目录 `/run/user/<uid>` 为 0700, 其他用户够不着路径, 暴露面≈零. **禁用 socat 中继**: wayland 靠 SCM_RIGHTS 传 fd, 中继截断 fd 传递, chromium 必报 Fatal Wayland communication error. headed 浏览器优先 `--ozone-platform=wayland` 走宿主机桌面 (原生窗口/GPU/fcitx 中文输入/剪贴板互通), 实测不过回退 `DISPLAY=:99` noVNC. **直通只走 wayland, 禁挂 X11 socket** (X11 协议允许跨客户端键盘嗅探/注入). 状态值 ok/degraded/absent 落 STATE 容器记录 `host-display`; 无 socket 环境 (纯服务器宿主) 恒 absent, 行为 = 旧形态.
+
+**窗口直飞 (三态选路)**: 容器内 AI 开 headed 浏览器时的三态 — 宿主直通 wayland / 设备侧 waypipe 直飞 / noVNC 兜底 (D007 判定拆分: 机械判定在代码, 编排在本节). 执行入口 = 容器固定路径 `/home/bolo/.local/bin/swt-headed-browser.sh` (母本 `headed-browser/swt-headed-browser.sh` 经 birth 换入 chromium 精确路径后只读挂载, UD-06): 内部先 preflight — `WAYLAND_DISPLAY` 与 `XDG_RUNTIME_DIR` 在场且 `$XDG_RUNTIME_DIR/$WAYLAND_DISPLAY` 可连才启动 chromium; 不满足 **exit 86**, 容器 AI 见 86 即投信, 不重试脚本 (UD-11). 脚本内部条件导出 `PULSE_SERVER=unix:/tmp/swt/pulse-b.sock` (socket 在场才导, 宿主直通模式硬导会断本地音频, UD-08) 后 `exec chromium --no-sandbox --ozone-platform=wayland`; env 由脚本内部设置, 命令行禁止 `VAR=...` 赋值前缀 (N1: waypipe 把前缀当程序名, Spawn failure).
+
+容器侧编排 (preflight 退出 86 后):
+1. **投信前记基线**: `ls /tmp/waypipe-server-*.sock 2>/dev/null` 记现有 token 集 — 异常死亡的会话会留 socket 尸体 (N2), 判活只看新 token 差集.
+2. **投信**: exec 类型信, `to` 显式填当前设备 (定设备纪律见基础服务节 展示页网址沟通与代开), body 为 JSON: `{"tool": "swt.pull-window", "container": "<SWT_CONTAINER_NAME>"}`. 服务端形状校验 + container 动态绑定投信容器自身 (UD-05), 命中直批不问人 (指令能力极窄且无参数注入面, D008).
+3. **等 ack 后轮询**: ack 只证明信被设备取走, 不证明窗口拉起 — 轮询容器内 `/tmp/waypipe-server-*.sock` 出现基线之外的新 token (F005), 超时 **120s** (UD-02). 新 token 出现 = 窗口已落在设备屏, 后续经 playwright/CDP 自己导航.
+4. **超时落兜底**: 120s 未出新 token → 落 noVNC (`DISPLAY=:99`), 并在回复中明确告知用户落了兜底.
+
+设备侧 (取信会话收到 swt.pull-window 信; 扩展代码先做机械门禁 (UD-07 分层: 代码管机械判定, 本配方管编排): waypipe 缺席 → 设备本地 notify 安装提示 + 立即 ack `skipped:waypipe-missing`; 同容器 300s 窗内重复 → ack `skipped:rate-limited`; 两种都不转化为 LLM 轮 (UD-10)):
+1. **前提**: 设备 Linux Wayland 桌面会话 + waypipe 客户端; Atomic 系发行版 (Bazzite 等) 经 distrobox 安装 (D006).
+2. **密钥**: 设备→容器 ssh 免密经 host 上 `uv run python scripts/swt.py enroll-device-key <容器名>` 一次性发放 (N4: 密码登录无法自动化代执行).
+3. **幂等探测**: `ssh <容器> pgrep -x waypipe` — 已有活跃会话直接回报不再拉起 (D008 幂等; N2 修正: 不用 socket 存在判活, 尸体会残留).
+4. **后台拉起** (即交付包远程直飞模板, 变量照交付包实际值代换): `nohup waypipe ssh -p <宿主端口> -R /tmp/swt/pulse-b.sock:/run/user/$(id -u)/pulse/native bolo@<host-LAN-IP> /home/bolo/.local/bin/swt-headed-browser.sh >/dev/null 2>&1 &` — `-R` 同一条会话建音频 socket (D002; 远端路径由设备 shell 展开实际 uid, 不写死 1000, UD-09); waypipe 会话须长存, 不能占 LLM 前台, 故 nohup 后台.
+5. **回报**: 拉起后经 herdr notification 通知设备用户窗口已送达.
+
+残尸纪律: 容器侧不做 waypipe 残尸清理 (UD-12), 旧 token 不挡差集判定; `pulse-b.sock` 残渣由 base 层 sshd `StreamLocalBindUnlink yes` 治理. ssh 会话的 `XDG_RUNTIME_DIR=/tmp/xdg-1001` 由 base 镜像 sshd_config SetEnv 烘配 (UD-03, 固定常量 uid), waypipe server 才有落 display socket 的位置. 容器无 headed 脚本 (chromium 路径解析失败, UD-06) 时交付包打 reason 行, 该容器仅终端 + noVNC, 无直飞.
 
 **同母体多容器**: 新规则下同母体活跃容器唯一 (见术语), 常态不再出现多容器共推同一母体; 改动前已存在的容器不追溯处置, 历史残留仍可能多容器并存. 若真有两个容器同推一母体: 容器只准快进推送, 后推的那个会被 git 以历史分叉为由拒绝: 容器内 `git fetch` → 解冲突 → 重推 (git 原生串行化, 无新机制).
 
@@ -219,7 +236,7 @@ curl -s -H "X-Admin-Token: $TOKEN" -H "Content-Type: application/json" \
 - 查询: `GET /admin/stats`, `/admin/devices`, `/admin/container-keys`, `/admin/relay-keys`, `/admin/messages[?status=queued|delivered|processed]`
 - **指令集**注册: `POST /admin/whitelist {instruction}` (instruction = 含 `tool` 的结构化指令对象)
 
-**指令集现状**: 机制已落地 (服务端注册表持久化 + 规范形比对: 命中直批执行, 集合外降级 request 走设备侧 pi 权限流程), 当前为空集; 首个真实成员 (waypipe 拉起命令) 待 M08 填充. 成员变动即安全策略变动, 必过 e2e 门禁 (`uv run pytest tests/test_swt_base_server.py`).
+**指令集现状**: 首成员已落地 — `swt.pull-window` (零参数拉窗, D008): 不落静态 whitelist 行, 服务端内置形状校验 (dict 恰含 `tool`/`container` 两键) + `container` 动态绑定投信容器自身 (UD-05; 裸 tool/多余键/他人容器名一律降级 request 走设备侧 pi 权限流程); admin whitelist 注册机制保留, 供未来无动态绑定的成员使用. 设备侧执行器机械门禁: waypipe 在场检查 + 同容器 300s 限频 (UD-07/UD-10). 成员变动即安全策略变动, 必过 e2e 门禁 (`uv run pytest tests/test_swt_base_server.py`).
 
 **展示页网址沟通与代开 (容器与设备 agent 行为指引)**: 容器内展示页就绪后要到我当前用的电脑上打开一次, 网址容器自己查不到 (host 才知道映射), 靠信箱问设备侧取信会话代查代开. 本节全部是指引, 不新增任何接口.
 
@@ -264,6 +281,8 @@ envelope = {"id": uuid.uuid4().hex, "ts": time.time(),
 
 - **swt.py 与本 SKILL.md** (host 侧): 仓库根 `uv run python sync-to-pi.py` 同步到 host 的 skills 目录即生效 — 脚本由 host 侧 agent 直接跑, 本文档由 host 侧 agent 直接读, 无其他环节.
 - **present skill** (容器内): 它是 base 镜像构建期 COPY 进镜像的, 只改仓库文件容器拿不到. 流程: sync-to-pi 同步到 host skills 目录 → 重建 base (`image-prep build-base`, 按镜像管理节级联 display/项目层) → 之后 birth 的新容器才拿到新版规则. 现有容器不受影响也不补 (不追溯); 真机验证归 M09.
+
+**M08 落地物分流提醒**: swt.py / swt-mailbox-relay.ts / headed 脚本母本 / 本 SKILL.md 经 sync-to-pi 到位 (relay 同步到 pi 扩展目录, 设备侧重启取信会话生效). **base 与 display 层本次都改了** (base: sshd SetEnv 合并 `XDG_RUNTIME_DIR=/tmp/xdg-1001` + `StreamLocalBindUnlink yes` + entrypoint 建目录; display: 加 waypipe/libpulse0 两个 apt 条目) — 须 `image-prep build-base` → `build-display` 按 D017 级联重建 (base 更新后旧 display 自然淘汰, display 更新后旧项目镜像自然淘汰), 之后 birth 的新容器才拿到, 既有容器不追溯. 窗口直飞全链 (真窗口拉起/跨机音频/限频表现) 真机验收归 M09.
 
 ## 网络控制 / 容器命令 / 救场
 
