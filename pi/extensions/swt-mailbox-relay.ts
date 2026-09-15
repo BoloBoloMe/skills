@@ -45,16 +45,46 @@ export type MailboxEvent = {
   [key: string]: unknown;
 };
 
+/** pull-window 信 body 判定: 可解析为 dict 且 tool 命中 (ISSUE-05/D008). */
+function parseBodyDict(body?: string): Record<string, unknown> | null {
+  try {
+    const v: unknown = JSON.parse(body ?? "");
+    return v !== null && typeof v === "object" && !Array.isArray(v)
+      ? v as Record<string, unknown>
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+const PULL_WINDOW_TOOL = "swt.pull-window";
+// UD-07: 同容器拉窗最小间隔 300s (压提示注入循环轰炸, 不误伤人手重试)
+const PULL_WINDOW_MIN_INTERVAL_MS = 300_000;
+// D006(3): 设备侧拉窗前自动 waypipe 在场检查 (经注入 spawn, 退出码判定)
+const WAYPIPE_CHECK_CMD = ["sh", "-c", "command -v waypipe >/dev/null 2>&1"];
+
+function isPullWindowExec(evt: MailboxEvent): boolean {
+  return evt.type === "exec" && !evt.downgraded
+    && parseBodyDict(evt.body)?.tool === PULL_WINDOW_TOOL;
+}
+
 /** 渲染一条来信给 LLM: 信封 + 正文 + 4 类型语义提示 (D004/D005). */
 export function renderMessage(evt: MailboxEvent): string {
   const head = `[swt 信箱来信] id=${evt.id} 来自容器 ${evt.from},` +
     ` 类型 ${evt.type}`;
   let hint: string;
   if (evt.type === "exec") {
-    hint = evt.downgraded
-      ? "语义: 该 exec 指令不在服务端指令集白名单内, 已降级为 request (D005):" +
-        " 不要直接执行, 走 pi 既有权限流程, 该问用户就问用户."
-      : "语义: exec 指令已命中服务端指令集白名单, 可直批执行 (D005).";
+    if (evt.downgraded) {
+      hint = "语义: 该 exec 指令不在服务端指令集白名单内, 已降级为 request (D005):" +
+        " 不要直接执行, 走 pi 既有权限流程, 该问用户就问用户.";
+    } else if (parseBodyDict(evt.body)?.tool === PULL_WINDOW_TOOL) {
+      hint = "语义: 拉起远程窗口指令 (swt.pull-window), 已过设备侧门禁." +
+        " 按 workflow/use-sandbox-worktree/SKILL.md 的 '窗口直飞' 节配方编排:" +
+        " 先幂等探测容器内活跃 waypipe 会话 (pgrep -x waypipe)," +
+        " 无活跃会话才 nohup 后台拉起 waypipe ssh 会话, 完成后经 herdr notification 回报.";
+    } else {
+      hint = "语义: exec 指令已命中服务端指令集白名单, 可直批执行 (D005).";
+    }
   } else {
     hint = TYPE_HINTS[evt.type ?? ""] ?? `语义: 未知类型 ${evt.type}, 按 request 处理.`;
   }
@@ -152,9 +182,11 @@ export function createRelay(pi: ExtensionAPI, deps: Deps = {}): void {
   let linesRead = 0;
   const seenIds = new Set<string>();
   const pending: MailboxEvent[] = [];
-  const awaitingAck: { id: string; attempts: number }[] = [];
+  const awaitingAck: { id: string; attempts: number; outcome?: string }[] = [];
   let lastTrigger = 0;
   let notifiedIdentity = false;
+  let waypipeMissingNotified = false; // 缺席期提示去重 (恢复后重置)
+  const lastPullWindowAt = new Map<string, number>(); // 同容器限频时刻
 
   const cleanup = () => {
     down = true;
@@ -195,7 +227,7 @@ export function createRelay(pi: ExtensionAPI, deps: Deps = {}): void {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ device: cfg.device, ts, sig, id: item.id,
-                               outcome: "handled" }),
+                               outcome: item.outcome ?? "handled" }),
       }).then((res) => {
         if (res.ok) {
           awaitingAck.splice(awaitingAck.indexOf(item), 1);
@@ -234,6 +266,45 @@ export function createRelay(pi: ExtensionAPI, deps: Deps = {}): void {
     for (const evt of batch) awaitingAck.push({ id: String(evt.id), attempts: 0 });
   };
 
+  // ISSUE-05 拉窗门: pull-window exec 信的机械判定 (D006(3)/D008/UD-07/UD-10).
+  // 缺席 → 本地 notify (缺席期去重) + 立即 ack skipped:waypipe-missing;
+  // 窗内 → info notify + 立即 ack skipped:rate-limited;
+  // 过门 → 记限频时刻, 走常规注入 (triggerTurn).
+  const gatePullWindow = (evt: MailboxEvent, ctx: Ctx) => {
+    const child = spawnImpl(WAYPIPE_CHECK_CMD[0], WAYPIPE_CHECK_CMD.slice(1),
+                            { stdio: "ignore" });
+    child.on?.("exit", (code: unknown) => {
+      if (down) return;
+      const outcome = (id: string, o: string) => {
+        awaitingAck.push({ id, attempts: 0, outcome: o });
+        ackQueue(ctx); // UD-10: 被抑制的信立即 ack, 不滞留队列
+      };
+      if (code !== 0) {
+        if (!waypipeMissingNotified) {
+          waypipeMissingNotified = true;
+          notify(ctx, "[swt-mailbox] waypipe 未安装, 无法拉起远程窗口;" +
+            " 请在本机安装 waypipe (Atomic 系发行版走 distrobox)," +
+            " 安装后同类来信自动恢复执行", "error");
+        }
+        outcome(String(evt.id), "skipped:waypipe-missing");
+        return;
+      }
+      waypipeMissingNotified = false; // 在场恢复: 下次缺席重新提示
+      const from = String(evt.from ?? "");
+      const last = lastPullWindowAt.get(from);
+      if (last !== undefined && now() - last < PULL_WINDOW_MIN_INTERVAL_MS) {
+        notify(ctx, `[swt-mailbox] 容器 ${from} 的拉窗请求被限频` +
+          ` (${PULL_WINDOW_MIN_INTERVAL_MS / 1000}s 内已处理过), 已回执 skipped`,
+          "info");
+        outcome(String(evt.id), "skipped:rate-limited");
+        return;
+      }
+      lastPullWindowAt.set(from, now());
+      pending.push(evt);
+      maybeFlush(ctx);
+    });
+  };
+
   const drain = (ctx: Ctx) => {
     if (down || !cfg) return;
     let complete: string[];
@@ -267,6 +338,10 @@ export function createRelay(pi: ExtensionAPI, deps: Deps = {}): void {
       const id = String(evt.id ?? "");
       if (!id || seenIds.has(id)) continue; // 去重
       seenIds.add(id);
+      if (isPullWindowExec(evt)) {
+        gatePullWindow(evt, ctx); // ISSUE-05 拉窗门: 不进常规 pending
+        continue;
+      }
       pending.push(evt);
     }
     maybeFlush(ctx);
@@ -276,6 +351,8 @@ export function createRelay(pi: ExtensionAPI, deps: Deps = {}): void {
     cleanup(); // 重入安全: 先清掉旧 child/watcher/timer 再初始化
     down = false;
     notifiedIdentity = false;
+    waypipeMissingNotified = false;
+    lastPullWindowAt.clear();
     seenIds.clear();
     pending.length = 0;
     const loaded = loadConfig(configPath);

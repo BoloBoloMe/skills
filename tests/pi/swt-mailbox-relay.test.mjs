@@ -2,7 +2,9 @@
 // 覆盖: 只对 message 事件 triggerTurn / 非 message 忽略 / 忙时防重入 /
 // 去重 / 退避 (注入时钟真断言) / settle 后 ack 签名式 / ack 定时重试 /
 // 子进程死亡重拉 / session_start 重入清理 / 触发文件截断守卫 /
-// shutdown 清理 / 配置缺失 / hasUI 守卫.
+// shutdown 清理 / 配置缺失 / hasUI 守卫 /
+// 拉窗门 (ISSUE-05): waypipe 在场检查 / 缺席抑制+去重+恢复 / 限频 /
+// 过门注入+文案 / skipped outcome 即时 ack / 非 pull-window 行为不变.
 // 运行: node --test tests/pi/swt-mailbox-relay.test.mjs
 import assert from "node:assert/strict";
 import { createHmac } from "node:crypto";
@@ -283,6 +285,168 @@ test("配置缺失: 不起子进程, notify 报错", async (t) => {
   await pi.handlers.session_start({ reason: "startup" }, ctx);
   assert.equal(spawned, false);
   assert.ok(notes.some((n) => n.kind === "error" && /配置|config/.test(n.msg)));
+});
+
+// ---- ISSUE-05: relay 拉窗门 (swt.pull-window) ----
+
+const pullWindowEvent = (over = {}) => msgEvent({
+  type: "exec", downgraded: false,
+  body: JSON.stringify({ tool: "swt.pull-window", container: "ct-1" }),
+  ...over,
+});
+
+// 门测试环境: spawn 按 cmd 分流 — sh 是 waypipe 检查 (退出码可注入),
+// node 是取信子进程; 时钟默认冻结在 1_000_000 (限频断言靠拨钟).
+function gateEnv(t, { waypipeExit = () => 0, clock = [1_000_000], ...rest } = {}) {
+  const shCalls = [];
+  const nodeChildren = [];
+  const spawn = (cmd, args, opts) => {
+    if (cmd === "sh") {
+      shCalls.push({ cmd, args, opts });
+      return {
+        kill() {},
+        on(ev, fn) { if (ev === "exit") setTimeout(() => fn(waypipeExit()), 0); },
+      };
+    }
+    const c = {
+      killed: false, handlers: {},
+      kill() { this.killed = true; },
+      on(ev, fn) { this.handlers[ev] = fn; },
+      simulateExit() { this.handlers.exit?.(); },
+    };
+    nodeChildren.push(c);
+    return c;
+  };
+  const env = makeEnv(t, { now: () => clock[0], spawn, ...rest });
+  return { ...env, shCalls, nodeChildren, clock };
+}
+
+const ackFor = (acks, id) =>
+  acks.filter((a) => a.body.id === id).map((a) => a.body);
+
+test("pull-window 过门: waypipe 在场首次 → triggerTurn, 文案指向 SKILL.md 窗口直飞节, settle ack 仍 handled", async (t) => {
+  const { pi, ctx, trigger, acks, shCalls } = gateEnv(t);
+  await pi.handlers.session_start({ reason: "startup" }, ctx);
+  appendEvents(trigger, [pullWindowEvent({ id: "m-1", nonce: "n-1" })]);
+  await waitFor(() => pi.sent.length === 1);
+  // 在场检查命令形状: sh -c "command -v waypipe >/dev/null 2>&1"
+  assert.equal(shCalls.length, 1);
+  assert.equal(shCalls[0].cmd, "sh");
+  assert.deepEqual(shCalls[0].args, ["-c", "command -v waypipe >/dev/null 2>&1"]);
+  const { msg, opts } = pi.sent[0];
+  assert.equal(opts.triggerTurn, true);
+  assert.match(msg.content, /use-sandbox-worktree/);
+  assert.match(msg.content, /窗口直飞/);
+  await pi.handlers.agent_settled({}, ctx);
+  await waitFor(() => ackFor(acks, "m-1").length >= 1);
+  assert.equal(ackFor(acks, "m-1")[0].outcome, "handled");
+});
+
+test("waypipe 缺席: 不 triggerTurn, 立即 ack skipped:waypipe-missing, 缺席期 notify 去重", async (t) => {
+  const { pi, ctx, trigger, acks } = gateEnv(t, { waypipeExit: () => 1 });
+  await pi.handlers.session_start({ reason: "startup" }, ctx);
+  appendEvents(trigger, [pullWindowEvent({ id: "m-1", nonce: "n-1" })]);
+  await waitFor(() => ackFor(acks, "m-1").length >= 1); // 未 settle 即 ack
+  assert.equal(ackFor(acks, "m-1")[0].outcome, "skipped:waypipe-missing");
+  await sleep(150);
+  assert.equal(pi.sent.length, 0); // 不 triggerTurn
+  const errs = () => ctx.notifications.filter((n) => n.kind === "error");
+  assert.equal(errs().length, 1);
+  assert.match(errs()[0].msg, /waypipe/);
+  assert.match(errs()[0].msg, /安装/);
+
+  // 缺席期再来同类信: 不再 notify (去重), 照样立即 ack skipped
+  appendEvents(trigger, [pullWindowEvent({ id: "m-2", nonce: "n-2" })]);
+  await waitFor(() => ackFor(acks, "m-2").length >= 1);
+  assert.equal(ackFor(acks, "m-2")[0].outcome, "skipped:waypipe-missing");
+  await sleep(150);
+  assert.equal(pi.sent.length, 0);
+  assert.equal(errs().length, 1);
+});
+
+test("waypipe 恢复: 重新检查并通过; 之后再次缺席时提示能力已恢复", async (t) => {
+  let exitCode = 1;
+  const { pi, ctx, trigger } = gateEnv(t, { waypipeExit: () => exitCode });
+  await pi.handlers.session_start({ reason: "startup" }, ctx);
+  appendEvents(trigger, [pullWindowEvent({ id: "m-1", nonce: "n-1" })]);
+  await sleep(150);
+  assert.equal(pi.sent.length, 0);
+  assert.equal(ctx.notifications.filter((n) => n.kind === "error").length, 1);
+
+  exitCode = 0; // 用户装好了 → 恢复执行能力
+  appendEvents(trigger, [pullWindowEvent({ id: "m-2", nonce: "n-2" })]);
+  await waitFor(() => pi.sent.length === 1);
+
+  exitCode = 1; // 又缺席了 → 提示能力已重置, 再提示一次
+  appendEvents(trigger, [pullWindowEvent({ id: "m-3", nonce: "n-3" })]);
+  await waitFor(() =>
+    ctx.notifications.filter((n) => n.kind === "error").length === 2);
+});
+
+test("限频: 同容器 300s 内再来 → skipped:rate-limited + info notify, 不 triggerTurn; 过窗恢复; 异容器不受限", async (t) => {
+  const { pi, ctx, trigger, acks, clock } = gateEnv(t);
+  await pi.handlers.session_start({ reason: "startup" }, ctx);
+  appendEvents(trigger, [pullWindowEvent({ id: "m-1", nonce: "n-1", from: "ct-1" })]);
+  await waitFor(() => pi.sent.length === 1);
+
+  clock[0] += 100_000; // +100s, 窗内
+  appendEvents(trigger, [pullWindowEvent({ id: "m-2", nonce: "n-2", from: "ct-1" })]);
+  await waitFor(() => ackFor(acks, "m-2").length >= 1);
+  assert.equal(ackFor(acks, "m-2")[0].outcome, "skipped:rate-limited");
+  await sleep(150);
+  assert.equal(pi.sent.length, 1); // 不 triggerTurn
+  const infos = () =>
+    ctx.notifications.filter((n) => n.kind === "info" && /限频/.test(n.msg));
+  assert.equal(infos().length, 1);
+
+  // 异容器 ct-2 首拉: 不受 ct-1 限频影响
+  appendEvents(trigger, [pullWindowEvent({ id: "m-3", nonce: "n-3", from: "ct-2" })]);
+  await waitFor(() => pi.sent.length === 2);
+
+  clock[0] += 250_000; // 距 ct-1 首拉已 350s > 300s → 过窗
+  appendEvents(trigger, [pullWindowEvent({ id: "m-4", nonce: "n-4", from: "ct-1" })]);
+  await waitFor(() => pi.sent.length === 3);
+});
+
+test("非 pull-window exec 信不走门: 同批照常注入, 不做 waypipe 检查, ack 均 handled", async (t) => {
+  const { pi, ctx, trigger, acks, shCalls } = gateEnv(t);
+  await pi.handlers.session_start({ reason: "startup" }, ctx);
+  appendEvents(trigger, [
+    msgEvent({ id: "m-1", nonce: "n-1", type: "exec", downgraded: false,
+              body: "run tests" }),
+    msgEvent({ id: "m-2", nonce: "n-2", type: "exec", downgraded: true,
+              body: JSON.stringify({ tool: "swt.pull-window", container: "ct-1" }) }),
+    msgEvent({ id: "m-3", nonce: "n-3", type: "exec", downgraded: false,
+              body: JSON.stringify({ tool: "other.tool" }) }),
+  ]);
+  await waitFor(() => pi.sent.length === 1);
+  await sleep(150);
+  assert.equal(pi.sent.length, 1); // 三封同批, 无门拦截
+  assert.equal(shCalls.length, 0); // 未做 waypipe 检查
+  const content = pi.sent[0].msg.content;
+  assert.match(content, /直批/);   // m-1 普通白名单 exec 旧文案
+  assert.match(content, /降级/);   // m-2 downgraded 旧文案
+  assert.match(content, /other.tool/); // m-3 照常透传
+  await pi.handlers.agent_settled({}, ctx);
+  await waitFor(() => ["m-1", "m-2", "m-3"]
+    .every((id) => ackFor(acks, id).length >= 1));
+  for (const id of ["m-1", "m-2", "m-3"]) {
+    assert.equal(ackFor(acks, id)[0].outcome, "handled");
+  }
+});
+
+test("渲染: pull-window exec 提示指向 use-sandbox-worktree SKILL.md 窗口直飞节", () => {
+  const out = renderMessage(pullWindowEvent());
+  assert.match(out, /use-sandbox-worktree/);
+  assert.match(out, /窗口直飞/);
+  // 普通白名单 exec / 降级 exec 文案不受影响
+  assert.doesNotMatch(
+    renderMessage(msgEvent({ type: "exec", downgraded: false, body: "ls" })),
+    /窗口直飞/);
+  assert.doesNotMatch(
+    renderMessage(msgEvent({ type: "exec", downgraded: true,
+      body: JSON.stringify({ tool: "swt.pull-window", container: "ct-1" }) })),
+    /窗口直飞/);
 });
 
 test("渲染: 4 类型语义提示 (exec 白名单外降级须注明走权限流程)", () => {
