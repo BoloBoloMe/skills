@@ -14,10 +14,13 @@ from __future__ import annotations
 
 import argparse
 import importlib.util
+import io
 import json
+import re
 import subprocess
 import sys
 import unittest
+from contextlib import redirect_stdout
 from pathlib import Path
 from shutil import rmtree
 from tempfile import mkdtemp
@@ -392,6 +395,140 @@ class TestLanIpFormatValidation(unittest.TestCase):
 
     def test_valid_lan_ip_passes(self):
         self.assertEqual(self.m.require_valid_lan_ip("192.168.1.10"), "192.168.1.10")
+
+
+class TestWebDeliveryUrls(unittest.TestCase):
+    """ISSUE-03 切片 1-3: print_delivery_lines 的 web 双 URL (D003/D007).
+
+    仅当容器有 web-port 才出现 web URL 行; 本机 = 127.0.0.1:<web-port>,
+    局域网 = 已确认地址:<web-port>; 无已确认值不拼猜测地址 (D010/UD-03)."""
+
+    def setUp(self):
+        self.m = _load_swt()
+
+    def _delivery_output(self, web_port, lan) -> str:
+        buffer = io.StringIO()
+        with redirect_stdout(buffer):
+            self.m.print_delivery_lines(
+                "birth: 已完成", 49153, None, "absent", None, lan,
+                web_port=web_port)
+        return buffer.getvalue()
+
+    def test_dual_web_urls_when_web_port(self):
+        """切片 1: 有 web-port → 本机 URL (127.0.0.1:web-port) + 局域网 URL
+        (已确认地址:web-port) 双行齐发."""
+        output = self._delivery_output(web_port=49155, lan="192.168.1.10")
+        self.assertIn("web 入口 (本机):   http://127.0.0.1:49155", output)
+        self.assertIn("web 入口 (局域网): http://192.168.1.10:49155", output)
+
+    def test_no_web_lines_without_web_port(self):
+        """切片 2: 无 web-port (旧容器) → 无 web URL 行, 其余交付行不变 (D009)."""
+        output = self._delivery_output(web_port=None, lan="192.168.1.10")
+        self.assertNotIn("web 入口", output)
+        self.assertNotIn("http://127.0.0.1:49155", output)
+        # 既有行不变
+        self.assertIn("ssh 入口 (本机):   ssh -p 49153 bolo@127.0.0.1", output)
+        self.assertIn("ssh 入口 (局域网): ssh -p 49153 bolo@192.168.1.10", output)
+        self.assertIn("herdr remote (host):    herdr --remote ssh://bolo@127.0.0.1:49153", output)
+
+    def test_no_guessed_lan_url_when_address_unconfirmed(self):
+        """切片 3: 局域网地址无已确认值 → 本机 URL 照打, 不拼猜测地址,
+        显式打未附发原因 (F3 同款, 不静默丢失)."""
+        output = self._delivery_output(web_port=49155, lan=None)
+        self.assertIn("web 入口 (本机):   http://127.0.0.1:49155", output)
+        self.assertNotIn("web 入口 (局域网): http", output)
+        self.assertIn("web 入口 (局域网) 未附发", output)
+
+
+class TestStatusWebUrls(unittest.TestCase):
+    """ISSUE-03 切片 4 (UD-04): status 对有 web-port 的容器在 STATE 之外附双 URL 行,
+    与 birth/resume 同源组装; 无 web-port 的旧容器不附."""
+
+    def setUp(self):
+        self.m = _load_swt()
+
+    def test_status_attaches_dual_urls_only_for_web_port_containers(self):
+        entries = [
+            {"name": "swt-new", "web-port": 49155, "state": "running"},
+            {"name": "swt-old", "web-port": None, "state": "running"},
+        ]
+        buffer = io.StringIO()
+        with redirect_stdout(buffer):
+            self.m.print_status_web_lines(entries, "192.168.1.10")
+        output = buffer.getvalue()
+        # 有 web-port 的容器: 双 URL 行, 带容器名标识 (只列当前母体自身容器, D003)
+        self.assertIn("web 入口 (swt-new) (本机):   http://127.0.0.1:49155", output)
+        self.assertIn("web 入口 (swt-new) (局域网): http://192.168.1.10:49155", output)
+        # 无 web-port 的旧容器: 不附
+        self.assertNotIn("swt-old", output)
+        self.assertEqual(output.count("http://"), 2)
+
+    def test_status_skips_web_urls_for_non_running_containers(self):
+        """UD-11: 停止容器 (有 web-port) 不附 web URL 行 (不交付不可达链接);
+        running 容器照附."""
+        entries = [
+            {"name": "swt-run", "web-port": 49155, "state": "running"},
+            {"name": "swt-stop", "web-port": 49156, "state": "exited"},
+        ]
+        buffer = io.StringIO()
+        with redirect_stdout(buffer):
+            self.m.print_status_web_lines(entries, "192.168.1.10")
+        output = buffer.getvalue()
+        self.assertIn("web 入口 (swt-run) (本机):   http://127.0.0.1:49155", output)
+        self.assertIn("web 入口 (swt-run) (局域网): http://192.168.1.10:49155", output)
+        self.assertNotIn("swt-stop", output)
+        self.assertNotIn("49156", output)
+        self.assertEqual(output.count("http://"), 2)
+
+    def test_status_hooked_in_status_command(self):
+        """接缝守卫: status 命令在 STATE 之后接入 print_status_web_lines,
+        局域网用址取已确认值 (不现算猜测)."""
+        source = SCRIPT.read_text(encoding="utf-8")
+        segment = source[source.index("def status("):]
+        self.assertIn("print_status_web_lines(", segment)
+        self.assertIn("read_confirmed_lan_address(records_root)", segment)
+        self.assertNotIn("lan_ip()", segment)
+
+
+class TestDeliveryCallSitesUseConfirmedAddress(unittest.TestCase):
+    """ISSUE-03 切片 5 (D010/UD-03): birth/resume 全部 print_delivery_lines 调用点
+    不再用 lan_ip() 现算值拼局域网交付, 一律取已确认值; 同时接入 web-port
+    (birth/resume 交付 web 双 URL 的接缝)."""
+
+    @staticmethod
+    def _extract_call(source: str, start: int) -> str:
+        """从调用名起点做括号平衡扫描, 精确切到该次调用的右括号 (不吃后续代码,
+        也不截断在调用内部 — assertNotIn("lan_ip()") 的窗口必须覆盖整个调用点)."""
+        depth = 0
+        for index in range(source.index("(", start), len(source)):
+            char = source[index]
+            if char == "(":
+                depth += 1
+            elif char == ")":
+                depth -= 1
+                if depth == 0:
+                    return source[start:index + 1]
+        raise AssertionError("print_delivery_lines 调用括号不平衡, 源码已变化, 守卫需复核")
+
+    def _call_segments(self) -> list[str]:
+        source = SCRIPT.read_text(encoding="utf-8")
+        return [self._extract_call(source, match.start())
+                for match in re.finditer(r"(?<!def )print_delivery_lines\(", source)]
+
+    def test_call_sites_use_confirmed_address_and_web_port(self):
+        segments = self._call_segments()
+        # birth 主交付 + 显示门禁重交付 x2 + resume 两路径 = 5 处
+        self.assertEqual(len(segments), 5, f"调用点数量变化, 守卫需同步复核: {len(segments)}")
+        for segment in segments:
+            # 窗口精确性自证: 恰覆盖单次调用 (一个调用名, 右括号收尾)
+            self.assertEqual(segment.count("print_delivery_lines("), 1)
+            self.assertTrue(segment.endswith(")"), f"窗口未切在调用终点: {segment[-80:]}")
+            self.assertNotIn("lan_ip()", segment,
+                             f"交付调用点仍用 lan_ip() 现算猜测值: {segment[:120]}")
+            self.assertIn("read_confirmed_lan_address(records_root)", segment,
+                          f"交付调用点未取已确认地址: {segment[:120]}")
+            self.assertIn('get("web-port")', segment,
+                          f"交付调用点未接入 web-port: {segment[:120]}")
 
 
 if __name__ == "__main__":

@@ -1178,6 +1178,35 @@ def inject_auth_json(container_name: str) -> None:
         raise SwtError(3, "PARTIAL", f"auth.json 注入失败: {result.stderr.strip()}")
 
 
+def web_delivery_lines(web_port: int | None, lan: str | None, label: str | None = None) -> list[str]:
+    """web 双 URL 交付行 (D003/D007/UD-04): birth/resume/status 同源组装.
+    仅当容器有 web-port 才产行; 本机 URL 照打, 局域网只用已确认值 (D010/UD-03),
+    无已确认值不拼猜测地址, 显式打未附发原因 (F3, 不静默丢失)."""
+    if web_port is None:
+        return []
+    tag = f" ({label})" if label else ""
+    lines = [f"[SWT] web 入口{tag} (本机):   http://127.0.0.1:{web_port}"]
+    if lan:
+        lines.append(f"[SWT] web 入口{tag} (局域网): http://{lan}:{web_port}")
+    else:
+        lines.append(f"[SWT] web 入口{tag} (局域网) 未附发: host 局域网地址无已确认值,"
+                     " 确认 (--lan-ip) 后随下次交付附发")
+    return lines
+
+
+def print_status_web_lines(containers: list[dict[str, Any]], lan: str | None) -> None:
+    """status 的 web 交付 (UD-04/D003): 每个带 web-port 的容器在 STATE 之外附
+    双 URL 行 (与 birth/resume 同源组装, 带容器名标识); 无 web-port 的旧容器不附.
+    只对 running 容器附行 (UD-11): 停止容器点击即失败, 不交付不可达链接."""
+    for entry in containers:
+        if entry.get("state") != "running":
+            continue
+        name = entry.get("name")
+        for line in web_delivery_lines(entry.get("web-port"), lan,
+                                       label=str(name) if name else None):
+            print(line)
+
+
 def print_delivery_lines(
     heading: str,
     ssh_port: int | None,
@@ -1186,10 +1215,11 @@ def print_delivery_lines(
     key_path: Path | None,
     lan: str | None,
     host_display: str | None = None,
+    web_port: int | None = None,
 ) -> None:
     """固定交付项 (每次 birth/resume 交付齐发, 禁止遗漏, D039/决策 8):
     ssh 双入口 (本机/局域网, 都带端口) + noVNC URL + 局域网隧道命令
-    + herdr remote 双命令.
+    + herdr remote 双命令 + web 双 URL (仅 web-port 容器, D003/D007).
     无法附发的项显式打一行原因, 不静默丢失 (F3)."""
     print(f"[SWT] {heading}")
     if ssh_port is None:
@@ -1223,6 +1253,8 @@ def print_delivery_lines(
         print("[SWT] 本机直通: 降级 (wayland 实测未过, 已回退 noVNC; 可用 swt display-check 诊断)")
     elif host_display == "absent":
         print("[SWT] 本机直通: absent (无宿主机桌面会话/纯服务器宿主常态, 显示走 noVNC)")
+    for line in web_delivery_lines(web_port, lan):
+        print(line)
     print(f"[SWT] herdr remote (host):    herdr --remote ssh://bolo@127.0.0.1:{ssh_port}")
     if lan:
         print(f"[SWT] herdr remote (局域网): herdr --remote ssh://bolo@{lan}:{ssh_port}")
@@ -1904,7 +1936,8 @@ def birth_display_gate_reentry(
             "birth: 完成 (显示栈降级, 终端工作不受影响)",
             record.get("ssh-port"), record.get("vnc-port"), "degraded",
             Path(record["ssh_private_key"]) if record.get("ssh_private_key") else None,
-            lan_ip(), record.get("host-display"),
+            read_confirmed_lan_address(records_root), record.get("host-display"),
+            record.get("web-port"),
         )
         print_birth_state(repo, records_root, runtime, runtime.get("mother") or {}, image, runtime.get("network"), "[SWT] birth: 已完成 (显示栈降级)")
         return 0
@@ -1922,7 +1955,8 @@ def birth_display_gate_reentry(
             "birth: 完成 (显示栈重验通过)",
             record.get("ssh-port"), record.get("vnc-port"), "ok",
             Path(record["ssh_private_key"]) if record.get("ssh_private_key") else None,
-            lan_ip(), record.get("host-display"),
+            read_confirmed_lan_address(records_root), record.get("host-display"),
+            record.get("web-port"),
         )
         print_birth_state(repo, records_root, runtime, runtime.get("mother") or {}, image, runtime.get("network"), "[SWT] birth: 已完成 (显示栈重验通过)")
         return 0
@@ -2262,8 +2296,9 @@ def birth(args: argparse.Namespace, repo: Path) -> int:
         container["record"].get("vnc-port"),
         display_status,
         key,
-        lan_ip(),
+        read_confirmed_lan_address(records_root),
         host_display_status,
+        container["record"].get("web-port"),
     )
     state = empty_state(repo)
     observed_daemon = daemon_state(repo, runtime)
@@ -3387,8 +3422,9 @@ def resume(args: argparse.Namespace, repo: Path) -> int:
             "resume: 已就绪, 什么都没有需要恢复",
             target.get("ssh-port"), target.get("vnc-port"), display_status,
             Path(target["ssh_private_key"]) if target.get("ssh_private_key") else None,
-            lan_ip(),
+            read_confirmed_lan_address(records_root),
             host_display_status,
+            target.get("web-port"),
         )
         # STATE 用刚写盘的 runtime 容器记录 (含本分支刚更新的 display),
         # 不用函数头取的 observed 快照 — 那是显示栈检查前的旧值, 会与交付行自相矛盾
@@ -3541,8 +3577,9 @@ def resume(args: argparse.Namespace, repo: Path) -> int:
         "resume: 已完成 fail-closed 恢复",
         record.get("ssh-port"), record.get("vnc-port"), record.get("display"),
         Path(record["ssh_private_key"]) if record.get("ssh_private_key") else None,
-        lan_ip(),
+        read_confirmed_lan_address(records_root),
         record.get("host-display"),
+        record.get("web-port"),
     )
     print_state(
         build_state(repo, records_root, runtime, mother=_UNSET, containers=observed,
@@ -3653,6 +3690,7 @@ def status(args: argparse.Namespace, repo: Path) -> int:
         print_state(state, "[SWT] status: 什么都没有")
     else:
         print_state(state, "[SWT] status: 已完成只读盘点")
+    print_status_web_lines(containers, read_confirmed_lan_address(records_root))
     return 0
 
 

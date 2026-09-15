@@ -23,7 +23,7 @@
 - [x] ISSUE-02: LAN 地址确认机制 (D010)
   - 范围: `--lan-ip <ipv4>` flag; 已确认值持久化到 records_root 根级文件; birth 无已确认值且未给 flag → 决策收据新增 kind `lan-address`, DECIDE 行 exit 1 (候选 = lan_ip() 现算值仅作提示, 不交付); 确认后写入; 交付用址一律取已确认值 (UD-03).
   - 依据: D010/F006 + 旧图 M14 第 3 项移交 (顺带取代其猜测式选址). 接缝: swt CLI 行为 (DECIDE 行/flag 消费/持久化/指纹失配重问).
-- [ ] ISSUE-03: 双 URL 交付 (birth/resume/status)
+- [x] ISSUE-03: 双 URL 交付 (birth/resume/status)
   - 范围: print_delivery_lines 增 web 本机 URL (`http://127.0.0.1:<web-port>`) 与局域网 URL (`http://<已确认地址>:<web-port>`), 仅当容器有 web-port; birth/resume 交付接入; status 对有 web-port 容器附同样双 URL 行 (UD-04); 无 web-port 旧容器输出不变; birth 只交付入口不自动打开 (D005).
   - 依据: D003/D005/D007. 接缝: 交付输出文本断言 (含只列自身 URL, 不汇总其他母体).
 - [ ] ISSUE-04: 一母体一活跃容器 (D003)
