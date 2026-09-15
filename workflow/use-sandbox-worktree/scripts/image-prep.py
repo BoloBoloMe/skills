@@ -72,6 +72,8 @@ sshd>=8.0 probe="/usr/sbin/sshd -V"
 herdr>=0.9 probe="herdr --version"
 socat>=1.7 probe="dpkg-query -W -f='${Version}' socat | cut -d: -f2-"
 iproute2>=6.0 probe="dpkg-query -W -f='${Version}' iproute2 | cut -d: -f2-"
+codex>=0.154.0 probe="codex --version"
+kimi-code>=0.43.1 probe="kimi --version"
 codex-config probe="grep -c . /home/bolo/.codex/config.toml"
 """
 
@@ -253,6 +255,9 @@ RUN curl -LsSf https://astral.sh/uv/install.sh | UV_INSTALL_DIR=/usr/local/bin s
 
 # 稳定层: pi CLI
 RUN npm i -g @earendil-works/pi-coding-agent
+
+# 稳定层: codex CLI + kimi-code (npm 全局 latest; bin 名 codex/kimi)
+RUN npm i -g @openai/codex @moonshot-ai/kimi-code
 
 # 稳定层: herdr (官方发布静态二进制, 不依赖 host 现状)
 RUN curl -LsSf -o /usr/local/bin/herdr https://github.com/herdrdev/herdr/releases/download/v0.9.0/herdr-linux-x86_64 \
