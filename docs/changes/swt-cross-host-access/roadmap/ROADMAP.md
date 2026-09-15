@@ -33,11 +33,12 @@ use-sandbox-worktree 的容器 GUI/内容无感访问能力完整固化进 skill
 - [MILESTONE-05](MILESTONE-05.md) — 网页访问实施收口 (8 ISSUE, 82 契约测试全绿, 13 条 UD [账本](../milestone-05/UNAUTHORIZED_DECISIONS.md)): birth `-p 8800` (0.0.0.0 动态) + STATE web-port; `--lan-ip` 已确认地址 (DECIDE kind lan-address 入收据闭环, 不猜首个网卡); birth/resume/status 双 URL (只列自身/未确认打未附发行/status 只对 running 附行); 一母体一活跃容器 (birth 拒绝, 活跃=非 retired); present `--fixed-port` 锁端口 + 容器分支钉 8800; SKILL.md 展示沟通指引 (当前设备/宿主定位/open_url/降级) + 分发与生效节. 待验收: TC-001/TC-004 真机归 M09; present 规则入容器须 host sync-to-pi + base 重建 (UD-08)
 - [MILESTONE-06](MILESTONE-06.md) — 窗口直飞设计关闭 ([账本](../milestone-06/DECISIONS.md), ADR [0013](../../../adr/0013-waypipe-trigger-via-mailbox-zero-param-exec.md)): 触发走信箱 exec 零参数指令 (幂等+限频, 删 URL 参数防注入), (c3) 常驻隧道仅文档备选; 音频同条 ssh -R unix 为主/独立 -R 为备/TCP 救场, 排序挂 M07 必测; 启动脚本母本制 (birth 解析 chromium 路径, records-root 留档, 只读挂载) + preflight 管机械判定; base 层三项 (SetEnv 合并单行/目录保障/StreamLocalBindUnlink yes) 搭车 D017 级联; STATE 不动; 三态选路默认投信, ack 后轮询容器内会话 socket 判活, 超时落 noVNC; B 端前提文档声明+设备侧执行前自动检查本地通知. 反方攻击 6 条 5 采纳 (堵 ack 静默黑洞, 白名单零参数加严). 双机实测归 M07, 实施归 M08.
 - [MILESTONE-07](MILESTONE-07.md) — waypipe 双机实测 6/8 通过 (2 项不适用): 设备 Ubuntu waypipe **0.11.0 Rust** ↔ 容器 **0.8.4 C** 跨版本互通, **Rust 版透传用户 `-R`** (F004 最大风险排除, D002 主形态成立, 备胎无需启用); 音频客观验证 (chrome 流进设备 PipeWire, 同 uid 认证放行, 转发 socket 600 bolo); StreamLocalBindUnlink 缺省挡重建/加 directive 治好双向实锤. 产出 N1-N6 新事实: 命令须 env(1) 包装或脚本内设 env; sshd 不清理转发 socket (F005 修正: socket 存在≠会话存活, 残留会累积); XDG_RUNTIME_DIR 可经 ~/.ssh/environment 注入 (PermitUserEnvironment yes 已在); 设备→容器密码登录待密钥化; 容器 uid=1001; apt 版 0.8.4. 跳过: 主观延迟 (设备无音频输出接口), (c3) D001 未采纳不测
+- [MILESTONE-08](MILESTONE-08.md) — 窗口直飞实施收口 (8 ISSUE 全提交, 双轴评审通过, 13 条 UD [账本](../milestone-08/UNAUTHORIZED_DECISIONS.md)): base 层 sshd 三项 (SetEnv 合并 xdg-1001/StreamLocalBindUnlink/entrypoint 目录保障) + display 层 waypipe/libpulse0; 启动脚本母本制 (preflight exit 86 + 条件 PULSE_SERVER + birth 解析 chromium 落档挂载); 服务端首成员 swt.pull-window (形状校验+自身容器绑定); relay 拉窗门 (waypipe 检查/缺席抑制/300s 限频/skipped ack); enroll-device-key 子命令; 交付包直飞行; SKILL.md 三态编排节. 契约池 276 绿 + relay 20 绿; D017 级联重建与双机真链验收归 M09
 
 ## 前沿
 
 <!-- 开放 + 已解除阻塞 + 未被认领的 Milestone -->
-- [MILESTONE-08](MILESTONE-08.md) — `task` — 窗口直飞实施 (M07 关闭后解除阻塞)
+- [MILESTONE-09](MILESTONE-09.md) — 真机验收 (M08 关闭后解除阻塞; HITL, 须用户设备在场)
 
 ## 进行中
 
@@ -66,12 +67,12 @@ use-sandbox-worktree 的容器 GUI/内容无感访问能力完整固化进 skill
 
 ```
 M01(信箱盘问)✅ ──→ M02(信箱原型)✅ ──→ M03(信箱实施)✅ ────────────┐
-                                                                ├─→ M08(直飞实施) ──┐
+                                                                ├─→ M08(直飞实施)✅ ─┐
 M06(直飞盘问)✅ ──→ M07(双机实测)✅ ─────────────────────────────┘                  │
                                                                                    ├─→ M09(真机验收) ──→ 目的地
 M04(网页盘问)✅ ──→ M05(网页实施)✅ --------------------------------------------------┘
 ```
 
-- 前沿: M08 (M07 关闭后解除阻塞)
+- 前沿: M09 (M08 关闭后解除阻塞; HITL, 须用户在场: 镜像 D017 级联重建 + 三场景真机验收)
 - M05 已关闭: 网页直达不依赖信箱运行, 自动查网址/回话/代开复用已交付的 M03 能力; M09 验证实际双机路径
 - M05 遗留 host 侧待办 (UD-08): present 规则入容器须 sync-to-pi + base 重建 (级联 D017), 与 M08 的 base 层三项 (M06 已定搭车 D017) 同批处理; 现有容器仍不处理
