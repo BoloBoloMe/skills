@@ -39,6 +39,7 @@ from urllib.parse import parse_qs, urlparse
 
 TS_WINDOW = 300.0  # D007: 签名时间窗 ±5min
 MSG_TYPES = ("notify", "open_url", "exec", "request")  # D004
+PULL_WINDOW_TOOL = "swt.pull-window"  # D008 exec 指令集首成员
 PROCESSED_RETENTION = 7 * 86400.0  # D004: 已处理消息 7 天滚动删除
 
 PORT_RANGE = range(38417, 38427)  # D002: 冷门区间, 绑首个空闲端口
@@ -295,7 +296,8 @@ class Mailbox:
         msg = StoredMessage(dict(env), ck.allow_targets)  # 目标作用域快照 (UD-05)
         if env["type"] == "exec":
             ins = self._parse_instruction(env["body"])
-            if ins is not None and _canonical(ins) in self.whitelist:
+            if self._pull_window_hit(ins, ck) or (
+                    ins is not None and _canonical(ins) in self.whitelist):
                 msg.note = "指令集命中 → 设备直批 (D005)"
             else:
                 msg.downgraded = True
@@ -314,6 +316,15 @@ class Mailbox:
         except (json.JSONDecodeError, TypeError):
             return None
         return ins if isinstance(ins, dict) and isinstance(ins.get("tool"), str) else None
+
+    @staticmethod
+    def _pull_window_hit(ins, ck: ContainerKey) -> bool:
+        # UD-05: swt.pull-window = 服务端内置形状校验, container 动态绑定投信
+        # 容器自身, 不落静态 whitelist 行. 恰含 {tool, container} 两键才命中.
+        return (isinstance(ins, dict)
+                and set(ins) == {"tool", "container"}
+                and ins["tool"] == PULL_WINDOW_TOOL
+                and ins["container"] == ck.container)
 
     def _check_ts_window(self, sig_ts) -> None:
         if abs(self._now() - float(sig_ts)) > TS_WINDOW:
