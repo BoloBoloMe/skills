@@ -230,7 +230,7 @@ class TestStatusRebuildsWebPort(unittest.TestCase):
         original_run = m.run
         m.run = fake
         try:
-            return m.podman_container_state(repo, runtime, mother_tip="faketip")
+            return m.podman_container_state(repo, [runtime])
         finally:
             m.run = original_run
 
@@ -259,7 +259,7 @@ class TestStatusRebuildsWebPort(unittest.TestCase):
         original_run = m.run
         m.run = fake
         try:
-            m.podman_container_state(repo, runtime, mother_tip="faketip")
+            m.podman_container_state(repo, [runtime])
         finally:
             m.run = original_run
         ps_calls = [c for c in fake.calls if c[:2] == ["podman", "ps"]]
@@ -566,11 +566,11 @@ class TestStatusWebUrls(unittest.TestCase):
 
     def test_status_web_lines_fed_from_repo_scoped_inventory(self):
         """TC-003 结构性守卫: status 的 web 行数据源就是
-        podman_container_state(repo, runtime) 的 repo label 过滤盘点结果,
-        不另查全局容器, 其他母体容器无入口混入."""
+        podman_container_state(repo, runtimes) 的 repo label 过滤盘点结果
+        (并行母体: runtimes 为本仓全部对), 不另查全局容器, 其他母体容器无入口混入."""
         source = SCRIPT.read_text(encoding="utf-8")
         segment = source[source.index("def status("):]
-        inventory_at = segment.index("containers = podman_container_state(repo, runtime)")
+        inventory_at = segment.index("containers = podman_container_state(repo,")
         lines_at = segment.index("print_status_web_lines(containers,")
         self.assertLess(inventory_at, lines_at,
                         "web 行必须直接消费 repo 过滤盘点, 不得另起数据源")

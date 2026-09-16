@@ -18,6 +18,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 SCRIPT = ROOT / "workflow/use-sandbox-worktree/scripts/swt.py"
+SCHEMA_EXPECTED = 2  # 并行母体改造后 STATE schema 升 2 (只加字段不改名)
 
 
 class SwtFixture(unittest.TestCase):
@@ -78,6 +79,17 @@ class SwtFixture(unittest.TestCase):
             env=env,
         )
 
+    def write_runtime(self, swt, data: dict) -> Path:
+        """按对级身份约定写 runtime 文件 (并行母体: 一对一份, 文件名 = slug-sha1(母体路径))."""
+        mother = data.get("mother_dir") or (data.get("mother") or {}).get("dir")
+        identity = (
+            swt.pair_identity(self.repo, Path(mother)) if mother
+            else f"{self.repo.name}-{hashlib.sha1(str(self.repo.resolve()).encode()).hexdigest()[:8]}"
+        )
+        path = self.records / "runtime" / f"{identity}.json"
+        swt.atomic_write_json(path, {"repo": str(self.repo.resolve()), **data})
+        return path
+
     @staticmethod
     def host_port_free(port: int) -> bool:
         probe = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -116,7 +128,7 @@ class TestTS001EmptyStatus(SwtFixture):
 
         self.assertEqual(0, result.returncode, result.stderr)
         state = self.state(result)
-        self.assertEqual(1, state["schema"])
+        self.assertEqual(SCHEMA_EXPECTED, state["schema"])
         self.assertEqual(str(self.repo.resolve()), state["repo"])
         self.assertEqual(
             {"branch": None, "dir": None, "exists": False, "worktree-dirty": False},
@@ -163,24 +175,9 @@ class TestTS002RepoResolution(SwtFixture):
 
 
 class TestTS003MotherAndConfig(SwtFixture):
-    def add_d008_config(self, branch: str) -> None:
-        values = {
-            "receive.denyCurrentBranch": ["updateInstead"],
-            "receive.denyNonFastForwards": ["true"],
-            "receive.denyDeletes": ["true"],
-            "receive.hideRefs": ["refs/heads", f"!refs/heads/{branch}", "refs/tags", "refs/remotes"],
-            "uploadpack.hideRefs": ["refs/heads", f"!refs/heads/{branch}", "refs/tags", "refs/remotes"],
-        }
-        for key, entries in values.items():
-            for value in entries:
-                subprocess.run(
-                    ["git", "-C", str(self.repo), "config", "--add", key, value],
-                    check=True,
-                    capture_output=True,
-                    text=True,
-                )
-
     def make_mother(self) -> tuple[str, Path]:
+        """建母体工作树 + 两层 swt-form 配置 (仓级 deny 三键 + 扩展开关; 对级 hideRefs
+        落母体 config.worktree)."""
         branch = "feature/mother"
         mother = self.root / "mother"
         subprocess.run(
@@ -189,11 +186,28 @@ class TestTS003MotherAndConfig(SwtFixture):
             capture_output=True,
             text=True,
         )
-        self.add_d008_config(branch)
+        for key, value in (
+            ("receive.denyCurrentBranch", "updateInstead"),
+            ("receive.denyNonFastForwards", "true"),
+            ("receive.denyDeletes", "true"),
+            ("extensions.worktreeConfig", "true"),
+        ):
+            subprocess.run(
+                ["git", "-C", str(self.repo), "config", key, value],
+                check=True, capture_output=True, text=True,
+            )
+        for key in ("receive.hideRefs", "uploadpack.hideRefs"):
+            for value in ("refs/heads", f"!refs/heads/{branch}", "refs/tags", "refs/remotes"):
+                subprocess.run(
+                    ["git", "-C", str(mother), "config", "--worktree", "--add", key, value],
+                    check=True, capture_output=True, text=True,
+                )
         return branch, mother
 
     def test_mother_and_matching_config_are_reported(self) -> None:
         branch, mother = self.make_mother()
+        swt = self.load_swt()
+        self.write_runtime(swt, {"mother": {"branch": branch, "dir": str(mother.resolve())}})
         result = self.run_swt("status", "--repo", str(self.repo), "--records-root", str(self.records))
         self.assertEqual(0, result.returncode, result.stderr)
         state = self.state(result)
@@ -204,9 +218,11 @@ class TestTS003MotherAndConfig(SwtFixture):
         self.assertTrue(state["config"]["swt-form"])
 
     def test_wrong_config_and_dirty_mother_are_visible(self) -> None:
-        _branch, mother = self.make_mother()
+        branch, mother = self.make_mother()
+        swt = self.load_swt()
+        self.write_runtime(swt, {"mother": {"branch": branch, "dir": str(mother.resolve())}})
         subprocess.run(
-            ["git", "-C", str(self.repo), "config", "--replace-all", "receive.denyDeletes", "false"],
+            ["git", "-C", str(self.repo), "config", "receive.denyDeletes", "false"],
             check=True,
             capture_output=True,
             text=True,
@@ -218,6 +234,21 @@ class TestTS003MotherAndConfig(SwtFixture):
         self.assertTrue(state["mother"]["exists"])
         self.assertTrue(state["mother"]["worktree-dirty"])
         self.assertFalse(state["config"]["swt-form"])
+
+    def test_legacy_repo_level_hiderefs_is_not_swt_form(self) -> None:
+        """旧形态 (hideRefs 挂主仓 config, 母体 config.worktree 空) 不算 swt-form —
+        status 如实反映漂移, 由 resume 自愈收敛."""
+        branch, mother = self.make_mother()
+        swt = self.load_swt()
+        self.write_runtime(swt, {"mother": {"branch": branch, "dir": str(mother.resolve())}})
+        subprocess.run(
+            ["git", "-C", str(self.repo), "config", "--unset-all", "extensions.worktreeConfig"],
+            check=True, capture_output=True, text=True,
+        )
+        result = self.run_swt("status", "--repo", str(self.repo), "--records-root", str(self.records))
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertFalse(self.state(result)["config"]["swt-form"])
+        self.assertIn(branch, json.dumps(self.state(result)["mothers"]))
 
 
 class TestTS004Containers(SwtFixture):
@@ -413,9 +444,10 @@ class TestS2ContainerDirty(SwtFixture):
         key = self.root / "runtime-key"
         key.write_text("not-a-real-key\n", encoding="utf-8")
         runtime = {
+            "mother": {"branch": "feature/mother", "dir": str(self.root / "feature-mother")},
             "containers": [{"name": name, "ssh_private_key": str(key)}],
         }
-        swt.atomic_write_json(swt.runtime_path(self.records, self.repo), runtime)
+        self.write_runtime(swt, runtime)
 
         result = self.run_swt(
             "status",
@@ -450,7 +482,8 @@ class TestS3BuildRecords(SwtFixture):
 
 
 class TestS6ExternalSlug(SwtFixture):
-    def test_identity_uses_slug_script_subprocess(self) -> None:
+    def test_pair_identity_uses_slug_script_subprocess(self) -> None:
+        """对级 identity 的 slug 段经 slug.py 子进程产出 (不自行推测)."""
         fake_bin = self.root / "fake-bin"
         fake_bin.mkdir()
         real_uv = shutil.which("uv")
@@ -474,23 +507,18 @@ class TestS6ExternalSlug(SwtFixture):
             target = shutil.which(command)
             self.assertIsNotNone(target)
             (fake_bin / command).symlink_to(target)
-        identity = f"delegated-slug-{hashlib.sha1(str(self.repo.resolve()).encode()).hexdigest()[:8]}"
-        runtime = self.records / "runtime" / f"{identity}.json"
-        runtime.parent.mkdir(parents=True)
-        runtime.write_text(json.dumps({"image": {"ref": "external-slug-proof"}}), encoding="utf-8")
-        result = self.run_swt(
-            "status",
-            "--repo", str(self.repo),
-            "--records-root", str(self.records),
-            env={
-                **os.environ,
-                "PATH": str(fake_bin),
-                "SWT_SLUG_LOG": str(self.root / "slug.log"),
-            },
+        swt = self.load_swt()
+        mother = self.root / "some-mother"
+        mother.mkdir()
+        # pair_identity 内部走 run(uv run python slug.py), 用 fake PATH 引到 fake uv
+        import unittest.mock as mock
+        with mock.patch.dict(os.environ, {"PATH": str(fake_bin), "SWT_SLUG_LOG": str(self.root / "slug.log")}):
+            identity = swt.pair_identity(self.repo, mother)
+        self.assertEqual(
+            f"delegated-slug-{hashlib.sha1(str(mother.resolve()).encode()).hexdigest()[:8]}",
+            identity,
         )
-        self.assertEqual(0, result.returncode, result.stderr)
-        self.assertEqual("external-slug-proof", self.state(result)["image"]["ref"])
-        self.assertEqual(1, len((self.root / "slug.log").read_text(encoding="utf-8").splitlines()))
+        self.assertTrue((self.root / "slug.log").is_file())
 
 
 class TestS5StaleMother(SwtFixture):
@@ -498,8 +526,8 @@ class TestS5StaleMother(SwtFixture):
         swt = self.load_swt()
         stale_dir = self.root / "stale-mother"
         stale_dir.mkdir()
-        swt.atomic_write_json(
-            swt.runtime_path(self.records, self.repo),
+        self.write_runtime(
+            swt,
             {"mother": {"branch": "feature/stale", "dir": str(stale_dir)}},
         )
         result = self.run_swt("status", "--repo", str(self.repo), "--records-root", str(self.records))
@@ -521,8 +549,8 @@ class TestS5StaleMother(SwtFixture):
         )
         stale_dir = self.root / "stale-mother"
         stale_dir.mkdir()
-        swt.atomic_write_json(
-            swt.runtime_path(self.records, self.repo),
+        self.write_runtime(
+            swt,
             {"mother": {"branch": "feature/actual", "dir": str(stale_dir)}},
         )
         result = self.run_swt("status", "--repo", str(self.repo), "--records-root", str(self.records))
@@ -533,7 +561,16 @@ class TestS5StaleMother(SwtFixture):
 
 
 class TestS4DaemonProbe(SwtFixture):
-    def test_daemon_matches_parent_base_path_and_parses_arguments(self) -> None:
+    def test_daemon_serving_mother_dir_is_reported_as_orphan(self) -> None:
+        """per-mother daemon (服务母体目录) 无 runtime 记录时按孤儿呈报并解析参数."""
+        swt = self.load_swt()
+        branch = "feature/actual"
+        mother = self.root / "actual-mother"
+        subprocess.run(
+            ["git", "-C", str(self.repo), "worktree", "add", "-b", branch, str(mother)],
+            check=True, capture_output=True, text=True,
+        )
+        self.write_runtime(swt, {"mother": {"branch": branch, "dir": str(mother.resolve())}})
         fake_bin = self.root / "fake-bin"
         fake_bin.mkdir()
         for command in ("uv", "git", "podman"):
@@ -544,7 +581,7 @@ class TestS4DaemonProbe(SwtFixture):
         fake_ps.write_text(
             "#!/bin/sh\n"
             f"printf '%s\\n' '12345 git daemon --base-path={self.repo.parent} "
-            f"--listen=127.0.0.1 --port=44651 {self.repo.parent}'\n",
+            f"--listen=127.0.0.1 --port=44651 {mother.resolve()}'\n",
             encoding="utf-8",
         )
         fake_ps.chmod(0o755)
@@ -588,6 +625,13 @@ class TestS4DaemonProbe(SwtFixture):
 
 
 class SwtBirthFixture(SwtFixture):
+    def setUp(self) -> None:
+        super().setUp()
+        # D010/UD-03 之后 birth 会问局域网地址 (DECIDE); 生命周期用例统一预写
+        # 已确认地址绕开, 局域网地址专项用例另行控制 (test_swt_web_access.py).
+        self.records.mkdir(parents=True, exist_ok=True)
+        (self.records / "lan-address").write_text("192.0.2.10\n", encoding="utf-8")
+
     def tearDown(self) -> None:
         runtime = self.records / "runtime"
         for path in runtime.glob("*.json") if runtime.is_dir() else []:
@@ -629,18 +673,6 @@ class SwtBirthFixture(SwtFixture):
         self.assertEqual(0, result.returncode, result.stderr)
         return self.state(result)
 
-    def make_target_mother(self, raw_branch: str = "feature/next") -> tuple[str, Path]:
-        swt = self.load_swt()
-        branch = swt.resolve_mother_branch(self.repo, raw_branch)
-        mother = self.root / "target-mother"
-        subprocess.run(
-            ["git", "-C", str(self.repo), "worktree", "add", "-b", branch, str(mother)],
-            check=True,
-            capture_output=True,
-            text=True,
-        )
-        return branch, mother
-
     def container_netns(self, name: str) -> str:
         detail = json.loads(subprocess.run(
             ["podman", "inspect", name], capture_output=True, text=True, check=True,
@@ -659,16 +691,28 @@ class SwtBirthFixture(SwtFixture):
         self.fail(f"未找到 nft 表或源地址: {source}")
 
     def config_values(self, key: str) -> list[str]:
-        return subprocess.run(
+        result = subprocess.run(
             ["git", "-C", str(self.repo), "config", "--get-all", key],
-            capture_output=True, text=True, check=True,
-        ).stdout.splitlines()
+            capture_output=True, text=True, check=False,
+        )
+        return result.stdout.splitlines() if result.returncode == 0 else []
 
     def runtime_file(self) -> Path:
         return next((self.records / "runtime").glob("*.json"))
 
     def runtime_data(self) -> dict:
         return json.loads(self.runtime_file().read_text(encoding="utf-8"))
+
+    def runtime_data_for(self, container_name: str) -> dict:
+        """按容器名定位所属对的 runtime (并行母体: 多对各自一份)."""
+        for path in sorted((self.records / "runtime").glob("*.json")):
+            data = json.loads(path.read_text(encoding="utf-8"))
+            if any(
+                isinstance(item, dict) and item.get("name") == container_name
+                for item in data.get("containers", [])
+            ):
+                return data
+        raise AssertionError(f"没有 runtime 记录容器 {container_name}")
 
     def ssh_run(self, state: dict, command: str) -> subprocess.CompletedProcess[str]:
         container = state["containers"][-1]
@@ -693,7 +737,9 @@ class TestTS201BirthChain(SwtBirthFixture):
         self.assertEqual(1, decide.returncode, decide.stderr)
         self.assertIn("DECIDE ", decide.stdout)
         self.assertIn("network-mode", decide.stdout)
-        self.assertIn("mother-create", decide.stdout)
+        # 并行母体: 母体选择决策废除 (--branch 定对, 存在即复用/缺即新建)
+        self.assertNotIn("mother-create", decide.stdout)
+        self.assertNotIn("mother-reuse", decide.stdout)
         self.assertTrue(list((self.records / "runtime").glob("*/decisions/d-*.json")))
 
         port_6080_free = self.host_port_free(6080)
@@ -719,18 +765,30 @@ class TestTS201BirthChain(SwtBirthFixture):
             ).stdout.splitlines()
             for key in (
                 "receive.denyCurrentBranch", "receive.denyNonFastForwards", "receive.denyDeletes",
-                "receive.hideRefs", "uploadpack.hideRefs",
+                "extensions.worktreeConfig",
             )
         }
         self.assertEqual(["updateInstead"], config["receive.denyCurrentBranch"])
         self.assertEqual(["true"], config["receive.denyNonFastForwards"])
         self.assertEqual(["true"], config["receive.denyDeletes"])
-        self.assertEqual(["refs/heads", f"!refs/heads/{branch}", "refs/tags", "refs/remotes"], config["receive.hideRefs"])
-        self.assertEqual(["refs/heads", f"!refs/heads/{branch}", "refs/tags", "refs/remotes"], config["uploadpack.hideRefs"])
+        self.assertEqual(["true"], config["extensions.worktreeConfig"])
+        # 对级 hideRefs 落母体 config.worktree (并行母体改造), 主仓级无 hideRefs
+        self.assertEqual([], self.config_values("receive.hideRefs"))
+        self.assertEqual([], self.config_values("uploadpack.hideRefs"))
+        mother_dir = Path(state["mother"]["dir"])
+        for key in ("receive.hideRefs", "uploadpack.hideRefs"):
+            pair_values = subprocess.run(
+                ["git", "-C", str(mother_dir), "config", "--worktree", "--get-all", key],
+                capture_output=True, text=True, check=True,
+            ).stdout.splitlines()
+            self.assertEqual(
+                ["refs/heads", f"!refs/heads/{branch}", "refs/tags", "refs/remotes"], pair_values,
+            )
         pid = state["daemon"]["pid"]
         command_line = Path(f"/proc/{pid}/cmdline").read_bytes().decode(errors="replace").split("\0")
         self.assertNotIn("--export-all", command_line)
         self.assertEqual(str(self.repo.parent), state["daemon"]["base-path"])
+        self.assertIn(str(mother_dir.resolve()), command_line)  # daemon 服务母体目录
         # P0-1: daemon 只听宿主回环; git 桥存活且 socket 落 runtime; 容器 remote 恒定走桥
         self.assertEqual("127.0.0.1", state["daemon"]["addr"])
         bridge = state["daemon"].get("bridge") or {}
@@ -739,7 +797,7 @@ class TestTS201BirthChain(SwtBirthFixture):
         remote_url = self.ssh_run(
             state, f"git -C /home/bolo/Workspace/{branch} remote get-url origin"
         ).stdout.strip()
-        self.assertEqual(f"git://127.0.0.1:9418/{self.repo.name}", remote_url)
+        self.assertEqual(f"git://127.0.0.1:9418/{mother_dir.name}", remote_url)
         self.assertEqual(0, self.ssh_run(
             state, f"git -C /home/bolo/Workspace/{branch} ls-remote origin"
         ).returncode)
@@ -880,17 +938,20 @@ class TestTS213SshKey(TestTS201BirthChain):
 
 
 class TestTS210NftMerge(TestTS201BirthChain):
-    def test_second_container_rules_stay_in_each_container_netns(self) -> None:
+    def test_second_pair_rules_stay_in_each_container_netns(self) -> None:
+        """并行母体: 两对各自的容器规则在各自 SandboxKey; 第二容器诞生时宿主 6080
+        已被首容器占用, 回落到回环动态端口 (D040)."""
         first_6080_free = self.host_port_free(6080)
         first = self.birth_ready()
         second_result = self.run_swt(
-            "birth", "--repo", str(self.repo), "--records-root", str(self.records), "--branch", "feature/m12",
+            "birth", "--repo", str(self.repo), "--records-root", str(self.records), "--branch", "other",
             "--image", "localhost/swt-m03:latest", "--mode", "whitelist", "--allow", "127.0.0.1",
-            "--reuse-mother", "--name", "swt-m12-merge-second",
+            "--new-mother", "--name", "swt-m12-merge-second",
         )
         self.assertEqual(0, second_result.returncode, second_result.stderr)
-        state = self.state(second_result)
-        self.assertEqual(2, len(state["containers"]))
+        #并行母体下各对 STATE 的 containers 只含本对容器, 全量清单用 status 聚合
+        status = self.run_swt("status", "--repo", str(self.repo), "--records-root", str(self.records))
+        state = self.state(status)
         # 每个容器的规则必须在它自己的 SandboxKey 中可见,
         # 不能靠全局 pasta 进程顺序判断.
         for item in state["containers"]:
@@ -963,44 +1024,63 @@ class TestTS208DecisionReceipts(TestTS201BirthChain):
             "birth", "--repo", str(self.repo), "--records-root", str(self.records), "--branch", "feature/m12",
             "--image", "localhost/swt-m03:latest",
         )
-        first = self.run_swt(*common)
+        # run_swt_exact: 不自动应答 hostname, 让首跑一次列出 network-mode + hostname
+        first = self.run_swt_exact(*common)
         self.assertEqual(1, first.returncode, first.stderr)
         lines = [line for line in first.stdout.splitlines() if line.startswith("DECIDE ")]
         self.assertGreaterEqual(len(lines), 2)
         self.assertEqual(len(lines), len({line.split()[1] for line in lines}))
         subprocess.run(["git", "-C", str(self.repo), "config", "receive.denyDeletes", "false"], check=True)
-        drift = self.run_swt(*common, "--mode", "blacklist", "--new-mother")
+        drift = self.run_swt_exact(*common, "--mode", "blacklist", "--new-mother")
         self.assertEqual(1, drift.returncode, drift.stderr)
         self.assertIn("DECIDE ", drift.stdout)
         self.assertFalse((self.repo.parent / "demo-main-feature-m12").exists())
         self.assertTrue(list((self.records / "runtime").glob("*/decisions/d-*.json")))
 
 
-class TestTS207ActiveMother(TestTS201BirthChain):
-    def test_second_activity_domain_is_rejected_with_switch_guidance(self) -> None:
+class TestTS207MultiPairBirth(TestTS201BirthChain):
+    def test_second_pair_birth_is_not_blocked_by_first_pair(self) -> None:
+        """并行母体: 第一对在世时, 第二个 --branch 直接开新对, 不再要求换母体."""
         self.birth_ready()
         result = self.run_swt(
             "birth", "--repo", str(self.repo), "--records-root", str(self.records), "--branch", "other",
             "--image", "localhost/swt-m03:latest", "--mode", "blacklist", "--new-mother",
         )
-        self.assertEqual(2, result.returncode)
-        self.assertIn("switch", result.stderr)
-        self.assertFalse((self.repo.parent / "demo-main-other").exists())
+        self.assertEqual(0, result.returncode, result.stderr)
+        state = self.state(result)
+        self.assertEqual("born", state["stage"])
+        self.assertTrue((self.repo.parent / "demo-main-other").exists())
+        # 两对各自一份 runtime + 各自一个 daemon
+        runtimes = list((self.records / "runtime").glob("*.json"))
+        self.assertEqual(2, len(runtimes))
+        status = self.run_swt("status", "--repo", str(self.repo), "--records-root", str(self.records))
+        mothers = self.state(status)["mothers"]
+        self.assertEqual(2, len(mothers))
+        self.assertEqual({"feature/m12", "other"}, {item["branch"] for item in mothers})
+        daemons = [item["daemon"] for item in mothers]
+        self.assertTrue(all(item and item.get("pid") for item in daemons))
+        self.assertNotEqual(daemons[0]["pid"], daemons[1]["pid"])
 
 
 class TestTS206ConfigIdempotence(TestTS201BirthChain):
     def test_rebirth_reuses_config_without_duplicate_values(self) -> None:
         first = self.birth_ready()
+        name = first["containers"][0]["name"]
         second = self.run_swt(
             "birth", "--repo", str(self.repo), "--records-root", str(self.records), "--branch", "feature/m12",
             "--image", "localhost/swt-m03:latest", "--mode", "whitelist", "--allow", "127.0.0.1",
-            "--reuse-mother", "--name", "swt-m12-second",
+            "--reuse-mother", "--name", name,
         )
         self.assertEqual(0, second.returncode, second.stderr)
         state = self.state(second)
-        self.assertEqual(2, len(state["containers"]))
+        # D003: 同名重入不算新容器, 活跃容器仍唯一
+        self.assertEqual(1, len([item for item in state["containers"] if not item["retired"]]))
+        mother_dir = Path(state["mother"]["dir"])
         for key in ("receive.hideRefs", "uploadpack.hideRefs"):
-            values = self.config_values(key)
+            values = subprocess.run(
+                ["git", "-C", str(mother_dir), "config", "--worktree", "--get-all", key],
+                capture_output=True, text=True, check=True,
+            ).stdout.splitlines()
             self.assertEqual(4, len(values))
             self.assertEqual(len(values), len(set(values)))
         self.assertEqual(first["daemon"]["pid"], state["daemon"]["pid"])
@@ -1024,15 +1104,27 @@ class TestTS205ConfigFault(TestTS201BirthChain):
         ).stdout.strip().splitlines())
         self.assertFalse(list(self.records.glob("runtime/*/*.json")))
         subprocess.run(["git", "-C", str(self.repo), "config", "--unset-all", "receive.denyDeletes"], check=True)
+        # 对级 hideRefs 冲突: 预建母体 + config.worktree 写入重复错误值 → 不覆盖
+        swt = self.load_swt()
+        branch = swt.resolve_mother_branch(self.repo, "feature/m12")
+        mother = swt.mother_path(self.repo, branch)
+        subprocess.run(
+            ["git", "-C", str(self.repo), "worktree", "add", "-b", branch, str(mother)],
+            check=True, capture_output=True, text=True,
+        )
+        subprocess.run(["git", "-C", str(self.repo), "config", "extensions.worktreeConfig", "true"], check=True)
         for value in ("refs/heads", "refs/heads", "refs/tags"):
-            subprocess.run(["git", "-C", str(self.repo), "config", "--add", "receive.hideRefs", value], check=True)
+            subprocess.run(
+                ["git", "-C", str(mother), "config", "--worktree", "--add", "receive.hideRefs", value],
+                check=True,
+            )
         duplicate = self.run_swt(
             "birth", "--repo", str(self.repo), "--records-root", str(self.records), "--branch", "feature/m12",
-            "--image", "localhost/swt-m03:latest", "--mode", "blacklist", "--new-mother",
+            "--image", "localhost/swt-m03:latest", "--mode", "blacklist", "--reuse-mother",
         )
         self.assertEqual(2, duplicate.returncode, duplicate.stderr)
         self.assertEqual(["refs/heads", "refs/heads", "refs/tags"], subprocess.run(
-            ["git", "-C", str(self.repo), "config", "--get-all", "receive.hideRefs"],
+            ["git", "-C", str(mother), "config", "--worktree", "--get-all", "receive.hideRefs"],
             capture_output=True, text=True, check=True,
         ).stdout.splitlines())
 
@@ -1132,14 +1224,23 @@ class TestTS202PushLands(TestTS201BirthChain):
         self.assertEqual("from-container\n", (mother / "ts202.txt").read_text(encoding="utf-8"))
 
 class TestReviewP1ActiveDaemon(TestTS201BirthChain):
-    def test_birth_rejects_orphanless_active_daemon_before_mother_creation(self) -> None:
+    def test_birth_rejects_pair_daemon_residue(self) -> None:
+        """本对母体目录已有孤儿 daemon (上次异常 birth 残留) → birth 前置拒绝;
+        并行母体下只拦本对, 他对 daemon 不在匹配面."""
+        swt = self.load_swt()
+        branch = swt.resolve_mother_branch(self.repo, "feature/m12")
+        mother = swt.mother_path(self.repo, branch)
+        subprocess.run(
+            ["git", "-C", str(self.repo), "worktree", "add", "-b", branch, str(mother)],
+            check=True, capture_output=True, text=True,
+        )
         reservation = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         reservation.bind(("127.0.0.1", 0))
         port = reservation.getsockname()[1]
         daemon = subprocess.Popen(
             ["git", "daemon", "--enable=receive-pack", f"--base-path={self.repo.parent}",
              "--listen=127.0.0.1", f"--port={port}", "--reuseaddr", "--log-destination=none",
-             str(self.repo.parent)],
+             str(mother)],
             stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
         )
         reservation.close()
@@ -1148,12 +1249,11 @@ class TestReviewP1ActiveDaemon(TestTS201BirthChain):
             result = self.run_swt(
                 "birth", "--repo", str(self.repo), "--records-root", str(self.records),
                 "--branch", "feature/m12", "--image", "localhost/swt-m03:latest",
-                "--mode", "blacklist", "--new-mother",
+                "--mode", "blacklist", "--reuse-mother",
             )
             self.assertEqual(2, result.returncode, result.stderr)
             self.assertIn("daemon", result.stderr)
             self.assertIn("清理", result.stderr)
-            self.assertFalse((self.repo.parent / "demo-main-feature-m12").exists())
         finally:
             daemon.terminate()
             try:
@@ -1176,8 +1276,9 @@ class TestReviewP2DaemonOrphan(TestTS201BirthChain):
 
 
 class TestReviewP3ImageFreshness(TestTS201BirthChain):
-    def test_second_container_reports_newer_candidate_digest(self) -> None:
-        self.birth_ready()
+    def test_rebirth_reports_newer_candidate_digest(self) -> None:
+        before = self.birth_ready()
+        name = before["containers"][0]["name"]
         runtime_file = self.runtime_file()
         runtime = self.runtime_data()
         runtime["containers"][0]["image-digest"] = "sha256:old-running-image"
@@ -1185,7 +1286,7 @@ class TestReviewP3ImageFreshness(TestTS201BirthChain):
         result = self.run_swt(
             "birth", "--repo", str(self.repo), "--records-root", str(self.records),
             "--branch", "feature/m12", "--image", "localhost/swt-m03:latest",
-            "--mode", "whitelist", "--allow", "127.0.0.1", "--reuse-mother", "--name", "swt-m12-freshness",
+            "--mode", "whitelist", "--allow", "127.0.0.1", "--reuse-mother", "--name", name,
         )
         self.assertEqual(0, result.returncode, result.stderr)
         self.assertTrue(self.state(result)["image"]["newer-available"])
@@ -1200,8 +1301,8 @@ class TestReviewP4ConfigPartial(TestTS201BirthChain):
         wrapper = fake_bin / "git"
         wrapper.write_text(
             "#!/bin/sh\n"
-            "if [ \"$1\" = -C ] && [ \"$3\" = config ] && [ \"$4\" = --add ] && "
-            "[ \"$5\" = uploadpack.hideRefs ] && [ \"$6\" = refs/tags ]; then\n"
+            "if [ \"$1\" = -C ] && [ \"$3\" = config ] && [ \"$4\" = --worktree ] && "
+            "[ \"$5\" = --add ] && [ \"$6\" = uploadpack.hideRefs ] && [ \"$7\" = refs/tags ]; then\n"
             "  echo injected-config-failure >&2\n"
             "  exit 1\n"
             "fi\n"
@@ -1419,29 +1520,32 @@ class TestTS301Terminate(SwtBirthFixture):
             return result.stdout
         self.fail(f"未找到 nft 表或源地址: {source}")
 
-    def test_multiple_containers_require_name_and_remove_only_selected_network_rule(self) -> None:
+    def test_multiple_pairs_require_name_and_remove_only_selected_network_rule(self) -> None:
+        """并行母体: 候选跨对聚合, 必须--name 消歧; 终结只拆本对, 邻对规则与容器不动."""
         first = self.birth_ready()
         second = self.run_swt(
             "birth", "--repo", str(self.repo), "--records-root", str(self.records),
-            "--branch", "feature/m12", "--image", "localhost/swt-m03:latest",
-            "--mode", "whitelist", "--allow", "127.0.0.1", "--reuse-mother",
+            "--branch", "other", "--image", "localhost/swt-m03:latest",
+            "--mode", "whitelist", "--allow", "127.0.0.1", "--new-mother",
             "--name", "swt-m12-second",
         )
         self.assertEqual(0, second.returncode, second.stderr)
-        both = self.state(second)
-        self.assertEqual(2, len(both["containers"]))
+        # 并行母体下各对 STATE 的 containers 只含本对容器, 全量清单用 status 聚合
+        status_both = self.run_swt("status", "--repo", str(self.repo), "--records-root", str(self.records))
+        both = self.state(status_both)
+        self.assertEqual(2, len([item for item in both["containers"] if not item["retired"]]))
         missing_name = self.terminate()
         self.assertEqual(2, missing_name.returncode)
         self.assertIn("--name", missing_name.stderr)
         self.assertIn(first["containers"][0]["name"], missing_name.stderr)
-        runtime = self.runtime_data()
         first_name = first["containers"][0]["name"]
         first_ip = first["containers"][0]["network-ip"]
         first_netns = self.container_netns(first_name)
         before = self.nft_table(first_netns, source=first_ip)
-        sibling = next(item for item in runtime["containers"] if item["name"] == "swt-m12-second")
+        sibling = next(item for item in self.runtime_data_for("swt-m12-second")["containers"] if item["name"] == "swt-m12-second")
         sibling_netns_before = self.container_netns("swt-m12-second")
         sibling_before = self.nft_table(sibling_netns_before, source=sibling["network-ip"])
+        runtime = self.runtime_data_for(first_name)
         target_record = next(item for item in runtime["containers"] if item["name"] == first_name)
         target_credentials = (
             Path(target_record["ssh_private_key"]),
@@ -1461,13 +1565,10 @@ class TestTS301Terminate(SwtBirthFixture):
         after = self.nft_table(sibling_netns, source=sibling["network-ip"])
         self.assertIn(f"ip saddr {sibling['network-ip']}", after)
         if first_ip == sibling["network-ip"]:
-            # pasta 映射下多个容器可能共享宿主源 IP, 规则文本无法区分容器.
-            self.assertIn(f"ip saddr {first_ip}", after)
-        elif first_netns == sibling_netns_before:
-            self.assertLess(
-                after.count(f"ip saddr {first_ip}"),
-                sibling_before.count(f"ip saddr {first_ip}"),
-            )
+            # pasta 映射下多个容器可能共享宿主源 IP, 规则文本无法区分容器;
+            # 隔离由各自 netns 保证, 被终结容器连同 netns 一并消失.
+            self.assertNotEqual(0, subprocess.run(
+                ["podman", "inspect", first_name], capture_output=True).returncode)
         else:
             self.assertNotIn(f"ip saddr {first_ip}", after)
         self.assertEqual(0, subprocess.run(["podman", "inspect", "swt-m12-second"], capture_output=True).returncode)
@@ -1475,8 +1576,6 @@ class TestTS301Terminate(SwtBirthFixture):
             self.assertFalse(credential.exists(), credential)
         for credential in sibling_credentials:
             self.assertTrue(credential.exists(), credential)
-        if first_netns == sibling_netns_before and first_ip != sibling["network-ip"]:
-            self.assertNotEqual(before, after)
 
     def test_missing_container_with_daemon_residue_converges(self) -> None:
         state = self.birth_ready()
@@ -1549,350 +1648,150 @@ class TestTS301Terminate(SwtBirthFixture):
             self.assertFalse(credential.exists(), credential)
 
 
-class TestTS401SwitchExistingMother(SwtBirthFixture):
-    def test_switches_to_existing_clean_mother_and_retires_old_container(self) -> None:
-        before = self.birth_ready()
-        old_name = before["containers"][0]["name"]
-        old_ip = before["containers"][0]["network-ip"]
-        runtime_file = self.runtime_file()
-        runtime_before = self.runtime_data()
-        old_netns = runtime_before["network"]["netns"]
-        target_branch, target_mother = self.make_target_mother()
+class TestMultiPairIsolation(SwtBirthFixture):
+    """并行母体 E2E 验收 (改造方案 5 节): 两对并存互不可见对方分支 + 各自推送落地
+    + 收对不伤邻对."""
 
+    def birth_pair(self, branch: str, name: str) -> dict:
         result = self.run_swt(
-            "switch", "--repo", str(self.repo), "--records-root", str(self.records),
-            "--to", "feature/next",
+            "birth", "--repo", str(self.repo), "--records-root", str(self.records),
+            "--branch", branch, "--image", "localhost/swt-m03:latest",
+            "--mode", "whitelist", "--allow", "127.0.0.1",
+            "--new-mother", "--name", name,
         )
-
         self.assertEqual(0, result.returncode, result.stderr)
-        state = self.state(result)
-        self.assertEqual(target_branch, state["mother"]["branch"])
-        self.assertEqual(str(target_mother.resolve()), state["mother"]["dir"])
-        self.assertTrue(state["mother"]["exists"])
-        self.assertTrue(state["target-mother-exists"])
-        self.assertIsNone(state["daemon"])
-        switched = next(item for item in state["containers"] if item["name"] == old_name)
-        self.assertEqual("exited", switched["state"])
-        self.assertTrue(switched["retired"])
-        self.assertEqual(
-            [old_name],
-            subprocess.run(
-                ["podman", "ps", "-a", "--filter", f"name=^{old_name}$", "--format", "{{.Names}}"],
-                capture_output=True,
-                text=True,
-                check=True,
-            ).stdout.splitlines(),
-        )
-        detail = subprocess.run(["podman", "inspect", old_name], capture_output=True, text=True, check=True)
-        self.assertEqual(0, detail.returncode)
-        self.assertEqual("exited", json.loads(detail.stdout)[0]["State"]["Status"])
-        self.assertEqual([], subprocess.run(
-            ["pgrep", "-af", f"git daemon.*--base-path={self.repo.parent}"],
-            capture_output=True,
-            text=True,
-            check=False,
-        ).stdout.strip().splitlines())
-        nft = subprocess.run(
-            ["podman", "unshare", "nsenter", f"--net={old_netns}", "nft", "list", "table", "inet", "swt"],
-            capture_output=True,
-            text=True,
-            check=False,
-        )
-        self.assertNotIn(f"ip saddr {old_ip}", nft.stdout)
-        self.assertEqual(["updateInstead"], self.config_values("receive.denyCurrentBranch"))
-        self.assertEqual(["true"], self.config_values("receive.denyNonFastForwards"))
-        self.assertEqual(["true"], self.config_values("receive.denyDeletes"))
-        self.assertEqual(
-            ["refs/heads", f"!refs/heads/{target_branch}", "refs/tags", "refs/remotes"],
-            self.config_values("receive.hideRefs"),
-        )
-        self.assertEqual(
-            ["refs/heads", f"!refs/heads/{target_branch}", "refs/tags", "refs/remotes"],
-            self.config_values("uploadpack.hideRefs"),
-        )
-        runtime = self.runtime_data()
-        old_record = next(item for item in runtime["containers"] if item["name"] == old_name)
-        self.assertTrue(old_record["retired"])
-        self.assertEqual("switched", runtime["stage"])
-        self.assertEqual(target_branch, state["authorized-mother"])
+        return self.state(result)
 
-
-class TestTS402SwitchMissingMother(SwtBirthFixture):
-    def test_switch_allows_missing_target_then_birth_creates_it(self) -> None:
-        before = self.birth_ready()
-        target = "feature/future"
-        switched = self.run_swt(
-            "switch", "--repo", str(self.repo), "--records-root", str(self.records), "--to", target,
+    def test_two_pairs_coexist_isolated_and_both_push_land(self) -> None:
+        first = self.birth_pair("feature/m12", "swt-m12-pair-a")
+        second = self.birth_pair("feature/next", "swt-m12-pair-b")
+        clone_a = "/home/bolo/Workspace/feature/m12"
+        clone_b = "/home/bolo/Workspace/feature/next"
+        # 读面隔离: 各自 ls-remote 只见本对分支
+        refs_a = self.ssh_run_for(first, clone_a, f"git -C {clone_a} ls-remote origin")
+        self.assertEqual(0, refs_a.returncode, refs_a.stderr)
+        self.assertIn("refs/heads/feature/m12", refs_a.stdout)
+        self.assertNotIn("feature/next", refs_a.stdout)
+        refs_b = self.ssh_run_for(second, clone_b, f"git -C {clone_b} ls-remote origin")
+        self.assertEqual(0, refs_b.returncode, refs_b.stderr)
+        self.assertIn("refs/heads/feature/next", refs_b.stdout)
+        self.assertNotIn("feature/m12", refs_b.stdout)
+        # 写面隔离: A 推 B 的分支被拒, 推本分支落地
+        cross = self.ssh_run_for(
+            first, clone_a,
+            f"git -C {clone_a} push origin HEAD:refs/heads/feature/next",
         )
-        self.assertEqual(0, switched.returncode, switched.stderr)
-        switched_state = self.state(switched)
-        self.assertFalse(switched_state["target-mother-exists"])
+        self.assertNotEqual(0, cross.returncode)
+        for state, clone, marker in ((first, clone_a, "from-a.txt"), (second, clone_b, "from-b.txt")):
+            committed = self.ssh_run_for(
+                state, clone,
+                f"git -C {clone} config user.name swt-m12 && git -C {clone} config user.email swt-m12@example.invalid && "
+                f"printf {marker} > {clone}/{marker} && git -C {clone} add {marker} && "
+                f"git -C {clone} commit -m {marker} && git -C {clone} push origin HEAD",
+            )
+            self.assertEqual(0, committed.returncode, committed.stdout + committed.stderr)
+        mother_a = Path(first["mother"]["dir"])
+        mother_b = Path(second["mother"]["dir"])
+        deadline = time.monotonic() + 3
+        while time.monotonic() < deadline and not (mother_a / "from-a.txt").is_file():
+            time.sleep(0.05)
+        while time.monotonic() < deadline and not (mother_b / "from-b.txt").is_file():
+            time.sleep(0.05)
+        self.assertEqual("from-a.txt", (mother_a / "from-a.txt").read_text(encoding="utf-8"))
+        self.assertEqual("from-b.txt", (mother_b / "from-b.txt").read_text(encoding="utf-8"))
+        # 收 A 对的容器: B 对 daemon 与容器不受影响
+        terminate = self.run_swt(
+            "terminate", "--repo", str(self.repo), "--records-root", str(self.records),
+            "--name", "swt-m12-pair-a", "--force",
+        )
+        self.assertEqual(0, terminate.returncode, terminate.stderr)
+        status_after = self.run_swt("status", "--repo", str(self.repo), "--records-root", str(self.records))
+        by_branch = {item["branch"]: item for item in self.state(status_after)["mothers"]}
+        self.assertTrue(by_branch["feature/next"]["daemon"])
+        alive = subprocess.run(
+            ["kill", "-0", str(by_branch["feature/next"]["daemon"]["pid"])],
+            capture_output=True, text=True,
+        )
+        self.assertEqual(0, alive.returncode)
+        containers = self.state(status_after)["containers"]
+        self.assertEqual(["swt-m12-pair-b"], [item["name"] for item in containers if item["state"] == "running"])
+
+    def ssh_run_for(self, state: dict, clone_dir: str, command: str) -> subprocess.CompletedProcess[str]:
+        container = next(item for item in state["containers"] if item["state"] == "running")
         swt = self.load_swt()
-        target_branch = swt.resolve_mother_branch(self.repo, target)
-        self.assertEqual(target_branch, switched_state["mother"]["branch"])
-        self.assertEqual(["refs/heads", f"!refs/heads/{switched_state['mother']['branch']}", "refs/tags", "refs/remotes"], self.config_values("receive.hideRefs"))
-        self.assertFalse((self.repo.parent / "demo-main-feature-future").exists())
-        created = self.run_swt(
-            "birth", "--repo", str(self.repo), "--records-root", str(self.records),
-            "--branch", target, "--image", "localhost/swt-m03:latest", "--mode", "whitelist",
-            "--allow", "127.0.0.1", "--new-mother",
-        )
-        self.assertEqual(0, created.returncode, created.stderr)
-        state = self.state(created)
-        self.assertEqual("born", state["stage"])
-        self.assertTrue(state["mother"]["exists"])
-        self.assertEqual(switched_state["mother"]["branch"], state["mother"]["branch"])
-        active = [item for item in state["containers"] if not item["retired"]]
-        self.assertEqual(1, len(active))
-        self.assertEqual("running", active[0]["state"])
-        self.assertTrue((Path(state["mother"]["dir"]) / "README.md").is_file())
-        self.assertEqual(["refs/heads", f"!refs/heads/{state['mother']['branch']}", "refs/tags", "refs/remotes"], self.config_values("uploadpack.hideRefs"))
-
-
-class TestTS403SwitchDirty(SwtBirthFixture):
-    def test_dirty_old_container_blocks_without_force_then_push_allows_switch(self) -> None:
-        before = self.birth_ready()
-        target_branch, _target_mother = self.make_target_mother()
-        committed = self.ssh_run(
-            before,
-            "git -C /home/bolo/Workspace/feature/m12 config user.name swt-m12 && "
-            "git -C /home/bolo/Workspace/feature/m12 config user.email swt-m12@example.invalid && "
-            "printf switch-dirty > /home/bolo/Workspace/feature/m12/switch-dirty.txt && "
-            "git -C /home/bolo/Workspace/feature/m12 add switch-dirty.txt && "
-            "git -C /home/bolo/Workspace/feature/m12 commit -m switch-dirty",
-        )
-        self.assertEqual(0, committed.returncode, committed.stderr)
-        old_name = before["containers"][0]["name"]
-        runtime_file = self.runtime_file()
-        runtime_before = self.runtime_data()
-        old_pid = runtime_before["daemon"]["pid"]
-        config_before = self.config_values("receive.hideRefs")
-        blocked = self.run_swt(
-            "switch", "--repo", str(self.repo), "--records-root", str(self.records), "--to", "feature/next",
-        )
-        self.assertEqual(1, blocked.returncode, blocked.stderr)
-        self.assertIn("DECIDE ", blocked.stdout)
-        self.assertIn("switch-dirty", blocked.stdout)
-        self.assertIn(old_name, blocked.stdout)
-        self.assertIn("ahead=1", blocked.stdout)
-        self.assertEqual(config_before, self.config_values("receive.hideRefs"))
-
-        self.assertEqual(0, subprocess.run(["podman", "inspect", old_name], capture_output=True).returncode)
-        self.assertEqual(0, subprocess.run(["kill", "-0", str(old_pid)], capture_output=True).returncode)
-        receipt = next((self.records / "runtime").glob("*/decisions/d-*.json"))
-        payload = json.loads(receipt.read_text(encoding="utf-8"))
-        self.assertEqual(target_branch, payload["fingerprint"]["target-branch"])
-        self.assertEqual([{"name": old_name, "podman-id": before["containers"][0]["podman-id"]}], payload["fingerprint"]["containers"])
-        pushed = self.ssh_run(before, "git -C /home/bolo/Workspace/feature/m12 push origin HEAD")
-        self.assertEqual(0, pushed.returncode, pushed.stdout + pushed.stderr)
-        completed = self.run_swt(
-            "switch", "--repo", str(self.repo), "--records-root", str(self.records), "--to", "feature/next",
-        )
-        self.assertEqual(0, completed.returncode, completed.stderr)
-        self.assertEqual(target_branch, self.state(completed)["mother"]["branch"])
-
-
-class TestTS404SwitchForce(SwtBirthFixture):
-    def test_force_switch_consumes_receipt_and_audits_dirty_decision(self) -> None:
-        before = self.birth_ready()
-        target_branch, _target_mother = self.make_target_mother()
-        changed = self.ssh_run(before, "printf dirty > /home/bolo/Workspace/feature/m12/switch-force.txt")
-        self.assertEqual(0, changed.returncode, changed.stderr)
-        first = self.run_swt(
-            "switch", "--repo", str(self.repo), "--records-root", str(self.records), "--to", "feature/next",
-        )
-        self.assertEqual(1, first.returncode, first.stderr)
-        decision_id = next(line.split()[1] for line in first.stdout.splitlines() if line.startswith("DECIDE "))
-        forced = self.run_swt(
-            "switch", "--repo", str(self.repo), "--records-root", str(self.records),
-            "--to", "feature/next", "--force",
-        )
-        self.assertEqual(0, forced.returncode, forced.stderr)
-        self.assertEqual(target_branch, self.state(forced)["mother"]["branch"])
-        self.assertEqual([], list((self.records / "runtime").glob("*/decisions/d-*.json")))
-        audit = next((self.records / "runtime").glob("*/audit.jsonl"))
-        entries = [json.loads(line) for line in audit.read_text(encoding="utf-8").splitlines() if line]
-        self.assertEqual(1, len(entries))
-        self.assertEqual("switch", entries[0]["action"])
-        self.assertEqual(decision_id, entries[0]["decision-id"])
-        self.assertEqual(target_branch, entries[0]["target-branch"])
-        self.assertEqual(before["containers"][0]["podman-id"], entries[0]["containers"][0]["podman-id"])
-        self.assertEqual(1, entries[0]["containers"][0]["dirty"]["uncommitted"])
-
-
-class TestTS405RetiredTerminate(SwtBirthFixture):
-    def test_switch_retired_container_is_visible_and_terminate_is_only_exit(self) -> None:
-        before = self.birth_ready()
-        old_name = before["containers"][0]["name"]
-        self.make_target_mother()
-        switched = self.run_swt(
-            "switch", "--repo", str(self.repo), "--records-root", str(self.records), "--to", "feature/next",
-        )
-        self.assertEqual(0, switched.returncode, switched.stderr)
-        status = self.run_swt(
-            "status", "--repo", str(self.repo), "--records-root", str(self.records),
-        )
-        self.assertEqual(0, status.returncode, status.stderr)
-        retired = next(item for item in self.state(status)["containers"] if item["name"] == old_name)
-        self.assertTrue(retired["retired"])
-        self.assertEqual("exited", retired["state"])
-        blocked = self.run_swt(
-            "terminate", "--repo", str(self.repo), "--records-root", str(self.records),
-            "--name", old_name,
-        )
-        self.assertEqual(1, blocked.returncode, blocked.stderr)
-        self.assertIn("DECIDE ", blocked.stdout)
-        self.assertIn("terminate-dirty", blocked.stdout)
-        forced = self.run_swt(
-            "terminate", "--repo", str(self.repo), "--records-root", str(self.records),
-            "--name", old_name, "--force",
-        )
-        self.assertEqual(0, forced.returncode, forced.stderr)
-        self.assertEqual([], self.state(forced)["containers"])
-        self.assertEqual([], subprocess.run(
-            ["podman", "ps", "-a", "--filter", f"name=^{old_name}$", "--format", "{{.Names}}"],
-            capture_output=True, text=True, check=True,
-        ).stdout.splitlines())
-
-
-class TestTS406SwitchPartial(SwtBirthFixture):
-    def test_config_failure_reports_authorization_gap_and_rerun_converges(self) -> None:
-        before = self.birth_ready()
-        target_branch, _target_mother = self.make_target_mother()
-        fake_bin = self.root / "switch-fail-bin"
-        fake_bin.mkdir()
-        real_git = shutil.which("git")
-        self.assertIsNotNone(real_git)
-        marker = self.root / "switch-config-failed"
-        wrapper = fake_bin / "git"
-        wrapper.write_text(
-            "#!/bin/sh\n"
-            f"if [ \"$1\" = -C ] && [ \"$3\" = config ] && [ \"$4\" = --replace-all ] && "
-            f"[ \"$5\" = uploadpack.hideRefs ] && [ \"$6\" = '!refs/heads/{target_branch}' ] && [ ! -f {shlex.quote(str(marker))} ]; then\n"
-            f"  touch {shlex.quote(str(marker))}\n"
-            "  echo injected-switch-config-failure >&2\n"
-            "  exit 1\n"
-            "fi\n"
-            f"exec {shlex.quote(str(real_git))} \"$@\"\n",
-            encoding="utf-8",
-        )
-        wrapper.chmod(0o755)
-        for command in ("uv", "podman", "nft", "ssh", "ssh-keygen", "ip", "pgrep", "ps"):
-            target = shutil.which(command)
-            self.assertIsNotNone(target)
-            (fake_bin / command).symlink_to(target)
-        environment = {**os.environ, "PATH": f"{fake_bin}:{os.environ['PATH']}"}
-        failed = self.run_swt(
-            "switch", "--repo", str(self.repo), "--records-root", str(self.records),
-            "--to", "feature/next", env=environment,
-        )
-        self.assertEqual(3, failed.returncode, failed.stderr)
-        self.assertTrue(failed.stderr.startswith("PARTIAL "))
-        self.assertIn("授权域空窗", failed.stderr)
-        runtime_file = self.runtime_file()
-        partial = self.runtime_data()
-        self.assertIsNone(partial["authorized-mother"])
-        old_name = before["containers"][0]["name"]
-        self.assertEqual("exited", json.loads(
-            subprocess.run(["podman", "inspect", old_name], capture_output=True, text=True, check=True).stdout
-        )[0]["State"]["Status"])
-        self.assertEqual(
-            ["refs/heads", f"!refs/heads/{target_branch}", "refs/tags", "refs/remotes"],
-            subprocess.run(
-                ["git", "-C", str(self.repo), "config", "--get-all", "receive.hideRefs"],
-                capture_output=True, text=True, check=True,
-            ).stdout.splitlines(),
-        )
-        self.assertEqual(
-            ["refs/heads", f"!refs/heads/{before['mother']['branch']}", "refs/tags", "refs/remotes"],
-            subprocess.run(
-                ["git", "-C", str(self.repo), "config", "--get-all", "uploadpack.hideRefs"],
-                capture_output=True, text=True, check=True,
-            ).stdout.splitlines(),
-        )
-        completed = self.run_swt(
-            "switch", "--repo", str(self.repo), "--records-root", str(self.records),
-            "--to", "feature/next", env=environment,
-        )
-        self.assertEqual(0, completed.returncode, completed.stderr)
-        self.assertEqual(target_branch, self.state(completed)["mother"]["branch"])
-        self.assertEqual("switched", json.loads(runtime_file.read_text(encoding="utf-8"))["stage"])
-
-
-class TestTS407SwitchPreconditions(SwtFixture):
-    def test_switch_without_active_mother_points_to_birth(self) -> None:
-        result = self.run_swt(
-            "switch", "--repo", str(self.repo), "--records-root", str(self.records), "--to", "feature/new",
-        )
-        self.assertEqual(2, result.returncode)
-        self.assertFalse(list((self.records / "runtime").glob("*.json")))
-        self.assertEqual([], subprocess.run(
-            ["git", "-C", str(self.repo), "config", "--get-all", "receive.hideRefs"],
+        runtime_file = swt.pair_runtime_path(self.records, self.repo, Path(state["mother"]["dir"]))
+        runtime = json.loads(runtime_file.read_text(encoding="utf-8"))
+        record = next(item for item in runtime["containers"] if item["name"] == container["name"])
+        key = Path(record["ssh_private_key"])
+        return subprocess.run(
+            ["ssh", "-i", str(key), "-o", "BatchMode=yes", "-o", "StrictHostKeyChecking=no",
+             "-o", "UserKnownHostsFile=/dev/null", "-p", str(container["ssh-port"]),
+             "bolo@127.0.0.1", command],
             capture_output=True, text=True, check=False,
-        ).stdout.splitlines())
+        )
 
 
-class TestTS409SameMother(SwtBirthFixture):
-    def test_switch_to_current_active_mother_is_rejected_without_changes(self) -> None:
+class TestLegacyMigrationViaResume(SwtBirthFixture):
+    """4.6 运行中容器迁移 (并入 resume 自愈): 旧形态 (hideRefs 挂主仓 config +
+    daemon 服务主仓 + 容器 remote 指主仓名) 经 resume 收敛为 per-mother 形态."""
+
+    def test_resume_migrates_legacy_form_and_converges(self) -> None:
         before = self.birth_ready()
+        name = before["containers"][0]["name"]
         branch = before["mother"]["branch"]
+        mother_dir = Path(before["mother"]["dir"])
+        # 1. 杀 daemon, 拆掉对级配置, 伪造旧形态: repo 级 hideRefs + 旧 remote
+        daemon_pid = before["daemon"]["pid"]
+        subprocess.run(["kill", str(daemon_pid)], capture_output=True, text=True, check=False)
+        subprocess.run(
+            ["git", "-C", str(mother_dir), "config", "--worktree", "--unset-all", "receive.hideRefs"],
+            check=True, capture_output=True, text=True,
+        )
+        subprocess.run(
+            ["git", "-C", str(mother_dir), "config", "--worktree", "--unset-all", "uploadpack.hideRefs"],
+            check=True, capture_output=True, text=True,
+        )
+        for key in ("receive.hideRefs", "uploadpack.hideRefs"):
+            for value in ("refs/heads", f"!refs/heads/{branch}", "refs/tags", "refs/remotes"):
+                subprocess.run(
+                    ["git", "-C", str(self.repo), "config", "--add", key, value],
+                    check=True, capture_output=True, text=True,
+                )
+        self.assertEqual(0, self.ssh_run(
+            before, f"git -C /home/bolo/Workspace/{branch} remote set-url origin git://127.0.0.1:9418/{self.repo.name}"
+        ).returncode)
         runtime_file = self.runtime_file()
-        runtime_before = runtime_file.read_bytes()
-        config_before = "\n".join(self.config_values("receive.hideRefs")) + "\n"
-        result = self.run_swt(
-            "switch", "--repo", str(self.repo), "--records-root", str(self.records), "--to", "feature/m12",
-        )
-        self.assertEqual(2, result.returncode)
-        self.assertIn("当前活动母体", result.stderr)
-        self.assertEqual(config_before, "\n".join(self.config_values("receive.hideRefs")) + "\n")
+        runtime = self.runtime_data()
+        runtime["containers"][0]["remote"] = f"git://127.0.0.1:9418/{self.repo.name}"
+        runtime_file.write_text(json.dumps(runtime), encoding="utf-8")
 
-        self.assertEqual(runtime_before, runtime_file.read_bytes())
-        self.assertEqual(branch, before["mother"]["branch"])
-
-
-class TestTS408SwitchMultipleContainers(SwtBirthFixture):
-    def test_switch_checks_all_containers_and_retires_all_after_cleaning(self) -> None:
-        first = self.birth_ready()
-        second_result = self.run_swt(
-            "birth", "--repo", str(self.repo), "--records-root", str(self.records),
-            "--branch", "feature/m12", "--image", "localhost/swt-m03:latest",
-            "--mode", "whitelist", "--allow", "127.0.0.1", "--reuse-mother",
-            "--name", "swt-m12-switch-second",
-        )
-        self.assertEqual(0, second_result.returncode, second_result.stderr)
-        second = self.state(second_result)
-        self.assertEqual(2, len(second["containers"]))
-        target_branch, _target_mother = self.make_target_mother()
-        changed = self.ssh_run(second, "printf dirty > /home/bolo/Workspace/feature/m12/multi-switch-dirty.txt")
-        self.assertEqual(0, changed.returncode, changed.stderr)
-        blocked = self.run_swt(
-            "switch", "--repo", str(self.repo), "--records-root", str(self.records), "--to", "feature/next",
-        )
-        self.assertEqual(1, blocked.returncode, blocked.stderr)
-        decide_lines = [line for line in blocked.stdout.splitlines() if line.startswith("DECIDE ")]
-        self.assertEqual(1, len(decide_lines))
-        self.assertIn(second["containers"][-1]["name"], decide_lines[0])
-        self.assertIn("uncommitted=1", decide_lines[0])
-        current = self.state(blocked)
-        self.assertEqual(2, len(current["containers"]))
-        self.assertTrue(all(item["state"] == "running" for item in current["containers"]))
-        cleaned = self.ssh_run(second, "rm -f /home/bolo/Workspace/feature/m12/multi-switch-dirty.txt")
-        self.assertEqual(0, cleaned.returncode, cleaned.stderr)
+        decide = self.run_swt("resume", "--repo", str(self.repo), "--records-root", str(self.records))
+        self.assertEqual(1, decide.returncode, decide.stderr)
+        self.assertIn("DECIDE ", decide.stdout)
         completed = self.run_swt(
-            "switch", "--repo", str(self.repo), "--records-root", str(self.records), "--to", "feature/next",
+            "resume", "--repo", str(self.repo), "--records-root", str(self.records), "--confirm",
         )
         self.assertEqual(0, completed.returncode, completed.stderr)
+        # 收敛断言: 主仓级 hideRefs 清空; 对级落母体 config.worktree; remote 指母体目录名
+        self.assertEqual([], self.config_values("receive.hideRefs"))
+        self.assertEqual([], self.config_values("uploadpack.hideRefs"))
+        self.assertEqual(
+            ["refs/heads", f"!refs/heads/{branch}", "refs/tags", "refs/remotes"],
+            subprocess.run(
+                ["git", "-C", str(mother_dir), "config", "--worktree", "--get-all", "receive.hideRefs"],
+                capture_output=True, text=True, check=True,
+            ).stdout.splitlines(),
+        )
         state = self.state(completed)
-        self.assertEqual(target_branch, state["mother"]["branch"])
-        self.assertEqual(2, len(state["containers"]))
-        self.assertTrue(all(item["retired"] for item in state["containers"]))
-        self.assertTrue(all(item["state"] == "exited" for item in state["containers"]))
-        self.assertEqual([], subprocess.run(
-            ["pgrep", "-af", f"git daemon.*--base-path={self.repo.parent}"],
-            capture_output=True, text=True, check=False,
-        ).stdout.strip().splitlines())
-        runtime = self.runtime_data()
-        self.assertTrue(all(item["retired"] for item in runtime["containers"]))
+        url = self.ssh_run(
+            state, f"git -C /home/bolo/Workspace/{branch} remote get-url origin"
+        ).stdout.strip()
+        self.assertEqual(f"git://127.0.0.1:9418/{mother_dir.name}", url)
+        self.assertEqual(0, self.ssh_run(
+            state, f"git -C /home/bolo/Workspace/{branch} ls-remote origin"
+        ).returncode)
+        daemon_cmdline = Path(f"/proc/{state['daemon']['pid']}/cmdline").read_bytes().decode(errors="replace")
+        self.assertIn(str(mother_dir.resolve()), daemon_cmdline)
 
 
 class TestTS5Resume(SwtBirthFixture):
@@ -2077,32 +1976,17 @@ class TestTS5Resume(SwtBirthFixture):
     def test_ts503_retired_container_requires_terminate(self) -> None:
         before = self.birth_ready()
         old_name = before["containers"][0]["name"]
-        self.make_target_mother()
-        switched = self.run_swt(
-            "switch", "--repo", str(self.repo), "--records-root", str(self.records), "--to", "feature/next",
-        )
-        self.assertEqual(0, switched.returncode, switched.stderr)
+        # 并行母体下不再有 switch 产 retired 容器; 手工伪造历史遗留 retired 记录
+        runtime_file = self.runtime_file()
+        runtime = self.runtime_data()
+        runtime["containers"][0]["retired"] = True
+        runtime["containers"][0]["state"] = "exited"
+        runtime_file.write_text(json.dumps(runtime), encoding="utf-8")
+        subprocess.run(["podman", "stop", old_name], check=True, capture_output=True, text=True)
         result = self.resume("--name", old_name)
         self.assertEqual(2, result.returncode)
         self.assertIn("retired", result.stderr)
         self.assertIn("terminate", result.stderr)
-
-    def test_ts504_authorized_mother_drift_is_rejected(self) -> None:
-        before = self.birth_ready()
-        other = "feature/not-authorized"
-        subprocess.run(
-            ["git", "-C", str(self.repo), "config", "--unset-all", "receive.hideRefs"],
-            check=True, capture_output=True, text=True,
-        )
-        for value in ("refs/heads", f"!refs/heads/{other}", "refs/tags"):
-            subprocess.run(
-                ["git", "-C", str(self.repo), "config", "--add", "receive.hideRefs", value],
-                check=True, capture_output=True, text=True,
-            )
-        result = self.resume()
-        self.assertEqual(2, result.returncode)
-        self.assertIn("授权母体", result.stderr)
-        self.assertEqual("running", self.state(self.run_swt("status", "--repo", str(self.repo), "--records-root", str(self.records)))["containers"][0]["state"])
 
     def test_ts505_ready_resume_is_idempotent_without_decide_or_daemon_reload(self) -> None:
         before = self.birth_ready()
@@ -2128,12 +2012,13 @@ class TestTS5Resume(SwtBirthFixture):
         audit = json.loads(next((self.records / "runtime").glob("*/audit.jsonl")).read_text(encoding="utf-8").splitlines()[0])
         self.assertIn(old_pid, audit["killed-daemons"])
 
-    def test_ts507_resume_merge_preserves_sibling_network_rule(self) -> None:
+    def test_ts507_resume_merge_preserves_other_pair_network_rule(self) -> None:
+        """并行母体: resume 本对容器, 邻对容器的防火墙规则不受影响."""
         first = self.birth_ready()
         second_result = self.run_swt(
-            "birth", "--repo", str(self.repo), "--records-root", str(self.records), "--branch", "feature/m12",
+            "birth", "--repo", str(self.repo), "--records-root", str(self.records), "--branch", "other",
             "--image", "localhost/swt-m03:latest", "--mode", "whitelist", "--allow", "127.0.0.1",
-            "--reuse-mother", "--name", "swt-m12-resume-sibling",
+            "--new-mother", "--name", "swt-m12-resume-sibling",
         )
         self.assertEqual(0, second_result.returncode, second_result.stderr)
         before = self.state(second_result)
@@ -2250,6 +2135,7 @@ class TestP01GitBridgeResume(SwtBirthFixture):
         before = self.birth_ready()
         name = before["containers"][0]["name"]
         branch = before["mother"]["branch"]
+        mother_dir = Path(before["mother"]["dir"])
         # 制造中间态: 杀桥 + 容器 remote 指向失效地址 + 记录 remote 为旧形态
         bridge_pid = before["daemon"]["bridge"]["pid"]
         subprocess.run(["kill", str(bridge_pid)], capture_output=True, text=True, check=False)
@@ -2273,7 +2159,7 @@ class TestP01GitBridgeResume(SwtBirthFixture):
         url = self.ssh_run(
             state, f"git -C /home/bolo/Workspace/{branch} remote get-url origin"
         ).stdout.strip()
-        self.assertEqual(f"git://127.0.0.1:9418/{self.repo.name}", url)
+        self.assertEqual(f"git://127.0.0.1:9418/{mother_dir.name}", url)
         fetched = self.ssh_run(state, f"git -C /home/bolo/Workspace/{branch} fetch --quiet origin")
         self.assertEqual(0, fetched.returncode, fetched.stderr)
 

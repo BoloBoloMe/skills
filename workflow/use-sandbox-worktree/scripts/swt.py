@@ -2,12 +2,16 @@
 """sandbox-worktree lifecycle command.
 
 用法:
-  swt birth|resume|status|terminate|switch [--repo PATH] [--records-root PATH] ...
+  swt birth|resume|status|terminate [--repo PATH] [--records-root PATH] ...
 
 退出码:
   0 成功, 1 等待用户决定, 2 前置条件失败, 3 中途失败可重入, 4 环境错误.
 
-status 只读盘点母体、config、daemon、容器、镜像和网络, 永不创建或修改 runtime 状态.
+status 只读盘点全部母体对 (config/daemon/容器/镜像/网络), 永不创建或修改 runtime 状态.
+
+并行母体 (2026-09-13 改造): 管理单元 = (主仓, 母体分支) 对, 多对并存互不干扰.
+hideRefs 按对下沉到各母体 config.worktree (主仓 config 只留跨母体共享的 deny 三键
++ extensions.worktreeConfig); 每对一个 git daemon (服务母体目录); identity 按对派生.
 """
 from __future__ import annotations
 
@@ -34,11 +38,15 @@ from pathlib import Path
 from typing import Any, NamedTuple
 
 
-SCHEMA = 1
-CONFIG_KEYS = (
+SCHEMA = 2
+# 配置两层 (并行母体改造): 仓级 (主仓 config, 跨母体共享) + 对级 (母体 config.worktree, 每对一份).
+REPO_CONFIG_KEYS = (
     "receive.denyCurrentBranch",
     "receive.denyNonFastForwards",
     "receive.denyDeletes",
+    "extensions.worktreeConfig",
+)
+PAIR_CONFIG_KEYS = (
     "receive.hideRefs",
     "uploadpack.hideRefs",
 )
@@ -188,14 +196,76 @@ def resolve_project_slug(repo: Path) -> str:
     raise SwtEnvError(f"slug.py 未返回 slug: {result.stdout!r}")
 
 
-def identity_for(repo: Path) -> str:
+def repo_scope_identity(repo: Path) -> str:
+    """仓级作用域名 (锁文件): slug + sha1(主仓路径)[:8], 与旧版 runtime identity 同构造."""
     project_id = str(repo.resolve())
     digest = hashlib.sha1(project_id.encode("utf-8")).hexdigest()[:8]
     return f"{resolve_project_slug(repo)}-{digest}"
 
 
-def runtime_path(records_root: Path, repo: Path) -> Path:
-    return records_root / "runtime" / f"{identity_for(repo)}.json"
+def pair_identity(repo: Path, mother: Path) -> str:
+    """对级 identity (并行母体): slug + sha1(母体目录路径)[:8]."""
+    digest = hashlib.sha1(str(mother.resolve()).encode("utf-8")).hexdigest()[:8]
+    return f"{resolve_project_slug(repo)}-{digest}"
+
+
+def load_runtime_tolerant(path: Path) -> dict[str, Any] | None:
+    """扫描用宽松读取: 缺席/畸形一律 None, 不抛错."""
+    if not path.is_file():
+        return None
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return None
+    return data if isinstance(data, dict) else None
+
+
+def repo_runtime_files(records_root: Path, repo: Path) -> list[Path]:
+    """本主仓的全部 runtime 文件 (并行母体 = 一对一份; 含旧 scheme 仓级 identity)."""
+    directory = records_root / "runtime"
+    if not directory.is_dir():
+        return []
+    repo_str = str(repo.resolve())
+    found: list[Path] = []
+    for path in sorted(directory.glob("*.json")):
+        data = load_runtime_tolerant(path)
+        if data is not None and data.get("repo") == repo_str:
+            found.append(path)
+    return found
+
+
+def resolve_pair_identity(repo: Path, records_root: Path, mother: Path) -> str:
+    """对 identity 解析. 兼容铁律: 旧 scheme (仓路径哈希) runtime 已绑定本母体时原样沿用 —
+    桥 socket 路径焊死在运行中容器的 bind mount 里, 不可改名不可搬."""
+    new = pair_identity(repo, mother)
+    if (records_root / "runtime" / f"{new}.json").is_file():
+        return new
+    for path in repo_runtime_files(records_root, repo):
+        if path.stem == new:
+            continue
+        data = load_runtime_tolerant(path)
+        if data is None:
+            continue
+        _, directory = runtime_mother(data)
+        if directory is not None and directory == mother.resolve():
+            return path.stem
+    return new
+
+
+def pair_runtime_path(records_root: Path, repo: Path, mother: Path) -> Path:
+    return records_root / "runtime" / f"{resolve_pair_identity(repo, records_root, mother)}.json"
+
+
+def load_repo_runtimes(records_root: Path, repo: Path) -> list[tuple[Path, dict[str, Any]]]:
+    """读入本主仓全部 runtime (跳过不可读文件并告警, 不阻断盘点)."""
+    runtimes: list[tuple[Path, dict[str, Any]]] = []
+    for path in repo_runtime_files(records_root, repo):
+        data = load_runtime_tolerant(path)
+        if data is None:
+            print(f"[SWT] 跳过不可读 runtime: {path}", file=sys.stderr)
+            continue
+        runtimes.append((path, data))
+    return runtimes
 
 
 def no_mother_state(*, runtime_stale: bool = False) -> dict[str, Any]:
@@ -220,6 +290,7 @@ def empty_state(repo: Path) -> dict[str, Any]:
         "containers": [],
         "image": None,
         "network": None,
+        "mothers": [],
     }
 
 
@@ -269,42 +340,156 @@ def runtime_mother(runtime: dict[str, Any] | None) -> tuple[str | None, Path | N
     )
 
 
-def detect_mother(repo: Path, runtime: dict[str, Any] | None) -> dict[str, Any]:
+def mother_state_from_runtime(repo: Path, runtime: dict[str, Any] | None) -> dict[str, Any]:
+    """runtime 记录的母体对齐 worktree 现实: 记录缺失 = 无母体;
+    分支无对应 worktree 或目录与记录不符 = runtime-stale."""
     runtime_branch, runtime_dir = runtime_mother(runtime)
-    branch = runtime_branch
-    if branch is None:
-        for value in git_values(repo, "receive.hideRefs"):
-            if value.startswith("!refs/heads/"):
-                branch = value.removeprefix("!refs/heads/")
-                break
-    entries = worktree_entries(repo)
-    selected: dict[str, str] | None = None
-    if branch is not None:
-        selected = next((entry for entry in entries if entry.get("branch") == branch), None)
-    if selected is None:
-        if runtime_branch is not None or runtime_dir is not None:
-            return no_mother_state(runtime_stale=True)
+    if runtime_branch is None and runtime_dir is None:
         return no_mother_state()
-    if runtime_dir is not None and Path(selected["dir"]).resolve() != runtime_dir:
+    selected: dict[str, str] | None = None
+    for entry in worktree_entries(repo):
+        if entry.get("branch") != runtime_branch:
+            continue
+        if runtime_dir is not None and Path(entry["dir"]).resolve() != runtime_dir:
+            continue
+        selected = entry
+        break
+    if selected is None:
         return no_mother_state(runtime_stale=True)
     directory = Path(selected["dir"]).resolve()
-    actual_branch = selected.get("branch") or branch
     dirty = False
     if directory.is_dir():
         result = run(["git", "-C", str(directory), "status", "--porcelain", "--untracked-files=all"])
         dirty = result.returncode == 0 and bool(result.stdout)
     return {
-        "branch": actual_branch,
+        "branch": runtime_branch,
         "dir": str(directory),
         "exists": directory.is_dir(),
         "worktree-dirty": dirty,
     }
 
 
-def config_matches(repo: Path, branch: str | None) -> bool:
+def expected_repo_config() -> dict[str, list[str]]:
+    """仓级 (主仓 config, 跨母体共享): deny 三键 + worktreeConfig 扩展开关."""
+    return {
+        "receive.denyCurrentBranch": ["updateInstead"],
+        "receive.denyNonFastForwards": ["true"],
+        "receive.denyDeletes": ["true"],
+        "extensions.worktreeConfig": ["true"],
+    }
+
+
+def expected_pair_config(branch: str) -> dict[str, list[str]]:
+    """对级 (母体 config.worktree, 每对一份): 只放行本对母体分支, 写入恒 --add."""
+    return {
+        "receive.hideRefs": ["refs/heads", f"!refs/heads/{branch}", "refs/tags", "refs/remotes"],
+        "uploadpack.hideRefs": ["refs/heads", f"!refs/heads/{branch}", "refs/tags", "refs/remotes"],
+    }
+
+
+def worktree_config_values(mother: Path | None, key: str) -> list[str]:
+    """母体 config.worktree 的值; 扩展未开/键不存在 → [] (--worktree 读写都要求扩展开启)."""
+    if mother is None:
+        return []
+    result = run(["git", "-C", str(mother), "config", "--worktree", "--get-all", key])
+    if result.returncode != 0:
+        return []
+    return result.stdout.splitlines()
+
+
+def config_layer_values(repo: Path, mother: Path | None, key: str) -> list[str]:
+    """按键所属层读值: 对级键读母体 config.worktree, 其余读主仓 config."""
+    if key in PAIR_CONFIG_KEYS:
+        return worktree_config_values(mother, key)
+    return git_values(repo, key)
+
+
+def config_fingerprint(repo: Path, mother: Path | None) -> str:
+    payload = {
+        "repo": {key: git_values(repo, key) for key in REPO_CONFIG_KEYS},
+        "pair-dir": str(mother) if mother else None,
+        "pair": {key: worktree_config_values(mother, key) for key in PAIR_CONFIG_KEYS} if mother else {},
+    }
+    return hashlib.sha256(canonical_json(payload).encode()).hexdigest()
+
+
+def values_match(actual: list[str], wanted: list[str]) -> bool:
+    return Counter(actual) == Counter(wanted) if len(wanted) > 1 else actual == wanted
+
+
+def config_matches_multiset(repo: Path, mother: Path | None, expected: dict[str, list[str]]) -> bool:
+    return all(values_match(config_layer_values(repo, mother, key), wanted) for key, wanted in expected.items())
+
+
+def pair_config_matches(repo: Path, mother: Path | None, branch: str | None) -> bool:
+    """swt-form 对级判定: 仓级四键 + 本对 config.worktree hideRefs 全部就位."""
     if branch is None:
         return False
-    return config_matches_multiset(repo, expected_config(branch))
+    if not config_matches_multiset(repo, None, expected_repo_config()):
+        return False
+    if mother is None:
+        return False
+    return config_matches_multiset(repo, mother, expected_pair_config(branch))
+
+
+def validate_config_before_resources(repo: Path, mother: Path | None, expected: dict[str, list[str]]) -> None:
+    for key, wanted in expected.items():
+        actual = config_layer_values(repo, mother, key)
+        if actual and not values_match(actual, wanted):
+            raise PreconditionError(
+                f"git config {key} 已有错误值, 不覆盖: 现有={actual!r}, 期望={wanted!r}"
+            )
+
+
+def config_unset_all(repo: Path, mother: Path | None, key: str) -> None:
+    command = ["git", "-C", str(mother if key in PAIR_CONFIG_KEYS else repo), "config"]
+    if key in PAIR_CONFIG_KEYS:
+        if mother is None:
+            return
+        command.append("--worktree")
+    command.extend(["--unset-all", key])
+    run(command)
+
+
+def config_add_value(repo: Path, mother: Path | None, key: str, value: str) -> subprocess.CompletedProcess[str]:
+    # 对级键必须 -C 母体目录 (--worktree 写当前工作树的 config.worktree;
+    # -C 主仓会写进主工作树的 config.worktree, 张冠李戴)
+    command = ["git", "-C", str(mother if key in PAIR_CONFIG_KEYS else repo), "config"]
+    if key in PAIR_CONFIG_KEYS:
+        if mother is None:
+            raise SwtError(3, "PARTIAL", f"对级配置 {key} 缺母体目录, 无法写入")
+        command.append("--worktree")
+    command.extend(["--add", key, value])
+    return run(command)
+
+
+def restore_config(repo: Path, mother: Path | None, snapshot: dict[str, list[str]]) -> None:
+    for key, values in snapshot.items():
+        config_unset_all(repo, mother, key)
+        for value in values:
+            config_add_value(repo, mother, key, value)
+
+
+def configure_repo(repo: Path, mother: Path, branch: str) -> None:
+    """两层一次写齐: 先仓级 (含 worktreeConfig 开关), 后对级 (--worktree --add);
+    失败回滚快照. 对级多值恒 --add (裸赋值会覆盖前值, 实验踩坑)."""
+    expected = {**expected_repo_config(), **expected_pair_config(branch)}
+    snapshot = {key: config_layer_values(repo, mother, key) for key in expected}
+    validate_config_before_resources(repo, mother, expected)
+    try:
+        for key, values in expected.items():
+            if snapshot.get(key):
+                continue
+            for value in values:
+                result = config_add_value(repo, mother, key, value)
+                if result.returncode != 0:
+                    raise PreconditionError(f"写入 git config {key} 失败: {result.stderr.strip()}")
+        if not config_matches_multiset(repo, mother, expected):
+            restore_config(repo, mother, snapshot)
+            raise PreconditionError("git config 写入后校验失败, 已回滚快照")
+    except SwtError:
+        restore_config(repo, mother, snapshot)
+        raise
 
 
 def print_state(state: dict[str, Any], progress: str) -> None:
@@ -334,68 +519,6 @@ def atomic_write_text(path: Path, content: str) -> None:
 
 def atomic_write_json(path: Path, value: dict[str, Any]) -> None:
     atomic_write_text(path, json.dumps(value, ensure_ascii=False, indent=2) + "\n")
-
-
-def expected_config(branch: str) -> dict[str, list[str]]:
-    return {
-        "receive.denyCurrentBranch": ["updateInstead"],
-        "receive.denyNonFastForwards": ["true"],
-        "receive.denyDeletes": ["true"],
-        "receive.hideRefs": ["refs/heads", f"!refs/heads/{branch}", "refs/tags", "refs/remotes"],
-        "uploadpack.hideRefs": ["refs/heads", f"!refs/heads/{branch}", "refs/tags", "refs/remotes"],
-    }
-
-
-def config_fingerprint(repo: Path) -> str:
-    values = {key: git_values(repo, key) for key in CONFIG_KEYS}
-    return hashlib.sha256(canonical_json(values).encode()).hexdigest()
-
-
-def values_match(actual: list[str], wanted: list[str]) -> bool:
-    return Counter(actual) == Counter(wanted) if len(wanted) > 1 else actual == wanted
-
-
-def config_matches_multiset(repo: Path, expected: dict[str, list[str]]) -> bool:
-    return all(values_match(git_values(repo, key), wanted) for key, wanted in expected.items())
-
-
-def validate_config_before_resources(repo: Path, expected: dict[str, list[str]]) -> None:
-    for key, wanted in expected.items():
-        actual = git_values(repo, key)
-        if actual and not values_match(actual, wanted):
-            raise PreconditionError(
-                f"git config {key} 已有错误值, 不覆盖: 现有={actual!r}, 期望={wanted!r}"
-            )
-
-
-def restore_config(repo: Path, snapshot: dict[str, list[str]]) -> None:
-    for key, values in snapshot.items():
-        run(["git", "-C", str(repo), "config", "--unset-all", key])
-        for value in values:
-            run(["git", "-C", str(repo), "config", "--add", key, value])
-
-
-def configure_repo(repo: Path, branch: str) -> None:
-    expected = expected_config(branch)
-    snapshot = {key: git_values(repo, key) for key in expected}
-    validate_config_before_resources(repo, expected)
-    try:
-        for key, values in expected.items():
-            if snapshot[key]:
-                continue
-            command = ["git", "-C", str(repo), "config"]
-            if len(values) > 1:
-                command.append("--add")
-            for value in values:
-                result = run([*command, key, value])
-                if result.returncode != 0:
-                    raise PreconditionError(f"写入 git config {key} 失败: {result.stderr.strip()}")
-        if not config_matches_multiset(repo, expected):
-            restore_config(repo, snapshot)
-            raise PreconditionError("git config 写入后校验失败, 已回滚快照")
-    except SwtError:
-        restore_config(repo, snapshot)
-        raise
 
 
 def resolve_mother_branch(_repo: Path, raw_branch: str) -> str:
@@ -551,39 +674,12 @@ def live_repo_containers(repo: Path) -> list[dict[str, Any]]:
         return []
 
 
-def configured_mother_branch(repo: Path) -> str | None:
-    for value in git_values(repo, "receive.hideRefs"):
-        if value.startswith("!refs/heads/"):
-            return value.removeprefix("!refs/heads/")
-    return None
-
-
 def podman_row_name(row: dict[str, Any]) -> str:
     """podman ps 行的容器名: Names 列表取首项, 单名字符串剥前导 '/'; 无名返回 ''."""
     names = row.get("Names") or row.get("Name") or []
     if isinstance(names, list):
         return names[0] if names else ""
     return str(names).lstrip("/")
-
-
-def assert_single_active_mother(repo: Path, target_branch: str, runtime: dict[str, Any] | None) -> None:
-    candidates: set[str] = set()
-    configured = configured_mother_branch(repo)
-    if configured:
-        candidates.add(configured)
-    runtime_branch, _ = runtime_mother(runtime)
-    if runtime_branch:
-        candidates.add(runtime_branch)
-    for row in live_repo_containers(repo):
-        labels = row.get("Labels")
-        if isinstance(labels, dict):
-            branch = labels.get("sandbox-worktree.mother") or labels.get("sandbox-worktree.branch")
-            if isinstance(branch, str):
-                candidates.add(branch)
-    candidates.discard(target_branch)
-    if candidates:
-        old = sorted(candidates)[0]
-        raise PreconditionError(f"已有活动母体 {old}, 请先使用 switch 切换")
 
 
 def birth_active_container_conflict(
@@ -596,7 +692,7 @@ def birth_active_container_conflict(
     活跃语义 = is_active_container (记录未 retired); 同名重入 (失败重试) 不算冲突;
     别的母体容器不影响本检查. 不追溯处置既有容器 (D009), 只拒绝本次新建.
     覆盖范围 (UD-12): live 兜底只认运行中容器 (live_repo_containers 走 `podman ps`,
-    无 -a), 与 assert_single_active_mother 同限制; "停止但未终结仍算活跃" 的拒绝
+    无 -a), 同为仓级 label 过滤; "停止但未终结仍算活跃" 的拒绝
     由 runtime 记录保证 (记录不看运行态, 未 retired 即活跃), 不依赖 live 行."""
     records = runtime.get("containers", []) if isinstance(runtime, dict) else []
     if not isinstance(records, list):
@@ -644,19 +740,31 @@ def find_mother(repo: Path, branch: str) -> tuple[Path | None, bool]:
     return (target if target.exists() else None), False
 
 
-def daemon_pids(repo: Path) -> list[int]:
-    pattern = rf"git daemon.*--base-path={re.escape(str(repo.parent.resolve()))}"
+def daemon_pids_for_serve_path(serve_path: Path) -> list[int]:
+    """按服务目录匹配 daemon (并行母体: 一 daemon 服务一个母体目录).
+    先按 base-path 缩小, 再核对命令行末位服务路径, 防误伤同父目录其他母体/他仓 daemon
+    (旧实现只匹 base-path, 同父目录下其他对甚至其他项目的 daemon 都会被误杀)."""
+    base_path = serve_path.parent.resolve()
+    pattern = rf"git[ -]daemon.*--base-path={re.escape(str(base_path))}"
     result = run(["pgrep", "-af", pattern])
     if result.returncode not in (0, 1):
         return []
     pids: list[int] = []
+    target = str(serve_path.resolve())
     for line in result.stdout.splitlines():
         fields = line.strip().split(None, 1)
         if not fields or not fields[0].isdigit():
             continue
         pid = int(fields[0])
         command = fields[1] if len(fields) > 1 else ""
-        if pid != os.getpid() and "pgrep" not in command:
+        if pid == os.getpid() or "pgrep" in command:
+            continue
+        serve = command.strip().rsplit(None, 1)[-1].strip("'\"") if command.strip() else ""
+        try:
+            resolved = str(Path(serve).expanduser().resolve())
+        except OSError:
+            continue
+        if resolved == target:
             pids.append(pid)
     return pids
 
@@ -695,23 +803,23 @@ def reserve_port(address: str) -> tuple[socket.socket, int]:
     return reservation, reservation.getsockname()[1]
 
 
-def start_daemon(repo: Path) -> DaemonHandle:
-    base_path = repo.parent.resolve()
+def start_daemon(mother: Path) -> DaemonHandle:
+    """per-mother daemon: 服务目录 = 母体工作树 (对级 hideRefs 随 config.worktree 生效),
+    base-path 仍 = 主仓父目录 (容器请求路径 = 母体目录名). 只听宿主回环 (P0-1)."""
+    base_path = mother.parent.resolve()
     last_error = ""
-    # 只听宿主回环 (P0-1): 容器经 unix socket 桥访问, 无需对外监听;
-    # 局域网够不着, host 换网络/换接口也不影响通道.
     for _ in range(5):
         try:
             reservation, port = reserve_port("127.0.0.1")
         except OSError as exc:
             last_error = str(exc)
             continue
-        # 允许目录只给主仓本身: 兄弟仓库由 daemon 原生拒绝 (行为已实测),
-        # export-ok 标记 (无 --export-all) 是第二道闸.
+        # 允许目录只给母体工作树本身: 兄弟仓库由 daemon 原生拒绝 (行为已实测),
+        # export-ok 标记 (无 --export-all) 是第二道闸, 落母体私有 git 目录.
         command = [
             "git", "daemon", "--enable=receive-pack", f"--base-path={base_path}",
             "--listen=127.0.0.1", f"--port={port}", "--reuseaddr",
-            "--log-destination=none", str(repo.resolve()),
+            "--log-destination=none", str(mother.resolve()),
         ]
         try:
             process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
@@ -855,9 +963,72 @@ def ensure_git_bridge(records_root: Path, identity: str, runtime: dict[str, Any]
     return bridge
 
 
-def fixed_git_remote(repo: Path) -> str:
-    """容器内恒定 remote (P0-1): 走容器内转发器, 与 daemon 端口/宿主网络脱钩."""
-    return f"git://127.0.0.1:{GIT_CONTAINER_PORT}/{repo.name}"
+def stop_daemon_pids(pids: set[int]) -> None:
+    """收指定 daemon 进程: SIGTERM → 2s 宽限 → SIGKILL. 幂等."""
+    for pid in sorted(pids):
+        if pid == os.getpid() or not process_alive(pid):
+            continue
+        try:
+            os.kill(pid, signal.SIGTERM)
+        except ProcessLookupError:
+            continue
+    deadline = time.monotonic() + 2
+    while time.monotonic() < deadline and any(process_alive(pid) for pid in pids):
+        time.sleep(0.05)
+    for pid in sorted(pids):
+        if process_alive(pid):
+            try:
+                os.kill(pid, signal.SIGKILL)
+            except ProcessLookupError:
+                pass
+
+
+def place_daemon_export_ok(mother: Path) -> None:
+    """git-daemon-export-ok 落工作树私有 git 目录 (rev-parse 推导, 禁拼
+    <主仓>/.git/worktrees/<名>: worktree gitdir 名与目录名不保证一致).
+    放工作树目录本身无效 (实测报 access denied or repository not exported)."""
+    result = run(["git", "-C", str(mother), "rev-parse", "--git-dir"])
+    if result.returncode != 0:
+        raise SwtError(3, "PARTIAL", f"解析母体私有 git 目录失败: {result.stderr.strip()}")
+    gitdir = Path(result.stdout.strip())
+    if not gitdir.is_absolute():
+        gitdir = (mother / gitdir).resolve()
+    (gitdir / "git-daemon-export-ok").touch()
+
+
+def legacy_pair_branches(repo: Path) -> list[str]:
+    """旧形态放行分支: 主仓 config hideRefs 里的 !refs/heads/<分支> 例外."""
+    branches: list[str] = []
+    for key in PAIR_CONFIG_KEYS:
+        for value in git_values(repo, key):
+            if value.startswith("!refs/heads/"):
+                branch = value.removeprefix("!refs/heads/")
+                if branch not in branches:
+                    branches.append(branch)
+    return branches
+
+
+def pair_is_legacy_form(repo: Path, mother: Path | None, branch: str | None) -> bool:
+    """旧形态判定: 主仓 config hideRefs 有本对分支例外, 而本对 config.worktree 为空."""
+    if branch is None:
+        return False
+    if branch not in legacy_pair_branches(repo):
+        return False
+    if mother is not None and any(worktree_config_values(mother, key) for key in PAIR_CONFIG_KEYS):
+        return False
+    return True
+
+
+def enable_worktree_config(repo: Path) -> None:
+    result = run(["git", "-C", str(repo), "config", "extensions.worktreeConfig", "true"])
+    if result.returncode != 0:
+        raise SwtError(3, "PARTIAL", f"开启 extensions.worktreeConfig 失败: {result.stderr.strip()}")
+
+
+def fixed_git_remote(mother: Path) -> str:
+    """容器内恒定 remote (P0-1): 走容器内转发器, 与 daemon 端口/宿主网络脱钩;
+    路径段 = 母体目录名 (per-mother daemon 服务母体目录)."""
+    return f"git://127.0.0.1:{GIT_CONTAINER_PORT}/{mother.name}"
 
 
 def container_git_forward_up(name: str) -> bool:
@@ -1536,7 +1707,7 @@ def decision_fingerprint_base(
             "dir": str(mother) if mother else None,
             "ref-tip": ref_tip(repo, branch or "") if branch else None,
         },
-        "config": config_fingerprint(repo),
+        "config": config_fingerprint(repo, mother),
     }
 
 
@@ -1650,6 +1821,7 @@ def handle_dirty_decision(
 def print_birth_state(
     repo: Path,
     records_root: Path,
+    runtime_file: Path | None,
     runtime: dict[str, Any] | None,
     mother: dict[str, Any],
     image: dict[str, Any] | None,
@@ -1662,6 +1834,7 @@ def print_birth_state(
         build_state(
             repo,
             records_root,
+            runtime_file,
             runtime,
             mother=mother,
             containers=containers,
@@ -1696,6 +1869,104 @@ def wait_for_ssh(key: Path, port: int) -> None:
 
 def ssh_command(key: Path, port: int, command: str, timeout: float = 10) -> subprocess.CompletedProcess[str]:
     return run([*container_ssh_base(key, port), command], timeout=timeout)
+
+
+def update_legacy_container_remote(repo: Path, records_root: Path, branch: str, mother: Path) -> None:
+    """迁移收尾: 本分支全部未退役容器的 remote 改指母体目录路径 (daemon 服务目录变了).
+    容器不可达/缺凭证时只告警不阻断, 由该对的 resume 自愈收敛."""
+    remote = fixed_git_remote(mother)
+    for path in repo_runtime_files(records_root, repo):
+        data = load_runtime_tolerant(path)
+        if not data:
+            continue
+        changed = False
+        for record in data.get("containers", []):
+            if not isinstance(record, dict) or record.get("branch") != branch or record.get("retired"):
+                continue
+            record["remote"] = remote
+            changed = True
+            key_value = record.get("ssh_private_key") or record.get("ssh-private-key")
+            port = record.get("ssh-port")
+            clone_dir = record.get("clone_dir") or record.get("clone-dir")
+            if (
+                isinstance(key_value, str)
+                and isinstance(port, int)
+                and isinstance(clone_dir, str)
+                and Path(key_value).is_file()
+            ):
+                result = ssh_command(
+                    Path(key_value), port,
+                    f"git -C {shlex.quote(clone_dir)} remote set-url origin {shlex.quote(remote)}",
+                    timeout=10,
+                )
+                if result.returncode != 0:
+                    print(
+                        f"[SWT] 迁移警告: 容器 {record.get('name')} remote 更新失败 ({result.stderr.strip()});"
+                        " 由该对的 resume 自愈收敛",
+                        file=sys.stderr,
+                    )
+        if changed:
+            atomic_write_json(path, data)
+
+
+def migrate_legacy_pairs(repo: Path, records_root: Path, *, skip_daemon_for: Path | None = None) -> None:
+    """一次性迁移 (并行母体改造, 幂等): 主仓 config 的 hideRefs 五键原样移入各对应
+    母体的 config.worktree, 并把服务主仓路径的旧形态 daemon 重摆为 per-mother 形态
+    (停旧 → 移配置 → 落 export-ok → 起新 → 重建桥 → 容器 remote set-url).
+    主仓级无 hideRefs 时无事发生. skip_daemon_for: 该母体的 daemon 由调用方
+    (resume 标准恢复流程) 统一重拉, 迁移只做配置搬家与 export-ok, 不动其 runtime.
+    步序保证授权域不空窗: 先停旧 daemon (配置搬走后继续跑会全分支裸露), 再动配置."""
+    branches = legacy_pair_branches(repo)
+    if not branches:
+        return
+    enable_worktree_config(repo)
+    # 1. 停掉服务主仓路径的旧形态 daemon (其他对的 per-mother daemon 不在匹配面, 不误伤)
+    stop_daemon_pids(set(daemon_pids_for_serve_path(repo.resolve())))
+    # 2. 五键值原样移入各对应母体 config.worktree, 再清掉主仓级
+    warned: set[str] = set()
+    for key in PAIR_CONFIG_KEYS:
+        values = git_values(repo, key)
+        if not values:
+            continue
+        for branch in branches:
+            mother, _dirty = find_mother(repo, branch)
+            if mother is None or not mother.is_dir():
+                if branch not in warned:
+                    warned.add(branch)
+                    print(
+                        f"[SWT] 迁移警告: 分支 {branch} 无母体工作树, 其主仓级放行值随迁移丢弃",
+                        file=sys.stderr,
+                    )
+                continue
+            for value in values:
+                result = config_add_value(repo, mother, key, value)
+                if result.returncode != 0:
+                    raise SwtError(3, "PARTIAL", f"迁移写入 {mother.name} config.worktree {key} 失败: {result.stderr.strip()}")
+        result = run(["git", "-C", str(repo), "config", "--unset-all", key])
+        if result.returncode != 0:
+            raise SwtError(3, "PARTIAL", f"清理主仓 config {key} 失败: {result.stderr.strip()}")
+    # 3. 各迁走的母体: export-ok + per-mother daemon + 桥 + 容器 remote (无 daemon 残留形态)
+    for branch in branches:
+        mother, _dirty = find_mother(repo, branch)
+        if mother is None or not mother.is_dir():
+            continue
+        place_daemon_export_ok(mother)
+        if skip_daemon_for is not None and mother.resolve() == skip_daemon_for.resolve():
+            update_legacy_container_remote(repo, records_root, branch, mother)
+            continue
+        daemon = start_daemon(mother)
+        identity = resolve_pair_identity(repo, records_root, mother)
+        runtime_file = records_root / "runtime" / f"{identity}.json"
+        runtime = load_runtime_tolerant(runtime_file)
+        bridge = start_git_bridge(records_root, identity, daemon.port)
+        if runtime is not None:
+            runtime["daemon"] = {
+                "pid": daemon.process.pid, "addr": daemon.address, "port": daemon.port,
+                "base-path": str(daemon.base_path), "orphan": False, "bridge": bridge,
+            }
+            runtime["config"] = {"swt-form": pair_config_matches(repo, mother, branch)}
+            atomic_write_json(runtime_file, runtime)
+        update_legacy_container_remote(repo, records_root, branch, mother)
 
 
 def apply_network(plan: NetworkPlan) -> dict[str, Any]:
@@ -2166,7 +2437,7 @@ def birth_display_gate_reentry(
                 DISPLAY_VERIFY_OPTIONS,
             )
         print(decision_line(receipt, "display-verify", str(display.get("question", "显示栈验证未通过")), DISPLAY_VERIFY_OPTIONS))
-        print_birth_state(repo, records_root, runtime, runtime.get("mother") or {}, image, runtime.get("network"), "[SWT] birth: 等待用户决定 (显示栈)")
+        print_birth_state(repo, records_root, runtime_file, runtime, runtime.get("mother") or {}, image, runtime.get("network"), "[SWT] birth: 等待用户决定 (显示栈)")
         return 1
     if receipt is None:
         raise PreconditionError("没有匹配的 display-verify 决策收据, 状态已变化, 请重跑 birth 重新判定")
@@ -2190,7 +2461,7 @@ def birth_display_gate_reentry(
             record.get("web-port"),
             headed_script=record.get("headed-script"),
         )
-        print_birth_state(repo, records_root, runtime, runtime.get("mother") or {}, image, runtime.get("network"), "[SWT] birth: 已完成 (显示栈降级)")
+        print_birth_state(repo, records_root, runtime_file, runtime, runtime.get("mother") or {}, image, runtime.get("network"), "[SWT] birth: 已完成 (显示栈降级)")
         return 0
     # --display-recheck: 重验一次
     started, start_output = start_display_stack(name)
@@ -2210,7 +2481,7 @@ def birth_display_gate_reentry(
             record.get("web-port"),
             headed_script=record.get("headed-script"),
         )
-        print_birth_state(repo, records_root, runtime, runtime.get("mother") or {}, image, runtime.get("network"), "[SWT] birth: 已完成 (显示栈重验通过)")
+        print_birth_state(repo, records_root, runtime_file, runtime, runtime.get("mother") or {}, image, runtime.get("network"), "[SWT] birth: 已完成 (显示栈重验通过)")
         return 0
     # 重验仍失败: 开新票据重新 DECIDE
     display["status"] = "fail"
@@ -2218,7 +2489,7 @@ def birth_display_gate_reentry(
     atomic_write_json(runtime_file, runtime)
     receipt = create_receipt(records_root, identity, "display-verify", fingerprint, DISPLAY_VERIFY_OPTIONS)
     print(decision_line(receipt, "display-verify", str(display.get("question")), DISPLAY_VERIFY_OPTIONS))
-    print_birth_state(repo, records_root, runtime, runtime.get("mother") or {}, image, runtime.get("network"), "[SWT] birth: 等待用户决定 (显示栈重验未过)")
+    print_birth_state(repo, records_root, runtime_file, runtime, runtime.get("mother") or {}, image, runtime.get("network"), "[SWT] birth: 等待用户决定 (显示栈重验未过)")
     return 1
 
 
@@ -2284,7 +2555,7 @@ def birth_display_gate(
     fingerprint = birth_display_fingerprint(repo, runtime, image, name)
     receipt = create_receipt(records_root, identity, "display-verify", fingerprint, DISPLAY_VERIFY_OPTIONS)
     print(decision_line(receipt, "display-verify", question, DISPLAY_VERIFY_OPTIONS))
-    print_birth_state(repo, records_root, runtime, runtime.get("mother") or {}, image, runtime.get("network"), "[SWT] birth: 等待用户决定 (显示栈)")
+    print_birth_state(repo, records_root, runtime_file, runtime, runtime.get("mother") or {}, image, runtime.get("network"), "[SWT] birth: 等待用户决定 (显示栈)")
     return "fail"
 
 
@@ -2297,18 +2568,21 @@ def birth(args: argparse.Namespace, repo: Path) -> int:
     if args.base and not any((args.mode, args.image, args.requirements, args.new_mother, args.reuse_mother)):
         raise PreconditionError("NOT-IMPLEMENTED birth")
     branch = resolve_mother_branch(repo, args.branch)
-    runtime_file = runtime_path(records_root, repo)
+    identity_mother = mother_path(repo, branch)
+    identity = resolve_pair_identity(repo, records_root, identity_mother)
+    runtime_file = records_root / "runtime" / f"{identity}.json"
     runtime_existing = load_runtime(runtime_file)
     if runtime_existing is not None and runtime_existing.get("stage") == "idle":
         # 上次已彻底终结 (容器空/daemon 灭): 视为全新 birth, runtime 由后续流程重建覆盖.
         runtime_existing = None
     if runtime_existing is None:
-        active_daemons = daemon_pids(repo)
+        # 本对残留检查 (并行母体: 只看本对母体目录, 其他对的 daemon 是并存常态);
+        # 旧形态主仓路径 daemon 不在此拦 — 由下方迁移统一重摆.
+        active_daemons = daemon_pids_for_serve_path(identity_mother)
         if active_daemons:
             raise PreconditionError(
-                f"主仓已有存活 daemon(pid={active_daemons[0]}), 请先清理 daemon 后再 birth"
+                f"母体 {identity_mother.name} 已有存活 daemon(pid={active_daemons[0]}), 请先清理 daemon 后再 birth"
             )
-    assert_single_active_mother(repo, branch, runtime_existing)
     mother_dir, dirty = find_mother(repo, branch)
     if dirty:
         raise PreconditionError(f"母体工作树脏, 请先人工处理: {mother_dir}")
@@ -2339,7 +2613,11 @@ def birth(args: argparse.Namespace, repo: Path) -> int:
     pending: list[tuple[str, str, list[str]]] = []
 
     stale_receipts: dict[str, bool] = {}
-    for decision_kind in ("network-mode", "mother-reuse", "mother-create", "image-build", "hostname", "lan-address"):
+    # 母体选择决策废除 (并行母体): --branch 定对, 母体存在与否是机械事实, 不再问人;
+    # 存在即复用, 不存在即按 --base/缺省分支新建. PARTIAL runtime (未 born) 重入时
+    # 允许 --new-mother (首跑可能已建母体, 重跑须收敛而不是拒绝).
+    partial_runtime = bool(runtime_existing and runtime_existing.get("stage") != "born")
+    for decision_kind in ("network-mode", "image-build", "hostname", "lan-address"):
         stale_receipts[decision_kind] = expire_receipts(records_root, identity, decision_kind, fingerprint)
 
     network_decision = decision_pending(
@@ -2352,21 +2630,10 @@ def birth(args: argparse.Namespace, repo: Path) -> int:
     if network_decision:
         pending.append(network_decision)
 
-    mother_kind = "mother-reuse" if mother_dir else "mother-create"
-    partial_runtime = bool(runtime_existing and runtime_existing.get("stage") != "born")
     if mother_dir and args.new_mother and not partial_runtime:
         raise PreconditionError("母体已存在, 不能使用 --new-mother")
     if not mother_dir and args.reuse_mother:
         raise PreconditionError("母体不存在, 不能使用 --reuse-mother")
-    mother_answer = (args.reuse_mother or args.new_mother) if partial_runtime else (args.reuse_mother if mother_dir else args.new_mother)
-    mother_decision = decision_pending(
-        records_root, identity, mother_kind, fingerprint, bool(mother_answer),
-        "母体选择", "母体状态已变化, 请重新确认",
-        ["--reuse-mother" if mother_dir else "--new-mother"],
-        stale_receipts[mother_kind],
-    )
-    if mother_decision:
-        pending.append(mother_decision)
 
     # 主机名确认 (D047): 候选 = 容器名, host-llm 转述时可附推荐, 用户拍板后
     # 带 --hostname <名> 重跑; 缺省不答 (不放行默认), 保证每个容器名都经人确认
@@ -2401,8 +2668,17 @@ def birth(args: argparse.Namespace, repo: Path) -> int:
         mother_state = {"branch": branch, "dir": str(mother_dir) if mother_dir else None, "exists": bool(mother_dir), "worktree-dirty": dirty}
         for line in lines:
             print(line)
-        print_birth_state(repo, records_root, runtime_existing, mother_state, image, network_input, "[SWT] birth: 等待用户决定")
+        print_birth_state(repo, records_root, runtime_file, runtime_existing, mother_state, image, network_input, "[SWT] birth: 等待用户决定")
         return 1
+
+    # 并行母体一次性迁移 (幂等): 主仓级 hideRefs 残留迁入各母体 config.worktree 并重摆
+    # per-mother daemon (含桥与容器 remote). 必须先于任何 per-mother 资源动作, 否则
+    # 本对新 daemon 会被残留的主仓级 hideRefs 越权面波及; 迁移后重读本对 runtime
+    # (若本对自身是旧形态, 迁移已更新其 daemon 记录).
+    migrate_legacy_pairs(repo, records_root)
+    runtime_existing = load_runtime(runtime_file)
+    if runtime_existing is not None and runtime_existing.get("stage") == "idle":
+        runtime_existing = None
 
     if runtime_existing and runtime_existing.get("stage") == "born":
         if not args.reuse_mother or not name_explicit:
@@ -2412,29 +2688,6 @@ def birth(args: argparse.Namespace, repo: Path) -> int:
         daemon_record = runtime.get("daemon")
         if not isinstance(daemon_record, dict) or not process_alive(daemon_record.get("pid")):
             raise PreconditionError("已有 runtime 但 daemon 不存活, 请先使用 resume")
-    elif runtime_existing and runtime_existing.get("stage") == "switched":
-        runtime = runtime_existing
-        current_branch, _ = runtime_mother(runtime)
-        if current_branch != branch or any(
-            is_active_container(item)
-            for item in runtime.get("containers", [])
-        ):
-            raise PreconditionError("switch 后 runtime 只允许对当前目标母体重新 birth")
-        if mother_dir is None:
-            mother_dir = create_mother_worktree(repo, branch, args.base)
-        runtime["mother"] = {"branch": branch, "dir": str(mother_dir)}
-        runtime["mother_branch"] = branch
-        runtime["mother_dir"] = str(mother_dir)
-        runtime["config"] = {"swt-form": config_matches(repo, branch)}
-        runtime["network"] = network_input
-        daemon = start_daemon(repo)
-        daemon_record = {
-            "pid": daemon.process.pid, "addr": daemon.address, "port": daemon.port,
-            "base-path": str(daemon.base_path), "orphan": False,
-        }
-        runtime["daemon"] = daemon_record
-        runtime["stage"] = "daemon"
-        atomic_write_json(runtime_file, runtime)
     elif runtime_existing:
         if runtime_existing.get("stage") not in {"daemon", "container-created", "container-started", "network", "ssh-ready"}:
             raise PreconditionError("已有未完成 birth runtime, 请按 PARTIAL 指引处理")
@@ -2444,8 +2697,8 @@ def birth(args: argparse.Namespace, repo: Path) -> int:
         if not isinstance(daemon_record, dict) or not process_alive(daemon_record.get("pid")):
             raise PreconditionError("已有 PARTIAL runtime 但 daemon 不存活, 请人工恢复 daemon")
     else:
-        expected = expected_config(branch)
-        validate_config_before_resources(repo, expected)
+        expected = {**expected_repo_config(), **expected_pair_config(branch)}
+        validate_config_before_resources(repo, mother_dir, expected)
         if mother_dir is None:
             mother_dir = create_mother_worktree(repo, branch, args.base)
         elif not mother_dir.is_dir():
@@ -2458,15 +2711,15 @@ def birth(args: argparse.Namespace, repo: Path) -> int:
         }
         atomic_write_json(runtime_file, runtime)
         try:
-            (repo / ".git" / "git-daemon-export-ok").touch()
+            place_daemon_export_ok(mother_dir)
             try:
-                configure_repo(repo, branch)
+                configure_repo(repo, mother_dir, branch)
             except SwtError as exc:
                 raise SwtError(3, "PARTIAL", f"config 写入/校验失败, 母体和 runtime 已建立: {exc.message}") from exc
             runtime["config"] = {"swt-form": True}
             runtime["stage"] = "config"
             atomic_write_json(runtime_file, runtime)
-            daemon = start_daemon(repo)
+            daemon = start_daemon(mother_dir)
             daemon_record = {"pid": daemon.process.pid, "addr": daemon.address, "port": daemon.port, "base-path": str(daemon.base_path), "orphan": False}
             runtime["daemon"] = daemon_record
             runtime["stage"] = "daemon"
@@ -2545,7 +2798,7 @@ def birth(args: argparse.Namespace, repo: Path) -> int:
         inject_auth_json(container["name"])
         ensure_agent_prompt_parents(container["name"])
         ensure_container_git_forward(container["name"])
-        remote = fixed_git_remote(repo)
+        remote = fixed_git_remote(mother_dir)
         container["record"]["remote"] = remote
         atomic_write_json(runtime_file, runtime)
         wait_for_ssh(key, container["port"])
@@ -2573,11 +2826,14 @@ def birth(args: argparse.Namespace, repo: Path) -> int:
         container["record"].get("web-port"),
         headed_script=container.get("headed-script"),
     )
-    state = empty_state(repo)
-    observed_daemon = daemon_state(repo, runtime)
-    state.update({"stage": "born", "mother": {"branch": branch, "dir": str(mother_dir), "exists": True, "worktree-dirty": False},
-                  "config": {"swt-form": True}, "daemon": observed_daemon or {**runtime["daemon"], "orphan": True}, "containers": runtime["containers"],
-                  "image": runtime["image"], "network": runtime["network"], "display": runtime.get("display")})
+    observed_daemon = daemon_state(mother_dir, repo, runtime)
+    state = build_state(
+        repo, records_root, runtime_file, runtime,
+        mother={"branch": branch, "dir": str(mother_dir), "exists": True, "worktree-dirty": False},
+        containers=runtime["containers"],
+        daemon=observed_daemon or {**runtime["daemon"], "orphan": True},
+        image=runtime["image"], network=runtime["network"],
+    )
     print_state(state, "[SWT] birth: 已完成")
     return 0
 
@@ -2592,7 +2848,7 @@ def default_branch(repo: Path) -> str:
 def parse_args(argv: list[str]) -> argparse.Namespace:
     parser = argparse.ArgumentParser(prog="swt")
     subparsers = parser.add_subparsers(dest="command", required=True)
-    for name in ("birth", "resume", "status", "terminate", "switch"):
+    for name in ("birth", "resume", "status", "terminate"):
         command = subparsers.add_parser(name)
         command.add_argument("--repo")
         command.add_argument("--records-root", type=Path, default=Path.home() / ".agents" / "sandbox-worktree")
@@ -2609,12 +2865,12 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     subparsers.choices["birth"].add_argument("--hostname")
     subparsers.choices["birth"].add_argument("--lan-ip", dest="lan_ip", metavar="IPV4",
                                              help="确认宿主局域网地址 (D010), 持久化后交付优先用已确认值")
+    subparsers.choices["resume"].add_argument("--branch")
     subparsers.choices["resume"].add_argument("--name")
     subparsers.choices["resume"].add_argument("--confirm", action="store_true")
+    subparsers.choices["terminate"].add_argument("--branch")
     subparsers.choices["terminate"].add_argument("--name")
     subparsers.choices["terminate"].add_argument("--force", action="store_true")
-    subparsers.choices["switch"].add_argument("--to")
-    subparsers.choices["switch"].add_argument("--force", action="store_true")
     subparsers.choices["birth"].add_argument("--display-continue", action="store_true",
                                              help="显示栈验证失败后选择继续 (显示栈降级)")
     subparsers.choices["birth"].add_argument("--display-recheck", action="store_true",
@@ -2748,9 +3004,24 @@ def ssh_container_git_status(
 
 def podman_container_state(
     repo: Path,
-    runtime: dict[str, Any] | None,
-    mother_tip: str | None = None,
+    runtimes: list[dict[str, Any]] | dict[str, Any] | None,
 ) -> list[dict[str, Any]]:
+    """盘点主仓 label 下全部容器 (并行母体: 跨对聚合). 每容器的脏检查用
+    它自己所属对的分支 (记录/label 反推), 不再假设全仓一个母体分支."""
+    if isinstance(runtimes, dict) or runtimes is None:  # 兼容旧单 runtime 调用形态
+        runtimes = [runtimes]
+    records: list[dict[str, Any]] = []
+    for runtime in runtimes:
+        for record in (runtime or {}).get("containers", []):
+            if isinstance(record, dict):
+                records.append(record)
+
+    def lookup(name: str, podman_id: str) -> dict[str, Any]:
+        for record in records:
+            if record.get("name") == name or record.get("podman-id") in {podman_id, podman_id[:12]}:
+                return record
+        return {}
+
     rows = podman_json(
         [
             "podman",
@@ -2763,8 +3034,6 @@ def podman_container_state(
         ]
     )
     containers: list[dict[str, Any]] = []
-    branch, _mother_dir = runtime_mother(runtime)
-    mother_tip = mother_tip or ref_tip(repo, branch or "")
     for row in rows:
         name = podman_row_name(row)
         if not name:
@@ -2786,14 +3055,20 @@ def podman_container_state(
         ssh_port = mapped_ports.get("22")
         vnc_port = mapped_ports.get("6080")
         web_port = mapped_ports.get("8800")
-        retired_record = runtime_container(runtime, name, podman_id)
+        retired_record = lookup(name, podman_id)
+        labels = row.get("Labels") if isinstance(row.get("Labels"), dict) else {}
+        branch = (
+            retired_record.get("branch")
+            or retired_record.get("mother")
+            or (labels.get("sandbox-worktree.mother") if isinstance(labels.get("sandbox-worktree.mother"), str) else None)
+        )
+        mother_tip = ref_tip(repo, branch) if branch else None
         dirty: dict[str, Any] = {
             "uncommitted": None,
             "unpushed": None,
             "relation": None,
             "reachable": False,
         }
-        branch, _mother_dir = runtime_mother(runtime)
         if ssh_port is not None:
             ssh_dirty = ssh_container_git_status(retired_record, ssh_port, branch, mother_tip)
             if ssh_dirty is not None:
@@ -2807,7 +3082,7 @@ def podman_container_state(
         containers.append(
             {
                 "name": name,
-                "branch": retired_record.get("branch") or retired_record.get("mother") or branch,
+                "branch": branch,
                 "podman-id": podman_id or None,
                 "state": state.get("Status") or row.get("State") or row.get("Status"),
                 "ssh-port": ssh_port,
@@ -2825,26 +3100,31 @@ def podman_container_state(
 
 def terminate_container_candidates(
     repo: Path,
-    runtime: dict[str, Any] | None,
+    runtimes: list[tuple[Path, dict[str, Any]]],
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
-    observed = podman_container_state(repo, runtime)
+    """终结候选跨对聚合 (并行母体); 每个候选带 _runtime-file 指回所属对的 runtime."""
+    observed = podman_container_state(repo, [data for _, data in runtimes])
     by_name = {item["name"]: item for item in observed if item.get("name")}
-    runtime_records = runtime.get("containers", []) if isinstance(runtime, dict) else []
-    if not isinstance(runtime_records, list):
-        runtime_records = []
+    file_by_name: dict[str, Path] = {}
+    for path, data in runtimes:
+        for record in data.get("containers", []):
+            if isinstance(record, dict) and is_active_container(record) and record.get("name"):
+                file_by_name.setdefault(str(record["name"]), path)
     candidates: list[dict[str, Any]] = []
-    names = set(by_name)
-    for item in runtime_records:
-        if is_active_container(item) and item.get("name"):
-            names.add(str(item["name"]))
+    names = set(by_name) | set(file_by_name)
     for name in sorted(names):
-        record = next(
-            (item for item in runtime_records if isinstance(item, dict) and item.get("name") == name),
-            {},
-        )
+        runtime_file = file_by_name.get(name)
+        record: dict[str, Any] = {}
+        if runtime_file is not None:
+            data = next(data for path, data in runtimes if path == runtime_file)
+            record = next(
+                (item for item in data.get("containers", []) if isinstance(item, dict) and item.get("name") == name),
+                {},
+            )
         target = dict(record)
         target.update(by_name.get(name, {}))
         target["name"] = name
+        target["_runtime-file"] = runtime_file
         if name not in by_name:
             target.setdefault("state", "missing")
             target["dirty"] = {
@@ -2910,21 +3190,25 @@ def terminate_decision_fingerprint(
     return fingerprint
 
 
-def terminate_state(repo: Path, records_root: Path, runtime: dict[str, Any] | None, progress: str) -> None:
-    containers = podman_container_state(repo, runtime)
-    daemon = daemon_state(repo, runtime)
-    image = image_state(records_root, repo, runtime, containers)
-    network = network_state(runtime)
+def terminate_state(
+    repo: Path,
+    records_root: Path,
+    runtime_file: Path | None,
+    runtime: dict[str, Any] | None,
+    progress: str,
+) -> None:
+    containers = podman_container_state(repo, [data for _, data in load_repo_runtimes(records_root, repo)])
     print_state(
         build_state(
             repo,
             records_root,
+            runtime_file,
             runtime,
             mother=_UNSET,
             containers=containers,
-            daemon=daemon,
-            image=image,
-            network=network,
+            daemon=_UNSET,
+            image=_UNSET,
+            network=_UNSET,
         ),
         progress,
     )
@@ -2954,50 +3238,31 @@ def append_audit(
     return append_audit_entry(records_root, identity, entry)
 
 
-def append_switch_audit(
-    records_root: Path,
-    identity: str,
-    dirty_items: list[dict[str, Any]],
-    decision_id: str,
-    target_branch: str,
-) -> Path:
-    entry = {
-        "timestamp": datetime.now(timezone.utc).isoformat(),
-        "action": "switch",
-        "decision-id": decision_id,
-        "target-branch": target_branch,
-        "containers": [
-            {"name": item.get("name"), "podman-id": item.get("podman-id"), "dirty": item.get("dirty")}
-            for item in dirty_items
-        ],
-    }
-    return append_audit_entry(records_root, identity, entry)
-
-
-def stop_repo_daemons(repo: Path, runtime: dict[str, Any] | None) -> None:
-    pids: set[int] = set(daemon_pids(repo))
+def stop_pair_daemons(
+    repo: Path,
+    mother: Path | None,
+    branch: str | None,
+    runtime: dict[str, Any] | None,
+) -> None:
+    """收本对 daemon: per-mother 形态按母体目录匹配; 旧形态残留按主仓路径兑底
+    (仅本对还处于旧形态时); 外加 runtime 记录的 pid. 不碰其他对的 daemon."""
+    pids: set[int] = set()
+    if mother is not None:
+        pids.update(daemon_pids_for_serve_path(mother))
+    if pair_is_legacy_form(repo, mother, branch):
+        pids.update(daemon_pids_for_serve_path(repo.resolve()))
     recorded = runtime.get("daemon") if isinstance(runtime, dict) else None
     if isinstance(recorded, dict) and isinstance(recorded.get("pid"), int):
         pids.add(recorded["pid"])
-    for pid in sorted(pids):
-        if pid == os.getpid() or not process_alive(pid):
-            continue
-        try:
-            os.kill(pid, signal.SIGTERM)
-        except ProcessLookupError:
-            continue
-    deadline = time.monotonic() + 2
-    while time.monotonic() < deadline and any(process_alive(pid) for pid in pids):
-        time.sleep(0.05)
-    for pid in sorted(pids):
-        if process_alive(pid):
-            try:
-                os.kill(pid, signal.SIGKILL)
-            except ProcessLookupError:
-                pass
-    remaining = daemon_pids(repo)
+    stop_daemon_pids(pids)
+    remaining: set[int] = set(pids)
+    if mother is not None:
+        remaining.update(daemon_pids_for_serve_path(mother))
+    if pair_is_legacy_form(repo, mother, branch):
+        remaining.update(daemon_pids_for_serve_path(repo.resolve()))
+    remaining = {pid for pid in remaining if process_alive(pid)}
     if remaining:
-        raise SwtError(3, "PARTIAL", f"daemon 仍存活(pid={remaining}), 请先人工终止后重跑 terminate")
+        raise SwtError(3, "PARTIAL", f"daemon 仍存活(pid={sorted(remaining)[0]}), 请先人工终止后重跑 terminate")
 
 
 def remove_container_firewall(
@@ -3043,21 +3308,26 @@ def remove_container_credentials(target: dict[str, Any]) -> None:
 
 def terminate(args: argparse.Namespace, repo: Path) -> int:
     records_root = args.records_root.expanduser().resolve()
-    runtime_file = runtime_path(records_root, repo)
-    runtime = load_runtime(runtime_file)
-    candidates, observed = terminate_container_candidates(repo, runtime)
+    runtimes = load_repo_runtimes(records_root, repo)
+    candidates, observed = terminate_container_candidates(repo, runtimes)
+    if args.branch:
+        candidates = [item for item in candidates if item.get("branch") == args.branch]
+        if not candidates:
+            raise PreconditionError(f"母体 {args.branch} 没有可终结容器")
     if args.name:
         target = next((item for item in candidates if item.get("name") == args.name), None)
         if target is None:
-            raise PreconditionError(f"容器不存在或不属于当前母体: {args.name}")
+            raise PreconditionError(f"容器不存在或不属于当前主仓的任何母体对: {args.name}")
     elif len(candidates) == 1:
         target = candidates[0]
     elif not candidates:
-        raise PreconditionError("当前母体没有可终结容器")
+        raise PreconditionError("没有可终结容器")
     else:
-        names = ", ".join(str(item.get("name")) for item in candidates)
-        raise PreconditionError(f"当前母体有多个容器, 请使用 --name; 候选: {names}")
+        names = ", ".join(f"{item.get('name')}({item.get('branch')})" for item in candidates)
+        raise PreconditionError(f"多个候选容器, 请使用 --name 指定; 候选: {names}")
 
+    runtime_file = target.get("_runtime-file")
+    runtime = load_runtime(runtime_file) if runtime_file is not None else None
     if runtime is None:
         raise PreconditionError("容器存在但 runtime 记录缺失, 不自动拆除未登记资源")
     target_name = str(target["name"])
@@ -3074,7 +3344,7 @@ def terminate(args: argparse.Namespace, repo: Path) -> int:
         args.force, question, ["--force"],
     )
     if blocked:
-        terminate_state(repo, records_root, runtime, "[SWT] terminate: 等待用户决定")
+        terminate_state(repo, records_root, runtime_file, runtime, "[SWT] terminate: 等待用户决定")
         return 1
 
     if dirty and args.force:
@@ -3116,7 +3386,8 @@ def terminate(args: argparse.Namespace, repo: Path) -> int:
     if has_siblings:
         apply_sibling_networks(network, runtime_records, sibling_netnses)
     if not has_siblings:
-        stop_repo_daemons(repo, runtime)
+        pair_branch, pair_mother = runtime_mother(runtime)
+        stop_pair_daemons(repo, pair_mother, pair_branch, runtime)
         stop_git_bridge(runtime, records_root, identity)
         if isinstance(runtime.get("daemon"), dict):
             runtime["daemon"].pop("bridge", None)
@@ -3138,227 +3409,22 @@ def terminate(args: argparse.Namespace, repo: Path) -> int:
     progress = "[SWT] terminate: 已完成"
     if isinstance(mother_dir, str):
         progress += f"; 母体保留路径: {mother_dir}"
-    terminate_state(repo, records_root, runtime, progress)
+    terminate_state(repo, records_root, runtime_file, runtime, progress)
     return 0
 
 
-def daemon_matches_repo(repo: Path, command: str) -> bool:
-    match = re.search(r"(?:^|\s)--base-path(?:=|\s+)([^\s]+)", command)
-    if match:
-        base_path = match.group(1).strip("'\"")
-        return Path(base_path).expanduser().resolve() == repo.parent.resolve()
-    return str(repo.parent) in command
-
-
-def switch_decision_fingerprint(
-    repo: Path,
-    runtime: dict[str, Any],
-    target_branch: str,
-    dirty: list[dict[str, Any]],
-) -> dict[str, Any]:
-    branch, mother = runtime_mother(runtime)
-    records = runtime.get("containers", [])
-    if not isinstance(records, list):
-        records = []
-    branch, mother = runtime_mother(runtime)
-    records = runtime.get("containers", [])
-    if not isinstance(records, list):
-        records = []
-    fingerprint = decision_fingerprint_base(repo, branch, mother)
-    fingerprint.update({
-        "containers": [
-            {"name": item.get("name"), "podman-id": item.get("podman-id")}
-            for item in records
-            if is_active_container(item)
-        ],
-        "image-digest": (runtime.get("image") or {}).get("digest") if isinstance(runtime.get("image"), dict) else None,
-        "network": runtime.get("network"),
-        "dirty": [
-            {"name": item.get("name"), "dirty": item.get("dirty", {})}
-            for item in dirty
-        ],
-        "target-branch": target_branch,
-    })
-    return fingerprint
-
-
-def switch_config(repo: Path, old_branch: str, target_branch: str) -> None:
-    old_exception = f"!refs/heads/{old_branch}"
-    new_exception = f"!refs/heads/{target_branch}"
-    expected = expected_config(target_branch)
-    pattern = f"^!refs/heads/{re.escape(old_branch)}$"
-    for key in ("receive.hideRefs", "uploadpack.hideRefs"):
-        actual = git_values(repo, key)
-        if new_exception in actual:
-            continue
-        if old_exception not in actual:
-            raise SwtError(3, "PARTIAL", f"git config {key} 缺少旧母体例外, 授权域空窗")
-        replaced = run([
-            "git", "-C", str(repo), "config", "--replace-all", key,
-            new_exception, pattern,
-        ])
-        if replaced.returncode != 0:
-            raise SwtError(3, "PARTIAL", f"切换 git config {key} 写入失败: {replaced.stderr.strip()}")
-    for key, wanted in expected.items():
-        if git_values(repo, key) != wanted:
-            raise SwtError(3, "PARTIAL", f"切换后 git config {key} 校验失败, 授权域可能为空窗")
-
-
-def record_switch_partial(runtime_file: Path, runtime: dict[str, Any], message: str) -> None:
-    runtime["stage"] = "switch-partial"
-    runtime["authorized-mother"] = None
-    runtime["partial-error"] = message
-    atomic_write_json(runtime_file, runtime)
-
-
-def switch_state(
-    repo: Path,
-    records_root: Path,
-    runtime: dict[str, Any],
-    target_branch: str,
-    target_mother: Path | None,
-    target_exists: bool,
-    progress: str,
-) -> None:
-    containers = podman_container_state(repo, runtime)
-    state = build_state(
-        repo,
-        records_root,
-        runtime,
-        mother={
-            "branch": target_branch,
-            "dir": str(target_mother) if target_mother else None,
-            "exists": target_exists,
-            "worktree-dirty": False,
-        },
-        containers=containers,
-        daemon=None,
-        image=image_state(records_root, repo, runtime, containers),
-        network=network_state(runtime),
-    )
-    state["target-mother-exists"] = target_exists
-    state["authorized-mother"] = target_branch
-    print_state(state, progress)
-
-
-def switch(args: argparse.Namespace, repo: Path) -> int:
-    records_root = args.records_root.expanduser().resolve()
-    runtime_file = runtime_path(records_root, repo)
-    runtime = load_runtime(runtime_file)
-    target_branch = resolve_mother_branch(repo, args.to)
-    if runtime is None:
-        raise PreconditionError("没有活动母体, switch 无对象, 请直接使用 birth")
-    old_branch, old_mother = runtime_mother(runtime)
-    active_records = [
-        item for item in runtime.get("containers", [])
-        if is_active_container(item)
-    ]
-    if not old_branch or not active_records:
-        raise PreconditionError("没有活动母体, switch 无对象, 请直接使用 birth")
-    if target_branch == old_branch:
-        raise PreconditionError("目标母体就是当前活动母体, 无需 switch")
-
-    target_ref = ref_tip(repo, target_branch)
-    target_dir, target_dirty = find_mother(repo, target_branch)
-    if target_ref is not None and target_dir is None:
-        raise PreconditionError("目标分支已有 ref 但没有对应母体 worktree, 请先建立目标母体")
-    if target_dir is not None and target_dirty:
-        raise PreconditionError(f"目标母体工作树脏, 请先人工处理: {target_dir}")
-
-    partial_switch = runtime.get("stage") == "switch-partial"
-    observed = podman_container_state(repo, runtime)
-    observed_by_name = {item.get("name"): item for item in observed}
-    dirty_items: list[dict[str, Any]] = []
-    if not partial_switch:
-        for record in active_records:
-            name = record.get("name")
-            item = observed_by_name.get(name, {"name": name, "dirty": {"reachable": False}})
-            if terminate_dirty(item.get("dirty", {})):
-                dirty_items.append(item)
-    fingerprint = switch_decision_fingerprint(repo, runtime, target_branch, dirty_items)
-    identity = runtime_file.stem
-    details = "; ".join(
-        f"{item.get('name')}: {dirty_explanation(item.get('dirty', {}))}"
-        for item in dirty_items
-    )
-    blocked, decision_id = handle_dirty_decision(
-        records_root, identity, "switch-dirty", fingerprint, bool(dirty_items),
-        args.force,
-        f"旧母体容器脏检查: {details}; 请确认容器内 agent 已停手后切换",
-        ["--force"],
-    )
-    if blocked:
-        switch_state(repo, records_root, runtime, old_branch, old_mother, bool(old_mother), "[SWT] switch: 等待用户决定")
-        return 1
-    if dirty_items:
-        append_switch_audit(records_root, identity, dirty_items, decision_id, target_branch)
-
-    runtime["switch"] = {
-        "from": old_branch,
-        "to": target_branch,
-        "target-mother-exists": target_dir is not None,
-    }
-    runtime["stage"] = "switch-stopped"
-    atomic_write_json(runtime_file, runtime)
-    try:
-        network = runtime.get("network") if isinstance(runtime.get("network"), dict) else {}
-        if not partial_switch:
-            for record in active_records:
-                name = record.get("name")
-                if not isinstance(name, str):
-                    continue
-                netns = live_container_netns(name)
-                if netns:
-                    remove_container_firewall(runtime, dict(record), True, netns)
-        runtime["stage"] = "switch-network"
-        atomic_write_json(runtime_file, runtime)
-
-        for record in active_records:
-            name = record.get("name")
-            if not isinstance(name, str):
-                continue
-            inspected = run(["podman", "inspect", name])
-            if inspected.returncode == 0:
-                stopped = run(["podman", "stop", name], timeout=30)
-                if stopped.returncode != 0:
-                    raise SwtError(3, "PARTIAL", f"停止旧容器 {name} 失败: {stopped.stderr.strip()}")
-        stop_repo_daemons(repo, runtime)
-        stop_git_bridge(runtime, records_root, identity)
-        runtime["daemon"] = None
-        runtime["stage"] = "switch-stopped"
-        atomic_write_json(runtime_file, runtime)
-
-        runtime["stage"] = "switch-config"
-        atomic_write_json(runtime_file, runtime)
-        switch_config(repo, old_branch, target_branch)
-    except SwtError as exc:
-        record_switch_partial(runtime_file, runtime, exc.message)
-        if exc.code == 3:
-            raise SwtError(3, "PARTIAL", f"switch 中途失败, 当前为授权域空窗; 唯一恢复路径: 重跑 switch --to {args.to} 或对旧母体 birth: {exc.message}") from exc
-        raise
-    except (OSError, subprocess.TimeoutExpired) as exc:
-        record_switch_partial(runtime_file, runtime, str(exc))
-        raise SwtError(3, "PARTIAL", f"switch 中途失败, 当前为授权域空窗; 唯一恢复路径: 重跑 switch --to {args.to} 或对旧母体 birth: {exc}") from exc
-
-    for record in runtime.get("containers", []):
-        if isinstance(record, dict) and not record.get("retired"):
-            record["retired"] = True
-            record["state"] = "exited"
-    runtime["mother"] = {"branch": target_branch, "dir": str(target_dir) if target_dir else None}
-    runtime["mother_branch"] = target_branch
-    runtime["mother_dir"] = str(target_dir) if target_dir else None
-    runtime["authorized-mother"] = target_branch
-    runtime["stage"] = "switched"
-    runtime["network"] = {**network, "table-present": False} if isinstance(network, dict) else None
-    atomic_write_json(runtime_file, runtime)
-    switch_state(repo, records_root, runtime, target_branch, target_dir, target_dir is not None, "[SWT] switch: 已完成")
-    return 0
-
-
-def daemon_state(repo: Path, runtime: dict[str, Any] | None) -> dict[str, Any] | None:
+def daemon_state(mother: Path | None, repo: Path, runtime: dict[str, Any] | None) -> dict[str, Any] | None:
+    """单对 daemon 观测: 记录在先 (pid 存活即认); 无记录时按服务目录扫孤儿 —
+    母体目录 (per-mother 形态) + 旧形态残留 (服务主仓路径, 仅本对处于旧形态时)."""
     recorded = runtime.get("daemon") if isinstance(runtime, dict) else None
     if not isinstance(recorded, dict):
         recorded = None
+    branch, _ = runtime_mother(runtime)
+    serve_candidates: set[str] = set()
+    if mother is not None:
+        serve_candidates.add(str(mother.resolve()))
+    if pair_is_legacy_form(repo, mother, branch):
+        serve_candidates.add(str(repo.resolve()))
     processes: list[tuple[int, str]] = []
     try:
         result = run(["pgrep", "-af", "git[ -]daemon"])
@@ -3371,7 +3437,14 @@ def daemon_state(repo: Path, runtime: dict[str, Any] | None) -> dict[str, Any] |
                 continue
             pid_value = int(fields[0])
             command = fields[1] if len(fields) > 1 else ""
-            if pid_value != os.getpid() and "pgrep" not in command and daemon_matches_repo(repo, command):
+            if pid_value == os.getpid() or "pgrep" in command:
+                continue
+            serve = command.strip().rsplit(None, 1)[-1].strip("'\"") if command.strip() else ""
+            try:
+                serve_resolved = str(Path(serve).expanduser().resolve())
+            except OSError:
+                continue
+            if serve_resolved in serve_candidates:
                 processes.append((pid_value, command))
     pid = recorded.get("pid") if recorded else None
     alive = False
@@ -3397,7 +3470,8 @@ def daemon_state(repo: Path, runtime: dict[str, Any] | None) -> dict[str, Any] |
         if port is None:
             match = re.search(r"(?:--port(?:=|\s+))(\d+)", command)
             port = int(match.group(1)) if match else None
-        base_path = str(repo.parent.resolve())
+        match = re.search(r"(?:--base-path(?:=|\s+))([^\s]+)", command)
+        base_path = match.group(1).strip("'\"") if match else str(repo.parent.resolve())
     result = {"addr": addr, "port": port, "orphan": not alive or recorded is None}
     if recorded is not None:
         result.update({"pid": pid, "base-path": base_path})
@@ -3421,7 +3495,7 @@ def resume_decision_fingerprint(
     branch, mother = runtime_mother(runtime)
     fingerprint = decision_fingerprint_base(repo, branch, mother)
     fingerprint.update({
-        "authorized-mother": configured_mother_branch(repo),
+        "config-swt-form": pair_config_matches(repo, mother, branch),
         "containers": [
             {
                 "name": item.get("name"),
@@ -3578,8 +3652,47 @@ def resume_ready(target: dict[str, Any], daemon_ready: bool, network_ready: bool
     return target.get("state") == "running" and daemon_ready and network_ready and git_ready
 
 
-def collect_resume_daemons(repo: Path, runtime: dict[str, Any]) -> list[int]:
-    pids = set(daemon_pids(repo))
+def locate_pair_runtime(
+    records_root: Path,
+    repo: Path,
+    *,
+    branch: str | None = None,
+    container: str | None = None,
+) -> tuple[Path, dict[str, Any]] | None:
+    """按 --branch/--name 定位对 runtime; 都缺省时要求唯一记录对, 多对时点名消歧."""
+    runtimes = load_repo_runtimes(records_root, repo)
+    if branch:
+        for path, data in runtimes:
+            pair_branch, _ = runtime_mother(data)
+            if pair_branch == branch:
+                return path, data
+        return None
+    if container:
+        for path, data in runtimes:
+            for record in data.get("containers", []):
+                if isinstance(record, dict) and record.get("name") == container:
+                    return path, data
+        return None
+    if len(runtimes) == 1:
+        return runtimes[0]
+    if len(runtimes) > 1:
+        names = ", ".join(str(runtime_mother(data)[0]) for _, data in runtimes)
+        raise PreconditionError(f"本主仓有多对记录, 请用 --branch/--name 定位; 已知母体分支: {names}")
+    return None
+
+
+def collect_resume_daemons(
+    repo: Path,
+    mother: Path | None,
+    branch: str | None,
+    runtime: dict[str, Any],
+) -> list[int]:
+    """resume 收本对残留 daemon: 母体目录匹配 + 旧形态主仓路径兑底 + 记录 pid."""
+    pids: set[int] = set()
+    if mother is not None:
+        pids.update(daemon_pids_for_serve_path(mother))
+    if pair_is_legacy_form(repo, mother, branch):
+        pids.update(daemon_pids_for_serve_path(repo.resolve()))
     recorded = runtime.get("daemon")
     if isinstance(recorded, dict) and isinstance(recorded.get("pid"), int):
         pids.add(recorded["pid"])
@@ -3588,22 +3701,15 @@ def collect_resume_daemons(repo: Path, runtime: dict[str, Any]) -> list[int]:
         if pid == os.getpid() or not process_alive(pid):
             continue
         killed.append(pid)
-        try:
-            os.kill(pid, signal.SIGTERM)
-        except ProcessLookupError:
-            continue
-    deadline = time.monotonic() + 2
-    while time.monotonic() < deadline and any(process_alive(pid) for pid in pids):
-        time.sleep(0.05)
-    for pid in sorted(pids):
-        if process_alive(pid):
-            try:
-                os.kill(pid, signal.SIGKILL)
-            except ProcessLookupError:
-                pass
-    remaining = daemon_pids(repo)
+    stop_daemon_pids(pids)
+    remaining: set[int] = set()
+    if mother is not None:
+        remaining.update(daemon_pids_for_serve_path(mother))
+    if pair_is_legacy_form(repo, mother, branch):
+        remaining.update(daemon_pids_for_serve_path(repo.resolve()))
+    remaining = {pid for pid in remaining if process_alive(pid)}
     if remaining:
-        raise SwtError(3, "PARTIAL", f"resume 收 daemon 失败(pid={remaining}), 请人工终止后重跑")
+        raise SwtError(3, "PARTIAL", f"resume 收 daemon 失败(pid={sorted(remaining)[0]}), 请人工终止后重跑")
     return killed
 
 
@@ -3640,20 +3746,18 @@ def resume_probe(record: dict[str, Any], remote: str) -> None:
 
 def resume(args: argparse.Namespace, repo: Path) -> int:
     records_root = args.records_root.expanduser().resolve()
-    runtime_file = runtime_path(records_root, repo)
-    runtime = load_runtime(runtime_file)
-    if runtime is None:
+    located = locate_pair_runtime(records_root, repo, branch=args.branch, container=args.name)
+    if located is None:
         raise PreconditionError("没有 runtime 记录, 请先使用 birth")
-    branch, _mother = runtime_mother(runtime)
+    runtime_file, runtime = located
+    branch, mother_dir = runtime_mother(runtime)
     if not branch:
         raise PreconditionError("runtime 缺少授权母体分支, 请先人工恢复或 terminate")
-    authorized = configured_mother_branch(repo)
-    if authorized != branch:
-        raise PreconditionError(
-            f"授权母体不匹配: runtime={branch}, 当前 config={authorized}; 请先恢复授权配置"
-        )
+    if mother_dir is None:
+        raise PreconditionError("runtime 缺少母体目录, 请先人工恢复或 terminate")
+    identity = runtime_file.stem
 
-    observed = podman_container_state(repo, runtime)
+    observed = podman_container_state(repo, [data for _, data in load_repo_runtimes(records_root, repo)])
     target, candidates = resume_container_candidates(runtime, observed, args.name)
     if target.get("retired"):
         raise PreconditionError(
@@ -3674,10 +3778,11 @@ def resume(args: argparse.Namespace, repo: Path) -> int:
                     "建议 terminate 后重新 birth (当前不强制)",
                     file=sys.stderr,
                 )
-    daemon_observed = daemon_state(repo, runtime)
+    daemon_observed = daemon_state(mother_dir, repo, runtime)
     daemon_ready = not resume_daemon_stale(daemon_observed, runtime) and git_bridge_ready(runtime)
     network_ready, _network_output = resume_network_status(runtime, target)
-    git_ready = resume_git_ready(target, fixed_git_remote(repo)) if (
+    pair_remote = fixed_git_remote(mother_dir)
+    git_ready = resume_git_ready(target, pair_remote) if (
         target.get("state") == "running" and daemon_ready and network_ready
     ) else False
     active_observed = [item for item in candidates if not item.get("retired")]
@@ -3704,7 +3809,7 @@ def resume(args: argparse.Namespace, repo: Path) -> int:
         # STATE 用刚写盘的 runtime 容器记录 (含本分支刚更新的 display),
         # 不用函数头取的 observed 快照 — 那是显示栈检查前的旧值, 会与交付行自相矛盾
         print_state(
-            build_state(repo, records_root, runtime, mother=_UNSET, containers=runtime["containers"],
+            build_state(repo, records_root, runtime_file, runtime, mother=_UNSET, containers=runtime["containers"],
                         daemon=daemon_observed, image=_UNSET, network=_UNSET),
             "[SWT] resume: 已就绪, 什么都没有需要恢复",
         )
@@ -3729,7 +3834,7 @@ def resume(args: argparse.Namespace, repo: Path) -> int:
         "resume",
         fingerprint,
         answered or (args.confirm and receipt is not None),
-        "检测到可恢复对象, 将收 stale daemon/start 容器/重拉 daemon/nft --merge/SSH 与 git fetch 校验",
+        "检测到可恢复对象, 将收 stale daemon/迁移旧形态配置/start 容器/重拉 daemon/nft --merge/SSH 与 git fetch 校验",
         "恢复前提已变化, 请重新确认",
         ["--confirm"],
         stale,
@@ -3743,7 +3848,7 @@ def resume(args: argparse.Namespace, repo: Path) -> int:
             )
         print(decision_line(receipt, pending_kind, pending_question, pending_options))
         print_state(
-            build_state(repo, records_root, runtime, mother=_UNSET, containers=observed,
+            build_state(repo, records_root, runtime_file, runtime, mother=_UNSET, containers=observed,
                         daemon=daemon_observed, image=_UNSET, network=_UNSET),
             "[SWT] resume: 等待用户决定",
         )
@@ -3773,7 +3878,10 @@ def resume(args: argparse.Namespace, repo: Path) -> int:
         else None
     )
     try:
-        killed = collect_resume_daemons(repo, runtime)
+        killed = collect_resume_daemons(repo, mother_dir, branch, runtime)
+        # 并行母体迁移自愈 (幂等): 主仓级 hideRefs 残留 → 迁入各母体 config.worktree
+        # 并重摆 per-mother daemon; 本对 daemon 由下方标准恢复流程重拉, 迁移跳过本对.
+        migrate_legacy_pairs(repo, records_root, skip_daemon_for=mother_dir)
         stop_git_bridge(runtime, records_root, identity)
         detail = inspect_container(target_name)
         state = detail.get("State") if isinstance(detail.get("State"), dict) else {}
@@ -3789,7 +3897,7 @@ def resume(args: argparse.Namespace, repo: Path) -> int:
         runtime["stage"] = "resume-container-started"
         upsert_container_record(runtime, record, runtime_file)
 
-        daemon = start_daemon(repo)
+        daemon = start_daemon(mother_dir)
         daemon_record = {
             "pid": daemon.process.pid, "addr": daemon.address, "port": daemon.port,
             "base-path": str(daemon.base_path), "orphan": False,
@@ -3825,7 +3933,7 @@ def resume(args: argparse.Namespace, repo: Path) -> int:
         inject_auth_json(target_name)
         ensure_container_git_forward(target_name)
 
-        record["remote"] = fixed_git_remote(repo)
+        record["remote"] = fixed_git_remote(mother_dir)
         record["ssh-port"] = container_ssh_port(target_name)
         resume_probe(record, record["remote"])
         runtime["stage"] = "born"
@@ -3847,7 +3955,7 @@ def resume(args: argparse.Namespace, repo: Path) -> int:
         atomic_write_json(runtime_file, runtime)
         raise SwtError(3, "PARTIAL", f"resume 中途失败: {exc}") from exc
 
-    observed = podman_container_state(repo, runtime)
+    observed = podman_container_state(repo, [data for _, data in load_repo_runtimes(records_root, repo)])
     print_delivery_lines(
         "resume: 已完成 fail-closed 恢复",
         record.get("ssh-port"), record.get("vnc-port"), record.get("display"),
@@ -3858,7 +3966,7 @@ def resume(args: argparse.Namespace, repo: Path) -> int:
         headed_script=record.get("headed-script"),
     )
     print_state(
-        build_state(repo, records_root, runtime, mother=_UNSET, containers=observed,
+        build_state(repo, records_root, runtime_file, runtime, mother=_UNSET, containers=observed,
                     daemon=daemon_record, image=_UNSET, network=_UNSET),
         "[SWT] resume: 已完成 fail-closed 恢复",
     )
@@ -3914,9 +4022,58 @@ def image_state(records_root: Path, repo: Path, runtime: dict[str, Any] | None, 
     }
 
 
+def mothers_states(
+    repo: Path,
+    records_root: Path,
+    primary: str | None = None,
+) -> list[dict[str, Any]]:
+    """mothers[] 数组: 每对一枚 (branch/dir/daemon/containers/...), 遵守只加不改名."""
+    entries: list[dict[str, Any]] = []
+    for path in repo_runtime_files(records_root, repo):
+        data = load_runtime_tolerant(path) or {}
+        branch, mother_dir = runtime_mother(data)
+        mother_state = mother_state_from_runtime(repo, data)
+        worktree_dirty = bool(mother_state["exists"] and mother_state.get("worktree-dirty"))
+        pair_containers = [
+            {"name": item.get("name"), "state": item.get("state"), "retired": bool(item.get("retired"))}
+            for item in data.get("containers", [])
+            if isinstance(item, dict)
+        ]
+        entries.append({
+            "identity": path.stem,
+            "branch": branch,
+            "dir": str(mother_dir) if mother_dir else None,
+            "exists": mother_state["exists"],
+            "worktree-dirty": worktree_dirty,
+            "runtime-stale": mother_state.get("runtime-stale", False),
+            "stage": data.get("stage"),
+            "config": {"swt-form": pair_config_matches(repo, mother_dir, branch)},
+            "daemon": daemon_state(mother_dir, repo, data),
+            "containers": pair_containers,
+            "primary": path.stem == primary,
+        })
+    return entries
+
+
+def pick_primary_runtime(
+    runtimes: list[tuple[Path, dict[str, Any]]],
+    containers: list[dict[str, Any]],
+) -> tuple[Path, dict[str, Any]] | None:
+    """顶层兼容字段的选取: 有运行中容器的对优先, 否则最近改动的 runtime."""
+    running_names = {item.get("name") for item in containers if item.get("state") == "running"}
+    for path, data in runtimes:
+        for record in data.get("containers", []):
+            if isinstance(record, dict) and not record.get("retired") and record.get("name") in running_names:
+                return path, data
+    if runtimes:
+        return max(runtimes, key=lambda item: item[0].stat().st_mtime)
+    return None
+
+
 def build_state(
     repo: Path,
     records_root: Path,
+    runtime_file: Path | None,
     runtime: dict[str, Any] | None,
     *,
     mother: dict[str, Any] | object,
@@ -3925,14 +4082,20 @@ def build_state(
     image: dict[str, Any] | None | object,
     network: dict[str, Any] | None | object,
 ) -> dict[str, Any]:
-    observed_mother = detect_mother(repo, runtime) if mother is _UNSET else mother
-    observed_containers = podman_container_state(repo, runtime) if containers is _UNSET else containers
-    observed_daemon = daemon_state(repo, runtime) if daemon is _UNSET else daemon
+    """STATE (schema 2): 顶层字段 = 主对 (兼容旧消费方, 只加不改名);
+    mothers[] = 全部对切片."""
+    primary_branch, primary_mother = runtime_mother(runtime)
+    observed_mother = mother_state_from_runtime(repo, runtime) if mother is _UNSET else mother
+    observed_containers = (
+        podman_container_state(repo, [data for _, data in load_repo_runtimes(records_root, repo)])
+        if containers is _UNSET else containers
+    )
+    observed_daemon = daemon_state(primary_mother, repo, runtime) if daemon is _UNSET else daemon
     observed_image = image_state(records_root, repo, runtime, observed_containers) if image is _UNSET else image
     observed_network = network_state(runtime) if network is _UNSET else network
     state = empty_state(repo)
     state["mother"] = observed_mother
-    state["config"]["swt-form"] = config_matches(repo, observed_mother.get("branch"))
+    state["config"]["swt-form"] = pair_config_matches(repo, primary_mother, primary_branch)
     state["containers"] = observed_containers
     state["daemon"] = observed_daemon
     state["image"] = observed_image
@@ -3941,28 +4104,44 @@ def build_state(
     state["display"] = runtime_display if isinstance(runtime_display, dict) else None
     if runtime:
         state["stage"] = runtime.get("stage")
+    state["mothers"] = mothers_states(
+        repo, records_root, primary=runtime_file.stem if runtime_file else None,
+    )
     return state
 
 
 def status(args: argparse.Namespace, repo: Path) -> int:
     require_command("podman")
     records_root = args.records_root.expanduser().resolve()
-    runtime = load_runtime(runtime_path(records_root, repo))
-    containers = podman_container_state(repo, runtime)
-    daemon = daemon_state(repo, runtime)
-    image = image_state(records_root, repo, runtime, containers)
-    network = network_state(runtime)
-    state = build_state(
-        repo,
-        records_root,
-        runtime,
-        mother=_UNSET,
-        containers=containers,
-        daemon=daemon,
-        image=image,
-        network=network,
-    )
-    if not state["mother"]["exists"] and runtime is None and not state["containers"]:
+    runtimes = load_repo_runtimes(records_root, repo)
+    containers = podman_container_state(repo, [data for _, data in runtimes])
+    primary = pick_primary_runtime(runtimes, containers)
+    if primary is not None:
+        primary_file, primary_runtime = primary
+        state = build_state(
+            repo,
+            records_root,
+            primary_file,
+            primary_runtime,
+            mother=_UNSET,
+            containers=containers,
+            daemon=_UNSET,
+            image=_UNSET,
+            network=_UNSET,
+        )
+    else:
+        state = build_state(
+            repo,
+            records_root,
+            None,
+            None,
+            mother=_UNSET,
+            containers=containers,
+            daemon=None,
+            image=None,
+            network=None,
+        )
+    if not state["mother"]["exists"] and not runtimes and not state["containers"]:
         print_state(state, "[SWT] status: 什么都没有")
     else:
         print_state(state, "[SWT] status: 已完成只读盘点")
@@ -3980,16 +4159,17 @@ def display_check(args: argparse.Namespace, repo: Path | None) -> int:
         if repo is None:
             raise PreconditionError("display-check 需要 --name 或可推导主仓的 --repo/cwd")
         records_root = args.records_root.expanduser().resolve()
-        runtime = load_runtime(runtime_path(records_root, repo))
-        if runtime is None:
-            raise PreconditionError("没有 runtime 记录, 请用 --name 指定容器或先 birth")
-        active = [item for item in runtime.get("containers", [])
-                  if isinstance(item, dict) and item.get("name") and not item.get("retired")]
+        active: list[dict[str, Any]] = []
+        for _path, data in load_repo_runtimes(records_root, repo):
+            active.extend(
+                item for item in data.get("containers", [])
+                if isinstance(item, dict) and item.get("name") and not item.get("retired")
+            )
         if not active:
-            raise PreconditionError("当前母体没有活动容器")
+            raise PreconditionError("没有活动容器, 请用 --name 指定容器或先 birth")
         if len(active) > 1:
             names = ", ".join(str(item["name"]) for item in active)
-            raise PreconditionError(f"当前母体有多个容器, 请使用 --name; 候选: {names}")
+            raise PreconditionError(f"有多个容器, 请使用 --name; 候选: {names}")
         name = str(active[0]["name"])
     if not container_has_swt_vnc(name):
         print("[SWT] display-check: 容器镜像未内置 swt-vnc (absent), 无通道可检查")
@@ -4065,7 +4245,8 @@ def consume_receipt(
 
 
 def acquire_lock(repo: Path, records_root: Path) -> Any:
-    path = runtime_path(records_root.expanduser().resolve(), repo).with_suffix(".lock")
+    # 仓级锁: 跨对资源 (主仓 config 迁移等) 共享一把, 文件名与旧 scheme identity 同构造
+    path = (records_root.expanduser().resolve() / "runtime" / f"{repo_scope_identity(repo)}.lock")
     path.parent.mkdir(parents=True, exist_ok=True)
     handle = path.open("a+", encoding="utf-8")
     try:
@@ -4112,12 +4293,6 @@ def main(argv: list[str]) -> int:
                 for command in MUTATING_COMMANDS:
                     require_command(command)
                 return terminate(args, repo)
-            if args.command == "switch":
-                for command in MUTATING_COMMANDS:
-                    require_command(command)
-                if not args.to:
-                    raise PreconditionError("switch 必须指定 --to")
-                return switch(args, repo)
             raise PreconditionError(f"NOT-IMPLEMENTED {args.command}")
         finally:
             lock.close()
