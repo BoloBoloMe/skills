@@ -147,10 +147,19 @@ def validate_git_hide_refs_syntax() -> None:
             ["git", "-C", str(probe), "commit", "-qm", "probe"],
             ["git", "-C", str(probe), "config", "--add", "uploadpack.hideRefs", "refs/heads"],
             ["git", "-C", str(probe), "config", "--add", "uploadpack.hideRefs", "!refs/heads/main"],
+            # 并行母体 (2026-09-13) 依赖 worktree 级配置: 探测扩展开关 + --worktree 读写
+            ["git", "-C", str(probe), "config", "extensions.worktreeConfig", "true"],
+            ["git", "-C", str(probe), "config", "--worktree", "--add", "receive.hideRefs", "refs/heads"],
         ):
             result = run(command)
             if result.returncode != 0:
                 raise SwtEnvError(f"git ! 语法重验失败: {result.stderr.strip()}")
+        readback = run(["git", "-C", str(probe), "config", "--worktree", "--get-all", "receive.hideRefs"])
+        if readback.returncode != 0 or "refs/heads" not in readback.stdout.splitlines():
+            raise SwtEnvError(
+                "git config --worktree 读写重验失败 (需支持 extensions.worktreeConfig): "
+                f"{readback.stderr.strip() or readback.stdout.strip()}"
+            )
         advertised = run(["git", "-C", str(probe), "ls-remote", "."])
         if advertised.returncode != 0 or "refs/heads/main" not in advertised.stdout:
             raise SwtEnvError(
@@ -1938,6 +1947,10 @@ def migrate_legacy_pairs(repo: Path, records_root: Path, *, skip_daemon_for: Pat
                         file=sys.stderr,
                     )
                 continue
+            # 先清本对 config.worktree 该键的中断残留再写: 上次迁移若死在
+            # "已写 worktree, 主仓未清" 之间, 重跑会原值再写一遍导致翻倍;
+            # 以主仓现值为唯一事实源, 清后重写即真幂等
+            config_unset_all(repo, mother, key)
             for value in values:
                 result = config_add_value(repo, mother, key, value)
                 if result.returncode != 0:
@@ -2719,6 +2732,9 @@ def birth(args: argparse.Namespace, repo: Path) -> int:
             runtime["config"] = {"swt-form": True}
             runtime["stage"] = "config"
             atomic_write_json(runtime_file, runtime)
+            # 迁移可能已为本母体起过 daemon (本对旧形态 + runtime idle/缺失时):
+            # 先收掉再起新的, 否则迁走的那个脱离 runtime 记录成永久孤儿
+            stop_daemon_pids(set(daemon_pids_for_serve_path(mother_dir)))
             daemon = start_daemon(mother_dir)
             daemon_record = {"pid": daemon.process.pid, "addr": daemon.address, "port": daemon.port, "base-path": str(daemon.base_path), "orphan": False}
             runtime["daemon"] = daemon_record
@@ -3105,10 +3121,23 @@ def terminate_container_candidates(
     """终结候选跨对聚合 (并行母体); 每个候选带 _runtime-file 指回所属对的 runtime."""
     observed = podman_container_state(repo, [data for _, data in runtimes])
     by_name = {item["name"]: item for item in observed if item.get("name")}
+    # 容器名 -> 所属 runtime 文件: active 记录优先, retired 残留 (旧版 switch 遗留,
+    # 容器可能还在) 也指回所属对, 否则这类残留永远 terminate 不了
     file_by_name: dict[str, Path] = {}
     for path, data in runtimes:
         for record in data.get("containers", []):
             if isinstance(record, dict) and is_active_container(record) and record.get("name"):
+                file_by_name.setdefault(str(record["name"]), path)
+    for path, data in runtimes:
+        for record in data.get("containers", []):
+            # 仅限 podman 里仍存在的 retired 残留 (旧版 switch 遗留的 stopped 容器);
+            # 已被删除的 retired 记录保持旧语义, 不凭空成为终结候选
+            if (
+                isinstance(record, dict)
+                and not is_active_container(record)
+                and record.get("name")
+                and str(record["name"]) in by_name
+            ):
                 file_by_name.setdefault(str(record["name"]), path)
     candidates: list[dict[str, Any]] = []
     names = set(by_name) | set(file_by_name)

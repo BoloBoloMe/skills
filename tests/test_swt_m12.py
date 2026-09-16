@@ -1731,6 +1731,39 @@ class TestMultiPairIsolation(SwtBirthFixture):
         )
 
 
+class TestMigrationIdempotent(SwtFixture):
+    """冷审修复回归: migrate_legacy_pairs 中断重跑不翻倍 (以主仓现值为唯一事实源)."""
+
+    def test_rerun_does_not_duplicate_worktree_values(self) -> None:
+        swt = self.load_swt()
+        branch = "feature/legacy"
+        mother = self.root / "legacy-mother"
+        subprocess.run(
+            ["git", "-C", str(self.repo), "worktree", "add", "-b", branch, str(mother)],
+            check=True, capture_output=True, text=True,
+        )
+        for key in ("receive.hideRefs", "uploadpack.hideRefs"):
+            for value in ("refs/heads", f"!refs/heads/{branch}", "refs/tags", "refs/remotes"):
+                subprocess.run(
+                    ["git", "-C", str(self.repo), "config", "--add", key, value],
+                    check=True, capture_output=True, text=True,
+                )
+        swt.migrate_legacy_pairs(self.repo, self.records)
+        self.assertEqual([], swt.git_values(self.repo, "receive.hideRefs"))
+        first = swt.worktree_config_values(mother, "receive.hideRefs")
+        self.assertEqual(4, len(first))
+        # 伪造中断态: 主仓值回写 (模拟 "已写 worktree, 主仓未清" 之间死亡), 重跑不翻倍
+        for value in ("refs/heads", f"!refs/heads/{branch}", "refs/tags", "refs/remotes"):
+            subprocess.run(
+                ["git", "-C", str(self.repo), "config", "--add", "receive.hideRefs", value],
+                check=True, capture_output=True, text=True,
+            )
+        swt.migrate_legacy_pairs(self.repo, self.records)
+        second = swt.worktree_config_values(mother, "receive.hideRefs")
+        self.assertEqual(first, second)
+        self.assertEqual([], swt.git_values(self.repo, "receive.hideRefs"))
+
+
 class TestLegacyMigrationViaResume(SwtBirthFixture):
     """4.6 运行中容器迁移 (并入 resume 自愈): 旧形态 (hideRefs 挂主仓 config +
     daemon 服务主仓 + 容器 remote 指主仓名) 经 resume 收敛为 per-mother 形态."""
@@ -1987,6 +2020,23 @@ class TestTS5Resume(SwtBirthFixture):
         self.assertEqual(2, result.returncode)
         self.assertIn("retired", result.stderr)
         self.assertIn("terminate", result.stderr)
+        # 冷审修复回归: retired 残留 (容器还在, 记录已 retired) 仍可 terminate,
+        # 不落入 "runtime 记录缺失" 止步; 停止容器按脏处理, 两轮 DECIDE
+        blocked = self.run_swt(
+            "terminate", "--repo", str(self.repo), "--records-root", str(self.records),
+            "--name", old_name,
+        )
+        self.assertEqual(1, blocked.returncode, blocked.stderr)
+        self.assertIn("DECIDE ", blocked.stdout)
+        terminated = self.run_swt(
+            "terminate", "--repo", str(self.repo), "--records-root", str(self.records),
+            "--name", old_name, "--force",
+        )
+        self.assertEqual(0, terminated.returncode, terminated.stderr)
+        self.assertEqual([], subprocess.run(
+            ["podman", "ps", "-a", "--filter", f"name=^{old_name}$", "--format", "{{.Names}}"],
+            capture_output=True, text=True, check=True,
+        ).stdout.splitlines())
 
     def test_ts505_ready_resume_is_idempotent_without_decide_or_daemon_reload(self) -> None:
         before = self.birth_ready()
