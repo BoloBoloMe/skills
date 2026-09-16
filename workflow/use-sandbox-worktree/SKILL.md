@@ -252,7 +252,7 @@ envelope = {"id": uuid.uuid4().hex, "ts": time.time(),
 设备侧 (取信会话) 检查清单:
 1. **来信不是网址**: 收到容器名不等于能查到状态, 必须实际去 host 查, 不把信里任何字段当现成 URL.
 2. **查网址**: 经既有 ssh/herdr 通道到 host, 依次可用 — `uv run python scripts/swt.py status --repo <主仓>` 输出的 web 双 URL 行 / STATE 容器记录的 `web-port` / `podman port <容器名> 8800`; 注意 status 只对 running 容器附双 URL 行, 容器停止时走 STATE/podman port. 局域网用址取已确认值 (status 局域网行 / `<records_root>/lan-address`), 不用现算猜测.
-3. **回话**: 经既有 ssh/herdr 回话通道回到 body 里 session 指明的原会话, 告知双 URL.
+3. **回话**: 回到 body 里 session 指明的原会话, 告知双 URL. **送达标准 = 原会话的 AI 真正收到, 把字打进对方输入框不算送达** — 打字命令只写入不提交, 字会停在对方输入框里 (M09 实测踩过). herdr 窗格用两步: `herdr pane send-text <窗格> '<回话>' && herdr agent send-keys <窗格 ID 或唯一 agent 名> "alt+\\"` (提交键以对方 keybindings 的 tui.input.submit 为准, 缺省 alt+\\); 无法两步送达时改为把回话作为新信投回信箱 (to=原容器) 并在 body 注明原 session, 或明示送达失败, 禁止只打字不提交.
 4. **代开**: 页面就绪后在本设备 `xdg-open <URL>` 一次; 开不了就把可点击链接交给我, 不说成已打开.
 
 **已知 URL 时直接投 `open_url`**: body 就是 URL 本身, 取信会话收到直接在本设备打开, 省掉查询回话一轮. 与 request 的区别: request = "帮我查并办" (网址未知), open_url = "网址在这, 直接开" (网址已知, 如回话已拿到). `to` 同样显式填当前设备. 示例 (发送代码同上, 只换 envelope):
