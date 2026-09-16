@@ -492,9 +492,12 @@ def cmd_verify(args: argparse.Namespace) -> int:
     # (6) headless 回切: 换 cwd (同 cwd 会复用 headed 会话), 无 DISPLAY /
     # BROWSER_HEADED; headless 不依赖 X, 成功即证明环境变量回切生效
     try:
+        # browse 是 uv 虚拟项目 (package=false, 源码靠 cwd/PYTHONPATH 导入);
+        # cwd 已换走, 须显式 PYTHONPATH 才能 import browser_agent
         headless = _podman([
             "exec", "--user", "bolo", "-w", "/tmp/headless-session",
             "-e", "HOME=/home/bolo",
+            "-e", f"PYTHONPATH={BROWSE_DIR}",
             args.name, "uv", "run", "--project", BROWSE_DIR,
             "python", "-c", _navigate_script(),
         ], check=False, timeout=300)
