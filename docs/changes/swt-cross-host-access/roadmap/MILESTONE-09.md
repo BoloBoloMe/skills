@@ -21,12 +21,17 @@
 - 多对并存 ✓: 两对同时 born, 各自 daemon/桥/容器, status mothers[] 齐全
 - 推送落地 ✓: 容器试推空提交, 母目录 HEAD 即时前进 (fcbec3f); 期间顺带验证了历史分叉时 git 原生拒绝 → fetch 重推 的文档化流程
 
-未过 / 受阻:
-- 场景 B 远程格: open_url 信已定向投到 Ubuntu-Workstation (投递正确, 笔记本侧取信会话保持沉默, D012 定向的一半证据), 但设备侧代开未获用户确认 — 补一次确认即过
-- 场景 A 远程格 (waypipe 窗口直飞): 受阻于 **waypipe 世代分裂** — 工作站 0.11.0 为 Rust 新实现 (反向隧道拓扑, socket 建在 /tmp/waypipe-server-*.sock), 容器 0.8.4 为 C 旧实现 (stdio 拓扑), 客户端在其监听通道上读握手头即 EOF. 已试并排除: 容器升 0.11.2 C 版 (waypipe-c, 拓扑仍不同, 同错). Rust 版构建链 (cargo + bindgen + glslc + wrap-* 系列) 在 debian:12 上连环踩坑未走通. 待决策: 统一以哪一族为标准后重测 — 若定 Rust, display 层重建时一并解决构建链; 若定 C, 工作站需装 C 版 (minimal 构建二进制 libc-only, 可跨发行版)
-- D012 双设备定向双投: 依赖工作站取信会话常驻 (已配置: 凭证/扩展/直连 38417; 工作站走直连降级路径, ssh -L 隧道未通原因已记遗留疑点), 未跑
+未过 / 待确认:
+- 场景 A 远程格 (waypipe 窗口直飞): **全链已跑通待用户确认** (2026-09-17) — 容器 AI 自治完成 preflight 86 → 投 exec 信 (直批) → 轮询出新 token waypipe-server-3dJUV63k.sock → chromium 带验收页落工作站, 未落 noVNC 兜底, 全程零人工. 解锁前提见实测发现 (方案 B 统一 C 版 + 设备免密自动化)
+- 场景 B 远程格: open_url 已重投工作站本机浏览器代开 (2026-09-17, 上次 09-16 的弹窗未获确认), 待用户确认
+- D012 双设备定向双投: 依赖工作站取信会话常驻 (已配置且实测在线), 未跑
 
-实测发现:
+**waypipe 统一方案 B 已拍板并落地 (2026-09-17)**: 用户选 B (统一 C 版, 否 A=Rust 构建链攻坚). 重建产物: 上游 master 的 minimal_build.sh 在 debian:12 容器跑通 (gcc+libc6-dev+python3, 交互 read 喂回车), 产物 208KB 实测只动态链 libc. 工作站安装: 经信箱 request 信遥控取信会话完成, 遮蔽式装 ~/.local/bin/waypipe (备份 Rust 0.11.0 为 .bak, 不卸原版), 验证输出 "waypipe minimal", 用户已确认. 旧验证容器已删, 产物未留档 (可随时按同法重建).
+
+实测发现 (2026-09-17 增量):
+- **设备免密自动化路**: enroll-device-key 需要设备公钥传到 host, 工作站无 ssh 钥匙通道 (host 配置显式 PubkeyAuthentication no). 解法 = 信箱 request 信遥控工作站取信会话: 本机生成专用密钥 → SSH_ASKPASS (REQUIRE=force) + 固定密码 sandbox 免交互 ssh 进容器装公钥 (公钥经 stdin, 不落命令行) → BatchMode 验证. 私钥全程不出工作站, 全自动约 1 分钟, 免 sudo. 容器 authorized_keys 实测新增 workstation-relay 条目
+- **容器 pi 母本契约缺口**: agent-prompts/pi_AGENTS.md 的 headed 选路仍是两态 (直通/noVNC), 无 pull-window/信箱编排 — preflight 86 后容器 AI 不知道要投信, 现容器靠任务文本桥接 (实测 AI 读容器内挂载的 SKILL.md 后能正确执行全链). 修补 = 更新母本 (影响新容器) + 母本三份通用核同步纪律, 待办
+- **pull-window 全链实测数字**: 信投出→设备取走处理约 1 分钟, waypipe 建连+socket 出现约 70 秒 (含 chromium 启动); 新版 waypipe server 形态: waypipe -c none --unlink-socket -s /tmp/waypipe-server-<token>.sock --display wayland-<token> server <命令>, socket 与 display 名同 token
 - 信箱回话送达标准缺失: 取信会话把回话 "打进原会话输入框" 不算送达 (M09 实测) → SKILL.md 已修为两步制 (send-text + 提交键)
 - 新版 waypipe 远端命令必须是单条简单命令 (复合命令被其包装机制撕碎); 其 socket 路径与 display 名与旧版不同
 - 工作站直连信箱 (38417 裸连) 替代 ssh -L 隧道: 验收采用降级路径, 隧道不通原因未查明 (遗留疑点)
