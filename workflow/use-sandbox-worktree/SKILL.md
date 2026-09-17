@@ -46,7 +46,7 @@ uv run python scripts/swt.py status [--repo <主仓>]
 
 **第一步: 网络模式与白名单盘点**
 创建容器前必须与我确认网络模式, 运行期不切换:
-- **whitelist** (默认拒, 推荐): 只放行 网关 DNS + `--allow` 条目 + 已建立连接的返程流量 (保住 host 发起的 ssh), 其余容器流出全断. git 走 unix socket 桥, 不占网络白名单; 网关自动放行的残余暴露见 reference/risks.md.
+- **whitelist** (默认拒, 推荐): 只放行 容器实际解析器 (自动读容器 resolv.conf, 仅 udp/tcp 53) + 网关 DNS + `--allow` 条目 + 已建立连接的返程流量 (output 链只放回程方向: 保住 host 发起的 ssh, 策略收紧即断既有容器主动连接), 过滤覆盖 forward/input/output 三链 (output 管容器主动出站, 2026-09-14 出站链修复), 其余容器流出全断. git 走 unix socket 桥, 不占网络白名单; 网关与解析器自动放行的残余暴露见 reference/risks.md.
 - **blacklist** (默认放行): 只断 `--deny` 条目, 护 host 侧特定服务 (数据库/redis 等) 场景.
 盘点方法论: 与我一起列出容器工作所需站点, **域名须解析为具体 IP/CIDR 后传入** (防火墙规则只认 IP, 脚本拒收域名); 条目是 IP 级, 放行即全端口. 站点换 IP 失效时重新盘点. 运行期新站点需求的处理形态未定, 发生时带回本会话问我.
 

@@ -456,11 +456,14 @@ class TestBirthWiringSeam(SwtCase):
 class TestApplyNetworkAutoAllow(SwtCase):
     """UD-04 守卫: whitelist 模式 auto-allow 恒含 gateway/32 (防未来回归)."""
 
-    def _apply(self, plan):
+    def _apply(self, plan, resolv_conf: str | None = None):
         captured: list[list[str]] = []
 
         def fake_run(command, *, cwd=None, timeout=None):
-            captured.append([str(part) for part in command])
+            command = [str(part) for part in command]
+            captured.append(command)
+            if resolv_conf is not None and command[:2] == ["podman", "exec"]:
+                return subprocess.CompletedProcess(command, 0, resolv_conf, "")
             return subprocess.CompletedProcess(command, 0, "", "")
 
         original = self.m.run
@@ -474,6 +477,10 @@ class TestApplyNetworkAutoAllow(SwtCase):
     @staticmethod
     def _allow_entries(command: list[str]) -> list[str]:
         return [command[i + 1] for i, part in enumerate(command) if part == "--allow"]
+
+    @staticmethod
+    def _dns_entries(command: list[str]) -> list[str]:
+        return [command[i + 1] for i, part in enumerate(command) if part == "--dns"]
 
     def test_whitelist_auto_allows_gateway(self):
         plan = self.m.NetworkPlan("whitelist", (), (), "169.254.1.2", "10.88.0.10",
@@ -500,6 +507,139 @@ class TestApplyNetworkAutoAllow(SwtCase):
         self.assertEqual(self._allow_entries(command), [])
         self.assertEqual(result["auto-allow"], [])
         self.assertIn("--deny", command)
+
+
+class TestApplyNetworkDnsAlignment(unittest.TestCase):
+    """2026-09-14 swt-firewall-outbound-bypass 修复项 2: whitelist DNS 放行
+    必须与容器真实解析器 (resolv.conf) 对齐, 不能只放网关单地址."""
+
+    def _load(self):
+        spec = importlib.util.spec_from_file_location("swt_dns_align", SCRIPT)
+        module = importlib.util.module_from_spec(spec)
+        sys.modules["swt_dns_align"] = module
+        spec.loader.exec_module(module)
+        return module
+
+    def setUp(self):
+        self.m = self._load()
+
+    RESOLV = (
+        "nameserver 169.254.1.1\n"
+        "nameserver 169.254.1.1\n"
+        "nameserver 192.168.90.47\n"
+        "nameserver 192.168.90.48\n"
+        "nameserver fd00::1\n"
+        "nameserver not-an-ip\n"
+        "search example.org\n"
+    )
+
+    def test_resolv_conf_parsing(self):
+        # IPv4 去重保序, IPv6/畸形条目剔除 (v6 已被兜底 DROP, 放行无意义)
+        self.assertEqual(
+            self.m.parse_resolv_conf_nameservers(self.RESOLV),
+            ["169.254.1.1", "192.168.90.47", "192.168.90.48"],
+        )
+
+    def test_whitelist_passes_real_resolvers_as_dns(self):
+        plan = self.m.NetworkPlan("whitelist", (), (), "169.254.1.2", "10.88.0.10",
+                                  None, None, "swt-c1")
+        command, result = self._apply_with_resolv(plan, self.RESOLV)
+        self.assertEqual(
+            self._dns_entries(command),
+            ["169.254.1.1", "192.168.90.47", "192.168.90.48"],
+        )
+        self.assertEqual(result["auto-dns"], ["169.254.1.1", "192.168.90.47", "192.168.90.48"])
+
+    def test_whitelist_dns_skips_gateway(self):
+        # 网关已有专用 DNS 规则, 不重复传
+        plan = self.m.NetworkPlan("whitelist", (), (), "169.254.1.2", "10.88.0.10",
+                                  None, None, "swt-c1")
+        command, result = self._apply_with_resolv(
+            plan, "nameserver 169.254.1.2\nnameserver 192.168.90.47\n")
+        self.assertEqual(self._dns_entries(command), ["192.168.90.47"])
+        self.assertEqual(result["auto-dns"], ["192.168.90.47"])
+
+    def test_whitelist_dns_unreadable_falls_back_to_gateway_only(self):
+        plan = self.m.NetworkPlan("whitelist", (), (), "169.254.1.2", "10.88.0.10",
+                                  None, None, "swt-c1")
+        command, result = self._apply_with_resolv(plan, None)
+        self.assertEqual(self._dns_entries(command), [])
+        self.assertEqual(result["auto-dns"], [])
+
+    def test_blacklist_never_passes_dns(self):
+        plan = self.m.NetworkPlan("blacklist", (), ("1.2.3.4/32",),
+                                  "169.254.1.2", "10.88.0.10", None, None, "swt-c1")
+        command, result = self._apply_with_resolv(plan, self.RESOLV)
+        self.assertEqual(self._dns_entries(command), [])
+        self.assertEqual(result["auto-dns"], [])
+
+    def test_network_plan_from_record_carries_container_name(self):
+        # 冷审建议 6: birth/resume/兄弟容器三条接缝都从记录带出容器名
+        plan = self.m.network_plan_from_record(
+            {"mode": "whitelist", "gateway": "169.254.1.2", "allow": ["1.2.3.4/32"]},
+            {"name": "swt-c1", "network-ip": "10.88.0.10"},
+            "netns-x",
+        )
+        self.assertEqual(plan.container, "swt-c1")
+        # 旧记录无名字时为 None, apply 侧告警退回网关, 不得炸
+        plan = self.m.network_plan_from_record(
+            {"mode": "whitelist", "gateway": "169.254.1.2", "allow": []},
+            {"network-ip": "10.88.0.10"},
+            "netns-x",
+        )
+        self.assertIsNone(plan.container)
+
+    def test_whitelist_dns_exec_exception_falls_back(self):
+        # 冷审建议 2: podman 缺失 (SwtEnvError) / exec 超时 (TimeoutExpired)
+        # 都须告警并退回网关单地址, 不得中断 birth/resume
+        plan = self.m.NetworkPlan("whitelist", (), (), "169.254.1.2", "10.88.0.10",
+                                  None, None, "swt-c1")
+        for exc in (self.m.SwtEnvError("缺少环境命令: podman"),
+                    subprocess.TimeoutExpired(cmd="podman", timeout=10)):
+            captured: list[list[str]] = []
+
+            def fake_run(command, *, cwd=None, timeout=None, _exc=exc):
+                command = [str(part) for part in command]
+                captured.append(command)
+                if command[:2] == ["podman", "exec"]:
+                    raise _exc
+                return subprocess.CompletedProcess(command, 0, "", "")
+
+            original = self.m.run
+            self.m.run = fake_run
+            try:
+                result = self.m.apply_network(plan)
+            finally:
+                self.m.run = original
+            apply_command = next(c for c in captured if "--mode" in c)
+            self.assertEqual(self._dns_entries(apply_command), [])
+            self.assertEqual(result["auto-dns"], [])
+
+    def _apply_with_resolv(self, plan, resolv_conf):
+        captured: list[list[str]] = []
+
+        def fake_run(command, *, cwd=None, timeout=None):
+            command = [str(part) for part in command]
+            captured.append(command)
+            if command[:2] == ["podman", "exec"]:
+                # resolv_conf 非 None = 可读正文; None = 读不到 (rc 1), 走网关回退
+                return subprocess.CompletedProcess(command, 0 if resolv_conf is not None else 1,
+                                                   resolv_conf or "", "")
+            return subprocess.CompletedProcess(command, 0, "", "")
+
+        original = self.m.run
+        self.m.run = fake_run
+        try:
+            result = self.m.apply_network(plan)
+        finally:
+            self.m.run = original
+        # 容器名在场时 captured 里还有 resolv.conf 探测的 exec 命令, 取 apply 命令本体
+        apply_command = next(command for command in captured if "--mode" in command)
+        return apply_command, result
+
+    @staticmethod
+    def _dns_entries(command: list[str]) -> list[str]:
+        return [command[i + 1] for i, part in enumerate(command) if part == "--dns"]
 
 
 if __name__ == "__main__":

@@ -7,14 +7,20 @@
 uid (含 root) 均不可达不可删 (调研 §4.1 实测结论, 本脚本承接).
 
 用法:
-  apply --mode whitelist --container-ip <IP> --gateway <IP> [--allow <IP/CIDR>]... [--merge] [--netns <PATH>]
+  apply --mode whitelist --container-ip <IP> --gateway <IP> [--allow <IP/CIDR>]... [--dns <IP>]... [--merge] [--netns <PATH>]
   apply --mode blacklist --container-ip <IP> --gateway <IP> [--deny <IP/CIDR>]...  [--merge] [--netns <PATH>]
   remove --container-ip <IP> [--netns <PATH>]
   show  [--netns <PATH>]
   clear [--netns <PATH>]
 
-语义 (MILESTONE-04 + 调研 §4.1):
-- whitelist = 默认拒: 仅放行 网关 DNS(tcp/udp 53) + --allow 条目 + 已建连接回程
+语义 (MILESTONE-04 + 调研 §4.1 + 2026-09-14 出站链修复):
+- 过滤覆盖三条链 forward/input/output, 三链规则镜像同构: output 管容器主动出站
+  (pasta 直连拓扑下容器流量只走本 netns 的 OUTPUT/INPUT, forward 无流量 — 缺
+  output 链 = whitelist 容器主动出站全通, 即 2026-09-14 bug, 见
+  docs/changes/swt-firewall-outbound-bypass/2026-09-14-net-firewall-output-chain-bypass.md);
+  forward/input 管桥拓扑的容器转发流量与网关向流量.
+- whitelist = 默认拒: 仅放行 网关 DNS(tcp/udp 53) + --dns 条目 (容器实际解析器,
+  取自容器 resolv.conf, 仅 tcp/udp 53) + --allow 条目 + 已建连接回程
   (保 host 发起连接如 ssh 发布端口的回程); 其余容器流出全断.
 - blacklist = 默认放行: 仅断 --deny 条目 (护特定环境数据库/redis 场景).
 - 两模式共通: IPv6 兜底 DROP (调研 §4.1).
@@ -37,6 +43,8 @@ from typing import NamedTuple
 
 TABLE = "swt"
 DNS_PORTS = ("udp", "tcp")
+# 过滤链: pasta 直连拓扑 (生产) 容器主动出站走 output, 桥拓扑 (测试夹具/共享 netns) 走 forward/input.
+CHAINS = ("forward", "input", "output")
 
 
 class SaddrRule(NamedTuple):
@@ -107,6 +115,7 @@ def build_ruleset(
     container_ip: str,
     gateway: str,
     entries: list[str],
+    dns_servers: list[str] | None = None,
     foreign_rules: dict[str, list[str]] | None = None,
 ) -> str:
     lines: list[str] = [f"table inet {TABLE} {{"]
@@ -117,16 +126,30 @@ def build_ruleset(
         lines.extend(body)
         lines.append("\t}")
 
-    for chain_name in ("forward", "input"):
+    for chain_name in CHAINS:
         body: list[str] = ["\t\tmeta nfproto ipv6 drop"]
         if mode == "whitelist":
             for proto in DNS_PORTS:
                 body.append(
                     f"\t\tip saddr {container_ip} ip daddr {gateway} {proto} dport 53 accept"
                 )
+            for server in dns_servers or []:
+                for proto in DNS_PORTS:
+                    body.append(
+                        f"\t\tip saddr {container_ip} ip daddr {server} {proto} dport 53 accept"
+                    )
             for entry in entries:
                 body.append(f"\t\tip saddr {container_ip} ip daddr {entry} accept")
-            body.append("\t\tct state established,related accept")
+            if chain_name == "output":
+                # 只放回程方向 (host 发起连接的出向应答)。容器主动发起的既有连接
+                # 是 original 方向, 不得因 established 持续放行 — 否则策略收紧后
+                # 旧连接仍可出站 (2026-09-17 冷审阻塞项 1)。放行目的地的流量仍由
+                # 上方 daddr 规则接纳, 不受影响。
+                body.append("\t\tct state established,related ct direction reply accept")
+            else:
+                # input/forward: 容器发起连接的应答 (reply) 与 host 发起连接的来包
+                # (original) 都是必需回程, 保留双向 established
+                body.append("\t\tct state established,related accept")
             body.append(f"\t\tip saddr {container_ip} drop")
         else:
             for entry in entries:
@@ -146,11 +169,29 @@ def cmd_apply(args: argparse.Namespace) -> int:
     gateway = parse_ip(args.gateway, "--gateway")
     kind = "allow" if args.mode == "whitelist" else "deny"
     entries = parse_entries(getattr(args, kind), f"--{kind}")
+    dns_servers: list[str] = []
+    if args.mode == "whitelist":
+        for item in args.dns:
+            server = parse_ip(item, "--dns")
+            # 网关已有专用 DNS 规则, 去重; 同一解析器重复条目去重
+            if server != gateway and server not in dns_servers:
+                dns_servers.append(server)
     assert_netns_reachable(netns)
 
     existing = run_nft(netns, ["-a", "list", "table", "inet", TABLE])
     existing_rules = parse_saddr_rules(existing.stdout) if existing.returncode == 0 else []
-    foreign_rules: dict[str, list[str]] = {"forward": [], "input": []}
+    if args.merge and existing.returncode == 0:
+        saddr_lines = [
+            line for line in existing.stdout.splitlines()
+            if line.strip().startswith("ip saddr ")
+        ]
+        if len(saddr_lines) > len(existing_rules):
+            die(
+                1, "APPLY-UNSAFE-MERGE",
+                f"表中 {len(saddr_lines) - len(existing_rules)} 条源地址规则缺 handle 无法安全重放; "
+                "先 clear 或人工处理, 不做静默丢弃的 merge",
+            )
+    foreign_rules: dict[str, list[str]] = {name: [] for name in CHAINS}
     foreign = {
         line.strip()[len("ip saddr "):].split()[0]
         for line in existing.stdout.splitlines()
@@ -168,31 +209,48 @@ def cmd_apply(args: argparse.Namespace) -> int:
                 foreign_rules[rule.rule_chain].append(rule.body)
 
     ruleset = build_ruleset(
-        args.mode, container_ip, gateway, entries,
+        args.mode, container_ip, gateway, entries, dns_servers,
         foreign_rules if args.merge else None,
     )
 
-    # 幂等: 旧表有无皆可 (rc 不看), 重复表名会在下一步 add 报错被逮住.
-    run_nft(netns, ["delete", "table", "inet", TABLE])
-
-    add = run_nft(netns, ["-f", "-"], input_text=ruleset)
+    # 幂等 + 原子: 表在场则同一事务内先删后建 (nft -f 整文件单事务), 注入失败时
+    # 旧表原样保留, 不留无表 fail-open 窗口 (2026-09-17 冷审阻塞项 2)
+    payload = ruleset
+    if existing.returncode == 0:
+        payload = f"delete table inet {TABLE}\n" + payload
+    add = run_nft(netns, ["-f", "-"], input_text=payload)
     if add.returncode != 0:
         die(1, "APPLY-FAIL", f"注入规则集失败: {add.stderr.strip()}")
 
     verify = run_nft(netns, ["list", "table", "inet", TABLE])
     marker = "meta nfproto ipv6 drop"
-    # 黑名单空名单时规则集无 ip saddr 行, 校验只查表和 ipv6 标记.
+    # 逐链校验: 每条链各自含 IPv6 兜底 (防止规则落错链/缺链仍全局计数达标)
+    chain_blocks: dict[str, list[str]] = {}
+    current_chain: str | None = None
+    for line in verify.stdout.splitlines():
+        chain_match = re.match(r"^\s*chain\s+(\S+)\s+\{", line)
+        if chain_match:
+            current_chain = chain_match.group(1)
+            chain_blocks[current_chain] = []
+        elif current_chain is not None:
+            if line.strip() == "}":
+                current_chain = None
+            else:
+                chain_blocks[current_chain].append(line)
+    chain_ok = all(
+        name in chain_blocks and any(marker in line for line in chain_blocks[name])
+        for name in CHAINS
+    )
+    # 黑名单空名单时规则集无 ip saddr 行, 校验只查表和逐链 ipv6 标记.
     expected_sources = {container_ip, *foreign} if (args.mode == "whitelist" or entries) else set(foreign)
-    if (
-        verify.returncode != 0
-        or marker not in verify.stdout
-        or any(f"ip saddr {source}" not in verify.stdout for source in expected_sources)
-    ):
+    sources_ok = all(f"ip saddr {source}" in verify.stdout for source in expected_sources)
+    if verify.returncode != 0 or not chain_ok or not sources_ok:
         die(1, "APPLY-VERIFY-FAIL", "注入后校验失败 (表缺失或缺关键规则)")
 
     print(
         f"[SWT-NET] ok apply mode={args.mode} container_ip={container_ip} "
-        f"entries={len(entries)} chain=forward+input table=inet {TABLE}"
+        f"entries={len(entries)} dns={len(dns_servers)} "
+        f"chain={'+'.join(CHAINS)} table=inet {TABLE}"
     )
     return 0
 
@@ -210,7 +268,7 @@ def parse_saddr_rules(text: str) -> list[SaddrRule]:
         if stripped == "}":
             chain = None
             continue
-        if chain not in ("forward", "input") or not stripped.startswith("ip saddr "):
+        if chain not in CHAINS or not stripped.startswith("ip saddr "):
             continue
         source = stripped[len("ip saddr "):].split()[0]
         handle_match = re.search(r"\s+# handle (\d+)\s*$", line)
@@ -300,6 +358,7 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     apply_parser.add_argument("--gateway", required=True)
     apply_parser.add_argument("--allow", action="append", default=[], metavar="IP/CIDR")
     apply_parser.add_argument("--deny", action="append", default=[], metavar="IP/CIDR")
+    apply_parser.add_argument("--dns", action="append", default=[], metavar="IP")
     apply_parser.add_argument("--merge", action="store_true", help="保留异己容器规则")
     apply_parser.add_argument("--netns", default=default_netns())
 
@@ -323,6 +382,8 @@ def main(argv: list[str]) -> int:
             die(2, "INVALID-ARGUMENT", "whitelist 模式不接受 --deny (用 --allow)")
         if args.mode == "blacklist" and args.allow:
             die(2, "INVALID-ARGUMENT", "blacklist 模式不接受 --allow (用 --deny)")
+        if args.mode == "blacklist" and args.dns:
+            die(2, "INVALID-ARGUMENT", "blacklist 模式默认全通, 不接受 --dns (解析器无需单列放行)")
         return cmd_apply(args)
     if args.command == "show":
         return cmd_show(args)

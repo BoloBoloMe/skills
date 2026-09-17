@@ -20,7 +20,7 @@ uv run python scripts/net-firewall.py show                    # 列当前规则�
 uv run python scripts/net-firewall.py remove --container-ip <IP>
 uv run python scripts/net-firewall.py clear                   # 删整表 (幂等)
 ```
-机制: 规则注入容器所在网络命名空间的自有表 `inet swt`, 按容器源地址限定, 容器内任意 uid (含 root) 不可达不可删. 容器停 → 命名空间拆 → 规则全失是固有形态, 故每次 start 后必须重注入. 多容器共享一张表: apply 不带 `--merge` 见别的容器规则即拒 (APPLY-CONFLICT, 译解见 errors.md).
+机制: 规则注入容器所在网络命名空间的自有表 `inet swt`, 过滤覆盖 forward/input/output 三链 (output 管容器主动出站, 2026-09-14 出站链修复), 按容器源地址限定, 容器内任意 uid (含 root) 不可达不可删. 容器停 → 命名空间拆 → 规则全失是固有形态, 故每次 start 后必须重注入. 多容器共享一张表: apply 不带 `--merge` 见别的容器规则即拒 (APPLY-CONFLICT, 译解见 errors.md). whitelist 手工 apply 必须带 `--dns <IP>` (容器实际解析器, 从 `podman exec <容器> cat /etc/resolv.conf` 取, 仅 53 端口放行) — 只放网关在 pasta 拓扑解析不通.
 
 ## 救场 (无修复原语)
 

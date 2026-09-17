@@ -803,6 +803,7 @@ class NetworkPlan(NamedTuple):
     container_ip: str
     netns: str | None = None
     route_gateway: str | None = None
+    container: str | None = None  # 容器名, whitelist 用它读 resolv.conf 推导真实解析器
 
 
 def reserve_port(address: str) -> tuple[socket.socket, int]:
@@ -1163,6 +1164,41 @@ def container_gateway(name: str) -> str:
         if match:
             return match.group(1)
     return "169.254.1.2"
+
+
+def parse_resolv_conf_nameservers(text: str) -> list[str]:
+    """从 resolv.conf 正文提取 nameserver (仅 IPv4, 去重保序)."""
+    servers: list[str] = []
+    for line in text.splitlines():
+        fields = line.split()
+        if len(fields) != 2 or fields[0] != "nameserver":
+            continue
+        try:
+            address = ipaddress.ip_address(fields[1])
+        except ValueError:
+            continue
+        if address.version == 4 and str(address) not in servers:
+            servers.append(str(address))
+    return servers
+
+
+def container_dns_servers(name: str) -> list[str]:
+    """容器实际解析器: 读容器内 /etc/resolv.conf 的 nameserver (仅 IPv4).
+
+    whitelist 的 DNS 放行必须与真实解析器对齐: pasta 容器 resolv.conf 含 pasta
+    DNS 代理与宿主侧 DNS, 不止网关一个地址 (2026-09-14
+    swt-firewall-outbound-bypass 修复项 2).
+    所有失败形态 (exec 非 0 / podman 缺失 / 超时) 都返回空列表并 stderr 告警,
+    不阻断 birth/resume — 调用方退回网关单地址放行.
+    """
+    try:
+        result = run(["podman", "exec", name, "cat", "/etc/resolv.conf"], timeout=10)
+    except (SwtEnvError, subprocess.TimeoutExpired) as exc:
+        print(f"[SWT] 告警: 读取容器 {name} /etc/resolv.conf 失败 ({exc})", file=sys.stderr)
+        return []
+    if result.returncode != 0:
+        return []
+    return parse_resolv_conf_nameservers(result.stdout)
 
 
 def pasta_network_mismatch(detail: dict[str, Any]) -> str | None:
@@ -1995,6 +2031,7 @@ def apply_network(plan: NetworkPlan) -> dict[str, Any]:
     if plan.netns:
         command.extend(["--netns", plan.netns])
     auto_allow: list[str] = []
+    auto_dns: list[str] = []
     if plan.mode == "whitelist":
         entries = list(plan.allow)
         if plan.gateway not in entries:
@@ -2006,6 +2043,25 @@ def apply_network(plan: NetworkPlan) -> dict[str, Any]:
                 auto_allow.append(entry)
         for entry in entries:
             command.extend(["--allow", entry])
+        # DNS 放行与容器真实解析器对齐 (2026-09-14 swt-firewall-outbound-bypass):
+        # 网关单地址在 pasta 拓扑不成立, 必须放行 resolv.conf 里的解析器 (仅 53 端口)
+        if not plan.container:
+            print(
+                "[SWT] 告警: 网络计划缺容器名, 无法读取 resolv.conf, "
+                "whitelist DNS 放行退回网关单地址",
+                file=sys.stderr,
+            )
+        dns_servers = container_dns_servers(plan.container) if plan.container else []
+        if plan.container and not dns_servers:
+            print(
+                f"[SWT] 告警: 读不到容器 {plan.container} 的 /etc/resolv.conf, "
+                "whitelist DNS 放行退回网关单地址 (容器内解析可能不可用)",
+                file=sys.stderr,
+            )
+        for entry in dns_servers:
+            if entry != plan.gateway and entry not in auto_dns:
+                auto_dns.append(entry)
+                command.extend(["--dns", entry])
     else:
         for entry in plan.deny:
             command.extend(["--deny", entry])
@@ -2016,6 +2072,7 @@ def apply_network(plan: NetworkPlan) -> dict[str, Any]:
         "mode": plan.mode,
         "table-present": True,
         "auto-allow": auto_allow,
+        "auto-dns": auto_dns,
         "allow": list(plan.allow),
         "deny": list(plan.deny),
         "gateway": plan.gateway,
@@ -2036,6 +2093,7 @@ def network_plan_from_record(
     allow = network.get("allow")
     deny = network.get("deny")
     route_gateway = network.get("route-gateway")
+    name = record.get("name")
     return NetworkPlan(
         mode,
         tuple(allow) if isinstance(allow, list) else (),
@@ -2044,6 +2102,7 @@ def network_plan_from_record(
         container_ip,
         netns,
         route_gateway if isinstance(route_gateway, str) else None,
+        name if isinstance(name, str) else None,
     )
 
 
@@ -2639,7 +2698,7 @@ def birth(args: argparse.Namespace, repo: Path) -> int:
 
     network_decision = decision_pending(
         records_root, identity, "network-mode", fingerprint, args.mode is not None,
-        "请选择网络模式; whitelist 会自动放行网关地址 (DNS); git 走 unix socket 桥, 不占网络白名单",
+        "请选择网络模式; whitelist 会自动放行网关地址与容器 resolv.conf 解析器 (DNS, 仅 53 端口); git 走 unix socket 桥, 不占网络白名单",
         "网络/配置状态已变化, 请重新确认",
         ["--mode whitelist --allow ...", "--mode blacklist [--deny ...]"],
         stale_receipts["network-mode"],
@@ -2800,6 +2859,7 @@ def birth(args: argparse.Namespace, repo: Path) -> int:
                 ip_value,
                 shared_netns,
                 route_gateway,
+                container["name"],
             )
         )
         own_netns = container_netns(container["detail"])
@@ -4016,6 +4076,7 @@ def network_state(runtime: dict[str, Any] | None) -> dict[str, Any] | None:
         "mode": network.get("mode"),
         "table-present": result.returncode == 0,
         "auto-allow": network.get("auto-allow"),
+        "auto-dns": network.get("auto-dns"),
     }
 
 

@@ -3,7 +3,7 @@
 - 日期: 2026-09-14
 - 来源: cz_sdk 项目首次 sandbox 容器实跑 (whitelist 模式), 容器内 agent 自测发现
 - 严重级: 安全 (fail-open, 白名单语义整体落空)
-- 状态: 已热修单容器 (随容器存亡); 脚本级修复未做
+- 状态: 已修复 (2026-09-17 脚本级落地 + 同日冷审返工项, 见文末 修复记录)
 
 ## 现象
 
@@ -76,3 +76,27 @@ chain output (hook output, policy accept):
 
 - `docs/changes/use-sandbox-worktree/DECISIONS.md` F015 (pasta 多实例串台注入错 netns) — 同为 whitelist fail-open 面, 已修; 本报告是另一独立面.
 - 热修操作记录: 本会话经 `podman unshare nsenter --net=<SandboxKey> nft -f -` 注入, 与 ops.md 救场通道一致.
+
+## 修复记录 (2026-09-17)
+
+四项建议全部落地:
+
+1. **output 链** (`scripts/net-firewall.py`): 过滤链扩为 forward/input/output 三链镜像同构 (`CHAINS` 常量); whitelist 体 = 网关 DNS + `--dns` 条目 (仅 53) + allow 条目 + established 回程 + saddr 兜底 drop, blacklist 体 = deny drop + established; 注入后校验升级为三链标记计数. conflict 守卫/merge 重放/remove 按源地址清理同步覆盖 output 链.
+2. **DNS 对齐**: net-firewall.py apply 新增 `--dns <IP>` (whitelist 专属, 仅 udp/tcp 53, 去重去网关; blacklist 传入直接拒); swt.py 编排侧 birth/resume 经 `podman exec <容器> cat /etc/resolv.conf` 推导真实解析器自动传入 (解析函数 `parse_resolv_conf_nameservers`: 仅 IPv4/去重保序; 读不到 stderr 告警并退回网关单地址), 网络记录新增 `auto-dns`.
+3. **真出站阴性对照** (`tests/test_swt_m04.py`): 新增 PastaFixture + PastaOutboundTestCase — pasta 直连拓扑 (生产同构, 注入点 = SandboxKey) 下 A/B 探针: 同一目的地 (host 监听经 map-guest-addr) 仅规则集有无放行条目之差, 断言 去条目后 TIMEOUT; 另覆盖容器内回环 (git 桥同形) 不受 saddr drop 误伤 + --dns 条目三链落位. 阳性对照在旧代码 (无 output 链) 下阴性断言必失败, 是本 bug 的专属探针. 镜像引用在 swt-m03 缺席时回落本机最新 sandbox-worktree base 层 (生产机可跑).
+4. **文档**: SKILL.md whitelist 语义 (三链覆盖 + 解析器自动放行), risks.md 自动放行面拆解 (网关全端口 + 解析器 53), ops.md 手工救场须带 --dns 的提醒.
+
+本机验证: bridge 夹具 14 项 + pasta 回归 5 项全过; pasta 拓扑手工冒烟 (放行 OPEN / 去条目 TIMEOUT / 非放行公网 IP TIMEOUT / 容器内回环 OPEN / getent 解析正常 / remove 三链 15 条) 与热修验证矩阵一致.
+
+### 冷审返工 (2026-09-17, 审查方 gpt-5.6-luna/thinking high)
+
+审查结论原为 "需返工": 2 阻塞 + 8 建议. 逐条核定后 2 阻塞 + 4 建议采纳修复, 其余不采纳或部分采纳:
+
+1. **established 泄漏** (阻塞, 采纳): 原 output 链的 `ct state established,related accept` 放在兑底 drop 前, 容器先连已放行目标建连, 策略收紧去掉该条目后旧连接仍因 established 继续出站. 修复: output 链 established 改为方向限定 `ct direction reply` (只放 host 发起连接的出向应答), 容器主动连接属 original 方向, 收紧即断; 放行目的地的流量仍由 daddr 规则接纳. input/forward 保留双向 established (容器发起连接的应答与 host 发起连接的来包都是必需回程). 回归: pasta 拓扑持连接跨 re-apply 断言 FLOW-BLOCKED (test_05).
+2. **apply 非原子** (阻塞, 采纳): 先单独删表再注入, 中间/失败态无表 = fail-open. 修复: 删表与建表合并为同一 nft 事务 (`nft -f` 整文件原子), 注入失败旧表原样保留.
+3. **逐链校验** (建议, 采纳): 注入后校验从全局标记计数改为按链解析, 每链各自断言 IPv6 兑底; 测试侧 test_03 同步改逐链结构断言.
+4. **merge 句柄守卫** (建议, 采纳): 发现缺 handle 无法安全重放的源地址规则时 APPLY-UNSAFE-MERGE 拒绝, 不静默丢弃.
+5. **DNS 推导异常路径** (建议, 采纳): podman 缺失 (SwtEnvError) / exec 超时 (TimeoutExpired) 捕获告警退回网关; NetworkPlan 缺容器名时也告警不静默; 新增接缝 (network_plan_from_record 带出容器名) 与异常路径单测.
+6. **pasta blacklist 出站对照** (建议, 采纳): 新增 test_04 (deny 条目出站 TIMEOUT + 回环/自身 IP 不误伤).
+7. **计数断言按链全量结构化 / removed 计数脆弱** (部分不采纳): verify 侧与 test_03 已逐链; removed=3/9 保留 — 它钉住精确行为, 规则数合理变化本就该随测试更新.
+8. **SKILL.md "流出全断" 措辞** (随修复 1 解决): output 链方向限定后, 策略收紧即断既有容器主动连接, 措辞成立, 不改.

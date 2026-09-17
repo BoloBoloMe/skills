@@ -1,7 +1,9 @@
 """sandbox-worktree M04 端到端测试: rootless netns nft 双模式网络访问控制.
 
 验证命令: uv run pytest tests/test_swt_m04.py
-环境依赖: rootless podman + netavark, nft, 本地镜像 localhost/swt-m03:latest.
+环境依赖: rootless podman + netavark, nft, 本地镜像 localhost/swt-m03:latest
+(缺席时回落本机最新 localhost/sandbox-worktree/base:* — m04 只需要 bash/python3
+与网络栈, 镜像命名随里程碑演进不应让防火墙回归探针失联).
 依赖缺失时失败并打印缺失项, 不静默 skip (与 test_swt_m03 同约定).
 
 机制见 docs/changes/use-sandbox-worktree/milestone-04/MILESTONE-04-findings.md.
@@ -11,10 +13,15 @@
 - 静态 IP (--ip) 跨 stop/start 保持.
 - 容器 → host 通道 = pasta map-guest-addr 169.254.1.2, 仅达 host 非 loopback 监听.
 - 被过滤的连接特征: timeout (rc 124); 未监听端口是 refused (rc 1); 断言区分二者.
+- 过滤链 = forward/input/output 三链镜像 (2026-09-14 出站链修复): bridge 夹具
+  (NetFixture) 容器流量走 rootless 桥 netns 的 FORWARD/INPUT; pasta 直连拓扑
+  (生产, PastaFixture) 容器流量只走自身 netns 的 OUTPUT/INPUT — 后者是
+  2026-09-14 swt-firewall-outbound-bypass bug 的漏网面, 专属回归类堵住它.
 """
 from __future__ import annotations
 
 import random
+import re
 import socket
 import subprocess
 import sys
@@ -25,6 +32,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 SCRIPT = ROOT / "workflow/use-sandbox-worktree/scripts/net-firewall.py"
 IMAGE = "localhost/swt-m03:latest"
+FALLBACK_IMAGE_PREFIX = "localhost/sandbox-worktree/base"
 PROBE_TIMEOUT = 4  # 单次容器内连通探测的上限秒数
 NETNS_WAIT = 20  # 等 rootless netns 建立的上限秒数
 
@@ -46,14 +54,37 @@ def run_script(args: list[str]) -> subprocess.CompletedProcess[str]:
     return run(["uv", "run", "python", str(SCRIPT)] + args)
 
 
+_image_ref: str | None = None
+
+
+def image_ref() -> str:
+    """测试镜像: 首选 M03 固定名, 缺席时回落本机最新 sandbox-worktree base 层."""
+    global _image_ref
+    if _image_ref is None:
+        if run(["podman", "image", "exists", IMAGE]).returncode == 0:
+            _image_ref = IMAGE
+        else:
+            result = run([
+                "podman", "images", "--format", "{{.Repository}}:{{.Tag}}",
+                "--filter", f"reference={FALLBACK_IMAGE_PREFIX}:*",
+                "--sort", "created",
+            ])
+            candidates = [line.strip() for line in result.stdout.splitlines() if line.strip()]
+            _image_ref = candidates[0] if candidates else IMAGE
+    return _image_ref
+
+
 def missing_dependencies() -> list[str]:
     missing: list[str] = []
     if run(["podman", "info"]).returncode != 0:
         missing.append("rootless podman 不可用")
     if run(["nft", "--version"]).returncode != 0:
         missing.append("nft 不可用")
-    if run(["podman", "image", "exists", IMAGE]).returncode != 0:
-        missing.append(f"镜像 {IMAGE} 不存在 (先经 M03 流程构建)")
+    image = image_ref()
+    if run(["podman", "image", "exists", image]).returncode != 0:
+        missing.append(
+            f"镜像 {IMAGE} 不存在且无 {FALLBACK_IMAGE_PREFIX}:* 可回落 (先经 M03/base 流程构建)"
+        )
     return missing
 
 
@@ -81,7 +112,7 @@ class NetFixture:
             [
                 "podman", "run", "-d", "--name", self.token,
                 "--network", self.token, "--ip", self.container_ip,
-                IMAGE, "sleep", "infinity",
+                image_ref(), "sleep", "infinity",
             ]
         )
         assert result.returncode == 0, f"容器创建失败: {result.stderr}"
@@ -188,10 +219,10 @@ class NetworkModeTestCase(unittest.TestCase):
             TCP_TIMEOUT,
             "白名单默认拒未生效 (应超时而非拒绝)",
         )
-        # 规则集含 IPv6 兜底 DROP
+        # 规则集含 IPv6 兜底 DROP (forward/input/output 三链各一)
         show = run_script(["show", "--netns", fx.netns_path()])
         self.assertEqual(show.returncode, 0)
-        self.assertEqual(show.stdout.count("meta nfproto ipv6 drop"), 2)
+        self.assertEqual(show.stdout.count("meta nfproto ipv6 drop"), 3)
 
     def test_02_restart_loses_rules_then_reinject(self) -> None:
         fx = self.fixture
@@ -265,7 +296,7 @@ class NetworkModeTestCase(unittest.TestCase):
             [
                 "podman", "run", "-d", "--name", fx.token + "-b",
                 "--network", fx.token, "--ip", other_ip,
-                IMAGE, "sleep", "infinity",
+                image_ref(), "sleep", "infinity",
             ]
         )
         self.assertEqual(other.returncode, 0, other.stderr)
@@ -356,15 +387,7 @@ class FirewallExtensionTestCase(unittest.TestCase):
             ]
         )
         self.assertEqual(first.returncode, 0, first.stderr)
-        added_chain = run(
-            [
-                "podman", "unshare", "nsenter", f"--net={netns}", "nft",
-                "add", "chain", "inet", "swt", "output", "{",
-                "type", "filter", "hook", "output", "priority", "filter", "+", "10;",
-                "policy", "accept;", "}",
-            ]
-        )
-        self.assertEqual(added_chain.returncode, 0, added_chain.stderr)
+        # apply 现生成 forward/input/output 三链; 异己规则落 output 链也必须被守卫逮住
         added_rule = run(
             [
                 "podman", "unshare", "nsenter", f"--net={netns}", "nft",
@@ -527,7 +550,7 @@ class FirewallExtensionTestCase(unittest.TestCase):
             ["remove", "--container-ip", fx.container_ip, "--netns", netns]
         )
         self.assertEqual(removed.returncode, 0, removed.stderr)
-        self.assertIn("removed=2", removed.stdout)
+        self.assertIn("removed=3", removed.stdout)  # 1 deny 条目 × 3 链
         self.assertIn("table-removed", removed.stdout)
         show = run_script(["show", "--netns", netns])
         self.assertEqual(show.returncode, 1)
@@ -547,7 +570,7 @@ class FirewallExtensionTestCase(unittest.TestCase):
             [
                 "podman", "run", "-d", "--name", other_name,
                 "--network", fx.token, "--ip", other_ip,
-                IMAGE, "sleep", "infinity",
+                image_ref(), "sleep", "infinity",
             ]
         )
         self.assertEqual(other.returncode, 0, other.stderr)
@@ -576,7 +599,7 @@ class FirewallExtensionTestCase(unittest.TestCase):
                 ["remove", "--container-ip", fx.container_ip, "--netns", netns]
             )
             self.assertEqual(removed.returncode, 0, removed.stderr)
-            self.assertIn("removed=6", removed.stdout)
+            self.assertIn("removed=9", removed.stdout)  # (2 DNS + 1 drop) × 3 链
 
             show = run_script(["show", "--netns", netns])
             self.assertEqual(show.returncode, 0, show.stderr)
@@ -584,6 +607,305 @@ class FirewallExtensionTestCase(unittest.TestCase):
             self.assertEqual(show.stdout.count(f"ip saddr {other_ip}"), 2)
         finally:
             run(["podman", "rm", "-f", other_name])
+
+
+def parse_chain_blocks(text: str) -> dict[str, str]:
+    """nft list table 输出按 chain 名切块 (测试断言用的小解析器)."""
+    blocks: dict[str, str] = {}
+    current: str | None = None
+    for line in text.splitlines():
+        m = re.match(r"^\s*chain\s+(\S+)\s+\{", line)
+        if m:
+            current = m.group(1)
+            blocks[current] = ""
+        elif current is not None:
+            if line.strip() == "}":
+                current = None
+            else:
+                blocks[current] += line + "\n"
+    return blocks
+
+
+class PastaFixture:
+    """pasta 直连拓扑夹具 (生产同构): 容器自带 netns, 注入点 = SandboxKey.
+
+    bridge 夹具 (NetFixture) 的容器流量走 rootless 桥 netns 的 FORWARD/INPUT,
+    永远测不到 output 链 — 2026-09-14 出站链 bug 因此漏网, 本夹具专堵该面.
+    """
+
+    def __init__(self) -> None:
+        self.token = f"swt-m04-pasta-{random.randint(0x1000, 0xFFFF):x}"
+        self.container: str | None = None
+        self.netns: str | None = None
+        self.listener: subprocess.Popen[bytes] | None = None
+        self.host_port: int | None = None
+
+    def up(self) -> None:
+        result = run(
+            [
+                "podman", "run", "-d", "--name", self.token,
+                "--network", "pasta", image_ref(), "sleep", "infinity",
+            ]
+        )
+        assert result.returncode == 0, f"pasta 容器创建失败: {result.stderr}"
+        self.container = self.token
+        inspected = run(
+            ["podman", "inspect", "--format",
+             "{{.NetworkSettings.SandboxKey}}", self.token]
+        )
+        self.netns = inspected.stdout.strip()
+        assert self.netns, "pasta 容器没有 SandboxKey"
+        deadline = time.monotonic() + NETNS_WAIT
+        while time.monotonic() < deadline:
+            # netns 可达即可 (show 报 NO-TABLE 也算)
+            if run_script(["show", "--netns", self.netns]).returncode != 2:
+                break
+            time.sleep(0.5)
+        else:
+            raise AssertionError(f"{NETNS_WAIT}s 内 pasta netns 不可达")
+        self.start_listener()
+
+    def container_ip(self) -> str:
+        result = run(
+            [
+                "podman", "unshare", "nsenter", f"--net={self.netns}",
+                "ip", "-o", "-4", "addr", "show",
+            ]
+        )
+        for line in result.stdout.splitlines():
+            fields = line.split()
+            if len(fields) >= 4 and fields[1] != "lo":
+                return fields[3].split("/", 1)[0]
+        raise AssertionError("pasta 容器没有 IPv4 地址")
+
+    def container_gateway(self) -> str:
+        result = run(
+            ["podman", "exec", self.container, "getent", "hosts",
+             "host.containers.internal"]
+        )
+        match = re.search(r"(?m)^([0-9.]+)\s+", result.stdout)
+        assert match, "容器内解析不到 host.containers.internal"
+        return match.group(1)
+
+    def start_listener(self) -> None:
+        sock = socket.socket()
+        sock.bind(("0.0.0.0", 0))
+        self.host_port = sock.getsockname()[1]
+        sock.close()
+        self.listener = subprocess.Popen(
+            [sys.executable, "-m", "http.server", str(self.host_port), "--bind", "0.0.0.0"],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+        deadline = time.monotonic() + 10
+        while time.monotonic() < deadline:
+            with socket.socket() as probe:
+                if probe.connect_ex(("127.0.0.1", self.host_port)) == 0:
+                    return
+            time.sleep(0.2)
+        raise AssertionError("host 监听未就绪")
+
+    def container_tcp(self, host: str, port: int) -> int:
+        """容器内对 host:port 发起 TCP, 返回 0=open / 1=refused / 124=timeout."""
+        assert self.container is not None
+        result = run(
+            [
+                "podman", "exec", self.container, "bash", "-c",
+                f'timeout {PROBE_TIMEOUT} bash -c "echo > /dev/tcp/{host}/{port}"'
+                " 2>/dev/null",
+            ]
+        )
+        return result.returncode
+
+    def down(self) -> None:
+        if self.listener is not None:
+            self.listener.terminate()
+            self.listener.wait(timeout=10)
+        if self.container is not None:
+            run(["podman", "rm", "-f", self.container])
+        # netns 随容器消失, 无需单独清理
+
+
+class PastaOutboundTestCase(unittest.TestCase):
+    """2026-09-14 swt-firewall-outbound-bypass 回归: whitelist 出站默认拒必须在
+    pasta 直连拓扑 (生产) 成立 — 旧实现缺 output 链, 本类的 A/B 探针 (同一目的
+    地, 仅规则集有无放行条目之差) 在旧代码下必失败, 是该 bug 的专属性检验.
+    """
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        missing = missing_dependencies()
+        if missing:
+            raise AssertionError("环境依赖缺失: " + "; ".join(missing))
+        cls.fx = PastaFixture()
+        cls.fx.up()
+
+    @classmethod
+    def tearDownClass(cls) -> None:
+        cls.fx.down()
+
+    def test_01_outbound_default_deny_ab(self) -> None:
+        fx = self.fx
+        ip = fx.container_ip()
+        gateway = fx.container_gateway()
+        applied = run_script(
+            [
+                "apply", "--mode", "whitelist",
+                "--container-ip", ip, "--gateway", gateway,
+                "--allow", gateway, "--netns", fx.netns,
+            ]
+        )
+        self.assertEqual(applied.returncode, 0, applied.stderr)
+        # 阳性: 放行条目出站可达 (经 output 链 accept)
+        self.assertEqual(fx.container_tcp(gateway, fx.host_port), TCP_OPEN)
+        # 阴性 (A/B): 同一目的地, 仅去掉放行条目 → 容器主动出站被 output 链默认拒
+        stripped = run_script(
+            [
+                "apply", "--mode", "whitelist",
+                "--container-ip", ip, "--gateway", gateway, "--netns", fx.netns,
+            ]
+        )
+        self.assertEqual(stripped.returncode, 0, stripped.stderr)
+        self.assertEqual(
+            fx.container_tcp(gateway, fx.host_port),
+            TCP_TIMEOUT,
+            "whitelist 出站默认拒未生效 (pasta 拓扑 output 链缺失 = 2026-09-14 bug 复现)",
+        )
+
+    def test_02_loopback_git_bridge_unaffected(self) -> None:
+        # 容器内回环 (git 桥 127.0.0.1:9418 同形) 不得被 saddr drop 误伤
+        fx = self.fx
+        applied = run_script(
+            [
+                "apply", "--mode", "whitelist",
+                "--container-ip", fx.container_ip(), "--gateway", fx.container_gateway(),
+                "--netns", fx.netns,
+            ]
+        )
+        self.assertEqual(applied.returncode, 0, applied.stderr)
+        started = run(
+            ["podman", "exec", "-d", fx.container,
+             "python3", "-m", "http.server", "9419", "--bind", "127.0.0.1"]
+        )
+        self.assertEqual(started.returncode, 0, started.stderr)
+        # 监听就绪轮询: 未 bind 完的连接是瞬时 REFUSED (重试即过), 被 saddr drop
+        # 误伤则是耗满超时的 TIMEOUT — 轮询通不过即回归, 不掩盖
+        for _ in range(8):
+            if fx.container_tcp("127.0.0.1", 9419) == TCP_OPEN:
+                break
+            time.sleep(0.3)
+        else:
+            self.fail("容器内回环监听未就绪或被 saddr drop 误伤 (2026-09-14 回归)")
+
+    def test_03_dns_rules_in_all_chains(self) -> None:
+        # --dns 条目 (resolv.conf 对齐的真实解析器) 在三链各落 udp+tcp 两条, 逐链结构断言
+        fx = self.fx
+        applied = run_script(
+            [
+                "apply", "--mode", "whitelist",
+                "--container-ip", fx.container_ip(), "--gateway", fx.container_gateway(),
+                "--dns", "192.0.2.53", "--netns", fx.netns,
+            ]
+        )
+        self.assertEqual(applied.returncode, 0, applied.stderr)
+        show = run_script(["show", "--netns", fx.netns])
+        self.assertEqual(show.returncode, 0)
+        chains = parse_chain_blocks(show.stdout)
+        self.assertEqual(sorted(chains), ["forward", "input", "output"])
+        for name, block in chains.items():
+            self.assertEqual(block.count("ip daddr 192.0.2.53 udp dport 53 accept"), 1, name)
+            self.assertEqual(block.count("ip daddr 192.0.2.53 tcp dport 53 accept"), 1, name)
+            self.assertIn("meta nfproto ipv6 drop", block, name)
+            self.assertIn("ip saddr", block, name)
+
+    def test_04_blacklist_output_deny(self) -> None:
+        # 冷审建议 4: pasta 拓扑 blacklist 的 output deny 也要有真出站对照
+        fx = self.fx
+        applied = run_script(
+            [
+                "apply", "--mode", "blacklist",
+                "--container-ip", fx.container_ip(), "--gateway", fx.container_gateway(),
+                "--deny", fx.container_gateway(), "--netns", fx.netns,
+            ]
+        )
+        self.assertEqual(applied.returncode, 0, applied.stderr)
+        # deny 条目出站被 output 链拦 (TIMEOUT)
+        self.assertEqual(fx.container_tcp(fx.container_gateway(), fx.host_port), TCP_TIMEOUT)
+        # 默认放行: 容器内回环不受影响; 连自身 IP 也通 (新连接 policy accept)
+        started_loopback = run(
+            ["podman", "exec", "-d", fx.container,
+             "python3", "-m", "http.server", "9420", "--bind", "127.0.0.1"]
+        )
+        self.assertEqual(started_loopback.returncode, 0, started_loopback.stderr)
+        for _ in range(8):
+            if fx.container_tcp("127.0.0.1", 9420) == TCP_OPEN:
+                break
+            time.sleep(0.3)
+        else:
+            self.fail("blacklist 下容器内回环被误伤")
+        started_self = run(
+            ["podman", "exec", "-d", fx.container,
+             "python3", "-m", "http.server", "9421", "--bind", "0.0.0.0"]
+        )
+        self.assertEqual(started_self.returncode, 0, started_self.stderr)
+        for _ in range(8):
+            if fx.container_tcp(fx.container_ip(), 9421) == TCP_OPEN:
+                break
+            time.sleep(0.3)
+        else:
+            self.fail("blacklist 下容器连自身 IP 被误拦 (默认放行未生效)")
+
+    def test_05_stale_flow_cut_on_policy_tighten(self) -> None:
+        # 冷审阻塞项 1 回归: whitelist 收紧 (去掉 allow 条目) 后, 既有容器主动连接
+        # 不得因 established 继续出站
+        fx = self.fx
+        ip, gateway = fx.container_ip(), fx.container_gateway()
+        applied = run_script(
+            [
+                "apply", "--mode", "whitelist",
+                "--container-ip", ip, "--gateway", gateway,
+                "--allow", gateway, "--netns", fx.netns,
+            ]
+        )
+        self.assertEqual(applied.returncode, 0, applied.stderr)
+        # 容器内探针: 放行期建连 → 停 12s (host 期间重 apply 去掉放行) → 再发请求
+        probe = (
+            "import socket,time\n"
+            f"s=socket.create_connection(({gateway!r},{int(fx.host_port)}),timeout=5)\n"
+            "time.sleep(12)\n"
+            "s.settimeout(6)\n"
+            "try:\n"
+            "    s.sendall(b'GET / HTTP/1.1\\r\\nHost: x\\r\\n\\r\\n')\n"
+            "    data=s.recv(100)\n"
+            "    verdict='FLOW-ALIVE' if data else 'FLOW-CLOSED'\n"
+            "except Exception:\n"
+            "    verdict='FLOW-BLOCKED'\n"
+            "open('/tmp/swt-stale-probe','w').write(verdict)\n"
+        )
+        cleaned = run(["podman", "exec", fx.container, "rm", "-f", "/tmp/swt-stale-probe"])
+        self.assertEqual(cleaned.returncode, 0, cleaned.stderr)
+        launched = run(["podman", "exec", "-d", fx.container, "python3", "-c", probe])
+        self.assertEqual(launched.returncode, 0, launched.stderr)
+        time.sleep(3)  # 连接在放行期建立
+        stripped = run_script(
+            [
+                "apply", "--mode", "whitelist",
+                "--container-ip", ip, "--gateway", gateway, "--netns", fx.netns,
+            ]
+        )
+        self.assertEqual(stripped.returncode, 0, stripped.stderr)
+        verdict = ""
+        deadline = time.monotonic() + 45
+        while time.monotonic() < deadline:
+            out = run(["podman", "exec", fx.container, "cat", "/tmp/swt-stale-probe"])
+            if out.returncode == 0 and out.stdout.strip():
+                verdict = out.stdout.strip()
+                break
+            time.sleep(1)
+        self.assertEqual(
+            verdict, "FLOW-BLOCKED",
+            "whitelist 收紧后既有容器主动连接仍可出站 (established 泄漏)",
+        )
 
 
 if __name__ == "__main__":
