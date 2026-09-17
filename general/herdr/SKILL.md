@@ -1,6 +1,6 @@
 ---
 name: herdr
-description: "操作 Herdr (agent 终端工作区). 仅当我明确提到 Herdr, 或要求用 Herdr 查看/控制 工作空间/workspace, 标签页/tab, 窗格/pane, 命令或另一个 agent 时才用; 任务只是能受益于后台终端, 委派或并行时不用. 需 HERDR_ENV=1. 帮我学习/安装/排查 Herdr 时改用 https://herdr.dev/agent-guide.md (它教人, 本 skill 管操作)."
+description: 操作 Herdr (agent 终端工作区), 仅当被要求 查看/控制 `工作空间/workspace`, `标签页/tab`, `窗格/pane`, `另一个 agent`, 或 `开新会话`/`使用子代理`/`使用 subagent` 时才用.
 ---
 
 # herdr
@@ -161,6 +161,8 @@ herdr agent read reviewer --source recent-unwrapped --lines 120
 ```
 
 等待失败或返回 `blocked` 时, 先看 `agent get` 和 `agent read`, 再决定发什么输入. 超时或 stalled 不证明 prompt 没送达; 切勿盲目重发. 仅在确需原始终端控制时才用 pane 界面.
+
+驱动 pi agent 时, 注意事项读 `~/.pi/agent/herdr-pi.md` (文件不存在则跳过).
 
 ## 在另一窗格跑普通命令
 
