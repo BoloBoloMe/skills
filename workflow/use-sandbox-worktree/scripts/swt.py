@@ -1543,13 +1543,17 @@ def headed_delivery_lines(ssh_port: int | None, lan: str | None, headed_script: 
         template = (
             f"waypipe ssh -p {ssh_port} -R /tmp/swt/pulse-b.sock:/run/user/$(id -u)/pulse/native"
             f" bolo@{{lan}} {HEADED_BROWSER_CONTAINER_PATH}"
+            " --disable-gpu --disable-gpu-compositing"
+            " --no-first-run --no-default-browser-check --start-maximized <页面URL>"
         )
         if lan:
             return [
                 f"[SWT] 窗口直飞 (设备侧执行): {template.format(lan=lan)}",
                 "[SWT] 窗口直飞前提: 设备须 Linux Wayland 桌面 + waypipe 客户端"
                 " (waypipe --version 检查, 缺则安装, Atomic 系走 distrobox);"
-                " 设备→容器免密先跑: swt enroll-device-key <容器名>",
+                " 设备→容器免密先跑: swt enroll-device-key <容器名>;"
+                " 软件渲染参数必带 (M09 实测: GPU 路径经 waypipe 只出隐形窗口),"
+                " 页面 URL 只用容器内 127.0.0.1 地址",
             ]
         return [
             f"[SWT] 窗口直飞命令未附发: host 局域网地址不可知,"
