@@ -162,7 +162,7 @@ herdr agent read reviewer --source recent-unwrapped --lines 120
 
 等待失败或返回 `blocked` 时, 先看 `agent get` 和 `agent read`, 再决定发什么输入. 超时或 stalled 不证明 prompt 没送达; 切勿盲目重发. 仅在确需原始终端控制时才用 pane 界面.
 
-驱动 pi agent 时, 注意事项读 `~/.pi/agent/herdr-pi.md` (文件不存在则跳过).
+驱动 pi agent 时, 注意事项读 [`PI.md`](PI.md).
 
 ## 在另一窗格跑普通命令
 
