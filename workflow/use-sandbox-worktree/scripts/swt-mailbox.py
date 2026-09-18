@@ -149,6 +149,10 @@ class Mailbox:
                     response_key or uuid.uuid4().hex,
                     created_at=self._now())
         self.sessions[session_id] = s
+        self._save_session(s)
+        return s
+
+    def _save_session(self, s):
         if self._db is not None:
             self._db.execute(
                 "INSERT OR REPLACE INTO sessions"
@@ -157,7 +161,6 @@ class Mailbox:
                 (s.id, s.signing_key, s.response_key, int(s.revoked),
                  s.last_poll, s.created_at))
             self._db.commit()
-        return s
 
     def get_session(self, session_id):
         return self.sessions.get(session_id)
@@ -188,16 +191,30 @@ class Mailbox:
             return None  # 幂等: 重复 id 直接 ok
         if letter.type not in MSG_TYPES:
             raise MailboxError(f"未知类型: {letter.type} 不在 {MSG_TYPES}")
-        if letter.to_session not in self.sessions:
+        if not letter.to_session:
+            # 空 to = 最近活跃 session (TECHNICAL 数据模型)
+            target = self._most_recent_poller()
+            if target is None:
+                raise UnknownRecipient("空收件人且无活跃 session (无人 poll 过)")
+            letter.to_session = target
+        elif letter.to_session not in self.sessions:
             raise UnknownRecipient(f"收件 session 不在本机: {letter.to_session}")
         self.seen_ids[letter.id] = self._now()
         self.queue.setdefault(letter.to_session, []).append(letter)
         return letter
 
+    def _most_recent_poller(self):
+        """最近活跃 = last_poll 最新的已注册未吊销 session; 无 → None."""
+        polled = [s for s in self.sessions.values()
+                  if s.last_poll > 0 and not s.revoked]
+        return max(polled, key=lambda s: s.last_poll).id if polled else None
+
     def verify_poller(self, session_id, sig_ts, sig):
-        """取信校验. 签名式 HMAC(signing_key, session\\nsig_ts)."""
+        """取信校验. 签名式 HMAC(signing_key, session\\nsig_ts).
+        last_poll 持久化: 重启后空 to 的 "最近活跃" 路由依据不丢."""
         s = self._verify(session_id, sig_ts, sig)
         s.last_poll = self._now()
+        self._save_session(s)
         return s
 
     def try_deliver(self, session):

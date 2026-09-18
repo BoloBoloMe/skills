@@ -266,3 +266,46 @@ def test_credential_persistence(serves):
     code, resp = poll(srv2, "persist1", signing_key)
     assert code == 200
     assert resp["payload"]["letter"]["body"] == "重启后的信"
+
+
+def test_empty_to_routes_to_most_recent_poller(serves):
+    """review F1: 空 to = 最近活跃 session; 无任何活跃 session 才拒绝."""
+    srv = serves()
+    register_session(srv, "idle1")
+    creds2 = register_session(srv, "act2")
+    k2 = creds2["signing_key"]
+    # 尚无 session poll 过: 空 to 拒绝
+    code, _ = post_letter(srv, "act2", k2,
+                          make_letter(letter_id="L-0", to="", body="无处可去"))
+    assert code == 404
+    # act2 poll 过 → 空 to 路由给 act2 (idle1 已注册但从未活跃)
+    code, _ = poll(srv, "act2", k2)
+    assert code == 200
+    code, _ = post_letter(srv, "act2", k2,
+                          make_letter(to="", body="给最近活跃"))
+    assert code == 200
+    code, resp = poll(srv, "act2", k2)
+    assert code == 200
+    assert resp["payload"]["letter"]["body"] == "给最近活跃"
+
+
+def test_empty_to_route_survives_restart(serves):
+    """review F1: last_poll 持久化, serve 重启后空 to 路由依据不丢."""
+    srv1 = serves("x")
+    c1 = register_session(srv1, "s1")
+    c2 = register_session(srv1, "s2")
+    code, _ = poll(srv1, "s1", c1["signing_key"])
+    assert code == 200
+    time.sleep(0.05)  # 保证 last_poll 分出先后
+    code, _ = poll(srv1, "s2", c2["signing_key"])
+    assert code == 200
+    srv1.stop()
+
+    # 重启后 s2 仍是最近活跃: 空 to 仍路由给 s2
+    srv2 = serves("x")
+    code, _ = post_letter(srv2, "s2", c2["signing_key"],
+                          make_letter(to="", body="重启后路由"))
+    assert code == 200
+    code, resp = poll(srv2, "s2", c2["signing_key"])
+    assert code == 200
+    assert resp["payload"]["letter"]["body"] == "重启后路由"
