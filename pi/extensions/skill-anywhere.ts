@@ -139,7 +139,8 @@ export function makeSkillAnywhereProvider(
   getSkills: () => Map<string, SkillRef>,
 ) {
   return {
-    triggerCharacters: ["/"],
+    // 不声明 triggerCharacters: editor 会过滤掉 "/", 声明无效;
+    // 非行首 "/" 的即时触发由 installSlashTriggerEditor 的 editor 补丁承担.
 
     async getSuggestions(lines: string[], cursorLine: number, cursorCol: number, options: { force?: boolean }) {
       const line = lines[cursorLine] ?? "";
@@ -200,6 +201,55 @@ export function makeSkillAnywhereProvider(
   };
 }
 
+/** 安装 editor 补丁: 非行首空白后的 "/" 输入即时触发 skill 补全.
+ *
+ * 背景: pi-tui 的 setAutocompleteTriggerCharacters 显式排除 "/"
+ * (斜杠命令走行首专用触发路径), 所以 provider 声明 triggerCharacters
+ * 无效, 非行首 "/" 永远不会发起查询. 这里用 CustomEditor 子类在插入
+ * 后补一次触发; 行首场景由内置逻辑处理, 跳过.
+ *
+ * 动态 import 主包: 顶层 import 会让单测环境 (无 pi 包依赖) 解析失败.
+ * private 成员 (state/tryTriggerAutocomplete) 经 as 访问: jiti 编译后
+ * 无可见性检查, 失效也只是回到无补触发的现状, 无害. */
+async function installSlashTriggerEditor(ctx: {
+  ui: {
+    getEditorComponent(): unknown;
+    setEditorComponent(factory: unknown): void;
+  };
+}): Promise<void> {
+  if (ctx.ui.getEditorComponent()) return; // 其他扩展已接管 editor, 不叠加
+  const { CustomEditor } = (await import("@earendil-works/pi-coding-agent")) as {
+    CustomEditor: new (
+      tui: unknown,
+      theme: unknown,
+      keybindings: unknown,
+      options?: { embedWorkingStatus?: boolean },
+    ) => {
+      handleInput(data: string): void;
+    };
+  };
+
+  class SlashTriggerEditor extends CustomEditor {
+    handleInput(data: string): void {
+      super.handleInput(data);
+      if (data !== "/") return;
+      const s = (this as unknown as {
+        state: { lines: string[]; cursorLine: number; cursorCol: number };
+      }).state;
+      const line = s.lines[s.cursorLine] ?? "";
+      const before = line.slice(0, s.cursorCol);
+      if (before.trimStart().startsWith("/")) return; // 行首: 内置已触发
+      if (!/(?:^|\s)\/$/.test(before)) return; // 只补空白后 (含缩进行首) 的 "/"
+      (this as unknown as { tryTriggerAutocomplete(): void }).tryTriggerAutocomplete();
+    }
+  }
+
+  ctx.ui.setEditorComponent(
+    (tui: unknown, theme: unknown, keybindings: unknown) =>
+      new SlashTriggerEditor(tui, theme, keybindings, { embedWorkingStatus: true }),
+  );
+}
+
 export default function (pi: ExtensionAPI) {
   const getSkills = () => collectSkillRefs(pi.getCommands() as CommandLike[]);
 
@@ -215,7 +265,7 @@ export default function (pi: ExtensionAPI) {
     return { action: "transform", text };
   });
 
-  pi.on("session_start", (_event, ctx) => {
+  pi.on("session_start", async (_event, ctx) => {
     if (ctx.mode !== "tui") return;
     ctx.ui.addAutocompleteProvider((current) =>
       makeSkillAnywhereProvider(
@@ -223,5 +273,6 @@ export default function (pi: ExtensionAPI) {
         getSkills,
       ),
     );
+    await installSlashTriggerEditor(ctx as Parameters<typeof installSlashTriggerEditor>[0]);
   });
 }
