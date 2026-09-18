@@ -127,6 +127,83 @@ export function fuzzyMatch(pattern: string, target: string): boolean {
   return false;
 }
 
+/** 判定光标前文本是否处于行首命令场景 (忽略缩进的 "/" 开头).
+ * 行首属于内置全命令菜单, 本扩展无条件委托. */
+export function atSlashLineStart(beforeCursor: string): boolean {
+  return beforeCursor.trimStart().startsWith("/");
+}
+
+/** 构建补全 provider (包装 current). 导出以便单测覆盖委托/拦截路径. */
+export function makeSkillAnywhereProvider(
+  current: {
+    getSuggestions: (lines: string[], cursorLine: number, cursorCol: number, options: { force?: boolean }) => Promise<unknown>;
+    applyCompletion: (...args: unknown[]) => unknown;
+    shouldTriggerFileCompletion?: (...args: unknown[]) => boolean;
+  },
+  getSkills: () => Map<string, SkillRef>,
+) {
+  return {
+    triggerCharacters: ["/"],
+
+    async getSuggestions(lines: string[], cursorLine: number, cursorCol: number, options: { force?: boolean }) {
+      const line = lines[cursorLine] ?? "";
+      const beforeCursor = line.slice(0, cursorCol);
+
+      // 行首 (含缩进) 命令场景: 无条件委托内置 provider (全命令菜单).
+      // 旧逻辑此处误拦: 行首 "/" 同时是 /token, 掉进自然触发的 null 分支, 菜单消失.
+      if (atSlashLineStart(beforeCursor)) {
+        return current.getSuggestions(lines, cursorLine, cursorCol, options);
+      }
+
+      const typed = inlineSkillPrefix(beforeCursor);
+      if (typed !== null) {
+        const skills = getSkills();
+        const nameFilter = typed.startsWith("skill:") ? typed.slice("skill:".length) : "";
+        const items = [...skills.values()]
+          .filter((s) => fuzzyMatch(nameFilter, s.name))
+          .map((s) => ({
+            value: `skill:${s.name}`,
+            label: `skill:${s.name}`,
+            description: s.description || undefined,
+          }));
+        if (items.length === 0) return null;
+        return { items, prefix: `/${typed}` };
+      }
+
+      // 非行首且非 skill 前缀: 光标在 /token 内时维持无菜单现状 (路径输入零干扰),
+      // force (Tab) 走内置文件补全; 不在 /token 内 (如 @) 一律委托.
+      if (INLINE_SLASH_RE.test(beforeCursor) && !options.force) return null;
+      return current.getSuggestions(lines, cursorLine, cursorCol, options);
+    },
+
+    applyCompletion(lines: string[], cursorLine: number, cursorCol: number, item: { value?: unknown }, prefix: string) {
+      const line = lines[cursorLine] ?? "";
+      const beforeCursor = line.slice(0, cursorCol);
+      const isMine =
+        typeof item.value === "string" &&
+        item.value.startsWith("skill:") &&
+        !atSlashLineStart(beforeCursor) &&
+        inlineSkillPrefix(beforeCursor) !== null;
+      if (!isMine) return current.applyCompletion(lines, cursorLine, cursorCol, item, prefix);
+
+      // 替换 "/<typed>" 为 "/skill:<name> ", 光标落在空格后 (对齐内置命令补全)
+      const beforePrefix = line.slice(0, cursorCol - prefix.length);
+      const afterCursor = line.slice(cursorCol);
+      const newLines = [...lines];
+      newLines[cursorLine] = `${beforePrefix}/${item.value} ${afterCursor}`;
+      return {
+        lines: newLines,
+        cursorLine,
+        cursorCol: beforePrefix.length + String(item.value).length + 2,
+      };
+    },
+
+    shouldTriggerFileCompletion(...args: unknown[]) {
+      return current.shouldTriggerFileCompletion?.(...args) ?? true;
+    },
+  };
+}
+
 export default function (pi: ExtensionAPI) {
   const getSkills = () => collectSkillRefs(pi.getCommands() as CommandLike[]);
 
@@ -144,59 +221,11 @@ export default function (pi: ExtensionAPI) {
 
   pi.on("session_start", (_event, ctx) => {
     if (ctx.mode !== "tui") return;
-    ctx.ui.addAutocompleteProvider((current) => ({
-      triggerCharacters: ["/"],
-
-      async getSuggestions(lines, cursorLine, cursorCol, options) {
-        const line = lines[cursorLine] ?? "";
-        const beforeCursor = line.slice(0, cursorCol);
-        const typed = inlineSkillPrefix(beforeCursor);
-
-        if (typed === null) {
-          // 非本扩展场景: 光标不在 "/token" 内, 或行首命令场景 → 内置行为.
-          // 自然触发下 "/tmp" 这类路径 token 维持无菜单现状, force (Tab) 走内置文件补全.
-          const inSlashToken = INLINE_SLASH_RE.test(beforeCursor);
-          if (inSlashToken && !options.force) return null;
-          return current.getSuggestions(lines, cursorLine, cursorCol, options);
-        }
-
-        const skills = getSkills();
-        const nameFilter = typed.startsWith("skill:") ? typed.slice("skill:".length) : "";
-        const items = [...skills.values()]
-          .filter((s) => fuzzyMatch(nameFilter, s.name))
-          .map((s) => ({
-            value: `skill:${s.name}`,
-            label: `skill:${s.name}`,
-            description: s.description || undefined,
-          }));
-        if (items.length === 0) return null;
-        return { items, prefix: `/${typed}` };
-      },
-
-      applyCompletion(lines, cursorLine, cursorCol, item, prefix) {
-        const line = lines[cursorLine] ?? "";
-        const beforeCursor = line.slice(0, cursorCol);
-        const isMine =
-          typeof item.value === "string" &&
-          item.value.startsWith("skill:") &&
-          inlineSkillPrefix(beforeCursor) !== null;
-        if (!isMine) return current.applyCompletion(lines, cursorLine, cursorCol, item, prefix);
-
-        // 替换 "/<typed>" 为 "/skill:<name> ", 光标落在空格后 (对齐内置命令补全)
-        const beforePrefix = line.slice(0, cursorCol - prefix.length);
-        const afterCursor = line.slice(cursorCol);
-        const newLines = [...lines];
-        newLines[cursorLine] = `${beforePrefix}/${item.value} ${afterCursor}`;
-        return {
-          lines: newLines,
-          cursorLine,
-          cursorCol: beforePrefix.length + item.value.length + 2,
-        };
-      },
-
-      shouldTriggerFileCompletion(lines, cursorLine, cursorCol) {
-        return current.shouldTriggerFileCompletion?.(lines, cursorLine, cursorCol) ?? true;
-      },
-    }));
+    ctx.ui.addAutocompleteProvider((current) =>
+      makeSkillAnywhereProvider(
+        current as Parameters<typeof makeSkillAnywhereProvider>[0],
+        getSkills,
+      ),
+    );
   });
 }

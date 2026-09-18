@@ -6,10 +6,12 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import {
+  atSlashLineStart,
   collectSkillRefs,
   expandSkillTokens,
   fuzzyMatch,
   inlineSkillPrefix,
+  makeSkillAnywhereProvider,
   stripSkillFrontmatter,
 } from "../../pi/extensions/skill-anywhere.ts";
 
@@ -185,4 +187,80 @@ test("collectSkillRefs 从命令表提取 skill", () => {
   // baseDir 始终是 SKILL.md 所在目录 (对齐内置 skill.baseDir), 不用 sourceInfo.baseDir (资源根父级)
   assert.equal(refs.get("present").baseDir, "/skills/present");
   assert.equal(refs.get("no-basedir").baseDir, "/skills/nb");
+});
+
+// ---- provider 路由 (回归: 行首曾误拦, 内置命令菜单消失) ----
+function setupProvider() {
+  const calls = { current: 0 };
+  const current = {
+    async getSuggestions(_lines, _l, _c, _options) {
+      calls.current++;
+      return { items: [{ value: "BUILTIN", label: "BUILTIN" }], prefix: "x" };
+    },
+    applyCompletion: (..._args) => "CURRENT",
+  };
+  const skills = new Map([
+    ["present", { name: "present", filePath: "/s/p/SKILL.md", baseDir: "/s/p", description: "d" }],
+  ]);
+  const provider = makeSkillAnywhereProvider(current, () => skills);
+  return { provider, calls };
+}
+
+const suggest = (provider, line, options = {}) => provider.getSuggestions([line], 0, line.length, options);
+
+test("行首 / 场景委托内置 (命令菜单不受影响)", async () => {
+  const { provider, calls } = setupProvider();
+  for (const line of ["/", "/m", "/skill:", "/skill:pr", "  /sk"]) {
+    const out = await suggest(provider, line);
+    assert.deepEqual(out.items.map((i) => i.value), ["BUILTIN"], line);
+  }
+  assert.equal(calls.current, 5);
+});
+
+test("非行首 skill 前缀返回 skill 菜单, 不碰内置", async () => {
+  const { provider, calls } = setupProvider();
+  const out = await suggest(provider, "帮我 /skill:pr");
+  assert.deepEqual(out.items.map((i) => i.value), ["skill:present"]);
+  assert.equal(out.prefix, "/skill:pr");
+  assert.equal(calls.current, 0);
+});
+
+test("非行首非 skill: 自然触发无菜单, force 委托内置文件补全", async () => {
+  const { provider, calls } = setupProvider();
+  assert.equal(await suggest(provider, "帮我 /tm"), null);
+  const forced = await suggest(provider, "帮我 /tm", { force: true });
+  assert.deepEqual(forced.items.map((i) => i.value), ["BUILTIN"]);
+  assert.equal(calls.current, 1);
+});
+
+test("不在 /token 内 (如 @) 一律委托", async () => {
+  const { provider, calls } = setupProvider();
+  const out = await suggest(provider, "帮我 @fil");
+  assert.deepEqual(out.items.map((i) => i.value), ["BUILTIN"]);
+  assert.equal(calls.current, 1);
+});
+
+test("applyCompletion: 自己的场景替换并加空格, 其余委托", () => {
+  const { provider } = setupProvider();
+  // 自己的场景: “帮我 /skill:pr" 光标在末尾, prefix=/skill:pr
+  const mine = provider.applyCompletion(
+    ["帮我 /skill:pr"],
+    0,
+    "帮我 /skill:pr".length,
+    { value: "skill:present" },
+    "/skill:pr",
+  );
+  assert.deepEqual(mine.lines, ["帮我 /skill:present "]);
+  assert.equal(mine.cursorCol, "帮我 /skill:present ".length);
+  // 行首场景 (内置命令补全) 委托
+  assert.equal(
+    provider.applyCompletion(["/skill:pr"], 0, 9, { value: "skill:present" }, "/skill:pr"),
+    "CURRENT",
+  );
+});
+
+test("atSlashLineStart 判定", () => {
+  assert.equal(atSlashLineStart("/"), true);
+  assert.equal(atSlashLineStart("  /sk"), true);
+  assert.equal(atSlashLineStart("帮我 /"), false);
 });
