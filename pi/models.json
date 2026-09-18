@@ -183,32 +183,8 @@
       },
       "models": [
         {
-          "id": "deepseek-v4-pro",
-          "name": "DeepSeek V4 Pro",
-          "reasoning": true,
-          "thinkingLevelMap": {
-            "off": null,
-            "minimal": null,
-            "low": null,
-            "medium": null,
-            "high": "high",
-            "max": "max"
-          },
-          "input": [
-            "text"
-          ],
-          "contextWindow": 1000000,
-          "maxTokens": 384000,
-          "cost": {
-            "input": 0.435,
-            "output": 0.87,
-            "cacheRead": 0.003625,
-            "cacheWrite": 0
-          }
-        },
-        {
-          "id": "deepseek-v4-flash-vision-exp",
-          "name": "DeepSeek V4 Flash Vision",
+          "id": "deepseekdeepseek-v4.1-flash-expires-on-0910",
+          "name": "DeepSeek V4.1 Flash",
           "reasoning": true,
           "thinkingLevelMap": {
             "off": null,
