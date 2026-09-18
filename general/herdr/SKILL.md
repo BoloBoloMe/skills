@@ -1,6 +1,6 @@
 ---
 name: herdr
-description: 操作 Herdr (agent 终端工作区), 仅当被要求 查看/控制 `工作空间/workspace`, `标签页/tab`, `窗格/pane`, `另一个 agent`, 或 `开新会话`/`使用子代理`/`使用 subagent` 时才用.
+description: 操作 Herdr (agent 终端工作区), 仅当被要求 查看/控制 `工作空间/workspace`, `标签页/tab`, `窗格/pane`, `另一个 agent`, 或 `开新会话`/`子代理`/`subagent` 时才用.
 ---
 
 # herdr
@@ -21,7 +21,7 @@ test "${HERDR_ENV:-}" = 1
 
 检查失败: 声明你不在 Herdr 内运行, 然后停止. 切勿在 Herdr 之外查看或控制聚焦中的 Herdr 会话.
 
-检查通过后, PATH 里的 `herdr` 二进制即连接当前会话. 用它查看邻近工作, 建终端布局, 启动 agent 和命令, 读输出, 等待状态变化.
+检查通过后, PATH 里的 `herdr` 二进制即连接当前会话.
 
 ## 学习当前 CLI
 
@@ -31,20 +31,7 @@ test "${HERDR_ENV:-}" = 1
 herdr --help
 ```
 
-再打印相关命令组 (不带子命令运行该组):
-
-```bash
-herdr agent
-herdr pane
-herdr workspace
-herdr tab
-herdr worktree
-herdr terminal
-herdr notification
-herdr integration
-herdr session
-herdr machine
-```
+再对任务相关的命令组跑裸组命令 (如 `herdr agent`) 看子命令与选项; 组名以 `--help` 输出为准.
 
 切勿跑裸 `herdr` 做探索: 它会启动或附着 TUI. 切勿用省略参数的方式探测会改状态的嵌套命令: `herdr workspace create` 这类命令带默认值即成立, 会直接执行.
 
@@ -70,7 +57,7 @@ agent 命令只接受两类目标: 唯一的存活 agent 名, 或当前容纳该
 - tab: `w1:t1`
 - pane: `w1:p1`
 
-已关闭的 tab/pane ID 不复用. 迁入另一工作空间的窗格会得到新的工作空间限定 ID. `pane move` 之后, 用 `.result.move_result.pane.pane_id` 或存活 agent 名继续操作. 旧值报在 `.result.move_result.previous_pane_id`; 旧 ID 仅在该进程继承的调用方上下文里还能解析, 切勿拿它当通用 agent 目标.
+已关闭的 tab/pane ID 不复用. 迁入另一工作空间的窗格会得到新的工作空间限定 ID. `pane move` 之后, 用 `.result.move_result.pane.pane_id` 或存活 agent 名继续操作. 旧值报在 `.result.move_result.previous_pane_id`, 仅在该进程继承的调用方上下文里还能解析.
 
 Herdr 向每个受管窗格注入调用方上下文:
 
@@ -134,7 +121,7 @@ herdr agent start reviewer --kind codex --pane <返回的窗格ID> -- <agent参�
 herdr agent prompt reviewer "review 当前 diff, 只报告需要动手的发现" --wait --timeout 120000
 ```
 
-`agent prompt` 尊重窗格实时的 bracketed-paste 模式, 把文本和随后的编码 Enter 作为一次有序提交发出. 两者都写完才报告提交成功; 仅此不证明 agent 已开始一轮. Windows 上 Codex 的提交延迟随 prompt 体积增长. 目标 agent 正停在审批或提问对话框时, 它在发出任何输入前就以 `agent_blocked` 拒绝. 此时先查看 blocked UI, 问过我之后再代答. 普通 agent 工作用 `--wait` 即可: 它等第一个 settled 的 `idle`/`done`/`blocked`. 别用 `--until` 重复这些默认值.
+`agent prompt` 尊重窗格实时的 bracketed-paste 模式, 把文本和随后的编码 Enter 作为一次有序提交发出. 两者都写完才报告提交成功; 仅此不证明 agent 已开始一轮. 目标 agent 正停在审批或提问对话框时, 它在发出任何输入前就以 `agent_blocked` 拒绝. 此时先查看 blocked UI, 问过我之后再代答. 普通 agent 工作用 `--wait` 即可: 它等第一个 settled 的 `idle`/`done`/`blocked`. 别用 `--until` 重复这些默认值.
 
 带 `--wait` 时, 从非 working 态发出的 prompt 必须产生可观测的 `working` 或 `blocked` 活动. 提交后 Herdr 最多等 5 秒等这个活动; 无关的 `idle`/`done` 或会话变化不满足这个闸门. 观测不到活动返回 `agent_prompt_stalled`; 你的超时先到则返回 `timeout`. 该超时含提交耗时. 不给超时时, 观测到活动后的 settled 等待无限期. 这个等待跟踪生命周期状态, 不是单个 turn; agent 本就在工作时, 当前 turn 的完成即可满足它.
 
@@ -160,19 +147,13 @@ herdr agent get reviewer
 herdr agent read reviewer --source recent-unwrapped --lines 120
 ```
 
-等待失败或返回 `blocked` 时, 先看 `agent get` 和 `agent read`, 再决定发什么输入. 超时或 stalled 不证明 prompt 没送达; 切勿盲目重发. 仅在确需原始终端控制时才用 pane 界面.
+超时或 stalled 不证明 prompt 没送达; 等待失败或返回 `blocked` 时, 先看 `agent get` 和 `agent read` 再决定发什么输入. 仅在确需原始终端控制时才用 pane 界面.
 
 驱动 pi agent 时, 注意事项读 [`PI.md`](PI.md).
 
 ## 在另一窗格跑普通命令
 
-按同一几何规则开兄弟窗格, 保留调用方工作目录, 不动我的焦点:
-
-```bash
-herdr pane split --current --direction right --cwd "$PWD" --no-focus
-```
-
-从 `.result.pane.pane_id` 读新窗格 ID, 然后运行并查看:
+同样用 `pane split` 开兄弟窗格 (几何与焦点规则同上), 然后运行并查看:
 
 ```bash
 herdr pane run <返回的窗格ID> "just test"
@@ -201,7 +182,7 @@ herdr pane read <返回的窗格ID> --source recent-unwrapped --lines 120
 - 从 JSON 响应解析 ID. 不从侧栏顺序或示例推导.
 - 不关闭不是你创建的工作空间, 标签页, 窗格或会话, 除非我明确要求. `workspace close --group` 会关掉主工作空间及其关联的 worktree 工作空间; 切勿只为绕过 `workspace_group_close_required` 而加它.
 - `--trust-repository` 仅在我已验证仓库之后用. 它授予单次请求的 Git 信任, 不是 worktree 命令失败后的常规重试手段.
-- 更新后 client 与 server 版本可能不一致. 依赖新 server 特性前先查 `herdr status`. 缺少某个方法不构成停止或升级 server 的许可.
+- 更新后 client 与 server 版本可能不一致. 依赖新 server 特性前先查 `herdr status`; 方法缺失时继续用已有方法完成任务.
 - 切勿在活动会话内跑 `herdr server stop`, 除非我明确意图停掉 server 及其窗格进程.
 - 切勿 kill Herdr 主进程. 需要隔离 server 的实验用命名测试会话.
 - CLI 的 server 错误是 stderr 上的 JSON, 退出码 1; CLI 语法错误退出码 2.
