@@ -104,10 +104,10 @@ export function expandSkillTokens(
   return { text: result, changed, failed };
 }
 
-/** 判定光标前文本是否处于 "空白后的 /token" 补全场景 (行首除外).
+/** 判定光标前文本是否处于 "空白后的 /token" 补全场景 (行首命令 token 除外).
  * 返回已打的 "/" 后片段 (可为空串); 非场景返回 null. */
 export function inlineSlashPrefix(beforeCursor: string): string | null {
-  if (atSlashLineStart(beforeCursor)) return null;
+  if (atLineCommandToken(beforeCursor)) return null;
   const m = beforeCursor.match(INLINE_SLASH_RE);
   return m ? (m[1] ?? "") : null;
 }
@@ -123,10 +123,12 @@ export function fuzzyMatch(pattern: string, target: string): boolean {
   return false;
 }
 
-/** 判定光标前文本是否处于行首命令场景 (忽略缩进的 "/" 开头).
- * 行首属于内置全命令菜单, 本扩展无条件委托. */
-export function atSlashLineStart(beforeCursor: string): boolean {
-  return beforeCursor.trimStart().startsWith("/");
+/** 判定光标是否在行首命令 token 内 (行以 / 开头且光标前无空白).
+ * 这是内置全命令菜单的适用场景, 本扩展无条件委托.
+ * 不能用 "整行以 / 开头" 判定: 行首 / 之后行中后续 /token 会全部被误判
+ * (如 "/help me /skill:pr" 光标在行尾时属于行中场景, 该弹 skill 菜单). */
+export function atLineCommandToken(beforeCursor: string): boolean {
+  return beforeCursor.trimStart().startsWith("/") && !/\s/.test(beforeCursor);
 }
 
 /** 构建补全 provider (包装 current). 导出以便单测覆盖委托/拦截路径. */
@@ -146,9 +148,9 @@ export function makeSkillAnywhereProvider(
       const line = lines[cursorLine] ?? "";
       const beforeCursor = line.slice(0, cursorCol);
 
-      // 行首 (含缩进) 命令场景: 无条件委托内置 provider (全命令菜单).
+      // 行首命令 token 内 (光标前无空白): 无条件委托内置 provider (全命令菜单).
       // 旧逻辑此处误拦: 行首 "/" 同时是 /token, 掉进自然触发的 null 分支, 菜单消失.
-      if (atSlashLineStart(beforeCursor)) {
+      if (atLineCommandToken(beforeCursor)) {
         return current.getSuggestions(lines, cursorLine, cursorCol, options);
       }
 
@@ -179,7 +181,7 @@ export function makeSkillAnywhereProvider(
       const isMine =
         typeof item.value === "string" &&
         item.value.startsWith("skill:") &&
-        !atSlashLineStart(beforeCursor) &&
+        !atLineCommandToken(beforeCursor) &&
         inlineSlashPrefix(beforeCursor) !== null;
       if (!isMine) return current.applyCompletion(lines, cursorLine, cursorCol, item, prefix);
 
@@ -238,7 +240,7 @@ async function installSlashTriggerEditor(ctx: {
       }).state;
       const line = s.lines[s.cursorLine] ?? "";
       const before = line.slice(0, s.cursorCol);
-      if (before.trimStart().startsWith("/")) return; // 行首: 内置已触发
+      if (atLineCommandToken(before)) return; // 行首命令 token: 内置已触发
       if (!/(?:^|\s)\/$/.test(before)) return; // 只补空白后 (含缩进行首) 的 "/"
       (this as unknown as { tryTriggerAutocomplete(): void }).tryTriggerAutocomplete();
     }

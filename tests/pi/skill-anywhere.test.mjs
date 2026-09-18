@@ -6,7 +6,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import {
-  atSlashLineStart,
+  atLineCommandToken,
   collectSkillRefs,
   expandSkillTokens,
   fuzzyMatch,
@@ -139,20 +139,21 @@ test("整条开头 + 中间 token 混合: 中间的展开, 开头的留给内置
 test("非行首 /token 场景判定", () => {
   assert.equal(inlineSlashPrefix("帮我 /"), "");
   assert.equal(inlineSlashPrefix("帮我 /s"), "s");
-  assert.equal(inlineSlashPrefix("帮我 /skill"), "skill");
-  assert.equal(inlineSlashPrefix("帮我 /skill:"), "skill:");
   assert.equal(inlineSlashPrefix("帮我 /skill:ac"), "skill:ac");
-  // 任意 /token 都算 (不再要求 skill: 前缀), fuzzy 过滤交给菜单
   assert.equal(inlineSlashPrefix("帮我 /t"), "t");
-  assert.equal(inlineSlashPrefix("帮我 /pr"), "pr");
-  // 行首命令场景: 不接管
+  // 行首 / 打完后, 行中的 /token 仍是行中场景 (回归: 曾被整行 / 开头误判)
+  assert.equal(inlineSlashPrefix("/help me /"), "");
+  assert.equal(inlineSlashPrefix("/help me /skill:pr"), "skill:pr");
+  assert.equal(inlineSlashPrefix("  /sk"), "sk"); // 缩进行首: 内置不认, 归 skill 菜单
+  // 行首命令 token 场景: 不接管
   assert.equal(inlineSlashPrefix("/skill:ac"), null);
-  assert.equal(inlineSlashPrefix("  /skill:ac"), null);
   assert.equal(inlineSlashPrefix("/mo"), null);
+  assert.equal(inlineSlashPrefix("/"), null);
   // 非场景
   assert.equal(inlineSlashPrefix("帮我 /tmp/x"), null); // token 内含 /
   assert.equal(inlineSlashPrefix("帮我 @file"), null);
   assert.equal(inlineSlashPrefix("普通文本"), null);
+  assert.equal(inlineSlashPrefix("/help me"), null); // 光标在参数区, 不在 /token 内
 });
 
 // ---- fuzzyMatch ----
@@ -210,13 +211,22 @@ function setupProvider() {
 
 const suggest = (provider, line, options = {}) => provider.getSuggestions([line], 0, line.length, options);
 
-test("行首 / 场景委托内置 (命令菜单不受影响)", async () => {
+test("行首命令 token 内委托内置", async () => {
   const { provider, calls } = setupProvider();
-  for (const line of ["/", "/m", "/skill:", "/skill:pr", "  /sk"]) {
+  for (const line of ["/", "/m", "/skill:", "/skill:pr"]) {
     const out = await suggest(provider, line);
     assert.deepEqual(out.items.map((i) => i.value), ["BUILTIN"], line);
   }
-  assert.equal(calls.current, 5);
+  assert.equal(calls.current, 4);
+});
+
+test("行首 / 后的行中 /token 走 skill 菜单 (回归)", async () => {
+  const { provider, calls } = setupProvider();
+  for (const line of ["/help me /", "/skill:present 帮我 /skill:pr", "  /sk"]) {
+    const out = await suggest(provider, line);
+    assert.deepEqual(out.items.map((i) => i.value), ["skill:present"], line);
+  }
+  assert.equal(calls.current, 0);
 });
 
 test("非行首 skill 匹配返回 skill 菜单, 不碰内置", async () => {
@@ -268,8 +278,10 @@ test("applyCompletion: 自己的场景替换并加空格, 其余委托", () => {
   );
 });
 
-test("atSlashLineStart 判定", () => {
-  assert.equal(atSlashLineStart("/"), true);
-  assert.equal(atSlashLineStart("  /sk"), true);
-  assert.equal(atSlashLineStart("帮我 /"), false);
+test("atLineCommandToken 判定", () => {
+  assert.equal(atLineCommandToken("/"), true);
+  assert.equal(atLineCommandToken("/sk"), true);
+  assert.equal(atLineCommandToken("  /sk"), false); // 前导空白算行中 (内置不认缩进命令)
+  assert.equal(atLineCommandToken("/help me /"), false); // 光标前有空白
+  assert.equal(atLineCommandToken("abc /"), false);
 });
