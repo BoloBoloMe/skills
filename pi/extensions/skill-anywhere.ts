@@ -104,16 +104,12 @@ export function expandSkillTokens(
   return { text: result, changed, failed };
 }
 
-/** 判定光标前文本是否处于 "空白后的 skill 前缀" 补全场景.
- * 返回已打的 "/" 后片段; 非场景返回 null.
- * 行首 (忽略缩进) 的 "/" 属于内置命令菜单, 不接管. */
-export function inlineSkillPrefix(beforeCursor: string): string | null {
-  if (beforeCursor.trimStart().startsWith("/")) return null;
+/** 判定光标前文本是否处于 "空白后的 /token" 补全场景 (行首除外).
+ * 返回已打的 "/" 后片段 (可为空串); 非场景返回 null. */
+export function inlineSlashPrefix(beforeCursor: string): string | null {
+  if (atSlashLineStart(beforeCursor)) return null;
   const m = beforeCursor.match(INLINE_SLASH_RE);
-  if (!m) return null;
-  const typed = m[1] ?? "";
-  if (typed === "" || "skill:".startsWith(typed) || typed.startsWith("skill:")) return typed;
-  return null;
+  return m ? (m[1] ?? "") : null;
 }
 
 /** 简单子序列模糊匹配 (pattern 的字符按序出现在 target 中). */
@@ -155,24 +151,24 @@ export function makeSkillAnywhereProvider(
         return current.getSuggestions(lines, cursorLine, cursorCol, options);
       }
 
-      const typed = inlineSkillPrefix(beforeCursor);
+      const typed = inlineSlashPrefix(beforeCursor);
       if (typed !== null) {
+        // 非行首 /token: 一律弹 skill 菜单, fuzzy 匹配命令全串 ("skill:<name>").
+        // 无匹配: 自然触发关菜单 (继续输入即过滤), force 落内置文件补全.
         const skills = getSkills();
-        const nameFilter = typed.startsWith("skill:") ? typed.slice("skill:".length) : "";
         const items = [...skills.values()]
-          .filter((s) => fuzzyMatch(nameFilter, s.name))
+          .filter((s) => fuzzyMatch(typed, `skill:${s.name}`))
           .map((s) => ({
             value: `skill:${s.name}`,
             label: `skill:${s.name}`,
             description: s.description || undefined,
           }));
-        if (items.length === 0) return null;
-        return { items, prefix: `/${typed}` };
+        if (items.length > 0) return { items, prefix: `/${typed}` };
+        if (options.force) return current.getSuggestions(lines, cursorLine, cursorCol, options);
+        return null;
       }
 
-      // 非行首且非 skill 前缀: 光标在 /token 内时维持无菜单现状 (路径输入零干扰),
-      // force (Tab) 走内置文件补全; 不在 /token 内 (如 @) 一律委托.
-      if (INLINE_SLASH_RE.test(beforeCursor) && !options.force) return null;
+      // 不在 /token 内 (如 @): 一律委托内置 provider.
       return current.getSuggestions(lines, cursorLine, cursorCol, options);
     },
 
@@ -183,7 +179,7 @@ export function makeSkillAnywhereProvider(
         typeof item.value === "string" &&
         item.value.startsWith("skill:") &&
         !atSlashLineStart(beforeCursor) &&
-        inlineSkillPrefix(beforeCursor) !== null;
+        inlineSlashPrefix(beforeCursor) !== null;
       if (!isMine) return current.applyCompletion(lines, cursorLine, cursorCol, item, prefix);
 
       // 替换 "/<typed>" 为 "/skill:<name> ", 光标落在空格后 (对齐内置命令补全)

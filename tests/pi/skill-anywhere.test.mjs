@@ -10,7 +10,7 @@ import {
   collectSkillRefs,
   expandSkillTokens,
   fuzzyMatch,
-  inlineSkillPrefix,
+  inlineSlashPrefix,
   makeSkillAnywhereProvider,
   stripSkillFrontmatter,
 } from "../../pi/extensions/skill-anywhere.ts";
@@ -136,21 +136,23 @@ test("整条开头 + 中间 token 混合: 中间的展开, 开头的留给内置
 });
 
 // ---- inlineSkillPrefix ----
-test("补全场景判定", () => {
-  assert.equal(inlineSkillPrefix("帮我 /"), "");
-  assert.equal(inlineSkillPrefix("帮我 /s"), "s");
-  assert.equal(inlineSkillPrefix("帮我 /skill"), "skill");
-  assert.equal(inlineSkillPrefix("帮我 /skill:"), "skill:");
-  assert.equal(inlineSkillPrefix("帮我 /skill:ac"), "skill:ac");
+test("非行首 /token 场景判定", () => {
+  assert.equal(inlineSlashPrefix("帮我 /"), "");
+  assert.equal(inlineSlashPrefix("帮我 /s"), "s");
+  assert.equal(inlineSlashPrefix("帮我 /skill"), "skill");
+  assert.equal(inlineSlashPrefix("帮我 /skill:"), "skill:");
+  assert.equal(inlineSlashPrefix("帮我 /skill:ac"), "skill:ac");
+  // 任意 /token 都算 (不再要求 skill: 前缀), fuzzy 过滤交给菜单
+  assert.equal(inlineSlashPrefix("帮我 /t"), "t");
+  assert.equal(inlineSlashPrefix("帮我 /pr"), "pr");
   // 行首命令场景: 不接管
-  assert.equal(inlineSkillPrefix("/skill:ac"), null);
-  assert.equal(inlineSkillPrefix("  /skill:ac"), null);
-  assert.equal(inlineSkillPrefix("/mo"), null);
+  assert.equal(inlineSlashPrefix("/skill:ac"), null);
+  assert.equal(inlineSlashPrefix("  /skill:ac"), null);
+  assert.equal(inlineSlashPrefix("/mo"), null);
   // 非场景
-  assert.equal(inlineSkillPrefix("帮我 /t"), null);
-  assert.equal(inlineSkillPrefix("帮我 /tmp/x"), null);
-  assert.equal(inlineSkillPrefix("帮我 @file"), null);
-  assert.equal(inlineSkillPrefix("普通文本"), null);
+  assert.equal(inlineSlashPrefix("帮我 /tmp/x"), null); // token 内含 /
+  assert.equal(inlineSlashPrefix("帮我 @file"), null);
+  assert.equal(inlineSlashPrefix("普通文本"), null);
 });
 
 // ---- fuzzyMatch ----
@@ -217,17 +219,24 @@ test("行首 / 场景委托内置 (命令菜单不受影响)", async () => {
   assert.equal(calls.current, 5);
 });
 
-test("非行首 skill 前缀返回 skill 菜单, 不碰内置", async () => {
+test("非行首 skill 匹配返回 skill 菜单, 不碰内置", async () => {
   const { provider, calls } = setupProvider();
-  const out = await suggest(provider, "帮我 /skill:pr");
-  assert.deepEqual(out.items.map((i) => i.value), ["skill:present"]);
-  assert.equal(out.prefix, "/skill:pr");
+  for (const [line, prefix] of [
+    ["帮我 /", "/"],
+    ["帮我 /s", "/s"],
+    ["帮我 /skill:pr", "/skill:pr"],
+    ["帮我 /pr", "/pr"], // fuzzy: p-r 命中 s-k-i-l-l-:-p-r-e-s-e-n-t
+  ]) {
+    const out = await suggest(provider, line);
+    assert.deepEqual(out.items.map((i) => i.value), ["skill:present"], line);
+    assert.equal(out.prefix, prefix, line);
+  }
   assert.equal(calls.current, 0);
 });
 
-test("非行首非 skill: 自然触发无菜单, force 委托内置文件补全", async () => {
+test("无 skill 匹配: 自然触发无菜单, force 委托内置文件补全", async () => {
   const { provider, calls } = setupProvider();
-  assert.equal(await suggest(provider, "帮我 /tm"), null);
+  assert.equal(await suggest(provider, "帮我 /tm"), null); // t-m 不命中任何 skill 命令
   const forced = await suggest(provider, "帮我 /tm", { force: true });
   assert.deepEqual(forced.items.map((i) => i.value), ["BUILTIN"]);
   assert.equal(calls.current, 1);
