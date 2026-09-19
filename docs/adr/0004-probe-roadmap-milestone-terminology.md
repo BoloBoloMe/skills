@@ -6,7 +6,7 @@ probe skill 把大任务拆成一张本地 markdown 索引 + 逐个决策调查�
 - 概念: `Backlog`→`Roadmap`, `Item`→`Milestone`, `item`→`milestone`
 - 文件标识符: `BACKLOG.md`→`ROADMAP.md`, `ITEM-NN.md`→`MILESTONE-NN.md`
 
-范围: `workflow/probe/SKILL.md` + `workflow/probe/TEMPLATES.md` (同属 probe skill 契约, 半改会破坏内部一致性). `description` frontmatter 一并更新.
+范围: `../../workflow/navigate` + `../../workflow/navigate` (同属 probe skill 契约, 半改会破坏内部一致性). `description` frontmatter 一并更新.
 
 附带移除:
 - `docs/changes/probe-skill/` — probe skill 的设计历史存档, 通篇用旧术语. 改名后成为旧术语孤儿; 其描述的设计推导已完成并固化进现行 SKILL.md/TEMPLATES.md, 保留只会制造新旧术语并存的困惑.
