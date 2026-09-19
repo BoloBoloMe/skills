@@ -1,6 +1,6 @@
 ---
 name: herdr
-description: 操作 Herdr (agent 终端工作区), 仅当被要求 查看/控制 `工作空间/workspace`, `标签页/tab`, `窗格/pane`, `另一个 agent`, 或 `开新会话`/`子代理`/`subagent` 时才用.
+description: 操作 Herdr , 当被要求 查看/控制 `工作空间/workspace`, `标签页/tab`, `窗格/pane`, `另一个 agent`, 或 `开新会话`/`子代理`/`subagent` 时才用.
 ---
 
 # herdr
