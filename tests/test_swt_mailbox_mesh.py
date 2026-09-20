@@ -119,3 +119,24 @@ def test_forward_auth(mesh_serves):
 
     code, _ = forward(srv, "wrong-key", make_letter(letter_id="F-2", to="s1"))
     assert code == 403
+
+
+def test_flood_to_neighbor(mesh_serves):
+    """TS-002: A/B 互为邻居; A 上 post 给 B 的 session, B 的 poll 取到."""
+    port_a, port_b = free_port(), free_port()
+    srv_a = mesh_serves("a", neighbors=[neighbor(port_b, "k-ab")], port=port_a)
+    srv_b = mesh_serves("b", neighbors=[neighbor(port_a, "k-ab")], port=port_b)
+    creds_a = register_session(srv_a, "a-host")
+    creds_b = register_session(srv_b, "b-dev")
+
+    code, _ = post_letter(srv_a, "a-host", creds_a["signing_key"],
+                          make_letter(letter_id="X-1", to="b-dev",
+                                      body="跨机投递", from_="a-host"))
+    assert code == 200
+
+    code, resp = poll(srv_b, "b-dev", creds_b["signing_key"])
+    assert code == 200
+    letter = resp["payload"]["letter"]
+    assert letter["id"] == "X-1"
+    assert letter["body"] == "跨机投递"
+    assert letter["from"] == "a-host"

@@ -209,17 +209,27 @@ class Mailbox:
             return None  # 幂等: 重复 id 直接 ok
         if letter.type not in MSG_TYPES:
             raise MailboxError(f"未知类型: {letter.type} 不在 {MSG_TYPES}")
+        return self._route(letter, source=None)
+
+    def _route(self, letter, source):
+        """路由 (D007): 收件人在本机 → 排队, 返回 (letter, []);
+        不在 → 返回 (letter, 洪泛目标邻居列表) (排除来源邻居).
+        无处可去 (无邻居可转) → UnknownRecipient.
+        返回值非 None 时, HTTP 投递由 server 层在锁外执行."""
         if not letter.to_session:
             # 空 to = 最近活跃 session (TECHNICAL 数据模型)
             target = self._most_recent_poller()
             if target is None:
                 raise UnknownRecipient("空收件人且无活跃 session (无人 poll 过)")
             letter.to_session = target
-        elif letter.to_session not in self.sessions:
-            raise UnknownRecipient(f"收件 session 不在本机: {letter.to_session}")
         self.seen_ids[letter.id] = self._now()
-        self.queue.setdefault(letter.to_session, []).append(letter)
-        return letter
+        if letter.to_session in self.sessions:
+            self.queue.setdefault(letter.to_session, []).append(letter)
+            return letter, []
+        targets = [n for n in self.neighbors if n is not source]
+        if not targets:
+            raise UnknownRecipient(f"收件 session 不在本机: {letter.to_session}")
+        return letter, targets
 
     def _neighbor_by_key(self, key):
         for n in self.neighbors:
@@ -228,20 +238,22 @@ class Mailbox:
         return None
 
     def forward(self, neighbor_key, letter_d):
-        """邻居转发收信 (D007). neighbor_key 与邻居表比对认证;
-        重复 id 幂等 (返回 None); 收件人在本机则排队."""
-        if self._neighbor_by_key(neighbor_key) is None:
+        """邻居转发收信 (D007). neighbor_key 与邻居表比对认证, 匹配到的
+        邻居即来源 (转发时排除); 重复 id 幂等 (返回 None); 路由同 post."""
+        src = self._neighbor_by_key(neighbor_key)
+        if src is None:
             raise MailboxError("neighbor_key 无效")
         letter = Letter.from_dict(letter_d)
         if letter.id in self.seen_ids:
             return None  # 幂等: 重复 id 直接 ok
         if letter.type not in MSG_TYPES:
             raise MailboxError(f"未知类型: {letter.type} 不在 {MSG_TYPES}")
-        if letter.to_session not in self.sessions:
-            raise UnknownRecipient(f"收件 session 不在本机: {letter.to_session}")
-        self.seen_ids[letter.id] = self._now()
-        self.queue.setdefault(letter.to_session, []).append(letter)
-        return letter
+        return self._route(letter, source=src)
+
+    def stage_forward(self, letter, neighbor):
+        """邻居不可达 → 内存暂存 (NG-009: 不持久化, 重启即清)."""
+        with self._pending_lock:
+            self.pending_forwards.append((letter, neighbor))
 
     def _most_recent_poller(self):
         """最近活跃 = last_poll 最新的已注册未吊销 session; 无 → None."""
@@ -282,6 +294,18 @@ class Mailbox:
         del self.leases[letter.id]
         self.processed.add(letter.id)
         return letter
+
+
+def send_forward(neighbor, letter, timeout=5.0):
+    """向邻居投递 (D007). 不可达/超时/被拒一律 False, 由调用方暂存重试;
+    timeout 上限避免一个挂起邻居阻塞 post 响应."""
+    try:
+        resp = http_post(f"http://{neighbor.address}/mailbox/forward",
+                         {"neighbor_key": neighbor.shared_key,
+                          "letter": letter.to_dict()}, timeout=timeout)
+    except (urllib.error.URLError, OSError):
+        return False
+    return bool(resp.get("ok"))
 
 
 class MailboxHttpServer(ThreadingHTTPServer):
@@ -394,7 +418,7 @@ class _Handler(_JsonHandler):
         m = self.server.mailbox
         with self.server.cond:
             try:
-                m.forward(str(body.get("neighbor_key", "")), letter_d)
+                routed = m.forward(str(body.get("neighbor_key", "")), letter_d)
             except MailboxError as e:
                 return self._json(403, {"ok": False, "error": str(e)})
             except UnknownRecipient as e:
@@ -402,7 +426,18 @@ class _Handler(_JsonHandler):
             except (KeyError, ValueError, TypeError) as e:
                 return self._json(400, {"ok": False, "error": f"字段畸形: {e}"})
             self.server.cond.notify_all()
+        self._flood(routed)
         return self._json(200, {"ok": True})
+
+    def _flood(self, routed):
+        """路由结果的非本机部分: 锁外逐邻居投递, 失败进内存暂存 (D007)."""
+        if routed is None:
+            return
+        letter, targets = routed
+        m = self.server.mailbox
+        for n in targets:
+            if not send_forward(n, letter):
+                m.stage_forward(letter, n)
 
     def _handle_post(self, body, endpoint):
         party, rkey = self._party(body, endpoint)
@@ -412,7 +447,7 @@ class _Handler(_JsonHandler):
         m = self.server.mailbox
         with self.server.cond:
             try:
-                letter = m.post(str(body.get("session", "")), body["sig_ts"],
+                routed = m.post(str(body.get("session", "")), body["sig_ts"],
                                 str(body.get("sig", "")), letter_d)
             except KeyError as e:
                 return self._bad(party, f"缺字段: {e}", rkey)
@@ -423,7 +458,8 @@ class _Handler(_JsonHandler):
             except MailboxError as e:
                 return self._signed(403, party, {"ok": False, "error": str(e)}, rkey)
             self.server.cond.notify_all()
-        note = "ok" if letter is not None else "重复 id, 幂等收下"
+        self._flood(routed)
+        note = "ok" if routed is not None else "重复 id, 幂等收下"
         return self._signed(200, party, {"ok": True, "note": note}, rkey)
 
     def _handle_poll(self, body, endpoint):
