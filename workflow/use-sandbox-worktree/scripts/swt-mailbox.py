@@ -749,7 +749,23 @@ class _Parser(argparse.ArgumentParser):
         sys.exit(1)
 
 
+def _migrate_legacy_config():
+    """老路径 ~/.config/swt/mailbox.json 存在且新路径缺失 → 迁移并提示 (D015).
+    env SWT_MAILBOX_CONFIG 覆盖时跳过 (显式指定路径, 多为测试)."""
+    if os.environ.get("SWT_MAILBOX_CONFIG"):
+        return
+    new = config_path()
+    old = Path.home() / ".config/swt/mailbox.json"
+    if old.exists() and not new.exists():
+        new.parent.mkdir(parents=True, exist_ok=True)
+        os.chmod(new.parent, 0o700)
+        os.rename(old, new)
+        os.chmod(new, 0o600)
+        print(f"提示: 配置已从老路径 {old} 迁移到 {new}", file=sys.stderr)
+
+
 def main():
+    _migrate_legacy_config()
     parser = _Parser(prog="swt-mailbox.py", description="swt 信箱")
     sub = parser.add_subparsers(dest="cmd")
     p_serve = sub.add_parser("serve", help="前台启动信箱服务")

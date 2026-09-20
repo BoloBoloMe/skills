@@ -134,3 +134,23 @@ def test_status_masked(mailbox_mod, tmp_path, monkeypatch, capsys):
     assert response[:8] + "..." in out
     assert signing not in out  # 完整密钥不落 stdout (BR-006)
     assert response not in out
+
+
+def test_auto_migration(mailbox_mod, tmp_path, monkeypatch, capsys):
+    """TS-005: 老路径配置存在且新路径缺失 → 任意子命令触发迁移,
+    新路径拿到配置, 老路径移除, stderr 有迁移提示."""
+    monkeypatch.delenv("SWT_MAILBOX_CONFIG", raising=False)  # 走缺省路径
+    monkeypatch.setattr(Path, "home", lambda: tmp_path)
+    old = tmp_path / ".config" / "swt" / "mailbox.json"
+    old.parent.mkdir(parents=True)
+    old.write_text(json.dumps({"server": "http://127.0.0.1:38417",
+                               "session": "dev-legacy",
+                               "signing_key": "legacy-signing",
+                               "response_key": "legacy-response"}))
+    monkeypatch.setattr(sys, "argv", ["swt-mailbox.py", "status"])
+    mailbox_mod.main()
+    new = tmp_path / ".agents" / "sandbox-worktree" / "mailbox.json"
+    assert new.exists(), "配置未迁移到新路径"
+    assert not old.exists(), "老路径配置未移除"
+    assert json.loads(new.read_text())["session"] == "dev-legacy"
+    assert "迁移" in capsys.readouterr().err
