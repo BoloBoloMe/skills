@@ -55,11 +55,13 @@ use-sandbox-worktree skill 落地并经端到端演练验证可用 — 它管理
 - [MILESTONE-10](MILESTONE-10.md) — SKILL.md 定稿 + 终轮全链演练跑通 (含三层镜像从零制备/用户 ssh 实操 6 提交回流/登录墙 headed 弹宿主机桌面亲验): 抓获并修复 F020 (x11vnc×wayland), 拍板 D053 (展示链预留端口), 发现路由 MILESTONE-14 — 详见 [../milestone-10-full-chain-run.md](../milestone-10-full-chain-run.md)
 - [MILESTONE-13](MILESTONE-13.md) — 双模显示栈已实现 (commit 81234e6): 本机 wayland 直通 (D051) + VNC 兕底, F019 中继证伪, F020 冲突修复后 M10 演练实证 (host-display=ok / headed 弹桌面 / 兕底 display=ok); fcitx 中文输入未单独验
 - [MILESTONE-14](MILESTONE-14.md) — M10 演练发现修复: 母本挂载父目录根修 (ensure_agent_prompt_parents) / lan_ip 排除隧道接口 (F022) / swt-vnc status 存活判定改 /proc (F021); m04+m07+m09+m12 回归 177 用例全绿; 展示端口项移交 swt-cross-host-access M05
+- [MILESTONE-15](MILESTONE-15.md) — 测试基建提速: e2e marker 分层跑法落地 (归层规则+改动面映射入 tests/README.md), m12 夹具去重 (96→79 用例, 5m18s→4m16s), 全量回归绿; 夹具合并 descope 与目标校准见 U-014..017 — 详见 [../milestone-15-test-speedup.md](../milestone-15-test-speedup.md)
 
 ## 前沿
 
 <!-- 开放 + 已解除阻塞 + 未被认领的 Milestone -->
-- [MILESTONE-15](MILESTONE-15.md) — `task` — **优先级高于后续所有里程碑** (用户拍板 2026-09-13): 测试基建提速 (分层跑法/birth 夹具合并), 全量回归太慢 (m09 ~10min + m12 20-40min)
+
+(空 — MILESTONE-15 已关闭, Roadmap 无待办)
 
 ## 未决迷雾
 
@@ -85,5 +87,5 @@ M02(已关闭) ──┘                 │                       │
 M05(已关闭) ─→ M06(已关闭) ────┴─→ M07(已关闭) ─→ M09(已关闭) ┴─→ M10(已关闭) ─→ 目的地已到达
 ```
 
-- M01..M14 全部已关闭, 目的地已到达 (2026-09-13, 见上方目的地节)
-- 前沿 = MILESTONE-15 (测试基建提速, 优先级最高)
+- M01..M15 全部已关闭, 目的地已到达 (2026-09-13, 见上方目的地节)
+- M15 (测试基建提速) 于 2026-09-20 关闭: 分层跑法 + m12 夹具去重, 全量回归绿
