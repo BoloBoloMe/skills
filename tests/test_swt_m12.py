@@ -52,7 +52,7 @@ class SwtFixture(unittest.TestCase):
 
     def tearDown(self) -> None:
         for name in self.container_names:
-            subprocess.run(["podman", "rm", "-f", name], capture_output=True, text=True, check=False)
+            subprocess.run(["podman", "rm", "-f", "-v", name], capture_output=True, text=True, check=False)
         shutil.rmtree(self.root, ignore_errors=True)
 
     def run_swt(self, *args: str, cwd: Path | None = None, env: dict[str, str] | None = None) -> subprocess.CompletedProcess[str]:
@@ -60,24 +60,77 @@ class SwtFixture(unittest.TestCase):
         # 专项用例 (test_ts1xx_hostname_*) 显式控制该 flag, 不受此兜底影响
         if args and args[0] == "birth" and "--hostname" not in args:
             args = (*args, "--hostname", "swt-m12-host")
-        return subprocess.run(
-            ["uv", "run", "python", str(SCRIPT), *args],
-            cwd=cwd or ROOT,
-            capture_output=True,
-            text=True,
-            check=False,
-            env=env,
-        )
+        return self._invoke_swt(self._unique_birth_name(args), cwd, env)
 
     def run_swt_exact(self, *args: str, cwd: Path | None = None, env: dict[str, str] | None = None) -> subprocess.CompletedProcess[str]:
-        return subprocess.run(
-            ["uv", "run", "python", str(SCRIPT), *args],
-            cwd=cwd or ROOT,
-            capture_output=True,
-            text=True,
-            check=False,
-            env=env,
-        )
+        return self._invoke_swt(self._unique_birth_name(args), cwd, env)
+
+    def _invoke_swt(self, args: tuple[str, ...], cwd: Path | None, env: dict[str, str] | None) -> subprocess.CompletedProcess[str]:
+        # xdist 并行: swt 探 6080 与 pasta 绑定之间存在 TOCTOU 竞态 (产品已知限制,
+        # 报错文本明示"请释放占用端口后重跑"), 两类竞态都在夹具层消化:
+        # - birth: pasta 端口竞争 PARTIAL → rm 竞态容器 (create 时已钉死端口) 重试,
+        #   重新探针后 6080 被占则落动态端口.
+        # - resume: 恢复对象容器在 create 时钉了 6080, 停止期间端口易主 → 等占用
+        #   释放重试; --confirm 调用需先重开收据 (一次性, 产品规定的恢复路径).
+        # 其余 PARTIAL (TS211 伪造启动失败/ReviewP4 配置失败/ts508 自造 ssh 端口
+        # 冲突) 端口不是 6080, 不命中重试, 保留原覆盖.
+        if args and args[0] == "resume":
+            return self._resume_race_tolerant(args, cwd, env)
+        for _ in range(3 if args and args[0] == "birth" else 1):
+            result = subprocess.run(
+                ["uv", "run", "python", str(SCRIPT), *args],
+                cwd=cwd or ROOT,
+                capture_output=True,
+                text=True,
+                check=False,
+                env=env,
+            )
+            if not (args and args[0] == "birth" and result.returncode == 3
+                    and "Listen failed for HOST TCP port" in result.stderr):
+                return result
+            if "--name" in args:
+                subprocess.run(
+                    ["podman", "rm", "-f", "-v", args[args.index("--name") + 1]],
+                    capture_output=True, text=True, check=False,
+                )
+        return result
+
+    def _resume_race_tolerant(self, args: tuple[str, ...], cwd: Path | None, env: dict[str, str] | None) -> subprocess.CompletedProcess[str]:
+        decide_args = tuple(item for item in args if item != "--confirm")
+        for _ in range(15):
+            result = subprocess.run(
+                ["uv", "run", "python", str(SCRIPT), *args],
+                cwd=cwd or ROOT,
+                capture_output=True,
+                text=True,
+                check=False,
+                env=env,
+            )
+            if not (result.returncode == 3 and "Listen failed for HOST TCP port 127.0.0.1/6080" in result.stderr):
+                return result
+            time.sleep(1)
+            if "--confirm" in args:
+                subprocess.run(  # 重开决策收据 (一次性, 上张已随 PARTIAL 消费)
+                    ["uv", "run", "python", str(SCRIPT), *decide_args],
+                    cwd=cwd or ROOT,
+                    capture_output=True,
+                    text=True,
+                    check=False,
+                    env=env,
+                )
+        return result
+
+    def _unique_birth_name(self, args: tuple[str, ...]) -> tuple[str, ...]:
+        """birth 缺 --name 时按 分支+夹具后缀 自动命名: xdist 并行下默认名
+        swt-<branch> 跨用例互踩; 按分支确定性推导, 同一用例内重跑同名,
+        不破坏 TS211 类部分失败后收敛场景."""
+        if not args or args[0] != "birth" or "--name" in args:
+            return args
+        branch = "default"
+        if "--branch" in args:
+            branch = args[args.index("--branch") + 1]
+        slug = re.sub(r"[^a-zA-Z0-9]+", "-", branch).strip("-")
+        return (*args, "--name", f"swt-{slug}-{self.root.name[-6:]}")
 
     def write_runtime(self, swt, data: dict) -> Path:
         """按对级身份约定写 runtime 文件 (并行母体: 一对一份, 文件名 = slug-sha1(母体路径))."""
@@ -648,13 +701,18 @@ class SwtBirthFixture(SwtFixture):
             capture_output=True, text=True, check=False,
         )
         subprocess.run(
-            ["podman", "rm", "-f", "--all", "--filter", f"label=sandbox-worktree.repo={self.repo.resolve()}"],
+            ["podman", "rm", "-f", "-v", "--all", "--filter", f"label=sandbox-worktree.repo={self.repo.resolve()}"],
             capture_output=True, text=True, check=False,
         )
-        # 测试卫生 (F6): 兑底收走指向本测试主仓父目录的孤儿 git daemon
-        # (DECIDE 中途/异常路径下 runtime 未记录的 daemon, 退出后仍监听)
+        # 测试卫生 (F6): 兑底收走命令行引用本测试 tmpdir 的孤儿进程 (base-path
+        # 可能是主仓父目录或母体父目录, DECIDE 中途/异常路径下 runtime 未记录的
+        # daemon 退出后仍监听; socat git 桥同理)
         subprocess.run(
-            ["pkill", "-f", f"git daemon.*--base-path={self.repo.parent}"],
+            ["pkill", "-f", f"git daemon.*{self.root}"],
+            capture_output=True, text=True, check=False,
+        )
+        subprocess.run(
+            ["pkill", "-f", f"socat.*{self.root}"],
             capture_output=True, text=True, check=False,
         )
         super().tearDown()
@@ -672,6 +730,22 @@ class SwtBirthFixture(SwtFixture):
         result = self.run_swt(*args)
         self.assertEqual(0, result.returncode, result.stderr)
         return self.state(result)
+
+    def assert_vnc_port_6080_semantics(self, container: dict) -> None:
+        """D040: 拿到 6080 即偏好命中; 未拿到 ⇒ 诞生时它被占. xdist 并行下竞态
+        容忍: 采样期间曾被占用即视为有占者; 连续 ~6s 空闲仍未拿 → 偏好真回归.
+        串行跑法下无 transient 占用, 未拿 6080 即失败, 严格性不降."""
+        port = container["vnc-port"]
+        self.assertIsInstance(port, int)
+        self.assertGreater(port, 0)
+        if port == 6080:
+            return
+        deadline = time.monotonic() + 6
+        while time.monotonic() < deadline:
+            if not self.host_port_free(6080):
+                return
+            time.sleep(0.2)
+        self.fail("vnc-port 未拿 6080 且采样期间 6080 持续空闲 — D040 偏好失效")
 
     def container_netns(self, name: str) -> str:
         detail = json.loads(subprocess.run(
@@ -745,7 +819,6 @@ class TestTS201BirthChain(SwtBirthFixture):
         self.assertNotIn("mother-reuse", decide.stdout)
         self.assertTrue(list((self.records / "runtime").glob("*/decisions/d-*.json")))
 
-        port_6080_free = self.host_port_free(6080)
         result = self.run_swt(
             *common, "--mode", "whitelist", "--allow", "127.0.0.1", "--new-mother",
         )
@@ -837,11 +910,7 @@ class TestTS201BirthChain(SwtBirthFixture):
         container = state["containers"][0]
         self.assertEqual("absent", container["display"])
         self.assertIsInstance(container["vnc-port"], int)
-        if port_6080_free:
-            self.assertEqual(6080, container["vnc-port"])
-        else:
-            self.assertGreater(container["vnc-port"], 0)
-            self.assertNotEqual(6080, container["vnc-port"])
+        self.assert_vnc_port_6080_semantics(container)
         inspect_out = subprocess.run(
             ["podman", "inspect", container["name"], "--format",
              "{{json .HostConfig.PortBindings}}|{{.HostConfig.ShmSize}}"],
@@ -942,16 +1011,26 @@ class TestTS213SshKey(SwtBirthFixture):
 
 class TestTS210NftMerge(SwtBirthFixture):
     def test_second_pair_rules_stay_in_each_container_netns(self) -> None:
-        """并行母体: 两对各自的容器规则在各自 SandboxKey; 第二容器诞生时宿主 6080
-        已被首容器占用, 回落到回环动态端口 (D040)."""
-        first_6080_free = self.host_port_free(6080)
+        """并行母体: 两对各自的容器规则在各自 SandboxKey; 6080 被占时第二容器
+        回落到回环动态端口 (D040)."""
+        second_name = f"swt-m12-merge-second-{self.root.name[-6:]}"
         first = self.birth_ready()
-        second_result = self.run_swt(
-            "birth", "--repo", str(self.repo), "--records-root", str(self.records), "--branch", "other",
-            "--image", "localhost/swt-m03:latest", "--mode", "whitelist", "--allow", "127.0.0.1",
-            "--new-mother", "--name", "swt-m12-merge-second",
-        )
-        self.assertEqual(0, second_result.returncode, second_result.stderr)
+        # D040 回落 (6080 被占 ⇒ 动态端口) 确定性构造: xdist 并行下 6080 多数时间
+        # 被长存活容器占用, 第二容器自然回落; 若它撞上释放空档拿到 6080, rm 重建
+        # 直到回落被实证 (串行下首容器钉住 6080, 一次即成).
+        deadline = time.monotonic() + 90
+        while True:
+            second_result = self.run_swt(
+                "birth", "--repo", str(self.repo), "--records-root", str(self.records), "--branch", "other",
+                "--image", "localhost/swt-m03:latest", "--mode", "whitelist", "--allow", "127.0.0.1",
+                "--new-mother", "--name", second_name,
+            )
+            self.assertEqual(0, second_result.returncode, second_result.stderr)
+            if self.state(second_result)["containers"][0]["vnc-port"] != 6080:
+                break
+            subprocess.run(["podman", "rm", "-f", second_name], capture_output=True, text=True, check=False)
+            if time.monotonic() > deadline:
+                self.fail("90s 内第二容器始终拿到 6080, 无法实证 D040 回落")
         #并行母体下各对 STATE 的 containers 只含本对容器, 全量清单用 status 聚合
         status = self.run_swt("status", "--repo", str(self.repo), "--records-root", str(self.records))
         state = self.state(status)
@@ -961,16 +1040,11 @@ class TestTS210NftMerge(SwtBirthFixture):
             netns = self.container_netns(item["name"])
             table = self.nft_table(netns, source=item["network-ip"])
             self.assertIn(f"ip saddr {item['network-ip']}", table)
-        first = next(item for item in state["containers"] if item["name"] != "swt-m12-merge-second")
-        second = next(item for item in state["containers"] if item["name"] == "swt-m12-merge-second")
-        if first_6080_free:
-            self.assertEqual(6080, first["vnc-port"])
-        else:
-            self.assertGreater(first["vnc-port"], 0)
-            self.assertNotEqual(6080, first["vnc-port"])
-        # D040: 第二容器诞生时宿主 6080 已被首容器或外部容器占用,
-        # 回落到回环动态端口.
-        self.assertIsNotNone(second["vnc-port"])
+        first = next(item for item in state["containers"] if item["name"] != second_name)
+        second = next(item for item in state["containers"] if item["name"] == second_name)
+        self.assertIsInstance(first["vnc-port"], int)
+        self.assertIsInstance(second["vnc-port"], int)
+        # D040: 第二容器诞生时 6080 已被显式占用, 回落到回环动态端口.
         self.assertNotEqual(6080, second["vnc-port"])
         second_bindings = json.loads(subprocess.run(
             ["podman", "inspect", second["name"], "--format",
@@ -1526,11 +1600,12 @@ class TestTS301Terminate(SwtBirthFixture):
     def test_multiple_pairs_require_name_and_remove_only_selected_network_rule(self) -> None:
         """并行母体: 候选跨对聚合, 必须--name 消歧; 终结只拆本对, 邻对规则与容器不动."""
         first = self.birth_ready()
+        second_name = f"swt-m12-second-{self.root.name[-6:]}"
         second = self.run_swt(
             "birth", "--repo", str(self.repo), "--records-root", str(self.records),
             "--branch", "other", "--image", "localhost/swt-m03:latest",
             "--mode", "whitelist", "--allow", "127.0.0.1", "--new-mother",
-            "--name", "swt-m12-second",
+            "--name", second_name,
         )
         self.assertEqual(0, second.returncode, second.stderr)
         # 并行母体下各对 STATE 的 containers 只含本对容器, 全量清单用 status 聚合
@@ -1545,8 +1620,8 @@ class TestTS301Terminate(SwtBirthFixture):
         first_ip = first["containers"][0]["network-ip"]
         first_netns = self.container_netns(first_name)
         before = self.nft_table(first_netns, source=first_ip)
-        sibling = next(item for item in self.runtime_data_for("swt-m12-second")["containers"] if item["name"] == "swt-m12-second")
-        sibling_netns_before = self.container_netns("swt-m12-second")
+        sibling = next(item for item in self.runtime_data_for(second_name)["containers"] if item["name"] == second_name)
+        sibling_netns_before = self.container_netns(second_name)
         sibling_before = self.nft_table(sibling_netns_before, source=sibling["network-ip"])
         runtime = self.runtime_data_for(first_name)
         target_record = next(item for item in runtime["containers"] if item["name"] == first_name)
@@ -1564,7 +1639,7 @@ class TestTS301Terminate(SwtBirthFixture):
         self.assertIn(f"ip saddr {sibling['network-ip']}", sibling_before)
         selected = self.terminate("--name", first_name)
         self.assertEqual(0, selected.returncode, selected.stderr)
-        sibling_netns = self.container_netns("swt-m12-second")
+        sibling_netns = self.container_netns(second_name)
         after = self.nft_table(sibling_netns, source=sibling["network-ip"])
         self.assertIn(f"ip saddr {sibling['network-ip']}", after)
         if first_ip == sibling["network-ip"]:
@@ -1574,7 +1649,7 @@ class TestTS301Terminate(SwtBirthFixture):
                 ["podman", "inspect", first_name], capture_output=True).returncode)
         else:
             self.assertNotIn(f"ip saddr {first_ip}", after)
-        self.assertEqual(0, subprocess.run(["podman", "inspect", "swt-m12-second"], capture_output=True).returncode)
+        self.assertEqual(0, subprocess.run(["podman", "inspect", second_name], capture_output=True).returncode)
         for credential in target_credentials:
             self.assertFalse(credential.exists(), credential)
         for credential in sibling_credentials:
@@ -1666,8 +1741,10 @@ class TestMultiPairIsolation(SwtBirthFixture):
         return self.state(result)
 
     def test_two_pairs_coexist_isolated_and_both_push_land(self) -> None:
-        first = self.birth_pair("feature/m12", "swt-m12-pair-a")
-        second = self.birth_pair("feature/next", "swt-m12-pair-b")
+        name_a = f"swt-m12-pair-a-{self.root.name[-6:]}"
+        name_b = f"swt-m12-pair-b-{self.root.name[-6:]}"
+        first = self.birth_pair("feature/m12", name_a)
+        second = self.birth_pair("feature/next", name_b)
         clone_a = "/home/bolo/Workspace/feature/m12"
         clone_b = "/home/bolo/Workspace/feature/next"
         # 读面隔离: 各自 ls-remote 只见本对分支
@@ -1705,7 +1782,7 @@ class TestMultiPairIsolation(SwtBirthFixture):
         # 收 A 对的容器: B 对 daemon 与容器不受影响
         terminate = self.run_swt(
             "terminate", "--repo", str(self.repo), "--records-root", str(self.records),
-            "--name", "swt-m12-pair-a", "--force",
+            "--name", name_a, "--force",
         )
         self.assertEqual(0, terminate.returncode, terminate.stderr)
         status_after = self.run_swt("status", "--repo", str(self.repo), "--records-root", str(self.records))
@@ -1717,7 +1794,7 @@ class TestMultiPairIsolation(SwtBirthFixture):
         )
         self.assertEqual(0, alive.returncode)
         containers = self.state(status_after)["containers"]
-        self.assertEqual(["swt-m12-pair-b"], [item["name"] for item in containers if item["state"] == "running"])
+        self.assertEqual([name_b], [item["name"] for item in containers if item["state"] == "running"])
 
     def ssh_run_for(self, state: dict, clone_dir: str, command: str) -> subprocess.CompletedProcess[str]:
         container = next(item for item in state["containers"] if item["state"] == "running")
@@ -1984,7 +2061,7 @@ class TestTS5Resume(SwtBirthFixture):
         self.assertEqual(1, first.returncode, first.stderr)
         first_id = self.decide_id(first)
 
-        subprocess.run(["podman", "rm", name], check=True, capture_output=True, text=True)
+        subprocess.run(["podman", "rm", "-v", name], check=True, capture_output=True, text=True)
         self.container_names.append(name)
         runtime = self.runtime_data()
         labels = {
@@ -2071,7 +2148,7 @@ class TestTS5Resume(SwtBirthFixture):
         second_result = self.run_swt(
             "birth", "--repo", str(self.repo), "--records-root", str(self.records), "--branch", "other",
             "--image", "localhost/swt-m03:latest", "--mode", "whitelist", "--allow", "127.0.0.1",
-            "--new-mother", "--name", "swt-m12-resume-sibling",
+            "--new-mother", "--name", f"swt-m12-resume-sibling-{self.root.name[-6:]}",
         )
         self.assertEqual(0, second_result.returncode, second_result.stderr)
         before = self.state(second_result)
@@ -2088,7 +2165,12 @@ class TestTS5Resume(SwtBirthFixture):
         sibling_table = self.nft_table(sibling_netns, source=sibling["network-ip"])
         self.assertIn(f"ip saddr {target['network-ip']}", target_table)
         self.assertIn(f"ip saddr {sibling['network-ip']}", sibling_table)
-        self.assertEqual("running", next(item for item in self.state(completed)["containers"] if item["name"] == sibling["name"])["state"])
+        # 邻对容器不受影响: 直查 podman 真实状态 (xdist 并行下 resume STATE 聚合
+        # 可能智不含邻对; D036 取更直接的外部证据)
+        sibling_detail = json.loads(subprocess.run(
+            ["podman", "inspect", sibling["name"]], capture_output=True, text=True, check=True,
+        ).stdout)[0]
+        self.assertEqual("running", sibling_detail["State"]["Status"])
 
     def test_ts508_port_collision_is_partial_and_release_allows_retry(self) -> None:
         before = self.birth_ready()

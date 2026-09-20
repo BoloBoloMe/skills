@@ -39,9 +39,28 @@ mock env) 与纯函数归快层.
 不降低证据等级; 快层用例的 fake 边界是被测系统之外的接缝 (如 podman 不存在于
 该用例假设的环境), 不是把系统行为 mock 掉.
 
+## m12 并行跑法 (MILESTONE-16)
+
+`uv run --with pytest --with pytest-xdist pytest tests/test_swt_m12.py -n 4 -q`
+(~70s, 串行 ~4min; 里程碑关账全量回归仍走串行)
+
+并行安全前提 (新用例必须遵守):
+
+- 容器名必须带夹具后缀 (`-{self.root.name[-6:]}`); birth 缺省 --name 由夹具按
+  分支+后缀自动派生, 禁止硬编码固定容器名.
+- 6080 是全局唯一偏好端口: 常规用例不得断言必须拿到 6080. 验证偏好用 TS201 的
+  采样断言模式, 验证回落用 TS210 的重试构造模式.
+- swt 探 6080 与 pasta 绑定间存在产品级 TOCTOU 竞态: birth/resume 的 6080 竞态
+  PARTIAL 由夹具 `_invoke_swt` 自动消化 (birth rm 重建 / resume 重开收据重试),
+  新用例不要自行断言这两类竞态 PARTIAL 的形态; ts508 类自造端口冲突断言不受
+  影响 (端口非 6080).
+- 会话级兜底 (conftest sessionfinish) 清理 swt-m12-test-* 孤儿进程 (git daemon/
+  socat 桥) 与会话内新建匿名卷; 跨轮泄漏用 `podman volume ls` / `pgrep -af 'git
+  daemon.*swt-m12-tes[t]'` 核查.
+
 ## m12 已知事项
 
 - 用例类一律继承 `SwtBirthFixture`, 禁止继承 `TestTS201BirthChain`
   (继承会原样重跑其 birth 链大用例; M15 已清除 17 份此类重复).
-- TestMultiPairIsolation 曾见一次性 flake (ssh 端口探测撞上 HTTP 读,
-  BadStatusLine), 重跑即过; 复现时留现场.
+- M15 基线轮的 TestMultiPairIsolation flake (BadStatusLine 读 ssh banner) 根因
+  已修 (M16, swt identity_probe 容忍非 HTTP 应答, U-018).

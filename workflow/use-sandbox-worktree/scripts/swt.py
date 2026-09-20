@@ -18,6 +18,7 @@ from __future__ import annotations
 import argparse
 import fcntl
 import hashlib
+import http.client
 import ipaddress
 import json
 import os
@@ -2189,11 +2190,13 @@ class MailboxWireError(Exception):
 
 def identity_probe(port: int, timeout: float = 0.5) -> bool:
     """无认证 GET /__identity__, 确认目标端口是本机 swt-mailbox."""
+    # http.client.HTTPException: 探到非 HTTP 服务 (如容器 sshd 回 SSH banner) —
+    # 扫区间场景必须容忍, 按无应答处理 (M16 并行回归实证)
     try:
         with urllib.request.urlopen(
                 f"http://127.0.0.1:{port}/__identity__", timeout=timeout) as response:
             payload = json.loads(response.read() or b"{}")
-    except (urllib.error.URLError, OSError, json.JSONDecodeError):
+    except (urllib.error.URLError, OSError, http.client.HTTPException, json.JSONDecodeError):
         return False
     return isinstance(payload, dict) and payload.get("service") == MAILBOX_SERVICE
 

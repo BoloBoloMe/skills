@@ -457,7 +457,7 @@ class _DisplayContainerTestCase(unittest.TestCase):
     def tearDownClass(cls):
         for name in getattr(cls, "containers", []):
             subprocess.run(
-                ["podman", "rm", "-f", name], capture_output=True,
+                ["podman", "rm", "-f", "-v", name], capture_output=True,
             )
 
     def _start_container(self, name: str, geom: str | None = None) -> None:
@@ -472,7 +472,7 @@ class _DisplayContainerTestCase(unittest.TestCase):
                                     check=False, timeout=300)
         type(self).containers.append(name)  # 断言前登记, 失败也兜底清理
         self.addCleanup(
-            subprocess.run, ["podman", "rm", "-f", name], capture_output=True,
+            subprocess.run, ["podman", "rm", "-f", "-v", name], capture_output=True,
         )
         self.assertEqual(run_result.returncode, 0, run_result.stderr)
         started = subprocess.run(

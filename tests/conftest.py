@@ -182,3 +182,33 @@ def pytest_collection_modifyitems(items):
         explicit = _E2E_CLASS_TABLE.get(Path(str(item.path)).name, set())
         if cls.__name__.endswith("E2E") or "SwtBirthFixture" in mro_names or cls.__name__ in explicit:
             item.add_marker(pytest.mark.e2e)
+
+
+# ---------------------------------------------------------------------------
+# swt e2e 兜底卫生 (MILESTONE-16): xdist 并行下竞态重试路径会残留 per-tmpdir
+# 孤儿进程 (git daemon / socat git 桥) 与匿名卷 (.venv 遮罩); 用例级 tearDown
+# 已尽责清扫, 会话级再兜底一次, 防 podman 锁/进程资源跨轮累积.
+# ---------------------------------------------------------------------------
+
+_VOLUMES_BEFORE: set = set()
+
+
+def pytest_sessionstart(session):
+    if os.environ.get("PYTEST_XDIST_WORKER"):  # 只在 controller 记基线
+        return
+    result = subprocess.run(["podman", "volume", "ls", "-q"],
+                            capture_output=True, text=True, check=False)
+    _VOLUMES_BEFORE.update(result.stdout.split())
+
+
+def pytest_sessionfinish(session, exitstatus):
+    if os.environ.get("PYTEST_XDIST_WORKER"):
+        return
+    for pattern in (r"git daemon.*/tmp/swt-m12-test-", r"socat.*/tmp/swt-m12-test-"):
+        subprocess.run(["pkill", "-f", pattern], capture_output=True, check=False)
+    result = subprocess.run(["podman", "volume", "ls", "-q"],
+                            capture_output=True, text=True, check=False)
+    new = [v for v in result.stdout.split() if v not in _VOLUMES_BEFORE]
+    if new:
+        subprocess.run(["podman", "volume", "rm", "-f", *new],
+                       capture_output=True, check=False)

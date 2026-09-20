@@ -180,7 +180,7 @@ class NetFixture:
             self.listener.terminate()
             self.listener.wait(timeout=10)
         if self.container is not None:
-            run(["podman", "rm", "-f", self.container])
+            run(["podman", "rm", "-f", "-v", self.container])
         if self.network is not None:
             run(["podman", "network", "rm", self.network])
 
@@ -324,7 +324,7 @@ class NetworkModeTestCase(unittest.TestCase):
             self.assertEqual(conflict.returncode, 1, "异己容器 saddr 未被拒绝")
             self.assertTrue(conflict.stderr.startswith("APPLY-CONFLICT"), conflict.stderr)
         finally:
-            run(["podman", "rm", "-f", fx.token + "-b"])
+            run(["podman", "rm", "-f", "-v", fx.token + "-b"])
 
 
 class ArgumentGuardTestCase(unittest.TestCase):
@@ -611,7 +611,7 @@ class FirewallExtensionTestCase(unittest.TestCase):
             self.assertNotIn(f"ip saddr {fx.container_ip}", show.stdout)
             self.assertEqual(show.stdout.count(f"ip saddr {other_ip}"), 2)
         finally:
-            run(["podman", "rm", "-f", other_name])
+            run(["podman", "rm", "-f", "-v", other_name])
 
 
 def parse_chain_blocks(text: str) -> dict[str, str]:
@@ -727,7 +727,7 @@ class PastaFixture:
             self.listener.terminate()
             self.listener.wait(timeout=10)
         if self.container is not None:
-            run(["podman", "rm", "-f", self.container])
+            run(["podman", "rm", "-f", "-v", self.container])
         # netns 随容器消失, 无需单独清理
 
 
