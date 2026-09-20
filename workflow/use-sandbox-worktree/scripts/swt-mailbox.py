@@ -548,6 +548,16 @@ class _Handler(_JsonHandler):
                             {"ok": True, "letter_id": str(body["letter_id"])}, rkey)
 
 
+class _NoRedirect(urllib.request.HTTPRedirectHandler):
+    """禁重定向: 上游 3xx 原样透传, 不允许把 POST 改 GET 跟随."""
+
+    def redirect_request(self, *args, **kwargs):
+        return None
+
+
+_OPENER = urllib.request.build_opener(_NoRedirect)
+
+
 class _RelayHandler(_JsonHandler):
     """中转面: OpenAI 兼容端点, Bearer relay key 认证."""
 
@@ -573,6 +583,59 @@ class _RelayHandler(_JsonHandler):
         self._json(200, {"object": "list", "data": [
             {"id": m, "object": "model", "created": 0, "owned_by": "swt-relay"}
             for m in sorted(rk.models)]})
+
+    def do_POST(self):
+        path = urlparse(self.path).path
+        if path == "/v1/chat/completions":
+            return self._handle_chat_completions()
+        self._json(404, {"error": "not found"})
+
+    def _handle_chat_completions(self):
+        relay = self.server.relay
+        try:
+            body_raw = self.rfile.read(int(self.headers.get("Content-Length", 0)))
+            body = json.loads(body_raw or b"{}")
+        except json.JSONDecodeError:
+            return self._relay_error(400, "bad json", "bad_request")
+        if not isinstance(body, dict):
+            return self._relay_error(400, "bad json", "bad_request")
+        if body.get("stream"):
+            return self._relay_error(400, "不支持 stream=true (SSE 未实现)",
+                                     "bad_request")
+        try:
+            relay.acquire(self._bearer(), body.get("model"))
+        except RelayError as e:
+            types = {401: "authentication_error", 403: "permission_error",
+                     429: "rate_limit_error"}
+            return self._relay_error(e.status, str(e),
+                                     types.get(e.status, "relay_error"))
+        self._forward(body_raw)
+
+    def _forward(self, body_raw):
+        """转发上游 OpenAI 兼容 API 并回传. 上游 HTTP 错误透传状态与 body;
+        连不上 502, 超时 504, 不崩服务."""
+        srv = self.server
+        req = urllib.request.Request(
+            srv.upstream_base.rstrip("/") + "/v1/chat/completions",
+            data=body_raw,
+            headers={"Content-Type": "application/json",
+                     "Authorization": f"Bearer {srv.upstream_key}"})
+        try:
+            with _OPENER.open(req, timeout=srv.upstream_timeout) as r:
+                code, raw = r.status, r.read()
+        except urllib.error.HTTPError as e:
+            code, raw = e.code, e.read()
+        except (urllib.error.URLError, OSError) as e:
+            reason = getattr(e, "reason", e)  # URLError 包一层, 解出真因
+            if isinstance(reason, (TimeoutError, socket.timeout)):
+                return self._relay_error(504, "上游超时", "upstream_error")
+            return self._relay_error(502, f"上游不可达: {reason}",
+                                     "upstream_error")
+        self.send_response(code)
+        self.send_header("Content-Type", "application/json")
+        self.send_header("Content-Length", str(len(raw)))
+        self.end_headers()
+        self.wfile.write(raw)
 
 
 class _AdminHandler(_JsonHandler):

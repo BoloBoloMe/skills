@@ -182,3 +182,22 @@ def test_relay_models(relay_serves, upstream):
     assert code == 200, resp
     assert resp["object"] == "list"
     assert {m["id"] for m in resp["data"]} == {"m-a", "m-b"}
+
+
+def test_relay_chat(relay_serves, upstream):
+    """relay key POST /v1/chat/completions: 假上游收到请求并返回,
+    响应原样转回客户端."""
+    srv = relay_serves(upstream.base_url)
+    issued = create_relay_key(srv, ["m-a"])
+    code, resp = http_json("POST", srv.relay_port, "/v1/chat/completions",
+                           {"model": "m-a",
+                            "messages": [{"role": "user", "content": "hi"}]},
+                           headers=bearer(issued["key"]))
+    assert code == 200, resp
+    assert resp["id"] == "chatcmpl-fake"
+    assert resp["choices"][0]["message"]["content"] == "fake-upstream-reply"
+    assert len(upstream.server.requests) == 1
+    got = upstream.server.requests[0]
+    assert got["path"] == "/v1/chat/completions"
+    assert got["authorization"] == f"Bearer {UPSTREAM_KEY}"
+    assert got["body"]["model"] == "m-a"
