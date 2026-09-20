@@ -245,3 +245,35 @@ def test_exclude_source_neighbor(mesh_serves, spy_neighbor):
     assert [r["letter"]["id"] for r in spy_c.received] == ["E-1"], \
         "A 应把信转发给另一邻居 C"
     assert spy_b.received == [], "A 不应把信转发回来源邻居 B"
+
+
+def test_pending_forward_retry(mesh_serves):
+    """TS-005: A 的邻居 B 未启动; A post 给 B 的 session → 转发失败进内存
+    暂存 (post 仍 ok); B 启动后重试线程自动发出, B 的 poll 取到."""
+    port_b = free_port()
+    srv_a = mesh_serves("a", neighbors=[neighbor(port_b, "k-ab")], retry="0.2")
+    creds_a = register_session(srv_a, "a-host")
+
+    code, _ = post_letter(srv_a, "a-host", creds_a["signing_key"],
+                          make_letter(letter_id="P-1", to="b-dev",
+                                      body="等 B 回来", from_="a-host"))
+    assert code == 200  # 邻居不可达不阻塞投信, 信进暂存
+
+    # B 上线 (同端口, 邻居表互配 A), 重试线程应把暂存信发出;
+    # 若重试抢在 b-dev 注册前到达, B 无处可转返回 404, A 重新暂存下轮再试
+    srv_b = mesh_serves("b", neighbors=[neighbor(srv_a.port, "k-ab")],
+                        port=port_b)
+    assert srv_b.port == port_b, "预设端口被抢, 测试环境不干净"
+    creds_b = register_session(srv_b, "b-dev")
+    deadline = time.time() + 15
+    letter = None
+    while time.time() < deadline:
+        code, resp = poll(srv_b, "b-dev", creds_b["signing_key"])
+        assert code == 200
+        letter = resp["payload"]["letter"]
+        if letter is not None:
+            break
+        time.sleep(0.2)
+    assert letter is not None, "B 恢复后暂存信未被重发"
+    assert letter["id"] == "P-1"
+    assert letter["body"] == "等 B 回来"

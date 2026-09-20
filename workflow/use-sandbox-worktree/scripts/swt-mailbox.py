@@ -222,13 +222,15 @@ class Mailbox:
             if target is None:
                 raise UnknownRecipient("空收件人且无活跃 session (无人 poll 过)")
             letter.to_session = target
-        self.seen_ids[letter.id] = self._now()
         if letter.to_session in self.sessions:
+            self.seen_ids[letter.id] = self._now()
             self.queue.setdefault(letter.to_session, []).append(letter)
             return letter, []
         targets = [n for n in self.neighbors if n is not source]
         if not targets:
+            # 无处可去不记 seen: 若邻居端只是暂未注册收件人, 重试仍能送达
             raise UnknownRecipient(f"收件 session 不在本机: {letter.to_session}")
+        self.seen_ids[letter.id] = self._now()
         return letter, targets
 
     def _neighbor_by_key(self, key):
@@ -254,6 +256,15 @@ class Mailbox:
         """邻居不可达 → 内存暂存 (NG-009: 不持久化, 重启即清)."""
         with self._pending_lock:
             self.pending_forwards.append((letter, neighbor))
+
+    def retry_pending(self):
+        """重试暂存信: 发出则移除, 仍不可达则留待下轮 (邻居端 seen-id 兑底
+        重复). 邻居转发状态机: 待转发 --可达--> 已发出, --重试定时器--> 待转发."""
+        with self._pending_lock:
+            pending, self.pending_forwards = self.pending_forwards, []
+        for letter, n in pending:
+            if not send_forward(n, letter):
+                self.stage_forward(letter, n)
 
     def _most_recent_poller(self):
         """最近活跃 = last_poll 最新的已注册未吊销 session; 无 → None."""
@@ -738,11 +749,20 @@ def cmd_serve(args):
     signal.signal(signal.SIGTERM, _term)
     admin_thread = threading.Thread(target=admin.serve_forever, daemon=True)
     admin_thread.start()
+    retry_seconds = float(os.environ.get("SWT_MAILBOX_RETRY_SECONDS", "5"))
+    retry_stop = threading.Event()
+
+    def _retry_loop():
+        while not retry_stop.wait(retry_seconds):
+            mailbox.retry_pending()
+
+    threading.Thread(target=_retry_loop, daemon=True).start()
     try:
         server.serve_forever()
     except KeyboardInterrupt:
         pass
     finally:
+        retry_stop.set()
         admin.shutdown()
         admin.server_close()
         server.server_close()
