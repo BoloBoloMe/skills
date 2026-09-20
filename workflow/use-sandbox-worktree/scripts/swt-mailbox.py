@@ -205,11 +205,18 @@ class Mailbox:
         self._verify(session_id, sig_ts, sig,
                      str(letter_d["id"]), str(letter_d["body"]))
         letter = Letter.from_dict(letter_d)
-        if letter.id in self.seen_ids:
+        if not self._validate_incoming(letter):
             return None  # 幂等: 重复 id 直接 ok
+        return self._route(letter, source=None)
+
+    def _validate_incoming(self, letter):
+        """入信公共校验 (post/forward 同一套): seen_ids 幂等 (已见 → False)
+        + type 白名单 (未知类型 → MailboxError)."""
+        if letter.id in self.seen_ids:
+            return False
         if letter.type not in MSG_TYPES:
             raise MailboxError(f"未知类型: {letter.type} 不在 {MSG_TYPES}")
-        return self._route(letter, source=None)
+        return True
 
     def _route(self, letter, source):
         """路由 (D007): 收件人在本机 → 排队, 返回 (letter, []);
@@ -246,10 +253,8 @@ class Mailbox:
         if src is None:
             raise MailboxError("neighbor_key 无效")
         letter = Letter.from_dict(letter_d)
-        if letter.id in self.seen_ids:
+        if not self._validate_incoming(letter):
             return None  # 幂等: 重复 id 直接 ok
-        if letter.type not in MSG_TYPES:
-            raise MailboxError(f"未知类型: {letter.type} 不在 {MSG_TYPES}")
         return self._route(letter, source=src)
 
     def stage_forward(self, letter, neighbor):
