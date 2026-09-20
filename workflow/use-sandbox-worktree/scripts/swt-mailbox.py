@@ -609,6 +609,46 @@ def cmd_fetch():
         return
 
 
+# ======================================================================
+# send CLI: 凭证探测 (同取信) → HMAC 签名 POST /mailbox/post
+# ======================================================================
+
+def cmd_send(args):
+    creds = load_credentials()
+    if creds is None:
+        print("致命: 未找到信箱凭证 "
+              "(env SWT_MAILBOX_URL/SWT_SESSION_* 或配置文件)", file=sys.stderr)
+        sys.exit(3)
+    url = creds["server"].rstrip("/")
+    sid = creds["session"]
+    skey = creds["signing_key"]
+    letter = {"id": uuid.uuid4().hex, "ts": time.time(), "from": sid,
+              "to": args.to, "type": args.type, "body": args.body}
+    sig_ts = str(time.time())
+    try:
+        resp = http_post(url + "/mailbox/post",
+                         {"session": sid, "sig_ts": sig_ts,
+                          "sig": sign(skey, sid, sig_ts,
+                                      letter["id"], letter["body"]),
+                          "letter": letter}, timeout=10)
+    except urllib.error.HTTPError as e:
+        detail = ""
+        try:
+            detail = json.loads(e.read() or b"{}").get("payload", {}).get("error", "")
+        except (json.JSONDecodeError, AttributeError):
+            pass
+        print(f"致命: 服务端拒绝投信 ({e.code}) {detail}", file=sys.stderr)
+        sys.exit(3)
+    except (urllib.error.URLError, OSError) as e:
+        print(f"致命: 信箱不可达: {e}", file=sys.stderr)
+        sys.exit(3)
+    payload = resp.get("payload") or {}
+    if not payload.get("ok"):
+        print(f"致命: 投信失败: {payload.get('error', resp)}", file=sys.stderr)
+        sys.exit(3)
+    print(f"已投递给 {letter['to'] or '(最近活跃 session)'}: {letter['id']}")
+
+
 def cmd_serve(args):
     spath = state_path()
     mailbox = Mailbox(db_path=spath.parent / "server.db")
@@ -640,16 +680,31 @@ def cmd_serve(args):
         spath.unlink(missing_ok=True)
 
 
+class _Parser(argparse.ArgumentParser):
+    """参数错误 exit 1 (TECHNICAL CLI 契约; argparse 缺省是 2)."""
+
+    def error(self, message):
+        self.print_usage(sys.stderr)
+        print(f"错误: {message}", file=sys.stderr)
+        sys.exit(1)
+
+
 def main():
-    parser = argparse.ArgumentParser(prog="swt-mailbox.py", description="swt 信箱")
+    parser = _Parser(prog="swt-mailbox.py", description="swt 信箱")
     sub = parser.add_subparsers(dest="cmd")
     p_serve = sub.add_parser("serve", help="前台启动信箱服务")
     p_serve.add_argument("--port", type=int, default=DEFAULT_PORT,
                          help="信箱端口区间起点 (含), 共 10 个")
     p_serve.add_argument("--admin-port", type=int, default=DEFAULT_ADMIN_PORT)
+    p_send = sub.add_parser("send", help="发信到指定 session")
+    p_send.add_argument("--to", required=True, help="收件 session.id")
+    p_send.add_argument("--type", required=True, choices=MSG_TYPES)
+    p_send.add_argument("--body", required=True, help="信件正文")
     args = parser.parse_args()
     if args.cmd == "serve":
         cmd_serve(args)
+    elif args.cmd == "send":
+        cmd_send(args)
     else:
         cmd_fetch()  # 缺省动作 = 取信 (D001)
 
