@@ -89,3 +89,40 @@ def test_waypipe_missing_skipped(serves, tmp_path, monkeypatch, capsys):
     out = capsys.readouterr().out
     assert "swt.pull-window" not in out  # 信正文不呈现给 LLM
     assert "waypipe" in out              # 安装提示 (不断言精确文案)
+
+
+def test_rate_limit(serves, tmp_path, monkeypatch, capsys):
+    """TS-002: waypipe 在场; 第一封正常呈现; 300s 内同容器第二封
+    → 自动 ack skipped:rate-limited, 不呈现."""
+    srv = serves()
+    creds = register_session(srv, "dev1")
+    skey = creds["signing_key"]
+    cli_env(monkeypatch, srv, "dev1", skey, creds["response_key"],
+            tmp_path / "cli")
+
+    mod = load_module()
+    monkeypatch.setattr(mod, "waypipe_present", lambda: True)
+    acks = spy_acks(mod, monkeypatch)
+
+    # 第一封: 过门, 正常呈现后 cmd_fetch 返回
+    code, _ = post_letter(srv, "dev1", skey,
+                          make_letter(letter_id="PW-1", to="dev1",
+                                      type_="exec", body=PULL_WINDOW_BODY))
+    assert code == 200
+    mod.cmd_fetch()
+    out = capsys.readouterr().out
+    assert "swt.pull-window" in out      # 正常呈现信正文
+    assert not any(o.startswith("skipped") for _, o in acks)
+
+    # 300s 内第二封 (同容器 c1): skipped:rate-limited, 不呈现, 继续 poll
+    code, _ = post_letter(srv, "dev1", skey,
+                          make_letter(letter_id="PW-2", to="dev1",
+                                      type_="exec", body=PULL_WINDOW_BODY))
+    assert code == 200
+    t = threading.Thread(target=mod.cmd_fetch, daemon=True)
+    t.start()
+    wait_processed(srv, "dev1", skey, "PW-2")
+
+    assert ("PW-2", "skipped:rate-limited") in acks
+    out = capsys.readouterr().out
+    assert "swt.pull-window" not in out  # 限频信不呈现给 LLM

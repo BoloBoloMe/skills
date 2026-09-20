@@ -527,9 +527,15 @@ def pull_window_container(letter):
 
 
 def gate_pull_window(container, state, now=time.time):
-    """拉窗门禁: 返回 None = 过门; 否则 = skipped outcome."""
+    """拉窗门禁: 返回 None = 过门 (并记限频时刻); 否则 = skipped outcome.
+    限频时刻表在 state["lastPullWindowAt"] (dict[容器名 -> 时间戳])."""
     if not waypipe_present():
         return "skipped:waypipe-missing"
+    table = state.setdefault("lastPullWindowAt", {})
+    last = table.get(container)
+    if last is not None and now() - float(last) < PULL_WINDOW_MIN_INTERVAL:
+        return "skipped:rate-limited"
+    table[container] = now()
     return None
 
 
@@ -656,6 +662,7 @@ def cmd_fetch():
                 if outcome == "skipped:waypipe-missing":
                     print(WAYPIPE_MISSING_HINT, flush=True)
                 continue
+            save_cli_state(state)  # 过门即落限频时刻 (D014)
         state["pending_ack"] = {"letter_id": letter.get("id", ""),
                                 "lease_token": payload.get("lease_token", "")}
         save_cli_state(state)  # 先落盘再输出, 崩溃后下次调用仍能回执
