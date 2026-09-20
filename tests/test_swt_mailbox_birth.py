@@ -27,7 +27,7 @@ import pytest
 
 from conftest import ADMIN_TOKEN as SERVE_ADMIN_TOKEN
 from conftest import SCRIPT as MAILBOX_SCRIPT
-from conftest import make_letter, post_letter, register_session
+from conftest import make_letter, poll, post_letter, register_session
 
 ROOT = Path(__file__).resolve().parents[1]
 SWT_SCRIPT = ROOT / "workflow" / "use-sandbox-worktree" / "scripts" / "swt.py"
@@ -248,3 +248,45 @@ def test_container_fetch_with_env(swt, serves, tmp_path):
                           capture_output=True, text=True, timeout=20)
     assert proc.returncode == 0
     assert "出生问候" in proc.stdout
+
+
+def _load_mailbox_module():
+    spec = importlib.util.spec_from_file_location("swt_mailbox_mod",
+                                                  MAILBOX_SCRIPT)
+    module = importlib.util.module_from_spec(spec)
+    sys.modules["swt_mailbox_mod"] = module
+    spec.loader.exec_module(module)
+    return module
+
+
+# TS-003 (AC-007): 容器发信回归 — birth 烘入的 env 凭证可发信, 目标 session 取到.
+# send CLI 属 ISSUE-04 (复用 ISSUE-01 的 env 凭证探测 load_credentials);
+# 本切片验证烘入变量与该探测路径及发信协议对得上, 不测 send 的 HTTP 细节.
+def test_container_send(swt, serves, tmp_path, monkeypatch):
+    srv = serves()
+    state = _real_serve_state(srv, tmp_path)
+    baked, record = _wire_env_against(swt, state)
+    assert record["status"] == "connected"
+    sender = record["session"]
+    tester = register_session(srv, "tester")
+
+    # 烘入变量须被凭证探测原样解析 (env 优先于设备配置文件)
+    mailbox = _load_mailbox_module()
+    for name in ("SWT_MAILBOX_URL", "SWT_SESSION_ID",
+                 "SWT_SESSION_SIGNING_KEY", "SWT_SESSION_RESPONSE_KEY"):
+        monkeypatch.setenv(name, baked[name])
+    monkeypatch.setenv("SWT_MAILBOX_CONFIG", str(tmp_path / "cli" / "mailbox.json"))
+    creds = mailbox.load_credentials()
+    assert creds["session"] == sender
+    assert creds["signing_key"] == baked["SWT_SESSION_SIGNING_KEY"]
+
+    # 凭该组凭证发一封 notify 给 tester, tester poll 取到且发件人可辨
+    code, _ = post_letter(srv, creds["session"], creds["signing_key"],
+                          make_letter(to="tester", body="容器发出的信",
+                                      from_=sender))
+    assert code == 200
+    code, resp = poll(srv, "tester", tester["signing_key"])
+    assert code == 200
+    letter = resp["payload"]["letter"]
+    assert letter["body"] == "容器发出的信"
+    assert letter["from"] == sender
