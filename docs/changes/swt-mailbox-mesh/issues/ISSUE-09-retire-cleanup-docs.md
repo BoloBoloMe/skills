@@ -2,7 +2,7 @@
 - `../EXECUTION.md`
 
 ## 执行
-- [ ] 已实现
+- [x] 已实现
 
 ## 要构建什么
 旧机制退役与文档更新: 删除旧文件 (pi/extensions/swt-mailbox-relay.ts + swt-mailbox-fetch.mjs + scripts/swt-base-server.py + scripts/swt-base-server.service), 更新 sync-to-pi.py 同步列表, 更新 agent-prompts 三母本取信指引, 更新 SKILL.md 基础服务节. 适合 AFK: 删除清单和文档更新点已在决策中明确定义.
