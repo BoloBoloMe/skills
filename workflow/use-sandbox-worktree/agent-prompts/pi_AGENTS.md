@@ -5,11 +5,7 @@
 任务涉及本机已装软件, 路径或系统配置时, 读 `~/AGENTS.md`; 不存在就跳过.
 要运行 Python 脚本/模块用 `uv run python`, 添加依赖用 `uv add`, 禁止直接使用 `python`/`pip`.
 当需要调用某个不在列表中的 skill 时, 读 `~/.agents/skills/<skill-name>/SKILL.md`; 文件不存在就报告未找到, 不要搜索其他位置.
-当被要求操作 `工作空间/workspace`, `标签页/tab`, `窗格/pane`, 或 `开新会话`/`使用子代理`/`使用 subagent` 时, 是 herdr 操作, 用法调用 skill `herdr`.
-开新会话时:
-1. 我没指定的项 (llm/思考深度), 用 `llm-select` skill 选定; 
-2. 开在父会话所在工作空间的新标签页; 我没指定标签名时, 按默认格式 `S-<子代理名>-<序号>` 生成.
-3. 选定 agent: openai 的 llm 用 `codex`, kimi 的 llm 用 `kimi`, 其他 llm 用 `pi`. 总是以 yolo 模式启动 codex/kimi: 全全自动执行, 不进行任何人工审批的全权访问模式.
+在 pi 中, subagent/子代理/开新会话 都是在 herdr 中开启新会话的代称, 使用 `use-herdr` 了解如何开启.
 
 你在 sandbox 容器内, 不是宿主机.   
 网络受宿主机管控: 访问不通先怀疑管控而非故障, 列出所需站点报给我; 长时间排查网络故障是浪费.
