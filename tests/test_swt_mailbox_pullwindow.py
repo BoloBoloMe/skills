@@ -91,6 +91,76 @@ def test_waypipe_missing_skipped(serves, tmp_path, monkeypatch, capsys):
     assert "waypipe" in out              # 安装提示 (不断言精确文案)
 
 
+def test_waypipe_missing_hint_dedup(serves, tmp_path, monkeypatch, capsys):
+    """review 修复 (平移旧扩展 waypipeMissingNotified): 同一取信进程内
+    waypipe 缺席期连续两封拉窗信, stdout 只含一次安装提示."""
+    srv = serves()
+    creds = register_session(srv, "dev1")
+    skey = creds["signing_key"]
+    cli_env(monkeypatch, srv, "dev1", skey, creds["response_key"],
+            tmp_path / "cli")
+
+    mod = load_module()
+    monkeypatch.setattr(mod, "waypipe_present", lambda: False)
+    spy_acks(mod, monkeypatch)
+
+    # 同一 cmd_fetch 进程连续处理两封缺席拉窗信 (skipped 后继续 poll)
+    t = threading.Thread(target=mod.cmd_fetch, daemon=True)
+    t.start()
+    for letter_id in ("PW-1", "PW-2"):
+        code, _ = post_letter(srv, "dev1", skey,
+                              make_letter(letter_id=letter_id, to="dev1",
+                                          type_="exec", body=PULL_WINDOW_BODY))
+        assert code == 200
+        wait_processed(srv, "dev1", skey, letter_id)
+
+    out = capsys.readouterr().out
+    assert out.count("waypipe 未安装") == 1  # 缺席期只提示一次
+
+
+def test_waypipe_missing_hint_resets_on_restore(serves, tmp_path, monkeypatch,
+                                                capsys):
+    """review 修复: waypipe 恢复在场后提示标志重置 — 再次缺席时重新提示."""
+    srv = serves()
+    creds = register_session(srv, "dev1")
+    skey = creds["signing_key"]
+    cli_env(monkeypatch, srv, "dev1", skey, creds["response_key"],
+            tmp_path / "cli")
+
+    mod = load_module()
+    present = {"v": False}
+    monkeypatch.setattr(mod, "waypipe_present", lambda: present["v"])
+    spy_acks(mod, monkeypatch)
+
+    def post(letter_id):
+        code, _ = post_letter(srv, "dev1", skey,
+                              make_letter(letter_id=letter_id, to="dev1",
+                                          type_="exec", body=PULL_WINDOW_BODY))
+        assert code == 200
+
+    # 缺席期 1: 提示一次
+    t = threading.Thread(target=mod.cmd_fetch, daemon=True)
+    t.start()
+    post("PW-1")
+    wait_processed(srv, "dev1", skey, "PW-1")
+
+    # waypipe 恢复: 过门, cmd_fetch 呈现后返回 (线程退出), 标志重置
+    present["v"] = True
+    post("PW-2")
+    t.join(timeout=15)
+    assert not t.is_alive(), "过门后 cmd_fetch 应呈现并返回"
+
+    # 缺席期 2: 再次缺席 → 重新提示一次
+    present["v"] = False
+    t2 = threading.Thread(target=mod.cmd_fetch, daemon=True)
+    t2.start()
+    post("PW-3")
+    wait_processed(srv, "dev1", skey, "PW-3")
+
+    out = capsys.readouterr().out
+    assert out.count("waypipe 未安装") == 2  # 每个缺席期各一次
+
+
 def test_rate_limit(serves, tmp_path, monkeypatch, capsys):
     """TS-002: waypipe 在场; 第一封正常呈现; 300s 内同容器第二封
     → 自动 ack skipped:rate-limited, 不呈现."""

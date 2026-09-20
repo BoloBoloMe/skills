@@ -498,6 +498,16 @@ PULL_WINDOW_MIN_INTERVAL = 300.0  # 同容器限频窗口 (秒)
 WAYPIPE_MISSING_HINT = (
     "[swt-mailbox] waypipe 未安装, 无法拉起远程窗口;"
     " 请在本机安装 waypipe, 安装后同类来信自动恢复执行.")
+_waypipe_missing_notified = False  # 缺席期去重提示标志 (进程内, 平移旧扩展)
+
+
+def waypipe_missing_hint_due():
+    """缺席期去重提示: 每取信进程只提示一次; waypipe 恢复在场后重置."""
+    global _waypipe_missing_notified
+    if _waypipe_missing_notified:
+        return False
+    _waypipe_missing_notified = True
+    return True
 
 
 def waypipe_present():
@@ -531,6 +541,8 @@ def gate_pull_window(container, state):
     限频时刻表在 state["lastPullWindowAt"] (dict[容器名 -> 时间戳])."""
     if not waypipe_present():
         return "skipped:waypipe-missing"
+    global _waypipe_missing_notified
+    _waypipe_missing_notified = False  # 在场恢复: 下次缺席重新提示
     table = state.setdefault("lastPullWindowAt", {})
     last = table.get(container)
     if last is not None and time.time() - float(last) < PULL_WINDOW_MIN_INTERVAL:
@@ -659,7 +671,8 @@ def cmd_fetch():
                                payload.get("lease_token", ""), outcome=outcome)
                 except (urllib.error.HTTPError, OSError):
                     pass  # 回执失败: 租约兜底, 不阻塞取信循环
-                if outcome == "skipped:waypipe-missing":
+                if outcome == "skipped:waypipe-missing" \
+                        and waypipe_missing_hint_due():
                     print(WAYPIPE_MISSING_HINT, flush=True)
                 continue
             save_cli_state(state)  # 过门即落限频时刻 (D014)
