@@ -162,6 +162,12 @@ class Mailbox:
                 "CREATE TABLE IF NOT EXISTS sessions ("
                 " id TEXT PRIMARY KEY, signing_key TEXT, response_key TEXT,"
                 " revoked INTEGER, last_poll REAL, created_at REAL)")
+            self._db.execute(
+                "CREATE TABLE IF NOT EXISTS whitelist ("
+                " instruction TEXT PRIMARY KEY)")
+            for (instruction,) in self._db.execute(
+                    "SELECT instruction FROM whitelist"):
+                self.whitelist.add(instruction)
             for row in self._db.execute(
                     "SELECT id, signing_key, response_key, revoked, last_poll,"
                     " created_at FROM sessions"):
@@ -189,6 +195,16 @@ class Mailbox:
 
     def get_session(self, session_id):
         return self.sessions.get(session_id)
+
+    def add_whitelist(self, instruction):
+        """注册 exec 指令 (规范形入库, 重启后仍生效)."""
+        canonical = _canonical(instruction)
+        self.whitelist.add(canonical)
+        if self._db is not None:
+            self._db.execute(
+                "INSERT OR IGNORE INTO whitelist (instruction) VALUES (?)",
+                (canonical,))
+            self._db.commit()
 
     def _check_ts(self, sig_ts):
         if abs(self._now() - float(sig_ts)) > TS_WINDOW:
@@ -493,6 +509,14 @@ class _AdminHandler(_JsonHandler):
                                   body.get("response_key"))
             return self._json(200, {"id": s.id, "signing_key": s.signing_key,
                                     "response_key": s.response_key})
+        if path == "/admin/whitelist":
+            ins = body.get("instruction")
+            if not isinstance(ins, dict) or not isinstance(ins.get("tool"), str):
+                return self._json(400, {"error": "instruction 须为含 tool 的对象"})
+            m = self.server.mailbox
+            with self.server.cond:
+                m.add_whitelist(ins)
+            return self._json(200, {"ok": True})
         self._json(404, {"error": "not found"})
 
 
