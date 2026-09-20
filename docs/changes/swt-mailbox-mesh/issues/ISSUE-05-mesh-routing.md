@@ -2,7 +2,7 @@
 - `../EXECUTION.md`
 
 ## 执行
-- [ ] 已实现
+- [x] 已实现
 
 ## 要构建什么
 mesh 邻居路由与洪泛转发: Neighbor 类, 邻居表配置 (neighbors.json), forward 端点 (邻居密钥认证), 洪泛路由 (查 sessions → 没找到转发所有邻居, 排除来源, seen-id 防环), 邻居不可达内存暂存重试, 三实例 e2e 测试. 适合 AFK: 路由规则/防环/暂存行为均已在 spec 定义.

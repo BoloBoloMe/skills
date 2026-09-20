@@ -2,7 +2,7 @@
 - `../EXECUTION.md`
 
 ## 执行
-- [ ] 已实现
+- [x] 已实现
 
 ## 要构建什么
 LLM 中转集成: Relay 类从 swt-base-server.py 搬迁到 swt-mailbox.py, serve --upstream 参数启用, 中转端口区间 38427-38436, relay_keys admin 管理, OpenAI 兼容端点. 适合 AFK: 中转协议/端口/管理接口沿用现有实现, 只换宿主.

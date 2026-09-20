@@ -2,7 +2,7 @@
 - `../EXECUTION.md`
 
 ## 执行
-- [ ] 已实现
+- [x] 已实现
 
 ## 要构建什么
 birth 接线改造: swt.py birth 改连本机信箱 — session 注册 (<容器名>-<8hex>), 密钥申领, 新 env 变量 (SWT_MAILBOX_URL / SWT_SESSION_ID / SWT_SESSION_SIGNING_KEY / SWT_SESSION_RESPONSE_KEY), terminate 时 session 注销. 探测本机信箱 (探测不到降级 skipped 不阻断 birth). 适合 AFK: 接线协议与新 env 变量名已在 spec 定义.

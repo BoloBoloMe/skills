@@ -2,7 +2,7 @@
 - `../EXECUTION.md`
 
 ## 执行
-- [ ] 已实现
+- [x] 已实现
 
 ## 要构建什么
 send/config/status CLI 与配置迁移: send 子命令 (凭证自动探测 容器 env / 设备 config), config set (密钥 stdin 交互), status (密钥脱敏前 8 位), 老路径 ~/.config/swt/mailbox.json 自动迁移. 适合 AFK: 全部参数与格式已在 spec 定义.
