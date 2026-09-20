@@ -9,10 +9,13 @@ TS-003 test_lease_expiry_requeues / TS-004 test_seen_id_dedup.
 """
 from __future__ import annotations
 
+import subprocess
+import sys
 import time
 
-from conftest import (ack_letter, make_letter, poll, post_letter,
+from conftest import (SCRIPT, ack_letter, make_letter, poll, post_letter,
                       register_session)
+from test_swt_mailbox_cli import cli_env
 
 
 def test_poll_returns_lease_token(serves):
@@ -82,3 +85,55 @@ def test_lease_expiry_requeues(serves, monkeypatch):
     code, resp = ack_letter(srv, "s1", signing_key, "L-1", token2)
     assert code == 200
     assert resp["payload"]["ok"]
+
+
+def test_seen_id_dedup(serves, monkeypatch, tmp_path):
+    """TS-004: L1 被租约重投, 客户端再次取到 L1 时凭已见 id 自动回执,
+    不在 stdout 呈现, 继续等待下一封 (D003/D009)."""
+    monkeypatch.setenv("SWT_MAILBOX_LEASE_SECONDS", "0.6")
+    srv = serves()
+    creds = register_session(srv, "dev1")
+    signing_key = creds["signing_key"]
+    env = cli_env(srv.port, "dev1", signing_key,
+                  creds["response_key"], tmp_path / "cli")
+
+    # 第一次取信: L1 首次呈现, 记入已见
+    code, _ = post_letter(srv, "dev1", signing_key,
+                          make_letter(letter_id="L-1", to="dev1",
+                                      body="重复的信"))
+    assert code == 200
+    first = subprocess.run([sys.executable, str(SCRIPT)], env=env,
+                           capture_output=True, text=True, timeout=15)
+    assert first.returncode == 0
+    assert "重复的信" in first.stdout
+
+    time.sleep(1.0)  # 租约到期: L1 待重投, pending_ack 里的旧 token 已失效
+
+    # 第二次调用: 启动回执旧 token 被拒 (409) → poll 再取到重投的 L1 →
+    # 已见 id 命中 → 自动回执不呈现 → 继续等下一封
+    proc = subprocess.Popen([sys.executable, str(SCRIPT)], env=env,
+                            stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                            text=True)
+    try:
+        # 等 L1 被去重回执: 已处理后错 token ack 幂等 200 (未回执则 409)
+        deadline = time.time() + 10
+        code = 0
+        while time.time() < deadline:
+            code, _ = ack_letter(srv, "dev1", signing_key, "L-1", "bogus")
+            if code == 200:
+                break
+            time.sleep(0.2)
+        assert code == 200, "L1 重投后未被自动回执"
+        assert proc.poll() is None, "去重回执后 CLI 应继续等下一封, 而非退出"
+        code, _ = post_letter(srv, "dev1", signing_key,
+                              make_letter(letter_id="L-2", to="dev1",
+                                          body="真正的下一封"))
+        assert code == 200
+        out, _ = proc.communicate(timeout=15)
+    finally:
+        if proc.poll() is None:
+            proc.kill()
+            proc.wait()
+    assert proc.returncode == 0
+    assert "真正的下一封" in out
+    assert "重复的信" not in out  # 重投的 L1 不呈现给 LLM

@@ -621,6 +621,17 @@ def cmd_fetch():
         letter = payload.get("letter")
         if letter is None:
             continue  # hold 超时空载荷, 重新长轮询
+        seen = state.setdefault("seen_ids", [])
+        if letter.get("id") in seen:
+            # D003/D009: 租约重投的已见信, 自动回执不呈现给 LLM, 继续等下一封
+            try:
+                ack_letter(url, sid, skey, letter.get("id", ""),
+                           payload.get("lease_token", ""))
+            except (urllib.error.HTTPError, OSError):
+                pass  # 回执失败则租约到期再重投, 下轮循环保底
+            continue
+        seen.append(letter.get("id", ""))
+        del seen[:-100]  # 只记最近 100 条已见 id
         state["pending_ack"] = {"letter_id": letter.get("id", ""),
                                 "lease_token": payload.get("lease_token", "")}
         save_cli_state(state)  # 先落盘再输出, 崩溃后下次调用仍能回执
