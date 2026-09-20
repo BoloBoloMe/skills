@@ -86,6 +86,21 @@ def test_config_set_server(mailbox_mod, tmp_path, monkeypatch):
     assert stat.S_IMODE(cfg.parent.stat().st_mode) == 0o700
 
 
+def test_config_set_session(mailbox_mod, tmp_path, monkeypatch):
+    """config set session <id> 更新配置文件 session 字段 (裁决 1:
+    device 改名 session, 与配置 schema/文档统一; 旧 device 键不再接受)."""
+    cfg = tmp_path / "mailbox.json"
+    cfg.write_text(json.dumps({"server": "http://127.0.0.1:1",
+                               "session": "dev-old", "signing_key": "k"}))
+    monkeypatch.setenv("SWT_MAILBOX_CONFIG", str(cfg))
+    monkeypatch.setattr(sys, "argv",
+                        ["swt-mailbox.py", "config", "set", "session", "dev-new"])
+    mailbox_mod.main()
+    data = json.loads(cfg.read_text())
+    assert data["session"] == "dev-new"
+    assert data["server"] == "http://127.0.0.1:1"  # 其他字段不动
+
+
 def test_config_set_secret_via_stdin(mailbox_mod, tmp_path, monkeypatch):
     """TS-003: config set signing_key 不带值 → getpass 读 stdin 更新;
     密钥项带值参数 → 报错拒绝且配置不被覆盖 (BR-006)."""

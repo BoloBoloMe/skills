@@ -1219,7 +1219,7 @@ def cmd_send(args):
 # config CLI: 逐项修改配置; 非密钥走参数, 密钥走 stdin (BR-006)
 # ======================================================================
 
-CONFIG_FIELDS_PLAIN = ("server", "device")       # 非密钥: 允许命令行参数
+CONFIG_FIELDS_PLAIN = ("server", "session")      # 非密钥: 允许命令行参数
 CONFIG_FIELDS_SECRET = ("signing_key", "response_key")  # 密钥: 仅 stdin
 
 
