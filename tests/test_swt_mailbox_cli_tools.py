@@ -67,3 +67,20 @@ def test_send_notify(serves, tmp_path):
     assert letter["body"] == "测试"
     assert letter["type"] == "notify"
     assert letter["from"] == "dev-send"
+
+
+def test_config_set_server(mailbox_mod, tmp_path, monkeypatch):
+    """TS-002: config set server <url> 后配置文件 server 字段更新, 权限 0600."""
+    cfg = tmp_path / "mailbox.json"
+    cfg.write_text(json.dumps({"server": "http://127.0.0.1:1",
+                               "session": "dev1", "signing_key": "k"}))
+    monkeypatch.setenv("SWT_MAILBOX_CONFIG", str(cfg))
+    monkeypatch.setattr(sys, "argv",
+                        ["swt-mailbox.py", "config", "set", "server",
+                         "http://192.168.1.10:38417"])
+    mailbox_mod.main()
+    data = json.loads(cfg.read_text())
+    assert data["server"] == "http://192.168.1.10:38417"
+    assert data["session"] == "dev1"  # 其他字段不动
+    assert stat.S_IMODE(cfg.stat().st_mode) == 0o600
+    assert stat.S_IMODE(cfg.parent.stat().st_mode) == 0o700

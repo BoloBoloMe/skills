@@ -649,6 +649,27 @@ def cmd_send(args):
     print(f"已投递给 {letter['to'] or '(最近活跃 session)'}: {letter['id']}")
 
 
+# ======================================================================
+# config CLI: 逐项修改配置; 非密钥走参数, 密钥走 stdin (BR-006)
+# ======================================================================
+
+CONFIG_FIELDS_PLAIN = ("server", "device")       # 非密钥: 允许命令行参数
+CONFIG_FIELDS_SECRET = ("signing_key", "response_key")  # 密钥: 仅 stdin
+
+
+def cmd_config_set(args):
+    cfg = config_path()
+    try:
+        data = json.loads(cfg.read_text())
+    except (OSError, json.JSONDecodeError):
+        data = {}
+    if not isinstance(data, dict):
+        data = {}
+    data[args.field] = args.value
+    write_config_file(cfg, data)  # 落盘 0600 + 目录 0700 (D015)
+    print(f"已更新 {args.field} -> {cfg}")
+
+
 def cmd_serve(args):
     spath = state_path()
     mailbox = Mailbox(db_path=spath.parent / "server.db")
@@ -700,11 +721,19 @@ def main():
     p_send.add_argument("--to", required=True, help="收件 session.id")
     p_send.add_argument("--type", required=True, choices=MSG_TYPES)
     p_send.add_argument("--body", required=True, help="信件正文")
+    p_config = sub.add_parser("config", help="配置管理")
+    p_config_set = p_config.add_subparsers(dest="config_cmd").add_parser(
+        "set", help="逐项修改配置")
+    p_config_set.add_argument(
+        "field", choices=CONFIG_FIELDS_PLAIN + CONFIG_FIELDS_SECRET)
+    p_config_set.add_argument("value", nargs="?")
     args = parser.parse_args()
     if args.cmd == "serve":
         cmd_serve(args)
     elif args.cmd == "send":
         cmd_send(args)
+    elif args.cmd == "config" and args.config_cmd == "set":
+        cmd_config_set(args)
     else:
         cmd_fetch()  # 缺省动作 = 取信 (D001)
 
