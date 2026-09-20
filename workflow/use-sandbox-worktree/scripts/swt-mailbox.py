@@ -57,16 +57,21 @@ def config_path():
                 Path.home() / ".agents/sandbox-worktree/mailbox.json")
 
 
+def write_json_0600(path, data):
+    """JSON 落盘即 0600 (密钥/令牌文件统一规格), 父目录须已存在."""
+    fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+    os.fchmod(fd, 0o600)
+    with os.fdopen(fd, "w") as f:
+        f.write(json.dumps(data, ensure_ascii=False))
+
+
 def write_state_file(path, port, admin_port, admin_token):
     """实际绑定端口与 admin token 写状态文件, 落盘即 0600."""
     path.parent.mkdir(parents=True, exist_ok=True)
     data = {"service": SERVICE_NAME, "version": VERSION, "port": port,
             "admin_port": admin_port, "admin_token": admin_token,
             "started_at": time.time()}
-    fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
-    os.fchmod(fd, 0o600)
-    with os.fdopen(fd, "w") as f:
-        f.write(json.dumps(data, ensure_ascii=False))
+    write_json_0600(path, data)
 
 
 class MailboxError(Exception):
@@ -460,10 +465,7 @@ def write_config_file(path, data):
     """配置文件落盘即 0600, 目录 0700 (密钥保护, D015)."""
     path.parent.mkdir(parents=True, exist_ok=True)
     os.chmod(path.parent, 0o700)
-    fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
-    os.fchmod(fd, 0o600)
-    with os.fdopen(fd, "w") as f:
-        f.write(json.dumps(data, ensure_ascii=False))
+    write_json_0600(path, data)
 
 
 def auto_credential(mailbox, server_url):
@@ -530,10 +532,7 @@ def load_cli_state():
 def save_cli_state(state):
     p = cli_state_path()
     p.parent.mkdir(parents=True, exist_ok=True)
-    fd = os.open(p, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
-    os.fchmod(fd, 0o600)
-    with os.fdopen(fd, "w") as f:
-        f.write(json.dumps(state, ensure_ascii=False))
+    write_json_0600(p, state)
 
 
 def ack_letter(url, sid, skey, letter_id, lease_token, outcome="handled"):
