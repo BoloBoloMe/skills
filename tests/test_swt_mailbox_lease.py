@@ -9,7 +9,8 @@ TS-003 test_lease_expiry_requeues / TS-004 test_seen_id_dedup.
 """
 from __future__ import annotations
 
-from conftest import make_letter, poll, post_letter, register_session
+from conftest import (ack_letter, make_letter, poll, post_letter,
+                      register_session)
 
 
 def test_poll_returns_lease_token(serves):
@@ -24,3 +25,24 @@ def test_poll_returns_lease_token(serves):
     assert code == 200
     assert resp["payload"]["letter"] is not None
     assert resp["payload"]["lease_token"]
+
+
+def test_ack_requires_valid_token(serves):
+    """TS-002: 错误 token ack 返回 409; 正确 token ack 成功."""
+    srv = serves()
+    creds = register_session(srv, "s1")
+    signing_key = creds["signing_key"]
+
+    code, _ = post_letter(srv, "s1", signing_key, make_letter(to="s1"))
+    assert code == 200
+    code, resp = poll(srv, "s1", signing_key)
+    assert code == 200
+    token = resp["payload"]["lease_token"]
+    assert token
+
+    code, _ = ack_letter(srv, "s1", signing_key, "L-1", "wrong-token")
+    assert code == 409
+
+    code, resp = ack_letter(srv, "s1", signing_key, "L-1", token)
+    assert code == 200
+    assert resp["payload"]["ok"]
