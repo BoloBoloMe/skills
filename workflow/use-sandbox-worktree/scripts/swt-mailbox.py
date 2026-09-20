@@ -354,6 +354,18 @@ class Mailbox:
         return letter
 
 
+def bind_first_free(try_bind, start_port):
+    """端口区间首空闲绑定: 从起点起逐个尝试, try_bind(port) 抛 OSError 则试下一个;
+    区间全占报错 (调用方退出). 信箱面与中转面共用."""
+    for port in range(start_port, start_port + PORT_SPAN):
+        try:
+            try_bind(port)
+            return
+        except OSError:
+            continue
+    raise RuntimeError(f"端口区间全占: {start_port}-{start_port + PORT_SPAN - 1}")
+
+
 class MailboxHttpServer(ThreadingHTTPServer):
     daemon_threads = True
     allow_reuse_address = True
@@ -362,13 +374,10 @@ class MailboxHttpServer(ThreadingHTTPServer):
         self.mailbox = mailbox
         self.cond = cond  # 长轮询 hold: post notify_all 唤醒
         self.hold_seconds = HOLD_SECONDS
-        for port in range(start_port, start_port + PORT_SPAN):
-            try:
-                super().__init__((host, port), _Handler)
-                return
-            except OSError:
-                continue
-        raise RuntimeError(f"端口区间全占: {start_port}-{start_port + PORT_SPAN - 1}")
+
+        def try_bind(port):
+            super(MailboxHttpServer, self).__init__((host, port), _Handler)
+        bind_first_free(try_bind, start_port)
 
     @property
     def port(self):
@@ -386,13 +395,10 @@ class RelayHttpServer(ThreadingHTTPServer):
         self.upstream_base = upstream_base
         self.upstream_key = upstream_key
         self.upstream_timeout = 30.0
-        for port in range(start_port, start_port + PORT_SPAN):
-            try:
-                super().__init__((host, port), _RelayHandler)
-                return
-            except OSError:
-                continue
-        raise RuntimeError(f"端口区间全占: {start_port}-{start_port + PORT_SPAN - 1}")
+
+        def try_bind(port):
+            super(RelayHttpServer, self).__init__((host, port), _RelayHandler)
+        bind_first_free(try_bind, start_port)
 
     @property
     def port(self):
