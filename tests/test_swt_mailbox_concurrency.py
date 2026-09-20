@@ -106,3 +106,37 @@ def test_client_backoff_on_409(serves, tmp_path):
     assert proc.returncode == 0
     assert "退避后送达" in out
     assert err == ""  # 退避重试全程不报错
+
+
+def test_dual_session_scatter(serves):
+    """TS-005: 两个 session 各自挂起 poll; 投给 s1 的信只被 s1 取到,
+    s2 等满 hold 空载荷返回 (AC-005 散落自担, 不串信)."""
+    srv = serves(hold="2")
+    c1 = register_session(srv, "s1")
+    c2 = register_session(srv, "s2")
+
+    got = {}
+
+    def poll_as(name, creds):
+        got[name] = poll(srv, name, creds["signing_key"], timeout=30)
+
+    t1 = threading.Thread(target=poll_as, args=("s1", c1))
+    t2 = threading.Thread(target=poll_as, args=("s2", c2))
+    t1.start()
+    t2.start()
+    time.sleep(0.5)  # 两个 poll 都在服务端 hold 住
+
+    code, _ = post_letter(srv, "s1", c1["signing_key"],
+                          make_letter(to="s1", body="只给 s1"))
+    assert code == 200
+    t1.join(timeout=10)
+    t2.join(timeout=10)
+    assert not t1.is_alive() and not t2.is_alive()
+
+    code, resp = got["s1"]
+    assert code == 200
+    assert resp["payload"]["letter"]["id"] == "L-1"  # 目标 session 取到信
+    assert resp["payload"]["letter"]["body"] == "只给 s1"
+    code, resp = got["s2"]
+    assert code == 200
+    assert resp["payload"]["letter"] is None  # 另一 session 取不到该信
