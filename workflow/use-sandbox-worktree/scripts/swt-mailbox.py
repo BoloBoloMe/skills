@@ -685,6 +685,30 @@ def cmd_config_set(args):
     print(f"已更新 {args.field} -> {cfg}")
 
 
+# ======================================================================
+# status CLI: 展示配置, 密钥只显前 8 位 (BR-006)
+# ======================================================================
+
+def _mask_secret(value):
+    """密钥脱敏: 前 8 位 + '...', 缺失显式标注."""
+    if not value:
+        return "(未设置)"
+    return str(value)[:8] + "..."
+
+
+def cmd_status():
+    try:
+        data = json.loads(config_path().read_text())
+    except (OSError, json.JSONDecodeError):
+        data = {}
+    if not isinstance(data, dict):
+        data = {}
+    print(f"session: {data.get('session') or '(未设置)'}")
+    print(f"server: {data.get('server') or '(未设置)'}")
+    print(f"signing_key: {_mask_secret(data.get('signing_key'))}")
+    print(f"response_key: {_mask_secret(data.get('response_key'))}")
+
+
 def cmd_serve(args):
     spath = state_path()
     mailbox = Mailbox(db_path=spath.parent / "server.db")
@@ -742,6 +766,7 @@ def main():
     p_config_set.add_argument(
         "field", choices=CONFIG_FIELDS_PLAIN + CONFIG_FIELDS_SECRET)
     p_config_set.add_argument("value", nargs="?")
+    sub.add_parser("status", help="查看配置状态 (密钥脱敏)")
     args = parser.parse_args()
     if args.cmd == "serve":
         cmd_serve(args)
@@ -749,6 +774,8 @@ def main():
         cmd_send(args)
     elif args.cmd == "config" and args.config_cmd == "set":
         cmd_config_set(args)
+    elif args.cmd == "status":
+        cmd_status()
     else:
         cmd_fetch()  # 缺省动作 = 取信 (D001)
 

@@ -113,3 +113,24 @@ def test_config_set_secret_via_stdin(mailbox_mod, tmp_path, monkeypatch):
         mailbox_mod.main()
     assert exc_info.value.code == 1
     assert json.loads(cfg.read_text())["signing_key"] == "new-signing-key-from-stdin"
+
+
+def test_status_masked(mailbox_mod, tmp_path, monkeypatch, capsys):
+    """TS-004: status 输出 session.id/server + 密钥前 8 位 + '...', 不含完整密钥."""
+    signing = "sk-abcdef1234567890FULLSECRET"
+    response = "rk-zzyyxx99887766FULLSECRET"
+    cfg = tmp_path / "mailbox.json"
+    cfg.write_text(json.dumps({"server": "http://127.0.0.1:38417",
+                               "session": "dev1",
+                               "signing_key": signing,
+                               "response_key": response}))
+    monkeypatch.setenv("SWT_MAILBOX_CONFIG", str(cfg))
+    monkeypatch.setattr(sys, "argv", ["swt-mailbox.py", "status"])
+    mailbox_mod.main()
+    out = capsys.readouterr().out
+    assert "dev1" in out
+    assert "http://127.0.0.1:38417" in out
+    assert signing[:8] + "..." in out
+    assert response[:8] + "..." in out
+    assert signing not in out  # 完整密钥不落 stdout (BR-006)
+    assert response not in out
