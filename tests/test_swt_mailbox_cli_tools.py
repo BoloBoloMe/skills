@@ -84,3 +84,32 @@ def test_config_set_server(mailbox_mod, tmp_path, monkeypatch):
     assert data["session"] == "dev1"  # 其他字段不动
     assert stat.S_IMODE(cfg.stat().st_mode) == 0o600
     assert stat.S_IMODE(cfg.parent.stat().st_mode) == 0o700
+
+
+def test_config_set_secret_via_stdin(mailbox_mod, tmp_path, monkeypatch):
+    """TS-003: config set signing_key 不带值 → getpass 读 stdin 更新;
+    密钥项带值参数 → 报错拒绝且配置不被覆盖 (BR-006)."""
+    cfg = tmp_path / "mailbox.json"
+    cfg.write_text(json.dumps({"server": "http://127.0.0.1:1",
+                               "session": "dev1", "signing_key": "old-key"}))
+    monkeypatch.setenv("SWT_MAILBOX_CONFIG", str(cfg))
+
+    # 不带值: 密钥经 stdin 交互输入 (monkeypatch 替代终端, 不回显)
+    monkeypatch.setattr(mailbox_mod.getpass, "getpass",
+                        lambda prompt="": "new-signing-key-from-stdin")
+    monkeypatch.setattr(sys, "argv",
+                        ["swt-mailbox.py", "config", "set", "signing_key"])
+    mailbox_mod.main()
+    data = json.loads(cfg.read_text())
+    assert data["signing_key"] == "new-signing-key-from-stdin"
+    # 密钥值不出现在命令行参数中 (BR-006)
+    assert "new-signing-key-from-stdin" not in sys.argv
+
+    # 带值参数: 拒绝且已有配置不被覆盖
+    monkeypatch.setattr(sys, "argv",
+                        ["swt-mailbox.py", "config", "set", "signing_key",
+                         "leak-on-cmdline"])
+    with pytest.raises(SystemExit) as exc_info:
+        mailbox_mod.main()
+    assert exc_info.value.code == 1
+    assert json.loads(cfg.read_text())["signing_key"] == "new-signing-key-from-stdin"

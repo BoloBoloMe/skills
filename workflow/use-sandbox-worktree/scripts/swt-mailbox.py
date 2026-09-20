@@ -16,6 +16,7 @@
 from __future__ import annotations
 
 import argparse
+import getpass
 import hashlib
 import hmac
 import json
@@ -658,6 +659,20 @@ CONFIG_FIELDS_SECRET = ("signing_key", "response_key")  # 密钥: 仅 stdin
 
 
 def cmd_config_set(args):
+    if args.field in CONFIG_FIELDS_SECRET:
+        if args.value is not None:
+            print(f"错误: 密钥项 {args.field} 不允许命令行参数传值 "
+                  "(BR-006), 请去掉值参数, 经 stdin 交互输入", file=sys.stderr)
+            sys.exit(1)
+        value = getpass.getpass(f"{args.field}: ")  # 不回显
+        if not value:
+            print("错误: 密钥值不能为空", file=sys.stderr)
+            sys.exit(1)
+    else:
+        if args.value is None:
+            print(f"错误: 配置项 {args.field} 需要值参数", file=sys.stderr)
+            sys.exit(1)
+        value = args.value
     cfg = config_path()
     try:
         data = json.loads(cfg.read_text())
@@ -665,7 +680,7 @@ def cmd_config_set(args):
         data = {}
     if not isinstance(data, dict):
         data = {}
-    data[args.field] = args.value
+    data[args.field] = value
     write_config_file(cfg, data)  # 落盘 0600 + 目录 0700 (D015)
     print(f"已更新 {args.field} -> {cfg}")
 
