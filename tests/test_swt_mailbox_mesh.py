@@ -229,3 +229,19 @@ def test_seen_id_prevents_loop(mesh_serves, spy_neighbor):
     time.sleep(0.5)
     assert len(spy_c.received) == 1, \
         "已见过的信被再次转发, seen-id 去重失效会导致洪泛循环"
+
+
+def test_exclude_source_neighbor(mesh_serves, spy_neighbor):
+    """TS-004: A 收到 B 转发的信 (非本机收件人); A 只转发给 C, 不转发回 B.
+    B/C 用 spy 邻居精确观察转发流向."""
+    spy_b, spy_c = spy_neighbor(), spy_neighbor()
+    srv_a = mesh_serves("a", neighbors=[neighbor(spy_b.port, "k-ab"),
+                                        neighbor(spy_c.port, "k-ac")])
+    letter = make_letter(letter_id="E-1", to="ghost", body="非本机收件人")
+    # B (neighbor_key k-ab) 把信转发给 A
+    code, _ = forward(srv_a, "k-ab", letter)
+    assert code == 200
+    time.sleep(0.5)
+    assert [r["letter"]["id"] for r in spy_c.received] == ["E-1"], \
+        "A 应把信转发给另一邻居 C"
+    assert spy_b.received == [], "A 不应把信转发回来源邻居 B"
