@@ -845,15 +845,16 @@ class TestBaseBuildE2E(_PodmanTestCase):
         # D018: auth.json never staged into build context
         self.assertFalse((record / "context" / "pi-agent" / "auth.json").exists())
         self.assertFalse((record / "context" / "pi-agent" / "sessions").exists())
-        # runtime contract preserved: sshd foreground + fixed exposed ports
+        # runtime contract preserved: entrypoint 拉起 sshd 前台 + 固定端口
+        # (M08 D004: CMD 已由 swt-entrypoint 取代, 断言 Entrypoint 而非 Cmd)
         inspect = subprocess.run(
             ["podman", "inspect", values["image"], "--format",
-             "{{.Config.Cmd}}|{{.Config.ExposedPorts}}|"
+             "{{.Config.Entrypoint}}|{{.Config.ExposedPorts}}|"
              '{{index .Labels "run.sandbox-worktree.contents-digest"}}'],
             capture_output=True, text=True, check=True,
         ).stdout.strip()
-        cmd, exposed, label_digest = inspect.split("|")
-        self.assertIn("sshd", cmd)
+        entrypoint, exposed, label_digest = inspect.split("|")
+        self.assertIn("swt-entrypoint", entrypoint)
         for port in ("22/tcp", "8800/tcp", "6080/tcp"):
             self.assertIn(port, exposed)
         self.assertEqual(label_digest, _sha256_file(record / "contents.md"))

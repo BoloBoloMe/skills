@@ -1860,7 +1860,7 @@ class TestTS5Resume(SwtBirthFixture):
             if chain_match:
                 chain = chain_match.group(1)
                 continue
-            if chain in {"forward", "input"} and line.strip().startswith(f"ip saddr {source} "):
+            if chain in {"forward", "input", "output"} and line.strip().startswith(f"ip saddr {source} "):
                 handle = re.search(r"# handle (\d+)\s*$", line)
                 if handle:
                     handles.append((chain, handle.group(1)))

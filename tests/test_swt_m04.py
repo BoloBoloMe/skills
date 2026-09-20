@@ -20,6 +20,7 @@
 """
 from __future__ import annotations
 
+import os
 import random
 import re
 import socket
@@ -163,11 +164,15 @@ class NetFixture:
         return result.returncode
 
     def netns_path(self) -> str:
-        result = run(["pgrep", "-af", "pasta --config-net"])
-        for line in result.stdout.splitlines():
-            if "--netns " in line:
-                return line.split("--netns ")[1].split()[0]
-        raise AssertionError("未发现 pasta --netns 路径 (rootless netns 不在)")
+        # 桥拓扑的 forward/input 过滤发生在共享 rootless netns (桥与 pasta 网关
+        # 所在), 与 net-firewall.py default_netns() 同一路径. 不能靠 pgrep 猜:
+        # 宿主机同时跑 gitea 等带端口映射的容器时, 它们各有专用 pasta netns,
+        # pgrep 首匹配会指错.
+        xdg = os.environ.get("XDG_RUNTIME_DIR", f"/run/user/{os.getuid()}")
+        path = f"{xdg}/containers/networks/rootless-netns/rootless-netns"
+        if Path(path).exists():
+            return path
+        raise AssertionError(f"共享 rootless netns 不在: {path}")
 
     # ── 拆除 ──
     def down(self) -> None:
