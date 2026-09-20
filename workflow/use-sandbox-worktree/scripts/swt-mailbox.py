@@ -12,6 +12,7 @@
 - SWT_MAILBOX_STATE: 状态文件路径覆盖 (缺省 ~/.local/state/swt-mailbox/state.json)
 - SWT_MAILBOX_CONFIG: 配置文件路径覆盖 (缺省 ~/.agents/sandbox-worktree/mailbox.json)
 - SWT_MAILBOX_HOLD_SECONDS: 长轮询 hold 时长覆盖 (缺省 20)
+- SWT_MAILBOX_LEASE_SECONDS: 租约时长覆盖 (缺省 LEASE_SECONDS=1800, D009)
 """
 from __future__ import annotations
 
@@ -40,6 +41,7 @@ DEFAULT_ADMIN_PORT = 38416  # 管理口, 仅 127.0.0.1
 PORT_SPAN = 10
 TS_WINDOW = 300.0           # 签名时间窗 ±5min
 HOLD_SECONDS = 20.0         # 长轮询 hold 缺省
+LEASE_SECONDS = 1800.0      # 租约时长缺省 30min (D009)
 MSG_TYPES = ("notify", "open_url", "exec", "request")
 
 
@@ -127,11 +129,14 @@ class Mailbox:
     信件全内存 (D008); SQLite 只存 session 凭证 (BR-009), 启动加载注册写入.
     """
 
-    def __init__(self, db_path=None, now=time.time):
-        self._now = now
+    def __init__(self, db_path=None, now=time.time, lease_seconds=LEASE_SECONDS,
+                 monotonic=time.monotonic):
+        self._now = now            # 墙钟: 签名时间窗 ±5min / last_poll
+        self._mono = monotonic     # 单调钟: 租约计时 (TECHNICAL 边界与异常处理)
+        self.lease_seconds = lease_seconds  # 租约时长 (D009), serve 可经 env 覆盖
         self.sessions = {}    # id -> Session
         self.queue = {}       # to_session -> [Letter]
-        self.leases = {}      # letter_id -> (Letter, lease_token)
+        self.leases = {}      # letter_id -> (Letter, lease_token, 租出时刻)
         self.processed = set()  # 已回执 letter_id (ack 幂等)
         self.seen_ids = {}    # letter_id -> ts, 防重放/幂等投信
         self._db = None
@@ -223,14 +228,28 @@ class Mailbox:
         return s
 
     def try_deliver(self, session):
-        """非阻塞取信: 有 → (Letter, lease_token) 并计租, 无 → None."""
+        """非阻塞取信: 有 → (Letter, lease_token) 并计租, 无 → None.
+        取信前惰性收回过期租约 (D009 重投)."""
+        self._requeue_expired()
         q = self.queue.get(session.id) or []
         if not q:
             return None
         letter = q.pop(0)
         token = uuid.uuid4().hex
-        self.leases[letter.id] = (letter, token)
+        self.leases[letter.id] = (letter, token, self._mono())
         return letter, token
+
+    def _requeue_expired(self):
+        """过期租约收回队尾重投并清除租约."""
+        now = self._mono()
+        for lid, (letter, _token, leased_at) in list(self.leases.items()):
+            if now - leased_at >= self.lease_seconds:
+                del self.leases[lid]
+                self.queue.setdefault(letter.to_session, []).append(letter)
+
+    def _expire_lease(self, letter):
+        del self.leases[letter.id]
+        self.queue.setdefault(letter.to_session, []).append(letter)
 
     def ack(self, session_id, sig_ts, sig, letter_id, lease_token):
         """回执. 签名式 HMAC(signing_key, session\\nsig_ts\\nletter_id) —
@@ -241,9 +260,12 @@ class Mailbox:
         entry = self.leases.get(letter_id)
         if entry is None:
             raise AckConflict(f"未知或未租出的 letter_id: {letter_id}")
-        letter, token = entry
+        letter, token, leased_at = entry
         if not hmac.compare_digest(token, str(lease_token)):
             raise AckConflict("lease_token 不匹配")
+        if self._mono() - leased_at >= self.lease_seconds:
+            self._expire_lease(letter)  # 过期租约收回重投, 旧 token 作废
+            raise AckConflict("租约已过期, 信件已收回重投")
         del self.leases[letter.id]
         self.processed.add(letter.id)
         return letter
@@ -602,6 +624,17 @@ def cmd_fetch():
         letter = payload.get("letter")
         if letter is None:
             continue  # hold 超时空载荷, 重新长轮询
+        seen = state.setdefault("seen_ids", [])
+        if letter.get("id") in seen:
+            # D003/D009: 租约重投的已见信, 自动回执不呈现给 LLM, 继续等下一封
+            try:
+                ack_letter(url, sid, skey, letter.get("id", ""),
+                           payload.get("lease_token", ""))
+            except (urllib.error.HTTPError, OSError):
+                pass  # 回执失败则租约到期再重投, 下轮循环保底
+            continue
+        seen.append(letter.get("id", ""))
+        del seen[:-100]  # 只记最近 100 条已见 id
         state["pending_ack"] = {"letter_id": letter.get("id", ""),
                                 "lease_token": payload.get("lease_token", "")}
         save_cli_state(state)  # 先落盘再输出, 崩溃后下次调用仍能回执
@@ -611,7 +644,10 @@ def cmd_fetch():
 
 def cmd_serve(args):
     spath = state_path()
-    mailbox = Mailbox(db_path=spath.parent / "server.db")
+    mailbox = Mailbox(db_path=spath.parent / "server.db",
+                      lease_seconds=float(
+                          os.environ.get("SWT_MAILBOX_LEASE_SECONDS",
+                                         str(LEASE_SECONDS))))
     cond = threading.Condition()
     admin_token = os.environ.get("SWT_ADMIN_TOKEN") or uuid.uuid4().hex
     try:
