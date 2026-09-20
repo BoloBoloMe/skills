@@ -100,5 +100,30 @@ class ClearSkillsTests(unittest.TestCase):
             self.assertFalse(destination.exists())
 
 
+class RetireOldExtensionsTests(unittest.TestCase):
+    """ISSUE-09 TS-001: 旧取信扩展退役后, sync 出来的扩展目录不含它们 (AC-011)."""
+
+    def test_sync_no_old_extensions(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            home = Path(tmp) / "home"
+            pi_dir = home / ".pi" / "agent"
+            pi_dir.mkdir(parents=True)
+
+            with (
+                mock.patch.object(sync_to_pi, "detect_pi_dir", return_value=pi_dir),
+                mock.patch("pathlib.Path.home", return_value=home),
+                mock.patch(
+                    "builtins.input",
+                    side_effect=["n", "", "", "", "s", "", "n", "y"],
+                ),
+                contextlib.redirect_stdout(io.StringIO()),
+            ):
+                sync_to_pi.main()
+
+            extensions = pi_dir / "extensions"
+            self.assertFalse((extensions / "swt-mailbox-relay.ts").exists())
+            self.assertFalse((extensions / "swt-mailbox-fetch.mjs").exists())
+
+
 if __name__ == "__main__":
     unittest.main()
