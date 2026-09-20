@@ -12,6 +12,8 @@
 - SWT_MAILBOX_STATE: 状态文件路径覆盖 (缺省 ~/.local/state/swt-mailbox/state.json)
 - SWT_MAILBOX_CONFIG: 配置文件路径覆盖 (缺省 ~/.agents/sandbox-worktree/mailbox.json)
 - SWT_MAILBOX_HOLD_SECONDS: 长轮询 hold 时长覆盖 (缺省 20)
+- SWT_MAILBOX_NEIGHBORS: 邻居表文件路径覆盖 (缺省 ~/.agents/sandbox-worktree/neighbors.json)
+- SWT_MAILBOX_RETRY_SECONDS: 邻居暂存重试间隔覆盖 (缺省 5)
 """
 from __future__ import annotations
 
@@ -99,6 +101,14 @@ class Session:
         self.created_at = created_at
 
 
+class Neighbor:
+    """邻居信箱连接 (D007/D020): address = host:port, shared_key = 转发互认密钥."""
+
+    def __init__(self, address, shared_key):
+        self.address = address
+        self.shared_key = shared_key
+
+
 class Letter:
     """信件 (D008 全内存)."""
 
@@ -134,6 +144,9 @@ class Mailbox:
         self.leases = {}      # letter_id -> (Letter, lease_token)
         self.processed = set()  # 已回执 letter_id (ack 幂等)
         self.seen_ids = {}    # letter_id -> ts, 防重放/幂等投信
+        self.neighbors = []   # list[Neighbor], serve 启动时从邻居表加载
+        self.pending_forwards = []  # list[(Letter, Neighbor)], 邻居不可达内存暂存
+        self._pending_lock = threading.Lock()  # 暂存增删与请求处理线程并发
         self._db = None
         if db_path is not None:
             Path(db_path).parent.mkdir(parents=True, exist_ok=True)
@@ -203,6 +216,28 @@ class Mailbox:
                 raise UnknownRecipient("空收件人且无活跃 session (无人 poll 过)")
             letter.to_session = target
         elif letter.to_session not in self.sessions:
+            raise UnknownRecipient(f"收件 session 不在本机: {letter.to_session}")
+        self.seen_ids[letter.id] = self._now()
+        self.queue.setdefault(letter.to_session, []).append(letter)
+        return letter
+
+    def _neighbor_by_key(self, key):
+        for n in self.neighbors:
+            if hmac.compare_digest(n.shared_key, str(key)):
+                return n
+        return None
+
+    def forward(self, neighbor_key, letter_d):
+        """邻居转发收信 (D007). neighbor_key 与邻居表比对认证;
+        重复 id 幂等 (返回 None); 收件人在本机则排队."""
+        if self._neighbor_by_key(neighbor_key) is None:
+            raise MailboxError("neighbor_key 无效")
+        letter = Letter.from_dict(letter_d)
+        if letter.id in self.seen_ids:
+            return None  # 幂等: 重复 id 直接 ok
+        if letter.type not in MSG_TYPES:
+            raise MailboxError(f"未知类型: {letter.type} 不在 {MSG_TYPES}")
+        if letter.to_session not in self.sessions:
             raise UnknownRecipient(f"收件 session 不在本机: {letter.to_session}")
         self.seen_ids[letter.id] = self._now()
         self.queue.setdefault(letter.to_session, []).append(letter)
@@ -347,7 +382,27 @@ class _Handler(_JsonHandler):
             return self._handle_poll(body, endpoint)
         if path == "/mailbox/ack":
             return self._handle_ack(body, endpoint)
+        if path == "/mailbox/forward":
+            return self._handle_forward(body)
         self._json(404, {"error": "not found"})
+
+    def _handle_forward(self, body):
+        """邻居间转发端点 (无 session 凭证, 邻居共享密钥代替). 响应不签名."""
+        letter_d = body.get("letter")
+        if not isinstance(letter_d, dict):
+            return self._json(400, {"ok": False, "error": "缺字段: letter"})
+        m = self.server.mailbox
+        with self.server.cond:
+            try:
+                m.forward(str(body.get("neighbor_key", "")), letter_d)
+            except MailboxError as e:
+                return self._json(403, {"ok": False, "error": str(e)})
+            except UnknownRecipient as e:
+                return self._json(404, {"ok": False, "error": str(e)})
+            except (KeyError, ValueError, TypeError) as e:
+                return self._json(400, {"ok": False, "error": f"字段畸形: {e}"})
+            self.server.cond.notify_all()
+        return self._json(200, {"ok": True})
 
     def _handle_post(self, body, endpoint):
         party, rkey = self._party(body, endpoint)
@@ -609,9 +664,27 @@ def cmd_fetch():
         return
 
 
+def neighbors_path():
+    return Path(os.environ.get("SWT_MAILBOX_NEIGHBORS") or
+                Path.home() / ".agents/sandbox-worktree/neighbors.json")
+
+
+def load_neighbors(path):
+    """邻居表 (D020): JSON list [{address, shared_key}]; 缺失/畸形 → 空表."""
+    try:
+        data = json.loads(Path(path).read_text())
+    except (OSError, json.JSONDecodeError):
+        return []
+    if not isinstance(data, list):
+        return []
+    return [Neighbor(str(d["address"]), str(d["shared_key"]))
+            for d in data]
+
+
 def cmd_serve(args):
     spath = state_path()
     mailbox = Mailbox(db_path=spath.parent / "server.db")
+    mailbox.neighbors = load_neighbors(args.neighbors or neighbors_path())
     cond = threading.Condition()
     admin_token = os.environ.get("SWT_ADMIN_TOKEN") or uuid.uuid4().hex
     try:
@@ -647,6 +720,8 @@ def main():
     p_serve.add_argument("--port", type=int, default=DEFAULT_PORT,
                          help="信箱端口区间起点 (含), 共 10 个")
     p_serve.add_argument("--admin-port", type=int, default=DEFAULT_ADMIN_PORT)
+    p_serve.add_argument("--neighbors", default=None,
+                         help="邻居表 JSON 文件 (缺省 ~/.agents/sandbox-worktree/neighbors.json)")
     args = parser.parse_args()
     if args.cmd == "serve":
         cmd_serve(args)
