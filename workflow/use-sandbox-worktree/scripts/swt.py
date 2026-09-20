@@ -2311,6 +2311,41 @@ def wire_container_mailbox(
     return record
 
 
+def revoke_container_session(
+    mailbox_record: Any,
+    *,
+    state_path: Path = MAILBOX_STATE_PATH,
+    ports=MAILBOX_PORT_RANGE,
+) -> dict[str, Any] | None:
+    """AC-008: 容器终结时经 admin 注销其信箱 session, 防同名新容器错投旧信.
+    无 session 登记 (skipped/老记录) 静默返回 None; 信箱缺席/注销失败只告警,
+    不阻断 terminate (与 birth 同口径: 信箱是增强不是命脉)."""
+    if not isinstance(mailbox_record, dict):
+        return None
+    session_id = mailbox_record.get("session")
+    if mailbox_record.get("status") != "connected" \
+            or not isinstance(session_id, str) or not session_id:
+        return None
+    found = probe_mailbox(state_path, ports)
+    if found is None:
+        print(f"[SWT] 信箱 session 注销跳过: 本机信箱未发现 "
+              f"(session {session_id} 随服务端消亡)", file=sys.stderr)
+        return None
+    if not found.get("admin_port") or not found.get("admin_token"):
+        print(f"[SWT] 信箱 session 注销跳过: admin 凭证不可得 "
+              f"(session {session_id})", file=sys.stderr)
+        return None
+    try:
+        _admin_post(int(found["admin_port"]), str(found["admin_token"]),
+                    "/admin/sessions/revoke", {"id": session_id})
+    except MailboxWireError as exc:
+        print(f"[SWT] 信箱 session 注销失败: {exc} (不阻断 terminate)",
+              file=sys.stderr)
+        return None
+    print(f"[SWT] 信箱 session 已注销: {session_id}", file=sys.stderr)
+    return {"status": "revoked", "session": session_id}
+
+
 def assert_skills_mountable(skills_dir: Path) -> list[str]:
     """前置检查 host skill 库并返回 pyproject 项目相对路径列表 (供 .venv 匿名卷挂载).
 
@@ -3500,6 +3535,9 @@ def terminate(args: argparse.Namespace, repo: Path) -> int:
         if isinstance(runtime.get("daemon"), dict):
             runtime["daemon"].pop("bridge", None)
 
+    # ISSUE-08 (AC-008): 容器终结即注销其信箱 session, 防同名新容器错投旧信;
+    # 信箱缺席/注销失败只告警, 不阻断 terminate.
+    revoke_container_session(target.get("mailbox"))
     remove_container_credentials(target)
     runtime["containers"] = runtime_records
     if has_siblings:

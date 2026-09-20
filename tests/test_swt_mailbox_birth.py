@@ -19,6 +19,8 @@ import re
 import subprocess
 import sys
 import threading
+import urllib.error
+import urllib.request
 import uuid
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -150,6 +152,40 @@ class _MailboxIdentityServer(_LoopbackServer):
 
 class _RetiredIdentityServer(_LoopbackServer):
     handler = _RetiredIdentityHandler
+
+
+class _MailboxFaceHandler(BaseHTTPRequestHandler):
+    """假信箱面: __identity__ 应答 swt-mailbox; /mailbox/poll 按 spec 契约 —
+    已吊销/未知 session 拒 403 (与 ISSUE-01 服务端 _verify 同语义), 正常回空载荷.
+    会话状态与假 admin 共享 (同一测试双)."""
+
+    def log_message(self, *args):
+        pass
+
+    def do_GET(self):
+        if self.path == "/__identity__":
+            _quiet_json(self, 200, {"service": "swt-mailbox", "version": "test",
+                                    "capabilities": ["mailbox", "relay"]})
+        else:
+            _quiet_json(self, 404, {"error": "not found"})
+
+    def do_POST(self):
+        if self.path != "/mailbox/poll":
+            return _quiet_json(self, 404, {"error": "not found"})
+        length = int(self.headers.get("Content-Length", 0))
+        body = json.loads(self.rfile.read(length) or b"{}")
+        sid = str(body.get("session", ""))
+        if sid in _AdminHandler.revoked:
+            return _quiet_json(self, 403, {"error": f"session 已吊销: {sid}"})
+        if sid not in _AdminHandler.issued:
+            return _quiet_json(self, 403, {"error": f"未知 session: {sid}"})
+        _quiet_json(self, 200,
+                    {"payload": {"letter": None, "lease_token": ""},
+                     "sig": "test"})
+
+
+class _MailboxFaceServer(_LoopbackServer):
+    handler = _MailboxFaceHandler
 
 
 class _AdminServer(_LoopbackServer):
@@ -290,3 +326,40 @@ def test_container_send(swt, serves, tmp_path, monkeypatch):
     letter = resp["payload"]["letter"]
     assert letter["body"] == "容器发出的信"
     assert letter["from"] == sender
+
+
+def _face_poll(port: int, session_id: str) -> int:
+    """对假信箱面发一次 poll, 返回 HTTP 状态码."""
+    request = urllib.request.Request(
+        f"http://127.0.0.1:{port}/mailbox/poll",
+        data=json.dumps({"session": session_id, "sig_ts": "0",
+                         "sig": "test"}).encode(),
+        headers={"Content-Type": "application/json"}, method="POST")
+    try:
+        with urllib.request.urlopen(request, timeout=5) as resp:
+            return resp.status
+    except urllib.error.HTTPError as exc:
+        return exc.code
+
+
+# TS-004 (AC-008): terminate 后 session 被 revoke, poll 拒绝.
+def test_terminate_revokes_session(swt, servers, tmp_path):
+    face = servers(_MailboxFaceServer)
+    admin = servers(_AdminServer)
+    state = _write_state(tmp_path, port=face.port,
+                         admin_port=admin.port, admin_token=ADMIN_TOKEN)
+    # birth 注册 session
+    baked, record = _wire_env_against(swt, state)
+    assert record["status"] == "connected"
+    sid = record["session"]
+    assert _face_poll(face.port, sid) == 200  # 注销前可取信
+    # terminate 流程的注销步骤: admin POST /admin/sessions/revoke {id}
+    swt.revoke_container_session(record, state_path=state, ports=())
+    assert _AdminHandler.revoked == [sid]
+    # 注销后该 session 的 poll 被拒 (401/403)
+    assert _face_poll(face.port, sid) in (401, 403)
+    # terminate 主流程接缝守卫: 终结路径确实调用注销 (同既有
+    # test_birth_source_calls_wire_before_create 源守卫模式)
+    source = SWT_SCRIPT.read_text(encoding="utf-8")
+    segment = source[source.index("def terminate("):]
+    assert "revoke_container_session(" in segment
