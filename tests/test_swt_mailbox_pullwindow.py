@@ -161,3 +161,28 @@ def test_rate_limit_persists(serves, tmp_path, monkeypatch, capsys):
 
     assert ("PW-2", "skipped:rate-limited") in acks
     assert "swt.pull-window" not in capsys.readouterr().out
+
+
+def test_non_pullwindow_exec_bypasses_gate(serves, tmp_path, monkeypatch,
+                                           capsys):
+    """验收标准 4: 非 pull-window 的 exec 信不走本门禁 (白名单属 ISSUE-03) —
+    waypipe 缺席也不影响, 正常呈现且不产生 skipped 回执."""
+    srv = serves()
+    creds = register_session(srv, "dev1")
+    skey = creds["signing_key"]
+    cli_env(monkeypatch, srv, "dev1", skey, creds["response_key"],
+            tmp_path / "cli")
+
+    mod = load_module()
+    monkeypatch.setattr(mod, "waypipe_present", lambda: False)
+    acks = spy_acks(mod, monkeypatch)
+
+    body = json.dumps({"tool": "swt.screenshot", "args": []})
+    code, _ = post_letter(srv, "dev1", skey,
+                          make_letter(letter_id="EX-1", to="dev1",
+                                      type_="exec", body=body))
+    assert code == 200
+    mod.cmd_fetch()
+    out = capsys.readouterr().out
+    assert "swt.screenshot" in out       # 正常呈现
+    assert not any(o.startswith("skipped") for _, o in acks)
