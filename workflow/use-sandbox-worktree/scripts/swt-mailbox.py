@@ -12,6 +12,7 @@
 - SWT_MAILBOX_STATE: 状态文件路径覆盖 (缺省 ~/.local/state/swt-mailbox/state.json)
 - SWT_MAILBOX_CONFIG: 配置文件路径覆盖 (缺省 ~/.agents/sandbox-worktree/mailbox.json)
 - SWT_MAILBOX_HOLD_SECONDS: 长轮询 hold 时长覆盖 (缺省 20)
+- SWT_MAILBOX_LEASE_SECONDS: 租约时长覆盖 (缺省 1800, D009)
 """
 from __future__ import annotations
 
@@ -127,11 +128,12 @@ class Mailbox:
     信件全内存 (D008); SQLite 只存 session 凭证 (BR-009), 启动加载注册写入.
     """
 
-    def __init__(self, db_path=None, now=time.time):
+    def __init__(self, db_path=None, now=time.time, lease_seconds=1800.0):
         self._now = now
+        self.lease_seconds = lease_seconds  # 租约时长 (D009), serve 可经 env 覆盖
         self.sessions = {}    # id -> Session
         self.queue = {}       # to_session -> [Letter]
-        self.leases = {}      # letter_id -> (Letter, lease_token)
+        self.leases = {}      # letter_id -> (Letter, lease_token, 租出时刻)
         self.processed = set()  # 已回执 letter_id (ack 幂等)
         self.seen_ids = {}    # letter_id -> ts, 防重放/幂等投信
         self._db = None
@@ -223,14 +225,28 @@ class Mailbox:
         return s
 
     def try_deliver(self, session):
-        """非阻塞取信: 有 → (Letter, lease_token) 并计租, 无 → None."""
+        """非阻塞取信: 有 → (Letter, lease_token) 并计租, 无 → None.
+        取信前惰性收回过期租约 (D009 重投)."""
+        self._requeue_expired()
         q = self.queue.get(session.id) or []
         if not q:
             return None
         letter = q.pop(0)
         token = uuid.uuid4().hex
-        self.leases[letter.id] = (letter, token)
+        self.leases[letter.id] = (letter, token, self._now())
         return letter, token
+
+    def _requeue_expired(self):
+        """过期租约收回队尾重投并清除租约."""
+        now = self._now()
+        for lid, (letter, _token, leased_at) in list(self.leases.items()):
+            if now - leased_at >= self.lease_seconds:
+                del self.leases[lid]
+                self.queue.setdefault(letter.to_session, []).append(letter)
+
+    def _expire_lease(self, letter):
+        del self.leases[letter.id]
+        self.queue.setdefault(letter.to_session, []).append(letter)
 
     def ack(self, session_id, sig_ts, sig, letter_id, lease_token):
         """回执. 签名式 HMAC(signing_key, session\\nsig_ts\\nletter_id) —
@@ -241,9 +257,12 @@ class Mailbox:
         entry = self.leases.get(letter_id)
         if entry is None:
             raise AckConflict(f"未知或未租出的 letter_id: {letter_id}")
-        letter, token = entry
+        letter, token, leased_at = entry
         if not hmac.compare_digest(token, str(lease_token)):
             raise AckConflict("lease_token 不匹配")
+        if self._now() - leased_at >= self.lease_seconds:
+            self._expire_lease(letter)  # 过期租约收回重投, 旧 token 作废
+            raise AckConflict("租约已过期, 信件已收回重投")
         del self.leases[letter.id]
         self.processed.add(letter.id)
         return letter
@@ -611,7 +630,9 @@ def cmd_fetch():
 
 def cmd_serve(args):
     spath = state_path()
-    mailbox = Mailbox(db_path=spath.parent / "server.db")
+    mailbox = Mailbox(db_path=spath.parent / "server.db",
+                      lease_seconds=float(
+                          os.environ.get("SWT_MAILBOX_LEASE_SECONDS", "1800")))
     cond = threading.Condition()
     admin_token = os.environ.get("SWT_ADMIN_TOKEN") or uuid.uuid4().hex
     try:
