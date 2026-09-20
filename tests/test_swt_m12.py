@@ -727,6 +727,9 @@ class SwtBirthFixture(SwtFixture):
 
 
 class TestTS201BirthChain(SwtBirthFixture):
+    # 注意: 后续用例类一律继承 SwtBirthFixture, 禁止继承本类 — 继承会原样重跑
+    # test_birth_decides_then_builds_complete_chain (每子类一份全量 birth, M15 前
+    # 曾因此白白重复 17 份).
 
     def test_birth_decides_then_builds_complete_chain(self) -> None:
         common = (
@@ -909,7 +912,7 @@ class TestTS1xxHostname(SwtBirthFixture):
         ).stdout.splitlines())
 
 
-class TestTS212Environment(TestTS201BirthChain):
+class TestTS212Environment(SwtBirthFixture):
     def test_missing_podman_is_environment_error_before_state_change(self) -> None:
         fake = self.root / "path"
         fake.mkdir()
@@ -927,7 +930,7 @@ class TestTS212Environment(TestTS201BirthChain):
         self.assertFalse((self.repo.parent / "demo-main-feature-m12").exists())
 
 
-class TestTS213SshKey(TestTS201BirthChain):
+class TestTS213SshKey(SwtBirthFixture):
     def test_private_key_is_mode_600_and_batchmode_works(self) -> None:
         state = self.birth_ready()
         runtime = self.runtime_data()
@@ -937,7 +940,7 @@ class TestTS213SshKey(TestTS201BirthChain):
         self.assertEqual(0, probe.returncode, probe.stderr)
 
 
-class TestTS210NftMerge(TestTS201BirthChain):
+class TestTS210NftMerge(SwtBirthFixture):
     def test_second_pair_rules_stay_in_each_container_netns(self) -> None:
         """并行母体: 两对各自的容器规则在各自 SandboxKey; 第二容器诞生时宿主 6080
         已被首容器占用, 回落到回环动态端口 (D040)."""
@@ -976,7 +979,7 @@ class TestTS210NftMerge(TestTS201BirthChain):
         ).stdout)
         self.assertEqual(second_bindings["6080/tcp"][0]["HostIp"], "127.0.0.1")
 
-class TestTS211Partial(TestTS201BirthChain):
+class TestTS211Partial(SwtBirthFixture):
     def test_port_start_failure_leaves_runtime_and_second_birth_converges(self) -> None:
         fake = self.root / "partial-bin"
         fake.mkdir()
@@ -1007,7 +1010,7 @@ class TestTS211Partial(TestTS201BirthChain):
         self.assertEqual("born", self.state(second)["stage"])
 
 
-class TestTS209ImageDecision(TestTS201BirthChain):
+class TestTS209ImageDecision(SwtBirthFixture):
     def test_missing_requirements_without_image_is_precondition_failure(self) -> None:
         result = self.run_swt(
             "birth", "--repo", str(self.repo), "--records-root", str(self.records), "--branch", "feature/m12",
@@ -1018,7 +1021,7 @@ class TestTS209ImageDecision(TestTS201BirthChain):
         self.assertFalse((self.repo.parent / "demo-main-feature-m12").exists())
 
 
-class TestTS208DecisionReceipts(TestTS201BirthChain):
+class TestTS208DecisionReceipts(SwtBirthFixture):
     def test_decisions_are_all_listed_and_config_drift_reopens_them(self) -> None:
         common = (
             "birth", "--repo", str(self.repo), "--records-root", str(self.records), "--branch", "feature/m12",
@@ -1038,7 +1041,7 @@ class TestTS208DecisionReceipts(TestTS201BirthChain):
         self.assertTrue(list((self.records / "runtime").glob("*/decisions/d-*.json")))
 
 
-class TestTS207MultiPairBirth(TestTS201BirthChain):
+class TestTS207MultiPairBirth(SwtBirthFixture):
     def test_second_pair_birth_is_not_blocked_by_first_pair(self) -> None:
         """并行母体: 第一对在世时, 第二个 --branch 直接开新对, 不再要求换母体."""
         self.birth_ready()
@@ -1062,7 +1065,7 @@ class TestTS207MultiPairBirth(TestTS201BirthChain):
         self.assertNotEqual(daemons[0]["pid"], daemons[1]["pid"])
 
 
-class TestTS206ConfigIdempotence(TestTS201BirthChain):
+class TestTS206ConfigIdempotence(SwtBirthFixture):
     def test_rebirth_reuses_config_without_duplicate_values(self) -> None:
         first = self.birth_ready()
         name = first["containers"][0]["name"]
@@ -1086,7 +1089,7 @@ class TestTS206ConfigIdempotence(TestTS201BirthChain):
         self.assertEqual(first["daemon"]["pid"], state["daemon"]["pid"])
 
 
-class TestTS205ConfigFault(TestTS201BirthChain):
+class TestTS205ConfigFault(SwtBirthFixture):
     def test_wrong_scalar_and_duplicate_multivalue_are_not_overwritten(self) -> None:
         subprocess.run(["git", "-C", str(self.repo), "config", "--add", "receive.denyDeletes", "false"], check=True)
         wrong = self.run_swt(
@@ -1129,7 +1132,7 @@ class TestTS205ConfigFault(TestTS201BirthChain):
         ).stdout.splitlines())
 
 
-class TestTS204DirtyMother(TestTS201BirthChain):
+class TestTS204DirtyMother(SwtBirthFixture):
     def test_dirty_tracked_mother_tree_rejects_push_and_restores(self) -> None:
         state = self.birth_ready()
         mother = Path(state["mother"]["dir"])
@@ -1152,7 +1155,7 @@ class TestTS204DirtyMother(TestTS201BirthChain):
         self.assertEqual(original, (mother / "README.md").read_bytes())
 
 
-class TestTS203RejectMatrix(TestTS201BirthChain):
+class TestTS203RejectMatrix(SwtBirthFixture):
     def test_new_branch_tag_non_ff_and_delete_are_remote_rejected(self) -> None:
         state = self.birth_ready()
         branch = state["mother"]["branch"]
@@ -1204,7 +1207,7 @@ class TestTS203RejectMatrix(TestTS201BirthChain):
         self.assertNotIn("refs/tags/ts203-tag", refs)
 
 
-class TestTS202PushLands(TestTS201BirthChain):
+class TestTS202PushLands(SwtBirthFixture):
     def test_container_commit_push_lands_in_mother(self) -> None:
         state = self.birth_ready()
         result = self.ssh_run(
@@ -1223,7 +1226,7 @@ class TestTS202PushLands(TestTS201BirthChain):
             time.sleep(0.05)
         self.assertEqual("from-container\n", (mother / "ts202.txt").read_text(encoding="utf-8"))
 
-class TestReviewP1ActiveDaemon(TestTS201BirthChain):
+class TestReviewP1ActiveDaemon(SwtBirthFixture):
     def test_birth_rejects_pair_daemon_residue(self) -> None:
         """本对母体目录已有孤儿 daemon (上次异常 birth 残留) → birth 前置拒绝;
         并行母体下只拦本对, 他对 daemon 不在匹配面."""
@@ -1263,7 +1266,7 @@ class TestReviewP1ActiveDaemon(TestTS201BirthChain):
                 daemon.wait(timeout=2)
 
 
-class TestReviewP2DaemonOrphan(TestTS201BirthChain):
+class TestReviewP2DaemonOrphan(SwtBirthFixture):
     def test_status_marks_recorded_daemon_orphan_when_pid_is_gone(self) -> None:
         state = self.birth_ready()
         runtime_file = self.runtime_file()
@@ -1275,7 +1278,7 @@ class TestReviewP2DaemonOrphan(TestTS201BirthChain):
         self.assertTrue(self.state(result)["daemon"]["orphan"])
 
 
-class TestReviewP3ImageFreshness(TestTS201BirthChain):
+class TestReviewP3ImageFreshness(SwtBirthFixture):
     def test_rebirth_reports_newer_candidate_digest(self) -> None:
         before = self.birth_ready()
         name = before["containers"][0]["name"]
@@ -1292,7 +1295,7 @@ class TestReviewP3ImageFreshness(TestTS201BirthChain):
         self.assertTrue(self.state(result)["image"]["newer-available"])
 
 
-class TestReviewP4ConfigPartial(TestTS201BirthChain):
+class TestReviewP4ConfigPartial(SwtBirthFixture):
     def test_config_write_failure_after_runtime_creation_is_partial(self) -> None:
         fake_bin = self.root / "config-fail-bin"
         fake_bin.mkdir()
@@ -1325,7 +1328,7 @@ class TestReviewP4ConfigPartial(TestTS201BirthChain):
         self.assertTrue(list((self.records / "runtime").glob("*.json")))
 
 
-class TestReviewP5ReceiptExpiry(TestTS201BirthChain):
+class TestReviewP5ReceiptExpiry(SwtBirthFixture):
     def test_fingerprint_drift_deletes_old_receipts_before_new_decide(self) -> None:
         common = (
             "birth", "--repo", str(self.repo), "--records-root", str(self.records),

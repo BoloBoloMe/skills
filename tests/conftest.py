@@ -158,3 +158,27 @@ def ack_letter(srv, session_id, signing_key, letter_id, lease_token,
                      {"session": session_id, "sig_ts": sig_ts, "sig": sig,
                       "letter_id": letter_id, "lease_token": lease_token,
                       "outcome": outcome})
+
+
+# ---------------------------------------------------------------------------
+# 分层跑法 (MILESTONE-15): e2e = 真实重外部资源用例 (真容器/真镜像构建/真 nft/netns),
+# 快层 = 其余 (纯逻辑/mock/轻量子进程). 用法与改动面映射见 tests/README.md.
+# ---------------------------------------------------------------------------
+
+# 显式表: 类名不以 E2E 结尾但确实创建真实重外部资源的用例类.
+_E2E_CLASS_TABLE = {
+    "test_swt_m04.py": {"NetworkModeTestCase", "FirewallExtensionTestCase", "PastaOutboundTestCase"},
+    "test_swt_m12.py": {"TestTS004Containers", "TestS2ContainerDirty"},
+}
+
+
+def pytest_collection_modifyitems(items):
+    """按类名归层: *E2E 命名约定 / SwtBirthFixture 血统 (真 birth) / 显式表."""
+    for item in items:
+        cls = getattr(item, "cls", None)
+        if cls is None:
+            continue
+        mro_names = {base.__name__ for base in cls.__mro__}
+        explicit = _E2E_CLASS_TABLE.get(Path(str(item.path)).name, set())
+        if cls.__name__.endswith("E2E") or "SwtBirthFixture" in mro_names or cls.__name__ in explicit:
+            item.add_marker(pytest.mark.e2e)
