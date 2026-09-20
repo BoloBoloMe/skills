@@ -41,6 +41,7 @@ PORT_SPAN = 10
 TS_WINDOW = 300.0           # 签名时间窗 ±5min
 HOLD_SECONDS = 20.0         # 长轮询 hold 缺省
 MSG_TYPES = ("notify", "open_url", "exec", "request")
+PULL_WINDOW_TOOL = "swt.pull-window"  # exec 指令集内置成员 (动态绑定投信方)
 
 
 def sign(key, *parts):
@@ -74,6 +75,20 @@ def write_state_file(path, port, admin_port, admin_token):
     write_json_0600(path, data)
 
 
+def _canonical(obj):
+    """指令规范形: JSON sort_keys 序列化 (沿用 swt-base-server.py)."""
+    return json.dumps(obj, sort_keys=True)
+
+
+def _parse_instruction(body):
+    """exec 信 body 解析为指令对象; 非 JSON/非含 tool 字符串的对象 → None."""
+    try:
+        ins = json.loads(body)
+    except (json.JSONDecodeError, TypeError):
+        return None
+    return ins if isinstance(ins, dict) and isinstance(ins.get("tool"), str) else None
+
+
 class MailboxError(Exception):
     """请求被拒 (认证/校验失败), HTTP 403."""
 
@@ -102,13 +117,16 @@ class Session:
 class Letter:
     """信件 (D008 全内存)."""
 
-    def __init__(self, id, ts, from_session, to_session, type, body):
+    def __init__(self, id, ts, from_session, to_session, type, body,
+                 downgraded=False, note=""):
         self.id = id
         self.ts = ts
         self.from_session = from_session
         self.to_session = to_session
         self.type = type
         self.body = body
+        self.downgraded = downgraded  # exec 指令集外 → 降级 request 标注 (D006)
+        self.note = note
 
     @classmethod
     def from_dict(cls, d):
@@ -117,7 +135,8 @@ class Letter:
 
     def to_dict(self):
         return {"id": self.id, "ts": self.ts, "from": self.from_session,
-                "to": self.to_session, "type": self.type, "body": self.body}
+                "to": self.to_session, "type": self.type, "body": self.body,
+                "downgraded": self.downgraded, "note": self.note}
 
 
 class Mailbox:
@@ -134,6 +153,7 @@ class Mailbox:
         self.leases = {}      # letter_id -> (Letter, lease_token)
         self.processed = set()  # 已回执 letter_id (ack 幂等)
         self.seen_ids = {}    # letter_id -> ts, 防重放/幂等投信
+        self.whitelist = set()  # exec 指令集规范形 (D006 内容级防线)
         self._db = None
         if db_path is not None:
             Path(db_path).parent.mkdir(parents=True, exist_ok=True)
@@ -196,6 +216,15 @@ class Mailbox:
             return None  # 幂等: 重复 id 直接 ok
         if letter.type not in MSG_TYPES:
             raise MailboxError(f"未知类型: {letter.type} 不在 {MSG_TYPES}")
+        if letter.type == "exec":
+            # D006: exec 过指令集白名单, 不在集合降级 request 走收件侧权限流程
+            ins = _parse_instruction(letter.body)
+            if self._pull_window_hit(ins, session_id) or (
+                    ins is not None and _canonical(ins) in self.whitelist):
+                letter.note = "指令集命中 → 收件侧直批 (D006)"
+            else:
+                letter.downgraded = True
+                letter.note = "指令集外 → 降级 request, 走收件侧权限流程 (D006)"
         if not letter.to_session:
             # 空 to = 最近活跃 session (TECHNICAL 数据模型)
             target = self._most_recent_poller()
@@ -207,6 +236,16 @@ class Mailbox:
         self.seen_ids[letter.id] = self._now()
         self.queue.setdefault(letter.to_session, []).append(letter)
         return letter
+
+    @staticmethod
+    def _pull_window_hit(ins, poster_session_id):
+        """swt.pull-window = 服务端内置形状校验, 动态绑定投信 session 自身,
+        不落静态 whitelist 行. 恰含 {tool, container} 两键才命中
+        (沿用 swt-base-server.py UD-05, container_key 角色由 session 接替)."""
+        return (isinstance(ins, dict)
+                and set(ins) == {"tool", "container"}
+                and ins["tool"] == PULL_WINDOW_TOOL
+                and ins["container"] == poster_session_id)
 
     def _most_recent_poller(self):
         """最近活跃 = last_poll 最新的已注册未吊销 session; 无 → None."""
