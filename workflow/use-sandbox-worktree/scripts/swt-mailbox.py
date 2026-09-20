@@ -526,16 +526,16 @@ def pull_window_container(letter):
     return str(container) if container else str(letter.get("from", ""))
 
 
-def gate_pull_window(container, state, now=time.time):
+def gate_pull_window(container, state):
     """拉窗门禁: 返回 None = 过门 (并记限频时刻); 否则 = skipped outcome.
     限频时刻表在 state["lastPullWindowAt"] (dict[容器名 -> 时间戳])."""
     if not waypipe_present():
         return "skipped:waypipe-missing"
     table = state.setdefault("lastPullWindowAt", {})
     last = table.get(container)
-    if last is not None and now() - float(last) < PULL_WINDOW_MIN_INTERVAL:
+    if last is not None and time.time() - float(last) < PULL_WINDOW_MIN_INTERVAL:
         return "skipped:rate-limited"
-    table[container] = now()
+    table[container] = time.time()
     return None
 
 
