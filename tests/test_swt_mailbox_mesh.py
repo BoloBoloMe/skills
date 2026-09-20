@@ -17,7 +17,9 @@ import re
 import select
 import subprocess
 import sys
+import threading
 import time
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
 import pytest
@@ -85,6 +87,50 @@ class MeshServe:
                 self.proc.wait()
 
 
+class _SpyHandler(BaseHTTPRequestHandler):
+    def log_message(self, *args):
+        pass
+
+    def do_POST(self):
+        raw = self.rfile.read(int(self.headers.get("Content-Length", 0)))
+        self.server.received.append(json.loads(raw or b"{}"))
+        data = json.dumps({"ok": True}).encode()
+        self.send_response(200)
+        self.send_header("Content-Type", "application/json")
+        self.send_header("Content-Length", str(len(data)))
+        self.end_headers()
+        self.wfile.write(data)
+
+
+class SpyNeighbor:
+    """假邻居: 回环 HTTP 服务器, 记录收到的每个请求体 (观察转发流向)."""
+
+    def __init__(self):
+        self.received = []
+        self._server = ThreadingHTTPServer(("127.0.0.1", 0), _SpyHandler)
+        self._server.received = self.received
+        self.port = self._server.server_address[1]
+        threading.Thread(target=self._server.serve_forever, daemon=True).start()
+
+    def stop(self):
+        self._server.shutdown()
+        self._server.server_close()
+
+
+@pytest.fixture
+def spy_neighbor():
+    created = []
+
+    def _spy():
+        spy = SpyNeighbor()
+        created.append(spy)
+        return spy
+
+    yield _spy
+    for spy in created:
+        spy.stop()
+
+
 @pytest.fixture
 def mesh_serves(tmp_path):
     created = []
@@ -140,3 +186,46 @@ def test_flood_to_neighbor(mesh_serves):
     assert letter["id"] == "X-1"
     assert letter["body"] == "跨机投递"
     assert letter["from"] == "a-host"
+
+
+def test_seen_id_prevents_loop(mesh_serves, spy_neighbor):
+    """TS-003: 洪泛给不存在的 session 时 seen-id 去重使转发收敛 —
+    三实例洪泛后 post 迅速返回且实例保持可服务 (循环会把同步转发链
+    拖成数十秒嵌套超时); 同一封信第二次到达同实例被丢弃不再转发."""
+    pa, pb, pc = free_port(), free_port(), free_port()
+    srv_a = mesh_serves("a", neighbors=[neighbor(pb, "k-ab"),
+                                        neighbor(pc, "k-ac")], port=pa)
+    mesh_serves("b", neighbors=[neighbor(pa, "k-ab"),
+                                neighbor(pc, "k-bc")], port=pb)
+    srv_c = mesh_serves("c", neighbors=[neighbor(pa, "k-ac"),
+                                        neighbor(pb, "k-bc")], port=pc)
+    creds_a = register_session(srv_a, "a-host")
+    creds_c = register_session(srv_c, "c-host")
+
+    t0 = time.time()
+    code, _ = post_letter(srv_a, "a-host", creds_a["signing_key"],
+                          make_letter(letter_id="G-1", to="ghost",
+                                      body="无收件人"))
+    elapsed = time.time() - t0
+    assert code == 200
+    assert elapsed < 10, f"post 响应耗时 {elapsed:.1f}s, 疑似洪泛循环"
+    for port in (pa, pb, pc):
+        code, _ = http_json("GET", port, "/__identity__", timeout=5)
+        assert code == 200, "实例在洪泛后失能, 疑似转发循环"
+    # 收件人不存在: 任何实例都不应排队该信
+    code, resp = poll(srv_c, "c-host", creds_c["signing_key"])
+    assert code == 200
+    assert resp["payload"]["letter"] is None
+
+    # 去重语义精确验证: 同 id 重复 forward 到 D, 不再产生新的转发
+    spy_b, spy_c = spy_neighbor(), spy_neighbor()
+    srv_d = mesh_serves("d", neighbors=[neighbor(spy_b.port, "k-db"),
+                                        neighbor(spy_c.port, "k-dc")])
+    letter = make_letter(letter_id="G-9", to="ghost", body="重复到达")
+    code, _ = forward(srv_d, "k-db", letter)
+    assert code == 200
+    code, _ = forward(srv_d, "k-db", letter)  # 同 id 第二次到达
+    assert code == 200
+    time.sleep(0.5)
+    assert len(spy_c.received) == 1, \
+        "已见过的信被再次转发, seen-id 去重失效会导致洪泛循环"
