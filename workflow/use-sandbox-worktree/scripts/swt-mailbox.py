@@ -40,6 +40,7 @@ DEFAULT_ADMIN_PORT = 38416  # 管理口, 仅 127.0.0.1
 PORT_SPAN = 10
 TS_WINDOW = 300.0           # 签名时间窗 ±5min
 HOLD_SECONDS = 20.0         # 长轮询 hold 缺省
+MAX_CONCURRENT_POLLS = 5    # 同 session 并发 poll 上限 (D016)
 MSG_TYPES = ("notify", "open_url", "exec", "request")
 PULL_WINDOW_TOOL = "swt.pull-window"  # exec 指令集内置成员 (动态绑定投信方)
 
@@ -154,6 +155,7 @@ class Mailbox:
         self.processed = set()  # 已回执 letter_id (ack 幂等)
         self.seen_ids = {}    # letter_id -> ts, 防重放/幂等投信
         self.whitelist = set()  # exec 指令集规范形 (D006 内容级防线)
+        self.concurrent_polls = {}  # session_id -> 在等 poll 数 (D016)
         self._db = None
         if db_path is not None:
             Path(db_path).parent.mkdir(parents=True, exist_ok=True)
@@ -277,6 +279,23 @@ class Mailbox:
         self._save_session(s)
         return s
 
+    def enter_poll(self, session_id, limit):
+        """poll 进入计额: 同 session 并发数达上限 → False (调用方 409).
+        调用方须持有 server 层 cond, 与 exit_poll 配对."""
+        count = self.concurrent_polls.get(session_id, 0)
+        if count >= limit:
+            return False
+        self.concurrent_polls[session_id] = count + 1
+        return True
+
+    def exit_poll(self, session_id):
+        """poll 退出销额, 与 enter_poll 配对."""
+        count = self.concurrent_polls.get(session_id, 0)
+        if count <= 1:
+            self.concurrent_polls.pop(session_id, None)
+        else:
+            self.concurrent_polls[session_id] = count - 1
+
     def try_deliver(self, session):
         """非阻塞取信: 有 → (Letter, lease_token) 并计租, 无 → None."""
         q = self.queue.get(session.id) or []
@@ -312,6 +331,7 @@ class MailboxHttpServer(ThreadingHTTPServer):
         self.mailbox = mailbox
         self.cond = cond  # 长轮询 hold: post notify_all 唤醒
         self.hold_seconds = HOLD_SECONDS
+        self.max_concurrent_polls = MAX_CONCURRENT_POLLS
         for port in range(start_port, start_port + PORT_SPAN):
             try:
                 super().__init__((host, port), _Handler)
@@ -439,19 +459,29 @@ class _Handler(_JsonHandler):
                 return self._bad(party, f"字段畸形: {e}", rkey)
             except MailboxError as e:
                 return self._signed(403, party, {"ok": False, "error": str(e)}, rkey)
-            deadline = time.monotonic() + self.server.hold_seconds
-            while True:
-                got = m.try_deliver(session)
-                if got is not None:
-                    letter, token = got
-                    return self._signed(200, session.id,
-                                        {"letter": letter.to_dict(),
-                                         "lease_token": token}, rkey)
-                remaining = deadline - time.monotonic()
-                if remaining <= 0:
-                    return self._signed(200, session.id,
-                                        {"letter": None, "lease_token": ""}, rkey)
-                self.server.cond.wait(timeout=remaining)
+            if not m.enter_poll(session.id, self.server.max_concurrent_polls):
+                return self._signed(
+                    409, session.id,
+                    {"ok": False,
+                     "error": f"并发 poll 超上限"
+                              f" ({self.server.max_concurrent_polls})"}, rkey)
+            try:
+                deadline = time.monotonic() + self.server.hold_seconds
+                while True:
+                    got = m.try_deliver(session)
+                    if got is not None:
+                        letter, token = got
+                        return self._signed(200, session.id,
+                                            {"letter": letter.to_dict(),
+                                             "lease_token": token}, rkey)
+                    remaining = deadline - time.monotonic()
+                    if remaining <= 0:
+                        return self._signed(200, session.id,
+                                            {"letter": None, "lease_token": ""},
+                                            rkey)
+                    self.server.cond.wait(timeout=remaining)
+            finally:
+                m.exit_poll(session.id)
 
     def _handle_ack(self, body, endpoint):
         party, rkey = self._party(body, endpoint)
@@ -681,6 +711,8 @@ def cmd_serve(args):
         server = MailboxHttpServer(mailbox, cond, "0.0.0.0", args.port)
         server.hold_seconds = float(os.environ.get("SWT_MAILBOX_HOLD_SECONDS",
                                                    str(HOLD_SECONDS)))
+        server.max_concurrent_polls = int(os.environ.get(
+            "SWT_MAILBOX_MAX_CONCURRENT_POLLS", str(MAX_CONCURRENT_POLLS)))
         admin = AdminHttpServer(mailbox, cond, admin_token, args.admin_port)
     except (RuntimeError, OSError) as e:
         print(e, file=sys.stderr)
