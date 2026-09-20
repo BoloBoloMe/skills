@@ -2316,34 +2316,33 @@ def revoke_container_session(
     *,
     state_path: Path = MAILBOX_STATE_PATH,
     ports=MAILBOX_PORT_RANGE,
-) -> dict[str, Any] | None:
+) -> None:
     """AC-008: 容器终结时经 admin 注销其信箱 session, 防同名新容器错投旧信.
-    无 session 登记 (skipped/老记录) 静默返回 None; 信箱缺席/注销失败只告警,
+    无 session 登记 (skipped/老记录) 静默返回; 信箱缺席/注销失败只告警,
     不阻断 terminate (与 birth 同口径: 信箱是增强不是命脉)."""
     if not isinstance(mailbox_record, dict):
-        return None
+        return
     session_id = mailbox_record.get("session")
     if mailbox_record.get("status") != "connected" \
             or not isinstance(session_id, str) or not session_id:
-        return None
+        return
     found = probe_mailbox(state_path, ports)
     if found is None:
         print(f"[SWT] 信箱 session 注销跳过: 本机信箱未发现 "
               f"(session {session_id} 随服务端消亡)", file=sys.stderr)
-        return None
+        return
     if not found.get("admin_port") or not found.get("admin_token"):
         print(f"[SWT] 信箱 session 注销跳过: admin 凭证不可得 "
               f"(session {session_id})", file=sys.stderr)
-        return None
+        return
     try:
         _admin_post(int(found["admin_port"]), str(found["admin_token"]),
                     "/admin/sessions/revoke", {"id": session_id})
     except MailboxWireError as exc:
         print(f"[SWT] 信箱 session 注销失败: {exc} (不阻断 terminate)",
               file=sys.stderr)
-        return None
+        return
     print(f"[SWT] 信箱 session 已注销: {session_id}", file=sys.stderr)
-    return {"status": "revoked", "session": session_id}
 
 
 def assert_skills_mountable(skills_dir: Path) -> list[str]:
