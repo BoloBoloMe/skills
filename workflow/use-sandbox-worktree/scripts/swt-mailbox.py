@@ -12,7 +12,7 @@
 - SWT_MAILBOX_STATE: 状态文件路径覆盖 (缺省 ~/.local/state/swt-mailbox/state.json)
 - SWT_MAILBOX_CONFIG: 配置文件路径覆盖 (缺省 ~/.agents/sandbox-worktree/mailbox.json)
 - SWT_MAILBOX_HOLD_SECONDS: 长轮询 hold 时长覆盖 (缺省 20)
-- SWT_MAILBOX_LEASE_SECONDS: 租约时长覆盖 (缺省 1800, D009)
+- SWT_MAILBOX_LEASE_SECONDS: 租约时长覆盖 (缺省 LEASE_SECONDS=1800, D009)
 """
 from __future__ import annotations
 
@@ -41,6 +41,7 @@ DEFAULT_ADMIN_PORT = 38416  # 管理口, 仅 127.0.0.1
 PORT_SPAN = 10
 TS_WINDOW = 300.0           # 签名时间窗 ±5min
 HOLD_SECONDS = 20.0         # 长轮询 hold 缺省
+LEASE_SECONDS = 1800.0      # 租约时长缺省 30min (D009)
 MSG_TYPES = ("notify", "open_url", "exec", "request")
 
 
@@ -128,7 +129,7 @@ class Mailbox:
     信件全内存 (D008); SQLite 只存 session 凭证 (BR-009), 启动加载注册写入.
     """
 
-    def __init__(self, db_path=None, now=time.time, lease_seconds=1800.0,
+    def __init__(self, db_path=None, now=time.time, lease_seconds=LEASE_SECONDS,
                  monotonic=time.monotonic):
         self._now = now            # 墙钟: 签名时间窗 ±5min / last_poll
         self._mono = monotonic     # 单调钟: 租约计时 (TECHNICAL 边界与异常处理)
@@ -645,7 +646,8 @@ def cmd_serve(args):
     spath = state_path()
     mailbox = Mailbox(db_path=spath.parent / "server.db",
                       lease_seconds=float(
-                          os.environ.get("SWT_MAILBOX_LEASE_SECONDS", "1800")))
+                          os.environ.get("SWT_MAILBOX_LEASE_SECONDS",
+                                         str(LEASE_SECONDS))))
     cond = threading.Condition()
     admin_token = os.environ.get("SWT_ADMIN_TOKEN") or uuid.uuid4().hex
     try:
