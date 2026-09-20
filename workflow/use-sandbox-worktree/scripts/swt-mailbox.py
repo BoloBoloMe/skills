@@ -676,6 +676,8 @@ class _AdminHandler(_JsonHandler):
                                     "response_key": s.response_key})
         if path == "/admin/relay-keys":
             return self._create_relay_key(body)
+        if path == "/admin/relay-keys/revoke":
+            return self._revoke_relay_key(body)
         self._json(404, {"error": "not found"})
 
     # -- relay key 管理 --------------------------------------------------------
@@ -697,6 +699,15 @@ class _AdminHandler(_JsonHandler):
         rk = self.server.relay.add_key(key, models, quota, expires_at)
         self._json(200, {"key": rk.key, "models": sorted(rk.models),
                          "quota": rk.quota, "expires_at": rk.expires_at})
+
+    def _revoke_relay_key(self, body):
+        if self.server.relay is None:
+            return self._json(404, {"error": "not found"})
+        key = body.get("key")
+        if self.server.relay.get_key(key) is None:
+            return self._json(404, {"error": f"未知 key: {key}"})
+        self.server.relay.revoke_key(key)
+        self._json(200, {"ok": True})
 
 
 def _term(*_):

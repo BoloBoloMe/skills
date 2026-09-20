@@ -201,3 +201,26 @@ def test_relay_chat(relay_serves, upstream):
     assert got["path"] == "/v1/chat/completions"
     assert got["authorization"] == f"Bearer {UPSTREAM_KEY}"
     assert got["body"]["model"] == "m-a"
+
+
+def chat(srv, key, model="m-a"):
+    return http_json("POST", srv.relay_port, "/v1/chat/completions",
+                     {"model": model,
+                      "messages": [{"role": "user", "content": "hi"}]},
+                     headers=bearer(key))
+
+
+def test_relay_key_revocation(relay_serves, upstream):
+    """限额 key 超额后请求被拒 (429); 吊销 key 后请求被拒 (401)."""
+    srv = relay_serves(upstream.base_url)
+    issued = create_relay_key(srv, ["m-a"], quota=1)
+    code, _ = chat(srv, issued["key"])
+    assert code == 200
+    code, resp = chat(srv, issued["key"])
+    assert code == 429, resp
+    code, resp = http_json("POST", srv.admin_port, "/admin/relay-keys/revoke",
+                           {"key": issued["key"]},
+                           headers={"X-Admin-Token": ADMIN_TOKEN})
+    assert code == 200, resp
+    code, resp = chat(srv, issued["key"])
+    assert code == 401, resp
