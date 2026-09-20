@@ -42,7 +42,9 @@ PORT_SPAN = 10
 TS_WINDOW = 300.0           # 签名时间窗 ±5min
 HOLD_SECONDS = 20.0         # 长轮询 hold 缺省
 LEASE_SECONDS = 1800.0      # 租约时长缺省 30min (D009)
+MAX_CONCURRENT_POLLS = 5    # 同 session 并发 poll 上限 (D016)
 MSG_TYPES = ("notify", "open_url", "exec", "request")
+PULL_WINDOW_TOOL = "swt.pull-window"  # exec 指令集内置成员 (动态绑定投信方)
 
 
 def sign(key, *parts):
@@ -76,6 +78,20 @@ def write_state_file(path, port, admin_port, admin_token):
     write_json_0600(path, data)
 
 
+def _canonical(obj):
+    """指令规范形: JSON sort_keys 序列化 (沿用 swt-base-server.py)."""
+    return json.dumps(obj, sort_keys=True)
+
+
+def _parse_instruction(body):
+    """exec 信 body 解析为指令对象; 非 JSON/非含 tool 字符串的对象 → None."""
+    try:
+        ins = json.loads(body)
+    except (json.JSONDecodeError, TypeError):
+        return None
+    return ins if isinstance(ins, dict) and isinstance(ins.get("tool"), str) else None
+
+
 class MailboxError(Exception):
     """请求被拒 (认证/校验失败), HTTP 403."""
 
@@ -104,13 +120,16 @@ class Session:
 class Letter:
     """信件 (D008 全内存)."""
 
-    def __init__(self, id, ts, from_session, to_session, type, body):
+    def __init__(self, id, ts, from_session, to_session, type, body,
+                 downgraded=False, note=""):
         self.id = id
         self.ts = ts
         self.from_session = from_session
         self.to_session = to_session
         self.type = type
         self.body = body
+        self.downgraded = downgraded  # exec 指令集外 → 降级 request 标注 (D006)
+        self.note = note
 
     @classmethod
     def from_dict(cls, d):
@@ -119,14 +138,16 @@ class Letter:
 
     def to_dict(self):
         return {"id": self.id, "ts": self.ts, "from": self.from_session,
-                "to": self.to_session, "type": self.type, "body": self.body}
+                "to": self.to_session, "type": self.type, "body": self.body,
+                "downgraded": self.downgraded, "note": self.note}
 
 
 class Mailbox:
     """核心状态模型: sessions 注册表 + 内存队列/租约/seen_ids.
 
     阻塞等待由 server 层的 Condition 实现, 本类只做判定.
-    信件全内存 (D008); SQLite 只存 session 凭证 (BR-009), 启动加载注册写入.
+    信件全内存 (D008); SQLite 只存凭证/配置 (sessions + whitelist, BR-009),
+    不存信件; 启动加载, 注册/登记时写入.
     """
 
     def __init__(self, db_path=None, now=time.time, lease_seconds=LEASE_SECONDS,
@@ -139,6 +160,8 @@ class Mailbox:
         self.leases = {}      # letter_id -> (Letter, lease_token, 租出时刻)
         self.processed = set()  # 已回执 letter_id (ack 幂等)
         self.seen_ids = {}    # letter_id -> ts, 防重放/幂等投信
+        self.whitelist = set()  # exec 指令集规范形 (D006 内容级防线)
+        self.concurrent_polls = {}  # session_id -> 在等 poll 数 (D016)
         self._db = None
         if db_path is not None:
             Path(db_path).parent.mkdir(parents=True, exist_ok=True)
@@ -147,6 +170,12 @@ class Mailbox:
                 "CREATE TABLE IF NOT EXISTS sessions ("
                 " id TEXT PRIMARY KEY, signing_key TEXT, response_key TEXT,"
                 " revoked INTEGER, last_poll REAL, created_at REAL)")
+            self._db.execute(
+                "CREATE TABLE IF NOT EXISTS whitelist ("
+                " instruction TEXT PRIMARY KEY)")
+            for (instruction,) in self._db.execute(
+                    "SELECT instruction FROM whitelist"):
+                self.whitelist.add(instruction)
             for row in self._db.execute(
                     "SELECT id, signing_key, response_key, revoked, last_poll,"
                     " created_at FROM sessions"):
@@ -175,6 +204,16 @@ class Mailbox:
     def get_session(self, session_id):
         return self.sessions.get(session_id)
 
+    def add_whitelist(self, instruction):
+        """注册 exec 指令 (规范形入库, 重启后仍生效)."""
+        canonical = _canonical(instruction)
+        self.whitelist.add(canonical)
+        if self._db is not None:
+            self._db.execute(
+                "INSERT OR IGNORE INTO whitelist (instruction) VALUES (?)",
+                (canonical,))
+            self._db.commit()
+
     def _check_ts(self, sig_ts):
         if abs(self._now() - float(sig_ts)) > TS_WINDOW:
             raise MailboxError(f"时间戳超窗 (±{TS_WINDOW:.0f}s)")
@@ -201,6 +240,15 @@ class Mailbox:
             return None  # 幂等: 重复 id 直接 ok
         if letter.type not in MSG_TYPES:
             raise MailboxError(f"未知类型: {letter.type} 不在 {MSG_TYPES}")
+        if letter.type == "exec":
+            # D006: exec 过指令集白名单, 不在集合降级 request 走收件侧权限流程
+            ins = _parse_instruction(letter.body)
+            if self._pull_window_hit(ins, session_id) or (
+                    ins is not None and _canonical(ins) in self.whitelist):
+                letter.note = "指令集命中 → 收件侧直批 (D006)"
+            else:
+                letter.downgraded = True
+                letter.note = "指令集外 → 降级 request, 走收件侧权限流程 (D006)"
         if not letter.to_session:
             # 空 to = 最近活跃 session (TECHNICAL 数据模型)
             target = self._most_recent_poller()
@@ -212,6 +260,16 @@ class Mailbox:
         self.seen_ids[letter.id] = self._now()
         self.queue.setdefault(letter.to_session, []).append(letter)
         return letter
+
+    @staticmethod
+    def _pull_window_hit(ins, poster_session_id):
+        """swt.pull-window = 服务端内置形状校验, 动态绑定投信 session 自身,
+        不落静态 whitelist 行. 恰含 {tool, container} 两键才命中
+        (沿用 swt-base-server.py UD-05, container_key 角色由 session 接替)."""
+        return (isinstance(ins, dict)
+                and set(ins) == {"tool", "container"}
+                and ins["tool"] == PULL_WINDOW_TOOL
+                and ins["container"] == poster_session_id)
 
     def _most_recent_poller(self):
         """最近活跃 = last_poll 最新的已注册未吊销 session; 无 → None."""
@@ -226,6 +284,23 @@ class Mailbox:
         s.last_poll = self._now()
         self._save_session(s)
         return s
+
+    def enter_poll(self, session_id, limit):
+        """poll 进入计额: 同 session 并发数达上限 → False (调用方 409).
+        调用方须持有 server 层 cond, 与 exit_poll 配对."""
+        count = self.concurrent_polls.get(session_id, 0)
+        if count >= limit:
+            return False
+        self.concurrent_polls[session_id] = count + 1
+        return True
+
+    def exit_poll(self, session_id):
+        """poll 退出销额, 与 enter_poll 配对."""
+        count = self.concurrent_polls.get(session_id, 0)
+        if count <= 1:
+            self.concurrent_polls.pop(session_id, None)
+        else:
+            self.concurrent_polls[session_id] = count - 1
 
     def try_deliver(self, session):
         """非阻塞取信: 有 → (Letter, lease_token) 并计租, 无 → None.
@@ -279,6 +354,7 @@ class MailboxHttpServer(ThreadingHTTPServer):
         self.mailbox = mailbox
         self.cond = cond  # 长轮询 hold: post notify_all 唤醒
         self.hold_seconds = HOLD_SECONDS
+        self.max_concurrent_polls = MAX_CONCURRENT_POLLS
         for port in range(start_port, start_port + PORT_SPAN):
             try:
                 super().__init__((host, port), _Handler)
@@ -406,19 +482,29 @@ class _Handler(_JsonHandler):
                 return self._bad(party, f"字段畸形: {e}", rkey)
             except MailboxError as e:
                 return self._signed(403, party, {"ok": False, "error": str(e)}, rkey)
-            deadline = time.monotonic() + self.server.hold_seconds
-            while True:
-                got = m.try_deliver(session)
-                if got is not None:
-                    letter, token = got
-                    return self._signed(200, session.id,
-                                        {"letter": letter.to_dict(),
-                                         "lease_token": token}, rkey)
-                remaining = deadline - time.monotonic()
-                if remaining <= 0:
-                    return self._signed(200, session.id,
-                                        {"letter": None, "lease_token": ""}, rkey)
-                self.server.cond.wait(timeout=remaining)
+            if not m.enter_poll(session.id, self.server.max_concurrent_polls):
+                return self._signed(
+                    409, session.id,
+                    {"ok": False,
+                     "error": f"并发 poll 超上限"
+                              f" ({self.server.max_concurrent_polls})"}, rkey)
+            try:
+                deadline = time.monotonic() + self.server.hold_seconds
+                while True:
+                    got = m.try_deliver(session)
+                    if got is not None:
+                        letter, token = got
+                        return self._signed(200, session.id,
+                                            {"letter": letter.to_dict(),
+                                             "lease_token": token}, rkey)
+                    remaining = deadline - time.monotonic()
+                    if remaining <= 0:
+                        return self._signed(200, session.id,
+                                            {"letter": None, "lease_token": ""},
+                                            rkey)
+                    self.server.cond.wait(timeout=remaining)
+            finally:
+                m.exit_poll(session.id)
 
     def _handle_ack(self, body, endpoint):
         party, rkey = self._party(body, endpoint)
@@ -476,6 +562,14 @@ class _AdminHandler(_JsonHandler):
                                   body.get("response_key"))
             return self._json(200, {"id": s.id, "signing_key": s.signing_key,
                                     "response_key": s.response_key})
+        if path == "/admin/whitelist":
+            ins = body.get("instruction")
+            if not isinstance(ins, dict) or not isinstance(ins.get("tool"), str):
+                return self._json(400, {"error": "instruction 须为含 tool 的对象"})
+            m = self.server.mailbox
+            with self.server.cond:
+                m.add_whitelist(ins)
+            return self._json(200, {"ok": True})
         self._json(404, {"error": "not found"})
 
 
@@ -654,6 +748,8 @@ def cmd_serve(args):
         server = MailboxHttpServer(mailbox, cond, "0.0.0.0", args.port)
         server.hold_seconds = float(os.environ.get("SWT_MAILBOX_HOLD_SECONDS",
                                                    str(HOLD_SECONDS)))
+        server.max_concurrent_polls = int(os.environ.get(
+            "SWT_MAILBOX_MAX_CONCURRENT_POLLS", str(MAX_CONCURRENT_POLLS)))
         admin = AdminHttpServer(mailbox, cond, admin_token, args.admin_port)
     except (RuntimeError, OSError) as e:
         print(e, file=sys.stderr)
