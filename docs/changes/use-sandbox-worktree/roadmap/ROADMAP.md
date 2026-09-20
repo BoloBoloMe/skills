@@ -56,17 +56,19 @@ use-sandbox-worktree skill 落地并经端到端演练验证可用 — 它管理
 - [MILESTONE-13](MILESTONE-13.md) — 双模显示栈已实现 (commit 81234e6): 本机 wayland 直通 (D051) + VNC 兕底, F019 中继证伪, F020 冲突修复后 M10 演练实证 (host-display=ok / headed 弹桌面 / 兕底 display=ok); fcitx 中文输入未单独验
 - [MILESTONE-14](MILESTONE-14.md) — M10 演练发现修复: 母本挂载父目录根修 (ensure_agent_prompt_parents) / lan_ip 排除隧道接口 (F022) / swt-vnc status 存活判定改 /proc (F021); m04+m07+m09+m12 回归 177 用例全绿; 展示端口项移交 swt-cross-host-access M05
 - [MILESTONE-15](MILESTONE-15.md) — 测试基建提速: e2e marker 分层跑法落地 (归层规则+改动面映射入 tests/README.md), m12 夹具去重 (96→79 用例, 5m18s→4m16s), 全量回归绿; 夹具合并 descope 与目标校准见 U-014..017 — 详见 [../milestone-15-test-speedup.md](../milestone-15-test-speedup.md)
+- [MILESTONE-16](MILESTONE-16.md) — 回归耗时续压: m12 并行化 (xdist -n 4, 4m10s→~70s, 8+ 轮全绿零泄漏), L2 实测证伪 descope; 修 BadStatusLine flake 根因 (U-018) 与 podman 锁耗尽 (U-020) — 详见 [../milestone-16-parallel-m12.md](../milestone-16-parallel-m12.md)
 
 ## 前沿
 
 <!-- 开放 + 已解除阻塞 + 未被认领的 Milestone -->
 
-(空 — MILESTONE-15 已关闭, Roadmap 无待办)
+(空 — MILESTONE-16 已关闭, Roadmap 无待办)
 
 ## 未决迷雾
 
 - 运行期新站点需求的处理流程形态 (回父会话确认 → 更新容器的具体动作) — M10 终轮 blacklist 模式未触发, 保留
 - 修复原语 (config/daemon 子命令) 是否需要 — M10 终轮回访: 两次救场 (x11vnc 修镜像/kimi 父目录 chown) 均靠原生命令完成且顺畅, D037 维持, 不重开
+- swt terminate 的 podman rm 不带 -v (匿名卷随轮泄漏) 与 PARTIAL 路径 daemon/桥收割不全 — M16 发现, 测试侧已兜底, 产品侧根治待立项 (U-020)
 
 ## 范围外
 
@@ -87,5 +89,6 @@ M02(已关闭) ──┘                 │                       │
 M05(已关闭) ─→ M06(已关闭) ────┴─→ M07(已关闭) ─→ M09(已关闭) ┴─→ M10(已关闭) ─→ 目的地已到达
 ```
 
-- M01..M15 全部已关闭, 目的地已到达 (2026-09-13, 见上方目的地节)
+- M01..M16 全部已关闭, 目的地已到达 (2026-09-13, 见上方目的地节)
 - M15 (测试基建提速) 于 2026-09-20 关闭: 分层跑法 + m12 夹具去重, 全量回归绿
+- M16 (回归耗时续压) 于 2026-09-20 关闭: m12 并行化 4m10s→~70s, L2 证伪

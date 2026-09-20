@@ -160,3 +160,35 @@ MILESTONE-12 以 AFK 模式执行 (tdd-as-orchestra). 以下决定本应由用�
 - 理由: D036 红线只要求不 mock 系统行为, 轻量真实子进程不构成慢层; 预存失败不归本里程碑.
 - 影响: 快层全仓 ~110s (swt 核心快层秒级); 归层规则入 tests/README.md 供新用例自我归类.
 - 风险: 低; browser_session 失败若属真回归需 present 所有者另立项.
+
+## U-018 swt identity_probe 容忍非 HTTP 应答 (产品行修复)
+
+- 问题: M15 基线轮与 M16 并行轮反复出现 BadStatusLine flake — probe_mailbox 扫区间时 HTTP 探针撞上容器 sshd (回 SSH banner), http.client.BadStatusLine 不在捕获清单, swt 整体 traceback 崩 exit 1.
+- 决策: identity_probe 捕获增加 http.client.HTTPException, 按无应答处理.
+- 理由: 对任意端口区间发 HTTP 探针必须容忍非 HTTP 服务; 并行下 sshd 端口密度高, 命中从罕见到常见.
+- 影响: 产品行 swt.py + import http.client; 纯加固, 探针语义不变.
+- 风险: 无.
+
+## U-019 L1 m12 并行化方案 (xdist -n 4, 4m10s→~70s)
+
+- 问题: M15 方向 3 曾否决并行 (论据: nft 全局/6080/daemon 端口); 用户拍板重开.
+- 决策: (1) 默认容器名 swt-<branch> 跨用例冲突 — 夹具对缺 --name 的 birth 按 分支+tmpdir 后缀 自动派生, 5 处硬编码名加后缀; (2) 6080 全局唯一偏好端口的竞态在夹具层消化: birth pasta 竞态 PARTIAL → rm 重建重试, resume 6080 竞态 → 等释放+重开收据重试, TS201 偏好断言改采样式 (串行严格性不变), TS210 回落断言改重试构造; (3) ts507 邻对存活断言改 podman inspect 直查 (更强证据).
+- 理由: 并行母体改造后 nft per-netns/端口动态, 原否决论据大半过期; 竞态是产品已知 TOCTOU 限制, 产品报错文本自授恢复路径, 夹具代为执行.
+- 影响: 仅测试层 (除 U-018); 串行跑法不变且仍作关账口径.
+- 风险: 残余低概率 flake 面 (TS201 采样断言在极罕见全空闲窗口可能误挂); 8+ 轮全绿实证.
+
+## U-020 夹具卫生与 podman 锁耗尽修复
+
+- 问题: 并行连跑后 podman "exceeded num_locks (2048)" 全挂 — 匿名卷泄漏 (swt birth 的 .venv 遮罩卷, rm 不带 -v 不清) 跨轮累积; 另有 git daemon/socat 桥孤儿泄漏 (旧 pkill 模式只匹 --base-path=主仓父目录, 漏母体父目录形态).
+- 决策: 测试侧所有 podman rm 加 -v; pkill 模式放宽为引用 tmpdir 即杀 + socat 同扫; conftest 增会话级兜底 (sessionfinish 清 swt-m12-test-* 孤儿进程 + 会话内新建卷).
+- 理由: 泄漏在串行慢速下潜伏多年, 并行高通量将其引爆.
+- 影响: 产品侧同类问题留为发现项 (terminate 的 podman rm 不带 -v 漏卷; PARTIAL 路径 daemon/桥收割不全), 待路由新里程碑.
+- 风险: 会话级卷清理只删会话内新建卷, 不碰存量.
+
+## U-021 L2 镜像构建缓存: 实测后 descope
+
+- 问题: 原设想 m09 收尾清 fixture 镜像致冷缓存首轮 ~10min.
+- 决策: 实测证伪 — 清理只删 tag, podman 层缓存跨轮存活, 暖构建实测 3m39s (26 用例全绿); 10min 仅是存储真冷时的 chromium 下载物理成本. 不做任何改动.
+- 理由: 暖构建时间即缓存命中后的真实成本; 若跳过构建则掏空 TestDisplayLayerBuildE2E 的测试本职.
+- 影响: 无代码变更; 结论记录在案.
+- 风险: 无.
