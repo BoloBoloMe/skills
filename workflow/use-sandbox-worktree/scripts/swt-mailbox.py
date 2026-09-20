@@ -293,6 +293,12 @@ class Mailbox:
             self._db.execute(
                 "CREATE TABLE IF NOT EXISTS whitelist ("
                 " instruction TEXT PRIMARY KEY)")
+            self._db.execute(
+                "CREATE TABLE IF NOT EXISTS neighbors ("
+                " address TEXT PRIMARY KEY, shared_key TEXT)")
+            for address, shared_key in self._db.execute(
+                    "SELECT address, shared_key FROM neighbors"):
+                self.neighbors.append(Neighbor(address, shared_key))
             for (instruction,) in self._db.execute(
                     "SELECT instruction FROM whitelist"):
                 self.whitelist.add(instruction)
@@ -323,6 +329,31 @@ class Mailbox:
 
     def get_session(self, session_id):
         return self.sessions.get(session_id)
+
+    def revoke_session(self, session_id):
+        """吊销 session (AC-008): 持久化 revoked 标记, 此后 poll/post 被拒.
+        未知 session → MailboxError (admin 层映射 404)."""
+        s = self.sessions.get(session_id)
+        if s is None:
+            raise MailboxError(f"未知 session: {session_id}")
+        s.revoked = True
+        self._save_session(s)
+        return s
+
+    def add_neighbor(self, address, shared_key):
+        """运行时加邻居 (D020): 内存生效 + SQLite 持久化 (重启仍在).
+        地址重复 → MailboxError (admin 层映射 409)."""
+        for n in self.neighbors:
+            if n.address == address:
+                raise MailboxError(f"邻居已存在: {address}")
+        n = Neighbor(address, shared_key)
+        self.neighbors.append(n)
+        if self._db is not None:
+            self._db.execute(
+                "INSERT OR REPLACE INTO neighbors (address, shared_key)"
+                " VALUES (?, ?)", (address, shared_key))
+            self._db.commit()
+        return n
 
     def add_whitelist(self, instruction):
         """注册 exec 指令 (规范形入库, 重启后仍生效)."""
@@ -899,6 +930,31 @@ class _AdminHandler(_JsonHandler):
                                   body.get("response_key"))
             return self._json(200, {"id": s.id, "signing_key": s.signing_key,
                                     "response_key": s.response_key})
+        if path == "/admin/sessions/revoke":
+            sid = body.get("id")
+            if not isinstance(sid, str) or not sid:
+                return self._json(400, {"error": "id 须为非空字符串"})
+            m = self.server.mailbox
+            with self.server.cond:
+                try:
+                    m.revoke_session(sid)
+                except MailboxError as e:
+                    return self._json(404, {"error": str(e)})
+            return self._json(200, {"id": sid, "revoked": True})
+        if path == "/admin/neighbors":
+            address = body.get("address")
+            shared_key = body.get("shared_key")
+            if not isinstance(address, str) or not address:
+                return self._json(400, {"error": "address 须为非空字符串"})
+            if not isinstance(shared_key, str) or not shared_key:
+                return self._json(400, {"error": "shared_key 须为非空字符串"})
+            m = self.server.mailbox
+            with self.server.cond:
+                try:
+                    m.add_neighbor(address, shared_key)
+                except MailboxError as e:
+                    return self._json(409, {"error": str(e)})
+            return self._json(200, {"address": address})
         if path == "/admin/whitelist":
             ins = body.get("instruction")
             if not isinstance(ins, dict) or not isinstance(ins.get("tool"), str):
@@ -911,6 +967,41 @@ class _AdminHandler(_JsonHandler):
             return self._create_relay_key(body)
         if path == "/admin/relay-keys/revoke":
             return self._revoke_relay_key(body)
+        self._json(404, {"error": "not found"})
+
+    def do_GET(self):
+        if not self._auth():
+            return
+        path = urlparse(self.path).path
+        m = self.server.mailbox
+        if path == "/admin/sessions":
+            with self.server.cond:
+                sessions = [{"id": s.id, "revoked": s.revoked,
+                             "last_poll": s.last_poll,
+                             "created_at": s.created_at}
+                            for s in m.sessions.values()]
+            # 密钥不出管理面 (BR-006 同口径): 创建时一次性下发, 列表永不回显
+            return self._json(200, {"sessions": sessions})
+        if path == "/admin/relay-keys":
+            relay = self.server.relay
+            if relay is None:
+                return self._json(404, {"error": "not found"})
+            keys = [{"key": rk.key[:8] + "...", "models": sorted(rk.models),
+                     "quota": rk.quota, "used": rk.used,
+                     "expires_at": rk.expires_at, "revoked": rk.revoked}
+                    for rk in relay.keys.values()]
+            return self._json(200, {"relay_keys": keys})
+        if path == "/admin/stats":
+            with self.server.cond:
+                stats = {
+                    "sessions": len(m.sessions),
+                    "queued_letters": sum(len(v) for v in m.queue.values()),
+                    "leases": len(m.leases),
+                    "pending_forwards": len(m.pending_forwards),
+                    "neighbors": len(m.neighbors),
+                    "seen_ids": len(m.seen_ids),
+                }
+            return self._json(200, stats)
         self._json(404, {"error": "not found"})
 
     # -- relay key 管理 --------------------------------------------------------
@@ -1297,11 +1388,25 @@ def cmd_serve(args):
                       lease_seconds=float(
                           os.environ.get("SWT_MAILBOX_LEASE_SECONDS",
                                          str(LEASE_SECONDS))))
-    mailbox.neighbors = load_neighbors(args.neighbors or neighbors_path())
+    # 邻居表 = SQLite 持久化 (admin 运行时加入) + JSON 文件 (D020 手工配置),
+    # 按地址去重合并
+    known = {n.address for n in mailbox.neighbors}
+    mailbox.neighbors += [n for n in load_neighbors(args.neighbors
+                                                    or neighbors_path())
+                          if n.address not in known]
     cond = threading.Condition()
     admin_token = os.environ.get("SWT_ADMIN_TOKEN") or uuid.uuid4().hex
     upstream_base = args.upstream_base or os.environ.get("SWT_UPSTREAM_BASE", "")
     upstream_key = args.upstream_key or os.environ.get("SWT_UPSTREAM_KEY", "")
+    # 裁决 4: 上游地址与密钥须双全, 半配置必然全链 401, 跳过中转角色并明告
+    if upstream_base and not upstream_key:
+        print("警告: 配了 SWT_UPSTREAM_BASE 但缺 SWT_UPSTREAM_KEY, "
+              "跳过中转角色 (半配置必然全链 401), 补齐后重启生效",
+              file=sys.stderr)
+        upstream_base = ""
+    if upstream_key and not upstream_base:
+        print("警告: 配了 SWT_UPSTREAM_KEY 但缺 SWT_UPSTREAM_BASE, "
+              "跳过中转角色, 补齐后重启生效", file=sys.stderr)
     relay = RelayStore(db_path) if upstream_base else None  # 无上游配置跳过中转
     try:
         server = MailboxHttpServer(mailbox, cond, "0.0.0.0", args.port)

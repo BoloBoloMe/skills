@@ -24,7 +24,7 @@
 
 - `swt-mailbox.py` (缺省 = 取信): 阻塞长轮询. stdout 输出: 信件正文 + 处理指引 + 继续调用提示. 下次调用自动回执上一条. exit 0 正常返回信件, exit 3 致命配置错误.
 - `swt-mailbox.py send --to <session.id> --type <notify|open_url|exec|request> --body <text>`: 发信. 凭证自动探测 (容器 env / 设备 config). exit 0 成功, exit 1 参数错误, exit 3 网络不可达.
-- `swt-mailbox.py config set <field> <value>`: 修改 server/device (非密钥可走参数). `config set signing_key` / `config set response_key`: 值经 stdin 交互输入 (不回显).
+- `swt-mailbox.py config set <field> <value>`: 修改 server/session (非密钥可走参数). `config set signing_key` / `config set response_key`: 值经 stdin 交互输入 (不回显).
 - `swt-mailbox.py status`: 输出: session.id / server 地址 / 最近取信时间 / 待回执数 / 服务连通性实测 / 四项配置 (密钥只显前 8 位).
 - `swt-mailbox.py serve [--port <起点>] [--relay-port <起点>] [--admin-port <端口>] [--neighbors <file>] [--upstream-base <url>] [--upstream-key <key>]`: 前台启动. 信箱端口区间 38417-38426 首空闲; 中转端口区间 38427-38436 (无上游配置则跳过中转角色); admin 38416 仅 127.0.0.1. 启动时自动发本机 session 凭证写入本机配置.
 
@@ -34,7 +34,7 @@
 - `POST /mailbox/post`: 请求体 `{"session": "<id>", "sig_ts": "<float>", "sig": "<hmac>", "letter": {id, ts, from, to, type, body}}`. sig = HMAC(signing_key, session\nsig_ts\nletter.id\nletter.body). 响应签名同现有协议. 服务端校验: session 注册且未吊销, 时间窗 ±5min, 防重放 (seen_ids).
 - `POST /mailbox/poll`: 请求体 `{"session": "<id>", "sig_ts": "...", "sig": "..."}`. sig = HMAC(signing_key, session\nsig_ts). 阻塞 hold 20s. 响应: `{payload: {letter: {...} | null, lease_token: "<hex>", nonce: "..."}, sig: "..."}`. letter 为 null = 空载荷. 同 session 并发 poll 超 5 → 409.
 - `POST /mailbox/ack`: 请求体 `{"session": "<id>", "sig_ts": "...", "sig": "...", "letter_id": "...", "lease_token": "...", "outcome": "handled|skipped:..."}`. 租约验证: token 匹配且未过期 → 标记已处理; token 不匹配 → 409; 已处理 → 幂等 ok.
-- `POST /mailbox/forward` (邻居间): 请求体 `{"neighbor_key": "<共享密钥>", "letter": {...}}`. 校验 neighbor_key 与来源地址. 处理逻辑同 post 的 seen-id/路由, 但不要求 session 凭证 (邻居身份代替).
+- `POST /mailbox/forward` (邻居间): 请求体 `{"neighbor_key": "<共享密钥>", "letter": {...}}`. 校验 neighbor_key (内网共享密钥互认, 不做来源地址校验 — 裁决 2, 2026-09-20). 处理逻辑同 post 的 seen-id/路由, 但不要求 session 凭证 (邻居身份代替).
 - `POST /admin/sessions` / `POST /admin/sessions/revoke` / `GET /admin/sessions` / `POST /admin/neighbors` / `GET /admin/relay-keys` / `POST /admin/relay-keys` / `POST /admin/relay-keys/revoke` / `POST /admin/whitelist` / `GET /admin/stats`: 管理面 (127.0.0.1:38416, X-Admin-Token header, token 写状态文件 ~/.local/state/swt-mailbox/state.json).
 
 ### HTTP 端点 (中转面, 端口区间 38427-38436)

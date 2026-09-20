@@ -107,8 +107,8 @@ class Serve:
 def serves(tmp_path):
     created = []
 
-    def _serve(name="s", hold="0.3", port=None):
-        srv = Serve(tmp_path / name, hold=hold, port=port)
+    def _serve(name="s", hold="0.3", port=None, extra_env=None):
+        srv = Serve(tmp_path / name, hold=hold, port=port, extra_env=extra_env)
         created.append(srv)
         return srv
 
