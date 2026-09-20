@@ -658,6 +658,15 @@ CONFIG_FIELDS_PLAIN = ("server", "device")       # 非密钥: 允许命令行参
 CONFIG_FIELDS_SECRET = ("signing_key", "response_key")  # 密钥: 仅 stdin
 
 
+def _load_config():
+    """读配置文件 JSON; 缺失/损坏/非 dict 一律视为空配置 {}."""
+    try:
+        data = json.loads(config_path().read_text())
+    except (OSError, json.JSONDecodeError):
+        return {}
+    return data if isinstance(data, dict) else {}
+
+
 def cmd_config_set(args):
     if args.field in CONFIG_FIELDS_SECRET:
         if args.value is not None:
@@ -674,12 +683,7 @@ def cmd_config_set(args):
             sys.exit(1)
         value = args.value
     cfg = config_path()
-    try:
-        data = json.loads(cfg.read_text())
-    except (OSError, json.JSONDecodeError):
-        data = {}
-    if not isinstance(data, dict):
-        data = {}
+    data = _load_config()
     data[args.field] = value
     write_config_file(cfg, data)  # 落盘 0600 + 目录 0700 (D015)
     print(f"已更新 {args.field} -> {cfg}")
@@ -697,12 +701,7 @@ def _mask_secret(value):
 
 
 def cmd_status():
-    try:
-        data = json.loads(config_path().read_text())
-    except (OSError, json.JSONDecodeError):
-        data = {}
-    if not isinstance(data, dict):
-        data = {}
+    data = _load_config()
     print(f"session: {data.get('session') or '(未设置)'}")
     print(f"server: {data.get('server') or '(未设置)'}")
     print(f"signing_key: {_mask_secret(data.get('signing_key'))}")
