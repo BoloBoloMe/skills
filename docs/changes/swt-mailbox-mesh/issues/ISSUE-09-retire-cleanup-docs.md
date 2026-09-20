@@ -84,11 +84,11 @@ uv run python sync-to-pi.py  # 同步后手动验证 AC-011
 删除清单/文档更新点已在决策定义; AC-011 的人工验证部分需 HITL.
 
 ## 验收标准
-- [ ] 旧文件全部从 git 追踪中移除
-- [ ] sync-to-pi 后扩展目录不含旧扩展
-- [ ] 新 pi 会话无后台取信活动 (人工验证)
-- [ ] 三母本取信指引统一更新
-- [ ] SKILL.md 基础服务节反映 mesh 架构
+- [x] 旧文件全部从 git 追踪中移除 (2026-09-20, git rm relay.ts/fetch.mjs/base-server/.service/旧测试)
+- [x] sync-to-pi 后扩展目录不含旧扩展 (2026-09-20 实跑确认)
+- [x] 新 pi 会话无后台取信活动 (2026-09-20 用户人工验证: ps 无 mailbox 进程, ss 信箱端口区间无监听; 顺带清掉两个历史孤儿 serve 进程, 与旧扩展无关)
+- [x] 三母本取信指引统一更新
+- [x] SKILL.md 基础服务节反映 mesh 架构
 
 ## 被阻塞于
 - ISSUE-01, ISSUE-02, ISSUE-03, ISSUE-04, ISSUE-05, ISSUE-06, ISSUE-07, ISSUE-08
