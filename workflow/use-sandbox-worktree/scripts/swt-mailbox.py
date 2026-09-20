@@ -258,7 +258,7 @@ class Mailbox:
             self.pending_forwards.append((letter, neighbor))
 
     def retry_pending(self):
-        """重试暂存信: 发出则移除, 仍不可达则留待下轮 (邻居端 seen-id 兑底
+        """重试暂存信: 发出则移除, 仍不可达则留待下轮 (邻居端 seen-id 兜底
         重复). 邻居转发状态机: 待转发 --可达--> 已发出, --重试定时器--> 待转发."""
         with self._pending_lock:
             pending, self.pending_forwards = self.pending_forwards, []
