@@ -5,6 +5,4 @@
 任务涉及本机已装软件, 路径或系统配置时, 读 `~/AGENTS.md`; 不存在就跳过.
 要运行 Python 脚本/模块用 `uv run python`, 添加依赖用 `uv add`, 禁止直接使用 `python`/`pip`.
 当需要调用某个不在列表中的 skill 时, 读 `~/.agents/skills/<skill-name>/SKILL.md`; 文件不存在就报告未找到, 不要搜索其他位置.
-开新会话/子代理时:
-- 我没指定的项 (llm/思考深度), 用 `llm-select` skill 选定;
-- 开在当前会话所在 workspace 的新 tab; 我没指定标签名时, 按默认格式 `S-<子代理名>-<序号>` 生成.
+在 pi 中, subagent/子代理/开新会话 都是在 herdr 中开启新会话的代称, 使用 `use-herdr` 了解如何开启.

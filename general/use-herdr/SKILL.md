@@ -1,6 +1,6 @@
 ---
-name: herdr
-description: 操作 Herdr , 当被要求 查看/控制 `工作空间/workspace`, `标签页/tab`, `窗格/pane`, `另一个 agent`, 或 `开新会话`/`子代理`/`subagent` 时才用.
+name: use-herdr
+description: Herdr (agent 终端工作区) 操作指南. 当被要求 查看/控制 `工作空间/workspace`, `标签页/tab`, `窗格/pane`, `另一个 agent`, 或 `开新会话` 时使用.
 ---
 
 # herdr
@@ -35,7 +35,7 @@ herdr --help
 
 切勿跑裸 `herdr` 做探索: 它会启动或附着 TUI. 切勿用省略参数的方式探测会改状态的嵌套命令: `herdr workspace create` 这类命令带默认值即成立, 会直接执行.
 
-多数控制命令返回 JSON. 从响应里读标识符和状态, 不靠预测.
+多数控制命令返回 JSON.
 
 ## 理解布局, 窗格与 agent
 
@@ -48,7 +48,7 @@ herdr --help
 
 agent 命令只接受两类目标: 唯一的存活 agent 名, 或当前容纳该 agent 的窗格 ID. 不接受终端 ID 和裸 agent 种类标签. 名字须匹配 `[a-z][a-z0-9_-]{0,31}`, 且在存活 agent 中唯一. 名字跟随窗格当前 occupant; 该 agent 退出, 释放或替换后, 名字即清除.
 
-`idle` 和 `done` 都表示 agent 可接受输入. CLI/API 用 server 记录的 seen 标记区分二者: 显式 focus 命令把目标标为 seen, 读操作不标. 每个 TUI client 各自记录已看过的完成, 所以它的 Done 徽章可与 CLI 或另一 client 不一致. `blocked` 表示 Herdr 识别到审批或提问 UI. `unknown` 表示有 agent 在场但 Herdr 无法可靠归类; 它不证明已完成.
+`idle` 和 `done` 都表示 agent 可接受输入. CLI/API 用 server 记录的 seen 标记区分二者: 显式 focus 命令把目标标为 seen, 读操作不标. `blocked` 表示 Herdr 识别到审批或提问 UI. `unknown` 表示有 agent 在场但 Herdr 无法可靠归类; 它不证明已完成.
 
 ## 用 ID 和调用方上下文
 
@@ -79,15 +79,17 @@ herdr agent list
 
 创建类响应直接给出下一步要用的 ID. `workspace create` 返回 `.result.workspace`, `.result.tab`, `.result.root_pane`. `tab create` 返回 `.result.tab` 和 `.result.root_pane`. `pane split` 把新窗格返在 `.result.pane`.
 
-ID 和存活 agent 名只在单个 server 内有效. 两台已存 SSH machine 可以同时各有 `w1:p1`, 或各有名叫 `reviewer` 的 agent. 在 TUI 里选中一台 machine 不会改向你窗格里的命令: 它们仍用继承的 session 和 socket 上下文. 远程控制命令要在目标主机上以其显式 session 运行, 并在那里重新发现 ID.
-
-`herdr machine list` 列的是已存连接配置, 不是跨机窗格清单; 脚本里加 `--json`. 仅在我要求时才增, 删, 启用, 停用配置. 删配置会断开 client, 但不停远程会话. 添加 machine 默认接远程 default session, 除非显式给 `--remote-session`. setup 停掉不兼容 server 前会询问, 且默认 No; 未经我同意, 不得批准替换. 实验性 handoff 不属于 `machine add`.
+跨机, 远程 server 或 SSH machine 任务读 [`machine.md`](machine.md): ID 作用域与 machine 命令语义.
 
 ## 启动并协调 agent
 
-默认在当前标签页开兄弟窗格, 沿用当前工作目录. 只有我明确要求相应拓扑或位置时, 才新建工作空间, 标签页, worktree 或更换 cwd.
+开新会话的默认:
+- 我没指定的项 (llm/思考深度), 用 `llm-select` skill 选定;
+- 开在调用方所在 workspace 的新 tab; 我没指定标签名时, 按默认格式 `S-<子代理名>-<序号>` 生成.
 
-我指定了拆分方向就照做. 没指定就先看调用方窗格:
+`tab create` 返回的 root pane 直接用作 `agent start` 的目标窗格, 沿用当前工作目录. 兄弟窗格, 新工作空间, worktree 或更换 cwd 仅在我明确要求时用.
+
+走兄弟窗格时, 我指定了拆分方向就照做. 没指定就先看调用方窗格:
 
 ```bash
 herdr pane layout --pane "$HERDR_PANE_ID"
@@ -179,7 +181,7 @@ herdr pane read <返回的窗格ID> --source recent-unwrapped --lines 120
 
 - 后台工作用 `--no-focus`, 除非我要求切换上下文.
 - 用 `--current`, 显式窗格 ID 或唯一 agent 名. 不依赖别的 client 的聚焦窗格.
-- 从 JSON 响应解析 ID. 不从侧栏顺序或示例推导.
+- 从 JSON 响应解析 ID 和状态. 不从侧栏顺序或示例推导.
 - 不关闭不是你创建的工作空间, 标签页, 窗格或会话, 除非我明确要求. `workspace close --group` 会关掉主工作空间及其关联的 worktree 工作空间; 切勿只为绕过 `workspace_group_close_required` 而加它.
 - `--trust-repository` 仅在我已验证仓库之后用. 它授予单次请求的 Git 信任, 不是 worktree 命令失败后的常规重试手段.
 - 更新后 client 与 server 版本可能不一致. 依赖新 server 特性前先查 `herdr status`; 方法缺失时继续用已有方法完成任务.
