@@ -41,6 +41,7 @@ SERVICE_NAME = "swt-mailbox"
 VERSION = "0.1.0"
 DEFAULT_PORT = 38417        # 信箱端口区间起点 (38417-38426 首空闲)
 DEFAULT_ADMIN_PORT = 38416  # 管理口, 仅 127.0.0.1
+DEFAULT_RELAY_PORT = 38427  # 中转端口区间起点 (38427-38436 首空闲, D011)
 PORT_SPAN = 10
 TS_WINDOW = 300.0           # 签名时间窗 ±5min
 HOLD_SECONDS = 20.0         # 长轮询 hold 缺省
@@ -105,6 +106,110 @@ class AckConflict(Exception):
 
 class UnknownRecipient(Exception):
     """收件 session 不在本机 (mesh 转发属 ISSUE-05, 本 ISSUE 直接拒绝), HTTP 404."""
+
+
+# ======================================================================
+# LLM 中转面 (ISSUE-06, 自 swt-base-server.py 搬迁): RelayStore =
+# relay keys 的 key 管理/quota/用量/过期/吊销, SQLite 持久化.
+# ======================================================================
+
+
+class RelayError(Exception):
+    """relay 校验失败, 带 HTTP 状态码, handler 原样映射."""
+
+    def __init__(self, status, message):
+        super().__init__(message)
+        self.status = status
+
+
+class RelayKey:
+    def __init__(self, key, models, quota=None, used=0,
+                 expires_at=0.0, revoked=False):
+        self.key = key
+        self.models = frozenset(models)  # 模型白名单
+        self.quota = quota               # 最大调用次数; None = 不限
+        self.used = used                 # 用量, 按次计数
+        self.expires_at = expires_at     # 过期时间 epoch; 0 = 永不过期
+        self.revoked = revoked
+
+
+class RelayStore:
+    """relay keys 的 SQLite 持久化. 内存结构与库写穿同步, 启动全量恢复.
+    与 Mailbox 同库文件, 独立连接."""
+
+    def __init__(self, db_path, now=time.time):
+        self._now = now
+        self._lock = threading.Lock()  # 校验+计数原子化 (ThreadingHTTPServer 多线程)
+        self.keys = {}
+        self._db = sqlite3.connect(db_path, check_same_thread=False)
+        self._db.execute(
+            "CREATE TABLE IF NOT EXISTS relay_keys ("
+            " key TEXT PRIMARY KEY, models TEXT NOT NULL, quota INTEGER,"
+            " used INTEGER NOT NULL DEFAULT 0,"
+            " expires_at REAL NOT NULL DEFAULT 0.0,"
+            " revoked INTEGER NOT NULL DEFAULT 0)")
+        for key, models, quota, used, expires_at, revoked in self._db.execute(
+                "SELECT key, models, quota, used, expires_at, revoked"
+                " FROM relay_keys"):
+            self.keys[key] = RelayKey(key, json.loads(models), quota, used,
+                                      expires_at, bool(revoked))
+
+    def _save(self, rk):
+        self._db.execute(
+            "INSERT OR REPLACE INTO relay_keys"
+            " (key, models, quota, used, expires_at, revoked)"
+            " VALUES (?, ?, ?, ?, ?, ?)",
+            (rk.key, json.dumps(sorted(rk.models)), rk.quota, rk.used,
+             rk.expires_at, int(rk.revoked)))
+        self._db.commit()
+
+    def now(self):
+        """公开时钟口: 管理面算 expires_at 等与数据面过期判定同钟."""
+        return self._now()
+
+    # -- 管理接缝 (admin 端点直接调) ------------------------------------------
+    def add_key(self, key, models, quota=None, expires_at=0.0):
+        rk = RelayKey(key, models, quota, 0, expires_at)
+        self.keys[key] = rk
+        self._save(rk)
+        return rk
+
+    def revoke_key(self, key):
+        rk = self.keys[key]
+        rk.revoked = True
+        self._save(rk)
+
+    def get_key(self, key):
+        return self.keys.get(key)
+
+    # -- 数据面校验 ----------------------------------------------------------
+    def check_key(self, key):
+        if not key:
+            raise RelayError(401, "缺 Bearer key")
+        rk = self.keys.get(key)
+        if rk is None:
+            raise RelayError(401, "未知 key")
+        if rk.revoked:
+            raise RelayError(401, "key 已吊销")
+        if rk.expires_at and self._now() > rk.expires_at:
+            raise RelayError(401, "key 已过期")
+        return rk
+
+    def authorize(self, key, model):
+        rk = self.check_key(key)
+        if not isinstance(model, str) or model not in rk.models:
+            raise RelayError(403, f"模型不在白名单: {model}")
+        if rk.quota is not None and rk.used >= rk.quota:
+            raise RelayError(429, f"quota 超限: {rk.used}/{rk.quota}")
+        return rk
+
+    def acquire(self, key, model):
+        """校验 + 计数原子操作: 同一把锁包住, 并发下不超 quota 不丢计数."""
+        with self._lock:
+            rk = self.authorize(key, model)
+            rk.used += 1
+            self._save(rk)
+            return rk
 
 
 class Session:
@@ -424,6 +529,18 @@ def send_forward(neighbor, letter, timeout=5.0):
     return bool(resp.get("ok"))
 
 
+def bind_first_free(try_bind, start_port):
+    """端口区间首空闲绑定: 从起点起逐个尝试, try_bind(port) 抛 OSError 则试下一个;
+    区间全占报错 (调用方退出). 信箱面与中转面共用."""
+    for port in range(start_port, start_port + PORT_SPAN):
+        try:
+            try_bind(port)
+            return
+        except OSError:
+            continue
+    raise RuntimeError(f"端口区间全占: {start_port}-{start_port + PORT_SPAN - 1}")
+
+
 class MailboxHttpServer(ThreadingHTTPServer):
     daemon_threads = True
     allow_reuse_address = True
@@ -433,13 +550,31 @@ class MailboxHttpServer(ThreadingHTTPServer):
         self.cond = cond  # 长轮询 hold: post notify_all 唤醒
         self.hold_seconds = HOLD_SECONDS
         self.max_concurrent_polls = MAX_CONCURRENT_POLLS
-        for port in range(start_port, start_port + PORT_SPAN):
-            try:
-                super().__init__((host, port), _Handler)
-                return
-            except OSError:
-                continue
-        raise RuntimeError(f"端口区间全占: {start_port}-{start_port + PORT_SPAN - 1}")
+
+        def try_bind(port):
+            super(MailboxHttpServer, self).__init__((host, port), _Handler)
+        bind_first_free(try_bind, start_port)
+
+    @property
+    def port(self):
+        return self.server_address[1]
+
+
+class RelayHttpServer(ThreadingHTTPServer):
+    """中转面独立服务实例 (与信箱同进程不同端口, 互不干扰)."""
+
+    daemon_threads = True
+    allow_reuse_address = True
+
+    def __init__(self, relay, upstream_base, upstream_key, host, start_port):
+        self.relay = relay
+        self.upstream_base = upstream_base
+        self.upstream_key = upstream_key
+        self.upstream_timeout = 30.0
+
+        def try_bind(port):
+            super(RelayHttpServer, self).__init__((host, port), _RelayHandler)
+        bind_first_free(try_bind, start_port)
 
     @property
     def port(self):
@@ -450,10 +585,11 @@ class AdminHttpServer(ThreadingHTTPServer):
     daemon_threads = True
     allow_reuse_address = True
 
-    def __init__(self, mailbox, cond, admin_token, port):
+    def __init__(self, mailbox, cond, admin_token, port, relay=None):
         self.mailbox = mailbox
         self.cond = cond
         self.admin_token = admin_token
+        self.relay = relay
         super().__init__(("127.0.0.1", port), _AdminHandler)  # 硬绑回环
 
     @property
@@ -636,6 +772,96 @@ class _Handler(_JsonHandler):
                             {"ok": True, "letter_id": str(body["letter_id"])}, rkey)
 
 
+class _NoRedirect(urllib.request.HTTPRedirectHandler):
+    """禁重定向: 上游 3xx 原样透传, 不允许把 POST 改 GET 跟随."""
+
+    def redirect_request(self, *args, **kwargs):
+        return None
+
+
+_OPENER = urllib.request.build_opener(_NoRedirect)
+
+
+class _RelayHandler(_JsonHandler):
+    """中转面: OpenAI 兼容端点, Bearer relay key 认证."""
+
+    def _bearer(self):
+        auth = self.headers.get("Authorization", "")
+        return auth[7:] if auth.startswith("Bearer ") else None
+
+    def _relay_error(self, status, message, type_="relay_error"):
+        self._json(status, {"error": {"message": message, "type": type_}})
+
+    def do_GET(self):
+        path = urlparse(self.path).path
+        if path == "/v1/models":
+            return self._handle_models()
+        self._json(404, {"error": "not found"})
+
+    def _handle_models(self):
+        # 回该 key 白名单内的模型 (白名单裁剪, 缺省拒绝同一心智)
+        try:
+            rk = self.server.relay.check_key(self._bearer())
+        except RelayError as e:
+            return self._relay_error(e.status, str(e), "authentication_error")
+        self._json(200, {"object": "list", "data": [
+            {"id": m, "object": "model", "created": 0, "owned_by": "swt-relay"}
+            for m in sorted(rk.models)]})
+
+    def do_POST(self):
+        path = urlparse(self.path).path
+        if path == "/v1/chat/completions":
+            return self._handle_chat_completions()
+        self._json(404, {"error": "not found"})
+
+    def _handle_chat_completions(self):
+        relay = self.server.relay
+        try:
+            body_raw = self.rfile.read(int(self.headers.get("Content-Length", 0)))
+            body = json.loads(body_raw or b"{}")
+        except json.JSONDecodeError:
+            return self._relay_error(400, "bad json", "bad_request")
+        if not isinstance(body, dict):
+            return self._relay_error(400, "bad json", "bad_request")
+        if body.get("stream"):
+            return self._relay_error(400, "不支持 stream=true (SSE 未实现)",
+                                     "bad_request")
+        try:
+            relay.acquire(self._bearer(), body.get("model"))
+        except RelayError as e:
+            types = {401: "authentication_error", 403: "permission_error",
+                     429: "rate_limit_error"}
+            return self._relay_error(e.status, str(e),
+                                     types.get(e.status, "relay_error"))
+        self._forward(body_raw)
+
+    def _forward(self, body_raw):
+        """转发上游 OpenAI 兼容 API 并回传. 上游 HTTP 错误透传状态与 body;
+        连不上 502, 超时 504, 不崩服务."""
+        srv = self.server
+        req = urllib.request.Request(
+            srv.upstream_base.rstrip("/") + "/v1/chat/completions",
+            data=body_raw,
+            headers={"Content-Type": "application/json",
+                     "Authorization": f"Bearer {srv.upstream_key}"})
+        try:
+            with _OPENER.open(req, timeout=srv.upstream_timeout) as r:
+                code, raw = r.status, r.read()
+        except urllib.error.HTTPError as e:
+            code, raw = e.code, e.read()
+        except (urllib.error.URLError, OSError) as e:
+            reason = getattr(e, "reason", e)  # URLError 包一层, 解出真因
+            if isinstance(reason, (TimeoutError, socket.timeout)):
+                return self._relay_error(504, "上游超时", "upstream_error")
+            return self._relay_error(502, f"上游不可达: {reason}",
+                                     "upstream_error")
+        self.send_response(code)
+        self.send_header("Content-Type", "application/json")
+        self.send_header("Content-Length", str(len(raw)))
+        self.end_headers()
+        self.wfile.write(raw)
+
+
 class _AdminHandler(_JsonHandler):
 
     def _auth(self):
@@ -680,7 +906,40 @@ class _AdminHandler(_JsonHandler):
             with self.server.cond:
                 m.add_whitelist(ins)
             return self._json(200, {"ok": True})
+        if path == "/admin/relay-keys":
+            return self._create_relay_key(body)
+        if path == "/admin/relay-keys/revoke":
+            return self._revoke_relay_key(body)
         self._json(404, {"error": "not found"})
+
+    # -- relay key 管理 --------------------------------------------------------
+    def _create_relay_key(self, body):
+        if self.server.relay is None:
+            return self._json(404, {"error": "not found"})
+        models = body.get("models")
+        if not isinstance(models, list) or not models \
+                or not all(isinstance(m, str) for m in models):
+            return self._json(400, {"error": "models 须为非空字符串列表"})
+        quota = body.get("quota")
+        if quota is not None and not isinstance(quota, int):
+            return self._json(400, {"error": "quota 须为整数"})
+        ttl = body.get("ttl_seconds")
+        # 与 RelayStore 数据面过期判定同钟
+        expires_at = self.server.relay.now() + ttl \
+            if isinstance(ttl, (int, float)) else 0.0
+        key = "sk-" + uuid.uuid4().hex
+        rk = self.server.relay.add_key(key, models, quota, expires_at)
+        self._json(200, {"key": rk.key, "models": sorted(rk.models),
+                         "quota": rk.quota, "expires_at": rk.expires_at})
+
+    def _revoke_relay_key(self, body):
+        if self.server.relay is None:
+            return self._json(404, {"error": "not found"})
+        key = body.get("key")
+        if self.server.relay.get_key(key) is None:
+            return self._json(404, {"error": f"未知 key: {key}"})
+        self.server.relay.revoke_key(key)
+        self._json(200, {"ok": True})
 
 
 def _term(*_):
@@ -959,27 +1218,36 @@ def load_neighbors(path):
 
 def cmd_serve(args):
     spath = state_path()
-    mailbox = Mailbox(db_path=spath.parent / "server.db",
+    db_path = spath.parent / "server.db"
+    mailbox = Mailbox(db_path=db_path,
                       lease_seconds=float(
                           os.environ.get("SWT_MAILBOX_LEASE_SECONDS",
                                          str(LEASE_SECONDS))))
     mailbox.neighbors = load_neighbors(args.neighbors or neighbors_path())
     cond = threading.Condition()
     admin_token = os.environ.get("SWT_ADMIN_TOKEN") or uuid.uuid4().hex
+    upstream_base = args.upstream_base or os.environ.get("SWT_UPSTREAM_BASE", "")
+    upstream_key = args.upstream_key or os.environ.get("SWT_UPSTREAM_KEY", "")
+    relay = RelayStore(db_path) if upstream_base else None  # 无上游配置跳过中转
     try:
         server = MailboxHttpServer(mailbox, cond, "0.0.0.0", args.port)
         server.hold_seconds = float(os.environ.get("SWT_MAILBOX_HOLD_SECONDS",
                                                    str(HOLD_SECONDS)))
         server.max_concurrent_polls = int(os.environ.get(
             "SWT_MAILBOX_MAX_CONCURRENT_POLLS", str(MAX_CONCURRENT_POLLS)))
-        admin = AdminHttpServer(mailbox, cond, admin_token, args.admin_port)
+        admin = AdminHttpServer(mailbox, cond, admin_token, args.admin_port,
+                                relay=relay)
+        relay_server = RelayHttpServer(relay, upstream_base, upstream_key,
+                                       "0.0.0.0", args.relay_port) \
+            if relay is not None else None
     except (RuntimeError, OSError) as e:
         print(e, file=sys.stderr)
         sys.exit(1)
     auto_credential(mailbox, f"http://127.0.0.1:{server.port}")
     write_state_file(spath, server.port, admin.port, admin_token)
+    relay_note = f", relay on :{relay_server.port}" if relay_server else ""
     print(f"{SERVICE_NAME} {VERSION} mailbox on :{server.port},"
-          f" admin on 127.0.0.1:{admin.port}", file=sys.stderr)
+          f" admin on 127.0.0.1:{admin.port}{relay_note}", file=sys.stderr)
     signal.signal(signal.SIGTERM, _term)
     admin_thread = threading.Thread(target=admin.serve_forever, daemon=True)
     admin_thread.start()
@@ -991,6 +1259,8 @@ def cmd_serve(args):
             mailbox.retry_pending()
 
     threading.Thread(target=_retry_loop, daemon=True).start()
+    if relay_server is not None:
+        threading.Thread(target=relay_server.serve_forever, daemon=True).start()
     try:
         server.serve_forever()
     except KeyboardInterrupt:
@@ -999,6 +1269,9 @@ def cmd_serve(args):
         retry_stop.set()
         admin.shutdown()
         admin.server_close()
+        if relay_server is not None:
+            relay_server.shutdown()
+            relay_server.server_close()
         server.server_close()
         spath.unlink(missing_ok=True)
 
@@ -1048,6 +1321,12 @@ def main():
     sub.add_parser("status", help="查看配置状态 (密钥脱敏)")
     p_serve.add_argument("--neighbors", default=None,
                          help="邻居表 JSON 文件 (缺省 ~/.agents/sandbox-worktree/neighbors.json)")
+    p_serve.add_argument("--relay-port", type=int, default=DEFAULT_RELAY_PORT,
+                         help="中转端口区间起点 (含), 共 10 个; 无上游配置不启动")
+    p_serve.add_argument("--upstream-base", default="",
+                         help="中转上游 OpenAI 兼容 API 地址 (或 env SWT_UPSTREAM_BASE)")
+    p_serve.add_argument("--upstream-key", default="",
+                         help="中转上游凭证 (或 env SWT_UPSTREAM_KEY)")
     args = parser.parse_args()
     if args.cmd == "serve":
         cmd_serve(args)
