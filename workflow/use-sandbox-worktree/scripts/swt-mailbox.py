@@ -564,15 +564,18 @@ def print_letter(letter):
     print("\n".join(lines), flush=True)
 
 
-def cmd_fetch():
+def _require_credentials():
+    """凭证探测 (load_credentials) + 缺凭证致命退出; 返回 (url, session, signing_key)."""
     creds = load_credentials()
     if creds is None:
         print("致命: 未找到信箱凭证 "
               "(env SWT_MAILBOX_URL/SWT_SESSION_* 或配置文件)", file=sys.stderr)
         sys.exit(3)
-    url = creds["server"].rstrip("/")
-    sid = creds["session"]
-    skey = creds["signing_key"]
+    return creds["server"].rstrip("/"), creds["session"], creds["signing_key"]
+
+
+def cmd_fetch():
+    url, sid, skey = _require_credentials()
     state = load_cli_state()
     backoff = 0.5
     # D003 回执自动化: 先自动回执上一条, LLM 无感
@@ -615,14 +618,7 @@ def cmd_fetch():
 # ======================================================================
 
 def cmd_send(args):
-    creds = load_credentials()
-    if creds is None:
-        print("致命: 未找到信箱凭证 "
-              "(env SWT_MAILBOX_URL/SWT_SESSION_* 或配置文件)", file=sys.stderr)
-        sys.exit(3)
-    url = creds["server"].rstrip("/")
-    sid = creds["session"]
-    skey = creds["signing_key"]
+    url, sid, skey = _require_credentials()
     letter = {"id": uuid.uuid4().hex, "ts": time.time(), "from": sid,
               "to": args.to, "type": args.type, "body": args.body}
     sig_ts = str(time.time())
