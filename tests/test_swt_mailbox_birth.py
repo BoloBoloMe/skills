@@ -25,6 +25,10 @@ from pathlib import Path
 
 import pytest
 
+from conftest import ADMIN_TOKEN as SERVE_ADMIN_TOKEN
+from conftest import SCRIPT as MAILBOX_SCRIPT
+from conftest import make_letter, post_letter, register_session
+
 ROOT = Path(__file__).resolve().parents[1]
 SWT_SCRIPT = ROOT / "workflow" / "use-sandbox-worktree" / "scripts" / "swt.py"
 
@@ -175,15 +179,38 @@ def servers():
         server.close()
 
 
+def _wire_env_against(swt, state_path, container="swt-demo"):
+    """birth 接线原样调用: 返回 (baked env, 登记段)."""
+    env: dict[str, str] = {}
+    record = swt.wire_container_mailbox(env, container, state_path=state_path,
+                                        ports=())  # ports=() 证明状态文件命中零扫描
+    return env, record
+
+
+def _real_serve_state(srv, directory: Path) -> Path:
+    """指向真实 serve 子进程的信箱状态文件 (admin 凭证来自 conftest 注入)."""
+    return _write_state(directory, port=srv.port, admin_port=srv.admin_port,
+                        admin_token=SERVE_ADMIN_TOKEN)
+
+
+def _container_cli_env(baked: dict, local_port: int, workdir: Path) -> dict:
+    """birth 烘入 env → 容器内取信 CLI 进程 env; 本机模拟: 容器视角地址
+    host.containers.internal 换回 127.0.0.1 (不真起容器), state file 隔离."""
+    workdir.mkdir(parents=True, exist_ok=True)
+    env = dict(os.environ)
+    env.update(baked)
+    env["SWT_MAILBOX_URL"] = f"http://127.0.0.1:{local_port}"
+    env["SWT_MAILBOX_CONFIG"] = str(workdir / "mailbox.json")
+    return env
+
+
 # TS-001 (AC-007): birth 后容器 env 含 4 个新信箱变量.
 def test_birth_env_vars(swt, servers, tmp_path):
     identity = servers(_MailboxIdentityServer)
     admin = servers(_AdminServer)
     state = _write_state(tmp_path, port=identity.port,
                          admin_port=admin.port, admin_token=ADMIN_TOKEN)
-    env: dict[str, str] = {}
-    record = swt.wire_container_mailbox(env, "swt-demo", state_path=state,
-                                        ports=())  # ports=() 证明状态文件命中零扫描
+    env, record = _wire_env_against(swt, state)
     # D013: 容器内地址恒 host.containers.internal + 信箱端口
     assert env["SWT_MAILBOX_URL"] == \
         f"http://host.containers.internal:{identity.port}"
@@ -201,3 +228,23 @@ def test_birth_env_vars(swt, servers, tmp_path):
     assert record["session"] == sid
     assert creds["signing_key"] not in json.dumps(record)
     assert creds["response_key"] not in json.dumps(record)
+
+
+# TS-002 (AC-007): 容器内用 birth 烘入的 env 凭证取信.
+def test_container_fetch_with_env(swt, serves, tmp_path):
+    srv = serves()
+    state = _real_serve_state(srv, tmp_path)
+    baked, record = _wire_env_against(swt, state)
+    assert record["status"] == "connected"
+    target = record["session"]
+
+    # 设备侧 session 投信给出生容器, 容器内取信 CLI 凭 env 应取到
+    tester = register_session(srv, "tester")
+    code, _ = post_letter(srv, "tester", tester["signing_key"],
+                          make_letter(to=target, body="出生问候"))
+    assert code == 200
+    cli_env = _container_cli_env(baked, srv.port, tmp_path / "cli")
+    proc = subprocess.run([sys.executable, str(MAILBOX_SCRIPT)], env=cli_env,
+                          capture_output=True, text=True, timeout=20)
+    assert proc.returncode == 0
+    assert "出生问候" in proc.stdout
