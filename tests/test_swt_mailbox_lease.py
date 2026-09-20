@@ -173,3 +173,21 @@ def test_lease_timing_immune_to_wall_clock_rollback():
     got = m.try_deliver(sess)
     assert got is not None, "墙钟回拨不应阻止租约按单调时钟到期重投"
     assert got[0].id == "L-1"
+
+
+def test_restart_clears_queue(serves):
+    """review 修复 2: NG-008 钉扎 — 投信排队未取, serve 重启后信随内存
+    模型消失, poll 只得空载荷 (session 凭证持久化不受影响, D008)."""
+    srv1 = serves("x")
+    creds = register_session(srv1, "s1")
+    signing_key = creds["signing_key"]
+    code, _ = post_letter(srv1, "s1", signing_key,
+                          make_letter(to="s1", body="排队未取的信"))
+    assert code == 200
+    srv1.stop()
+
+    # 同工作目录重启: session 凭证从 SQLite 恢复, 内存队列已清
+    srv2 = serves("x")
+    code, resp = poll(srv2, "s1", signing_key)
+    assert code == 200
+    assert resp["payload"]["letter"] is None, "重启后队列应清空 (NG-008)"
