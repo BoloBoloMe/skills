@@ -23,6 +23,7 @@ import os
 import signal
 import socket
 import sqlite3
+import subprocess
 import sys
 import threading
 import time
@@ -491,6 +492,46 @@ TYPE_GUIDANCE = {
     "request": "处理来信请求, 必要时回信.",
 }
 
+# D014 拉窗门禁 (设备侧脚本内, 平移自旧 pi 扩展 gatePullWindow)
+PULL_WINDOW_TOOL = "swt.pull-window"
+PULL_WINDOW_MIN_INTERVAL = 300.0  # 同容器限频窗口 (秒)
+WAYPIPE_MISSING_HINT = (
+    "[swt-mailbox] waypipe 未安装, 无法拉起远程窗口;"
+    " 请在本机安装 waypipe, 安装后同类来信自动恢复执行.")
+
+
+def waypipe_present():
+    """waypipe 在场检查: subprocess 跑 command -v waypipe, 退出码判定.
+    独立函数 = 测试接缝 (monkeypatch, 不依赖真实环境)."""
+    try:
+        return subprocess.run(
+            ["sh", "-c", "command -v waypipe >/dev/null 2>&1"],
+            check=False).returncode == 0
+    except OSError:
+        return False
+
+
+def pull_window_container(letter):
+    """pull-window exec 信判定: body 为 JSON dict 且 tool=swt.pull-window
+    → 容器名 (body container 字段, 缺省退发件人); 否则 None (不走本门禁)."""
+    if letter.get("type") != "exec":
+        return None
+    try:
+        body = json.loads(str(letter.get("body", "")))
+    except (json.JSONDecodeError, TypeError):
+        return None
+    if not isinstance(body, dict) or body.get("tool") != PULL_WINDOW_TOOL:
+        return None
+    container = body.get("container")
+    return str(container) if container else str(letter.get("from", ""))
+
+
+def gate_pull_window(container, state, now=time.time):
+    """拉窗门禁: 返回 None = 过门; 否则 = skipped outcome."""
+    if not waypipe_present():
+        return "skipped:waypipe-missing"
+    return None
+
 
 def load_credentials():
     """凭证探测: 容器走 env (SWT_MAILBOX_URL + SWT_SESSION_*), 设备走配置文件.
@@ -602,6 +643,19 @@ def cmd_fetch():
         letter = payload.get("letter")
         if letter is None:
             continue  # hold 超时空载荷, 重新长轮询
+        container = pull_window_container(letter)
+        if container is not None:
+            # D014 拉窗门禁: skipped 信立即回执, 不呈现给 LLM, 继续 poll
+            outcome = gate_pull_window(container, state)
+            if outcome is not None:
+                try:
+                    ack_letter(url, sid, skey, letter.get("id", ""),
+                               payload.get("lease_token", ""), outcome=outcome)
+                except (urllib.error.HTTPError, OSError):
+                    pass  # 回执失败: 租约兜底, 不阻塞取信循环
+                if outcome == "skipped:waypipe-missing":
+                    print(WAYPIPE_MISSING_HINT, flush=True)
+                continue
         state["pending_ack"] = {"letter_id": letter.get("id", ""),
                                 "lease_token": payload.get("lease_token", "")}
         save_cli_state(state)  # 先落盘再输出, 崩溃后下次调用仍能回执
