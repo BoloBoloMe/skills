@@ -9,6 +9,7 @@ TS-003 test_lease_expiry_requeues / TS-004 test_seen_id_dedup.
 """
 from __future__ import annotations
 
+import importlib.util
 import subprocess
 import sys
 import time
@@ -16,6 +17,14 @@ import time
 from conftest import (SCRIPT, ack_letter, make_letter, poll, post_letter,
                       register_session)
 from test_swt_mailbox_cli import cli_env
+
+
+def _load_module():
+    """in-process 加载 swt-mailbox 模块 (注入假时钟的测试需直接驱动 Mailbox)."""
+    spec = importlib.util.spec_from_file_location("swt_mailbox", SCRIPT)
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
 
 
 def test_poll_returns_lease_token(serves):
@@ -137,3 +146,30 @@ def test_seen_id_dedup(serves, monkeypatch, tmp_path):
     assert proc.returncode == 0
     assert "真正的下一封" in out
     assert "重复的信" not in out  # 重投的 L1 不呈现给 LLM
+
+
+def test_lease_timing_immune_to_wall_clock_rollback():
+    """review 修复 1: 租约计时用单调时钟 (TECHNICAL 边界与异常处理).
+    墙钟回拨 (time.time 变小) 不影响租约按真实流逝到期重投."""
+    mod = _load_module()
+    wall = [1_000_000.0]  # 假墙钟: 签名时间窗用
+    mono = [500.0]        # 假单调钟: 租约计时用
+    m = mod.Mailbox(now=lambda: wall[0], monotonic=lambda: mono[0],
+                    lease_seconds=10.0)
+    s = m.add_session("s1")
+
+    letter_d = {"id": "L-1", "ts": wall[0], "from": "tester", "to": "s1",
+                "type": "notify", "body": "hi"}
+    sig = mod.sign(s.signing_key, "s1", str(wall[0]), "L-1", "hi")
+    assert m.post("s1", str(wall[0]), sig, letter_d) is not None
+    psig = mod.sign(s.signing_key, "s1", str(wall[0]))
+    sess = m.verify_poller("s1", str(wall[0]), psig)
+    got = m.try_deliver(sess)
+    assert got is not None and got[0].id == "L-1"
+
+    # 墙钟回拨 2 小时 (NTP 校时/人工改时间), 单调钟真实推进过租约
+    wall[0] -= 7200.0
+    mono[0] += 11.0
+    got = m.try_deliver(sess)
+    assert got is not None, "墙钟回拨不应阻止租约按单调时钟到期重投"
+    assert got[0].id == "L-1"

@@ -128,8 +128,10 @@ class Mailbox:
     信件全内存 (D008); SQLite 只存 session 凭证 (BR-009), 启动加载注册写入.
     """
 
-    def __init__(self, db_path=None, now=time.time, lease_seconds=1800.0):
-        self._now = now
+    def __init__(self, db_path=None, now=time.time, lease_seconds=1800.0,
+                 monotonic=time.monotonic):
+        self._now = now            # 墙钟: 签名时间窗 ±5min / last_poll
+        self._mono = monotonic     # 单调钟: 租约计时 (TECHNICAL 边界与异常处理)
         self.lease_seconds = lease_seconds  # 租约时长 (D009), serve 可经 env 覆盖
         self.sessions = {}    # id -> Session
         self.queue = {}       # to_session -> [Letter]
@@ -233,12 +235,12 @@ class Mailbox:
             return None
         letter = q.pop(0)
         token = uuid.uuid4().hex
-        self.leases[letter.id] = (letter, token, self._now())
+        self.leases[letter.id] = (letter, token, self._mono())
         return letter, token
 
     def _requeue_expired(self):
         """过期租约收回队尾重投并清除租约."""
-        now = self._now()
+        now = self._mono()
         for lid, (letter, _token, leased_at) in list(self.leases.items()):
             if now - leased_at >= self.lease_seconds:
                 del self.leases[lid]
@@ -260,7 +262,7 @@ class Mailbox:
         letter, token, leased_at = entry
         if not hmac.compare_digest(token, str(lease_token)):
             raise AckConflict("lease_token 不匹配")
-        if self._now() - leased_at >= self.lease_seconds:
+        if self._mono() - leased_at >= self.lease_seconds:
             self._expire_lease(letter)  # 过期租约收回重投, 旧 token 作废
             raise AckConflict("租约已过期, 信件已收回重投")
         del self.leases[letter.id]
