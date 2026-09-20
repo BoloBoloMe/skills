@@ -144,7 +144,8 @@ class Mailbox:
     """核心状态模型: sessions 注册表 + 内存队列/租约/seen_ids.
 
     阻塞等待由 server 层的 Condition 实现, 本类只做判定.
-    信件全内存 (D008); SQLite 只存 session 凭证 (BR-009), 启动加载注册写入.
+    信件全内存 (D008); SQLite 只存凭证/配置 (sessions + whitelist, BR-009),
+    不存信件; 启动加载, 注册/登记时写入.
     """
 
     def __init__(self, db_path=None, now=time.time):
