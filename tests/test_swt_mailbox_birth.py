@@ -139,6 +139,12 @@ class _AdminHandler(BaseHTTPRequestHandler):
                      "response_key": body.get("response_key") or uuid.uuid4().hex}
             cls.issued[sid] = creds
             return _quiet_json(self, 200, creds)
+        if self.path == "/admin/container-keys":
+            # 已退役 swt-base-server 的遗留端点 (TS-005 场景: 旧服务仍会发 key)
+            cls.received.append(body)
+            return _quiet_json(self, 200,
+                               {"key": "sk-legacy" + "0" * 24,
+                                "container": body.get("container")})
         if self.path == "/admin/sessions/revoke":
             sid = str(body.get("id", ""))
             cls.revoked.append(sid)
@@ -363,3 +369,24 @@ def test_terminate_revokes_session(swt, servers, tmp_path):
     source = SWT_SCRIPT.read_text(encoding="utf-8")
     segment = source[source.index("def terminate("):]
     assert "revoke_container_session(" in segment
+
+
+# TS-005 (AC-007): 本机信箱未启动时 birth 降级 skipped, 不阻断不错接.
+def test_birth_skips_when_no_mailbox(swt, servers, tmp_path):
+    # swt-mailbox 未启动; 在场的是已退役的 swt-base-server (带可发 key 的 admin)
+    # — 退役服务不是本机信箱, birth 不得向它接线
+    retired = servers(_RetiredIdentityServer)
+    admin = servers(_AdminServer)
+    state = _write_state(tmp_path, port=retired.port,
+                         admin_port=admin.port, admin_token=ADMIN_TOKEN)
+    env = {"KEEP": "1"}
+    record = swt.wire_container_mailbox(env, "swt-demo", state_path=state,
+                                        ports=())
+    # birth 正常走完接线步: 返回 skipped 登记段 (含原因), 不抛异常
+    assert record["status"] == "skipped"
+    assert record["container"] == "swt-demo"
+    assert record["reason"]
+    # 容器无信箱 env, 既有变量原样保留
+    assert env == {"KEEP": "1"}
+    # 未向任何 admin 发起注册/申领
+    assert _AdminHandler.received == []
