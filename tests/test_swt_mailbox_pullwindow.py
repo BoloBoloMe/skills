@@ -126,3 +126,38 @@ def test_rate_limit(serves, tmp_path, monkeypatch, capsys):
     assert ("PW-2", "skipped:rate-limited") in acks
     out = capsys.readouterr().out
     assert "swt.pull-window" not in out  # 限频信不呈现给 LLM
+
+
+def test_rate_limit_persists(serves, tmp_path, monkeypatch, capsys):
+    """TS-003: 限频状态落设备本地文件; 取信循环重启 (全新模块实例,
+    模拟新 CLI 进程) 后 300s 内同容器再投 → 仍被限频."""
+    srv = serves()
+    creds = register_session(srv, "dev1")
+    skey = creds["signing_key"]
+    cli_env(monkeypatch, srv, "dev1", skey, creds["response_key"],
+            tmp_path / "cli")
+
+    # 第一个取信循环: 处理 PW-1 (过门, 记限频时刻)
+    mod1 = load_module()
+    monkeypatch.setattr(mod1, "waypipe_present", lambda: True)
+    code, _ = post_letter(srv, "dev1", skey,
+                          make_letter(letter_id="PW-1", to="dev1",
+                                      type_="exec", body=PULL_WINDOW_BODY))
+    assert code == 200
+    mod1.cmd_fetch()
+    assert "swt.pull-window" in capsys.readouterr().out
+
+    # 取信循环重启: 重新加载模块 = 无内存状态残留, 只能靠 state file
+    mod2 = load_module()
+    monkeypatch.setattr(mod2, "waypipe_present", lambda: True)
+    acks = spy_acks(mod2, monkeypatch)
+    code, _ = post_letter(srv, "dev1", skey,
+                          make_letter(letter_id="PW-2", to="dev1",
+                                      type_="exec", body=PULL_WINDOW_BODY))
+    assert code == 200
+    t = threading.Thread(target=mod2.cmd_fetch, daemon=True)
+    t.start()
+    wait_processed(srv, "dev1", skey, "PW-2")
+
+    assert ("PW-2", "skipped:rate-limited") in acks
+    assert "swt.pull-window" not in capsys.readouterr().out
