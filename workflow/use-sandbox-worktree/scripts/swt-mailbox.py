@@ -13,6 +13,8 @@
 - SWT_MAILBOX_CONFIG: 配置文件路径覆盖 (缺省 ~/.agents/sandbox-worktree/mailbox.json)
 - SWT_MAILBOX_HOLD_SECONDS: 长轮询 hold 时长覆盖 (缺省 20)
 - SWT_MAILBOX_LEASE_SECONDS: 租约时长覆盖 (缺省 LEASE_SECONDS=1800, D009)
+- SWT_MAILBOX_NEIGHBORS: 邻居表文件路径覆盖 (缺省 ~/.agents/sandbox-worktree/neighbors.json)
+- SWT_MAILBOX_RETRY_SECONDS: 邻居暂存重试间隔覆盖 (缺省 5)
 """
 from __future__ import annotations
 
@@ -118,6 +120,14 @@ class Session:
         self.created_at = created_at
 
 
+class Neighbor:
+    """邻居信箱连接 (D007/D020): address = host:port, shared_key = 转发互认密钥."""
+
+    def __init__(self, address, shared_key):
+        self.address = address
+        self.shared_key = shared_key
+
+
 class Letter:
     """信件 (D008 全内存)."""
 
@@ -163,6 +173,9 @@ class Mailbox:
         self.seen_ids = {}    # letter_id -> ts, 防重放/幂等投信
         self.whitelist = set()  # exec 指令集规范形 (D006 内容级防线)
         self.concurrent_polls = {}  # session_id -> 在等 poll 数 (D016)
+        self.neighbors = []   # list[Neighbor], serve 启动时从邻居表加载
+        self.pending_forwards = []  # list[(Letter, Neighbor)], 邻居不可达内存暂存
+        self._pending_lock = threading.Lock()  # 暂存增删与请求处理线程并发
         self._db = None
         if db_path is not None:
             Path(db_path).parent.mkdir(parents=True, exist_ok=True)
@@ -237,8 +250,17 @@ class Mailbox:
         self._verify(session_id, sig_ts, sig,
                      str(letter_d["id"]), str(letter_d["body"]))
         letter = Letter.from_dict(letter_d)
-        if letter.id in self.seen_ids:
+        if not self._validate_incoming(letter, session_id):
             return None  # 幂等: 重复 id 直接 ok
+        return self._route(letter, source=None)
+
+    def _validate_incoming(self, letter, session_id=None):
+        """入信公共校验 (post/forward 同一套): seen_ids 幂等 (已见 → False)
+        + type 白名单 (未知类型 → MailboxError)
+        + exec 指令集校验 (D006: 任何信箱都过, 不在集合降级 request).
+        session_id 为投信方 (仅 post 有), 供 pull-window 动态绑定."""
+        if letter.id in self.seen_ids:
+            return False
         if letter.type not in MSG_TYPES:
             raise MailboxError(f"未知类型: {letter.type} 不在 {MSG_TYPES}")
         if letter.type == "exec":
@@ -250,17 +272,60 @@ class Mailbox:
             else:
                 letter.downgraded = True
                 letter.note = "指令集外 → 降级 request, 走收件侧权限流程 (D006)"
+        return True
+
+    def _route(self, letter, source):
+        """路由 (D007): 收件人在本机 → 排队, 返回 (letter, []);
+        不在 → 返回 (letter, 洪泛目标邻居列表) (排除来源邻居).
+        无处可去 (无邻居可转) → UnknownRecipient.
+        返回值非 None 时, HTTP 投递由 server 层在锁外执行."""
         if not letter.to_session:
             # 空 to = 最近活跃 session (TECHNICAL 数据模型)
             target = self._most_recent_poller()
             if target is None:
                 raise UnknownRecipient("空收件人且无活跃 session (无人 poll 过)")
             letter.to_session = target
-        elif letter.to_session not in self.sessions:
+        if letter.to_session in self.sessions:
+            self.seen_ids[letter.id] = self._now()
+            self.queue.setdefault(letter.to_session, []).append(letter)
+            return letter, []
+        targets = [n for n in self.neighbors if n is not source]
+        if not targets:
+            # 无处可去不记 seen: 若邻居端只是暂未注册收件人, 重试仍能送达
             raise UnknownRecipient(f"收件 session 不在本机: {letter.to_session}")
         self.seen_ids[letter.id] = self._now()
-        self.queue.setdefault(letter.to_session, []).append(letter)
-        return letter
+        return letter, targets
+
+    def _neighbor_by_key(self, key):
+        for n in self.neighbors:
+            if hmac.compare_digest(n.shared_key, str(key)):
+                return n
+        return None
+
+    def forward(self, neighbor_key, letter_d):
+        """邻居转发收信 (D007). neighbor_key 与邻居表比对认证, 匹配到的
+        邻居即来源 (转发时排除); 重复 id 幂等 (返回 None); 路由同 post."""
+        src = self._neighbor_by_key(neighbor_key)
+        if src is None:
+            raise MailboxError("neighbor_key 无效")
+        letter = Letter.from_dict(letter_d)
+        if not self._validate_incoming(letter):
+            return None  # 幂等: 重复 id 直接 ok
+        return self._route(letter, source=src)
+
+    def stage_forward(self, letter, neighbor):
+        """邻居不可达 → 内存暂存 (NG-009: 不持久化, 重启即清)."""
+        with self._pending_lock:
+            self.pending_forwards.append((letter, neighbor))
+
+    def retry_pending(self):
+        """重试暂存信: 发出则移除, 仍不可达则留待下轮 (邻居端 seen-id 兜底
+        重复). 邻居转发状态机: 待转发 --可达--> 已发出, --重试定时器--> 待转发."""
+        with self._pending_lock:
+            pending, self.pending_forwards = self.pending_forwards, []
+        for letter, n in pending:
+            if not send_forward(n, letter):
+                self.stage_forward(letter, n)
 
     @staticmethod
     def _pull_window_hit(ins, poster_session_id):
@@ -345,6 +410,18 @@ class Mailbox:
         del self.leases[letter.id]
         self.processed.add(letter.id)
         return letter
+
+
+def send_forward(neighbor, letter, timeout=5.0):
+    """向邻居投递 (D007). 不可达/超时/被拒一律 False, 由调用方暂存重试;
+    timeout 上限避免一个挂起邻居阻塞 post 响应."""
+    try:
+        resp = http_post(f"http://{neighbor.address}/mailbox/forward",
+                         {"neighbor_key": neighbor.shared_key,
+                          "letter": letter.to_dict()}, timeout=timeout)
+    except (urllib.error.URLError, OSError):
+        return False
+    return bool(resp.get("ok"))
 
 
 class MailboxHttpServer(ThreadingHTTPServer):
@@ -446,7 +523,38 @@ class _Handler(_JsonHandler):
             return self._handle_poll(body, endpoint)
         if path == "/mailbox/ack":
             return self._handle_ack(body, endpoint)
+        if path == "/mailbox/forward":
+            return self._handle_forward(body)
         self._json(404, {"error": "not found"})
+
+    def _handle_forward(self, body):
+        """邻居间转发端点 (无 session 凭证, 邻居共享密钥代替). 响应不签名."""
+        letter_d = body.get("letter")
+        if not isinstance(letter_d, dict):
+            return self._json(400, {"ok": False, "error": "缺字段: letter"})
+        m = self.server.mailbox
+        with self.server.cond:
+            try:
+                routed = m.forward(str(body.get("neighbor_key", "")), letter_d)
+            except MailboxError as e:
+                return self._json(403, {"ok": False, "error": str(e)})
+            except UnknownRecipient as e:
+                return self._json(404, {"ok": False, "error": str(e)})
+            except (KeyError, ValueError, TypeError) as e:
+                return self._json(400, {"ok": False, "error": f"字段畸形: {e}"})
+            self.server.cond.notify_all()
+        self._flood(routed)
+        return self._json(200, {"ok": True})
+
+    def _flood(self, routed):
+        """路由结果的非本机部分: 锁外逐邻居投递, 失败进内存暂存 (D007)."""
+        if routed is None:
+            return
+        letter, targets = routed
+        m = self.server.mailbox
+        for n in targets:
+            if not send_forward(n, letter):
+                m.stage_forward(letter, n)
 
     def _handle_post(self, body, endpoint):
         party, rkey = self._party(body, endpoint)
@@ -456,7 +564,7 @@ class _Handler(_JsonHandler):
         m = self.server.mailbox
         with self.server.cond:
             try:
-                letter = m.post(str(body.get("session", "")), body["sig_ts"],
+                routed = m.post(str(body.get("session", "")), body["sig_ts"],
                                 str(body.get("sig", "")), letter_d)
             except KeyError as e:
                 return self._bad(party, f"缺字段: {e}", rkey)
@@ -467,7 +575,8 @@ class _Handler(_JsonHandler):
             except MailboxError as e:
                 return self._signed(403, party, {"ok": False, "error": str(e)}, rkey)
             self.server.cond.notify_all()
-        note = "ok" if letter is not None else "重复 id, 幂等收下"
+        self._flood(routed)
+        note = "ok" if routed is not None else "重复 id, 幂等收下"
         return self._signed(200, party, {"ok": True, "note": note}, rkey)
 
     def _handle_poll(self, body, endpoint):
@@ -831,12 +940,30 @@ def cmd_status():
     print(f"response_key: {_mask_secret(data.get('response_key'))}")
 
 
+def neighbors_path():
+    return Path(os.environ.get("SWT_MAILBOX_NEIGHBORS") or
+                Path.home() / ".agents/sandbox-worktree/neighbors.json")
+
+
+def load_neighbors(path):
+    """邻居表 (D020): JSON list [{address, shared_key}]; 缺失/畸形 → 空表."""
+    try:
+        data = json.loads(Path(path).read_text())
+    except (OSError, json.JSONDecodeError):
+        return []
+    if not isinstance(data, list):
+        return []
+    return [Neighbor(str(d["address"]), str(d["shared_key"]))
+            for d in data]
+
+
 def cmd_serve(args):
     spath = state_path()
     mailbox = Mailbox(db_path=spath.parent / "server.db",
                       lease_seconds=float(
                           os.environ.get("SWT_MAILBOX_LEASE_SECONDS",
                                          str(LEASE_SECONDS))))
+    mailbox.neighbors = load_neighbors(args.neighbors or neighbors_path())
     cond = threading.Condition()
     admin_token = os.environ.get("SWT_ADMIN_TOKEN") or uuid.uuid4().hex
     try:
@@ -856,11 +983,20 @@ def cmd_serve(args):
     signal.signal(signal.SIGTERM, _term)
     admin_thread = threading.Thread(target=admin.serve_forever, daemon=True)
     admin_thread.start()
+    retry_seconds = float(os.environ.get("SWT_MAILBOX_RETRY_SECONDS", "5"))
+    retry_stop = threading.Event()
+
+    def _retry_loop():
+        while not retry_stop.wait(retry_seconds):
+            mailbox.retry_pending()
+
+    threading.Thread(target=_retry_loop, daemon=True).start()
     try:
         server.serve_forever()
     except KeyboardInterrupt:
         pass
     finally:
+        retry_stop.set()
         admin.shutdown()
         admin.server_close()
         server.server_close()
@@ -910,6 +1046,8 @@ def main():
         "field", choices=CONFIG_FIELDS_PLAIN + CONFIG_FIELDS_SECRET)
     p_config_set.add_argument("value", nargs="?")
     sub.add_parser("status", help="查看配置状态 (密钥脱敏)")
+    p_serve.add_argument("--neighbors", default=None,
+                         help="邻居表 JSON 文件 (缺省 ~/.agents/sandbox-worktree/neighbors.json)")
     args = parser.parse_args()
     if args.cmd == "serve":
         cmd_serve(args)

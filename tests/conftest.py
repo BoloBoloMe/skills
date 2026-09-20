@@ -53,7 +53,8 @@ def http_json(method, port, path, obj=None, timeout=35.0, headers=None):
 class Serve:
     """serve 子进程: 独立端口区间, 解析 stderr 启动行拿实际端口."""
 
-    def __init__(self, workdir, hold="0.3", port=None):
+    def __init__(self, workdir, hold="0.3", port=None,
+                 extra_env=None, extra_args=None):
         workdir = Path(workdir)
         workdir.mkdir(parents=True, exist_ok=True)
         self.config_path = workdir / "mailbox.json"
@@ -64,10 +65,11 @@ class Serve:
             "SWT_MAILBOX_CONFIG": str(self.config_path),
             "SWT_MAILBOX_HOLD_SECONDS": hold,
         })
+        env.update(extra_env or {})
         self.proc = subprocess.Popen(
             [sys.executable, str(SCRIPT), "serve",
              "--port", str(port or free_port()),
-             "--admin-port", str(free_port())],
+             "--admin-port", str(free_port())] + list(extra_args or []),
             env=env, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, text=True)
         self.port = None
         self.admin_port = None
