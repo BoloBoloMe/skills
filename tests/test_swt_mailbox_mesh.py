@@ -277,3 +277,45 @@ def test_pending_forward_retry(mesh_serves):
     assert letter is not None, "B 恢复后暂存信未被重发"
     assert letter["id"] == "P-1"
     assert letter["body"] == "等 B 回来"
+
+
+def test_mesh_e2e(mesh_serves):
+    """TS-006: 三实例 mesh e2e — A 的容器 session 发信给 C 的设备 session,
+    C 取到; C 回信给 A 取到; 停止中间节点 B 后 A/C 直达通信不受影响."""
+    pa, pb, pc = free_port(), free_port(), free_port()
+    srv_a = mesh_serves("a", neighbors=[neighbor(pb, "k-ab"),
+                                        neighbor(pc, "k-ac")], port=pa)
+    srv_b = mesh_serves("b", neighbors=[neighbor(pa, "k-ab"),
+                                        neighbor(pc, "k-bc")], port=pb)
+    srv_c = mesh_serves("c", neighbors=[neighbor(pa, "k-ac"),
+                                        neighbor(pb, "k-bc")], port=pc)
+    creds_a = register_session(srv_a, "container-x")
+    creds_c = register_session(srv_c, "device-y")
+
+    # A -> C 跨机直达
+    code, _ = post_letter(srv_a, "container-x", creds_a["signing_key"],
+                          make_letter(letter_id="M-1", to="device-y",
+                                      body="A 给 C 的信", from_="container-x"))
+    assert code == 200
+    code, resp = poll(srv_c, "device-y", creds_c["signing_key"])
+    assert code == 200
+    assert resp["payload"]["letter"]["body"] == "A 给 C 的信"
+
+    # C -> A 回信
+    code, _ = post_letter(srv_c, "device-y", creds_c["signing_key"],
+                          make_letter(letter_id="M-2", to="container-x",
+                                      body="C 的回信", from_="device-y"))
+    assert code == 200
+    code, resp = poll(srv_a, "container-x", creds_a["signing_key"])
+    assert code == 200
+    assert resp["payload"]["letter"]["body"] == "C 的回信"
+
+    # 停止中间节点 B: A/C 互为直达邻居, 通信不受影响 (mesh 自愈, D007)
+    srv_b.stop()
+    code, _ = post_letter(srv_a, "container-x", creds_a["signing_key"],
+                          make_letter(letter_id="M-3", to="device-y",
+                                      body="B 停机后的信", from_="container-x"))
+    assert code == 200
+    code, resp = poll(srv_c, "device-y", creds_c["signing_key"], timeout=10)
+    assert code == 200
+    assert resp["payload"]["letter"]["body"] == "B 停机后的信"
