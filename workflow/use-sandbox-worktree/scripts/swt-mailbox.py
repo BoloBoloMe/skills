@@ -17,6 +17,7 @@
 from __future__ import annotations
 
 import argparse
+import getpass
 import hashlib
 import hmac
 import json
@@ -679,15 +680,18 @@ def print_letter(letter):
     print("\n".join(lines), flush=True)
 
 
-def cmd_fetch():
+def _require_credentials():
+    """凭证探测 (load_credentials) + 缺凭证致命退出; 返回 (url, session, signing_key)."""
     creds = load_credentials()
     if creds is None:
         print("致命: 未找到信箱凭证 "
               "(env SWT_MAILBOX_URL/SWT_SESSION_* 或配置文件)", file=sys.stderr)
         sys.exit(3)
-    url = creds["server"].rstrip("/")
-    sid = creds["session"]
-    skey = creds["signing_key"]
+    return creds["server"].rstrip("/"), creds["session"], creds["signing_key"]
+
+
+def cmd_fetch():
+    url, sid, skey = _require_credentials()
     state = load_cli_state()
     backoff = 0.5
     # D003 回执自动化: 先自动回执上一条, LLM 无感
@@ -736,6 +740,97 @@ def cmd_fetch():
         return
 
 
+# ======================================================================
+# send CLI: 凭证探测 (同取信) → HMAC 签名 POST /mailbox/post
+# ======================================================================
+
+def cmd_send(args):
+    url, sid, skey = _require_credentials()
+    letter = {"id": uuid.uuid4().hex, "ts": time.time(), "from": sid,
+              "to": args.to, "type": args.type, "body": args.body}
+    sig_ts = str(time.time())
+    try:
+        resp = http_post(url + "/mailbox/post",
+                         {"session": sid, "sig_ts": sig_ts,
+                          "sig": sign(skey, sid, sig_ts,
+                                      letter["id"], letter["body"]),
+                          "letter": letter}, timeout=10)
+    except urllib.error.HTTPError as e:
+        detail = ""
+        try:
+            detail = json.loads(e.read() or b"{}").get("payload", {}).get("error", "")
+        except (json.JSONDecodeError, AttributeError):
+            pass
+        print(f"致命: 服务端拒绝投信 ({e.code}) {detail}", file=sys.stderr)
+        sys.exit(3)
+    except (urllib.error.URLError, OSError) as e:
+        print(f"致命: 信箱不可达: {e}", file=sys.stderr)
+        sys.exit(3)
+    payload = resp.get("payload") or {}
+    if not payload.get("ok"):
+        print(f"致命: 投信失败: {payload.get('error', resp)}", file=sys.stderr)
+        sys.exit(3)
+    print(f"已投递给 {letter['to'] or '(最近活跃 session)'}: {letter['id']}")
+
+
+# ======================================================================
+# config CLI: 逐项修改配置; 非密钥走参数, 密钥走 stdin (BR-006)
+# ======================================================================
+
+CONFIG_FIELDS_PLAIN = ("server", "device")       # 非密钥: 允许命令行参数
+CONFIG_FIELDS_SECRET = ("signing_key", "response_key")  # 密钥: 仅 stdin
+
+
+def _load_config():
+    """读配置文件 JSON; 缺失/损坏/非 dict 一律视为空配置 {}."""
+    try:
+        data = json.loads(config_path().read_text())
+    except (OSError, json.JSONDecodeError):
+        return {}
+    return data if isinstance(data, dict) else {}
+
+
+def cmd_config_set(args):
+    if args.field in CONFIG_FIELDS_SECRET:
+        if args.value is not None:
+            print(f"错误: 密钥项 {args.field} 不允许命令行参数传值 "
+                  "(BR-006), 请去掉值参数, 经 stdin 交互输入", file=sys.stderr)
+            sys.exit(1)
+        value = getpass.getpass(f"{args.field}: ")  # 不回显
+        if not value:
+            print("错误: 密钥值不能为空", file=sys.stderr)
+            sys.exit(1)
+    else:
+        if args.value is None:
+            print(f"错误: 配置项 {args.field} 需要值参数", file=sys.stderr)
+            sys.exit(1)
+        value = args.value
+    cfg = config_path()
+    data = _load_config()
+    data[args.field] = value
+    write_config_file(cfg, data)  # 落盘 0600 + 目录 0700 (D015)
+    print(f"已更新 {args.field} -> {cfg}")
+
+
+# ======================================================================
+# status CLI: 展示配置, 密钥只显前 8 位 (BR-006)
+# ======================================================================
+
+def _mask_secret(value):
+    """密钥脱敏: 前 8 位 + '...', 缺失显式标注."""
+    if not value:
+        return "(未设置)"
+    return str(value)[:8] + "..."
+
+
+def cmd_status():
+    data = _load_config()
+    print(f"session: {data.get('session') or '(未设置)'}")
+    print(f"server: {data.get('server') or '(未设置)'}")
+    print(f"signing_key: {_mask_secret(data.get('signing_key'))}")
+    print(f"response_key: {_mask_secret(data.get('response_key'))}")
+
+
 def cmd_serve(args):
     spath = state_path()
     mailbox = Mailbox(db_path=spath.parent / "server.db",
@@ -772,16 +867,58 @@ def cmd_serve(args):
         spath.unlink(missing_ok=True)
 
 
+class _Parser(argparse.ArgumentParser):
+    """参数错误 exit 1 (TECHNICAL CLI 契约; argparse 缺省是 2)."""
+
+    def error(self, message):
+        self.print_usage(sys.stderr)
+        print(f"错误: {message}", file=sys.stderr)
+        sys.exit(1)
+
+
+def _migrate_legacy_config():
+    """老路径 ~/.config/swt/mailbox.json 存在且新路径缺失 → 迁移并提示 (D015).
+    env SWT_MAILBOX_CONFIG 覆盖时跳过 (显式指定路径, 多为测试)."""
+    if os.environ.get("SWT_MAILBOX_CONFIG"):
+        return
+    new = config_path()
+    old = Path.home() / ".config/swt/mailbox.json"
+    if old.exists() and not new.exists():
+        new.parent.mkdir(parents=True, exist_ok=True)
+        os.chmod(new.parent, 0o700)
+        os.rename(old, new)
+        os.chmod(new, 0o600)
+        print(f"提示: 配置已从老路径 {old} 迁移到 {new}", file=sys.stderr)
+
+
 def main():
-    parser = argparse.ArgumentParser(prog="swt-mailbox.py", description="swt 信箱")
+    _migrate_legacy_config()
+    parser = _Parser(prog="swt-mailbox.py", description="swt 信箱")
     sub = parser.add_subparsers(dest="cmd")
     p_serve = sub.add_parser("serve", help="前台启动信箱服务")
     p_serve.add_argument("--port", type=int, default=DEFAULT_PORT,
                          help="信箱端口区间起点 (含), 共 10 个")
     p_serve.add_argument("--admin-port", type=int, default=DEFAULT_ADMIN_PORT)
+    p_send = sub.add_parser("send", help="发信到指定 session")
+    p_send.add_argument("--to", required=True, help="收件 session.id")
+    p_send.add_argument("--type", required=True, choices=MSG_TYPES)
+    p_send.add_argument("--body", required=True, help="信件正文")
+    p_config = sub.add_parser("config", help="配置管理")
+    p_config_set = p_config.add_subparsers(dest="config_cmd").add_parser(
+        "set", help="逐项修改配置")
+    p_config_set.add_argument(
+        "field", choices=CONFIG_FIELDS_PLAIN + CONFIG_FIELDS_SECRET)
+    p_config_set.add_argument("value", nargs="?")
+    sub.add_parser("status", help="查看配置状态 (密钥脱敏)")
     args = parser.parse_args()
     if args.cmd == "serve":
         cmd_serve(args)
+    elif args.cmd == "send":
+        cmd_send(args)
+    elif args.cmd == "config" and args.config_cmd == "set":
+        cmd_config_set(args)
+    elif args.cmd == "status":
+        cmd_status()
     else:
         cmd_fetch()  # 缺省动作 = 取信 (D001)
 
