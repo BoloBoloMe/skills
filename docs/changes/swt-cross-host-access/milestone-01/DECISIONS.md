@@ -7,7 +7,8 @@
 ## 决策
 
 ### D001 信箱形态: 合并 llm-proxy 为 host 中心化 web 服务单体
-- 状态: 当前有效
+- 状态: 已被推翻 (2026-09-20 注记)
+- 修订: 本决策整体被 `docs/changes/swt-mailbox-mesh/` 取代 — swt-base-server.py 已删除, 信箱重写为纯 stdlib 单文件 swt-mailbox.py + mesh 全互联 (无中心服务); 其中 "消息存 host SQLite, 容器删除不丢信" 的卖点被 swt-mailbox-mesh D008 明确推翻 (信件全内存, 重启即丢, 用户已接受). 本账本仅作历史记录, 新事实以 swt-mailbox-mesh 的 DECISIONS/TECHNICAL 为准.
 - 约束性: 必须遵守
 - 内容: 信箱不做"容器内文件队列 + 设备 ssh 拉取" (recon 原主候选), 而是与 llm-proxy 合并为一个 web 服务单体 `swt-base-server.py`, 放 `workflow/use-sandbox-worktree/scripts/` (不放 use-worktree, 那是纯 worktree 工具, 与容器无关 — 用户确认系笔误), host 上 Quadlet 常驻, 定位为 sandbox-worktree 基础服务. llm-proxy 代码可参考/直接搬用. 理由: (1) llm-proxy 反正要常驻, 合并零新增进程; (2) 中心化天然解决多容器并存与多设备路由 (原"设备轮询 N 容器"与"宿主汇聚"之争消解); (3) 消息存 host SQLite, 容器删除不丢信, 比文件队列的 at-most-once 更强; (4) 用户明确看重"局域网内所有机器天然可达 + all in one". 推翻的 recon 结论: "宿主汇聚打破 host agent 只管生命周期的角色边界" — 用户拍板基础服务是合法新角色.
 - 预计影响: workflow/use-sandbox-worktree/scripts/ 新增 swt-base-server.py; ~/Workspace/llm-proxy/ 功能被吸收 (是否保留独立项目用户未定, 实施时问)
