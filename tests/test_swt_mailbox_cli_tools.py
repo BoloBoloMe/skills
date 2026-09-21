@@ -5,6 +5,7 @@ TS-002 test_config_set_server: config set server 更新配置文件 (0600).
 TS-003 test_config_set_secret_via_stdin: 密钥项走 stdin 不回显, 带值参数拒绝.
 TS-004 test_status_masked: status 脱敏, 密钥只显前 8 位.
 TS-005 test_auto_migration: 老路径配置自动迁移到新路径并提示.
+TS-006 test_stale_config_archived_and_reissued: 旧格式配置 (mesh 前残留) 不挡自动发放, 归档挪开.
 
 TS-001 走真实子进程 + 真实 serve; TS-002~005 进程内调 main()
 (getpass/Path.home/sys.argv 用 monkeypatch 隔离, 不碰真实终端与真实家目录).
@@ -22,7 +23,7 @@ from pathlib import Path
 
 import pytest
 
-from conftest import SCRIPT, poll, register_session
+from conftest import ADMIN_TOKEN, SCRIPT, Serve, http_json, poll, register_session
 
 
 @pytest.fixture
@@ -169,3 +170,39 @@ def test_auto_migration(mailbox_mod, tmp_path, monkeypatch, capsys):
     assert not old.exists(), "老路径配置未移除"
     assert json.loads(new.read_text())["session"] == "dev-legacy"
     assert "迁移" in capsys.readouterr().err
+
+
+def test_stale_config_archived_and_reissued(tmp_path):
+    """TS-006: 新路径配置为 mesh 前旧格式 (device 字段 + 旧总信箱地址) →
+    serve 启动不把它当可用配置: 归档挪开 (0600 内容原样), D012 自动发放照常.
+    回归 2026-09-21 工作站首启踩坑: 旧 schema 文件既挡 D012 又不被新代码读取."""
+    workdir = tmp_path / "stale"
+    workdir.mkdir()
+    cfg = workdir / "mailbox.json"
+    stale_body = {"server": "http://192.168.131.194:38417",  # 老总信箱地址
+                  "device": "Ubuntu-Workstation",            # 旧 schema 字段
+                  "signing_key": "stale-signing",
+                  "response_key": "stale-response"}
+    cfg.write_text(json.dumps(stale_body))
+    cfg.chmod(0o600)
+
+    srv = Serve(workdir)
+    try:
+        code, resp = http_json("GET", srv.admin_port, "/admin/sessions",
+                               headers={"X-Admin-Token": ADMIN_TOKEN})
+        assert code == 200
+        ids = [s["id"] for s in resp["sessions"]]
+        assert len(ids) == 1 and ids[0].endswith("-host"), \
+            "旧格式配置必须不挡 D012 自动发放"
+
+        stale = workdir / "mailbox.json.stale-pre-mesh"
+        assert stale.exists(), "旧配置应归档而非删除"
+        assert not cfg.exists() or json.loads(cfg.read_text()).get("session"), \
+            "新配置应为新 schema"
+        assert json.loads(stale.read_text()) == stale_body, "归档内容原样保留"
+        fresh = json.loads(cfg.read_text())
+        assert fresh["session"] == ids[0]
+        assert fresh["server"] == f"http://127.0.0.1:{srv.port}"
+        assert stat.S_IMODE(cfg.stat().st_mode) == 0o600, "新配置 0600"
+    finally:
+        srv.stop()

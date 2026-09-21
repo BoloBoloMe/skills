@@ -64,6 +64,9 @@ class Serve:
             "SWT_MAILBOX_STATE": str(workdir / "state.json"),
             "SWT_MAILBOX_CONFIG": str(self.config_path),
             "SWT_MAILBOX_HOLD_SECONDS": hold,
+            # 隔离真机邻居表: serve 缺省读 ~/.agents/sandbox-worktree/neighbors.json,
+            # 真跑过的机器上有真实邻居, 泄漏进来会破坏 "无邻居 404" 类用例 (2026-09-21)
+            "SWT_MAILBOX_NEIGHBORS": str(workdir / "neighbors.json"),
         })
         env.update(extra_env or {})
         self.proc = subprocess.Popen(

@@ -1045,11 +1045,39 @@ def write_config_file(path, data):
     write_json_0600(path, data)
 
 
+def _config_usable(cfg):
+    """与 load_credentials 同判据: server+session+signing_key 齐全即算可用.
+    mesh 前旧 schema (device 字段) 或残缺 json 不可用."""
+    try:
+        data = json.loads(cfg.read_text())
+    except (OSError, json.JSONDecodeError):
+        return False
+    return bool(data.get("server") and data.get("session")
+                and data.get("signing_key"))
+
+
+def _archive_stale_config(cfg):
+    """无效旧配置归档改名 (原权限不动), 目标名冲突追加序号."""
+    target = cfg.parent / "mailbox.json.stale-pre-mesh"
+    n = 1
+    while target.exists():
+        target = cfg.parent / f"mailbox.json.stale-pre-mesh-{n}"
+        n += 1
+    os.rename(cfg, target)
+    return target
+
+
 def auto_credential(mailbox, server_url):
-    """D012: 配置缺失时自动注册 <hostname>-host session 并写本机配置."""
+    """D012: 配置缺失时自动注册 <hostname>-host session 并写本机配置.
+    配置存在但为旧格式/残缺 (mesh 前迁移残留) → 归档挪开, 不挡自动发放
+    (2026-09-21 工作站首启踩坑: 旧 schema 文件既挡 D012 又不被新代码读取)."""
     cfg = config_path()
     if cfg.exists():
-        return  # 已有配置, 不动
+        if _config_usable(cfg):
+            return  # 已有可用配置, 不动
+        stale = _archive_stale_config(cfg)
+        print(f"[swt-mailbox] 本机配置 {cfg} 不是有效新格式 (缺 server/session/signing_key),"
+              f" 已归档到 {stale}; 重新自动发放本机凭证.", file=sys.stderr)
     sid = f"{socket.gethostname()}-host"
     s = mailbox.get_session(sid) or mailbox.add_session(sid)
     write_config_file(cfg, {"server": server_url, "session": s.id,
