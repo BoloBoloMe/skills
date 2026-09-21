@@ -1,0 +1,112 @@
+#!/usr/bin/env python3
+"""tests/run — 默认测试入口 (MILESTONE-16): 按改动面选跑, 小改不付全量.
+
+用法:
+  tests/run              按 git 未提交改动面选跑受影响套件 (m12 自动并行, ~40s)
+  tests/run --fast       只跑受影响套件的快层 (秒级)
+  tests/run --all        全量串行回归 (里程碑关账口径)
+  tests/run <其他参数>   原样直通 pytest
+
+改动面→套件映射的唯一事实源是 tests/README.md; 改映射先改 README 再同步本表.
+"""
+from __future__ import annotations
+
+import glob
+import subprocess
+import sys
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+
+GLOBAL = "GLOBAL"  # conftest/pytest.ini 级改动: 快层全量兜底
+
+RULES = [
+    ("workflow/use-sandbox-worktree/scripts/swt-mailbox.py", "tests/test_swt_mailbox_*.py"),
+    ("workflow/use-sandbox-worktree/scripts/swt.py", "tests/test_swt_m12.py"),
+    ("workflow/use-sandbox-worktree/scripts/net-firewall.py", "tests/test_swt_m04.py"),
+    ("workflow/use-sandbox-worktree/scripts/image-prep.py", "tests/test_swt_m07.py"),
+    ("workflow/use-sandbox-worktree/scripts/swt-display.py", "tests/test_swt_m09.py"),
+    ("general/present/", "general/present/tests"),
+    ("tests/conftest.py", GLOBAL),
+    ("pytest.ini", GLOBAL),
+]
+
+PARALLEL = {"tests/test_swt_m12.py": "12"}  # 套件 → xdist worker 数
+
+
+def changed_paths() -> list[str]:
+    result = subprocess.run(
+        ["git", "status", "--porcelain"], cwd=ROOT, capture_output=True, text=True, check=True,
+    )
+    paths = []
+    for line in result.stdout.splitlines():
+        path = line[3:]
+        if " -> " in path:  # rename
+            path = path.split(" -> ", 1)[1]
+        paths.append(path)
+    return paths
+
+
+def select_suites(paths: list[str]) -> tuple[list[str], bool]:
+    suites: list[str] = []
+    saw_global = False
+    for path in paths:
+        matched = False
+        for prefix, target in RULES:
+            if path == prefix or path.startswith(prefix if prefix.endswith("/") else prefix):
+                matched = True
+                if target == GLOBAL:
+                    saw_global = True
+                else:
+                    for hit in sorted(glob.glob(str(ROOT / target))):
+                        rel = str(Path(hit).relative_to(ROOT))
+                        if rel not in suites:
+                            suites.append(rel)
+                break
+        if not matched and path.startswith("tests/") and path.endswith(".py"):
+            suites.append(path)
+    return suites, saw_global
+
+
+def main() -> int:
+    args = sys.argv[1:]
+    if args and args[0] not in {"--fast", "--all"}:
+        return subprocess.run(
+            ["uv", "run", "--with", "pytest", "python", "-m", "pytest", *args], cwd=ROOT,
+        ).returncode
+    if args and args[0] == "--all":
+        return subprocess.run(
+            ["uv", "run", "--with", "pytest", "python", "-m", "pytest", "-q"], cwd=ROOT,
+        ).returncode
+
+    fast = bool(args and args[0] == "--fast")
+    paths = changed_paths()
+    suites, saw_global = select_suites(paths)
+    if saw_global:
+        print("[tests/run] conftest/pytest.ini 级改动 → 快层全量兜底; 关账前请 tests/run --all")
+        suites.append("-m")
+        suites.append("not e2e")
+    if not suites:
+        detail = ", ".join(paths) if paths else "(工作树干净)"
+        print(f"[tests/run] 改动面 {detail} 不命中任何测试套件, 无可跑项; 需要全量用 tests/run --all")
+        return 0
+
+    with_xdist = any(suite in PARALLEL for suite in suites)
+    cmd = ["uv", "run", "--with", "pytest"]
+    if with_xdist:
+        cmd += ["--with", "pytest-xdist"]
+    cmd += ["python", "-m", "pytest"]
+    for suite in suites:
+        if suite in PARALLEL and not fast:
+            cmd += ["-n", PARALLEL[suite]]
+        cmd.append(suite)
+    if fast:
+        cmd += ["-m", "not e2e"]
+    cmd.append("-q")
+    print(f"[tests/run] 受影响套件: {' '.join(suites)}", flush=True)
+    print(f"[tests/run] $ {' '.join(cmd)}", flush=True)
+    return subprocess.run(cmd, cwd=ROOT).returncode
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

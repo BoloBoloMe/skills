@@ -192,3 +192,25 @@ MILESTONE-12 以 AFK 模式执行 (tdd-as-orchestra). 以下决定本应由用�
 - 理由: 暖构建时间即缓存命中后的真实成本; 若跳过构建则掏空 TestDisplayLayerBuildE2E 的测试本职.
 - 影响: 无代码变更; 结论记录在案.
 - 风险: 无.
+
+## U-022 terminate 连带删除匿名卷 (产品行修复)
+
+- 问题: swt terminate 的 `podman rm -f` 不带 -v, 每个被终结容器留下 .venv 遮罩匿名卷 (每技能项目一个), 跨轮累积曾胀满 podman 2048 锁.
+- 决策: 改 `podman rm -f -v`; TS301 clean-terminate 用例新增断言: birth 创建的 .venv 遮罩卷在 terminate 后不复存在 (先红后绿已验证).
+- 理由: 遮罩卷从镜像播种, 随容器生灭, 无保留价值.
+- 影响: 产品行一字之差; 测试断言证据等级不降 (直查 podman volume inspect).
+- 风险: 无; 卷内容 = 镜像 .venv 副本, 非用户数据.
+
+## U-023 默认测试入口 tests/run + m12 并发升 -n 12
+
+- 问题: M15/M16 只交付了机制 (分层/并行), 默认入口仍是全量串行 — 用户每次小改付 4min+, 收益没递到手上.
+- 决策: (1) 新增 `tests/run`: 按 git 未提交改动面选跑受影响套件 (映射表同 tests/README.md), m12 自动并行; --fast 只跑快层 (秒级); --all 为关账全量串行. (2) m12 并发 -n 4 → -n 12 (~40s), 3+3 轮全绿验证稳定.
+- 理由: 测试基建的价值在入口; 机制再好, 默认路径慢等于没做.
+- 影响: tests/run 新增; README 默认入口改写; 关账口径不变.
+- 风险: 低; 映射漏判时 tests/run 少跑套件 — 关账 --all 兜底.
+
+## 事故记录 (非决策): 误删他会话容器
+
+- 清理测试残骸时用了过宽的 `podman rm -f -v --filter name=swt-`, 误删另一 sandbox-worktree 会话的已停容器 `swt-docs-stripe-sub-upgrade-solution` (cz_sdk 仓库, 已退出 5 天).
+- 影响评估: 母体分支 docs/stripe-sub-upgrade-solution 本地与 origin 同 tip (29a7d0d), 已推送工作零损失; 母体工作树此前已被用户删除; 损失仅限容器内未推送状态 (5 天前的遗留).
+- 教训: 清理命令的过滤面必须限定本测试指纹 (label=repo=<tmpdir>), 禁止按宽泛名字前缀清扫共享 podman 存储.

@@ -3523,7 +3523,7 @@ def terminate(args: argparse.Namespace, repo: Path) -> int:
     if remove_errors:
         raise SwtError(3, "PARTIAL", f"nft remove 失败: {'; '.join(remove_errors)}")
     if target_name in observed_names:
-        removed = run(["podman", "rm", "-f", target_name], timeout=30)
+        removed = run(["podman", "rm", "-f", "-v", target_name], timeout=30)
         if removed.returncode != 0:
             still_there = run(["podman", "inspect", target_name])
             if still_there.returncode == 0:

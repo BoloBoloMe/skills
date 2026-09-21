@@ -1686,6 +1686,16 @@ class TestTS301Terminate(SwtBirthFixture):
         runtime_before = self.runtime_data()
         container_name = state["containers"][0]["name"]
         target_record = next(item for item in runtime_before["containers"] if item["name"] == container_name)
+        # .venv 遮罩匿名卷 (每技能项目一个) 须随 terminate 连带删除 (U-022)
+        mounts = json.loads(subprocess.run(
+            ["podman", "inspect", container_name, "--format", "{{json .Mounts}}"],
+            capture_output=True, text=True, check=True,
+        ).stdout)
+        mask_volumes = [
+            mount["Name"] for mount in mounts
+            if mount.get("Type") == "volume" and str(mount.get("Destination", "")).endswith("/.venv")
+        ]
+        self.assertTrue(mask_volumes, "birth 应为技能项目创建 .venv 遮罩匿名卷")
         credentials = (
             Path(target_record["ssh_private_key"]),
             Path(target_record["password_file"]),
@@ -1724,6 +1734,12 @@ class TestTS301Terminate(SwtBirthFixture):
         )
         for credential in credentials:
             self.assertFalse(credential.exists(), credential)
+        for volume in mask_volumes:
+            self.assertNotEqual(
+                0,
+                subprocess.run(["podman", "volume", "inspect", volume], capture_output=True).returncode,
+                f"terminate 应连带删除 .venv 遮罩卷 {volume}",
+            )
 
 
 class TestMultiPairIsolation(SwtBirthFixture):

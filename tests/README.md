@@ -1,15 +1,24 @@
-# 测试分层与改动面映射 (MILESTONE-15)
+# 测试分层与改动面映射 (MILESTONE-15/16)
+
+## 默认入口: tests/run
+
+**小改不再付全量** — `tests/run` 按 git 未提交改动面选跑受影响套件:
+
+- `tests/run` — 改动面选跑 (m12 自动并行 -n 12, ~40s; 其他套件串行)
+- `tests/run --fast` — 只跑受影响套件的快层 (秒级)
+- `tests/run --all` — 全量串行回归 (里程碑关账口径)
+- `tests/run <pytest 参数>` — 原样直通
 
 ## 两层跑法
 
-- **快层** (每次改动都跑): 纯逻辑/mock/轻量子进程用例. 命令:
+- **快层**: 纯逻辑/mock/轻量子进程用例. 命令:
   `uv run --with pytest pytest -m "not e2e" -q`
   swt 核心套件 (m04/m07/m09/m12) 的快层合计秒级; 全仓快层约 110s
   (大头是 swt-mailbox 真回环服务套件 ~52s 与 present 套件).
 - **慢层 (e2e)**: 真实重外部资源用例 — 真容器 birth / 真镜像构建 (chromium 下载) /
   真 nft/netns. 按下方映射选跑, 不全量. 命令:
   `uv run --with pytest pytest -m e2e -q tests/test_swt_mXX.py`
-- **里程碑关账**: 全量回归 `uv run --with pytest pytest -q` (两层都跑).
+- **里程碑关账**: 全量回归 `tests/run --all` (两层都跑, 串行).
 
 ## e2e 归层规则 (tests/conftest.py 实施)
 
@@ -41,8 +50,9 @@ mock env) 与纯函数归快层.
 
 ## m12 并行跑法 (MILESTONE-16)
 
-`uv run --with pytest --with pytest-xdist pytest tests/test_swt_m12.py -n 4 -q`
-(~70s, 串行 ~4min; 里程碑关账全量回归仍走串行)
+`tests/run` 选中 m12 时自动并行 (-n 12, ~40s); 手动等价命令:
+`uv run --with pytest --with pytest-xdist pytest tests/test_swt_m12.py -n 12 -q`
+(里程碑关账全量回归仍走串行: `tests/run --all`)
 
 并行安全前提 (新用例必须遵守):
 

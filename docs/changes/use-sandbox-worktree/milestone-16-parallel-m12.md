@@ -37,3 +37,15 @@
 - `tests/test_swt_m12.py` (并行化主体), `tests/conftest.py` (会话兜底),
   `tests/test_swt_m04.py` / `test_swt_m09.py` (rm -v), `tests/README.md` (并行守则)
 - `workflow/use-sandbox-worktree/scripts/swt.py` (U-018 一行加固 + import)
+
+## 追记 (同日, 用户两问驱动)
+
+1. **遗留修复落地**: terminate `podman rm -f -v` (U-022, RED→GREEN 验证); "PARTIAL
+   daemon/桥收割不全" 深查结论修正 — 重试路径按 serve-path 自愈, 真残留是 git
+   daemon/socat fork 连接子进程 (容器骤死后的瞬态孤儿), 产品侧无可修,
+   会话级兜底即正解.
+2. **默认入口补交** (U-023): `tests/run` 按改动面选跑 — 小改默认 ~40s (m12 并行
+   -n 12) 或秒级 (--fast), 全量串行只在 --all (关账). M15/M16 只交机制没交入口
+   是收口失误, 已补.
+3. **事故**: 清理命令过滤面过宽误删他会话已停容器 (已推送工作零损失), 见
+   UNAUTHORIZED_DECISIONS.md 事故记录.
