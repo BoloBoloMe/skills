@@ -37,7 +37,7 @@ disable-model-invocation: true
 
 若任何分批迁移 issue 单独完成后都无法保持绿色, 仍保留兼容扩展/分批迁移/收缩清理序列, 但这些 issue 不再标为可独立领取. 将它们标为 HITL/integration 特例, 写明共享 integration branch, 每个中间 issue 的局部完成证据, 以及最终整合验证 issue 的整体绿色承诺. 这些 issues 都阻塞最终的整合验证 issue.
 
-起草完成标准: 每个 AC 被至少一个拟议 issue 覆盖或明确说明无需执行任务; PRODUCT.md `业务规则` 节中标 (审计) 的断言必须进覆盖矩阵并有承接条目 (人工验证或 issue); TECHNICAL.md 非功能要求/安全策略中的验证性要求均有承接; 每个切片符合上述垂直切片规则; blockers 无环且只包含真正阻塞项; 宽重构已命中特例规则或明确不适用.
+起草完成标准: 每个 AC 被至少一个拟议 issue 覆盖或明确说明无需执行任务; PRODUCT.md `业务规则` 节中标 (审计) 的断言必须进覆盖矩阵并有承接条目 (人工验证或 issue); TECHNICAL.md 非功能要求/安全策略中的验证性要求均有承接; TECHNICAL.md 模块接口的每条不变量/错误模式, 要么有 TC 承接, 要么在所属 issue 的 TDD 切片节标注不测及理由; 每个切片符合上述垂直切片规则; blockers 无环且只包含真正阻塞项; 宽重构已命中特例规则或明确不适用.
 
 # 盘问我
 
