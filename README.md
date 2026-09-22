@@ -40,7 +40,7 @@ project-root/
 每类事实只有一个权威来源:
 
 - 产品结果和验收: `PRODUCT.md`.
-- 技术设计和机器契约索引: `TECHNICAL.md`.
+- 代码库设计 (模块/接口/接缝) 与机器契约: `TECHNICAL.md`.
 - 执行边界/任务图/DoD: `EXECUTION.md`.
 - 决策历史和代码追踪: `DECISIONS.md`.
 - 单个执行单元: `issues/ISSUE-*.md`.
