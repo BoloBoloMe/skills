@@ -10,6 +10,7 @@ Herdr 把终端组织成 工作空间/workspace, 标签页/tab, 窗格/pane, 能
 先分派任务:
 - 你亲自操作 Herdr → 用本 skill, 从下面的环境检查开始.
 - 帮我学习, 安装或排查 Herdr → 读 https://herdr.dev/agent-guide.md 并按它回答. 它面向教人, 本 skill 的操作规则不适用.
+- 官网 → https://herdr.dev/zh-cn/docs/agent-skill/
 
 ## 环境检查
 
@@ -84,8 +85,13 @@ herdr agent list
 ## 启动并协调 agent
 
 开新会话的默认:
-- 我没指定的项 (llm/思考深度), 用 `llm-select` skill 选定;
 - 开在调用方所在 workspace 的新 tab; 我没指定标签名时, 按默认格式 `S-<子代理名>-<序号>` 生成.
+- llm/思考深度除非我有指定, 否则用 `llm-select` skill 选定.
+- 选择与 llm 匹配的 coding agent:
+  - OpenAI 的 llm (如 GPT) → 用 codex; 
+  - Kimi 的 llm (如 K2/K3) → 用 kimi; 
+  - 其他 llm/环境中没有匹配的 agent → 用 pi;
+- 如果是在容器环境中工作, 那么都以 coding agent 支持的最宽权限启动会话, 不拦截 llm 的任何操作; 如果不是在容器环境中工作, 则不特地指定 coding agent 的权限控制宽松度.
 
 `tab create` 返回的 root pane 直接用作 `agent start` 的目标窗格, 沿用当前工作目录. 兄弟窗格, 新工作空间, worktree 或更换 cwd 仅在我明确要求时用.
 
