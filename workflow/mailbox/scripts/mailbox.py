@@ -22,7 +22,8 @@ env:
   ~/.agents/mailbox/config.json) / MAILBOX_NEIGHBORS (邻居表路径, 缺省
   ~/.agents/mailbox/neighbors.json) / MAILBOX_HOLD_SECONDS (缺省 20) /
   MAILBOX_LEASE_SECONDS (缺省 1800) / MAILBOX_RETRY_SECONDS (缺省 5) /
-  MAILBOX_MAX_CONCURRENT_POLLS / MAILBOX_UPSTREAM_BASE / MAILBOX_UPSTREAM_KEY
+  MAILBOX_MAX_CONCURRENT_POLLS / MAILBOX_UPSTREAM_BASE / MAILBOX_UPSTREAM_KEY /
+  MAILBOX_FLOOD_BUDGET_SECONDS (post 洪泛判定预算, 缺省 2, 测试时间注入用)
 """
 from __future__ import annotations
 
@@ -57,8 +58,17 @@ TS_WINDOW = 300.0           # 签名时间窗 ±5min
 HOLD_SECONDS = 20.0         # 长轮询 hold 缺省
 LEASE_SECONDS = 1800.0      # 租约时长缺省 30min (D009)
 MAX_CONCURRENT_POLLS = 5    # 同 session 并发 poll 上限 (D016)
+FLOOD_BUDGET_SECONDS = 2.0  # post 洪泛判定预算 (非功能要求, env 可调)
+FORWARD_TIMEOUT = 5.0       # 单邻居转发超时上限 (后台重试路径沿用)
+MAX_BODY_BYTES = 1024 * 1024  # 单信正文上限 1MB (BR-006/AC-021)
 MSG_TYPES = ("notify", "open_url", "exec", "request")
 PULL_WINDOW_TOOL = "swt.pull-window"  # exec 指令集内置成员 (动态绑定投信方)
+
+# send CLI 按 route 打人话 (AC-008 措辞; 枚举见 TECHNICAL 投信应答节)
+ROUTE_WORDS = {"queued_local": "已进本机队列",
+               "forwarded": "已转邻居",
+               "forwarded_partial": "已转部分邻居, 其余暂存",
+               "staged_pending": "已暂存待重试"}
 
 
 def sign(key, *parts):
@@ -392,10 +402,16 @@ class Mailbox:
 
     def post(self, session_id, sig_ts, sig, letter_d):
         """投信. 签名式 HMAC(signing_key, session\\nsig_ts\\nletter.id\\nletter.body).
+        from 验签 (D013/AC-022): letter.from 必须等于签名 session, 不符拒收
+        (仅 post 验; 邻居 forward 不验, 回执信由服务端内部注入不走 post).
         重复 id 幂等 (返回 None); 收信件排队后由 server 层唤醒等待中的 poll."""
         self._verify(session_id, sig_ts, sig,
                      str(letter_d["id"]), str(letter_d["body"]))
         letter = Letter.from_dict(letter_d)
+        if letter.from_session != session_id:
+            raise MailboxError(
+                f"from 与签名 session 不符: {letter.from_session!r} != "
+                f"{session_id!r} (D013)")
         if not self._validate_incoming(letter, session_id):
             return None  # 幂等: 重复 id 直接 ok
         return self._route(letter, source=None)
@@ -558,7 +574,7 @@ class Mailbox:
         return letter
 
 
-def send_forward(neighbor, letter, timeout=5.0):
+def send_forward(neighbor, letter, timeout=FORWARD_TIMEOUT):
     """向邻居投递 (D007). 不可达/超时/被拒一律 False, 由调用方暂存重试;
     timeout 上限避免一个挂起邻居阻塞 post 响应."""
     try:
@@ -591,6 +607,7 @@ class MailboxHttpServer(ThreadingHTTPServer):
         self.cond = cond  # 长轮询 hold: post notify_all 唤醒
         self.hold_seconds = HOLD_SECONDS
         self.max_concurrent_polls = MAX_CONCURRENT_POLLS
+        self.flood_budget_seconds = FLOOD_BUDGET_SECONDS  # 洪泛判定预算 (D011 A4)
 
         def try_bind(port):
             super(MailboxHttpServer, self).__init__((host, port), _Handler)
@@ -724,20 +741,36 @@ class _Handler(_JsonHandler):
         return self._json(200, {"ok": True})
 
     def _flood(self, routed):
-        """路由结果的非本机部分: 锁外逐邻居投递, 失败进内存暂存 (D007)."""
+        """路由结果的非本机部分: 预算内逐邻居投递, 未确认进内存暂存 (D007),
+        由 serve 重试线程后台补投 (D011 A4 异步洪泛 — 预算等待不持有
+        cond 锁, 此处已在锁外). 返回 (预算内确认数, 目标邻居数)."""
         if routed is None:
-            return
+            return 0, 0
         letter, targets = routed
         m = self.server.mailbox
+        confirmed = 0
+        deadline = time.monotonic() + self.server.flood_budget_seconds
         for n in targets:
-            if not send_forward(n, letter):
+            remaining = deadline - time.monotonic()
+            if remaining > 0 and send_forward(
+                    n, letter, timeout=min(FORWARD_TIMEOUT, remaining)):
+                confirmed += 1
+            else:
                 m.stage_forward(letter, n)
+        return confirmed, len(targets)
 
     def _handle_post(self, body, endpoint):
         party, rkey = self._party(body, endpoint)
         letter_d = body.get("letter")
         if not isinstance(letter_d, dict):
             return self._bad(party, "缺字段: letter", rkey)
+        # 单信正文 1MB 上限 (AC-021/BR-006): 超限拒收 413,
+        # 错误消息同步钉死边界用途 — 信箱只传控制消息, 传文件走 git (D011 D3)
+        if len(str(letter_d.get("body", "")).encode("utf-8", "replace")) \
+                > MAX_BODY_BYTES:
+            return self._signed(413, party, {"ok": False, "error":
+                f"正文超 1MB 上限 ({MAX_BODY_BYTES} 字节), 拒收 "
+                "(信箱只传控制消息, 传文件走 git)"}, rkey)
         m = self.server.mailbox
         with self.server.cond:
             try:
@@ -748,13 +781,26 @@ class _Handler(_JsonHandler):
             except (ValueError, TypeError) as e:
                 return self._bad(party, f"字段畸形: {e}", rkey)
             except UnknownRecipient as e:
-                return self._signed(404, party, {"ok": False, "error": str(e)}, rkey)
+                return self._signed(404, party, {"ok": False, "error": str(e),
+                                                 "route": "unknown_recipient"}, rkey)
             except MailboxError as e:
                 return self._signed(403, party, {"ok": False, "error": str(e)}, rkey)
             self.server.cond.notify_all()
-        self._flood(routed)
+        route = None
+        resolved_to = None
+        if routed is not None:
+            letter, targets = routed
+            resolved_to = letter.to_session  # 空 to 已在路由时解析为实际目标
+            if not targets:
+                route = "queued_local"
+            else:
+                confirmed, _total = self._flood(routed)
+                route = ("forwarded" if confirmed == len(targets)
+                         else "forwarded_partial" if confirmed
+                         else "staged_pending")
         note = "ok" if routed is not None else "重复 id, 幂等收下"
-        return self._signed(200, party, {"ok": True, "note": note}, rkey)
+        return self._signed(200, party, {"ok": True, "note": note,
+                                         "route": route, "to": resolved_to}, rkey)
 
     def _handle_poll(self, body, endpoint):
         party, rkey = self._party(body, endpoint)
@@ -1340,7 +1386,19 @@ def cmd_send(args):
     if not payload.get("ok"):
         print(f"致命: 投信失败: {payload.get('error', resp)}", file=sys.stderr)
         sys.exit(3)
-    print(f"已投递给 {letter['to'] or '(最近活跃 session)'}: {letter['id']}")
+    # 回执分行 (AC-006): 目标 session 与信件 id 各占一行;
+    # 空 to 时优先回打服务端实际解析出的目标 (AC-007)
+    target = payload.get("to") or letter["to"] or "(最近活跃 session)"
+    print(f"目标 session={target}")
+    print(f"信件 id={letter['id']}")
+    # 投递态按 route 打人话 (AC-008); 重复 id 幂等收下时回 note
+    route = payload.get("route")
+    if route in ROUTE_WORDS:
+        print(f"投递态: {ROUTE_WORDS[route]}")
+    else:
+        note = payload.get("note", "")
+        if note and note != "ok":
+            print(note)
 
 
 # ======================================================================
@@ -1576,6 +1634,8 @@ def cmd_serve(args):
         server = MailboxHttpServer(mailbox, cond, "0.0.0.0", args.port)
         server.hold_seconds = float(os.environ.get("MAILBOX_HOLD_SECONDS",
                                                    str(HOLD_SECONDS)))
+        server.flood_budget_seconds = float(os.environ.get(
+            "MAILBOX_FLOOD_BUDGET_SECONDS", str(FLOOD_BUDGET_SECONDS)))
         server.max_concurrent_polls = int(os.environ.get(
             "MAILBOX_MAX_CONCURRENT_POLLS", str(MAX_CONCURRENT_POLLS)))
         admin = AdminHttpServer(mailbox, cond, admin_token, args.admin_port,

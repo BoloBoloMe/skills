@@ -158,8 +158,8 @@ def test_lease_timing_immune_to_wall_clock_rollback():
                     lease_seconds=10.0)
     s = m.add_session("s1")
 
-    letter_d = {"id": "L-1", "ts": wall[0], "from": "tester", "to": "s1",
-                "type": "notify", "body": "hi"}
+    letter_d = {"id": "L-1", "ts": wall[0], "from": "s1", "to": "s1",
+                "type": "notify", "body": "hi"}  # from == 签名 session (D013)
     sig = mod.sign(s.signing_key, "s1", str(wall[0]), "L-1", "hi")
     assert m.post("s1", str(wall[0]), sig, letter_d) is not None
     psig = mod.sign(s.signing_key, "s1", str(wall[0]))

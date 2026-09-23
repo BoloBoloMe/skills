@@ -3,6 +3,7 @@
 TS-001 forward 邻居密钥认证 / TS-002 本机投信洪泛到邻居 /
 TS-003 seen-id 防洪泛循环 / TS-004 来源邻居排除 /
 TS-005 邻居不可达内存暂存与恢复重发 / TS-006 三实例 mesh e2e.
+ISSUE-03 TC-013 test_post_route_states: post 应答 route 四态.
 
 真实子进程 serve (各自独立端口区间 + 邻居表文件), 回环 HTTP 观察.
 共享接缝层 (签名/HTTP helper/serve 启动器) 在 tests/conftest.py;
@@ -221,6 +222,47 @@ def test_pending_forward_retry(mesh_serves):
     assert letter is not None, "B 恢复后暂存信未被重发"
     assert letter["id"] == "P-1"
     assert letter["body"] == "等 B 回来"
+
+
+def test_post_route_states(mesh_serves, spy_neighbor):
+    """TC-013 (AC-008): post 应答 route 态 — 本机 queued_local /
+    邻居可达 forwarded / 邻居不可达 staged_pending / 部分可达 forwarded_partial."""
+    # 布局 1: 本机已注册 session → queued_local
+    srv_local = mesh_serves("local")
+    c1 = register_session(srv_local, "s1")
+    code, resp = post_letter(srv_local, "s1", c1["signing_key"],
+                             make_letter(letter_id="R-1", to="s1"))
+    assert code == 200
+    assert resp["payload"]["route"] == "queued_local"
+    assert resp["payload"]["to"] == "s1"
+
+    # 布局 2: 单邻居可达 (spy 假邻居应答 ok) → forwarded
+    spy = spy_neighbor()
+    srv_fwd = mesh_serves("fwd", neighbors=[neighbor(spy.port, "k-ok")])
+    c2 = register_session(srv_fwd, "s2")
+    code, resp = post_letter(srv_fwd, "s2", c2["signing_key"],
+                             make_letter(letter_id="R-2", to="remote-dev"))
+    assert code == 200
+    assert resp["payload"]["route"] == "forwarded"
+
+    # 布局 3: 单邻居不可达 (端口无监听, 连接立即被拒) → staged_pending
+    srv_dead = mesh_serves("dead",
+                           neighbors=[neighbor(free_port(), "k-dead")])
+    c3 = register_session(srv_dead, "s3")
+    code, resp = post_letter(srv_dead, "s3", c3["signing_key"],
+                             make_letter(letter_id="R-3", to="remote-dev"))
+    assert code == 200
+    assert resp["payload"]["route"] == "staged_pending"
+
+    # 布局 4: 一可达一不可达 → forwarded_partial
+    spy2 = spy_neighbor()
+    srv_mix = mesh_serves("mix", neighbors=[neighbor(spy2.port, "k-mix-ok"),
+                                             neighbor(free_port(), "k-mix-dead")])
+    c4 = register_session(srv_mix, "s4")
+    code, resp = post_letter(srv_mix, "s4", c4["signing_key"],
+                             make_letter(letter_id="R-4", to="remote-dev"))
+    assert code == 200
+    assert resp["payload"]["route"] == "forwarded_partial"
 
 
 def test_mesh_e2e(mesh_serves):
