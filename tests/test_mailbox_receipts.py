@@ -208,3 +208,59 @@ def test_receipt_no_recursion(dual_serves):
     code, resp = poll(srv_a, "a-host", key)
     assert code == 200
     assert resp["payload"]["letter"] is None, "回执的回执不应出现在发件人队列"
+
+
+def test_failed_receipt_dedup(tmp_path):
+    """TS-004/TC-033 (AC-019): 同一封信的副本滞留在 B/C 两节点, 先后超时
+    丢弃, 发件人只收到一封失败回执 (确定性 id + seen-id 去重).
+    拓扑: A⇄B, A⇄C 互为邻居; B/C 各挂一个不可达邻居 X/Y 承接滞留."""
+    created = []
+
+    def _serve(name, port, peers, npath):
+        npath.write_text(json.dumps(
+            [neighbor(p, k) for p, k in peers]))
+        srv = Serve(tmp_path / name, port=port, extra_env={
+            "MAILBOX_NEIGHBORS": str(npath),
+            "MAILBOX_RETRY_SECONDS": "0.2",
+            "MAILBOX_TTL_SECONDS": "5"})
+        created.append(srv)
+        return srv
+
+    port_a, port_b, port_c = free_port(), free_port(), free_port()
+    dead_x, dead_y = free_port(), free_port()
+    (tmp_path / "a").mkdir(parents=True)
+    (tmp_path / "b").mkdir()
+    (tmp_path / "c").mkdir()
+    srv_a = _serve("a", port_a, [(port_b, "k-ab"), (port_c, "k-ac")],
+                   tmp_path / "a" / "neighbors.json")
+    _serve("b", port_b, [(port_a, "k-ab"), (dead_x, "k-bx")],
+           tmp_path / "b" / "neighbors.json")
+    _serve("c", port_c, [(port_a, "k-ac"), (dead_y, "k-cy")],
+           tmp_path / "c" / "neighbors.json")
+    try:
+        creds = register_session(srv_a, "a-host")
+        key = creds["signing_key"]
+        code, _ = post_letter(srv_a, "a-host", key,
+                              make_letter(letter_id="L-1", to="ghost-dev",
+                                          body="多节点滞留", from_="a-host"))
+        assert code == 200
+
+        # 两节点都在 ~TTL 时先后丢弃; 发件人窗口内持续取信计入全部到达
+        got = []
+        end = time.time() + 9  # 覆盖两节点丢弃 (≈5.0-5.4s) 与回执传播
+        while time.time() < end:
+            code, resp = poll(srv_a, "a-host", key)
+            assert code == 200
+            letter = resp["payload"]["letter"]
+            if letter is not None:
+                got.append(letter)
+        failed = [l for l in got if l["id"] == "L-1.delivery-failed"]
+        assert len(failed) == 1, \
+            f"多节点丢弃只应有一封失败回执到达: {[l['id'] for l in got]}"
+        assert json.loads(failed[0]["body"]) == {"receipt": "failed",
+                                                 "letter_id": "L-1"}
+        assert all(l["id"] == "L-1.delivery-failed" for l in got), \
+            f"发件人队列不应出现其它信: {[l['id'] for l in got]}"
+    finally:
+        for srv in created:
+            srv.stop()
