@@ -56,7 +56,7 @@ def test_post_and_poll(serves):
     assert letter["body"] == "投递唤醒"
     assert letter["type"] == "notify"
     assert letter["to"] == "s1"
-    assert letter["from"] == "tester"
+    assert letter["from"] == "s1"  # D013: from == 签名 session
     assert resp["payload"]["lease_token"]
     assert resp["sig"]
 

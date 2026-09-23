@@ -132,12 +132,19 @@ def register_session(srv, session_id, signing_key=None, response_key=None):
     return resp
 
 
-def make_letter(letter_id="L-1", to="s1", type_="notify", body="hi", from_="tester"):
-    return {"id": letter_id, "ts": time.time(), "from": from_, "to": to,
-            "type": type_, "body": body}
+def make_letter(letter_id="L-1", to="s1", type_="notify", body="hi", from_=None):
+    """构造信件 dict. from 缺省不携带, 由 post_letter 按投信方补齐 (D013:
+    from == 签名 session); 走 forward 的信可显式指定任意发件人."""
+    d = {"id": letter_id, "ts": time.time(), "to": to,
+         "type": type_, "body": body}
+    if from_ is not None:
+        d["from"] = from_
+    return d
 
 
 def post_letter(srv, session_id, signing_key, letter):
+    letter = dict(letter)
+    letter.setdefault("from", session_id)  # D013: from == 签名 session
     sig_ts = str(time.time())
     sig = sign(signing_key, session_id, sig_ts, letter["id"], letter["body"])
     return http_json("POST", srv.port, "/mailbox/post",

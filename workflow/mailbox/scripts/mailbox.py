@@ -404,10 +404,16 @@ class Mailbox:
 
     def post(self, session_id, sig_ts, sig, letter_d):
         """投信. 签名式 HMAC(signing_key, session\\nsig_ts\\nletter.id\\nletter.body).
+        from 验签 (D013/AC-022): letter.from 必须等于签名 session, 不符拒收
+        (仅 post 验; 邻居 forward 不验, 回执信由服务端内部注入不走 post).
         重复 id 幂等 (返回 None); 收信件排队后由 server 层唤醒等待中的 poll."""
         self._verify(session_id, sig_ts, sig,
                      str(letter_d["id"]), str(letter_d["body"]))
         letter = Letter.from_dict(letter_d)
+        if letter.from_session != session_id:
+            raise MailboxError(
+                f"from 与签名 session 不符: {letter.from_session!r} != "
+                f"{session_id!r} (D013)")
         if not self._validate_incoming(letter, session_id):
             return None  # 幂等: 重复 id 直接 ok
         return self._route(letter, source=None)
