@@ -2,7 +2,7 @@
 - `../EXECUTION.md`
 
 ## 执行
-- [ ] 已实现
+- [x] 已实现
 
 ## 要构建什么
 回执信 + 信件 TTL: (1) Letter 增 `expires_at` (缺省 ts+24h, serve env 可调), 清扫器到期丢弃; (2) 三种回执: 送达 (信进收件人本机队列) / 已读 (ack) / 失败 (TTL 到期丢弃), 由服务端内部注入, from=`mailbox@<hostname>`, type=notify, body JSON `{"receipt":...,"letter_id":...}`; (3) 失败回执确定性 id `<原id>.delivery-failed` (多节点同时超时 seen-id 去重只投一封), 送达/已读同理 `<原id>.delivered`/`.read`; (4) 回执不递归; (5) 取信脚本识别回执信: 自动 ack, 打印紧凑单行, 不呈现给 LLM 不走处理指引. 适合 AFK: 语义与 id 规则已定.
