@@ -2,7 +2,7 @@
 - `../EXECUTION.md`
 
 ## 执行
-- [ ] 已实现
+- [x] 已实现
 
 ## 要构建什么
 邻居与滞留可管可控: (1) admin 口邻居 GET (列出含状态) / DELETE / PATCH; 邻居加 `name` 字段, 同名 upsert 覆盖地址不累积; (2) 滞留信 `GET /admin/pending` (id/目标/邻居/最后错误/重试次数/年龄) + `POST /admin/pending/retry|drop`; 滞留上限缺省 100 (env 可调), 超限丢最老; (3) 邻居存储语义统一: admin 加的进 DB 持久, 文件加的只作启动种子, 文档写清; (4) 邻居转发失败/不可达打 UTC 时间戳日志行. 适合 AFK: 端点与语义已定.
