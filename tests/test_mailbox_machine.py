@@ -19,7 +19,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-from conftest import ADMIN_TOKEN, SCRIPT, poll, serves
+from conftest import ADMIN_TOKEN, SCRIPT, free_port, poll, serves
 
 ROOT = Path(__file__).resolve().parents[1]
 SWT_SCRIPT = ROOT / "workflow" / "use-sandbox-worktree" / "scripts" / "swt.py"
@@ -57,3 +57,62 @@ def test_discover_outputs_json(serves, tmp_path):
     assert json.loads(proc.stdout) == {"port": srv.port,
                                        "admin_port": srv.admin_port,
                                        "admin_token": ADMIN_TOKEN}
+
+
+# TS-002 (TC-007/AC-026): register-session 输出三元组且凭证可用;
+# revoke 注销后凭证失效; 重复注销幂等; 未知 session / 已存在 / admin 不可达 /
+# 信箱未发现 → exit 3.
+def test_register_and_revoke_session(serves, tmp_path):
+    srv = serves()
+    state = tmp_path / "s" / STATE_FILE
+    sid = "swt-demo-deadbeef"
+
+    proc = _run_machine(tmp_path, state, "register-session", sid)
+    assert proc.returncode == 0, proc.stderr
+    creds = json.loads(proc.stdout)
+    assert creds["id"] == sid
+    assert creds["signing_key"] and creds["response_key"]
+    assert creds["signing_key"] != creds["response_key"]
+    # 三元组是真凭证: 以该 signing_key 签名 poll, 服务端认账 (空载荷 200)
+    code, resp = poll(srv, sid, creds["signing_key"])
+    assert code == 200 and resp["payload"]["letter"] is None
+
+    # 已存在 → exit 3 + stderr 人话, stdout 无 JSON
+    proc = _run_machine(tmp_path, state, "register-session", sid)
+    assert proc.returncode == 3
+    assert proc.stdout == ""
+    assert proc.stderr.strip()
+
+    # revoke → {"id", "revoked": true}; 注销后该凭证 poll 被拒 (403)
+    proc = _run_machine(tmp_path, state, "revoke-session", sid)
+    assert proc.returncode == 0, proc.stderr
+    assert json.loads(proc.stdout) == {"id": sid, "revoked": True}
+    code, _ = poll(srv, sid, creds["signing_key"])
+    assert code == 403
+
+    # 已知 session 重复注销: 幂等成功, 语义明确 (非报错)
+    proc = _run_machine(tmp_path, state, "revoke-session", sid)
+    assert proc.returncode == 0, proc.stderr
+    assert json.loads(proc.stdout) == {"id": sid, "revoked": True}
+
+    # 未知 session → exit 3
+    proc = _run_machine(tmp_path, state, "revoke-session", "never-registered")
+    assert proc.returncode == 3
+    assert proc.stdout == ""
+    assert proc.stderr.strip()
+
+    # admin 不可达 → exit 3: 状态文件 port 指向活服务但 admin 口已死
+    dead_admin = free_port()  # 绑后即放, 无监听
+    broken = tmp_path / "broken-state.json"
+    broken.write_text(json.dumps({"service": "mailbox", "version": "t",
+                                  "port": srv.port, "admin_port": dead_admin,
+                                  "admin_token": ADMIN_TOKEN}), encoding="utf-8")
+    proc = _run_machine(tmp_path, broken, "register-session", "another-1")
+    assert proc.returncode == 3
+    assert proc.stderr.strip()
+
+    # 信箱未发现 (状态文件缺席) → exit 3
+    proc = _run_machine(tmp_path, tmp_path / "none" / STATE_FILE,
+                        "revoke-session", "x-1")
+    assert proc.returncode == 3
+    assert proc.stderr.strip()

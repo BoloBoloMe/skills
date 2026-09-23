@@ -1494,6 +1494,40 @@ def cmd_discover():
     print(json.dumps(found, ensure_ascii=False))
 
 
+def cmd_register_session(session_id):
+    """register-session <id>: 经 admin 口注册 session (密钥对由信箱生成发放),
+    stdout JSON {id, signing_key, response_key}; 已存在/admin 不可达 exit 3."""
+    found = _discover_local_mailbox(allow_scan=False)  # 扫描拿不到 admin 凭证
+    if found is None:
+        _machine_exit("本机信箱未发现 (状态文件缺席/失活), 无法注册 session")
+    try:
+        payload = _machine_admin_post(found, "/admin/sessions",
+                                      {"id": session_id})
+    except _MachineCommandError as exc:
+        _machine_exit(str(exc))
+    creds = {field: payload.get(field)
+             for field in ("id", "signing_key", "response_key")}
+    if any(not isinstance(value, str) or not value for value in creds.values()):
+        _machine_exit(f"admin 应答缺注册三元组: {payload!r}")
+    print(json.dumps(creds, ensure_ascii=False))
+
+
+def cmd_revoke_session(session_id):
+    """revoke-session <id>: 经 admin 口注销 session, stdout JSON
+    {"id", "revoked": true}; 未知 session/admin 不可达 exit 3."""
+    found = _discover_local_mailbox(allow_scan=False)
+    if found is None:
+        _machine_exit("本机信箱未发现 (状态文件缺席/失活), 无法注销 session")
+    try:
+        payload = _machine_admin_post(found, "/admin/sessions/revoke",
+                                      {"id": session_id})
+    except _MachineCommandError as exc:
+        _machine_exit(str(exc))
+    if payload.get("id") != session_id or not payload.get("revoked"):
+        _machine_exit(f"admin 应答畸形: {payload!r}")
+    print(json.dumps({"id": session_id, "revoked": True}, ensure_ascii=False))
+
+
 def neighbors_path():
     return Path(os.environ.get("MAILBOX_NEIGHBORS") or
                 Path.home() / ".agents/mailbox/neighbors.json")
@@ -1650,6 +1684,12 @@ def main():
     sub.add_parser("status", help="查看配置状态 (密钥脱敏)")
     sub.add_parser("discover",
                    help="探测本机信箱 (机器子命令, stdout JSON/exit 3)")
+    p_register = sub.add_parser(
+        "register-session", help="注册 session (机器子命令, stdout JSON 三元组)")
+    p_register.add_argument("session_id", help="session id (如 <容器名>-<8hex>)")
+    p_revoke = sub.add_parser(
+        "revoke-session", help="注销 session (机器子命令, stdout JSON)")
+    p_revoke.add_argument("session_id")
     p_serve.add_argument("--neighbors", default=None,
                          help="邻居表 JSON 文件 (缺省 ~/.agents/mailbox/neighbors.json)")
     p_serve.add_argument("--relay-port", type=int, default=DEFAULT_RELAY_PORT,
@@ -1669,6 +1709,10 @@ def main():
         cmd_status()
     elif args.cmd == "discover":
         cmd_discover()
+    elif args.cmd == "register-session":
+        cmd_register_session(args.session_id)
+    elif args.cmd == "revoke-session":
+        cmd_revoke_session(args.session_id)
     else:
         cmd_fetch()  # 缺省动作 = 取信 (D001)
 
