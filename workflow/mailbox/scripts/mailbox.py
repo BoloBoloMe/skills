@@ -65,6 +65,9 @@ PENDING_CAP = 100           # 滞留转发上限, 超限丢最老 (AC-013, env �
 FORWARD_TIMEOUT = 5.0       # 单邻居转发超时上限 (后台重试路径沿用)
 MAX_BODY_BYTES = 1024 * 1024  # 单信正文上限 1MB (BR-006/AC-021)
 MSG_TYPES = ("notify", "open_url", "exec", "request")
+RECEIPT_FROM_PREFIX = "mailbox@"  # 回执信保留身份 (D013): from=mailbox@<hostname>
+RECEIPT_ID_SUFFIX = {"delivered": "delivered", "read": "read",
+                     "failed": "delivery-failed"}  # 回执确定性 id (D012)
 PULL_WINDOW_TOOL = "swt.pull-window"  # exec 指令集内置成员 (动态绑定投信方)
 
 # send CLI 按 route 打人话 (AC-008 措辞; 枚举见 TECHNICAL 投信应答节)
@@ -136,6 +139,12 @@ def _parse_instruction(body):
     except (json.JSONDecodeError, TypeError):
         return None
     return ins if isinstance(ins, dict) and isinstance(ins.get("tool"), str) else None
+
+
+def is_receipt_from(from_session):
+    """回执信标记判定 (D012/D013): from 为保留身份 mailbox@<hostname>.
+    取信侧与服务端共用 (紧凑呈现/不递归)."""
+    return str(from_session).startswith(RECEIPT_FROM_PREFIX)
 
 
 class MailboxError(Exception):
@@ -340,6 +349,8 @@ class Mailbox:
         self.neighbors = []   # list[Neighbor], serve 启动时从邻居表加载
         self.pending_forwards = []  # list[PendingForward], 邻居不可达内存暂存 (B4)
         self._pending_lock = threading.Lock()  # 暂存增删与请求处理线程并发
+        self._spawned_routes = []  # 内部注入回执的远端洪泛目标 (锁外投递)
+        self._spawn_lock = threading.Lock()
         self._db = None
         if db_path is not None:
             Path(db_path).parent.mkdir(parents=True, exist_ok=True)
@@ -558,6 +569,7 @@ class Mailbox:
         if letter.to_session in self.sessions:
             self.seen_ids[letter.id] = self._now()
             self.queue.setdefault(letter.to_session, []).append(letter)
+            self._spawn_receipt("delivered", letter)  # 送达回执 (D012): 进队列即发
             return letter, []
         targets = [n for n in self.neighbors if n is not source]
         if not targets:
@@ -571,6 +583,38 @@ class Mailbox:
             if hmac.compare_digest(n.shared_key, str(key)):
                 return n
         return None
+
+    def _spawn_receipt(self, kind, letter):
+        """回执信内部注入 (D013): 服务端生成, 不走 post 验签, 经 _route 反向
+        路由给原发件人; from 用保留身份 mailbox@<hostname>, body JSON
+        {"receipt","letter_id"}, id 确定化 (D012). 发件人本机 → 直接排队;
+        远端 → 进 _spawned_routes 由调用方在锁外洪泛; 无处可去静默丢弃
+        (best-effort). 不发的情形: 空 from (forward 信可无发件人) / 自寄信
+        (from == to, AC-018 两设备前提, 自寄回执只噪自己的队列) / 同 id 回执
+        已生成或已收 (确定性 id 幂等, AC-019 多节点去重的本端半边)."""
+        if not letter.from_session or letter.from_session == letter.to_session:
+            return
+        receipt_id = f"{letter.id}.{RECEIPT_ID_SUFFIX[kind]}"
+        if receipt_id in self.seen_ids:
+            return
+        receipt = Letter(id=receipt_id, ts=self._now(),
+                         from_session=f"{RECEIPT_FROM_PREFIX}{socket.gethostname()}",
+                         to_session=letter.from_session, type="notify",
+                         body=json.dumps({"receipt": kind,
+                                          "letter_id": letter.id}))
+        try:
+            routed = self._route(receipt, source=None)
+        except UnknownRecipient:
+            return  # 发件人无处可达: best-effort 丢弃 (D012)
+        if routed[1]:
+            with self._spawn_lock:
+                self._spawned_routes.append(routed)
+
+    def drain_spawned(self):
+        """取空内部注入回执的远端洪泛目标 (server 层锁外执行后清空)."""
+        with self._spawn_lock:
+            out, self._spawned_routes = self._spawned_routes, []
+        return out
 
     def forward(self, neighbor_key, letter_d):
         """邻居转发收信 (D007). neighbor_key 与邻居表比对认证, 匹配到的
@@ -768,6 +812,30 @@ def _log_forward_failed(letter, neighbor, error):
               neighbor=neighbor.address, error=error)
 
 
+def flood_targets(mailbox, letter, targets, budget):
+    """洪泛核心 (post/forward 应答与回执注入共用, D007): 预算内逐邻居投递,
+    未确认进内存暂存 (D011 A4 异步洪泛 — 预算等待不持有锁, 调用方须在
+    锁外调用). 返回 (预算内确认数, 目标邻居数)."""
+    confirmed = 0
+    deadline = time.monotonic() + budget
+    for n in targets:
+        remaining = deadline - time.monotonic()
+        if remaining > 0:
+            ok, error = forward_attempt(
+                n, letter, timeout=min(FORWARD_TIMEOUT, remaining))
+            n.reachable = ok
+            if ok:
+                confirmed += 1
+                continue
+            _log_forward_failed(letter, n, error)
+            mailbox.stage_forward(letter, n, error)
+        else:
+            # 预算耗尽: 未做任何转发尝试 — 不写 reachable (status 语义 =
+            # 最近一次转发结果), 失败尝试计数记 0
+            mailbox.stage_forward(letter, n, "洪泛预算耗尽", retries=0)
+    return confirmed, len(targets)
+
+
 def bind_first_free(try_bind, start_port):
     """端口区间首空闲绑定: 从起点起逐个尝试, try_bind(port) 抛 OSError 则试下一个;
     区间全占报错 (调用方退出). 信箱面与中转面共用."""
@@ -798,6 +866,13 @@ class MailboxHttpServer(ThreadingHTTPServer):
     @property
     def port(self):
         return self.server_address[1]
+
+    def flood_spawned(self):
+        """内部注入回执的远端部分补投 (D012/D13): 取空 _spawned_routes 逐封
+        预算内洪泛 (post/forward/ack 处理线程与清扫线程的锁外收尾共用入口)."""
+        for letter, targets in self.mailbox.drain_spawned():
+            flood_targets(self.mailbox, letter, targets,
+                          self.flood_budget_seconds)
 
 
 class RelayHttpServer(ThreadingHTTPServer):
@@ -943,6 +1018,8 @@ class _Handler(_JsonHandler):
                 return self._json(400, {"ok": False, "error": f"字段畸形: {e}"})
             self.server.cond.notify_all()
         self._flood(routed)
+        # 回执反向走同一路由 (D012): 本信在本机排队生成的送达回执在此锁外补投
+        self.server.flood_spawned()
         return self._json(200, {"ok": True})
 
     def _flood(self, routed):
@@ -952,25 +1029,8 @@ class _Handler(_JsonHandler):
         if routed is None:
             return 0, 0
         letter, targets = routed
-        m = self.server.mailbox
-        confirmed = 0
-        deadline = time.monotonic() + self.server.flood_budget_seconds
-        for n in targets:
-            remaining = deadline - time.monotonic()
-            if remaining > 0:
-                ok, error = forward_attempt(
-                    n, letter, timeout=min(FORWARD_TIMEOUT, remaining))
-                n.reachable = ok
-                if ok:
-                    confirmed += 1
-                    continue
-                _log_forward_failed(letter, n, error)
-                m.stage_forward(letter, n, error)
-            else:
-                # 预算耗尽: 未做任何转发尝试 — 不写 reachable (status 语义 =
-                # 最近一次转发结果), 失败尝试计数记 0
-                m.stage_forward(letter, n, "洪泛预算耗尽", retries=0)
-        return confirmed, len(targets)
+        return flood_targets(self.server.mailbox, letter, targets,
+                             self.server.flood_budget_seconds)
 
     def _handle_post(self, body, endpoint):
         party, rkey = self._party(body, endpoint)
