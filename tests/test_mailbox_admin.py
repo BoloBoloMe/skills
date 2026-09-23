@@ -315,3 +315,43 @@ def test_neighbors_get_delete_patch(tmp_path):
                                        "name": "yoga2", "status": "unknown"}]
     finally:
         srv2.stop()
+
+
+def test_neighbor_upsert_by_name(tmp_path):
+    """TC-019 (AC-011 同名再登记行): 同名再登记覆盖地址不新增条目 (换址场景);
+    upsert 结果入 DB, 重启后文件里的旧地址不再种入 (DB 同名优先)."""
+    workdir = tmp_path / "upsert"
+    workdir.mkdir()
+    (workdir / "neighbors.json").write_text(json.dumps([
+        {"address": "192.0.2.1:38417", "shared_key": "k-old", "name": "yoga"}]))
+    nb_env = {"MAILBOX_NEIGHBORS": str(workdir / "neighbors.json")}
+    srv = Serve(workdir, extra_env=nb_env)
+    try:
+        code, resp = _admin(srv, "GET", "/admin/neighbors")
+        assert code == 200
+        assert [e["address"] for e in resp["neighbors"]] == ["192.0.2.1:38417"], \
+            "文件种子应带名字读入"
+
+        # 同名再登记: 新地址覆盖, 不新增条目
+        code, resp = _admin(srv, "POST", "/admin/neighbors",
+                            {"address": "192.0.2.2:38417",
+                             "shared_key": "k-new", "name": "yoga"})
+        assert code == 200, resp
+        code, resp = _admin(srv, "GET", "/admin/neighbors")
+        assert code == 200
+        assert resp["neighbors"] == [{"address": "192.0.2.2:38417",
+                                       "name": "yoga", "status": "unknown"}], \
+            "同名再登记应覆盖地址且不新增条目"
+    finally:
+        srv.stop()
+
+    # 重启: upsert 已入 DB; 文件旧地址不再种入 (同名去重, DB 优先)
+    srv2 = Serve(workdir, extra_env=nb_env)
+    try:
+        code, resp = _admin(srv2, "GET", "/admin/neighbors")
+        assert code == 200
+        assert resp["neighbors"] == [{"address": "192.0.2.2:38417",
+                                       "name": "yoga", "status": "unknown"}], \
+            "重启后应以 DB 的新地址为准, 文件旧地址不再种入"
+    finally:
+        srv2.stop()

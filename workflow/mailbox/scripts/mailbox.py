@@ -1731,14 +1731,16 @@ def neighbors_path():
 
 
 def load_neighbors(path):
-    """邻居表 (D020): JSON list [{address, shared_key}]; 缺失/畸形 → 空表."""
+    """邻居表 (D020): JSON list [{address, shared_key, name?}]; 缺失/畸形 → 空表.
+    name 可缺省 (D011 B2 兼容旧表), 文件条目只作启动种子 (B8)."""
     try:
         data = json.loads(Path(path).read_text())
     except (OSError, json.JSONDecodeError):
         return []
     if not isinstance(data, list):
         return []
-    return [Neighbor(str(d["address"]), str(d["shared_key"]))
+    return [Neighbor(str(d["address"]), str(d["shared_key"]),
+                     str(d["name"]) if d.get("name") else None)
             for d in data]
 
 
@@ -1749,12 +1751,15 @@ def cmd_serve(args):
                       lease_seconds=float(
                           os.environ.get("MAILBOX_LEASE_SECONDS",
                                          str(LEASE_SECONDS))))
-    # 邻居表 = SQLite 持久化 (admin 运行时加入) + JSON 文件 (D020 手工配置),
-    # 按地址去重合并
+    # 邻居表 = SQLite 持久化 (admin 运行时加入/修改, B8) + JSON 文件 (D020 手工
+    # 配置, 只作启动种子); 按地址与名字双重去重 — 同名时 DB (admin 改过的) 优先,
+    # 文件旧地址不再种入 (B2 换址后不改文件的已知张力, 见 reference/mailbox.md)
     known = {n.address for n in mailbox.neighbors}
+    known_names = {n.name for n in mailbox.neighbors if n.name}
     mailbox.neighbors += [n for n in load_neighbors(args.neighbors
                                                     or neighbors_path())
-                          if n.address not in known]
+                          if n.address not in known
+                          and not (n.name and n.name in known_names)]
     cond = threading.Condition()
     admin_token = os.environ.get("MAILBOX_ADMIN_TOKEN") or uuid.uuid4().hex
     upstream_base = args.upstream_base or os.environ.get("MAILBOX_UPSTREAM_BASE", "")
