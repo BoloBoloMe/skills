@@ -1066,7 +1066,11 @@ class _Handler(_JsonHandler):
                 return self._bad(party, f"字段畸形: {e}", rkey)
             except MailboxError as e:
                 return self._signed(403, party, {"ok": False, "error": str(e)}, rkey)
-        return self._signed(200, party, {"ok": True}, rkey)
+            # 白名单字段序列化 (D011 G3/AC-028): 只回 id+last_poll,
+            # 已吊销不列; 密钥任何形态不出此端点 (创建时一次性下发).
+            sessions = [{"id": s.id, "last_poll": s.last_poll}
+                        for s in m.sessions.values() if not s.revoked]
+        return self._signed(200, party, {"ok": True, "sessions": sessions}, rkey)
 
     def do_POST(self):
         path = urlparse(self.path).path
