@@ -20,6 +20,8 @@ TC-020 test_pending_list_fields: GET /admin/pending 列出 id/to/邻居/
        最后错误/重试次数/年龄.
 TC-021 test_pending_retry_and_drop: POST /admin/pending/retry 立即补投 /
        drop 移出滞留队列.
+TC-022 test_pending_cap_drops_oldest: 滞留超上限丢最老且经管理口可见;
+       缺省 100, env MAILBOX_PENDING_CAP 可调.
 
 共享接缝层 (serve 启动器/签名/HTTP helper) 在 tests/conftest.py.
 """
@@ -451,3 +453,42 @@ def test_pending_retry_and_drop(tmp_path):
             srv_b.stop()
     finally:
         srv.stop()
+
+
+def test_pending_cap_drops_oldest(serves):
+    """TC-022 (AC-013): 新滞留超上限时最老的被丢弃且经管理口可见;
+    上限缺省 100, env MAILBOX_PENDING_CAP 可调."""
+    # env 调小到 3: 第 4 封起丢最老
+    srv = serves("cap3", extra_env={"MAILBOX_PENDING_CAP": "3",
+                                    "MAILBOX_RETRY_SECONDS": "30"})
+    poster = register_session(srv, "cap-1")
+    dead = f"127.0.0.1:{free_port()}"
+    code, _ = _admin(srv, "POST", "/admin/neighbors",
+                     {"address": dead, "shared_key": "k-dead"})
+    assert code == 200
+    for i in range(5):
+        code, resp = post_letter(srv, "cap-1", poster["signing_key"],
+                                 make_letter(letter_id=f"CAP-{i}",
+                                             to="remote-dev"))
+        assert code == 200, resp
+    code, resp = _admin(srv, "GET", "/admin/pending")
+    ids = [e["id"] for e in resp["pending"]]
+    assert ids == ["CAP-2", "CAP-3", "CAP-4"], \
+        f"超上限应丢最老: {ids}"
+
+    # 缺省 100: 第 101 封把最老的一封挤掉
+    srv2 = serves("cap-def", extra_env={"MAILBOX_RETRY_SECONDS": "30"})
+    poster2 = register_session(srv2, "cap-2")
+    dead2 = f"127.0.0.1:{free_port()}"
+    code, _ = _admin(srv2, "POST", "/admin/neighbors",
+                     {"address": dead2, "shared_key": "k-dead2"})
+    assert code == 200
+    for i in range(101):
+        code, _ = post_letter(srv2, "cap-2", poster2["signing_key"],
+                              make_letter(letter_id=f"DEF-{i}",
+                                          to="remote-dev"))
+        assert code == 200
+    code, resp = _admin(srv2, "GET", "/admin/pending")
+    ids = [e["id"] for e in resp["pending"]]
+    assert len(ids) == 100, f"缺省上限应为 100: {len(ids)}"
+    assert ids[0] == "DEF-1", f"最老的 DEF-0 应被挤掉: {ids[:3]}"

@@ -22,7 +22,8 @@ env:
   ~/.agents/mailbox/config.json) / MAILBOX_NEIGHBORS (邻居表路径, 缺省
   ~/.agents/mailbox/neighbors.json) / MAILBOX_HOLD_SECONDS (缺省 20) /
   MAILBOX_LEASE_SECONDS (缺省 1800) / MAILBOX_RETRY_SECONDS (缺省 5) /
-  MAILBOX_MAX_CONCURRENT_POLLS / MAILBOX_UPSTREAM_BASE / MAILBOX_UPSTREAM_KEY /
+  MAILBOX_MAX_CONCURRENT_POLLS / MAILBOX_PENDING_CAP (滞留转发上限, 缺省
+  100, 超限丢最老) / MAILBOX_UPSTREAM_BASE / MAILBOX_UPSTREAM_KEY /
   MAILBOX_FLOOD_BUDGET_SECONDS (post 洪泛判定预算, 缺省 2, 测试时间注入用)
 """
 from __future__ import annotations
@@ -59,6 +60,7 @@ HOLD_SECONDS = 20.0         # 长轮询 hold 缺省
 LEASE_SECONDS = 1800.0      # 租约时长缺省 30min (D009)
 MAX_CONCURRENT_POLLS = 5    # 同 session 并发 poll 上限 (D016)
 FLOOD_BUDGET_SECONDS = 2.0  # post 洪泛判定预算 (非功能要求, env 可调)
+PENDING_CAP = 100           # 滞留转发上限, 超限丢最老 (AC-013, env 可调)
 FORWARD_TIMEOUT = 5.0       # 单邻居转发超时上限 (后台重试路径沿用)
 MAX_BODY_BYTES = 1024 * 1024  # 单信正文上限 1MB (BR-006/AC-021)
 MSG_TYPES = ("notify", "open_url", "exec", "request")
@@ -302,10 +304,11 @@ class Mailbox:
     """
 
     def __init__(self, db_path=None, now=time.time, lease_seconds=LEASE_SECONDS,
-                 monotonic=time.monotonic):
+                 monotonic=time.monotonic, pending_cap=PENDING_CAP):
         self._now = now            # 墙钟: 签名时间窗 ±5min / last_poll
         self._mono = monotonic     # 单调钟: 租约计时 (TECHNICAL 边界与异常处理)
         self.lease_seconds = lease_seconds  # 租约时长 (D009), serve 可经 env 覆盖
+        self.pending_cap = pending_cap      # 滞留上限 (AC-013), serve 可经 env 覆盖
         self.sessions = {}    # id -> Session
         self.queue = {}       # to_session -> [Letter]
         self.leases = {}      # letter_id -> (Letter, lease_token, 租出时刻)
@@ -557,6 +560,14 @@ class Mailbox:
             self.pending_forwards.append(
                 PendingForward(letter, neighbor, self._now(), error,
                                retries=1 if error else 0))
+            self._enforce_pending_cap()
+
+    def _enforce_pending_cap(self):
+        """滞留数量上限 (AC-013): 超限丢最老 (staged_at 最小者优先出列).
+        须持 _pending_lock 调用; cap=0 即不暂存."""
+        while len(self.pending_forwards) > self.pending_cap:
+            oldest = min(self.pending_forwards, key=lambda e: e.staged_at)
+            self.pending_forwards.remove(oldest)
 
     def retry_pending(self):
         """重试暂存信: 发出则移除, 仍不可达则留待下轮 (邻居端 seen-id 兜底
@@ -574,6 +585,7 @@ class Mailbox:
                         and e.neighbor.address == entry.neighbor.address:
                     return
             self.pending_forwards.append(entry)
+            self._enforce_pending_cap()
 
     def retry_entries(self, entries):
         """对一组滞留条目立即补投 (B4): 发出即移除, 失败则账目更新 (次数 +1 /
@@ -1839,7 +1851,10 @@ def cmd_serve(args):
     mailbox = Mailbox(db_path=db_path,
                       lease_seconds=float(
                           os.environ.get("MAILBOX_LEASE_SECONDS",
-                                         str(LEASE_SECONDS))))
+                                         str(LEASE_SECONDS))),
+                      pending_cap=int(
+                          os.environ.get("MAILBOX_PENDING_CAP",
+                                         str(PENDING_CAP))))
     # 邻居表 = SQLite 持久化 (admin 运行时加入/修改, B8) + JSON 文件 (D020 手工
     # 配置, 只作启动种子); 按地址与名字双重去重 — 同名时 DB (admin 改过的) 优先,
     # 文件旧地址不再种入 (B2 换址后不改文件的已知张力, 见 reference/mailbox.md)
