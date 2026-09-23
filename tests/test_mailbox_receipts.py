@@ -174,3 +174,37 @@ def test_ttl_expiry_failed_receipt(tmp_path):
             "TTL 到期的滞留信应被清扫丢弃"
     finally:
         srv.stop()
+
+
+def test_receipt_no_recursion(dual_serves):
+    """TS-005/TC-034 (AC-020): 回执信完成投递 (进发件人队列/被 ack) 后
+    不产生新回执 — 发件人队列无嵌套回执, 滞留无递归回执信."""
+    srv_a, srv_b = dual_serves()
+    creds_a = register_session(srv_a, "a-host")
+    creds_b = register_session(srv_b, "b-dev")
+    key = creds_a["signing_key"]
+
+    code, _ = post_letter(srv_a, "a-host", key,
+                          make_letter(letter_id="X-3", to="b-dev",
+                                      body="回执链探针", from_="a-host"))
+    assert code == 200
+    code, resp = poll(srv_b, "b-dev", creds_b["signing_key"])
+    assert code == 200
+    token = resp["payload"]["lease_token"]
+    code, _ = ack_letter(srv_b, "b-dev", creds_b["signing_key"], "X-3", token)
+    assert code == 200
+
+    # 发件人排空两封回执并回 ack 它们 (回执的 ack 是递归最大风险点)
+    for rid in ("X-3.delivered", "X-3.read"):
+        letter, rtoken = poll_until(srv_a, "a-host", key, rid)
+        assert letter is not None, f"未收到回执 {rid}"
+        code, _ = ack_letter(srv_a, "a-host", key, rid, rtoken)
+        assert code == 200
+
+    time.sleep(1.0)  # 留出递归回执被投递/暂存的窗口
+    code, resp = _admin(srv_a, "GET", "/admin/pending")
+    assert resp["pending"] == [], \
+        f"回执生成了新回执并滞留: {resp['pending']}"
+    code, resp = poll(srv_a, "a-host", key)
+    assert code == 200
+    assert resp["payload"]["letter"] is None, "回执的回执不应出现在发件人队列"

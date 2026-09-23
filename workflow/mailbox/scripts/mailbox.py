@@ -602,10 +602,13 @@ class Mailbox:
         {"receipt","letter_id"}, id 确定化 (D012). 发件人本机 → 直接排队;
         远端 → 进 _spawned_routes 由调用方在锁外洪泛; 无处可去静默丢弃
         (best-effort). 不发的情形: 空 from (forward 信可无发件人) / 自寄信
-        (from == to, AC-018 两设备前提, 自寄回执只噪自己的队列) / 同 id 回执
-        已生成或已收 (确定性 id 幂等, AC-019 多节点去重的本端半边)."""
+        (from == to, AC-018 两设备前提, 自寄回执只噪自己的队列) / 回执信自身
+        (mailbox@ 保留身份, 回执不递归, AC-020) / 同 id 回执已生成或已收
+        (确定性 id 幂等, AC-019 多节点去重的本端半边)."""
         if not letter.from_session or letter.from_session == letter.to_session:
             return
+        if is_receipt_from(letter.from_session):
+            return  # 回执不递归 (D012/AC-020)
         receipt_id = f"{letter.id}.{RECEIPT_ID_SUFFIX[kind]}"
         if receipt_id in self.seen_ids:
             return
