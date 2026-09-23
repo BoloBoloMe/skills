@@ -1612,16 +1612,24 @@ def cmd_fetch(timeout=None, count=None):
     # 故障自愈 (AC-003): 网络断/服务未就绪一律退避重试, 不 print 不 exit
     while True:
         sig_ts = str(time.time())
+        failed = False
         try:
             resp = http_post(url + "/mailbox/poll",
                              {"session": sid, "sig_ts": sig_ts,
                               "sig": sign(skey, sid, sig_ts)}, timeout=30)
-        except (urllib.error.HTTPError, urllib.error.URLError, OSError):
-            # 含连接拒绝/超时/409 并发冲突/403 (serve 可能尚未就绪): 退避重试
+        except urllib.error.HTTPError:
+            # 服务有应答 (409 并发冲突/403, serve 可能尚未就绪): 服务活着,
+            # 不算不可达, 静默退避 (AC-003); 明报行只覆盖连接失败 (AC-015)
+            failed = True
+        except (urllib.error.URLError, OSError):
+            # 连接拒绝/超时 = 服务未起/不可达: 首次立即明报再退避,
+            # 明报行只打一次不刷屏 (AC-015)
+            failed = True
             if not reported_down:
                 print("信箱服务未启动/不可达, 退避重试中",
                       file=sys.stderr, flush=True)
                 reported_down = True
+        if failed:
             if deadline is not None:
                 remaining = deadline - time.monotonic()
                 if remaining <= 0:
