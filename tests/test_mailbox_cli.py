@@ -156,6 +156,23 @@ def test_fetch_count_exits_after_n(serves, tmp_path):
     assert resp["payload"]["letter"]["id"] == "L-c3"
 
 
+def test_status_env_credentials_and_liveness(serves, tmp_path):
+    """ISSUE-05 TS-005 (TC-028/AC-017): 容器内仅 env 凭证时, status
+    认 env 报真实 session 名/信箱地址/存活, 不再全显 (未设置)."""
+    srv = serves()
+    creds = register_session(srv, "envdev")
+    cli = tmp_path / "cli"
+    cli.mkdir(parents=True)  # 无配置文件, 仅 env 凭证
+    env = cli_env(srv.port, "envdev", creds["signing_key"],
+                  creds["response_key"], cli)
+    r = subprocess.run([sys.executable, str(SCRIPT), "status"], env=env,
+                       capture_output=True, text=True, timeout=30)
+    assert r.returncode == 0
+    assert "envdev" in r.stdout, f"应报真实 session, 实际:\n{r.stdout}"
+    assert str(srv.port) in r.stdout, f"应报真实信箱地址, 实际:\n{r.stdout}"
+    assert "在线" in r.stdout, f"应报服务存活状态, 实际:\n{r.stdout}"
+
+
 def test_fetch_cli(serves, tmp_path):
     """TS-004: 缺省调用阻塞等信, 信到后 stdout 输出正文+处理指引+继续调用提示."""
     srv = serves()

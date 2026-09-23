@@ -1745,18 +1745,38 @@ def _mask_secret(value):
     return str(value)[:8] + "..."
 
 
+def _server_alive(server_url):
+    """验活 (AC-017): GET server/__identity__, 应答 service == mailbox 才算在线."""
+    try:
+        with urllib.request.urlopen(server_url.rstrip("/") + "/__identity__",
+                                    timeout=3.0) as response:
+            payload = json.loads(response.read() or b"{}")
+    except (urllib.error.URLError, OSError, http.client.HTTPException,
+            json.JSONDecodeError):
+        return False
+    return isinstance(payload, dict) and payload.get("service") == SERVICE_NAME
+
+
 def cmd_status():
-    data = _load_config()
+    """status 重写 (AC-014/AC-017): 认 env 凭证 (env 优先, 配置文件兑底),
+    报真实 session/地址与验活结果; 无任何凭证时状态文件验活兑底."""
+    creds = load_credentials()
+    data = creds if creds else _load_config()
     print(f"session: {data.get('session') or '(未设置)'}")
     print(f"server: {data.get('server') or '(未设置)'}")
     print(f"signing_key: {_mask_secret(data.get('signing_key'))}")
     print(f"response_key: {_mask_secret(data.get('response_key'))}")
-    # AC-014: 同机组件读状态文件先 __identity__ 验活,
-    # 失活明报信箱不可达, 不把残留文件当成服务在线
+    server = str(data.get("server") or "")
+    if server:
+        alive = _server_alive(server)
+        print(f"信箱服务: {'在线' if alive else '不可达'}")
+        return
+    # 无地址可探: 状态文件兑底 (AC-014 同机组件读文件先验活,
+    # 失活明报信箱不可达, 不把残留文件当成服务在线)
     try:
         state = json.loads(state_path().read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError):
-        state = None
+        return
     if isinstance(state, dict) and isinstance(state.get("port"), int):
         if _identity_probe(state["port"]):
             print(f"信箱服务: 在线 (端口 {state['port']})")
