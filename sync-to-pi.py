@@ -295,6 +295,42 @@ def _merge_models(src: Path, dst: Path) -> int:
     return len(file_providers)
 
 
+def _merge_extensions(ext_dir: Path, settings_path: Path) -> int:
+    """把扩展目录绝对路径合并到 dst settings.json 的 extensions 数组 (D005).
+
+    幂等去重 (已在数组中不动文件), 保留既有其它扩展与无关键;
+    实际写入前备份 .bak (仅当文件已存在). 返回本次追加数 (0 或 1).
+    """
+    import json
+
+    ext_str = str(ext_dir)
+    if settings_path.exists():
+        settings = json.loads(settings_path.read_text(encoding="utf-8"))
+    else:
+        settings = {}
+    extensions = settings.get("extensions")
+    if not isinstance(extensions, list):
+        extensions = []
+        settings["extensions"] = extensions
+    if ext_str in extensions:
+        print(SKIP(f"  - 扩展已登记, 跳过: {ext_str}"))
+        return 0
+
+    backup = None
+    if settings_path.exists():
+        backup = settings_path.with_name(settings_path.name + ".bak")
+        shutil.copy2(settings_path, backup)
+    extensions.append(ext_str)
+    settings_path.parent.mkdir(parents=True, exist_ok=True)
+    settings_path.write_text(
+        json.dumps(settings, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    print(OK(f"  \u2713 合并扩展路径 → {settings_path}"))
+    print(OK(f"    {ext_str}"))
+    if backup:
+        print(OK(f"    备份: {backup}"))
+    return 1
+
+
 def execute_plan(plan: list[PlanItem], clear_skills_dir: Path | None = None, merge_models: tuple[Path, Path] | None = None) -> None:
     print()
     print(Q("开始执行 ..."))
@@ -464,6 +500,15 @@ def main() -> None:
         skills_dir if clear_skills else None,
         (models_src, pi_dir / "models.json") if merge_models else None,
     )
+
+    # ── 6. 扩展装载登记 (D005): mailbox skill 的 pi-extension 同步到位后,
+    #        把部署路径合并进 settings.json extensions 数组 (幂等, 写前 .bak)
+    ext_dir = skills_dir / "mailbox" / "pi-extension"
+    if ext_dir.is_dir():
+        try:
+            _merge_extensions(ext_dir, pi_dir / "settings.json")
+        except Exception as e:
+            print(ERR(f"  \u2717 合并扩展路径失败: {e}"))
 
 
 if __name__ == "__main__":
