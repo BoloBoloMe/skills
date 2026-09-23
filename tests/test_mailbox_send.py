@@ -2,6 +2,7 @@
 
 TC-011 test_send_receipt_two_lines: 回执分行打 目标 session= 与 信件 id=.
 TC-012 test_send_empty_to_echoes_resolved_target: 空 to 回打服务端解析出的目标.
+TC-012 test_send_empty_to_echoes_resolved_target: 空 to 回打服务端解析出的目标.
 TC-014 test_unknown_recipient_no_neighbors_fails: 无邻居投未知 session 报错退出.
 TC-015 test_send_returns_within_budget_with_dead_neighbor: 死邻居下 2s 预算返回.
 
@@ -57,3 +58,17 @@ def test_send_receipt_two_lines(serves, tmp_path):
         f"回执缺 '目标 session=' 行: {r.stdout!r}"
     assert any(l.startswith("信件 id=") and l != "信件 id=" for l in lines), \
         f"回执缺 '信件 id=' 行: {r.stdout!r}"
+
+
+def test_send_empty_to_echoes_resolved_target(serves, tmp_path):
+    """TC-012 (AC-007): 空 to 投信, 回执显示服务端实际解析出的目标 session."""
+    srv = serves()
+    sender = register_session(srv, "dev-send")
+    receiver = register_session(srv, "dev-recv")
+    # 活跃取信方: dev-recv poll 过一次, 成为空 to 的解析目标
+    code, _ = poll(srv, "dev-recv", receiver["signing_key"])
+    assert code == 200
+    r = send_cli(srv, "dev-send", sender, tmp_path / "cli", to="", body="空收件人")
+    assert r.returncode == 0, f"send 失败: {r.stderr}"
+    assert "目标 session=dev-recv" in r.stdout, \
+        f"回执应回打服务端解析出的目标: {r.stdout!r}"

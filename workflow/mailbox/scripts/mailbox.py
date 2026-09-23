@@ -753,8 +753,13 @@ class _Handler(_JsonHandler):
                 return self._signed(403, party, {"ok": False, "error": str(e)}, rkey)
             self.server.cond.notify_all()
         self._flood(routed)
+        resolved_to = None
+        if routed is not None:
+            letter, _targets = routed
+            resolved_to = letter.to_session  # 空 to 已在路由时解析为实际目标
         note = "ok" if routed is not None else "重复 id, 幂等收下"
-        return self._signed(200, party, {"ok": True, "note": note}, rkey)
+        return self._signed(200, party, {"ok": True, "note": note,
+                                         "to": resolved_to}, rkey)
 
     def _handle_poll(self, body, endpoint):
         party, rkey = self._party(body, endpoint)
@@ -1340,8 +1345,10 @@ def cmd_send(args):
     if not payload.get("ok"):
         print(f"致命: 投信失败: {payload.get('error', resp)}", file=sys.stderr)
         sys.exit(3)
-    # 回执分行 (AC-006): 目标 session 与信件 id 各占一行
-    print(f"目标 session={letter['to'] or '(最近活跃 session)'}")
+    # 回执分行 (AC-006): 目标 session 与信件 id 各占一行;
+    # 空 to 时优先回打服务端实际解析出的目标 (AC-007)
+    target = payload.get("to") or letter["to"] or "(最近活跃 session)"
+    print(f"目标 session={target}")
     print(f"信件 id={letter['id']}")
 
 
