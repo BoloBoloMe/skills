@@ -48,7 +48,7 @@ import urllib.request
 import uuid
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from urllib.parse import urlparse
+from urllib.parse import parse_qs, urlencode, urlparse
 
 SERVICE_NAME = "mailbox"
 VERSION = "0.1.0"
@@ -661,6 +661,11 @@ class Mailbox:
                   if s.last_poll > 0 and not s.revoked]
         return max(polled, key=lambda s: s.last_poll).id if polled else None
 
+    def verify_session_sig(self, session_id, sig_ts, sig):
+        """无副作用的 session 签名校验 (queued 查询用):
+        不记 last_poll — 查询不算取信活跃, 不扰动最近活跃路由."""
+        return self._verify(session_id, sig_ts, sig)
+
     def verify_poller(self, session_id, sig_ts, sig):
         """取信校验. 签名式 HMAC(signing_key, session\\nsig_ts).
         last_poll 持久化: 重启后空 to 的 "最近活跃" 路由依据不丢."""
@@ -862,11 +867,34 @@ class _Handler(_JsonHandler):
         return party, (known.response_key if known else "")
 
     def do_GET(self):
-        if urlparse(self.path).path == "/__identity__":
+        parsed = urlparse(self.path)
+        if parsed.path == "/__identity__":
             self._json(200, {"service": SERVICE_NAME, "version": VERSION,
                              "capabilities": ["mailbox", "relay"]})
+        elif parsed.path == "/mailbox/queued":
+            self._handle_queued(parsed)
         else:
             self._json(404, {"error": "not found"})
+
+    def _handle_queued(self, parsed):
+        """AC-036: 本机会话队列深度. GET 查询参数 session/sig_ts/sig,
+        签名同 poll 式 HMAC(signing_key, session\nsig_ts); 无效签名 403."""
+        params = {k: v[0] for k, v in parse_qs(parsed.query).items()}
+        party, rkey = self._party(params, "mailbox/queued")
+        m = self.server.mailbox
+        with self.server.cond:
+            try:
+                session = m.verify_session_sig(str(params.get("session", "")),
+                                                params["sig_ts"],
+                                                str(params.get("sig", "")))
+            except KeyError as e:
+                return self._bad(party, f"缺字段: {e}", rkey)
+            except (ValueError, TypeError) as e:
+                return self._bad(party, f"字段畸形: {e}", rkey)
+            except MailboxError as e:
+                return self._signed(403, party, {"ok": False, "error": str(e)}, rkey)
+            depth = len(m.queue.get(session.id) or [])
+        return self._signed(200, party, {"queued": depth}, rkey)
 
     def do_POST(self):
         path = urlparse(self.path).path
@@ -1745,6 +1773,24 @@ def _mask_secret(value):
     return str(value)[:8] + "..."
 
 
+def _print_queued(server, creds):
+    """待取数 (AC-036): GET /mailbox/queued (session 签名);
+    查询失败不阻塞 status 输出."""
+    try:
+        sig_ts = str(time.time())
+        sig = sign(creds["signing_key"], creds["session"], sig_ts)
+        query = urlencode({"session": creds["session"],
+                           "sig_ts": sig_ts, "sig": sig})
+        with urllib.request.urlopen(
+                server.rstrip("/") + "/mailbox/queued?" + query,
+                timeout=5.0) as response:
+            payload = json.loads(response.read() or b"{}").get("payload", {})
+        print(f"待取: {payload.get('queued', '?')}")
+    except (urllib.error.URLError, OSError, http.client.HTTPException,
+            json.JSONDecodeError):
+        print("待取: (查询失败)")
+
+
 def _server_alive(server_url):
     """验活 (AC-017): GET server/__identity__, 应答 service == mailbox 才算在线."""
     try:
@@ -1770,6 +1816,8 @@ def cmd_status():
     if server:
         alive = _server_alive(server)
         print(f"信箱服务: {'在线' if alive else '不可达'}")
+        if alive and creds:
+            _print_queued(server, creds)
         return
     # 无地址可探: 状态文件兑底 (AC-014 同机组件读文件先验活,
     # 失活明报信箱不可达, 不把残留文件当成服务在线)
