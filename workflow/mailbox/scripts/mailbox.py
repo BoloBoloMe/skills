@@ -277,7 +277,8 @@ class PendingForward:
         self.neighbor = neighbor
         self.staged_at = staged_at    # 墙钟 epoch; 年龄 = now - staged_at (秒)
         self.last_error = last_error  # 最近一次转发失败原因 (人话)
-        self.retries = retries        # 失败尝试次数 (入暂存即 1)
+        self.retries = retries        # 失败尝试次数 (转发尝试失败入暂存即 1;
+                                      # 预算耗尽入暂存尚未尝试, 记 0)
 
 
 class Letter:
@@ -395,10 +396,18 @@ class Mailbox:
     def add_neighbor(self, address, shared_key, name=None):
         """运行时加邻居 (D020): 内存生效 + SQLite 持久化 (B8, 重启仍在).
         同名 upsert (D011 B2): name 命中已有邻居 → 覆盖地址与密钥不新增条目
-        (换址场景); 地址重复且名字不同 → MailboxError (admin 层映射 409)."""
+        (换址场景); 新地址撞另一邻居时消除重复 — 旧占用者让位, 本条目接管
+        地址, 全表地址保持唯一 (迁移/合并, 与 update_neighbor 的 409 不同:
+        换址迁移到在用地址是合法场景); 地址重复且名字不同 → MailboxError
+        (admin 层映射 409)."""
         if name:
             for n in self.neighbors:
                 if n.name == name:
+                    if n.address != address:
+                        for other in list(self.neighbors):
+                            if other is not n and other.address == address:
+                                self.remove_neighbor(address)
+                                break
                     old = n.address
                     n.address, n.shared_key = address, shared_key
                     self._save_neighbor(n, old_address=old)
@@ -438,8 +447,9 @@ class Mailbox:
 
     def update_neighbor(self, address, new_address=None, shared_key=None,
                         name=None):
-        """改邻居 (D011 B1): 按 address 定位, 改地址/密钥/名字 (None = 不改,
-        name="" = 清掉名字); 文件种入的邻居一经 admin 修改即入 DB (B8).
+        """改邻居 (D011 B1): 按 address 定位, 改地址/密钥/名字 (None = 不改;
+        name="" = 清掉名字, shared_key="" 等同不改 — 非空才更新);
+        文件种入的邻居一经 admin 修改即入 DB (B8).
         未知 → None; 新地址/新名字撞已有 → MailboxError (409)."""
         n = next((x for x in self.neighbors if x.address == address), None)
         if n is None:
@@ -563,13 +573,14 @@ class Mailbox:
             return None  # 幂等: 重复 id 直接 ok
         return self._route(letter, source=src)
 
-    def stage_forward(self, letter, neighbor, error=""):
+    def stage_forward(self, letter, neighbor, error="", retries=1):
         """邻居不可达 → 内存暂存 (NG-009: 不持久化, 重启即清), 记录最后错误
-        与尝试次数 (D011 B4), 供 GET /admin/pending 查询."""
+        与失败尝试次数 (D011 B4), 供 GET /admin/pending 查询; 预算耗尽入暂存
+        时尚未做过转发尝试, retries 传 0."""
         with self._pending_lock:
             self.pending_forwards.append(
                 PendingForward(letter, neighbor, self._now(), error,
-                               retries=1 if error else 0))
+                               retries=retries))
             self._enforce_pending_cap()
 
     def _enforce_pending_cap(self):
@@ -599,7 +610,7 @@ class Mailbox:
 
     def retry_entries(self, entries):
         """对一组滞留条目立即补投 (B4): 发出即移除, 失败则账目更新 (次数 +1 /
-        最后错误) 后回列; 邻居端 seen-id 兒底重复投递."""
+        最后错误) 后回列; 邻居端 seen-id 兜底重复投递."""
         sent = 0
         for entry in entries:
             ok, error = forward_attempt(entry.neighbor, entry.letter)
@@ -609,9 +620,7 @@ class Mailbox:
                 continue
             entry.retries += 1
             entry.last_error = error
-            log_event("forward-failed", letter=entry.letter.id,
-                      to=entry.letter.to_session,
-                      neighbor=entry.neighbor.address, error=error)
+            _log_forward_failed(entry.letter, entry.neighbor, error)
             self._restage(entry)
         return sent
 
@@ -737,9 +746,11 @@ def forward_attempt(neighbor, letter, timeout=FORWARD_TIMEOUT):
     return ok, "" if ok else "邻居应答 ok=false"
 
 
-def send_forward(neighbor, letter, timeout=FORWARD_TIMEOUT):
-    """向邻居投递 (D007); 兼容壳 = forward_attempt 的布尔视图."""
-    return forward_attempt(neighbor, letter, timeout)[0]
+def _log_forward_failed(letter, neighbor, error):
+    """邻居转发失败日志行 (AC-037): 事件名与字段一处收口 (_flood 与
+    retry_entries 共用)."""
+    log_event("forward-failed", letter=letter.id, to=letter.to_session,
+              neighbor=neighbor.address, error=error)
 
 
 def bind_first_free(try_bind, start_port):
@@ -908,16 +919,19 @@ class _Handler(_JsonHandler):
         deadline = time.monotonic() + self.server.flood_budget_seconds
         for n in targets:
             remaining = deadline - time.monotonic()
-            ok, error = (forward_attempt(
-                n, letter, timeout=min(FORWARD_TIMEOUT, remaining))
-                if remaining > 0 else (False, "洪泛预算耗尽"))
-            n.reachable = ok
-            if ok:
-                confirmed += 1
-            else:
-                log_event("forward-failed", letter=letter.id,
-                          to=letter.to_session, neighbor=n.address, error=error)
+            if remaining > 0:
+                ok, error = forward_attempt(
+                    n, letter, timeout=min(FORWARD_TIMEOUT, remaining))
+                n.reachable = ok
+                if ok:
+                    confirmed += 1
+                    continue
+                _log_forward_failed(letter, n, error)
                 m.stage_forward(letter, n, error)
+            else:
+                # 预算耗尽: 未做任何转发尝试 — 不写 reachable (status 语义 =
+                # 最近一次转发结果), 失败尝试计数记 0
+                m.stage_forward(letter, n, "洪泛预算耗尽", retries=0)
         return confirmed, len(targets)
 
     def _handle_post(self, body, endpoint):

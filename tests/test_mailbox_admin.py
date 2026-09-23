@@ -24,6 +24,9 @@ TC-022 test_pending_cap_drops_oldest: 滞留超上限丢最老且经管理口可
        缺省 100, env MAILBOX_PENDING_CAP 可调.
 TC-023 test_neighbor_failure_utc_log: 邻居转发失败打带 UTC 时间戳的
        stderr 日志行.
+评审修复: test_neighbor_upsert_takes_over_occupied_address (upsert 撞他
+       条目地址消除重复) / test_pending_budget_exhaustion_semantics
+       (预算耗尽未尝试: 不写状态, 计数 0).
 
 共享接缝层 (serve 启动器/签名/HTTP helper) 在 tests/conftest.py.
 """
@@ -525,3 +528,84 @@ def test_neighbor_failure_utc_log(serves):
     assert hit, "转发失败应打关键事件日志行"
     assert utc_ts.search(hit), f"日志行须带 UTC 时间戳: {hit!r}"
     assert "LOG-1" in hit and dead in hit, f"日志行应含信件 id 与邻居地址: {hit!r}"
+
+
+def test_neighbor_upsert_takes_over_occupied_address(tmp_path):
+    """评审修复 1: 同名 upsert 迁到已被另一邻居占用的地址时消除重复 —
+    旧占用者让位, 本条目接管地址, 全表地址唯一 (DB 不静默吞行)."""
+    workdir = tmp_path / "takeover"
+    srv = Serve(workdir)
+    try:
+        for addr, key, name in (("192.0.2.1:38417", "k-a", "yoga"),
+                                ("192.0.2.2:38417", "k-b", "office")):
+            code, _ = _admin(srv, "POST", "/admin/neighbors",
+                             {"address": addr, "shared_key": key, "name": name})
+            assert code == 200
+
+        # yoga 换址到 office 占用的地址: office 让位, 只剩一条且归 yoga
+        code, resp = _admin(srv, "POST", "/admin/neighbors",
+                            {"address": "192.0.2.2:38417",
+                             "shared_key": "k-a2", "name": "yoga"})
+        assert code == 200, resp
+        code, resp = _admin(srv, "GET", "/admin/neighbors")
+        assert code == 200
+        assert [(e["address"], e["name"]) for e in resp["neighbors"]] == \
+            [("192.0.2.2:38417", "yoga")], \
+            f"撞地址应消除重复而非双条目: {resp}"
+    finally:
+        srv.stop()
+
+    # DB 无静默吞行: 重启后仍只有一条, 归 yoga
+    srv2 = Serve(workdir)
+    try:
+        code, resp = _admin(srv2, "GET", "/admin/neighbors")
+        assert code == 200
+        assert [(e["address"], e["name"]) for e in resp["neighbors"]] == \
+            [("192.0.2.2:38417", "yoga")]
+    finally:
+        srv2.stop()
+
+
+def test_pending_budget_exhaustion_semantics(serves):
+    """评审修复 2: 洪泛预算耗尽入暂存时尚未做过转发尝试 — 不写 reachable
+    (状态保持 unknown), 失败尝试计数记 0; 真尝试失败仍计 1."""
+    # 预算归零: 所有目标邻居都走预算耗尽分支 (不做任何转发尝试)
+    srv = serves(extra_env={"MAILBOX_FLOOD_BUDGET_SECONDS": "0",
+                            "MAILBOX_RETRY_SECONDS": "30"})
+    poster = register_session(srv, "budget-1")
+    dead = f"127.0.0.1:{free_port()}"
+    code, _ = _admin(srv, "POST", "/admin/neighbors",
+                     {"address": dead, "shared_key": "k-dead"})
+    assert code == 200
+
+    code, resp = post_letter(srv, "budget-1", poster["signing_key"],
+                             make_letter(letter_id="BUD-1", to="remote-dev"))
+    assert code == 200
+    assert resp["payload"]["route"] == "staged_pending"
+
+    code, resp = _admin(srv, "GET", "/admin/pending")
+    entries = [e for e in resp["pending"] if e["id"] == "BUD-1"]
+    assert len(entries) == 1, resp
+    assert entries[0]["retries"] == 0, "预算耗尽未尝试, 不计失败尝试"
+    assert entries[0]["last_error"] == "洪泛预算耗尽"
+
+    code, resp = _admin(srv, "GET", "/admin/neighbors")
+    entry = [e for e in resp["neighbors"] if e["address"] == dead][0]
+    assert entry["status"] == "unknown", "未做转发尝试不得改写状态"
+
+    # 对照: 连接被拒的死邻居是真尝试失败 → 计数 1, 状态 unreachable
+    srv2 = serves(extra_env={"MAILBOX_RETRY_SECONDS": "30"})
+    poster2 = register_session(srv2, "budget-2")
+    dead2 = f"127.0.0.1:{free_port()}"
+    code, _ = _admin(srv2, "POST", "/admin/neighbors",
+                     {"address": dead2, "shared_key": "k-dead2"})
+    assert code == 200
+    code, _ = post_letter(srv2, "budget-2", poster2["signing_key"],
+                          make_letter(letter_id="BUD-2", to="remote-dev"))
+    assert code == 200
+    code, resp = _admin(srv2, "GET", "/admin/pending")
+    entries = [e for e in resp["pending"] if e["id"] == "BUD-2"]
+    assert entries[0]["retries"] == 1
+    code, resp = _admin(srv2, "GET", "/admin/neighbors")
+    entry = [e for e in resp["neighbors"] if e["address"] == dead2][0]
+    assert entry["status"] == "unreachable"
