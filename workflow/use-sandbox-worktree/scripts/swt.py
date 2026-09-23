@@ -2304,6 +2304,55 @@ def revoke_container_session(
     print(f"[SWT] 信箱 session 已注销: {session_id}", file=sys.stderr)
 
 
+# ISSUE-08 (D011 G1/G2): 宿主信息烘容器 env — 容器内不再发信问 host.
+# env 名只新增不改名 (BR-005): 端口条目沿用容器契约 SWT_ 前缀;
+# HOST_DISPLAY 按 issue 原名, 值 = record["host-display"] 三态.
+HOST_INFO_ENV_SSH_PORT = "SWT_HOST_SSH_PORT"
+HOST_INFO_ENV_WEB_PORT = "SWT_HOST_WEB_PORT"
+HOST_INFO_ENV_VNC_PORT = "SWT_HOST_VNC_PORT"
+HOST_INFO_ENV_DISPLAY = "HOST_DISPLAY"
+
+
+def bake_host_info_env(
+    env: dict[str, str],
+    ssh_port: int | None,
+    vnc_port: int | None,
+    web_port: int | None,
+    host_display: str | None,
+) -> None:
+    """ISSUE-08 (AC-027): 宿主端口映射 (ssh/web/vnc) 与显示直通状态烘进
+    birth env 字典. 端口缺席 (无该映射/查询失败) 省略条目; HOST_DISPLAY
+    恒写入 (absent 也是信息, 容器据此直判无直通); 非三态值不烘
+    (宁可缺省不可错值). 纯组装, 落盘通道见 _rewrite_ssh_environment."""
+    if ssh_port:
+        env[HOST_INFO_ENV_SSH_PORT] = str(ssh_port)
+    if web_port:
+        env[HOST_INFO_ENV_WEB_PORT] = str(web_port)
+    if vnc_port:
+        env[HOST_INFO_ENV_VNC_PORT] = str(vnc_port)
+    if host_display in ("ok", "degraded", "absent"):
+        env[HOST_INFO_ENV_DISPLAY] = host_display
+    elif host_display:
+        print(f"[SWT] 未知显示直通状态 {host_display!r}, HOST_DISPLAY 不烘",
+              file=sys.stderr)
+
+
+def _rewrite_ssh_environment(name: str, env: dict[str, str]) -> None:
+    """ISSUE-08: 容器 ~/.ssh/environment 全量重写 (ssh 面 env 通道既有机制,
+    inject_ssh_key 首写, 宿主端口/直通状态 create 后才知故在此补写; 全量
+    覆盖天然幂等, 重入安全). 失败只告警不阻断 (增强不是命脉)."""
+    env_text = "".join(f"{k}={v}\n" for k, v in env.items())
+    result = subprocess.run([
+        "podman", "exec", "-i", name, "sh", "-c",
+        "cat > /home/bolo/.ssh/environment && "
+        "chown bolo:bolo /home/bolo/.ssh/environment && "
+        "chmod 600 /home/bolo/.ssh/environment",
+    ], input=env_text, capture_output=True, text=True, check=False)
+    if result.returncode != 0:
+        print(f"[SWT] 宿主信息 env 烘入失败 (不影响 birth): "
+              f"{result.stderr.strip()}", file=sys.stderr)
+
+
 def assert_skills_mountable(skills_dir: Path) -> list[str]:
     """前置检查 host skill 库并返回 pyproject 项目相对路径列表 (供 .venv 匿名卷挂载).
 
@@ -2895,6 +2944,15 @@ def birth(args: argparse.Namespace, repo: Path) -> int:
         runtime["network"] = {**runtime["network"], "gateway": gateway_address, "container-ip": ip_value, "netns": shared_netns}
         atomic_write_json(runtime_file, runtime)
         host_display_status = ensure_host_display(runtime, runtime_file, container["record"])
+        # ISSUE-08 (D011 G1/G2, AC-027): 宿主端口与显示直通状态烘进容器 env,
+        # 容器内不再发信问 host. 端口/直通状态 create 后才知 (podman 动态分配
+        # + exec 实测), podman -e 已过, 走 ssh 面通道全量重写 (幂等, 重入安全).
+        # 失败只告警不阻断 (与信箱接线同口径: 增强不是命脉).
+        bake_host_info_env(env_map, container["record"].get("ssh-port"),
+                           container["record"].get("vnc-port"),
+                           container["record"].get("web-port"),
+                           host_display_status)
+        _rewrite_ssh_environment(container["name"], env_map)
         display_status = birth_display_gate(args, repo, records_root, identity, runtime, runtime_file, container)
         if display_status == "fail":
             return 1
