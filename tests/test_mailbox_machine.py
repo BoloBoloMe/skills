@@ -116,3 +116,23 @@ def test_register_and_revoke_session(serves, tmp_path):
                         "revoke-session", "x-1")
     assert proc.returncode == 3
     assert proc.stderr.strip()
+
+
+# TS-005 (TC-010/BR-005): 容器契约 env 名不变守护 — swt.py 删除信箱客户端
+# 实现时不得误删 SWT_* 契约常量 (已烘进镜像与容器契约, 改名零收益高风险).
+# 守护测试: 常量在才绿; 若误删则红, 提示恢复.
+def test_container_env_names_unchanged():
+    sources = {
+        "swt.py": SWT_SCRIPT.read_text(encoding="utf-8"),
+        "mailbox.py": SCRIPT.read_text(encoding="utf-8"),
+    }
+    expected = {
+        "swt.py": ("SWT_MAILBOX_URL", "SWT_SESSION_ID",
+                   "SWT_SESSION_SIGNING_KEY", "SWT_SESSION_RESPONSE_KEY"),
+        "mailbox.py": ("SWT_MAILBOX_URL", "SWT_SESSION_ID",
+                       "SWT_SESSION_SIGNING_KEY", "SWT_SESSION_RESPONSE_KEY"),
+    }
+    for name, source in sources.items():
+        for literal in expected[name]:
+            assert literal in source, \
+                f"{name} 丢失容器契约 env 名 {literal} (BR-005, 不可改名)"
