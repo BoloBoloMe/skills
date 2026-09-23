@@ -96,6 +96,19 @@ def forward(srv, neighbor_key, letter):
                      {"neighbor_key": neighbor_key, "letter": letter})
 
 
+def poll_body(srv, session_id, signing_key, body, timeout=10):
+    """循环 poll 直到取到 body 命中的信 (ISSUE-06 起 发件方队列会混入
+    送达/已读回执信, 跳过回执取目标信)."""
+    deadline = time.time() + timeout
+    while time.time() < deadline:
+        code, resp = poll(srv, session_id, signing_key)
+        assert code == 200
+        letter = resp["payload"]["letter"]
+        if letter is not None and letter["body"] == body:
+            return letter
+    return None
+
+
 def test_forward_auth(mesh_serves):
     """TS-001: 正确 neighbor_key POST /mailbox/forward 收下入队; 错误 key 403."""
     srv = mesh_serves("a", neighbors=[neighbor(free_port(), "k-ab")])
@@ -292,9 +305,8 @@ def test_mesh_e2e(mesh_serves):
                           make_letter(letter_id="M-2", to="container-x",
                                       body="C 的回信", from_="device-y"))
     assert code == 200
-    code, resp = poll(srv_a, "container-x", creds_a["signing_key"])
-    assert code == 200
-    assert resp["payload"]["letter"]["body"] == "C 的回信"
+    letter = poll_body(srv_a, "container-x", creds_a["signing_key"], "C 的回信")
+    assert letter is not None and letter["body"] == "C 的回信"
 
     # 停止中间节点 B: A/C 互为直达邻居, 通信不受影响 (mesh 自愈, D007)
     srv_b.stop()
@@ -302,6 +314,6 @@ def test_mesh_e2e(mesh_serves):
                           make_letter(letter_id="M-3", to="device-y",
                                       body="B 停机后的信", from_="container-x"))
     assert code == 200
-    code, resp = poll(srv_c, "device-y", creds_c["signing_key"], timeout=10)
-    assert code == 200
-    assert resp["payload"]["letter"]["body"] == "B 停机后的信"
+    letter = poll_body(srv_c, "device-y", creds_c["signing_key"], "B 停机后的信",
+                       timeout=12)
+    assert letter is not None and letter["body"] == "B 停机后的信"

@@ -23,7 +23,9 @@ env:
   ~/.agents/mailbox/neighbors.json) / MAILBOX_HOLD_SECONDS (缺省 20) /
   MAILBOX_LEASE_SECONDS (缺省 1800) / MAILBOX_RETRY_SECONDS (缺省 5) /
   MAILBOX_MAX_CONCURRENT_POLLS / MAILBOX_PENDING_CAP (滞留转发上限, 缺省
-  100, 超限丢最老) / MAILBOX_UPSTREAM_BASE / MAILBOX_UPSTREAM_KEY /
+  100, 超限丢最老) / MAILBOX_TTL_SECONDS (信件 TTL 秒, 缺省 86400 = 24h,
+  到期由清扫器丢弃并向发件人发失败回执) / MAILBOX_UPSTREAM_BASE /
+  MAILBOX_UPSTREAM_KEY /
   MAILBOX_FLOOD_BUDGET_SECONDS (post 洪泛判定预算, 缺省 2, 测试时间注入用)
 """
 from __future__ import annotations
@@ -62,9 +64,13 @@ LEASE_SECONDS = 1800.0      # 租约时长缺省 30min (D009)
 MAX_CONCURRENT_POLLS = 5    # 同 session 并发 poll 上限 (D016)
 FLOOD_BUDGET_SECONDS = 2.0  # post 洪泛判定预算 (非功能要求, env 可调)
 PENDING_CAP = 100           # 滞留转发上限, 超限丢最老 (AC-013, env 可调)
+TTL_SECONDS = 86400.0       # 信件 TTL 缺省 24h (D012, env 可调)
 FORWARD_TIMEOUT = 5.0       # 单邻居转发超时上限 (后台重试路径沿用)
 MAX_BODY_BYTES = 1024 * 1024  # 单信正文上限 1MB (BR-006/AC-021)
 MSG_TYPES = ("notify", "open_url", "exec", "request")
+RECEIPT_FROM_PREFIX = "mailbox@"  # 回执信保留身份 (D013): from=mailbox@<hostname>
+RECEIPT_ID_SUFFIX = {"delivered": "delivered", "read": "read",
+                     "failed": "delivery-failed"}  # 回执确定性 id (D012)
 PULL_WINDOW_TOOL = "swt.pull-window"  # exec 指令集内置成员 (动态绑定投信方)
 
 # send CLI 按 route 打人话 (AC-008 措辞; 枚举见 TECHNICAL 投信应答节)
@@ -136,6 +142,12 @@ def _parse_instruction(body):
     except (json.JSONDecodeError, TypeError):
         return None
     return ins if isinstance(ins, dict) and isinstance(ins.get("tool"), str) else None
+
+
+def is_receipt_from(from_session):
+    """回执信标记判定 (D012/D013): from 为保留身份 mailbox@<hostname>.
+    取信侧与服务端共用 (紧凑呈现/不递归)."""
+    return str(from_session).startswith(RECEIPT_FROM_PREFIX)
 
 
 class MailboxError(Exception):
@@ -295,7 +307,7 @@ class Letter:
     """信件 (D008 全内存)."""
 
     def __init__(self, id, ts, from_session, to_session, type, body,
-                 downgraded=False, note=""):
+                 downgraded=False, note="", expires_at=None):
         self.id = id
         self.ts = ts
         self.from_session = from_session
@@ -304,16 +316,23 @@ class Letter:
         self.body = body
         self.downgraded = downgraded  # exec 指令集外 → 降级 request 标注 (D006)
         self.note = note
+        self.expires_at = expires_at  # epoch; None = 缺省 ts+TTL (D012, 差
+        # 清扫时按本 serve 的 TTL 折算, 不在入信时物化)
 
     @classmethod
     def from_dict(cls, d):
+        exp = d.get("expires_at")
         return cls(str(d["id"]), float(d["ts"]), str(d.get("from", "")),
-                   str(d.get("to") or ""), str(d["type"]), str(d["body"]))
+                   str(d.get("to") or ""), str(d["type"]), str(d["body"]),
+                   expires_at=float(exp) if exp is not None else None)
 
     def to_dict(self):
-        return {"id": self.id, "ts": self.ts, "from": self.from_session,
-                "to": self.to_session, "type": self.type, "body": self.body,
-                "downgraded": self.downgraded, "note": self.note}
+        d = {"id": self.id, "ts": self.ts, "from": self.from_session,
+             "to": self.to_session, "type": self.type, "body": self.body,
+             "downgraded": self.downgraded, "note": self.note}
+        if self.expires_at is not None:
+            d["expires_at"] = self.expires_at
+        return d
 
 
 class Mailbox:
@@ -325,11 +344,13 @@ class Mailbox:
     """
 
     def __init__(self, db_path=None, now=time.time, lease_seconds=LEASE_SECONDS,
-                 monotonic=time.monotonic, pending_cap=PENDING_CAP):
-        self._now = now            # 墙钟: 签名时间窗 ±5min / last_poll
+                 monotonic=time.monotonic, pending_cap=PENDING_CAP,
+                 ttl_seconds=TTL_SECONDS):
+        self._now = now            # 墙钟: 签名时间窗 ±5min / last_poll / TTL
         self._mono = monotonic     # 单调钟: 租约计时 (TECHNICAL 边界与异常处理)
         self.lease_seconds = lease_seconds  # 租约时长 (D009), serve 可经 env 覆盖
         self.pending_cap = pending_cap      # 滞留上限 (AC-013), serve 可经 env 覆盖
+        self.ttl_seconds = ttl_seconds      # 信件 TTL (D012), serve 可经 env 覆盖
         self.sessions = {}    # id -> Session
         self.queue = {}       # to_session -> [Letter]
         self.leases = {}      # letter_id -> (Letter, lease_token, 租出时刻)
@@ -340,6 +361,8 @@ class Mailbox:
         self.neighbors = []   # list[Neighbor], serve 启动时从邻居表加载
         self.pending_forwards = []  # list[PendingForward], 邻居不可达内存暂存 (B4)
         self._pending_lock = threading.Lock()  # 暂存增删与请求处理线程并发
+        self._spawned_routes = []  # 内部注入回执的远端洪泛目标 (锁外投递)
+        self._spawn_lock = threading.Lock()
         self._db = None
         if db_path is not None:
             Path(db_path).parent.mkdir(parents=True, exist_ok=True)
@@ -372,6 +395,12 @@ class Mailbox:
                                                 bool(row[3]), row[4], row[5])
 
     def add_session(self, session_id, signing_key=None, response_key=None):
+        if session_id.startswith(RECEIPT_FROM_PREFIX):
+            # 回执保留命名空间 (D013): 注册 mailbox@ 前缀会使正常信被取信侧
+            # 当回执静默 ack 不呈现, 注册侧直接拒绝
+            raise MailboxError(
+                f"session id 不得用保留前缀 {RECEIPT_FROM_PREFIX!r}"
+                " (回执信发件人身份, D013)")
         s = Session(session_id,
                     signing_key or uuid.uuid4().hex,
                     response_key or uuid.uuid4().hex,
@@ -558,6 +587,7 @@ class Mailbox:
         if letter.to_session in self.sessions:
             self.seen_ids[letter.id] = self._now()
             self.queue.setdefault(letter.to_session, []).append(letter)
+            self._spawn_receipt("delivered", letter)  # 送达回执 (D012): 进队列即发
             return letter, []
         targets = [n for n in self.neighbors if n is not source]
         if not targets:
@@ -571,6 +601,81 @@ class Mailbox:
             if hmac.compare_digest(n.shared_key, str(key)):
                 return n
         return None
+
+    def _spawn_receipt(self, kind, letter):
+        """回执信内部注入 (D013): 服务端生成, 不走 post 验签, 经 _route 反向
+        路由给原发件人; from 用保留身份 mailbox@<hostname>, body JSON
+        {"receipt","letter_id"}, id 确定化 (D012). 发件人本机 → 直接排队;
+        远端 → 进 _spawned_routes 由调用方在锁外洪泛; 无处可去静默丢弃
+        (best-effort). 不发的情形: 空 from (forward 信可无发件人) / 自寄信
+        (from == to, AC-018 两设备前提, 自寄回执只噪自己的队列) / 回执信自身
+        (mailbox@ 保留身份, 回执不递归, AC-020) / 同 id 回执已生成或已收
+        (确定性 id 幂等, AC-019 多节点去重的本端半边)."""
+        if not letter.from_session or letter.from_session == letter.to_session:
+            return
+        if is_receipt_from(letter.from_session):
+            return  # 回执不递归 (D012/AC-020)
+        receipt_id = f"{letter.id}.{RECEIPT_ID_SUFFIX[kind]}"
+        if receipt_id in self.seen_ids:
+            return
+        receipt = Letter(id=receipt_id, ts=self._now(),
+                         from_session=f"{RECEIPT_FROM_PREFIX}{socket.gethostname()}",
+                         to_session=letter.from_session, type="notify",
+                         body=json.dumps({"receipt": kind,
+                                          "letter_id": letter.id}),
+                         expires_at=self._now() + self.ttl_seconds)
+        try:
+            routed = self._route(receipt, source=None)
+        except UnknownRecipient:
+            return  # 发件人无处可达: best-effort 丢弃 (D012)
+        if routed[1]:
+            with self._spawn_lock:
+                self._spawned_routes.append(routed)
+
+    def drain_spawned(self):
+        """取空内部注入回执的远端洪泛目标 (server 层锁外执行后清空)."""
+        with self._spawn_lock:
+            out, self._spawned_routes = self._spawned_routes, []
+        return out
+
+    def _effective_expiry(self, letter):
+        """有效到期时刻: 显式 expires_at 优先, 缺省 ts+TTL (D012)."""
+        if letter.expires_at is not None:
+            return letter.expires_at
+        return letter.ts + self.ttl_seconds
+
+    def sweep_expired(self):
+        """TTL 清扫器 (D012): 到期信从队列与滞留中丢弃; 普通信丢弃时向发件人
+        注入失败回执 (确定性 id, AC-019), 回执信自身到期静默丢弃 (不递归).
+        调用方 (serve 重试线程) 须持 server cond, 回执远端部分经 drain_spawned
+        锁外补投. 两段式: 先取尽再丢弃, 避免迭代中 _route 插入新队列;
+        每封信有效期只算一次 (评审修复: 单趟分流, 不二算)."""
+        now = self._now()
+        expired = []
+        for q in self.queue.values():
+            keep, drop = [], []
+            for letter in q:
+                if self._effective_expiry(letter) > now:
+                    keep.append(letter)
+                else:
+                    drop.append(letter)
+            if drop:
+                expired.extend(drop)
+                q[:] = keep
+        with self._pending_lock:
+            kept, dropped = [], []
+            for entry in self.pending_forwards:
+                if self._effective_expiry(entry.letter) > now:
+                    kept.append(entry)
+                else:
+                    dropped.append(entry)
+            self.pending_forwards = kept
+        for entry in dropped:
+            expired.append(entry.letter)
+        for letter in expired:
+            log_event("letter-expired", letter=letter.id,
+                      to=letter.to_session)  # AC-037 滞留/队列丢弃行
+            self._spawn_receipt("failed", letter)
 
     def forward(self, neighbor_key, letter_d):
         """邻居转发收信 (D007). neighbor_key 与邻居表比对认证, 匹配到的
@@ -599,6 +704,8 @@ class Mailbox:
         while len(self.pending_forwards) > self.pending_cap:
             oldest = min(self.pending_forwards, key=lambda e: e.staged_at)
             self.pending_forwards.remove(oldest)
+            log_event("pending-dropped", letter=oldest.letter.id,
+                      to=oldest.letter.to_session, reason="cap")  # AC-037
 
     def retry_pending(self):
         """重试暂存信: 发出则移除, 仍不可达则留待下轮 (邻居端 seen-id 兜底
@@ -742,6 +849,7 @@ class Mailbox:
             raise AckConflict("租约已过期, 信件已收回重投")
         del self.leases[letter.id]
         self.processed.add(letter.id)
+        self._spawn_receipt("read", letter)  # 已读回执 (D012): ack 成功即发
         return letter
 
 
@@ -766,6 +874,30 @@ def _log_forward_failed(letter, neighbor, error):
     retry_entries 共用)."""
     log_event("forward-failed", letter=letter.id, to=letter.to_session,
               neighbor=neighbor.address, error=error)
+
+
+def flood_targets(mailbox, letter, targets, budget):
+    """洪泛核心 (post/forward 应答与回执注入共用, D007): 预算内逐邻居投递,
+    未确认进内存暂存 (D011 A4 异步洪泛 — 预算等待不持有锁, 调用方须在
+    锁外调用). 返回 (预算内确认数, 目标邻居数)."""
+    confirmed = 0
+    deadline = time.monotonic() + budget
+    for n in targets:
+        remaining = deadline - time.monotonic()
+        if remaining > 0:
+            ok, error = forward_attempt(
+                n, letter, timeout=min(FORWARD_TIMEOUT, remaining))
+            n.reachable = ok
+            if ok:
+                confirmed += 1
+                continue
+            _log_forward_failed(letter, n, error)
+            mailbox.stage_forward(letter, n, error)
+        else:
+            # 预算耗尽: 未做任何转发尝试 — 不写 reachable (status 语义 =
+            # 最近一次转发结果), 失败尝试计数记 0
+            mailbox.stage_forward(letter, n, "洪泛预算耗尽", retries=0)
+    return confirmed, len(targets)
 
 
 def bind_first_free(try_bind, start_port):
@@ -798,6 +930,13 @@ class MailboxHttpServer(ThreadingHTTPServer):
     @property
     def port(self):
         return self.server_address[1]
+
+    def flood_spawned(self):
+        """内部注入回执的远端部分补投 (D012/D13): 取空 _spawned_routes 逐封
+        预算内洪泛 (post/forward/ack 处理线程与清扫线程的锁外收尾共用入口)."""
+        for letter, targets in self.mailbox.drain_spawned():
+            flood_targets(self.mailbox, letter, targets,
+                          self.flood_budget_seconds)
 
 
 class RelayHttpServer(ThreadingHTTPServer):
@@ -943,6 +1082,8 @@ class _Handler(_JsonHandler):
                 return self._json(400, {"ok": False, "error": f"字段畸形: {e}"})
             self.server.cond.notify_all()
         self._flood(routed)
+        # 回执反向走同一路由 (D012): 本信在本机排队生成的送达回执在此锁外补投
+        self.server.flood_spawned()
         return self._json(200, {"ok": True})
 
     def _flood(self, routed):
@@ -952,25 +1093,8 @@ class _Handler(_JsonHandler):
         if routed is None:
             return 0, 0
         letter, targets = routed
-        m = self.server.mailbox
-        confirmed = 0
-        deadline = time.monotonic() + self.server.flood_budget_seconds
-        for n in targets:
-            remaining = deadline - time.monotonic()
-            if remaining > 0:
-                ok, error = forward_attempt(
-                    n, letter, timeout=min(FORWARD_TIMEOUT, remaining))
-                n.reachable = ok
-                if ok:
-                    confirmed += 1
-                    continue
-                _log_forward_failed(letter, n, error)
-                m.stage_forward(letter, n, error)
-            else:
-                # 预算耗尽: 未做任何转发尝试 — 不写 reachable (status 语义 =
-                # 最近一次转发结果), 失败尝试计数记 0
-                m.stage_forward(letter, n, "洪泛预算耗尽", retries=0)
-        return confirmed, len(targets)
+        return flood_targets(self.server.mailbox, letter, targets,
+                             self.server.flood_budget_seconds)
 
     def _handle_post(self, body, endpoint):
         party, rkey = self._party(body, endpoint)
@@ -1068,6 +1192,9 @@ class _Handler(_JsonHandler):
                 return self._signed(409, party, {"ok": False, "error": str(e)}, rkey)
             except MailboxError as e:
                 return self._signed(403, party, {"ok": False, "error": str(e)}, rkey)
+            self.server.cond.notify_all()  # ack 生成的已读回执可能排队唤醒等待方
+        # 已读回执远端部分锁外补投 (D012: 回执反向走同一路由)
+        self.server.flood_spawned()
         return self._signed(200, party,
                             {"ok": True, "letter_id": str(body["letter_id"])}, rkey)
 
@@ -1194,8 +1321,11 @@ class _AdminHandler(_JsonHandler):
             with self.server.cond:
                 if m.get_session(sid) is not None:
                     return self._json(409, {"error": f"session 已存在: {sid}"})
-                s = m.add_session(sid, body.get("signing_key"),
-                                  body.get("response_key"))
+                try:
+                    s = m.add_session(sid, body.get("signing_key"),
+                                      body.get("response_key"))
+                except MailboxError as e:
+                    return self._json(403, {"error": str(e)})
             return self._json(200, {"id": s.id, "signing_key": s.signing_key,
                                     "response_key": s.response_key})
         if path == "/admin/sessions/revoke":
@@ -1332,6 +1462,9 @@ class _AdminHandler(_JsonHandler):
         if retry:
             sent = m.retry_entries(entries)
             return self._json(200, {"ok": True, "id": lid, "sent": sent})
+        for e in entries:
+            log_event("pending-dropped", letter=e.letter.id,
+                      to=e.letter.to_session, reason="admin")  # AC-037
         return self._json(200, {"ok": True, "id": lid,
                                 "dropped": len(entries)})
 
@@ -1588,6 +1721,22 @@ def print_letter(letter):
     print("\n".join(lines), flush=True)
 
 
+# D014 呈现降噪: 回执信紧凑单行措辞 (裸脚本取信, codex/kimi/终端)
+RECEIPT_WORDS = {"delivered": "已送达", "read": "已读", "failed": "失败"}
+
+
+def parse_receipt_body(letter):
+    """回执信 body 解析: JSON {"receipt","letter_id"}; 残形回退原信 id."""
+    try:
+        d = json.loads(letter.get("body", ""))
+    except (json.JSONDecodeError, TypeError):
+        d = {}
+    if not isinstance(d, dict):
+        d = {}
+    return (str(d.get("receipt", "")),
+            str(d.get("letter_id") or letter.get("id", "")))
+
+
 def _require_credentials():
     """凭证探测 (load_credentials) + 缺凭证致命退出; 返回 (url, session, signing_key)."""
     creds = load_credentials()
@@ -1626,6 +1775,14 @@ def cmd_fetch(timeout=None, count=None):
             print(f"无信 ({timeout:g} 秒到时)", flush=True)
             return True
         return False
+
+    def _quiet_ack(letter_id, lease_token, outcome="handled"):
+        """静默自动回执 (评审修复: 三处近似重复收口): 吞 HTTPError/OSError —
+        回执失败则租约到期重投, 下轮循环/租约兜底, 不阻塞取信 (D003/D009/D014)."""
+        try:
+            ack_letter(url, sid, skey, letter_id, lease_token, outcome=outcome)
+        except (urllib.error.HTTPError, OSError):
+            pass
 
     # 故障自愈 (AC-003): 网络断/服务未就绪一律退避重试, 不 print 不 exit
     while True:
@@ -1676,24 +1833,25 @@ def cmd_fetch(timeout=None, count=None):
         seen = state.setdefault("seen_ids", [])
         if letter.get("id") in seen:
             # D003/D009: 租约重投的已见信, 自动回执不呈现给 LLM, 继续等下一封
-            try:
-                ack_letter(url, sid, skey, letter.get("id", ""),
-                           payload.get("lease_token", ""))
-            except (urllib.error.HTTPError, OSError):
-                pass  # 回执失败则租约到期再重投, 下轮循环保底
+            _quiet_ack(letter.get("id", ""), payload.get("lease_token", ""))
             continue
         seen.append(letter.get("id", ""))
         del seen[:-100]  # 只记最近 100 条已见 id
+        if is_receipt_from(letter.get("from", "")):
+            # D014 呈现降噪: 回执信自动 ack 不呈现给 LLM, 紧凑单行,
+            # 不占 --count 预算, 不走处理指引
+            kind, origin_id = parse_receipt_body(letter)
+            _quiet_ack(letter.get("id", ""), payload.get("lease_token", ""))
+            print(f"回执: 信件 {origin_id} {RECEIPT_WORDS.get(kind, kind)}",
+                  flush=True)
+            continue
         container = pull_window_container(letter)
         if container is not None:
             # D014 拉窗门禁: skipped 信立即回执, 不呈现给 LLM, 继续 poll
             outcome = gate_pull_window(container, state)
             if outcome is not None:
-                try:
-                    ack_letter(url, sid, skey, letter.get("id", ""),
-                               payload.get("lease_token", ""), outcome=outcome)
-                except (urllib.error.HTTPError, OSError):
-                    pass  # 回执失败: 租约兜底, 不阻塞取信循环
+                _quiet_ack(letter.get("id", ""), payload.get("lease_token", ""),
+                           outcome=outcome)
                 if outcome == "skipped:waypipe-missing" \
                         and waypipe_missing_hint_due():
                     print(WAYPIPE_MISSING_HINT, flush=True)
@@ -2008,7 +2166,10 @@ def cmd_serve(args):
                                          str(LEASE_SECONDS))),
                       pending_cap=int(
                           os.environ.get("MAILBOX_PENDING_CAP",
-                                         str(PENDING_CAP))))
+                                         str(PENDING_CAP))),
+                      ttl_seconds=float(
+                          os.environ.get("MAILBOX_TTL_SECONDS",
+                                         str(TTL_SECONDS))))
     # 邻居表 = SQLite 持久化 (admin 运行时加入/修改, B8) + JSON 文件 (D020 手工
     # 配置, 只作启动种子); 按地址与名字双重去重 — 同名时 DB (admin 改过的) 优先,
     # 文件旧地址不再种入 (B2 换址后不改文件的已知张力, 见 reference/mailbox.md)
@@ -2062,6 +2223,12 @@ def cmd_serve(args):
     def _retry_loop():
         while not retry_stop.wait(retry_seconds):
             mailbox.retry_pending()
+            # TTL 清扫 (D012): 与滞留重试同线程, 队列/滞留变更持 cond 唤醒 poll;
+            # 失败回执的远端部分锁外补投
+            with cond:
+                mailbox.sweep_expired()
+                cond.notify_all()
+            server.flood_spawned()
 
     threading.Thread(target=_retry_loop, daemon=True).start()
     if relay_server is not None:

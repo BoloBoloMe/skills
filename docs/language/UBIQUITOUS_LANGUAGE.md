@@ -69,7 +69,7 @@ herdr 在 **sandbox-worktree** 中的定位: host herdr 经 `HERDR_AGENT=pi` wra
 _避免_: subagent 替代 (被刻意收窄的定位), 远程控制
 
 **基础服务** (已替代, 见 ADR-0014):
-原 **sandbox-worktree** 的 host 常驻单体 web 服务 (`swt-base-server.py`) 已被 mesh 化重构取代 — 现为每台设备独立运行的 `swt-mailbox.py serve` 手动前台进程, 信箱 mesh 全互联路由, 信件全内存. LLM 中转保留 (每台跑容器机器各一, 端口 38427-38436).
+原 **sandbox-worktree** 的 host 常驻单体 web 服务 (`swt-base-server.py`) 已被 mesh 化重构取代 — 现为每台设备独立运行的 `mailbox.py serve` 手动前台进程 (独立 skill mailbox), 信箱 mesh 全互联路由, 信件全内存. LLM 中转保留 (每台跑容器机器各一, 端口 38427-38436).
 _避免_: 消息队列服务 (过时), 中转站 (llm-proxy 旧称)
 
 **信箱** (已重构, 见 ADR-0014; 已独立, 见 ADR-0015):
