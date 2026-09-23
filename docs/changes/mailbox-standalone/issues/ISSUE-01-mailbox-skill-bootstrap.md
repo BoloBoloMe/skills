@@ -2,7 +2,7 @@
 - `../EXECUTION.md`
 
 ## 执行
-- [ ] 已实现
+- [x] 已实现
 
 ## 要构建什么
 信箱从 use-sandbox-worktree 拆出为独立 skill `mailbox`: `workflow/mailbox/` (scripts/mailbox.py 由 swt-mailbox.py 改名, reference/mailbox.md 搬入, 新建 SKILL.md). 全部配置/运行时文件集中 `~/.agents/mailbox/`: config.json (原 mailbox.json) / neighbors.json / cli-state.json (原 mailbox-state.json) / state.json / server.db; 旧路径 (`~/.local/state/swt-mailbox/`, `~/.agents/sandbox-worktree/mailbox.json` 等) 首次运行自动迁移并提示. `__identity__` 服务名改 `mailbox`. 测试注入 env 改 `MAILBOX_*` 前缀; 容器契约 env (SWT_MAILBOX_URL/SWT_SESSION_*) 不变. `tests/test_swt_mailbox_*.py` 改名 `test_mailbox_*` 并改指新路径. use-sandbox-worktree 的 SKILL.md/agent-prompts 改指新 skill. 行为不变, 纯搬迁+迁移. 适合 AFK: 机械迁移, 决策已全部固化.
