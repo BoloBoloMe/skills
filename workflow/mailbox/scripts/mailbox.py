@@ -1580,6 +1580,7 @@ def cmd_fetch(timeout=None, count=None):
             pass  # 网络故障: 不落盘, 文件仍留 pending_ack, 下次调用重试回执
     # AC-015: 首次连接失败立即明报再退避 (不静默); 明报行只打一次不刷屏
     reported_down = False
+    fetched = 0  # --count 已取封数 (AC-016)
     # 故障自愈 (AC-003): 网络断/服务未就绪一律退避重试, 不 print 不 exit
     while True:
         sig_ts = str(time.time())
@@ -1641,6 +1642,11 @@ def cmd_fetch(timeout=None, count=None):
                                 "lease_token": payload.get("lease_token", "")}
         save_cli_state(state)  # 先落盘再输出, 崩溃后下次调用仍能回执
         print_letter(letter)
+        if count is not None:
+            fetched += 1
+            if fetched >= count:
+                return  # 取满即退 (末封 pending_ack 留 cli-state, 下次回执)
+            continue  # 未取满, 继续取下一封
         return
 
 

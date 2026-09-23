@@ -129,6 +129,33 @@ def test_fetch_timeout_exits_and_reports(serves, tmp_path):
     assert time.time() - start < 15, "--timeout 到时须真的退出而非长阻塞"
 
 
+def test_fetch_count_exits_after_n(serves, tmp_path):
+    """ISSUE-05 TS-004 (TC-027/AC-016): --count 2 且队列有 3 封 →
+    取满 2 封即退; 末封 pending_ack 留 cli-state 不丢, 第 3 封仍可取."""
+    srv = serves()
+    creds = register_session(srv, "cdev")
+    key = creds["signing_key"]
+    for i in (1, 2, 3):
+        code, _ = post_letter(srv, "cdev", key,
+                              make_letter(letter_id=f"L-c{i}", to="cdev",
+                                          body=f"第{i}封信"))
+        assert code == 200
+    env = cli_env(srv.port, "cdev", key, creds["response_key"],
+                  tmp_path / "cli")
+    r = subprocess.run([sys.executable, str(SCRIPT), "--count", "2"],
+                       env=env, capture_output=True, text=True, timeout=30)
+    assert r.returncode == 0
+    assert "第1封信" in r.stdout and "第2封信" in r.stdout
+    assert "第3封信" not in r.stdout, "取满 2 封即退, 第 3 封不应取"
+    # 末封 pending_ack 留在 cli-state, 下次调用正常回执 (风险提示: 不丢)
+    cli_state = json.loads((tmp_path / "cli" / "cli-state.json").read_text())
+    assert cli_state["pending_ack"]["letter_id"] == "L-c2"
+    # 第 3 封仍在队列可取
+    code, resp = poll(srv, "cdev", key)
+    assert code == 200
+    assert resp["payload"]["letter"]["id"] == "L-c3"
+
+
 def test_fetch_cli(serves, tmp_path):
     """TS-004: 缺省调用阻塞等信, 信到后 stdout 输出正文+处理指引+继续调用提示."""
     srv = serves()
