@@ -1675,20 +1675,22 @@ def http_post(url, obj, timeout):
         return json.loads(resp.read() or b"{}")
 
 
-def cli_state_path():
-    """取信状态文件: 与配置文件同目录的 cli-state.json."""
-    return config_path().parent / "cli-state.json"
+def cli_state_path(override=None):
+    """取信状态文件 (D009): --cli-state 参数 > MAILBOX_CLI_STATE env >
+    缺省与配置文件同目录的 cli-state.json (per-listener 独立状态文件)."""
+    return Path(override or os.environ.get("MAILBOX_CLI_STATE") or
+                (config_path().parent / "cli-state.json"))
 
 
-def load_cli_state():
+def load_cli_state(override=None):
     try:
-        return json.loads(cli_state_path().read_text())
+        return json.loads(cli_state_path(override).read_text())
     except (OSError, json.JSONDecodeError):
         return {}
 
 
-def save_cli_state(state):
-    p = cli_state_path()
+def save_cli_state(state, override=None):
+    p = cli_state_path(override)
     p.parent.mkdir(parents=True, exist_ok=True)
     write_json_0600(p, state)
 
@@ -1747,11 +1749,12 @@ def _require_credentials():
     return creds["server"].rstrip("/"), creds["session"], creds["signing_key"]
 
 
-def cmd_fetch(timeout=None, count=None):
+def cmd_fetch(timeout=None, count=None, cli_state=None):
     """timeout (AC-016): 到时无信退出码 0 并报无信; 缺省无限等待.
-    count: 取满 n 封即退 (末封 pending_ack 留 cli-state, 下次调用回执不丢)."""
+    count: 取满 n 封即退 (末封 pending_ack 留 cli-state, 下次调用回执不丢).
+    cli_state (D009): per-listener 状态文件路径, 修多 listener pending_ack 竞态."""
     url, sid, skey = _require_credentials()
-    state = load_cli_state()
+    state = load_cli_state(cli_state)
     backoff = 0.5
     deadline = time.monotonic() + timeout if timeout is not None else None
     # D003 回执自动化: 先自动回执上一条, LLM 无感
@@ -1760,9 +1763,9 @@ def cmd_fetch(timeout=None, count=None):
         try:
             ack_letter(url, sid, skey, pending["letter_id"],
                        pending.get("lease_token", ""))
-            save_cli_state(state)
+            save_cli_state(state, cli_state)
         except urllib.error.HTTPError:
-            save_cli_state(state)  # 服务端明确拒绝 (已处理/租约失效): 清掉不再纠缠
+            save_cli_state(state, cli_state)  # 服务端明确拒绝 (已处理/租约失效): 清掉不再纠缠
         except OSError:
             pass  # 网络故障: 不落盘, 文件仍留 pending_ack, 下次调用重试回执
     # AC-015: 首次连接失败立即明报再退避 (不静默); 明报行只打一次不刷屏
@@ -1856,10 +1859,10 @@ def cmd_fetch(timeout=None, count=None):
                         and waypipe_missing_hint_due():
                     print(WAYPIPE_MISSING_HINT, flush=True)
                 continue
-            save_cli_state(state)  # 过门即落限频时刻 (D014)
+            save_cli_state(state, cli_state)  # 过门即落限频时刻 (D014)
         state["pending_ack"] = {"letter_id": letter.get("id", ""),
                                 "lease_token": payload.get("lease_token", "")}
-        save_cli_state(state)  # 先落盘再输出, 崩溃后下次调用仍能回执
+        save_cli_state(state, cli_state)  # 先落盘再输出, 崩溃后下次调用仍能回执
         print_letter(letter)
         if count is not None:
             fetched += 1
@@ -2300,6 +2303,8 @@ def main():
                         help="取信到时无信退出码 0 并报无信 (秒)")
     parser.add_argument("--count", type=int, default=None,
                         help="取满 n 封即退 (缺省取一封即回)")
+    parser.add_argument("--cli-state", default=None,
+                        help="取信状态文件路径 (per-listener, env MAILBOX_CLI_STATE 同义)")
     sub = parser.add_subparsers(dest="cmd")
     p_serve = sub.add_parser("serve", help="前台启动信箱服务")
     p_serve.add_argument("--port", type=int, default=DEFAULT_PORT,
@@ -2348,7 +2353,7 @@ def main():
     elif args.cmd == "revoke-session":
         cmd_revoke_session(args.session_id)
     else:
-        cmd_fetch(args.timeout, args.count)  # 缺省动作 = 取信 (D001)
+        cmd_fetch(args.timeout, args.count, args.cli_state)  # 缺省动作 = 取信 (D001)
 
 
 if __name__ == "__main__":

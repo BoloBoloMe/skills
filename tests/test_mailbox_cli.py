@@ -156,6 +156,48 @@ def test_fetch_count_exits_after_n(serves, tmp_path):
     assert resp["payload"]["letter"]["id"] == "L-c3"
 
 
+def test_fetch_cli_state_override(serves, tmp_path):
+    """ISSUE-07 TS-001 (TC-037 前置/D009/AC-001 底层): --cli-state 指定路径时
+    pending_ack/seen_ids 落该文件, 不落缺省 cli-state.json;
+    env MAILBOX_CLI_STATE 同义 (per-listener 状态文件修竞态)."""
+    srv = serves()
+    creds = register_session(srv, "statedev")
+    key = creds["signing_key"]
+    code, _ = post_letter(srv, "statedev", key,
+                          make_letter(letter_id="L-s1", to="statedev",
+                                      body="状态归属"))
+    assert code == 200
+    env = cli_env(srv.port, "statedev", key, creds["response_key"],
+                  tmp_path / "cli")
+    override = tmp_path / "override" / "listener.json"
+
+    r = subprocess.run([sys.executable, str(SCRIPT),
+                        "--cli-state", str(override)],
+                       env=env, capture_output=True, text=True, timeout=30)
+    assert r.returncode == 0, r.stderr
+    assert "状态归属" in r.stdout
+    state = json.loads(override.read_text())
+    assert state["pending_ack"]["letter_id"] == "L-s1", \
+        "pending_ack 应落 --cli-state 指定文件"
+    assert "L-s1" in state["seen_ids"], "seen_ids 应落 --cli-state 指定文件"
+    assert not (tmp_path / "cli" / "cli-state.json").exists(), \
+        "--cli-state 覆盖后不应再写缺省 cli-state.json"
+
+    # env MAILBOX_CLI_STATE 同义 (D009): 第二封信状态走 env 指定路径
+    code, _ = post_letter(srv, "statedev", key,
+                          make_letter(letter_id="L-s2", to="statedev",
+                                      body="第二封"))
+    assert code == 200
+    env2 = dict(env)
+    env2["MAILBOX_CLI_STATE"] = str(tmp_path / "override" / "env.json")
+    r2 = subprocess.run([sys.executable, str(SCRIPT)], env=env2,
+                        capture_output=True, text=True, timeout=30)
+    assert r2.returncode == 0, r2.stderr
+    assert "第二封" in r2.stdout
+    state2 = json.loads((tmp_path / "override" / "env.json").read_text())
+    assert state2["pending_ack"]["letter_id"] == "L-s2"
+
+
 def test_status_env_credentials_and_liveness(serves, tmp_path):
     """ISSUE-05 TS-005 (TC-028/AC-017): 容器内仅 env 凭证时, status
     认 env 报真实 session 名/信箱地址/存活, 不再全显 (未设置)."""
