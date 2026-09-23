@@ -4,7 +4,6 @@ TC-011 test_send_receipt_two_lines: 回执分行打 目标 session= 与 信件 i
 TC-012 test_send_empty_to_echoes_resolved_target: 空 to 回打服务端解析出的目标.
 TC-014 test_unknown_recipient_no_neighbors_fails: 无邻居投未知 session 报错退出.
 TC-015 test_send_returns_within_budget_with_dead_neighbor: 死邻居下 2s 预算返回.
-TC-015 test_send_returns_within_budget_with_dead_neighbor: 死邻居下 2s 预算返回.
 
 真实子进程跑 mailbox.py send + 真实 serve 子进程, 凭证走设备配置文件
 (env 探测隔离, 先例 test_mailbox_cli_tools.test_send_notify).

@@ -64,9 +64,7 @@ MAX_BODY_BYTES = 1024 * 1024  # 单信正文上限 1MB (BR-006/AC-021)
 MSG_TYPES = ("notify", "open_url", "exec", "request")
 PULL_WINDOW_TOOL = "swt.pull-window"  # exec 指令集内置成员 (动态绑定投信方)
 
-# post 应答 route 态 (D011 A2) 与 send CLI 人话 (AC-008 措辞)
-ROUTE_STATES = ("queued_local", "forwarded", "forwarded_partial",
-                "staged_pending", "unknown_recipient")
+# send CLI 按 route 打人话 (AC-008 措辞; 枚举见 TECHNICAL 投信应答节)
 ROUTE_WORDS = {"queued_local": "已进本机队列",
                "forwarded": "已转邻居",
                "forwarded_partial": "已转部分邻居, 其余暂存",

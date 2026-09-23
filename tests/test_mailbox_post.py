@@ -2,7 +2,6 @@
 
 TC-016 test_body_over_1mb_413: 正文超 1MB 拒收 413 (AC-021/BR-006).
 TC-017 test_from_mismatch_403: letter.from 与签名 session 不符拒收 403 (AC-022/D013).
-TC-017 test_from_mismatch_403: letter.from 与签名 session 不符拒收 403 (AC-022/D013).
 
 真实子进程 serve + 回环 HTTP, handler 级请求构造;
 共享接缝层 (serve 启动器/签名/HTTP helper) 在 tests/conftest.py.
