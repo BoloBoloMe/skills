@@ -23,7 +23,9 @@ env:
   ~/.agents/mailbox/neighbors.json) / MAILBOX_HOLD_SECONDS (缺省 20) /
   MAILBOX_LEASE_SECONDS (缺省 1800) / MAILBOX_RETRY_SECONDS (缺省 5) /
   MAILBOX_MAX_CONCURRENT_POLLS / MAILBOX_PENDING_CAP (滞留转发上限, 缺省
-  100, 超限丢最老) / MAILBOX_UPSTREAM_BASE / MAILBOX_UPSTREAM_KEY /
+  100, 超限丢最老) / MAILBOX_TTL_SECONDS (信件 TTL 秒, 缺省 86400 = 24h,
+  到期由清扫器丢弃并向发件人发失败回执) / MAILBOX_UPSTREAM_BASE /
+  MAILBOX_UPSTREAM_KEY /
   MAILBOX_FLOOD_BUDGET_SECONDS (post 洪泛判定预算, 缺省 2, 测试时间注入用)
 """
 from __future__ import annotations
@@ -62,6 +64,7 @@ LEASE_SECONDS = 1800.0      # 租约时长缺省 30min (D009)
 MAX_CONCURRENT_POLLS = 5    # 同 session 并发 poll 上限 (D016)
 FLOOD_BUDGET_SECONDS = 2.0  # post 洪泛判定预算 (非功能要求, env 可调)
 PENDING_CAP = 100           # 滞留转发上限, 超限丢最老 (AC-013, env 可调)
+TTL_SECONDS = 86400.0       # 信件 TTL 缺省 24h (D012, env 可调)
 FORWARD_TIMEOUT = 5.0       # 单邻居转发超时上限 (后台重试路径沿用)
 MAX_BODY_BYTES = 1024 * 1024  # 单信正文上限 1MB (BR-006/AC-021)
 MSG_TYPES = ("notify", "open_url", "exec", "request")
@@ -304,7 +307,7 @@ class Letter:
     """信件 (D008 全内存)."""
 
     def __init__(self, id, ts, from_session, to_session, type, body,
-                 downgraded=False, note=""):
+                 downgraded=False, note="", expires_at=None):
         self.id = id
         self.ts = ts
         self.from_session = from_session
@@ -313,16 +316,23 @@ class Letter:
         self.body = body
         self.downgraded = downgraded  # exec 指令集外 → 降级 request 标注 (D006)
         self.note = note
+        self.expires_at = expires_at  # epoch; None = 缺省 ts+TTL (D012, 差
+        # 清扫时按本 serve 的 TTL 折算, 不在入信时物化)
 
     @classmethod
     def from_dict(cls, d):
+        exp = d.get("expires_at")
         return cls(str(d["id"]), float(d["ts"]), str(d.get("from", "")),
-                   str(d.get("to") or ""), str(d["type"]), str(d["body"]))
+                   str(d.get("to") or ""), str(d["type"]), str(d["body"]),
+                   expires_at=float(exp) if exp is not None else None)
 
     def to_dict(self):
-        return {"id": self.id, "ts": self.ts, "from": self.from_session,
-                "to": self.to_session, "type": self.type, "body": self.body,
-                "downgraded": self.downgraded, "note": self.note}
+        d = {"id": self.id, "ts": self.ts, "from": self.from_session,
+             "to": self.to_session, "type": self.type, "body": self.body,
+             "downgraded": self.downgraded, "note": self.note}
+        if self.expires_at is not None:
+            d["expires_at"] = self.expires_at
+        return d
 
 
 class Mailbox:
@@ -334,11 +344,13 @@ class Mailbox:
     """
 
     def __init__(self, db_path=None, now=time.time, lease_seconds=LEASE_SECONDS,
-                 monotonic=time.monotonic, pending_cap=PENDING_CAP):
-        self._now = now            # 墙钟: 签名时间窗 ±5min / last_poll
+                 monotonic=time.monotonic, pending_cap=PENDING_CAP,
+                 ttl_seconds=TTL_SECONDS):
+        self._now = now            # 墙钟: 签名时间窗 ±5min / last_poll / TTL
         self._mono = monotonic     # 单调钟: 租约计时 (TECHNICAL 边界与异常处理)
         self.lease_seconds = lease_seconds  # 租约时长 (D009), serve 可经 env 覆盖
         self.pending_cap = pending_cap      # 滞留上限 (AC-013), serve 可经 env 覆盖
+        self.ttl_seconds = ttl_seconds      # 信件 TTL (D012), serve 可经 env 覆盖
         self.sessions = {}    # id -> Session
         self.queue = {}       # to_session -> [Letter]
         self.leases = {}      # letter_id -> (Letter, lease_token, 租出时刻)
@@ -601,7 +613,8 @@ class Mailbox:
                          from_session=f"{RECEIPT_FROM_PREFIX}{socket.gethostname()}",
                          to_session=letter.from_session, type="notify",
                          body=json.dumps({"receipt": kind,
-                                          "letter_id": letter.id}))
+                                          "letter_id": letter.id}),
+                         expires_at=self._now() + self.ttl_seconds)
         try:
             routed = self._route(receipt, source=None)
         except UnknownRecipient:
@@ -615,6 +628,35 @@ class Mailbox:
         with self._spawn_lock:
             out, self._spawned_routes = self._spawned_routes, []
         return out
+
+    def _effective_expiry(self, letter):
+        """有效到期时刻: 显式 expires_at 优先, 缺省 ts+TTL (D012)."""
+        if letter.expires_at is not None:
+            return letter.expires_at
+        return letter.ts + self.ttl_seconds
+
+    def sweep_expired(self):
+        """TTL 清扫器 (D012): 到期信从队列与滞留中丢弃; 普通信丢弃时向发件人
+        注入失败回执 (确定性 id, AC-019), 回执信自身到期静默丢弃 (不递归).
+        调用方 (serve 重试线程) 须持 server cond, 回执远端部分经 drain_spawned
+        锁外补投. 两段式: 先取尽再丢弃, 避免迭代中 _route 插入新队列."""
+        now = self._now()
+        expired = []
+        for q in self.queue.values():
+            keep = [l for l in q if self._effective_expiry(l) > now]
+            if len(keep) != len(q):
+                expired.extend(l for l in q if self._effective_expiry(l) <= now)
+                q[:] = keep
+        with self._pending_lock:
+            kept = [e for e in self.pending_forwards
+                    if self._effective_expiry(e.letter) > now]
+            dropped = [e for e in self.pending_forwards
+                       if self._effective_expiry(e.letter) <= now]
+            self.pending_forwards = kept
+        for entry in dropped:
+            expired.append(entry.letter)
+        for letter in expired:
+            self._spawn_receipt("failed", letter)
 
     def forward(self, neighbor_key, letter_d):
         """邻居转发收信 (D007). neighbor_key 与邻居表比对认证, 匹配到的
@@ -2072,7 +2114,10 @@ def cmd_serve(args):
                                          str(LEASE_SECONDS))),
                       pending_cap=int(
                           os.environ.get("MAILBOX_PENDING_CAP",
-                                         str(PENDING_CAP))))
+                                         str(PENDING_CAP))),
+                      ttl_seconds=float(
+                          os.environ.get("MAILBOX_TTL_SECONDS",
+                                         str(TTL_SECONDS))))
     # 邻居表 = SQLite 持久化 (admin 运行时加入/修改, B8) + JSON 文件 (D020 手工
     # 配置, 只作启动种子); 按地址与名字双重去重 — 同名时 DB (admin 改过的) 优先,
     # 文件旧地址不再种入 (B2 换址后不改文件的已知张力, 见 reference/mailbox.md)
@@ -2126,6 +2171,12 @@ def cmd_serve(args):
     def _retry_loop():
         while not retry_stop.wait(retry_seconds):
             mailbox.retry_pending()
+            # TTL 清扫 (D012): 与滞留重试同线程, 队列/滞留变更持 cond 唤醒 poll;
+            # 失败回执的远端部分锁外补投
+            with cond:
+                mailbox.sweep_expired()
+                cond.notify_all()
+            server.flood_spawned()
 
     threading.Thread(target=_retry_loop, daemon=True).start()
     if relay_server is not None:

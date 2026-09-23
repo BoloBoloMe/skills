@@ -133,3 +133,44 @@ def test_read_receipt(dual_serves):
     assert receipt["from"].startswith("mailbox@")
     assert json.loads(receipt["body"]) == {"receipt": "read",
                                            "letter_id": "X-2"}
+
+
+def test_ttl_expiry_failed_receipt(tmp_path):
+    """TS-003/TC-032 (AC-018 失败行): 信超 TTL 未送达被清扫丢弃,
+    发件人收到失败回执 (id <原id>.delivery-failed), 滞留队列不再持有.
+    TTL 经 MAILBOX_TTL_SECONDS 注入 (缺省 24h, 不真等)."""
+    workdir = tmp_path / "ttl"
+    workdir.mkdir()
+    (workdir / "neighbors.json").write_text(json.dumps(
+        [neighbor(free_port(), "k-dead")]))  # 不可达邻居: 信滞留到超时
+    srv = Serve(workdir, extra_env={
+        "MAILBOX_NEIGHBORS": str(workdir / "neighbors.json"),
+        "MAILBOX_RETRY_SECONDS": "0.2",
+        "MAILBOX_TTL_SECONDS": "5"})
+    try:
+        creds = register_session(srv, "a-host")
+        key = creds["signing_key"]
+        code, resp = post_letter(srv, "a-host", key,
+                                 make_letter(letter_id="L-1", to="b-dev",
+                                             body="等不到的收件人",
+                                             from_="a-host"))
+        assert code == 200
+        assert resp["payload"]["route"] == "staged_pending"
+        code, resp = _admin(srv, "GET", "/admin/pending")
+        assert "L-1" in [e["id"] for e in resp["pending"]], "前置: 信应滞留在列"
+
+        receipt, _ = poll_until(srv, "a-host", key, "L-1.delivery-failed",
+                                deadline=15)
+        assert receipt is not None, "TTL 到期后发件人未收到失败回执"
+        assert receipt["to"] == "a-host"
+        assert receipt["type"] == "notify"
+        assert receipt["from"].startswith("mailbox@")
+        assert json.loads(receipt["body"]) == {"receipt": "failed",
+                                               "letter_id": "L-1"}
+
+        # 原信已被清扫丢弃: 滞留队列不再持有
+        code, resp = _admin(srv, "GET", "/admin/pending")
+        assert "L-1" not in [e["id"] for e in resp["pending"]], \
+            "TTL 到期的滞留信应被清扫丢弃"
+    finally:
+        srv.stop()
