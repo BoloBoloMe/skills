@@ -1,4 +1,4 @@
-"""swt-mailbox LLM 中转测试 (ISSUE-06, 真实子进程 + 假上游全链).
+"""mailbox LLM 中转测试 (ISSUE-06, 真实子进程 + 假上游全链).
 
 TS-001 test_relay_models / TS-002 test_relay_chat / TS-003 test_relay_key_revocation.
 
@@ -95,12 +95,12 @@ class RelayServe:
         workdir.mkdir(parents=True, exist_ok=True)
         env = dict(os.environ)
         env.update({
-            "SWT_ADMIN_TOKEN": ADMIN_TOKEN,
-            "SWT_MAILBOX_STATE": str(workdir / "state.json"),
-            "SWT_MAILBOX_CONFIG": str(workdir / "mailbox.json"),
-            "SWT_MAILBOX_HOLD_SECONDS": "0.3",
-            "SWT_UPSTREAM_BASE": upstream_base,
-            "SWT_UPSTREAM_KEY": UPSTREAM_KEY,
+            "MAILBOX_ADMIN_TOKEN": ADMIN_TOKEN,
+            "MAILBOX_STATE": str(workdir / "state.json"),
+            "MAILBOX_CONFIG": str(workdir / "mailbox.json"),
+            "MAILBOX_HOLD_SECONDS": "0.3",
+            "MAILBOX_UPSTREAM_BASE": upstream_base,
+            "MAILBOX_UPSTREAM_KEY": UPSTREAM_KEY,
         })
         self.proc = subprocess.Popen(
             [sys.executable, str(SCRIPT), "serve",

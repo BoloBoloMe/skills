@@ -1,38 +1,40 @@
 # 信箱 mesh + LLM 中转
 
-起信箱 serve, 配置设备侧取信, 查容器侧投信细节, 或处理展示页网址沟通/代开与指令集安全语义时读本文件. birth/terminate 的自动接线语义见 SKILL.md 基础服务节.
+起信箱 serve, 配置设备侧取信, 查容器侧投信细节, 或处理展示页网址沟通/代开与指令集安全语义时读本文件. birth/terminate 的自动接线语义见 use-sandbox-worktree skill 的 SKILL.md 基础服务节.
 
 ## 是什么
 
-单文件服务 `scripts/swt-mailbox.py` (纯 stdlib, 零第三方依赖), mesh 架构: 每台机器各跑一个信箱实例, 所有实例地位平等, 邻居间按共享密钥互认并洪泛路由信件 (邻居表每台机器手工配置). 二合一: **信箱** (session 间传信, 设备/容器身份统一为 session, 4 类型 `notify`/`open_url`/`exec`/`request`) + **LLM 中转** (OpenAI 兼容 `/v1/chat/completions` 与 `/v1/models`, sk- key 认证, 模型白名单/quota/用量/过期/吊销, 响应上游不透 stream; 无上游配置则不启中转角色). 信件全内存 (队列/租约/已见 id/邻居暂存, 重启即清; 租约到期自动重投, ack 幂等); SQLite (`~/.local/state/swt-mailbox/server.db`) 只存 session 凭证/中转 key/指令集. 端口: 信箱区间 38417-38426 启动绑首个空闲, 无认证 `GET /__identity__` 供探测身份; admin 口默认 38416 (`SWT_ADMIN_PORT` 可配) 硬绑 127.0.0.1 (header `X-Admin-Token`, 容器够不着); 中转区间 38427-38436. 实际端口与 admin token 写状态文件 `~/.local/state/swt-mailbox/state.json` (0600), 同机组件读文件免扫描. 上游配置走 serve 参数或 env `SWT_UPSTREAM_BASE`/`SWT_UPSTREAM_KEY`.
+单文件服务 `scripts/mailbox.py` (纯 stdlib, 零第三方依赖; 独立 skill mailbox, 自 use-sandbox-worktree 拆出), mesh 架构: 每台机器各跑一个信箱实例, 所有实例地位平等, 邻居间按共享密钥互认并洪泛路由信件 (邻居表每台机器手工配置). 二合一: **信箱** (session 间传信, 设备/容器身份统一为 session, 4 类型 `notify`/`open_url`/`exec`/`request`) + **LLM 中转** (OpenAI 兼容 `/v1/chat/completions` 与 `/v1/models`, sk- key 认证, 模型白名单/quota/用量/过期/吊销, 响应上游不透 stream; 无上游配置则不启中转角色). 信件全内存 (队列/租约/已见 id/邻居暂存, 重启即清; 租约到期自动重投, ack 幂等); SQLite (`~/.agents/mailbox/server.db`) 只存 session 凭证/中转 key/指令集. 端口: 信箱区间 38417-38426 启动绑首个空闲, 无认证 `GET /__identity__` 供探测身份 (应答服务名 `mailbox`); admin 口默认 38416 (`--admin-port` 可配) 硬绑 127.0.0.1 (header `X-Admin-Token`, 容器够不着); 中转区间 38427-38436. 实际端口与 admin token 写状态文件 `~/.agents/mailbox/state.json` (0600), 同机组件读文件免扫描. 上游配置走 serve 参数或 env `MAILBOX_UPSTREAM_BASE`/`MAILBOX_UPSTREAM_KEY`.
+
+全部配置/运行时文件集中 `~/.agents/mailbox/` (config.json/neighbors.json/cli-state.json/state.json/server.db); 旧路径 (`~/.agents/sandbox-worktree/`, `~/.local/state/swt-mailbox/`, 老老路径 `~/.config/swt/`) 首次运行自动迁移并提示.
 
 ## 怎么起
 
 手动前台启动, 无 systemd 无开机自启:
 
 ```text
-uv run python scripts/swt-mailbox.py serve [--port <起点>] [--admin-port <端口>] [--relay-port <起点>] [--neighbors <file>] [--upstream-base <url>] [--upstream-key <key>]
+uv run python scripts/mailbox.py serve [--port <起点>] [--admin-port <端口>] [--relay-port <起点>] [--neighbors <file>] [--upstream-base <url>] [--upstream-key <key>]
 ```
 
-本机配置文件缺失时, 启动自动注册 `<hostname>-host` session 并把凭证写进本机配置 `~/.agents/sandbox-worktree/mailbox.json` (0600, 父目录 0700) — 本机取信零配置. 邻居表缺省读 `~/.agents/sandbox-worktree/neighbors.json` (JSON list `[{"address": "host:port", "shared_key": "..."}]`), 共享密钥首次配置时邻居间互换.
+本机配置文件缺失时, 启动自动注册 `<hostname>-host` session 并把凭证写进本机配置 `~/.agents/mailbox/config.json` (0600, 父目录 0700) — 本机取信零配置. 邻居表缺省读 `~/.agents/mailbox/neighbors.json` (JSON list `[{"address": "host:port", "shared_key": "..."}]`), 共享密钥首次配置时邻居间互换.
 
 ## 容器侧怎么投信
 
 birth 自动接线, 零手工 — 探测本机信箱 (读状态文件, 缺席扫区间 `__identity__`; 状态文件命中也先做一次 `__identity__` 验活, 失活则弃文件退扫描 — 重启换 admin token, 旧文件凭证不可信) → 经 admin 口注册容器 session (`<容器名>-<8hex>` 一次性后缀, 防同名容器错投) → env 烘入容器 (`SWT_MAILBOX_URL`/`SWT_SESSION_ID`/`SWT_SESSION_SIGNING_KEY`/`SWT_SESSION_RESPONSE_KEY`, podman -e + ssh 面 `~/.ssh/environment` 双通道). terminate 时经 admin 口注销容器 session. 信箱缺席或 admin 凭证不可得 → stderr 告警 + runtime 记 skipped, 不阻断 birth/terminate; 重入不重复注册 (容器已存在则 env 不重烘). 投信 = 容器内直接跑脚本 (skill 库只读挂载在 `~/.agents/skills/`, 凭证自动探测 env):
 
 ```bash
-uv run python ~/.agents/skills/use-sandbox-worktree/scripts/swt-mailbox.py send \
+uv run python ~/.agents/skills/mailbox/scripts/mailbox.py send \
     --to "<设备 session.id>" --type notify --body "任务完成, 请过目"
 ```
 
-`--to ""` = 投给最近活跃 session. 协议细节 (HMAC 签名/时间窗 ±5min/防重放/租约重投) 以 `swt-mailbox.py` docstring 与 `docs/changes/swt-mailbox-mesh/TECHNICAL.md` 为准.
+`--to ""` = 投给最近活跃 session. 协议细节 (HMAC 签名/时间窗 ±5min/防重放/租约重投) 以 mailbox.py docstring 与 `docs/changes/swt-mailbox-mesh/TECHNICAL.md` 为准.
 
 ## 设备侧怎么收取信会话
 
-组件 = 同一脚本的缺省动作 (取信), 无 pi 扩展无后台常驻. 凭证探测: 容器走 env, 设备走配置文件 `~/.agents/sandbox-worktree/mailbox.json` (env `SWT_MAILBOX_CONFIG` 覆盖; 老路径 `~/.config/swt/mailbox.json` 存在且新路径缺失时自动迁移). 配置字段 `server`/`session`/`signing_key`/`response_key`. 本机 serve 已自动写好配置; 其他设备首次手工配置: 在信箱所在机器经 admin 口发凭证 (`POST /admin/sessions {"id": "<设备名>"}`, 应答含 signing_key/response_key), 再逐项 `config set`:
+组件 = 同一脚本的缺省动作 (取信), 无 pi 扩展无后台常驻. 凭证探测: 容器走 env, 设备走配置文件 `~/.agents/mailbox/config.json` (env `MAILBOX_CONFIG` 覆盖; 旧路径 `~/.config/swt/`, `~/.agents/sandbox-worktree/`, `~/.local/state/swt-mailbox/` 存在而新路径缺失时自动迁移). 配置字段 `server`/`session`/`signing_key`/`response_key`. 本机 serve 已自动写好配置; 其他设备首次手工配置: 在信箱所在机器经 admin 口发凭证 (`POST /admin/sessions {"id": "<设备名>"}`, 应答含 signing_key/response_key), 再逐项 `config set`:
 
 ```bash
-M=~/.agents/skills/use-sandbox-worktree/scripts/swt-mailbox.py
+M=~/.agents/skills/mailbox/scripts/mailbox.py
 uv run python $M config set server http://127.0.0.1:38417
 uv run python $M config set session <设备名>
 uv run python $M config set signing_key     # 值经 stdin 交互输入, 不回显
@@ -51,7 +53,7 @@ uv run python $M status                     # 查看配置, 密钥只显前 8 �
 
 ## 指令集现状
 
-首成员已落地 — `swt.pull-window` (零参数拉窗): 不落静态 whitelist 行, 服务端内置形状校验 (dict 恰含 `tool`/`container` 两键) + `container` 动态绑定投信 session 自身 (裸 tool/多余键/他人 session 名一律降级 request 走设备侧 pi 权限流程); admin whitelist 注册机制保留, 供未来无动态绑定的成员使用. 设备侧执行器机械门禁在取信脚本内: waypipe 在场检查 + 同容器 300s 限频. 成员变动即安全策略变动, 必过门禁测试 (`uv run pytest tests/test_swt_mailbox_whitelist.py`).
+首成员已落地 — `swt.pull-window` (零参数拉窗): 不落静态 whitelist 行, 服务端内置形状校验 (dict 恰含 `tool`/`container` 两键) + `container` 动态绑定投信 session 自身 (裸 tool/多余键/他人 session 名一律降级 request 走设备侧 pi 权限流程); admin whitelist 注册机制保留, 供未来无动态绑定的成员使用. 设备侧执行器机械门禁在取信脚本内: waypipe 在场检查 + 同容器 300s 限频. 成员变动即安全策略变动, 必过门禁测试 (`uv run pytest tests/test_mailbox_whitelist.py`).
 
 ## 展示页网址沟通与代开 (容器与设备 agent 行为指引)
 
@@ -64,7 +66,7 @@ uv run python $M status                     # 查看配置, 密钥只显前 8 �
 4. 完整示例信 (request 类型):
 
 ```bash
-uv run python ~/.agents/skills/use-sandbox-worktree/scripts/swt-mailbox.py send \
+uv run python ~/.agents/skills/mailbox/scripts/mailbox.py send \
     --to "<当前设备 session.id>" --type request --body "container=<容器名>
 host-repo=<主仓在 host 的路径>
 records=<records_root 路径>
@@ -83,7 +85,7 @@ action=查该容器 web 入口双 URL 并回告本会话; 页面就绪后在本�
 body 就是 URL 本身, 取信会话收到直接在本设备打开, 省掉查询回话一轮. 与 request 的区别: request = "帮我查并办" (网址未知), open_url = "网址在这, 直接开" (网址已知, 如回话已拿到). `--to` 同样显式填当前设备. 示例:
 
 ```bash
-uv run python ~/.agents/skills/use-sandbox-worktree/scripts/swt-mailbox.py send \
+uv run python ~/.agents/skills/mailbox/scripts/mailbox.py send \
     --to "<当前设备 session.id>" --type open_url \
     --body "http://<已确认地址>:<web-port>/<页面路径>"
 ```

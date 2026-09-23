@@ -1,4 +1,4 @@
-"""swt-mailbox 指令集白名单与降级测试 (ISSUE-03, serve 子进程侧接缝).
+"""mailbox 指令集白名单与降级测试 (ISSUE-03, serve 子进程侧接缝).
 
 TS-001 test_exec_whitelist_downgrade / TS-002 test_whitelist_registration.
 白名单语义: exec 类型信过指令集校验 (D006), 不在集合自动降级 request 并标注;

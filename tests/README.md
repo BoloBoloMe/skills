@@ -14,7 +14,7 @@
 - **快层**: 纯逻辑/mock/轻量子进程用例. 命令:
   `uv run --with pytest pytest -m "not e2e" -q`
   swt 核心套件 (m04/m07/m09/m12) 的快层合计秒级; 全仓快层约 110s
-  (大头是 swt-mailbox 真回环服务套件 ~52s 与 present 套件).
+  (大头是 mailbox 真回环服务套件 ~52s 与 present 套件).
 - **慢层 (e2e)**: 真实重外部资源用例 — 真容器 birth / 真镜像构建 (chromium 下载) /
   真 nft/netns. 按下方映射选跑, 不全量. 命令:
   `uv run --with pytest pytest -m e2e -q tests/test_swt_mXX.py`
@@ -40,7 +40,7 @@ mock env) 与纯函数归快层.
 | `scripts/net-firewall.py` (nft 黑/白名单) | test_swt_m04.py | e2e |
 | `scripts/image-prep.py` (镜像制备 build-base/match/build) | test_swt_m07.py | e2e |
 | `scripts/swt-display.py` (登录墙/swt-vnc/noVNC) | test_swt_m09.py | e2e |
-| `scripts/swt-mailbox.py` (信箱) | test_swt_mailbox_*.py | 快层 (真回环, 秒级) |
+| `mailbox/scripts/mailbox.py` (信箱, 独立 skill) | test_mailbox_*.py | 快层 (真回环, 秒级) |
 | 展示链交付/双 URL (birth 输出侧) | test_swt_web_access.py + test_swt_m08_*.py | 快层 |
 | `general/present/scripts/` | general/present/tests/ | 快层 |
 

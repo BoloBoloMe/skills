@@ -1,6 +1,6 @@
-"""swt-mailbox 测试共享接缝层 (ISSUE-01, review S1 提取).
+"""mailbox 测试共享接缝层 (review S1 提取).
 
-test_swt_mailbox_core.py / test_swt_mailbox_cli.py 共用:
+test_mailbox_core.py / test_mailbox_cli.py 共用:
 真实子进程 serve 启动器 + 回环 HTTP 客户端 (urllib.request) + 协议签名 helper.
 签名期望值按 spec 公式独立计算, 不从实现抄.
 """
@@ -23,7 +23,7 @@ from pathlib import Path
 import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
-SCRIPT = ROOT / "workflow" / "use-sandbox-worktree" / "scripts" / "swt-mailbox.py"
+SCRIPT = ROOT / "workflow" / "mailbox" / "scripts" / "mailbox.py"
 ADMIN_TOKEN = "test-admin-token"
 
 
@@ -57,16 +57,16 @@ class Serve:
                  extra_env=None, extra_args=None):
         workdir = Path(workdir)
         workdir.mkdir(parents=True, exist_ok=True)
-        self.config_path = workdir / "mailbox.json"
+        self.config_path = workdir / "config.json"
         env = dict(os.environ)
         env.update({
-            "SWT_ADMIN_TOKEN": ADMIN_TOKEN,
-            "SWT_MAILBOX_STATE": str(workdir / "state.json"),
-            "SWT_MAILBOX_CONFIG": str(self.config_path),
-            "SWT_MAILBOX_HOLD_SECONDS": hold,
-            # 隔离真机邻居表: serve 缺省读 ~/.agents/sandbox-worktree/neighbors.json,
+            "MAILBOX_ADMIN_TOKEN": ADMIN_TOKEN,
+            "MAILBOX_STATE": str(workdir / "state.json"),
+            "MAILBOX_CONFIG": str(self.config_path),
+            "MAILBOX_HOLD_SECONDS": hold,
+            # 隔离真机邻居表: serve 缺省读 ~/.agents/mailbox/neighbors.json,
             # 真跑过的机器上有真实邻居, 泄漏进来会破坏 "无邻居 404" 类用例 (2026-09-21)
-            "SWT_MAILBOX_NEIGHBORS": str(workdir / "neighbors.json"),
+            "MAILBOX_NEIGHBORS": str(workdir / "neighbors.json"),
         })
         env.update(extra_env or {})
         self.proc = subprocess.Popen(

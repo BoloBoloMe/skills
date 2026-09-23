@@ -1,4 +1,4 @@
-"""swt-mailbox 并发保护测试 (ISSUE-03, serve 子进程侧 + 取信 CLI 接缝).
+"""mailbox 并发保护测试 (ISSUE-03, serve 子进程侧 + 取信 CLI 接缝).
 
 TS-003 test_concurrent_poll_limit / TS-004 test_client_backoff_on_409 /
 TS-005 test_dual_session_scatter.
@@ -20,7 +20,7 @@ from conftest import SCRIPT, make_letter, poll, post_letter, register_session
 
 
 def cli_env(port, session_id, signing_key, response_key, workdir):
-    """容器式 env 凭证; SWT_MAILBOX_CONFIG 指向临时目录隔离 state file."""
+    """容器式 env 凭证; MAILBOX_CONFIG 指向临时目录隔离 state file."""
     workdir = Path(workdir)
     workdir.mkdir(parents=True, exist_ok=True)
     env = dict(os.environ)
@@ -29,7 +29,7 @@ def cli_env(port, session_id, signing_key, response_key, workdir):
         "SWT_SESSION_ID": session_id,
         "SWT_SESSION_SIGNING_KEY": signing_key,
         "SWT_SESSION_RESPONSE_KEY": response_key,
-        "SWT_MAILBOX_CONFIG": str(workdir / "mailbox.json"),
+        "MAILBOX_CONFIG": str(workdir / "mailbox.json"),
     })
     return env
 
