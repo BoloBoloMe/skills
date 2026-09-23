@@ -246,11 +246,15 @@ class Session:
 
 
 class Neighbor:
-    """邻居信箱连接 (D007/D020): address = host:port, shared_key = 转发互认密钥."""
+    """邻居信箱连接 (D007/D020): address = host:port, shared_key = 转发互认密钥.
+    name = 人读标识 (D011 B2, 可缺省): 同名再登记 upsert 覆盖地址不累积;
+    reachable = 最近一次转发结果 (None 未试过 / True / False), 内存态重启即清."""
 
-    def __init__(self, address, shared_key):
+    def __init__(self, address, shared_key, name=None):
         self.address = address
         self.shared_key = shared_key
+        self.name = name
+        self.reachable = None
 
 
 class Letter:
@@ -314,10 +318,15 @@ class Mailbox:
                 " instruction TEXT PRIMARY KEY)")
             self._db.execute(
                 "CREATE TABLE IF NOT EXISTS neighbors ("
-                " address TEXT PRIMARY KEY, shared_key TEXT)")
-            for address, shared_key in self._db.execute(
-                    "SELECT address, shared_key FROM neighbors"):
-                self.neighbors.append(Neighbor(address, shared_key))
+                " address TEXT PRIMARY KEY, shared_key TEXT, name TEXT)")
+            try:  # ISSUE-04 前的旧库无 name 列 → 补列; 新库建表已含, 重复列忽略
+                self._db.execute("ALTER TABLE neighbors ADD COLUMN name TEXT")
+            except sqlite3.OperationalError:
+                pass
+            for address, shared_key, name in self._db.execute(
+                    "SELECT address, shared_key, name FROM neighbors"):
+                self.neighbors.append(Neighbor(address, shared_key,
+                                               name or None))
             for (instruction,) in self._db.execute(
                     "SELECT instruction FROM whitelist"):
                 self.whitelist.add(instruction)
@@ -359,19 +368,74 @@ class Mailbox:
         self._save_session(s)
         return s
 
-    def add_neighbor(self, address, shared_key):
-        """运行时加邻居 (D020): 内存生效 + SQLite 持久化 (重启仍在).
-        地址重复 → MailboxError (admin 层映射 409)."""
+    def add_neighbor(self, address, shared_key, name=None):
+        """运行时加邻居 (D020): 内存生效 + SQLite 持久化 (B8, 重启仍在).
+        同名 upsert (D011 B2): name 命中已有邻居 → 覆盖地址与密钥不新增条目
+        (换址场景); 地址重复且名字不同 → MailboxError (admin 层映射 409)."""
+        if name:
+            for n in self.neighbors:
+                if n.name == name:
+                    old = n.address
+                    n.address, n.shared_key = address, shared_key
+                    self._save_neighbor(n, old_address=old)
+                    return n
         for n in self.neighbors:
             if n.address == address:
                 raise MailboxError(f"邻居已存在: {address}")
-        n = Neighbor(address, shared_key)
+        n = Neighbor(address, shared_key, name)
         self.neighbors.append(n)
-        if self._db is not None:
-            self._db.execute(
-                "INSERT OR REPLACE INTO neighbors (address, shared_key)"
-                " VALUES (?, ?)", (address, shared_key))
-            self._db.commit()
+        self._save_neighbor(n)
+        return n
+
+    def _save_neighbor(self, n, old_address=None):
+        """邻居写穿 SQLite (B8: admin 加/改的进 DB 持久)."""
+        if self._db is None:
+            return
+        if old_address is not None and old_address != n.address:
+            self._db.execute("DELETE FROM neighbors WHERE address=?",
+                             (old_address,))
+        self._db.execute(
+            "INSERT OR REPLACE INTO neighbors (address, shared_key, name)"
+            " VALUES (?, ?, ?)", (n.address, n.shared_key, n.name))
+        self._db.commit()
+
+    def remove_neighbor(self, address):
+        """删邻居 (D011 B1): 内存与 DB 同删; 未知地址 → None (admin 层 404).
+        文件种入的邻居不在 DB, 只影响本次运行 (重启文件仍会再种入)."""
+        for i, n in enumerate(self.neighbors):
+            if n.address == address:
+                del self.neighbors[i]
+                if self._db is not None:
+                    self._db.execute("DELETE FROM neighbors WHERE address=?",
+                                     (address,))
+                    self._db.commit()
+                return n
+        return None
+
+    def update_neighbor(self, address, new_address=None, shared_key=None,
+                        name=None):
+        """改邻居 (D011 B1): 按 address 定位, 改地址/密钥/名字 (None = 不改,
+        name="" = 清掉名字); 文件种入的邻居一经 admin 修改即入 DB (B8).
+        未知 → None; 新地址/新名字撞已有 → MailboxError (409)."""
+        n = next((x for x in self.neighbors if x.address == address), None)
+        if n is None:
+            return None
+        if new_address and new_address != address:
+            for x in self.neighbors:
+                if x is not n and x.address == new_address:
+                    raise MailboxError(f"邻居已存在: {new_address}")
+        if name:
+            for x in self.neighbors:
+                if x is not n and x.name == name:
+                    raise MailboxError(f"邻居名字已被占用: {name}")
+        old = n.address
+        if new_address:
+            n.address = new_address
+        if shared_key:
+            n.shared_key = shared_key
+        if name is not None:
+            n.name = name or None
+        self._save_neighbor(n, old_address=old)
         return n
 
     def add_whitelist(self, instruction):
@@ -754,8 +818,10 @@ class _Handler(_JsonHandler):
             remaining = deadline - time.monotonic()
             if remaining > 0 and send_forward(
                     n, letter, timeout=min(FORWARD_TIMEOUT, remaining)):
+                n.reachable = True
                 confirmed += 1
             else:
+                n.reachable = False
                 m.stage_forward(letter, n)
         return confirmed, len(targets)
 
@@ -999,17 +1065,21 @@ class _AdminHandler(_JsonHandler):
         if path == "/admin/neighbors":
             address = body.get("address")
             shared_key = body.get("shared_key")
+            name = body.get("name")
             if not isinstance(address, str) or not address:
                 return self._json(400, {"error": "address 须为非空字符串"})
             if not isinstance(shared_key, str) or not shared_key:
                 return self._json(400, {"error": "shared_key 须为非空字符串"})
+            if name is not None and not isinstance(name, str):
+                return self._json(400, {"error": "name 须为字符串"})
             m = self.server.mailbox
             with self.server.cond:
                 try:
-                    m.add_neighbor(address, shared_key)
+                    n = m.add_neighbor(address, shared_key, name or None)
                 except MailboxError as e:
                     return self._json(409, {"error": str(e)})
-            return self._json(200, {"address": address})
+            return self._json(200, {"address": n.address,
+                                    "name": n.name or ""})
         if path == "/admin/whitelist":
             ins = body.get("instruction")
             if not isinstance(ins, dict) or not isinstance(ins.get("tool"), str):
@@ -1046,6 +1116,15 @@ class _AdminHandler(_JsonHandler):
                      "expires_at": rk.expires_at, "revoked": rk.revoked}
                     for rk in relay.keys.values()]
             return self._json(200, {"relay_keys": keys})
+        if path == "/admin/neighbors":
+            with self.server.cond:
+                neighbors = [{"address": n.address, "name": n.name or "",
+                              "status": ("unknown" if n.reachable is None
+                                         else "ok" if n.reachable
+                                         else "unreachable")}
+                             for n in m.neighbors]
+            # 密钥不出管理面 (同 sessions 口径): 只回地址/名字/状态
+            return self._json(200, {"neighbors": neighbors})
         if path == "/admin/stats":
             with self.server.cond:
                 stats = {
@@ -1087,6 +1166,66 @@ class _AdminHandler(_JsonHandler):
             return self._json(404, {"error": f"未知 key: {key}"})
         self.server.relay.revoke_key(key)
         self._json(200, {"ok": True})
+
+    def _body_or_none(self):
+        """读请求体: 坏 JSON/非 dict → None (调用方打 400)."""
+        try:
+            body = self._body()
+        except json.JSONDecodeError:
+            return None
+        return body if isinstance(body, dict) else None
+
+    def do_DELETE(self):
+        """D011 B1: DELETE /admin/neighbors {address} — 内存与 DB 同删."""
+        if not self._auth():
+            return
+        body = self._body_or_none()
+        if body is None:
+            return self._json(400, {"error": "bad json"})
+        if urlparse(self.path).path == "/admin/neighbors":
+            address = body.get("address")
+            if not isinstance(address, str) or not address:
+                return self._json(400, {"error": "address 须为非空字符串"})
+            m = self.server.mailbox
+            with self.server.cond:
+                removed = m.remove_neighbor(address)
+            if removed is None:
+                return self._json(404, {"error": f"邻居不存在: {address}"})
+            return self._json(200, {"ok": True, "address": address})
+        self._json(404, {"error": "not found"})
+
+    def do_PATCH(self):
+        """D011 B1: PATCH /admin/neighbors {address, new_address?/shared_key?/name?}."""
+        if not self._auth():
+            return
+        body = self._body_or_none()
+        if body is None:
+            return self._json(400, {"error": "bad json"})
+        if urlparse(self.path).path != "/admin/neighbors":
+            return self._json(404, {"error": "not found"})
+        address = body.get("address")
+        if not isinstance(address, str) or not address:
+            return self._json(400, {"error": "address 须为非空字符串 (定位邻居)"})
+        new_address = body.get("new_address")
+        shared_key = body.get("shared_key")
+        name = body.get("name")
+        for field, value in (("new_address", new_address),
+                             ("shared_key", shared_key), ("name", name)):
+            if value is not None and not isinstance(value, str):
+                return self._json(400, {"error": f"{field} 须为字符串"})
+        if new_address is None and shared_key is None and name is None:
+            return self._json(400, {
+                "error": "缺可更新字段: new_address/shared_key/name 任选"})
+        m = self.server.mailbox
+        with self.server.cond:
+            try:
+                n = m.update_neighbor(address, new_address, shared_key, name)
+            except MailboxError as e:
+                return self._json(409, {"error": str(e)})
+        if n is None:
+            return self._json(404, {"error": f"邻居不存在: {address}"})
+        return self._json(200, {"ok": True, "address": n.address,
+                                "name": n.name or ""})
 
 
 def _term(*_):

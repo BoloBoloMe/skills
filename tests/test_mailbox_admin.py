@@ -12,6 +12,10 @@ TS-007 test_get_stats_counts: GET /admin/stats 计数齐备.
 TS-008 test_admin_get_requires_token: admin GET 无 token → 401.
 TS-009 test_relay_half_config_skipped: 只配上游地址不配 key → 不起中转, stderr 警告.
 
+ISSUE-04 (邻居与滞留可管可控):
+TC-018 test_neighbors_get_delete_patch: 邻居 GET (含状态, 不回显密钥) /
+       DELETE (不再向该邻居转发) / PATCH (改地址与名字) + DB 同步.
+
 共享接缝层 (serve 启动器/签名/HTTP helper) 在 tests/conftest.py.
 """
 from __future__ import annotations
@@ -20,7 +24,9 @@ import json
 import os
 import subprocess
 import sys
+import threading
 import time
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 from conftest import (ADMIN_TOKEN, SCRIPT, Serve, free_port, http_json,
                       make_letter, poll, post_letter, register_session)
@@ -195,3 +201,117 @@ def test_relay_half_config_skipped(tmp_path):
     finally:
         proc.terminate()
         proc.wait(timeout=5)
+
+
+# ---------------------------------------------------------------------------
+# ISSUE-04: 邻居与滞留可管可控 (AC-011..AC-013, AC-037)
+# ---------------------------------------------------------------------------
+
+class _EchoHandler(BaseHTTPRequestHandler):
+    """假邻居应答器: 记录收到的转发体并应答 ok (观察某邻居是否仍被转发)."""
+
+    def log_message(self, *args):
+        pass
+
+    def do_POST(self):
+        raw = self.rfile.read(int(self.headers.get("Content-Length", 0)))
+        self.server.received.append(json.loads(raw or b"{}"))
+        data = json.dumps({"ok": True}).encode()
+        self.send_response(200)
+        self.send_header("Content-Type", "application/json")
+        self.send_header("Content-Length", str(len(data)))
+        self.end_headers()
+        self.wfile.write(data)
+
+
+class EchoNeighbor:
+    """回环假邻居: 转发到达即记录 (AC-011 删除行的观察点)."""
+
+    def __init__(self):
+        self.received = []
+        self._server = ThreadingHTTPServer(("127.0.0.1", 0), _EchoHandler)
+        self._server.received = self.received
+        self.port = self._server.server_address[1]
+        threading.Thread(target=self._server.serve_forever, daemon=True).start()
+
+    def stop(self):
+        self._server.shutdown()
+        self._server.server_close()
+
+
+def test_neighbors_get_delete_patch(tmp_path):
+    """TC-018 (AC-011): 邻居 GET 列出 (地址/名字/状态, 不回显密钥) /
+    DELETE 后不再向该邻居转发 / PATCH 改地址与名字; 均入 DB, 重启仍在."""
+    workdir = tmp_path / "nbops"
+    srv = Serve(workdir)
+    try:
+        poster = register_session(srv, "nb-admin")
+        spy = EchoNeighbor()
+        try:
+            spy_addr = f"127.0.0.1:{spy.port}"
+            code, resp = _admin(srv, "POST", "/admin/neighbors",
+                                {"address": spy_addr, "shared_key": "k-spy"})
+            assert code == 200, resp
+            code, resp = _admin(srv, "POST", "/admin/neighbors",
+                                {"address": "192.0.2.30:38417",
+                                 "shared_key": "k-dead", "name": "yoga"})
+            assert code == 200, resp
+
+            # GET: 列出全部邻居 (地址/名字/状态), 密钥不回显
+            code, resp = _admin(srv, "GET", "/admin/neighbors")
+            assert code == 200, resp
+            entries = {e["address"]: e for e in resp["neighbors"]}
+            assert len(entries) == 2, resp
+            assert "shared_key" not in next(iter(entries.values())), \
+                "邻居列表不得回显密钥"
+            assert entries["192.0.2.30:38417"]["name"] == "yoga"
+            assert all(e["status"] == "unknown" for e in entries.values())
+
+            # DELETE: 该邻居不再被转发 (spy 只收到删除前那一封)
+            code, _ = post_letter(srv, "nb-admin", poster["signing_key"],
+                                  make_letter(letter_id="NB-1", to="remote-dev"))
+            assert code == 200
+            assert [r["letter"]["id"] for r in spy.received] == ["NB-1"]
+            code, resp = _admin(srv, "DELETE", "/admin/neighbors",
+                                {"address": spy_addr})
+            assert code == 200, resp
+            code, _ = post_letter(srv, "nb-admin", poster["signing_key"],
+                                  make_letter(letter_id="NB-2", to="remote-dev"))
+            assert code == 200
+            assert [r["letter"]["id"] for r in spy.received] == ["NB-1"], \
+                "删除后不应再向该邻居转发"
+            code, _ = _admin(srv, "DELETE", "/admin/neighbors",
+                             {"address": spy_addr})
+            assert code == 404, "重复删除应 404"
+
+            # PATCH: 换地址 + 改名; 死地址投过一封后状态变 unreachable
+            code, _ = post_letter(srv, "nb-admin", poster["signing_key"],
+                                  make_letter(letter_id="NB-3", to="remote-dev"))
+            assert code == 200
+            code, resp = _admin(srv, "PATCH", "/admin/neighbors",
+                                {"address": "192.0.2.30:38417",
+                                 "new_address": "192.0.2.31:38417",
+                                 "name": "yoga2"})
+            assert code == 200, resp
+            code, resp = _admin(srv, "GET", "/admin/neighbors")
+            assert code == 200
+            assert resp["neighbors"] == [{"address": "192.0.2.31:38417",
+                                           "name": "yoga2",
+                                           "status": "unreachable"}], resp
+            code, _ = _admin(srv, "PATCH", "/admin/neighbors",
+                             {"address": "192.0.2.99:38417", "name": "x"})
+            assert code == 404, "PATCH 未知邻居应 404"
+        finally:
+            spy.stop()
+    finally:
+        srv.stop()
+
+    # DB 同步: 重启后 PATCH 结果仍在, DELETE 的不复活 (状态回到 unknown)
+    srv2 = Serve(workdir)
+    try:
+        code, resp = _admin(srv2, "GET", "/admin/neighbors")
+        assert code == 200
+        assert resp["neighbors"] == [{"address": "192.0.2.31:38417",
+                                       "name": "yoga2", "status": "unknown"}]
+    finally:
+        srv2.stop()
