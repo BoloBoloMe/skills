@@ -760,6 +760,13 @@ class _Handler(_JsonHandler):
         letter_d = body.get("letter")
         if not isinstance(letter_d, dict):
             return self._bad(party, "缺字段: letter", rkey)
+        # 单信正文 1MB 上限 (AC-021/BR-006): 超限拒收 413,
+        # 错误消息同步钉死边界用途 — 信箱只传控制消息, 传文件走 git (D011 D3)
+        if len(str(letter_d.get("body", "")).encode("utf-8", "replace")) \
+                > MAX_BODY_BYTES:
+            return self._signed(413, party, {"ok": False, "error":
+                f"正文超 1MB 上限 ({MAX_BODY_BYTES} 字节), 拒收 "
+                "(信箱只传控制消息, 传文件走 git)"}, rkey)
         m = self.server.mailbox
         with self.server.cond:
             try:
