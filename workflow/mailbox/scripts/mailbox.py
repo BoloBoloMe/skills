@@ -1340,7 +1340,9 @@ def cmd_send(args):
     if not payload.get("ok"):
         print(f"致命: 投信失败: {payload.get('error', resp)}", file=sys.stderr)
         sys.exit(3)
-    print(f"已投递给 {letter['to'] or '(最近活跃 session)'}: {letter['id']}")
+    # 回执分行 (AC-006): 目标 session 与信件 id 各占一行
+    print(f"目标 session={letter['to'] or '(最近活跃 session)'}")
+    print(f"信件 id={letter['id']}")
 
 
 # ======================================================================
