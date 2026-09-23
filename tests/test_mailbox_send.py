@@ -2,7 +2,6 @@
 
 TC-011 test_send_receipt_two_lines: 回执分行打 目标 session= 与 信件 id=.
 TC-012 test_send_empty_to_echoes_resolved_target: 空 to 回打服务端解析出的目标.
-TC-012 test_send_empty_to_echoes_resolved_target: 空 to 回打服务端解析出的目标.
 TC-014 test_unknown_recipient_no_neighbors_fails: 无邻居投未知 session 报错退出.
 TC-015 test_send_returns_within_budget_with_dead_neighbor: 死邻居下 2s 预算返回.
 
@@ -72,3 +71,16 @@ def test_send_empty_to_echoes_resolved_target(serves, tmp_path):
     assert r.returncode == 0, f"send 失败: {r.stderr}"
     assert "目标 session=dev-recv" in r.stdout, \
         f"回执应回打服务端解析出的目标: {r.stdout!r}"
+
+
+def test_unknown_recipient_no_neighbors_fails(serves, tmp_path):
+    """TC-014 (AC-009): 无邻居时投未知 session, 投信报错且退出码非零
+    (回归锚: 404 拒收语义已有, 保持不回退)."""
+    srv = serves()
+    sender = register_session(srv, "dev-send")
+    r = send_cli(srv, "dev-send", sender, tmp_path / "cli",
+                 to="ghost-session", body="无处可去")
+    assert r.returncode != 0, \
+        f"无邻居投未知 session 应报错退出: {r.stdout!r}"
+    assert "ghost-session" in r.stderr, \
+        f"报错应含未知 session 信息: {r.stderr!r}"
