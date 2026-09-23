@@ -114,6 +114,21 @@ def test_fetch_reports_service_down_immediately(serves, tmp_path):
             proc.wait()
 
 
+def test_fetch_timeout_exits_and_reports(serves, tmp_path):
+    """ISSUE-05 TS-003 (TC-026/AC-016): --timeout <秒> 无信到时
+    退出码 0 并报无信, 不再无限阻塞."""
+    srv = serves()
+    creds = register_session(srv, "tdev")
+    env = cli_env(srv.port, "tdev", creds["signing_key"],
+                  creds["response_key"], tmp_path / "cli")
+    start = time.time()
+    r = subprocess.run([sys.executable, str(SCRIPT), "--timeout", "2"],
+                       env=env, capture_output=True, text=True, timeout=30)
+    assert r.returncode == 0, "到时无信应退出码 0"
+    assert "无信" in r.stdout, f"到时应报无信, 实际输出:\n{r.stdout}"
+    assert time.time() - start < 15, "--timeout 到时须真的退出而非长阻塞"
+
+
 def test_fetch_cli(serves, tmp_path):
     """TS-004: 缺省调用阻塞等信, 信到后 stdout 输出正文+处理指引+继续调用提示."""
     srv = serves()

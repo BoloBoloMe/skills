@@ -1560,10 +1560,13 @@ def _require_credentials():
     return creds["server"].rstrip("/"), creds["session"], creds["signing_key"]
 
 
-def cmd_fetch():
+def cmd_fetch(timeout=None, count=None):
+    """timeout (AC-016): 到时无信退出码 0 并报无信; 缺省无限等待.
+    count: 取满 n 封即退 (末封 pending_ack 留 cli-state, 下次调用回执不丢)."""
     url, sid, skey = _require_credentials()
     state = load_cli_state()
     backoff = 0.5
+    deadline = time.monotonic() + timeout if timeout is not None else None
     # D003 回执自动化: 先自动回执上一条, LLM 无感
     pending = state.pop("pending_ack", None)
     if pending:
@@ -1590,13 +1593,23 @@ def cmd_fetch():
                 print("信箱服务未启动/不可达, 退避重试中",
                       file=sys.stderr, flush=True)
                 reported_down = True
-            time.sleep(backoff)
+            if deadline is not None:
+                remaining = deadline - time.monotonic()
+                if remaining <= 0:
+                    print(f"无信 ({timeout:g} 秒到时)", flush=True)
+                    return
+                time.sleep(min(backoff, remaining))
+            else:
+                time.sleep(backoff)
             backoff = min(backoff * 2, 5.0)
             continue
         backoff = 0.5
         payload = resp.get("payload") or {}
         letter = payload.get("letter")
         if letter is None:
+            if deadline is not None and time.monotonic() >= deadline:
+                print(f"无信 ({timeout:g} 秒到时)", flush=True)
+                return
             continue  # hold 超时空载荷, 重新长轮询
         seen = state.setdefault("seen_ids", [])
         if letter.get("id") in seen:
@@ -2021,6 +2034,11 @@ def _migrate_legacy_paths():
 def main():
     _migrate_legacy_paths()
     parser = _Parser(prog="mailbox.py", description="mailbox 信箱")
+    # 取信参数挂在顶层: 缺省动作 (无子命令) = 取信 (D001)
+    parser.add_argument("--timeout", type=float, default=None,
+                        help="取信到时无信退出码 0 并报无信 (秒)")
+    parser.add_argument("--count", type=int, default=None,
+                        help="取满 n 封即退 (缺省取一封即回)")
     sub = parser.add_subparsers(dest="cmd")
     p_serve = sub.add_parser("serve", help="前台启动信箱服务")
     p_serve.add_argument("--port", type=int, default=DEFAULT_PORT,
@@ -2069,7 +2087,7 @@ def main():
     elif args.cmd == "revoke-session":
         cmd_revoke_session(args.session_id)
     else:
-        cmd_fetch()  # 缺省动作 = 取信 (D001)
+        cmd_fetch(args.timeout, args.count)  # 缺省动作 = 取信 (D001)
 
 
 if __name__ == "__main__":
