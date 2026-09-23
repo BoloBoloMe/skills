@@ -257,6 +257,17 @@ class Neighbor:
         self.reachable = None
 
 
+class PendingForward:
+    """滞留转发记录 (D011 B4): 信 + 目标邻居 + 重试账目, 供滞留管理查询."""
+
+    def __init__(self, letter, neighbor, staged_at, last_error="", retries=0):
+        self.letter = letter
+        self.neighbor = neighbor
+        self.staged_at = staged_at    # 墙钟 epoch; 年龄 = now - staged_at (秒)
+        self.last_error = last_error  # 最近一次转发失败原因 (人话)
+        self.retries = retries        # 失败尝试次数 (入暂存即 1)
+
+
 class Letter:
     """信件 (D008 全内存)."""
 
@@ -303,7 +314,7 @@ class Mailbox:
         self.whitelist = set()  # exec 指令集规范形 (D006 内容级防线)
         self.concurrent_polls = {}  # session_id -> 在等 poll 数 (D016)
         self.neighbors = []   # list[Neighbor], serve 启动时从邻居表加载
-        self.pending_forwards = []  # list[(Letter, Neighbor)], 邻居不可达内存暂存
+        self.pending_forwards = []  # list[PendingForward], 邻居不可达内存暂存 (B4)
         self._pending_lock = threading.Lock()  # 暂存增删与请求处理线程并发
         self._db = None
         if db_path is not None:
@@ -539,19 +550,55 @@ class Mailbox:
             return None  # 幂等: 重复 id 直接 ok
         return self._route(letter, source=src)
 
-    def stage_forward(self, letter, neighbor):
-        """邻居不可达 → 内存暂存 (NG-009: 不持久化, 重启即清)."""
+    def stage_forward(self, letter, neighbor, error=""):
+        """邻居不可达 → 内存暂存 (NG-009: 不持久化, 重启即清), 记录最后错误
+        与尝试次数 (D011 B4), 供 GET /admin/pending 查询."""
         with self._pending_lock:
-            self.pending_forwards.append((letter, neighbor))
+            self.pending_forwards.append(
+                PendingForward(letter, neighbor, self._now(), error,
+                               retries=1 if error else 0))
 
     def retry_pending(self):
         """重试暂存信: 发出则移除, 仍不可达则留待下轮 (邻居端 seen-id 兜底
         重复). 邻居转发状态机: 待转发 --可达--> 已发出, --重试定时器--> 待转发."""
         with self._pending_lock:
             pending, self.pending_forwards = self.pending_forwards, []
-        for letter, n in pending:
-            if not send_forward(n, letter):
-                self.stage_forward(letter, n)
+        self.retry_entries(pending)
+
+    def _restage(self, entry):
+        """重试仍失败回列; 同键 (信件 id + 邻居地址) 已在列则不重复入列
+        (admin 立即重试与后台重试线程并发时的竞态去重)."""
+        with self._pending_lock:
+            for e in self.pending_forwards:
+                if e.letter.id == entry.letter.id \
+                        and e.neighbor.address == entry.neighbor.address:
+                    return
+            self.pending_forwards.append(entry)
+
+    def retry_entries(self, entries):
+        """对一组滞留条目立即补投 (B4): 发出即移除, 失败则账目更新 (次数 +1 /
+        最后错误) 后回列; 邻居端 seen-id 兒底重复投递."""
+        sent = 0
+        for entry in entries:
+            ok, error = forward_attempt(entry.neighbor, entry.letter)
+            entry.neighbor.reachable = ok
+            if ok:
+                sent += 1
+                continue
+            entry.retries += 1
+            entry.last_error = error
+            self._restage(entry)
+        return sent
+
+    def pending_snapshot(self):
+        """滞留信快照 (B4): id/to/邻居/最后错误/重试次数/年龄 (秒)."""
+        with self._pending_lock:
+            now = self._now()
+            return [{"id": e.letter.id, "to": e.letter.to_session,
+                     "neighbor": e.neighbor.address,
+                     "last_error": e.last_error, "retries": e.retries,
+                     "age": round(now - e.staged_at, 3)}
+                    for e in self.pending_forwards]
 
     @staticmethod
     def _pull_window_hit(ins, poster_session_id):
@@ -638,16 +685,25 @@ class Mailbox:
         return letter
 
 
-def send_forward(neighbor, letter, timeout=FORWARD_TIMEOUT):
-    """向邻居投递 (D007). 不可达/超时/被拒一律 False, 由调用方暂存重试;
+def forward_attempt(neighbor, letter, timeout=FORWARD_TIMEOUT):
+    """向邻居投递一次, 返回 (是否成功, 人话错误); 失败原因供滞留记录与关键
+    事件日志 (D011 B4/F1). 不可达/超时/被拒一律 False, 由调用方暂存重试;
     timeout 上限避免一个挂起邻居阻塞 post 响应."""
     try:
         resp = http_post(f"http://{neighbor.address}/mailbox/forward",
                          {"neighbor_key": neighbor.shared_key,
                           "letter": letter.to_dict()}, timeout=timeout)
-    except (urllib.error.URLError, OSError):
-        return False
-    return bool(resp.get("ok"))
+    except urllib.error.HTTPError as e:
+        return False, f"HTTP {e.code}"
+    except (urllib.error.URLError, OSError) as e:
+        return False, str(getattr(e, "reason", e))
+    ok = bool(resp.get("ok"))
+    return ok, "" if ok else "邻居应答 ok=false"
+
+
+def send_forward(neighbor, letter, timeout=FORWARD_TIMEOUT):
+    """向邻居投递 (D007); 兼容壳 = forward_attempt 的布尔视图."""
+    return forward_attempt(neighbor, letter, timeout)[0]
 
 
 def bind_first_free(try_bind, start_port):
@@ -816,13 +872,14 @@ class _Handler(_JsonHandler):
         deadline = time.monotonic() + self.server.flood_budget_seconds
         for n in targets:
             remaining = deadline - time.monotonic()
-            if remaining > 0 and send_forward(
-                    n, letter, timeout=min(FORWARD_TIMEOUT, remaining)):
-                n.reachable = True
+            ok, error = (forward_attempt(
+                n, letter, timeout=min(FORWARD_TIMEOUT, remaining))
+                if remaining > 0 else (False, "洪泛预算耗尽"))
+            n.reachable = ok
+            if ok:
                 confirmed += 1
             else:
-                n.reachable = False
-                m.stage_forward(letter, n)
+                m.stage_forward(letter, n, error)
         return confirmed, len(targets)
 
     def _handle_post(self, body, endpoint):
@@ -1125,6 +1182,8 @@ class _AdminHandler(_JsonHandler):
                              for n in m.neighbors]
             # 密钥不出管理面 (同 sessions 口径): 只回地址/名字/状态
             return self._json(200, {"neighbors": neighbors})
+        if path == "/admin/pending":
+            return self._json(200, {"pending": m.pending_snapshot()})
         if path == "/admin/stats":
             with self.server.cond:
                 stats = {

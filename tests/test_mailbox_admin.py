@@ -15,6 +15,9 @@ TS-009 test_relay_half_config_skipped: 只配上游地址不配 key → 不起�
 ISSUE-04 (邻居与滞留可管可控):
 TC-018 test_neighbors_get_delete_patch: 邻居 GET (含状态, 不回显密钥) /
        DELETE (不再向该邻居转发) / PATCH (改地址与名字) + DB 同步.
+TC-019 test_neighbor_upsert_by_name: 同名再登记覆盖地址不新增条目.
+TC-020 test_pending_list_fields: GET /admin/pending 列出 id/to/邻居/
+       最后错误/重试次数/年龄.
 
 共享接缝层 (serve 启动器/签名/HTTP helper) 在 tests/conftest.py.
 """
@@ -355,3 +358,32 @@ def test_neighbor_upsert_by_name(tmp_path):
             "重启后应以 DB 的新地址为准, 文件旧地址不再种入"
     finally:
         srv2.stop()
+
+
+def test_pending_list_fields(serves):
+    """TC-020 (AC-012 列出行): GET /admin/pending 列出滞留信的
+    id/to/邻居/最后错误/重试次数/年龄."""
+    # 重试线程拉长问隔, 排除后台补投干扰账目读数
+    srv = serves(extra_env={"MAILBOX_RETRY_SECONDS": "30"})
+    poster = register_session(srv, "pend-1")
+    dead = f"127.0.0.1:{free_port()}"  # 不可达邻居 (连接立即被拒)
+    code, _ = _admin(srv, "POST", "/admin/neighbors",
+                     {"address": dead, "shared_key": "k-dead"})
+    assert code == 200
+
+    code, resp = post_letter(srv, "pend-1", poster["signing_key"],
+                             make_letter(letter_id="PND-1", to="remote-dev"))
+    assert code == 200
+    assert resp["payload"]["route"] == "staged_pending"
+
+    code, resp = _admin(srv, "GET", "/admin/pending")
+    assert code == 200, resp
+    entries = [e for e in resp["pending"] if e["id"] == "PND-1"]
+    assert len(entries) == 1, resp
+    e = entries[0]
+    assert e["to"] == "remote-dev"
+    assert e["neighbor"] == dead
+    assert isinstance(e["last_error"], str) and e["last_error"], \
+        f"最后错误应非空人话: {e}"
+    assert e["retries"] >= 1
+    assert 0 <= e["age"] <= 60, f"年龄应为秒数: {e}"
