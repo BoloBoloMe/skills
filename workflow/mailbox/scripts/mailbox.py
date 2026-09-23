@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """mailbox: 独立信箱 skill (自 use-sandbox-worktree 拆出, 单文件二合一).
 
-纯标准库单文件. 子命令: serve (前台启动信箱服务) / send / config / status;
-缺省动作 = 取信 (阻塞长轮询). 信箱与 LLM 中转同住本文件/单进程/单 SQLite,
+纯标准库单文件. 子命令: serve (前台启动信箱服务) / send / config / status /
+机器子命令 discover / register-session / revoke-session (stdout JSON, 失败
+exit 3, 供 swt 等外部脚本消费, D002); 缺省动作 = 取信 (阻塞长轮询). 信箱与 LLM 中转同住本文件/单进程/单 SQLite,
 不拆 (拆开是大手术, 见 docs/changes/mailbox-standalone/DECISIONS.md D001).
 
 协议与数据模型: docs/changes/swt-mailbox-mesh/TECHNICAL.md.
@@ -29,6 +30,7 @@ import argparse
 import getpass
 import hashlib
 import hmac
+import http.client
 import json
 import os
 import signal
@@ -1399,6 +1401,99 @@ def cmd_status():
     print(f"response_key: {_mask_secret(data.get('response_key'))}")
 
 
+# ======================================================================
+# 机器子命令 (mailbox-standalone ISSUE-02, D002): swt 等外部脚本的唯一
+# 依赖面. 契约: JSON 只走 stdout, 人话走 stderr, 失败 exit 3;
+# 内部 HTTP 超时 5s; 调用方零配置 (路径经 __file__ 相对定位).
+# ======================================================================
+
+def _identity_probe(port, timeout=0.5):
+    """无认证 GET /__identity__ 验活: 应答 service == mailbox 才算本机信箱.
+    探到非信箱 HTTP 服务 (如退役 swt-base-server) 按无应答处理."""
+    try:
+        with urllib.request.urlopen(
+                f"http://127.0.0.1:{port}/__identity__",
+                timeout=timeout) as response:
+            payload = json.loads(response.read() or b"{}")
+    except (urllib.error.URLError, OSError, http.client.HTTPException,
+            json.JSONDecodeError):
+        return False
+    return isinstance(payload, dict) and payload.get("service") == SERVICE_NAME
+
+
+def _discover_local_mailbox(allow_scan=True):
+    """探测本机信箱 (语义 = swt 时代 probe_mailbox): 状态文件验活优先,
+    区间扫描兜底 (allow_scan=False 时跳过, 供需要 admin 凭证的子命令用 —
+    扫描拿不到凭证, 只白白耗时). 返回 {"port", "admin_port", "admin_token"}
+    (扫描命中时 admin 字段为 None: 失活状态文件里的 admin 字段不可信弃用);
+    完全未发现返回 None."""
+    state = None
+    try:
+        state = json.loads(state_path().read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        state = None
+    if isinstance(state, dict):
+        port = state.get("port")
+        if isinstance(port, int) and _identity_probe(port):
+            return {"port": port, "admin_port": state.get("admin_port"),
+                    "admin_token": state.get("admin_token")}
+    if not allow_scan:
+        return None
+    for port in range(DEFAULT_PORT, DEFAULT_PORT + PORT_SPAN):
+        if _identity_probe(port):
+            return {"port": port, "admin_port": None, "admin_token": None}
+    return None
+
+
+class _MachineCommandError(Exception):
+    """机器子命令失败 (携带人话, cmd_* 捕获后打 stderr 并 exit 3)."""
+
+
+def _machine_admin_post(found, path, body):
+    """机器子命令内部的 admin 口 POST (仅状态文件命中的信箱才有 admin 凭证).
+    拒绝/不可达/应答畸形一律 _MachineCommandError → exit 3; 超时 5s (D002)."""
+    admin_port, admin_token = found.get("admin_port"), found.get("admin_token")
+    if not admin_port or not admin_token:
+        raise _MachineCommandError(
+            "本机信箱 admin 凭证不可得 (状态文件未命中或字段缺失),"
+            " 无法经 admin 口操作")
+    request = urllib.request.Request(
+        f"http://127.0.0.1:{admin_port}{path}",
+        data=json.dumps(body).encode(),
+        headers={"Content-Type": "application/json",
+                 "X-Admin-Token": admin_token},
+        method="POST")
+    try:
+        with urllib.request.urlopen(request, timeout=5.0) as response:
+            payload = json.loads(response.read() or b"{}")
+    except urllib.error.HTTPError as exc:
+        try:
+            detail = json.loads(exc.read() or b"{}").get("error", "")
+        except (json.JSONDecodeError, OSError):
+            detail = ""
+        raise _MachineCommandError(
+            f"admin 拒绝 (HTTP {exc.code}): {detail}") from exc
+    except (urllib.error.URLError, OSError, json.JSONDecodeError) as exc:
+        raise _MachineCommandError(f"admin 口不可达/应答畸形: {exc}") from exc
+    if not isinstance(payload, dict):
+        raise _MachineCommandError(f"admin 应答畸形: {payload!r}")
+    return payload
+
+
+def _machine_exit(message):
+    print(f"致命: {message}", file=sys.stderr)
+    sys.exit(3)
+
+
+def cmd_discover():
+    """discover: 探测本机信箱, stdout JSON {port, admin_port, admin_token};
+    未发现 exit 3 (状态文件验活优先, 区间扫描兜底)."""
+    found = _discover_local_mailbox()
+    if found is None:
+        _machine_exit("本机信箱未发现 (状态文件缺席/失活且区间 __identity__ 扫描无应答)")
+    print(json.dumps(found, ensure_ascii=False))
+
+
 def neighbors_path():
     return Path(os.environ.get("MAILBOX_NEIGHBORS") or
                 Path.home() / ".agents/mailbox/neighbors.json")
@@ -1553,6 +1648,8 @@ def main():
         "field", choices=CONFIG_FIELDS_PLAIN + CONFIG_FIELDS_SECRET)
     p_config_set.add_argument("value", nargs="?")
     sub.add_parser("status", help="查看配置状态 (密钥脱敏)")
+    sub.add_parser("discover",
+                   help="探测本机信箱 (机器子命令, stdout JSON/exit 3)")
     p_serve.add_argument("--neighbors", default=None,
                          help="邻居表 JSON 文件 (缺省 ~/.agents/mailbox/neighbors.json)")
     p_serve.add_argument("--relay-port", type=int, default=DEFAULT_RELAY_PORT,
@@ -1570,6 +1667,8 @@ def main():
         cmd_config_set(args)
     elif args.cmd == "status":
         cmd_status()
+    elif args.cmd == "discover":
+        cmd_discover()
     else:
         cmd_fetch()  # 缺省动作 = 取信 (D001)
 
