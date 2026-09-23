@@ -1697,6 +1697,22 @@ def print_letter(letter):
     print("\n".join(lines), flush=True)
 
 
+# D014 呈现降噪: 回执信紧凑单行措辞 (裸脚本取信, codex/kimi/终端)
+RECEIPT_WORDS = {"delivered": "已送达", "read": "已读", "failed": "失败"}
+
+
+def parse_receipt_body(letter):
+    """回执信 body 解析: JSON {"receipt","letter_id"}; 残形回退原信 id."""
+    try:
+        d = json.loads(letter.get("body", ""))
+    except (json.JSONDecodeError, TypeError):
+        d = {}
+    if not isinstance(d, dict):
+        d = {}
+    return (str(d.get("receipt", "")),
+            str(d.get("letter_id") or letter.get("id", "")))
+
+
 def _require_credentials():
     """凭证探测 (load_credentials) + 缺凭证致命退出; 返回 (url, session, signing_key)."""
     creds = load_credentials()
@@ -1793,6 +1809,18 @@ def cmd_fetch(timeout=None, count=None):
             continue
         seen.append(letter.get("id", ""))
         del seen[:-100]  # 只记最近 100 条已见 id
+        if is_receipt_from(letter.get("from", "")):
+            # D014 呈现降噪: 回执信自动 ack 不呈现给 LLM, 紧凑单行,
+            # 不占 --count 预算, 不走处理指引
+            kind, origin_id = parse_receipt_body(letter)
+            try:
+                ack_letter(url, sid, skey, letter.get("id", ""),
+                           payload.get("lease_token", ""))
+            except (urllib.error.HTTPError, OSError):
+                pass  # 回执失败则租约到期重投, 下轮循环保底
+            print(f"回执: 信件 {origin_id} {RECEIPT_WORDS.get(kind, kind)}",
+                  flush=True)
+            continue
         container = pull_window_container(letter)
         if container is not None:
             # D014 拉窗门禁: skipped 信立即回执, 不呈现给 LLM, 继续 poll

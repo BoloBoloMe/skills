@@ -15,6 +15,8 @@ docs/changes/mailbox-standalone/TECHNICAL.md 信件 schema 节.
 from __future__ import annotations
 
 import json
+import subprocess
+import sys
 import time
 
 import pytest
@@ -264,3 +266,35 @@ def test_failed_receipt_dedup(tmp_path):
     finally:
         for srv in created:
             srv.stop()
+
+
+def test_fetch_receipt_compact_line(serves, tmp_path):
+    """TS-006/TC-035 (AC-018 呈现侧/D014): 取信脚本识别回执信 — 自动 ack,
+    打紧凑单行 (回执: 信件 <id> 已送达/已读), 不呈现给 LLM (无处理指引
+    与来信头), 不占 --count 预算."""
+    from test_mailbox_cli import cli_env
+
+    srv = serves()
+    sender = register_session(srv, "sender1")
+    rcpt = register_session(srv, "rcpt2")
+    key = sender["signing_key"]
+    code, _ = post_letter(srv, "sender1", key,
+                          make_letter(letter_id="L1", to="rcpt2",
+                                      body="给另一会话的信", from_="sender1"))
+    assert code == 200
+    code, resp = poll(srv, "rcpt2", rcpt["signing_key"])
+    assert code == 200
+    token = resp["payload"]["lease_token"]
+    code, _ = ack_letter(srv, "rcpt2", rcpt["signing_key"], "L1", token)
+    assert code == 200  # 送达/已读两封回执此时都应在 sender1 队列
+
+    env = cli_env(srv.port, "sender1", key, sender["response_key"],
+                  tmp_path / "cli")
+    r = subprocess.run([sys.executable, str(SCRIPT), "--timeout", "1"],
+                       env=env, capture_output=True, text=True, timeout=15)
+    assert r.returncode == 0
+    assert "回执: 信件 L1 已送达" in r.stdout
+    assert "回执: 信件 L1 已读" in r.stdout
+    assert "处理指引" not in r.stdout, "回执不应呈现处理指引 (D014 降噪)"
+    assert "来信" not in r.stdout, "回执不应按普通信呈现"
+    assert "类型: notify" not in r.stdout
