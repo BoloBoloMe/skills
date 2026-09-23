@@ -2171,21 +2171,26 @@ def container_default_name(branch: str) -> str:
     return f"swt-{clean}"
 
 
-# ISSUE-08 birth 信箱接线 (D005/D013): 探测本机 swt-mailbox → admin 注册容器
-# session (<容器名>-<8hex>, D005) → 新 env 变量烘入 → runtime 登记. terminate 时
-# 经 revoke_container_session 注销 session (AC-008).
+# birth 信箱接线 (D005/D013): 探测本机信箱 → 注册容器 session (<容器名>-<8hex>,
+# D005) → 新 env 变量烘入 → runtime 登记. terminate 时注销 session (AC-008).
+# mailbox-standalone ISSUE-02 (D002): 接线改经 mailbox skill 机器子命令
+# (discover / register-session / revoke-session, stdout JSON / exit 3),
+# swt 不再自带信箱客户端. 脚本定位: 仓库 workflow/<skill>/scripts/ 与部署
+# ~/.agents/skills/<skill>/scripts/ 同构, parents[2] 相对定位零配置.
 # 信箱是增强不是命脉: 任一步失败只告警跳过, 不阻断 birth.
-MAILBOX_STATE_PATH = Path.home() / ".local/state/swt-mailbox/state.json"
-MAILBOX_PORT_RANGE = range(38417, 38427)  # 信箱端口区间 38417-38426, 与服务端 PORT_SPAN 一致
-MAILBOX_SERVICE = "swt-mailbox"           # __identity__ 应答名
-MAILBOX_ENV_URL = "SWT_MAILBOX_URL"
+MAILBOX_SCRIPT = Path(__file__).resolve().parents[2] / "mailbox" / "scripts" / "mailbox.py"
+MAILBOX_SUBPROCESS_TIMEOUT = 30.0  # 子命令内部探测+admin 上限 (扫描 5s + HTTP 5s) 余量
+MAILBOX_STATE_PATH = Path.home() / ".local/state/swt-mailbox/state.json"  # 过渡: revoke 旧客户端用, TS-004 删
+MAILBOX_PORT_RANGE = range(38417, 38427)  # 过渡: 同上
+MAILBOX_SERVICE = "swt-mailbox"           # 过渡: 同上
+MAILBOX_ENV_URL = "SWT_MAILBOX_URL"           # 容器契约 env 名不可改 (BR-005)
 MAILBOX_ENV_SESSION = "SWT_SESSION_ID"
 MAILBOX_ENV_SIGNING_KEY = "SWT_SESSION_SIGNING_KEY"
 MAILBOX_ENV_RESPONSE_KEY = "SWT_SESSION_RESPONSE_KEY"
 
 
 class MailboxWireError(Exception):
-    """session 注册/注销失败; wire/revoke 捕获后降级为告警, 不阻断 birth/terminate."""
+    """机器子命令异常退出/应答畸形; wire/revoke 捕获后降级为告警, 不阻断 birth/terminate."""
 
 
 def identity_probe(port: int, timeout: float = 0.5) -> bool:
@@ -2251,34 +2256,53 @@ def _admin_post(admin_port: int, admin_token: str, path: str,
     return payload
 
 
-def register_container_session(admin_port: int, admin_token: str,
-                               session_id: str) -> dict[str, str]:
-    """D005: 经 admin 口注册容器 session, 密钥对由信箱生成发放. 失败抛 MailboxWireError."""
-    payload = _admin_post(admin_port, admin_token, "/admin/sessions",
-                          {"id": session_id})
-    creds = {field: payload.get(field)
-             for field in ("id", "signing_key", "response_key")}
-    if any(not isinstance(value, str) or not value for value in creds.values()):
-        raise MailboxWireError(f"admin 应答缺注册三元组: {payload!r}")
-    return creds
+def _mailbox_machine(script: Path, *args: str) -> tuple[dict[str, Any] | None, str]:
+    """调 mailbox 机器子命令 (D002 契约): exit 0 → (stdout JSON dict, '');
+    exit 3 (契约失败: 未发现/已存在/未知 session) → (None, stderr 人话);
+    其他退出码/超时/应答畸形 → MailboxWireError. 子进程继承本进程 env
+    (MAILBOX_* 测试隔离 env 因此可穿透, 生产零配置)."""
+    try:
+        proc = subprocess.run(
+            [sys.executable, str(script), *args],
+            capture_output=True, text=True,
+            timeout=MAILBOX_SUBPROCESS_TIMEOUT)
+    except subprocess.TimeoutExpired as exc:
+        raise MailboxWireError(f"mailbox {args[0]} 子命令超时") from exc
+    if proc.returncode == 3:
+        return None, proc.stderr.strip()
+    if proc.returncode != 0:
+        raise MailboxWireError(
+            f"mailbox {args[0]} 异常退出 (exit {proc.returncode}):"
+            f" {proc.stderr.strip()}")
+    try:
+        payload = json.loads(proc.stdout)
+    except json.JSONDecodeError as exc:
+        raise MailboxWireError(
+            f"mailbox {args[0]} 应答非 JSON: {proc.stdout!r}") from exc
+    if not isinstance(payload, dict):
+        raise MailboxWireError(f"mailbox {args[0]} 应答畸形: {payload!r}")
+    return payload, ""
 
 
 def wire_container_mailbox(
     env: dict[str, str],
     container_name: str,
     *,
-    state_path: Path = MAILBOX_STATE_PATH,
-    ports=MAILBOX_PORT_RANGE,
+    script: Path = MAILBOX_SCRIPT,
 ) -> dict[str, Any]:
-    """ISSUE-08 birth 信箱接线: 探测 → admin 注册 session → 注入 env, 返回待登记的 mailbox 段.
+    """ISSUE-02 (D002): birth 信箱接线经机器子命令: discover →
+    register-session → 注入 env, 返回待登记的 mailbox 段.
     任何一步失败: stderr 告警 + status skipped, 不阻断 birth (信箱是增强不是命脉).
     完整密钥只进 env (podman -e + ssh 面 ~/.ssh/environment 双通道既有机制),
     登记只留 session id 与前 8 位签名密钥前缀, 不落 runtime 明文."""
-    found = probe_mailbox(state_path, ports)
+    try:
+        found, discover_err = _mailbox_machine(script, "discover")
+    except MailboxWireError as exc:
+        found, discover_err = None, str(exc)
     if found is None:
         record: dict[str, Any] = {
             "status": "skipped", "container": container_name,
-            "reason": "本机信箱未发现 (状态文件缺席且区间 __identity__ 扫描无应答)",
+            "reason": f"本机信箱未发现 ({discover_err or 'mailbox discover exit 3'})",
         }
     elif not found.get("admin_port") or not found.get("admin_token"):
         record = {
@@ -2289,8 +2313,15 @@ def wire_container_mailbox(
         # D005: 容器 session id = <容器名>-<8hex随机> (一次性, 防同名容器错投)
         session_id = f"{container_name}-{secrets.token_hex(4)}"
         try:
-            creds = register_container_session(
-                int(found["admin_port"]), str(found["admin_token"]), session_id)
+            creds, register_err = _mailbox_machine(
+                script, "register-session", session_id)
+            if creds is None:
+                raise MailboxWireError(
+                    f"register-session 失败: {register_err or 'exit 3'}")
+            missing = [field for field in ("id", "signing_key", "response_key")
+                       if not isinstance(creds.get(field), str) or not creds[field]]
+            if missing:
+                raise MailboxWireError(f"register-session 应答缺字段: {missing}")
         except MailboxWireError as exc:
             record = {"status": "skipped", "container": container_name,
                       "reason": f"注册容器 session 失败: {exc}"}
