@@ -2,7 +2,7 @@
 - `../EXECUTION.md`
 
 ## 执行
-- [ ] 已实现
+- [x] 已实现
 
 ## 要构建什么
 mailbox.py 新增机器子命令 `discover` / `register-session <id>` / `revoke-session <id>` (stdout JSON, exit 3 失败, 语义 = 现 swt.py 的 probe+admin 客户端); swt.py 删除自带信箱客户端实现 (MAILBOX_STATE_PATH/probe_mailbox/identity_probe/_admin_post/register_container_session/revoke_container_session 等 ~150 行), birth/terminate 改为 subprocess 调用上述子命令, 脚本路径经 `Path(__file__).resolve().parents[2] / "mailbox/scripts/mailbox.py"` 定位. 容器接线行为对外不变 (env 注入照旧). 适合 AFK: 契约已在 TECHNICAL 定义.
