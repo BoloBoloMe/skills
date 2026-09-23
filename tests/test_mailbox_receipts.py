@@ -3,7 +3,8 @@
 TS-001 test_delivered_receipt / TS-002 test_read_receipt /
 TS-003 test_ttl_expiry_failed_receipt / TS-004 test_failed_receipt_dedup /
 TS-005 test_receipt_no_recursion / TS-006 test_fetch_receipt_compact_line /
-TS-007 test_pending_drop_utc_log / TS-008 test_receipt_wording_in_docs.
+TS-007 test_pending_drop_utc_log / TS-008 test_receipt_wording_in_docs /
+评审修复 test_receipt_namespace_registration_guard (mailbox@ 命名空间注册设防).
 
 接缝: 双 Mailbox 实例互联 (真实子进程 serve, 回环 HTTP, 邻居表互配) +
 时间注入 (MAILBOX_TTL_SECONDS / MAILBOX_RETRY_SECONDS, 先例
@@ -300,6 +301,30 @@ def test_fetch_receipt_compact_line(serves, tmp_path):
     assert "处理指引" not in r.stdout, "回执不应呈现处理指引 (D014 降噪)"
     assert "来信" not in r.stdout, "回执不应按普通信呈现"
     assert "类型: notify" not in r.stdout
+
+
+# ISSUE-06 评审修复 (D013): mailbox@ 保留命名空间注册侧设防 — admin 口拒绝
+# mailbox@ 前缀 session id, 正常注册与回执流转不受影响.
+def test_receipt_namespace_registration_guard(dual_serves):
+    srv_a, srv_b = dual_serves()
+    # admin 口注册 mailbox@ 前缀 → 拒绝 (403 + 人话指明保留前缀)
+    code, resp = _admin(srv_a, "POST", "/admin/sessions", {"id": "mailbox@x"})
+    assert code == 403, resp
+    assert "mailbox@" in resp["error"]
+    # 正常注册不受影响 (双端)
+    creds_a = register_session(srv_a, "a-host")
+    creds_b = register_session(srv_b, "b-dev")
+    # 回执流转不受影响: a → b 寄信, b 取到原信, a 收到 .delivered 回执
+    code, _ = post_letter(srv_a, "a-host", creds_a["signing_key"],
+                          make_letter(letter_id="G-1", to="b-dev",
+                                      body="设防后回执仍通", from_="a-host"))
+    assert code == 200
+    code, resp = poll(srv_b, "b-dev", creds_b["signing_key"])
+    assert code == 200
+    assert resp["payload"]["letter"]["id"] == "G-1"
+    receipt, _ = poll_until(srv_a, "a-host", creds_a["signing_key"],
+                            "G-1.delivered")
+    assert receipt is not None, "设防后发件人未收到送达回执"
 
 
 def test_pending_drop_utc_log(tmp_path):

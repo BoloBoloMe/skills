@@ -395,6 +395,12 @@ class Mailbox:
                                                 bool(row[3]), row[4], row[5])
 
     def add_session(self, session_id, signing_key=None, response_key=None):
+        if session_id.startswith(RECEIPT_FROM_PREFIX):
+            # 回执保留命名空间 (D013): 注册 mailbox@ 前缀会使正常信被取信侧
+            # 当回执静默 ack 不呈现, 注册侧直接拒绝
+            raise MailboxError(
+                f"session id 不得用保留前缀 {RECEIPT_FROM_PREFIX!r}"
+                " (回执信发件人身份, D013)")
         s = Session(session_id,
                     signing_key or uuid.uuid4().hex,
                     response_key or uuid.uuid4().hex,
@@ -642,19 +648,27 @@ class Mailbox:
         """TTL 清扫器 (D012): 到期信从队列与滞留中丢弃; 普通信丢弃时向发件人
         注入失败回执 (确定性 id, AC-019), 回执信自身到期静默丢弃 (不递归).
         调用方 (serve 重试线程) 须持 server cond, 回执远端部分经 drain_spawned
-        锁外补投. 两段式: 先取尽再丢弃, 避免迭代中 _route 插入新队列."""
+        锁外补投. 两段式: 先取尽再丢弃, 避免迭代中 _route 插入新队列;
+        每封信有效期只算一次 (评审修复: 单趟分流, 不二算)."""
         now = self._now()
         expired = []
         for q in self.queue.values():
-            keep = [l for l in q if self._effective_expiry(l) > now]
-            if len(keep) != len(q):
-                expired.extend(l for l in q if self._effective_expiry(l) <= now)
+            keep, drop = [], []
+            for letter in q:
+                if self._effective_expiry(letter) > now:
+                    keep.append(letter)
+                else:
+                    drop.append(letter)
+            if drop:
+                expired.extend(drop)
                 q[:] = keep
         with self._pending_lock:
-            kept = [e for e in self.pending_forwards
-                    if self._effective_expiry(e.letter) > now]
-            dropped = [e for e in self.pending_forwards
-                       if self._effective_expiry(e.letter) <= now]
+            kept, dropped = [], []
+            for entry in self.pending_forwards:
+                if self._effective_expiry(entry.letter) > now:
+                    kept.append(entry)
+                else:
+                    dropped.append(entry)
             self.pending_forwards = kept
         for entry in dropped:
             expired.append(entry.letter)
@@ -1307,8 +1321,11 @@ class _AdminHandler(_JsonHandler):
             with self.server.cond:
                 if m.get_session(sid) is not None:
                     return self._json(409, {"error": f"session 已存在: {sid}"})
-                s = m.add_session(sid, body.get("signing_key"),
-                                  body.get("response_key"))
+                try:
+                    s = m.add_session(sid, body.get("signing_key"),
+                                      body.get("response_key"))
+                except MailboxError as e:
+                    return self._json(403, {"error": str(e)})
             return self._json(200, {"id": s.id, "signing_key": s.signing_key,
                                     "response_key": s.response_key})
         if path == "/admin/sessions/revoke":
@@ -1759,6 +1776,14 @@ def cmd_fetch(timeout=None, count=None):
             return True
         return False
 
+    def _quiet_ack(letter_id, lease_token, outcome="handled"):
+        """静默自动回执 (评审修复: 三处近似重复收口): 吞 HTTPError/OSError —
+        回执失败则租约到期重投, 下轮循环/租约兜底, 不阻塞取信 (D003/D009/D014)."""
+        try:
+            ack_letter(url, sid, skey, letter_id, lease_token, outcome=outcome)
+        except (urllib.error.HTTPError, OSError):
+            pass
+
     # 故障自愈 (AC-003): 网络断/服务未就绪一律退避重试, 不 print 不 exit
     while True:
         # AC-016: poll 超时按剩余时间收紧 — 服务端 hold 可长于 --timeout,
@@ -1808,11 +1833,7 @@ def cmd_fetch(timeout=None, count=None):
         seen = state.setdefault("seen_ids", [])
         if letter.get("id") in seen:
             # D003/D009: 租约重投的已见信, 自动回执不呈现给 LLM, 继续等下一封
-            try:
-                ack_letter(url, sid, skey, letter.get("id", ""),
-                           payload.get("lease_token", ""))
-            except (urllib.error.HTTPError, OSError):
-                pass  # 回执失败则租约到期再重投, 下轮循环保底
+            _quiet_ack(letter.get("id", ""), payload.get("lease_token", ""))
             continue
         seen.append(letter.get("id", ""))
         del seen[:-100]  # 只记最近 100 条已见 id
@@ -1820,11 +1841,7 @@ def cmd_fetch(timeout=None, count=None):
             # D014 呈现降噪: 回执信自动 ack 不呈现给 LLM, 紧凑单行,
             # 不占 --count 预算, 不走处理指引
             kind, origin_id = parse_receipt_body(letter)
-            try:
-                ack_letter(url, sid, skey, letter.get("id", ""),
-                           payload.get("lease_token", ""))
-            except (urllib.error.HTTPError, OSError):
-                pass  # 回执失败则租约到期重投, 下轮循环保底
+            _quiet_ack(letter.get("id", ""), payload.get("lease_token", ""))
             print(f"回执: 信件 {origin_id} {RECEIPT_WORDS.get(kind, kind)}",
                   flush=True)
             continue
@@ -1833,11 +1850,8 @@ def cmd_fetch(timeout=None, count=None):
             # D014 拉窗门禁: skipped 信立即回执, 不呈现给 LLM, 继续 poll
             outcome = gate_pull_window(container, state)
             if outcome is not None:
-                try:
-                    ack_letter(url, sid, skey, letter.get("id", ""),
-                               payload.get("lease_token", ""), outcome=outcome)
-                except (urllib.error.HTTPError, OSError):
-                    pass  # 回执失败: 租约兜底, 不阻塞取信循环
+                _quiet_ack(letter.get("id", ""), payload.get("lease_token", ""),
+                           outcome=outcome)
                 if outcome == "skipped:waypipe-missing" \
                         and waypipe_missing_hint_due():
                     print(WAYPIPE_MISSING_HINT, flush=True)

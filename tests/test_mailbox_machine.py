@@ -83,6 +83,13 @@ def test_register_and_revoke_session(serves, tmp_path):
     assert proc.stdout == ""
     assert proc.stderr.strip()
 
+    # mailbox@ 保留前缀 → 拒绝: exit 3 + stderr 人话 (ISSUE-06 评审修复,
+    # D013 回执命名空间服务端独占), stdout 无 JSON
+    proc = _run_machine(tmp_path, state, "register-session", "mailbox@x")
+    assert proc.returncode == 3
+    assert proc.stdout == ""
+    assert "mailbox@" in proc.stderr
+
     # revoke → {"id", "revoked": true}; 注销后该凭证 poll 被拒 (403)
     proc = _run_machine(tmp_path, state, "revoke-session", sid)
     assert proc.returncode == 0, proc.stderr
