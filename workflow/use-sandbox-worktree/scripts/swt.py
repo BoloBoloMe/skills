@@ -18,7 +18,6 @@ from __future__ import annotations
 import argparse
 import fcntl
 import hashlib
-import http.client
 import ipaddress
 import json
 import os
@@ -32,8 +31,6 @@ import subprocess
 import sys
 import tempfile
 import time
-import urllib.error
-import urllib.request
 from collections import Counter
 from datetime import datetime, timezone
 from pathlib import Path
@@ -2180,9 +2177,6 @@ def container_default_name(branch: str) -> str:
 # 信箱是增强不是命脉: 任一步失败只告警跳过, 不阻断 birth.
 MAILBOX_SCRIPT = Path(__file__).resolve().parents[2] / "mailbox" / "scripts" / "mailbox.py"
 MAILBOX_SUBPROCESS_TIMEOUT = 30.0  # 子命令内部探测+admin 上限 (扫描 5s + HTTP 5s) 余量
-MAILBOX_STATE_PATH = Path.home() / ".local/state/swt-mailbox/state.json"  # 过渡: revoke 旧客户端用, TS-004 删
-MAILBOX_PORT_RANGE = range(38417, 38427)  # 过渡: 同上
-MAILBOX_SERVICE = "swt-mailbox"           # 过渡: 同上
 MAILBOX_ENV_URL = "SWT_MAILBOX_URL"           # 容器契约 env 名不可改 (BR-005)
 MAILBOX_ENV_SESSION = "SWT_SESSION_ID"
 MAILBOX_ENV_SIGNING_KEY = "SWT_SESSION_SIGNING_KEY"
@@ -2191,69 +2185,6 @@ MAILBOX_ENV_RESPONSE_KEY = "SWT_SESSION_RESPONSE_KEY"
 
 class MailboxWireError(Exception):
     """机器子命令异常退出/应答畸形; wire/revoke 捕获后降级为告警, 不阻断 birth/terminate."""
-
-
-def identity_probe(port: int, timeout: float = 0.5) -> bool:
-    """无认证 GET /__identity__, 确认目标端口是本机 swt-mailbox."""
-    # http.client.HTTPException: 探到非 HTTP 服务 (如容器 sshd 回 SSH banner) —
-    # 扫区间场景必须容忍, 按无应答处理 (M16 并行回归实证)
-    try:
-        with urllib.request.urlopen(
-                f"http://127.0.0.1:{port}/__identity__", timeout=timeout) as response:
-            payload = json.loads(response.read() or b"{}")
-    except (urllib.error.URLError, OSError, http.client.HTTPException, json.JSONDecodeError):
-        return False
-    return isinstance(payload, dict) and payload.get("service") == MAILBOX_SERVICE
-
-
-def probe_mailbox(
-    state_path: Path = MAILBOX_STATE_PATH,
-    ports=MAILBOX_PORT_RANGE,
-) -> dict[str, Any] | None:
-    """读信箱状态文件免扫描; 文件缺席/失活/畸形时扫区间 __identity__ 兜底.
-    返回 {"port", "admin_port", "admin_token"}; 扫描命中时 admin 字段为 None
-    (扫描拿不到凭证, 失活状态文件里的 admin 字段不可信弃用); 完全未发现返回 None."""
-    state: Any = None
-    try:
-        state = json.loads(Path(state_path).read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError):
-        state = None
-    if isinstance(state, dict):
-        port = state.get("port")
-        if isinstance(port, int) and identity_probe(port):
-            return {"port": port,
-                    "admin_port": state.get("admin_port"),
-                    "admin_token": state.get("admin_token")}
-    for port in ports:
-        if identity_probe(port):
-            return {"port": port, "admin_port": None, "admin_token": None}
-    return None
-
-
-def _admin_post(admin_port: int, admin_token: str, path: str,
-                body: dict[str, Any]) -> dict[str, Any]:
-    """admin 口 (硬绑 127.0.0.1, X-Admin-Token) POST JSON; 失败抛 MailboxWireError."""
-    request = urllib.request.Request(
-        f"http://127.0.0.1:{admin_port}{path}",
-        data=json.dumps(body).encode(),
-        headers={"Content-Type": "application/json",
-                 "X-Admin-Token": admin_token},
-        method="POST",
-    )
-    try:
-        with urllib.request.urlopen(request, timeout=5.0) as response:
-            payload = json.loads(response.read() or b"{}")
-    except urllib.error.HTTPError as exc:
-        try:
-            detail = json.loads(exc.read() or b"{}").get("error", "")
-        except (json.JSONDecodeError, OSError):
-            detail = ""
-        raise MailboxWireError(f"admin 拒绝 (HTTP {exc.code}): {detail}") from exc
-    except (urllib.error.URLError, OSError, json.JSONDecodeError) as exc:
-        raise MailboxWireError(f"admin 口不可达/应答畸形: {exc}") from exc
-    if not isinstance(payload, dict):
-        raise MailboxWireError(f"admin 应答畸形: {payload!r}")
-    return payload
 
 
 def _mailbox_machine(script: Path, *args: str) -> tuple[dict[str, Any] | None, str]:
@@ -2348,32 +2279,26 @@ def wire_container_mailbox(
 def revoke_container_session(
     mailbox_record: Any,
     *,
-    state_path: Path = MAILBOX_STATE_PATH,
-    ports=MAILBOX_PORT_RANGE,
+    script: Path = MAILBOX_SCRIPT,
 ) -> None:
-    """AC-008: 容器终结时经 admin 注销其信箱 session, 防同名新容器错投旧信.
-    无 session 登记 (skipped/老记录) 静默返回; 信箱缺席/注销失败只告警,
-    不阻断 terminate (与 birth 同口径: 信箱是增强不是命脉)."""
+    """AC-008: 容器终结时经 revoke-session 子命令注销其信箱 session, 防同名
+    新容器错投旧信. 无 session 登记 (skipped/老记录) 静默返回; 信箱缺席/
+    注销失败只告警, 不阻断 terminate (与 birth 同口径: 信箱是增强不是命脉)."""
     if not isinstance(mailbox_record, dict):
         return
     session_id = mailbox_record.get("session")
     if mailbox_record.get("status") != "connected" \
             or not isinstance(session_id, str) or not session_id:
         return
-    found = probe_mailbox(state_path, ports)
-    if found is None:
-        print(f"[SWT] 信箱 session 注销跳过: 本机信箱未发现 "
-              f"(session {session_id} 随服务端消亡)", file=sys.stderr)
-        return
-    if not found.get("admin_port") or not found.get("admin_token"):
-        print(f"[SWT] 信箱 session 注销跳过: admin 凭证不可得 "
-              f"(session {session_id})", file=sys.stderr)
-        return
     try:
-        _admin_post(int(found["admin_port"]), str(found["admin_token"]),
-                    "/admin/sessions/revoke", {"id": session_id})
+        payload, err = _mailbox_machine(script, "revoke-session", session_id)
     except MailboxWireError as exc:
         print(f"[SWT] 信箱 session 注销失败: {exc} (不阻断 terminate)",
+              file=sys.stderr)
+        return
+    if payload is None:
+        print(f"[SWT] 信箱 session 注销跳过: {err or 'revoke-session exit 3'} "
+              f"(session {session_id} 随服务端消亡, 不阻断 terminate)",
               file=sys.stderr)
         return
     print(f"[SWT] 信箱 session 已注销: {session_id}", file=sys.stderr)
