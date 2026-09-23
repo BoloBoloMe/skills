@@ -786,6 +786,7 @@ class Mailbox:
             raise AckConflict("租约已过期, 信件已收回重投")
         del self.leases[letter.id]
         self.processed.add(letter.id)
+        self._spawn_receipt("read", letter)  # 已读回执 (D012): ack 成功即发
         return letter
 
 
@@ -1128,6 +1129,9 @@ class _Handler(_JsonHandler):
                 return self._signed(409, party, {"ok": False, "error": str(e)}, rkey)
             except MailboxError as e:
                 return self._signed(403, party, {"ok": False, "error": str(e)}, rkey)
+            self.server.cond.notify_all()  # ack 生成的已读回执可能排队唤醒等待方
+        # 已读回执远端部分锁外补投 (D012: 回执反向走同一路由)
+        self.server.flood_spawned()
         return self._signed(200, party,
                             {"ok": True, "letter_id": str(body["letter_id"])}, rkey)
 

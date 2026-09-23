@@ -103,3 +103,33 @@ def test_delivered_receipt(dual_serves):
         f"回执发件人应为保留身份 mailbox@<hostname>: {receipt['from']!r}"
     assert json.loads(receipt["body"]) == {"receipt": "delivered",
                                            "letter_id": "X-1"}
+
+
+def test_read_receipt(dual_serves):
+    """TS-002/TC-031 (AC-018 已读行): 收件方 ack 后发件人收到已读回执,
+    id <原id>.read, body JSON {"receipt":"read","letter_id":<原id>}."""
+    srv_a, srv_b = dual_serves()
+    creds_a = register_session(srv_a, "a-host")
+    creds_b = register_session(srv_b, "b-dev")
+
+    code, _ = post_letter(srv_a, "a-host", creds_a["signing_key"],
+                          make_letter(letter_id="X-2", to="b-dev",
+                                      body="需回执确认的信", from_="a-host"))
+    assert code == 200
+    code, resp = poll(srv_b, "b-dev", creds_b["signing_key"])
+    assert code == 200
+    assert resp["payload"]["letter"]["id"] == "X-2"
+    token = resp["payload"]["lease_token"]
+
+    code, _ = ack_letter(srv_b, "b-dev", creds_b["signing_key"], "X-2", token)
+    assert code == 200
+
+    # 发件侧: 送达回执先到, 已读回执后到; 循环取到 X-2.read
+    receipt, _ = poll_until(srv_a, "a-host", creds_a["signing_key"],
+                            "X-2.read")
+    assert receipt is not None, "ack 后发件人未收到已读回执"
+    assert receipt["to"] == "a-host"
+    assert receipt["type"] == "notify"
+    assert receipt["from"].startswith("mailbox@")
+    assert json.loads(receipt["body"]) == {"receipt": "read",
+                                           "letter_id": "X-2"}
