@@ -29,6 +29,7 @@ env:
 from __future__ import annotations
 
 import argparse
+import datetime
 import getpass
 import hashlib
 import hmac
@@ -75,6 +76,15 @@ ROUTE_WORDS = {"queued_local": "已进本机队列",
 
 def sign(key, *parts):
     return hmac.new(key.encode(), "\n".join(parts).encode(), hashlib.sha256).hexdigest()
+
+
+def log_event(event, **fields):
+    """关键事件日志行 (D011 F1 最小版, AC-037): `[UTC 时间戳] 事件 k=v ...`
+    走 stderr, 不建 JSON 日志体系."""
+    ts = datetime.datetime.now(datetime.timezone.utc).isoformat(
+        timespec="milliseconds").replace("+00:00", "Z")
+    detail = " ".join(f"{k}={v}" for k, v in fields.items())
+    print(f"[{ts}] {event} {detail}".rstrip(), file=sys.stderr, flush=True)
 
 
 def state_path():
@@ -599,6 +609,9 @@ class Mailbox:
                 continue
             entry.retries += 1
             entry.last_error = error
+            log_event("forward-failed", letter=entry.letter.id,
+                      to=entry.letter.to_session,
+                      neighbor=entry.neighbor.address, error=error)
             self._restage(entry)
         return sent
 
@@ -902,6 +915,8 @@ class _Handler(_JsonHandler):
             if ok:
                 confirmed += 1
             else:
+                log_event("forward-failed", letter=letter.id,
+                          to=letter.to_session, neighbor=n.address, error=error)
                 m.stage_forward(letter, n, error)
         return confirmed, len(targets)
 

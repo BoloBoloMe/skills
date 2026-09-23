@@ -22,6 +22,8 @@ TC-021 test_pending_retry_and_drop: POST /admin/pending/retry 立即补投 /
        drop 移出滞留队列.
 TC-022 test_pending_cap_drops_oldest: 滞留超上限丢最老且经管理口可见;
        缺省 100, env MAILBOX_PENDING_CAP 可调.
+TC-023 test_neighbor_failure_utc_log: 邻居转发失败打带 UTC 时间戳的
+       stderr 日志行.
 
 共享接缝层 (serve 启动器/签名/HTTP helper) 在 tests/conftest.py.
 """
@@ -29,6 +31,8 @@ from __future__ import annotations
 
 import json
 import os
+import re
+import select
 import subprocess
 import sys
 import threading
@@ -492,3 +496,32 @@ def test_pending_cap_drops_oldest(serves):
     ids = [e["id"] for e in resp["pending"]]
     assert len(ids) == 100, f"缺省上限应为 100: {len(ids)}"
     assert ids[0] == "DEF-1", f"最老的 DEF-0 应被挤掉: {ids[:3]}"
+
+
+def test_neighbor_failure_utc_log(serves):
+    """TC-023 (AC-037 邻居转发失败行): 邻居转发失败时 serve 输出带 UTC
+    时间戳的关键事件日志行 (含信件 id 与邻居地址)."""
+    srv = serves(extra_env={"MAILBOX_RETRY_SECONDS": "30"})
+    poster = register_session(srv, "log-1")
+    dead = f"127.0.0.1:{free_port()}"
+    code, _ = _admin(srv, "POST", "/admin/neighbors",
+                     {"address": dead, "shared_key": "k-dead"})
+    assert code == 200
+
+    code, _ = post_letter(srv, "log-1", poster["signing_key"],
+                          make_letter(letter_id="LOG-1", to="remote-dev"))
+    assert code == 200
+
+    utc_ts = re.compile(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?Z")
+    hit = ""
+    deadline = time.time() + 5
+    while time.time() < deadline and not hit:
+        ready, _, _ = select.select([srv.proc.stderr], [], [], 1.0)
+        if not ready:
+            continue
+        line = srv.proc.stderr.readline()
+        if "forward-failed" in line:
+            hit = line
+    assert hit, "转发失败应打关键事件日志行"
+    assert utc_ts.search(hit), f"日志行须带 UTC 时间戳: {hit!r}"
+    assert "LOG-1" in hit and dead in hit, f"日志行应含信件 id 与邻居地址: {hit!r}"
