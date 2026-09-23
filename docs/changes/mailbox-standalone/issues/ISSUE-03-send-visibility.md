@@ -2,7 +2,7 @@
 - `../EXECUTION.md`
 
 ## 执行
-- [ ] 已实现
+- [x] 已实现
 
 ## 要构建什么
 投信可见性: (1) send 回执分行打 `目标 session=` 与 `信件 id=`, 空 to 回打服务端实际解析出的目标; (2) post 应答带 `route` 五态 (`queued_local`/`forwarded`/`forwarded_partial`/`staged_pending`/`unknown_recipient`), send 按态打人话; (3) 转发异步化 — post 洪泛判定预算 2s, 超时邻居进后台重试, 任何邻居组合下 CLI 10s 内有结论; (4) post 校验 `from == 签名 session`, 不符 403; (5) 正文超 1MB 拒收 413. 适合 AFK: 行为已在 PRODUCT 场景与 TECHNICAL 接口节钉死.
