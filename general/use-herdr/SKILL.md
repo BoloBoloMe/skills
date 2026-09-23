@@ -85,7 +85,7 @@ herdr agent list
 ## 启动并协调 agent
 
 开新会话的默认:
-- 开在调用方所在 workspace 的新 tab; 我没指定标签名时, 按默认格式 `S-<子代理名>-<序号>` 生成.
+- 开在调用方所在 workspace 的新 tab; tab 名称按格式 `S-<子代理名>-<序号>` 生成.
 - llm/思考深度除非我有指定, 否则用 `llm-select` skill 选定.
 - 选择与 llm 匹配的 coding agent:
   - OpenAI 的 llm (如 GPT) → 用 codex; 
