@@ -114,6 +114,16 @@ def write_state_file(path, port, admin_port, admin_token):
     write_json_0600(path, data)
 
 
+def _load_state_file():
+    """读 serve 状态文件 (state_path()); 缺失/损坏/非 dict → None.
+    同机组件读文件免扫描的共用入口 (机器子命令发现与 status 兑底)."""
+    try:
+        state = json.loads(state_path().read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return None
+    return state if isinstance(state, dict) else None
+
+
 def _canonical(obj):
     """指令规范形: JSON sort_keys 序列化 (沿用 swt-base-server.py)."""
     return json.dumps(obj, sort_keys=True)
@@ -1609,33 +1619,49 @@ def cmd_fetch(timeout=None, count=None):
     # AC-015: 首次连接失败立即明报再退避 (不静默); 明报行只打一次不刷屏
     reported_down = False
     fetched = 0  # --count 已取封数 (AC-016)
+
+    def _timed_out():
+        """--timeout 到时统一出口: 到时打无信并报告已到 (评审修复: 单点收口)."""
+        if deadline is not None and time.monotonic() >= deadline:
+            print(f"无信 ({timeout:g} 秒到时)", flush=True)
+            return True
+        return False
+
     # 故障自愈 (AC-003): 网络断/服务未就绪一律退避重试, 不 print 不 exit
     while True:
+        # AC-016: poll 超时按剩余时间收紧 — 服务端 hold 可长于 --timeout,
+        # 到时无信必须及时退出, 不能被 hold 拖满一个长轮询才返回
+        poll_timeout = 30.0
+        if deadline is not None:
+            if _timed_out():
+                return
+            poll_timeout = min(30.0, max(0.05, deadline - time.monotonic()))
         sig_ts = str(time.time())
         failed = False
         try:
             resp = http_post(url + "/mailbox/poll",
                              {"session": sid, "sig_ts": sig_ts,
-                              "sig": sign(skey, sid, sig_ts)}, timeout=30)
+                              "sig": sign(skey, sid, sig_ts)},
+                             timeout=poll_timeout)
         except urllib.error.HTTPError:
             # 服务有应答 (409 并发冲突/403, serve 可能尚未就绪): 服务活着,
             # 不算不可达, 静默退避 (AC-003); 明报行只覆盖连接失败 (AC-015)
             failed = True
         except (urllib.error.URLError, OSError):
             # 连接拒绝/超时 = 服务未起/不可达: 首次立即明报再退避,
-            # 明报行只打一次不刷屏 (AC-015)
+            # 明报行只打一次不刷屏 (AC-015); 但 --timeout 收紧 poll 超时
+            # 导致的读超时且已到时不做不可达, 走下方统一到时出口
             failed = True
-            if not reported_down:
+            expired = deadline is not None and time.monotonic() >= deadline
+            if not reported_down and not expired:
                 print("信箱服务未启动/不可达, 退避重试中",
                       file=sys.stderr, flush=True)
                 reported_down = True
         if failed:
+            if _timed_out():
+                return
             if deadline is not None:
-                remaining = deadline - time.monotonic()
-                if remaining <= 0:
-                    print(f"无信 ({timeout:g} 秒到时)", flush=True)
-                    return
-                time.sleep(min(backoff, remaining))
+                time.sleep(min(backoff, deadline - time.monotonic()))
             else:
                 time.sleep(backoff)
             backoff = min(backoff * 2, 5.0)
@@ -1644,8 +1670,7 @@ def cmd_fetch(timeout=None, count=None):
         payload = resp.get("payload") or {}
         letter = payload.get("letter")
         if letter is None:
-            if deadline is not None and time.monotonic() >= deadline:
-                print(f"无信 ({timeout:g} 秒到时)", flush=True)
+            if _timed_out():
                 return
             continue  # hold 超时空载荷, 重新长轮询
         seen = state.setdefault("seen_ids", [])
@@ -1794,21 +1819,8 @@ def _print_queued(server, creds):
                 timeout=5.0) as response:
             payload = json.loads(response.read() or b"{}").get("payload", {})
         print(f"待取: {payload.get('queued', '?')}")
-    except (urllib.error.URLError, OSError, http.client.HTTPException,
-            json.JSONDecodeError):
+    except _PROBE_ERRORS:
         print("待取: (查询失败)")
-
-
-def _server_alive(server_url):
-    """验活 (AC-017): GET server/__identity__, 应答 service == mailbox 才算在线."""
-    try:
-        with urllib.request.urlopen(server_url.rstrip("/") + "/__identity__",
-                                    timeout=3.0) as response:
-            payload = json.loads(response.read() or b"{}")
-    except (urllib.error.URLError, OSError, http.client.HTTPException,
-            json.JSONDecodeError):
-        return False
-    return isinstance(payload, dict) and payload.get("service") == SERVICE_NAME
 
 
 def cmd_status():
@@ -1822,19 +1834,16 @@ def cmd_status():
     print(f"response_key: {_mask_secret(data.get('response_key'))}")
     server = str(data.get("server") or "")
     if server:
-        alive = _server_alive(server)
+        alive = _identity_probe(server, timeout=3.0)
         print(f"信箱服务: {'在线' if alive else '不可达'}")
         if alive and creds:
             _print_queued(server, creds)
         return
     # 无地址可探: 状态文件兑底 (AC-014 同机组件读文件先验活,
     # 失活明报信箱不可达, 不把残留文件当成服务在线)
-    try:
-        state = json.loads(state_path().read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError):
-        return
-    if isinstance(state, dict) and isinstance(state.get("port"), int):
-        if _identity_probe(state["port"]):
+    state = _load_state_file()
+    if state is not None and isinstance(state.get("port"), int):
+        if _identity_probe(f"http://127.0.0.1:{state['port']}"):
             print(f"信箱服务: 在线 (端口 {state['port']})")
         else:
             print(f"信箱服务: 信箱不可达 "
@@ -1847,16 +1856,22 @@ def cmd_status():
 # 内部 HTTP 超时 5s; 调用方零配置 (路径经 __file__ 相对定位).
 # ======================================================================
 
-def _identity_probe(port, timeout=0.5):
-    """无认证 GET /__identity__ 验活: 应答 service == mailbox 才算本机信箱.
+# 探测/查询类 GET 的统一异常面 (评审修复: 单点收口):
+# 网络层/协议层/应答畸形一律按探测失败处理, 不向上抛
+_PROBE_ERRORS = (urllib.error.URLError, OSError, http.client.HTTPException,
+                 json.JSONDecodeError)
+
+
+def _identity_probe(url, timeout=0.5):
+    """无认证 GET url/__identity__ 验活: 应答 service == mailbox 才算本机信箱
+    (同机回环用 http://127.0.0.1:<port>, env 凭证场景用完整 server 地址).
     探到非信箱 HTTP 服务 (如退役 swt-base-server) 按无应答处理."""
     try:
         with urllib.request.urlopen(
-                f"http://127.0.0.1:{port}/__identity__",
+                url.rstrip("/") + "/__identity__",
                 timeout=timeout) as response:
             payload = json.loads(response.read() or b"{}")
-    except (urllib.error.URLError, OSError, http.client.HTTPException,
-            json.JSONDecodeError):
+    except _PROBE_ERRORS:
         return False
     return isinstance(payload, dict) and payload.get("service") == SERVICE_NAME
 
@@ -1867,20 +1882,17 @@ def _discover_local_mailbox(allow_scan=True):
     扫描拿不到凭证, 只白白耗时). 返回 {"port", "admin_port", "admin_token"}
     (扫描命中时 admin 字段为 None: 失活状态文件里的 admin 字段不可信弃用);
     完全未发现返回 None."""
-    state = None
-    try:
-        state = json.loads(state_path().read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError):
-        state = None
-    if isinstance(state, dict):
+    state = _load_state_file()
+    if state is not None:
         port = state.get("port")
-        if isinstance(port, int) and _identity_probe(port):
+        if isinstance(port, int) \
+                and _identity_probe(f"http://127.0.0.1:{port}"):
             return {"port": port, "admin_port": state.get("admin_port"),
                     "admin_token": state.get("admin_token")}
     if not allow_scan:
         return None
     for port in range(DEFAULT_PORT, DEFAULT_PORT + PORT_SPAN):
-        if _identity_probe(port):
+        if _identity_probe(f"http://127.0.0.1:{port}"):
             return {"port": port, "admin_port": None, "admin_token": None}
     return None
 

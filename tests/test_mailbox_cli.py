@@ -173,6 +173,23 @@ def test_status_env_credentials_and_liveness(serves, tmp_path):
     assert "在线" in r.stdout, f"应报服务存活状态, 实际:\n{r.stdout}"
 
 
+def test_fetch_timeout_beats_long_hold(serves, tmp_path):
+    """评审修复: 服务端 hold 长于 --timeout 时, poll 超时按剩余时间收紧,
+    --timeout 2 不被 8s hold 拖到长轮询结束才退, 到时即退报无信 (AC-016)."""
+    srv = serves(hold="8")  # hold 8s > timeout 2s: 无信时服务端挂住不返
+    creds = register_session(srv, "holddev")
+    env = cli_env(srv.port, "holddev", creds["signing_key"],
+                  creds["response_key"], tmp_path / "cli")
+    start = time.time()
+    r = subprocess.run([sys.executable, str(SCRIPT), "--timeout", "2"],
+                       env=env, capture_output=True, text=True, timeout=30)
+    elapsed = time.time() - start
+    assert r.returncode == 0, "到时无信应退出码 0"
+    assert "无信" in r.stdout
+    # 修复前: poll 固定 30s 超时, 须等满服务端 hold 8s 才退 — 超出 2+3 余量
+    assert elapsed < 2 + 3, f"--timeout 到时退出不及时, 实际耗时 {elapsed:.1f}s"
+
+
 def test_fetch_cli(serves, tmp_path):
     """TS-004: 缺省调用阻塞等信, 信到后 stdout 输出正文+处理指引+继续调用提示."""
     srv = serves()
