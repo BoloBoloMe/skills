@@ -659,6 +659,8 @@ class Mailbox:
         for entry in dropped:
             expired.append(entry.letter)
         for letter in expired:
+            log_event("letter-expired", letter=letter.id,
+                      to=letter.to_session)  # AC-037 滞留/队列丢弃行
             self._spawn_receipt("failed", letter)
 
     def forward(self, neighbor_key, letter_d):
@@ -688,6 +690,8 @@ class Mailbox:
         while len(self.pending_forwards) > self.pending_cap:
             oldest = min(self.pending_forwards, key=lambda e: e.staged_at)
             self.pending_forwards.remove(oldest)
+            log_event("pending-dropped", letter=oldest.letter.id,
+                      to=oldest.letter.to_session, reason="cap")  # AC-037
 
     def retry_pending(self):
         """重试暂存信: 发出则移除, 仍不可达则留待下轮 (邻居端 seen-id 兜底
@@ -1441,6 +1445,9 @@ class _AdminHandler(_JsonHandler):
         if retry:
             sent = m.retry_entries(entries)
             return self._json(200, {"ok": True, "id": lid, "sent": sent})
+        for e in entries:
+            log_event("pending-dropped", letter=e.letter.id,
+                      to=e.letter.to_session, reason="admin")  # AC-037
         return self._json(200, {"ok": True, "id": lid,
                                 "dropped": len(entries)})
 

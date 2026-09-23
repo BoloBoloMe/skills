@@ -15,6 +15,8 @@ docs/changes/mailbox-standalone/TECHNICAL.md 信件 schema 节.
 from __future__ import annotations
 
 import json
+import re
+import select
 import subprocess
 import sys
 import time
@@ -298,3 +300,39 @@ def test_fetch_receipt_compact_line(serves, tmp_path):
     assert "处理指引" not in r.stdout, "回执不应呈现处理指引 (D014 降噪)"
     assert "来信" not in r.stdout, "回执不应按普通信呈现"
     assert "类型: notify" not in r.stdout
+
+
+def test_pending_drop_utc_log(tmp_path):
+    """TS-007/TC-036 (AC-037 滞留丢弃行): TTL 到期滞留信被清扫丢弃时 serve
+    输出带 UTC 时间戳的关键事件日志行 (含信件 id 与收件人)."""
+    workdir = tmp_path / "droplog"
+    workdir.mkdir()
+    (workdir / "neighbors.json").write_text(json.dumps(
+        [neighbor(free_port(), "k-dead")]))
+    srv = Serve(workdir, extra_env={
+        "MAILBOX_NEIGHBORS": str(workdir / "neighbors.json"),
+        "MAILBOX_RETRY_SECONDS": "0.2",
+        "MAILBOX_TTL_SECONDS": "2"})
+    try:
+        creds = register_session(srv, "log-1")
+        code, _ = post_letter(srv, "log-1", creds["signing_key"],
+                              make_letter(letter_id="LOG-1", to="remote-dev",
+                                          from_="log-1"))
+        assert code == 200
+
+        utc_ts = re.compile(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?Z")
+        hit = ""
+        deadline = time.time() + 10
+        while time.time() < deadline and not hit:
+            ready, _, _ = select.select([srv.proc.stderr], [], [], 1.0)
+            if not ready:
+                continue
+            line = srv.proc.stderr.readline()
+            if "letter-expired" in line:
+                hit = line
+        assert hit, "TTL 到期丢弃应打关键事件日志行"
+        assert utc_ts.search(hit), f"日志行须带 UTC 时间戳: {hit!r}"
+        assert "LOG-1" in hit and "remote-dev" in hit, \
+            f"日志行应含信件 id 与收件人: {hit!r}"
+    finally:
+        srv.stop()
