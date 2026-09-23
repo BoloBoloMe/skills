@@ -4,6 +4,7 @@ TC-011 test_send_receipt_two_lines: 回执分行打 目标 session= 与 信件 i
 TC-012 test_send_empty_to_echoes_resolved_target: 空 to 回打服务端解析出的目标.
 TC-014 test_unknown_recipient_no_neighbors_fails: 无邻居投未知 session 报错退出.
 TC-015 test_send_returns_within_budget_with_dead_neighbor: 死邻居下 2s 预算返回.
+TC-015 test_send_returns_within_budget_with_dead_neighbor: 死邻居下 2s 预算返回.
 
 真实子进程跑 mailbox.py send + 真实 serve 子进程, 凭证走设备配置文件
 (env 探测隔离, 先例 test_mailbox_cli_tools.test_send_notify).
@@ -84,3 +85,46 @@ def test_unknown_recipient_no_neighbors_fails(serves, tmp_path):
         f"无邻居投未知 session 应报错退出: {r.stdout!r}"
     assert "ghost-session" in r.stderr, \
         f"报错应含未知 session 信息: {r.stderr!r}"
+
+
+class HangingNeighbor:
+    """挂起邻居: 只监听不应答 (连接进内核 backlog 后永无响应), 模拟网络黑洞.
+    驱动 send_forward 走满超时 — 与连接被拒的死端口不同, 能暴露等待时长."""
+
+    def __init__(self):
+        self._sock = socket.socket()
+        self._sock.bind(("127.0.0.1", 0))
+        self._sock.listen(16)
+        self.port = self._sock.getsockname()[1]
+
+    def stop(self):
+        self._sock.close()
+
+
+def test_send_returns_within_budget_with_dead_neighbor(serves, tmp_path):
+    """TC-015 (AC-010 + 非功能): 三个挂起邻居 (收连接永不回应), 投信在
+    洪泛判定预算 (时间注入 0.5s) 内放弃并转后台暂存, CLI 10s 内有结论
+    且明示已暂存待重试."""
+    hanging = [HangingNeighbor() for _ in range(3)]
+    try:
+        workdir = tmp_path / "nb"
+        workdir.mkdir()
+        (workdir / "neighbors.json").write_text(json.dumps(
+            [{"address": f"127.0.0.1:{h.port}", "shared_key": f"k-dead-{i}"}
+             for i, h in enumerate(hanging)]))
+        # 预算时间注入: 2s 缺省缩到 0.5s, 快进预算判定 (先例 MAILBOX_LEASE_SECONDS)
+        srv = serves("nb", extra_env={"MAILBOX_FLOOD_BUDGET_SECONDS": "0.5"})
+        sender = register_session(srv, "dev-send")
+        t0 = time.time()
+        r = send_cli(srv, "dev-send", sender, tmp_path / "cli",
+                     to="remote-dev", body="死邻居投信")
+        elapsed = time.time() - t0
+        assert elapsed < 10, \
+            f"死邻居拖垮投信: {elapsed:.1f}s 才返回 (预算内应放弃转暂存)"
+        assert r.returncode == 0, f"暂存应算投信成功: {r.stderr}"
+        assert "已暂存待重试" in r.stdout, f"应明示暂存: {r.stdout!r}"
+        assert elapsed >= 0.4, \
+            f"预算应被等满后放弃 (挂起邻居无法确认): {elapsed:.2f}s"
+    finally:
+        for h in hanging:
+            h.stop()

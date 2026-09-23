@@ -22,7 +22,8 @@ env:
   ~/.agents/mailbox/config.json) / MAILBOX_NEIGHBORS (邻居表路径, 缺省
   ~/.agents/mailbox/neighbors.json) / MAILBOX_HOLD_SECONDS (缺省 20) /
   MAILBOX_LEASE_SECONDS (缺省 1800) / MAILBOX_RETRY_SECONDS (缺省 5) /
-  MAILBOX_MAX_CONCURRENT_POLLS / MAILBOX_UPSTREAM_BASE / MAILBOX_UPSTREAM_KEY
+  MAILBOX_MAX_CONCURRENT_POLLS / MAILBOX_UPSTREAM_BASE / MAILBOX_UPSTREAM_KEY /
+  MAILBOX_FLOOD_BUDGET_SECONDS (post 洪泛判定预算, 缺省 2, 测试时间注入用)
 """
 from __future__ import annotations
 
@@ -1622,6 +1623,8 @@ def cmd_serve(args):
         server = MailboxHttpServer(mailbox, cond, "0.0.0.0", args.port)
         server.hold_seconds = float(os.environ.get("MAILBOX_HOLD_SECONDS",
                                                    str(HOLD_SECONDS)))
+        server.flood_budget_seconds = float(os.environ.get(
+            "MAILBOX_FLOOD_BUDGET_SECONDS", str(FLOOD_BUDGET_SECONDS)))
         server.max_concurrent_polls = int(os.environ.get(
             "MAILBOX_MAX_CONCURRENT_POLLS", str(MAX_CONCURRENT_POLLS)))
         admin = AdminHttpServer(mailbox, cond, admin_token, args.admin_port,
