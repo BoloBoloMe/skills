@@ -23,7 +23,7 @@ import time
 
 import pytest
 
-from conftest import (ADMIN_TOKEN, SCRIPT, Serve, ack_letter, free_port,
+from conftest import (ADMIN_TOKEN, ROOT, SCRIPT, Serve, ack_letter, free_port,
                       http_json, make_letter, poll, post_letter,
                       register_session)
 
@@ -336,3 +336,15 @@ def test_pending_drop_utc_log(tmp_path):
             f"日志行应含信件 id 与收件人: {hit!r}"
     finally:
         srv.stop()
+
+
+def test_receipt_wording_in_docs():
+    """TS-008/BR-004 (审计): reference/mailbox.md 钉死回执 best-effort 语义
+    措辞 "收到 = 确定发生, 缺席 = 未知", 并写明 serve 重启丢 pending 时
+    失败回执发不出 (D012/D014)."""
+    text = (ROOT / "workflow" / "mailbox" / "reference" / "mailbox.md"
+            ).read_text(encoding="utf-8")
+    assert "收到 = 确定发生, 缺席 = 未知" in text, \
+        "回执语义措辞未按 BR-004 钉死"
+    assert "失败回执发不出" in text, \
+        "重启丢 pending 的失败回执缺口未写明"
