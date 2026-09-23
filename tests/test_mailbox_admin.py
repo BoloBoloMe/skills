@@ -18,6 +18,8 @@ TC-018 test_neighbors_get_delete_patch: 邻居 GET (含状态, 不回显密钥) 
 TC-019 test_neighbor_upsert_by_name: 同名再登记覆盖地址不新增条目.
 TC-020 test_pending_list_fields: GET /admin/pending 列出 id/to/邻居/
        最后错误/重试次数/年龄.
+TC-021 test_pending_retry_and_drop: POST /admin/pending/retry 立即补投 /
+       drop 移出滞留队列.
 
 共享接缝层 (serve 启动器/签名/HTTP helper) 在 tests/conftest.py.
 """
@@ -387,3 +389,65 @@ def test_pending_list_fields(serves):
         f"最后错误应非空人话: {e}"
     assert e["retries"] >= 1
     assert 0 <= e["age"] <= 60, f"年龄应为秒数: {e}"
+
+
+def test_pending_retry_and_drop(tmp_path):
+    """TC-021 (AC-012 重投/丢弃行): POST /admin/pending/retry 立即补投
+    (邻居恢复后送达), /admin/pending/drop 移出滞留队列不再投递."""
+    workdir = tmp_path / "pendops"
+    srv = Serve(workdir, extra_env={"MAILBOX_RETRY_SECONDS": "30"})
+    try:
+        poster = register_session(srv, "pend-2")
+        port_b = free_port()
+        code, _ = _admin(srv, "POST", "/admin/neighbors",
+                         {"address": f"127.0.0.1:{port_b}",
+                          "shared_key": "k-ab"})
+        assert code == 200
+        for lid in ("PND-KEEP", "PND-DROP"):
+            code, resp = post_letter(srv, "pend-2", poster["signing_key"],
+                                     make_letter(letter_id=lid, to="b-dev"))
+            assert code == 200
+            assert resp["payload"]["route"] == "staged_pending"
+
+        # drop: 移出滞留队列; 未知 id 404
+        code, resp = _admin(srv, "POST", "/admin/pending/drop",
+                            {"id": "PND-DROP"})
+        assert code == 200, resp
+        code, resp = _admin(srv, "GET", "/admin/pending")
+        assert [e["id"] for e in resp["pending"]] == ["PND-KEEP"], resp
+        code, _ = _admin(srv, "POST", "/admin/pending/drop",
+                         {"id": "no-such"})
+        assert code == 404, "drop 未知滞留信应 404"
+        code, _ = _admin(srv, "POST", "/admin/pending/retry",
+                         {"id": "no-such"})
+        assert code == 404, "retry 未知滞留信应 404"
+
+        # B 上线 (同端口, 认得 A 的转发密钥), 注册收件人后 admin 重投
+        bdir = tmp_path / "pendops-b"
+        bdir.mkdir()
+        (bdir / "neighbors.json").write_text(json.dumps(
+            [{"address": f"127.0.0.1:{srv.port}", "shared_key": "k-ab"}]))
+        srv_b = Serve(bdir, port=port_b,
+                      extra_env={"MAILBOX_NEIGHBORS": str(bdir / "neighbors.json"),
+                                 "MAILBOX_RETRY_SECONDS": "30"})
+        try:
+            creds_b = register_session(srv_b, "b-dev")
+            code, resp = _admin(srv, "POST", "/admin/pending/retry",
+                                {"id": "PND-KEEP"})
+            assert code == 200, resp
+            assert resp.get("sent") == 1, f"重投应发出 1 封: {resp}"
+            code, resp = _admin(srv, "GET", "/admin/pending")
+            assert resp["pending"] == [], "重投成功应移出滞留"
+
+            code, resp = poll(srv_b, "b-dev", creds_b["signing_key"])
+            assert code == 200
+            letter = resp["payload"]["letter"]
+            assert letter is not None and letter["id"] == "PND-KEEP"
+            # 被丢弃的 PND-DROP 永远不到 (队列已空)
+            code, resp = poll(srv_b, "b-dev", creds_b["signing_key"])
+            assert code == 200
+            assert resp["payload"]["letter"] is None
+        finally:
+            srv_b.stop()
+    finally:
+        srv.stop()

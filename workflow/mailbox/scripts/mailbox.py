@@ -600,6 +600,17 @@ class Mailbox:
                      "age": round(now - e.staged_at, 3)}
                     for e in self.pending_forwards]
 
+    def take_pending(self, letter_id):
+        """按信件 id 取出滞留条目 (移出队列), 供 admin 重投/丢弃 (B4);
+        无匹配 → 空表 (admin 层 404)."""
+        with self._pending_lock:
+            mine = [e for e in self.pending_forwards
+                    if e.letter.id == letter_id]
+            if mine:
+                self.pending_forwards = [e for e in self.pending_forwards
+                                         if e.letter.id != letter_id]
+        return mine
+
     @staticmethod
     def _pull_window_hit(ins, poster_session_id):
         """swt.pull-window = 服务端内置形状校验, 动态绑定投信 session 自身,
@@ -1137,6 +1148,10 @@ class _AdminHandler(_JsonHandler):
                     return self._json(409, {"error": str(e)})
             return self._json(200, {"address": n.address,
                                     "name": n.name or ""})
+        if path == "/admin/pending/retry":
+            return self._pending_op(body, retry=True)
+        if path == "/admin/pending/drop":
+            return self._pending_op(body, retry=False)
         if path == "/admin/whitelist":
             ins = body.get("instruction")
             if not isinstance(ins, dict) or not isinstance(ins.get("tool"), str):
@@ -1225,6 +1240,21 @@ class _AdminHandler(_JsonHandler):
             return self._json(404, {"error": f"未知 key: {key}"})
         self.server.relay.revoke_key(key)
         self._json(200, {"ok": True})
+
+    def _pending_op(self, body, retry):
+        """滞留信操作 (D011 B4): retry=True 立即补投, 否则丢弃; 未知 id 404."""
+        lid = body.get("id")
+        if not isinstance(lid, str) or not lid:
+            return self._json(400, {"error": "id 须为非空字符串"})
+        m = self.server.mailbox
+        entries = m.take_pending(lid)
+        if not entries:
+            return self._json(404, {"error": f"无此滞留信: {lid}"})
+        if retry:
+            sent = m.retry_entries(entries)
+            return self._json(200, {"ok": True, "id": lid, "sent": sent})
+        return self._json(200, {"ok": True, "id": lid,
+                                "dropped": len(entries)})
 
     def _body_or_none(self):
         """读请求体: 坏 JSON/非 dict → None (调用方打 400)."""
