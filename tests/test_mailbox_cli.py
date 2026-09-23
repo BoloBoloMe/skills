@@ -2,12 +2,23 @@
 
 TS-004 test_fetch_cli / TS-005 test_auto_ack / TS-006 test_retry_on_network_error.
 
+ISSUE-05 (取信与服务状态显式):
+TC-024 test_stale_state_file_reports_unreachable — serve 停但状态文件残留时
+       status 先验活, 失活明报信箱不可达 (AC-014).
+TC-025 test_fetch_reports_service_down_immediately — 服务未起时取信立即明报
+       再退避, 不静默 (AC-015).
+TC-026 test_fetch_timeout_exits_and_reports — --timeout 到时无信退出码 0 报无信.
+TC-027 test_fetch_count_exits_after_n — --count 取满即退, 末封 pending_ack 不丢.
+TC-028 test_status_env_credentials_and_liveness — 仅 env 凭证时 status 报真实
+       session/地址/存活 (AC-017).
+
 真实子进程跑 mailbox.py (缺省取信), 真实 serve 子进程做服务端,
 凭证走容器式 env 注入 (SWT_MAILBOX_URL + SWT_SESSION_*).
 共享接缝层 (serve 启动器/签名/HTTP helper) 在 tests/conftest.py.
 """
 from __future__ import annotations
 
+import json
 import os
 import select
 import subprocess
@@ -30,8 +41,45 @@ def cli_env(port, session_id, signing_key, response_key, workdir):
         "SWT_SESSION_SIGNING_KEY": signing_key,
         "SWT_SESSION_RESPONSE_KEY": response_key,
         "MAILBOX_CONFIG": str(workdir / "mailbox.json"),
+        # 同步隔离状态/邻居路径: CLI 入口会跑旧路径迁移, 不能碰真机文件
+        "MAILBOX_STATE": str(workdir / "state.json"),
+        "MAILBOX_NEIGHBORS": str(workdir / "neighbors.json"),
     })
     return env
+
+
+def no_credentials_env(workdir):
+    """无任何凭证的隔离 env (TS-001: 只剩状态文件可读)."""
+    workdir = Path(workdir)
+    workdir.mkdir(parents=True, exist_ok=True)
+    env = dict(os.environ)
+    for key in ("SWT_MAILBOX_URL", "SWT_SESSION_ID",
+                "SWT_SESSION_SIGNING_KEY", "SWT_SESSION_RESPONSE_KEY"):
+        env.pop(key, None)
+    env.update({
+        "MAILBOX_CONFIG": str(workdir / "mailbox.json"),
+        "MAILBOX_STATE": str(workdir / "state.json"),
+        "MAILBOX_NEIGHBORS": str(workdir / "neighbors.json"),
+    })
+    return env
+
+
+def test_stale_state_file_reports_unreachable(serves, tmp_path):
+    """ISSUE-05 TS-001 (TC-024/AC-014): serve 停但状态文件残留时,
+    status 读状态文件先验活, 失活明报信箱不可达, 不当成服务在线."""
+    srv = serves()
+    state_file = tmp_path / "s" / "state.json"
+    srv.proc.kill()  # SIGKILL 不走清理路径, 状态文件残留 = 模拟服务停止后残留
+    srv.proc.wait()
+    assert state_file.exists(), "serve 被杀后状态文件应残留"
+
+    env = no_credentials_env(tmp_path / "cli")
+    env["MAILBOX_STATE"] = str(state_file)
+    r = subprocess.run([sys.executable, str(SCRIPT), "status"], env=env,
+                       capture_output=True, text=True, timeout=30)
+    assert r.returncode == 0
+    assert "不可达" in r.stdout, (
+        f"残留状态文件验活失败应明报信箱不可达, 实际输出:\n{r.stdout}")
 
 
 def test_fetch_cli(serves, tmp_path):

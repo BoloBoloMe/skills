@@ -1726,6 +1726,18 @@ def cmd_status():
     print(f"server: {data.get('server') or '(未设置)'}")
     print(f"signing_key: {_mask_secret(data.get('signing_key'))}")
     print(f"response_key: {_mask_secret(data.get('response_key'))}")
+    # AC-014: 同机组件读状态文件先 __identity__ 验活,
+    # 失活明报信箱不可达, 不把残留文件当成服务在线
+    try:
+        state = json.loads(state_path().read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        state = None
+    if isinstance(state, dict) and isinstance(state.get("port"), int):
+        if _identity_probe(state["port"]):
+            print(f"信箱服务: 在线 (端口 {state['port']})")
+        else:
+            print(f"信箱服务: 信箱不可达 "
+                  f"(状态文件残留端口 {state['port']}, 验活失败)")
 
 
 # ======================================================================
