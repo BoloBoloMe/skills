@@ -1575,7 +1575,9 @@ def cmd_fetch():
             save_cli_state(state)  # 服务端明确拒绝 (已处理/租约失效): 清掉不再纠缠
         except OSError:
             pass  # 网络故障: 不落盘, 文件仍留 pending_ack, 下次调用重试回执
-    # 故障自愈 (AC-003): 网络断/服务未就绪一律静默退避重试, 不 print 不 exit
+    # AC-015: 首次连接失败立即明报再退避 (不静默); 明报行只打一次不刷屏
+    reported_down = False
+    # 故障自愈 (AC-003): 网络断/服务未就绪一律退避重试, 不 print 不 exit
     while True:
         sig_ts = str(time.time())
         try:
@@ -1584,6 +1586,10 @@ def cmd_fetch():
                               "sig": sign(skey, sid, sig_ts)}, timeout=30)
         except (urllib.error.HTTPError, urllib.error.URLError, OSError):
             # 含连接拒绝/超时/409 并发冲突/403 (serve 可能尚未就绪): 退避重试
+            if not reported_down:
+                print("信箱服务未启动/不可达, 退避重试中",
+                      file=sys.stderr, flush=True)
+                reported_down = True
             time.sleep(backoff)
             backoff = min(backoff * 2, 5.0)
             continue

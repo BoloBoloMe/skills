@@ -82,6 +82,38 @@ def test_stale_state_file_reports_unreachable(serves, tmp_path):
         f"残留状态文件验活失败应明报信箱不可达, 实际输出:\n{r.stdout}")
 
 
+def test_fetch_reports_service_down_immediately(serves, tmp_path):
+    """ISSUE-05 TS-002 (TC-025/AC-015): 服务未起时取信立即输出
+    "信箱服务未启动/不可达" 再退避重试, 不静默; 明报行只打一次不刷屏."""
+    port = free_port()  # 无 serve 监听 = 服务未起
+    env = cli_env(port, "down1", "down-signing-key", "down-response-key",
+                  tmp_path / "cli")
+    proc = subprocess.Popen([sys.executable, str(SCRIPT)], env=env,
+                            stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                            text=True)
+    try:
+        # 数秒内 stderr 必须出现明报行 (连接拒绝是即时的)
+        deadline = time.time() + 5
+        saw = False
+        while time.time() < deadline:
+            r, _, _ = select.select([proc.stderr], [], [], 0.2)
+            if r and "信箱服务未启动/不可达" in proc.stderr.readline():
+                saw = True
+                break
+        assert saw, "服务未起时取信应立即明报再退避, 而非静默"
+        # 退避持续: 进程不退出, stdout 保持零输出 (BR-005), 明报行不重复
+        time.sleep(1.5)
+        assert proc.poll() is None, "明报后应退避重试而非退出"
+        r, _, _ = select.select([proc.stdout], [], [], 0)
+        assert not r, "退避等待期间 stdout 必须零输出"
+        r, _, _ = select.select([proc.stderr], [], [], 0)
+        assert not r, "明报行只打一次, 退避重试不刷屏"
+    finally:
+        if proc.poll() is None:
+            proc.kill()
+            proc.wait()
+
+
 def test_fetch_cli(serves, tmp_path):
     """TS-004: 缺省调用阻塞等信, 信到后 stdout 输出正文+处理指引+继续调用提示."""
     srv = serves()
