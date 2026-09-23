@@ -88,7 +88,7 @@ def test_unknown_recipient_no_neighbors_fails(serves, tmp_path):
 
 class HangingNeighbor:
     """挂起邻居: 只监听不应答 (连接进内核 backlog 后永无响应), 模拟网络黑洞.
-    驱动 send_forward 走满超时 — 与连接被拒的死端口不同, 能暴露等待时长."""
+    驱动 forward_attempt 走满超时 — 与连接被拒的死端口不同, 能暴露等待时长."""
 
     def __init__(self):
         self._sock = socket.socket()

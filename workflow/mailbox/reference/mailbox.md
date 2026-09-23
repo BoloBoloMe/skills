@@ -4,7 +4,7 @@
 
 ## 是什么
 
-单文件服务 `scripts/mailbox.py` (纯 stdlib, 零第三方依赖; 独立 skill mailbox, 自 use-sandbox-worktree 拆出), mesh 架构: 每台机器各跑一个信箱实例, 所有实例地位平等, 邻居间按共享密钥互认并洪泛路由信件 (邻居表每台机器手工配置). 二合一: **信箱** (session 间传信, 设备/容器身份统一为 session, 4 类型 `notify`/`open_url`/`exec`/`request`) + **LLM 中转** (OpenAI 兼容 `/v1/chat/completions` 与 `/v1/models`, sk- key 认证, 模型白名单/quota/用量/过期/吊销, 响应上游不透 stream; 无上游配置则不启中转角色). 信件全内存 (队列/租约/已见 id/邻居暂存, 重启即清; 租约到期自动重投, ack 幂等); SQLite (`~/.agents/mailbox/server.db`) 只存 session 凭证/中转 key/指令集. 端口: 信箱区间 38417-38426 启动绑首个空闲, 无认证 `GET /__identity__` 供探测身份 (应答服务名 `mailbox`); admin 口默认 38416 (`--admin-port` 可配) 硬绑 127.0.0.1 (header `X-Admin-Token`, 容器够不着); 中转区间 38427-38436. 实际端口与 admin token 写状态文件 `~/.agents/mailbox/state.json` (0600), 同机组件读文件免扫描. 上游配置走 serve 参数或 env `MAILBOX_UPSTREAM_BASE`/`MAILBOX_UPSTREAM_KEY`.
+单文件服务 `scripts/mailbox.py` (纯 stdlib, 零第三方依赖; 独立 skill mailbox, 自 use-sandbox-worktree 拆出), mesh 架构: 每台机器各跑一个信箱实例, 所有实例地位平等, 邻居间按共享密钥互认并洪泛路由信件 (邻居表每台机器手工配置). 二合一: **信箱** (session 间传信, 设备/容器身份统一为 session, 4 类型 `notify`/`open_url`/`exec`/`request`) + **LLM 中转** (OpenAI 兼容 `/v1/chat/completions` 与 `/v1/models`, sk- key 认证, 模型白名单/quota/用量/过期/吊销, 响应上游不透 stream; 无上游配置则不启中转角色). 信件全内存 (队列/租约/已见 id/邻居暂存, 重启即清; 租约到期自动重投, ack 幂等; 滞留上限缺省 100 超限丢最老); SQLite (`~/.agents/mailbox/server.db`) 只存 session 凭证/中转 key/指令集. 端口: 信箱区间 38417-38426 启动绑首个空闲, 无认证 `GET /__identity__` 供探测身份 (应答服务名 `mailbox`); admin 口默认 38416 (`--admin-port` 可配) 硬绑 127.0.0.1 (header `X-Admin-Token`, 容器够不着); 中转区间 38427-38436. 实际端口与 admin token 写状态文件 `~/.agents/mailbox/state.json` (0600), 同机组件读文件免扫描. 上游配置走 serve 参数或 env `MAILBOX_UPSTREAM_BASE`/`MAILBOX_UPSTREAM_KEY`.
 
 全部配置/运行时文件集中 `~/.agents/mailbox/` (config.json/neighbors.json/cli-state.json/state.json/server.db); 旧路径 (`~/.agents/sandbox-worktree/`, `~/.local/state/swt-mailbox/`, 老老路径 `~/.config/swt/`) 首次运行自动迁移并提示.
 
@@ -16,7 +16,9 @@
 uv run python scripts/mailbox.py serve [--port <起点>] [--admin-port <端口>] [--relay-port <起点>] [--neighbors <file>] [--upstream-base <url>] [--upstream-key <key>]
 ```
 
-本机配置文件缺失时, 启动自动注册 `<hostname>-host` session 并把凭证写进本机配置 `~/.agents/mailbox/config.json` (0600, 父目录 0700) — 本机取信零配置. 邻居表缺省读 `~/.agents/mailbox/neighbors.json` (JSON list `[{"address": "host:port", "shared_key": "..."}]`), 共享密钥首次配置时邻居间互换.
+本机配置文件缺失时, 启动自动注册 `<hostname>-host` session 并把凭证写进本机配置 `~/.agents/mailbox/config.json` (0600, 父目录 0700) — 本机取信零配置. 邻居表缺省读 `~/.agents/mailbox/neighbors.json` (JSON list `[{"address": "host:port", "shared_key": "...", "name": "可选人读标识"}]`), 共享密钥首次配置时邻居间互换.
+
+**邻居存储语义 (两套来源, 各管一段)**: admin 口加/改的邻居写 SQLite (`server.db`) 持久, 重启仍在; neighbors.json 文件只作**启动种子** — 启动时把文件里的条目并入内存, 代码从不回写文件. 由此: 文件来源的邻居被 admin 删除只影响本次运行, 重启后文件仍会再种入 (要永久删除须同时从文件移除); 文件来源的邻居被 admin 修改后即入 DB, 重启时同名以 DB 为准 (换址后的新地址生效, 文件里的旧地址不再种入); 无 name 的旧格式条目照旧按地址去重.
 
 ## 容器侧怎么投信
 
@@ -48,8 +50,12 @@ uv run python $M status                     # 查看配置, 密钥只显前 8 �
 
 (127.0.0.1:38416, header `X-Admin-Token`, token 读状态文件)
 - 发 session 凭证: `POST /admin/sessions {"id": "<名字>"}` → 应答 `{id, signing_key, response_key}`
+- 邻居管理: `POST /admin/neighbors {address, shared_key, name?}` (带 name 且同名 → upsert 覆盖地址不新增条目, 换址就这样改) / `GET /admin/neighbors` → `{neighbors: [{address, name, status}]}` (status = 最近一次转发结果 `unknown`/`ok`/`unreachable`, 重启回 unknown; 密钥不回显) / `PATCH /admin/neighbors {address, new_address?/shared_key?/name?}` / `DELETE /admin/neighbors {address}` (内存与 DB 同删; 删除后不再向该邻居转发)
+- 滞留管理 (邻居不可达的信): `GET /admin/pending` → `{pending: [{id, to, neighbor, last_error, retries, age}]}` (age 秒) / `POST /admin/pending/retry {id}` 立即补投 (发出即移出, 未知 id 404) / `POST /admin/pending/drop {id}` 丢弃; 滞留数量上限缺省 100 (env `MAILBOX_PENDING_CAP`), 新滞留超限丢最老 (丢弃只在 GET 计数里可见, 信不补投)
 - 中转 key: `POST /admin/relay-keys {models, quota?, ttl_seconds?}` / `POST /admin/relay-keys/revoke {key}`
 - **指令集**注册: `POST /admin/whitelist {instruction}` (instruction = 含 `tool` 的结构化指令对象)
+
+关键事件日志: serve 对邻居转发失败在 stderr 打 `[UTC 时间戳] forward-failed letter=<id> to=<目标> neighbor=<地址> error=<原因>` (每轮后台重试失败都会重复出现, 排障看最新一条即可).
 
 ## 指令集现状
 

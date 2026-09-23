@@ -22,12 +22,14 @@ env:
   ~/.agents/mailbox/config.json) / MAILBOX_NEIGHBORS (邻居表路径, 缺省
   ~/.agents/mailbox/neighbors.json) / MAILBOX_HOLD_SECONDS (缺省 20) /
   MAILBOX_LEASE_SECONDS (缺省 1800) / MAILBOX_RETRY_SECONDS (缺省 5) /
-  MAILBOX_MAX_CONCURRENT_POLLS / MAILBOX_UPSTREAM_BASE / MAILBOX_UPSTREAM_KEY /
+  MAILBOX_MAX_CONCURRENT_POLLS / MAILBOX_PENDING_CAP (滞留转发上限, 缺省
+  100, 超限丢最老) / MAILBOX_UPSTREAM_BASE / MAILBOX_UPSTREAM_KEY /
   MAILBOX_FLOOD_BUDGET_SECONDS (post 洪泛判定预算, 缺省 2, 测试时间注入用)
 """
 from __future__ import annotations
 
 import argparse
+import datetime
 import getpass
 import hashlib
 import hmac
@@ -59,6 +61,7 @@ HOLD_SECONDS = 20.0         # 长轮询 hold 缺省
 LEASE_SECONDS = 1800.0      # 租约时长缺省 30min (D009)
 MAX_CONCURRENT_POLLS = 5    # 同 session 并发 poll 上限 (D016)
 FLOOD_BUDGET_SECONDS = 2.0  # post 洪泛判定预算 (非功能要求, env 可调)
+PENDING_CAP = 100           # 滞留转发上限, 超限丢最老 (AC-013, env 可调)
 FORWARD_TIMEOUT = 5.0       # 单邻居转发超时上限 (后台重试路径沿用)
 MAX_BODY_BYTES = 1024 * 1024  # 单信正文上限 1MB (BR-006/AC-021)
 MSG_TYPES = ("notify", "open_url", "exec", "request")
@@ -73,6 +76,15 @@ ROUTE_WORDS = {"queued_local": "已进本机队列",
 
 def sign(key, *parts):
     return hmac.new(key.encode(), "\n".join(parts).encode(), hashlib.sha256).hexdigest()
+
+
+def log_event(event, **fields):
+    """关键事件日志行 (D011 F1 最小版, AC-037): `[UTC 时间戳] 事件 k=v ...`
+    走 stderr, 不建 JSON 日志体系."""
+    ts = datetime.datetime.now(datetime.timezone.utc).isoformat(
+        timespec="milliseconds").replace("+00:00", "Z")
+    detail = " ".join(f"{k}={v}" for k, v in fields.items())
+    print(f"[{ts}] {event} {detail}".rstrip(), file=sys.stderr, flush=True)
 
 
 def state_path():
@@ -246,11 +258,27 @@ class Session:
 
 
 class Neighbor:
-    """邻居信箱连接 (D007/D020): address = host:port, shared_key = 转发互认密钥."""
+    """邻居信箱连接 (D007/D020): address = host:port, shared_key = 转发互认密钥.
+    name = 人读标识 (D011 B2, 可缺省): 同名再登记 upsert 覆盖地址不累积;
+    reachable = 最近一次转发结果 (None 未试过 / True / False), 内存态重启即清."""
 
-    def __init__(self, address, shared_key):
+    def __init__(self, address, shared_key, name=None):
         self.address = address
         self.shared_key = shared_key
+        self.name = name
+        self.reachable = None
+
+
+class PendingForward:
+    """滞留转发记录 (D011 B4): 信 + 目标邻居 + 重试账目, 供滞留管理查询."""
+
+    def __init__(self, letter, neighbor, staged_at, last_error="", retries=0):
+        self.letter = letter
+        self.neighbor = neighbor
+        self.staged_at = staged_at    # 墙钟 epoch; 年龄 = now - staged_at (秒)
+        self.last_error = last_error  # 最近一次转发失败原因 (人话)
+        self.retries = retries        # 失败尝试次数 (转发尝试失败入暂存即 1;
+                                      # 预算耗尽入暂存尚未尝试, 记 0)
 
 
 class Letter:
@@ -287,10 +315,11 @@ class Mailbox:
     """
 
     def __init__(self, db_path=None, now=time.time, lease_seconds=LEASE_SECONDS,
-                 monotonic=time.monotonic):
+                 monotonic=time.monotonic, pending_cap=PENDING_CAP):
         self._now = now            # 墙钟: 签名时间窗 ±5min / last_poll
         self._mono = monotonic     # 单调钟: 租约计时 (TECHNICAL 边界与异常处理)
         self.lease_seconds = lease_seconds  # 租约时长 (D009), serve 可经 env 覆盖
+        self.pending_cap = pending_cap      # 滞留上限 (AC-013), serve 可经 env 覆盖
         self.sessions = {}    # id -> Session
         self.queue = {}       # to_session -> [Letter]
         self.leases = {}      # letter_id -> (Letter, lease_token, 租出时刻)
@@ -299,7 +328,7 @@ class Mailbox:
         self.whitelist = set()  # exec 指令集规范形 (D006 内容级防线)
         self.concurrent_polls = {}  # session_id -> 在等 poll 数 (D016)
         self.neighbors = []   # list[Neighbor], serve 启动时从邻居表加载
-        self.pending_forwards = []  # list[(Letter, Neighbor)], 邻居不可达内存暂存
+        self.pending_forwards = []  # list[PendingForward], 邻居不可达内存暂存 (B4)
         self._pending_lock = threading.Lock()  # 暂存增删与请求处理线程并发
         self._db = None
         if db_path is not None:
@@ -314,10 +343,15 @@ class Mailbox:
                 " instruction TEXT PRIMARY KEY)")
             self._db.execute(
                 "CREATE TABLE IF NOT EXISTS neighbors ("
-                " address TEXT PRIMARY KEY, shared_key TEXT)")
-            for address, shared_key in self._db.execute(
-                    "SELECT address, shared_key FROM neighbors"):
-                self.neighbors.append(Neighbor(address, shared_key))
+                " address TEXT PRIMARY KEY, shared_key TEXT, name TEXT)")
+            try:  # ISSUE-04 前的旧库无 name 列 → 补列; 新库建表已含, 重复列忽略
+                self._db.execute("ALTER TABLE neighbors ADD COLUMN name TEXT")
+            except sqlite3.OperationalError:
+                pass
+            for address, shared_key, name in self._db.execute(
+                    "SELECT address, shared_key, name FROM neighbors"):
+                self.neighbors.append(Neighbor(address, shared_key,
+                                               name or None))
             for (instruction,) in self._db.execute(
                     "SELECT instruction FROM whitelist"):
                 self.whitelist.add(instruction)
@@ -359,19 +393,83 @@ class Mailbox:
         self._save_session(s)
         return s
 
-    def add_neighbor(self, address, shared_key):
-        """运行时加邻居 (D020): 内存生效 + SQLite 持久化 (重启仍在).
-        地址重复 → MailboxError (admin 层映射 409)."""
+    def add_neighbor(self, address, shared_key, name=None):
+        """运行时加邻居 (D020): 内存生效 + SQLite 持久化 (B8, 重启仍在).
+        同名 upsert (D011 B2): name 命中已有邻居 → 覆盖地址与密钥不新增条目
+        (换址场景); 新地址撞另一邻居时消除重复 — 旧占用者让位, 本条目接管
+        地址, 全表地址保持唯一 (迁移/合并, 与 update_neighbor 的 409 不同:
+        换址迁移到在用地址是合法场景); 地址重复且名字不同 → MailboxError
+        (admin 层映射 409)."""
+        if name:
+            for n in self.neighbors:
+                if n.name == name:
+                    if n.address != address:
+                        for other in list(self.neighbors):
+                            if other is not n and other.address == address:
+                                self.remove_neighbor(address)
+                                break
+                    old = n.address
+                    n.address, n.shared_key = address, shared_key
+                    self._save_neighbor(n, old_address=old)
+                    return n
         for n in self.neighbors:
             if n.address == address:
                 raise MailboxError(f"邻居已存在: {address}")
-        n = Neighbor(address, shared_key)
+        n = Neighbor(address, shared_key, name)
         self.neighbors.append(n)
-        if self._db is not None:
-            self._db.execute(
-                "INSERT OR REPLACE INTO neighbors (address, shared_key)"
-                " VALUES (?, ?)", (address, shared_key))
-            self._db.commit()
+        self._save_neighbor(n)
+        return n
+
+    def _save_neighbor(self, n, old_address=None):
+        """邻居写穿 SQLite (B8: admin 加/改的进 DB 持久)."""
+        if self._db is None:
+            return
+        if old_address is not None and old_address != n.address:
+            self._db.execute("DELETE FROM neighbors WHERE address=?",
+                             (old_address,))
+        self._db.execute(
+            "INSERT OR REPLACE INTO neighbors (address, shared_key, name)"
+            " VALUES (?, ?, ?)", (n.address, n.shared_key, n.name))
+        self._db.commit()
+
+    def remove_neighbor(self, address):
+        """删邻居 (D011 B1): 内存与 DB 同删; 未知地址 → None (admin 层 404).
+        文件种入的邻居不在 DB, 只影响本次运行 (重启文件仍会再种入)."""
+        for i, n in enumerate(self.neighbors):
+            if n.address == address:
+                del self.neighbors[i]
+                if self._db is not None:
+                    self._db.execute("DELETE FROM neighbors WHERE address=?",
+                                     (address,))
+                    self._db.commit()
+                return n
+        return None
+
+    def update_neighbor(self, address, new_address=None, shared_key=None,
+                        name=None):
+        """改邻居 (D011 B1): 按 address 定位, 改地址/密钥/名字 (None = 不改;
+        name="" = 清掉名字, shared_key="" 等同不改 — 非空才更新);
+        文件种入的邻居一经 admin 修改即入 DB (B8).
+        未知 → None; 新地址/新名字撞已有 → MailboxError (409)."""
+        n = next((x for x in self.neighbors if x.address == address), None)
+        if n is None:
+            return None
+        if new_address and new_address != address:
+            for x in self.neighbors:
+                if x is not n and x.address == new_address:
+                    raise MailboxError(f"邻居已存在: {new_address}")
+        if name:
+            for x in self.neighbors:
+                if x is not n and x.name == name:
+                    raise MailboxError(f"邻居名字已被占用: {name}")
+        old = n.address
+        if new_address:
+            n.address = new_address
+        if shared_key:
+            n.shared_key = shared_key
+        if name is not None:
+            n.name = name or None
+        self._save_neighbor(n, old_address=old)
         return n
 
     def add_whitelist(self, instruction):
@@ -475,19 +573,77 @@ class Mailbox:
             return None  # 幂等: 重复 id 直接 ok
         return self._route(letter, source=src)
 
-    def stage_forward(self, letter, neighbor):
-        """邻居不可达 → 内存暂存 (NG-009: 不持久化, 重启即清)."""
+    def stage_forward(self, letter, neighbor, error="", retries=1):
+        """邻居不可达 → 内存暂存 (NG-009: 不持久化, 重启即清), 记录最后错误
+        与失败尝试次数 (D011 B4), 供 GET /admin/pending 查询; 预算耗尽入暂存
+        时尚未做过转发尝试, retries 传 0."""
         with self._pending_lock:
-            self.pending_forwards.append((letter, neighbor))
+            self.pending_forwards.append(
+                PendingForward(letter, neighbor, self._now(), error,
+                               retries=retries))
+            self._enforce_pending_cap()
+
+    def _enforce_pending_cap(self):
+        """滞留数量上限 (AC-013): 超限丢最老 (staged_at 最小者优先出列).
+        须持 _pending_lock 调用; cap=0 即不暂存."""
+        while len(self.pending_forwards) > self.pending_cap:
+            oldest = min(self.pending_forwards, key=lambda e: e.staged_at)
+            self.pending_forwards.remove(oldest)
 
     def retry_pending(self):
         """重试暂存信: 发出则移除, 仍不可达则留待下轮 (邻居端 seen-id 兜底
         重复). 邻居转发状态机: 待转发 --可达--> 已发出, --重试定时器--> 待转发."""
         with self._pending_lock:
             pending, self.pending_forwards = self.pending_forwards, []
-        for letter, n in pending:
-            if not send_forward(n, letter):
-                self.stage_forward(letter, n)
+        self.retry_entries(pending)
+
+    def _restage(self, entry):
+        """重试仍失败回列; 同键 (信件 id + 邻居地址) 已在列则不重复入列
+        (admin 立即重试与后台重试线程并发时的竞态去重)."""
+        with self._pending_lock:
+            for e in self.pending_forwards:
+                if e.letter.id == entry.letter.id \
+                        and e.neighbor.address == entry.neighbor.address:
+                    return
+            self.pending_forwards.append(entry)
+            self._enforce_pending_cap()
+
+    def retry_entries(self, entries):
+        """对一组滞留条目立即补投 (B4): 发出即移除, 失败则账目更新 (次数 +1 /
+        最后错误) 后回列; 邻居端 seen-id 兜底重复投递."""
+        sent = 0
+        for entry in entries:
+            ok, error = forward_attempt(entry.neighbor, entry.letter)
+            entry.neighbor.reachable = ok
+            if ok:
+                sent += 1
+                continue
+            entry.retries += 1
+            entry.last_error = error
+            _log_forward_failed(entry.letter, entry.neighbor, error)
+            self._restage(entry)
+        return sent
+
+    def pending_snapshot(self):
+        """滞留信快照 (B4): id/to/邻居/最后错误/重试次数/年龄 (秒)."""
+        with self._pending_lock:
+            now = self._now()
+            return [{"id": e.letter.id, "to": e.letter.to_session,
+                     "neighbor": e.neighbor.address,
+                     "last_error": e.last_error, "retries": e.retries,
+                     "age": round(now - e.staged_at, 3)}
+                    for e in self.pending_forwards]
+
+    def take_pending(self, letter_id):
+        """按信件 id 取出滞留条目 (移出队列), 供 admin 重投/丢弃 (B4);
+        无匹配 → 空表 (admin 层 404)."""
+        with self._pending_lock:
+            mine = [e for e in self.pending_forwards
+                    if e.letter.id == letter_id]
+            if mine:
+                self.pending_forwards = [e for e in self.pending_forwards
+                                         if e.letter.id != letter_id]
+        return mine
 
     @staticmethod
     def _pull_window_hit(ins, poster_session_id):
@@ -574,16 +730,27 @@ class Mailbox:
         return letter
 
 
-def send_forward(neighbor, letter, timeout=FORWARD_TIMEOUT):
-    """向邻居投递 (D007). 不可达/超时/被拒一律 False, 由调用方暂存重试;
+def forward_attempt(neighbor, letter, timeout=FORWARD_TIMEOUT):
+    """向邻居投递一次, 返回 (是否成功, 人话错误); 失败原因供滞留记录与关键
+    事件日志 (D011 B4/F1). 不可达/超时/被拒一律 False, 由调用方暂存重试;
     timeout 上限避免一个挂起邻居阻塞 post 响应."""
     try:
         resp = http_post(f"http://{neighbor.address}/mailbox/forward",
                          {"neighbor_key": neighbor.shared_key,
                           "letter": letter.to_dict()}, timeout=timeout)
-    except (urllib.error.URLError, OSError):
-        return False
-    return bool(resp.get("ok"))
+    except urllib.error.HTTPError as e:
+        return False, f"HTTP {e.code}"
+    except (urllib.error.URLError, OSError) as e:
+        return False, str(getattr(e, "reason", e))
+    ok = bool(resp.get("ok"))
+    return ok, "" if ok else "邻居应答 ok=false"
+
+
+def _log_forward_failed(letter, neighbor, error):
+    """邻居转发失败日志行 (AC-037): 事件名与字段一处收口 (_flood 与
+    retry_entries 共用)."""
+    log_event("forward-failed", letter=letter.id, to=letter.to_session,
+              neighbor=neighbor.address, error=error)
 
 
 def bind_first_free(try_bind, start_port):
@@ -752,11 +919,19 @@ class _Handler(_JsonHandler):
         deadline = time.monotonic() + self.server.flood_budget_seconds
         for n in targets:
             remaining = deadline - time.monotonic()
-            if remaining > 0 and send_forward(
-                    n, letter, timeout=min(FORWARD_TIMEOUT, remaining)):
-                confirmed += 1
+            if remaining > 0:
+                ok, error = forward_attempt(
+                    n, letter, timeout=min(FORWARD_TIMEOUT, remaining))
+                n.reachable = ok
+                if ok:
+                    confirmed += 1
+                    continue
+                _log_forward_failed(letter, n, error)
+                m.stage_forward(letter, n, error)
             else:
-                m.stage_forward(letter, n)
+                # 预算耗尽: 未做任何转发尝试 — 不写 reachable (status 语义 =
+                # 最近一次转发结果), 失败尝试计数记 0
+                m.stage_forward(letter, n, "洪泛预算耗尽", retries=0)
         return confirmed, len(targets)
 
     def _handle_post(self, body, endpoint):
@@ -999,17 +1174,25 @@ class _AdminHandler(_JsonHandler):
         if path == "/admin/neighbors":
             address = body.get("address")
             shared_key = body.get("shared_key")
+            name = body.get("name")
             if not isinstance(address, str) or not address:
                 return self._json(400, {"error": "address 须为非空字符串"})
             if not isinstance(shared_key, str) or not shared_key:
                 return self._json(400, {"error": "shared_key 须为非空字符串"})
+            if name is not None and not isinstance(name, str):
+                return self._json(400, {"error": "name 须为字符串"})
             m = self.server.mailbox
             with self.server.cond:
                 try:
-                    m.add_neighbor(address, shared_key)
+                    n = m.add_neighbor(address, shared_key, name or None)
                 except MailboxError as e:
                     return self._json(409, {"error": str(e)})
-            return self._json(200, {"address": address})
+            return self._json(200, {"address": n.address,
+                                    "name": n.name or ""})
+        if path == "/admin/pending/retry":
+            return self._pending_op(body, retry=True)
+        if path == "/admin/pending/drop":
+            return self._pending_op(body, retry=False)
         if path == "/admin/whitelist":
             ins = body.get("instruction")
             if not isinstance(ins, dict) or not isinstance(ins.get("tool"), str):
@@ -1046,6 +1229,17 @@ class _AdminHandler(_JsonHandler):
                      "expires_at": rk.expires_at, "revoked": rk.revoked}
                     for rk in relay.keys.values()]
             return self._json(200, {"relay_keys": keys})
+        if path == "/admin/neighbors":
+            with self.server.cond:
+                neighbors = [{"address": n.address, "name": n.name or "",
+                              "status": ("unknown" if n.reachable is None
+                                         else "ok" if n.reachable
+                                         else "unreachable")}
+                             for n in m.neighbors]
+            # 密钥不出管理面 (同 sessions 口径): 只回地址/名字/状态
+            return self._json(200, {"neighbors": neighbors})
+        if path == "/admin/pending":
+            return self._json(200, {"pending": m.pending_snapshot()})
         if path == "/admin/stats":
             with self.server.cond:
                 stats = {
@@ -1087,6 +1281,81 @@ class _AdminHandler(_JsonHandler):
             return self._json(404, {"error": f"未知 key: {key}"})
         self.server.relay.revoke_key(key)
         self._json(200, {"ok": True})
+
+    def _pending_op(self, body, retry):
+        """滞留信操作 (D011 B4): retry=True 立即补投, 否则丢弃; 未知 id 404."""
+        lid = body.get("id")
+        if not isinstance(lid, str) or not lid:
+            return self._json(400, {"error": "id 须为非空字符串"})
+        m = self.server.mailbox
+        entries = m.take_pending(lid)
+        if not entries:
+            return self._json(404, {"error": f"无此滞留信: {lid}"})
+        if retry:
+            sent = m.retry_entries(entries)
+            return self._json(200, {"ok": True, "id": lid, "sent": sent})
+        return self._json(200, {"ok": True, "id": lid,
+                                "dropped": len(entries)})
+
+    def _body_or_none(self):
+        """读请求体: 坏 JSON/非 dict → None (调用方打 400)."""
+        try:
+            body = self._body()
+        except json.JSONDecodeError:
+            return None
+        return body if isinstance(body, dict) else None
+
+    def do_DELETE(self):
+        """D011 B1: DELETE /admin/neighbors {address} — 内存与 DB 同删."""
+        if not self._auth():
+            return
+        body = self._body_or_none()
+        if body is None:
+            return self._json(400, {"error": "bad json"})
+        if urlparse(self.path).path == "/admin/neighbors":
+            address = body.get("address")
+            if not isinstance(address, str) or not address:
+                return self._json(400, {"error": "address 须为非空字符串"})
+            m = self.server.mailbox
+            with self.server.cond:
+                removed = m.remove_neighbor(address)
+            if removed is None:
+                return self._json(404, {"error": f"邻居不存在: {address}"})
+            return self._json(200, {"ok": True, "address": address})
+        self._json(404, {"error": "not found"})
+
+    def do_PATCH(self):
+        """D011 B1: PATCH /admin/neighbors {address, new_address?/shared_key?/name?}."""
+        if not self._auth():
+            return
+        body = self._body_or_none()
+        if body is None:
+            return self._json(400, {"error": "bad json"})
+        if urlparse(self.path).path != "/admin/neighbors":
+            return self._json(404, {"error": "not found"})
+        address = body.get("address")
+        if not isinstance(address, str) or not address:
+            return self._json(400, {"error": "address 须为非空字符串 (定位邻居)"})
+        new_address = body.get("new_address")
+        shared_key = body.get("shared_key")
+        name = body.get("name")
+        for field, value in (("new_address", new_address),
+                             ("shared_key", shared_key), ("name", name)):
+            if value is not None and not isinstance(value, str):
+                return self._json(400, {"error": f"{field} 须为字符串"})
+        if new_address is None and shared_key is None and name is None:
+            return self._json(400, {
+                "error": "缺可更新字段: new_address/shared_key/name 任选"})
+        m = self.server.mailbox
+        with self.server.cond:
+            try:
+                n = m.update_neighbor(address, new_address, shared_key, name)
+            except MailboxError as e:
+                return self._json(409, {"error": str(e)})
+        if n is None:
+            return self._json(404, {"error": f"邻居不存在: {address}"})
+        return self._json(200, {"ok": True, "address": n.address,
+                                "name": n.name or ""})
 
 
 def _term(*_):
@@ -1592,14 +1861,16 @@ def neighbors_path():
 
 
 def load_neighbors(path):
-    """邻居表 (D020): JSON list [{address, shared_key}]; 缺失/畸形 → 空表."""
+    """邻居表 (D020): JSON list [{address, shared_key, name?}]; 缺失/畸形 → 空表.
+    name 可缺省 (D011 B2 兼容旧表), 文件条目只作启动种子 (B8)."""
     try:
         data = json.loads(Path(path).read_text())
     except (OSError, json.JSONDecodeError):
         return []
     if not isinstance(data, list):
         return []
-    return [Neighbor(str(d["address"]), str(d["shared_key"]))
+    return [Neighbor(str(d["address"]), str(d["shared_key"]),
+                     str(d["name"]) if d.get("name") else None)
             for d in data]
 
 
@@ -1609,13 +1880,19 @@ def cmd_serve(args):
     mailbox = Mailbox(db_path=db_path,
                       lease_seconds=float(
                           os.environ.get("MAILBOX_LEASE_SECONDS",
-                                         str(LEASE_SECONDS))))
-    # 邻居表 = SQLite 持久化 (admin 运行时加入) + JSON 文件 (D020 手工配置),
-    # 按地址去重合并
+                                         str(LEASE_SECONDS))),
+                      pending_cap=int(
+                          os.environ.get("MAILBOX_PENDING_CAP",
+                                         str(PENDING_CAP))))
+    # 邻居表 = SQLite 持久化 (admin 运行时加入/修改, B8) + JSON 文件 (D020 手工
+    # 配置, 只作启动种子); 按地址与名字双重去重 — 同名时 DB (admin 改过的) 优先,
+    # 文件旧地址不再种入 (B2 换址后不改文件的已知张力, 见 reference/mailbox.md)
     known = {n.address for n in mailbox.neighbors}
+    known_names = {n.name for n in mailbox.neighbors if n.name}
     mailbox.neighbors += [n for n in load_neighbors(args.neighbors
                                                     or neighbors_path())
-                          if n.address not in known]
+                          if n.address not in known
+                          and not (n.name and n.name in known_names)]
     cond = threading.Condition()
     admin_token = os.environ.get("MAILBOX_ADMIN_TOKEN") or uuid.uuid4().hex
     upstream_base = args.upstream_base or os.environ.get("MAILBOX_UPSTREAM_BASE", "")
