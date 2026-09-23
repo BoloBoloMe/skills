@@ -1,4 +1,4 @@
-"""swt-mailbox 拉窗门禁测试 (ISSUE-07, D014, AC-009).
+"""mailbox 拉窗门禁测试 (ISSUE-07, D014, AC-009).
 
 TS-001 waypipe 缺席 skipped / TS-002 同容器 300s 限频 / TS-003 限频跨取信循环生效.
 
@@ -20,22 +20,22 @@ PULL_WINDOW_BODY = json.dumps({"tool": "swt.pull-window", "container": "c1"})
 
 
 def load_module():
-    """按文件路径重新加载 swt-mailbox 模块 (模拟新 CLI 进程, 无内存状态残留)."""
-    spec = importlib.util.spec_from_file_location("swt_mailbox_under_test", SCRIPT)
+    """按文件路径重新加载 mailbox 模块 (模拟新 CLI 进程, 无内存状态残留)."""
+    spec = importlib.util.spec_from_file_location("mailbox_under_test", SCRIPT)
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
     return mod
 
 
 def cli_env(monkeypatch, srv, session_id, signing_key, response_key, workdir):
-    """容器式 env 凭证注入; SWT_MAILBOX_CONFIG 指向临时目录隔离 state file."""
+    """容器式 env 凭证注入; MAILBOX_CONFIG 指向临时目录隔离 state file."""
     workdir = Path(workdir)
     workdir.mkdir(parents=True, exist_ok=True)
     monkeypatch.setenv("SWT_MAILBOX_URL", f"http://127.0.0.1:{srv.port}")
     monkeypatch.setenv("SWT_SESSION_ID", session_id)
     monkeypatch.setenv("SWT_SESSION_SIGNING_KEY", signing_key)
     monkeypatch.setenv("SWT_SESSION_RESPONSE_KEY", response_key)
-    monkeypatch.setenv("SWT_MAILBOX_CONFIG", str(workdir / "mailbox.json"))
+    monkeypatch.setenv("MAILBOX_CONFIG", str(workdir / "mailbox.json"))
 
 
 def spy_acks(mod, monkeypatch):

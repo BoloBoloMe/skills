@@ -1,4 +1,4 @@
-"""swt-mailbox mesh 路由测试 (ISSUE-05, 多实例洪泛转发接缝).
+"""mailbox mesh 路由测试 (ISSUE-05, 多实例洪泛转发接缝).
 
 TS-001 forward 邻居密钥认证 / TS-002 本机投信洪泛到邻居 /
 TS-003 seen-id 防洪泛循环 / TS-004 来源邻居排除 /
@@ -80,8 +80,8 @@ def mesh_serves(tmp_path):
         npath = workdir / "neighbors.json"
         npath.write_text(json.dumps(list(neighbors)))
         srv = Serve(workdir, hold=hold, port=port,
-                    extra_env={"SWT_MAILBOX_NEIGHBORS": str(npath),
-                               "SWT_MAILBOX_RETRY_SECONDS": retry})
+                    extra_env={"MAILBOX_NEIGHBORS": str(npath),
+                               "MAILBOX_RETRY_SECONDS": retry})
         created.append(srv)
         return srv
 

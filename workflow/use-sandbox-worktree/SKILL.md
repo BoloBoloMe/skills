@@ -101,7 +101,7 @@ uv run python scripts/swt.py birth [--repo <主仓>] --branch <母体分支名�
 
 **本机直通**: 宿主机存在 wayland socket (本机桌面会话) 时, birth 恒挂进容器并烘 wayland 环境变量 (+ GPU 设备, 缺席不挂; 命令字面见 reference/ops.md). 直挂 socket 属主经 rootless uid_map 映射为容器 root, 0755 属主权下 bolo 连不上 — 解法是 **host 侧 `chmod 0777` 宿主机 socket** (birth/resume 都重保, 登录会话重启会重置); 父目录 `/run/user/<uid>` 为 0700, 其他用户够不着路径, 暴露面≈零. **禁用 socat 中继**: wayland 靠 SCM_RIGHTS 传 fd, 中继截断 fd 传递, chromium 必报 Fatal Wayland communication error. **直通只走 wayland, 禁挂 X11 socket** (X11 协议允许跨客户端键盘嗅探/注入). headed 浏览器优先 `--ozone-platform=wayland` 走宿主机桌面 (原生窗口/GPU/fcitx 中文输入/剪贴板互通), 实测不过回退 `DISPLAY=:99` noVNC. 状态值 ok/degraded/absent 落 STATE 容器记录 `host-display`; 无 socket 环境 (纯服务器宿主) 恒 absent, 行为 = 旧形态.
 
-**窗口直飞 (三态选路)**: 容器内 AI 开 headed 浏览器时的三态 — 宿主直通 wayland / 设备侧 waypipe 直飞 / noVNC 兜底. 执行入口 = 容器固定路径 `/home/bolo/.local/bin/swt-headed-browser.sh` (母本经 birth 换入 chromium 精确路径后只读挂载), 内置 preflight, 本机直通缺席时 exit 86. 完整协议 (容器侧编排/设备侧拉起/远程直飞命令模板/残尸纪律) 见 reference/pull-window.md; 投信走信箱 (reference/mailbox.md). 容器无 headed 脚本 (chromium 路径解析失败) 时交付包打 reason 行, 该容器仅终端 + noVNC, 无直飞.
+**窗口直飞 (三态选路)**: 容器内 AI 开 headed 浏览器时的三态 — 宿主直通 wayland / 设备侧 waypipe 直飞 / noVNC 兜底. 执行入口 = 容器固定路径 `/home/bolo/.local/bin/swt-headed-browser.sh` (母本经 birth 换入 chromium 精确路径后只读挂载), 内置 preflight, 本机直通缺席时 exit 86. 完整协议 (容器侧编排/设备侧拉起/远程直飞命令模板/残尸纪律) 见 reference/pull-window.md; 投信走信箱 (mailbox skill 的 reference/mailbox.md). 容器无 headed 脚本 (chromium 路径解析失败) 时交付包打 reason 行, 该容器仅终端 + noVNC, 无直飞.
 
 **多对并存**: 同一主仓可同时有多对 (每个母体分支一对, 各自母体目录 + daemon + 容器), 每对互不可见对方分支: 容器读面只见本对分支, 写面只准快进推本对母体分支. 多个容器同推同一母体 (历史残留或未来放开): 容器只准快进推送, 后推的那个会被 git 以历史分叉为由拒绝 — 容器内 `git fetch` → 解冲突 → 重推 (git 原生串行化, 无新机制).
 
@@ -144,7 +144,7 @@ uv run python scripts/image-prep.py build      --repo <主仓> [--requirements <
 ## 母本与分发
 
 - **agent 提示词母本制**: 母本在仓库内 `agent-prompts/{pi,codex,kimi-code}_AGENTS.md` — 改它 = 改容器内 agent 的行为基线. birth 时拷贝到 `<records-root>/runtime/<identity>/agent-prompts/<容器>/` 留档 (可追溯每容器用了哪版), 再只读单文件挂载进容器: pi → `/home/bolo/.pi/agent/AGENTS.md`, codex → `/home/bolo/.codex/AGENTS.md`, kimi-code → `/home/bolo/.kimi-code/AGENTS.md` (官方文档: 全局指令文件随 KIMI_CODE_HOME, 缺省 `~/.kimi-code/`). 母本更新只对新 birth 的容器生效, 不动运行中容器. 维护纪律: 三母本的通用核逐字相同, 改通用核必须三份同步; 容器契约各行与存续节 (显示栈/窗口直飞) 呼应, 改动两边同步.
-- **分发**: 仓库里的改动到达使用现场有两条路, 别混淆 — swt.py / swt-mailbox.py / 本 SKILL.md 与 reference/ (host 侧 agent 读): 仓库根 `uv run python sync-to-pi.py` 同步到 host skills 目录即生效; 设备侧现场是各自的副本, 更新后取信会话重跑脚本即生效 (无扩展, 无后台常驻). `present` skill (容器内): 它是 base 镜像构建期 COPY 进镜像的, 只改仓库文件容器拿不到 — sync-to-pi 后还须重建 base (`image-prep build-base`, 按镜像管理节级联 display/项目层), 之后 birth 的新容器才拿到新版; 现有容器不受影响也不补.
+- **分发**: 仓库里的改动到达使用现场有两条路, 别混淆 — swt.py / 本 SKILL.md 与 reference/ (host 侧 agent 读): 仓库根 `uv run python sync-to-pi.py` 同步到 host skills 目录即生效; 信箱脚本在独立 mailbox skill (`workflow/mailbox/scripts/mailbox.py` → `~/.agents/skills/mailbox/`), 同经 sync-to-pi 分发. 设备侧现场是各自的副本, 更新后取信会话重跑脚本即生效 (无扩展, 无后台常驻). `present` skill (容器内): 它是 base 镜像构建期 COPY 进镜像的, 只改仓库文件容器拿不到 — sync-to-pi 后还须重建 base (`image-prep build-base`, 按镜像管理节级联 display/项目层), 之后 birth 的新容器才拿到新版; 现有容器不受影响也不补.
 
 ## 环境变量继承 (env.conf)
 
@@ -153,10 +153,10 @@ uv run python scripts/image-prep.py build      --repo <主仓> [--requirements <
 - 每行一条: `NAME` = 值取 host 当前环境 (**文件不存秘密值**); `NAME=value` = 固定值 (仅限非秘密). `#` 开头为注释.
 - `NAME` 在 host 未设置: stderr 警告并跳过, 不阻塞 birth.
 
-## 基础服务 (信箱 mesh + LLM 中转)
+## 基础服务 (信箱 mesh + LLM 中转, 独立 mailbox skill)
 
-单文件服务 `scripts/swt-mailbox.py` (纯 stdlib): **信箱** (session 间传信, 设备/容器/本机身份统一为 session, 信件类型 notify/open_url/exec/request) + **LLM 中转** (OpenAI 兼容, sk- key 认证), mesh 架构 — 每台机器一个实例, 邻居间共享密钥互认洪泛路由. birth 自动注册容器 session 并烘入凭证 env, terminate 注销; 信箱缺席只告警不阻断. 网络面 whitelist 已自动放行宿主网关, 无额外 `--allow`.
-serve 启动, 设备侧取信配置, 容器侧投信, 展示页网址沟通与代开协议, 指令集 (swt.pull-window) 安全语义, admin 口速查 → reference/mailbox.md. 协议细节 (HMAC 签名/时间窗/防重放/租约重投) 以 `swt-mailbox.py` docstring 与 `docs/changes/swt-mailbox-mesh/TECHNICAL.md` 为准.
+信箱是独立 skill `mailbox` (仓库 `workflow/mailbox/` → 部署 `~/.agents/skills/mailbox/`), 单文件服务 `scripts/mailbox.py` (纯 stdlib): **信箱** (session 间传信, 设备/容器/本机身份统一为 session, 信件类型 notify/open_url/exec/request) + **LLM 中转** (OpenAI 兼容, sk- key 认证), mesh 架构 — 每台机器一个实例, 邻居间共享密钥互认洪泛路由. birth 自动注册容器 session 并烘入凭证 env, terminate 注销; 信箱缺席只告警不阻断. 网络面 whitelist 已自动放行宿主网关, 无额外 `--allow`.
+serve 启动, 设备侧取信配置, 容器侧投信, 展示页网址沟通与代开协议, 指令集 (swt.pull-window) 安全语义, admin 口速查 → mailbox skill 的 reference/mailbox.md. 协议细节 (HMAC 签名/时间窗/防重放/租约重投) 以 mailbox.py docstring 与 `docs/changes/swt-mailbox-mesh/TECHNICAL.md` 为准.
 
 ## 网络控制 / 容器命令 / 救场
 

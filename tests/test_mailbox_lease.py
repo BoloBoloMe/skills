@@ -1,10 +1,10 @@
-"""swt-mailbox 租约重投测试 (ISSUE-02, AC-004).
+"""mailbox 租约重投测试 (ISSUE-02, AC-004).
 
 TS-001 test_poll_returns_lease_token / TS-002 test_ack_requires_valid_token /
 TS-003 test_lease_expiry_requeues / TS-004 test_seen_id_dedup.
 
 真实子进程 serve + 回环 HTTP; 短租约经 monkeypatch.setenv 注入子进程
-(Serve 继承父进程 env, SWT_MAILBOX_LEASE_SECONDS 为 spec 定义的配置项),
+(Serve 继承父进程 env, MAILBOX_LEASE_SECONDS 为 spec 定义的配置项),
 不真等 30 分钟缺省租约. 共享接缝层在 tests/conftest.py.
 """
 from __future__ import annotations
@@ -16,12 +16,12 @@ import time
 
 from conftest import (SCRIPT, ack_letter, make_letter, poll, post_letter,
                       register_session)
-from test_swt_mailbox_cli import cli_env
+from test_mailbox_cli import cli_env
 
 
 def _load_module():
-    """in-process 加载 swt-mailbox 模块 (注入假时钟的测试需直接驱动 Mailbox)."""
-    spec = importlib.util.spec_from_file_location("swt_mailbox", SCRIPT)
+    """in-process 加载 mailbox 模块 (注入假时钟的测试需直接驱动 Mailbox)."""
+    spec = importlib.util.spec_from_file_location("mailbox_under_test", SCRIPT)
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
     return mod
@@ -65,7 +65,7 @@ def test_ack_requires_valid_token(serves):
 def test_lease_expiry_requeues(serves, monkeypatch):
     """TS-003: poll 拿信不 ack, 租约到期后信收回队列可再次 poll 到,
     重投生成新 lease_token, 旧 token ack 返回 409."""
-    monkeypatch.setenv("SWT_MAILBOX_LEASE_SECONDS", "0.6")  # 不真等 30min
+    monkeypatch.setenv("MAILBOX_LEASE_SECONDS", "0.6")  # 不真等 30min
     srv = serves()
     creds = register_session(srv, "s1")
     signing_key = creds["signing_key"]
@@ -99,7 +99,7 @@ def test_lease_expiry_requeues(serves, monkeypatch):
 def test_seen_id_dedup(serves, monkeypatch, tmp_path):
     """TS-004: L1 被租约重投, 客户端再次取到 L1 时凭已见 id 自动回执,
     不在 stdout 呈现, 继续等待下一封 (D003/D009)."""
-    monkeypatch.setenv("SWT_MAILBOX_LEASE_SECONDS", "0.6")
+    monkeypatch.setenv("MAILBOX_LEASE_SECONDS", "0.6")
     srv = serves()
     creds = register_session(srv, "dev1")
     signing_key = creds["signing_key"]

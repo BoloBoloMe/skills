@@ -1,8 +1,8 @@
-"""swt-mailbox 取信 CLI 测试 (ISSUE-01, 缺省动作子进程接缝).
+"""mailbox 取信 CLI 测试 (ISSUE-01, 缺省动作子进程接缝).
 
 TS-004 test_fetch_cli / TS-005 test_auto_ack / TS-006 test_retry_on_network_error.
 
-真实子进程跑 swt-mailbox.py (缺省取信), 真实 serve 子进程做服务端,
+真实子进程跑 mailbox.py (缺省取信), 真实 serve 子进程做服务端,
 凭证走容器式 env 注入 (SWT_MAILBOX_URL + SWT_SESSION_*).
 共享接缝层 (serve 启动器/签名/HTTP helper) 在 tests/conftest.py.
 """
@@ -20,7 +20,7 @@ from conftest import (SCRIPT, ack_letter, free_port, make_letter, poll,
 
 
 def cli_env(port, session_id, signing_key, response_key, workdir):
-    """容器式 env 凭证; SWT_MAILBOX_CONFIG 指向临时目录隔离 state file."""
+    """容器式 env 凭证; MAILBOX_CONFIG 指向临时目录隔离 state file."""
     workdir = Path(workdir)
     workdir.mkdir(parents=True, exist_ok=True)
     env = dict(os.environ)
@@ -29,7 +29,7 @@ def cli_env(port, session_id, signing_key, response_key, workdir):
         "SWT_SESSION_ID": session_id,
         "SWT_SESSION_SIGNING_KEY": signing_key,
         "SWT_SESSION_RESPONSE_KEY": response_key,
-        "SWT_MAILBOX_CONFIG": str(workdir / "mailbox.json"),
+        "MAILBOX_CONFIG": str(workdir / "mailbox.json"),
     })
     return env
 

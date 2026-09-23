@@ -1,4 +1,4 @@
-"""swt-mailbox 核心闭环测试 (ISSUE-01, serve 子进程侧接缝).
+"""mailbox 核心闭环测试 (ISSUE-01, serve 子进程侧接缝).
 
 TS-001 test_identity_probe / TS-002 test_post_and_poll / TS-003 test_ack /
 TS-007 test_auto_credential / TS-008 test_credential_persistence;
@@ -20,11 +20,11 @@ from conftest import (ack_letter, http_json, make_letter, poll, post_letter,
 
 
 def test_identity_probe(serves):
-    """TS-001: serve 启动后 GET /__identity__ 返回 200 + JSON 含 swt-mailbox."""
+    """TS-001: serve 启动后 GET /__identity__ 返回 200 + service=mailbox."""
     srv = serves()
     code, body = http_json("GET", srv.port, "/__identity__", timeout=5)
     assert code == 200
-    assert "swt-mailbox" in json.dumps(body)
+    assert body.get("service") == "mailbox"
 
 
 def test_post_and_poll(serves):

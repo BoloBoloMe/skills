@@ -1,20 +1,27 @@
 #!/usr/bin/env python3
-"""swt-mailbox: swt 信箱 (mesh 化重设计, 本文件 = ISSUE-01 核心闭环).
+"""mailbox: 独立信箱 skill (自 use-sandbox-worktree 拆出, 单文件二合一).
 
-纯标准库单文件 (BR-007). 子命令: serve (前台启动信箱服务, D010);
-缺省动作 = 取信 (阻塞长轮询, D002).
+纯标准库单文件. 子命令: serve (前台启动信箱服务) / send / config / status;
+缺省动作 = 取信 (阻塞长轮询). 信箱与 LLM 中转同住本文件/单进程/单 SQLite,
+不拆 (拆开是大手术, 见 docs/changes/mailbox-standalone/DECISIONS.md D001).
 
 协议与数据模型: docs/changes/swt-mailbox-mesh/TECHNICAL.md.
-信件全内存 (D008): 排队/租约/seen_ids 重启即清; SQLite 只存 session 凭证.
+信件全内存: 排队/租约/seen_ids 重启即清; SQLite 只存 session 凭证.
 
-测试注入 env (不改变生产语义, 供测试隔离/加速):
-- SWT_ADMIN_TOKEN: admin 令牌显式指定 (缺省随机生成并写状态文件)
-- SWT_MAILBOX_STATE: 状态文件路径覆盖 (缺省 ~/.local/state/swt-mailbox/state.json)
-- SWT_MAILBOX_CONFIG: 配置文件路径覆盖 (缺省 ~/.agents/sandbox-worktree/mailbox.json)
-- SWT_MAILBOX_HOLD_SECONDS: 长轮询 hold 时长覆盖 (缺省 20)
-- SWT_MAILBOX_LEASE_SECONDS: 租约时长覆盖 (缺省 LEASE_SECONDS=1800, D009)
-- SWT_MAILBOX_NEIGHBORS: 邻居表文件路径覆盖 (缺省 ~/.agents/sandbox-worktree/neighbors.json)
-- SWT_MAILBOX_RETRY_SECONDS: 邻居暂存重试间隔覆盖 (缺省 5)
+配置与运行时文件集中 ~/.agents/mailbox/ (mailbox-standalone D003):
+config.json (凭证) / neighbors.json / cli-state.json (取信状态) /
+state.json / server.db; 旧路径首次运行自动迁移并提示 (AC-024).
+
+env:
+- 容器契约 (烘进镜像与容器, 不可改名): SWT_MAILBOX_URL / SWT_SESSION_ID /
+  SWT_SESSION_SIGNING_KEY / SWT_SESSION_RESPONSE_KEY
+- 测试注入 (不改变生产语义, 供测试隔离/加速): MAILBOX_ADMIN_TOKEN (admin
+  令牌显式指定, 缺省随机生成并写状态文件) / MAILBOX_STATE (状态文件路径,
+  缺省 ~/.agents/mailbox/state.json) / MAILBOX_CONFIG (配置文件路径, 缺省
+  ~/.agents/mailbox/config.json) / MAILBOX_NEIGHBORS (邻居表路径, 缺省
+  ~/.agents/mailbox/neighbors.json) / MAILBOX_HOLD_SECONDS (缺省 20) /
+  MAILBOX_LEASE_SECONDS (缺省 1800) / MAILBOX_RETRY_SECONDS (缺省 5) /
+  MAILBOX_MAX_CONCURRENT_POLLS / MAILBOX_UPSTREAM_BASE / MAILBOX_UPSTREAM_KEY
 """
 from __future__ import annotations
 
@@ -38,7 +45,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import urlparse
 
-SERVICE_NAME = "swt-mailbox"
+SERVICE_NAME = "mailbox"
 VERSION = "0.1.0"
 DEFAULT_PORT = 38417        # 信箱端口区间起点 (38417-38426 首空闲)
 DEFAULT_ADMIN_PORT = 38416  # 管理口, 仅 127.0.0.1
@@ -57,13 +64,13 @@ def sign(key, *parts):
 
 
 def state_path():
-    return Path(os.environ.get("SWT_MAILBOX_STATE") or
-                Path.home() / ".local/state/swt-mailbox/state.json")
+    return Path(os.environ.get("MAILBOX_STATE") or
+                Path.home() / ".agents/mailbox/state.json")
 
 
 def config_path():
-    return Path(os.environ.get("SWT_MAILBOX_CONFIG") or
-                Path.home() / ".agents/sandbox-worktree/mailbox.json")
+    return Path(os.environ.get("MAILBOX_CONFIG") or
+                Path.home() / ".agents/mailbox/config.json")
 
 
 def write_json_0600(path, data):
@@ -1058,10 +1065,10 @@ def _config_usable(cfg):
 
 def _archive_stale_config(cfg):
     """无效旧配置归档改名 (原权限不动), 目标名冲突追加序号."""
-    target = cfg.parent / "mailbox.json.stale-pre-mesh"
+    target = cfg.parent / f"{cfg.name}.stale-pre-mesh"
     n = 1
     while target.exists():
-        target = cfg.parent / f"mailbox.json.stale-pre-mesh-{n}"
+        target = cfg.parent / f"{cfg.name}.stale-pre-mesh-{n}"
         n += 1
     os.rename(cfg, target)
     return target
@@ -1076,7 +1083,7 @@ def auto_credential(mailbox, server_url):
         if _config_usable(cfg):
             return  # 已有可用配置, 不动
         stale = _archive_stale_config(cfg)
-        print(f"[swt-mailbox] 本机配置 {cfg} 不是有效新格式 (缺 server/session/signing_key),"
+        print(f"[mailbox] 本机配置 {cfg} 不是有效新格式 (缺 server/session/signing_key),"
               f" 已归档到 {stale}; 重新自动发放本机凭证.", file=sys.stderr)
     sid = f"{socket.gethostname()}-host"
     s = mailbox.get_session(sid) or mailbox.add_session(sid)
@@ -1100,7 +1107,7 @@ TYPE_GUIDANCE = {
 PULL_WINDOW_TOOL = "swt.pull-window"
 PULL_WINDOW_MIN_INTERVAL = 300.0  # 同容器限频窗口 (秒)
 WAYPIPE_MISSING_HINT = (
-    "[swt-mailbox] waypipe 未安装, 无法拉起远程窗口;"
+    "[mailbox] waypipe 未安装, 无法拉起远程窗口;"
     " 请在本机安装 waypipe, 安装后同类来信自动恢复执行.")
 _waypipe_missing_notified = False  # 缺席期去重提示标志 (进程内, 平移旧扩展)
 
@@ -1181,8 +1188,8 @@ def http_post(url, obj, timeout):
 
 
 def cli_state_path():
-    """取信状态文件: 与配置文件同目录的 mailbox-state.json."""
-    return config_path().parent / "mailbox-state.json"
+    """取信状态文件: 与配置文件同目录的 cli-state.json."""
+    return config_path().parent / "cli-state.json"
 
 
 def load_cli_state():
@@ -1393,8 +1400,8 @@ def cmd_status():
 
 
 def neighbors_path():
-    return Path(os.environ.get("SWT_MAILBOX_NEIGHBORS") or
-                Path.home() / ".agents/sandbox-worktree/neighbors.json")
+    return Path(os.environ.get("MAILBOX_NEIGHBORS") or
+                Path.home() / ".agents/mailbox/neighbors.json")
 
 
 def load_neighbors(path):
@@ -1414,7 +1421,7 @@ def cmd_serve(args):
     db_path = spath.parent / "server.db"
     mailbox = Mailbox(db_path=db_path,
                       lease_seconds=float(
-                          os.environ.get("SWT_MAILBOX_LEASE_SECONDS",
+                          os.environ.get("MAILBOX_LEASE_SECONDS",
                                          str(LEASE_SECONDS))))
     # 邻居表 = SQLite 持久化 (admin 运行时加入) + JSON 文件 (D020 手工配置),
     # 按地址去重合并
@@ -1423,25 +1430,25 @@ def cmd_serve(args):
                                                     or neighbors_path())
                           if n.address not in known]
     cond = threading.Condition()
-    admin_token = os.environ.get("SWT_ADMIN_TOKEN") or uuid.uuid4().hex
-    upstream_base = args.upstream_base or os.environ.get("SWT_UPSTREAM_BASE", "")
-    upstream_key = args.upstream_key or os.environ.get("SWT_UPSTREAM_KEY", "")
+    admin_token = os.environ.get("MAILBOX_ADMIN_TOKEN") or uuid.uuid4().hex
+    upstream_base = args.upstream_base or os.environ.get("MAILBOX_UPSTREAM_BASE", "")
+    upstream_key = args.upstream_key or os.environ.get("MAILBOX_UPSTREAM_KEY", "")
     # 裁决 4: 上游地址与密钥须双全, 半配置必然全链 401, 跳过中转角色并明告
     if upstream_base and not upstream_key:
-        print("警告: 配了 SWT_UPSTREAM_BASE 但缺 SWT_UPSTREAM_KEY, "
+        print("警告: 配了 MAILBOX_UPSTREAM_BASE 但缺 MAILBOX_UPSTREAM_KEY, "
               "跳过中转角色 (半配置必然全链 401), 补齐后重启生效",
               file=sys.stderr)
         upstream_base = ""
     if upstream_key and not upstream_base:
-        print("警告: 配了 SWT_UPSTREAM_KEY 但缺 SWT_UPSTREAM_BASE, "
+        print("警告: 配了 MAILBOX_UPSTREAM_KEY 但缺 MAILBOX_UPSTREAM_BASE, "
               "跳过中转角色, 补齐后重启生效", file=sys.stderr)
     relay = RelayStore(db_path) if upstream_base else None  # 无上游配置跳过中转
     try:
         server = MailboxHttpServer(mailbox, cond, "0.0.0.0", args.port)
-        server.hold_seconds = float(os.environ.get("SWT_MAILBOX_HOLD_SECONDS",
+        server.hold_seconds = float(os.environ.get("MAILBOX_HOLD_SECONDS",
                                                    str(HOLD_SECONDS)))
         server.max_concurrent_polls = int(os.environ.get(
-            "SWT_MAILBOX_MAX_CONCURRENT_POLLS", str(MAX_CONCURRENT_POLLS)))
+            "MAILBOX_MAX_CONCURRENT_POLLS", str(MAX_CONCURRENT_POLLS)))
         admin = AdminHttpServer(mailbox, cond, admin_token, args.admin_port,
                                 relay=relay)
         relay_server = RelayHttpServer(relay, upstream_base, upstream_key,
@@ -1458,7 +1465,7 @@ def cmd_serve(args):
     signal.signal(signal.SIGTERM, _term)
     admin_thread = threading.Thread(target=admin.serve_forever, daemon=True)
     admin_thread.start()
-    retry_seconds = float(os.environ.get("SWT_MAILBOX_RETRY_SECONDS", "5"))
+    retry_seconds = float(os.environ.get("MAILBOX_RETRY_SECONDS", "5"))
     retry_stop = threading.Event()
 
     def _retry_loop():
@@ -1492,24 +1499,44 @@ class _Parser(argparse.ArgumentParser):
         sys.exit(1)
 
 
-def _migrate_legacy_config():
-    """老路径 ~/.config/swt/mailbox.json 存在且新路径缺失 → 迁移并提示 (D015).
-    env SWT_MAILBOX_CONFIG 覆盖时跳过 (显式指定路径, 多为测试)."""
-    if os.environ.get("SWT_MAILBOX_CONFIG"):
-        return
-    new = config_path()
-    old = Path.home() / ".config/swt/mailbox.json"
-    if old.exists() and not new.exists():
+def _migrate_legacy_paths():
+    """旧路径自动迁移 (mailbox-standalone AC-024): 首次运行把历史位置的文件
+    搬进 ~/.agents/mailbox/. 顺序: 老老路径在前老路径在后 (同目标先到先得,
+    后到者见目标已存在即跳过不覆盖); 目标被 env 显式覆盖的项跳过
+    (显式指定路径多为测试隔离, 不动真实旧路径)."""
+    home = Path.home()
+    base = home / ".agents" / "mailbox"
+    pairs = [
+        # 老老路径 (mesh 前): ~/.config/swt/mailbox.json
+        (home / ".config/swt/mailbox.json", base / "config.json",
+         "MAILBOX_CONFIG"),
+        # 老路径 (swt 时代): ~/.agents/sandbox-worktree/ 与 ~/.local/state/swt-mailbox/
+        (home / ".agents/sandbox-worktree/mailbox.json", base / "config.json",
+         "MAILBOX_CONFIG"),
+        (home / ".agents/sandbox-worktree/mailbox-state.json",
+         base / "cli-state.json", "MAILBOX_CONFIG"),
+        (home / ".agents/sandbox-worktree/neighbors.json",
+         base / "neighbors.json", "MAILBOX_NEIGHBORS"),
+        (home / ".local/state/swt-mailbox/state.json", base / "state.json",
+         "MAILBOX_STATE"),
+        (home / ".local/state/swt-mailbox/server.db", base / "server.db",
+         "MAILBOX_STATE"),
+    ]
+    for old, new, guard_env in pairs:
+        if os.environ.get(guard_env):
+            continue
+        if not old.exists() or new.exists():
+            continue
         new.parent.mkdir(parents=True, exist_ok=True)
         os.chmod(new.parent, 0o700)
         os.rename(old, new)
-        os.chmod(new, 0o600)
-        print(f"提示: 配置已从老路径 {old} 迁移到 {new}", file=sys.stderr)
+        os.chmod(new, 0o600)  # 入位即 0600 (BR-002, 不信任源权限, 沿用老先例)
+        print(f"提示: 信箱文件已从旧路径 {old} 迁移到 {new}", file=sys.stderr)
 
 
 def main():
-    _migrate_legacy_config()
-    parser = _Parser(prog="swt-mailbox.py", description="swt 信箱")
+    _migrate_legacy_paths()
+    parser = _Parser(prog="mailbox.py", description="mailbox 信箱")
     sub = parser.add_subparsers(dest="cmd")
     p_serve = sub.add_parser("serve", help="前台启动信箱服务")
     p_serve.add_argument("--port", type=int, default=DEFAULT_PORT,
@@ -1527,13 +1554,13 @@ def main():
     p_config_set.add_argument("value", nargs="?")
     sub.add_parser("status", help="查看配置状态 (密钥脱敏)")
     p_serve.add_argument("--neighbors", default=None,
-                         help="邻居表 JSON 文件 (缺省 ~/.agents/sandbox-worktree/neighbors.json)")
+                         help="邻居表 JSON 文件 (缺省 ~/.agents/mailbox/neighbors.json)")
     p_serve.add_argument("--relay-port", type=int, default=DEFAULT_RELAY_PORT,
                          help="中转端口区间起点 (含), 共 10 个; 无上游配置不启动")
     p_serve.add_argument("--upstream-base", default="",
-                         help="中转上游 OpenAI 兼容 API 地址 (或 env SWT_UPSTREAM_BASE)")
+                         help="中转上游 OpenAI 兼容 API 地址 (或 env MAILBOX_UPSTREAM_BASE)")
     p_serve.add_argument("--upstream-key", default="",
-                         help="中转上游凭证 (或 env SWT_UPSTREAM_KEY)")
+                         help="中转上游凭证 (或 env MAILBOX_UPSTREAM_KEY)")
     args = parser.parse_args()
     if args.cmd == "serve":
         cmd_serve(args)

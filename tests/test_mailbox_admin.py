@@ -1,4 +1,4 @@
-"""swt-mailbox admin 端点补齐与中转半配置门禁测试 (裁决 3/4).
+"""mailbox admin 端点补齐与中转半配置门禁测试 (裁决 3/4).
 
 TS-001 test_revoke_session_blocks_poll_and_post: revoke 后 poll/post 均 403.
 TS-002 test_revoke_unknown_session_404: 吊销未知 session → 404.
@@ -120,8 +120,8 @@ def test_get_sessions_lists_without_keys(serves):
 
 def test_get_relay_keys_masked(serves):
     """TS-006: GET /admin/relay-keys 列出中转 key, 密钥脱敏只显前 8 位."""
-    srv = serves(extra_env={"SWT_UPSTREAM_BASE": "http://127.0.0.1:1",
-                            "SWT_UPSTREAM_KEY": "upstream-k"})
+    srv = serves(extra_env={"MAILBOX_UPSTREAM_BASE": "http://127.0.0.1:1",
+                            "MAILBOX_UPSTREAM_KEY": "upstream-k"})
     code, created = _admin(srv, "POST", "/admin/relay-keys",
                            {"models": ["gpt-x"]})
     assert code == 200, created
@@ -159,19 +159,19 @@ def test_admin_get_requires_token(serves):
 
 
 def test_relay_half_config_skipped(tmp_path):
-    """TS-009 (裁决 4): 只配 SWT_UPSTREAM_BASE 不配 key → 跳过中转角色,
+    """TS-009 (裁决 4): 只配 MAILBOX_UPSTREAM_BASE 不配 key → 跳过中转角色,
     stderr 明告; 不会像旧行为那样起了端口却全链 401."""
     workdir = tmp_path / "half"
     workdir.mkdir()
     env = dict(os.environ)
     env.update({
-        "SWT_ADMIN_TOKEN": ADMIN_TOKEN,
-        "SWT_MAILBOX_STATE": str(workdir / "state.json"),
-        "SWT_MAILBOX_CONFIG": str(workdir / "mailbox.json"),
-        "SWT_MAILBOX_HOLD_SECONDS": "0.3",
-        "SWT_UPSTREAM_BASE": "http://127.0.0.1:1",
+        "MAILBOX_ADMIN_TOKEN": ADMIN_TOKEN,
+        "MAILBOX_STATE": str(workdir / "state.json"),
+        "MAILBOX_CONFIG": str(workdir / "mailbox.json"),
+        "MAILBOX_HOLD_SECONDS": "0.3",
+        "MAILBOX_UPSTREAM_BASE": "http://127.0.0.1:1",
     })
-    env.pop("SWT_UPSTREAM_KEY", None)
+    env.pop("MAILBOX_UPSTREAM_KEY", None)
     proc = subprocess.Popen(
         [sys.executable, str(SCRIPT), "serve",
          "--port", str(free_port()), "--admin-port", str(free_port())],
@@ -189,7 +189,7 @@ def test_relay_half_config_skipped(tmp_path):
         else:
             raise AssertionError("serve 未在超时内报告端口")
         text = "".join(lines)
-        assert "SWT_UPSTREAM_KEY" in text, f"半配置应 stderr 明告: {text}"
+        assert "MAILBOX_UPSTREAM_KEY" in text, f"半配置应 stderr 明告: {text}"
         startup = [ln for ln in lines if "mailbox on" in ln][0]
         assert "relay on" not in startup, f"半配置不得起中转: {startup}"
     finally:

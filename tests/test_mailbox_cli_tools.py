@@ -1,11 +1,12 @@
-"""swt-mailbox CLI 工具与配置迁移测试 (ISSUE-04).
+"""mailbox CLI 工具与配置迁移测试 (ISSUE-04 + mailbox-standalone ISSUE-01).
 
 TS-001 test_send_notify: send 子命令投信, 目标 session poll 取到.
 TS-002 test_config_set_server: config set server 更新配置文件 (0600).
 TS-003 test_config_set_secret_via_stdin: 密钥项走 stdin 不回显, 带值参数拒绝.
 TS-004 test_status_masked: status 脱敏, 密钥只显前 8 位.
-TS-005 test_auto_migration: 老路径配置自动迁移到新路径并提示.
+TS-005 test_auto_migration: 老老路径配置自动迁移到新路径并提示.
 TS-006 test_stale_config_archived_and_reissued: 旧格式配置 (mesh 前残留) 不挡自动发放, 归档挪开.
+test_migrate_legacy_paths (mailbox-standalone TC-001/AC-024): 旧路径全量迁移.
 
 TS-001 走真实子进程 + 真实 serve; TS-002~005 进程内调 main()
 (getpass/Path.home/sys.argv 用 monkeypatch 隔离, 不碰真实终端与真实家目录).
@@ -28,8 +29,8 @@ from conftest import ADMIN_TOKEN, SCRIPT, Serve, http_json, poll, register_sessi
 
 @pytest.fixture
 def mailbox_mod():
-    """进程内加载 swt-mailbox.py (文件名带连字符, 走 importlib)."""
-    spec = importlib.util.spec_from_file_location("swt_mailbox_under_test", SCRIPT)
+    """进程内加载 mailbox.py (供 main()/迁移函数直接驱动)."""
+    spec = importlib.util.spec_from_file_location("mailbox_under_test", SCRIPT)
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
     return mod
@@ -53,7 +54,7 @@ def test_send_notify(serves, tmp_path):
     for k in ("SWT_MAILBOX_URL", "SWT_SESSION_ID",
               "SWT_SESSION_SIGNING_KEY", "SWT_SESSION_RESPONSE_KEY"):
         env.pop(k, None)
-    env["SWT_MAILBOX_CONFIG"] = str(cfg)
+    env["MAILBOX_CONFIG"] = str(cfg)
     env["HOME"] = str(tmp_path / "home")  # 隔离真实家目录 (防迁移误伤)
 
     r = subprocess.run([sys.executable, str(SCRIPT), "send",
@@ -75,9 +76,9 @@ def test_config_set_server(mailbox_mod, tmp_path, monkeypatch):
     cfg = tmp_path / "mailbox.json"
     cfg.write_text(json.dumps({"server": "http://127.0.0.1:1",
                                "session": "dev1", "signing_key": "k"}))
-    monkeypatch.setenv("SWT_MAILBOX_CONFIG", str(cfg))
+    monkeypatch.setenv("MAILBOX_CONFIG", str(cfg))
     monkeypatch.setattr(sys, "argv",
-                        ["swt-mailbox.py", "config", "set", "server",
+                        ["mailbox.py", "config", "set", "server",
                          "http://192.168.1.10:38417"])
     mailbox_mod.main()
     data = json.loads(cfg.read_text())
@@ -93,9 +94,9 @@ def test_config_set_session(mailbox_mod, tmp_path, monkeypatch):
     cfg = tmp_path / "mailbox.json"
     cfg.write_text(json.dumps({"server": "http://127.0.0.1:1",
                                "session": "dev-old", "signing_key": "k"}))
-    monkeypatch.setenv("SWT_MAILBOX_CONFIG", str(cfg))
+    monkeypatch.setenv("MAILBOX_CONFIG", str(cfg))
     monkeypatch.setattr(sys, "argv",
-                        ["swt-mailbox.py", "config", "set", "session", "dev-new"])
+                        ["mailbox.py", "config", "set", "session", "dev-new"])
     mailbox_mod.main()
     data = json.loads(cfg.read_text())
     assert data["session"] == "dev-new"
@@ -108,13 +109,13 @@ def test_config_set_secret_via_stdin(mailbox_mod, tmp_path, monkeypatch):
     cfg = tmp_path / "mailbox.json"
     cfg.write_text(json.dumps({"server": "http://127.0.0.1:1",
                                "session": "dev1", "signing_key": "old-key"}))
-    monkeypatch.setenv("SWT_MAILBOX_CONFIG", str(cfg))
+    monkeypatch.setenv("MAILBOX_CONFIG", str(cfg))
 
     # 不带值: 密钥经 stdin 交互输入 (monkeypatch 替代终端, 不回显)
     monkeypatch.setattr(mailbox_mod.getpass, "getpass",
                         lambda prompt="": "new-signing-key-from-stdin")
     monkeypatch.setattr(sys, "argv",
-                        ["swt-mailbox.py", "config", "set", "signing_key"])
+                        ["mailbox.py", "config", "set", "signing_key"])
     mailbox_mod.main()
     data = json.loads(cfg.read_text())
     assert data["signing_key"] == "new-signing-key-from-stdin"
@@ -123,7 +124,7 @@ def test_config_set_secret_via_stdin(mailbox_mod, tmp_path, monkeypatch):
 
     # 带值参数: 拒绝且已有配置不被覆盖
     monkeypatch.setattr(sys, "argv",
-                        ["swt-mailbox.py", "config", "set", "signing_key",
+                        ["mailbox.py", "config", "set", "signing_key",
                          "leak-on-cmdline"])
     with pytest.raises(SystemExit) as exc_info:
         mailbox_mod.main()
@@ -140,8 +141,8 @@ def test_status_masked(mailbox_mod, tmp_path, monkeypatch, capsys):
                                "session": "dev1",
                                "signing_key": signing,
                                "response_key": response}))
-    monkeypatch.setenv("SWT_MAILBOX_CONFIG", str(cfg))
-    monkeypatch.setattr(sys, "argv", ["swt-mailbox.py", "status"])
+    monkeypatch.setenv("MAILBOX_CONFIG", str(cfg))
+    monkeypatch.setattr(sys, "argv", ["mailbox.py", "status"])
     mailbox_mod.main()
     out = capsys.readouterr().out
     assert "dev1" in out
@@ -153,9 +154,9 @@ def test_status_masked(mailbox_mod, tmp_path, monkeypatch, capsys):
 
 
 def test_auto_migration(mailbox_mod, tmp_path, monkeypatch, capsys):
-    """TS-005: 老路径配置存在且新路径缺失 → 任意子命令触发迁移,
-    新路径拿到配置, 老路径移除, stderr 有迁移提示."""
-    monkeypatch.delenv("SWT_MAILBOX_CONFIG", raising=False)  # 走缺省路径
+    """TS-005: 老老路径 (mesh 前 ~/.config/swt/) 配置存在且新路径缺失 →
+    任意子命令触发迁移, 新路径拿到配置, 老路径移除, stderr 有迁移提示."""
+    monkeypatch.delenv("MAILBOX_CONFIG", raising=False)  # 走缺省路径
     monkeypatch.setattr(Path, "home", lambda: tmp_path)
     old = tmp_path / ".config" / "swt" / "mailbox.json"
     old.parent.mkdir(parents=True)
@@ -163,9 +164,9 @@ def test_auto_migration(mailbox_mod, tmp_path, monkeypatch, capsys):
                                "session": "dev-legacy",
                                "signing_key": "legacy-signing",
                                "response_key": "legacy-response"}))
-    monkeypatch.setattr(sys, "argv", ["swt-mailbox.py", "status"])
+    monkeypatch.setattr(sys, "argv", ["mailbox.py", "status"])
     mailbox_mod.main()
-    new = tmp_path / ".agents" / "sandbox-worktree" / "mailbox.json"
+    new = tmp_path / ".agents" / "mailbox" / "config.json"
     assert new.exists(), "配置未迁移到新路径"
     assert not old.exists(), "老路径配置未移除"
     assert json.loads(new.read_text())["session"] == "dev-legacy"
@@ -178,7 +179,7 @@ def test_stale_config_archived_and_reissued(tmp_path):
     回归 2026-09-21 工作站首启踩坑: 旧 schema 文件既挡 D012 又不被新代码读取."""
     workdir = tmp_path / "stale"
     workdir.mkdir()
-    cfg = workdir / "mailbox.json"
+    cfg = workdir / "config.json"
     stale_body = {"server": "http://192.168.131.194:38417",  # 老总信箱地址
                   "device": "Ubuntu-Workstation",            # 旧 schema 字段
                   "signing_key": "stale-signing",
@@ -195,7 +196,7 @@ def test_stale_config_archived_and_reissued(tmp_path):
         assert len(ids) == 1 and ids[0].endswith("-host"), \
             "旧格式配置必须不挡 D012 自动发放"
 
-        stale = workdir / "mailbox.json.stale-pre-mesh"
+        stale = workdir / "config.json.stale-pre-mesh"
         assert stale.exists(), "旧配置应归档而非删除"
         assert not cfg.exists() or json.loads(cfg.read_text()).get("session"), \
             "新配置应为新 schema"
@@ -206,3 +207,50 @@ def test_stale_config_archived_and_reissued(tmp_path):
         assert stat.S_IMODE(cfg.stat().st_mode) == 0o600, "新配置 0600"
     finally:
         srv.stop()
+
+
+def test_migrate_legacy_paths(mailbox_mod, tmp_path, monkeypatch, capsys):
+    """TC-001 (AC-024): 旧路径放着配置/邻居/取信状态/运行时文件,
+    首次运行全部迁到 ~/.agents/mailbox/ 且 stderr 有迁移提示, 旧路径清空."""
+    for name in ("MAILBOX_CONFIG", "MAILBOX_STATE", "MAILBOX_NEIGHBORS"):
+        monkeypatch.delenv(name, raising=False)
+    monkeypatch.setattr(Path, "home", lambda: tmp_path)
+    old_cfg = tmp_path / ".agents" / "sandbox-worktree" / "mailbox.json"
+    old_cfg.parent.mkdir(parents=True)
+    old_cfg.write_text(json.dumps({
+        "server": "http://127.0.0.1:38417", "session": "dev-old",
+        "signing_key": "old-signing", "response_key": "old-response"}))
+    (tmp_path / ".agents" / "sandbox-worktree" / "neighbors.json").write_text(
+        json.dumps([{"address": "192.0.2.9:38417", "shared_key": "k1"}]))
+    (tmp_path / ".agents" / "sandbox-worktree" / "mailbox-state.json").write_text(
+        json.dumps({"seen_ids": ["L-9"]}))
+    old_state = tmp_path / ".local" / "state" / "swt-mailbox"
+    old_state.mkdir(parents=True)
+    (old_state / "state.json").write_text(json.dumps({"service": "swt-mailbox"}))
+    (old_state / "server.db").write_bytes(b"sqlite-bytes")
+    # 源文件一律置宽松权限 (0644): 迁移入位必须收敛到 0600 (BR-002,
+    # 老先例 _migrate_legacy_config 同样补 chmod, 不信任源权限)
+    for src in (old_cfg,
+                tmp_path / ".agents" / "sandbox-worktree" / "neighbors.json",
+                tmp_path / ".agents" / "sandbox-worktree" / "mailbox-state.json",
+                old_state / "state.json", old_state / "server.db"):
+        src.chmod(0o644)
+
+    monkeypatch.setattr(sys, "argv", ["mailbox.py", "status"])
+    mailbox_mod.main()  # 首次运行: 迁移 + status 读迁移后的配置
+
+    base = tmp_path / ".agents" / "mailbox"
+    assert json.loads((base / "config.json").read_text())["session"] == "dev-old"
+    assert json.loads((base / "neighbors.json").read_text())[0]["address"] \
+        == "192.0.2.9:38417"
+    assert json.loads((base / "cli-state.json").read_text())["seen_ids"] == ["L-9"]
+    assert json.loads((base / "state.json").read_text())["service"] == "swt-mailbox"
+    assert (base / "server.db").read_bytes() == b"sqlite-bytes"
+    for landed in ("config.json", "neighbors.json", "cli-state.json",
+                   "state.json", "server.db"):
+        assert stat.S_IMODE((base / landed).stat().st_mode) == 0o600, \
+            f"迁移入位的 {landed} 须 0600 (BR-002, 含 0644 源)"
+    assert not old_cfg.exists(), "旧配置应被移走"
+    assert not (old_state / "state.json").exists(), "旧 state.json 应被移走"
+    err = capsys.readouterr().err
+    assert "迁移" in err and str(base) in err

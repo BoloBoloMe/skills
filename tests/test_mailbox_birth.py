@@ -1,14 +1,19 @@
-"""ISSUE-08: swt.py birth 信箱接线改造测试 (本机 swt-mailbox, D005/D013).
+"""ISSUE-08: swt.py birth 信箱接线改造测试 (本机信箱, D005/D013).
 
 接缝 (公开函数/子进程, 不测内部实现):
 - wire_container_mailbox: 探测本机信箱 → admin 注册 session (<容器名>-<8hex>)
   → 新 env 变量 (SWT_MAILBOX_URL/SWT_SESSION_ID/SWT_SESSION_SIGNING_KEY/
   SWT_SESSION_RESPONSE_KEY) 烘入 → 登记段; 信箱缺席降级 skipped 不阻断 birth.
-- 取信/发信 CLI (swt-mailbox.py 子进程): birth 烘入的 env 凭证与 CLI 对得上.
+- 取信/发信 CLI (mailbox.py 子进程): birth 烘入的 env 凭证与 CLI 对得上.
 - revoke_container_session + terminate: 容器终结时 admin 注销 session.
 
 swt.py 侧重用假服务 (本机回环 http.server); CLI 侧重真实 serve 子进程
 (共享接缝层 tests/conftest.py). 不依赖真 podman/真容器.
+
+mailbox-standalone ISSUE-01 起 serve __identity__ 改报 "mailbox", swt.py 探测
+仍认旧名 "swt-mailbox" (切换归 ISSUE-02): 假身份面/假 admin 保持应答旧名
+以匹配现行 swt.py; 真实 serve 交叉的两个用例改为 假 wire 产出烘入 env +
+同一凭证重放进真 serve, 单独验证 env 与 CLI/服务端对得上.
 """
 from __future__ import annotations
 
@@ -27,7 +32,7 @@ from pathlib import Path
 
 import pytest
 
-from conftest import ADMIN_TOKEN as SERVE_ADMIN_TOKEN
+
 from conftest import SCRIPT as MAILBOX_SCRIPT
 from conftest import make_letter, poll, post_letter, register_session
 
@@ -82,7 +87,8 @@ def _quiet_json(handler, code: int, obj: dict) -> None:
 
 
 class _MailboxIdentityHandler(BaseHTTPRequestHandler):
-    """信箱面 __identity__: 应答 swt-mailbox (新服务)."""
+    """信箱面 __identity__: 应答 swt-mailbox (现行 swt.py 探测期待的旧名,
+    切换归 ISSUE-02; 新 serve 已改报 mailbox)."""
 
     def log_message(self, *args):
         pass
@@ -208,7 +214,7 @@ class _AdminServer(_LoopbackServer):
 def _write_state(directory: Path, **fields) -> Path:
     path = directory / "state.json"
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps({"service": "swt-mailbox", "version": "test",
+    path.write_text(json.dumps({"service": "mailbox", "version": "test",
                                 "started_at": 0, **fields}), encoding="utf-8")
     return path
 
@@ -229,10 +235,23 @@ def _wire_env_against(swt, state_path, container="swt-demo"):
     return env, record
 
 
-def _real_serve_state(srv, directory: Path) -> Path:
-    """指向真实 serve 子进程的信箱状态文件 (admin 凭证来自 conftest 注入)."""
-    return _write_state(directory, port=srv.port, admin_port=srv.admin_port,
-                        admin_token=SERVE_ADMIN_TOKEN)
+def _fake_wire(swt, servers, tmp_path):
+    """假身份面 + 假 admin 上跑 birth 接线: 返回 (烘入 env, 登记段).
+    (真 serve 的 __identity__ 已改报 mailbox, 现行 swt.py 探测不认,
+    故接线走假面; 登记段语义与真实接线一致.)"""
+    identity = servers(_MailboxIdentityServer)
+    admin = servers(_AdminServer)
+    state = _write_state(tmp_path, port=identity.port,
+                         admin_port=admin.port, admin_token=ADMIN_TOKEN)
+    return _wire_env_against(swt, state)
+
+
+def _replay_to_real_serve(srv, baked, record):
+    """把假 admin 发放的同一 session 凭证重放进真实 serve
+    (显式密钥注册), 使真 serve 认得烘入 env 里的身份."""
+    return register_session(srv, record["session"],
+                            signing_key=baked["SWT_SESSION_SIGNING_KEY"],
+                            response_key=baked["SWT_SESSION_RESPONSE_KEY"])
 
 
 def _container_cli_env(baked: dict, local_port: int, workdir: Path) -> dict:
@@ -242,7 +261,7 @@ def _container_cli_env(baked: dict, local_port: int, workdir: Path) -> dict:
     env = dict(os.environ)
     env.update(baked)
     env["SWT_MAILBOX_URL"] = f"http://127.0.0.1:{local_port}"
-    env["SWT_MAILBOX_CONFIG"] = str(workdir / "mailbox.json")
+    env["MAILBOX_CONFIG"] = str(workdir / "config.json")
     return env
 
 
@@ -273,12 +292,12 @@ def test_birth_env_vars(swt, servers, tmp_path):
 
 
 # TS-002 (AC-007): 容器内用 birth 烘入的 env 凭证取信.
-def test_container_fetch_with_env(swt, serves, tmp_path):
+def test_container_fetch_with_env(swt, serves, servers, tmp_path):
     srv = serves()
-    state = _real_serve_state(srv, tmp_path)
-    baked, record = _wire_env_against(swt, state)
+    baked, record = _fake_wire(swt, servers, tmp_path)
     assert record["status"] == "connected"
     target = record["session"]
+    _replay_to_real_serve(srv, baked, record)
 
     # 设备侧 session 投信给出生容器, 容器内取信 CLI 凭 env 应取到
     tester = register_session(srv, "tester")
@@ -293,7 +312,7 @@ def test_container_fetch_with_env(swt, serves, tmp_path):
 
 
 def _load_mailbox_module():
-    spec = importlib.util.spec_from_file_location("swt_mailbox_mod",
+    spec = importlib.util.spec_from_file_location("mailbox_mod",
                                                   MAILBOX_SCRIPT)
     module = importlib.util.module_from_spec(spec)
     sys.modules["swt_mailbox_mod"] = module
@@ -304,12 +323,12 @@ def _load_mailbox_module():
 # TS-003 (AC-007): 容器发信回归 — birth 烘入的 env 凭证可发信, 目标 session 取到.
 # send CLI 属 ISSUE-04 (复用 ISSUE-01 的 env 凭证探测 load_credentials);
 # 本切片验证烘入变量与该探测路径及发信协议对得上, 不测 send 的 HTTP 细节.
-def test_container_send(swt, serves, tmp_path, monkeypatch):
+def test_container_send(swt, serves, servers, tmp_path, monkeypatch):
     srv = serves()
-    state = _real_serve_state(srv, tmp_path)
-    baked, record = _wire_env_against(swt, state)
+    baked, record = _fake_wire(swt, servers, tmp_path)
     assert record["status"] == "connected"
     sender = record["session"]
+    _replay_to_real_serve(srv, baked, record)
     tester = register_session(srv, "tester")
 
     # 烘入变量须被凭证探测原样解析 (env 优先于设备配置文件)
@@ -317,7 +336,7 @@ def test_container_send(swt, serves, tmp_path, monkeypatch):
     for name in ("SWT_MAILBOX_URL", "SWT_SESSION_ID",
                  "SWT_SESSION_SIGNING_KEY", "SWT_SESSION_RESPONSE_KEY"):
         monkeypatch.setenv(name, baked[name])
-    monkeypatch.setenv("SWT_MAILBOX_CONFIG", str(tmp_path / "cli" / "mailbox.json"))
+    monkeypatch.setenv("MAILBOX_CONFIG", str(tmp_path / "cli" / "config.json"))
     creds = mailbox.load_credentials()
     assert creds["session"] == sender
     assert creds["signing_key"] == baked["SWT_SESSION_SIGNING_KEY"]
