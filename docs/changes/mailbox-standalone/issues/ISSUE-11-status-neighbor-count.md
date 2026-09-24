@@ -2,7 +2,7 @@
 - `../EXECUTION.md`, `../DECISIONS.md` D018
 
 ## 执行
-- [ ] 已实现
+- [x] 已实现
 
 ## 要构建什么
 cmd_status 输出补邻居数: 验活成功后, 若本机能拿到 admin 面 (state.json 提供端口与 token, 即 host 场景) 则经 GET /admin/neighbors 取计数, 输出行含 `邻居数 = N`; 拿不到 admin 面 (容器 env 凭证场景) 输出 `邻居数 = 未知`, 不报错不拖慢 (admin 探测设短超时). pi 扩展 /mail 转呈 status 全输出, 无需改动即可显示; 若核实 /mail 有过滤行的逻辑则同步放开 (pi-extension/index.ts 在允许范围兜底).

@@ -2,7 +2,7 @@
 - `../EXECUTION.md`, `../DECISIONS.md` D019
 
 ## 执行
-- [ ] 已实现
+- [x] 已实现
 
 ## 要构建什么
 拉窗文档单源化: workflow/use-sandbox-worktree/reference/pull-window.md 中与 mailbox skill reference/pull-window.md 重叠的设备侧模板内容 (chromium --user-data-dir 强制, 音频 -R 可选与退化写法, waypipe 版本组合) 改为一句指向 mailbox skill 文档 (部署路径 ~/.agents/skills/mailbox/reference/pull-window.md); swt 独有内容 (三态选路, 容器侧编排, STATE 变量代换, 残尸纪律) 原样保留. agent-prompts 与 SKILL.md 里对 use-sandbox-worktree/reference/pull-window.md 的既有引用不失效, 不需要改它们.
