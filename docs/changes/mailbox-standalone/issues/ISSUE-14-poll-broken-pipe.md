@@ -2,7 +2,7 @@
 - `../EXECUTION.md`, TECHNICAL.md 非功能要求 (取信 --timeout/长轮询 hold)
 
 ## 执行
-- [ ] 已实现
+- [x] 已实现
 
 ## 要构建什么
 实地验收发现的缺陷: 客户端以短于服务端 hold (缺省 20s) 的超时取信 (如 --timeout 5, AC-016 明文场景) 时, 客户端超时挂断连接, 服务端 hold 到期后往已断开 socket 写应答, socketserver 打出整屏 BrokenPipeError 堆栈 (serve 窗口被噪声淹没). 修复: 服务端 HTTP 处理路径对客户端提前断开做优雅处理 — 捕获 BrokenPipeError/ConnectionResetError (含 _json 写出与 hold 唤醒后的应答路径), 静默或打一行短日志, 不再吐堆栈. 既有功能行为零变化.
