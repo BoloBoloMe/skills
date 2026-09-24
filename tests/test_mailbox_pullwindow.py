@@ -14,7 +14,8 @@ import threading
 import time
 from pathlib import Path
 
-from conftest import SCRIPT, ack_letter, make_letter, post_letter, register_session
+from conftest import (ROOT, SCRIPT, ack_letter, make_letter, poll, post_letter,
+                      register_session)
 
 PULL_WINDOW_BODY = json.dumps({"tool": "swt.pull-window", "container": "c1"})
 
@@ -231,6 +232,78 @@ def test_rate_limit_persists(serves, tmp_path, monkeypatch, capsys):
 
     assert ("PW-2", "skipped:rate-limited") in acks
     assert "swt.pull-window" not in capsys.readouterr().out
+
+
+def test_pull_window_url_param(serves, tmp_path, monkeypatch, capsys):
+    """ISSUE-09 TS-003 (TC-049, AC-030, E2): 拉窗信可带 url 参数 —
+    服务端不因第三键降级 (直批), 设备侧取信输出含该 url (按信拉起不猜端口)."""
+    srv = serves()
+    dev = register_session(srv, "dev1")
+    poster_id = "c1-1a2b3c4d"  # 容器 session 投信 (D010 形态)
+    poster = register_session(srv, poster_id)
+    url = "http://127.0.0.1:8800/app"
+    body = json.dumps({"tool": "swt.pull-window", "container": poster_id,
+                       "url": url})
+
+    # 段 1 (指令形状): 带 url 三键信 → poll 到 downgraded=False 直批
+    code, _ = post_letter(srv, poster_id, poster["signing_key"],
+                          make_letter(letter_id="PW-U1", to="dev1",
+                                      type_="exec", body=body))
+    assert code == 200
+    code, resp = poll(srv, "dev1", dev["signing_key"])
+    assert code == 200
+    letter = resp["payload"]["letter"]
+    assert letter["downgraded"] is False
+    assert "指令集命中" in letter["note"]
+    assert url in letter["body"]
+
+    # 段 2 (取信呈现): 设备侧 cmd_fetch 输出含信中 url
+    cli_env(monkeypatch, srv, "dev1", dev["signing_key"],
+            dev["response_key"], tmp_path / "cli")
+    mod = load_module()
+    monkeypatch.setattr(mod, "waypipe_present", lambda: True)
+    code, _ = post_letter(srv, poster_id, poster["signing_key"],
+                          make_letter(letter_id="PW-U2", to="dev1",
+                                      type_="exec", body=body))
+    assert code == 200
+    mod.cmd_fetch()
+    assert url in capsys.readouterr().out
+
+
+def test_docs_contain_recipes():
+    """ISSUE-09 TS-004 (TC-050, BR-008, D011 E4/B5/E5): 文档批 —
+    pull-window.md 含 chromium --user-data-dir 强制与音频 -R 退化写法;
+    mailbox.md 含 mesh 前提/反向隧道配方(含标记文件与 ClientAliveInterval)/
+    换址联动清单/waypipe 已验证版本组合."""
+    pw = (ROOT / "workflow" / "mailbox" / "reference" /
+          "pull-window.md").read_text()
+    assert "--user-data-dir" in pw      # E4: chromium 单例坑, 强制独立数据目录
+    assert "-R" in pw and "退化" in pw   # E4: 音频 socket 转发可选 + 退化写法
+
+    mb = (ROOT / "workflow" / "mailbox" / "reference" / "mailbox.md").read_text()
+    for kw in ("至少一个方向可达",   # B5: mesh 前提
+               "反向隧道",           # B5: 标准配方
+               "标记文件",           # B5: 隧道远端留标记
+               "ClientAliveInterval",  # B5: 僵尸 -R 端口提醒
+               "防火墙白名单",       # B5: 换址联动清单
+               "0.8.4", "0.11.0", "minimal"):  # E5: 已验证版本组合
+        assert kw in mb, kw
+
+
+def test_rate_limit_key_unified(monkeypatch):
+    """评审修复 2: 限频键统一 + 新旧键衔接 — 同容器换写法 (session id
+    形态与裸容器名) 不互相放行; 归一前的历史旧键记录也拦得住新写法."""
+    mod = load_module()
+    monkeypatch.setattr(mod, "waypipe_present", lambda: True)
+
+    # 换写法不绕限频: 旧写法 (session id 形态) 过门后, 新写法 (裸容器名) 仍被限频
+    state = {}
+    assert mod.gate_pull_window("c1-1a2b3c4d", state) is None
+    assert mod.gate_pull_window("c1", state) == "skipped:rate-limited"
+
+    # 新旧键衔接: 旧版本按 container 字段原样记的键, 新写法查询同样命中
+    state = {"lastPullWindowAt": {"c1-1a2b3c4d": time.time()}}
+    assert mod.gate_pull_window("c1", state) == "skipped:rate-limited"
 
 
 def test_non_pullwindow_exec_bypasses_gate(serves, tmp_path, monkeypatch,
