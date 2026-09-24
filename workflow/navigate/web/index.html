@@ -719,7 +719,7 @@ function onData(raw, doc) {
   state.layout = computeLayout(doc);
   if (!state.view.userMoved) refit();
   state.dirty = true;
-  prunePlanets();
+  resetPlanetCache();
   reconcileShips();
   reconcileSelection();
   renderHud();
@@ -728,13 +728,9 @@ function onData(raw, doc) {
   if (state.selected) renderPanel();
 }
 
-// 路线图里被删掉的里程碑, 其星球贴图也随之释放 (长会话里不会越攒越多)
-function prunePlanets() {
-  var ms = milestonesOf();
-  state.planets.forEach(function (v, key) {
-    var id = key.slice(0, key.indexOf(':'));
-    if (!(id in ms)) state.planets.delete(key);
-  });
+// 贴图是按里程碑 id + 分辨率档缓存的; 重排后光向与风格都可能变, 直接清空让可见的星球重建
+function resetPlanetCache() {
+  state.planets.clear();
 }
 
 function reconcileShips() {
@@ -1256,15 +1252,154 @@ var PLANET_PALETTES = {
 };
 var PLANET_GRAY = ['#8a8f9a', '#767c88', '#9aa0ac', '#687080', '#848a96'];
 
-function renderPlanetTexture(type, seed, gray, D) {
+// 每类星球的主地貌 + 可能叠加的次要地貌 (次要地貌按 hash 随机出现)
+var PLANET_FEATURES = {
+  research:    { base: 'cap',     extras: ['storms', 'craters'] },
+  deliberate:  { base: 'storms',  extras: ['cap', 'cracks'] },
+  prototype:   { base: 'cracks',  extras: ['craters', 'storms'] },
+  task:        { base: 'craters', extras: ['cracks', 'storms'] },
+  moon:        { base: 'craters', extras: ['cap', 'cracks'] },
+  destination: { base: 'storms',  extras: ['cap', 'craters'] }
+};
+var HUE_JITTER = 16;   // 每颗星球的色相偏移幅度 (度); 幅度小, 类型基调仍然认得出
+
+function hexToHsl(hex) {
+  var n = parseInt(hex.slice(1), 16);
+  var r = ((n >> 16) & 255) / 255, g = ((n >> 8) & 255) / 255, b = (n & 255) / 255;
+  var mx = Math.max(r, g, b), mn = Math.min(r, g, b);
+  var l = (mx + mn) / 2, h = 0, s = 0;
+  if (mx !== mn) {
+    var d = mx - mn;
+    s = l > 0.5 ? d / (2 - mx - mn) : d / (mx + mn);
+    if (mx === r) h = (g - b) / d + (g < b ? 6 : 0);
+    else if (mx === g) h = (b - r) / d + 2;
+    else h = (r - g) / d + 4;
+    h *= 60;
+  }
+  return [h, s, l];
+}
+
+function hslToHex(h, s, l) {
+  h = ((h % 360) + 360) % 360;
+  s = Math.min(1, Math.max(0, s));
+  l = Math.min(1, Math.max(0, l));
+  var c = (1 - Math.abs(2 * l - 1)) * s;
+  var x = c * (1 - Math.abs(((h / 60) % 2) - 1));
+  var m = l - c / 2;
+  var r = 0, g = 0, b = 0;
+  if (h < 60) { r = c; g = x; }
+  else if (h < 120) { r = x; g = c; }
+  else if (h < 180) { g = c; b = x; }
+  else if (h < 240) { g = x; b = c; }
+  else if (h < 300) { r = x; b = c; }
+  else { r = c; b = x; }
+  var two = function (v) {
+    var t = Math.round(v * 255).toString(16);
+    return t.length < 2 ? '0' + t : t;
+  };
+  return '#' + two(r + m) + two(g + m) + two(b + m);
+}
+
+// 星球风格: 参数全部从里程碑 id 的 hash 派生, 所以里程碑再多也各有各的长相;
+// 类型只定基调 (调色板 + 主地貌), 保证颜色与地貌仍然认得出类型
+function planetStyle(type, seed) {
+  var base = PLANET_PALETTES[type] || PLANET_PALETTES.task;
+  var ft = PLANET_FEATURES[type] || PLANET_FEATURES.task;
+  var r = mulberry32((seed ^ 0x9e3779b9) >>> 0);
+  var hue = (r() - 0.5) * 2 * HUE_JITTER;
+  var sat = 0.86 + r() * 0.3;
+  var lum = (r() - 0.5) * 0.12;
+  var pal = base.map(function (hex) {
+    var hsl = hexToHsl(hex);
+    return hslToHex(hsl[0] + hue, hsl[1] * sat, hsl[2] + lum);
+  });
+  var extras = [];
+  for (var i = 0; i < ft.extras.length; i++) {
+    if (r() < 0.45 - i * 0.2) extras.push(ft.extras[i]);
+  }
+  return {
+    seed: seed,
+    pal: pal,
+    bandK: 0.6 + r() * 0.95,        // 条带疏密
+    blotchN: 10 + Math.floor(r() * 26),
+    blotchK: 0.75 + r() * 0.6,      // 斑块大小
+    noiseN: 180 + Math.floor(r() * 400),
+    spec: 0.22 + r() * 0.22,        // 高光强度
+    storm: type === 'destination' ? '192, 104, 72' : '255, 255, 255',
+    base: ft.base,
+    extras: extras
+  };
+}
+
+// ---- 地表地貌 (都能以任意强度叠加, 所以一颗星球可以同时有极冠和陨击坑) ----
+
+function featCap(g, W, k, rnd, a) {
+  var cap = g.createLinearGradient(0, 0, 0, W);
+  cap.addColorStop(0, 'rgba(245, 252, 255, ' + (0.95 * a).toFixed(3) + ')');
+  cap.addColorStop(0.16, 'rgba(245, 252, 255, 0)');
+  cap.addColorStop(0.84, 'rgba(245, 252, 255, 0)');
+  cap.addColorStop(1, 'rgba(245, 252, 255, ' + (0.95 * a).toFixed(3) + ')');
+  g.fillStyle = cap;
+  g.fillRect(0, 0, W, W);
+}
+
+function featCracks(g, W, k, rnd, a) {
+  var n = Math.round(10 + rnd() * 20);
+  for (var li = 0; li < n; li++) {
+    var lx = rnd() * W, ly = rnd() * W, ll = k * (6 + rnd() * 22);
+    g.strokeStyle = 'rgba(255, 150, 70, ' + ((0.35 + rnd() * 0.4) * a).toFixed(3) + ')';
+    g.lineWidth = k * (1 + rnd() * 1.6);
+    g.beginPath();
+    g.moveTo(lx, ly);
+    g.lineTo(lx + ll, ly + (rnd() - 0.5) * 6 * k);
+    g.stroke();
+    g.beginPath();
+    g.moveTo(lx - W, ly);
+    g.lineTo(lx - W + ll, ly + (rnd() - 0.5) * 6 * k);
+    g.stroke();
+  }
+}
+
+function featCraters(g, W, k, rnd, a) {
+  var n = Math.round(6 + rnd() * 12);
+  for (var ci = 0; ci < n; ci++) {
+    var kx = rnd() * W, ky = 12 * k + rnd() * (W - 24 * k), kr = k * (3 + rnd() * 9);
+    for (var rep = 0; rep < 2; rep++) {
+      var kxx = kx + rep * W;
+      g.strokeStyle = 'rgba(0, 0, 0, ' + (0.3 * a).toFixed(3) + ')';
+      g.lineWidth = 1.4 * k;
+      g.beginPath(); g.arc(kxx, ky, kr, 0, Math.PI * 2); g.stroke();
+      g.strokeStyle = 'rgba(255, 255, 255, ' + (0.28 * a).toFixed(3) + ')';
+      g.lineWidth = 1.2 * k;
+      g.beginPath(); g.arc(kxx + kr * 0.2, ky - kr * 0.2, kr * 0.75, 0.4, 2.4); g.stroke();
+    }
+  }
+}
+
+function featStorms(g, W, k, rnd, a, color) {
+  var n = 2 + Math.floor(rnd() * 3);
+  for (var si = 0; si < n; si++) {
+    var sx = rnd() * W, sy = 20 * k + rnd() * (W - 40 * k);
+    var srx = k * (8 + rnd() * 14), sry = srx * (0.4 + rnd() * 0.25);
+    for (var rep = 0; rep < 2; rep++) {
+      g.strokeStyle = 'rgba(' + color + ', ' + (0.4 * a).toFixed(3) + ')';
+      g.lineWidth = 2 * k;
+      g.beginPath(); g.ellipse(sx + rep * W, sy, srx, sry, 0, 0, Math.PI * 2); g.stroke();
+      g.strokeStyle = 'rgba(' + color + ', ' + (0.18 * a).toFixed(3) + ')';
+      g.beginPath(); g.ellipse(sx + rep * W, sy, srx * 0.6, sry * 0.6, 0, 0, Math.PI * 2); g.stroke();
+    }
+  }
+}
+
+function renderPlanetTexture(style, gray, D, lightAng) {
   D = D || 96;
   var W = 2 * D;
   var k = D / 96;   // 特征尺寸随分辨率等比放大, 高低分辨率贴图才是同一颗星球
   var tex = document.createElement('canvas');
   tex.width = W; tex.height = W;
   var g = tex.getContext('2d');
-  var rnd = mulberry32(seed);
-  var pal = gray ? PLANET_GRAY : (PLANET_PALETTES[type] || PLANET_PALETTES.task);
+  var rnd = mulberry32((style.seed ^ 0x85ebca6b) >>> 0);
+  var pal = gray ? PLANET_GRAY : style.pal;
 
   // 底色
   g.fillStyle = pal[0];
@@ -1275,7 +1410,7 @@ function renderPlanetTexture(type, seed, gray, D) {
   var y = 0;
   var prev = -1;
   while (y < W) {
-    var bh = k * (6 + rnd() * 18);
+    var bh = k * style.bandK * (6 + rnd() * 18);
     var ci = Math.floor(rnd() * pal.length);
     if (ci === prev) ci = (ci + 1 + Math.floor(rnd() * (pal.length - 1))) % pal.length;
     prev = ci;
@@ -1283,11 +1418,10 @@ function renderPlanetTexture(type, seed, gray, D) {
     g.fillRect(0, y - 2 * k, W, bh + 4 * k);
     y += bh;
   }
-  var blotch = type === 'prototype' || type === 'task' || type === 'moon';
-  var nB = blotch ? 30 : 18;
+  var nB = style.blotchN;
   for (var i = 0; i < nB; i++) {
     var bx = rnd() * W, by = rnd() * W;
-    var brx = k * (8 + rnd() * 26), bry = k * (5 + rnd() * 14);
+    var brx = k * style.blotchK * (8 + rnd() * 26), bry = k * style.blotchK * (5 + rnd() * 14);
     var bc = rnd() < 0.45 ? '0, 0, 0' : '255, 255, 255';
     var ba = 0.05 + rnd() * 0.12;
     g.fillStyle = 'rgba(' + bc + ', ' + ba.toFixed(3) + ')';
@@ -1302,77 +1436,36 @@ function renderPlanetTexture(type, seed, gray, D) {
   }
   g.filter = 'none';
 
-  // 类型特化地纹
+  // 地貌: 主地貌打底, 次要地貌随机叠加
   if (!gray) {
     g.filter = 'blur(' + (1.5 * k) + 'px)';
-    if (type === 'research') {
-      // 极冠
-      var cap = g.createLinearGradient(0, 0, 0, W);
-      cap.addColorStop(0, 'rgba(245, 252, 255, 0.95)');
-      cap.addColorStop(0.16, 'rgba(245, 252, 255, 0)');
-      cap.addColorStop(0.84, 'rgba(245, 252, 255, 0)');
-      cap.addColorStop(1, 'rgba(245, 252, 255, 0.95)');
-      g.fillStyle = cap;
-      g.fillRect(0, 0, W, W);
-    } else if (type === 'prototype') {
-      // 熔岩裂纹: 短亮橙线
-      for (var li = 0; li < 22; li++) {
-        var lx = rnd() * W, ly = rnd() * W, ll = k * (6 + rnd() * 22);
-        g.strokeStyle = 'rgba(255, 150, 70, ' + (0.35 + rnd() * 0.4).toFixed(2) + ')';
-        g.lineWidth = k * (1 + rnd() * 1.6);
-        g.beginPath();
-        g.moveTo(lx, ly);
-        g.lineTo(lx + ll, ly + (rnd() - 0.5) * 6 * k);
-        g.stroke();
-        g.beginPath();
-        g.moveTo(lx - W, ly);
-        g.lineTo(lx - W + ll, ly + (rnd() - 0.5) * 6 * k);
-        g.stroke();
-      }
-    } else if (type === 'task' || type === 'moon') {
-      // 陨击坑: 暗圈 + 偏心亮弧
-      for (var ci2 = 0; ci2 < 12; ci2++) {
-        var kx = rnd() * W, ky = 12 * k + rnd() * (W - 24 * k), kr = k * (3 + rnd() * 9);
-        for (var crep = 0; crep < 2; crep++) {
-          var kxx = kx + crep * W;
-          g.strokeStyle = 'rgba(0, 0, 0, 0.3)';
-          g.lineWidth = 1.4 * k;
-          g.beginPath(); g.arc(kxx, ky, kr, 0, Math.PI * 2); g.stroke();
-          g.strokeStyle = 'rgba(255, 255, 255, 0.28)';
-          g.lineWidth = 1.2 * k;
-          g.beginPath(); g.arc(kxx + kr * 0.2, ky - kr * 0.2, kr * 0.75, 0.4, 2.4); g.stroke();
-        }
-      }
-    } else {
-      // 气态风暴斑
-      var nStorm = type === 'destination' ? 4 : 2;
-      for (var si2 = 0; si2 < nStorm; si2++) {
-        var sx2 = rnd() * W, sy2 = 20 * k + rnd() * (W - 40 * k);
-        var srx = k * (8 + rnd() * 14), sry = srx * (0.4 + rnd() * 0.25);
-        var sc = type === 'destination' ? '192, 104, 72' : '255, 255, 255';
-        for (var srep = 0; srep < 2; srep++) {
-          g.strokeStyle = 'rgba(' + sc + ', 0.4)';
-          g.lineWidth = 2 * k;
-          g.beginPath(); g.ellipse(sx2 + srep * W, sy2, srx, sry, 0, 0, Math.PI * 2); g.stroke();
-          g.strokeStyle = 'rgba(' + sc + ', 0.18)';
-          g.beginPath(); g.ellipse(sx2 + srep * W, sy2, srx * 0.6, sry * 0.6, 0, 0, Math.PI * 2); g.stroke();
-        }
-      }
-    }
+    var drawFeat = function (name, a) {
+      if (name === 'cap') featCap(g, W, k, rnd, a);
+      else if (name === 'cracks') featCracks(g, W, k, rnd, a);
+      else if (name === 'craters') featCraters(g, W, k, rnd, a);
+      else featStorms(g, W, k, rnd, a, style.storm);
+    };
+    drawFeat(style.base, 1);
+    for (var fi = 0; fi < style.extras.length; fi++) drawFeat(style.extras[fi], 0.45);
     g.filter = 'none';
   }
 
   // 细噪点
-  for (var ni = 0; ni < 320 * k * k; ni++) {
+  for (var ni = 0; ni < style.noiseN * k * k; ni++) {
     g.fillStyle = 'rgba(' + (rnd() < 0.5 ? '0, 0, 0' : '255, 255, 255') + ', ' + (0.02 + rnd() * 0.05).toFixed(3) + ')';
     g.fillRect(rnd() * W, rnd() * W, k, k);
   }
 
-  // 光影层 (静态): 左侧光源 — 高光 / 明暗界线 / 边缘暗化
+  // 光影层 (静态): 光源是终点恒星, 所以亮面朝终点, 暗面背向终点
   var shade = document.createElement('canvas');
   shade.width = D * 2; shade.height = D * 2;
   var sg = shade.getContext('2d');
-  var term = sg.createLinearGradient(0, 0, D * 2, 0);
+  sg.save();
+  sg.translate(D, D);
+  sg.rotate(lightAng || 0);   // 转到 "光从局部 +x 射来" 的坐标系
+  sg.translate(-D, -D);
+  // 明暗界线: 受光侧亮, 背光侧暗
+  var term = sg.createLinearGradient(D * 2, 0, 0, 0);
   term.addColorStop(0, 'rgba(255, 255, 255, 0.1)');
   term.addColorStop(0.4, 'rgba(255, 255, 255, 0)');
   term.addColorStop(0.62, 'rgba(2, 3, 10, 0.45)');
@@ -1380,17 +1473,20 @@ function renderPlanetTexture(type, seed, gray, D) {
   term.addColorStop(1, 'rgba(1, 2, 8, 0.94)');
   sg.fillStyle = term;
   sg.fillRect(0, 0, D * 2, D * 2);
-  var hi = sg.createRadialGradient(D * 0.7, D * 0.55, 2, D * 0.7, D * 0.55, D);
-  hi.addColorStop(0, 'rgba(255, 255, 255, 0.3)');
+  // 高光: 受光侧偏上
+  var hi = sg.createRadialGradient(D * 1.3, D * 0.55, 2, D * 1.3, D * 0.55, D);
+  hi.addColorStop(0, 'rgba(255, 255, 255, ' + style.spec.toFixed(3) + ')');
   hi.addColorStop(1, 'rgba(255, 255, 255, 0)');
   sg.fillStyle = hi;
   sg.fillRect(0, 0, D * 2, D * 2);
+  // 边缘暗化 (旋转无关)
   var limb = sg.createRadialGradient(D, D, D * 0.5, D, D, D);
   limb.addColorStop(0, 'rgba(0, 0, 8, 0)');
   limb.addColorStop(0.82, 'rgba(0, 0, 8, 0.12)');
   limb.addColorStop(1, 'rgba(0, 0, 8, 0.55)');
   sg.fillStyle = limb;
   sg.fillRect(0, 0, D * 2, D * 2);
+  sg.restore();
 
   // 裁圆: gradient 超出外半径后色标会向整张方形画布延伸, 不裁掉四角便会以不透明像素盖上黑块
   sg.globalCompositeOperation = 'destination-in';
@@ -1415,7 +1511,11 @@ function planetFor(node, closed, tier) {
   var key = node.id + ':' + (closed ? 'gray' : 'live') + ':' + tier;
   var p = state.planets.get(key);
   if (!p) {
-    p = renderPlanetTexture(node.m.type || 'task', hashStr(node.id) + 1, closed, tier);
+    var seed = hashStr(node.id) + 1;
+    var d = (state.layout && state.layout.dest) || { x: node.x + 1, y: node.y };
+    // 终点恒星是唯一光源: 亮面朝向它, 暗面背向它
+    var ang = Math.atan2(d.y - node.y, d.x - node.x);
+    p = renderPlanetTexture(planetStyle(node.m.type || 'task', seed), closed, tier, ang);
     state.planets.set(key, p);
   }
   return p;
