@@ -2366,19 +2366,26 @@ def _print_queued(server, creds):
 
 def _print_neighbor_count(timeout=2.0):
     """邻居数 (D018): state.json 提供本地 admin 面凭证 (host 场景) 时经
-    GET /admin/neighbors 取真实计数; 只从 localhost 消费既有端点,
-    不扩大 admin 口暴露面. 探测短超时, 不拖慢 status."""
+    GET /admin/neighbors 取真实计数; 拿不到 admin 面 (容器 env 凭证场景)
+    或探测失败输出 未知, 不报错不拖慢 status (短超时, 失败即未知).
+    只从 localhost 消费既有端点, 不扩大 admin 口暴露面."""
     state = _load_state_file()
     admin_port = state.get("admin_port") if state else None
     admin_token = state.get("admin_token") if state else None
+    count = None
     if isinstance(admin_port, int) and admin_token:
         request = urllib.request.Request(
             f"http://127.0.0.1:{admin_port}/admin/neighbors",
             headers={"X-Admin-Token": admin_token}, method="GET")
-        with urllib.request.urlopen(request, timeout=timeout) as response:
-            neighbors = json.loads(response.read() or b"{}").get("neighbors")
-        if isinstance(neighbors, list):
-            print(f"邻居数 = {len(neighbors)}")
+        try:
+            with urllib.request.urlopen(request, timeout=timeout) as response:
+                neighbors = json.loads(
+                    response.read() or b"{}").get("neighbors")
+            if isinstance(neighbors, list):
+                count = len(neighbors)
+        except _PROBE_ERRORS:
+            count = None
+    print(f"邻居数 = {count if count is not None else '未知'}")
 
 
 def cmd_status():

@@ -108,3 +108,21 @@ def test_status_reports_neighbor_count(serves, tmp_path):
     assert r.returncode == 0, r.stderr
     assert "信箱服务: 在线" in r.stdout
     assert "邻居数 = 2" in r.stdout, f"host 场景应报真实邻居数, 实际:\\n{r.stdout}"
+
+
+def test_status_neighbor_count_unknown_without_admin(serves, tmp_path):
+    """D018/TS-002: 容器 env 凭证场景 (无本地 state.json → admin 面不可得)
+    时 status 输出 邻居数 = 未知, 不报错不拖慢 (退出码 0)."""
+    srv = serves()
+    creds = register_session(srv, "ctrdev")
+    cli = tmp_path / "cli"
+    cli.mkdir(parents=True)
+    # 容器形态: 只有 env 凭证, cli 目录里没有 state.json
+    env = _status_env(srv, "ctrdev", creds, cli, cli / "state.json")
+    assert not (cli / "state.json").exists()
+    r = subprocess.run([sys.executable, str(SCRIPT), "status"], env=env,
+                       capture_output=True, text=True, timeout=30)
+    assert r.returncode == 0, r.stderr
+    assert "信箱服务: 在线" in r.stdout
+    assert "邻居数 = 未知" in r.stdout, \
+        f"容器场景应报未知且不报错, 实际:\\n{r.stdout}\\n{r.stderr}"
