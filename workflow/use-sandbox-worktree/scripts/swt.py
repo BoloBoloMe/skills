@@ -2337,17 +2337,24 @@ def bake_host_info_env(
               file=sys.stderr)
 
 
-def _rewrite_ssh_environment(name: str, env: dict[str, str]) -> None:
-    """ISSUE-08: 容器 ~/.ssh/environment 全量重写 (ssh 面 env 通道既有机制,
-    inject_ssh_key 首写, 宿主端口/直通状态 create 后才知故在此补写; 全量
-    覆盖天然幂等, 重入安全). 失败只告警不阻断 (增强不是命脉)."""
+def write_ssh_environment(name: str, env: dict[str, str]) -> subprocess.CompletedProcess:
+    """容器 ~/.ssh/environment 全量重写 (ssh 面 env 通道: sshd 不给登录会话传
+    容器 env, PermitUserEnvironment + 此文件才是通道; 全量覆盖天然幂等,
+    重入安全). 只执行写动作, 失败策略留调用方 (inject 路径 PARTIAL /
+    birth 宿主信息路径只告警). 返回子进程结果供调用方判成败."""
     env_text = "".join(f"{k}={v}\n" for k, v in env.items())
-    result = subprocess.run([
+    return subprocess.run([
         "podman", "exec", "-i", name, "sh", "-c",
         "cat > /home/bolo/.ssh/environment && "
         "chown bolo:bolo /home/bolo/.ssh/environment && "
         "chmod 600 /home/bolo/.ssh/environment",
     ], input=env_text, capture_output=True, text=True, check=False)
+
+
+def _rewrite_ssh_environment(name: str, env: dict[str, str]) -> None:
+    """ISSUE-08: 宿主端口/直通状态 create 后才知, 经共享写入函数在此补写
+    (inject_ssh_key 首写后全量重写). 失败只告警不阻断 (增强不是命脉)."""
+    result = write_ssh_environment(name, env)
     if result.returncode != 0:
         print(f"[SWT] 宿主信息 env 烘入失败 (不影响 birth): "
               f"{result.stderr.strip()}", file=sys.stderr)
@@ -2496,13 +2503,7 @@ def inject_ssh_key(container: dict[str, Any], records_root: Path, identity: str,
         raise SwtError(3, "PARTIAL", f"authorized_keys 注入失败: {result.stderr.strip()}")
     if env:
         # sshd 不给登录会话传容器 env; PermitUserEnvironment + ~/.ssh/environment 才是 ssh 面通道
-        env_text = "".join(f"{k}={v}\n" for k, v in env.items())
-        env_result = subprocess.run([
-            "podman", "exec", "-i", container["name"], "sh", "-c",
-            "cat > /home/bolo/.ssh/environment && "
-            "chown bolo:bolo /home/bolo/.ssh/environment && "
-            "chmod 600 /home/bolo/.ssh/environment",
-        ], input=env_text, capture_output=True, text=True, check=False)
+        env_result = write_ssh_environment(container["name"], env)
         if env_result.returncode != 0:
             raise SwtError(3, "PARTIAL", f"environment 注入失败: {env_result.stderr.strip()}")
     # 密码登录 (用户拍板): 固定密码 sandbox, 与 key 同目录 0600 留档, 随 terminate 清除

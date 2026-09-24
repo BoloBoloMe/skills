@@ -273,3 +273,35 @@ def test_birth_injects_host_ports_and_display(swt):
                         source.index("def default_branch(")]
     assert "bake_host_info_env(" in segment
     assert "_rewrite_ssh_environment(" in segment
+
+
+# 评审修复: ssh environment 写入收口 — write_ssh_environment 共享
+# (inject_ssh_key 首写 / birth 宿主信息补写), 失败策略留调用方:
+# inject 路径 raise PARTIAL, birth 路径只告警不阻断. 两条路径各有覆盖.
+def test_ssh_environment_write_shared(swt, monkeypatch, capsys):
+    # 组装: podman exec 全量重写 ~/.ssh/environment, env_text 逐行 KEY=VALUE
+    captured: dict = {}
+
+    def fake_run(argv, **kwargs):
+        captured["argv"] = argv
+        captured["input"] = kwargs.get("input")
+        return subprocess.CompletedProcess(argv, 0, "", "")
+
+    monkeypatch.setattr(swt.subprocess, "run", fake_run)
+    swt.write_ssh_environment("cnt", {"A": "1", "B": "x y"})
+    assert captured["argv"][:4] == ["podman", "exec", "-i", "cnt"]
+    assert "cat > /home/bolo/.ssh/environment" in captured["argv"][-1]
+    assert captured["input"] == "A=1\nB=x y\n"
+    # birth 路径: 失败只告警不阻断 (增强不是命脉)
+    monkeypatch.setattr(
+        swt.subprocess, "run",
+        lambda *a, **k: subprocess.CompletedProcess(a, 1, "", "boom"))
+    swt._rewrite_ssh_environment("cnt", {"A": "1"})  # 不抛
+    assert "宿主信息 env 烘入失败" in capsys.readouterr().err
+    # inject_ssh_key 路径: 同一共享函数 + 失败 raise PARTIAL (源码守卫,
+    # 同 terminate/birth 接缝守卫先例 — 真容器属 e2e 层)
+    source = SWT_SCRIPT.read_text(encoding="utf-8")
+    seg = source[source.index("def inject_ssh_key("):
+                 source.index("def assert_container_clone(")]
+    assert "write_ssh_environment(" in seg
+    assert 'raise SwtError(3, "PARTIAL", f"environment 注入失败:' in seg
