@@ -1280,35 +1280,39 @@ function featStorms(g, W, k, rnd, a, color) {
 
 function renderPlanetTexture(style, gray, D, lightAng) {
   D = D || 96;
-  var W = 2 * D;
-  var k = D / 96;   // 特征尺寸随分辨率等比放大, 高低分辨率贴图才是同一颗星球
-  var tex = document.createElement('canvas');
-  tex.width = W; tex.height = W;
-  var g = tex.getContext('2d');
+  // 带高斯模糊的地纹在高分辨率下逐块模糊太贵 (384 档要一秒), 所以地纹只画在不超过 96 档的
+  // 基础层上, 再整体放大到目标尺寸; 高分辨率档多出来的表面细节由目标层上的两级颗粒提供
+  var k = D / 96;
+  var D0 = Math.min(D, 96);
+  var W0 = 2 * D0, k0 = D0 / 96;
+  var base = document.createElement('canvas');
+  base.width = W0; base.height = W0;
+  var g = base.getContext('2d');
   var rnd = mulberry32((style.seed ^ 0x85ebca6b) >>> 0);
   var pal = gray ? PLANET_GRAY : style.pal;
+  var W = W0;
 
   // 底色
   g.fillStyle = pal[0];
   g.fillRect(0, 0, W, W);
 
   // 水平条带 (气态) / 大块色斑 (岩石), 相邻条带色不重复, x 向无缝
-  g.filter = 'blur(' + (3 * k) + 'px)';
+  g.filter = 'blur(' + (3 * k0) + 'px)';
   var y = 0;
   var prev = -1;
   while (y < W) {
-    var bh = k * style.bandK * (6 + rnd() * 18);
+    var bh = k0 * style.bandK * (6 + rnd() * 18);
     var ci = Math.floor(rnd() * pal.length);
     if (ci === prev) ci = (ci + 1 + Math.floor(rnd() * (pal.length - 1))) % pal.length;
     prev = ci;
     g.fillStyle = pal[ci];
-    g.fillRect(0, y - 2 * k, W, bh + 4 * k);
+    g.fillRect(0, y - 2 * k0, W, bh + 4 * k0);
     y += bh;
   }
   var nB = style.blotchN;
   for (var i = 0; i < nB; i++) {
     var bx = rnd() * W, by = rnd() * W;
-    var brx = k * style.blotchK * (8 + rnd() * 26), bry = k * style.blotchK * (5 + rnd() * 14);
+    var brx = k0 * style.blotchK * (8 + rnd() * 26), bry = k0 * style.blotchK * (5 + rnd() * 14);
     var bc = rnd() < 0.45 ? '0, 0, 0' : '255, 255, 255';
     var ba = 0.05 + rnd() * 0.12;
     g.fillStyle = 'rgba(' + bc + ', ' + ba.toFixed(3) + ')';
@@ -1325,22 +1329,37 @@ function renderPlanetTexture(style, gray, D, lightAng) {
 
   // 地貌: 主地貌打底, 次要地貌随机叠加
   if (!gray) {
-    g.filter = 'blur(' + (1.5 * k) + 'px)';
+    g.filter = 'blur(' + (1.5 * k0) + 'px)';
     var drawFeat = function (name, a) {
-      if (name === 'cap') featCap(g, W, k, rnd, a);
-      else if (name === 'cracks') featCracks(g, W, k, rnd, a);
-      else if (name === 'craters') featCraters(g, W, k, rnd, a);
-      else featStorms(g, W, k, rnd, a, style.storm);
+      if (name === 'cap') featCap(g, W, k0, rnd, a);
+      else if (name === 'cracks') featCracks(g, W, k0, rnd, a);
+      else if (name === 'craters') featCraters(g, W, k0, rnd, a);
+      else featStorms(g, W, k0, rnd, a, style.storm);
     };
     drawFeat(style.base, 1);
     for (var fi = 0; fi < style.extras.length; fi++) drawFeat(style.extras[fi], 0.45);
     g.filter = 'none';
   }
 
-  // 细噪点
+  // 目标尺寸画布: 把基础层放大过来, 再叠两级颗粒 (细砂 + 中等斑驳)
+  var W = 2 * D;
+  var tex = document.createElement('canvas');
+  tex.width = W; tex.height = W;
+  var g = tex.getContext('2d');
+  g.drawImage(base, 0, 0, W, W);   // 放大的是软地纹, 默认双线性就够, 高级插值只慢不好看
+
+  // 细砂
   for (var ni = 0; ni < style.noiseN * k * k; ni++) {
     g.fillStyle = 'rgba(' + (rnd() < 0.5 ? '0, 0, 0' : '255, 255, 255') + ', ' + (0.02 + rnd() * 0.05).toFixed(3) + ')';
-    g.fillRect(rnd() * W, rnd() * W, k, k);
+    g.fillRect(rnd() * W, rnd() * W, k * (0.7 + rnd() * 0.7), k * (0.7 + rnd() * 0.7));
+  }
+  // 中等斑驳: 只有放大到看得见的档位才画, 这就是"凑近看才有的地表颗粒"
+  if (k > 1.2) {
+    for (var mi = 0; mi < 70 * k * k; mi++) {
+      var ms = k * (0.8 + rnd() * 2.6);
+      g.fillStyle = 'rgba(' + (rnd() < 0.5 ? '0, 0, 0' : '255, 255, 255') + ', ' + (0.015 + rnd() * 0.055).toFixed(3) + ')';
+      g.fillRect(rnd() * W, rnd() * W, ms, ms);
+    }
   }
 
   // 光影层 (静态): 光源是终点恒星, 所以亮面朝终点, 暗面背向终点
@@ -1390,6 +1409,7 @@ function renderPlanetTexture(style, gray, D, lightAng) {
 function planetTier() {
   var need = 2 * starRadius() * state.dpr;
   if (need <= 24) return 24;
+  if (need >= 380) return 384;
   if (need >= 190) return 192;
   return 96;
 }
@@ -1642,6 +1662,19 @@ function drawShips(front, dt, t) {
   });
 }
 
+// 终点星体的表面贴图: 同一套程序化地貌, 全局只此一张 (按尺寸分档)
+function destSurface(r) {
+  var need = 2 * r * state.dpr;
+  var tier = need >= 380 ? 384 : (need >= 190 ? 192 : (need >= 24 ? 96 : 24));
+  var key = 'destination:' + tier;
+  var p = state.planets.get(key);
+  if (!p) {
+    p = renderPlanetTexture(planetStyle('destination', 20240924), false, tier, 0);
+    state.planets.set(key, p);
+  }
+  return p;
+}
+
 function drawDestination(t) {
   var lay = state.layout;
   if (!lay) return;
@@ -1683,15 +1716,30 @@ function drawDestination(t) {
   ctx.arc(x, y, r * 4.2, 0, Math.PI * 2);
   ctx.fill();
 
-  var bg = ctx.createRadialGradient(x - r * 0.34, y - r * 0.38, r * 0.08, x, y, r);
-  bg.addColorStop(0, '#ffffff');
-  bg.addColorStop(0.38, DEST_COLOR);
-  bg.addColorStop(0.8, '#cfa75c');
-  bg.addColorStop(1, 'rgba(160, 120, 60, 0.5)');
-  ctx.fillStyle = bg;
+  var pr = r * pulse;
+  var surf = destSurface(pr);
+  ctx.save();
   ctx.beginPath();
-  ctx.arc(x, y, r * pulse, 0, Math.PI * 2);
-  ctx.fill();
+  ctx.arc(x, y, pr, 0, Math.PI * 2);
+  ctx.clip();
+  var RW = pr * 2;
+  var rot = (t * 2.2) % RW;                  // 表面缓慢翻涌
+  ctx.drawImage(surf.tex, x - pr - rot, y - pr, RW, RW);
+  ctx.drawImage(surf.tex, x - pr - rot + RW, y - pr, RW, RW);
+  // 临边昏暗: 恒星边缘比中心暗
+  var lb = ctx.createRadialGradient(x, y, pr * 0.5, x, y, pr);
+  lb.addColorStop(0, 'rgba(0, 0, 0, 0)');
+  lb.addColorStop(1, 'rgba(126, 88, 32, 0.42)');
+  ctx.fillStyle = lb;
+  ctx.beginPath(); ctx.arc(x, y, pr, 0, Math.PI * 2); ctx.fill();
+  // 亮核
+  var core = ctx.createRadialGradient(x - pr * 0.2, y - pr * 0.22, pr * 0.04, x, y, pr);
+  core.addColorStop(0, 'rgba(255, 253, 244, 0.8)');
+  core.addColorStop(0.45, 'rgba(255, 234, 182, 0.28)');
+  core.addColorStop(1, 'rgba(255, 210, 130, 0)');
+  ctx.fillStyle = core;
+  ctx.beginPath(); ctx.arc(x, y, pr, 0, Math.PI * 2); ctx.fill();
+  ctx.restore();
 
   ctx.strokeStyle = rgba(DEST_COLOR, 0.7);
   ctx.lineWidth = 1.2;
@@ -1744,7 +1792,7 @@ function drawLabels() {
   var e = effScale();
   var nodes = Array.from(lay.nodes.values());   // nodes 是 Map, 取成数组才能按下标遍历
   // 放大时字号跟着长一点, 不然大星球配小字很别扭
-  var fs = 1 + Math.min(0.45, Math.max(0, e - 1) * 0.18);
+  var fs = 1 + Math.min(0.6, Math.max(0, e - 1) * 0.09);
   ctx.textAlign = 'center';
 
   // 缩得太小时标签只会叠成一团: 随缩放缓出并自动缩短文字
@@ -1810,7 +1858,7 @@ function hitTest(cx, cy) {
   return best;
 }
 
-var MIN_ZOOM = 0.35, MAX_ZOOM = 5;   // 放大上限: 拉满时一颗星球约 70px, 够看清球面
+var MIN_ZOOM = 0.35, MAX_ZOOM = 14;  // 放大上限: 拉满时一颗星球约 390px 直径, 足够看清表面
 var drag = null;
 var pointers = new Map();
 var pinch = null;
