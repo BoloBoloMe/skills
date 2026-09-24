@@ -26,7 +26,12 @@ env:
   100, 超限丢最老) / MAILBOX_TTL_SECONDS (信件 TTL 秒, 缺省 86400 = 24h,
   到期由清扫器丢弃并向发件人发失败回执) / MAILBOX_UPSTREAM_BASE /
   MAILBOX_UPSTREAM_KEY /
-  MAILBOX_FLOOD_BUDGET_SECONDS (post 洪泛判定预算, 缺省 2, 测试时间注入用)
+  MAILBOX_FLOOD_BUDGET_SECONDS (post 洪泛判定预算, 缺省 2, 测试时间注入用) /
+  MAILBOX_FLEET_KEY (舰队密钥路径, 缺省 ~/.agents/mailbox/fleet.key, D016) /
+  MAILBOX_BEACON_PORT (信标绑定端口, 缺省 38437) / MAILBOX_BEACON_DEST
+  (信标目的 host:port, 缺省 255.255.255.255:38437, 测试回环单播注入用) /
+  MAILBOX_BEACON_INTERVAL (信标周期秒, 缺省 5) / MAILBOX_ADVERTISE_ADDR
+  (信标宣告的信箱地址, 缺省自动探测本机 IP, 测试注入用)
 """
 from __future__ import annotations
 
@@ -66,6 +71,9 @@ MAX_CONCURRENT_POLLS = 5    # 同 session 并发 poll 上限 (D016)
 FLOOD_BUDGET_SECONDS = 2.0  # post 洪泛判定预算 (非功能要求, env 可调)
 PENDING_CAP = 100           # 滞留转发上限, 超限丢最老 (AC-013, env 可调)
 TTL_SECONDS = 86400.0       # 信件 TTL 缺省 24h (D012, env 可调)
+BEACON_PORT = 38437         # 自组网 UDP 信标端口 (D016, 同网段广播)
+BEACON_INTERVAL = 5.0       # 信标收发周期秒 (env MAILBOX_BEACON_INTERVAL)
+HELLO_RETRY_SECONDS = 300.0 # 被拒/失败握手的重试间隔 (每指纹)
 FORWARD_TIMEOUT = 5.0       # 单邻居转发超时上限 (后台重试路径沿用)
 MAX_BODY_BYTES = 1024 * 1024  # 单信正文上限 1MB (BR-006/AC-021)
 MSG_TYPES = ("notify", "open_url", "exec", "request")
@@ -525,6 +533,34 @@ class Mailbox:
         self._save_neighbor(n, old_address=old)
         return n
 
+    def apply_address_update(self, hostname, new_address, sig_ts, sig):
+        """认证换址宣告 (D016/AC-033/034): 按邻居名定位, 旧链路密钥验签
+        (±5min 签名时间窗防重放), 通过即同名 upsert 新地址 (复用
+        add_neighbor 的迁移语义); 拒绝 (未知邻居/超窗/签名无效) 抛
+        MailboxError 并打 UTC 日志行 (AC-037 邻居换址行)."""
+        n = next((x for x in self.neighbors if x.name == hostname), None)
+        if n is None:
+            log_event("address-update-rejected", hostname=hostname,
+                      new_address=new_address, reason="unknown-neighbor")
+            raise MailboxError(f"未知邻居 (名字不匹配): {hostname}")
+        try:
+            self._check_ts(sig_ts)
+        except MailboxError:
+            log_event("address-update-rejected", hostname=hostname,
+                      new_address=new_address, reason="ts-window")
+            raise
+        expect = sign(n.shared_key, ADDR_UPDATE_LABEL, hostname,
+                      new_address, str(sig_ts))
+        if not hmac.compare_digest(expect, str(sig)):
+            log_event("address-update-rejected", hostname=hostname,
+                      new_address=new_address, reason="bad-signature")
+            raise MailboxError("换址宣告签名无效 (旧链路密钥验签失败)")
+        old = n.address
+        self.add_neighbor(new_address, n.shared_key, name=hostname)
+        log_event("address-updated", hostname=hostname, old=old,
+                  new=new_address)
+        return n
+
     def add_whitelist(self, instruction):
         """注册 exec 指令 (规范形入库, 重启后仍生效)."""
         canonical = _canonical(instruction)
@@ -934,6 +970,238 @@ def bind_first_free(try_bind, start_port):
     raise RuntimeError(f"端口区间全占: {start_port}-{start_port + PORT_SPAN - 1}")
 
 
+# ======================================================================
+# 自组网 (ISSUE-10, D016 无感自组网): 舰队密钥 / UDP 信标 / hello 互证握手 /
+# 两两链路密钥自动建邻居 / 认证换址宣告 / join-fleet ssh 拉密钥.
+# ======================================================================
+
+HELLO_PROOF_LABEL = "mailbox-hello"            # hello 发起方证明标签
+HELLO_ACK_LABEL = "mailbox-hello-ack"          # hello 应答方证明标签
+LINK_KEY_LABEL = "fleet-link-key"              # 两两链路密钥派生标签
+ADDR_UPDATE_LABEL = "mailbox-address-update"   # 换址宣告签名标签
+
+
+def fleet_key_path():
+    return Path(os.environ.get("MAILBOX_FLEET_KEY") or
+                Path.home() / ".agents/mailbox/fleet.key")
+
+
+def load_fleet_key():
+    """舰队密钥 (D016): env MAILBOX_FLEET_KEY 路径覆盖; 缺失/空 → None.
+    无舰队密钥 = 不参与自组网: 不发信标, hello 一律拒 (NG-009 零确认入群
+    不做, AC-032)."""
+    try:
+        key = fleet_key_path().read_text(encoding="utf-8").strip()
+    except OSError:
+        return None
+    return key or None
+
+
+def fleet_fingerprint(hostname, address):
+    """节点指纹: sha256(hostname\naddress) — 节点换址即换指纹, 邻居端经
+    同名 upsert 收敛到新地址 (信标层的同网段自愈)."""
+    return hashlib.sha256(f"{hostname}\n{address}".encode()).hexdigest()
+
+
+def fleet_link_key(fleet_key, fp_a, fp_b):
+    """两两链路密钥 (D016): 舰队密钥 + 双方指纹确定性派生 (双向握手收敛
+    同值), 密钥本身不上 wire — 协商经舰队密钥认证通道完成而非传输."""
+    return sign(fleet_key, LINK_KEY_LABEL, min(fp_a, fp_b), max(fp_a, fp_b))
+
+
+def detect_lan_ip():
+    """本机对外 IP 探测: UDP connect 只选路由不发包; 失败退回环."""
+    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    try:
+        s.connect(("10.255.255.255", 1))
+        return s.getsockname()[0]
+    except OSError:
+        return "127.0.0.1"
+    finally:
+        s.close()
+
+
+class FleetBeacon:
+    """信标服务 (ISSUE-10): 周期 UDP 收发信标 {address, hostname,
+    fingerprint}, 听到新指纹 → POST /mailbox/hello 舰队密钥 HMAC 挑战应答
+    互证 → 派生两两链路密钥 → 同名 upsert 自动建邻居 (复用 add_neighbor);
+    本机地址变化 → 旧链路密钥签名宣告换址. socket/HTTP 可注入 (生产 =
+    UDP 广播 socket, 测试 = 回环单播 env 注入, TECHNICAL 接缝)."""
+
+    def __init__(self, mailbox, cond, fleet_key, http_port, sock=None,
+                 dest=None, interval=None, hostname=None, now=time.time,
+                 http=None):
+        self.mailbox = mailbox
+        self.cond = cond
+        self.fleet_key = fleet_key
+        self.http_port = http_port
+        self.hostname = hostname or socket.gethostname()
+        self._now = now
+        self._http = http or http_post
+        self.bind_port = int(os.environ.get("MAILBOX_BEACON_PORT",
+                                            str(BEACON_PORT)))
+        self.sock = sock or self._make_socket()
+        if dest is None:
+            dest_s = os.environ.get("MAILBOX_BEACON_DEST", "")
+            if dest_s:
+                host, _, port = dest_s.rpartition(":")
+                dest = (host, int(port))
+            else:
+                dest = ("255.255.255.255", self.bind_port)
+        self.dest = dest
+        self.interval = float(os.environ.get(
+            "MAILBOX_BEACON_INTERVAL", str(interval or BEACON_INTERVAL)))
+        self.hello_retry = HELLO_RETRY_SECONDS
+        self.seen = {}   # 对端指纹 -> 最近握手尝试时刻 (成功/被拒共用节流)
+        self.stop = threading.Event()
+        self._last_addr = None
+
+    def _make_socket(self):
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
+        s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        s.bind(("0.0.0.0", self.bind_port))
+        return s
+
+    def advertised(self):
+        """信标宣告的本机信箱地址 (env 覆盖 > 本机 IP 探测 + 信箱端口)."""
+        return os.environ.get("MAILBOX_ADVERTISE_ADDR") or \
+            f"{detect_lan_ip()}:{self.http_port}"
+
+    def fingerprint(self):
+        return fleet_fingerprint(self.hostname, self.advertised())
+
+    def loop(self):
+        while not self.stop.is_set():
+            try:
+                self.tick()
+            except Exception as e:  # 信标线程异常绝不拖垮 serve
+                log_event("beacon-error", error=repr(e))
+            self.stop.wait(self.interval)
+
+    def tick(self):
+        self.check_move()
+        self.announce()
+        self.listen()
+
+    def announce(self):
+        payload = {"address": self.advertised(), "hostname": self.hostname,
+                   "fingerprint": self.fingerprint()}
+        self.sock.sendto(json.dumps(payload).encode(), self.dest)
+
+    def listen(self):
+        self.sock.settimeout(0.1)
+        while not self.stop.is_set():
+            try:
+                data, _from = self.sock.recvfrom(65535)
+            except socket.timeout:
+                return
+            except OSError:
+                return
+            try:
+                d = json.loads(data)
+            except (json.JSONDecodeError, ValueError):
+                continue
+            if not isinstance(d, dict):
+                continue
+            if d.get("fingerprint") == self.fingerprint():
+                continue  # 自身信标回环 (广播场景会听到自己)
+            self.handshake(d)
+
+    def _check_ts(self, ts):
+        if abs(self._now() - ts) > TS_WINDOW:
+            raise MailboxError(f"时间戳超窗 (±{TS_WINDOW:.0f}s)")
+
+    def handshake(self, beacon):
+        """对信标发起 hello (挑战材料 = 发起方指纹 + 时间戳): 应答方证明
+        验过才建邻居; 被拒/失败按指纹节流重试."""
+        fp = str(beacon.get("fingerprint", ""))
+        addr = str(beacon.get("address", ""))
+        if not fp or not addr:
+            return
+        now = self._now()
+        last = self.seen.get(fp)
+        if last is not None and now - last < self.hello_retry:
+            return
+        self.seen[fp] = now
+        ts = now
+        body = {"fingerprint": self.fingerprint(), "hostname": self.hostname,
+                "address": self.advertised(), "ts": ts,
+                "proof": sign(self.fleet_key, HELLO_PROOF_LABEL,
+                              self.fingerprint(), str(ts))}
+        try:
+            resp = self._http(f"http://{addr}/mailbox/hello", body, 5.0)
+        except (urllib.error.URLError, OSError, json.JSONDecodeError) as e:
+            log_event("hello-failed", peer=addr,
+                      error=str(getattr(e, "reason", e)))
+            return
+        if not isinstance(resp, dict) or not resp.get("ok"):
+            return  # 对端拒 (无舰队密钥等), 节流后自动再试
+        peer_fp = str(resp.get("fingerprint", ""))
+        expect = sign(self.fleet_key, HELLO_ACK_LABEL, peer_fp,
+                      self.fingerprint(), str(ts))
+        if not hmac.compare_digest(expect, str(resp.get("proof", ""))):
+            log_event("hello-rejected", peer=addr, reason="bad-ack")
+            return
+        with self.cond:
+            self.mailbox.add_neighbor(
+                str(resp.get("address", "")),
+                fleet_link_key(self.fleet_key, self.fingerprint(), peer_fp),
+                name=str(resp.get("hostname", "")))
+
+    def handle_hello(self, body):
+        """hello 应答侧 (信箱口 POST /mailbox/hello 调用): 验发起方证明 →
+        派生链路密钥 → 同名 upsert 建邻居 → 回应答证明 (互证另一半).
+        失败抛 MailboxError (handler 映射 403 — 无舰队密钥者一律拒入)."""
+        fp = str(body.get("fingerprint", ""))
+        hostname = str(body.get("hostname", ""))
+        addr = str(body.get("address", ""))
+        ts = body.get("ts")
+        if not (fp and hostname and addr) or ts is None:
+            raise MailboxError("hello 缺字段: fingerprint/hostname/address/ts")
+        if fp == self.fingerprint():
+            raise MailboxError("对端指纹与本机相同, 拒绝")
+        try:
+            ts = float(ts)
+        except (TypeError, ValueError):
+            raise MailboxError("hello ts 畸形")
+        self._check_ts(ts)
+        expect = sign(self.fleet_key, HELLO_PROOF_LABEL, fp, str(ts))
+        if not hmac.compare_digest(expect, str(body.get("proof", ""))):
+            log_event("hello-rejected", peer=addr, fingerprint=fp,
+                      reason="bad-proof")
+            raise MailboxError(
+                "舰队密钥验证失败: 对端无法证明持有 fleet key (AC-032)")
+        link = fleet_link_key(self.fleet_key, fp, self.fingerprint())
+        with self.cond:
+            self.mailbox.add_neighbor(addr, link, name=hostname)
+        return {"ok": True, "fingerprint": self.fingerprint(),
+                "hostname": self.hostname, "address": self.advertised(),
+                "proof": sign(self.fleet_key, HELLO_ACK_LABEL,
+                              self.fingerprint(), fp, str(ts))}
+
+    def check_move(self):
+        """本机地址变化检测: 变化即用各邻居的旧链路密钥签名宣告换址
+        (跨网段愈合路径; 同网段由信标新指纹握手自然收敛)."""
+        cur = self.advertised()
+        old, self._last_addr = self._last_addr, cur
+        if old is None or old == cur:
+            return
+        ts = self._now()
+        for n in list(self.mailbox.neighbors):
+            sig = sign(n.shared_key, ADDR_UPDATE_LABEL, self.hostname, cur,
+                       str(ts))
+            body = {"hostname": self.hostname, "new_address": cur,
+                    "ts": ts, "sig": sig}
+            try:
+                self._http(f"http://{n.address}/mailbox/address-update",
+                           body, 5.0)
+            except (urllib.error.URLError, OSError,
+                    json.JSONDecodeError) as e:
+                log_event("address-update-send-failed", peer=n.address,
+                          error=str(getattr(e, "reason", e)))
+
+
 class MailboxHttpServer(ThreadingHTTPServer):
     daemon_threads = True
     allow_reuse_address = True
@@ -944,6 +1212,7 @@ class MailboxHttpServer(ThreadingHTTPServer):
         self.hold_seconds = HOLD_SECONDS
         self.max_concurrent_polls = MAX_CONCURRENT_POLLS
         self.flood_budget_seconds = FLOOD_BUDGET_SECONDS  # 洪泛判定预算 (D011 A4)
+        self.beacon = None  # 自组网信标 (ISSUE-10): serve 挂载, hello 端点用
 
         def try_bind(port):
             super(MailboxHttpServer, self).__init__((host, port), _Handler)
@@ -1112,7 +1381,50 @@ class _Handler(_JsonHandler):
             return self._handle_ack(body, endpoint)
         if path == "/mailbox/forward":
             return self._handle_forward(body)
+        if path == "/mailbox/hello":
+            return self._handle_hello(body)
+        if path == "/mailbox/address-update":
+            return self._handle_address_update(body)
         self._json(404, {"error": "not found"})
+
+    def _handle_hello(self, body):
+        """POST /mailbox/hello (自组网握手, D016/AC-031/032): 舰队密钥 HMAC
+        挑战应答互证, 通过即协商两两链路密钥自动建邻居. 邻居间/入群消息,
+        握手成立前无共享凭证, 响应不签名 (与 forward 同口径)."""
+        beacon = self.server.beacon
+        if beacon is None:
+            return self._json(403, {"ok": False, "error":
+                "本机未配置舰队密钥, 拒绝入群 (NG-009/AC-032)"})
+        try:
+            resp = beacon.handle_hello(body)
+        except MailboxError as e:
+            return self._json(403, {"ok": False, "error": str(e)})
+        except (ValueError, TypeError) as e:
+            return self._json(400, {"ok": False, "error": f"字段畸形: {e}"})
+        return self._json(200, resp)
+
+    def _handle_address_update(self, body):
+        """POST /mailbox/address-update (邻居间换址宣告, D016/AC-033/034):
+        旧链路密钥签名 + ±5min 时间窗, 验签通过即同名 upsert 新地址.
+        邻居间消息, 响应不签名 (与 forward 同口径)."""
+        m = self.server.mailbox
+        hostname = str(body.get("hostname", ""))
+        new_address = str(body.get("new_address", ""))
+        if not (hostname and new_address):
+            return self._json(400, {"ok": False,
+                                    "error": "缺字段: hostname/new_address"})
+        with self.server.cond:
+            try:
+                n = m.apply_address_update(hostname, new_address,
+                                           body["ts"], str(body.get("sig", "")))
+            except KeyError as e:
+                return self._json(400, {"ok": False, "error": f"缺字段: {e}"})
+            except (ValueError, TypeError) as e:
+                return self._json(400, {"ok": False, "error": f"字段畸形: {e}"})
+            except MailboxError as e:
+                return self._json(403, {"ok": False, "error": str(e)})
+        return self._json(200, {"ok": True, "hostname": hostname,
+                                "address": n.address})
 
     def _handle_forward(self, body):
         """邻居间转发端点 (无 session 凭证, 邻居共享密钥代替). 响应不签名."""
@@ -2209,6 +2521,33 @@ def neighbors_path():
                 Path.home() / ".agents/mailbox/neighbors.json")
 
 
+def cmd_join_fleet(target):
+    """join-fleet <老设备ssh地址> (AC-035/D016/BR-009): 新设备主动 ssh 到
+    已入群设备拉取舰队密钥, 落本地 0600 — 入群唯一人工动作; 密钥只经 ssh
+    分发 (NG-009: 零确认入群不做, 无舰队密钥一律拒)."""
+    print(f"[mailbox] 经 ssh 从 {target} 拉取舰队密钥...", file=sys.stderr)
+    try:
+        result = subprocess.run(
+            ["ssh", str(target), "cat ~/.agents/mailbox/fleet.key"],
+            capture_output=True, text=True, timeout=120)
+    except OSError as e:
+        _machine_exit(f"无法启动 ssh: {e}")
+    if result.returncode != 0 or not result.stdout.strip():
+        _machine_exit(
+            f"ssh 拉取舰队密钥失败 (exit {result.returncode}): "
+            f"{result.stderr.strip()[:200]}")
+    path = fleet_key_path()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    os.chmod(path.parent, 0o700)
+    fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+    with os.fdopen(fd, "w") as f:
+        f.write(result.stdout.strip() + "\n")
+    os.chmod(path, 0o600)  # 入位即 0600 (BR-009, 不信任 umask)
+    print(f"[mailbox] 舰队密钥已就位: {path} (0600);"
+          f" 随后同网段 serve 自动互发现组网, 无需其它人工动作",
+          file=sys.stderr)
+
+
 def load_neighbors(path):
     """邻居表 (D020): JSON list [{address, shared_key, name?}]; 缺失/畸形 → 空表.
     name 可缺省 (D011 B2 兼容旧表), 文件条目只作启动种子 (B8)."""
@@ -2277,9 +2616,21 @@ def cmd_serve(args):
         sys.exit(1)
     auto_credential(mailbox, f"http://127.0.0.1:{server.port}")
     write_state_file(spath, server.port, admin.port, admin_token)
+    beacon = None  # 自组网信标 (ISSUE-10): 无舰队密钥不参与组网 (NG-009)
+    fleet_key = load_fleet_key()
+    if fleet_key:
+        try:
+            beacon = FleetBeacon(mailbox, cond, fleet_key, server.port)
+            server.beacon = beacon
+        except OSError as e:
+            print(f"警告: 自组网信标端口绑定失败, 自组网停用: {e}",
+                  file=sys.stderr)
     relay_note = f", relay on :{relay_server.port}" if relay_server else ""
+    beacon_note = f", fleet beacon udp :{beacon.bind_port}" if beacon \
+        else ""
     print(f"{SERVICE_NAME} {VERSION} mailbox on :{server.port},"
-          f" admin on 127.0.0.1:{admin.port}{relay_note}", file=sys.stderr)
+          f" admin on 127.0.0.1:{admin.port}{relay_note}{beacon_note}",
+          file=sys.stderr)
     signal.signal(signal.SIGTERM, _term)
     admin_thread = threading.Thread(target=admin.serve_forever, daemon=True)
     admin_thread.start()
@@ -2299,11 +2650,15 @@ def cmd_serve(args):
     threading.Thread(target=_retry_loop, daemon=True).start()
     if relay_server is not None:
         threading.Thread(target=relay_server.serve_forever, daemon=True).start()
+    if beacon is not None:
+        threading.Thread(target=beacon.loop, daemon=True).start()
     try:
         server.serve_forever()
     except KeyboardInterrupt:
         pass
     finally:
+        if beacon is not None:
+            beacon.stop.set()
         retry_stop.set()
         admin.shutdown()
         admin.server_close()
@@ -2392,6 +2747,9 @@ def main():
     p_revoke = sub.add_parser(
         "revoke-session", help="注销 session (机器子命令, stdout JSON)")
     p_revoke.add_argument("session_id")
+    p_join = sub.add_parser(
+        "join-fleet", help="入群: 经 ssh 从老设备拉取舰队密钥 (AC-035)")
+    p_join.add_argument("target", help="老设备 ssh 地址 (user@host)")
     p_serve.add_argument("--neighbors", default=None,
                          help="邻居表 JSON 文件 (缺省 ~/.agents/mailbox/neighbors.json)")
     p_serve.add_argument("--relay-port", type=int, default=DEFAULT_RELAY_PORT,
@@ -2415,6 +2773,8 @@ def main():
         cmd_register_session(args.session_id)
     elif args.cmd == "revoke-session":
         cmd_revoke_session(args.session_id)
+    elif args.cmd == "join-fleet":
+        cmd_join_fleet(args.target)
     else:
         cmd_fetch(args.timeout, args.count, args.cli_state)  # 缺省动作 = 取信 (D001)
 
