@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+# D021 (ISSUE-15) 回归夹具: 假 mailbox.py 执行器 — 记录调用后阻塞
+# (取信长轮询语义). 由 pi-extension/index.ts 经 MAILBOX_PYTHON spawn;
+# 每次调用追加 "pid=N args=..." 到 $SPAWN_LOG, 供场景断言子进程拉起/存活.
+printf 'pid=%s args=%s\n' "$$" "$*" >> "$SPAWN_LOG"
+exec sleep infinity

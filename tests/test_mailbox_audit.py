@@ -80,9 +80,11 @@ def test_shutdown_keeps_listen_mark():
     assert "haltDaemon" in block, "shutdown 应只杀子进程 (haltDaemon)"
     for banned in ("clearListenMark", "unlinkSync", "stopDaemon"):
         assert banned not in block, f"shutdown 不得清持久标记: {banned}"
-    # 清标记调用全文件仅一处, 且挂在 stopDaemon (/mail-listen stop 路径)
-    assert src.count("clearListenMark();") == 1, "清标记应只有 stop 一个入口"
-    assert "clearListenMark();" in src.split("function stopDaemon")[1]
+    # 清标记调用全文件仅一处, 且挂在 stopDaemon (/mail-listen stop 路径);
+    # D021 (ISSUE-15 评审加固): 所有权收口 ownsListenMark, clearListenMark
+    # 接 (mark, sid), 只清自己拥有的标记
+    assert src.count("clearListenMark(mark, sid);") == 1, "清标记应只有 stop 一个入口"
+    assert "clearListenMark(mark, sid);" in src.split("function stopDaemon")[1]
 
 
 def test_session_id_no_network_address(tmp_path, monkeypatch):
