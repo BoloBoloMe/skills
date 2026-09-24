@@ -2,7 +2,7 @@
  * mailbox pi 扩展 — 纯连接器 (D004/BR-007)
  *
  * 三命令 (D006):
- *   /mail                            总览: 守护状态 + mailbox.py status + 最近回执
+ *   /mail                            总览: 守护状态 + mailbox.py status + 最近回执信
  *   /mail-listen start|stop|status   取信守护 (D007/D008)
  *   /mail-send <to> <type> <body>    投信, 缺参交互补全, 带参直发
  *
@@ -13,14 +13,16 @@
  * 脚本 exit 3 (缺凭证) → notify 用户并停守护.
  *
  * listen.json (D008): 开关落 ~/.agents/mailbox/listen.json, session_start
- * 见标记自动恢复; 检测到他会话守护在跑 → 警告仍启动 (软提示不拦截).
+ * 见标记自动恢复; session_shutdown 只杀子进程不清标记 (正常退出 pi 后
+ * 重启仍自动恢复, AC-003), 唯一清标记点 = /mail-listen stop;
+ * 检测到他会话守护在跑 → 警告仍启动 (软提示不拦截).
  *
  * 纯连接器边界: 本文件不实现任何信箱协议 (BR-007), 一切能力经子进程
  * 执行 mailbox.py 脚本; 多会话并发 listen 靠 per-listener cli-state
  * 隔离回执状态 (D009), 散落自担.
  */
 import { spawn, type ChildProcess } from "node:child_process";
-import { existsSync, mkdirSync, readFileSync, writeFileSync, unlinkSync } from "node:fs";
+import { mkdirSync, readFileSync, writeFileSync, unlinkSync } from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
 import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
@@ -29,12 +31,11 @@ const SCRIPT = path.resolve(__dirname, "..", "scripts", "mailbox.py");
 const PYTHON = process.env.MAILBOX_PYTHON || "python3";
 const MAILBOX_DIR = path.join(os.homedir(), ".agents", "mailbox");
 const LISTEN_JSON = path.join(MAILBOX_DIR, "listen.json");
-/** per-listener 状态文件 (D009): 每个守护实例独立一份, 与裸脚本取信方
- * (codex/kimi/终端) 及其它会话互不覆盖回执状态; 正常退出时清理. */
-const CLI_STATE = path.join(
-	MAILBOX_DIR,
-	`listen-cli-state-${process.pid}.json`,
-);
+/** pi 守护专属状态文件 (D009): 与裸脚本取信方 (codex/kimi/终端) 及容器
+ * listener 互不覆盖回执状态; 固定路径跨重启复用 — seen_ids 留存使租约
+ * 重投的旧信安静回执不重复注入, 未回执的末封在下次调用补回执.
+ * 多会话双 listen 共用此文件, 按 D008 软提示散落自担. */
+const CLI_STATE = path.join(MAILBOX_DIR, "listen-cli-state.json");
 /** 本守护实例标识 (D008 软提示用): hostname/pid. */
 const OWNER = `${os.hostname()}/${process.pid}`;
 
@@ -133,7 +134,7 @@ const RECEIPT_PREFIX = "回执: ";
 
 export default function (pi: ExtensionAPI) {
 	// 工厂内不起后台资源 (pi 文档): 守护从命令或 session_start 启动,
-	// session_shutdown 清理 (幂等).
+	// session_shutdown 只杀子进程 (幂等), 持久标记留给 stop 命令清.
 	const daemon: DaemonState = {
 		running: false,
 		waitingSettled: false,
@@ -159,7 +160,29 @@ export default function (pi: ExtensionAPI) {
 		}
 	}
 
-	function stopDaemon(ctx: ExtensionContext, reason?: string): void {
+	/** 守护摘要行 (/mail 与 /mail-listen status 共用组装). */
+	function daemonSummaryLines(): string[] {
+		const lines: string[] = [];
+		if (daemon.running) {
+			lines.push(
+				`取信守护: 运行中 (${OWNER}), 已注入 ${daemon.injected} 封` +
+					(daemon.waitingSettled ? ", 等待 agent 空闲后取下一封" : ""),
+			);
+		} else {
+			lines.push("取信守护: 未运行 (/mail-listen start 开启)");
+		}
+		if (daemon.lastError) lines.push(`最近错误: ${daemon.lastError}`);
+		if (daemon.receipts.length > 0) {
+			lines.push("最近回执信:");
+			lines.push(...daemon.receipts.slice(-5));
+		}
+		return lines;
+	}
+
+	/** 停守护但不清任何持久标记: 杀子进程 + 置停.
+	 * session_shutdown 与脚本异常退出共用 (重启/异常后 listen 标记仍在,
+	 * 下次 session_start 照常自动恢复, AC-003). */
+	function haltDaemon(): void {
 		daemon.running = false;
 		daemon.waitingSettled = false;
 		if (daemon.child) {
@@ -171,14 +194,14 @@ export default function (pi: ExtensionAPI) {
 			}
 			daemon.child = null;
 		}
-		clearListenMark();
-		// 清理 per-listener 状态文件: 未回执的末封由服务端租约超时重投兜底
-		try {
-			if (existsSync(CLI_STATE)) unlinkSync(CLI_STATE);
-		} catch {
-			/* 残留无害 */
-		}
 		daemon.startedAt = null;
+	}
+
+	/** /mail-listen stop: 停守护 + 清 listen 标记 (唯一清除点, D008).
+	 * cli-state 不删: 留存 seen_ids/pending_ack 供下次启动去重与补回执. */
+	function stopDaemon(ctx: ExtensionContext, reason?: string): void {
+		haltDaemon();
+		clearListenMark();
 		if (reason) notify(ctx, reason, "warning");
 		updateWidget(ctx);
 	}
@@ -215,12 +238,17 @@ export default function (pi: ExtensionAPI) {
 			if (carry) takeLine(carry); // 末行无换行符
 			if (!daemon.running) return; // stop 触发的 kill, 已接管
 			if (code === 3) {
-				// D007: 缺凭证 → notify 并停守护
-				stopDaemon(ctx, "取信脚本退出 (exit 3): 缺信箱凭证, 守护已停止. 请先完成 mailbox 配置.");
+				// D007: 缺凭证 → notify 并停守护; listen 标记保留
+				// (配置补齐后重启 pi 即自动恢复)
+				haltDaemon();
+				notify(ctx, "取信脚本退出 (exit 3): 缺信箱凭证, 守护已停止. 请先完成 mailbox 配置.", "warning");
+				updateWidget(ctx);
 				return;
 			}
 			if (code !== 0) {
-				stopDaemon(ctx, `取信脚本异常退出 (exit ${code ?? signal ?? "?"}), 守护已停止.`);
+				haltDaemon();
+				notify(ctx, `取信脚本异常退出 (exit ${code ?? signal ?? "?"}), 守护已停止.`, "warning");
+				updateWidget(ctx);
 				return;
 			}
 			const letter = letterLines.join("\n").trim();
@@ -289,32 +317,24 @@ export default function (pi: ExtensionAPI) {
 	});
 
 	pi.on("session_shutdown", async () => {
-		// 必须杀干净子进程; 幂等 (取消/重载/退出会合流到同一路径)
+		// 只杀子进程, 不清 listen.json/cli-state: 取消/重载/会话替换/正常
+		// 退出都合流到此, 清了会把持久开关退化成仅崩溃恢复 (AC-003);
+		// 幂等. 唯一清标记点 = /mail-listen stop.
 		if (daemon.running || daemon.child) {
-			const noop: ExtensionContext = ctxNoop();
-			stopDaemon(noop);
+			haltDaemon();
 		}
 	});
 
 	// ── 命令 ──────────────────────────────────────────────────────
 
 	pi.registerCommand("mail", {
-		description: "信箱总览: 服务状态/配置/待取 + 守护状态 + 最近回执",
+		description: "信箱总览: 服务状态/配置/待取 + 守护状态 + 最近回执信",
 		handler: async (_args, ctx) => {
 			const r = await runScript(["status"]);
 			const lines: string[] = [];
 			lines.push(...r.stdout.trim().split("\n").filter(Boolean));
 			lines.push("");
-			if (daemon.running) {
-				lines.push(`取信守护: 运行中 (${OWNER}), 已注入 ${daemon.injected} 封`);
-			} else {
-				lines.push("取信守护: 未运行 (/mail-listen start 开启)");
-			}
-			if (daemon.lastError) lines.push(`最近错误: ${daemon.lastError}`);
-			if (daemon.receipts.length > 0) {
-				lines.push("最近回执:");
-				lines.push(...daemon.receipts.slice(-5));
-			}
+			lines.push(...daemonSummaryLines());
 			if (r.stderr.trim()) lines.push(r.stderr.trim());
 			notify(ctx, lines.join("\n"));
 		},
@@ -337,16 +357,7 @@ export default function (pi: ExtensionAPI) {
 				return;
 			}
 			if (sub === "status") {
-				const lines = [
-					daemon.running
-						? `运行中 (${OWNER}), 已注入 ${daemon.injected} 封, 等待 settled: ${daemon.waitingSettled}`
-						: "未运行",
-				];
-				if (daemon.lastError) lines.push(`最近错误: ${daemon.lastError}`);
-				if (daemon.receipts.length > 0) {
-					lines.push("最近回执:");
-					lines.push(...daemon.receipts.slice(-5));
-				}
+				const lines = daemonSummaryLines();
 				const mark = readListenMark();
 				if (mark) lines.push(`listen 标记: ${mark.owner}`);
 				notify(ctx, lines.join("\n"));
@@ -390,10 +401,3 @@ export default function (pi: ExtensionAPI) {
 	});
 }
 
-/** shutdown 时无可用 ctx 时的静默替身 (notify/widget 全部吞掉). */
-function ctxNoop(): ExtensionContext {
-	const swallow = () => undefined;
-	return {
-		ui: { notify: swallow, setWidget: swallow },
-	} as unknown as ExtensionContext;
-}
