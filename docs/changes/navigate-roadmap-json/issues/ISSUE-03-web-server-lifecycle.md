@@ -1,7 +1,7 @@
 ## 父级
 - `../EXECUTION.md`
 ## 执行
-- [ ] 已实现
+- [x] 已实现
 ## 要构建什么
 展示服务骨架 `workflow/navigate/scripts/web_server.py`: CLI 子命令 start/status/stop, stdout 单行 UTF-8 JSON, 退出码 0/1. start 幂等 — 同 uid 已有存活实例则复用不起新进程, 返回其 URL; 否则以隐藏子命令 `__serve__` re-exec 自身起守护进程. 默认端口 39271, 被占时自动探测可用端口; 实际端口写入运行时文件, status 读之报告. 运行时文件 (pid/锁/端口) 放系统临时目录, 不进仓库; 目录位置经环境变量可覆盖 (测试隔离). 服务具备最小 HTTP 响应能力供判活 (完整端点归 ISSUE-04). stop 停止进程并清理运行时文件.
 结尾: 适合 AFK — 进程生命周期模式由 D008/D010 定死, 且 present web_server.py (F002) 提供逐段可抄的实现先例.

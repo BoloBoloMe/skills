@@ -1,7 +1,7 @@
 ## 父级
 - `../EXECUTION.md`
 ## 执行
-- [ ] 已实现
+- [x] 已实现
 ## 要构建什么
 守门脚本 `workflow/navigate/scripts/roadmap.py` 端到端可用: `uv run python workflow/navigate/scripts/roadmap.py <save|delete|query> <file> [path] [content]`. save 写指定字段, 文件不存在则自动初始化顶层结构 (schema_version "0.0.1", title, destination, notes, milestones, unknown_seas, off_course), 中间节点自动创建; content 先按 JSON 解析, 失败按裸字符串存. path 点分隔, 数字段为数组下标: 下标 == 数组长度追加, > 长度报错. query 读指定字段, 路径不存在报错指明. delete 删整个文件, 文件不存在报错. 每次 save 经 fcntl 文件锁 + 临时文件 rename 原子替换. stdout 单行 UTF-8 JSON (`{"success": true/false, ...}`), 退出码 0/1. 本 issue 校验层只保证结构可写 (合法文档能存取), 枚举/必填/环校验归 ISSUE-02.
 结尾: 适合 AFK — 接口/path 语义/schema/输出契约均由 D003/D004/D005 定死, 无待决策项.

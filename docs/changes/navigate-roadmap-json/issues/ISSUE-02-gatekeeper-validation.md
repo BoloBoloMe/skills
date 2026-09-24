@@ -1,7 +1,7 @@
 ## 父级
 - `../EXECUTION.md`
 ## 执行
-- [ ] 已实现
+- [x] 已实现
 ## 要构建什么
 在 ISSUE-01 骨架上补守门校验, 非法写入被拦截且文件保持原状:
 (a) 写 `status` 校验枚举 {待处理, 进行中, 已关闭}, 写 `type` 校验枚举 {research, deliberate, prototype, task}, 非法值报错并列出合法值;

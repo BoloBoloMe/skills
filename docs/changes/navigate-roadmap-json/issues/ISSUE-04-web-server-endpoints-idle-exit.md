@@ -1,7 +1,7 @@
 ## 父级
 - `../EXECUTION.md`
 ## 执行
-- [ ] 已实现
+- [x] 已实现
 ## 要构建什么
 在 ISSUE-03 服务骨架上补 HTTP 端点与空闲自退:
 `GET /` 与 `GET /index.html` 返回 `workflow/navigate/web/index.html` 内容 (本 issue 先落地最小占位页, ISSUE-05 重写为完整 SPA);
