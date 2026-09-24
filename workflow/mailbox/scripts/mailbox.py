@@ -1011,10 +1011,10 @@ def bootstrap_fleet_key():
     显式无密钥) 或文件已存在则完全不生成 (重启复用不重生成). 自生成
     密钥 = 自成单节点舰队: 信标照发, 异钥握手仍拒 (NG-009 不变)."""
     if os.environ.get("MAILBOX_FLEET_KEY"):
-        return False
+        return
     path = fleet_key_path()
     if path.exists():
-        return False
+        return
     key = os.urandom(32).hex()
     try:
         path.parent.mkdir(parents=True, exist_ok=True)
@@ -1023,17 +1023,16 @@ def bootstrap_fleet_key():
         with os.fdopen(fd, "w", encoding="utf-8") as f:
             f.write(key + "\n")
     except FileExistsError:
-        return False  # 并发竞态: 他进程已生成, 照常复用
+        return  # 并发竞态: 他进程已生成, 照常复用
     except OSError as e:
         print(f"警告: 舰队密钥引导生成失败 ({e}), 自组网停用",
               file=sys.stderr)
-        return False
+        return
     log_event("fleet-key-bootstrap", path=str(path))
     print(f"提示: 未发现舰队密钥且 MAILBOX_FLEET_KEY 未设, 已自动生成"
           f"单节点舰队密钥 {path}\n"
           f"(加入已有舰队: mailbox.py join-fleet <老设备ssh地址>;"
           f" 分发仅经 ssh, BR-009)", file=sys.stderr)
-    return True
 
 
 def fleet_fingerprint(hostname, address):

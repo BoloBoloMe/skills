@@ -91,7 +91,10 @@ def mesh_auto_serves(tmp_path):
             env["MAILBOX_FLEET_KEY"] = str(fleet_path)
         else:
             # ISSUE-13: 引导生成打破 "无密钥" 缺省前提 — 未显式给密钥时
-            # 钉死显式无密钥 (env 指向不存在路径, 不触发生成)
+            # 钉死显式无密钥 (env 指向不存在路径, 不触发生成).
+            # 双层关系: conftest.pytest_configure 已对 pytest 进程全局
+            # 兜底钉住本 env, 这里再显式设一遍是夹具级纵深防御 — 夹具
+            # 单独被人拷走复用时语义仍自足.
             env["MAILBOX_FLEET_KEY"] = str(workdir / "absent-fleet.key")
         if beacon_port is not None:
             env["MAILBOX_BEACON_PORT"] = str(beacon_port)
