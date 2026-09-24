@@ -12,10 +12,15 @@
  * 回执信 (D014) 不注入不唤醒, 汇入 /mail 总览与 widget.
  * 脚本 exit 3 (缺凭证) → notify 用户并停守护.
  *
- * listen.json (D008): 开关落 ~/.agents/mailbox/listen.json, session_start
- * 见标记自动恢复; session_shutdown 只杀子进程不清标记 (正常退出 pi 后
- * 重启仍自动恢复, AC-003), 唯一清标记点 = /mail-listen stop;
- * 检测到他会话守护在跑 → 警告仍启动 (软提示不拦截).
+ * listen.json (D008/D021): 开关落 ~/.agents/mailbox/listen.json 并记录
+ * 启动它的 pi 会话身份 (sessionManager.getSessionId(), 跨重启稳定:
+ * 持久化在会话文件 header, 续接同一会话文件即同 id); session_start
+ * 仅当标记属于当前会话 (同会话续接/重启) 且守护已死时自动恢复, 新会
+ * 话永不自动监听也不得覆盖/清除他人标记, 旧版无 session_id 的文件视
+ * 为陈旧标记不自动恢复; session_shutdown 只杀子进程不清标记 (同会话
+ * 重启后仍自动恢复, AC-003), 唯一清标记点 = /mail-listen stop (只清
+ * 自己拥有的); start 遇他会话标记软提示后接管, 检测到他会话守护在
+ * 跑 → 警告仍启动 (软提示不拦截).
  *
  * 纯连接器边界: 本文件不实现任何信箱协议 (BR-007), 一切能力经子进程
  * 执行 mailbox.py 脚本; 多会话并发 listen 靠 per-listener cli-state
@@ -39,6 +44,28 @@ const CLI_STATE = path.join(MAILBOX_DIR, "listen-cli-state.json");
 /** 本守护实例标识 (D008 软提示用): hostname/pid. */
 const OWNER = `${os.hostname()}/${process.pid}`;
 
+/** listen.json 标记 (D008/D021). */
+interface ListenMark {
+	/** 写标记的进程标识 (hostname/pid, 展示用). */
+	owner: string;
+	/** 写标记的 pi 会话身份 (D021): ctx.sessionManager.getSessionId().
+	 * 旧版文件无此字段 = 陈旧标记: 不自动恢复, start 可接管. */
+	session_id?: string;
+	[key: string]: unknown;
+}
+
+/** 当前 pi 会话身份 (D021): sessionManager.getSessionId() — id 持久化在
+ * 会话文件 header, 同一会话续接/重启后不变, 新会话才是新 id.
+ * 取不到 (理论不可达) 返回 null, 所有权判定一律视为 "非自己". */
+function sessionIdOf(ctx: ExtensionContext): string | null {
+	try {
+		const sid = ctx.sessionManager.getSessionId();
+		return typeof sid === "string" && sid ? sid : null;
+	} catch {
+		return null;
+	}
+}
+
 /** 守护最近回执的保留条数 (D014: 汇入 /mail 与 widget). */
 const RECEIPTS_KEEP = 20;
 
@@ -61,22 +88,23 @@ function notify(ctx: ExtensionContext, message: string, type?: "info" | "warning
 	}
 }
 
-function readListenMark(): { owner: string } | null {
+function readListenMark(): ListenMark | null {
 	try {
-		const data = JSON.parse(readFileSync(LISTEN_JSON, "utf-8"));
-		return typeof data?.owner === "string" ? data : null;
+		const data: unknown = JSON.parse(readFileSync(LISTEN_JSON, "utf-8"));
+		return typeof (data as ListenMark)?.owner === "string" ? (data as ListenMark) : null;
 	} catch {
 		return null;
 	}
 }
 
-function writeListenMark(): void {
+function writeListenMark(sid: string): void {
 	mkdirSync(MAILBOX_DIR, { recursive: true });
 	writeFileSync(
 		LISTEN_JSON,
 		JSON.stringify(
 			{
 				owner: OWNER,
+				session_id: sid,
 				pid: process.pid,
 				cli_state: CLI_STATE,
 				started_at: new Date().toISOString(),
@@ -88,11 +116,11 @@ function writeListenMark(): void {
 	);
 }
 
-function clearListenMark(): void {
-	/** 只清自己写的标记; 他会话的标记不动 (D008). */
+function clearListenMark(sid: string | null): void {
+	/** 只清自己写的标记 (D021: 会话身份一致才清); 他人/旧版陈旧标记不动. */
 	try {
 		const mark = readListenMark();
-		if (mark && mark.owner === OWNER) unlinkSync(LISTEN_JSON);
+		if (mark && sid && mark.session_id === sid) unlinkSync(LISTEN_JSON);
 	} catch {
 		/* 无标记 */
 	}
@@ -197,11 +225,13 @@ export default function (pi: ExtensionAPI) {
 		daemon.startedAt = null;
 	}
 
-	/** /mail-listen stop: 停守护 + 清 listen 标记 (唯一清除点, D008).
+	/** /mail-listen stop: 停守护 + 清自己的 listen 标记 (唯一清除点,
+	 * D008/D021: 只清 session_id 与当前会话一致的标记, 他人/陈旧不动).
 	 * cli-state 不删: 留存 seen_ids/pending_ack 供下次启动去重与补回执. */
 	function stopDaemon(ctx: ExtensionContext, reason?: string): void {
+		const sid = sessionIdOf(ctx);
 		haltDaemon();
-		clearListenMark();
+		clearListenMark(sid);
 		if (reason) notify(ctx, reason, "warning");
 		updateWidget(ctx);
 	}
@@ -278,17 +308,26 @@ export default function (pi: ExtensionAPI) {
 			notify(ctx, "取信守护已在运行", "info");
 			return;
 		}
-		// D008 软提示: 检测到他会话守护标记 → 警告不拦截
+		const sid = sessionIdOf(ctx);
+		if (!sid) {
+			// D021: 无稳定会话身份则拒绝绑定 (禁止用 cwd 等近似物发明)
+			notify(ctx, "无法确定当前 pi 会话身份, 拒绝启动取信守护 (D021)", "error");
+			return;
+		}
+		// D008 软提示: 检测到他会话/陈旧取信标记 → 警告不拦截, start 接管
 		const prev = readListenMark();
-		if (prev && prev.owner !== OWNER) {
+		if (prev && prev.session_id !== sid) {
+			const who = prev.session_id
+				? `session ${prev.session_id}`
+				: "旧版标记 (无会话绑定)";
 			notify(
 				ctx,
-				`检测到其它会话的取信守护在运行 (${prev.owner}); ` +
+				`检测到其它会话的取信标记 (${prev.owner}, ${who}); ` +
 					"信件会分到其中一个, 继续启动 (D008 软提示)",
 				"warning",
 			);
 		}
-		writeListenMark();
+		writeListenMark(sid);
 		daemon.running = true;
 		daemon.lastError = null;
 		daemon.startedAt = new Date().toISOString();
@@ -301,10 +340,21 @@ export default function (pi: ExtensionAPI) {
 	// ── 生命周期 ──────────────────────────────────────────────────
 
 	pi.on("session_start", async (_event, ctx) => {
-		// D008: listen.json 有标记 → 自动恢复 (写标记的进程可能已退,
-		// 不区分 owner; 双活时靠 per-listener cli-state 与软提示哲学)
-		if (readListenMark()) {
-			startDaemon(ctx, "检测到 listen 标记, 取信守护已自动恢复");
+		// D021: 仅当标记属于当前会话 (同会话续接/重启, 守护已死) 才自动
+		// 恢复; 新会话/旧版无 session_id 的陈旧标记 → 不自动监听, 不覆盖
+		// 不清除他人标记. 同进程会话替换时, 上一会话遗留的守护一并停
+		// (子进程属于旧会话), 标记仍留给旧会话在他处续接时恢复.
+		const sid = sessionIdOf(ctx);
+		const mark = readListenMark();
+		if (sid && mark && mark.session_id === sid) {
+			if (!daemon.running) {
+				startDaemon(ctx, "检测到本会话的 listen 标记, 取信守护已自动恢复");
+			}
+			return;
+		}
+		if (daemon.running || daemon.child) {
+			haltDaemon();
+			updateWidget(ctx);
 		}
 	});
 
@@ -349,7 +399,11 @@ export default function (pi: ExtensionAPI) {
 				return;
 			}
 			if (sub === "stop") {
-				if (!daemon.running) {
+				const sid = sessionIdOf(ctx);
+				const mark = readListenMark();
+				// D021: 守护未跑但标记属于本会话 (如 exit 3 停守护留标记) 也
+				// 须清 — stop = 本会话明确不再监听; 他人/陈旧标记不动.
+				if (!daemon.running && !(sid && mark && mark.session_id === sid)) {
 					notify(ctx, "取信守护未在运行", "info");
 					return;
 				}
@@ -359,7 +413,12 @@ export default function (pi: ExtensionAPI) {
 			if (sub === "status") {
 				const lines = daemonSummaryLines();
 				const mark = readListenMark();
-				if (mark) lines.push(`listen 标记: ${mark.owner}`);
+				if (mark) {
+					lines.push(
+						`listen 标记: ${mark.owner}` +
+							(mark.session_id ? ` (session ${mark.session_id})` : " (旧版, 无会话绑定)"),
+					);
+				}
 				notify(ctx, lines.join("\n"));
 				return;
 			}
