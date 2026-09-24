@@ -120,3 +120,10 @@
 - 理由: 隔离是三批准项 (D020) 落地后测试安全运行的必要前提, 属授权范畴; 其余为评审明示低风险项.
 - 影响: ISSUE-13 三提交 (951035c 顶) 合并 7f0a6d4, 合并后全量快层 300 passed, 真机 ~/.agents/mailbox/ 无残留 (ls 证据). 至此 D018/D019/D020 三项用户批准补充全部实现合入, 变更全部完工, 等待用户真机收尾.
 - 风险: 无新增; e2e 慢层仍未跑 (真机收尾清单第 6 项一并处理).
+
+## D-AFK-018 验收期两缺陷修复 + session-prune 两次误伤
+- 问题: (a) 验收发现守护标记被任何新 pi 会话自动恢复 (D008 字面实现缺陷, 用户裁决 D021); (b) 验收发现 --timeout < hold 时服务端吐 BrokenPipeError 堆栈 (ISSUE-14); (c) session-prune 扩展两次删除执行者活跃会话文件 (其文档已接受的风险), 崩掉 exec-14 会话一次; (d) rev-spec-14 撞 API 并发限额一次 (重试成功); (e) 总指挥 pkill 两次误匹配自身命令行 (乌龙, 无害).
+- 决策: (a) D021 落为 ISSUE-15, 评审后加修生命周期回归落库 + pi_session_id 改名 + ownsListenMark 收口, 合并 14cdac4; (b) ISSUE-14 修复 _json 捕获客户端断开, 合并 cdd274e; (c) 验收期临时挪走 session-prune (已恢复原位); (d) 重试; (e) 改用括号转义模式.
+- 理由: 两条都是实地验收的实测缺陷; 执行者自报的 conftest 舰队密钥隔离与生命周期回归落库均专项授权采纳.
+- 影响: ISSUE-14 (d2d3005) 与 ISSUE-15 (34f1b34) 已合并部署 (mailbox.py + index.ts 已 cp 到 ~/.agents/skills/mailbox/), 全量快层 308 passed. 全部工作树/分支/会话清理完毕, session-prune 恢复.
+- 风险: 两个已知限制挂账: 守护 pid 存活不校验 (SIGKILL 孤儿可双活) 与迟到 close 误杀新守护 (ISSUE-16 候选); relay 面 _forward 裸写 wfile 的同款堆栈 (收尾清单).

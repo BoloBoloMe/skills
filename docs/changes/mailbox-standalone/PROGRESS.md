@@ -2,6 +2,14 @@
 
 > tdd-as-orchestra AFK 模式: 汇报以本文件为权威载体, 新条目在上. 决定账本见 UNAUTHORIZED_DECISIONS.md.
 
+## 验收期修复轮 (ISSUE-14, ISSUE-15) 完成 [2026-09-24]
+
+- 实地验收进行中发现两缺陷, 均已修复合并部署: ISSUE-14 服务端 broken pipe (合并 cdd274e); ISSUE-15 守护标记绑定会话身份/D021 (合并 14cdac4, 用户抓到的"新会话自动监听"缺陷).
+- 快层 308 passed; e2e 真容器套件 394 passed (14m27s, 完成定义全绿达成).
+- 部署: mailbox.py + index.ts 已更新到 ~/.agents/skills/mailbox/; 用户需重启 pi 会话加载新扩展.
+- 验收记分: AC-001/002/006/008/011(查询/删除)/023/024 + D018/D020 已实地验证; 待补: AC-005 回执不打断, AC-003 重启恢复 (新语义), AC-004 双会话软提示, AC-017 容器 status, AC-027 真 birth, AC-031..035 mesh (需 yoga).
+- 已知限制挂账: 守护 pid 存活不校验 + 迟到 close 误杀新守护 (ISSUE-16 候选); relay _forward 同款堆栈 (收尾清单).
+
 ## R13 (ISSUE-13) 完成 — 全部完工, 等待真机收尾 [2026-09-23]
 
 - ISSUE-13 完成: fleet.key 引导生成 (无文件且无 env 时 0600 自生成, 空 env 视同未设, 重启复用; conftest.Serve 缺省隔离防真机副作用). 合并 7f0a6d4, 全量快层 300 passed, 勾选 5c8bcab. 评审 Spec 全绿 (O_EXCL 防覆写, NG-009 未被架空).
