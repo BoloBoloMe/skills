@@ -276,11 +276,8 @@ var state = {
   planets: new Map(),
   selected: null,
   fold: { notes: false, seas: false, off: false },
-  bgStars: [],
-  dust: [],
-  galaxies: [],
-  nebulae: [],
-  sky: null,
+  skyDots: [],
+  bgGrad: null,
   vignette: null,
   planetTier: 96,
   clock: 0,
@@ -329,9 +326,9 @@ function resize() {
   canvas.height = Math.round(state.ch * state.dpr);
   ctx.setTransform(state.dpr, 0, 0, state.dpr, 0, 0);
   // 整屏渐变与暗角: 预渲染成贴图, 每帧一次 1:1 blit 取代逐帧逐像素算渐变
-  state.sky = buildSky();
+  state.bgGrad = buildBgGrad();
   state.vignette = buildVignette();
-  buildBackground();
+  state.skyDots = buildStars();
   refit();
 }
 
@@ -342,123 +339,41 @@ function pickDpr() {
   return dpr;
 }
 
-// 贴图对位: 1:1 且落在整设备像素上, 才走快速 blit 路径 (错开半像素会退化成重采样, 慢好几倍)
-function snap(v) { return Math.round(v * state.dpr) / state.dpr; }
-
-function buildSky() {
+// 底色渐变: 一像素宽的竖条, 每帧拉伸铺满 (全屏逐帧算线性渐变太贵)
+function buildBgGrad() {
   var c = document.createElement('canvas');
-  c.width = canvas.width;
-  c.height = canvas.height;
+  c.width = 1; c.height = 256;
   var g = c.getContext('2d');
-  g.setTransform(state.dpr, 0, 0, state.dpr, 0, 0);   // 之后按 CSS 像素作图
-  var CW = state.cw, CH = state.ch;
-  var rnd = mulberry32(741852);
-
-  // 底色
-  var base = g.createLinearGradient(0, 0, 0, CH);
-  base.addColorStop(0, '#060a16');
-  base.addColorStop(0.55, '#03050c');
-  base.addColorStop(1, '#010208');
-  g.fillStyle = base;
-  g.fillRect(0, 0, CW, CH);
-
-  // ---- 银河系 ----
-  // 银心在画面左下角外, 一条旋臂从那里斜扫过整个天幕; 我们的路线图落在它外缘
-  var gc = { x: CW * 0.05, y: CH * 1.04 };
-  var ang = Math.atan2(-0.6 * CH, 1.6 * CW);
-  var half = CH * 0.13;                       // 银盘带半宽 (垂直于带方向)
-  var ux = Math.cos(ang), uy = Math.sin(ang);
-  var perp = { x: -uy, y: ux };
-  var L = CW * 1.5;                           // 从银心沿旋臂走的长度
-  var at = function (t, off) {
-    return [gc.x + ux * L * t + perp.x * off, gc.y + uy * L * t + perp.y * off];
-  };
-
-  // 沿旋臂的一团光: 绕银心压扁的椭圆径向渐变 (一次填充, 沿臂方向自然衰减)
-  var blob = function (rgb, a, len, w, off) {
-    g.save();
-    g.translate(gc.x, gc.y);
-    g.rotate(ang);
-    var k = w / len;
-    g.scale(1, k);
-    g.translate(0, off / k);
-    var rg = g.createRadialGradient(0, 0, 0, 0, 0, len);
-    rg.addColorStop(0, 'rgba(' + rgb + ', ' + a.toFixed(3) + ')');
-    rg.addColorStop(0.4, 'rgba(' + rgb + ', ' + (a * 0.55).toFixed(3) + ')');
-    rg.addColorStop(0.72, 'rgba(' + rgb + ', ' + (a * 0.18).toFixed(3) + ')');
-    rg.addColorStop(1, 'rgba(' + rgb + ', 0)');
-    g.fillStyle = rg;
-    g.beginPath(); g.arc(0, 0, len, 0, Math.PI * 2); g.fill();
-    g.restore();
-  };
-
-  blob('255, 228, 180', 0.44, CH * 1.0, CH * 0.5, 0);           // 银心核球
-  blob('255, 242, 214', 0.34, CH * 0.46, CH * 0.2, 0);          // 核球亮核
-  blob('198, 210, 250', 0.17, CW * 1.4, half * 3.4, 0);         // 很宽的银河辉光 (体积感)
-  blob('208, 218, 255', 0.3, CW * 1.15, half * 1.6, 0);         // 银盘弥散光
-  blob('228, 236, 255', 0.4, CW * 1.02, half * 0.6, 0);         // 亮脊: 旋臂上的年轻恒星带
-  blob('214, 224, 255', 0.2, CW * 0.95, half * 0.3, -half * 0.95); // 外侧第二条臂
-  blob('9, 7, 18', 0.5, CW * 0.95, half * 0.26, -half * 0.4);   // 尘埃带 (暗)
-  blob('9, 7, 18', 0.32, CW * 0.88, half * 0.2, half * 0.6);
-
-  // 星点颜色查表: 3 种色温 x 14 档透明度, 避免逐颗拼字符串 (每帧重建时这是一大笔开销)
-  var starCols = [], milkCols = [];
-  var tints = ['184, 208, 255', '255, 232, 200', '234, 240, 252'];
-  for (var ti = 0; ti < tints.length; ti++) {
-    starCols.push([]); milkCols.push([]);
-    for (var lv = 0; lv < 14; lv++) {
-      starCols[ti].push('rgba(' + tints[ti] + ', ' + (0.06 + lv * 0.032).toFixed(3) + ')');
-      milkCols[ti].push('rgba(' + tints[ti] + ', ' + (0.014 + lv * 0.006).toFixed(3) + ')');
-    }
-  }
-
-  // 银盘里的星: 七成贴近亮脊, 三成铺在更宽的光晕上; 靠银心侧更密
-  var placed = 0;
-  for (var s = 0; s < 22000 && placed < 11000; s++) {
-    var t = rnd();
-    var tight = rnd() < 0.72;
-    var off = ((rnd() + rnd() + rnd() - 1.5) / 1.5) * (tight ? half * 0.5 : half * 1.7);
-    var along = L * t;   // 热循环里直接算坐标, 不额外分配数组
-    var qx = gc.x + ux * along + perp.x * off, qy = gc.y + uy * along + perp.y * off;
-    if (qx < -20 || qx > CW + 20 || qy < -20 || qy > CH + 20) continue;
-    placed++;
-    var k = (tight ? 1 : 0.42) * (0.45 + (1 - t) * 0.55);
-    var sz = 0.5 + rnd() * (tight ? 1.5 : 1.1);
-    g.fillStyle = starCols[(rnd() * 3) | 0][Math.min(13, Math.round(rnd() * 13 * k))];
-    g.fillRect(qx, qy, sz, sz);
-  }
-  // 分辨不开的星: 极细极淡的微粒填满银盘, 这才是"银河"的奶雾质感
-  for (var f = 0; f < 9000; f++) {
-    var tf = rnd();
-    var of2 = ((rnd() + rnd() + rnd() - 1.5) / 1.5) * half * 1.15;
-    var along2 = L * tf;
-    var qfx = gc.x + ux * along2 + perp.x * of2, qfy = gc.y + uy * along2 + perp.y * of2;
-    if (qfx < -10 || qfx > CW + 10 || qfy < -10 || qfy > CH + 10) continue;
-    var kf = 0.5 + (1 - tf) * 0.5;
-    g.fillStyle = milkCols[(rnd() * 3) | 0][Math.min(13, Math.round(rnd() * 13 * kf))];
-    g.fillRect(qfx, qfy, 0.5 + rnd() * 0.6, 0.5 + rnd() * 0.6);
-  }
-  // 疏散星团, 亮星, 电离氢区 (淡红) 挂在亮脊上
-  for (var cl = 0; cl < 40; cl++) {
-    var tc = 0.06 + rnd() * 0.66;
-    var cp = at(tc, ((rnd() + rnd() - 1) / 1.5) * half * 0.65);
-    var members = 8 + Math.floor(rnd() * 18);
-    var spread = 4 + rnd() * 11;
-    for (var m = 0; m < members; m++) {
-      g.fillStyle = 'rgba(' + (rnd() < 0.42 ? '198, 220, 255' : '255, 240, 218') + ', ' + (0.12 + rnd() * 0.5).toFixed(3) + ')';
-      g.fillRect(cp[0] + (rnd() - 0.5) * spread, cp[1] + (rnd() - 0.5) * spread, 0.8 + rnd() * 1.6, 0.8 + rnd() * 1.6);
-    }
-    if (cl % 2 === 0) {
-      var hr = 3 + rnd() * 8;
-      var hg = g.createRadialGradient(cp[0], cp[1], 0, cp[0], cp[1], hr);
-      hg.addColorStop(0, 'rgba(255, 148, 150, 0.2)');
-      hg.addColorStop(1, 'rgba(255, 120, 130, 0)');
-      g.fillStyle = hg;
-      g.beginPath(); g.arc(cp[0], cp[1], hr, 0, Math.PI * 2); g.fill();
-    }
-  }
-
+  var lg = g.createLinearGradient(0, 0, 0, 256);
+  lg.addColorStop(0, '#060a16');
+  lg.addColorStop(0.55, '#03050c');
+  lg.addColorStop(1, '#010208');
+  g.fillStyle = lg;
+  g.fillRect(0, 0, 1, 256);
   return c;
+}
+
+// 星场: 数量跟窗口面积走, 明暗/大小/色温分层, 逐帧按正弦闪烁 (z 只用来定型, 不做视差)
+function buildStars() {
+  var rnd = mulberry32(20240924);
+  var n = Math.round(420 + (state.cw * state.ch) / 3200);
+  var out = [];
+  for (var i = 0; i < n; i++) {
+    var z = Math.pow(rnd(), 1.35);          // 0 = 深远, 1 = 近前
+    var lvl = 0.55 + z * 0.45;
+    out.push({
+      x: rnd() * state.cw,
+      y: rnd() * state.ch,
+      r: 0.3 + z * 1.6 * (0.6 + rnd() * 0.9),
+      a: (0.1 + z * 0.55) * lvl,
+      tw: 0.26 * lvl,
+      sp: 0.2 + rnd() * 1.2,
+      ph: rnd() * Math.PI * 2,
+      c: rnd() < 0.14 ? '#cfe2ff' : (rnd() < 0.3 ? '#ffe7c9' : '#e8eef8')
+    });
+  }
+  // 按颜色排序: 同色的星连着画, 每帧 fillStyle 切换从几百次降到几次
+  return out.sort(function (a, b) { return a.c < b.c ? -1 : (a.c > b.c ? 1 : 0); });
 }
 
 function buildVignette() {
@@ -475,296 +390,12 @@ function buildVignette() {
 }
 
 // 软边圆光斑贴图: 中心不透明, 边缘归零; 取代每帧 createRadialGradient + fillRect
-function softBlob(r, rgb, a) {
-  var s = Math.max(4, Math.round(r * 2));
-  var c = document.createElement('canvas');
-  c.width = s; c.height = s;
-  var g = c.getContext('2d');
-  var rg = g.createRadialGradient(s / 2, s / 2, 0, s / 2, s / 2, s / 2);
-  rg.addColorStop(0, 'rgba(' + rgb + ', ' + a + ')');
-  rg.addColorStop(1, 'rgba(' + rgb + ', 0)');
-  g.fillStyle = rg;
-  g.fillRect(0, 0, s, s);
-  return c;
-}
-
-function buildBackground() {
-  var rnd = mulberry32(20240924);
-  var n = Math.round(420 + (state.cw * state.ch) / 3200);
-  state.bgStars = [];
-  for (var i = 0; i < n; i++) {
-    // z: 0 = 深远, 1 = 近前; 视差与亮度/大小都按 z 分层
-    var z = Math.pow(rnd(), 1.35);
-    state.bgStars.push({
-      x: rnd() * state.cw,
-      y: rnd() * state.ch,
-      z: z,
-      r: 0.3 + z * 1.6 * (0.6 + rnd() * 0.9),
-      base: 0.1 + z * 0.55,
-      sp: 0.2 + rnd() * 1.2,
-      ph: rnd() * Math.PI * 2,
-      tint: rnd() < 0.14 ? '#cfe2ff' : (rnd() < 0.3 ? '#ffe7c9' : '#e8eef8')
-    });
-  }
-  // 虚焦尘埃: 大而极暗的光斑, 模拟景深离焦 (预渲染成贴图)
-  state.dust = [];
-  for (var d = 0; d < 30; d++) {
-    var dz = rnd();
-    var dr = 26 + dz * 90;
-    var da = 0.014 + dz * 0.03;
-    var dc = dz < 0.5 ? '150, 175, 225' : '225, 205, 165';
-    state.dust.push({
-      x: rnd() * state.cw, y: rnd() * state.ch, z: dz,
-      r: dr, a: da, c: dc,
-      img: softBlob(dr, dc, da)
-    });
-  }
-  // 远景星系: 固定在天幕上的位置 (不随视角平移, 只在窗口尺寸变化时重排)
-  state.galaxies = buildGalaxies(rnd);
-  var hues = [[70, 90, 190], [30, 70, 150], [110, 70, 160], [24, 90, 130]];
-  state.nebulae = [];
-  for (var j = 0; j < 4; j++) {
-    var nbx = rnd() * state.cw;
-    var nby = rnd() * state.ch;
-    var nbr = 200 + rnd() * 300;
-    var nbc = hues[j % hues.length];
-    var nba = 0.035 + rnd() * 0.035;
-    state.nebulae.push({
-      x: nbx,
-      y: nby,
-      r: nbr,
-      c: nbc,
-      a: nba,
-      sp: 0.02 + rnd() * 0.03,
-      ph: rnd() * Math.PI * 2,
-      img: softBlob(nbr, nbc.join(','), nba)
-    });
-  }
-}
-
 // 星系种类与色温: 按种子随机抽, 铺满整张天幕
-var GALAXY_KINDS = ['spiral', 'spiral', 'spiral', 'barred', 'barred', 'elliptical', 'elliptical',
-  'edge', 'edge', 'irregular', 'irregular', 'pair'];
-var GALAXY_HUES = [
-  [150, 185, 255], [255, 220, 170], [185, 160, 255], [170, 225, 235],
-  [255, 195, 150], [205, 215, 255], [255, 180, 190], [180, 205, 185], [230, 235, 255]
-];
-
 // 星系贴图缓存: 只跟规格 (种子 + 尺寸) 有关, 与视口无关; 拖窗口时可直接复用
-var galaxySpriteCache = new Map();
-
-function galaxySprite(spec, size) {
-  var key = spec.seed + ':' + size;
-  var hit = galaxySpriteCache.get(key);
-  if (hit) return hit;
-  var img = renderGalaxyCanvas(spec, size);
-  if (galaxySpriteCache.size > 96) {   // 放大时按更高分辨率重出图, 缓存多留几档
-    galaxySpriteCache.delete(galaxySpriteCache.keys().next().value);
-  }
-  galaxySpriteCache.set(key, img);
-  return img;
-}
-
-// 天幕放大系数: 视野越窄, 看到的天空越少, 深空天体就更大更少 (望远镜直觉)。
-// 烘成整屏底图的银河系不参与: 放大会把它的星点糊成色块, 它本来就是背景。
-function skyScale() {
-  return Math.max(1, Math.min(3, state.view.zoom));
-}
-
+// 银盘带的几何 (银心在画面左下角外, 一条旋臂斜扫过天幕), 天幕底图与星点共用
+// 银河系里的可用肉眼看见的恒星 + 疏散星团: 与背景星场存成同一种记录,
+// 逐帧走同一个绘制循环 —— 整张天幕因此是一层
 // 天幕上的星系: 一律铺在四周环带上, 中央留给我们的路线图 (和银河系), 保持空旷
-function buildGalaxies(rnd) {
-  var area = state.cw * state.ch;
-  var n = Math.max(10, Math.min(24, Math.round(10 + area / 360000)));
-  var cols = Math.max(1, Math.round(Math.sqrt(n * state.cw / Math.max(1, state.ch))));
-  var rows = Math.ceil(n / cols);
-  var cellW = state.cw / cols, cellH = state.ch / rows;
-  var cx = state.cw / 2, cy = state.ch / 2;
-  // 中央空区 (半宽/半高) 与四周环带宽度
-  var ix = state.cw * 0.26, iy = state.ch * 0.24;
-  var bandW = state.cw * 0.24, bandH = state.ch * 0.24;
-  var out = [];
-  for (var i = 0; i < n; i++) {
-    var col0 = (i % cols) * cellW, row0 = Math.floor(i / cols) * cellH;
-    var big = rnd() < 0.22;                          // 少数大而亮的近星系 + 多数小而淡的远景
-    var size = big ? 1.05 + rnd() * 0.7 : 0.4 + rnd() * 0.62;
-    var kind = GALAXY_KINDS[Math.floor(rnd() * GALAXY_KINDS.length)];
-    var spec = {
-      kind: kind,
-      hue: GALAXY_HUES[Math.floor(rnd() * GALAXY_HUES.length)],
-      roll: rnd() * Math.PI * 2,
-      // 椭圆星系本来就该接近圆形, 盘星系才需要各种偏平角度
-      squash: kind === 'elliptical' ? 0.7 + rnd() * 0.3 : 0.2 + rnd() * 0.6,
-      arms: 2 + Math.floor(rnd() * 3),
-      coreWarm: rnd() < 0.5,
-      dust: rnd() < 0.6,
-      seed: Math.floor(rnd() * 1e9)
-    };
-    var img = galaxySprite(spec, Math.round(260 * size));
-    // 抖动网格取点; 贴图整体要避开中央空区, 落在里面就沿代价最小的方向推出去
-    var gx = col0 + (0.14 + rnd() * 0.72) * cellW;
-    var gy = row0 + (0.14 + rnd() * 0.72) * cellH;
-    var half = img.width / 2;
-    var l = cx - ix, r = cx + ix, t = cy - iy, bt = cy + iy;
-    var dl = (gx + half) - l, dr = r - (gx - half);
-    var dt = (gy + half) - t, db = bt - (gy - half);
-    if (dl > 0 && dr > 0 && dt > 0 && db > 0) {     // 贴图与空区相交
-      var m = Math.min(dl, dr, dt, db);
-      if (m === dl) gx -= dl + rnd() * bandW * 0.5;
-      else if (m === dr) gx += dr + rnd() * bandW * 0.5;
-      else if (m === dt) gy -= dt + rnd() * bandH * 0.5;
-      else gy += db + rnd() * bandH * 0.5;
-    }
-    var pad = img.width * 0.2;                       // 边缘允许一点出格, 像真的星空照片
-    out.push({
-      // 画布按最终尺寸预渲染, 贴回时 1:1 不缩放 (缩放 blit 会退化成重采样)
-      img: img,
-      spec: spec,
-      w: img.width,
-      x: Math.min(Math.max(gx, pad), state.cw - pad),
-      y: Math.min(Math.max(gy, pad), state.ch - pad),
-      a: (big ? 0.28 : 0.16) + rnd() * 0.22,
-      kind: kind
-    });
-  }
-  return out;
-}
-
-function renderGalaxyCanvas(spec, size) {
-  var S = Math.max(24, size || 260);
-  var c = document.createElement('canvas');
-  c.width = S; c.height = S;
-  var g = c.getContext('2d');
-  var col = spec.hue;
-  var rgb = col.join(',');
-  var core = spec.coreWarm ? '255, 246, 226' : '228, 240, 255';
-  var rnd = mulberry32(spec.seed || 1);
-  var R = S * 0.46;
-  g.translate(S / 2, S / 2);
-  g.rotate(spec.roll);
-  g.scale(1, spec.squash || 0.5);
-
-  // 盘面底光: 所有种类共用的"远方一团光"
-  var disk = g.createRadialGradient(0, 0, 0, 0, 0, R);
-  disk.addColorStop(0, 'rgba(' + rgb + ', 0.5)');
-  disk.addColorStop(0.28, 'rgba(' + rgb + ', 0.15)');
-  disk.addColorStop(1, 'rgba(' + rgb + ', 0)');
-  g.fillStyle = disk;
-  g.beginPath(); g.arc(0, 0, R, 0, Math.PI * 2); g.fill();
-
-  if (spec.kind === 'elliptical') {
-    // 椭圆星系: 平滑核球 + 晕, 没有旋臂
-    var eg = g.createRadialGradient(0, 0, 0, 0, 0, R * 0.9);
-    eg.addColorStop(0, 'rgba(' + core + ', 0.95)');
-    eg.addColorStop(0.16, 'rgba(' + rgb + ', 0.55)');
-    eg.addColorStop(0.48, 'rgba(' + rgb + ', 0.18)');
-    eg.addColorStop(1, 'rgba(' + rgb + ', 0)');
-    g.fillStyle = eg;
-    g.beginPath(); g.arc(0, 0, R * 0.9, 0, Math.PI * 2); g.fill();
-    if (spec.dust) {   // 一道淡尘带, 避免像个糖球
-      g.strokeStyle = 'rgba(40, 30, 50, 0.22)';
-      g.lineWidth = S * 0.02;
-      g.beginPath(); g.ellipse(0, 0, R * 0.6, R * 0.22, 0.3, 0, Math.PI * 2); g.stroke();
-    }
-  } else if (spec.kind === 'edge') {
-    // 侧视盘: 薄透镜 + 中间一道尘带
-    g.save();
-    g.scale(1, 0.24);
-    var lg = g.createRadialGradient(0, 0, 0, 0, 0, R);
-    lg.addColorStop(0, 'rgba(' + core + ', 0.9)');
-    lg.addColorStop(0.22, 'rgba(' + rgb + ', 0.5)');
-    lg.addColorStop(1, 'rgba(' + rgb + ', 0)');
-    g.fillStyle = lg;
-    g.beginPath(); g.arc(0, 0, R, 0, Math.PI * 2); g.fill();
-    g.restore();
-    g.strokeStyle = 'rgba(30, 22, 40, 0.4)';
-    g.lineWidth = S * 0.03;
-    g.beginPath(); g.moveTo(-R * 0.92, 0); g.lineTo(R * 0.92, 0); g.stroke();
-    g.strokeStyle = 'rgba(' + core + ', 0.5)';
-    g.lineWidth = S * 0.018;
-    g.beginPath(); g.moveTo(-R * 0.8, -S * 0.022); g.lineTo(R * 0.8, -S * 0.022); g.stroke();
-  } else if (spec.kind === 'irregular') {
-    // 不规则: 几团揉在一起的光斑 + 零星星团
-    var blobs = 5 + Math.floor(rnd() * 5);
-    for (var b = 0; b < blobs; b++) {
-      var br = R * (0.18 + rnd() * 0.42);
-      var bx = (rnd() - 0.5) * R * 1.1, by = (rnd() - 0.5) * R * 0.8;
-      var bc = rnd() < 0.5 ? rgb : core;
-      var bg = g.createRadialGradient(bx, by, 0, bx, by, br);
-      bg.addColorStop(0, 'rgba(' + bc + ', ' + (0.16 + rnd() * 0.22).toFixed(3) + ')');
-      bg.addColorStop(1, 'rgba(' + bc + ', 0)');
-      g.fillStyle = bg;
-      g.beginPath(); g.arc(bx, by, br, 0, Math.PI * 2); g.fill();
-    }
-    for (var s2 = 0; s2 < 26; s2++) {
-      var sx = (rnd() - 0.5) * R * 1.2, sy = (rnd() - 0.5) * R * 0.9, sz = 0.6 + rnd() * 1.6;
-      g.fillStyle = 'rgba(' + core + ', ' + (0.16 + rnd() * 0.45).toFixed(3) + ')';
-      g.fillRect(sx, sy, sz, sz);
-    }
-  } else if (spec.kind === 'pair') {
-    // 双核: 两个小星系 + 潮汐桥
-    for (var k2 = 0; k2 < 2; k2++) {
-      var px2 = (k2 ? 1 : -1) * R * 0.36, pr2 = R * (0.3 + k2 * 0.08);
-      var pg = g.createRadialGradient(px2, 0, 0, px2, 0, pr2);
-      pg.addColorStop(0, 'rgba(' + (k2 ? rgb : core) + ', 0.75)');
-      pg.addColorStop(0.3, 'rgba(' + rgb + ', 0.3)');
-      pg.addColorStop(1, 'rgba(' + rgb + ', 0)');
-      g.fillStyle = pg;
-      g.beginPath(); g.ellipse(px2, 0, pr2, pr2 * 0.6, k2 ? -0.4 : 0.4, 0, Math.PI * 2); g.fill();
-    }
-    var brg = g.createLinearGradient(-R * 0.45, 0, R * 0.45, 0);
-    brg.addColorStop(0, 'rgba(' + rgb + ', 0)');
-    brg.addColorStop(0.5, 'rgba(' + rgb + ', 0.28)');
-    brg.addColorStop(1, 'rgba(' + rgb + ', 0)');
-    g.fillStyle = brg;
-    g.fillRect(-R * 0.45, -S * 0.025, R * 0.9, S * 0.05);
-  } else {
-    // 旋涡 / 棒旋: 棒 + 对数螺旋臂撒星
-    var bar = spec.kind === 'barred' ? R * 0.42 : 0;
-    if (bar) {
-      var bg2 = g.createLinearGradient(-bar, 0, bar, 0);
-      bg2.addColorStop(0, 'rgba(' + rgb + ', 0)');
-      bg2.addColorStop(0.5, 'rgba(' + core + ', 0.45)');
-      bg2.addColorStop(1, 'rgba(' + rgb + ', 0)');
-      g.fillStyle = bg2;
-      g.beginPath(); g.ellipse(0, 0, bar, R * 0.07, 0, 0, Math.PI * 2); g.fill();
-    }
-    var arms = spec.arms || 2;
-    for (var arm = 0; arm < arms; arm++) {
-      var off = arm * Math.PI * 2 / arms;
-      for (var k = 0; k < 340; k++) {
-        var th = rnd() * Math.PI * 3.4;
-        var rr = (7 + bar) * Math.exp(0.24 * th);
-        if (rr > R * 0.96) continue;
-        var jitter = (rnd() - 0.5) * (0.16 + rr / S);
-        var ang = th + off + jitter;
-        var rad = rr * (1 + (rnd() - 0.5) * 0.18);
-        var x = Math.cos(ang) * rad;
-        var y = Math.sin(ang) * rad;
-        var fade = Math.max(0, 1 - rad / R);
-        var a = (0.05 + rnd() * 0.3) * fade;
-        var sz = 0.5 + rnd() * 1.4;
-        g.fillStyle = 'rgba(' + Math.min(255, col[0] + 40) + ',' + Math.min(255, col[1] + 40) + ',' +
-          Math.min(255, col[2] + 40) + ',' + a.toFixed(3) + ')';
-        g.fillRect(x - sz / 2, y - sz / 2, sz, sz);
-      }
-    }
-    if (spec.dust) {   // 盘面尘带: 斜穿盘面的一道软暗弧
-      g.strokeStyle = 'rgba(28, 20, 38, 0.18)';
-      g.lineWidth = S * 0.022;
-      g.beginPath(); g.ellipse(0, 0, R * 0.62, R * 0.3, 0.5, 0.2, Math.PI * 1.4); g.stroke();
-    }
-  }
-
-  // 核球: 最后压一颗亮核
-  var coreG = g.createRadialGradient(0, 0, 0, 0, 0, S * 0.12);
-  coreG.addColorStop(0, 'rgba(' + core + ', 0.95)');
-  coreG.addColorStop(0.35, 'rgba(' + rgb + ', 0.45)');
-  coreG.addColorStop(1, 'rgba(' + rgb + ', 0)');
-  g.fillStyle = coreG;
-  g.beginPath(); g.arc(0, 0, S * 0.12, 0, Math.PI * 2); g.fill();
-  return c;
-}
-
 // ---------- 布局 (blocked_by DAG 分层) ----------
 
 function computeLayout(doc) {
@@ -873,6 +504,12 @@ function effScale() {
 function effScaleClamped() {
   // 上限跟着最大缩放走: 放大时星球要跟着长大, 不能死卡在 1.4
   return Math.max(0.4, Math.min(effScale(), MAX_ZOOM));
+}
+
+// 天幕放大系数: 星空钉在屏幕上 (平移不动), 但随缩放绕视口中心放大 ——
+// 视野越窄, 看到的天区越小, 星星就更大更稀 (望远镜直觉)
+function skyScale() {
+  return Math.max(1, Math.min(3, state.view.zoom));
 }
 
 function starRadius() {
@@ -1315,61 +952,30 @@ function renderDestPanel(body) {
 // ---------- 绘制 ----------
 
 function draw(t, dt) {
-  // 底色 + 银河系: 整屏预渲染贴图, 每帧一次 1:1 blit
-  if (state.sky) ctx.drawImage(state.sky, 0, 0, state.cw, state.ch);
+  // 底色: 一像素宽的渐变长条拉伸铺满
+  if (state.bgGrad) ctx.drawImage(state.bgGrad, 0, 0, state.cw, state.ch);
   else { ctx.fillStyle = '#03050c'; ctx.fillRect(0, 0, state.cw, state.ch); }
 
   var i, s;
-  var px = state.view.panX, py = state.view.panY;
-
-  // 远景星系: 贴在天幕上不动, 但随缩放绕视口中心放大 —— 视野变窄, 画面里的星系自然变少
   var sk = skyScale();
   var ccx = state.cw / 2, ccy = state.ch / 2;
-  var galFade = sk <= 1.5 ? 1 : Math.max(0.45, 1 - (sk - 1.5) * 0.35);
-  for (i = 0; i < state.galaxies.length; i++) {
-    var gal = state.galaxies[i];
-    var gw = gal.w * sk;
-    var gx = ccx + (gal.x - ccx) * sk;
-    var gy = ccy + (gal.y - ccy) * sk;
-    if (gx + gw / 2 < -40 || gx - gw / 2 > state.cw + 40 || gy + gw / 2 < -40 || gy - gw / 2 > state.ch + 40) continue;
-    ctx.globalAlpha = gal.a * galFade;
-    if (sk === 1) ctx.drawImage(gal.img, snap(gx - gw / 2), snap(gy - gw / 2));
-    else {
-      // 放大时按档重出高分辨率贴图, 不然星点被拉成色块
-      var tier = Math.ceil(sk * 2) / 2;
-      ctx.drawImage(galaxySprite(gal.spec, Math.round(gal.w * tier)), gx - gw / 2, gy - gw / 2, gw, gw);
-    }
-  }
-  ctx.globalAlpha = 1;
 
-  // 虚焦尘埃 (景深感)
-  for (i = 0; i < state.dust.length; i++) {
-    var du = state.dust[i];
-    var dux = du.x + px * (0.03 + du.z * 0.1);
-    var duy = du.y + py * (0.03 + du.z * 0.1);
-    ctx.drawImage(du.img, snap(dux - du.img.width / 2), snap(duy - du.img.height / 2));
-  }
-
-  for (i = 0; i < state.nebulae.length; i++) {
-    var nb = state.nebulae[i];
-    var nx = nb.x + Math.sin(t * nb.sp + nb.ph) * 30 + px * 0.02;
-    var ny = nb.y + Math.cos(t * nb.sp * 0.8 + nb.ph) * 20 + py * 0.02;
-    ctx.drawImage(nb.img, snap(nx - nb.img.width / 2), snap(ny - nb.img.height / 2));
-  }
-
-  // 深度视差星场: 平移时近星动得多, 远星动得少
-  for (i = 0; i < state.bgStars.length; i++) {
-    s = state.bgStars[i];
-    var par = 0.04 + s.z * 0.26;
-    var sx = (((s.x - px * par) % state.cw) + state.cw) % state.cw;
-    var sy = (((s.y - py * par) % state.ch) + state.ch) % state.ch;
-    ctx.globalAlpha = Math.max(0.05, (s.base + 0.26 * Math.sin(t * s.sp + s.ph)) * (0.55 + s.z * 0.45));
-    ctx.fillStyle = s.tint;
-    // 小星用方点填充代替 arc+fill: 亚像素尺寸下看不出差别, 调用开销少一半
-    if (s.r < 1.2) ctx.fillRect(sx - s.r, sy - s.r, s.r * 2, s.r * 2);
+  // 星空: 平移视角时纹丝不动, 缩放时绕视口中心放大; 逐颗按正弦闪烁
+  var dots = state.skyDots;
+  var tint = '';
+  for (i = 0; i < dots.length; i++) {
+    s = dots[i];
+    var sx = ccx + (s.x - ccx) * sk;
+    var sy = ccy + (s.y - ccy) * sk;
+    if (sx < -6 || sx > state.cw + 6 || sy < -6 || sy > state.ch + 6) continue;
+    var sr = s.r * sk;
+    ctx.globalAlpha = Math.max(0.04, s.a + s.tw * Math.sin(t * s.sp + s.ph));
+    if (s.c !== tint) { ctx.fillStyle = s.c; tint = s.c; }   // 同色的星连着画, 少切 fillStyle
+    // 小星用方点填充代替 arc+fill: 这个尺度下看不出差别, 光栅化快一倍多
+    if (sr < 1.6 * sk) ctx.fillRect(sx - sr, sy - sr, sr * 2, sr * 2);
     else {
       ctx.beginPath();
-      ctx.arc(sx, sy, s.r, 0, Math.PI * 2);
+      ctx.arc(sx, sy, sr, 0, Math.PI * 2);
       ctx.fill();
     }
   }
