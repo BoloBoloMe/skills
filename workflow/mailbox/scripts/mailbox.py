@@ -2364,6 +2364,23 @@ def _print_queued(server, creds):
         print("待取: (查询失败)")
 
 
+def _print_neighbor_count(timeout=2.0):
+    """邻居数 (D018): state.json 提供本地 admin 面凭证 (host 场景) 时经
+    GET /admin/neighbors 取真实计数; 只从 localhost 消费既有端点,
+    不扩大 admin 口暴露面. 探测短超时, 不拖慢 status."""
+    state = _load_state_file()
+    admin_port = state.get("admin_port") if state else None
+    admin_token = state.get("admin_token") if state else None
+    if isinstance(admin_port, int) and admin_token:
+        request = urllib.request.Request(
+            f"http://127.0.0.1:{admin_port}/admin/neighbors",
+            headers={"X-Admin-Token": admin_token}, method="GET")
+        with urllib.request.urlopen(request, timeout=timeout) as response:
+            neighbors = json.loads(response.read() or b"{}").get("neighbors")
+        if isinstance(neighbors, list):
+            print(f"邻居数 = {len(neighbors)}")
+
+
 def cmd_status():
     """status 重写 (AC-014/AC-017): 认 env 凭证 (env 优先, 配置文件兑底),
     报真实 session/地址与验活结果; 无任何凭证时状态文件验活兑底."""
@@ -2377,8 +2394,10 @@ def cmd_status():
     if server:
         alive = _identity_probe(server, timeout=3.0)
         print(f"信箱服务: {'在线' if alive else '不可达'}")
-        if alive and creds:
-            _print_queued(server, creds)
+        if alive:
+            if creds:
+                _print_queued(server, creds)
+            _print_neighbor_count()
         return
     # 无地址可探: 状态文件兑底 (AC-014 同机组件读文件先验活,
     # 失活明报信箱不可达, 不把残留文件当成服务在线)
@@ -2386,6 +2405,7 @@ def cmd_status():
     if state is not None and isinstance(state.get("port"), int):
         if _identity_probe(f"http://127.0.0.1:{state['port']}"):
             print(f"信箱服务: 在线 (端口 {state['port']})")
+            _print_neighbor_count()
         else:
             print(f"信箱服务: 信箱不可达 "
                   f"(状态文件残留端口 {state['port']}, 验活失败)")
