@@ -5,6 +5,7 @@ TS-001 waypipe 缺席 skipped / TS-002 同容器 300s 限频 / TS-003 限频跨�
 取信 CLI 在进程内驱动 (importlib 加载模块 + monkeypatch waypipe 在场检查,
 不依赖真实环境是否装 waypipe); serve 仍跑真实子进程 (共享接缝层 conftest).
 skipped 信的 ack 经 spy 捕获 outcome, 并以服务端幂等 ack 佐证已回执.
+另含 ISSUE-12 swt 文档指针用例 test_swt_pull_window_doc_points_to_mailbox (其 TS-001 与上方 ISSUE-07 的 TS-001 撞号, 该编号在本文件内归属 ISSUE-07).
 """
 from __future__ import annotations
 
