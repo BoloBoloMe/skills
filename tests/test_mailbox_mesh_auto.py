@@ -21,6 +21,8 @@ join-fleet 仅经 ssh 传输, 信标载荷不带密钥材料.
 """
 from __future__ import annotations
 
+import hashlib
+import hmac
 import json
 import time
 
@@ -30,24 +32,28 @@ from conftest import (ADMIN_TOKEN, Serve, free_port, http_json,
                       make_letter, poll, post_letter, register_session)
 
 # 协议契约 (与 mailbox.py 实现同式的独立重写): hello 证明 = HMAC-SHA256(
-# fleet_key, "mailbox-hello" \n 发起方指纹 \n str(ts)); 换址宣告签名 =
+# fleet_key, "mailbox-hello" \n 发起方指纹 \n str(ts)); 指纹 = sha256(
+# hostname\naddress) (与身份字段绑定, 评审修复 1); 换址宣告签名 =
 # HMAC-SHA256(旧链路密钥, "mailbox-address-update" \n hostname \n 新地址 \n str(ts))
 HELLO_PROOF_LABEL = "mailbox-hello"
 ADDR_UPDATE_LABEL = "mailbox-address-update"
+FLEET_KEY_VALUE = "test-fleet-key-1"  # fleet_key_file fixture 同源常量
 
 
 def _sign(key, *parts):
-    import hashlib
-    import hmac
     return hmac.new(key.encode(), "\n".join(parts).encode(),
                     hashlib.sha256).hexdigest()
+
+
+def _fingerprint(hostname, address):
+    return hashlib.sha256(f"{hostname}\n{address}".encode()).hexdigest()
 
 
 @pytest.fixture
 def fleet_key_file(tmp_path):
     """临时舰队密钥 (隔离真机 ~/.agents/mailbox/fleet.key)."""
     path = tmp_path / "fleet.key"
-    path.write_text("test-fleet-key-1\n")
+    path.write_text(FLEET_KEY_VALUE + "\n")
     return path
 
 
@@ -155,12 +161,13 @@ def test_hello_rejects_without_fleet_key(fleet_key_file, mesh_auto_serves,
     fleet key), 不进邻居表; 无舰队密钥的设备发起/应答握手一律被拒且不发
     信标 (零确认入群 NG-009 不做)."""
     member = mesh_auto_serves("member", fleet_path=fleet_key_file)
-    fp = "rogue-fingerprint-0000"
+    rogue_addr = f"127.0.0.1:{free_port()}"
+    fp = _fingerprint("rogue", rogue_addr)  # 指纹与身份绑定, 逼走证明校验分支
     ts = time.time()
     wrong_proof = _sign("not-the-fleet-key", HELLO_PROOF_LABEL, fp, str(ts))
     code, resp = http_json("POST", member.port, "/mailbox/hello",
                            {"fingerprint": fp, "hostname": "rogue",
-                            "address": f"127.0.0.1:{free_port()}",
+                            "address": rogue_addr,
                             "ts": ts, "proof": wrong_proof})
     assert code == 403, resp
     assert "舰队密钥" in resp.get("error", ""), resp
@@ -178,9 +185,10 @@ def test_hello_rejects_without_fleet_key(fleet_key_file, mesh_auto_serves,
         "keyless", fleet_path=tmp_path / "absent-fleet.key",
         beacon_dest=f"127.0.0.1:{ear.getsockname()[1]}", interval="0.1")
     ts2 = time.time()
-    right_proof = _sign("test-fleet-key-1", HELLO_PROOF_LABEL, fp, str(ts2))
+    fp2 = _fingerprint("outsider", f"127.0.0.1:{free_port()}")
+    right_proof = _sign(FLEET_KEY_VALUE, HELLO_PROOF_LABEL, fp2, str(ts2))
     code, resp = http_json("POST", keyless.port, "/mailbox/hello",
-                           {"fingerprint": fp, "hostname": "outsider",
+                           {"fingerprint": fp2, "hostname": "outsider",
                             "address": f"127.0.0.1:{free_port()}",
                             "ts": ts2, "proof": right_proof})
     assert code == 403, resp
@@ -193,6 +201,59 @@ def test_hello_rejects_without_fleet_key(fleet_key_file, mesh_auto_serves,
     finally:
         ear.close()
     assert not beacon_heard, "无舰队密钥的设备不应发信标参与组网"
+
+
+def test_hello_fingerprint_bound_to_identity(fleet_key_file,
+                                              mesh_auto_serves):
+    """评审修复 1 (安全从严): hello 指纹必须与 (hostname, address) 绑定
+    (fp = sha256(hostname\naddress)) — 持舰队密钥者不得冒任意身份发起
+    hello 借同名 upsert 覆盖受害邻居条目 (投递劫持); 合法 hello 不受影响."""
+    import re
+    import select
+    member = mesh_auto_serves("member2", fleet_path=fleet_key_file)
+    hostname = "victim-host"
+    address = f"127.0.0.1:{free_port()}"
+    ts = time.time()
+
+    # 冒名 hello: proof 用正确舰队密钥按公式签, 但指纹与身份字段不绑定
+    fake_fp = "ab" * 32
+    proof = _sign(FLEET_KEY_VALUE, HELLO_PROOF_LABEL, fake_fp, str(ts))
+    code, resp = http_json("POST", member.port, "/mailbox/hello",
+                           {"fingerprint": fake_fp, "hostname": hostname,
+                            "address": address, "ts": ts, "proof": proof})
+    assert code == 403, resp
+    assert "不绑定" in resp.get("error", ""), resp
+    code, resp = http_json("GET", member.admin_port, "/admin/neighbors",
+                           headers={"X-Admin-Token": ADMIN_TOKEN})
+    assert code == 200 and resp["neighbors"] == [], \
+        "冒名 hello 不得进邻居表"
+    utc_ts = re.compile(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?Z")
+    hit = ""
+    deadline = time.time() + 10
+    while time.time() < deadline and not hit:
+        ready, _, _ = select.select([member.proc.stderr], [], [], 1.0)
+        if not ready:
+            continue
+        line = member.proc.stderr.readline()
+        if "hello-rejected" in line and "fingerprint-mismatch" in line:
+            hit = line
+    assert hit, "冒名 hello 拒绝应打 UTC 日志行"
+    assert utc_ts.search(hit), f"日志行须带 UTC 时间戳: {hit!r}"
+
+    # 合法 hello (指纹按公式与身份绑定) 不受影响: 200 + 建邻居
+    good_fp = _fingerprint(hostname, address)
+    ts2 = time.time()
+    proof2 = _sign(FLEET_KEY_VALUE, HELLO_PROOF_LABEL, good_fp, str(ts2))
+    code, resp = http_json("POST", member.port, "/mailbox/hello",
+                           {"fingerprint": good_fp, "hostname": hostname,
+                            "address": address, "ts": ts2, "proof": proof2})
+    assert code == 200, resp
+    code, resp = http_json("GET", member.admin_port, "/admin/neighbors",
+                           headers={"X-Admin-Token": ADMIN_TOKEN})
+    entry = next((n for n in resp["neighbors"]
+                  if n["name"] == hostname), None)
+    assert entry is not None and entry["address"] == address, \
+        "合法 hello 应正常建邻居"
 
 
 def test_signed_address_update(mesh_auto_serves, tmp_path):

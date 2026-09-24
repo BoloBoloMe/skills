@@ -184,6 +184,14 @@ class UnknownRecipient(Exception):
     """收件 session 不在本机 (mesh 转发属 ISSUE-05, 本 ISSUE 直接拒绝), HTTP 404."""
 
 
+def check_sig_ts(now, ts):
+    """签名时间窗校验 (±TS_WINDOW, 沿用 ±5min 防重放): 超窗抛 MailboxError.
+    session 签名 (Mailbox._check_ts) 与自组网 hello/换址共用 (单点收口).
+    ts 由调用方保证可 float (Mailbox 侧强转保持 400 字段畸形语义)."""
+    if abs(now - ts) > TS_WINDOW:
+        raise MailboxError(f"时间戳超窗 (±{TS_WINDOW:.0f}s)")
+
+
 # ======================================================================
 # LLM 中转面 (ISSUE-06, 自 swt-base-server.py 搬迁): RelayStore =
 # relay keys 的 key 管理/quota/用量/过期/吊销, SQLite 持久化.
@@ -572,8 +580,7 @@ class Mailbox:
             self._db.commit()
 
     def _check_ts(self, sig_ts):
-        if abs(self._now() - float(sig_ts)) > TS_WINDOW:
-            raise MailboxError(f"时间戳超窗 (±{TS_WINDOW:.0f}s)")
+        check_sig_ts(self._now(), float(sig_ts))
 
     def _verify(self, session_id, sig_ts, sig, *extra):
         s = self.sessions.get(session_id)
@@ -1025,32 +1032,26 @@ class FleetBeacon:
     """信标服务 (ISSUE-10): 周期 UDP 收发信标 {address, hostname,
     fingerprint}, 听到新指纹 → POST /mailbox/hello 舰队密钥 HMAC 挑战应答
     互证 → 派生两两链路密钥 → 同名 upsert 自动建邻居 (复用 add_neighbor);
-    本机地址变化 → 旧链路密钥签名宣告换址. socket/HTTP 可注入 (生产 =
-    UDP 广播 socket, 测试 = 回环单播 env 注入, TECHNICAL 接缝)."""
+    本机地址变化 → 旧链路密钥签名宣告换址. 信标口/目的/周期经 env 注入
+    (测试回环单播, TECHNICAL 接缝; 生产 = UDP 广播)."""
 
-    def __init__(self, mailbox, cond, fleet_key, http_port, sock=None,
-                 dest=None, interval=None, hostname=None, now=time.time,
-                 http=None):
+    def __init__(self, mailbox, cond, fleet_key, http_port):
         self.mailbox = mailbox
         self.cond = cond
         self.fleet_key = fleet_key
         self.http_port = http_port
-        self.hostname = hostname or socket.gethostname()
-        self._now = now
-        self._http = http or http_post
+        self.hostname = socket.gethostname()
         self.bind_port = int(os.environ.get("MAILBOX_BEACON_PORT",
                                             str(BEACON_PORT)))
-        self.sock = sock or self._make_socket()
-        if dest is None:
-            dest_s = os.environ.get("MAILBOX_BEACON_DEST", "")
-            if dest_s:
-                host, _, port = dest_s.rpartition(":")
-                dest = (host, int(port))
-            else:
-                dest = ("255.255.255.255", self.bind_port)
-        self.dest = dest
+        self.sock = self._make_socket()
+        dest_s = os.environ.get("MAILBOX_BEACON_DEST", "")
+        if dest_s:
+            host, _, port = dest_s.rpartition(":")
+            self.dest = (host, int(port))
+        else:
+            self.dest = ("255.255.255.255", self.bind_port)
         self.interval = float(os.environ.get(
-            "MAILBOX_BEACON_INTERVAL", str(interval or BEACON_INTERVAL)))
+            "MAILBOX_BEACON_INTERVAL", str(BEACON_INTERVAL)))
         self.hello_retry = HELLO_RETRY_SECONDS
         self.seen = {}   # 对端指纹 -> 最近握手尝试时刻 (成功/被拒共用节流)
         self.stop = threading.Event()
@@ -1108,10 +1109,6 @@ class FleetBeacon:
                 continue  # 自身信标回环 (广播场景会听到自己)
             self.handshake(d)
 
-    def _check_ts(self, ts):
-        if abs(self._now() - ts) > TS_WINDOW:
-            raise MailboxError(f"时间戳超窗 (±{TS_WINDOW:.0f}s)")
-
     def handshake(self, beacon):
         """对信标发起 hello (挑战材料 = 发起方指纹 + 时间戳): 应答方证明
         验过才建邻居; 被拒/失败按指纹节流重试."""
@@ -1119,7 +1116,7 @@ class FleetBeacon:
         addr = str(beacon.get("address", ""))
         if not fp or not addr:
             return
-        now = self._now()
+        now = time.time()
         last = self.seen.get(fp)
         if last is not None and now - last < self.hello_retry:
             return
@@ -1130,7 +1127,7 @@ class FleetBeacon:
                 "proof": sign(self.fleet_key, HELLO_PROOF_LABEL,
                               self.fingerprint(), str(ts))}
         try:
-            resp = self._http(f"http://{addr}/mailbox/hello", body, 5.0)
+            resp = http_post(f"http://{addr}/mailbox/hello", body, 5.0)
         except (urllib.error.URLError, OSError, json.JSONDecodeError) as e:
             log_event("hello-failed", peer=addr,
                       error=str(getattr(e, "reason", e)))
@@ -1159,13 +1156,21 @@ class FleetBeacon:
         ts = body.get("ts")
         if not (fp and hostname and addr) or ts is None:
             raise MailboxError("hello 缺字段: fingerprint/hostname/address/ts")
+        if fp != fleet_fingerprint(hostname, addr):
+            # 评审修复 1 (安全从严): 指纹必须与身份字段绑定 — 否则持舰队
+            # 密钥者可冒任意 hostname/address 发起 hello, 借同名 upsert
+            # 覆盖受害邻居条目 (投递劫持)
+            log_event("hello-rejected", peer=addr, fingerprint=fp,
+                      reason="fingerprint-mismatch")
+            raise MailboxError(
+                "hello 指纹与 (hostname, address) 不绑定, 拒绝 (防冒名劫持)")
         if fp == self.fingerprint():
             raise MailboxError("对端指纹与本机相同, 拒绝")
         try:
             ts = float(ts)
         except (TypeError, ValueError):
             raise MailboxError("hello ts 畸形")
-        self._check_ts(ts)
+        check_sig_ts(time.time(), ts)
         expect = sign(self.fleet_key, HELLO_PROOF_LABEL, fp, str(ts))
         if not hmac.compare_digest(expect, str(body.get("proof", ""))):
             log_event("hello-rejected", peer=addr, fingerprint=fp,
@@ -1187,14 +1192,14 @@ class FleetBeacon:
         old, self._last_addr = self._last_addr, cur
         if old is None or old == cur:
             return
-        ts = self._now()
+        ts = time.time()
         for n in list(self.mailbox.neighbors):
             sig = sign(n.shared_key, ADDR_UPDATE_LABEL, self.hostname, cur,
                        str(ts))
             body = {"hostname": self.hostname, "new_address": cur,
                     "ts": ts, "sig": sig}
             try:
-                self._http(f"http://{n.address}/mailbox/address-update",
+                http_post(f"http://{n.address}/mailbox/address-update",
                            body, 5.0)
             except (urllib.error.URLError, OSError,
                     json.JSONDecodeError) as e:
