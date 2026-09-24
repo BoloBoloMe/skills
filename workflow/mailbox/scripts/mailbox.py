@@ -1022,6 +1022,8 @@ class _Handler(_JsonHandler):
                              "capabilities": ["mailbox", "relay"]})
         elif parsed.path == "/mailbox/queued":
             self._handle_queued(parsed)
+        elif parsed.path == "/mailbox/sessions":
+            self._handle_sessions(parsed)
         else:
             self._json(404, {"error": "not found"})
 
@@ -1044,6 +1046,31 @@ class _Handler(_JsonHandler):
                 return self._signed(403, party, {"ok": False, "error": str(e)}, rkey)
             depth = len(m.queue.get(session.id) or [])
         return self._signed(200, party, {"queued": depth}, rkey)
+
+    def _handle_sessions(self, parsed):
+        """AC-028 (D011 G3): sessions 只读列表. GET 查询参数 session/sig_ts/sig,
+        签名同 queued 式 HMAC(signing_key, session\nsig_ts) 且不记 last_poll;
+        无效签名 403. 端点在信箱口 (0.0.0.0) 不在 admin 口 — 容器够不着硬绑
+        回环的 admin 口; 序列化白名单字段见下方 (不泄任何密钥)."""
+        params = {k: v[0] for k, v in parse_qs(parsed.query).items()}
+        party, rkey = self._party(params, "mailbox/sessions")
+        m = self.server.mailbox
+        with self.server.cond:
+            try:
+                m.verify_session_sig(str(params.get("session", "")),
+                                     params["sig_ts"],
+                                     str(params.get("sig", "")))
+            except KeyError as e:
+                return self._bad(party, f"缺字段: {e}", rkey)
+            except (ValueError, TypeError) as e:
+                return self._bad(party, f"字段畸形: {e}", rkey)
+            except MailboxError as e:
+                return self._signed(403, party, {"ok": False, "error": str(e)}, rkey)
+            # 白名单字段序列化 (D011 G3/AC-028): 只回 id+last_poll,
+            # 已吊销不列; 密钥任何形态不出此端点 (创建时一次性下发).
+            sessions = [{"id": s.id, "last_poll": s.last_poll}
+                        for s in m.sessions.values() if not s.revoked]
+        return self._signed(200, party, {"ok": True, "sessions": sessions}, rkey)
 
     def do_POST(self):
         path = urlparse(self.path).path

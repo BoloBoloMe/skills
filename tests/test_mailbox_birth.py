@@ -238,3 +238,70 @@ def test_terminate_revokes_via_subcommand(swt, tmp_path):
     source = SWT_SCRIPT.read_text(encoding="utf-8")
     segment = source[source.index("def terminate("):]
     assert "revoke_container_session(" in segment
+
+
+# TS-001 (TC-044/AC-027, ISSUE-08 D011 G1/G2): birth 把宿主端口映射
+# (ssh/web/vnc) 与显示直通状态 (HOST_DISPLAY=ok/degraded/absent) 烘进
+# birth env 字典, 容器内不再发信问 host. 端口/直通状态 create 后才知
+# (podman 动态分配 + exec 实测), 通道为 ssh 面 ~/.ssh/environment 全量重写.
+# 接缝 = env 字典纯组装函数 (快层), 生产通道不做真容器.
+def test_birth_injects_host_ports_and_display(swt):
+    env = {"KEEP": "1"}
+    swt.bake_host_info_env(env, ssh_port=22222, vnc_port=46080,
+                           web_port=40800, host_display="ok")
+    assert env["SWT_HOST_SSH_PORT"] == "22222"
+    assert env["SWT_HOST_WEB_PORT"] == "40800"
+    assert env["SWT_HOST_VNC_PORT"] == "46080"
+    assert env["HOST_DISPLAY"] == "ok"
+    assert env["KEEP"] == "1"  # 既有 env 原样保留 (BR-005 只新增不改名)
+    # 三态恒写 HOST_DISPLAY (absent 也是信息, 容器据此直判无直通);
+    # 缺席端口 (无该映射/查询失败) 省略条目不阻断
+    env2: dict[str, str] = {}
+    swt.bake_host_info_env(env2, ssh_port=22222, vnc_port=None,
+                           web_port=None, host_display="absent")
+    assert env2["SWT_HOST_SSH_PORT"] == "22222"
+    assert env2["HOST_DISPLAY"] == "absent"
+    assert "SWT_HOST_VNC_PORT" not in env2
+    assert "SWT_HOST_WEB_PORT" not in env2
+    # 非三态显示状态不烘 (宁可缺省不可错值)
+    env3: dict[str, str] = {}
+    swt.bake_host_info_env(env3, 22222, 46080, 40800, "mounted")
+    assert "HOST_DISPLAY" not in env3
+    # birth 主流程接缝守卫: 直通判定后确实烘 env 并重写容器 ssh 面通道
+    source = SWT_SCRIPT.read_text(encoding="utf-8")
+    segment = source[source.index("def birth("):
+                        source.index("def default_branch(")]
+    assert "bake_host_info_env(" in segment
+    assert "_rewrite_ssh_environment(" in segment
+
+
+# 评审修复: ssh environment 写入收口 — write_ssh_environment 共享
+# (inject_ssh_key 首写 / birth 宿主信息补写), 失败策略留调用方:
+# inject 路径 raise PARTIAL, birth 路径只告警不阻断. 两条路径各有覆盖.
+def test_ssh_environment_write_shared(swt, monkeypatch, capsys):
+    # 组装: podman exec 全量重写 ~/.ssh/environment, env_text 逐行 KEY=VALUE
+    captured: dict = {}
+
+    def fake_run(argv, **kwargs):
+        captured["argv"] = argv
+        captured["input"] = kwargs.get("input")
+        return subprocess.CompletedProcess(argv, 0, "", "")
+
+    monkeypatch.setattr(swt.subprocess, "run", fake_run)
+    swt.write_ssh_environment("cnt", {"A": "1", "B": "x y"})
+    assert captured["argv"][:4] == ["podman", "exec", "-i", "cnt"]
+    assert "cat > /home/bolo/.ssh/environment" in captured["argv"][-1]
+    assert captured["input"] == "A=1\nB=x y\n"
+    # birth 路径: 失败只告警不阻断 (增强不是命脉)
+    monkeypatch.setattr(
+        swt.subprocess, "run",
+        lambda *a, **k: subprocess.CompletedProcess(a, 1, "", "boom"))
+    swt._rewrite_ssh_environment("cnt", {"A": "1"})  # 不抛
+    assert "宿主信息 env 烘入失败" in capsys.readouterr().err
+    # inject_ssh_key 路径: 同一共享函数 + 失败 raise PARTIAL (源码守卫,
+    # 同 terminate/birth 接缝守卫先例 — 真容器属 e2e 层)
+    source = SWT_SCRIPT.read_text(encoding="utf-8")
+    seg = source[source.index("def inject_ssh_key("):
+                 source.index("def assert_container_clone(")]
+    assert "write_ssh_environment(" in seg
+    assert 'raise SwtError(3, "PARTIAL", f"environment 注入失败:' in seg
