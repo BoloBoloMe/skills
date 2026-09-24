@@ -2,7 +2,7 @@
 - `../EXECUTION.md`
 
 ## 执行
-- [ ] 已实现
+- [x] 已实现
 
 ## 要构建什么
 拉窗加固 + 文档批: (1) pull-window 指令集动态绑定放宽: `container` 字段为投信方 session id **或其容器名**皆可命中, 限频键统一到容器标识; (2) 拉窗指令形状扩展为可带 `url` 参数, 设备侧按信里 url 拉起, 不猜端口; (3) reference/pull-window.md: chromium 模板强制 `--user-data-dir`, 音频 `-R` 标可选并给退化写法; (4) reference/mailbox.md: 反向隧道标准配方 (含远端标记文件, sshd ClientAliveInterval 提醒), 跨机换址联动清单 (防火墙白名单与邻居地址同时改); (5) 记录已验证 waypipe 版本组合 (0.8.4 / 自编译 minimal / 0.11.0 混用实测出窗). 适合 AFK: 绑定规则与文档清单已定.
