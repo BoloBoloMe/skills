@@ -584,13 +584,17 @@ function skyScale() {
   return Math.max(1, Math.min(3, state.view.zoom));
 }
 
-// 天幕上的星系: 数量跟窗口面积走, 位置用抖动网格铺开, 避免随机聚成一堆
+// 天幕上的星系: 一律铺在四周环带上, 中央留给我们的路线图 (和银河系), 保持空旷
 function buildGalaxies(rnd) {
   var area = state.cw * state.ch;
   var n = Math.max(10, Math.min(24, Math.round(10 + area / 360000)));
   var cols = Math.max(1, Math.round(Math.sqrt(n * state.cw / Math.max(1, state.ch))));
   var rows = Math.ceil(n / cols);
   var cellW = state.cw / cols, cellH = state.ch / rows;
+  var cx = state.cw / 2, cy = state.ch / 2;
+  // 中央空区 (半宽/半高) 与四周环带宽度
+  var ix = state.cw * 0.26, iy = state.ch * 0.24;
+  var bandW = state.cw * 0.24, bandH = state.ch * 0.24;
   var out = [];
   for (var i = 0; i < n; i++) {
     var col0 = (i % cols) * cellW, row0 = Math.floor(i / cols) * cellH;
@@ -609,10 +613,21 @@ function buildGalaxies(rnd) {
       seed: Math.floor(rnd() * 1e9)
     };
     var img = galaxySprite(spec, Math.round(260 * size));
-    // 抖动网格定位: 大部分露在画面内, 边缘允许一点出格 (像真的星空照片)
-    var pad = img.width * 0.3;
+    // 抖动网格取点; 贴图整体要避开中央空区, 落在里面就沿代价最小的方向推出去
     var gx = col0 + (0.14 + rnd() * 0.72) * cellW;
     var gy = row0 + (0.14 + rnd() * 0.72) * cellH;
+    var half = img.width / 2;
+    var l = cx - ix, r = cx + ix, t = cy - iy, bt = cy + iy;
+    var dl = (gx + half) - l, dr = r - (gx - half);
+    var dt = (gy + half) - t, db = bt - (gy - half);
+    if (dl > 0 && dr > 0 && dt > 0 && db > 0) {     // 贴图与空区相交
+      var m = Math.min(dl, dr, dt, db);
+      if (m === dl) gx -= dl + rnd() * bandW * 0.5;
+      else if (m === dr) gx += dr + rnd() * bandW * 0.5;
+      else if (m === dt) gy -= dt + rnd() * bandH * 0.5;
+      else gy += db + rnd() * bandH * 0.5;
+    }
+    var pad = img.width * 0.2;                       // 边缘允许一点出格, 像真的星空照片
     out.push({
       // 画布按最终尺寸预渲染, 贴回时 1:1 不缩放 (缩放 blit 会退化成重采样)
       img: img,
@@ -621,7 +636,7 @@ function buildGalaxies(rnd) {
       x: Math.min(Math.max(gx, pad), state.cw - pad),
       y: Math.min(Math.max(gy, pad), state.ch - pad),
       a: (big ? 0.28 : 0.16) + rnd() * 0.22,
-      kind: spec.kind
+      kind: kind
     });
   }
   return out;
