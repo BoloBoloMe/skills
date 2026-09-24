@@ -1062,6 +1062,7 @@ function drawEdges(t) {
   var r = starRadius();
   // 缩得很小时流光点只有几像素, 却是每条边两次渐变开销: 只在看得清时画
   var dotsOn = effScale() > 0.55;
+  var edgeFlat = effScale() < 0.5;
   lay.nodes.forEach(function (node) {
     var deps = Array.isArray(node.m.blocked_by) ? node.m.blocked_by : [];
     deps.forEach(function (d) {
@@ -1072,10 +1073,14 @@ function drawEdges(t) {
       var mx = (p1[0] + p2[0]) / 2;
       var my = (p1[1] + p2[1]) / 2 + ((hashStr(node.id + '|' + d) % 40) - 20);
       var closedEdge = from.m.status === '已关闭';
-      var lg = ctx.createLinearGradient(p1[0], p1[1], p2[0], p2[1]);
-      lg.addColorStop(0, closedEdge ? 'rgba(120, 135, 170, 0.16)' : 'rgba(150, 175, 235, 0.46)');
-      lg.addColorStop(1, closedEdge ? 'rgba(120, 135, 170, 0.05)' : 'rgba(150, 175, 235, 0.14)');
-      ctx.strokeStyle = lg;
+      if (edgeFlat) {   // 缩得很小时连线只有几像素, 渐变看不出, 用纯色省掉逐条建渐变
+        ctx.strokeStyle = closedEdge ? 'rgba(120, 135, 170, 0.1)' : 'rgba(150, 175, 235, 0.3)';
+      } else {
+        var lg = ctx.createLinearGradient(p1[0], p1[1], p2[0], p2[1]);
+        lg.addColorStop(0, closedEdge ? 'rgba(120, 135, 170, 0.16)' : 'rgba(150, 175, 235, 0.46)');
+        lg.addColorStop(1, closedEdge ? 'rgba(120, 135, 170, 0.05)' : 'rgba(150, 175, 235, 0.14)');
+        ctx.strokeStyle = lg;
+      }
       ctx.lineWidth = 1.1;
       ctx.beginPath();
       ctx.moveTo(p1[0], p1[1]);
@@ -1415,14 +1420,20 @@ function planetTier() {
 }
 
 function planetFor(node, closed, tier) {
-  var key = node.id + ':' + (closed ? 'gray' : 'live') + ':' + tier;
+  var type = node.m.type || 'task';
+  // 最小档只有十几像素, 看不出哪颗的专属花纹, 所以整类共用一张 (否则上千个里程碑要烘上千张)
+  var shared = tier <= 24;
+  var key = (shared ? 'shared:' + type : node.id) + ':' + (closed ? 'gray' : 'live') + ':' + tier;
   var p = state.planets.get(key);
   if (!p) {
-    var seed = hashStr(node.id) + 1;
-    var d = (state.layout && state.layout.dest) || { x: node.x + 1, y: node.y };
-    // 终点恒星是唯一光源: 亮面朝向它, 暗面背向它
-    var ang = Math.atan2(d.y - node.y, d.x - node.x);
-    p = renderPlanetTexture(planetStyle(node.m.type || 'task', seed), closed, tier, ang);
+    var seed = shared ? hashStr('shared:' + type) + 1 : hashStr(node.id) + 1;
+    var ang = 0;
+    if (!shared) {
+      var d = (state.layout && state.layout.dest) || { x: node.x + 1, y: node.y };
+      // 终点恒星是唯一光源: 亮面朝向它, 暗面背向它
+      ang = Math.atan2(d.y - node.y, d.x - node.x);
+    }
+    p = renderPlanetTexture(planetStyle(type, seed), closed, tier, ang);
     state.planets.set(key, p);
   }
   return p;
