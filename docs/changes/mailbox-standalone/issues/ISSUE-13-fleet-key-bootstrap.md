@@ -2,7 +2,7 @@
 - `../EXECUTION.md`, `../DECISIONS.md` D020
 
 ## 执行
-- [ ] 已实现
+- [x] 已实现
 
 ## 要构建什么
 fleet.key 引导生成: cmd_serve 启动时, 若舰队密钥文件缺席且 MAILBOX_FLEET_KEY env 未设, 自动生成随机密钥 (如 os.urandom 32 字节 hex) 落盘到舰队密钥路径, 权限 0600 (父目录 0700), 打 UTC 日志行并在 stderr 提示; 文件已存在或 env 已设则完全照旧. 自生成密钥 = 自成单节点舰队: 信标照发, 异钥舰队握手仍拒 (语义与 NG-009 不变). reference/mailbox.md 自组网节补一句引导说明.
