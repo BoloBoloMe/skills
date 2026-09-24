@@ -4,6 +4,11 @@ TS-006 TC-029 test_queued_returns_depth: 本机会话 3 封排队时
 GET /mailbox/queued (session 签名, poll 同式) 回队列深度 3;
 无签名 403; status 输出待取数 (AC-036).
 
+ISSUE-11 (D018): test_status_reports_neighbor_count /
+test_status_neighbor_count_unknown_without_admin — status 补邻居数:
+host 场景 (state.json 提供 admin 面凭证) 报真实计数, 容器 env 凭证
+场景 (无本地 state.json) 报 未知 且不报错.
+
 共享接缝层 (serve 启动器/签名/HTTP helper) 在 tests/conftest.py.
 """
 from __future__ import annotations

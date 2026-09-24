@@ -2364,7 +2364,7 @@ def _print_queued(server, creds):
         print("待取: (查询失败)")
 
 
-def _print_neighbor_count(timeout=2.0):
+def _print_neighbor_count():
     """邻居数 (D018): state.json 提供本地 admin 面凭证 (host 场景) 时经
     GET /admin/neighbors 取真实计数; 拿不到 admin 面 (容器 env 凭证场景)
     或探测失败输出 未知, 不报错不拖慢 status (短超时, 失败即未知).
@@ -2378,7 +2378,7 @@ def _print_neighbor_count(timeout=2.0):
             f"http://127.0.0.1:{admin_port}/admin/neighbors",
             headers={"X-Admin-Token": admin_token}, method="GET")
         try:
-            with urllib.request.urlopen(request, timeout=timeout) as response:
+            with urllib.request.urlopen(request, timeout=2.0) as response:
                 neighbors = json.loads(
                     response.read() or b"{}").get("neighbors")
             if isinstance(neighbors, list):
