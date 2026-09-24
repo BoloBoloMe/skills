@@ -392,13 +392,14 @@ function buildSky() {
     g.restore();
   };
 
-  blob('255, 228, 180', 0.38, CH * 0.95, CH * 0.42, 0);          // 银心核球
-  blob('255, 240, 210', 0.3, CH * 0.42, CH * 0.16, 0);           // 核球亮核
-  blob('202, 214, 252', 0.1, CW * 1.4, half * 2.6, 0);           // 很宽的银河辉光 (给银盘体积感)
-  blob('208, 218, 255', 0.2, CW * 1.15, half * 1.45, 0);        // 银盘弥散光
-  blob('228, 236, 255', 0.26, CW * 1.02, half * 0.42, 0);       // 亮脊: 旋臂上的年轻恒星带
-  blob('9, 7, 18', 0.5, CW * 0.95, half * 0.28, -half * 0.36);  // 尘埃带 (暗)
-  blob('9, 7, 18', 0.3, CW * 0.88, half * 0.2, half * 0.54);
+  blob('255, 228, 180', 0.44, CH * 1.0, CH * 0.5, 0);           // 银心核球
+  blob('255, 242, 214', 0.34, CH * 0.46, CH * 0.2, 0);          // 核球亮核
+  blob('198, 210, 250', 0.17, CW * 1.4, half * 3.4, 0);         // 很宽的银河辉光 (体积感)
+  blob('208, 218, 255', 0.3, CW * 1.15, half * 1.6, 0);         // 银盘弥散光
+  blob('228, 236, 255', 0.4, CW * 1.02, half * 0.6, 0);         // 亮脊: 旋臂上的年轻恒星带
+  blob('214, 224, 255', 0.2, CW * 0.95, half * 0.3, -half * 0.95); // 外侧第二条臂
+  blob('9, 7, 18', 0.5, CW * 0.95, half * 0.26, -half * 0.4);   // 尘埃带 (暗)
+  blob('9, 7, 18', 0.32, CW * 0.88, half * 0.2, half * 0.6);
 
   // 星点颜色查表: 3 种色温 x 14 档透明度, 避免逐颗拼字符串 (每帧重建时这是一大笔开销)
   var starCols = [], milkCols = [];
@@ -406,70 +407,56 @@ function buildSky() {
   for (var ti = 0; ti < tints.length; ti++) {
     starCols.push([]); milkCols.push([]);
     for (var lv = 0; lv < 14; lv++) {
-      starCols[ti].push('rgba(' + tints[ti] + ', ' + (0.06 + lv * 0.028).toFixed(3) + ')');
-      milkCols[ti].push('rgba(' + tints[ti] + ', ' + (0.012 + lv * 0.0045).toFixed(3) + ')');
+      starCols[ti].push('rgba(' + tints[ti] + ', ' + (0.06 + lv * 0.032).toFixed(3) + ')');
+      milkCols[ti].push('rgba(' + tints[ti] + ', ' + (0.014 + lv * 0.006).toFixed(3) + ')');
     }
   }
 
   // 银盘里的星: 七成贴近亮脊, 三成铺在更宽的光晕上; 靠银心侧更密
   var placed = 0;
-  for (var s = 0; s < 11000 && placed < 6400; s++) {
+  for (var s = 0; s < 22000 && placed < 11000; s++) {
     var t = rnd();
-    var tight = rnd() < 0.7;
-    var off = ((rnd() + rnd() + rnd() - 1.5) / 1.5) * (tight ? half * 0.55 : half * 1.6);
-    var q = at(t, off);
-    if (q[0] < -20 || q[0] > CW + 20 || q[1] < -20 || q[1] > CH + 20) continue;
+    var tight = rnd() < 0.72;
+    var off = ((rnd() + rnd() + rnd() - 1.5) / 1.5) * (tight ? half * 0.5 : half * 1.7);
+    var along = L * t;   // 热循环里直接算坐标, 不额外分配数组
+    var qx = gc.x + ux * along + perp.x * off, qy = gc.y + uy * along + perp.y * off;
+    if (qx < -20 || qx > CW + 20 || qy < -20 || qy > CH + 20) continue;
     placed++;
-    var falloff = tight ? 1 : 0.45;
-    var k = falloff * (0.45 + (1 - t) * 0.55);
-    var sz = 0.5 + rnd() * (tight ? 1.4 : 1.1);
-    g.fillStyle = starCols[(rnd() * 3) | 0][Math.min(13, Math.round(rnd() * 12 * k))];
-    g.fillRect(q[0], q[1], sz, sz);
+    var k = (tight ? 1 : 0.42) * (0.45 + (1 - t) * 0.55);
+    var sz = 0.5 + rnd() * (tight ? 1.5 : 1.1);
+    g.fillStyle = starCols[(rnd() * 3) | 0][Math.min(13, Math.round(rnd() * 13 * k))];
+    g.fillRect(qx, qy, sz, sz);
   }
   // 分辨不开的星: 极细极淡的微粒填满银盘, 这才是"银河"的奶雾质感
-  for (var f = 0; f < 4200; f++) {
+  for (var f = 0; f < 9000; f++) {
     var tf = rnd();
-    var of2 = ((rnd() + rnd() + rnd() - 1.5) / 1.5) * half * 1.1;
-    var qf = at(tf, of2);
-    if (qf[0] < -10 || qf[0] > CW + 10 || qf[1] < -10 || qf[1] > CH + 10) continue;
+    var of2 = ((rnd() + rnd() + rnd() - 1.5) / 1.5) * half * 1.15;
+    var along2 = L * tf;
+    var qfx = gc.x + ux * along2 + perp.x * of2, qfy = gc.y + uy * along2 + perp.y * of2;
+    if (qfx < -10 || qfx > CW + 10 || qfy < -10 || qfy > CH + 10) continue;
     var kf = 0.5 + (1 - tf) * 0.5;
     g.fillStyle = milkCols[(rnd() * 3) | 0][Math.min(13, Math.round(rnd() * 13 * kf))];
-    g.fillRect(qf[0], qf[1], 0.5 + rnd() * 0.5, 0.5 + rnd() * 0.5);
+    g.fillRect(qfx, qfy, 0.5 + rnd() * 0.6, 0.5 + rnd() * 0.6);
   }
-  // 疏散星团, 几颗亮星, 少量电离氢区 (淡红) 挂在亮脊上
-  for (var cl = 0; cl < 26; cl++) {
-    var tc = 0.08 + rnd() * 0.62;
-    var cp = at(tc, ((rnd() + rnd() - 1) / 1.5) * half * 0.6);
-    var members = 7 + Math.floor(rnd() * 16);
+  // 疏散星团, 亮星, 电离氢区 (淡红) 挂在亮脊上
+  for (var cl = 0; cl < 40; cl++) {
+    var tc = 0.06 + rnd() * 0.66;
+    var cp = at(tc, ((rnd() + rnd() - 1) / 1.5) * half * 0.65);
+    var members = 8 + Math.floor(rnd() * 18);
     var spread = 4 + rnd() * 11;
     for (var m = 0; m < members; m++) {
-      g.fillStyle = 'rgba(' + (rnd() < 0.42 ? '198, 220, 255' : '255, 240, 218') + ', ' + (0.12 + rnd() * 0.45).toFixed(3) + ')';
-      g.fillRect(cp[0] + (rnd() - 0.5) * spread, cp[1] + (rnd() - 0.5) * spread, 0.8 + rnd() * 1.5, 0.8 + rnd() * 1.5);
+      g.fillStyle = 'rgba(' + (rnd() < 0.42 ? '198, 220, 255' : '255, 240, 218') + ', ' + (0.12 + rnd() * 0.5).toFixed(3) + ')';
+      g.fillRect(cp[0] + (rnd() - 0.5) * spread, cp[1] + (rnd() - 0.5) * spread, 0.8 + rnd() * 1.6, 0.8 + rnd() * 1.6);
     }
-    if (cl % 3 === 0) {
-      var hr = 3 + rnd() * 7;
+    if (cl % 2 === 0) {
+      var hr = 3 + rnd() * 8;
       var hg = g.createRadialGradient(cp[0], cp[1], 0, cp[0], cp[1], hr);
-      hg.addColorStop(0, 'rgba(255, 148, 150, 0.18)');
+      hg.addColorStop(0, 'rgba(255, 148, 150, 0.2)');
       hg.addColorStop(1, 'rgba(255, 120, 130, 0)');
       g.fillStyle = hg;
       g.beginPath(); g.arc(cp[0], cp[1], hr, 0, Math.PI * 2); g.fill();
     }
   }
-
-  // 我们在这里: 悬臂外缘的一点 (负 perp 那侧 = 背向银心的一侧)
-  var mp = at(0.25, -half * 0.95);
-  g.strokeStyle = 'rgba(200, 214, 244, 0.45)';
-  g.lineWidth = 1;
-  g.beginPath(); g.arc(mp[0], mp[1], 5.5, 0, Math.PI * 2); g.stroke();
-  g.beginPath(); g.arc(mp[0], mp[1], 13, -0.55, 0.55); g.stroke();
-  g.fillStyle = 'rgba(230, 240, 255, 0.8)';
-  g.beginPath(); g.arc(mp[0], mp[1], 1.7, 0, Math.PI * 2); g.fill();
-  g.font = '10px ui-monospace, Menlo, Consolas, monospace';
-  g.textAlign = 'left';
-  g.fillStyle = 'rgba(182, 196, 230, 0.6)';
-  g.fillText('我们在这里', mp[0] + 18, mp[1] + 3);
-  g.fillStyle = 'rgba(152, 168, 202, 0.42)';
-  g.fillText('银河系悬臂外缘', mp[0] + 18, mp[1] + 16);
 
   return c;
 }
