@@ -16,8 +16,8 @@
  * 启动它的 pi 会话身份 (sessionManager.getSessionId(), 跨重启稳定:
  * 持久化在会话文件 header, 续接同一会话文件即同 id); session_start
  * 仅当标记属于当前会话 (同会话续接/重启) 且守护已死时自动恢复, 新会
- * 话永不自动监听也不得覆盖/清除他人标记, 旧版无 session_id 的文件视
- * 为陈旧标记不自动恢复; session_shutdown 只杀子进程不清标记 (同会话
+ * 话永不自动监听也不得覆盖/清除他人标记, 旧版无 pi_session_id 的文件
+ * 视为陈旧标记不自动恢复; session_shutdown 只杀子进程不清标记 (同会话
  * 重启后仍自动恢复, AC-003), 唯一清标记点 = /mail-listen stop (只清
  * 自己拥有的); start 遇他会话标记软提示后接管, 检测到他会话守护在
  * 跑 → 警告仍启动 (软提示不拦截).
@@ -49,9 +49,16 @@ interface ListenMark {
 	/** 写标记的进程标识 (hostname/pid, 展示用). */
 	owner: string;
 	/** 写标记的 pi 会话身份 (D021): ctx.sessionManager.getSessionId().
-	 * 旧版文件无此字段 = 陈旧标记: 不自动恢复, start 可接管. */
-	session_id?: string;
+	 * 字段名带 pi_ 前缀以区别于信箱自身的 session id; 旧版文件无此
+	 * 字段 = 陈旧标记: 不自动恢复, start 可接管. */
+	pi_session_id?: string;
 	[key: string]: unknown;
+}
+
+/** 所有权判定 (D021): 标记是否属于给定会话身份 — mark/sid 任一为空或
+ * pi_session_id 不一致即非己有 (旧版无字段 = 陈旧, 不算自己的). */
+function ownsListenMark(mark: ListenMark | null, sid: string | null): boolean {
+	return !!mark && !!sid && mark.pi_session_id === sid;
 }
 
 /** 当前 pi 会话身份 (D021): sessionManager.getSessionId() — id 持久化在
@@ -104,7 +111,7 @@ function writeListenMark(sid: string): void {
 		JSON.stringify(
 			{
 				owner: OWNER,
-				session_id: sid,
+				pi_session_id: sid,
 				pid: process.pid,
 				cli_state: CLI_STATE,
 				started_at: new Date().toISOString(),
@@ -116,11 +123,11 @@ function writeListenMark(sid: string): void {
 	);
 }
 
-function clearListenMark(sid: string | null): void {
-	/** 只清自己写的标记 (D021: 会话身份一致才清); 他人/旧版陈旧标记不动. */
+function clearListenMark(mark: ListenMark | null, sid: string | null): void {
+	/** 只清自己写的标记 (D021: 判定收口于 ownsListenMark); 他人/旧版
+	 * 陈旧标记不动. */
 	try {
-		const mark = readListenMark();
-		if (mark && sid && mark.session_id === sid) unlinkSync(LISTEN_JSON);
+		if (ownsListenMark(mark, sid)) unlinkSync(LISTEN_JSON);
 	} catch {
 		/* 无标记 */
 	}
@@ -226,12 +233,19 @@ export default function (pi: ExtensionAPI) {
 	}
 
 	/** /mail-listen stop: 停守护 + 清自己的 listen 标记 (唯一清除点,
-	 * D008/D021: 只清 session_id 与当前会话一致的标记, 他人/陈旧不动).
-	 * cli-state 不删: 留存 seen_ids/pending_ack 供下次启动去重与补回执. */
+	 * D008/D021: 所有权判定收口于 ownsListenMark, 只清 pi_session_id
+	 * 与当前会话一致的标记; 守护未跑且标记非本会话所有时只提示未在
+	 * 运行, 他人/陈旧标记不动. cli-state 不删: 留存 seen_ids/pending_ack
+	 * 供下次启动去重与补回执. */
 	function stopDaemon(ctx: ExtensionContext, reason?: string): void {
 		const sid = sessionIdOf(ctx);
+		const mark = readListenMark();
+		if (!daemon.running && !ownsListenMark(mark, sid)) {
+			notify(ctx, "取信守护未在运行", "info");
+			return;
+		}
 		haltDaemon();
-		clearListenMark(sid);
+		clearListenMark(mark, sid);
 		if (reason) notify(ctx, reason, "warning");
 		updateWidget(ctx);
 	}
@@ -316,9 +330,9 @@ export default function (pi: ExtensionAPI) {
 		}
 		// D008 软提示: 检测到他会话/陈旧取信标记 → 警告不拦截, start 接管
 		const prev = readListenMark();
-		if (prev && prev.session_id !== sid) {
-			const who = prev.session_id
-				? `session ${prev.session_id}`
+		if (prev && !ownsListenMark(prev, sid)) {
+			const who = prev.pi_session_id
+				? `session ${prev.pi_session_id}`
 				: "旧版标记 (无会话绑定)";
 			notify(
 				ctx,
@@ -341,12 +355,12 @@ export default function (pi: ExtensionAPI) {
 
 	pi.on("session_start", async (_event, ctx) => {
 		// D021: 仅当标记属于当前会话 (同会话续接/重启, 守护已死) 才自动
-		// 恢复; 新会话/旧版无 session_id 的陈旧标记 → 不自动监听, 不覆盖
+		// 恢复; 新会话/旧版无 pi_session_id 的陈旧标记 → 不自动监听, 不覆盖
 		// 不清除他人标记. 同进程会话替换时, 上一会话遗留的守护一并停
 		// (子进程属于旧会话), 标记仍留给旧会话在他处续接时恢复.
 		const sid = sessionIdOf(ctx);
 		const mark = readListenMark();
-		if (sid && mark && mark.session_id === sid) {
+		if (ownsListenMark(mark, sid)) {
 			if (!daemon.running) {
 				startDaemon(ctx, "检测到本会话的 listen 标记, 取信守护已自动恢复");
 			}
@@ -399,14 +413,6 @@ export default function (pi: ExtensionAPI) {
 				return;
 			}
 			if (sub === "stop") {
-				const sid = sessionIdOf(ctx);
-				const mark = readListenMark();
-				// D021: 守护未跑但标记属于本会话 (如 exit 3 停守护留标记) 也
-				// 须清 — stop = 本会话明确不再监听; 他人/陈旧标记不动.
-				if (!daemon.running && !(sid && mark && mark.session_id === sid)) {
-					notify(ctx, "取信守护未在运行", "info");
-					return;
-				}
 				stopDaemon(ctx, "取信守护已停止");
 				return;
 			}
@@ -416,7 +422,9 @@ export default function (pi: ExtensionAPI) {
 				if (mark) {
 					lines.push(
 						`listen 标记: ${mark.owner}` +
-							(mark.session_id ? ` (session ${mark.session_id})` : " (旧版, 无会话绑定)"),
+							(mark.pi_session_id
+								? ` (session ${mark.pi_session_id})`
+								: " (旧版, 无会话绑定)"),
 					);
 				}
 				notify(ctx, lines.join("\n"));
