@@ -782,10 +782,13 @@ class Mailbox:
         不落静态 whitelist 行. 恰含 tool/container 两键 (url 第三键可选,
         E2) 才命中; container 字段 = 投信方 session id 或其容器名
         (E1: poster 为 <容器名>-<8hex> 时剥尾匹配, 其余一律降级;
-        沿用 swt-base-server.py UD-05, container_key 角色由 session 接替)."""
+        沿用 swt-base-server.py UD-05, 旧 container_key 概念由 session 接替).
+        container 值守卫: 必须非空字符串 — null/空串在剥尾得 None 时
+        会 null==null 误命中, 越出枚举 (评审修复 1)."""
         if not (isinstance(ins, dict)
                 and {"tool", "container"} <= set(ins) <= PULL_WINDOW_KEYS
-                and ins["tool"] == PULL_WINDOW_TOOL):
+                and ins["tool"] == PULL_WINDOW_TOOL
+                and isinstance(ins["container"], str) and ins["container"]):
             return False
         if ins["container"] == poster_session_id:
             return True
@@ -1698,8 +1701,12 @@ def gate_pull_window(container, state):
     key = container_key(container)  # E1 限频键统一到容器标识
     table = state.setdefault("lastPullWindowAt", {})
     last = table.get(key)
-    if last is None and key != container:
-        last = table.get(container)  # 新旧键衔接: 兼顾归一前的历史记录
+    if last is None:
+        # 新旧键衔接 (评审修复 2): 旧版本按 container 字段原样记键
+        # (session 形态或裸名都可能), 对历史键做同规则归一比对,
+        # 两种旧形态都拦得住新写法; 取最近时刻 (多形态并存时从严)
+        last = max((ts for k, ts in table.items()
+                    if container_key(k) == key), default=None)
     if last is not None and time.time() - float(last) < PULL_WINDOW_MIN_INTERVAL:
         return "skipped:rate-limited"
     table[key] = time.time()

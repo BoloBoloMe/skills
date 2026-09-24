@@ -290,6 +290,22 @@ def test_docs_contain_recipes():
         assert kw in mb, kw
 
 
+def test_rate_limit_key_unified(monkeypatch):
+    """评审修复 2: 限频键统一 + 新旧键衔接 — 同容器换写法 (session id
+    形态与裸容器名) 不互相放行; 归一前的历史旧键记录也拦得住新写法."""
+    mod = load_module()
+    monkeypatch.setattr(mod, "waypipe_present", lambda: True)
+
+    # 换写法不绕限频: 旧写法 (session id 形态) 过门后, 新写法 (裸容器名) 仍被限频
+    state = {}
+    assert mod.gate_pull_window("c1-1a2b3c4d", state) is None
+    assert mod.gate_pull_window("c1", state) == "skipped:rate-limited"
+
+    # 新旧键衔接: 旧版本按 container 字段原样记的键, 新写法查询同样命中
+    state = {"lastPullWindowAt": {"c1-1a2b3c4d": time.time()}}
+    assert mod.gate_pull_window("c1", state) == "skipped:rate-limited"
+
+
 def test_non_pullwindow_exec_bypasses_gate(serves, tmp_path, monkeypatch,
                                            capsys):
     """验收标准 4: 非 pull-window 的 exec 信不走本门禁 (白名单属 ISSUE-03) —

@@ -87,6 +87,27 @@ def test_pull_window_other_session_downgrades(serves):
         assert "降级" in letter["note"]
 
 
+def test_pull_window_null_container_not_hit(serves):
+    """评审修复 1: container 字段非真值 (JSON null) 不命中直批 —
+    host/纯设备投信方剥尾得 None, null==null 会误放宽越出
+    "session id 或容器名" 枚举, 必须降级 request."""
+    srv = serves()
+    poster = "office-host"  # host 形态 (尾段非 8hex, 非容器 session)
+    creds = register_session(srv, poster)
+    key = creds["signing_key"]
+
+    body = json.dumps({"tool": "swt.pull-window", "container": None})
+    code, _ = post_letter(srv, poster, key,
+                          make_letter(letter_id="PW-N1", to=poster,
+                                      type_="exec", body=body))
+    assert code == 200
+    code, resp = poll(srv, poster, key)
+    assert code == 200
+    letter = resp["payload"]["letter"]
+    assert letter["downgraded"] is True
+    assert "降级" in letter["note"]
+
+
 def test_whitelist_registration(serves):
     """TS-002: admin 注册指令 → 匹配的 exec 信 downgraded=false + 指令集命中标注."""
     srv = serves()

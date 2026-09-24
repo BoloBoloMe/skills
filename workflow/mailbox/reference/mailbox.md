@@ -83,7 +83,7 @@ ssh -N -R 138417:127.0.0.1:38417 <user>@<对端>
 
 ## 指令集现状
 
-首成员已落地 — `swt.pull-window` (拉窗): 不落静态 whitelist 行, 服务端内置形状校验 (dict 恰含 `tool`/`container` 两键, 第三键 `url` 可选, 多余键降级) + `container` 动态绑定投信方自身: 填投信方 session id **或其容器名** (容器 session = `<容器名>-<8hex>`, 服务端剥尾匹配) 皆命中直批 (E1); 裸 tool/他人 session 或容器名一律降级 request 走设备侧 pi 权限流程. 带 `url` 时设备侧按信中 url 拉起, 不猜端口 (E2), 拉起模板与退化写法见 pull-window.md. admin whitelist 注册机制保留, 供未来无动态绑定的成员使用. 设备侧执行器机械门禁在取信脚本内: waypipe 在场检查 + 同容器 300s 限频 (限频键归一到容器标识, session id 与容器名同键). 成员变动即安全策略变动, 必过门禁测试 (`uv run pytest tests/test_mailbox_whitelist.py`).
+首成员已落地 — `swt.pull-window` (拉窗): 不落静态 whitelist 行, 服务端内置形状校验 + `container` 动态绑定投信方自身 (session id 或其容器名), 他人一律降级 request; **信形状/绑定剥尾规则/限频键归一/拉起模板与退化写法的完整表述单源于 pull-window.md**, 本节不重复. admin whitelist 注册机制保留, 供未来无动态绑定的成员使用. 设备侧执行器机械门禁在取信脚本内: waypipe 在场检查 + 同容器 300s 限频. 成员变动即安全策略变动, 必过门禁测试 (`uv run pytest tests/test_mailbox_whitelist.py`).
 
 ## 展示页网址沟通与代开 (容器与设备 agent 行为指引)
 
