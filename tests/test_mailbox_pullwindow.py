@@ -5,6 +5,7 @@ TS-001 waypipe 缺席 skipped / TS-002 同容器 300s 限频 / TS-003 限频跨�
 取信 CLI 在进程内驱动 (importlib 加载模块 + monkeypatch waypipe 在场检查,
 不依赖真实环境是否装 waypipe); serve 仍跑真实子进程 (共享接缝层 conftest).
 skipped 信的 ack 经 spy 捕获 outcome, 并以服务端幂等 ack 佐证已回执.
+另含 ISSUE-12 swt 文档指针用例 test_swt_pull_window_doc_points_to_mailbox (其 TS-001 与上方 ISSUE-07 的 TS-001 撞号, 该编号在本文件内归属 ISSUE-07).
 """
 from __future__ import annotations
 
@@ -304,6 +305,26 @@ def test_rate_limit_key_unified(monkeypatch):
     # 新旧键衔接: 旧版本按 container 字段原样记的键, 新写法查询同样命中
     state = {"lastPullWindowAt": {"c1-1a2b3c4d": time.time()}}
     assert mod.gate_pull_window("c1", state) == "skipped:rate-limited"
+
+
+def test_swt_pull_window_doc_points_to_mailbox():
+    """ISSUE-12 TS-001 (D019, 拉窗文档单源化): swt 侧 pull-window.md 的
+    设备侧模板内容改为指针 — 含指向 mailbox skill 参考文档的指针
+    (部署后两个 skill 目录同在 ~/.agents/skills/ 下), 且不复述
+    --user-data-dir 等模板细节 (权威源在 mailbox 侧, ISSUE-09 落笔)."""
+    swt_pw = (ROOT / "workflow" / "use-sandbox-worktree" / "reference" /
+              "pull-window.md").read_text()
+
+    # 指针在场: 指向 mailbox skill 的 pull-window 参考文档
+    assert "mailbox/reference/pull-window.md" in swt_pw
+
+    # 不复述模板细节: chromium 单例坑参数与完整拉起命令只留在 mailbox 侧
+    assert "--user-data-dir" not in swt_pw
+    assert "nohup waypipe ssh" not in swt_pw
+
+    # swt 独有内容无损: 三态选路 / 容器侧编排 / STATE 代换 / 残尸纪律
+    for kw in ("三态", "容器侧编排", "代换", "残尸"):
+        assert kw in swt_pw, kw
 
 
 def test_non_pullwindow_exec_bypasses_gate(serves, tmp_path, monkeypatch,
