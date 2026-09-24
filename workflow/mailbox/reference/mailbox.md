@@ -4,7 +4,7 @@
 
 ## 是什么
 
-单文件服务 `scripts/mailbox.py` (纯 stdlib, 零第三方依赖; 独立 skill mailbox, 自 use-sandbox-worktree 拆出), mesh 架构: 每台机器各跑一个信箱实例, 所有实例地位平等, 邻居间按共享密钥互认并洪泛路由信件 (邻居表每台机器手工配置). 二合一: **信箱** (session 间传信, 设备/容器身份统一为 session, 4 类型 `notify`/`open_url`/`exec`/`request`) + **LLM 中转** (OpenAI 兼容 `/v1/chat/completions` 与 `/v1/models`, sk- key 认证, 模型白名单/quota/用量/过期/吊销, 响应上游不透 stream; 无上游配置则不启中转角色). 信件全内存 (队列/租约/已见 id/邻居暂存, 重启即清; 租约到期自动重投, ack 幂等; 滞留上限缺省 100 超限丢最老); SQLite (`~/.agents/mailbox/server.db`) 只存 session 凭证/中转 key/指令集. 端口: 信箱区间 38417-38426 启动绑首个空闲, 无认证 `GET /__identity__` 供探测身份 (应答服务名 `mailbox`); admin 口默认 38416 (`--admin-port` 可配) 硬绑 127.0.0.1 (header `X-Admin-Token`, 容器够不着); 中转区间 38427-38436. 实际端口与 admin token 写状态文件 `~/.agents/mailbox/state.json` (0600), 同机组件读文件免扫描. 上游配置走 serve 参数或 env `MAILBOX_UPSTREAM_BASE`/`MAILBOX_UPSTREAM_KEY`.
+单文件服务 `scripts/mailbox.py` (纯 stdlib, 零第三方依赖; 独立 skill mailbox, 自 use-sandbox-worktree 拆出), mesh 架构: 每台机器各跑一个信箱实例, 所有实例地位平等, 邻居间按共享密钥互认并洪泛路由信件 (邻居表手工配置; 同网段可开无感自组网自动建邻居, 见「无感自组网」节). 二合一: **信箱** (session 间传信, 设备/容器身份统一为 session, 4 类型 `notify`/`open_url`/`exec`/`request`) + **LLM 中转** (OpenAI 兼容 `/v1/chat/completions` 与 `/v1/models`, sk- key 认证, 模型白名单/quota/用量/过期/吊销, 响应上游不透 stream; 无上游配置则不启中转角色). 信件全内存 (队列/租约/已见 id/邻居暂存, 重启即清; 租约到期自动重投, ack 幂等; 滞留上限缺省 100 超限丢最老); SQLite (`~/.agents/mailbox/server.db`) 只存 session 凭证/中转 key/指令集. 端口: 信箱区间 38417-38426 启动绑首个空闲, 无认证 `GET /__identity__` 供探测身份 (应答服务名 `mailbox`); admin 口默认 38416 (`--admin-port` 可配) 硬绑 127.0.0.1 (header `X-Admin-Token`, 容器够不着); 中转区间 38427-38436. 实际端口与 admin token 写状态文件 `~/.agents/mailbox/state.json` (0600), 同机组件读文件免扫描. 上游配置走 serve 参数或 env `MAILBOX_UPSTREAM_BASE`/`MAILBOX_UPSTREAM_KEY`.
 
 全部配置/运行时文件集中 `~/.agents/mailbox/` (config.json/neighbors.json/cli-state.json/state.json/server.db); 旧路径 (`~/.agents/sandbox-worktree/`, `~/.local/state/swt-mailbox/`, 老老路径 `~/.config/swt/`) 首次运行自动迁移并提示.
 
@@ -70,6 +70,24 @@ ssh -N -R 138417:127.0.0.1:38417 <user>@<对端>
 
 **waypipe 版本组合** (E5, 拉窗已验证): 容器 waypipe 0.8.4 (发行包 0.8.4-3) / host 自编译 minimal (`~/.local/bin/waypipe`, 无版本号回显) / 设备 0.11.0 — 三方版本不必对齐, 混用实测出窗.
 
+## 无感自组网 (fleet mesh)
+
+已入群设备同网段零手工互连 (M5/ISSUE-10): serve 周期收发 UDP 信标 (端口 38437, 载荷 `{address, hostname, fingerprint}`), 听到新指纹即向对端信箱口 `POST /mailbox/hello` 做舰队密钥 HMAC 挑战应答互证; 双向证明通过后各自派生两两独立的链路密钥并自动建邻居 (按 hostname 同名 upsert, 语义同 admin 邻居管理). 链路密钥由舰队密钥 + 双方指纹确定性派生, 协商经认证通道完成, **密钥本身不上 wire** — 单链路泄露不扩散.
+
+舰队密钥 `~/.agents/mailbox/fleet.key` (0600, env `MAILBOX_FLEET_KEY` 路径覆盖), 只经 ssh 分发 (BR-009). 新设备入群唯一人工动作:
+
+```bash
+uv run python scripts/mailbox.py join-fleet <老设备ssh地址>   # ssh 拉取舰队密钥, 落本地 0600
+```
+
+之后同网段组网全程无人工 (AC-035). 无舰队密钥的设备不发信标不参与组网, 发起的握手一律被拒 (403, 不进邻居表; 零确认入群 NG-009 不做).
+
+**边界: 信标只覆盖同网段** (UDP 广播不出网段). 跨网段/VPN 场景信标够不着, 依靠认证换址宣告愈合 (对端可单向到达时) 或手工告知地址加邻居, 双向皆无路由仍需反向隧道 (见上节).
+
+**认证换址 (自愈)**: 本机对外地址变化时, serve 自动用旧链路密钥签名宣告新地址 (邻居间消息 `POST /mailbox/address-update`, 签名材料 = hostname+新地址+时间戳, ±5min 时间窗防重放); 邻居按名字定位, 验签通过即同名 upsert 更新地址, 滞留信自动重投. 验签失败拒绝更新并打 UTC 日志行 `address-update-rejected` (成功打 `address-updated`), 口径同关键事件日志.
+
+测试注入 env (不改变生产语义): `MAILBOX_BEACON_PORT` (信标绑定端口, 缺省 38437) / `MAILBOX_BEACON_DEST` (信标目的 host:port, 缺省 255.255.255.255:38437, 回环单播注入用) / `MAILBOX_BEACON_INTERVAL` (信标周期秒, 缺省 5) / `MAILBOX_ADVERTISE_ADDR` (信标宣告的信箱地址, 缺省自动探测本机 IP).
+
 ## admin 口速查
 
 (127.0.0.1:38416, header `X-Admin-Token`, token 读状态文件)
@@ -79,7 +97,7 @@ ssh -N -R 138417:127.0.0.1:38417 <user>@<对端>
 - 中转 key: `POST /admin/relay-keys {models, quota?, ttl_seconds?}` / `POST /admin/relay-keys/revoke {key}`
 - **指令集**注册: `POST /admin/whitelist {instruction}` (instruction = 含 `tool` 的结构化指令对象)
 
-关键事件日志: serve 对邻居转发失败在 stderr 打 `[UTC 时间戳] forward-failed letter=<id> to=<目标> neighbor=<地址> error=<原因>` (每轮后台重试失败都会重复出现, 排障看最新一条即可).
+关键事件日志: serve 对邻居转发失败在 stderr 打 `[UTC 时间戳] forward-failed letter=<id> to=<目标> neighbor=<地址> error=<原因>` (每轮后台重试失败都会重复出现, 排障看最新一条即可); 换址事件同格式: 成功 `address-updated hostname=<名> old=<旧址> new=<新址>`, 拒绝 `address-update-rejected hostname=<名> new_address=<址> reason=<unknown-neighbor|ts-window|bad-signature>`.
 
 ## 指令集现状
 
