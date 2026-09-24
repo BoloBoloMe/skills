@@ -12,6 +12,13 @@ TS-005 test_join_fleet_pulls_key_over_ssh (AC-035): join-fleet 经 ssh 拉取
 舰队密钥, 本地 fleet.key 就位 0600.
 TS-006 test_fleet_key_0600_ssh_only (BR-009): fleet.key 落盘 0600,
 join-fleet 仅经 ssh 传输, 信标载荷不带密钥材料.
+ISSUE-13 TS-001 test_serve_bootstraps_fleet_key (D020/BR-009): 无文件且
+MAILBOX_FLEET_KEY 未设时 serve 自动生成 fleet.key (0600 + 父目录 0700,
+UTC 日志行 + stderr 提示), 重启复用不重生成.
+ISSUE-13 TS-002 test_bootstrapped_fleet_rejects_foreign_hello
+(D020/NG-009/AC-032): 自生成密钥 = 自成单节点舰队, 异钥 hello 仍 403
+不进邻居表; MAILBOX_FLEET_KEY 空串视同未设 (语义钉死, 见
+reference/mailbox.md).
 
 接缝: 信标 socket 注入 (回环 UDP 单播, 测试注入 env MAILBOX_BEACON_*/不改
 生产语义) + hello/换址宣告 HTTP + 假 ssh 适配器 + 临时 fleet.key + 源码扫描.
@@ -24,11 +31,18 @@ from __future__ import annotations
 import hashlib
 import hmac
 import json
+import os
+import re
+import stat
+import subprocess
+import sys
+import threading
 import time
+from pathlib import Path
 
 import pytest
 
-from conftest import (ADMIN_TOKEN, Serve, free_port, http_json,
+from conftest import (ADMIN_TOKEN, SCRIPT, Serve, free_port, http_json,
                       make_letter, poll, post_letter, register_session)
 
 # 协议契约 (与 mailbox.py 实现同式的独立重写): hello 证明 = HMAC-SHA256(
@@ -75,6 +89,13 @@ def mesh_auto_serves(tmp_path):
                or f"127.0.0.1:{free_port()}"}  # 缺省死端回环
         if fleet_path is not None:
             env["MAILBOX_FLEET_KEY"] = str(fleet_path)
+        else:
+            # ISSUE-13: 引导生成打破 "无密钥" 缺省前提 — 未显式给密钥时
+            # 钉死显式无密钥 (env 指向不存在路径, 不触发生成).
+            # 双层关系: conftest.pytest_configure 已对 pytest 进程全局
+            # 兜底钉住本 env, 这里再显式设一遍是夹具级纵深防御 — 夹具
+            # 单独被人拷走复用时语义仍自足.
+            env["MAILBOX_FLEET_KEY"] = str(workdir / "absent-fleet.key")
         if beacon_port is not None:
             env["MAILBOX_BEACON_PORT"] = str(beacon_port)
         if beacon_dest is not None:
@@ -113,6 +134,75 @@ def poll_body(srv, session_id, signing_key, body, timeout=10):
         if letter is not None and letter["body"] == body:
             return letter
     return None
+
+
+def bootstrap_serve(home, workdir, port, extra_env=None):
+    """ISSUE-13 接缝层: 临时 HOME 起 serve 子进程, 剥离 MAILBOX_FLEET_KEY
+    (钉死 "env 未设" 前提), 信标口/目的全回环死端 (杜绝真机写与真广播).
+    返回 (proc, mailbox_port, admin_port); 用 stop_serve(proc) 收尾."""
+    workdir = Path(workdir)
+    workdir.mkdir(parents=True, exist_ok=True)
+    env = {k: v for k, v in os.environ.items() if k != "MAILBOX_FLEET_KEY"}
+    env.update({
+        "HOME": str(home),
+        "MAILBOX_ADMIN_TOKEN": ADMIN_TOKEN,
+        "MAILBOX_STATE": str(workdir / "state.json"),
+        "MAILBOX_CONFIG": str(workdir / "config.json"),
+        "MAILBOX_NEIGHBORS": str(workdir / "neighbors.json"),
+        "MAILBOX_HOLD_SECONDS": "0.3",
+        "MAILBOX_BEACON_PORT": str(free_port()),
+        "MAILBOX_BEACON_DEST": f"127.0.0.1:{free_port()}",  # 回环死端
+    })
+    env.update(extra_env or {})
+    proc = subprocess.Popen(
+        [sys.executable, str(SCRIPT), "serve", "--port", str(port),
+         "--admin-port", str(free_port())],
+        env=env, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE,
+        text=True)
+    # 后台读线程收集 stderr 行: select+readline 混用会在一次写入多行时
+    # 把剩余行留在缓冲区里饿死 select (实测踩坑), 读线程无此问题
+    lines = []
+    proc.stderr_lines = lines
+
+    def _drain():
+        for ln in proc.stderr:
+            lines.append(ln)
+
+    proc._drain_thread = threading.Thread(target=_drain, daemon=True)
+    proc._drain_thread.start()
+    mbox = admin = None
+    deadline = time.time() + 15
+    while time.time() < deadline:
+        if proc.poll() is not None:
+            raise AssertionError(
+                f"serve 提前退出, exit={proc.returncode}: "
+                f"{''.join(lines)}")
+        for ln in lines:
+            m = re.search(r"mailbox on :(\d+)", ln)
+            if m:
+                mbox = int(m.group(1))
+            a = re.search(r"admin on 127\.0\.0\.1:(\d+)", ln)
+            if a:
+                admin = int(a.group(1))
+        if mbox is not None and admin is not None:
+            return proc, mbox, admin
+        time.sleep(0.05)
+    stop_serve(proc)
+    raise AssertionError(
+        f"serve 未在超时内报告端口: {''.join(lines)}")
+
+
+def stop_serve(proc):
+    """收尾: 停止 serve 子进程并拼回完整 stderr (读线程已收集的全部行)."""
+    if proc.poll() is None:
+        proc.terminate()
+        try:
+            proc.wait(timeout=5)
+        except subprocess.TimeoutExpired:
+            proc.kill()
+            proc.wait(timeout=5)
+    proc._drain_thread.join(timeout=2)
+    return "".join(proc.stderr_lines)
 
 
 def test_beacon_auto_neighbor(fleet_key_file, mesh_auto_serves):
@@ -454,3 +544,84 @@ def test_fleet_key_0600_ssh_only(fleet_key_file, mesh_auto_serves, tmp_path):
     assert result.returncode == 0, result.stderr
     key_path = home / ".agents" / "mailbox" / "fleet.key"
     assert stat.S_IMODE(key_path.stat().st_mode) == 0o600
+
+
+def test_serve_bootstraps_fleet_key(tmp_path):
+    """ISSUE-13/TS-001 (D020/BR-009): 空 HOME 且 MAILBOX_FLEET_KEY 未设,
+    serve 启动自动生成 fleet.key (os.urandom 32 字节 hex): 0600 + 父目录
+    0700 双断言, UTC 日志行 + stderr 提示; 重启复用不重生成."""
+    home = tmp_path / "home"
+    home.mkdir()
+    key_path = home / ".agents" / "mailbox" / "fleet.key"
+
+    proc, mbox, admin = bootstrap_serve(home, tmp_path / "w1", free_port())
+    end = time.time() + 10
+    while time.time() < end and not key_path.exists():
+        time.sleep(0.1)
+    assert key_path.exists(), "无文件且无 env 时 serve 应自动生成 fleet.key"
+    key1 = key_path.read_text(encoding="utf-8").strip()
+    stderr1 = stop_serve(proc)
+    assert re.fullmatch(r"[0-9a-f]{64}", key1), \
+        "引导密钥应为 os.urandom(32) hex (64 位十六进制, 非时间戳)"
+    assert stat.S_IMODE(key_path.stat().st_mode) == 0o600, \
+        "fleet.key 落盘须 0600 (BR-009)"
+    assert stat.S_IMODE(key_path.parent.stat().st_mode) == 0o700, \
+        "BR-009 审计口径: 父目录须 0700"
+    hit = next((ln for ln in stderr1.splitlines()
+                if "fleet-key-bootstrap" in ln), "")
+    assert hit, "引导生成应打关键事件日志行 (AC-037 口径)"
+    assert re.search(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?Z",
+                     hit), f"日志行须带 UTC 时间戳: {hit!r}"
+    assert str(key_path) in stderr1, "stderr 应提示密钥生成路径"
+
+    # 重启复用: 同 HOME 再起一次, 密钥内容不变且不再打引导日志
+    proc2, _, _ = bootstrap_serve(home, tmp_path / "w2", free_port())
+    stderr2 = stop_serve(proc2)
+    assert key_path.read_text(encoding="utf-8").strip() == key1, \
+        "重启应复用既有 fleet.key, 不得重新生成"
+    assert "fleet-key-bootstrap" not in stderr2, "复用时不打引导日志"
+
+
+def test_bootstrapped_fleet_rejects_foreign_hello(tmp_path):
+    """ISSUE-13/TS-002 (D020/NG-009/AC-032): 自生成密钥 = 自成单节点舰队 —
+    异钥 hello 仍 403 且不进邻居表 (安全断言不弱化); MAILBOX_FLEET_KEY
+    空串视同未设 (同样引导生成, 信标照发) — 语义钉死并文档化."""
+    home = tmp_path / "home2"
+    home.mkdir()
+    key_path = home / ".agents" / "mailbox" / "fleet.key"
+    proc, mbox, admin = bootstrap_serve(home, tmp_path / "w3", free_port())
+    end = time.time() + 10
+    while time.time() < end and not key_path.exists():
+        time.sleep(0.1)
+    assert key_path.exists(), "引导生成前提未成立"
+
+    # 异钥 hello: 指纹与身份绑定 (逼走证明校验分支), 证明用错误密钥签
+    rogue_addr = f"127.0.0.1:{free_port()}"
+    fp = _fingerprint("rogue3", rogue_addr)
+    ts = time.time()
+    wrong_proof = _sign("not-the-fleet-key", HELLO_PROOF_LABEL, fp, str(ts))
+    code, resp = http_json("POST", mbox, "/mailbox/hello",
+                           {"fingerprint": fp, "hostname": "rogue3",
+                            "address": rogue_addr, "ts": ts,
+                            "proof": wrong_proof})
+    assert code == 403, resp
+    assert "舰队密钥" in resp.get("error", ""), resp
+    code, resp = http_json("GET", admin, "/admin/neighbors",
+                           headers={"X-Admin-Token": ADMIN_TOKEN})
+    assert code == 200 and resp["neighbors"] == [], \
+        "异钥握手不得进邻居表 (NG-009 零确认入群不做)"
+    stop_serve(proc)
+
+    # MAILBOX_FLEET_KEY="" 视同未设: 同样引导生成, 信标照发 (单节点舰队)
+    home3 = tmp_path / "home3"
+    home3.mkdir()
+    key3 = home3 / ".agents" / "mailbox" / "fleet.key"
+    proc3, _, _ = bootstrap_serve(home3, tmp_path / "w4", free_port(),
+                                  extra_env={"MAILBOX_FLEET_KEY": ""})
+    end = time.time() + 10
+    while time.time() < end and not key3.exists():
+        time.sleep(0.1)
+    stderr3 = stop_serve(proc3)
+    assert key3.exists(), "空串 env 应视同未设并引导生成"
+    assert "fleet-key-bootstrap" in stderr3, "空串视同未设: 应打引导日志"
+    assert "fleet beacon udp" in stderr3, "空串视同未设: 生成后信标照发"

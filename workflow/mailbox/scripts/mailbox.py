@@ -1004,6 +1004,37 @@ def load_fleet_key():
     return key or None
 
 
+def bootstrap_fleet_key():
+    """舰队密钥引导生成 (ISSUE-13/D020): 文件缺席且 MAILBOX_FLEET_KEY env
+    未设 (空串视同未设) 才生成 — os.urandom(32) hex 落盘 0600, 父目录
+    0700, 打 UTC 日志行 + stderr 提示; env 已设 (即使指向不存在路径 =
+    显式无密钥) 或文件已存在则完全不生成 (重启复用不重生成). 自生成
+    密钥 = 自成单节点舰队: 信标照发, 异钥握手仍拒 (NG-009 不变)."""
+    if os.environ.get("MAILBOX_FLEET_KEY"):
+        return
+    path = fleet_key_path()
+    if path.exists():
+        return
+    key = os.urandom(32).hex()
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        os.chmod(path.parent, 0o700)  # BR-009: 父目录私有
+        fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
+            f.write(key + "\n")
+    except FileExistsError:
+        return  # 并发竞态: 他进程已生成, 照常复用
+    except OSError as e:
+        print(f"警告: 舰队密钥引导生成失败 ({e}), 自组网停用",
+              file=sys.stderr)
+        return
+    log_event("fleet-key-bootstrap", path=str(path))
+    print(f"提示: 未发现舰队密钥且 MAILBOX_FLEET_KEY 未设, 已自动生成"
+          f"单节点舰队密钥 {path}\n"
+          f"(加入已有舰队: mailbox.py join-fleet <老设备ssh地址>;"
+          f" 分发仅经 ssh, BR-009)", file=sys.stderr)
+
+
 def fleet_fingerprint(hostname, address):
     """节点指纹: sha256(hostname\naddress) — 节点换址即换指纹, 邻居端经
     同名 upsert 收敛到新地址 (信标层的同网段自愈)."""
@@ -2649,6 +2680,7 @@ def cmd_serve(args):
     auto_credential(mailbox, f"http://127.0.0.1:{server.port}")
     write_state_file(spath, server.port, admin.port, admin_token)
     beacon = None  # 自组网信标 (ISSUE-10): 无舰队密钥不参与组网 (NG-009)
+    bootstrap_fleet_key()  # ISSUE-13/D020: 无文件且无 env 才引导生成
     fleet_key = load_fleet_key()
     if fleet_key:
         try:
