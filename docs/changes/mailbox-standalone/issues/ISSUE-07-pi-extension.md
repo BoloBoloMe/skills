@@ -2,7 +2,7 @@
 - `../EXECUTION.md`
 
 ## 执行
-- [ ] 已实现
+- [x] 已实现
 
 ## 要构建什么
 pi 扩展 (mailbox skill 内 `pi-extension/index.ts`) + 装载链路: (1) 三命令 `/mail` (总览: serve 活否/配置/邻居数/待取数) `/mail-listen start|stop|status` `/mail-send` (缺参交互补全); (2) 取信守护: 后台循环子进程调取信脚本逐封取, 来信 `pi.sendUserMessage(deliverAs:"followUp", triggerTurn:true)` 注入, `agent_settled` 后取下一封; 不阻塞前台; (3) 回执信识别标记后不注入, 汇入 /mail 总览与 widget; (4) `listen.json` 状态落盘, `session_start` 自动恢复, 多会话 listen 软提示不拦截; (5) 取信脚本加 `--cli-state <路径>` (env `MAILBOX_CLI_STATE` 同义), 扩展守护用专属路径修 pending_ack 竞态; (6) sync-to-pi.py 合并 settings.json `extensions` 数组 (幂等, 写前 .bak). 扩展只调脚本, 禁止重实现. 部分 HITL: pi TUI 内行为走人工验证清单, 无测试基建.

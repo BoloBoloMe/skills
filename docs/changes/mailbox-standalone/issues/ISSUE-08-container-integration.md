@@ -2,7 +2,7 @@
 - `../EXECUTION.md`
 
 ## 执行
-- [ ] 已实现
+- [x] 已实现
 
 ## 要构建什么
 容器集成: (1) birth 把宿主端口映射 (ssh/web/vnc) 与显示直通状态 (`HOST_DISPLAY=ok/degraded/absent`) 烘进容器 env (或只读文件), 容器内不再发信问 host; (2) 信箱口新增 `GET /mailbox/sessions` 只读端点 (session 签名认证, 回 id+last_poll, 不泄密钥). 适合 AFK: env 清单与端点契约已定.
