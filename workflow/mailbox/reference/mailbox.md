@@ -48,6 +48,28 @@ uv run python $M status                     # 查看配置, 密钥只显前 8 �
 
 **回执信与信件 TTL**: 信件带 TTL (缺省 24h, env `MAILBOX_TTL_SECONDS` 可调), 任何节点持有/暂存超时即被清扫丢弃 (`letter-expired` 日志行) 并向发件人回失败回执. 三类回执: 送达 (信进收件人本机队列) / 已读 (取信方 ack) / 失败 (TTL 超时丢弃), 由服务端内部生成 (发件人 `mailbox@<主机名>`), 反向走同一路由, 确定性 id (`<原id>.delivered`/`.read`/`.delivery-failed`) 使多节点同时超时只投一封; 回执不递归. 取信脚本识别回执后自动 ack, 只打紧凑单行 (`回执: 信件 <id> 已送达/已读/失败`), 不呈现给 LLM. 语义钉死 best-effort: **收到 = 确定发生, 缺席 = 未知** — 回执自身也走洪泛可能丢; serve 重启丢内存队列/暂存时失败回执发不出 (与全内存丢信同窗, 重启前未投出的滞留信不会再有回执).
 
+## 跨机连通: mesh 前提与反向隧道
+
+**mesh 前提**: 两台设备的信箱互通要求**至少一个方向可达** — A 能连 B 或 B 能连 A, 满足即可建邻居互投. 双向皆无路由 (对端 NAT 后/防火墙双向阻隔) 时任何协议层自愈都无效, 只能反向隧道.
+
+**反向隧道标准配方** (B5, 双向不可达时由能主动出网的一端发起):
+
+```bash
+ssh -N -R 138417:127.0.0.1:38417 <user>@<对端>
+```
+
+对端 `127.0.0.1:138417` 即回到本端信箱 (38417 换实际端口; 隧道端口选 38417-38436 区间外的空闲口, 避让信箱扫描区间). 然后对端把邻居地址指到 `127.0.0.1:138417` (admin 口 `POST /admin/neighbors`), 旧地址滞留的信需重投 (`POST /admin/pending/retry`).
+
+- **远端标记文件**: 隧道落点端 (对端) 在 `~/.agents/mailbox/tunnels/<发起方session>.json` 留 `{peer, 端口, 建立时间}` — 排障时查端口归属, 防重复建隧道/端口冲突; 隧道撤除时删.
+- **sshd 提醒**: 对端 sshd 建议配 `ClientAliveInterval 30` + `ClientAliveCountMax 3` 后 reload — 发起方挂起时及时回收会话, 消僵尸 `-R` 监听端口 (实测踩坑).
+
+**跨机换址联动清单** (B5): 任一端地址变化时, **防火墙白名单与邻居地址必须同时改**, 只改一半即不通 —
+1. 对端防火墙/出向白名单放行新地址;
+2. 对端邻居表 (admin 口或 neighbors.json) 改新地址;
+3. 改完重投滞留信.
+
+**waypipe 版本组合** (E5, 拉窗已验证): 容器 waypipe 0.8.4 (发行包 0.8.4-3) / host 自编译 minimal (`~/.local/bin/waypipe`, 无版本号回显) / 设备 0.11.0 — 三方版本不必对齐, 混用实测出窗.
+
 ## admin 口速查
 
 (127.0.0.1:38416, header `X-Admin-Token`, token 读状态文件)
@@ -61,7 +83,7 @@ uv run python $M status                     # 查看配置, 密钥只显前 8 �
 
 ## 指令集现状
 
-首成员已落地 — `swt.pull-window` (零参数拉窗): 不落静态 whitelist 行, 服务端内置形状校验 (dict 恰含 `tool`/`container` 两键) + `container` 动态绑定投信 session 自身 (裸 tool/多余键/他人 session 名一律降级 request 走设备侧 pi 权限流程); admin whitelist 注册机制保留, 供未来无动态绑定的成员使用. 设备侧执行器机械门禁在取信脚本内: waypipe 在场检查 + 同容器 300s 限频. 成员变动即安全策略变动, 必过门禁测试 (`uv run pytest tests/test_mailbox_whitelist.py`).
+首成员已落地 — `swt.pull-window` (拉窗): 不落静态 whitelist 行, 服务端内置形状校验 (dict 恰含 `tool`/`container` 两键, 第三键 `url` 可选, 多余键降级) + `container` 动态绑定投信方自身: 填投信方 session id **或其容器名** (容器 session = `<容器名>-<8hex>`, 服务端剥尾匹配) 皆命中直批 (E1); 裸 tool/他人 session 或容器名一律降级 request 走设备侧 pi 权限流程. 带 `url` 时设备侧按信中 url 拉起, 不猜端口 (E2), 拉起模板与退化写法见 pull-window.md. admin whitelist 注册机制保留, 供未来无动态绑定的成员使用. 设备侧执行器机械门禁在取信脚本内: waypipe 在场检查 + 同容器 300s 限频 (限频键归一到容器标识, session id 与容器名同键). 成员变动即安全策略变动, 必过门禁测试 (`uv run pytest tests/test_mailbox_whitelist.py`).
 
 ## 展示页网址沟通与代开 (容器与设备 agent 行为指引)
 

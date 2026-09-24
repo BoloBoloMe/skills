@@ -38,6 +38,7 @@ import hmac
 import http.client
 import json
 import os
+import re
 import signal
 import socket
 import sqlite3
@@ -72,6 +73,19 @@ RECEIPT_FROM_PREFIX = "mailbox@"  # 回执信保留身份 (D013): from=mailbox@<
 RECEIPT_ID_SUFFIX = {"delivered": "delivered", "read": "read",
                      "failed": "delivery-failed"}  # 回执确定性 id (D012)
 PULL_WINDOW_TOOL = "swt.pull-window"  # exec 指令集内置成员 (动态绑定投信方)
+PULL_WINDOW_KEYS = {"tool", "container", "url"}  # E2: url 第三键可选
+
+# D010 容器 session 形态: <容器名>-<8hex> (birth 用 token_hex(4), 小写).
+# 贪婪 .+ 从右剥恰一段 8hex 尾 → 容器名本身可含 "-" (ISSUE-09 E1)
+CONTAINER_SESSION_RE = re.compile(r"^(.+)-([0-9a-f]{8})$")
+
+
+def container_name_of(session_id):
+    """容器 session id → 容器名 (剥 8hex 随机尾); 非容器形态 → None.
+    E1 绑定放宽的安全推导单点: 尾段必须恰 8 个小写 hex (token_hex 产物),
+    防把 host 形态 <hostname>-host 误当容器 (host 尾不是 8hex)."""
+    m = CONTAINER_SESSION_RE.match(str(session_id or ""))
+    return m.group(1) if m else None
 
 # send CLI 按 route 打人话 (AC-008 措辞; 枚举见 TECHNICAL 投信应答节)
 ROUTE_WORDS = {"queued_local": "已进本机队列",
@@ -764,13 +778,18 @@ class Mailbox:
 
     @staticmethod
     def _pull_window_hit(ins, poster_session_id):
-        """swt.pull-window = 服务端内置形状校验, 动态绑定投信 session 自身,
-        不落静态 whitelist 行. 恰含 {tool, container} 两键才命中
-        (沿用 swt-base-server.py UD-05, container_key 角色由 session 接替)."""
-        return (isinstance(ins, dict)
-                and set(ins) == {"tool", "container"}
-                and ins["tool"] == PULL_WINDOW_TOOL
-                and ins["container"] == poster_session_id)
+        """swt.pull-window = 服务端内置形状校验, 动态绑定投信方自身,
+        不落静态 whitelist 行. 恰含 tool/container 两键 (url 第三键可选,
+        E2) 才命中; container 字段 = 投信方 session id 或其容器名
+        (E1: poster 为 <容器名>-<8hex> 时剥尾匹配, 其余一律降级;
+        沿用 swt-base-server.py UD-05, container_key 角色由 session 接替)."""
+        if not (isinstance(ins, dict)
+                and {"tool", "container"} <= set(ins) <= PULL_WINDOW_KEYS
+                and ins["tool"] == PULL_WINDOW_TOOL):
+            return False
+        if ins["container"] == poster_session_id:
+            return True
+        return container_name_of(poster_session_id) == ins["container"]
 
     def _most_recent_poller(self):
         """最近活跃 = last_poll 最新的已注册未吊销 session; 无 → None."""
@@ -1662,18 +1681,28 @@ def pull_window_container(letter):
     return str(container) if container else str(letter.get("from", ""))
 
 
+def container_key(value):
+    """限频键统一到容器标识 (E1): container 字段无论填 session id
+    (<容器名>-<8hex>) 还是裸容器名, 归一到同一键, 防换写法绕 300s 限频.
+    剥尾推导与服务端绑定共用 container_name_of (安全单点)."""
+    return container_name_of(value) or str(value)
+
+
 def gate_pull_window(container, state):
     """拉窗门禁: 返回 None = 过门 (并记限频时刻); 否则 = skipped outcome.
-    限频时刻表在 state["lastPullWindowAt"] (dict[容器名 -> 时间戳])."""
+    限频时刻表在 state["lastPullWindowAt"] (dict[容器标识 -> 时间戳])."""
     if not waypipe_present():
         return "skipped:waypipe-missing"
     global _waypipe_missing_notified
     _waypipe_missing_notified = False  # 在场恢复: 下次缺席重新提示
+    key = container_key(container)  # E1 限频键统一到容器标识
     table = state.setdefault("lastPullWindowAt", {})
-    last = table.get(container)
+    last = table.get(key)
+    if last is None and key != container:
+        last = table.get(container)  # 新旧键衔接: 兼顾归一前的历史记录
     if last is not None and time.time() - float(last) < PULL_WINDOW_MIN_INTERVAL:
         return "skipped:rate-limited"
-    table[container] = time.time()
+    table[key] = time.time()
     return None
 
 

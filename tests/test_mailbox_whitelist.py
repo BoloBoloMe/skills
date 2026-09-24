@@ -32,6 +32,61 @@ def test_exec_whitelist_downgrade(serves):
     assert "降级" in letter["note"]
 
 
+def test_pull_window_hit_by_container_name(serves):
+    """ISSUE-09 TS-001 (TC-047, AC-029, E1): pull-window 绑定放宽 —
+    container 填投信方 session id (回归) 或其容器名 (D010 容器形态
+    <容器名>-<8hex> 剥尾, 新) 皆命中指令集直批."""
+    srv = serves()
+    poster = "c1-1a2b3c4d"  # 容器 session: <容器名>-<8hex> (token_hex 小写)
+    creds = register_session(srv, poster)
+    key = creds["signing_key"]
+
+    # 回归: container = 投信方 session id 自身 → 直批
+    body = json.dumps({"tool": "swt.pull-window", "container": poster})
+    code, _ = post_letter(srv, poster, key,
+                          make_letter(letter_id="PW-S1", to=poster,
+                                      type_="exec", body=body))
+    assert code == 200
+    code, resp = poll(srv, poster, key)
+    assert code == 200
+    letter = resp["payload"]["letter"]
+    assert letter["downgraded"] is False
+    assert "指令集命中" in letter["note"]
+
+    # 新 (E1): container = 容器名 (session id 剥 8hex 随机尾) → 直批
+    body = json.dumps({"tool": "swt.pull-window", "container": "c1"})
+    code, _ = post_letter(srv, poster, key,
+                          make_letter(letter_id="PW-S2", to=poster,
+                                      type_="exec", body=body))
+    assert code == 200
+    code, resp = poll(srv, poster, key)
+    assert code == 200
+    letter = resp["payload"]["letter"]
+    assert letter["downgraded"] is False
+    assert "指令集命中" in letter["note"]
+
+
+def test_pull_window_other_session_downgrades(serves):
+    """ISSUE-09 TS-002 (TC-048, AC-029): 回归锚 — 绑定放宽不得越过投信方:
+    container 填他人 session id 或他人容器名一律降级 request."""
+    srv = serves()
+    poster = "c1-1a2b3c4d"
+    creds = register_session(srv, poster)
+    key = creds["signing_key"]
+
+    for other in ("c2-0f1e2d3c", "c2"):  # 他人 session id / 他人容器名
+        body = json.dumps({"tool": "swt.pull-window", "container": other})
+        code, _ = post_letter(srv, poster, key,
+                              make_letter(letter_id=f"PW-O-{other}", to=poster,
+                                          type_="exec", body=body))
+        assert code == 200
+        code, resp = poll(srv, poster, key)
+        assert code == 200
+        letter = resp["payload"]["letter"]
+        assert letter["downgraded"] is True
+        assert "降级" in letter["note"]
+
+
 def test_whitelist_registration(serves):
     """TS-002: admin 注册指令 → 匹配的 exec 信 downgraded=false + 指令集命中标注."""
     srv = serves()
