@@ -1,6 +1,6 @@
 ---
 name: mailbox
-description: 信箱 mesh + LLM 中转: 设备/容器/本机 session 间传信的单文件服务 (serve/send/取信/config/status) 与 OpenAI 兼容中转, 全部配置集中 ~/.agents/mailbox/.
+description: "信箱 mesh + LLM 中转: 设备/容器/本机 session 间传信的单文件服务 (serve/send/取信/config/status) 与 OpenAI 兼容中转, 全部配置集中 ~/.agents/mailbox/."
 ---
 
 # mailbox
