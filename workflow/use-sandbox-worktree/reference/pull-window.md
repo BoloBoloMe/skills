@@ -18,7 +18,7 @@ preflight 退出 86 后:
 1. **前提**: 设备 Linux Wayland 桌面会话 + waypipe 客户端; Atomic 系发行版 (Bazzite 等) 经 distrobox 安装 (D006).
 2. **密钥**: 设备→容器 ssh 免密经 host 上 `uv run python scripts/swt.py enroll-device-key <容器名>` 一次性发放 (N4: 密码登录无法自动化代执行).
 3. **幂等探测**: `ssh <容器> pgrep -x waypipe` — 已有活跃会话直接回报不再拉起 (D008 幂等; N2 修正: 不用 socket 存在判活, 尸体会残留).
-4. **后台拉起** (即交付包远程直飞命令模板, 变量照交付包实际值代换, 页面 URL 由前置编排一并写入): `nohup waypipe ssh -p <宿主端口> -R /tmp/swt/pulse-b.sock:/run/user/$(id -u)/pulse/native bolo@<host-LAN-IP> /home/bolo/.local/bin/swt-headed-browser.sh --disable-gpu --disable-gpu-compositing --no-first-run --no-default-browser-check --start-maximized http://127.0.0.1:<容器内web端口>/<页面路径> >/dev/null 2>&1 &` — `-R` 同一条会话建音频 socket (D002; 远端路径由设备 shell 展开实际 uid, 不写死 1000, UD-09); 软件渲染参数必带 (M09 实测: GPU 路径经 minimal C 版 waypipe 只出隐形窗口 — 任务栏有图标无画面); waypipe 会话须长存, 不能占 LLM 前台, 故 nohup 后台.
+4. **后台拉起** (即交付包远程直飞命令模板, 变量照 STATE 与交付包实际值代换, 页面 URL 由前置编排一并写入): 命令模板与参数纪律 (chromium 数据目录强制, 音频 socket 转发可选与退化写法, 软件渲染参数, waypipe 版本组合) 已单源化到 mailbox skill — 唯一权威源: `~/.agents/skills/mailbox/reference/pull-window.md` 设备侧拉起模板节; waypipe 已验证版本组合另见同 skill `~/.agents/skills/mailbox/reference/mailbox.md` (两个 skill 目录同在 `~/.agents/skills/` 下, 仓库母本在 `workflow/mailbox/reference/`).
 5. **回报**: 拉起后经 herdr notification 通知设备用户窗口已送达.
 
 ## 残尸纪律

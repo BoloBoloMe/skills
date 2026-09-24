@@ -306,6 +306,26 @@ def test_rate_limit_key_unified(monkeypatch):
     assert mod.gate_pull_window("c1", state) == "skipped:rate-limited"
 
 
+def test_swt_pull_window_doc_points_to_mailbox():
+    """ISSUE-12 TS-001 (D019, 拉窗文档单源化): swt 侧 pull-window.md 的
+    设备侧模板内容改为指针 — 含指向 mailbox skill 参考文档的指针
+    (部署后两个 skill 目录同在 ~/.agents/skills/ 下), 且不复述
+    --user-data-dir 等模板细节 (权威源在 mailbox 侧, ISSUE-09 落笔)."""
+    swt_pw = (ROOT / "workflow" / "use-sandbox-worktree" / "reference" /
+              "pull-window.md").read_text()
+
+    # 指针在场: 指向 mailbox skill 的 pull-window 参考文档
+    assert "mailbox/reference/pull-window.md" in swt_pw
+
+    # 不复述模板细节: chromium 单例坑参数与完整拉起命令只留在 mailbox 侧
+    assert "--user-data-dir" not in swt_pw
+    assert "nohup waypipe ssh" not in swt_pw
+
+    # swt 独有内容无损: 三态选路 / 容器侧编排 / STATE 代换 / 残尸纪律
+    for kw in ("三态", "容器侧编排", "代换", "残尸"):
+        assert kw in swt_pw, kw
+
+
 def test_non_pullwindow_exec_bypasses_gate(serves, tmp_path, monkeypatch,
                                            capsys):
     """验收标准 4: 非 pull-window 的 exec 信不走本门禁 (白名单属 ISSUE-03) —
