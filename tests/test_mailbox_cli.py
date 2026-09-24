@@ -21,13 +21,14 @@ from __future__ import annotations
 import json
 import os
 import select
+import socket
 import subprocess
 import sys
 import time
 from pathlib import Path
 
 from conftest import (SCRIPT, ack_letter, free_port, make_letter, poll,
-                      post_letter, register_session)
+                      post_letter, register_session, sign)
 
 
 def cli_env(port, session_id, signing_key, response_key, workdir):
@@ -230,6 +231,40 @@ def test_fetch_timeout_beats_long_hold(serves, tmp_path):
     assert "无信" in r.stdout
     # 修复前: poll 固定 30s 超时, 须等满服务端 hold 8s 才退 — 超出 2+3 余量
     assert elapsed < 2 + 3, f"--timeout 到时退出不及时, 实际耗时 {elapsed:.1f}s"
+
+
+def test_poll_client_disconnect_no_traceback(serves, tmp_path):
+    """ISSUE-14 TS-001: 取信客户端超时先于服务端 hold 到期挂断 (AC-016 的
+    --timeout 场景常态) 后, 服务端 hold 唤醒往断开 socket 写应答不再吐
+    BrokenPipeError 堆栈; 随后正常投信/取信不受影响."""
+    hold = "2"
+    srv = serves(hold=hold)
+    creds = register_session(srv, "bpdev")
+    # 原始 socket 发合法 poll 请求后立即挂断 = 客户端消失在 hold 期中途
+    sig_ts = str(time.time())
+    sig = sign(creds["signing_key"], "bpdev", sig_ts)
+    body = json.dumps({"session": "bpdev", "sig_ts": sig_ts,
+                       "sig": sig}).encode()
+    req = (b"POST /mailbox/poll HTTP/1.1\r\n"
+           b"Host: 127.0.0.1\r\n"
+           b"Content-Type: application/json\r\n"
+           + f"Content-Length: {len(body)}\r\n\r\n".encode()
+           + body)
+    sock = socket.create_connection(("127.0.0.1", srv.port), timeout=5)
+    sock.sendall(req)
+    sock.close()
+    # hold 到期后服务端才尝试写应答, 留 margin 确保写出路径已执行完
+    time.sleep(float(hold) + 1.5)
+    # 断开事件之后正常投信/取信仍工作
+    code, r = post_letter(srv, "bpdev", creds["signing_key"],
+                          make_letter("L-bp", to="bpdev"))
+    assert code == 200 and r["payload"]["ok"], r
+    code, r = poll(srv, "bpdev", creds["signing_key"])
+    assert code == 200 and r["payload"]["letter"]["id"] == "L-bp", r
+    srv.stop()
+    err = srv.proc.stderr.read()
+    assert "BrokenPipeError" not in err, f"serve stderr 吐了断开堆栈:\n{err}"
+    assert "Traceback" not in err, f"serve stderr 吐了堆栈:\n{err}"
 
 
 def test_fetch_cli(serves, tmp_path):

@@ -1311,11 +1311,17 @@ class _JsonHandler(BaseHTTPRequestHandler):
 
     def _json(self, code, obj):
         body = json.dumps(obj, ensure_ascii=False).encode()
-        self.send_response(code)
-        self.send_header("Content-Type", "application/json")
-        self.send_header("Content-Length", str(len(body)))
-        self.end_headers()
-        self.wfile.write(body)
+        try:
+            self.send_response(code)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+        except (BrokenPipeError, ConnectionResetError):
+            # ISSUE-14: 客户端在应答写出前断开 (如取信 --timeout 短于 hold,
+            # AC-016 正常用法), 无处投递, 静默放弃; 其他异常照常上抛,
+            # 不吞真服务端错误
+            pass
 
     def _body(self):
         raw = self.rfile.read(int(self.headers.get("Content-Length", 0)))
