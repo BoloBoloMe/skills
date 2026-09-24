@@ -15,6 +15,10 @@ join-fleet 仅经 ssh 传输, 信标载荷不带密钥材料.
 ISSUE-13 TS-001 test_serve_bootstraps_fleet_key (D020/BR-009): 无文件且
 MAILBOX_FLEET_KEY 未设时 serve 自动生成 fleet.key (0600 + 父目录 0700,
 UTC 日志行 + stderr 提示), 重启复用不重生成.
+ISSUE-13 TS-002 test_bootstrapped_fleet_rejects_foreign_hello
+(D020/NG-009/AC-032): 自生成密钥 = 自成单节点舰队, 异钥 hello 仍 403
+不进邻居表; MAILBOX_FLEET_KEY 空串视同未设 (语义钉死, 见
+reference/mailbox.md).
 
 接缝: 信标 socket 注入 (回环 UDP 单播, 测试注入 env MAILBOX_BEACON_*/不改
 生产语义) + hello/换址宣告 HTTP + 假 ssh 适配器 + 临时 fleet.key + 源码扫描.
@@ -573,3 +577,48 @@ def test_serve_bootstraps_fleet_key(tmp_path):
     assert key_path.read_text(encoding="utf-8").strip() == key1, \
         "重启应复用既有 fleet.key, 不得重新生成"
     assert "fleet-key-bootstrap" not in stderr2, "复用时不打引导日志"
+
+
+def test_bootstrapped_fleet_rejects_foreign_hello(tmp_path):
+    """ISSUE-13/TS-002 (D020/NG-009/AC-032): 自生成密钥 = 自成单节点舰队 —
+    异钥 hello 仍 403 且不进邻居表 (安全断言不弱化); MAILBOX_FLEET_KEY
+    空串视同未设 (同样引导生成, 信标照发) — 语义钉死并文档化."""
+    home = tmp_path / "home2"
+    home.mkdir()
+    key_path = home / ".agents" / "mailbox" / "fleet.key"
+    proc, mbox, admin = bootstrap_serve(home, tmp_path / "w3", free_port())
+    end = time.time() + 10
+    while time.time() < end and not key_path.exists():
+        time.sleep(0.1)
+    assert key_path.exists(), "引导生成前提未成立"
+
+    # 异钥 hello: 指纹与身份绑定 (逼走证明校验分支), 证明用错误密钥签
+    rogue_addr = f"127.0.0.1:{free_port()}"
+    fp = _fingerprint("rogue3", rogue_addr)
+    ts = time.time()
+    wrong_proof = _sign("not-the-fleet-key", HELLO_PROOF_LABEL, fp, str(ts))
+    code, resp = http_json("POST", mbox, "/mailbox/hello",
+                           {"fingerprint": fp, "hostname": "rogue3",
+                            "address": rogue_addr, "ts": ts,
+                            "proof": wrong_proof})
+    assert code == 403, resp
+    assert "舰队密钥" in resp.get("error", ""), resp
+    code, resp = http_json("GET", admin, "/admin/neighbors",
+                           headers={"X-Admin-Token": ADMIN_TOKEN})
+    assert code == 200 and resp["neighbors"] == [], \
+        "异钥握手不得进邻居表 (NG-009 零确认入群不做)"
+    stop_serve(proc)
+
+    # MAILBOX_FLEET_KEY="" 视同未设: 同样引导生成, 信标照发 (单节点舰队)
+    home3 = tmp_path / "home3"
+    home3.mkdir()
+    key3 = home3 / ".agents" / "mailbox" / "fleet.key"
+    proc3, _, _ = bootstrap_serve(home3, tmp_path / "w4", free_port(),
+                                  extra_env={"MAILBOX_FLEET_KEY": ""})
+    end = time.time() + 10
+    while time.time() < end and not key3.exists():
+        time.sleep(0.1)
+    stderr3 = stop_serve(proc3)
+    assert key3.exists(), "空串 env 应视同未设并引导生成"
+    assert "fleet-key-bootstrap" in stderr3, "空串视同未设: 应打引导日志"
+    assert "fleet beacon udp" in stderr3, "空串视同未设: 生成后信标照发"
