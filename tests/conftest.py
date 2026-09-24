@@ -15,6 +15,7 @@ import select
 import socket
 import subprocess
 import sys
+import tempfile
 import time
 import urllib.error
 import urllib.request
@@ -201,6 +202,19 @@ def pytest_collection_modifyitems(items):
 # ---------------------------------------------------------------------------
 
 _VOLUMES_BEFORE: set = set()
+
+
+def pytest_configure(config):
+    # ISSUE-13 评审修复 (总指挥裁决): serve 启动段会在 MAILBOX_FLEET_KEY 未设
+    # 且文件缺席时向真机 ~/.agents/mailbox/ 引导生成 fleet.key 并开真 UDP
+    # 信标. 测试进程统一把 env 钉到一条不存在路径 (显式无密钥 = 不生成),
+    # 裸跑全量 pytest 不触真机; 既有 dict(os.environ) 派生的所有 serve
+    # 子进程 (conftest.Serve 与 relay/admin/standalone 直接拉起) 全部继承.
+    # 外部显式设了真密钥路径则尊重不覆盖; 需真密钥的用例自行覆盖此 env.
+    os.environ.setdefault(
+        "MAILBOX_FLEET_KEY",
+        str(Path(tempfile.gettempdir())
+            / f"mailbox-test-absent-fleet-{os.getpid()}.key"))
 
 
 def pytest_sessionstart(session):
