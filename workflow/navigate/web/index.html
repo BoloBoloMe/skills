@@ -571,17 +571,23 @@ function galaxySprite(spec, size) {
   var hit = galaxySpriteCache.get(key);
   if (hit) return hit;
   var img = renderGalaxyCanvas(spec, size);
-  if (galaxySpriteCache.size > 48) {   // 尺寸换来换去也只需保留最近用过的
+  if (galaxySpriteCache.size > 96) {   // 放大时按更高分辨率重出图, 缓存多留几档
     galaxySpriteCache.delete(galaxySpriteCache.keys().next().value);
   }
   galaxySpriteCache.set(key, img);
   return img;
 }
 
+// 天幕放大系数: 视野越窄, 看到的天空越少, 深空天体就更大更少 (望远镜直觉)。
+// 烘成整屏底图的银河系不参与: 放大会把它的星点糊成色块, 它本来就是背景。
+function skyScale() {
+  return Math.max(1, Math.min(3, state.view.zoom));
+}
+
 // 天幕上的星系: 数量跟窗口面积走, 位置用抖动网格铺开, 避免随机聚成一堆
 function buildGalaxies(rnd) {
   var area = state.cw * state.ch;
-  var n = Math.max(12, Math.min(28, Math.round(12 + area / 260000)));
+  var n = Math.max(10, Math.min(24, Math.round(10 + area / 360000)));
   var cols = Math.max(1, Math.round(Math.sqrt(n * state.cw / Math.max(1, state.ch))));
   var rows = Math.ceil(n / cols);
   var cellW = state.cw / cols, cellH = state.ch / rows;
@@ -608,11 +614,13 @@ function buildGalaxies(rnd) {
     var gx = col0 + (0.14 + rnd() * 0.72) * cellW;
     var gy = row0 + (0.14 + rnd() * 0.72) * cellH;
     out.push({
-      // 画布按最终尺寸预渲染, 贴回时不再缩放 (缩放 blit 会退化成重采样)
+      // 画布按最终尺寸预渲染, 贴回时 1:1 不缩放 (缩放 blit 会退化成重采样)
       img: img,
+      spec: spec,
+      w: img.width,
       x: Math.min(Math.max(gx, pad), state.cw - pad),
       y: Math.min(Math.max(gy, pad), state.ch - pad),
-      a: (big ? 0.42 : 0.26) + rnd() * 0.26,
+      a: (big ? 0.28 : 0.16) + rnd() * 0.22,
       kind: spec.kind
     });
   }
@@ -1312,11 +1320,23 @@ function draw(t, dt) {
   var i, s;
   var px = state.view.panX, py = state.view.panY;
 
-  // 远景星系: 贴在天幕上不动 (不参与平移视差, 也不做时间漂移)
+  // 远景星系: 贴在天幕上不动, 但随缩放绕视口中心放大 —— 视野变窄, 画面里的星系自然变少
+  var sk = skyScale();
+  var ccx = state.cw / 2, ccy = state.ch / 2;
+  var galFade = sk <= 1.5 ? 1 : Math.max(0.45, 1 - (sk - 1.5) * 0.35);
   for (i = 0; i < state.galaxies.length; i++) {
     var gal = state.galaxies[i];
-    ctx.globalAlpha = gal.a;
-    ctx.drawImage(gal.img, snap(gal.x - gal.img.width / 2), snap(gal.y - gal.img.width / 2));
+    var gw = gal.w * sk;
+    var gx = ccx + (gal.x - ccx) * sk;
+    var gy = ccy + (gal.y - ccy) * sk;
+    if (gx + gw / 2 < -40 || gx - gw / 2 > state.cw + 40 || gy + gw / 2 < -40 || gy - gw / 2 > state.ch + 40) continue;
+    ctx.globalAlpha = gal.a * galFade;
+    if (sk === 1) ctx.drawImage(gal.img, snap(gx - gw / 2), snap(gy - gw / 2));
+    else {
+      // 放大时按档重出高分辨率贴图, 不然星点被拉成色块
+      var tier = Math.ceil(sk * 2) / 2;
+      ctx.drawImage(galaxySprite(gal.spec, Math.round(gal.w * tier)), gx - gw / 2, gy - gw / 2, gw, gw);
+    }
   }
   ctx.globalAlpha = 1;
 
