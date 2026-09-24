@@ -51,6 +51,40 @@ def test_config_files_0600(tmp_path):
         srv.stop()
 
 
+def test_extension_pure_connector():
+    """TC-043 (BR-007/D004): pi 扩展是纯连接器 — 信箱能力一律
+    spawn 子进程调 mailbox.py, 不含签名/协议/HTTP 重实现."""
+    ext = SCRIPT.parent.parent / "pi-extension" / "index.ts"
+    assert ext.is_file(), f"扩展入口应存在: {ext}"
+    src = ext.read_text(encoding="utf-8")
+    # 连接器证据: 经子进程调脚本 (而非重实现)
+    assert "mailbox.py" in src, "扩展应引用 mailbox.py 脚本"
+    assert "spawn" in src.lower(), "扩展应经 spawn 子进程执行脚本"
+    # 禁止协议重实现: 签名/哈希/直接调信箱 HTTP 端点/自带 HTTP 客户端
+    for banned in ("hmac", "sha256", "createhash", "/mailbox/poll",
+                   "/mailbox/post", "/mailbox/ack", "/mailbox/queued",
+                   "http://", "https://", "fetch(", "urllib",
+                   "xmlhttprequest"):
+        assert banned not in src.lower(), f"扩展不应含协议实现痕迹: {banned}"
+
+
+def test_shutdown_keeps_listen_mark():
+    """评审修复 (AC-003): session_shutdown 只杀子进程 (haltDaemon),
+    不清 listen.json 与 cli-state — 正常退出 pi 后重启仍自动恢复守护;
+    唯一清标记点 = /mail-listen stop (stopDaemon)."""
+    ext = SCRIPT.parent.parent / "pi-extension" / "index.ts"
+    src = ext.read_text(encoding="utf-8")
+    start = src.index('pi.on("session_shutdown"')
+    end = src.index("pi.registerCommand", start)
+    block = src[start:end]
+    assert "haltDaemon" in block, "shutdown 应只杀子进程 (haltDaemon)"
+    for banned in ("clearListenMark", "unlinkSync", "stopDaemon"):
+        assert banned not in block, f"shutdown 不得清持久标记: {banned}"
+    # 清标记调用全文件仅一处, 且挂在 stopDaemon (/mail-listen stop 路径)
+    assert src.count("clearListenMark();") == 1, "清标记应只有 stop 一个入口"
+    assert "clearListenMark();" in src.split("function stopDaemon")[1]
+
+
 def test_session_id_no_network_address(tmp_path, monkeypatch):
     """TC-005 (BR-003, D010): auto_credential 生成的设备 session id =
     <hostname>-host, 不含任何 IP 形态字符串 (身份与网络地址解耦)."""

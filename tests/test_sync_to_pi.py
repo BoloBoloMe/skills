@@ -1,6 +1,7 @@
 import contextlib
 import importlib.util
 import io
+import json
 import tempfile
 import unittest
 from pathlib import Path
@@ -123,6 +124,44 @@ class RetireOldExtensionsTests(unittest.TestCase):
             extensions = pi_dir / "extensions"
             self.assertFalse((extensions / "swt-mailbox-relay.ts").exists())
             self.assertFalse((extensions / "swt-mailbox-fetch.mjs").exists())
+
+
+class MergeExtensionsTests(unittest.TestCase):
+    """ISSUE-07 TS-002 (TC-042/D005): settings.json extensions 数组合并."""
+
+    def test_merge_extensions_idempotent(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            settings = root / "agent" / "settings.json"
+            ext_dir = root / "skills" / "mailbox" / "pi-extension"
+            ext_dir.mkdir(parents=True)
+
+            # 首次: settings.json 不存在 → 创建, extensions 只含扩展路径
+            added = sync_to_pi._merge_extensions(ext_dir, settings)
+            self.assertEqual(1, added)
+            data = json.loads(settings.read_text(encoding="utf-8"))
+            self.assertEqual([str(ext_dir)], data["extensions"])
+
+            # 已有其它扩展与无关键: 追加不覆盖, 写前 .bak 保留原内容
+            original = {"theme": "dark", "extensions": ["/other/ext"]}
+            settings.write_text(
+                json.dumps(original, ensure_ascii=False, indent=2) + "\n",
+                encoding="utf-8")
+            added = sync_to_pi._merge_extensions(ext_dir, settings)
+            self.assertEqual(1, added)
+            data = json.loads(settings.read_text(encoding="utf-8"))
+            self.assertEqual(["/other/ext", str(ext_dir)], data["extensions"])
+            self.assertEqual("dark", data["theme"], "无关键应保留")
+            backup = settings.with_name(settings.name + ".bak")
+            self.assertTrue(backup.exists(), "写前应备份 .bak")
+            self.assertEqual(original,
+                             json.loads(backup.read_text(encoding="utf-8")))
+
+            # 幂等: 重复运行不重复追加
+            added = sync_to_pi._merge_extensions(ext_dir, settings)
+            self.assertEqual(0, added)
+            data = json.loads(settings.read_text(encoding="utf-8"))
+            self.assertEqual(["/other/ext", str(ext_dir)], data["extensions"])
 
 
 if __name__ == "__main__":
