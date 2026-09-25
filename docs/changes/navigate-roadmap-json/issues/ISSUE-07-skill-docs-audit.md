@@ -1,7 +1,7 @@
 ## 父级
 - `../EXECUTION.md`
 ## 执行
-- [ ] 已实现
+- [x] 已实现
 ## 要构建什么
 skill 文档改造与审计收口:
 1. `workflow/navigate/SKILL.md`: 制图与航行的全部读写动作改述为守门脚本调用 (load/query/save/delete), 加明文禁令 — llm 不得用 read/write/edit 直接触碰 ROADMAP.json (D002); 制图 step 4/5 按 D013 重排: 经脚本写 ROADMAP.json → start 展示服务交付 URL → 用户浏览器确认 → 有异议经脚本修订 → 确认后 git commit (确认动作从落盘前挪到 commit 前, present 退出, ROADMAP.html 取消); 调用模式判断依据改为 ROADMAP.json 存在与否; 注明旧格式 (ROADMAP.md/MILESTONE-NN.md) 出现时由 llm 读旧文件经脚本重建, 不提供迁移命令 (D014); 航行步骤同步改述 (加载索引经 query, 认领改 status, 收口记 artifacts, 关闭写 close_summary, 探明海域改 unknown_seas/milestones).
@@ -42,10 +42,10 @@ skill 文档改造与审计收口:
 ## 适合 AFK 的原因
 改述规则, 流程顺序, 禁令措辞均有决策原文可依; 唯一自由度是行文, 验收由用户走查.
 ## 验收标准
-- [ ] SKILL.md: 读写全部经脚本, 含 D002 明文禁令; 制图流程符合 D013; 判断依据为 ROADMAP.json; 含 D014 重建约定
-- [ ] TEMPLATES.md 为 JSON schema 说明, 无 markdown 文件模板
-- [ ] BR-006: TC-102 静态检查测试在且绿
-- [ ] grep 与走查通过
+- [x] SKILL.md: 读写全部经脚本, 含 D002 明文禁令; 制图流程符合 D013; 判断依据为 ROADMAP.json; 含 D014 重建约定
+- [x] TEMPLATES.md 为 JSON schema 说明, 无 markdown 文件模板
+- [x] BR-006: TC-102 静态检查测试在且绿
+- [x] grep 与走查通过
 ## 被阻塞于
 - `ISSUE-01-gatekeeper-read-write.md`
 - `ISSUE-02-gatekeeper-validation.md`
