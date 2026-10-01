@@ -228,14 +228,22 @@ def load_runtime_tolerant(path: Path) -> dict[str, Any] | None:
     return data if isinstance(data, dict) else None
 
 
-def repo_runtime_files(records_root: Path, repo: Path) -> list[Path]:
-    """本主仓的全部 runtime 文件 (并行母体 = 一对一份; 含旧 scheme 仓级 identity)."""
+def runtime_json_files(records_root: Path) -> list[Path]:
+    """records-root/runtime 下全部 json 文件 (存在性检查 + 排序枚举).
+
+    按仓过滤 (repo_runtime_files) 与跨仓扫描 (scan_all_runtime_records) 共用
+    的文件枚举 helper (评审 standards-1)."""
     directory = records_root / "runtime"
     if not directory.is_dir():
         return []
+    return sorted(directory.glob("*.json"))
+
+
+def repo_runtime_files(records_root: Path, repo: Path) -> list[Path]:
+    """本主仓的全部 runtime 文件 (并行母体 = 一对一份; 含旧 scheme 仓级 identity)."""
     repo_str = str(repo.resolve())
     found: list[Path] = []
-    for path in sorted(directory.glob("*.json")):
+    for path in runtime_json_files(records_root):
         data = load_runtime_tolerant(path)
         if data is not None and data.get("repo") == repo_str:
             found.append(path)
@@ -4358,51 +4366,47 @@ def display_check(args: argparse.Namespace, repo: Path | None) -> int:
     return result.returncode
 
 
-def all_runtime_files(records_root: Path) -> list[Path]:
-    """跨仓变体 (list 专用): records-root/runtime 下全部 runtime 文件, 不按 repo 过滤.
-
-    与 repo_runtime_files 同族但无 repo 参数 (list 跨仓枚举, D006):
-    容器 label 不携带 records-root 信息, 扫描只读单一记录根."""
-    directory = records_root / "runtime"
-    if not directory.is_dir():
-        return []
-    return sorted(directory.glob("*.json"))
-
-
-def scan_all_runtime_records(records_root: Path) -> tuple[list[dict[str, Any]], list[str]]:
-    """跨仓读入全部 runtime (list 用): 返回 (可解析列表, 不可解析文件原文列表).
+def scan_all_runtime_records(records_root: Path) -> tuple[list[dict[str, Any]], list[tuple[Path, str]]]:
+    """跨仓读入全部 runtime (list 用): 返回 (可解析列表, 不可解析文件 (路径, 原文) 列表).
 
     损坏文件不抛错 (D006): record-state 需区分 corrupt (文件在但不可解析)
-    与 missing (无文件); 不可解析文件的原文仅供按容器名归属 corrupt 判断."""
+    与 missing (无文件); 原文仅供按容器名归属 corrupt 判断 (引号 JSON 串匹配,
+    评审 C — 裸子串会把 swt-a 误配给提到 swt-a-old 的文件)."""
     runtimes: list[dict[str, Any]] = []
-    corrupt_texts: list[str] = []
-    for path in all_runtime_files(records_root):
+    corrupt_files: list[tuple[Path, str]] = []
+    directory = records_root / "runtime"
+    if directory.is_dir() and not os.access(directory, os.R_OK | os.X_OK):
+        # 评审 D: pathlib.glob 会吞 PermissionError (不可读被静默当空清单),
+        # 不可读必须显式报 ENV (0/4 契约, 不落全局 FAIL=2)
+        raise SwtEnvError(f"records-root 的 runtime 目录不可读: {directory}")
+    for path in runtime_json_files(records_root):
         data = load_runtime_tolerant(path)
         if data is not None:
             runtimes.append(data)
             continue
         try:
-            corrupt_texts.append(path.read_text(encoding="utf-8", errors="replace"))
+            corrupt_files.append((path, path.read_text(encoding="utf-8", errors="replace")))
         except OSError:
-            corrupt_texts.append("")
-    return runtimes, corrupt_texts
+            corrupt_files.append((path, ""))
+    return runtimes, corrupt_files
 
 
-def inspect_containers_bulk(names: list[str]) -> dict[str, dict[str, Any]]:
+def inspect_containers_bulk(names: list[str]) -> tuple[dict[str, dict[str, Any]], str]:
     """批量 inspect 一次调用 (子进程预算: N 容器 ≤ 2+N 次, 与 ps 聚合同理).
 
-    部分失败 (个别容器在枚举后消失) 不拖垮全表: stdout 中已得的 detail
-    按名索引, 缺席者不出现在结果 (调用方记 collection-errors, D005)."""
+    以 stdout 返回数组为准做逐容器归属 (评审 A): 找得到的 detail 按名索引,
+    请求枚举中未出现的名字不出现在结果 (调用方记 collection-errors 并附
+    本调用的 stderr 摘要, D005)."""
     if not names:
-        return {}
+        return {}, ""
     result = run(["podman", "inspect", *names])
     stdout = result.stdout.strip()
     if not stdout:
-        return {}
+        return {}, result.stderr
     try:
         value = json.loads(stdout)
     except json.JSONDecodeError:
-        return {}
+        return {}, result.stderr
     details: dict[str, dict[str, Any]] = {}
     for item in value if isinstance(value, list) else [value]:
         if not isinstance(item, dict):
@@ -4410,7 +4414,7 @@ def inspect_containers_bulk(names: list[str]) -> dict[str, dict[str, Any]]:
         name = str(item.get("Name") or "").lstrip("/")
         if name:
             details[name] = item
-    return details
+    return details, result.stderr
 
 
 def list_sandbox(args: argparse.Namespace) -> int:
@@ -4429,10 +4433,16 @@ def list_sandbox(args: argparse.Namespace) -> int:
         "--filter", "label=sandbox-worktree.repo",
         "--format", "json",
     ])
-    runtimes, corrupt_texts = scan_all_runtime_records(records_root)
-    row_names = [podman_row_name(row) for row in rows]
-    details_by_name = inspect_containers_bulk([name for name in row_names if name])
+    try:
+        # 评审 D: 扫描/枚举期的 OSError 就地转 ENV (0/4 契约), 不落全局 FAIL=2
+        runtimes, corrupt_files = scan_all_runtime_records(records_root)
+        row_names = [podman_row_name(row) for row in rows]
+        details_by_name, inspect_stderr = inspect_containers_bulk(
+            [name for name in row_names if name])
+    except OSError as exc:
+        raise SwtEnvError(f"扫描或枚举失败: {exc}") from exc
     containers: list[dict[str, Any]] = []
+    attributed_corrupt_files: set[Path] = set()
     for row in sorted(rows, key=podman_row_name):
         name = podman_row_name(row)
         if not name:
@@ -4440,16 +4450,20 @@ def list_sandbox(args: argparse.Namespace) -> int:
         collection_errors: list[str] = []
         detail = details_by_name.get(name, row)
         if name not in details_by_name:
-            # D005 错误模式: 枚举后消失 (inspect 拿不到) 只记条目错误, 不拖垮全表
-            collection_errors.append("inspect 未返回该容器 (可能已消失)")
+            # D005 错误模式 + 评审 A: 枚举后消失只记条目错误不拖垮全表,
+            # 归属附批量 inspect 的 stderr 摘要 (截尾防爆行)
+            summary = inspect_stderr.strip()[-300:]
+            suffix = f": {summary}" if summary else ""
+            collection_errors.append(f"inspect 未返回该容器 (可能已消失){suffix}")
         state = detail.get("State") if isinstance(detail.get("State"), dict) else {}
         podman_state = state.get("Status") or row.get("State") or row.get("Status")
         port_result = run(["podman", "port", name])
         mapped_ports: dict[str, int] = {}
         if port_result.returncode == 0:
             mapped_ports = parse_podman_ports(port_result.stdout)
-        elif podman_state == "running":
-            # 非 running 容器无端口映射是常态 (pasta 已释放); running 下失败才是采集异常
+        else:
+            # 评审 B: port 非零退出无论 running 与否都记采集错误 (真实命令/权限/
+            # 异常不再被 "非 running 无映射" 吞掉); 退出 0 且输出为空 = 无映射
             collection_errors.append(f"podman port 失败: {port_result.stderr.strip()}")
         labels = row.get("Labels") if isinstance(row.get("Labels"), dict) else {}
         repo_label = labels.get("sandbox-worktree.repo")
@@ -4468,12 +4482,18 @@ def list_sandbox(args: argparse.Namespace) -> int:
             record_state = "matched"
             lifecycle = "retired" if record.get("retired") else "active"
             branch = record.get("branch") or record.get("mother") or mother_branch
-        elif any(name in text for text in corrupt_texts):
-            record_state = "corrupt"
-            lifecycle = "unknown"
-            branch = mother_branch
         else:
-            record_state = "missing"
+            # 评审 C: 按引号包裹的 JSON 字符串匹配 ("名字"), 防前缀误配;
+            # 命中即把损坏文件归属给该容器, 无任何容器可归属的文件进 warnings
+            corrupt_hit = next(
+                ((file_path, text) for file_path, text in corrupt_files if f'"{name}"' in text),
+                None,
+            )
+            if corrupt_hit is not None:
+                record_state = "corrupt"
+                attributed_corrupt_files.add(corrupt_hit[0])
+            else:
+                record_state = "missing"
             lifecycle = "unknown"
             branch = mother_branch
         entry = {
@@ -4508,7 +4528,11 @@ def list_sandbox(args: argparse.Namespace) -> int:
             "completeness": "podman-all,records-root-one",
         },
         "containers": containers,
-        "warnings": [],
+        "warnings": [
+            f"runtime 记录不可解析且无法归属任何容器: {file_path.name}"
+            for file_path, _text in corrupt_files
+            if file_path not in attributed_corrupt_files
+        ],
     }
     print("LIST " + json.dumps(payload, ensure_ascii=False, separators=(",", ":")))
     return 0

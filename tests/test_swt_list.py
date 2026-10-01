@@ -78,9 +78,9 @@ class FakePodman:
                 command, 1 if missing else 0, json.dumps(found) if found else "", stderr)
         if parts[:2] == ["podman", "port"]:
             name = parts[2]
-            mapping = self.ports.get(name, "")
-            if mapping:
-                return subprocess.CompletedProcess(command, 0, mapping, "")
+            if name in self.ports:
+                # 在 ports 表 = 查询成功 (值可为空串 = 无映射); 缺席 = 非零退出失败
+                return subprocess.CompletedProcess(command, 0, self.ports[name], "")
             return subprocess.CompletedProcess(command, 1, "", "no port mappings")
         if parts[0] == "nft":
             return subprocess.CompletedProcess(command, 0, "", "")
@@ -99,6 +99,19 @@ class ListCase(unittest.TestCase):
         self.root = Path(mkdtemp(prefix="swt-list-"))
         self.addCleanup(rmtree, self.root, True)
         self.records = self.root / "records"
+        # 测试自含 (评审 G): 快层全 fake, 不依赖环境 PATH 里有 podman —
+        # require_command("podman") 由本进程内的 which 假值放行; 缺失行为专项
+        # (TC-005 末段) 用自己的 which 补丁覆盖此层, 断言的正是缺失行为本身
+        real_which = which
+
+        def fake_which(name, path=None):
+            if name == "podman":
+                return "/nonexistent-test-bin/podman"
+            return real_which(name)
+
+        which_patcher = mock.patch("shutil.which", side_effect=fake_which)
+        which_patcher.start()
+        self.addCleanup(which_patcher.stop)
 
     def run_list(self, fake):
         stdout, stderr = io.StringIO(), io.StringIO()
@@ -207,18 +220,28 @@ class TestListRecordState(ListCase):
         (self.records / "runtime" / "beta-broken.json").write_text(
             '{"schema": 2, "repo": "/repos/beta", "containers": '
             '[{"name": "swt-broken-c", "branch": "feat-c"', encoding="utf-8")
+        # 引号 JSON 串匹配防误配 (评审 C): 本文件提到 swt-prefix-p-old,
+        # 不得把 swt-prefix-p 归属为 corrupt; 且它不属任何在场容器 → warnings
+        (self.records / "runtime" / "gamma-prefix.json").write_text(
+            '{"schema": 2, "repo": "/repos/beta", "containers": '
+            '[{"name": "swt-prefix-p-old", ', encoding="utf-8")
+        # 无法归属任何容器的损坏文件 → 顶层 warnings (评审 C)
+        (self.records / "runtime" / "orphan-corrupt.json").write_text(
+            '{"schema": 2, "containers": [{"name": "swt-nobody', encoding="utf-8")
         fake = FakePodman(
             ps_rows=[
                 ps_row("swt-match-a", "/repos/alpha", "mother-label-a", state="running"),
                 ps_row("swt-retired-d", "/repos/alpha", "old-d", state="exited"),
                 ps_row("swt-miss-b", "/repos/beta", "mother-label-b", state="exited"),
                 ps_row("swt-broken-c", "/repos/beta", "mother-label-c", state="running"),
+                ps_row("swt-prefix-p", "/repos/beta", "mother-label-p", state="exited"),
             ],
             inspect_details={
                 "swt-match-a": inspect_detail("swt-match-a", "running", podman_id=match_id),
                 "swt-retired-d": inspect_detail("swt-retired-d", "exited", podman_id=retired_id),
                 "swt-miss-b": inspect_detail("swt-miss-b", "exited"),
                 "swt-broken-c": inspect_detail("swt-broken-c", "running"),
+                "swt-prefix-p": inspect_detail("swt-prefix-p", "exited"),
             },
         )
         code, out, err = self.run_list(fake)
@@ -234,6 +257,14 @@ class TestListRecordState(ListCase):
         self.assertEqual(by_name["swt-miss-b"]["lifecycle"], "unknown")
         self.assertEqual(by_name["swt-broken-c"]["record-state"], "corrupt")
         self.assertEqual(by_name["swt-broken-c"]["lifecycle"], "unknown")
+        # 裸子串会误配 (swt-prefix-p 是 swt-prefix-p-old 的前缀): 必须按引号内
+        # JSON 字符串匹配, 未命中 = missing
+        self.assertEqual(by_name["swt-prefix-p"]["record-state"], "missing")
+        # 无法归属任何容器的损坏文件 → 顶层 warnings 提及文件名
+        payload = self.parse_list(out)
+        warnings = payload["warnings"]
+        self.assertTrue(any("orphan-corrupt.json" in warning for warning in warnings), warnings)
+        self.assertTrue(any("gamma-prefix.json" in warning for warning in warnings), warnings)
 
 
 class TestListSubprocessBudget(ListCase):
@@ -276,10 +307,21 @@ class TestListReadonlyAndErrors(ListCase):
             ps_rows=[
                 ps_row("swt-keep-a", "/repos/alpha", "feat-a", state="running"),
                 ps_row("swt-gone-y", "/repos/alpha", "gone-y", state="running"),
+                ps_row("swt-idle-z", "/repos/alpha", "idle-z", state="exited"),
+                ps_row("swt-quiet-w", "/repos/alpha", "quiet-w", state="running"),
             ],
             # swt-gone-y 不在 inspect 结果中: 枚举后消失 → 单容器采集失败
-            inspect_details={"swt-keep-a": inspect_detail("swt-keep-a", "running")},
-            ports={"swt-keep-a": "22/tcp -> 0.0.0.0:49300\n"},
+            inspect_details={
+                "swt-keep-a": inspect_detail("swt-keep-a", "running"),
+                "swt-idle-z": inspect_detail("swt-idle-z", "exited"),
+                "swt-quiet-w": inspect_detail("swt-quiet-w", "running"),
+            },
+            ports={
+                "swt-keep-a": "22/tcp -> 0.0.0.0:49300\n",
+                # 退出 0 且输出为空 = 无映射, 不算错误 (swt-quiet-w)
+                "swt-quiet-w": "",
+                # swt-idle-z 缺席: port 非零退出, 非 running 也要记采集错误
+            },
         )
         code, out, err = self.run_list(fake)
         # 只读 (AC-007b): runtime 记录文件内容执行前后不变, 无任何 nft 调用
@@ -288,8 +330,15 @@ class TestListReadonlyAndErrors(ListCase):
         # 单容器采集失败 (AC-007c): 该条目含 collection-errors 且整体 exit 0
         self.assertEqual(code, 0, err)
         by_name = {entry["name"]: entry for entry in self.parse_list(out)["containers"]}
-        self.assertTrue(by_name["swt-gone-y"]["collection-errors"])
+        gone_errors = by_name["swt-gone-y"]["collection-errors"]
+        self.assertTrue(gone_errors)
+        # 归属需附 stderr 摘要 (评审 A): 批量 inspect 的缺名错误要可追溯
+        self.assertTrue(any("no such container" in error for error in gone_errors), gone_errors)
         self.assertEqual(by_name["swt-keep-a"]["collection-errors"], [])
+        # port 错误归属 (评审 B): 非零退出无论 running 与否都记错; 空输出不算错
+        idle_errors = by_name["swt-idle-z"]["collection-errors"]
+        self.assertTrue(any("podman port" in error for error in idle_errors), idle_errors)
+        self.assertEqual(by_name["swt-quiet-w"]["collection-errors"], [])
         # podman 缺失 (AC-007d): exit 4 且 stderr 首行为 ENV 标签行
         real_which = which
 
@@ -303,6 +352,13 @@ class TestListReadonlyAndErrors(ListCase):
         self.assertEqual(env_code, 4)
         first_line = stderr.getvalue().splitlines()[0]
         self.assertTrue(first_line.startswith("ENV"), stderr.getvalue())
+        # OSError 出口 (评审 D): records-root 扫描不可读 → ENV + exit 4, 不出现 2
+        runtime_dir = self.records / "runtime"
+        runtime_dir.chmod(0o000)
+        self.addCleanup(runtime_dir.chmod, 0o755)
+        blocked_code, _blocked_out, blocked_err = self.run_list(fake)
+        self.assertEqual(blocked_code, 4)
+        self.assertTrue(blocked_err.splitlines()[0].startswith("ENV"), blocked_err)
 
 
 if __name__ == "__main__":
