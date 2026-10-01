@@ -233,7 +233,7 @@ body {
 </div>
 
 <div id="toast" class="toast hidden" role="status" aria-live="polite"></div>
-<div id="hint">滚轮/双指缩放 · 拖拽平移 · 双击复位 · 方向键平移 · 点击恒星查看详情 · 系统省动画时可加 &amp;motion=1 强制闪烁</div>
+<div id="hint">滚轮/双指缩放 · 拖拽平移 · 双击复位 · 方向键平移 · 点击恒星查看详情</div>
 
 <script>
 (() => {
@@ -256,15 +256,7 @@ var TYPE_META = {
 var STATUS_COLORS = { '待处理': '#8a97b8', '进行中': '#d4b36a', '已关闭': '#79b896' };
 var CLOSED_COLOR = '#6b768c';
 var DEST_COLOR = '#f2e3b8';
-var REDUCED_MQ = window.matchMedia ? window.matchMedia('(prefers-reduced-motion: reduce)') : null;
-// URL 参数 motion=0/1 显式覆盖系统省动画设置; 缺省 (无参数) 行为不变, 跟随系统
-var MOTION_OVERRIDE = (function () {
-  var v = new URLSearchParams(location.search).get('motion');
-  return v === '0' ? false : (v === '1' ? true : null);
-})();
-function resolveMotion() {
-  return MOTION_OVERRIDE !== null ? MOTION_OVERRIDE : !(REDUCED_MQ && REDUCED_MQ.matches);
-}
+// 闪烁/动效恒开 (固定行为): 不跟随系统省动画设置, 也不需要 URL 参数
 
 // 画布设备像素预算: 高分屏 + 大窗口下按比例降采样, 拿少量锐度换帧率 (画面全是软光晕, 差别很小)
 var MAX_CANVAS_PX = 7.0e6;
@@ -289,8 +281,6 @@ var state = {
   vignette: null,
   planetTier: 96,
   clock: 0,
-  dirty: true,
-  motion: resolveMotion(),
   pollTimer: null,
   polling: false,
   cw: 0, ch: 0, dpr: 1
@@ -570,7 +560,6 @@ function refit() {
   v.k = Math.max(0.15, k);
   v.ox = (state.cw - lay.contentW * v.k) / 2;
   v.oy = (state.ch - lay.contentH * v.k) / 2;
-  state.dirty = true;
 }
 
 function toScreen(wx, wy) {
@@ -684,7 +673,6 @@ function onData(raw, doc) {
   document.title = (doc.title || '路线图') + ' · navigate';
   state.layout = computeLayout(doc);
   if (!state.view.userMoved) refit();
-  state.dirty = true;
   resetPlanetCache();
   reconcileShips();
   reconcileSelection();
@@ -892,7 +880,6 @@ function hideOverlay() {
 
 function selectStar(sel) {
   state.selected = sel;
-  state.dirty = true;
   renderPanel();
   $('panel').classList.remove('hidden');
 }
@@ -903,7 +890,6 @@ function hidePanel() {
 
 function closePanel() {
   state.selected = null;
-  state.dirty = true;
   hidePanel();
 }
 
@@ -1536,8 +1522,7 @@ function drawStar(node, t, dt) {
   // 选中的星球平滑放大: 点选后画布上有回馈, 不只靠右侧面板
   var selected = !!state.selected && state.selected.kind === 'milestone' && state.selected.id === node.id;
   var sel = node.sel || 0;
-  if (state.motion) sel += ((selected ? 1 : 0) - sel) * Math.min(1, (dt || 0) * 9);
-  else sel = selected ? 1 : 0;
+  sel += ((selected ? 1 : 0) - sel) * Math.min(1, (dt || 0) * 9);
   node.sel = sel;
   // 深度呼吸: 每颗星相位不同, 半径微缩放, 像悬浮在不同深度
   var r = starRadius() * (1 + 0.03 * Math.sin(t * 0.7 + dph)) * (1 + 0.28 * sel);
@@ -1953,14 +1938,12 @@ function zoomAt(ax, ay, factor) {
   v.panY = ay - wy * nz;
   v.zoom = nz;
   v.userMoved = true;
-  state.dirty = true;
 }
 
 function panBy(dx, dy) {
   state.view.panX += dx;
   state.view.panY += dy;
   state.view.userMoved = true;
-  state.dirty = true;
 }
 
 function resetView() {
@@ -2051,11 +2034,9 @@ function frame(ms) {
   var t = ms / 1000;
   var dt = Math.min(0.05, Math.max(0.001, t - (lastT || t - 0.016)));
   lastT = t;
-  if (state.motion) state.clock += dt;
-  // 禁用动效时只重画变更后的那一帧, 其余时间空转 (rAF 本身几乎不耗资源)
-  if (state.mode === 'ok' && state.layout && (state.motion || state.dirty)) {
-    state.dirty = false;
-    draw(state.clock, state.motion ? dt : 0);
+  state.clock += dt;
+  if (state.mode === 'ok' && state.layout) {
+    draw(state.clock, dt);
   }
   requestAnimationFrame(frame);
 }
@@ -2096,12 +2077,6 @@ function init() {
   window.addEventListener('resize', onResize);
   $('panelClose').addEventListener('click', closePanel);
   window.addEventListener('keydown', onKeyDown);
-  if (REDUCED_MQ && REDUCED_MQ.addEventListener) {
-    REDUCED_MQ.addEventListener('change', function (ev) {
-      state.motion = resolveMotion();
-      state.dirty = true;
-    });
-  }
   // 后台标签页不轮询; 回到前台立即补一次, 不必等下一个周期
   document.addEventListener('visibilitychange', function () {
     clearTimeout(state.pollTimer);

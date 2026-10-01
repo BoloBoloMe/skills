@@ -163,7 +163,7 @@ def run(port: int, fixtures: dict) -> None:
     with sync_playwright() as p:
         browser = p.chromium.launch(args=["--force-device-scale-factor=1"])
 
-        # ---- 常规视图: 帧率 / 交互 / reduced-motion ----
+        # ---- 常规视图: 帧率 / 交互 / 动效恒开 ----
         page = browser.new_page(viewport=VIEW)
         errors: list[str] = []
         page.on("pageerror", lambda e: errors.append(str(e)[:150]))
@@ -181,15 +181,21 @@ def run(port: int, fixtures: dict) -> None:
         report("交互 (点选/关闭)", bool(opened and closed), "点星球开面板 %s, Esc 关闭 %s" % (opened, closed))
 
         # 天幕不随视角: 采样点避开地图内容 (星球/连线/未知海域的雾都在中上部)
+        # 动效固定恒开: 即使系统省动画, 画面也应继续闪 (不再跟随 prefers-reduced-motion)
         page.emulate_media(reduced_motion="reduce")
         page.wait_for_timeout(400)
-        frozen_a = page.evaluate(HASH_JS)
+        anim_a = page.evaluate(HASH_JS)
         page.wait_for_timeout(900)
-        frozen_b = page.evaluate(HASH_JS)
-        report("reduced-motion 冻结", frozen_a == frozen_b, "两次采样一致" if frozen_a == frozen_b else "画面仍在变")
+        anim_b = page.evaluate(HASH_JS)
+        report("省动画下仍闪烁 (固定)", anim_a != anim_b,
+               "两次采样不同 (动效恒开)" if anim_a != anim_b else "画面被冻结")
 
         sky_pts = [(1300, 700), (150, 300)]
         before = [page.evaluate(PATCH_JS, list(pt)) for pt in sky_pts]
+        # 动效恒开后, 单纯闪烁也会让像素微变: 先测无平移时的噪声底, 平移后再比
+        page.wait_for_timeout(300)
+        noise = max(page.evaluate(DIFF_JS, [b, page.evaluate(PATCH_JS, list(pt))])
+                    for b, pt in zip(before, sky_pts))
         page.mouse.move(700, 450)
         page.mouse.down()
         page.mouse.move(280, 300, steps=8)
@@ -197,7 +203,10 @@ def run(port: int, fixtures: dict) -> None:
         page.wait_for_timeout(300)
         deltas = [page.evaluate(DIFF_JS, [b, page.evaluate(PATCH_JS, list(pt))])
                   for b, pt in zip(before, sky_pts)]
-        report("天幕不随视角移动", max(deltas) == 0, "平移后纯天空区域像素差 %s (期望全 0)" % deltas)
+        # 星空钉在屏幕上: 平移后差异应仍在闪烁噪声量级, 不应出现整片位移的大差异
+        limit = max(0.25, noise * 4 + 0.05)
+        report("天幕不随视角移动", max(deltas) <= limit,
+               "平移后差值 %s vs 闪烁噪声底 %.3f (阀值 %.3f)" % (deltas, noise, limit))
 
         # 星球光照: 同型一行 (与终点同方位, 光照一致) -> 右半 (朝终点) 应比左半亮
         page.emulate_media(reduced_motion="no-preference")
