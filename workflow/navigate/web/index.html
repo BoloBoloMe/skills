@@ -233,7 +233,7 @@ body {
 </div>
 
 <div id="toast" class="toast hidden" role="status" aria-live="polite"></div>
-<div id="hint">滚轮/双指缩放 · 拖拽平移 · 双击复位 · 方向键平移 · 点击恒星查看详情</div>
+<div id="hint">滚轮/双指缩放 · 拖拽平移 · 双击复位 · 方向键平移 · 点击恒星查看详情 · 系统省动画时可加 &amp;motion=1 强制闪烁</div>
 
 <script>
 (() => {
@@ -257,6 +257,14 @@ var STATUS_COLORS = { '待处理': '#8a97b8', '进行中': '#d4b36a', '已关闭
 var CLOSED_COLOR = '#6b768c';
 var DEST_COLOR = '#f2e3b8';
 var REDUCED_MQ = window.matchMedia ? window.matchMedia('(prefers-reduced-motion: reduce)') : null;
+// URL 参数 motion=0/1 显式覆盖系统省动画设置; 缺省 (无参数) 行为不变, 跟随系统
+var MOTION_OVERRIDE = (function () {
+  var v = new URLSearchParams(location.search).get('motion');
+  return v === '0' ? false : (v === '1' ? true : null);
+})();
+function resolveMotion() {
+  return MOTION_OVERRIDE !== null ? MOTION_OVERRIDE : !(REDUCED_MQ && REDUCED_MQ.matches);
+}
 
 // 画布设备像素预算: 高分屏 + 大窗口下按比例降采样, 拿少量锐度换帧率 (画面全是软光晕, 差别很小)
 var MAX_CANVAS_PX = 7.0e6;
@@ -282,7 +290,7 @@ var state = {
   planetTier: 96,
   clock: 0,
   dirty: true,
-  motion: !(REDUCED_MQ && REDUCED_MQ.matches),
+  motion: resolveMotion(),
   pollTimer: null,
   polling: false,
   cw: 0, ch: 0, dpr: 1
@@ -2088,7 +2096,7 @@ function init() {
   window.addEventListener('keydown', onKeyDown);
   if (REDUCED_MQ && REDUCED_MQ.addEventListener) {
     REDUCED_MQ.addEventListener('change', function (ev) {
-      state.motion = !ev.matches;
+      state.motion = resolveMotion();
       state.dirty = true;
     });
   }
