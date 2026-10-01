@@ -2,6 +2,7 @@ import contextlib
 import importlib.util
 import io
 import json
+import shutil
 import tempfile
 import unittest
 from pathlib import Path
@@ -162,6 +163,66 @@ class MergeExtensionsTests(unittest.TestCase):
             self.assertEqual(0, added)
             data = json.loads(settings.read_text(encoding="utf-8"))
             self.assertEqual(["/other/ext", str(ext_dir)], data["extensions"])
+
+
+class ExtensionRegistrationReconcileTests(unittest.TestCase):
+    """ISSUE-05 TS-051 (TC-051/AC-008/BR-008): 扩展登记对账.
+
+    扫描 skills 树的 */pi-extension, 对 settings.json extensions 做集合对账;
+    管理标记 sidecar <pi_dir>/extensions.synced.json.
+    """
+
+    def test_extension_registration_reconcile(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            skills_dir = root / "skills"
+            pi_dir = root / "agent"
+            settings = pi_dir / "settings.json"
+            sidecar = pi_dir / "extensions.synced.json"
+            ext_a = skills_dir / "alpha" / "pi-extension"
+            ext_b = skills_dir / "beta" / "pi-extension"
+            ext_a.mkdir(parents=True)
+            ext_b.mkdir(parents=True)
+
+            def load(path):
+                return json.loads(path.read_text(encoding="utf-8"))
+
+            def reconcile():
+                with contextlib.redirect_stdout(io.StringIO()):
+                    sync_to_pi._reconcile_extensions(skills_dir, pi_dir)
+
+            # (a) 登记新增: skills 树含两个 pi-extension 目录 →
+            #     settings.extensions 含两路径且 sidecar 记录两路径
+            reconcile()
+            extensions = load(settings)["extensions"]
+            self.assertIn(str(ext_a), extensions)
+            self.assertIn(str(ext_b), extensions)
+            synced = load(sidecar)["extensions"]
+            self.assertIn(str(ext_a), synced)
+            self.assertIn(str(ext_b), synced)
+
+            # (b) 登记回收: sidecar 记录的路径对应目录已删 →
+            #     settings 与 sidecar 均移除该项
+            shutil.rmtree(ext_b)
+            reconcile()
+            extensions = load(settings)["extensions"]
+            self.assertIn(str(ext_a), extensions)
+            self.assertNotIn(str(ext_b), extensions)
+            synced = load(sidecar)["extensions"]
+            self.assertIn(str(ext_a), synced)
+            self.assertNotIn(str(ext_b), synced)
+
+            # (c) 手工项保留: settings 预置手工项 →
+            #     sync 后原样保留且不进 sidecar
+            data = load(settings)
+            data["extensions"].append("/my/manual/ext")
+            settings.write_text(
+                json.dumps(data, ensure_ascii=False, indent=2) + "\n",
+                encoding="utf-8")
+            reconcile()
+            extensions = load(settings)["extensions"]
+            self.assertEqual([str(ext_a), "/my/manual/ext"], extensions)
+            self.assertNotIn("/my/manual/ext", load(sidecar)["extensions"])
 
 
 if __name__ == "__main__":

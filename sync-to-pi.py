@@ -331,6 +331,77 @@ def _merge_extensions(ext_dir: Path, settings_path: Path) -> int:
     return 1
 
 
+def _backup_and_atomic_write(path: Path, text: str) -> None:
+    """备份已有文件为 .bak 后原子写入 (tmp + os.replace)."""
+    import os
+
+    if path.exists():
+        backup = path.with_name(path.name + ".bak")
+        shutil.copy2(path, backup)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_name(path.name + ".tmp")
+    try:
+        tmp.write_text(text, encoding="utf-8")
+        os.replace(tmp, path)
+    finally:
+        if tmp.exists():
+            tmp.unlink()
+
+
+def _reconcile_extensions(skills_dir: Path, pi_dir: Path) -> None:
+    """扫描 <skills_dir>/*/pi-extension, 对 settings.json extensions 做集合对账 (M3/D012).
+
+    新增当前扫描集路径; 移除 sidecar 在册且扫描集缺席的路径 (双条件);
+    既不在 sidecar 又不在扫描集的 settings 项 (用户手工项) 永不增删.
+    管理标记 sidecar: <pi_dir>/extensions.synced.json. 写前备份, 原子写.
+    settings.json 或 sidecar 不可解析时抛出, 由调用方告警跳过本步.
+    """
+    import json
+
+    scan_set = sorted(
+        str(p) for p in skills_dir.glob("*/pi-extension") if p.is_dir())
+    settings_path = pi_dir / "settings.json"
+    sidecar_path = pi_dir / "extensions.synced.json"
+
+    settings = (
+        json.loads(settings_path.read_text(encoding="utf-8"))
+        if settings_path.exists() else {})
+    sidecar = (
+        json.loads(sidecar_path.read_text(encoding="utf-8"))
+        if sidecar_path.exists() else {})
+    managed = sidecar.get("extensions")
+    if not isinstance(managed, list):
+        managed = []
+    extensions = settings.get("extensions")
+    if not isinstance(extensions, list):
+        extensions = []
+        settings["extensions"] = extensions
+
+    added = [p for p in scan_set if p not in extensions]
+    removed_set = {p for p in managed if p not in scan_set}
+
+    if added or removed_set:
+        new_extensions = [p for p in extensions if p not in removed_set]
+        new_extensions.extend(added)
+        settings["extensions"] = new_extensions
+        _backup_and_atomic_write(
+            settings_path,
+            json.dumps(settings, ensure_ascii=False, indent=2) + "\n")
+        print(OK(f"  \u2713 扩展登记对齐 → {settings_path}"))
+        for p in added:
+            print(OK(f"    + {p}"))
+        for p in sorted(removed_set):
+            print(SKIP(f"    - {p}"))
+    else:
+        print(SKIP(f"  - 扩展登记无变化 ({len(scan_set)} 个扩展)"))
+
+    # sidecar 始终反映当前扫描集 (管理标记); 空扫描集且无历史 sidecar 时不落盘
+    if (scan_set or sidecar_path.exists()) and sidecar.get("extensions") != scan_set:
+        _backup_and_atomic_write(
+            sidecar_path,
+            json.dumps({"extensions": scan_set}, ensure_ascii=False, indent=2) + "\n")
+
+
 def execute_plan(plan: list[PlanItem], clear_skills_dir: Path | None = None, merge_models: tuple[Path, Path] | None = None) -> None:
     print()
     print(Q("开始执行 ..."))
@@ -501,14 +572,13 @@ def main() -> None:
         (models_src, pi_dir / "models.json") if merge_models else None,
     )
 
-    # ── 6. 扩展装载登记 (D005): mailbox skill 的 pi-extension 同步到位后,
-    #        把部署路径合并进 settings.json extensions 数组 (幂等, 写前 .bak)
-    ext_dir = skills_dir / "mailbox" / "pi-extension"
-    if ext_dir.is_dir():
-        try:
-            _merge_extensions(ext_dir, pi_dir / "settings.json")
-        except Exception as e:
-            print(ERR(f"  \u2717 合并扩展路径失败: {e}"))
+    # ── 6. 扩展装载登记对账 (M3/D012): 扫描 skills 树的 */pi-extension,
+    #        对 settings.json extensions 做集合对账 (幂等, 写前备份, 原子写);
+    #        失败仅告警, 不中断其余同步结果
+    try:
+        _reconcile_extensions(skills_dir, pi_dir)
+    except Exception as e:
+        print(ERR(f"  \u2717 扩展登记对账失败: {e}"))
 
 
 if __name__ == "__main__":
