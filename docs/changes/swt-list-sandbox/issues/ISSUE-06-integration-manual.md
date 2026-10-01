@@ -4,7 +4,7 @@
 
 ## 执行
 
-- [ ] 已实现
+- [x] 已实现 (2026-10-01)
 
 ## 要构建什么
 
@@ -64,8 +64,19 @@
 
 ## 验收标准
 
-- [ ] `tests/run --fast` 全绿.
-- [ ] 人工清单 6 项逐项通过并留痕 (勾选记录或截图/日志摘录).
+- [x] `tests/run --fast` 全绿 (干净树无可跑项; 全 tests/ 快层 322 passed / 94 e2e deselected). 注: 验证中发现 `tests/run --all` 全量收集失败 (预存缺陷: `workflow/navigate/tests/conftest.py` 与 `tests/conftest.py` 同名互相遮蔽), 已于同日修复 (navigate 共享工具迁入 nav_helpers.py + testpaths 顺序调整); 另有 present 树 5 个 browser_session 用例在 host 上预存失败 (HEAD 基线同挂, 与本变更集无关).
+- [x] 人工清单 6 项逐项通过并留痕 (见下节).
+
+## 验证留痕 (2026-10-01)
+
+1. TUI 渲染: 用户亲测通过 (选择列表/访问入口滚动文本/退出后编辑器恢复).
+2. rpc 模式: `pi --mode rpc` 协议实捕 `extension_ui_request method:notify`, 文案 `共 1 个沙盒容器; 裸数据: uv run python .../swt.py list`.
+3. print 模式 (`pi -p`): stdout 无交互内容, stderr 恰一行 `交互展示需 TUI/RPC 模式; 裸数据: ...`.
+4. 容器内 (无 podman): 容器内 swt.py list exit 4, pi stderr `本环境无 podman, 仅 host pi 可用`, 退出码 0 不崩.
+5. 超时降级: PATH 注入挂起 fake `uv` (未改扩展代码), 120s 准点降级 `swt.py list 超时 (120s); 裸数据: ...`, 进程组无残留 (killGroup 生效).
+6. BR-007: 代码断言扩展全文无 sendUserMessage/sendMessage (仅 ctx.ui.select/custom/notify); 带会话持久化的 rpc 重放对比: /list-sandbox 执行后无任何含清单数据的会话条目 (纯扩展命令运行甚至不落会话文件); 渲染层内容本就只过 ctx.ui 通道.
+
+环境备注 (与扩展无关, 待单独排查): host pi 验证期间 provider ai-work-zai/glm-5.3 对一次性问候返回了疑似他人会话的任务文本并自发进入工具循环, 存在会话串扰迹象.
 
 ## 被阻塞于
 
