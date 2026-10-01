@@ -6,7 +6,7 @@
 
 import time
 
-from conftest import ENV_TTL, http_get, pid_alive, wait_pid_gone
+from nav_helpers import ENV_TTL, http_get, pid_alive, wait_pid_gone
 
 
 def test_idle_exit_after_shortened_threshold(server):

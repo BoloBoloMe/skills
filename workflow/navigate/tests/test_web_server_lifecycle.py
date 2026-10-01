@@ -3,7 +3,7 @@
 import json
 import socket
 
-from conftest import DEFAULT_PORT, http_get, pid_alive, wait_pid_gone
+from nav_helpers import DEFAULT_PORT, http_get, pid_alive, wait_pid_gone
 
 
 def test_start_status_stop_cycle(server):

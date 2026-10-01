@@ -3,7 +3,7 @@
 import json
 import urllib.parse
 
-from conftest import http_get
+from nav_helpers import http_get
 
 
 def _api_url(server, port, path):
