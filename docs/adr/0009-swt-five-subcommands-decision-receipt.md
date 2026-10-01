@@ -16,4 +16,6 @@ use-sandbox-worktree 的五个生命周期场景 (诞生/恢复/查询/终结/�
 
 2026-09-14 补充: [D054](../changes/use-sandbox-worktree/DECISIONS.md#d054-一母体一个活跃容器-2026-09-14-m04) 收窄新 birth 为一母体至多一个活跃容器. 上述身份区分和既有多容器清理/隔离保障保留, 不再以 D031 授权新建同母体第二个活跃容器; 现有容器不迁移, 实施归 M05.
 
+2026-10-01 补充: [swt-list-sandbox](../changes/swt-list-sandbox/DECISIONS.md) 增设只读跨仓清单子命令 `list` (枚举本 host 全部带 label 的容器, 供 pi 扩展 `/list-sandbox` 纯连接器消费): 末行 `LIST {...}` 单行 json + 退出码仅 0/4, 为 D027 协议的又一显式例外 (先例 display-check 与 enroll-device-key, 后者例外补记于 [D057](../changes/use-sandbox-worktree/DECISIONS.md)); 支持 `--records-root` (与生命周期子命令对齐); 容器状态用双轴 (podman 运行态透传 × swt 生命周期) + record-state 三态, 记录未匹配不称孤儿; 展示条目命名 "访问入口" (交付包的入口子集), 多网卡候选地址是对 swt-cross-host D010 的 list 语境修订. 同批补记: switch 子命令已删 (D056), 命令面现为 birth/resume/status/terminate + display-check + enroll-device-key.
+
 详见 [DECISIONS.md](../changes/use-sandbox-worktree/DECISIONS.md) D025-D038 与 [反方审查](../changes/use-sandbox-worktree/milestone-11-opposing-review.md).

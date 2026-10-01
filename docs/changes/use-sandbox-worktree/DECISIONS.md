@@ -56,7 +56,7 @@
 - 需要调整: 按 D005 旧模型写的 gate 独立 clone 初始化流程 (尚无实现)
 
 ### D008 无 hooks 写面收敛: 主仓 config 模板 + 每容器专属守护进程
-- 状态: 当前有效
+- 状态: 部分修订 (→ D058: 授权写面从主仓共享 config 单层下沉为 仓级 deny 三键 + 母体 config.worktree 两层, 守护进程改为每对一个且 base-path 服务母体目录; 无 hooks 写面收敛本体有效)
 - 约束性: 必须遵守
 - 替代: D004, D006
 - 内容: 不加任何 git 钩子, 写面收敛由主仓 config 承担 (F007 实测模板):
@@ -85,7 +85,7 @@
 - 预计影响: use-sandbox-worktree skill 诞生步骤 (克隆/分支检出); 容器镜像内 skill 文档 (冲突消化指引)
 
 ### D010 单活动母体不变量与母体复用语义
-- 状态: 当前有效 (同母体多活跃容器条款已由 D054 替代, 其余保留)
+- 状态: 部分修订 (→ D054: 同母体多活跃容器条款替代; → D058: 单主仓单活动母体与不支持同仓多活跃条款失效, 母体解耦/复用语义保留)
 - 约束性: 必须遵守
 - 内容: **不变量**: 同一主仓同一时刻至多一个活动母体 (有存活容器/守护进程的母体). 多容器共享同一母体: 允许 (D009 冲突消化). 母体存活/删除/复用与 sandbox-worktree 解耦, 用户自决 — 含已合流主分支的旧母体跨时复用, 含一个母体同时作多个容器的母体. 换活动母体 = host 侧原子操作: 停旧母体全部容器/守护进程 → 校验 ref 与工作区干净 → 改 hideRefs 例外分支 → 拉起新端点. **不支持**同仓两个不同母体同时活跃: 主仓 config 是全局策略, 守护进程无认证, 无法表达 "容器 A→母体 A, 容器 B→母体 B" 的授权映射 (F008 反方攻击成立项, 高置信); 未来真需要须重开 receiver 隔离 (独立 clone 或钩子), 已入未决迷雾.
 - 依赖事实: F007, F008
@@ -132,7 +132,7 @@
 - 预计影响: MILESTONE-07; skill 诞生步骤 (镜像查询/构建记录)
 
 ### D025 场景脚本总体形态: 单 module `swt` 五子命令
-- 状态: 部分修订 (→ D041: 新增诊断子命令 display-check, 不改资源状态; 五子命令生命周期本体有效)
+- 状态: 部分修订 (→ D041: 新增诊断子命令 display-check, 不改资源状态; → D055: 新增只读清单子命令 list; → D056: switch 子命令已删除; 生命周期本体有效)
 - 约束性: 必须遵守
 - 内容: host 侧生命周期编排收敛为**一个 module** (`workflow/use-sandbox-worktree/scripts/swt.py`), 对外五个子命令: `birth` (诞生: 建/复用母体 + config + daemon + nft + 容器就绪) / `resume` (恢复, 带 DECIDE gate, 见 D030) / `status` (只读盘点, 永不改状态) / `terminate` (按容器终结, D029) / `switch` (换活动母体, 独立危险入口, D028). 五场景共享同一套探测, D008 config 模板, runtime 状态文件与输出协议, 拆成五个独立脚本会把它们复制五份 (locality 崩坏), 故为单 module 五子命令. 形态经 Design It Twice 三分支比较拍板 ([design-min](milestone-11-design-min.md) 2 入口 / [design-flex](milestone-11-design-flex.md) 9 入口 / [design-caller](milestone-11-design-caller.md) 5 子命令), 取 caller 骨架. 与现有脚本的关系: image-prep.py / net-firewall.py 复用不吞并 (各自 interface 已被 M04/M07 测试钉住, 包一层是透传浅 module); login-wall.py 不统辖 (登录墙是存续期可选环节); e2e-smoke.py 下沉缓退役 (D036). 目标定位: 显式 `--repo` 优先, 缺省从 cwd 推导主仓 (`git rev-parse --git-common-dir`), **废弃 M03 的跨命令注册表索引契约** (M03 遗留缺口 (1) 就此消解: 多一份跨命令状态 = 多一类不一致). 命名消歧: 容器内已有 swt-vnc (M09), SKILL.md 首次出现处各写全称.
 - 依赖事实: F006, F007, F011
@@ -146,14 +146,14 @@
 - 预计影响: MILESTONE-12 (decision 协议实现); SKILL.md (确认话术节)
 
 ### D027 exit code 协议与输出契约
-- 状态: 当前有效
+- 状态: 部分修订 (→ D055: 新增 list 的 LIST 末行 + 仅 0/4 只读例外; → D057: enroll-device-key 无 STATE 例外的补记; 实际生效范围澄清为生命周期子命令, 协议本体有效)
 - 约束性: 必须遵守
 - 内容: 全子命令统一: **0** 成功 (含幂等 no-op); **1** DECIDE 待用户 (D026); **2** 前置不满足 — 严格限定为**尚未创建/改动任何资源**的预检失败, 状态未变, 调用方别重试同一命令; **3** 中途失败可重入 — 凡是动过状态之后的失败全归此类 (含端口被占: F006 实测 start 失败留下 exited 容器, 已动状态, 不属 exit 2 — 反方攻击成立项), 已完成阶段登记 runtime; 已定义的常规半状态重跑同一命令幂等收敛, 不可自动收敛的半状态由 PARTIAL 文案列出唯一人工恢复路径 (D037), 不空泛承诺 "重跑必收敛"; **4** 环境错误 (podman/git/nft 缺失或版本不支持, 含 D008 `!` 语法重验失败). 输出: stdout 进度行人话 + 末行 `STATE {...}` 单行 json (五子命令共用 schema, 带版本号, 只加字段不改名, 沿用 M09 login-wall up 先例); stderr 首行机器标签 (`FAIL`/`PARTIAL`/`ENV` + 人话), git/podman 原生报错原文透传不吞不译 (译解表归 SKILL.md, D006 降级精神, 防两处漂移).
 - 依赖事实: F006, F011
 - 预计影响: MILESTONE-12; SKILL.md (exit 表 + 译解表)
 
 ### D028 危险操作显式独立
-- 状态: 当前有效
+- 状态: 部分修订 (→ D056: switch 子命令已删除, 本条 switch 入口部分失效; terminate --force 独立 flag 部分仍有效)
 - 约束性: 必须遵守
 - 内容: 换母体 = 独立 `switch` 子命令 (D010 原子序: 停旧全部容器/daemon → 校验 ref 与工作区干净 → 改 hideRefs 例外 → 拉起新端点); 强拆 = `terminate --force` 独立 flag, 先审计登记 (判决快照: 谁/何时/脏概要) 再删. 拒绝把换母体藏进 birth/up 的决策点 (design-min 分支形态): 停全部容器 + 改主仓全局 config 是危险复合操作, interface 应当在敲下命令那一刻就无可误会, 藏进通用入口算设计失败. 危险入口刻意不做 "聪明": 不自动迁移, 不自动确认.
 - 依赖事实: F011
@@ -167,7 +167,7 @@
 - 预计影响: MILESTONE-12; SKILL.md (停手确认话术)
 
 ### D030 resume 带 DECIDE gate, D011 确认义务落代码
-- 状态: 当前有效
+- 状态: 部分修订 (→ D058: 末段 "校验母体分支仍是当前全局授权分支" 条款失效 — multi-mother 后无全局单一授权分支, 现行按对自愈 (旧形态配置迁移/对级 daemon/容器 remote 改指); DECIDE gate 与 fail-closed 序列本体有效)
 - 约束性: 必须遵守
 - 内容: `resume` 有 CLI 级 DECIDE gate: 检测到可恢复对象 (停着的容器/stale daemon/缺规则) 时 exit 1, 决策收据绑定容器 Podman ID + 当前授权母体分支; 用户确认后带 flag 重跑, 按 D011 fail-closed 序列执行, 时序以 M04 实测为准 (F-M04-02: netns 在首个容器 start 前不存在, 落地 = 收 stale daemon → start 容器 → **start 后立即注入 nft 并校验 daemon, 校验通过前不开放 agent 工作负载**; D011 的排序精神 "规则未就绪工作负载不跑" 由此保全, 字面 "先注入后 start" 已被 F-M04-02 修订). 推翻 design-caller 的 "resume 无 gate, 确认由 skill 层承担" — 反方攻击成立: 那正好把 D011 的确认义务退回给 llm 自觉, 是脚本化方向要消灭的漏项; resume 会杀进程, 重建网络规则, 重启工作负载, 绝非无副作用. resume 同时校验 runtime 记录的母体分支仍是当前全局授权分支, 否则拒绝 (防 switch 后旧容器在新授权域下被拉起, 配合 D033).
 - 依赖事实: F008, F011
@@ -188,7 +188,7 @@
 - 预计影响: MILESTONE-12 (net-firewall.py 接口扩展 + swt 编排)
 
 ### D033 switch 后旧容器标记 retired
-- 状态: 当前有效
+- 状态: 部分修订 (→ D056: switch 已删, 新流程不再产生 retired; 存量 retired 容器的 查询可见/resume 拒绝/terminate 唯一出路 语义保留, 处置存量残留用)
 - 约束性: 必须遵守
 - 内容: switch 停旧母体全部容器但**不删** (D010 不变), 停下的旧容器在 runtime 标记 **retired**: status 可见 (标 retired), `resume` 拒绝 retired 容器 (防旧容器在新全局授权域下被拉起, 看到/操作错误分支), 唯一出路是 `terminate` (走 D029 正常脏检查). 用户想把旧分支捡回来 → 对旧母体重新 switch 回去或 birth (经 D026 决策协议).
 - 依赖事实: F011
@@ -221,7 +221,7 @@
 - 预计影响: MILESTONE-12 (PARTIAL 文案质量); 迷雾回访入口
 
 ### D038 脚本与 skill 文档的职责边界
-- 状态: 当前有效
+- 状态: 部分修订 (→ D058: 职责清单中 "D008 config 模板" 已演进为仓级+对级两层配置写入, "D010 单活动母体检查" 已随 multi-mother 删除; 职责边界的判据本体有效)
 - 约束性: 必须遵守
 - 内容: **进脚本** (可执行断言防错): 状态探测, D008 config 模板写入/读回/快照回滚, D011 fail-closed 顺序, D010 单活动母体检查, D012 脏检查阻塞, D013 digest 比对提示, 决策收据协议, 审计登记, 并发锁. **留文档** (需人/agent 判断): 原生报错译解表 (D006 降级), 黑/白模式语义与域名盘点方法论, 多容器冲突消化指引 (D009, 容器内流程), 母体存删自决指引, D019 风险明示, D021 委派配方. 判据: 可执行断言防错的进代码, 需要判断的留文档, 同一知识不两处维护 (反方审查第 3 点). M03 checklist 决策点成熟度: 母体复用/黑白模式/脏放行/镜像换版成熟为 DECIDE+flag; 端口冲突不设决策点 (F006, exit 3 透传); base 更新判断留会话问答 (D020, 低频); 运行期新站点需求留迷雾.
 - 预计影响: MILESTONE-12; MILESTONE-10 SKILL.md 结构
@@ -508,9 +508,45 @@
 - 预计影响: MILESTONE-14 实现; swt.py create; present skill 容器分支; SKILL.md 存续节展示链段
 
 ### D054 一母体一个活跃容器 (2026-09-14, M04)
-- 状态: 当前有效
+- 状态: 部分修订 (→ D058: 保留条款中 "单主仓单活动母体" 解除, 同仓可多对并存; "一母体一活跃容器" 本体有效)
 - 约束性: 必须遵守
 - 内容: 用户在跨机网页访问盘问中明确一容器对应一母体, 一母体只有一个活跃容器; 一台 host 上可有多个母体, 各自独立. 本条替代 D009/D010/D031 中允许新 birth 增加同母体第二个活跃容器的部分, 其余分支累积/母体复用/单主仓单活动母体/两层身份及命名语义保留. 后续新建检查和说明须遵守此约束; 现有容器明确不处理, 不追溯迁移/合并/删除. 完整网页交付决策见 [M04 D003/D009](../swt-cross-host-access/milestone-04/DECISIONS.md).
 - 预计影响: M05 的 birth 检查, use-sandbox-worktree skill 数量约束, 领域语言.
 - 实际影响: 本轮只更新设计文档, 尚未修改代码或处置容器.
 - 需要调整: `workflow/use-sandbox-worktree/SKILL.md` 多容器共推段和新建数量规则, `scripts/swt.py` 新 birth 检查, 相应测试; 移交 [M05](../swt-cross-host-access/roadmap/MILESTONE-05.md). 原 D029/D032/D033/D036 等处理旧多容器清理/隔离的保障保留, 不借本条删改. 旧路线 issue/设计文档中的并存例子是历史实现依据, 后续使用须受本条限制; 现行 skill 与代码尚待 M05 同步, 本轮不与并行 M03 的 skill 编辑混写.
+
+### D055 增设只读跨仓清单子命令 list (2026-10-01, swt-list-sandbox)
+- 状态: 当前有效
+- 约束性: 必须遵守
+- 内容: 新增子命令 `list`: 只读跨仓枚举本 host 全部带 `sandbox-worktree.repo` label 的容器 (podman 键存在匹配, 不限仓), 供 pi 扩展 `/list-sandbox` 纯连接器消费 (扩展只选择与展示, 业务全在本脚本). 输出: stdout 进度行人话 + 末行 `LIST {...}` 单行 json (带 schema 版本, 只加不改; 顶层含 scope/containers[]/warnings[]); 退出码仅 0 成功 / 4 环境, 无 DECIDE 无 PARTIAL, 单容器采集失败只进条目 collection-errors 不拖垮整体. 对本账本的两处修订: D025 子命令清单再增一员 (只读, 不改资源状态, 与 display-check 同性质); D027 新增 LIST 末行 + 0/4 例外, 先例为 display-check 与 enroll-device-key (后者例外补记于 D057). 容器状态用双轴 (podman 运行态原样透传 × swt 生命周期) + record-state 三态; 记录未匹配标 "本记录根无记录", 不称孤儿; 支持 `--records-root` (与生命周期子命令对齐). 完整决策集 (访问入口条目范围/多网卡候选地址/无记录容器指引/UI 与模式降级/sync 登记对账) 见 [swt-list-sandbox 账本](../swt-list-sandbox/DECISIONS.md).
+- 依赖事实: 见 swt-list-sandbox 账本 F001-F011
+- 预计影响: `workflow/use-sandbox-worktree/scripts/swt.py` (list 子命令); 新文件 `workflow/use-sandbox-worktree/pi-extension/index.ts`; sync-to-pi.py; SKILL.md 入口节 (执行阶段补)
+- 实际影响:
+- 需要调整:
+
+### D056 switch 子命令已删除 (补记, 2026-10-01)
+- 状态: 当前有效
+- 约束性: 必须遵守
+- 内容: D028 设计的换母体子命令 `switch` 已从 swt.py 删除 (现行命令面无 switch), SKILL.md 早已声明 "旧 switch 已删 — 开新对直接 birth, 不再换母体". 删除发生于何时/由哪条决策驱动, 账本无记录 (发现的记录缺口, 本条补记而非重建决策). 语义后果: 换母体用例由 "birth 开新对 + terminate 旧对" 组合替代; 同仓多对并存的现行语义来自 swt-multi-mother 改造 (2026-09-15 实施, 补记于 D058), 非 D054; switch 当年承担的原子序 (停旧容器/校验/改 hideRefs/拉新端点) 不再作为单一入口存在; 新流程不再产生 retired 容器 (D033 仅存处置语义). 对 D025 修订见其状态行; 对 D028/D033 的修订见各自状态行.
+- 依赖事实: swt.py parse_args 现行子命令清单; SKILL.md 终结节
+- 预计影响: 无代码改动 (补记既成事实)
+- 实际影响: swt.py 命令面与 SKILL.md 自某版起已是此形态
+- 需要调整: D010/D054 多母体约束与领域语言的同步修订归 D058 同批完成
+
+### D057 enroll-device-key 的 D027 协议例外 (补记, 2026-10-01)
+- 状态: 当前有效
+- 约束性: 必须遵守
+- 内容: 辅助子命令 `enroll-device-key` (swt-cross-host-access M08 ISSUE-06/N4 所增: 设备侧公钥并入容器 authorized_keys, 设备→容器免密) 成功时直接返回并打印确认, 不输出 STATE 末行, 不持锁不改 runtime 状态, 操作类错误走既有错误通道 — 实际上一直是 D027 "全子命令 STATE 末行" 的例外, 但当时未在 D027 谱系记账 (发现的记录缺口, 本条补记). 同时澄清 D027 的实际生效范围: 生命周期子命令 (birth/resume/status/terminate); 例外谱系现为 display-check (D041) / enroll-device-key (本条) / list (D055). 另: 该子命令无 --records-root 参数, 引用 "全部脚本支持覆盖" 时注意此例外.
+- 依赖事实: swt.py parse_args 与 cmd_enroll_device_key; swt-cross-host-access milestone-08 EXECUTION.md ISSUE-06
+- 预计影响: 无代码改动 (补记既成事实)
+- 实际影响: swt.py 自 M08 起即此形态
+- 需要调整: 无
+
+### D058 同仓多对并存 (multi-mother 改造补记, 2026-10-01)
+- 状态: 当前有效
+- 约束性: 必须遵守
+- 内容: 开放写单位从 "同一主仓同一时刻至多一个活动母体" 修正为 "每个母体工作树各自独立配容器, 多对并存 (含同一主仓多对)": 手段 = 分支白名单 (hideRefs) 从主仓共享 config 下沉到各母体 `config.worktree` + 每对一个 git daemon 实例 (对级 hideRefs 随母体 config.worktree 生效). 方案见 [swt-multi-mother 提案](../swt-multi-mother/2026-09-13-proposal.md) (2026-09-13 沉淀, 2026-09-15 实施完成), SKILL.md 术语节与 birth/多对并存节即此形态; 改造时未回写本账本, 本条补记. 对旧决策的修订: D010 的 "同一主仓同一时刻至多一个活动母体" 与 "不支持同仓两个不同母体同时活跃" 条款失效 — 其论证前提 (主仓 config 全局策略/单 daemon 无法表达授权映射) 已被 config.worktree 下沉 + 对级 daemon 消解; D008 的授权写面条款同步失效 (主仓共享 config 单层 → 仓级 deny 三键 + 母体 config.worktree 两层, 每容器一 daemon 且服务主仓 → 每对一 daemon 且服务母体目录); D030 末段 "resume 校验母体分支仍是当前全局授权分支" 失效 (无全局单一授权分支, 改按对自愈); D038 职责清单中的 "D008 config 模板" 与 "D010 单活动母体检查" 条目失效; D010 的母体解耦/跨时复用语义与 D054 的 "一母体一活跃容器" 保留有效; D054 保留条款中的 "单主仓单活动母体" 同步失效. switch 子命令因此失去存在理由, 见 D056.
+- 依赖事实: swt-multi-mother/2026-09-13-proposal.md (含附录 C 实施记录); SKILL.md 现行术语节与多对并存节; swt.py 现行无 assert_single_active_mother 拒绝路径
+- 预计影响: 无代码改动 (补记既成事实)
+- 实际影响: swt.py/SKILL.md 自 2026-09-15 起即此形态
+- 需要调整: 无 (D008/D010/D030/D038/D054 状态同步与领域语言 母体/retired 词条修订已同批完成)

@@ -27,7 +27,7 @@ disable-model-invocation: true
 
 - rootless podman (pasta 网络), nftables, git (须支持配置里 "隐藏所有分支, 只放行一个" 的 `hideRefs` 写法与 `extensions.worktreeConfig` 扩展; birth 每次会建一次性小仓库实测确认, 不支持则 exit 4).
 - `uv run python` 运行全部脚本; 脚本路径相对本 skill 目录引用.
-- 记录根缺省 `~/.agents/sandbox-worktree/` (运行状态/决策收据/审计/镜像构建记录同屋), 全部脚本支持 `--records-root` 覆盖.
+- 记录根缺省 `~/.agents/sandbox-worktree/` (运行状态/决策收据/审计/镜像构建记录同屋), 生命周期与诊断子命令支持 `--records-root` 覆盖 (`enroll-device-key` 除外).
 - host skill 库 `~/.agents/skills/` 全树全局可读 (容器 bolo 经 rootless uid 映射只靠 other 位读它); 带依赖的 skill 项目须携带已部署的 uv.lock.
 
 ## 入口: status 先行
