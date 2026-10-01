@@ -4517,8 +4517,9 @@ def list_sandbox(args: argparse.Namespace) -> int:
     不改 runtime 记录, 不动 nftables, 不持生命周期锁.
     生命周期/记录轴 (lifecycle/record-state) 由 runtime 记录合并得出 (D006),
     记录扫描缺失时 lifecycle=unknown / record-state=missing.
-    running+matched 容器另附 lans[] 网卡组与 access-entries[] 访问入口行
-    (D007/D008, 非-running/无记录分支归 ISSUE-03)."""
+    running 容器另附 lans[] 网卡组与 access-entries[] 访问入口行 (D007/D008):
+    matched 与 missing/corrupt 走同一条组装路径, 后者记录派生字段缺席自动降级
+    为逐项 reason 行 (D011); 非 running 只给状态行与恢复/清理提示 (BR-003)."""
     require_command("podman")
     records_root = args.records_root.expanduser().resolve()
     print(f"[SWT] list: 枚举本 host 沙盒容器 (records-root: {records_root})")
@@ -4594,9 +4595,11 @@ def list_sandbox(args: argparse.Namespace) -> int:
             branch = mother_branch
         record_label = {"matched": "记录匹配", "missing": "本记录根无记录", "corrupt": "记录不可解析"}[record_state]
         lifecycle_label = {"active": "在用", "retired": "仅可终结", "unknown": "未知"}[lifecycle]
-        # running+matched 入口组装来自 ISSUE-02; 其余分支只呈现状态和恢复/清理提示.
+        # 入口组装来自 ISSUE-02; 状态行多分支共用一份构造 (standards 评审收口).
         lans: list[dict[str, Any]] = []
         access_entries: list[str] = []
+        status_entry = (
+            f"状态: podman={podman_state}, 生命周期={lifecycle_label}, 记录={record_label}")
         if podman_state == "running" and record_state == "matched":
             # 网卡枚举是 host 级事实, 首个需要时查一次, 后续条目复用
             if lan_groups is None:
@@ -4608,17 +4611,33 @@ def list_sandbox(args: argparse.Namespace) -> int:
                 record.get("ssh_private_key"), lan_groups, lan_skipped_confirmed,
             )
         elif record_state != "matched":
-            # 记录缺失/损坏 (D011/AC-005): 照列不隐藏, 缺项打显式 reason 行,
-            # 指引只有手工 podman rm, 不出现 terminate 字样 (terminate 不受理
-            # 无记录容器); 标注用记录轴标签 (D006: 只写 本记录根无记录)
-            access_entries.append(
-                f"状态: podman={podman_state}, 生命周期={lifecycle_label}, 记录={record_label}")
-            access_entries.append(f"入口缺项 reason: {record_label}, 记录派生入口缺席")
+            # 记录缺失/损坏 (D011/AC-005): 照列不隐藏, 指引只有手工 podman rm,
+            # 不出现 terminate 字样 (terminate 不受理无记录容器); 标注用记录轴
+            # 标签 (D006: 只写 本记录根无记录)
+            access_entries.append(status_entry)
+            if podman_state == "running":
+                # spec-P1 修复 (D011): 容器在跑时, 能从 podman 现查事实组装的入口
+                # 照发 — 复用 running+matched 同一条组装路径 (端口/网卡都是现查
+                # 或 host 级事实, 与记录无关); record 为空 dict, 记录派生字段全
+                # None, 由 list_access_entries 逐项打显式 reason 行 (BR-004),
+                # 笼统 记录派生入口缺席 行不再重复
+                if lan_groups is None:
+                    lan_groups, lan_skipped_confirmed = list_lan_groups(records_root)
+                lans = [dict(group) for group in lan_groups]
+                access_entries.extend(list_access_entries(
+                    mapped_ports.get("22"), mapped_ports.get("6080"), mapped_ports.get("8800"),
+                    record.get("display"), host_display, record.get("headed-script"),
+                    record.get("ssh_private_key"), lan_groups, lan_skipped_confirmed,
+                ))
+            else:
+                # 非 running (BR-003): 无可达入口, 入口不组装, 记录派生入口缺席
+                # 由笼统 reason 行承担 (BR-004)
+                access_entries.append(
+                    f"入口缺项 reason: {record_label}, 记录派生入口缺席")
             access_entries.append(f"清理指引: 手工清理自行判断: podman rm {name}")
         elif podman_state != "running":
             # 非 running 不交付可达入口, 只给状态行与 resume 提示行.
-            access_entries.append(
-                f"状态: podman={podman_state}, 生命周期={lifecycle_label}, 记录={record_label}")
+            access_entries.append(status_entry)
             access_entries.append(f"恢复: uv run python scripts/swt.py resume --name {name}")
         entry = {
             "name": name,
@@ -4671,7 +4690,8 @@ def list_access_entries(
     lan_groups: list[dict[str, Any]],
     skipped_confirmed: str | None = None,
 ) -> list[str]:
-    """running+matched 容器的访问入口行组装 (D008 入口子集, AC-002/AC-003):
+    """running 容器的访问入口行组装 (matched 与 missing/corrupt 记录共用,
+    D008 入口子集, AC-002/AC-003): 记录派生字段缺席时自动降级为 reason 行.
     本机入口不受网卡影响; 局域网行逐组代换地址, 已确认组排最前标 已确认,
     候选组整块标 候选 (未确认可达) (D007/BR-005). 命令文本与
     print_delivery_lines 同源 (去掉 [SWT] 前缀, 加组标注); 缺项打显式
@@ -4742,8 +4762,17 @@ def list_access_entries(
         entries.append(HOST_DISPLAY_DEGRADED_TEXT)
     elif host_display == "absent":
         entries.append(HOST_DISPLAY_ABSENT_TEXT)
+    else:
+        # BR-004: host-display 状态未知 (记录缺字段/值未识别, 或记录缺失/损坏)
+        # 不静默省略直通状态
+        entries.append("本机直通状态未附发: runtime 记录缺 host-display 字段或值未识别"
+                       " (display-check 未跑过或记录缺失/损坏), 可跑 swt display-check 诊断")
     if isinstance(key_path_text, str) and key_path_text:
         entries.append(ssh_key_path_line(key_path_text))
+    else:
+        # BR-004: 私钥路径是记录派生字段, 缺席不静默 (密码入口不受影响)
+        entries.append("ssh 私钥路径未附发: runtime 记录无 ssh_private_key 字段"
+                       " (记录缺失/损坏或未落盘); ssh 密码入口不受影响")
     return entries
 
 

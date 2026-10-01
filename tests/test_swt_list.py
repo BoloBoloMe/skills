@@ -698,47 +698,130 @@ class TestListStoppedEntries(ListCase):
 
 
 class TestListUnmatchedEntries(ListCase):
-    """TS-032 / TC-032: record-state 分支 — missing/corrupt 标注 + reason 行 + podman rm 指引 (AC-005)."""
+    """TS-032 / TC-032: record-state 分支 — missing/corrupt 标注 + 可组装入口照发/
+    逐项 reason 行 + podman rm 指引 (AC-005, D011; spec-P1 合并后修复)."""
 
-    def test_unmatched_reason_and_podman_rm_guidance(self):
+    def test_unmatched_running_assembles_live_entries(self):
+        # spec-P1 修复 (D011): 记录缺失/损坏但容器在跑 — podman 现查事实能组装的
+        # 入口照发 (复用 running+matched 同一条组装路径), 记录派生缺项逐项 reason
         self.records.mkdir()
         (self.records / "runtime").mkdir()
         # swt-broken-q 的记录文件在但不可解析 (corrupt), 引号内名字供归属
         (self.records / "runtime" / "beta-broken.json").write_text(
             '{"schema": 2, "repo": "/repos/beta", "containers": '
             '[{"name": "swt-broken-q", "branch": "feat-q"', encoding="utf-8")
+        (self.records / "lan-address").write_text("192.168.1.10\n", encoding="utf-8")
         fake = FakePodman(
             ps_rows=[
-                # swt-orphan-x: label 在而本记录根无其 runtime 记录 (missing)
+                # swt-orphan-x: label 在而本记录根无其 runtime 记录 (missing), running
                 ps_row("swt-orphan-x", "/repos/beta", "orphan-x", state="running"),
-                ps_row("swt-broken-q", "/repos/beta", "broken-q", state="exited"),
+                ps_row("swt-broken-q", "/repos/beta", "broken-q", state="running"),
             ],
             inspect_details={
                 "swt-orphan-x": inspect_detail("swt-orphan-x", "running"),
-                "swt-broken-q": inspect_detail("swt-broken-q", "exited"),
+                "swt-broken-q": inspect_detail("swt-broken-q", "running"),
             },
-            ports={"swt-orphan-x": "", "swt-broken-q": ""},
+            ports={
+                "swt-orphan-x": port_output(49510, 49511, 49512),
+                "swt-broken-q": port_output(49520, 49521, 49522),
+            },
+            ip_output=ip_lines(("eth0", "192.168.2.20"), ("wlan0", "192.168.1.10")),
         )
         code, out, err = self.run_list(fake)
         self.assertEqual(code, 0, err)
         by_name = {entry["name"]: entry for entry in self.parse_list(out)["containers"]}
         orphan = by_name["swt-orphan-x"]
         self.assertEqual(orphan["record-state"], "missing")
-        orphan_text = "\n".join(orphan["access-entries"])
-        # 标注 (D006: 只写 本记录根无记录) + 缺项 reason 行 + podman rm 指引行
+        entries = orphan["access-entries"]
+        # 可组装入口在场 (端口/网卡都是 podman/host 现查事实, 与记录无关):
+        # ssh 双入口 (含公开密码约定), web 双 URL, herdr remote, lan 已确认/候选组
+        self.assertTrue(any("ssh -p 49510 bolo@127.0.0.1" in line
+                            and "密码 sandbox" in line for line in entries), entries)
+        self.assertTrue(any("ssh -p 49510 bolo@192.168.1.10" in line
+                            for line in entries), entries)
+        self.assertTrue(any("http://127.0.0.1:49512" in line for line in entries), entries)
+        self.assertTrue(any("http://192.168.1.10:49512" in line for line in entries), entries)
+        self.assertTrue(any("herdr --remote ssh://bolo@127.0.0.1:49510" in line
+                            for line in entries), entries)
+        self.assertTrue(any("192.168.1.10" in line and "已确认" in line
+                            for line in entries), entries)
+        self.assertTrue(any("192.168.2.20" in line and "候选 (未确认可达)" in line
+                            for line in entries), entries)
+        # lan 组是 host 级事实: 已确认组排最前, 候选组照列
+        self.assertEqual(orphan["lans"][0],
+                         {"addr": "192.168.1.10", "iface": "wlan0", "kind": "confirmed"})
+        # 记录派生缺项各有一条显式 reason (BR-004): 显示状态未知 (noVNC 不给
+        # 可达 URL)/私钥路径/直飞脚本/host-display — 全部不静默
+        self.assertTrue(any(line.startswith("noVNC") and "未附发" in line
+                            for line in entries), entries)
+        self.assertFalse(any("vnc.html" in line for line in entries), entries)
+        self.assertTrue(any("私钥" in line and "未附发" in line
+                            for line in entries), entries)
+        self.assertTrue(any("窗口直飞未附发" in line for line in entries), entries)
+        self.assertTrue(any("本机直通状态未附发" in line for line in entries), entries)
+        # 状态行 + podman rm 指引保留, 标注用记录轴标签 (D006)
+        orphan_text = "\n".join(entries)
         self.assertIn("本记录根无记录", orphan_text)
-        self.assertIn("reason", orphan_text)
         self.assertIn("podman rm swt-orphan-x", orphan_text)
-        # 全条目无 terminate 字样 (D011: 不扩 terminate 受理, 也不给 terminate 指引)
+        # 全条目无 terminate 字样 (D011)
         self.assertNotIn("terminate", json.dumps(orphan, ensure_ascii=False))
+        # corrupt + running 同一条组装路径, 标注换 记录不可解析
         broken = by_name["swt-broken-q"]
         self.assertEqual(broken["record-state"], "corrupt")
-        broken_text = "\n".join(broken["access-entries"])
-        # 记录损坏同纪律 (AC-005 edge)
+        broken_entries = broken["access-entries"]
+        self.assertTrue(any("ssh -p 49520 bolo@127.0.0.1" in line
+                            for line in broken_entries), broken_entries)
+        self.assertTrue(any("http://127.0.0.1:49522" in line
+                            for line in broken_entries), broken_entries)
+        broken_text = "\n".join(broken_entries)
         self.assertIn("记录不可解析", broken_text)
-        self.assertIn("reason", broken_text)
         self.assertIn("podman rm swt-broken-q", broken_text)
         self.assertNotIn("terminate", json.dumps(broken, ensure_ascii=False))
+
+    def test_unmatched_stopped_no_reachable_entries(self):
+        # BR-003: 非 running 的 missing/corrupt 行为与现状一致 — 无可达入口
+        # (端口在场也不催生), 状态行 + 笼统 reason 行 + podman rm 指引
+        self.records.mkdir()
+        (self.records / "runtime").mkdir()
+        (self.records / "runtime" / "beta-broken.json").write_text(
+            '{"schema": 2, "repo": "/repos/beta", "containers": '
+            '[{"name": "swt-broke-f", "branch": "feat-f"', encoding="utf-8")
+        fake = FakePodman(
+            ps_rows=[
+                ps_row("swt-miss-e", "/repos/beta", "miss-e", state="exited"),
+                ps_row("swt-broke-f", "/repos/beta", "broke-f", state="exited"),
+            ],
+            inspect_details={
+                "swt-miss-e": inspect_detail("swt-miss-e", "exited"),
+                "swt-broke-f": inspect_detail("swt-broke-f", "exited"),
+            },
+            # 端口映射在场也不得催生可达入口: 非 running 门禁按状态不按端口
+            ports={
+                "swt-miss-e": port_output(49610, 49611, 49612),
+                "swt-broke-f": port_output(49620, 49621, 49622),
+            },
+        )
+        code, out, err = self.run_list(fake)
+        self.assertEqual(code, 0, err)
+        by_name = {entry["name"]: entry for entry in self.parse_list(out)["containers"]}
+        self.assertEqual(by_name["swt-miss-e"]["record-state"], "missing")
+        self.assertEqual(by_name["swt-broke-f"]["record-state"], "corrupt")
+        for name, label in (("swt-miss-e", "本记录根无记录"),
+                            ("swt-broke-f", "记录不可解析")):
+            entry = by_name[name]
+            joined = "\n".join(entry["access-entries"])
+            # 状态行 + 笼统 reason 行 + podman rm 指引, 不给 resume (无记录可恢复)
+            self.assertIn("exited", joined)
+            self.assertIn(label, joined)
+            self.assertIn("reason", joined)
+            self.assertIn(f"podman rm {name}", joined)
+            self.assertNotIn("resume", joined)
+            # 无可达入口: 全入口类型缺席, 端口号也不得外漏
+            for forbidden in ("ssh", "http://", "https://", "vnc", "herdr", "直飞",
+                              "49610", "49611", "49612", "49620", "49621", "49622"):
+                self.assertNotIn(forbidden, joined,
+                                 f"非 running 条目出现可达入口字样 {forbidden!r}: {joined}")
+            self.assertNotIn("terminate", json.dumps(entry, ensure_ascii=False))
 
 
 if __name__ == "__main__":
