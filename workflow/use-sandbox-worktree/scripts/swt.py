@@ -4680,6 +4680,11 @@ def list_access_entries(
         entries.append(DISPLAY_STACK_DEGRADED_TEXT)
     elif display == "ok":
         entries.append(DISPLAY_STACK_OK_NO_VNC_TEXT)
+    else:
+        # BR-004 遗留补全: 显示状态未知 (记录缺 display 字段或值未识别) 不静默
+        entries.append("noVNC 入口未附发: 容器显示状态未知"
+                       " (runtime 记录缺 display 字段或值未识别),"
+                       " 可跑 swt display-check 诊断")
     if web_port is not None:
         entries.append(f"web 入口 (本机): {web_local_url(web_port)}")
     else:

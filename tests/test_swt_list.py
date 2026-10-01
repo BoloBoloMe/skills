@@ -436,6 +436,31 @@ class TestListEntryReasons(ListCase):
         self.assertTrue(any("本机直通" in line for line in entries), entries)
 
 
+    def test_unknown_display_state_reason_line(self):
+        # BR-004 遗留补全: display 状态未知 (记录缺字段/值未识别) 不静默省略 noVNC
+        self.records.mkdir()
+        write_runtime_file(self.records, [
+            runtime_record("swt-undisp-a", podman_id="id-swt-undisp-a".ljust(64, "0"),
+                           display=None, headed_script=None),
+        ])
+        fake = running_fake("swt-undisp-a", "id-swt-undisp-a".ljust(64, "0"),
+                            port_output(49410, 49411, 49412),
+                            ip_lines(("wlan0", "192.168.1.10")))
+        code, out, err = self.run_list(fake)
+        self.assertEqual(code, 0, err)
+        entries = self.parse_list(out)["containers"][0]["access-entries"]
+        # noVNC 缺项 reason 在场 (状态未知不给可达入口); 行首锚定避免误中
+        # 窗口直飞 reason 里的 “终端与 noVNC 不受影响” 字样
+        self.assertTrue(any(line.startswith("noVNC") and "未附发" in line
+                            for line in entries), entries)
+        self.assertFalse(any("vnc.html" in line for line in entries), entries)
+        # 其他入口行为不变: ssh/web 照发
+        self.assertTrue(any("ssh -p 49410 bolo@127.0.0.1" in line
+                            for line in entries), entries)
+        self.assertTrue(any("http://127.0.0.1:49412" in line
+                            for line in entries), entries)
+
+
 class TestListEmpty(ListCase):
     """TS-002 / TC-002: 空清单分支 (exit 0 + 空清单 + 人话提示)."""
 
