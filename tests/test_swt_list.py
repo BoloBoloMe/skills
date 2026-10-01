@@ -361,5 +361,108 @@ class TestListReadonlyAndErrors(ListCase):
         self.assertTrue(blocked_err.splitlines()[0].startswith("ENV"), blocked_err)
 
 
+class TestListStoppedEntries(ListCase):
+    """TS-031 / TC-031: 非 running 分支 — 无可达入口 + 状态/resume 提示行 + retired 标注 (AC-004)."""
+
+    def test_stopped_no_reachable_entries_with_resume_hint(self):
+        self.records.mkdir()
+        (self.records / "runtime").mkdir()
+        hotfix_id = "id-swt-hotfix-b".ljust(64, "0")
+        retired_id = "id-swt-legacy-c".ljust(64, "0")
+        (self.records / "runtime" / "alpha.json").write_text(json.dumps({
+            "schema": 2,
+            "repo": "/repos/alpha",
+            "containers": [
+                {"name": "swt-hotfix-b", "branch": "hotfix", "podman-id": hotfix_id,
+                 "retired": False},
+                {"name": "swt-legacy-c", "branch": "legacy", "podman-id": retired_id,
+                 "retired": True},
+            ],
+        }), encoding="utf-8")
+        fake = FakePodman(
+            ps_rows=[
+                ps_row("swt-hotfix-b", "/repos/alpha", "hotfix", state="exited"),
+                ps_row("swt-legacy-c", "/repos/alpha", "legacy", state="exited"),
+            ],
+            inspect_details={
+                "swt-hotfix-b": inspect_detail("swt-hotfix-b", "exited", podman_id=hotfix_id),
+                "swt-legacy-c": inspect_detail("swt-legacy-c", "exited", podman_id=retired_id),
+            },
+            ports={
+                # 端口映射在场也不得催生可达入口: 非 running 门禁按状态不按端口
+                "swt-hotfix-b": (
+                    "22/tcp -> 0.0.0.0:49210\n"
+                    "6080/tcp -> 0.0.0.0:49211\n"
+                    "8800/tcp -> 0.0.0.0:49212\n"
+                ),
+            },
+        )
+        code, out, err = self.run_list(fake)
+        self.assertEqual(code, 0, err)
+        by_name = {entry["name"]: entry for entry in self.parse_list(out)["containers"]}
+        hotfix = by_name["swt-hotfix-b"]
+        self.assertEqual(hotfix["record-state"], "matched")
+        entries = hotfix["access-entries"]
+        self.assertTrue(entries, "非 running 容器 access-entries 不应为空")
+        joined = "\n".join(entries)
+        # 状态行在场 (podman 状态字符串透传) + resume 提示行 (AC-004 命令形态)
+        self.assertIn("exited", joined)
+        self.assertIn("resume --name swt-hotfix-b", joined)
+        # 无可达入口: ssh / 三种 URL / herdr / 直飞 全类型缺席 (漏一类即假绿),
+        # 端口号也不得以任何 URL 形态外漏
+        for forbidden in ("ssh", "http://", "https://", "vnc", "herdr", "直飞",
+                          "49210", "49211", "49212"):
+            self.assertNotIn(forbidden, joined,
+                             f"非 running 条目出现可达入口字样 {forbidden!r}: {entries}")
+        # retired 标注 (AC-004): lifecycle=retired 条目附 仅可终结
+        legacy = by_name["swt-legacy-c"]
+        self.assertEqual(legacy["lifecycle"], "retired")
+        self.assertIn("仅可终结", "\n".join(legacy["access-entries"]))
+
+
+class TestListUnmatchedEntries(ListCase):
+    """TS-032 / TC-032: record-state 分支 — missing/corrupt 标注 + reason 行 + podman rm 指引 (AC-005)."""
+
+    def test_unmatched_reason_and_podman_rm_guidance(self):
+        self.records.mkdir()
+        (self.records / "runtime").mkdir()
+        # swt-broken-q 的记录文件在但不可解析 (corrupt), 引号内名字供归属
+        (self.records / "runtime" / "beta-broken.json").write_text(
+            '{"schema": 2, "repo": "/repos/beta", "containers": '
+            '[{"name": "swt-broken-q", "branch": "feat-q"', encoding="utf-8")
+        fake = FakePodman(
+            ps_rows=[
+                # swt-orphan-x: label 在而本记录根无其 runtime 记录 (missing)
+                ps_row("swt-orphan-x", "/repos/beta", "orphan-x", state="running"),
+                ps_row("swt-broken-q", "/repos/beta", "broken-q", state="exited"),
+            ],
+            inspect_details={
+                "swt-orphan-x": inspect_detail("swt-orphan-x", "running"),
+                "swt-broken-q": inspect_detail("swt-broken-q", "exited"),
+            },
+            ports={"swt-orphan-x": "", "swt-broken-q": ""},
+        )
+        code, out, err = self.run_list(fake)
+        self.assertEqual(code, 0, err)
+        by_name = {entry["name"]: entry for entry in self.parse_list(out)["containers"]}
+        orphan = by_name["swt-orphan-x"]
+        self.assertEqual(orphan["record-state"], "missing")
+        orphan_text = "\n".join(orphan["access-entries"])
+        # 标注 (D006: 只写 本记录根无记录) + 缺项 reason 行 + podman rm 指引行
+        self.assertIn("本记录根无记录", orphan_text)
+        self.assertIn("reason", orphan_text)
+        self.assertIn("podman rm swt-orphan-x", orphan_text)
+        # 全条目无 terminate 字样 (D011: 不扩 terminate 受理, 也不给 terminate 指引)
+        self.assertNotIn("terminate", json.dumps(orphan, ensure_ascii=False))
+        broken = by_name["swt-broken-q"]
+        self.assertEqual(broken["record-state"], "corrupt")
+        broken_text = "\n".join(broken["access-entries"])
+        # 记录损坏同纪律 (AC-005 edge)
+        self.assertIn("记录不可解析", broken_text)
+        self.assertIn("reason", broken_text)
+        self.assertIn("podman rm swt-broken-q", broken_text)
+        self.assertNotIn("terminate", json.dumps(broken, ensure_ascii=False))
+
+
 if __name__ == "__main__":
     unittest.main()

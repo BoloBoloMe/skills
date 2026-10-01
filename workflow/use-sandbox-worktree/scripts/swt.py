@@ -4496,6 +4496,25 @@ def list_sandbox(args: argparse.Namespace) -> int:
                 record_state = "missing"
             lifecycle = "unknown"
             branch = mother_branch
+        record_label = {"matched": "记录匹配", "missing": "本记录根无记录", "corrupt": "记录不可解析"}[record_state]
+        lifecycle_label = {"active": "在用", "retired": "仅可终结", "unknown": "未知"}[lifecycle]
+        # 条目呈现行 (swt-list-sandbox ISSUE-03): running+matched 的入口组装归
+        # ISSUE-02, 此处不触碰其行集。非 running 分支 (BR-003/D003):
+        # 不交付可达入口, 只给状态行与 resume 提示行; lifecycle=retired
+        # 经状态行的生命周期标注呈现 仅可终结
+        access_entries: list[str] = []
+        if record_state != "matched":
+            # 记录缺失/损坏 (D011/AC-005): 照列不隐藏, 缺项打显式 reason 行,
+            # 指引只有手工 podman rm, 不出现 terminate 字样 (terminate 不受理
+            # 无记录容器); 标注用记录轴标签 (D006: 只写 本记录根无记录)
+            access_entries.append(
+                f"状态: podman={podman_state}, 生命周期={lifecycle_label}, 记录={record_label}")
+            access_entries.append(f"入口缺项 reason: {record_label}, 记录派生入口缺席")
+            access_entries.append(f"清理指引: 手工清理自行判断: podman rm {name}")
+        elif podman_state != "running":
+            access_entries.append(
+                f"状态: podman={podman_state}, 生命周期={lifecycle_label}, 记录={record_label}")
+            access_entries.append(f"恢复: uv run python scripts/swt.py resume --name {name}")
         entry = {
             "name": name,
             "repo": repo_label if isinstance(repo_label, str) else None,
@@ -4510,12 +4529,10 @@ def list_sandbox(args: argparse.Namespace) -> int:
             },
             "host-display": host_display,
             "lans": [],
-            "access-entries": [],
+            "access-entries": access_entries,
             "collection-errors": collection_errors,
         }
         containers.append(entry)
-        record_label = {"matched": "记录匹配", "missing": "本记录根无记录", "corrupt": "记录不可解析"}[record_state]
-        lifecycle_label = {"active": "在用", "retired": "仅可终结", "unknown": "未知"}[lifecycle]
         print(f"[SWT] list: {name}: podman {podman_state}, {lifecycle_label}, {record_label}")
     if containers:
         print(f"[SWT] list: 共 {len(containers)} 个沙盒容器")
