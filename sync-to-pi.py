@@ -295,42 +295,6 @@ def _merge_models(src: Path, dst: Path) -> int:
     return len(file_providers)
 
 
-def _merge_extensions(ext_dir: Path, settings_path: Path) -> int:
-    """把扩展目录绝对路径合并到 dst settings.json 的 extensions 数组 (D005).
-
-    幂等去重 (已在数组中不动文件), 保留既有其它扩展与无关键;
-    实际写入前备份 .bak (仅当文件已存在). 返回本次追加数 (0 或 1).
-    """
-    import json
-
-    ext_str = str(ext_dir)
-    if settings_path.exists():
-        settings = json.loads(settings_path.read_text(encoding="utf-8"))
-    else:
-        settings = {}
-    extensions = settings.get("extensions")
-    if not isinstance(extensions, list):
-        extensions = []
-        settings["extensions"] = extensions
-    if ext_str in extensions:
-        print(SKIP(f"  - 扩展已登记, 跳过: {ext_str}"))
-        return 0
-
-    backup = None
-    if settings_path.exists():
-        backup = settings_path.with_name(settings_path.name + ".bak")
-        shutil.copy2(settings_path, backup)
-    extensions.append(ext_str)
-    settings_path.parent.mkdir(parents=True, exist_ok=True)
-    settings_path.write_text(
-        json.dumps(settings, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
-    print(OK(f"  \u2713 合并扩展路径 → {settings_path}"))
-    print(OK(f"    {ext_str}"))
-    if backup:
-        print(OK(f"    备份: {backup}"))
-    return 1
-
-
 def _backup_and_atomic_write(path: Path, text: str) -> None:
     """备份已有文件为 .bak 后原子写入 (tmp + os.replace)."""
     import os
