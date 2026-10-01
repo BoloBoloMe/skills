@@ -299,6 +299,31 @@ export function viewportHeight(tui: unknown): number {
 	return Math.max(4, base - 2);
 }
 
+/** 滚动窗口结果: 统一以折行后行集为基准. */
+export interface ScrollWindowResult {
+	/** 新滚动偏移 (已按折行后行数夹取). */
+	offset: number;
+	/** 折行后全部行. */
+	rows: string[];
+	/** 当前视口窗口. */
+	visible: string[];
+}
+
+/** 滚动窗口 (review spec-2 遗留): 滚动上限与取窗统一以折行后行集为准
+ * (max = 折行后行数 - 视口), 折行续行同样可滚到. delta = 0 时只取窗. */
+export function scrollWindow(
+	lines: readonly string[],
+	width: number,
+	viewport: number,
+	offset: number,
+	delta: number,
+): ScrollWindowResult {
+	const rows = lines.flatMap((line) => wrapToWidth(line, width));
+	const max = Math.max(0, rows.length - Math.max(1, viewport));
+	const next = Math.min(max, Math.max(0, offset + delta));
+	return { offset: next, rows, visible: rows.slice(next, next + viewport) };
+}
+
 /** 显示宽 (CJK 记 2 列, tui.md Line Width 纪律). */
 function charWidth(code: number): number {
 	const wide =
@@ -349,19 +374,20 @@ async function showEntryViewer(ctx: ExtensionContext, entry: ListContainerEntry)
 	const lines = entryDetailLines(entry);
 	await ctx.ui.custom<unknown>((tui: CustomTui, _theme, _keybindings, done) => {
 		let offset = 0;
+		// 滚动上限与取窗统一走 scrollWindow (折行后行集); 首次渲染前用
+		// 基准宽度估上限, 渲染后即更新 (spec-2 遗留: 续行同样滚得到)
+		let lastWidth = 80;
 		const viewport = () => viewportHeight(tui);
 		const move = (delta: number) => {
-			const max = Math.max(0, lines.length - viewport());
-			offset = Math.min(max, Math.max(0, offset + delta));
+			offset = scrollWindow(lines, lastWidth, viewport(), offset, delta).offset;
 			tui.requestRender();
 		};
 		return {
 			render: (width: number) => {
-				// 先折行再取视口窗口: 长入口行折为多行后完整可见 (spec-2)
-				const rows = lines.flatMap((line) => wrapToWidth(line, width));
-				const max = Math.max(0, rows.length - viewport());
-				offset = Math.min(offset, max);
-				return rows.slice(offset, offset + viewport());
+				lastWidth = width;
+				const view = scrollWindow(lines, width, viewport(), offset, 0);
+				offset = view.offset;
+				return view.visible;
 			},
 			handleInput: (data: string) => {
 				if (data === "\x1b" || data === "\r" || data === "q") {

@@ -2,7 +2,7 @@
 // 运行: node tests/pi/list-sandbox.test.mjs
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { parseListLine, buildSelectItems, modeRoutePlan, spawnGrouped, wrapToWidth, viewportHeight } from "../../workflow/use-sandbox-worktree/pi-extension/index.ts";
+import { parseListLine, buildSelectItems, modeRoutePlan, spawnGrouped, wrapToWidth, viewportHeight, scrollWindow } from "../../workflow/use-sandbox-worktree/pi-extension/index.ts";
 
 /** 扩展源码文本 (静态断言用, 接缝 A: BR-010/BR-007 审计). */
 const SRC = readFileSync(
@@ -288,6 +288,31 @@ test("CJK 长行折行: 全部字符仍在 (宽字符不丢)", () => {
 	assert.ok(wrapped.length >= 2);
 	const restored = wrapped.map((l, i) => (i === 0 ? l : l.replace(/^  /, ""))).join("");
 	assert.equal(restored, line);
+});
+
+// ── review 修复 B 遗留 (spec-2): 折行后滚动上限联动 ────────────────
+
+test("折行后滚动上限联动: 滚到底可见最后一行折行内容 (spec-2 遗留)", () => {
+	// 多行长入口 fixture: 每行 ~100 列, width 40 下折成 ~3-4 行
+	const lines = [];
+	for (let i = 0; i < 12; i++) lines.push(`entry-${i}-` + "x".repeat(100));
+	const width = 40;
+	const viewport = 8;
+	let offset = 0;
+	let state;
+	// 逐屏滚到底
+	for (let i = 0; i < 100; i++) {
+		state = scrollWindow(lines, width, viewport, offset, +viewport);
+		if (state.offset === offset) break;
+		offset = state.offset;
+	}
+	assert.ok(state.rows.length > lines.length, "fixture 应产生折行续行");
+	// 滚到底: 偏移 = 折行后行数 - 视口 (不是逻辑行数 - 视口)
+	assert.equal(state.offset, Math.max(0, state.rows.length - viewport));
+	// 视口窗口覆盖全部折行行: 最后一行折行内容可见
+	assert.equal(state.visible[state.visible.length - 1], state.rows[state.rows.length - 1]);
+	// 旧缺陷鉴别: 按逻辑行算上限会够不到底部
+	assert.ok(state.offset > Math.max(0, lines.length - viewport));
 });
 
 // ── review 修复 C (spec-3): 视口高度走真实 tui.terminal.rows ────────
