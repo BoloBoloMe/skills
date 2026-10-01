@@ -2,7 +2,7 @@
 // 运行: node tests/pi/list-sandbox.test.mjs
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { parseListLine, buildSelectItems, modeRoutePlan } from "../../workflow/use-sandbox-worktree/pi-extension/index.ts";
+import { parseListLine, buildSelectItems, modeRoutePlan, spawnGrouped, wrapToWidth, viewportHeight } from "../../workflow/use-sandbox-worktree/pi-extension/index.ts";
 
 /** 扩展源码文本 (静态断言用, 接缝 A: BR-010/BR-007 审计). */
 const SRC = readFileSync(
@@ -12,6 +12,33 @@ const SRC = readFileSync(
 
 const cases = [];
 const test = (name, fn) => cases.push({ name, fn });
+
+/** 轮询等待条件成立 (默认 5s 上限). */
+async function waitUntil(fn, ms = 5000, step = 50) {
+	const deadline = Date.now() + ms;
+	while (Date.now() < deadline) {
+		if (fn()) return true;
+		await new Promise((resolve) => setTimeout(resolve, step));
+	}
+	return fn();
+}
+
+/** 进程仍在运行 (非僵尸): kill(pid,0) 成功且 /proc 状态非 Z. */
+function procRunning(pid) {
+	if (!pid) return false;
+	try {
+		process.kill(pid, 0);
+	} catch {
+		return false; // ESRCH 等: 已遇出
+	}
+	try {
+		const stat = readFileSync(`/proc/${pid}/stat`, "utf-8");
+		const state = stat.split(") ").pop().split(" ")[0];
+		return state !== "Z";
+	} catch {
+		return false;
+	}
+}
 
 /** 三容器 fixture (两主仓, 形状对齐 tests/test_swt_list.py 的 LIST schema v1). */
 const THREE_CONTAINERS = {
@@ -184,14 +211,95 @@ test("子进程仅 swt.py list, 无 podman 直调 (BR-010)", () => {
 	assert.ok(calls.length >= 1, "应存在子进程调用");
 	for (const match of calls) {
 		const snippet = match[1];
-		assert.ok(snippet.includes("SCRIPT"), "子进程参数须引用 skill 内 swt.py 路径");
-		assert.ok(snippet.includes('"list"'), "子进程参数须为 list 子命令");
+		assert.ok(
+			snippet.includes("command") && snippet.includes("args"),
+			"spawn 须收口于通用封装 (参数透传, 不内置命令)",
+		);
 	}
+	// 唯一业务调用点: uv run python <skill>/scripts/swt.py list
+	assert.match(
+		SRC,
+		/spawnGrouped\(\s*"uv",\s*\[\s*"run",\s*"python",\s*SCRIPT,\s*"list"\s*\]/,
+	);
 	assert.ok(!/["']podman["']/.test(SRC), "源码不得直调 podman");
 });
 
 test("源码不含会话注入调用 (BR-007 静态部分)", () => {
 	assert.ok(!/sendUserMessage|sendMessage/.test(SRC), "不得调用会话注入 API");
+});
+
+// ── review 修复 A (spec-1): 超时杀树 — 进程组整体终止 ───────────────
+
+test("超时杀树: killGroup 后组内全部进程终止 (spec-1)", async () => {
+	// 孙进程 pid 由 sh 打到 stdout: sleep 属同组, 直子 sh 任组长
+	const { child, killGroup } = spawnGrouped("sh", ["-c", "sleep 300 & echo $!; wait"]);
+	let sleepPid = 0;
+	try {
+		sleepPid = await new Promise((resolve, reject) => {
+			let buf = "";
+			const timer = setTimeout(() => reject(new Error("未读到孙进程 pid")), 4000);
+			child.stdout?.on("data", (d) => {
+				buf += d.toString();
+				const m = buf.match(/^\s*(\d+)\s*$/m);
+				if (m) {
+					clearTimeout(timer);
+					resolve(Number(m[1]));
+				}
+			});
+		});
+		assert.ok(await waitUntil(() => procRunning(sleepPid)), "孙进程应已启动");
+		assert.ok(await waitUntil(() => procRunning(child.pid)), "组长 (sh) 应已启动");
+		killGroup();
+		const allGone = await waitUntil(
+			() => !procRunning(child.pid) && !procRunning(sleepPid),
+			5000,
+		);
+		assert.ok(allGone, `杀组后进程应全部退出 (sh=${child.pid}, sleep=${sleepPid})`);
+	} finally {
+		killGroup(); // 兜底防泄漏
+	}
+});
+
+// ── review 修复 B (spec-2): 长入口行折行不丢字符 ───────────────────
+
+test("长入口行折行: 全部字符仍在且每行不超宽 (spec-2/AC-002)", () => {
+	const longLine =
+		"ssh sandbox@192.168.1.10 -p 49153 -i /home/bolo/.agents/sandbox-worktree/keys/swt-feature-a-private-ed25519.key";
+	const width = 40;
+	const wrapped = wrapToWidth(longLine, width);
+	assert.ok(wrapped.length >= 2, "超宽行应折为多行");
+	// fixture 纯 ASCII: 显示宽 = 字符数, 逐行验宽 (独立真相源: 纯字符计数)
+	for (const line of wrapped) {
+		assert.ok(line.length <= width, `折行后仍超宽: ${JSON.stringify(line)}`);
+	}
+	// 去掉续行缩进后拼回 = 原文 (不丢字符)
+	const restored = wrapped.map((l, i) => (i === 0 ? l : l.replace(/^  /, ""))).join("");
+	assert.equal(restored, longLine);
+});
+
+test("短行/空行原样返回, 不折行", () => {
+	assert.deepEqual(wrapToWidth("ssh sandbox@127.0.0.1 -p 49153", 80), ["ssh sandbox@127.0.0.1 -p 49153"]);
+	assert.deepEqual(wrapToWidth("", 80), [""]);
+});
+
+test("CJK 长行折行: 全部字符仍在 (宽字符不丢)", () => {
+	const line = "局域网候选 (未确认可达): ".repeat(12) + "eth0 192.168.2.20";
+	const wrapped = wrapToWidth(line, 30);
+	assert.ok(wrapped.length >= 2);
+	const restored = wrapped.map((l, i) => (i === 0 ? l : l.replace(/^  /, ""))).join("");
+	assert.equal(restored, line);
+});
+
+// ── review 修复 C (spec-3): 视口高度走真实 tui.terminal.rows ────────
+
+test("视口高度读 tui.terminal.rows, 缺席/非法回退 (spec-3)", () => {
+	assert.equal(viewportHeight({ terminal: { rows: 50 } }), 48);
+	assert.equal(viewportHeight({ terminal: { rows: 10 } }), 8);
+	assert.equal(viewportHeight({ terminal: { rows: 3 } }), 4); // 下限保护
+	assert.equal(viewportHeight({}), 22); // 无 terminal -> 回退 24 行减边距
+	assert.equal(viewportHeight({ terminal: {} }), 22); // 无 rows
+	assert.equal(viewportHeight({ terminal: { rows: 0 } }), 22); // 非法值
+	assert.equal(viewportHeight(null), 22); // 防御
 });
 
 let failed = 0;

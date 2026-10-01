@@ -17,7 +17,7 @@
  *   buildSelectItems(json) 容器条目 -> 选择列表选项 (名字/状态/分支摘要)
  *   modeRoutePlan(mode)    pi 模式 -> 输出通道与文案
  */
-import { spawn } from "node:child_process";
+import { spawn, type ChildProcess } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import * as path from "node:path";
 import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
@@ -180,25 +180,44 @@ interface RunResult {
 	timedOut: boolean;
 }
 
+/** 组内子进程句柄: child 自成进程组长 (detached), killGroup 杀整组. */
+export interface GroupedChild {
+	child: ChildProcess;
+	/** SIGKILL 整个进程组 (进程树真终止); 组已消失时静默. */
+	killGroup: () => void;
+}
+
+/** 以独立进程组启动子进程 (detached: 自成组长). 超时终止须杀组而非
+ * 单杀直子 — uv 的 python 孙进程一并死亡 (review spec-1: 进程树真终止). */
+export function spawnGrouped(command: string, args: readonly string[]): GroupedChild {
+	const child = spawn(command, args, {
+		stdio: ["ignore", "pipe", "pipe"],
+		detached: true,
+	});
+	const killGroup = (): void => {
+		if (typeof child.pid !== "number") return;
+		try {
+			process.kill(-child.pid, "SIGKILL");
+		} catch {
+			/* 进程组已消失 */
+		}
+	};
+	return { child, killGroup };
+}
+
 /** BR-010 唯一子进程: `uv run python <skillDir>/scripts/swt.py list`,
- * 超时 120s 杀进程并置 timedOut. */
-function runListScript(): Promise<RunResult> {
+ * 超时 (可注入, 缺省 120s) 杀整组进程并置 timedOut. */
+function runListScript(timeoutMs: number = LIST_TIMEOUT_MS): Promise<RunResult> {
 	return new Promise((resolve) => {
-		const child = spawn("uv", ["run", "python", SCRIPT, "list"], {
-			stdio: ["ignore", "pipe", "pipe"],
-		});
+		const { child, killGroup } = spawnGrouped("uv", ["run", "python", SCRIPT, "list"]);
 		let stdout = "";
 		let stderr = "";
 		let timedOut = false;
 		let done = false;
 		const timer = setTimeout(() => {
 			timedOut = true;
-			try {
-				child.kill("SIGKILL");
-			} catch {
-				/* 已退出 */
-			}
-		}, LIST_TIMEOUT_MS);
+			killGroup();
+		}, timeoutMs);
 		child.stdout?.on("data", (d) => (stdout += d.toString()));
 		child.stderr?.on("data", (d) => (stderr += d.toString()));
 		const finish = (code: number | null) => {
@@ -215,16 +234,25 @@ function runListScript(): Promise<RunResult> {
 	});
 }
 
+/** ctx.ui.notify 的无 UI 兜底封装 (mailbox 母本形状). */
+function notify(
+	ctx: ExtensionContext,
+	message: string,
+	type: "info" | "warning" | "error" = "info",
+): void {
+	try {
+		ctx.ui.notify(message, type);
+	} catch {
+		/* 无 UI 模式兜底 */
+	}
+}
+
 /** 按所在模式通道降级提示 (D010): tui/rpc 走 notify, print/json 走
  * stderr 一行 (不写 stdout). */
-function degradeNotify(ctx: ExtensionContext, plan: ModeRoutePlan, text: string): void {
+function emitDegradation(ctx: ExtensionContext, plan: ModeRoutePlan, text: string): void {
 	const line = fillMessage(text);
 	if (plan.channels.includes("notify")) {
-		try {
-			ctx.ui.notify(line, "warning");
-		} catch {
-			/* 无 UI 兜底 */
-		}
+		notify(ctx, line, "warning");
 	} else {
 		process.stderr.write(line + "\n");
 	}
@@ -254,13 +282,24 @@ function entryDetailLines(entry: ListContainerEntry): string[] {
 }
 
 /** custom 组件宿主参数的最小结构类型 (extensions.md Custom Components;
- * 不运行时依赖 pi-tui, 宿主耦合压到最小). */
+ * 不运行时依赖 pi-tui, 宿主耦合压到最小). terminal.rows 为真实视口行数. */
 interface CustomTui {
-	height?: number;
+	terminal?: { rows?: number };
 	requestRender(): void;
 }
 
-/** 显示宽 (CJK 记 2 列), 供滚动文本行宽截断 (tui.md Line Width 纪律). */
+/** 视口高度 (review spec-3): 读 custom 工厂 tui 参数的 terminal.rows
+ * (pi TUI 真实接口), 缺席/非法回退 24 行, 留 2 行边距, 下限 4. */
+export function viewportHeight(tui: unknown): number {
+	const rows =
+		typeof tui === "object" && tui !== null
+			? (tui as { terminal?: { rows?: unknown } }).terminal?.rows
+			: undefined;
+	const base = typeof rows === "number" && rows > 0 ? rows : 24;
+	return Math.max(4, base - 2);
+}
+
+/** 显示宽 (CJK 记 2 列, tui.md Line Width 纪律). */
 function charWidth(code: number): number {
 	const wide =
 		(code >= 0x1100 && code <= 0x115f) ||
@@ -274,16 +313,34 @@ function charWidth(code: number): number {
 	return wide ? 2 : 1;
 }
 
-function cutToWidth(text: string, width: number): string {
+function displayWidth(text: string): number {
+	let width = 0;
+	for (const ch of text) width += charWidth(ch.codePointAt(0) ?? 0);
+	return width;
+}
+
+/** 长行折行 (review spec-2/AC-002): 超宽行按显示宽拆为多行, 续行缩进
+ * 两空格, 不丢任何字符 (长隧道/直飞/私钥命令完整可见). 视口窄到放不下
+ * 续行缩进时原样返回 (保内容优先). */
+export function wrapToWidth(text: string, width: number, contIndent = "  "): string[] {
+	const indentWidth = displayWidth(contIndent);
+	if (width <= indentWidth + 1) return [text];
+	const rows: string[] = [];
+	let row = "";
 	let used = 0;
-	let end = 0;
 	for (const ch of text) {
 		const w = charWidth(ch.codePointAt(0) ?? 0);
-		if (used + w > width) break;
+		const budget = rows.length === 0 ? width : width - indentWidth;
+		if (used > 0 && used + w > budget) {
+			rows.push(row);
+			row = contIndent;
+			used = indentWidth;
+		}
+		row += ch;
 		used += w;
-		end += ch.length;
 	}
-	return text.slice(0, end);
+	rows.push(row);
+	return rows;
 }
 
 /** tui 模式: 滚动文本组件展示选中容器的访问入口 (D009; 只给人看,
@@ -292,15 +349,20 @@ async function showEntryViewer(ctx: ExtensionContext, entry: ListContainerEntry)
 	const lines = entryDetailLines(entry);
 	await ctx.ui.custom<unknown>((tui: CustomTui, _theme, _keybindings, done) => {
 		let offset = 0;
-		const viewport = () => Math.max(4, (tui.height ?? 24) - 2);
+		const viewport = () => viewportHeight(tui);
 		const move = (delta: number) => {
 			const max = Math.max(0, lines.length - viewport());
 			offset = Math.min(max, Math.max(0, offset + delta));
 			tui.requestRender();
 		};
 		return {
-			render: (width: number) =>
-				lines.slice(offset, offset + viewport()).map((line) => cutToWidth(line, width)),
+			render: (width: number) => {
+				// 先折行再取视口窗口: 长入口行折为多行后完整可见 (spec-2)
+				const rows = lines.flatMap((line) => wrapToWidth(line, width));
+				const max = Math.max(0, rows.length - viewport());
+				offset = Math.min(offset, max);
+				return rows.slice(offset, offset + viewport());
+			},
 			handleInput: (data: string) => {
 				if (data === "\x1b" || data === "\r" || data === "q") {
 					done(undefined);
@@ -325,26 +387,22 @@ export default function (pi: ExtensionAPI) {
 			const plan = modeRoutePlan(ctx.mode as PiMode);
 			const result = await runListScript();
 			if (result.timedOut) {
-				degradeNotify(ctx, plan, plan.messages.timeout);
+				emitDegradation(ctx, plan, plan.messages.timeout);
 				return;
 			}
 			if (result.code === 4) {
-				degradeNotify(ctx, plan, plan.messages.noPodman);
+				emitDegradation(ctx, plan, plan.messages.noPodman);
 				return;
 			}
 			const payload = parseListLine(result.stdout);
 			if (!payload) {
-				degradeNotify(ctx, plan, plan.messages.parseFailed);
+				emitDegradation(ctx, plan, plan.messages.parseFailed);
 				return;
 			}
 			if (ctx.mode === "tui") {
 				const items = buildSelectItems(payload);
 				if (items.length === 0) {
-					try {
-						ctx.ui.notify("无在用沙盒容器", "info");
-					} catch {
-						/* 无 UI 兜底 */
-					}
+					notify(ctx, "无在用沙盒容器");
 					return;
 				}
 				let chosen: string | undefined;
@@ -359,11 +417,7 @@ export default function (pi: ExtensionAPI) {
 				return;
 			}
 			if (ctx.mode === "rpc") {
-				try {
-					ctx.ui.notify(fillMessage(plan.messages.summary, payload.containers.length), "info");
-				} catch {
-					/* 无 UI 兜底 */
-				}
+				notify(ctx, fillMessage(plan.messages.summary, payload.containers.length));
 				return;
 			}
 			// print/json: stderr 一行提示, 不写 stdout (安全策略)
