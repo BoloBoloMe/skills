@@ -4619,7 +4619,8 @@ def list_sandbox(args: argparse.Namespace) -> int:
                 # spec-P1 修复 (D011): 容器在跑时, 能从 podman 现查事实组装的入口
                 # 照发 — 复用 running+matched 同一条组装路径 (端口/网卡都是现查
                 # 或 host 级事实, 与记录无关); record 为空 dict, 记录派生字段全
-                # None, 由 list_access_entries 逐项打显式 reason 行 (BR-004),
+                # None, 由 list_access_entries 逐项打显式 reason 行 (BR-004,
+                # record_unusable=True: 缺项归因 记录不可用, 不诬 无脚本),
                 # 笼统 记录派生入口缺席 行不再重复
                 if lan_groups is None:
                     lan_groups, lan_skipped_confirmed = list_lan_groups(records_root)
@@ -4628,6 +4629,7 @@ def list_sandbox(args: argparse.Namespace) -> int:
                     mapped_ports.get("22"), mapped_ports.get("6080"), mapped_ports.get("8800"),
                     record.get("display"), host_display, record.get("headed-script"),
                     record.get("ssh_private_key"), lan_groups, lan_skipped_confirmed,
+                    record_unusable=True,
                 ))
             else:
                 # 非 running (BR-003): 无可达入口, 入口不组装, 记录派生入口缺席
@@ -4689,13 +4691,16 @@ def list_access_entries(
     key_path_text: Any,
     lan_groups: list[dict[str, Any]],
     skipped_confirmed: str | None = None,
+    record_unusable: bool = False,
 ) -> list[str]:
     """running 容器的访问入口行组装 (matched 与 missing/corrupt 记录共用,
     D008 入口子集, AC-002/AC-003): 记录派生字段缺席时自动降级为 reason 行.
     本机入口不受网卡影响; 局域网行逐组代换地址, 已确认组排最前标 已确认,
     候选组整块标 候选 (未确认可达) (D007/BR-005). 命令文本与
     print_delivery_lines 同源 (去掉 [SWT] 前缀, 加组标注); 缺项打显式
-    reason 行, 不静默丢失 (F3/BR-004). 只展示私钥路径, 不读内容."""
+    reason 行, 不静默丢失 (F3/BR-004), 归因诚实: record_unusable=True
+    (记录缺失/不可解析) 时记录派生缺项归因 记录不可用, 不断言脚本/字段
+    有无. 只展示私钥路径, 不读内容."""
     display = display_status if display_status in ("ok", "absent", "degraded", "fail") else None
     headed = headed_script if isinstance(headed_script, str) and headed_script else None
     entries: list[str] = []
@@ -4748,7 +4753,13 @@ def list_access_entries(
                            " 请人工确认 host-LAN-IP 后组装: "
                            + headed_waypipe_template(ssh_port).format(lan="<host-LAN-IP>"))
     elif ssh_port is not None:
-        entries.append(HEADED_NO_SCRIPT_REASON)
+        if record_unusable:
+            # D011/BR-004 诚实 reason: runtime 记录缺失/不可解析时启动脚本
+            # 有无不可知, 不得断言 无实例启动脚本 (matched+真无脚本文案)
+            entries.append("窗口直飞未附发: 记录不可用 (缺失或不可解析),"
+                           " 启动脚本未知")
+        else:
+            entries.append(HEADED_NO_SCRIPT_REASON)
     if skipped_confirmed:
         # 不回显地址字面量: AC-003 要求该地址不出现在任何组/字段中 (含 reason 行)
         entries.append("局域网入口 (已确认) 未附发: 已确认值当前不在任何非隧道网卡的"

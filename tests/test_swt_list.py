@@ -757,7 +757,11 @@ class TestListUnmatchedEntries(ListCase):
         self.assertFalse(any("vnc.html" in line for line in entries), entries)
         self.assertTrue(any("私钥" in line and "未附发" in line
                             for line in entries), entries)
-        self.assertTrue(any("窗口直飞未附发" in line for line in entries), entries)
+        # 诚实 reason (D011/BR-004): 记录缺失/不可解析时启动脚本有无不可知,
+        # 不得断言 无实例启动脚本 (那是 matched+真无脚本场景的文案)
+        self.assertTrue(any("窗口直飞未附发" in line and "记录不可用" in line
+                            for line in entries), entries)
+        self.assertFalse(any("无实例启动脚本" in line for line in entries), entries)
         self.assertTrue(any("本机直通状态未附发" in line for line in entries), entries)
         # 状态行 + podman rm 指引保留, 标注用记录轴标签 (D006)
         orphan_text = "\n".join(entries)
