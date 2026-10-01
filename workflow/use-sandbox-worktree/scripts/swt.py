@@ -228,14 +228,22 @@ def load_runtime_tolerant(path: Path) -> dict[str, Any] | None:
     return data if isinstance(data, dict) else None
 
 
-def repo_runtime_files(records_root: Path, repo: Path) -> list[Path]:
-    """本主仓的全部 runtime 文件 (并行母体 = 一对一份; 含旧 scheme 仓级 identity)."""
+def runtime_json_files(records_root: Path) -> list[Path]:
+    """records-root/runtime 下全部 json 文件 (存在性检查 + 排序枚举).
+
+    按仓过滤 (repo_runtime_files) 与跨仓扫描 (scan_all_runtime_records) 共用
+    的文件枚举 helper (评审 standards-1)."""
     directory = records_root / "runtime"
     if not directory.is_dir():
         return []
+    return sorted(directory.glob("*.json"))
+
+
+def repo_runtime_files(records_root: Path, repo: Path) -> list[Path]:
+    """本主仓的全部 runtime 文件 (并行母体 = 一对一份; 含旧 scheme 仓级 identity)."""
     repo_str = str(repo.resolve())
     found: list[Path] = []
-    for path in sorted(directory.glob("*.json")):
+    for path in runtime_json_files(records_root):
         data = load_runtime_tolerant(path)
         if data is not None and data.get("repo") == repo_str:
             found.append(path)
@@ -3034,6 +3042,10 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     enroll_parser.add_argument("container", metavar="容器名")
     enroll_parser.add_argument("--pubkey-file", dest="pubkey_file", metavar="路径|-", default=None,
                                help="公钥文件路径; - 或缺省读 stdin")
+    list_parser = subparsers.add_parser(
+        "list", help="跨仓列出本 host 全部沙盒容器 (只读清单, 末行 LIST 单行 json)")
+    list_parser.add_argument("--records-root", type=Path,
+                             default=Path.home() / ".agents" / "sandbox-worktree")
     return parser.parse_args(argv)
 
 
@@ -4354,6 +4366,178 @@ def display_check(args: argparse.Namespace, repo: Path | None) -> int:
     return result.returncode
 
 
+def scan_all_runtime_records(records_root: Path) -> tuple[list[dict[str, Any]], list[tuple[Path, str]]]:
+    """跨仓读入全部 runtime (list 用): 返回 (可解析列表, 不可解析文件 (路径, 原文) 列表).
+
+    损坏文件不抛错 (D006): record-state 需区分 corrupt (文件在但不可解析)
+    与 missing (无文件); 原文仅供按容器名归属 corrupt 判断 (引号 JSON 串匹配,
+    评审 C — 裸子串会把 swt-a 误配给提到 swt-a-old 的文件)."""
+    runtimes: list[dict[str, Any]] = []
+    corrupt_files: list[tuple[Path, str]] = []
+    directory = records_root / "runtime"
+    if directory.is_dir() and not os.access(directory, os.R_OK | os.X_OK):
+        # 评审 D: pathlib.glob 会吞 PermissionError (不可读被静默当空清单),
+        # 不可读必须显式报 ENV (0/4 契约, 不落全局 FAIL=2)
+        raise SwtEnvError(f"records-root 的 runtime 目录不可读: {directory}")
+    for path in runtime_json_files(records_root):
+        data = load_runtime_tolerant(path)
+        if data is not None:
+            runtimes.append(data)
+            continue
+        try:
+            corrupt_files.append((path, path.read_text(encoding="utf-8", errors="replace")))
+        except OSError:
+            corrupt_files.append((path, ""))
+    return runtimes, corrupt_files
+
+
+def inspect_containers_bulk(names: list[str]) -> tuple[dict[str, dict[str, Any]], str]:
+    """批量 inspect 一次调用 (子进程预算: N 容器 ≤ 2+N 次, 与 ps 聚合同理).
+
+    以 stdout 返回数组为准做逐容器归属 (评审 A): 找得到的 detail 按名索引,
+    请求枚举中未出现的名字不出现在结果 (调用方记 collection-errors 并附
+    本调用的 stderr 摘要, D005)."""
+    if not names:
+        return {}, ""
+    result = run(["podman", "inspect", *names])
+    stdout = result.stdout.strip()
+    if not stdout:
+        return {}, result.stderr
+    try:
+        value = json.loads(stdout)
+    except json.JSONDecodeError:
+        return {}, result.stderr
+    details: dict[str, dict[str, Any]] = {}
+    for item in value if isinstance(value, list) else [value]:
+        if not isinstance(item, dict):
+            continue
+        name = str(item.get("Name") or "").lstrip("/")
+        if name:
+            details[name] = item
+    return details, result.stderr
+
+
+def list_sandbox(args: argparse.Namespace) -> int:
+    """list 只读子命令 (swt-list-sandbox M1): 跨仓枚举本 host 全部带
+    sandbox-worktree.repo label 的容器 (键存在匹配, 不限仓, D003/D013),
+    端口经 `podman port` 现查 (F001), 输出人话进度行 + 末行 `LIST {...}`
+    单行 json (schema v1, D005). 退出码仅 0/4. 只读纪律 (BR-009):
+    不改 runtime 记录, 不动 nftables, 不持生命周期锁.
+    生命周期/记录轴 (lifecycle/record-state) 由 runtime 记录合并得出 (D006),
+    记录扫描缺失时 lifecycle=unknown / record-state=missing."""
+    require_command("podman")
+    records_root = args.records_root.expanduser().resolve()
+    print(f"[SWT] list: 枚举本 host 沙盒容器 (records-root: {records_root})")
+    rows = podman_json([
+        "podman", "ps", "-a",
+        "--filter", "label=sandbox-worktree.repo",
+        "--format", "json",
+    ])
+    try:
+        # 评审 D: 扫描/枚举期的 OSError 就地转 ENV (0/4 契约), 不落全局 FAIL=2
+        runtimes, corrupt_files = scan_all_runtime_records(records_root)
+        row_names = [podman_row_name(row) for row in rows]
+        details_by_name, inspect_stderr = inspect_containers_bulk(
+            [name for name in row_names if name])
+    except OSError as exc:
+        raise SwtEnvError(f"扫描或枚举失败: {exc}") from exc
+    containers: list[dict[str, Any]] = []
+    attributed_corrupt_files: set[Path] = set()
+    for row in sorted(rows, key=podman_row_name):
+        name = podman_row_name(row)
+        if not name:
+            continue
+        collection_errors: list[str] = []
+        detail = details_by_name.get(name, row)
+        if name not in details_by_name:
+            # D005 错误模式 + 评审 A: 枚举后消失只记条目错误不拖垮全表,
+            # 归属附批量 inspect 的 stderr 摘要 (截尾防爆行)
+            summary = inspect_stderr.strip()[-300:]
+            suffix = f": {summary}" if summary else ""
+            collection_errors.append(f"inspect 未返回该容器 (可能已消失){suffix}")
+        state = detail.get("State") if isinstance(detail.get("State"), dict) else {}
+        podman_state = state.get("Status") or row.get("State") or row.get("Status")
+        port_result = run(["podman", "port", name])
+        mapped_ports: dict[str, int] = {}
+        if port_result.returncode == 0:
+            mapped_ports = parse_podman_ports(port_result.stdout)
+        else:
+            # 评审 B: port 非零退出无论 running 与否都记采集错误 (真实命令/权限/
+            # 异常不再被 "非 running 无映射" 吞掉); 退出 0 且输出为空 = 无映射
+            collection_errors.append(f"podman port 失败: {port_result.stderr.strip()}")
+        labels = row.get("Labels") if isinstance(row.get("Labels"), dict) else {}
+        repo_label = labels.get("sandbox-worktree.repo")
+        mother_label = labels.get("sandbox-worktree.mother")
+        mother_branch = mother_label if isinstance(mother_label, str) else None
+        podman_id = str(detail.get("Id") or detail.get("ID") or row.get("Id") or row.get("ID") or "")
+        record: dict[str, Any] = {}
+        for runtime in runtimes:
+            found = runtime_container(runtime, name, podman_id)
+            if found:
+                record = found
+                break
+        host_display = record.get("host-display")
+        host_display = host_display if host_display in ("ok", "degraded", "absent") else None
+        if record:
+            record_state = "matched"
+            lifecycle = "retired" if record.get("retired") else "active"
+            branch = record.get("branch") or record.get("mother") or mother_branch
+        else:
+            # 评审 C: 按引号包裹的 JSON 字符串匹配 ("名字"), 防前缀误配;
+            # 命中即把损坏文件归属给该容器, 无任何容器可归属的文件进 warnings
+            corrupt_hit = next(
+                ((file_path, text) for file_path, text in corrupt_files if f'"{name}"' in text),
+                None,
+            )
+            if corrupt_hit is not None:
+                record_state = "corrupt"
+                attributed_corrupt_files.add(corrupt_hit[0])
+            else:
+                record_state = "missing"
+            lifecycle = "unknown"
+            branch = mother_branch
+        entry = {
+            "name": name,
+            "repo": repo_label if isinstance(repo_label, str) else None,
+            "branch": branch if isinstance(branch, str) else None,
+            "podman-state": podman_state,
+            "lifecycle": lifecycle,
+            "record-state": record_state,
+            "ports": {
+                "ssh": mapped_ports.get("22"),
+                "vnc": mapped_ports.get("6080"),
+                "web": mapped_ports.get("8800"),
+            },
+            "host-display": host_display,
+            "lans": [],
+            "access-entries": [],
+            "collection-errors": collection_errors,
+        }
+        containers.append(entry)
+        record_label = {"matched": "记录匹配", "missing": "本记录根无记录", "corrupt": "记录不可解析"}[record_state]
+        lifecycle_label = {"active": "在用", "retired": "仅可终结", "unknown": "未知"}[lifecycle]
+        print(f"[SWT] list: {name}: podman {podman_state}, {lifecycle_label}, {record_label}")
+    if containers:
+        print(f"[SWT] list: 共 {len(containers)} 个沙盒容器")
+    else:
+        print("[SWT] list: 无在用沙盒容器")
+    payload = {
+        "schema": 1,
+        "scope": {
+            "records-root": str(records_root),
+            "completeness": "podman-all,records-root-one",
+        },
+        "containers": containers,
+        "warnings": [
+            f"runtime 记录不可解析且无法归属任何容器: {file_path.name}"
+            for file_path, _text in corrupt_files
+            if file_path not in attributed_corrupt_files
+        ],
+    }
+    print("LIST " + json.dumps(payload, ensure_ascii=False, separators=(",", ":")))
+    return 0
+
+
 def canonical_json(value: Any) -> str:
     return json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
 
@@ -4444,6 +4628,8 @@ def main(argv: list[str]) -> int:
         if args.command == "enroll-device-key":
             require_command("podman")
             return cmd_enroll_device_key(args)
+        if args.command == "list":
+            return list_sandbox(args)
         repo = resolve_repo(args.repo)
         lock = acquire_lock(repo, args.records_root)
         try:
