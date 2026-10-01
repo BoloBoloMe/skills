@@ -80,9 +80,9 @@ if (deep.length && near.length) {
 // ---- 3. 频率: 必须落在亚秒级 (Hz), 不是分钟级的呼吸 ----
 console.log('\n频率 (Hz):');
 var hz = function (w) { return w / TAU; };
-show('主频 f1', t1.concat(t2).map(function (s) { return hz(s.f1); }), 'Hz', 0.55, 2.65);
-show('次频 f2', t1.concat(t2).map(function (s) { return hz(s.f2); }), 'Hz', 0.70, 3.30);
-show('三频 f3', t2.map(function (s) { return hz(s.f3); }), 'Hz', 0.90, 4.10);
+show('主频 f1', t1.concat(t2).map(function (s) { return hz(s.f1); }), 'Hz', 0.30, 1.50);
+show('次频 f2', t1.concat(t2).map(function (s) { return hz(s.f2); }), 'Hz', 0.40, 1.90);
+show('三频 f3', t2.map(function (s) { return hz(s.f3); }), 'Hz', 0.55, 2.40);
 show('慢包络 fe', t1.concat(t2).map(function (s) { return hz(s.fe); }), 'Hz', 0.07, 0.25);
 var allFast = t1.concat(t2).map(function (s) { return hz(s.f1); }).concat(t1.map(function (s) { return hz(s.f2); }));
 console.log('  最快分量 ' + Math.max.apply(null, allFast).toFixed(2) + ' Hz (旧版单频呼吸 0.03~0.22Hz)');

@@ -394,7 +394,7 @@ var FLICK_TIERS = [
 ];
 
 // 星场: 数量跟窗口面积走; 色温按真实比例抽并在相邻档之间插值 (不是贴标签);
-// 闪烁是多频叠加的颤动 (主频 0.55~2.65Hz, 相位各自随机, 整屏不同频共振), 不再是单频呼吸
+// 闪烁是多频叠加的颤动 (主频 0.30~1.50Hz, 相位各自随机, 整屏不同频共振), 不再是单频呼吸
 function buildStars() {
   var rnd = mulberry32(20240924);
   var n = Math.round(420 + (state.cw * state.ch) / 3200);
@@ -432,9 +432,9 @@ function buildStars() {
       ta: (tier.aMin + rnd() * (tier.aMax - tier.aMin)) * depth,   // 绝对 alpha 摆幅 (不乘自身亮度)
       // 频率一律按 Hz 定义, 这里就乘 2π 预算成角频率 —— sin() 吃的是弧度, 否则会把
       // 1Hz 写成 1rad/s (0.16Hz), 又变成"呼吸"了
-      f1: (0.55 + rnd() * 2.1) * TAU, p1: rnd() * Math.PI * 2,   // 主频 0.55~2.65Hz (亚秒级)
-      f2: (0.70 + rnd() * 2.6) * TAU, p2: rnd() * Math.PI * 2,   // 次频独立取, 不与主频成整数倍
-      f3: (0.90 + rnd() * 3.2) * TAU, p3: rnd() * Math.PI * 2,
+      f1: (0.30 + rnd() * 1.20) * TAU, p1: rnd() * Math.PI * 2,   // 主频 0.30~1.50Hz
+      f2: (0.40 + rnd() * 1.50) * TAU, p2: rnd() * Math.PI * 2,   // 次频独立取, 不与主频成整数倍
+      f3: (0.55 + rnd() * 1.85) * TAU, p3: rnd() * Math.PI * 2,
       fe: (0.07 + rnd() * 0.18) * TAU, pe: rnd() * Math.PI * 2 // 慢包络 0.07~0.25Hz: 闪一阵停一阵
     };
     var w1 = 0.5 + rnd() * 0.2, w2 = 0.25 + rnd() * 0.15;
