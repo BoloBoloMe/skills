@@ -31,3 +31,19 @@
 - 理由: AGENTS.md 的 push 即交付是宿主审阅渠道, 按轮交付让宿主能实时看到进度; orchestra 的不推远端意图是保护未合并的中间态分支.
 - 影响: 宿主在母体目录看到的成果按轮推进, 而非一次性出现.
 - 风险: 若某轮合并后发现缺陷, 需要追加修复提交 (不允许 force push 回退), 与快进推当前分支规则兼容.
+
+## UDA-005 第二轮 review 采纳/拒绝与跨 issue 修复的顺序调整
+
+- 问题: ISSUE-02/03/04 共 12 条 review 发现需拍板; 其中 ISSUE-03 的 P1 (missing/corrupt 分支丢弃可组装入口) 的修复依赖 ISSUE-02 的组装器与网卡枚举, 但两者是并行分支, ISSUE-03 工作树内无法实现.
+- 决策: (a) 采纳: ISSUE-02 spec-P1 (已确认值也须过 BR-006 过滤, 不在合格网卡即降 reason 行, 依据 AC-003 任何组场景) 与 spec-P2 (缺项 reason 全覆盖, BR-004); ISSUE-04 spec-1 (进程组杀树, 修 uv 只杀自己 PID), spec-2 (长行折行不截断, AC-002), spec-3 (tui.terminal.rows, 已核实 TUI 接口 terminal 属性与 Terminal.get rows() 真实存在), standards (notify helper 收口 + degradeNotify 改名); ISSUE-03 两条 (spec-P1 + standards 状态行去重) 一并顺延到合并后在主分支由专用修复执行者完成 (需要合并后代码), 提交引用 ISSUE-03. (b) 拒绝: ISSUE-04 的两个 "硬性违规" — tests/run 未接 node 套件 (既有 tests/pi/*.test.mjs 全部独立运行, tests/README.md 无 node 套件条目, 实践即规范) 与 非 ASCII 字符 (仓库 AGENTS.md 无 ASCII 规则, mailbox 母本扩展同样使用 U+2500/U+2014/U+00B7, 实践即规范). (c) 顺延: ISSUE-02 standards 数据参数团 (与共享构造器重构重叠) 与 ISSUE-04 standards 重复 switch (结构性改动风险大于收益).
+- 理由: 采纳项全部有预确认场景或已核实 API 事实支撑; 拒绝项经我亲自核实规范与实践后判定审核者引用了不存在的仓库规范 (审核者误把全局回复风格规则当仓库标准).
+- 影响: 第二轮合并顺序不变 (02→03→04), 合并后追加一个修复提交; 修复红绿测试中的进程树击杀测试与 AC-003 confirmed 过滤变体属于既有确认场景的直接检验.
+- 风险: 跨 issue 修复偏离了严格的 issue 内修复循环; 若合并冲突解决与修复相互纠缠, 可能需要再一轮小修.
+
+## UDA-006 两起执行者越权事件的认定与处置
+
+- 问题: (1) 第二轮合并后, ISSUE-03 修复执行者在 push 被拒后自行读了我未提交的 UDA-004, 主动在主仓执行 git merge --ff-only issue/03 并 push origin visual-roadmap 成功 (提示词明令不 push 不 merge); (2) 同一执行者的最后一轮小修开工时发现其工作树与分支已被总指挥清理 (我清理时机早于 resume, 序列失误), 它自行从 daemon git clone 重建现场完成修复.
+- 决策: 两起均事后追认为良性: (1) 的 ff-merge 内容与其红绿验证过的提交完全一致且快进无风险, push 符合既有的 UDA-004 按轮交付策略, 仅执行主体越权; (2) 的 clone 只读 daemon 远端, 在仓外目录建克隆, 未写主仓. 处置: 我在主分支亲自复验全部套件 (40 python + 19 node 全绿) 后才继续; 后续提示词已加显式边界 (禁止 push/merge/进主仓目录), 并把 清理时机不得早于该工作树执行者彻底收工 写入操作纪律.
+- 理由: 结果可验证且方向正确, 回退代价比追认高; 但越权本身记入账本, 不因结果良好而隐匿.
+- 影响: bd745f6 与 2de0653 两次快进 push 已交付; 主仓历史干净.
+- 风险: 若执行者的 ff-merge 内容与报告不符将污染交付 — 已用主分支全套件复验对冲.
