@@ -1,7 +1,7 @@
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { promises as fs } from "node:fs";
 import { homedir } from "node:os";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 
 /**
  * session-prune: 按既定规则清理 ~/.pi/agent/sessions/ 下的历史会话文件.
@@ -24,6 +24,12 @@ import { join } from "node:path";
  *   e. sessions/ 下的空项目目录 (扫完文件后顺手 rmdir)
  *
  * 已接受的残余风险: 闲置超阈值但进程还活着的会话可能被误删; 永久删除不可逆.
+ *
+ * 修订 (2026-10-01, bugfix): 原实现会连当前会话一起删. startup 事件在
+ * `pi -c/--session` 拉起旧会话时同样以 reason="startup" 触发, 当前会话文件
+ * 可能命中规则被删; 更常见的是新会话目录刚由 pi 建好 (会话文件要等首条
+ * assistant 消息才落盘), 规则 e 把空项目目录 rmdir, 之后写会话文件报 ENOENT,
+ * 新会话直接废掉. 现在保护当前会话文件与所在目录, 且规则 e 不再清理刚建的空目录.
  */
 
 // ---- 可调参数 ----
@@ -36,6 +42,9 @@ const SESSIONS_ROOT = join(homedir(), ".pi", "agent", "sessions");
 type Hit = { path: string; size: number; rule: string; isDir: boolean };
 
 type PruneResult = { hits: Hit[]; deleted: number; bytes: number };
+
+/** 当前活动会话的路径 (文件可能尚未落盘) 与其项目目录, 二者永不被清理. */
+type Protect = { file?: string; dir?: string };
 
 /** 判定单个会话文件是否命中删除规则; 未命中返回 undefined. */
 async function classifyFile(file: string, size: number, mtimeMs: number, now: number): Promise<Hit | undefined> {
@@ -91,12 +100,14 @@ async function classifyFile(file: string, size: number, mtimeMs: number, now: nu
   return undefined;
 }
 
-/** 扫描全部项目目录, 命中项在 dryRun=false 时直接删除. */
-async function prune(dryRun: boolean): Promise<PruneResult> {
+/** 扫描全部项目目录, 命中项在 dryRun=false 时直接删除. protect 中的路径永不删. */
+async function prune(dryRun: boolean, protect: Protect = {}): Promise<PruneResult> {
   const now = Date.now();
   const hits: Hit[] = [];
   let deleted = 0;
   let bytes = 0;
+  const protectedFile = protect.file ? resolve(protect.file) : undefined;
+  const protectedDir = protect.dir ? resolve(protect.dir) : undefined;
 
   let dirNames: string[];
   try {
@@ -116,6 +127,8 @@ async function prune(dryRun: boolean): Promise<PruneResult> {
 
     for (const name of files) {
       const file = join(dirPath, name);
+      // 当前活动会话永不删: startup 也可能是 --continue/--session 拉起的旧会话
+      if (resolve(file) === protectedFile) continue;
       const fstat = await fs.stat(file).catch(() => undefined);
       if (!fstat?.isFile()) continue;
 
@@ -140,8 +153,18 @@ async function prune(dryRun: boolean): Promise<PruneResult> {
     }
 
     // 规则 e: 目录内除待删会话文件外无其他条目时顺手 rmdir;
-    // 有残留文件/子目录则跳过 (真删时 rmdir 失败也容忍)
-    if (dirHits === files.length && entries.length === files.length) {
+    // 有残留文件/子目录则跳过 (真删时 rmdir 失败也容忍).
+    // 两道保险: (1) 当前会话所在目录永不 rmdir — 它的会话文件可能还没落盘;
+    //          (2) 扫描前本来就空的目录, 只有够老才动 — 别的 pi 刚建好的目录
+    //              可能正等着写入第一个会话文件.
+    const wasEmpty = files.length === 0;
+    const dirTooFresh = (now - dstat.mtimeMs) / DAY_MS <= EMPTY_SESSION_DAYS;
+    if (
+      resolve(dirPath) !== protectedDir &&
+      !(wasEmpty && dirTooFresh) &&
+      dirHits === files.length &&
+      entries.length === files.length
+    ) {
       hits.push({ path: dirPath, size: 0, rule: "e: 空项目目录", isDir: true });
       if (!dryRun) {
         await fs.rmdir(dirPath).catch(() => {});
@@ -170,10 +193,16 @@ function render(dryRun: boolean, result: PruneResult): string {
 }
 
 export default function (pi: ExtensionAPI) {
+  // 当前会话的落盘路径与项目目录; 会话文件要等首条 assistant 消息才真正创建,
+  // 但 getSessionFile() 此时已返回预定路径.
+  function protectOf(ctx: { sessionManager: { getSessionFile(): string | undefined; getSessionDir(): string } }): Protect {
+    return { file: ctx.sessionManager.getSessionFile(), dir: ctx.sessionManager.getSessionDir() };
+  }
+
   pi.on("session_start", (event, ctx) => {
     if (event.reason !== "startup") return;
     // fire-and-forget: 不 await, 不阻塞启动
-    void prune(false)
+    void prune(false, protectOf(ctx))
       .then((result) => {
         if (ctx.hasUI) {
           ctx.ui.notify(render(false, result).split("\n")[0], "info");
@@ -188,7 +217,7 @@ export default function (pi: ExtensionAPI) {
     description: "清理历史会话文件 (默认真删, --dry-run 只列清单不删)",
     handler: async (args, ctx) => {
       const dryRun = (args ?? "").split(/\s+/).includes("--dry-run");
-      const result = await prune(dryRun);
+      const result = await prune(dryRun, protectOf(ctx));
       const text = render(dryRun, result);
       if (ctx.hasUI) {
         ctx.ui.notify(text, "info");
