@@ -159,6 +159,20 @@ herdr agent read reviewer --source recent-unwrapped --lines 120
 
 驱动 pi agent 时, 注意事项读 [`PI.md`](PI.md).
 
+## 清理已完成的会话
+
+你创建的会话任务完成且结果已读走或已交付给我后, 尽早关闭, 不攒空闲 tab, 不必等我指示.
+
+两种情形不关:
+- 我还要查阅: 产出或过程待我审阅, 或我在关注该会话.
+- 你明确知道后续要复用: 马上要给同一会话追加任务.
+
+拿不准是否保留时先问我, 别擅自关. 其余尽早关:
+- 独立 tab 里的会话: `herdr tab close --tab <tab ID>`.
+- 兄弟窗格里的会话或跑完命令的窗格: `herdr pane close --pane <pane ID>`.
+
+只关你创建的.
+
 ## 在另一窗格跑普通命令
 
 同样用 `pane split` 开兄弟窗格 (几何与焦点规则同上), 然后运行并查看:
@@ -188,7 +202,7 @@ herdr pane read <返回的窗格ID> --source recent-unwrapped --lines 120
 - 后台工作用 `--no-focus`, 除非我要求切换上下文.
 - 用 `--current`, 显式窗格 ID 或唯一 agent 名. 不依赖别的 client 的聚焦窗格.
 - 从 JSON 响应解析 ID 和状态. 不从侧栏顺序或示例推导.
-- 不关闭不是你创建的工作空间, 标签页, 窗格或会话, 除非我明确要求. `workspace close --group` 会关掉主工作空间及其关联的 worktree 工作空间; 切勿只为绕过 `workspace_group_close_required` 而加它.
+- 不关闭不是你创建的工作空间, 标签页, 窗格或会话, 除非我明确要求. 你自己创建且已完成的会话按《清理已完成的会话》尽早关闭. `workspace close --group` 会关掉主工作空间及其关联的 worktree 工作空间; 切勿只为绕过 `workspace_group_close_required` 而加它.
 - `--trust-repository` 仅在我已验证仓库之后用. 它授予单次请求的 Git 信任, 不是 worktree 命令失败后的常规重试手段.
 - 更新后 client 与 server 版本可能不一致. 依赖新 server 特性前先查 `herdr status`; 方法缺失时继续用已有方法完成任务.
 - 切勿在活动会话内跑 `herdr server stop`, 除非我明确意图停掉 server 及其窗格进程.
