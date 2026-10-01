@@ -1,13 +1,15 @@
 """swt-list-sandbox ISSUE-01: `swt list` 只读清单子命令单元测试 (快层).
 
 接缝 B (podman 执行器 fake-run, 仿 test_swt_m08_headed.py 注入形状):
-ps 聚合枚举 / inspect / port 全部由 FakePodman 伪造, 按真实 podman 语义建模:
+ps 聚合枚举 / inspect / port / ip 网卡枚举全部由 FakePodman 伪造, 按真实语义建模:
 - `podman ps -a --filter label=<key>` 键存在匹配 (任意值命中, 不限仓);
 - `podman inspect <名...>` 可多名: 找得到的进 stdout, 缺名报 stderr 且退出码非 0;
-- `podman port <名>` 活取端口映射 (输出行 "容器端口/tcp -> 宿主绑定").
+- `podman port <名>` 活取端口映射 (输出行 "容器端口/tcp -> 宿主绑定");
+- `ip -o -4 addr show scope global` 返回配置的网卡地址行 (缺省空 = 无候选).
 records-root 用 tmp 目录, 不依赖 podman 本体.
 
-TDD 切片见 docs/changes/swt-list-sandbox/issues/ISSUE-01-list-skeleton.md (TS-001..TS-005).
+TDD 切片见 docs/changes/swt-list-sandbox/issues/ISSUE-01-list-skeleton.md (TS-001..TS-005)
+与 ISSUE-02-running-entries.md (TS-021..TS-023).
 """
 from __future__ import annotations
 
@@ -57,10 +59,11 @@ def inspect_detail(name: str, state: str, podman_id: str | None = None) -> dict:
 class FakePodman:
     """scripted podman 边界: 记录全部调用, 未预期命令 AssertionError."""
 
-    def __init__(self, ps_rows, inspect_details=None, ports=None):
+    def __init__(self, ps_rows, inspect_details=None, ports=None, ip_output=""):
         self.ps_rows = list(ps_rows)
         self.inspect_details = dict(inspect_details or {})
         self.ports = dict(ports or {})
+        self.ip_output = ip_output
         self.calls: list[list[str]] = []
 
     def __call__(self, command, *, cwd=None, timeout=None, input=None):
@@ -82,6 +85,8 @@ class FakePodman:
                 # 在 ports 表 = 查询成功 (值可为空串 = 无映射); 缺席 = 非零退出失败
                 return subprocess.CompletedProcess(command, 0, self.ports[name], "")
             return subprocess.CompletedProcess(command, 1, "", "no port mappings")
+        if parts[:4] == ["ip", "-o", "-4", "addr"]:
+            return subprocess.CompletedProcess(command, 0, self.ip_output, "")
         if parts[0] == "nft":
             return subprocess.CompletedProcess(command, 0, "", "")
         raise AssertionError(f"fake run 未预期命令: {command}")
@@ -182,6 +187,210 @@ class TestListThreeContainers(ListCase):
         self.assertEqual(legacy["repo"], "/repos/beta")
         self.assertEqual(legacy["branch"], "legacy")
         self.assertEqual(legacy["podman-state"], "exited")
+
+
+class TestListRunningEntries(ListCase):
+    """TS-021 / TC-021: running+matched 容器访问入口全集 (AC-002 组装面)."""
+
+    def test_running_container_full_entries(self):
+        self.records.mkdir()
+        (self.records / "runtime").mkdir()
+        key_path = self.records / "runtime" / "alpha" / "ssh" / "swt-entry-a.ed25519"
+        key_path.parent.mkdir(parents=True)
+        key_path.write_text("fake-key-material", encoding="utf-8")
+        (self.records / "runtime" / "alpha.json").write_text(json.dumps({
+            "schema": 2, "repo": "/repos/alpha",
+            "containers": [{
+                "name": "swt-entry-a", "branch": "feat-a",
+                "podman-id": "id-swt-entry-a".ljust(64, "0"),
+                "display": "ok", "host-display": "ok",
+                "headed-script": "/records/runtime/alpha/swt-headed-browser.sh",
+                "ssh_private_key": str(key_path), "retired": False}],
+        }), encoding="utf-8")
+        (self.records / "lan-address").write_text("192.168.1.10\n", encoding="utf-8")
+        fake = FakePodman(
+            ps_rows=[ps_row("swt-entry-a", "/repos/alpha", "feat-a")],
+            inspect_details={
+                "swt-entry-a": inspect_detail(
+                    "swt-entry-a", "running", podman_id="id-swt-entry-a".ljust(64, "0")),
+            },
+            ports={
+                "swt-entry-a": (
+                    "22/tcp -> 0.0.0.0:49153\n"
+                    "6080/tcp -> 0.0.0.0:49154\n"
+                    "8800/tcp -> 0.0.0.0:49155\n"
+                ),
+            },
+            ip_output=("2: wlan0    inet 192.168.1.10/24 brd 192.168.1.255"
+                       " scope global wlan0"),
+        )
+        code, out, err = self.run_list(fake)
+        self.assertEqual(code, 0, err)
+        entry = self.parse_list(out)["containers"][0]
+        entries = entry["access-entries"]
+        # ssh 双入口: 本机 + 局域网 (已确认值), 都带密码与私钥路径字样
+        self.assertTrue(any("ssh -p 49153 bolo@127.0.0.1" in line
+                            and "密码 sandbox" in line for line in entries), entries)
+        self.assertTrue(any("ssh -p 49153 bolo@192.168.1.10" in line
+                            and "密码 sandbox" in line for line in entries), entries)
+        self.assertTrue(any(str(key_path) in line for line in entries), entries)
+        # noVNC 本机 URL
+        self.assertTrue(any("http://127.0.0.1:49154/vnc.html?resize=scale" in line
+                            for line in entries), entries)
+        # web 双 URL
+        self.assertTrue(any("http://127.0.0.1:49155" in line for line in entries), entries)
+        self.assertTrue(any("http://192.168.1.10:49155" in line for line in entries), entries)
+        # herdr remote 双命令
+        self.assertTrue(any("herdr --remote ssh://bolo@127.0.0.1:49153" in line
+                            for line in entries), entries)
+        self.assertTrue(any("herdr --remote ssh://bolo@192.168.1.10:49153" in line
+                            for line in entries), entries)
+        # 窗口直飞模板: 局域网地址代换, $(id -u) 设备侧展开段逐字保留 (UD-09)
+        self.assertTrue(any("waypipe ssh -p 49153" in line and "bolo@192.168.1.10" in line
+                            and "$(id -u)" in line for line in entries), entries)
+        # host-display 三态行 (ok)
+        self.assertTrue(any("本机直通" in line and "wayland" in line
+                            for line in entries), entries)
+
+
+class TestListLans(ListCase):
+    """TS-022 / TC-022: 多网卡候选/已确认排序与 VPN 排除 (AC-003)."""
+
+    IP_OUTPUT = (
+        "2: eth0    inet 192.168.2.20/24 brd 192.168.2.255 scope global eth0\n"
+        "3: wlan0    inet 192.168.1.10/24 brd 192.168.1.255 scope global wlan0\n"
+        "4: tailscale0    inet 100.64.0.5/32 scope global tailscale0\n"
+    )
+
+    def _make_record(self):
+        self.records.mkdir()
+        (self.records / "runtime").mkdir()
+        (self.records / "runtime" / "alpha.json").write_text(json.dumps({
+            "schema": 2, "repo": "/repos/alpha",
+            "containers": [{
+                "name": "swt-lan-a", "branch": "feat-a",
+                "podman-id": "id-swt-lan-a".ljust(64, "0"),
+                "display": "ok", "host-display": "ok",
+                "headed-script": "/records/runtime/alpha/swt-headed-browser.sh",
+                "retired": False}],
+        }), encoding="utf-8")
+
+    def _run_entry(self, fake) -> dict:
+        code, out, err = self.run_list(fake)
+        self.assertEqual(code, 0, err)
+        return self.parse_list(out)["containers"][0]
+
+    def _fake(self) -> FakePodman:
+        return FakePodman(
+            ps_rows=[ps_row("swt-lan-a", "/repos/alpha", "feat-a")],
+            inspect_details={
+                "swt-lan-a": inspect_detail(
+                    "swt-lan-a", "running", podman_id="id-swt-lan-a".ljust(64, "0")),
+            },
+            ports={
+                "swt-lan-a": (
+                    "22/tcp -> 0.0.0.0:49210\n"
+                    "6080/tcp -> 0.0.0.0:49211\n"
+                    "8800/tcp -> 0.0.0.0:49212\n"
+                ),
+            },
+            ip_output=self.IP_OUTPUT,
+        )
+
+    def test_lans_confirmed_first_candidates_per_nic(self):
+        self._make_record()
+        (self.records / "lan-address").write_text("192.168.1.10\n", encoding="utf-8")
+        fake = self._fake()
+        entry = self._run_entry(fake)
+        # 已确认组排最前 (ip 输出里 eth0 在前也不改变), VPN 接口排除 (BR-006)
+        self.assertEqual(entry["lans"], [
+            {"addr": "192.168.1.10", "iface": "wlan0", "kind": "confirmed"},
+            {"addr": "192.168.2.20", "iface": "eth0", "kind": "candidate"},
+        ])
+        self.assertNotIn("100.64.0.5", json.dumps(entry, ensure_ascii=False))
+        entries = entry["access-entries"]
+        candidate_lines = [line for line in entries if "192.168.2.20" in line]
+        # eth0 候选组全套 (D007): ssh/隧道/web/herdr/直飞 五行逐网卡代换
+        self.assertEqual(len(candidate_lines), 5, candidate_lines)
+        self.assertTrue(any("ssh -p 49210 bolo@192.168.2.20" in line
+                            for line in candidate_lines), candidate_lines)
+        self.assertTrue(any("-L 6080:127.0.0.1:49211 bolo@192.168.2.20" in line
+                            for line in candidate_lines), candidate_lines)
+        self.assertTrue(any("http://192.168.2.20:49212" in line
+                            for line in candidate_lines), candidate_lines)
+        self.assertTrue(any("herdr --remote ssh://bolo@192.168.2.20:49210" in line
+                            for line in candidate_lines), candidate_lines)
+        self.assertTrue(any("waypipe ssh -p 49210" in line and "bolo@192.168.2.20" in line
+                            for line in candidate_lines), candidate_lines)
+        # 候选组整块标 候选 (未确认可达), 已确认组标 已确认 (BR-005)
+        self.assertTrue(all("候选 (未确认可达)" in line for line in candidate_lines),
+                        candidate_lines)
+        self.assertTrue(any("192.168.1.10" in line and "已确认" in line
+                            for line in entries), entries)
+        # lan-address 缺席: 全 candidate, 无 confirmed
+        (self.records / "lan-address").unlink()
+        entry2 = self._run_entry(fake)
+        self.assertEqual(entry2["lans"], [
+            {"addr": "192.168.2.20", "iface": "eth0", "kind": "candidate"},
+            {"addr": "192.168.1.10", "iface": "wlan0", "kind": "candidate"},
+        ])
+
+
+class TestListEntryReasons(ListCase):
+    """TS-023 / TC-023: 缺项 reason 行 + LIST 无秘密值 (AC-002 缺项分支, 安全策略)."""
+
+    def test_entries_reason_lines_and_no_secrets(self):
+        self.records.mkdir()
+        (self.records / "runtime").mkdir()
+        secret_material = ("-----BEGIN OPENSSH PRIVATE KEY-----"
+                           "TEST-SECRET-MATERIAL-x7q9-z2"
+                           "-----END OPENSSH PRIVATE KEY-----")
+        key_path = self.records / "runtime" / "alpha" / "ssh" / "swt-reason-a.ed25519"
+        key_path.parent.mkdir(parents=True)
+        key_path.write_text(secret_material, encoding="utf-8")
+        (self.records / "runtime" / "alpha.json").write_text(json.dumps({
+            "schema": 2, "repo": "/repos/alpha",
+            "containers": [{
+                "name": "swt-reason-a", "branch": "feat-a",
+                "podman-id": "id-swt-reason-a".ljust(64, "0"),
+                "display": "ok", "host-display": "ok",
+                "headed-script": None,
+                "ssh_private_key": str(key_path), "retired": False}],
+        }), encoding="utf-8")
+        (self.records / "lan-address").write_text("192.168.1.10\n", encoding="utf-8")
+        fake = FakePodman(
+            ps_rows=[ps_row("swt-reason-a", "/repos/alpha", "feat-a")],
+            inspect_details={
+                "swt-reason-a": inspect_detail(
+                    "swt-reason-a", "running", podman_id="id-swt-reason-a".ljust(64, "0")),
+            },
+            ports={
+                "swt-reason-a": (
+                    "22/tcp -> 0.0.0.0:49310\n"
+                    "6080/tcp -> 0.0.0.0:49311\n"
+                    "8800/tcp -> 0.0.0.0:49312\n"
+                ),
+            },
+            ip_output=("2: wlan0    inet 192.168.1.10/24 brd 192.168.1.255"
+                       " scope global wlan0"),
+        )
+        code, out, err = self.run_list(fake)
+        self.assertEqual(code, 0, err)
+        entry = self.parse_list(out)["containers"][0]
+        entries = entry["access-entries"]
+        # 缺项显式 reason 行 (F3/BR-004): 无 headed-script → 直飞 reason
+        self.assertTrue(any("窗口直飞未附发" in line for line in entries), entries)
+        # 其余入口照发
+        self.assertTrue(any("ssh -p 49310 bolo@127.0.0.1" in line
+                            for line in entries), entries)
+        self.assertTrue(any("http://127.0.0.1:49311/vnc.html?resize=scale" in line
+                            for line in entries), entries)
+        self.assertTrue(any("http://192.168.1.10:49312" in line
+                            for line in entries), entries)
+        # 安全策略: 私钥路径可展示, 内容不进 LIST 任何字段
+        self.assertTrue(any(str(key_path) in line for line in entries), entries)
+        self.assertNotIn(secret_material, out)
+        self.assertNotIn(secret_material, json.dumps(entry, ensure_ascii=False))
 
 
 class TestListEmpty(ListCase):
