@@ -91,9 +91,22 @@ console.log('  最快分量 ' + Math.max.apply(null, allFast).toFixed(2) + ' Hz 
 var jit = stars.filter(function (s) { return s.ja; });
 console.log('\n位置微抖: ' + jit.length + ' 颗 (应等于明显档 ' + t2.length + ' 颗)');
 var ja = jit.map(function (s) { return s.ja; });
-show('抖幅', ja, 'px', 0.22, 1.20);
+show('抖幅', ja, 'px', 0.05, 1.60);
 var wrong = stars.filter(function (s) { return s.ja && s.n !== 4; }).length;
 if (wrong) { console.log('  ' + wrong + ' 颗不该有抖动的星带了抖动 <-'); ok = false; }
+// 尺度倒挂修复: 位移按半径缩放, 大星绝对位移应大于小星, 最小一档压在亚像素
+var mean = function (a) { return a.reduce(function (x, y) { return x + y; }, 0) / a.length; };
+var byr = jit.slice().sort(function (a, b) { return a.r - b.r; });
+var q = Math.max(1, Math.floor(byr.length / 4));
+var smallQ = byr.slice(0, q), bigQ = byr.slice(-q);
+var sm = mean(smallQ.map(function (s) { return s.ja; }));
+var bm = mean(bigQ.map(function (s) { return s.ja; }));
+var smax = Math.max.apply(null, smallQ.map(function (s) { return s.ja; }));
+console.log('  位移随半径: 最小 25% 星平均 ' + sm.toFixed(3) + 'px (最大 ' + smax.toFixed(3) +
+            ', r ' + smallQ[0].r.toFixed(2) + '~' + smallQ[q - 1].r.toFixed(2) + ') vs 最大 25% 星平均 ' +
+            bm.toFixed(3) + 'px (r ' + bigQ[0].r.toFixed(2) + '~' + bigQ[q - 1].r.toFixed(2) + ')');
+if (!(bm > sm)) { console.log('  <- 大星位移未大于小星 (倒挂未修复)'); ok = false; }
+if (smax > 0.40) { console.log('  <- 最小一档位移超过亚像素阈值 0.40px'); ok = false; }
 
 // ---- 5. 性能: 每颗每帧的 sin 次数 ----
 var sins = stars.reduce(function (acc, s) {
