@@ -628,6 +628,34 @@ def write_confirmed_lan_address(records_root: Path, address: str) -> None:
     atomic_write_text(confirmed_lan_address_path(records_root), address + "\n")
 
 
+def list_lan_groups(records_root: Path) -> tuple[list[dict[str, Any]], str | None]:
+    """list 的局域网地址组 (D007, 勿改 lan_ip 原函数): lan-address 已确认值
+    排最前 kind=confirmed, 其余非隧道网卡全局 IPv4 逐网卡 kind=candidate
+    (枚举序即 ip 输出序), 同地址去重, 已确认值不再重复出现在候选组.
+    已确认值也须过 BR-006 过滤: 资格 = 出现在当前枚举的某个非隧道全局网卡上;
+    不满足 (值在隧道/虚拟接口上, 或当前枚举中不存在) 则不产 confirmed 组,
+    返回 (groups, 被跳过的已确认值) 由调用方打 reason 行 (BR-004)."""
+    confirmed = read_confirmed_lan_address(records_root)
+    candidates: list[dict[str, Any]] = []
+    iface_by_addr: dict[str, str] = {}
+    for line in run(["ip", "-o", "-4", "addr", "show", "scope", "global"]).stdout.splitlines():
+        match = re.match(r"\d+: (\S+)\s+inet (\d+\.\d+\.\d+\.\d+)/", line)
+        if not match or match.group(1).startswith(TUNNEL_INTERFACE_PREFIXES):
+            continue
+        iface, addr = match.group(1), match.group(2)
+        if addr in iface_by_addr:
+            continue
+        iface_by_addr[addr] = iface
+        if addr != confirmed:
+            candidates.append({"addr": addr, "iface": iface, "kind": "candidate"})
+    if not confirmed:
+        return candidates, None
+    iface = iface_by_addr.get(confirmed)
+    if iface is None:
+        return candidates, confirmed
+    return [{"addr": confirmed, "iface": iface, "kind": "confirmed"}] + candidates, None
+
+
 def require_valid_lan_ip(address: str) -> str:
     """--lan-ip 格式门禁 (仿 --hostname RFC1123 校验先例): 非法 IPv4 → PreconditionError."""
     try:
@@ -1559,6 +1587,60 @@ def cmd_enroll_device_key(args: argparse.Namespace) -> int:
     return 0
 
 
+# ---- 访问入口行内容构造器 (打印与 list 两用, standards-1) ----
+# 只含行内容 (命令/URL/说明文本), 不含 [SWT] 前缀/标签/对齐空格/组标注 —
+# 那些由各调用方自带, 保证 birth/resume/status 既有输出逐字节不变.
+
+def ssh_entry_payload(ssh_port: int, lan: str | None = None) -> str:
+    """ssh 入口命令 (本机/局域网同构: lan 缺省即本机)."""
+    host = lan if lan is not None else "127.0.0.1"
+    return f"ssh -p {ssh_port} bolo@{host}  (用户 bolo, 密码 sandbox)"
+
+
+def novnc_local_url(vnc_port: int) -> str:
+    return f"http://127.0.0.1:{vnc_port}/vnc.html?resize=scale"
+
+
+def novnc_tunnel_command(ssh_port: int, vnc_port: int, lan: str) -> str:
+    """noVNC 局域网隧道命令 (地址段由调用方代换, <host-LAN-IP> 占位亦可)."""
+    return f"ssh -p {ssh_port} -L 6080:127.0.0.1:{vnc_port} bolo@{lan}"
+
+
+NOVNC_TUNNEL_FOLLOWUP = "  然后浏览器开 http://127.0.0.1:6080/vnc.html?resize=scale"
+
+
+def web_local_url(web_port: int) -> str:
+    return f"http://127.0.0.1:{web_port}"
+
+
+def web_lan_url(lan: str, web_port: int) -> str:
+    return f"http://{lan}:{web_port}"
+
+
+def herdr_remote_payload(ssh_port: int, lan: str | None = None) -> str:
+    """herdr remote 命令 (本机/局域网同构: lan 缺省即本机)."""
+    host = lan if lan is not None else "127.0.0.1"
+    return f"herdr --remote ssh://bolo@{host}:{ssh_port}"
+
+
+def ssh_key_path_line(key_path: Any) -> str:
+    return f"ssh 私钥: {key_path}"
+
+
+DISPLAY_STACK_ABSENT_TEXT = "显示栈: 该容器镜像未内置 swt-vnc, 无 noVNC 交付, 亦无隧道命令可附发"
+DISPLAY_STACK_DEGRADED_TEXT = (
+    "显示栈: 降级 (检查未过, 可用 swt display-check 诊断); 终端工作不受影响,"
+    " 隧道命令待显示栈恢复后随下次交付附发"
+)
+DISPLAY_STACK_OK_NO_VNC_TEXT = ("显示栈 ok 但容器无 6080 映射, 隧道命令未附发 (异常形态, 可跑 swt display-check 诊断)")
+HOST_DISPLAY_OK_TEXT = (
+    "本机直通: wayland 已接通 — 容器内 headed 窗口 (登录墙等) 将直接弹在宿主机桌面,"
+    " 本机场景可不开 noVNC; 远程仍走上方隧道"
+)
+HOST_DISPLAY_DEGRADED_TEXT = "本机直通: 降级 (wayland 实测未过, 已回退 noVNC; 可用 swt display-check 诊断)"
+HOST_DISPLAY_ABSENT_TEXT = "本机直通: absent (无宿主机桌面会话/纯服务器宿主常态, 显示走 noVNC)"
+
+
 def web_delivery_lines(web_port: int | None, lan: str | None, label: str | None = None) -> list[str]:
     """web 双 URL 交付行 (D003/D007/UD-04): birth/resume/status 同源组装.
     仅当容器有 web-port 才产行; 本机 URL 照打, 局域网只用已确认值 (D010/UD-03),
@@ -1566,13 +1648,39 @@ def web_delivery_lines(web_port: int | None, lan: str | None, label: str | None 
     if web_port is None:
         return []
     tag = f" ({label})" if label else ""
-    lines = [f"[SWT] web 入口{tag} (本机):   http://127.0.0.1:{web_port}"]
+    lines = [f"[SWT] web 入口{tag} (本机):   {web_local_url(web_port)}"]
     if lan:
-        lines.append(f"[SWT] web 入口{tag} (局域网): http://{lan}:{web_port}")
+        lines.append(f"[SWT] web 入口{tag} (局域网): {web_lan_url(lan, web_port)}")
     else:
         lines.append(f"[SWT] web 入口{tag} (局域网) 未附发: host 局域网地址无已确认值,"
                      " 确认 (--lan-ip) 后随下次交付附发")
     return lines
+
+
+HEADED_WAYPIPE_PREMISE = (
+    "窗口直飞前提: 设备须 Linux Wayland 桌面 + waypipe 客户端"
+    " (waypipe --version 检查, 缺则安装, Atomic 系走 distrobox);"
+    " 设备→容器免密先跑: swt enroll-device-key <容器名>;"
+    " 软件渲染参数必带 (M09 实测: GPU 路径经 waypipe 只出隐形窗口),"
+    " 页面 URL 只用容器内 127.0.0.1 地址"
+)
+
+HEADED_NO_SCRIPT_REASON = (
+    "窗口直飞未附发: 容器无实例启动脚本 (chromium 路径解析失败或旧容器),"
+    " 终端与 noVNC 不受影响"
+)
+
+
+def headed_waypipe_template(ssh_port: int) -> str:
+    """窗口直飞底层命令模板 (M08 D001(a), 打印与 list 两用): 局域网段为
+    {lan} 占位由调用方代换 (D007 逐网卡代换), $(id -u) 留给设备 shell 展开
+    (UD-09), 其余逐字保留."""
+    return (
+        f"waypipe ssh -p {ssh_port} -R /tmp/swt/pulse-b.sock:/run/user/$(id -u)/pulse/native"
+        f" bolo@{{lan}} {HEADED_BROWSER_CONTAINER_PATH}"
+        " --disable-gpu --disable-gpu-compositing"
+        " --no-first-run --no-default-browser-check --start-maximized <页面URL>"
+    )
 
 
 def headed_delivery_lines(ssh_port: int | None, lan: str | None, headed_script: str | None) -> list[str]:
@@ -1583,29 +1691,17 @@ def headed_delivery_lines(ssh_port: int | None, lan: str | None, headed_script: 
     if ssh_port is None:
         return []
     if headed_script:
-        template = (
-            f"waypipe ssh -p {ssh_port} -R /tmp/swt/pulse-b.sock:/run/user/$(id -u)/pulse/native"
-            f" bolo@{{lan}} {HEADED_BROWSER_CONTAINER_PATH}"
-            " --disable-gpu --disable-gpu-compositing"
-            " --no-first-run --no-default-browser-check --start-maximized <页面URL>"
-        )
+        template = headed_waypipe_template(ssh_port)
         if lan:
             return [
                 f"[SWT] 窗口直飞 (设备侧执行): {template.format(lan=lan)}",
-                "[SWT] 窗口直飞前提: 设备须 Linux Wayland 桌面 + waypipe 客户端"
-                " (waypipe --version 检查, 缺则安装, Atomic 系走 distrobox);"
-                " 设备→容器免密先跑: swt enroll-device-key <容器名>;"
-                " 软件渲染参数必带 (M09 实测: GPU 路径经 waypipe 只出隐形窗口),"
-                " 页面 URL 只用容器内 127.0.0.1 地址",
+                f"[SWT] {HEADED_WAYPIPE_PREMISE}",
             ]
         return [
             f"[SWT] 窗口直飞命令未附发: host 局域网地址不可知,"
             f" 请人工确认 host-LAN-IP 后组装: {template.format(lan='<host-LAN-IP>')}",
         ]
-    return [
-        "[SWT] 窗口直飞未附发: 容器无实例启动脚本 (chromium 路径解析失败或旧容器),"
-        " 终端与 noVNC 不受影响",
-    ]
+    return [f"[SWT] {HEADED_NO_SCRIPT_REASON}"]
 
 
 def print_status_headed_lines(containers: list[dict[str, Any]], lan: str | None) -> None:
@@ -1652,47 +1748,43 @@ def print_delivery_lines(
     print(f"[SWT] {heading}")
     if ssh_port is None:
         return
-    print(f"[SWT] ssh 入口 (本机):   ssh -p {ssh_port} bolo@127.0.0.1  (用户 bolo, 密码 sandbox)")
+    print(f"[SWT] ssh 入口 (本机):   {ssh_entry_payload(ssh_port)}")
     if lan:
-        print(f"[SWT] ssh 入口 (局域网): ssh -p {ssh_port} bolo@{lan}  (用户 bolo, 密码 sandbox)")
+        print(f"[SWT] ssh 入口 (局域网): {ssh_entry_payload(ssh_port, lan)}")
     tunnel_printed = False
     if display_status == "ok" and vnc_port:
-        print(f"[SWT] noVNC (本机):      http://127.0.0.1:{vnc_port}/vnc.html?resize=scale")
+        print(f"[SWT] noVNC (本机):      {novnc_local_url(vnc_port)}")
         if lan:
-            tunnel_target = f"-L 6080:127.0.0.1:{vnc_port}"
-            print(f"[SWT] noVNC (局域网隧道): ssh -p {ssh_port} {tunnel_target} bolo@{lan}"
-                  "  然后浏览器开 http://127.0.0.1:6080/vnc.html?resize=scale")
+            print(f"[SWT] noVNC (局域网隧道): {novnc_tunnel_command(ssh_port, vnc_port, lan)}"
+                  f"{NOVNC_TUNNEL_FOLLOWUP}")
             tunnel_printed = True
         else:
             print(f"[SWT] noVNC (局域网隧道) 未附发: host 局域网地址不可知, 请人工确认"
-                  f" host-LAN-IP 后组装: ssh -p {ssh_port} -L 6080:127.0.0.1:{vnc_port}"
-                  " bolo@<host-LAN-IP>")
+                  f" host-LAN-IP 后组装: {novnc_tunnel_command(ssh_port, vnc_port, '<host-LAN-IP>')}")
     elif display_status == "absent":
-        print("[SWT] 显示栈: 该容器镜像未内置 swt-vnc, 无 noVNC 交付, 亦无隧道命令可附发")
+        print(f"[SWT] {DISPLAY_STACK_ABSENT_TEXT}")
     elif display_status in ("degraded", "fail"):
-        print("[SWT] 显示栈: 降级 (检查未过, 可用 swt display-check 诊断); 终端工作不受影响,"
-              " 隧道命令待显示栈恢复后随下次交付附发")
+        print(f"[SWT] {DISPLAY_STACK_DEGRADED_TEXT}")
     elif display_status == "ok":
-        print("[SWT] 显示栈 ok 但容器无 6080 映射, 隧道命令未附发 (异常形态, 可跑 swt display-check 诊断)")
+        print(f"[SWT] {DISPLAY_STACK_OK_NO_VNC_TEXT}")
     if host_display == "ok":
-        print("[SWT] 本机直通: wayland 已接通 — 容器内 headed 窗口 (登录墙等) 将直接弹在宿主机桌面,"
-              " 本机场景可不开 noVNC; 远程仍走上方隧道")
+        print(f"[SWT] {HOST_DISPLAY_OK_TEXT}")
     elif host_display == "degraded":
-        print("[SWT] 本机直通: 降级 (wayland 实测未过, 已回退 noVNC; 可用 swt display-check 诊断)")
+        print(f"[SWT] {HOST_DISPLAY_DEGRADED_TEXT}")
     elif host_display == "absent":
-        print("[SWT] 本机直通: absent (无宿主机桌面会话/纯服务器宿主常态, 显示走 noVNC)")
+        print(f"[SWT] {HOST_DISPLAY_ABSENT_TEXT}")
     for line in web_delivery_lines(web_port, lan):
         print(line)
     for line in headed_delivery_lines(ssh_port, lan, headed_script):
         print(line)
-    print(f"[SWT] herdr remote (host):    herdr --remote ssh://bolo@127.0.0.1:{ssh_port}")
+    print(f"[SWT] herdr remote (host):    {herdr_remote_payload(ssh_port)}")
     if lan:
-        print(f"[SWT] herdr remote (局域网): herdr --remote ssh://bolo@{lan}:{ssh_port}")
+        print(f"[SWT] herdr remote (局域网): {herdr_remote_payload(ssh_port, lan)}")
     if lan is None:
         print("[SWT] 局域网 ssh/herdr 入口未附发: host 局域网地址不可知,"
               " 请人工确认 host-LAN-IP 后组装对应命令")
     if key_path:
-        print(f"[SWT] ssh 私钥: {key_path}")
+        print(f"[SWT] {ssh_key_path_line(key_path)}")
 
 
 def image_digest(ref: str) -> str:
@@ -4424,7 +4516,9 @@ def list_sandbox(args: argparse.Namespace) -> int:
     单行 json (schema v1, D005). 退出码仅 0/4. 只读纪律 (BR-009):
     不改 runtime 记录, 不动 nftables, 不持生命周期锁.
     生命周期/记录轴 (lifecycle/record-state) 由 runtime 记录合并得出 (D006),
-    记录扫描缺失时 lifecycle=unknown / record-state=missing."""
+    记录扫描缺失时 lifecycle=unknown / record-state=missing.
+    running+matched 容器另附 lans[] 网卡组与 access-entries[] 访问入口行
+    (D007/D008, 非-running/无记录分支归 ISSUE-03)."""
     require_command("podman")
     records_root = args.records_root.expanduser().resolve()
     print(f"[SWT] list: 枚举本 host 沙盒容器 (records-root: {records_root})")
@@ -4443,6 +4537,8 @@ def list_sandbox(args: argparse.Namespace) -> int:
         raise SwtEnvError(f"扫描或枚举失败: {exc}") from exc
     containers: list[dict[str, Any]] = []
     attributed_corrupt_files: set[Path] = set()
+    lan_groups: list[dict[str, Any]] | None = None
+    lan_skipped_confirmed: str | None = None
     for row in sorted(rows, key=podman_row_name):
         name = podman_row_name(row)
         if not name:
@@ -4496,6 +4592,19 @@ def list_sandbox(args: argparse.Namespace) -> int:
                 record_state = "missing"
             lifecycle = "unknown"
             branch = mother_branch
+        lans: list[dict[str, Any]] = []
+        access_entries: list[str] = []
+        if podman_state == "running" and record_state == "matched":
+            # 入口组装仅限 running+matched (非 running/无记录分支归 ISSUE-03);
+            # 网卡枚举是 host 级事实, 首个需要时查一次, 后续条目复用
+            if lan_groups is None:
+                lan_groups, lan_skipped_confirmed = list_lan_groups(records_root)
+            lans = [dict(group) for group in lan_groups]
+            access_entries = list_access_entries(
+                mapped_ports.get("22"), mapped_ports.get("6080"), mapped_ports.get("8800"),
+                record.get("display"), host_display, record.get("headed-script"),
+                record.get("ssh_private_key"), lan_groups, lan_skipped_confirmed,
+            )
         entry = {
             "name": name,
             "repo": repo_label if isinstance(repo_label, str) else None,
@@ -4509,8 +4618,8 @@ def list_sandbox(args: argparse.Namespace) -> int:
                 "web": mapped_ports.get("8800"),
             },
             "host-display": host_display,
-            "lans": [],
-            "access-entries": [],
+            "lans": lans,
+            "access-entries": access_entries,
             "collection-errors": collection_errors,
         }
         containers.append(entry)
@@ -4536,6 +4645,93 @@ def list_sandbox(args: argparse.Namespace) -> int:
     }
     print("LIST " + json.dumps(payload, ensure_ascii=False, separators=(",", ":")))
     return 0
+
+
+def list_access_entries(
+    ssh_port: int | None,
+    vnc_port: int | None,
+    web_port: int | None,
+    display_status: Any,
+    host_display: str | None,
+    headed_script: Any,
+    key_path_text: Any,
+    lan_groups: list[dict[str, Any]],
+    skipped_confirmed: str | None = None,
+) -> list[str]:
+    """running+matched 容器的访问入口行组装 (D008 入口子集, AC-002/AC-003):
+    本机入口不受网卡影响; 局域网行逐组代换地址, 已确认组排最前标 已确认,
+    候选组整块标 候选 (未确认可达) (D007/BR-005). 命令文本与
+    print_delivery_lines 同源 (去掉 [SWT] 前缀, 加组标注); 缺项打显式
+    reason 行, 不静默丢失 (F3/BR-004). 只展示私钥路径, 不读内容."""
+    display = display_status if display_status in ("ok", "absent", "degraded", "fail") else None
+    headed = headed_script if isinstance(headed_script, str) and headed_script else None
+    entries: list[str] = []
+    if ssh_port is not None:
+        entries.append(f"ssh 入口 (本机): {ssh_entry_payload(ssh_port)}")
+    else:
+        # BR-004: ssh 面整体缺席不静默 (ssh 双入口/隧道/herdr/直飞都依赖 22 端口)
+        entries.append("ssh 入口未附发: 容器无 22 端口映射; ssh 双入口/noVNC 局域网隧道/"
+                       "herdr remote/窗口直飞均依赖 22 端口 (异常形态, 可 podman port 复查)")
+    if display == "ok" and vnc_port:
+        entries.append(f"noVNC (本机): {novnc_local_url(vnc_port)}")
+    elif display == "absent":
+        entries.append(DISPLAY_STACK_ABSENT_TEXT)
+    elif display in ("degraded", "fail"):
+        entries.append(DISPLAY_STACK_DEGRADED_TEXT)
+    elif display == "ok":
+        entries.append(DISPLAY_STACK_OK_NO_VNC_TEXT)
+    else:
+        # BR-004 遗留补全: 显示状态未知 (记录缺 display 字段或值未识别) 不静默
+        entries.append("noVNC 入口未附发: 容器显示状态未知"
+                       " (runtime 记录缺 display 字段或值未识别),"
+                       " 可跑 swt display-check 诊断")
+    if web_port is not None:
+        entries.append(f"web 入口 (本机): {web_local_url(web_port)}")
+    else:
+        # BR-004: web 入口缺席不静默 (镜像未带 web 服务或旧容器, D003)
+        entries.append("web 入口未附发: 容器无 8800 端口映射 (镜像未带 web 服务或旧容器)")
+    if ssh_port is not None:
+        entries.append(f"herdr remote (host): {herdr_remote_payload(ssh_port)}")
+    for group in lan_groups:
+        lan = group["addr"]
+        tag = "已确认" if group["kind"] == "confirmed" else f"{group['iface']} 候选 (未确认可达)"
+        if ssh_port is not None:
+            entries.append(f"ssh 入口 (局域网) [{tag}]: {ssh_entry_payload(ssh_port, lan)}")
+        if display == "ok" and vnc_port and ssh_port is not None:
+            entries.append(f"noVNC (局域网隧道) [{tag}]: {novnc_tunnel_command(ssh_port, vnc_port, lan)}"
+                           f"{NOVNC_TUNNEL_FOLLOWUP}")
+        if web_port is not None:
+            entries.append(f"web 入口 (局域网) [{tag}]: {web_lan_url(lan, web_port)}")
+        if ssh_port is not None:
+            entries.append(f"herdr remote (局域网) [{tag}]: {herdr_remote_payload(ssh_port, lan)}")
+        if headed and ssh_port is not None:
+            entries.append(f"窗口直飞 (设备侧执行) [{tag}]:"
+                           f" {headed_waypipe_template(ssh_port).format(lan=lan)}")
+    if headed and ssh_port is not None:
+        if lan_groups:
+            entries.append(HEADED_WAYPIPE_PREMISE)
+        else:
+            entries.append("窗口直飞命令未附发: host 局域网地址不可知,"
+                           " 请人工确认 host-LAN-IP 后组装: "
+                           + headed_waypipe_template(ssh_port).format(lan="<host-LAN-IP>"))
+    elif ssh_port is not None:
+        entries.append(HEADED_NO_SCRIPT_REASON)
+    if skipped_confirmed:
+        # 不回显地址字面量: AC-003 要求该地址不出现在任何组/字段中 (含 reason 行)
+        entries.append("局域网入口 (已确认) 未附发: 已确认值当前不在任何非隧道网卡的"
+                       "全局地址中 (落在隧道/虚拟接口或已下线), 候选组照常展示,"
+                       " 可重新确认 (--lan-ip)")
+    if not lan_groups:
+        entries.append("局域网入口未附发: host 无非隧道网卡全局地址可用, 请人工确认 host-LAN-IP 后组装")
+    if host_display == "ok":
+        entries.append(HOST_DISPLAY_OK_TEXT)
+    elif host_display == "degraded":
+        entries.append(HOST_DISPLAY_DEGRADED_TEXT)
+    elif host_display == "absent":
+        entries.append(HOST_DISPLAY_ABSENT_TEXT)
+    if isinstance(key_path_text, str) and key_path_text:
+        entries.append(ssh_key_path_line(key_path_text))
+    return entries
 
 
 def canonical_json(value: Any) -> str:
