@@ -373,7 +373,18 @@ function mixHex(a, b, t) {   // 两色线性插值, 用来做同档内的色温�
   return '#' + ((1 << 24) + (r << 16) + (g << 8) + bl).toString(16).slice(1);
 }
 
-// 星场: 数量跟窗口面积走; 色温按真实比例抽并在相邻档之间插值 (不是贴标签), 逐颗按正弦闪烁
+var TAU = Math.PI * 2;
+
+// 闪烁分层: 大气湍流只让少数星明显闪 —— 70% 几乎恒定, 25% 轻微, 5% 明显.
+// aMin/aMax 是"相对自身亮度"的幅度区间, n 是正弦分量数 (1 = 单频, 3 = 两快频+慢包络, 4 = 三快频+慢包络)
+var FLICK_TIERS = [
+  { p: 0.70, aMin: 0.000, aMax: 0.030, n: 1 },
+  { p: 0.25, aMin: 0.030, aMax: 0.080, n: 3 },
+  { p: 0.05, aMin: 0.100, aMax: 0.220, n: 4 }
+];
+
+// 星场: 数量跟窗口面积走; 色温按真实比例抽并在相邻档之间插值 (不是贴标签);
+// 闪烁是多频叠加的颤动 (主频 0.55~2.65Hz, 相位各自随机, 整屏不同频共振), 不再是单频呼吸
 function buildStars() {
   var rnd = mulberry32(20240924);
   var n = Math.round(420 + (state.cw * state.ch) / 3200);
@@ -392,16 +403,44 @@ function buildStars() {
     if (nb < 0) nb = 0;
     if (nb > STAR_CLASSES.length - 1) nb = STAR_CLASSES.length - 1;
     var c = mixHex(cls.c, STAR_CLASSES[nb].c, Math.round(rnd() * 4) / 8);
-    out.push({
+    var a = (0.1 + z * 0.55) * lvl * cls.b;
+    // 闪烁档: 分层随机但逐颗固定; 再按深度衰减 (深远层小星感知更弱, 这是舒适红线)
+    var pick2 = rnd(), ti = 0;
+    while (ti < FLICK_TIERS.length - 1 && pick2 > FLICK_TIERS[ti].p) {
+      pick2 -= FLICK_TIERS[ti].p;
+      ti++;
+    }
+    var tier = FLICK_TIERS[ti];
+    var depth = 0.45 + z * 0.55;
+    var star = {
       x: rnd() * state.cw,
       y: rnd() * state.ch,
       r: (0.3 + z * 1.6 * (0.6 + rnd() * 0.9)) * cls.s,
-      a: (0.1 + z * 0.55) * lvl * cls.b,
-      tw: 0.26 * lvl,
-      sp: 0.2 + rnd() * 1.2,
-      ph: rnd() * Math.PI * 2,
-      c: c
-    });
+      a: a,
+      c: c,
+      n: tier.n,                                   // 正弦分量数
+      ta: a * (tier.aMin + rnd() * (tier.aMax - tier.aMin)) * depth,   // 绝对幅度
+      // 频率一律按 Hz 定义, 这里就乘 2π 预算成角频率 —— sin() 吃的是弧度, 否则会把
+      // 1Hz 写成 1rad/s (0.16Hz), 又变成"呼吸"了
+      f1: (0.55 + rnd() * 2.1) * TAU, p1: rnd() * Math.PI * 2,   // 主频 0.55~2.65Hz (亚秒级)
+      f2: (0.70 + rnd() * 2.6) * TAU, p2: rnd() * Math.PI * 2,   // 次频独立取, 不与主频成整数倍
+      f3: (0.90 + rnd() * 3.2) * TAU, p3: rnd() * Math.PI * 2,
+      fe: (0.07 + rnd() * 0.18) * TAU, pe: rnd() * Math.PI * 2 // 慢包络 0.07~0.25Hz: 闪一阵停一阵
+    };
+    var w1 = 0.5 + rnd() * 0.2, w2 = 0.25 + rnd() * 0.15;
+    var w3 = tier.n === 4 ? 0.15 + rnd() * 0.12 : 0;
+    var ws = w1 + w2 + w3;
+    star.w1 = w1 / ws;
+    star.w2 = w2 / ws;
+    star.w3 = w3 / ws;                             // 权重和为 1, 所以叠加信号幅度 <= 1
+    if (tier.n === 4) {                            // 只有"明显闪烁"档才有位置微抖
+      star.ja = (0.3 + rnd() * 0.5) * depth;       // 0.3~0.8px (深远层更弱)
+      star.jfx = (0.3 + rnd() * 0.7) * TAU;    // 位置微抖也是低频: 0.3~1Hz
+      star.jfy = (0.3 + rnd() * 0.7) * TAU;
+      star.jpx = rnd() * Math.PI * 2;
+      star.jpy = rnd() * Math.PI * 2;
+    }
+    out.push(star);
   }
   // 按颜色排序: 同色的星连着画, 每帧 fillStyle 切换从几百次降到几次
   return out.sort(function (a, b) { return a.c < b.c ? -1 : (a.c > b.c ? 1 : 0); });
@@ -983,18 +1022,34 @@ function draw(t, dt) {
 
   var i, s;
 
-  // 星空: 位置与大小都固定在屏幕上, 视角平移或缩放都不动它, 只有每颗自己按正弦闪烁
+  // 星空: 位置与大小都固定在屏幕上 (视角平移/缩放都不动它), 只有闪烁自己跑.
+  // 闪烁 = 多频正弦叠加 * 慢包络, 相位逐颗随机 -> 亚秒级颤动, 且整屏不会同频共振.
+  // 分量数按闪烁档分流 (1 / 3 / 4 个 sin), 平均每颗约 1.75 次 sin, 开销可控.
   var dots = state.skyDots;
   var tint = '';
   for (i = 0; i < dots.length; i++) {
     s = dots[i];
-    ctx.globalAlpha = Math.max(0.04, s.a + s.tw * Math.sin(t * s.sp + s.ph));
+    var al = s.a;
+    if (s.n === 1) {
+      al += s.ta * Math.sin(t * s.f1 + s.p1);
+    } else {
+      var env = 0.55 + 0.45 * Math.sin(t * s.fe + s.pe);       // 慢包络: 闪一阵停一阵
+      var sig = s.w1 * Math.sin(t * s.f1 + s.p1) + s.w2 * Math.sin(t * s.f2 + s.p2);
+      if (s.n === 4) sig += s.w3 * Math.sin(t * s.f3 + s.p3);
+      al += s.ta * env * sig;
+    }
+    ctx.globalAlpha = al < 0.04 ? 0.04 : al;
+    var sx = s.x, sy = s.y;
+    if (s.ja) {                                                // 只有明显闪烁档才有位置微抖
+      sx += s.ja * Math.sin(t * s.jfx + s.jpx);
+      sy += s.ja * Math.sin(t * s.jfy + s.jpy);
+    }
     if (s.c !== tint) { ctx.fillStyle = s.c; tint = s.c; }   // 同色的星连着画, 少切 fillStyle
     // 小星用方点填充代替 arc+fill: 这个尺度下看不出差别, 光栅化快一倍多
-    if (s.r < 1.6) ctx.fillRect(s.x - s.r, s.y - s.r, s.r * 2, s.r * 2);
+    if (s.r < 1.6) ctx.fillRect(sx - s.r, sy - s.r, s.r * 2, s.r * 2);
     else {
       ctx.beginPath();
-      ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+      ctx.arc(sx, sy, s.r, 0, Math.PI * 2);
       ctx.fill();
     }
   }

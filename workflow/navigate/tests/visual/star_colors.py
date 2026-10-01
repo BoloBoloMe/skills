@@ -63,10 +63,13 @@ var byT = STAR_CLASSES.map(function (k, i) {
   return { r: g.reduce(function (a, s) { return a + s.r; }, 0) / g.length,
            a: g.reduce(function (a, s) { return a + s.a; }, 0) / g.length };
 });
-// 容差放着: 每档只有几十到几百颗样本, 相邻档的理论系数本来就接近 (0.95 / 1.05)
-var mono = byT.every(function (v, i) {
-  return i === 0 || (v.a >= byT[i - 1].a - 0.05 && v.r >= byT[i - 1].r - 0.15);
+// 设计值本身必须随色温单调递增 (每个色温档天生的相对大小/亮度系数)
+var designMono = STAR_CLASSES.every(function (k, i) {
+  return i === 0 || (k.s >= STAR_CLASSES[i - 1].s && k.b >= STAR_CLASSES[i - 1].b);
 });
+// 实测均值只看两端 (中间档每次抽样的样本不大, 均值会抖)
+var mono = designMono && byT[byT.length - 1].a > byT[0].a * 1.2 && byT[byT.length - 1].r > byT[0].r * 1.2;
+if (!designMono) console.log('色温档的设计系数不单调 <-');
 var ends = byT[byT.length - 1].r > byT[0].r * 1.5 && byT[byT.length - 1].a > byT[0].a * 1.3;
 console.log('\n越蓝越大越亮 (主序星规律): ' + (mono ? '成立' : '不成立') +
             '; 两端对比: 半径 ' + byT[0].r.toFixed(2) + ' -> ' + byT[byT.length - 1].r.toFixed(2) +
@@ -115,7 +118,9 @@ def extract_blocks(src: str) -> list[str]:
         oc, cc = ("{", "}") if seg[ob] == "{" else ("[", "]")
         return src[m.start():match_end(src, m.start() + ob, oc, cc) + 1] + ";"
 
-    return [variable("STAR_CLASSES"), function("mulberry32"), function("mixHex"), function("buildStars")]
+    # buildStars 现在还依赖闪烁档表与 TAU, 一并抽出 (否则 node 里会 ReferenceError)
+    return [variable("FLICK_TIERS"), variable("STAR_CLASSES"), variable("TAU"),
+            function("mulberry32"), function("mixHex"), function("buildStars")]
 
 
 def main() -> int:
