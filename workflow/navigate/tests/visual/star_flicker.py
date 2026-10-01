@@ -60,18 +60,19 @@ console.log('幅度分层 (按正弦分量数归组):');
                 (near ? '' : '<- 偏离'));
   });
 
-// ---- 2. 幅度区间 (相对自身亮度) 与深度衰减 ----
-console.log('\n闪烁幅度 (ta/a, 即相对自身亮度的峰幅):');
-show('几乎恒定', t0.map(function (s) { return s.ta / s.a; }), '', 0, 0.030);
-show('轻微', t1.map(function (s) { return s.ta / s.a; }), '', 0.013, 0.080);
-show('明显', t2.map(function (s) { return s.ta / s.a; }), '', 0.045, 0.220);
-// 同样的档位取星, 深度 (z) 小的星幅度应更小
-var deep = t2.filter(function (s) { return s.r < 1.0; }).map(function (s) { return s.ta / s.a; });
-var near = t2.filter(function (s) { return s.r > 1.6; }).map(function (s) { return s.ta / s.a; });
+// ---- 2. 幅度区间 (绝对 alpha 摆幅) 与深度衰减 ----
+// 期望区间 = 设计值 x 深度系数 (0.45~1.0): 摆幅是绝对量, 不随星自身亮度缩放
+console.log('\n闪烁幅度 (绝对 alpha 摆幅 ta):');
+show('几乎恒定', t0.map(function (s) { return s.ta; }), 'alpha', 0, 0.020);
+show('轻微', t1.map(function (s) { return s.ta; }), 'alpha', 0.0135, 0.080);
+show('明显', t2.map(function (s) { return s.ta; }), 'alpha', 0.045, 0.220);
+// 同档内, 深远层 (z 小 -> 半径小) 的星摆幅应更小
+var deep = t2.filter(function (s) { return s.r < 1.0; }).map(function (s) { return s.ta; });
+var near = t2.filter(function (s) { return s.r > 1.6; }).map(function (s) { return s.ta; });
 if (deep.length && near.length) {
   var dm = deep.reduce(function (a, v) { return a + v; }, 0) / deep.length;
   var nm = near.reduce(function (a, v) { return a + v; }, 0) / near.length;
-  console.log('  深远层小星平均 ' + dm.toFixed(3) + ' vs 近层大星 ' + nm.toFixed(3) +
+  console.log('  深远层小星平均摆幅 ' + dm.toFixed(3) + ' vs 近层大星 ' + nm.toFixed(3) +
               ' -> 深远层更弱: ' + (dm < nm ? '成立' : '不成立'));
   if (!(dm < nm)) ok = false;
 }
