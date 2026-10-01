@@ -383,14 +383,14 @@ function mixHex(a, b, t) {   // 两色线性插值, 用来做同档内的色温�
 
 var TAU = Math.PI * 2;
 
-// 闪烁分层: 大气湍流只让少数星明显闪 —— 70% 几乎恒定, 25% 轻微, 5% 明显.
+// 闪烁分层: 大气湍流只让少数星明显闪 —— 60% 几乎恒定, 28% 轻微, 12% 明显.
 // aMin/aMax 是**绝对 alpha 摆幅** (直接加在 globalAlpha 上的量), 不是自身亮度的百分比:
 // 背景星自身 alpha 只有 0.1~0.3, 按百分比算出来的摆幅只有 0.006~0.018, 低于感知阈值 (看不出来).
 // n 是正弦分量数 (1 = 单频, 3 = 两快频+慢包络, 4 = 三快频+慢包络)
 var FLICK_TIERS = [
-  { p: 0.70, aMin: 0.00, aMax: 0.02, n: 1 },
-  { p: 0.25, aMin: 0.03, aMax: 0.08, n: 3 },
-  { p: 0.05, aMin: 0.10, aMax: 0.22, n: 4 }
+  { p: 0.60, aMin: 0.00, aMax: 0.02, n: 1 },
+  { p: 0.28, aMin: 0.05, aMax: 0.12, n: 3 },
+  { p: 0.12, aMin: 0.16, aMax: 0.38, n: 4 }
 ];
 
 // 星场: 数量跟窗口面积走; 色温按真实比例抽并在相邻档之间插值 (不是贴标签);
@@ -421,7 +421,7 @@ function buildStars() {
       ti++;
     }
     var tier = FLICK_TIERS[ti];
-    var depth = 0.45 + z * 0.55;
+    var depth = 0.55 + z * 0.45;
     var star = {
       x: rnd() * state.cw,
       y: rnd() * state.ch,
@@ -444,7 +444,7 @@ function buildStars() {
     star.w2 = w2 / ws;
     star.w3 = w3 / ws;                             // 权重和为 1, 所以叠加信号幅度 <= 1
     if (tier.n === 4) {                            // 只有"明显闪烁"档才有位置微抖
-      star.ja = (0.3 + rnd() * 0.5) * depth;       // 0.3~0.8px (深远层更弱)
+      star.ja = (0.4 + rnd() * 0.8) * depth;       // 0.4~1.2px (深远层更弱)
       star.jfx = (0.3 + rnd() * 0.7) * TAU;    // 位置微抖也是低频: 0.3~1Hz
       star.jfy = (0.3 + rnd() * 0.7) * TAU;
       star.jpx = rnd() * Math.PI * 2;

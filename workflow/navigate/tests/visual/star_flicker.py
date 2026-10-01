@@ -37,12 +37,12 @@ function show(name, arr, unit, lo, hi) {
 }
 console.log('星数 ' + stars.length + ' (1440x900)\n');
 
-// ---- 0. 设计表本身要符合任务书: 70/25/5 ----
+// ---- 0. 设计表本身要符合任务书: 60/28/12 ----
 var design = FLICK_TIERS.map(function (t) { return t.p; });
 var dsum = design.reduce(function (a, v) { return a + v; }, 0);
-var dnear = Math.abs(design[0] - 0.70) < 0.03 && Math.abs(design[1] - 0.25) < 0.03 && Math.abs(design[2] - 0.05) < 0.03;
+var dnear = Math.abs(design[0] - 0.60) < 0.03 && Math.abs(design[1] - 0.28) < 0.03 && Math.abs(design[2] - 0.12) < 0.03;
 if (!dnear || Math.abs(dsum - 1) > 1e-9) ok = false;
-console.log('设计比例 ' + design.map(pct).join(' / ') + ' (任务书 70/25/5), 合计 ' + dsum.toFixed(3) +
+console.log('设计比例 ' + design.map(pct).join(' / ') + ' (任务书 60/28/12), 合计 ' + dsum.toFixed(3) +
             ' -> ' + (dnear && Math.abs(dsum - 1) < 1e-9 ? '符合' : '不符') + '\n');
 
 // ---- 1. 幅度分层比例 (n=1/3/4 正好对应三档) ----
@@ -61,11 +61,11 @@ console.log('幅度分层 (按正弦分量数归组):');
   });
 
 // ---- 2. 幅度区间 (绝对 alpha 摆幅) 与深度衰减 ----
-// 期望区间 = 设计值 x 深度系数 (0.45~1.0): 摆幅是绝对量, 不随星自身亮度缩放
+// 期望区间 = 设计值 x 深度系数 (0.55~1.0): 摆幅是绝对量, 不随星自身亮度缩放
 console.log('\n闪烁幅度 (绝对 alpha 摆幅 ta):');
 show('几乎恒定', t0.map(function (s) { return s.ta; }), 'alpha', 0, 0.020);
-show('轻微', t1.map(function (s) { return s.ta; }), 'alpha', 0.0135, 0.080);
-show('明显', t2.map(function (s) { return s.ta; }), 'alpha', 0.045, 0.220);
+show('轻微', t1.map(function (s) { return s.ta; }), 'alpha', 0.0275, 0.120);
+show('明显', t2.map(function (s) { return s.ta; }), 'alpha', 0.088, 0.380);
 // 同档内, 深远层 (z 小 -> 半径小) 的星摆幅应更小
 var deep = t2.filter(function (s) { return s.r < 1.0; }).map(function (s) { return s.ta; });
 var near = t2.filter(function (s) { return s.r > 1.6; }).map(function (s) { return s.ta; });
@@ -91,7 +91,7 @@ console.log('  最快分量 ' + Math.max.apply(null, allFast).toFixed(2) + ' Hz 
 var jit = stars.filter(function (s) { return s.ja; });
 console.log('\n位置微抖: ' + jit.length + ' 颗 (应等于明显档 ' + t2.length + ' 颗)');
 var ja = jit.map(function (s) { return s.ja; });
-show('抖幅', ja, 'px', 0.13, 0.80);
+show('抖幅', ja, 'px', 0.22, 1.20);
 var wrong = stars.filter(function (s) { return s.ja && s.n !== 4; }).length;
 if (wrong) { console.log('  ' + wrong + ' 颗不该有抖动的星带了抖动 <-'); ok = false; }
 
