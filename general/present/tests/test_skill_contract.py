@@ -8,14 +8,14 @@ SKILL_DIR = Path(__file__).resolve().parent.parent
 
 
 class TestSkillContract(unittest.TestCase):
-    def test_model_invocation_frontmatter(self):
+    def test_user_invocation_frontmatter(self):
         skill = (SKILL_DIR / "SKILL.md").read_text(encoding="utf-8")
         self.assertIn("name: present", skill)
+        self.assertIn("disable-model-invocation: true", skill)
         description = next(
             line for line in skill.splitlines() if line.startswith("description:")
         )
-        self.assertIn("我要求可视化", description)
-        self.assertIn("复杂到文字难以承载", description)
+        self.assertIn("展示", description)
 
     def test_browser_helper_path_is_resolved_from_skill_directory(self):
         skill = (SKILL_DIR / "SKILL.md").read_text(encoding="utf-8")

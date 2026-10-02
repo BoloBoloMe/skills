@@ -1,6 +1,7 @@
 ---
 name: present
-description: 当我要求可视化或展示, 或你要向我解释的内容复杂到文字难以承载时使用.
+description: 把内容做成自包含 HTML 页面展示给我 (本地起浏览器, 远程交付网页地址).
+disable-model-invocation: true
 ---
 
 本 skill 是展示层, 不改变调用方工作流, 决策顺序或确认规则. 总是生成 HTML.
