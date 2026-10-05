@@ -6,7 +6,9 @@
 
 用法: uv run check-ac.py <PRODUCT.md 路径>
 
-校验六项, 规则与同目录 SKILL.md / GHERKIN.md 对齐:
+确认标记 + 六项格式校验, 规则与同目录 SKILL.md / GHERKIN.md 对齐:
+0. 确认标记: `验收标准` 节必须含 `<!-- confirmed-flow: vN -->` (由 to-spec
+   验收标准确认流程写入), 缺失判为输入错误; 无标记表示用户从未确认过.
 1. 解析: gherkin-official parser 必须成功解析 gherkin 块.
 2. 标签封闭集与 @AC 唯一性 (D003/D007): 只允许 @AC-NNN / @G-NNN /
    @BR-NNN / @normal / @failure / @edge; 每场景 (含场景大纲) 恰好一个 @AC-NNN.
@@ -34,6 +36,7 @@ from gherkin.token_matcher import TokenMatcher
 SECTION_HEADING_RE = re.compile(r"^##\s*验收标准\s*$")
 NEXT_SECTION_RE = re.compile(r"^##\s")
 FENCE_RE = re.compile(r"^```gherkin[^\n]*\n(.*?)^```", re.S | re.M)
+MARKER_RE = re.compile(r"<!--\s*confirmed-flow:\s*v\d+\s*-->")
 
 AC_TAG_RE = re.compile(r"^@AC-\d{3}$")
 COVER_TAG_RES = (
@@ -118,6 +121,16 @@ def extract_gherkin_block(markdown: str) -> tuple[str, int]:
     m = FENCE_RE.search(section)
     if m is None:
         fail_input("`## 验收标准` 节中未找到 ```gherkin 代码块")
+    marker = MARKER_RE.search(section)
+    if marker is None:
+        fail_input(
+            "`## 验收标准` 节缺少确认流程标记 `<!-- confirmed-flow: v1 -->` "
+            "(由 to-spec 验收标准确认流程写入; 缺失视为未经用户确认)"
+        )
+    if marker.start() > m.start():
+        fail_input(
+            "确认流程标记 `<!-- confirmed-flow: vN -->` 必须位于 gherkin 代码块之前"
+        )
     if FENCE_RE.search(section, m.end()):
         fail_input("`## 验收标准` 节应恰好一个 ```gherkin 块, 实际多于一个")
     block = m.group(1)
@@ -198,8 +211,8 @@ def check_tag_position(node: dict, v: Violations, where: str) -> None:
         )
 
 
-def walk(gdt: dict, v: Violations) -> tuple[int, int]:
-    """遍历 AST, 返回 (场景数, AC 数)."""
+def walk(gdt: dict, v: Violations) -> tuple[int, int, list[tuple[str, str, str]]]:
+    """遍历 AST, 返回 (场景数, AC 数, 覆盖标签引用列表)."""
     feature = gdt.get("feature")
     if feature is None:
         v.add("关键字白名单", "gherkin 块", "缺少 `功能:` 行")
