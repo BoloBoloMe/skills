@@ -29,7 +29,7 @@
 - [`diagnosing-bugs`](workflow/diagnosing-bugs/SKILL.md): 为硬 bug 和性能回归建立反馈循环并定位原因.
 - [`domain-awareness`](workflow/domain-awareness/SKILL.md): 只读发现当前仓库的领域语言, 边界和相关 ADR.
 - [`domain-modeling`](workflow/domain-modeling/SKILL.md): 维护领域语言和 ADR, 持续澄清模糊的领域概念.
-- [`explain-diff`](workflow/explain-diff/SKILL.md): 生成包含背景, 直觉, 代码走读和测验的交互式 diff 讲解页.
+- [`explain-diff`](workflow/explain-diff/SKILL.md): 生成包含背景, 主旨, 证据, 合并风险和测验的交互式 diff 讲解页.
 - [`follow-the-money`](workflow/follow-the-money/SKILL.md): 沿价值流审查变更, 检查授权, 数量和执行造成的资损风险.
 - [`improve-codebase-architecture`](workflow/improve-codebase-architecture/SKILL.md): 发现架构摩擦, 并提出把浅模块深化的重构机会.
 - [`lazy-dev`](workflow/lazy-dev/SKILL.md): 用决策阶梯和实现阶梯收敛到最小且无未来负担的方案.

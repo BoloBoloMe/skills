@@ -1,6 +1,6 @@
 # 远程展示
 
-仅在 `SKILL.md` 判定为远程模式时读取. 将页面生成到 `SKILL.md` 选定的 `output_dir`, 再用 web 服务交付, 不启动 Chromium 或安装本地浏览器环境. 页面仍须提供 `__PRESENTATION_STATE__`, 但远程没有读取通道, 反馈和最终确认都在 chat 完成.
+仅在 `SKILL.md` 判定为远程模式时读取. 将页面生成到 `SKILL.md` 选定的 `output_dir`, 页面含 Mermaid 时先按 `SKILL.md` 运行 `<embed>` 内联渲染库, 再用 web 服务交付, 不启动 Chromium 或安装本地浏览器环境. 页面仍须提供 `__PRESENTATION_STATE__`, 但远程没有读取通道, 反馈和最终确认都在 chat 完成.
 
 ## 挂载与交付
 

@@ -21,6 +21,12 @@ class TestSkillContract(unittest.TestCase):
         skill = (SKILL_DIR / "SKILL.md").read_text(encoding="utf-8")
         self.assertIn("将 `scripts/browser_session.py` 相对本 skill 目录解析为绝对路径", skill)
 
+    def test_mermaid_rendered_via_inlined_component(self):
+        skill = (SKILL_DIR / "SKILL.md").read_text(encoding="utf-8")
+        self.assertIn("scripts/embed_mermaid.py", skill)
+        self.assertIn('<pre class="mermaid">', skill)
+        self.assertIn("不输出裸 Mermaid 源码", skill)
+
     def test_remote_ssh_mode_contract(self):
         """TC-024: 远程规则按需披露, 关键行为仍受文档契约保护."""
         skill = (SKILL_DIR / "SKILL.md").read_text(encoding="utf-8")
