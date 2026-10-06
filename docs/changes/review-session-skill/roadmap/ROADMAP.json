@@ -1,0 +1,91 @@
+{
+  "schema_version": "0.0.1",
+  "title": "复刻 matt 的 retro 为 pi 的 review-session skill",
+  "destination": "仓库里躺着已提交的 general/review-session/SKILL.md: 中文; 步骤, 7 个改进类别, 2 段 Reference, 强度词与 matt 的 retro 逐条对应; 所有指向 pi 外界面的引用都换成了 pi 里真实存在的东西; 我同步到 pi 后在一个真实会话上跑通一次, 拿到的候选按严重度排序且都指向真实存在的文件或机制.",
+  "notes": [
+    "源: https://github.com/mattpocock/skills/blob/main/skills/engineering/retro/SKILL.md (main 分支; 4 个步骤 + Reference; 类别: Navigation, Automated checks, Coding standards, Global AGENTS.md, Tool economy, No-ops, Information access).",
+    "已定 Q2=b 汉化 + 本地化: 结构与类别, 每类的 _Use when_ 触发条件, 强度词一个不删; 只替换指向 pi 里不存在实体的引用. 映射: writing-for-agents 到 general/writing-for-llm; reviewer agent 与 implementation agent 到 审核者 与 执行者 (定义见 workflow/tdd-as-orchestra/SKILL.md 第 13-14 行); CLAUDE.md/AGENTS.md 到 AGENTS.md (含全局 ~/.pi/agent/AGENTS.md); Skill 工具 到直接读对应 skill 的 SKILL.md; 会话日志到 ~/.pi/agent/sessions/.",
+    "未选方向与排除理由: 纯直译不本地化会让 agent 指向 pi 里不存在的实体 (Skill 工具, reviewer agent), 诱发幻觉调用; 按 pi 重写流程则偏离复刻.",
+    "已定 Q1/Q5: 名 review-session, 落 general/; 默认复盘当前会话, 也可指定任意历史会话 (语义照 matt).",
+    "已定 Q4=a: skill 交付物只有 general/review-session/SKILL.md 与 README 技能列表一行; 不加契约测试, 不为 skill 单独建决策文档. 本文档所在的 docs/changes/review-session-skill/ 是路线图过程目录, 不算 skill 交付物.",
+    "已定 Q6=a: 候选只列给用户, 不落盘; 落盘与跟踪属复刻之外的增强, 本次不做.",
+    "已定 Q7=b: 验收 = 用户跑 uv run python sync-to-pi.py 同步后, 在真实会话上实跑一次. 本仓库 AGENTS.md 禁止代理改真实 agent 目录, 同步与实跑都必须由用户执行.",
+    "已知事实: 会话日志在 ~/.pi/agent/sessions/<cwd 编码目录>/*.jsonl, 首行是含 cwd 的会话头. pi/extensions/session-prune.ts 第 37 行 STALE_SESSION_DAYS=30, 会话闲置超 30 天会被永久删除, 所以能复盘的旧会话有 30 天上限.",
+    "已知事实: pi 没有内置子代理工具 (工具表与 pi docs 均无 subagent); 本仓库 AGENTS.md 规定 pi 里开子代理 = 在 herdr 开新会话; workflow/code-review 第 4 步已自带 运行时不支持子 agent 就父会话依次跑 的降级."
+  ],
+  "milestones": {
+    "milestone-01": {
+      "title": "查清会话日志的读法与可复盘范围",
+      "type": "research",
+      "question": "第 2 步要读我指定会话的原始记录, 这是整个 skill 的输入口, 必须先摸清. 要查清: (1) 怎么定位一次会话 (仓库目录编码规则, 会话 id, 时间戳, 内容关键词), 以及 我指定会话 时最可靠的定位口径; (2) JSONL 里各 type 行的含义与 token 占比 (session / message / thinking / tool_use / tool_result / model_change 等); (3) 用什么命令 (rg / jq) 只抽需要的片段, 才能少花 token 看完一次会话, 并实测一次真实会话给出具体命令与开销数字; (4) 在 session-prune 的 30 天上限下, 已被删掉的会话怎么如实报告. 产出带实测命令与真实样例的分析文件.",
+      "status": "待处理",
+      "blocked_by": [],
+      "artifacts": [
+        "docs/changes/review-session-skill/milestone-01/findings.md"
+      ],
+      "close_summary": null
+    },
+    "milestone-02": {
+      "title": "查清 pi 与本仓库的检查与护栏实况",
+      "type": "research",
+      "question": "Automated checks 与 Global AGENTS.md 两个类别要落到 pi 语境, 需要事实: (1) pi 有没有钩子式的自动拦截点 (settings.json, extensions 的事件, 有无 pre-commit 类机制); (2) 本仓库自己的检查入口与既有护栏 (tests/run 按改动面选套件的逻辑, pytest 快慢层, 有无 CI 工作流, 有无 lint 与 pre-commit); (3) 全局 AGENTS.md (~/.pi/agent/AGENTS.md) 与仓库级 AGENTS.md 的加载关系, 谁进谁的上下文, 各自多大. 每条结论附证据路径. 产出分析文件.",
+      "status": "待处理",
+      "blocked_by": [],
+      "artifacts": [
+        "docs/changes/review-session-skill/milestone-02/findings.md"
+      ],
+      "close_summary": null
+    },
+    "milestone-03": {
+      "title": "逐项敲定 7 个类别与 2 段 Reference 的本地化写法",
+      "type": "deliberate",
+      "question": "逐项过 matt 的 7 个类别加 Reference 两段, 定: 哪些照搬, 哪些改写, 哪些删; 每类的 _Use when_ 触发条件是否保留; 机器能判的错一律做自动检查, 判断题才写进规范文件 这条默认是否保留, 以及本仓库没有 CODING_STANDARDS.md 时该指向哪里; 执行者 与 审核者 这两个词在文中怎么用 (Implementation vs Review 那段是这套归责的支点); 候选的输出形态 (只按严重度列, 不落盘); frontmatter 描述字段的触发词与措辞. 产物: 逐项决策记录.",
+      "status": "待处理",
+      "blocked_by": [
+        "milestone-01",
+        "milestone-02"
+      ],
+      "artifacts": [
+        "docs/changes/review-session-skill/milestone-03/DECISIONS.md"
+      ],
+      "close_summary": null
+    },
+    "milestone-04": {
+      "title": "写出 general/review-session/SKILL.md 并更新 README",
+      "type": "task",
+      "question": "调 general/translate-a-skill 按 milestone-03 的决策落地: 新建 general/review-session/SKILL.md (frontmatter: name: review-session, description 只写一行人类摘要, disable-model-invocation: true), 正文保留源版的步骤与类别结构; 更新 README.md 通用技能列表加一行; 按 translate-a-skill 第 7 步做全角标点与残留英文自查; 提交推送.",
+      "status": "待处理",
+      "blocked_by": [
+        "milestone-03"
+      ],
+      "artifacts": [
+        "general/review-session/SKILL.md"
+      ],
+      "close_summary": null
+    },
+    "milestone-05": {
+      "title": "同步到 pi 并在真实会话上实跑验收",
+      "type": "task",
+      "question": "由我执行: 跑 uv run python sync-to-pi.py 同步到 pi; 在一个真实会话上调用 review-session 跑一次; 检查能否定位并读完指定会话, 候选是否都指向仓库里真实存在的东西, 有没有提到 pi 里不存在的工具或机制, 触发条件是否有用, 花了多少 token. 有问题的据实开新 Milestone 回改.",
+      "status": "待处理",
+      "blocked_by": [
+        "milestone-04"
+      ],
+      "artifacts": [],
+      "close_summary": null
+    }
+  },
+  "unknown_seas": [
+    "类别清单是否够用: matt 的 7 类是他在 Claude Code 生态里攒的, pi 这边可能出现他没有的常见病 (skill 描述字段膨胀, 上下文管理, 子会话编排), 要不要补第 8 类, 现在说不清, 等实跑证据."
+  ],
+  "off_course": [
+    {
+      "what": "把 matt 库里其它 skill 也搬过来, 以及把这次的本地化口径沉淀成通用移植约定",
+      "reason": "本次目的地只覆盖 retro 一个 skill"
+    },
+    {
+      "what": "候选的落盘与后续跟踪机制 (谁去改, 改没改)",
+      "reason": "Q6 决定照 matt 只列候选; 落盘与跟踪属复刻之外的增强"
+    }
+  ]
+}
