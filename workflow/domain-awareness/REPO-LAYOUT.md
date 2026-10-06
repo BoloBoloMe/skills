@@ -31,3 +31,5 @@ project-root/
 |           `-- billing/
 `-- src/
 ```
+
+先读 `UBIQUITOUS_LANGUAGE_MAP.md` 确定上下文边界, 再读根级 `UBIQUITOUS_LANGUAGE.md` 和当前任务相关的上下文语言与 ADR
