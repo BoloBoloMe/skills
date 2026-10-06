@@ -18,23 +18,23 @@
       "title": "查清会话日志的读法与可复盘范围",
       "type": "research",
       "question": "第 2 步要读我指定会话的原始记录, 这是整个 skill 的输入口, 必须先摸清. 要查清: (1) 怎么定位一次会话 (仓库目录编码规则, 会话 id, 时间戳, 内容关键词), 以及 我指定会话 时最可靠的定位口径; (2) JSONL 里各 type 行的含义与 token 占比 (session / message / thinking / tool_use / tool_result / model_change 等); (3) 用什么命令 (rg / jq) 只抽需要的片段, 才能少花 token 看完一次会话, 并实测一次真实会话给出具体命令与开销数字; (4) 在 session-prune 的 30 天上限下, 已被删掉的会话怎么如实报告. 产出带实测命令与真实样例的分析文件.",
-      "status": "待处理",
+      "status": "已关闭",
       "blocked_by": [],
       "artifacts": [
         "docs/changes/review-session-skill/milestone-01/findings.md"
       ],
-      "close_summary": null
+      "close_summary": "已完成会话日志输入口调查: 核实 cwd 编码目录, 文件名和 header 定位规则, 实测 JSONL 类型与 token 使用量, 给出 rg + Node 抽取命令和开销, 明确 30 天清理后的不可恢复报告边界."
     },
     "milestone-02": {
       "title": "查清 pi 与本仓库的检查与护栏实况",
       "type": "research",
       "question": "Automated checks 与 Global AGENTS.md 两个类别要落到 pi 语境, 需要事实: (1) pi 有没有钩子式的自动拦截点 (settings.json, extensions 的事件, 有无 pre-commit 类机制); (2) 本仓库自己的检查入口与既有护栏 (tests/run 按改动面选套件的逻辑, pytest 快慢层, 有无 CI 工作流, 有无 lint 与 pre-commit); (3) 全局 AGENTS.md (~/.pi/agent/AGENTS.md) 与仓库级 AGENTS.md 的加载关系, 谁进谁的上下文, 各自多大. 每条结论附证据路径. 产出分析文件.",
-      "status": "待处理",
+      "status": "已关闭",
       "blocked_by": [],
       "artifacts": [
         "docs/changes/review-session-skill/milestone-02/findings.md"
       ],
-      "close_summary": null
+      "close_summary": "已完成 pi 和仓库护栏调查: 核实 pi 工具拦截点, 当前扩展加载边界, tests/run 与 pytest 快慢层, 全局和仓库 AGENTS.md 作用域, 并确认没有 pre-commit, CI 或活动 Git hook 自动兜底."
     },
     "milestone-03": {
       "title": "逐项敲定 7 个类别与 2 段 Reference 的本地化写法",
