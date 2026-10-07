@@ -59,6 +59,8 @@ class _FakePodman:
         self.commands.append([str(part) for part in command])
         self.inputs.append(input)
         if command[:2] == ["podman", "port"]:
+            if len(command) == 3:
+                return _cp(command, 0, "22/tcp -> 0.0.0.0:49153\n", "")
             if "22" in command:
                 return _cp(command, 0, "0.0.0.0:49153\n", "")
             return _cp(command, 1, "", "no mapping")

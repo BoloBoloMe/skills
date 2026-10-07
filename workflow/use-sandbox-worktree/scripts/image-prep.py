@@ -68,6 +68,7 @@ pi>=0.80
 uv>=0.5
 fd>=1.0 probe="fd --version"
 rg>=13.0
+jq>=1.6 probe="jq --version"
 sshd>=8.0 probe="/usr/sbin/sshd -V"
 herdr>=0.9 probe="herdr --version"
 socat>=1.7 probe="dpkg-query -W -f='${Version}' socat | cut -d: -f2-"
@@ -246,7 +247,7 @@ FROM docker.io/library/node:24-bookworm-slim
 
 # 稳定层: 系统 bin 与 sshd (M03 镜像契约)
 RUN apt-get update \\
-    && apt-get install --no-install-recommends -y git openssh-server fd-find ripgrep python3 ca-certificates curl socat iproute2 \\
+    && apt-get install --no-install-recommends -y git openssh-server fd-find ripgrep jq python3 ca-certificates curl socat iproute2 \\
     && rm -rf /var/lib/apt/lists/* \\
     && ln -s /usr/bin/fdfind /usr/local/bin/fd
 
@@ -296,8 +297,9 @@ RUN for p in $(find /home/bolo/.agents/skills -name pyproject.toml 2>/dev/null);
     done \\
     && chown -R bolo:bolo /home/bolo/.agents /home/bolo/.pi
 
-# 容器内端口固定 (22 ssh / 8800 present / 6080 noVNC); 宿主端口不钉, 诞生时 -p <容器端口> 动态分配
-EXPOSE 22 8800 6080
+# 容器内端口固定 (22 ssh / 8800-8805 web 段 (8800 present, 8801 navigate) / 6080 noVNC);
+# 宿主端口不钉, 诞生时 -p <容器端口> 动态分配 (D003)
+EXPOSE 22 8800-8805 6080
 
 # M08 D004: entrypoint 先以 bolo 属主 0700 建 XDG 运行时目录与 swt 信箱
 # 目录 (UD-03 固定常量 1001), 再 exec sshd; CMD 由 entrypoint 取代.

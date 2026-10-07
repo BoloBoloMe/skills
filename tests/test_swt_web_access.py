@@ -69,11 +69,13 @@ def _load_swt():
 
 class _FakeRun:
     """scripted podman 边界: 存在性 inspect 回 1 (新容器, 走 create 分支);
-    create 记录命令; 后续 inspect 回运行中容器 JSON; port 回读仿真实映射."""
+    create 记录命令; 后续 inspect 回运行中容器 JSON; `podman port <名>` 全量回读
+    六个 web 口映射 (D003)."""
 
-    def __init__(self, container_name: str, web_mapping: str | None = "0.0.0.0:49155"):
+    def __init__(self, container_name: str, web_mappings: dict[int, str] | None = None):
         self.container_name = container_name
-        self.web_mapping = web_mapping
+        self.web_mappings = (web_mappings if web_mappings is not None
+                             else {8800: "0.0.0.0:49155"})
         self.calls: list[list[str]] = []
         self.create_command: list[str] | None = None
 
@@ -96,11 +98,14 @@ class _FakeRun:
         if head == "podman start":
             return subprocess.CompletedProcess(command, 0, "", "")
         if command[:3] == ["podman", "port", self.container_name]:
-            if command[3] == "22":
-                return subprocess.CompletedProcess(command, 0, "0.0.0.0:49153\n", "")
-            if command[3] == "8800" and self.web_mapping is not None:
-                return subprocess.CompletedProcess(command, 0, self.web_mapping + "\n", "")
-            return subprocess.CompletedProcess(command, 1, "", "no mapping")
+            if len(command) == 4:
+                if command[3] == "22":
+                    return subprocess.CompletedProcess(command, 0, "0.0.0.0:49153\n", "")
+                return subprocess.CompletedProcess(command, 1, "", "no mapping")
+            lines = ["22/tcp -> 0.0.0.0:49153"]
+            for port, mapping in self.web_mappings.items():
+                lines.append(f"{port}/tcp -> {mapping}")
+            return subprocess.CompletedProcess(command, 0, "\n".join(lines) + "\n", "")
         raise AssertionError(f"fake run 未预期命令: {command}")
 
 
@@ -110,7 +115,7 @@ class TestBirthPublishesWebPort(unittest.TestCase):
         self.root = Path(mkdtemp(prefix="swt-web-access-"))
         self.addCleanup(rmtree, self.root, True)
 
-    def _run_create(self, web_mapping: str | None = "0.0.0.0:49155") -> _FakeRun:
+    def _run_create(self, web_mappings: dict[int, str] | None = None) -> _FakeRun:
         m = self.m
         records_root = self.root / "records"
         identity = "testid"
@@ -120,7 +125,7 @@ class TestBirthPublishesWebPort(unittest.TestCase):
         runtime = {"schema": m.SCHEMA, "containers": [], "stage": "daemon"}
         image = {"ref": "localhost/test:latest", "digest": "sha256:fake"}
         args = argparse.Namespace(name="swt-demo", hostname="swt-demo")
-        fake = _FakeRun("swt-demo", web_mapping=web_mapping)
+        fake = _FakeRun("swt-demo", web_mappings=web_mappings)
         original_run = m.run
         original_wayland = m.host_wayland_socket
         original_port_free = m.host_port_free
@@ -148,34 +153,44 @@ class TestBirthPublishesWebPort(unittest.TestCase):
     def _publish_args(command: list[str]) -> list[str]:
         return [command[i + 1] for i, part in enumerate(command) if part == "-p"]
 
-    def test_create_publishes_8800_on_all_host_interfaces(self):
-        """D001: create 参数含 `-p 8800` (宿主 0.0.0.0 动态分配), 不绑回环."""
+    def test_create_publishes_web_port_range_on_all_host_interfaces(self):
+        """D003: create 参数含 `-p 8800`..`-p 8805` (宿主 0.0.0.0 动态分配), 不绑回环."""
         fake = self._run_create()
         self.assertIsNotNone(fake.create_command)
         published = self._publish_args(fake.create_command)
-        web = [spec for spec in published if spec.rpartition(":")[2] == "8800"]
-        self.assertEqual(web, ["8800"], f"8800 应与 22 同款裸发布, 实际 -p 集合: {published}")
+        web = [spec for spec in published
+               if spec.rpartition(":")[2] in {"8800", "8801", "8802", "8803", "8804", "8805"}]
+        self.assertEqual(web, ["8800", "8801", "8802", "8803", "8804", "8805"],
+                         f"web 端口段应与 22 同款裸发布, 实际 -p 集合: {published}")
 
-    def test_create_does_not_bind_8800_to_loopback(self):
-        """F001 守卫: 8800 禁止像 6080 那样绑 127.0.0.1 (局域网直达是 D001 目标)."""
+    def test_create_does_not_bind_web_range_to_loopback(self):
+        """F001 守卫: 8800-8805 禁止像 6080 那样绑 127.0.0.1 (局域网直达是 D001 目标)."""
         fake = self._run_create()
         self.assertIsNotNone(fake.create_command)
         published = self._publish_args(fake.create_command)
         loopback_web = [spec for spec in published
-                        if spec.startswith("127.0.0.1") and spec.rpartition(":")[2] == "8800"]
+                        if spec.startswith("127.0.0.1")
+                        and spec.rpartition(":")[2] in {"8800", "8801", "8802", "8803", "8804", "8805"}]
         self.assertEqual(loopback_web, [])
 
     def test_record_web_port_matches_podman_port_8800_readback(self):
-        """D003: 新容器记录 web-port 等于 `podman port <名> 8800` 回读的宿主端口."""
-        self._run_create(web_mapping="0.0.0.0:49155")
+        """D003: 新容器记录 web-port 等于 `podman port <名> 8800` 回读的宿主端口,
+        8801-8805 逐口登记为 web-port-2..6."""
+        self._run_create(web_mappings={
+            8800: "0.0.0.0:49155", 8801: "0.0.0.0:49156", 8802: "0.0.0.0:49157",
+            8803: "0.0.0.0:49158", 8804: "0.0.0.0:49159", 8805: "0.0.0.0:49160",
+        })
         record = self._persisted_record()
         self.assertEqual(record["web-port"], 49155)
+        self.assertEqual([record[f"web-port-{n}"] for n in (2, 3, 4, 5, 6)],
+                         [49156, 49157, 49158, 49159, 49160])
 
     def test_record_web_port_none_when_no_8800_mapping(self):
         """D009: 旧容器无 8800 映射时 web-port 回读为 None, birth 不报错."""
-        self._run_create(web_mapping=None)
+        self._run_create(web_mappings={})
         record = self._persisted_record()
         self.assertIsNone(record["web-port"])
+        self.assertIsNone(record["web-port-6"])
 
 
 class _FakeStatusRun:

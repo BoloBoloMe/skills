@@ -248,9 +248,16 @@ def test_terminate_revokes_via_subcommand(swt, tmp_path):
 def test_birth_injects_host_ports_and_display(swt):
     env = {"KEEP": "1"}
     swt.bake_host_info_env(env, ssh_port=22222, vnc_port=46080,
-                           web_port=40800, host_display="ok")
+                           web_ports=[40800, 40801, 40802, None, None, None],
+                           host_display="ok", lan_ip="192.168.1.10")
     assert env["SWT_HOST_SSH_PORT"] == "22222"
     assert env["SWT_HOST_WEB_PORT"] == "40800"
+    # D003: 端口段逐口烘入 SWT_HOST_WEB_PORT_2.._6; 缺席口省略条目
+    assert env["SWT_HOST_WEB_PORT_2"] == "40801"
+    assert env["SWT_HOST_WEB_PORT_3"] == "40802"
+    assert "SWT_HOST_WEB_PORT_4" not in env
+    # D010: 已确认局域网地址烘给容器拼页面 URL; 缺席不烘
+    assert env["SWT_HOST_LAN_IP"] == "192.168.1.10"
     assert env["SWT_HOST_VNC_PORT"] == "46080"
     assert env["HOST_DISPLAY"] == "ok"
     assert env["KEEP"] == "1"  # 既有 env 原样保留 (BR-005 只新增不改名)
@@ -258,14 +265,15 @@ def test_birth_injects_host_ports_and_display(swt):
     # 缺席端口 (无该映射/查询失败) 省略条目不阻断
     env2: dict[str, str] = {}
     swt.bake_host_info_env(env2, ssh_port=22222, vnc_port=None,
-                           web_port=None, host_display="absent")
+                           web_ports=[None] * 6, host_display="absent")
     assert env2["SWT_HOST_SSH_PORT"] == "22222"
     assert env2["HOST_DISPLAY"] == "absent"
     assert "SWT_HOST_VNC_PORT" not in env2
     assert "SWT_HOST_WEB_PORT" not in env2
+    assert "SWT_HOST_LAN_IP" not in env2
     # 非三态显示状态不烘 (宁可缺省不可错值)
     env3: dict[str, str] = {}
-    swt.bake_host_info_env(env3, 22222, 46080, 40800, "mounted")
+    swt.bake_host_info_env(env3, 22222, 46080, [40800] * 6, "mounted")
     assert "HOST_DISPLAY" not in env3
     # birth 主流程接缝守卫: 直通判定后确实烘 env 并重写容器 ssh 面通道
     source = SWT_SCRIPT.read_text(encoding="utf-8")

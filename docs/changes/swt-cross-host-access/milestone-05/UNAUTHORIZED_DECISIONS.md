@@ -1,5 +1,7 @@
 # M05 AFK 自主决定记录
 
+后续修订: [agent-env-followups D003](../../agent-env-followups/DECISIONS.md) 把容器对外 web 端口从单口 8800 扩为 8800-8805 (本记录为 M05 当时自主决定, 不追溯改写; 端口段相关行为的现行口径以 D003 为准).
+
 ## UD-01 EXECUTION.md 由总指挥自拟拆解
 - 问题: tdd-as-orchestra 要求 EXECUTION.md 由用户提供, M05 产物目录无任何执行拆解; 用户以 probe 遍历模式指派 M05 且会话为 auto 模式无法回问.
 - 决策: 总指挥依据权威输入 (MILESTONE-05.md 任务书 + M04 账本 D001-D013/F001-F008 + 现场勘察事实) 自拟 EXECUTION.md, 拆解 8 个 ISSUE.

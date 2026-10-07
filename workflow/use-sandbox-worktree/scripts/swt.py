@@ -61,6 +61,20 @@ GIT_CONTAINER_PORT = 9418
 GIT_BRIDGE_CONTAINER_DIR = "/run/swt-git"
 GIT_BRIDGE_SOCK = "git.sock"
 
+# D005: 新容器全局 git 身份在 birth 键级注入 (合并进既有 ~/.gitconfig, 不覆盖整份);
+# 值取容器用户名与仓库既有作者, 消除每个新容器首次提交必失败.
+GIT_IDENTITY_NAME = "bolo"
+GIT_IDENTITY_EMAIL = "921402781@qq.com"
+
+# D003: 每个容器预留 6 个 web 端口 8800-8805 (8800 present / 8801 navigate / 8802-8805 预留),
+# 宿主一律 0.0.0.0 动态发布 (禁回环); STATE 逐口登记, 交付包仍只列 8800.
+WEB_CONTAINER_PORTS = (8800, 8801, 8802, 8803, 8804, 8805)
+
+
+def web_port_record_key(index: int) -> str:
+    """D003: 容器端口 8800+index 的 STATE 记录键; index 0 沿用既有 `web-port`."""
+    return "web-port" if index == 0 else f"web-port-{index + 1}"
+
 # P1-6 agent 系统提示词母本制: 母本在 <skill>/agent-prompts/, birth 留档到
 # runtime/<identity>/agent-prompts/<容器>/ 后只读单文件挂载进容器.
 AGENT_PROMPT_SOURCE_DIR = Path(__file__).resolve().parents[1] / "agent-prompts"
@@ -1383,10 +1397,13 @@ def container_vnc_port(name: str) -> int | None:
     return port
 
 
-def container_web_port(name: str) -> int | None:
-    """容器 8800 (web) 的宿主映射端口; 无映射返回 None (D009 前旧容器无 8800 发布)."""
-    _result, port = _directed_port_query(name, "8800")
-    return port
+def container_web_ports(name: str) -> dict[str, int | None]:
+    """容器 8800-8805 (web 段, D003) 的宿主映射端口; 一次全量 `podman port` 读取,
+    无映射的键为 None (D009 前旧容器无 web 发布)."""
+    result = run(["podman", "port", name])
+    mapped = parse_podman_ports(result.stdout) if result.returncode == 0 else {}
+    return {web_port_record_key(index): mapped.get(str(port))
+            for index, port in enumerate(WEB_CONTAINER_PORTS)}
 
 
 DISPLAY_SCRIPT = Path(__file__).with_name("swt-display.py")
@@ -2254,9 +2271,10 @@ def refresh_container(
             raise SwtError(3, "PARTIAL", f"PARTIAL container-start {name}; 请释放占用端口后重跑 birth: {started.stderr.strip()}")
     port = container_ssh_port(name)
     vnc_port = container_vnc_port(name)
-    web_port = container_web_port(name)
+    web_ports = container_web_ports(name)
     detail = inspect_container(name)
-    record.update({"podman-id": detail.get("Id"), "state": "running", "ssh-port": port, "vnc-port": vnc_port, "web-port": web_port})
+    record.update({"podman-id": detail.get("Id"), "state": "running", "ssh-port": port,
+                   "vnc-port": vnc_port, **web_ports})
     runtime["stage"] = "container-started"
     upsert_container_record(runtime, record, runtime_file)
     return {"name": name, "port": port, "record": record, "detail": detail}
@@ -2418,23 +2436,34 @@ HOST_INFO_ENV_SSH_PORT = "SWT_HOST_SSH_PORT"
 HOST_INFO_ENV_WEB_PORT = "SWT_HOST_WEB_PORT"
 HOST_INFO_ENV_VNC_PORT = "SWT_HOST_VNC_PORT"
 HOST_INFO_ENV_DISPLAY = "HOST_DISPLAY"
+HOST_INFO_ENV_LAN_IP = "SWT_HOST_LAN_IP"
+
+
+def web_port_env_name(index: int) -> str:
+    """D003: 容器端口 8800+index 的宿主信息 env 名; index 0 沿用 SWT_HOST_WEB_PORT."""
+    if index == 0:
+        return HOST_INFO_ENV_WEB_PORT
+    return f"{HOST_INFO_ENV_WEB_PORT}_{index + 1}"
 
 
 def bake_host_info_env(
     env: dict[str, str],
     ssh_port: int | None,
     vnc_port: int | None,
-    web_port: int | None,
+    web_ports: list[int | None],
     host_display: str | None,
+    lan_ip: str | None = None,
 ) -> None:
     """ISSUE-08 (AC-027): 宿主端口映射 (ssh/web/vnc) 与显示直通状态烘进
     birth env 字典. 端口缺席 (无该映射/查询失败) 省略条目; HOST_DISPLAY
     恒写入 (absent 也是信息, 容器据此直判无直通); 非三态值不烘
-    (宁可缺省不可错值). 纯组装, 落盘通道见 _rewrite_ssh_environment."""
+    (宁可缺省不可错值). 纯组装, 落盘通道见 _rewrite_ssh_environment.
+    D010: lan_ip = 已确认局域网地址 (容器拼页面 URL 用), 缺席不烘, 容器改走信箱. """
     if ssh_port:
         env[HOST_INFO_ENV_SSH_PORT] = str(ssh_port)
-    if web_port:
-        env[HOST_INFO_ENV_WEB_PORT] = str(web_port)
+    for index, port in enumerate(web_ports):
+        if port:
+            env[web_port_env_name(index)] = str(port)
     if vnc_port:
         env[HOST_INFO_ENV_VNC_PORT] = str(vnc_port)
     if host_display in ("ok", "degraded", "absent"):
@@ -2442,6 +2471,8 @@ def bake_host_info_env(
     elif host_display:
         print(f"[SWT] 未知显示直通状态 {host_display!r}, HOST_DISPLAY 不烘",
               file=sys.stderr)
+    if lan_ip:
+        env[HOST_INFO_ENV_LAN_IP] = lan_ip
 
 
 def write_ssh_environment(name: str, env: dict[str, str]) -> subprocess.CompletedProcess:
@@ -2594,18 +2625,24 @@ def create_and_start_container(args: argparse.Namespace, repo: Path, image: dict
     command.extend(["-v", f"{SKILLS_HOST_DIR}:{SKILLS_CONTAINER_DIR}:ro"])
     for rel_project in skill_projects:
         command.extend(["-v", f"{SKILLS_CONTAINER_DIR}/{rel_project}/.venv"])
-    # web 服务端口 (D001): 与 22 同款宿主 0.0.0.0 动态分配, 直达局域网, 禁止绑回环
-    command.extend(["-p", "22", "-p", "8800", str(image["ref"])])
     # llm-select 数据目录只读挂载 (见 assert_llm_select_mountable): 缺失/权限不足
+    # 时软跳过, 不动 birth.
     if assert_llm_select_mountable(LLM_SELECT_HOST_DIR):
         command.extend(["-v", f"{LLM_SELECT_HOST_DIR}:{LLM_SELECT_CONTAINER_DIR}:ro"])
+    # web 服务端口段 (D001/D003): 与 22 同款宿主 0.0.0.0 动态分配, 直达局域网,
+    # 禁止绑回环; 预留 8800-8805 六个口, 交付包仍只列 8800.
+    command.extend(["-p", "22"])
+    for web_port in WEB_CONTAINER_PORTS:
+        command.extend(["-p", str(web_port)])
+    command.append(str(image["ref"]))
     created = run(command)
     if created.returncode != 0:
         raise SwtError(3, "PARTIAL", f"容器 create 失败: {created.stderr.strip()}")
     detail = inspect_container(name)
     record = {
         "name": name, "branch": branch, "podman-id": detail.get("Id"), "state": "created",
-        "ssh-port": None, "vnc-port": None, "web-port": None, "image-digest": image.get("digest"), "retired": False,
+        "ssh-port": None, "vnc-port": None, "image-digest": image.get("digest"), "retired": False,
+        **{web_port_record_key(index): None for index in range(len(WEB_CONTAINER_PORTS))},
         "display": "pending", "dirty": {"uncommitted": None, "unpushed": None, "relation": None, "reachable": False},
         "host-display": "mounted" if wayland_socket is not None else "absent",
         "headed-script": str(headed_script) if headed_script is not None else None,
@@ -2663,6 +2700,24 @@ def inject_ssh_key(container: dict[str, Any], records_root: Path, identity: str,
     runtime["stage"] = "ssh-ready"
     atomic_write_json(runtime_file, runtime)
     return key
+
+
+def inject_git_identity(key: Path, port: int) -> None:
+    """D005: 容器内键级写入全局 git 身份 (合并进既有 ~/.gitconfig, 不整份覆盖),
+    写完读回验证. 经 ssh 面以 bolo 身份写入 (HOME=/home/bolo); 失败只告警,
+    不阻断 birth (身份是增强不是命脉, 与宿主信息 env 同口径)."""
+    for config_key, value in (("user.name", GIT_IDENTITY_NAME), ("user.email", GIT_IDENTITY_EMAIL)):
+        result = ssh_command(key, port, f"git config --global {config_key} {shlex.quote(value)}")
+        if result.returncode != 0:
+            print(f"[SWT] git 身份注入失败 ({config_key}, 不影响 birth): {result.stderr.strip()}",
+                  file=sys.stderr)
+            return
+    readback = ssh_command(
+        key, port, "git config --global --get user.name; git config --global --get user.email")
+    expected = f"{GIT_IDENTITY_NAME}\n{GIT_IDENTITY_EMAIL}"
+    if readback.returncode != 0 or readback.stdout.strip() != expected:
+        print(f"[SWT] git 身份读回校验失败 (不影响 birth): {readback.stdout.strip()!r}",
+              file=sys.stderr)
 
 
 def assert_container_clone(container: dict[str, Any], key: Path, branch: str, remote: str) -> None:
@@ -3081,6 +3136,7 @@ def birth(args: argparse.Namespace, repo: Path) -> int:
         container["record"]["remote"] = remote
         atomic_write_json(runtime_file, runtime)
         wait_for_ssh(key, container["port"])
+        inject_git_identity(key, container["port"])
         assert_container_clone(container, key, branch, remote)
         runtime["stage"] = "born"
         runtime["network"] = {**runtime["network"], "gateway": gateway_address, "container-ip": ip_value, "netns": shared_netns}
@@ -3092,8 +3148,10 @@ def birth(args: argparse.Namespace, repo: Path) -> int:
         # 失败只告警不阻断 (与信箱接线同口径: 增强不是命脉).
         bake_host_info_env(env_map, container["record"].get("ssh-port"),
                            container["record"].get("vnc-port"),
-                           container["record"].get("web-port"),
-                           host_display_status)
+                           [container["record"].get(web_port_record_key(index))
+                            for index in range(len(WEB_CONTAINER_PORTS))],
+                           host_display_status,
+                           read_confirmed_lan_address(records_root))
         _rewrite_ssh_environment(container["name"], env_map)
         display_status = birth_display_gate(args, repo, records_root, identity, runtime, runtime_file, container)
         if display_status == "fail":
@@ -3346,8 +3404,12 @@ def podman_container_state(
             mapped_ports = parse_podman_ports(port_result.stdout)
         ssh_port = mapped_ports.get("22")
         vnc_port = mapped_ports.get("6080")
-        web_port = mapped_ports.get("8800")
         retired_record = lookup(name, podman_id)
+        web_ports = {
+            web_port_record_key(index): (
+                mapped_ports.get(str(port)) or retired_record.get(web_port_record_key(index)))
+            for index, port in enumerate(WEB_CONTAINER_PORTS)
+        }
         labels = row.get("Labels") if isinstance(row.get("Labels"), dict) else {}
         branch = (
             retired_record.get("branch")
@@ -3379,7 +3441,7 @@ def podman_container_state(
                 "state": state.get("Status") or row.get("State") or row.get("Status"),
                 "ssh-port": ssh_port,
                 "vnc-port": vnc_port or retired_record.get("vnc-port"),
-                "web-port": web_port or retired_record.get("web-port"),
+                **web_ports,
                 "display": retired_record.get("display"),
                 "network-ip": network_ip,
                 "image-digest": image_digest,

@@ -261,7 +261,10 @@ class TestGenerate(unittest.TestCase):
         self.assertIn("COPY --chown=bolo:bolo skills/ /home/bolo/.agents/skills/", text)
         self.assertIn("COPY --chown=bolo:bolo pi-agent/ /home/bolo/.pi/agent/", text)
         self.assertIn("/home/bolo/.codex/config.toml", text)
-        self.assertIn("EXPOSE 22 8800 6080", text)
+        self.assertIn("ripgrep jq python3", text)
+        # D007: jq 进 base 需求清单与 apt 行
+        self.assertIn("jq>=1.6", self.m.DEFAULT_BASE_REQUIREMENTS)
+        self.assertIn("EXPOSE 22 8800-8805 6080", text)
         self.assertIn('ENTRYPOINT ["/usr/local/bin/swt-entrypoint"]', text)
         self.assertIn("uv sync", text)
         # F012 + M08 UD-03: ssh 非交互 shell 的 PATH 与 XDG_RUNTIME_DIR 烘配在
@@ -855,7 +858,7 @@ class TestBaseBuildE2E(_PodmanTestCase):
         ).stdout.strip()
         entrypoint, exposed, label_digest = inspect.split("|")
         self.assertIn("swt-entrypoint", entrypoint)
-        for port in ("22/tcp", "8800/tcp", "6080/tcp"):
+        for port in ("22/tcp", "8800/tcp", "8805/tcp", "6080/tcp"):
             self.assertIn(port, exposed)
         self.assertEqual(label_digest, _sha256_file(record / "contents.md"))
         # F012: sshd_config SetEnv 烘配 (非交互 PATH 含 ~/.local/bin)

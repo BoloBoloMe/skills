@@ -274,6 +274,8 @@ class _FakeRun:
             }]
             return subprocess.CompletedProcess(command, 0, json.dumps(detail), "")
         if command[:3] == ["podman", "port", self.container_name]:
+            if len(command) == 3:
+                return subprocess.CompletedProcess(command, 0, "22/tcp -> 0.0.0.0:49153\n", "")
             if command[3] == "22":
                 return subprocess.CompletedProcess(command, 0, "0.0.0.0:49153\n", "")
             return subprocess.CompletedProcess(command, 1, "", "no mapping")

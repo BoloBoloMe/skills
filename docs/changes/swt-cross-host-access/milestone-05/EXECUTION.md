@@ -4,6 +4,8 @@
 
 工作模式: AFK 自主推进 (probe task 类型, 设计与验收已经 M04 与用户闭环; EXECUTION 为总指挥自拟, 见 UD-01), 自主决定逐条落 UNAUTHORIZED_DECISIONS.md.
 
+后续修订: [agent-env-followups D003](../../agent-env-followups/DECISIONS.md) 把容器对外 web 端口从单口 8800 扩为 8800-8805 (本文件即为 M05 当时实施记录, 不追溯改写; 相关行为的现行口径以 D003 为准).
+
 ## 全局约束
 
 - 只处理改动后新建的容器 (D009); 不改造/迁移/重建现有容器, 旧容器输出与行为不变.
