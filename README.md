@@ -14,6 +14,7 @@
 - [`opposing-viewpoint`](general/opposing-viewpoint/SKILL.md): 从反方分析既有观点, 找出薄弱前提并提出替代主张.
 - [`present`](general/present/SKILL.md): 把内容生成自包含 HTML 页面并在本地或远程展示.
 - [`receive-handoff`](general/receive-handoff/SKILL.md): 读取交接文档, 汇报理解和建议, 不擅自开始后续任务.
+- [`review-session`](general/review-session/SKILL.md): 复盘一次会话, 按类别给出 agent 环境的改进候选, 默认当前会话.
 - [`teach`](general/teach/SKILL.md): 建立长期学习工作区, 按记录状态持续教授技能或概念.
 - [`translate-a-skill`](general/translate-a-skill/SKILL.md): 汉化或适配英文 skill, 保持行为语义和较低上下文负载.
 - [`use-herdr`](general/use-herdr/SKILL.md): 操作 Herdr 的工作空间, 标签页, 窗格和 agent 会话.
