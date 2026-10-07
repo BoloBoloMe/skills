@@ -67,11 +67,13 @@
       "title": "同步到 pi 并在真实会话上实跑验收",
       "type": "task",
       "question": "由我执行: 跑 uv run python sync-to-pi.py 同步到 pi; 在一个真实会话上调用 review-session 跑一次; 检查能否定位并读完指定会话, 候选是否都指向仓库里真实存在的东西, 有没有提到 pi 里不存在的工具或机制, 触发条件是否有用, 花了多少 token. 有问题的据实开新 Milestone 回改.",
-      "status": "待处理",
+      "status": "进行中",
       "blocked_by": [
         "milestone-04"
       ],
-      "artifacts": [],
+      "artifacts": [
+        "docs/changes/review-session-skill/milestone-05/findings.md"
+      ],
       "close_summary": null
     }
   },
