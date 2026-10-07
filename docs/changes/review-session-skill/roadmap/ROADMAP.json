@@ -54,14 +54,14 @@
       "title": "写出 general/review-session/SKILL.md 并更新 README",
       "type": "task",
       "question": "调 general/translate-a-skill 按 milestone-03 的决策落地: 新建 general/review-session/SKILL.md (frontmatter: name: review-session, description 只写一行人类摘要, disable-model-invocation: true), 正文保留源版的步骤与类别结构; 更新 README.md 通用技能列表加一行; 按 translate-a-skill 第 7 步做全角标点与残留英文自查; 提交推送.",
-      "status": "待处理",
+      "status": "已关闭",
       "blocked_by": [
         "milestone-03"
       ],
       "artifacts": [
         "general/review-session/SKILL.md"
       ],
-      "close_summary": null
+      "close_summary": "按 D001-D014 写出 general/review-session/SKILL.md 并更新 README: 4 步 + 7 类 (每类保留 _适用时机_) + 2 段 Reference; 类别名中文化; 引用换成 pi 里真实存在的实体 (writing-for-llm skill, 执行者/审核者, 读 SKILL.md 而非 Skill 工具); CLAUDE.md 与 AGENTS.md 都认, 不写死 pi 路径; 步骤 2 最小会话访问契约, 找不到会话如实报告; 候选只列不落盘且必须可追溯; 严重度排序为初稿. 全角标点自查通过; 改动面不命中任何测试套件."
     },
     "milestone-05": {
       "title": "同步到 pi 并在真实会话上实跑验收",
