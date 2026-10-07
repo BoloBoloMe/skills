@@ -87,6 +87,13 @@ CHROMIUM_RESOLVE_PIPELINE = (
 SKILLS_HOST_DIR = Path.home() / ".agents" / "skills"
 SKILLS_CONTAINER_DIR = "/home/bolo/.agents/skills"
 
+# llm-select 数据目录运行期只读挂载: host ~/.agents/llm-select 挂进容器同路径, 与
+# skill 库同口径 (实时跟随 host, 改分后新 birth 即生效, 不来重建镜像). 该目录是
+# skills 的兄弟目录且属可选增强 (缺它只是容器内该 skill 不可用), 缺失/权限不足时
+# 软跳过并告警, 不阻断 birth (同 D044 的 host 文件缺席口径).
+LLM_SELECT_HOST_DIR = Path.home() / ".agents" / "llm-select"
+LLM_SELECT_CONTAINER_DIR = "/home/bolo/.agents/llm-select"
+
 
 class SwtError(Exception):
     def __init__(self, code: int, tag: str, message: str) -> None:
@@ -2489,6 +2496,37 @@ def assert_skills_mountable(skills_dir: Path) -> list[str]:
     return projects
 
 
+def assert_llm_select_mountable(llm_select_dir: Path) -> bool:
+    """前置检查 host llm-select 数据目录, 可挂返回 True (调用方加只读挂载).
+
+    与 assert_skills_mountable 同权限判据 (rootless uid 映射下容器 bolo 只能靠
+    other 权限位读 host 树: 目录需 o+rx, 文件需 o+r), 但语义不同: llm-select 是
+    可选增强, 缺失或权限不足只告警并返回 False (跳过挂载, 容器内该 skill 仍是
+    no-catalog), 不阻断 birth.
+    """
+    if not llm_select_dir.is_dir():
+        print(f"[SWT] host 无 llm-select 数据目录 ({llm_select_dir}), "
+              f"容器内该 skill 不可用 (不挂载)", file=sys.stderr)
+        return False
+    offenders: list[str] = []
+    for root, dirs, files in os.walk(llm_select_dir):
+        rel_root = Path(root).relative_to(llm_select_dir)
+        if not (os.stat(root).st_mode & 0o005):
+            offenders.append(f"{rel_root}/ (目录需 o+rx)")
+        for name in files:
+            if not (os.stat(Path(root) / name).st_mode & 0o004):
+                offenders.append(f"{rel_root / name} (文件需 o+r)")
+        dirs[:] = [d for d in dirs if d not in ("__pycache__",)]
+    if offenders:
+        shown = ", ".join(offenders[:5])
+        more = f" ...等共 {len(offenders)} 项" if len(offenders) > 5 else ""
+        print(f"[SWT] host llm-select 数据目录存在非全局可读路径: {shown}{more}; "
+              f"跳过挂载, 容器内该 skill 不可用 (chmod o+rX 后重跑 birth 可启用)",
+              file=sys.stderr)
+        return False
+    return True
+
+
 def container_exists(name: str) -> bool:
     """podman 是否已有同名容器 (birth 重入判定, 与 create_and_start_container 同口径)."""
     return run(["podman", "inspect", name]).returncode == 0
@@ -2558,6 +2596,9 @@ def create_and_start_container(args: argparse.Namespace, repo: Path, image: dict
         command.extend(["-v", f"{SKILLS_CONTAINER_DIR}/{rel_project}/.venv"])
     # web 服务端口 (D001): 与 22 同款宿主 0.0.0.0 动态分配, 直达局域网, 禁止绑回环
     command.extend(["-p", "22", "-p", "8800", str(image["ref"])])
+    # llm-select 数据目录只读挂载 (见 assert_llm_select_mountable): 缺失/权限不足
+    if assert_llm_select_mountable(LLM_SELECT_HOST_DIR):
+        command.extend(["-v", f"{LLM_SELECT_HOST_DIR}:{LLM_SELECT_CONTAINER_DIR}:ro"])
     created = run(command)
     if created.returncode != 0:
         raise SwtError(3, "PARTIAL", f"容器 create 失败: {created.stderr.strip()}")

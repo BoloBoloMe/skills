@@ -550,3 +550,15 @@
 - 预计影响: 无代码改动 (补记既成事实)
 - 实际影响: swt.py/SKILL.md 自 2026-09-15 起即此形态
 - 需要调整: 无 (D008/D010/D030/D038/D054 状态同步与领域语言 母体/retired 词条修订已同批完成)
+
+### D059 llm-select 数据目录运行期只读挂载 (2026-10-07, 方案 [2026-10-07-llm-select-host-mount-plan.md](2026-10-07-llm-select-host-mount-plan.md))
+- 状态: 当前有效
+- 约束性: 必须遵守
+- 内容: swt birth 的 create 命令在 skill 库挂载之后追一处 `-v <宿主 ~/.agents/llm-select>:<容器同路径>:ro`, 使容器内 `~/.agents/skills/llm-select/score.py` 能读宿主那份评分表 (`llm-scores.json`) 与模型目录 (`model-catalog.json`), 输出与宿主逐字一致. 选运行期挂载而非镜像 COPY: 改分是事件驱动的 (模型升级/价格调整/观测与分数不符), 挂载让宿主改完新 birth 即生效; COPY 要重建 base, 会顺 D017 的谓词链淘汰 display 与全部项目层. 与既有 "跟随宿主" 同类 (skill 库运行期 ro 挂载遮蔽镜像副本; auth.json ro 挂载 D044/D046). 只挂 llm-select 一个目录, 不整体挂 `~/.agents` (其下 sandbox-worktree 运行记录与 mailbox 物按 D023 不进容器), 暴露面最小.
+- 守卫语义: 仿 `assert_skills_mountable` 的权限判据 (rootless uid 映射下容器只能靠 other 位读宿主树: 目录需 `o+rx`, 文件需 `o+r`), 但为软失败 — 目录缺失或含非全局可读路径时向 stderr 打一行点名提示并返回 False (跳过挂载), 不阻断 birth. 理由: llm-select 是可选增强, 缺它只是容器内该 skill 报 `no-catalog`; 硬拦会让可选功能的配置问题拖垮整个 birth. 拍板: "权限不足支" 与 "缺失支" 同取软跳过 (不照 assert_skills_mountable 硬拦); 平台先例为 D044 的 host 文件缺席软跳过. 守卫同时避免 rootless podman 对不存在挂载源创建 root 属主空目录.
+- 生效语义: `-v` 在 `podman create` 时定死, 只对新 birth 的容器生效, 运行中容器与既有容器不动 (与全部既有挂载点同口径).
+- 本次不做: 容器 pi 的模型清单仍来自镜像快照, 与宿主漂移; 是否跟随宿主是独立议题 (牵动 auth.json 与凭据暴露面); `--scope` 在容器内取容器自己的 settings.json, 自洽.
+- 依赖事实: 方案稿的容器内实测 (2026-10-06/07 两次调用均 `no-catalog`); D017/D018/D023/D044/D046
+- 预计影响: `workflow/use-sandbox-worktree/scripts/swt.py` (常量, `assert_llm_select_mountable`, create 挂载); `tests/test_swt_llm_select_mount.py` (新增)
+- 实际影响: swt.py 已加 `LLM_SELECT_HOST_DIR`/`LLM_SELECT_CONTAINER_DIR` 常量与 `assert_llm_select_mountable` 守卫, create 条件只读挂载; 新增 `tests/test_swt_llm_select_mount.py` (快层 7 用例); 架构决策 ADR-0018.
+- 待办/风险: 宿主 `~/.agents/llm-select/` 两份文件是否在位且全局可读, 容器内看不到, 需宿主侧确认; 未在位时新容器按守卫软跳过 (容器内仍是 `no-catalog`). 端到端验收 (宿主新建容器后 `ls` + `score.py` 输出与宿主逐字比对, 方案稿第 7 节) 需在宿主做, 本容器无 podman.
