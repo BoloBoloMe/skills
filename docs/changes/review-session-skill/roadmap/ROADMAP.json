@@ -67,14 +67,14 @@
       "title": "同步到 pi 并在真实会话上实跑验收",
       "type": "task",
       "question": "由我执行: 跑 uv run python sync-to-pi.py 同步到 pi; 在一个真实会话上调用 review-session 跑一次; 检查能否定位并读完指定会话, 候选是否都指向仓库里真实存在的东西, 有没有提到 pi 里不存在的工具或机制, 触发条件是否有用, 花了多少 token. 有问题的据实开新 Milestone 回改.",
-      "status": "进行中",
+      "status": "已关闭",
       "blocked_by": [
         "milestone-04"
       ],
       "artifacts": [
         "docs/changes/review-session-skill/milestone-05/findings.md"
       ],
-      "close_summary": null
+      "close_summary": "用户在本容器直接读 general/review-session/SKILL.md 并按它跑通一次复盘: 对象是本容器 9 个有内容的会话; 定位会话与读完全文可行, 候选逐条追到具体时刻且指向真实文件或机制, 触发条件够用; 提交 8 条候选, 用户判定 6 条值得落, 2 条备回访, 问题清单与证据见 milestone-05/findings.md. 未验证项: 用户尚未跑 sync-to-pi.py, ~/.agents/skills/review-session 仍不存在, 同步到真实 agent 目录这步未做. 6 条问题的解决方案另行讨论."
     }
   },
   "unknown_seas": [
