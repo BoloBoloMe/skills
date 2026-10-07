@@ -9,7 +9,7 @@
 ### D001 容器对外网页端口固定为 8800, 直达局域网
 - 状态: 部分修订 (单口口径 → [agent-env-followups D003](../../agent-env-followups/DECISIONS.md); 8800 与直达局域网约定不变)
 - 约束性: 必须遵守
-- 修订: 2026-10-07 [agent-env-followups D003](../../agent-env-followups/DECISIONS.md) 把"对外 web 端口固定为一个 8800"扩为 8800-8805 一段口 (8800 归 present, navigate 用 8801); 本体其余内容不变, 该组决策尚未实现
+- 修订: 2026-10-07 [agent-env-followups D003](../../agent-env-followups/DECISIONS.md) 把"对外 web 端口固定为一个 8800"扩为 8800-8805 一段口 (8800 归 present, navigate 用 8801); 本体其余内容不变. 该组决策已实现 (2026-10-07, commit 5eb4dd4, 见 agent-env-followups D003/D010)
 - 内容: 沿用已拍定方向, birth 增加 `-p 8800`, 宿主监听所有 IPv4 地址并动态分配端口; 容器对外 web 服务监听 `0.0.0.0:8800`. 用户再次确认接受无认证 web 服务对同网段开放, 包括将链接分享给同事的用途. 监听约定写入本仓库 use-sandbox-worktree skill, present 容器分支与之对齐. 宿主本机和局域网访问共用这一映射, 不增加认证/TLS. 不重开回环-only/纯手工隧道/固定宿主端口/pasta 自动转发等已排除方向. 本决策承接旧账本 D053 的展示端口需求, 替代其回环-only 形态.
 - 依赖事实: F001
 - 预计影响: `workflow/use-sandbox-worktree/scripts/swt.py`, 对应 skill 与 present 容器分支; ADR [0012](../../../adr/0012-container-web-direct-access.md).

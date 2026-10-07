@@ -17,6 +17,27 @@ agent 命令只接受两类目标: 唯一的存活 agent 名, 或当前容纳该
 
 `idle` 和 `done` 都表示 agent 可接受输入. CLI/API 用 server 记录的 seen 标记区分二者: 显式 focus 命令把目标标为 seen, 读操作不标. `blocked` 表示 Herdr 识别到审批或提问 UI. `unknown` 表示有 agent 在场但 Herdr 无法可靠归类; 它不证明已完成.
 
+## 等待闸门与交互按键
+
+带 `--wait` 时, 从非 working 态发出的 prompt 必须产生可观测的 `working` 或 `blocked` 活动. 提交后 Herdr 最多等 5 秒等这个活动; 无关的 `idle`/`done` 或会话变化不满足这个闸门. 观测不到活动返回 `agent_prompt_stalled`; 你的超时先到则返回 `timeout`. 该超时含提交耗时. 不给超时时, 观测到活动后的 settled 等待无限期. 这个等待跟踪生命周期状态, 不是单个 turn; agent 本就在工作时, 当前 turn 的完成即可满足它.
+
+仅在需要特定状态的流程里用 `--until`, 例如等一个运行中的 agent 来要输入:
+
+```bash
+herdr agent wait reviewer --until blocked --timeout 120000
+```
+
+不带 `--until` 时, 单独的 `agent wait` 与 `agent prompt --wait` 用同一套 settled 默认值.
+
+交互式 agent UI 控制用逻辑键:
+
+```bash
+herdr agent send-keys reviewer esc
+herdr agent send-keys reviewer ctrl+c
+```
+
+Herdr 先校验全部按键, 再写入任何字节.
+
 ## ID 与调用方上下文
 
 公开 ID 是不透明的稳定句柄:

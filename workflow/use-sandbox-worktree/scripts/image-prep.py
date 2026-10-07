@@ -299,7 +299,7 @@ RUN for p in $(find /home/bolo/.agents/skills -name pyproject.toml 2>/dev/null);
 
 # 容器内端口固定 (22 ssh / 8800-8805 web 段 (8800 present, 8801 navigate) / 6080 noVNC);
 # 宿主端口不钉, 诞生时 -p <容器端口> 动态分配 (D003)
-EXPOSE 22 8800-8805 6080
+EXPOSE 22 8800 8801 8802 8803 8804 8805 6080
 
 # M08 D004: entrypoint 先以 bolo 属主 0700 建 XDG 运行时目录与 swt 信箱
 # 目录 (UD-03 固定常量 1001), 再 exec sshd; CMD 由 entrypoint 取代.

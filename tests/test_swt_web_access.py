@@ -192,6 +192,14 @@ class TestBirthPublishesWebPort(unittest.TestCase):
         self.assertIsNone(record["web-port"])
         self.assertIsNone(record["web-port-6"])
 
+    def test_create_command_ends_with_image_ref(self):
+        """回归: image ref 必须是 create 命令最后一个参数 (旧 bug: llm-select `-v`
+        落到 IMAGE 之后变成容器命令, 挂载失效)."""
+        fake = self._run_create()
+        self.assertIsNotNone(fake.create_command)
+        self.assertEqual(fake.create_command[-1], "localhost/test:latest",
+                         f"create 命令末元素不是 image ref: {fake.create_command[-6:]}")
+
 
 class _FakeStatusRun:
     """status 重建边界: podman ps 回一行容器, inspect 回 detail,
@@ -505,6 +513,22 @@ class TestWebDeliveryUrls(unittest.TestCase):
         self.assertIn("web 入口 (本机):   http://127.0.0.1:49155", output)
         self.assertNotIn("web 入口 (局域网): http", output)
         self.assertIn("web 入口 (局域网) 未附发", output)
+
+    def test_web_env_missing_prints_degrade_line(self):
+        """D004: web 端口 env 未真进容器 → 交付包显式打降级行; 已注入则不打."""
+        buffer = io.StringIO()
+        with redirect_stdout(buffer):
+            self.m.print_delivery_lines(
+                "birth: 已完成", 49153, None, "absent", None, "192.168.1.10",
+                web_port=None, web_env_injected=False)
+        self.assertIn(self.m.WEB_ENV_MISSING_TEXT, buffer.getvalue())
+
+        buffer = io.StringIO()
+        with redirect_stdout(buffer):
+            self.m.print_delivery_lines(
+                "birth: 已完成", 49153, None, "absent", None, "192.168.1.10",
+                web_port=49155, web_env_injected=True)
+        self.assertNotIn(self.m.WEB_ENV_MISSING_TEXT, buffer.getvalue())
 
 
 class TestStatusWebUrls(unittest.TestCase):

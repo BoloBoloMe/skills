@@ -1681,6 +1681,10 @@ def web_delivery_lines(web_port: int | None, lan: str | None, label: str | None 
     return lines
 
 
+# D004: web 端口 env 注入失败保持软失败, 交付包显式打此行 (不静默丢失, 走信箱兜底)
+WEB_ENV_MISSING_TEXT = "web 端口未注入, 页面需走信箱协商"
+
+
 HEADED_WAYPIPE_PREMISE = (
     "窗口直飞前提: 设备须 Linux Wayland 桌面 + waypipe 客户端"
     " (waypipe --version 检查, 缺则安装, Atomic 系走 distrobox);"
@@ -1763,6 +1767,7 @@ def print_delivery_lines(
     host_display: str | None = None,
     web_port: int | None = None,
     headed_script: str | None = None,
+    web_env_injected: bool = True,
 ) -> None:
     """固定交付项 (每次 birth/resume 交付齐发, 禁止遗漏, D039/决策 8):
     ssh 双入口 (本机/局域网, 都带端口) + noVNC URL + 局域网隧道命令
@@ -1799,6 +1804,8 @@ def print_delivery_lines(
         print(f"[SWT] {HOST_DISPLAY_ABSENT_TEXT}")
     for line in web_delivery_lines(web_port, lan):
         print(line)
+    if not web_env_injected:
+        print(f"[SWT] {WEB_ENV_MISSING_TEXT}")
     for line in headed_delivery_lines(ssh_port, lan, headed_script):
         print(line)
     print(f"[SWT] herdr remote (host):    {herdr_remote_payload(ssh_port)}")
@@ -2489,13 +2496,16 @@ def write_ssh_environment(name: str, env: dict[str, str]) -> subprocess.Complete
     ], input=env_text, capture_output=True, text=True, check=False)
 
 
-def _rewrite_ssh_environment(name: str, env: dict[str, str]) -> None:
+def _rewrite_ssh_environment(name: str, env: dict[str, str]) -> bool:
     """ISSUE-08: 宿主端口/直通状态 create 后才知, 经共享写入函数在此补写
-    (inject_ssh_key 首写后全量重写). 失败只告警不阻断 (增强不是命脉)."""
+    (inject_ssh_key 首写后全量重写). 失败只告警不阻断 (增强不是命脉).
+    返回是否写入成功, 供调用方判 web 端口 env 是否真进容器 (D004 降级行)."""
     result = write_ssh_environment(name, env)
     if result.returncode != 0:
         print(f"[SWT] 宿主信息 env 烘入失败 (不影响 birth): "
               f"{result.stderr.strip()}", file=sys.stderr)
+        return False
+    return True
 
 
 def assert_skills_mountable(skills_dir: Path) -> list[str]:
@@ -3166,7 +3176,9 @@ def birth(args: argparse.Namespace, repo: Path) -> int:
                             for index in range(len(WEB_CONTAINER_PORTS))],
                            host_display_status,
                            read_confirmed_lan_address(records_root))
-        _rewrite_ssh_environment(container["name"], env_map)
+        host_env_written = _rewrite_ssh_environment(container["name"], env_map)
+        # D004: web 端口 env 真进容器才算注入成功; 否则交付包显式打降级行
+        web_env_injected = host_env_written and HOST_INFO_ENV_WEB_PORT in env_map
         display_status = birth_display_gate(args, repo, records_root, identity, runtime, runtime_file, container)
         if display_status == "fail":
             return 1
@@ -3185,6 +3197,7 @@ def birth(args: argparse.Namespace, repo: Path) -> int:
         host_display_status,
         container["record"].get("web-port"),
         headed_script=container.get("headed-script"),
+        web_env_injected=web_env_injected,
     )
     observed_daemon = daemon_state(mother_dir, repo, runtime)
     state = build_state(

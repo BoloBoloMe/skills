@@ -1,6 +1,7 @@
 """D003/D005/D010 快层接缝: web 端口段命名登记, birth 期 git 身份注入与 LAN env 烘入.
 
-接缝 = 模块级纯函数/命名映射与源码调用点守卫; 真容器路径归 test_swt_m12 (e2e).
+接缝 = 模块级纯函数/命名映射与源码调用点守卫; 真容器路径未覆盖 (本容器无 podman),
+待宿主机验证.
 """
 from __future__ import annotations
 

@@ -28,7 +28,7 @@ uv run python <web-server> start <port> <页面所在目录绝对路径> --bind 
 uv run python <web-server> start 8800 <页面所在目录绝对路径> --bind 0.0.0.0 --fixed-port
 ```
 
-容器端口映射要求监听 `0.0.0.0`; 映射端口固定, 换端口会令 host 无法访问. 若 8800 被占用, 报错退出, 不换端口. JSON 中的 `url`/`hostname`/`lan_ip` 是容器视角, 不要直接交付或猜测 host 地址; 在 chat 报告容器端口和挂载根目录, 由 host 侧会话运行 `podman port <容器> 8800` 后组装 URL.
+容器端口映射要求监听 `0.0.0.0`; 映射端口固定, 换端口会令 host 无法访问. 若 8800 被占用, 报错退出, 不换端口. JSON 中的 `url`/`hostname`/`lan_ip` 是容器视角, 不要直接交付或猜测 host 地址; 在 chat 报告容器端口和挂载根目录, 由 host 侧会话运行 `podman port <容器> 8800` 后组装 URL. 主机来源优先用 birth 烘入容器的 `SWT_HOST_LAN_IP` (已确认局域网地址), 仅在它缺席时才由 host 侧组装 URL.
 
 同一容器中的多页复用锁定实例, 后续用 `add-dir <dir>` 挂载, 不另起服务. 若已运行的实例未锁端口, 再次启动时带 `--fixed-port` 不会补锁; 按输出 warning 告知我, `stop` 后按上方命令重启. 容器终结时服务和状态一并消失, 无需先 `stop`.
 

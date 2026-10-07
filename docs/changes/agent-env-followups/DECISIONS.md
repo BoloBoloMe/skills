@@ -10,7 +10,7 @@
 - 内容: 按 [`general/writing-for-llm/SKILL.md`](../../../general/writing-for-llm/SKILL.md) 完全重构 `general/use-herdr/SKILL.md`, 正文压到 60-80 行, 只保留: 分派三支 (自己操作 / 学习安装排查 / 官网), 环境检查, 学习当前 CLI, 驱动 agent 全流程 (默认策略, start, 提交, 等待与 stalled 处理, 读取), 以及一张指针表. 其余按需查阅的参考材料披露到三个新文件: `general/use-herdr/layout.md` (布局与原语, ID 语义, 调用方上下文, 发现命令, agent 生命周期状态), `general/use-herdr/pane.md` (兄弟窗格几何与焦点, `pane run`/`wait-output`/`read` 的 source 语义, alternate screen 兜底, 清理已完成会话), `general/use-herdr/rules.md` (安全与协调规则). `general/use-herdr/PI.md` 保留并瘦身, `general/use-herdr/machine.md` 不动. 理由: 现有正文 208 行, 大部分是按需参考材料, 把真正要执行的流程埋住, 导致关键操作落在注意力低洼区被漏读 (本会话实测漏读 `PI.md`, 见 F003/F014); writing-for-llm 的判据是每个分支都要用的内联, 只有部分分支触及的披露到指针后面, 分支即最干净的披露测试.
 - 依赖事实: F003, F014
 - 预计影响: `general/use-herdr/SKILL.md`; 新建 `general/use-herdr/layout.md`, `general/use-herdr/pane.md`, `general/use-herdr/rules.md`; `general/use-herdr/PI.md`
-- 实际影响: 已实现. `SKILL.md` 重构为 80 行分层结构 (分派/环境检查/学习 CLI/驱动 agent 全流程/指针表); 新建 `layout.md` (布局与 ID), `pane.md` (窗格操作), `rules.md` (安全规则); `PI.md` 瘦身; `machine.md` 不动.
+- 实际影响: 已实现. `SKILL.md` 重构为 80 行分层结构 (分派/环境检查/学习 CLI/驱动 agent 全流程/指针表); 新建 `layout.md` (布局与 ID), `pane.md` (窗格操作), `rules.md` (安全规则); `PI.md` 只收敛措辞并加指针, 未减行; `machine.md` 不动. 验证状态: 快层已验证 (受影响套件全过); 纯文档重构无真容器验证项 (真容器与镜像重建未跑, 本容器无 podman).
 
 ### D002 use-herdr 行为文案五处修正
 - 状态: 当前有效
@@ -18,7 +18,7 @@
 - 内容: 随 D001 一并改, 五点: (a) 驱动 agent 时首条任务不放 `herdr agent start` 的 `--` 之后 (`--` 是 agent 自身参数, 不是任务通道); 先 `start`, 再用提交方式送任务. (b) 任何 `agent_prompt_stalled` 或超时之后, 第一步是 `herdr agent get` + `herdr agent read`; 按观测结果分状态收尾: 任务已送达或 agent 仍在跑 → 继续等待, 不重建; agent 或窗格已消失 → 才允许重建或重开; `blocked` → 先看 UI 并问用户. 不写成"一律禁止重建", 因为那会把程序已死的情形也堵死. (c) `agent wait` 报 `agent_not_found` 时改用窗格 ID, 不重试同名. (d) `agent read` 报 `agent_not_idle` 表示 agent 正在干活, 不是错误, 改用 `pane read` 或等待. (e) 收敛 pi 的提交路径: 现有正文把 `agent prompt --wait` 当通用流程, 而 `PI.md` 记明 pi 下该命令默认发的 enter 只把文本留在输入框 (F003); 重构后主 SKILL 的提交步骤对 pi 必须指向 `PI.md` 的两步法 (`pane send-text` + `send-keys "alt+\\"`), 两处口径不得互相矛盾. 理由: findings 记录该会话 23 个错误绝大多数出自这一串, agent 读过说明书仍踩; herdr 是第三方二进制, 改不了它的失败信号 (F002).
 - 依赖事实: F002, F003
 - 预计影响: `general/use-herdr/SKILL.md`, `general/use-herdr/PI.md`
-- 实际影响: 已实现. 五点并入 D001 重构后的 `SKILL.md` 与 `PI.md`: 首条任务走独立提交通道; stalled/超时后先 `agent get`+`agent read` 再分状态收尾; `agent_not_found` 改窗格 ID; `agent_not_idle` 非错误; pi 提交在主 SKILL 指向 `PI.md` 两步法, 两处口径一致.
+- 实际影响: 已实现. 五点并入 D001 重构后的 `SKILL.md` 与 `PI.md`: 首条任务走独立提交通道; stalled/超时后先 `agent get`+`agent read` 再分状态收尾; `agent_not_found` 改窗格 ID; `agent_not_idle` 非错误; pi 提交在主 SKILL 指向 `PI.md` 两步法, 两处口径一致. 验证状态: 快层已验证 (受影响套件全过); 纯文档改动无真容器验证项 (真容器与镜像重建未跑, 本容器无 podman).
 
 ### D003 每个容器预留 6 个 web 端口 8800-8805
 - 状态: 当前有效
@@ -26,7 +26,7 @@
 - 内容: 每个 sandbox 容器在 22/6080 之外预留 6 个容器内 web 端口 8800 到 8805. 宿主一律用 `0.0.0.0` 动态端口发布 (禁止回环), 各宿主端口经 birth 烘入容器环境变量 `SWT_HOST_WEB_PORT` (对应 8800) 与 `SWT_HOST_WEB_PORT_2` 到 `SWT_HOST_WEB_PORT_6`. STATE 登记全部映射. 交付包仍只列 8800 一条, 预留口不列. 理由: 容器对外只有一个 web 口 8800, 而 present 与 navigate 是两种不同的展示服务 (F015), 同时用必撞车; 宿主只发布 8800, 别的容器端口宿主看不见. 所以要多留; 又因端口映射建容器时定死, 加口必须重建容器, 一次多留几个比以后反复重建划算. 本条替代 [M04 D001](../swt-cross-host-access/milestone-04/DECISIONS.md) "容器对外 web 端口固定为一个 8800" 中的单口口径 (一个口 → 从 8800 起的一段口); M04 D001 的 8800 与直达局域网约定不变.
 - 依赖事实: F005, F006, F008
 - 预计影响: `workflow/use-sandbox-worktree/scripts/swt.py` (create 的 `-p` 列表, STATE 记录, 宿主信息 env), `workflow/use-sandbox-worktree/scripts/image-prep.py` 的 base `EXPOSE`, `workflow/use-sandbox-worktree/SKILL.md` 端口契约与展示链节, `tests/`
-- 实际影响: 已实现. `swt.py` 增 `WEB_CONTAINER_PORTS`/`web_port_record_key`/`web_port_env_name`/`container_web_ports`, create 发布 8800-8805, record 与 `podman_container_state` 逐口登记, birth 烘 `SWT_HOST_WEB_PORT`+`_2`..`_6`; `image-prep.py` base `EXPOSE 22 8800-8805 6080`; `SKILL.md` 展示链改端口段; `docs/adr/0012` 与 M05 `EXECUTION.md`/`UNAUTHORIZED_DECISIONS.md` 加修订注; 测试 `tests/test_swt_birth_env.py` 新增, `test_swt_web_access.py`/`test_mailbox_birth.py`/`test_swt_m07.py`/`test_swt_m08_*.py` 同步.
+- 实际影响: 已实现. `swt.py` 增 `WEB_CONTAINER_PORTS`/`web_port_record_key`/`web_port_env_name`/`container_web_ports`, create 发布 8800-8805, record 与 `podman_container_state` 逐口登记, birth 烘 `SWT_HOST_WEB_PORT`+`_2`..`_6`; `image-prep.py` base `EXPOSE 22 8800 8801 8802 8803 8804 8805 6080` (逐口, 不用未验证的端口段语法); `SKILL.md` 展示链改端口段; `docs/adr/0012` 与 M05 `EXECUTION.md`/`UNAUTHORIZED_DECISIONS.md` 加修订注; 测试 `tests/test_swt_birth_env.py` 新增, `test_swt_web_access.py`/`test_mailbox_birth.py`/`test_swt_m07.py`/`test_swt_m08_*.py` 同步. 验证状态: 快层/seam 级已验证 (受影响套件全过); 真容器与镜像重建未跑 (本容器无 podman), 待宿主机验证: 六口宿主映射与六 env 烘入.
 - 需要调整: 已实施单口 8800 的现有代码与测试 — `swt.py` 的 `HOST_INFO_ENV_WEB_PORT`/`bake_host_info_env`/create 的 `-p`/`parse_podman_ports` 取值处/`web-port` 交付链, base `EXPOSE 22 8800 6080`; 下游引用单口 8800 的文档 — `docs/adr/0012-container-web-direct-access.md`, `docs/changes/swt-cross-host-access/milestone-05/EXECUTION.md` 与 `UNAUTHORIZED_DECISIONS.md` (UD-13), `grading/` 内相关路线图/账本引用; M04 D001 已改状态并指回本条, 其余下游实现阶段逐项核
 
 ### D004 navigate 在容器里的展示配方
@@ -34,8 +34,8 @@
 - 约束性: 必须遵守
 - 内容: 8800 固定归 present; navigate 固定用 8801, 不做"从 8801 起挑第一个空口". 容器内用 socat 把 8801 桥接到 navigate 自带服务的实际端口 (端口从服务启动的 stdout 读), 桥随 navigate 服务生死: 服务停则清桥, 碰到残留死桥先清. 端口变量注入失败保持软失败, 但交付包显式打一行 "web 端口未注入, 页面需走信箱协商". 不改 navigate 代码. 页面 URL 的主机来源见 D010 (本节原"容器自算 IP"条款已由 D010 替代). 理由: "挑空口"有竞态 (两次探测同时看到空) 和残留桥占口两个问题, 固定口加生命周期就够.
 - 依赖事实: F001, F005, F007, F008
-- 预计影响: `workflow/navigate/SKILL.md` (加容器展示配方); `workflow/navigate/scripts/web_server.py` 不动
-- 实际影响: 已实现. `workflow/navigate/SKILL.md` 新增 `容器内展示配方` (8800 归 present, navigate 固定 8801, socat 桥随服务生死, 端口变量缺席/注入失败打降级行并发信箱); `web_server.py` 未动.
+- 预计影响: `workflow/navigate/SKILL.md` (加容器展示配方); `workflow/use-sandbox-worktree/scripts/swt.py` (birth 交付行: web 端口 env 未注入时打降级行); `workflow/navigate/scripts/web_server.py` 不动
+- 实际影响: 已实现. `workflow/navigate/SKILL.md` 新增 `容器内展示配方` (8800 归 present, navigate 固定 8801, socat 桥随服务生死, 端口变量缺席/注入失败打降级行并发信箱); `web_server.py` 未动. 本次修复补上 `swt.py` birth 交付行: web 端口 env 未真进容器时显式打 `web 端口未注入, 页面需走信箱协商`; navigate 配方文字保留. 验证状态: 配方文字与快层已验证; navigate 8801 socat 桥真机未跑 (本容器无 podman), 待宿主机验证.
 
 ### D005 git 身份在 birth 时键级注入
 - 状态: 当前有效
@@ -43,7 +43,7 @@
 - 内容: birth 时在容器内用键级写入 `git config --global user.name bolo` 与 `user.email 921402781@qq.com`, 合并进现有 `~/.gitconfig`, 不覆盖整份文件; 写完读回验证. 不放镜像层 (要重建 base 且只对重建后新建的容器生效). 身份名取 `bolo` 而非 `luojingyan`, 与容器用户名一致, 也是容器内已形成的现状 (F016). 理由: 每个新容器第一次 commit 因无身份必失败, agent 再翻历史作者补配, 每次重付.
 - 依赖事实: F016
 - 预计影响: `workflow/use-sandbox-worktree/scripts/swt.py` (birth), `tests/`
-- 实际影响: 已实现. `swt.py` 增 `GIT_IDENTITY_NAME`/`GIT_IDENTITY_EMAIL` 与 `inject_git_identity`, birth 在 `wait_for_ssh` 后调用 (经 ssh 面键级合并, 写完读回验证, 失败只告警); 测试 `tests/test_swt_birth_env.py`.
+- 实际影响: 已实现. `swt.py` 增 `GIT_IDENTITY_NAME`/`GIT_IDENTITY_EMAIL` 与 `inject_git_identity`, birth 在 `wait_for_ssh` 后调用 (经 ssh 面键级合并, 写完读回验证, 失败只告警); 测试 `tests/test_swt_birth_env.py`. 验证状态: 快层/seam 级已验证; 真机 `git config --global` 读回未跑 (本容器无 podman), 待宿主机验证.
 
 ### D006 不做账本事实的机械检查
 - 状态: 当前有效
@@ -59,7 +59,7 @@
 - 内容: 只把 jq 加进 base 层需求清单, 消除容器内 `command not found`. 不为会话日志 JSONL 形状写文档, 也不做只读抽取脚本. 理由: 用户只选了装工具; 形状知识继续由使用者现场处理. jq 随下次 base 重建生效, base 更新会级联淘汰 display 与项目层 (F009), 不为它单独重建.
 - 依赖事实: F009, F017
 - 预计影响: `workflow/use-sandbox-worktree/scripts/image-prep.py` 的 base 需求清单与 apt 行
-- 实际影响: 已实现. `DEFAULT_BASE_REQUIREMENTS` 加 `jq>=1.6`, base Containerfile 的 apt 行加 `jq`; 测试 `tests/test_swt_m07.py`.
+- 实际影响: 已实现. `DEFAULT_BASE_REQUIREMENTS` 加 `jq>=1.6`, base Containerfile 的 apt 行加 `jq`; 测试 `tests/test_swt_m07.py`. 验证状态: 快层已验证 (jq 进 base 需求清单与 apt 行); base 镜像重建未跑 (本容器无 podman), 待宿主机验证.
 
 ### D008 全局规则里的 `~/AGENTS.md` 指针不动
 - 状态: 当前有效
@@ -74,7 +74,7 @@
 - 约束性: 必须遵守
 - 内容: 本组改动落新目录 `docs/changes/agent-env-followups/` (本账本所在), 按逻辑单元实现并逐次提交推送, 不画 navigate 路线图. 理由: 决策已谈定, 再画一层路线图是重复劳动; 但决策必须落成账本, 否则后续会话不知为何这么定.
 - 预计影响: 流程性决策, 无独立代码位置
-- 实际影响: 待实现
+- 实际影响: 已实现: commit 5eb4dd4/9f3637f/a7a0b11/1674d38 已推送
 
 ### D010 页面 URL 的主机来源用 birth 注入的已确认局域网地址
 - 状态: 当前有效
@@ -82,7 +82,7 @@
 - 内容: 容器里展示页面时可交付的 URL, 其主机来源改为 birth 时注入的**已确认**局域网地址 (新增环境变量 `SWT_HOST_LAN_IP`, 值取宿主 records_root 里已确认的局域网地址). 容器直接用它拼 URL (`http://<SWT_HOST_LAN_IP>:<SWT_HOST_WEB_PORT_n>/...`); 该变量缺席 (旧容器或尚未确认) 时才发 mailbox 向宿主会话索取. 取消 D004 原"容器内只有一个非环回 IPv4 就自算 IP"的条款; 自算结果只能当候选提示, 不得直接交付. 理由: M04 D010 要求使用已确认的局域网地址, 不猜网卡; "只有一个非环回 IP"只消除了选哪张网卡的歧义, 没有证明该地址已被用户设备验证 (findings 问题 2 的确认值在宿主侧 records_root, 容器读不到). 把确认值在 birth 时就烘进容器, 既守住 D010, 又省掉常见的跨会话来回.
 - 依赖事实: F001, F008, F015
 - 预计影响: `workflow/use-sandbox-worktree/scripts/swt.py` (birth 烘 `SWT_HOST_LAN_IP`), `workflow/use-sandbox-worktree/SKILL.md` 展示链与宿主信息节, `workflow/navigate/SKILL.md` 容器展示配方, `tests/`
-- 实际影响: 已实现. `swt.py` 增 `HOST_INFO_ENV_LAN_IP`, `bake_host_info_env` 加 `lan_ip` 参数, birth 传 `read_confirmed_lan_address(records_root)`; `workflow/use-sandbox-worktree/SKILL.md` 展示链与 `workflow/navigate/SKILL.md` 配方写明主机来源; 测试 `tests/test_swt_birth_env.py`/`test_mailbox_birth.py`.
+- 实际影响: 已实现. `swt.py` 增 `HOST_INFO_ENV_LAN_IP`, `bake_host_info_env` 加 `lan_ip` 参数, birth 传 `read_confirmed_lan_address(records_root)`; `workflow/use-sandbox-worktree/SKILL.md` 展示链与 `workflow/navigate/SKILL.md` 配方写明主机来源; 测试 `tests/test_swt_birth_env.py`/`test_mailbox_birth.py`. 验证状态: 快层/seam 级已验证; `SWT_HOST_LAN_IP` 真机烘入未跑 (本容器无 podman), 待宿主机验证.
 - 需要调整: D004 的 URL 主机来源条款 (本条承接); `swt.py` 的 `bake_host_info_env` 需新增一个 env 条目
 
 ## 事实
