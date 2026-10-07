@@ -53,3 +53,8 @@
 ## UD-12 不加 waypipe 残尸清理
 - 状态: 当前有效
 - 内容: N2 暴露 waypipe 异常死亡留下 waypipe-server-*.sock 尸体并累积. 不加 entrypoint 清理: 残尸对功能无碍 (新会话 token 唯一, D007 轮询按 token 差集不受旧尸干扰; 唯一挡路残渣 pulse-b.sock 已由 StreamLocalBindUnlink yes 治理), D004 原文即 "明确不加, 双机制冗余". 累积速率观察留 M09, 有害再补.
+
+## UD-14 status 窗口直飞条目须携带 headed-script (宿主机验证发现)
+- 状态: 当前有效
+- 内容: 2026-10-07 宿主机真 birth 验收发现: `swt status` 对每个有实例脚本的 running 容器恒打 `窗口直飞未附发 (chromium 路径解析失败或旧容器)` reason. 根因: `print_status_headed_lines` 从 `podman_container_state` 的条目读 `headed-script`, 但该函数返回的字典漏列此字段 (只列 name/branch/podman-id/state/ssh-port/vnc-port/web-port*/display/network-ip/image-digest/retired/dirty), 而 runtime 记录里有值; birth 路径直传参不受影响. 修复: `podman_container_state` 返回字典补 `"headed-script": retired_record.get("headed-script")`; 回归用例 `tests/test_swt_web_access.py::TestStatusRebuildsWebPort::test_status_entry_carries_headed_script_from_record` (fake podman + 带 headed-script 的 runtime 记录). UD-13 评审未抓出: 原 `test_status_headed_lines_per_running_container` 直接喂含字段的假条目, 未覆盖 `podman_container_state` 这一读侧接缝.
+- 验证: 单测过 (`tests/run --fast` 73 passed); 真容器 status 复验留 M09 (本次验收容器已 terminate, 未再 birth).

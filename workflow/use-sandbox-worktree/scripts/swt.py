@@ -3470,6 +3470,7 @@ def podman_container_state(
                 "vnc-port": vnc_port or retired_record.get("vnc-port"),
                 **web_ports,
                 "display": retired_record.get("display"),
+                "headed-script": retired_record.get("headed-script"),
                 "network-ip": network_ip,
                 "image-digest": image_digest,
                 "retired": bool(retired_record.get("retired", False)),

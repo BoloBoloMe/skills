@@ -269,6 +269,29 @@ class TestStatusRebuildsWebPort(unittest.TestCase):
         self.assertEqual(len(entries), 1)
         self.assertIsNone(entries[0]["web-port"])
 
+    def test_status_entry_carries_headed_script_from_record(self):
+        """M08 ISSUE-07 回归: podman_container_state 须把 runtime 记录的
+        headed-script 带进 status 条目. 本字段是 print_status_headed_lines 的
+        唯一输入, 不带则 status 对每个有脚本的 running 容器恒判无脚本,
+        误打 "窗口直飞未附发" reason (2026-10-07 宿主机实测发现)."""
+        m = self.m
+        repo = self.root / "repo"
+        repo.mkdir(exist_ok=True)
+        script = "/records/runtime/x/swt-headed-browser.sh"
+        runtime = {"schema": m.SCHEMA,
+                   "containers": [{"name": "swt-demo",
+                                   "headed-script": script}],
+                   "mother": {"branch": "feat-x", "dir": str(repo)}}
+        fake = _FakeStatusRun("swt-demo")
+        original_run = m.run
+        m.run = fake
+        try:
+            entries = m.podman_container_state(repo, [runtime])
+        finally:
+            m.run = original_run
+        self.assertEqual(len(entries), 1)
+        self.assertEqual(entries[0]["headed-script"], script)
+
     def test_status_query_scoped_to_repo_label(self):
         """TC-003 结构性守卫: status 的容器盘点经 podman label 过滤限定本 repo
         (一宿主多母体各自独立), 其他母体/项目的容器不进盘点,
