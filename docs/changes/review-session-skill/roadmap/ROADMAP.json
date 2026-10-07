@@ -40,7 +40,7 @@
       "title": "逐项敲定 7 个类别与 2 段 Reference 的本地化写法",
       "type": "deliberate",
       "question": "逐项过 matt 的 7 个类别加 Reference 两段, 定: 哪些照搬, 哪些改写, 哪些删; 每类的 _Use when_ 触发条件是否保留; 机器能判的错一律做自动检查, 判断题才写进规范文件 这条默认是否保留, 以及本仓库没有 CODING_STANDARDS.md 时该指向哪里; 执行者 与 审核者 这两个词在文中怎么用 (Implementation vs Review 那段是这套归责的支点); 候选的输出形态 (只按严重度列, 不落盘); frontmatter 描述字段的触发词与措辞. 产物: 逐项决策记录.",
-      "status": "待处理",
+      "status": "已关闭",
       "blocked_by": [
         "milestone-01",
         "milestone-02"
@@ -48,7 +48,7 @@
       "artifacts": [
         "docs/changes/review-session-skill/milestone-03/DECISIONS.md"
       ],
-      "close_summary": null
+      "close_summary": "逐项敲定 7 类与 2 段 Reference 的本地化写法: 类别名中文化; 引用映射 (writing-for-llm / 审核者 / 执行者 / 上下文文件); 编码规范与自动检查落点不绑技术栈; 步骤 2 最小 pi 会话访问契约; 候选只列不落盘且必须追溯回会话; 找不到会话如实报告; Reference 两段保留并本地化. 账本 docs/changes/review-session-skill/milestone-03/DECISIONS.md 含 D001-D014 (D003/D004 由 D014 替代) 与 F001-F011, 经反方攻击与两轮独立子代理校验."
     },
     "milestone-04": {
       "title": "写出 general/review-session/SKILL.md 并更新 README",
