@@ -22,7 +22,7 @@ GLOBAL = "GLOBAL"  # conftest/pytest.ini 级改动: 快层全量兜底
 
 RULES = [
     ("workflow/use-sandbox-worktree/scripts/swt-mailbox.py", "tests/test_swt_mailbox_*.py"),
-    ("workflow/use-sandbox-worktree/scripts/swt.py", "tests/test_swt_m12.py"),
+    ("workflow/use-sandbox-worktree/scripts/swt.py", "tests/test_swt_m12.py tests/test_swt_llm_select_mount.py"),
     ("workflow/use-sandbox-worktree/scripts/net-firewall.py", "tests/test_swt_m04.py"),
     ("workflow/use-sandbox-worktree/scripts/image-prep.py", "tests/test_swt_m07.py"),
     ("workflow/use-sandbox-worktree/scripts/swt-display.py", "tests/test_swt_m09.py"),
@@ -58,10 +58,11 @@ def select_suites(paths: list[str]) -> tuple[list[str], bool]:
                 if target == GLOBAL:
                     saw_global = True
                 else:
-                    for hit in sorted(glob.glob(str(ROOT / target))):
-                        rel = str(Path(hit).relative_to(ROOT))
-                        if rel not in suites:
-                            suites.append(rel)
+                    for pattern in target.split():
+                        for hit in sorted(glob.glob(str(ROOT / pattern))):
+                            rel = str(Path(hit).relative_to(ROOT))
+                            if rel not in suites:
+                                suites.append(rel)
                 break
         if not matched and path.startswith("tests/") and path.endswith(".py"):
             suites.append(path)

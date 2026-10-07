@@ -36,7 +36,7 @@ mock env) 与纯函数归快层.
 
 | 改动面 | 必跑 | 层级 |
 | --- | --- | --- |
-| `scripts/swt.py` (birth/resume/status/terminate/switch 生命周期) | test_swt_m12.py | e2e 全量 + 快层 |
+| `scripts/swt.py` (birth/resume/status/terminate/switch 生命周期) | test_swt_m12.py + test_swt_llm_select_mount.py | e2e 全量 + 快层 |
 | `scripts/net-firewall.py` (nft 黑/白名单) | test_swt_m04.py | e2e |
 | `scripts/image-prep.py` (镜像制备 build-base/match/build) | test_swt_m07.py | e2e |
 | `scripts/swt-display.py` (登录墙/swt-vnc/noVNC) | test_swt_m09.py | e2e |

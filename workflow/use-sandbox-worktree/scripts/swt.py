@@ -2510,12 +2510,17 @@ def assert_skills_mountable(skills_dir: Path) -> list[str]:
     offenders: list[str] = []
     for root, dirs, files in os.walk(skills_dir):
         rel_root = Path(root).relative_to(skills_dir)
-        if not (os.stat(root).st_mode & 0o005):
+        if (os.stat(root).st_mode & 0o005) != 0o005:
             offenders.append(f"{rel_root}/ (目录需 o+rx)")
         if "pyproject.toml" in files:
             projects.append(str(rel_root))
         for name in files:
-            if not (os.stat(Path(root) / name).st_mode & 0o004):
+            try:
+                st = os.stat(Path(root) / name)
+            except OSError:
+                offenders.append(f"{rel_root / name} (无法 stat, 按不可读计)")
+                continue
+            if not (st.st_mode & 0o004):
                 offenders.append(f"{rel_root / name} (文件需 o+r)")
         dirs[:] = [d for d in dirs if d not in (".venv", "venv", "__pycache__", ".git")]
     if offenders:
@@ -2542,12 +2547,21 @@ def assert_llm_select_mountable(llm_select_dir: Path) -> bool:
     offenders: list[str] = []
     for root, dirs, files in os.walk(llm_select_dir):
         rel_root = Path(root).relative_to(llm_select_dir)
-        if not (os.stat(root).st_mode & 0o005):
+        # 目录需同时可搜 (o+x) 与可列 (o+r), 缺一都算非全局可读; 单靠 o+R 但无
+        # o+x 时容器连路径都进不去 (旧写作 `if not st_mode & 0o005` 是二者任一,
+        # 与 "目录需 o+rx" 的文案不符, 会让坏挂载静默通过).
+        if (os.stat(root).st_mode & 0o005) != 0o005:
             offenders.append(f"{rel_root}/ (目录需 o+rx)")
         for name in files:
-            if not (os.stat(Path(root) / name).st_mode & 0o004):
+            try:
+                st = os.stat(Path(root) / name)
+            except OSError:
+                # 坏软链/竞态删除: 不得因此抛异常拖垮 birth, 按不可读点名
+                offenders.append(f"{rel_root / name} (无法 stat, 按不可读计)")
+                continue
+            if not (st.st_mode & 0o004):
                 offenders.append(f"{rel_root / name} (文件需 o+r)")
-        dirs[:] = [d for d in dirs if d not in ("__pycache__",)]
+        dirs[:] = [d for d in dirs if d not in (".venv", "venv", "__pycache__", ".git")]
     if offenders:
         shown = ", ".join(offenders[:5])
         more = f" ...等共 {len(offenders)} 项" if len(offenders) > 5 else ""
