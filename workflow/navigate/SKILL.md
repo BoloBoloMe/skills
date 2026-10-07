@@ -60,6 +60,17 @@ ROADMAP.json 的一切读写只经守门脚本 `workflow/navigate/scripts/roadma
 
 **旧格式重建 (D014)**: 现场出现 `ROADMAP.md` 或 `MILESTONE-NN.md` (旧版路线图格式) 时, 用 read 工具读旧文件, 再经脚本把内容重建为 ROADMAP.json; 不提供迁移命令, 一次性重建即可. 旧格式的 "范围外" 区段重建为 `off_course`, "未决迷雾" 区段重建为 `unknown_seas`.
 
+## 容器内展示配方
+
+容器里交付地图页时, 8800 固定归 present, navigate 固定用 8801 (挑"第一个空口"会在两次探测间撞车, 残留桥也会占口):
+
+1. **起服务**: `web_server.py start` 拿 stdout 的 `url`, 从中读出实际监听端口 P (navigate 自带服务端口不固定).
+2. **架桥**: 接桥前先清容器 8801 上的残留死桥, 再用 socat 把 8801 桥到 P (`socat TCP-LISTEN:8801,fork,reuseaddr TCP:127.0.0.1:<P>`); 桥随服务同生死 — 服务停即清桥.
+3. **拼 URL 交付**: 主机取 birth 烘入的已确认局域网地址 `SWT_HOST_LAN_IP`, 端口取 `SWT_HOST_WEB_PORT_2` (对应容器 8801), 拼 `http://<SWT_HOST_LAN_IP>:<SWT_HOST_WEB_PORT_2>/?roadmap=<ROADMAP.json 绝对路径>`.
+4. **降级**: 端口变量缺席 (旧容器/尚未确认) 或注入失败时保持软失败, 交付包显式打一行 "web 端口未注入, 页面需走信箱协商", 并发信箱向宿主会话索取网址.
+
+不改 `web_server.py`: 容器侧只加 socat 桥, 代码不动.
+
 ## 调用模式
 
 - **制图**: 无 ROADMAP.json → 走 [制图 Roadmap](#制图-roadmap).
