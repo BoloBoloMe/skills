@@ -4,4 +4,4 @@
 
 备选方案: 镜像构建时 COPY (被拒绝: 每次改数据都要重建 base, 容器内数据随镜像过期); 整体挂 `~/.agents` (被拒绝: 其下 sandbox-worktree 运行记录与 mailbox 物刻意不进容器, 暴露面最小原则要求逐目录挂); 硬拦式前置检查 (被拒绝: 可选增强缺失不应阻断 birth, 软跳过加 stderr 告警即可).
 
-后果: `~/.agents/llm-select` 与 skill 库同口径跟随宿主, 容器内 `score.py` 输出与宿主逐字一致且防写回; 该挂载是可选项, 宿主目录缺失或权限不足时 birth 照常, 容器内仍是数据缺失态, 由 stderr 说明. 注意: "输出逐字一致" 目前只有宿主一次性 `podman run` 手工复刻挂载集的信箱转述证据 (见 D059), 尚未经改后 swt.py 真 birth 验收; 宿主部署技能库 (sync-to-pi.py) 后需补真出生验收. 完整决策见 `docs/changes/use-sandbox-worktree/DECISIONS.md` D059.
+后果: `~/.agents/llm-select` 与 skill 库同口径跟随宿主, 容器内 `score.py` 输出与宿主逐字一致且防写回; 该挂载是可选项, 宿主目录缺失或权限不足时 birth 照常, 容器内仍是数据缺失态, 由 stderr 说明. 注意: "输出逐字一致" 已由 2026-10-07 宿主真 birth (`swt-host-verify`, 镜像 `skills-v2:2026.10.07-2`) 验收: 容器内 `score.py` 65 行输出与宿主 `diff` 逐字一致, md5 同为 `3937f7358363c7f27b636aaa394925b0`, 见 `docs/changes/use-sandbox-worktree/DECISIONS.md` D059 端到端验收条. 完整决策见 `docs/changes/use-sandbox-worktree/DECISIONS.md` D059.
