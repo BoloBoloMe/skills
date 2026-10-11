@@ -6,14 +6,25 @@ disable-model-invocation: true
 
 开始前, 调用 `domain-awareness` skill 只读感知当前工作目录的领域模型.
 
-目标: 编写 Execution Spec: `EXECUTION.md` 和 issues. 常规工作拆成可独立领取的垂直切片; 宽重构按扩展-收缩特例处理. 文档只供 LLM 使用, 不要求我阅读文档后确认.
+# 检查权威输入
 
-先检查是否已有 `to-spec` 的产物 (`PRODUCT.md` 与 `TECHNICAL.md`, 默认位于产物根目录 `docs/changes/<feature-slug>/`); 缺任一份先调用 `to-spec` skill 生成, 再继续.
-`PRODUCT.md` 与 `TECHNICAL.md` 是唯一权威输入, 定义全部意图. `DECISIONS.md` 经 spec 的 决策引用 节抵达, 只读引用, 不作意图来源; 代码事实只验证可行性和既有形状. 权威输入之间冲突, 或需要新增/改变决策内容时, 调用 `deliberate` skill 敲定并固化, 再继续.
+产物根目录下是否已有 `to-spec` 的产物 `PRODUCT.md` 和 `TECHNICAL.md`? 缺任一份先调用 `to-spec` skill 生成, 再继续.
+权威输入定义全部意图, 代码事实只验证可行性和既有形状. 权威输入之间如有冲突, 或需要新增/改变决策内容时, 调用 `deliberate` skill 敲定并固化, 再继续.
 
-输出:
+# 目标
+
+这个任务的体量很大, 无法在一个会话中完成它, 因为 llm 有上下文窗口上限的硬性约束, 超过上限后你就会被动清空上下文内容. 强行在一个会话中完成它只会让任务做到一半就中断, 留下一堆难以收拾的烂摊子.
+
+解法是将任务分解成多个单会话可容纳的小任务, 也就是可被独立领取的垂直切片 `ISSUES`, 以及记录全局视角下任务信息的 `EXECUTION.md`, `EXECUTION.md` 中还有任务图记录 issues 之间的依赖关系. 
+后续的执行 agent 会沿着任务图领取 issues, 每个 issue 都是一个全新的上下文窗口中交付.
+
+# 输出
+
+本 skill 的产物统称为 Execution Spec, 只供 LLM 使用, 我不会阅读它们:
+
 `<产物根目录>/EXECUTION.md`
 `<产物根目录>/issues/ISSUE-<NN>-<slug>.md`, 从 `ISSUE-01` 连续编号.
+
 产物根目录默认 `docs/changes/<feature-slug>/`; 调用方可指定其他根目录, 落盘前须和我确认输出目录是否正确.
 
 # 起草垂直切片
