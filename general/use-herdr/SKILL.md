@@ -31,7 +31,11 @@ test "${HERDR_ENV:-}" = 1
 
 ### 默认策略
 
-开新会话的默认: 开在调用方所在 workspace 的新 tab, tab 名称按格式 `S-<子代理名>-<序号>` 生成; llm/思考深度除非我指定, 否则用 `llm-select` skill 选定; 与 llm 匹配的 coding agent 按 OpenAI → codex, Kimi → kimi, 其他/无匹配 → pi; 容器环境一律以最宽权限启动, 不拦截 llm 的任何操作, 非容器环境则不特地指定权限宽松度.
+开新会话的默认: 开在调用方所在 workspace 的新 tab, tab 名称按格式 `S-<子代理名>-<序号>` 生成; llm/思考深度除非我指定, 否则用 `llm-select` skill 选定; 与 llm 匹配的 coding agent 按 OpenAI → codex, Kimi → kimi, 其他/无匹配 → pi.
+
+**权限与确认**, 以目标 agent 实际运行环境为准, 由你检查判断:
+- 容器内: 我已授权你无限制启动和驱动 agent, 用它支持的最宽权限和免审批模式, 不拦截 LLM 的任何操作. 原生参数以该 agent 的 `--help` 为准. 仓库/目录信任, 启动警告, 工具/命令执行审批直接自行确认 (包括 Codex 启动信任页), 不必再问我或等我手动操作.
+- 非容器或环境未确认: 不特地放宽权限, 授权/信任确认先问我再代答.
 
 `tab create` 返回的 root pane 直接用作 `agent start` 的目标窗格, 沿用当前工作目录. 兄弟窗格, 新工作空间, worktree 或更换 cwd 仅在我明确要求时用; 兄弟窗格的几何与焦点规则见 [`pane.md`](pane.md).
 
@@ -44,7 +48,12 @@ herdr agent start reviewer --kind codex --pane <窗格ID> [-- <agent参数...>]
 ```
 
 kind 用我指定的; `herdr agent` 查看已装 kind 列表和选项. `agent start` 成功的返回条件: Herdr 在同一窗格探测到预期 agent, 且认为它可接受交互输入. 启动期间 agent 若进入 blocked, 命令立即返回 `agent_not_ready`, 但该名字仍可用于 `agent read` 和 `agent send-keys`. 启动默认 30 秒超时.
-完成标准: `herdr agent get <名>` 报 idle.
+完成标准: 所有启动确认已处理, `herdr agent get <名>` 报 `idle`.
+
+### 处理 blocked
+
+遇到 `agent_not_ready`, `agent_blocked` 或等待返回 `blocked`, 先用 `agent read` 看实际 UI, 读不到就用 `pane read`. 授权/信任确认按上面的环境策略处理; 容器内用 `agent send-keys` 按实际选项确认, 再读屏, 连续的确认页逐一处理, 不停在页面上等我. `blocked` 不一定是权限确认, 需要我决策的任务提问仍问我.
+启动完成才提交首条任务; 已提交的任务在确认后继续等待, 不重复提交, 不因确认页重建会话.
 
 ### 提交任务
 
@@ -52,16 +61,16 @@ kind 用我指定的; `herdr agent` 查看已装 kind 列表和选项. `agent st
 - pi: 提交键是 `alt+\`, 用 [`PI.md`](PI.md) 的两步法 (`pane send-text` + `send-keys "alt+\\"`).
 - 其他 agent: `herdr agent prompt reviewer "<任务文本>" --wait --timeout 120000`.
 
-`agent prompt` 尊重窗格实时的 bracketed-paste 模式, 把文本和随后的编码 Enter 作为一次有序提交发出, 两者都写完才报告提交成功. 目标 agent 正停在审批或提问对话框时, 它在发出任何输入前就以 `agent_blocked` 拒绝 — 此时先查看 blocked UI, 问过我之后再代答. 普通 agent 工作用 `--wait` 即可 (等第一个 settled 的 `idle`/`done`/`blocked`); 仅在需要特定状态的流程里用 `--until`, 例如等一个运行中的 agent 来要输入.
+`agent prompt` 尊重窗格实时的 bracketed-paste 模式, 把文本和随后的编码 Enter 作为一次有序提交发出, 两者都写完才报告提交成功. 目标 agent 正停在审批或提问对话框时, 它在发出任何输入前就以 `agent_blocked` 拒绝. 此时按 `处理 blocked` 节处理. 普通 agent 工作用 `--wait` 即可 (等第一个 settled 的 `idle`/`done`/`blocked`); 仅在需要特定状态的流程里用 `--until`, 例如等一个运行中的 agent 来要输入.
 
 ### 等待与 stalled 处理
 
 带 `--wait` 时, 从非 working 态发出的 prompt 必须产生可观测的 `working` 或 `blocked` 活动, Herdr 最多等 5 秒; 观测不到返回 `agent_prompt_stalled`, 你的超时先到则返回 `timeout`. 这些信号只说明没观测到活动, 不证明任务没送达.
 
 任何 `agent_prompt_stalled` 或超时之后, 第一步是 `herdr agent get <名>` + `herdr agent read <名>`, 按观测结果分状态收尾:
+- `blocked` → 优先按 `处理 blocked` 节处理, 即使任务已送达也不能只等待.
 - 任务已送达, 或 agent 仍在跑 → 继续等待, 不重建.
 - agent 或窗格已消失 → 才允许重建或重开.
-- `blocked` → 先看 UI 并问我.
 
 `agent wait` 报 `agent_not_found` 时改用窗格 ID, 不重试同名. `agent read` 报 `agent_not_idle` 表示 agent 正在干活, 不是错误 — 改用 `pane read` 或等待. 重发前先 `agent read` 看屏幕, 免得任务提交两遍.
 
