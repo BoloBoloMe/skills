@@ -8,7 +8,7 @@ disable-model-invocation: true
 
 # 检查权威输入
 
-产物根目录下是否已有 `to-spec` 的产物 `PRODUCT.md` 和 `TECHNICAL.md`? 缺任一份先调用 `to-spec` skill 生成, 再继续.
+产物根目录下是否已有 `PRODUCT.md` 和 `TECHNICAL.md`? 缺任一份先调用 `to-spec` skill 生成, 再继续.
 权威输入定义全部意图, 代码事实只验证可行性和既有形状. 权威输入之间如有冲突, 或需要新增/改变决策内容时, 调用 `deliberate` skill 敲定并固化, 再继续.
 
 # 目标
