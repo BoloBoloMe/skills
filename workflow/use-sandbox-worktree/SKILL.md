@@ -155,9 +155,9 @@ uv run python scripts/image-prep.py build      --repo <主仓> [--requirements <
 - `NAME` 在 host 未设置: stderr 警告并跳过, 不阻塞 birth.
 - 新模板 birth 在改资源前过滤点名的模型凭据/模型路由/配置路径变量, 只报告名字, 不报告值. 不使用 *_KEY 泛匹配. 云/Git 等模型/业务共用凭据冲突须用户决定, 不自动丢弃业务值. 多行环境值不写入 SSH environment. 客户端 Key 另走 stdin/600 文件/固定启动入口, 不放入 create -e 或 SSH environment.
 
-## 基础服务 (信箱 mesh + LLM 中转, 独立 mailbox skill)
+## 基础服务 (信箱 mesh, 独立 mailbox skill)
 
-信箱是独立 skill `mailbox` (仓库 `workflow/mailbox/` → 部署 `~/.agents/skills/mailbox/`), 单文件服务 `scripts/mailbox.py` (纯 stdlib): **信箱** (session 间传信, 设备/容器/本机身份统一为 session, 信件类型 notify/open_url/exec/request) + **LLM 中转** (OpenAI 兼容, sk- key 认证), mesh 架构 — 每台机器一个实例, 邻居间共享密钥互认洪泛路由. birth 自动注册容器 session 并烘入凭证 env, terminate 注销; 信箱缺席只告警不阻断. 网络面 whitelist 已自动放行宿主网关, 无额外 `--allow`.
+信箱是独立 skill `mailbox` (仓库 `workflow/mailbox/` → 部署 `~/.agents/skills/mailbox/`), 单文件服务 `scripts/mailbox.py` (纯 stdlib): **信箱** (session 间传信, 设备/容器/本机身份统一为 session, 信件类型 notify/open_url/exec/request), mesh 架构 — 每台机器一个实例, 邻居间共享密钥互认洪泛路由. birth 自动注册容器 session 并烘入凭证 env, terminate 注销; 信箱缺席只告警不阻断. 网络面 whitelist 已自动放行宿主网关, 无额外 `--allow`.
 serve 启动, 设备侧取信配置, 容器侧投信, 展示页网址沟通与代开协议, 指令集 (swt.pull-window) 安全语义, admin 口速查 → mailbox skill 的 reference/mailbox.md. 协议细节 (HMAC 签名/时间窗/防重放/租约重投) 以 mailbox.py docstring 与 `docs/changes/swt-mailbox-mesh/TECHNICAL.md` 为准.
 
 ## 网络控制 / 容器命令 / 救场

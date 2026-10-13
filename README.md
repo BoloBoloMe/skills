@@ -38,7 +38,7 @@
 | [`follow-the-money`](workflow/follow-the-money/SKILL.md) | 沿价值流审查变更, 检查授权, 数量和执行造成的资损风险. |
 | [`improve-codebase-architecture`](workflow/improve-codebase-architecture/SKILL.md) | 发现架构摩擦, 并提出把浅模块深化的重构机会. |
 | [`lazy-dev`](workflow/lazy-dev/SKILL.md) | 用决策阶梯和实现阶梯收敛到最小且无未来负担的方案. |
-| [`mailbox`](workflow/mailbox/SKILL.md) | 管理 session 间传信的 mailbox mesh 和 OpenAI 兼容 LLM 中转. |
+| [`mailbox`](workflow/mailbox/SKILL.md) | 管理 session 间传信的 mailbox mesh. |
 | [`navigate`](workflow/navigate/SKILL.md) | 在目的地和路线不清时, 用 Roadmap 和 Milestone 组织探索. |
 | [`prototype`](workflow/prototype/SKILL.md) | 构建一次性原型, 验证逻辑状态模型或 UI 外观问题. |
 | [`tdd`](workflow/tdd/SKILL.md) | 在小型编程任务中用面向接缝的测试执行 TDD 循环. |

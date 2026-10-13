@@ -40,7 +40,7 @@ from urllib.parse import parse_qs, urlparse
 from urllib.request import urlopen
 
 SERVICE_NAME = "navigate-web"
-DEFAULT_PORT = 39271  # D010: 避开 mailbox LLM 中转 38427-38436
+DEFAULT_PORT = 39271  # D010: 避开 mailbox 端口区间 (38416-38437)
 BIND = "0.0.0.0"  # D009: 网段可读为已接受取舍
 INDEX_PATH = Path(__file__).resolve().parent.parent / "web" / "index.html"
 

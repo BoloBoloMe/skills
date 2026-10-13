@@ -209,7 +209,7 @@ def pytest_configure(config):
     # 且文件缺席时向真机 ~/.agents/mailbox/ 引导生成 fleet.key 并开真 UDP
     # 信标. 测试进程统一把 env 钉到一条不存在路径 (显式无密钥 = 不生成),
     # 裸跑全量 pytest 不触真机; 既有 dict(os.environ) 派生的所有 serve
-    # 子进程 (conftest.Serve 与 relay/admin/standalone 直接拉起) 全部继承.
+    # 子进程 (conftest.Serve 与 admin/standalone 直接拉起) 全部继承.
     # 外部显式设了真密钥路径则尊重不覆盖; 需真密钥的用例自行覆盖此 env.
     os.environ.setdefault(
         "MAILBOX_FLEET_KEY",

@@ -1,4 +1,4 @@
-"""mailbox admin 端点补齐与中转半配置门禁测试 (裁决 3/4).
+"""mailbox admin 端点补齐测试 (裁决 3).
 
 TS-001 test_revoke_session_blocks_poll_and_post: revoke 后 poll/post 均 403.
 TS-002 test_revoke_unknown_session_404: 吊销未知 session → 404.
@@ -7,10 +7,8 @@ TS-003 test_add_neighbor_takes_effect_at_runtime: 运行时加邻居, 洪泛即�
 TS-004 test_neighbor_persisted_across_restart: 邻居入 SQLite, 同状态目录重启仍在;
        重复地址 409.
 TS-005 test_get_sessions_lists_without_keys: GET /admin/sessions 列表不含密钥.
-TS-006 test_get_relay_keys_masked: GET /admin/relay-keys 密钥脱敏 (前 8 位 + ...).
 TS-007 test_get_stats_counts: GET /admin/stats 计数齐备.
 TS-008 test_admin_get_requires_token: admin GET 无 token → 401.
-TS-009 test_relay_half_config_skipped: 只配上游地址不配 key → 不起中转, stderr 警告.
 
 ISSUE-04 (邻居与滞留可管可控):
 TC-018 test_neighbors_get_delete_patch: 邻居 GET (含状态, 不回显密钥) /
@@ -33,10 +31,8 @@ TC-023 test_neighbor_failure_utc_log: 邻居转发失败打带 UTC 时间戳的
 from __future__ import annotations
 
 import json
-import os
 import re
 import select
-import subprocess
 import sys
 import threading
 import time
@@ -138,24 +134,6 @@ def test_get_sessions_lists_without_keys(serves):
         assert "revoked" in s
 
 
-def test_get_relay_keys_masked(serves):
-    """TS-006: GET /admin/relay-keys 列出中转 key, 密钥脱敏只显前 8 位."""
-    srv = serves(extra_env={"MAILBOX_UPSTREAM_BASE": "http://127.0.0.1:1",
-                            "MAILBOX_UPSTREAM_KEY": "upstream-k"})
-    code, created = _admin(srv, "POST", "/admin/relay-keys",
-                           {"models": ["gpt-x"]})
-    assert code == 200, created
-    full_key = created["key"]
-
-    code, resp = _admin(srv, "GET", "/admin/relay-keys")
-    assert code == 200
-    listed = resp["relay_keys"]
-    assert len(listed) == 1
-    assert listed[0]["key"] == full_key[:8] + "..."
-    assert listed[0]["models"] == ["gpt-x"]
-    assert full_key not in json.dumps(resp), "完整 key 不得出现在应答里"
-
-
 def test_get_stats_counts(serves):
     """TS-007: GET /admin/stats 计数齐备 (sessions/队列/租约/暂存/邻居/seen)."""
     srv = serves()
@@ -176,45 +154,6 @@ def test_admin_get_requires_token(serves):
     assert code == 401
     code, _ = http_json("GET", srv.admin_port, "/admin/stats")
     assert code == 401
-
-
-def test_relay_half_config_skipped(tmp_path):
-    """TS-009 (裁决 4): 只配 MAILBOX_UPSTREAM_BASE 不配 key → 跳过中转角色,
-    stderr 明告; 不会像旧行为那样起了端口却全链 401."""
-    workdir = tmp_path / "half"
-    workdir.mkdir()
-    env = dict(os.environ)
-    env.update({
-        "MAILBOX_ADMIN_TOKEN": ADMIN_TOKEN,
-        "MAILBOX_STATE": str(workdir / "state.json"),
-        "MAILBOX_CONFIG": str(workdir / "mailbox.json"),
-        "MAILBOX_HOLD_SECONDS": "0.3",
-        "MAILBOX_UPSTREAM_BASE": "http://127.0.0.1:1",
-    })
-    env.pop("MAILBOX_UPSTREAM_KEY", None)
-    proc = subprocess.Popen(
-        [sys.executable, str(SCRIPT), "serve",
-         "--port", str(free_port()), "--admin-port", str(free_port())],
-        env=env, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, text=True)
-    try:
-        lines = []
-        deadline = time.time() + 15
-        while time.time() < deadline:
-            line = proc.stderr.readline()
-            if not line:
-                break
-            lines.append(line)
-            if "mailbox on" in line:
-                break
-        else:
-            raise AssertionError("serve 未在超时内报告端口")
-        text = "".join(lines)
-        assert "MAILBOX_UPSTREAM_KEY" in text, f"半配置应 stderr 明告: {text}"
-        startup = [ln for ln in lines if "mailbox on" in ln][0]
-        assert "relay on" not in startup, f"半配置不得起中转: {startup}"
-    finally:
-        proc.terminate()
-        proc.wait(timeout=5)
 
 
 # ---------------------------------------------------------------------------
