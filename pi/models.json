@@ -1,5 +1,48 @@
 {
   "providers": {
+    "ai-work-deepseek": {
+      "baseUrl": "https://ai-work.changzhi.top/v1",
+      "api": "openai-completions",
+      "apiKey": "$CHANG_ZHI_AI_WORK",
+      "authHeader": true,
+      "compat": {
+        "supportsStore": false,
+        "supportsDeveloperRole": false,
+        "supportsReasoningEffort": false,
+        "supportsUsageInStreaming": true,
+        "maxTokensField": "max_tokens",
+        "supportsStrictMode": false,
+        "thinkingFormat": "deepseek",
+        "requiresReasoningContentOnAssistantMessages": true
+      },
+      "models": [
+        {
+          "id": "deepseek-v4.1-flash-expires-on-0910",
+          "name": "DeepSeek V4.1 Flash",
+          "reasoning": true,
+          "thinkingLevelMap": {
+            "off": null,
+            "minimal": null,
+            "low": null,
+            "medium": null,
+            "high": "high",
+            "max": "max"
+          },
+          "input": [
+            "text",
+            "image"
+          ],
+          "contextWindow": 1000000,
+          "maxTokens": 384000,
+          "cost": {
+            "input": 0.14,
+            "output": 0.28,
+            "cacheRead": 0.0028,
+            "cacheWrite": 0
+          }
+        }
+      ]
+    },
     "cli": {
       "baseUrl": "http://192.168.65.165:8317/v1",
       "api": "openai-responses",
