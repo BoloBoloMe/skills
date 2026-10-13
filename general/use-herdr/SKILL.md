@@ -1,96 +1,34 @@
 ---
 name: use-herdr
-description: Herdr (agent 终端工作区) 操作指南. 当被要求 查看/控制 `工作空间/workspace`, `标签页/tab`, `窗格/pane`, `另一个 agent`, 或 `开新会话` 时使用.
+description: 查看/控制 Herdr 布局或 agent 会话, 委派子代理, 或学习/安装 Herdr 时使用.
 ---
 
-# herdr
+# Herdr
 
-Herdr 把终端组织成 工作空间/workspace, 标签页/tab, 窗格/pane, 能识别窗格内运行的 coding agent, 并通过 `herdr` CLI 暴露当前会话.
+操作当前会话及处理交互失败走下面的入口. 我只要讲解或安装指导时, 读 https://herdr.dev/agent-guide.md; 这不授权你执行会话控制.
 
-先分派任务:
-- 你亲自操作 Herdr → 用本 skill, 从下面的环境检查开始.
-- 帮我学习, 安装或排查 Herdr → 读 https://herdr.dev/agent-guide.md 并按它回答. 它面向教人, 本 skill 的操作规则不适用.
-- 官网 → https://herdr.dev/zh-cn/docs/agent-skill/
+## 公共约束
 
-## 环境检查
+查看或控制会话前确认 `HERDR_ENV=1`; 不满足就报告你不在 Herdr 管理的窗格内并停止, 避免打到别的 client 的聚焦会话. 检查通过后, PATH 中的 `herdr` 连接当前会话.
+已装 CLI 是语法的权威: 先读 `herdr --help`, 再查任务相关命令组的帮助. 裸 `herdr` 会启动或附着 TUI; 带默认值的变更命令即使缺参数也可能执行, 探索只用帮助或已确认只展示帮助的组命令.
 
-发任何控制命令前, 先验证你运行在 Herdr 管理的窗格内; 失败就声明你不在 Herdr 内运行, 然后停止. 切勿在 Herdr 之外查看或控制聚焦中的 Herdr 会话.
+- 目标用 `--current`, 显式 ID 或唯一存活 agent 名, 不依赖 UI 焦点; ID 和状态从 JSON 响应取, 不从示例或侧栏顺序推导.
+- 后台操作用 `--no-focus`, 除非我要求切换上下文, 让我的焦点保持不变.
+- 用 `agent start` 或 `pane run` 前, 目标必须是 shell 自身在前台且停在交互提示符的空闲窗格.
+- 依赖新 server 特性前查 `herdr status`; client/server 可能版本不同, 方法缺失时用已有方法.
 
-```bash
-test "${HERDR_ENV:-}" = 1
-```
+server 错误在 stderr 上返回 JSON, 退出码 1; CLI 语法错误退出码 2.
 
-检查通过后, PATH 里的 `herdr` 二进制即连接当前会话.
+## 操作入口
 
-## 学习当前 CLI
+执行下列操作前先读对应材料; 同一任务涉及多类操作时分别读取, 执行中出现新条件也要补读.
 
-已装二进制是命令语法的权威. 先跑 `herdr --help`, 再对任务相关的命令组跑裸组命令 (如 `herdr agent`) 看子命令与选项; 组名以 `--help` 输出为准.
-切勿跑裸 `herdr` 做探索 (它会启动或附着 TUI), 也切勿用省略参数的方式探测会改状态的嵌套命令 (`herdr workspace create` 这类带默认值即成立). 多数控制命令返回 JSON.
-
-## 驱动 agent
-
-### 默认策略
-
-开新会话的默认: 开在调用方所在 workspace 的新 tab, tab 名称按格式 `S-<子代理名>-<序号>` 生成.
-
-**权限与确认**, 以目标 agent 实际运行环境为准, 由你检查判断:
-- 容器内: 我已授权你无限制启动和驱动 agent, 用它支持的最宽权限和免审批模式, 不拦截 LLM 的任何操作. 原生参数以该 agent 的 `--help` 为准. 仓库/目录信任, 启动警告, 工具/命令执行审批直接自行确认 (包括 Codex 启动信任页), 不必再问我或等我手动操作.
-- 非容器或环境未确认: 不特地放宽权限, 授权/信任确认先问我再代答.
-
-`tab create` 返回的 root pane 直接用作 `agent start` 的目标窗格, 沿用当前工作目录. 兄弟窗格, 新工作空间, worktree 或更换 cwd 仅在我明确要求时用; 兄弟窗格的几何与焦点规则见 [`pane.md`](pane.md).
-
-### 启动前选型
-
-每次开新会话, 先完成选型再创建 tab 和启动 agent. 选型决定成本与任务质量, 是启动前置步骤, 不是启动后的可选优化.
-- 我未同时指定 model 与 thinking 时, 调用 `llm-select` skill. 保留我已指定的值, 按评分表补齐缺项; 指定 pi/codex/kimi 只固定 agent kind, 不等于指定模型与思考深度.
-- kind 用我指定的; 未指定时按选定模型匹配: OpenAI → codex, Kimi → kimi, 其他/无匹配 → pi.
-完成标准: 说明选定的 model/thinking/kind, 以及选型所依据的任务画像列 (或我已完整指定), 并将选型落实为目标 agent 的原生启动参数. skill 或评分数据不可用时先报告并问我如何继续.
-
-### 启动
-
-目标窗格须停在交互提示符上: shell 自身在前台, 没有前台命令, 编辑器或 agent 在跑. 起一个表意且唯一的名字, 原生 agent 参数只放在 `--` 之后 (`--` 是 agent 自身参数, 不是任务通道):
-
-```bash
-herdr agent start reviewer --kind codex --pane <窗格ID> [-- <agent参数...>]
-```
-
-`herdr agent` 查看已装 kind 列表和选项; 示例中的 `codex` 须替换为选型确定的 kind. `agent start` 成功的返回条件: Herdr 在同一窗格探测到预期 agent, 且认为它可接受交互输入. 启动期间 agent 若进入 blocked, 命令立即返回 `agent_not_ready`, 但该名字仍可用于 `agent read` 和 `agent send-keys`. 启动默认 30 秒超时.
-完成标准: 所有启动确认已处理, `herdr agent get <名>` 报 `idle`.
-
-### 处理 blocked
-
-遇到 `agent_not_ready`, `agent_blocked` 或等待返回 `blocked`, 先用 `agent read` 看实际 UI, 读不到就用 `pane read`. 授权/信任确认按上面的环境策略处理; 容器内用 `agent send-keys` 按实际选项确认, 再读屏, 连续的确认页逐一处理, 不停在页面上等我. `blocked` 不一定是权限确认, 需要我决策的任务提问仍问我.
-启动完成才提交首条任务; 已提交的任务在确认后继续等待, 不重复提交, 不因确认页重建会话.
-
-### 提交任务
-
-先 `agent start`, 再用提交方式单独送任务; 首条任务不放 `start` 的 `--` 之后. 提交方式按 agent 分流:
-- pi: 提交键是 `alt+\`, 用 [`PI.md`](PI.md) 的两步法 (`pane send-text` + `send-keys "alt+\\"`).
-- 其他 agent: `herdr agent prompt reviewer "<任务文本>" --wait --timeout 120000`.
-
-`agent prompt` 尊重窗格实时的 bracketed-paste 模式, 把文本和随后的编码 Enter 作为一次有序提交发出, 两者都写完才报告提交成功. 目标 agent 正停在审批或提问对话框时, 它在发出任何输入前就以 `agent_blocked` 拒绝. 此时按 `处理 blocked` 节处理. 普通 agent 工作用 `--wait` 即可 (等第一个 settled 的 `idle`/`done`/`blocked`); 仅在需要特定状态的流程里用 `--until`, 例如等一个运行中的 agent 来要输入.
-
-### 等待与 stalled 处理
-
-带 `--wait` 时, 从非 working 态发出的 prompt 必须产生可观测的 `working` 或 `blocked` 活动, Herdr 最多等 5 秒; 观测不到返回 `agent_prompt_stalled`, 你的超时先到则返回 `timeout`. 这些信号只说明没观测到活动, 不证明任务没送达.
-
-任何 `agent_prompt_stalled` 或超时之后, 第一步是 `herdr agent get <名>` + `herdr agent read <名>`, 按观测结果分状态收尾:
-- `blocked` → 优先按 `处理 blocked` 节处理, 即使任务已送达也不能只等待.
-- 任务已送达, 或 agent 仍在跑 → 继续等待, 不重建.
-- agent 或窗格已消失 → 才允许重建或重开.
-
-`agent wait` 报 `agent_not_found` 时改用窗格 ID, 不重试同名. `agent read` 报 `agent_not_idle` 表示 agent 正在干活, 不是错误 — 改用 `pane read` 或等待. 重发前先 `agent read` 看屏幕, 免得任务提交两遍.
-
-### 读取结果
-
-日志与转录优先用 `herdr agent read reviewer --source recent-unwrapped --lines 120`; 各 source 语义与 alternate screen 兜底见 [`pane.md`](pane.md).
-
-## 参考材料
-
-| 主题 | 文件 |
+| 触发条件 | 先读 |
 | --- | --- |
-| 布局, 原语, ID 语义, 调用方上下文, 发现命令, agent 生命周期状态 | [`layout.md`](layout.md) |
-| 兄弟窗格几何与焦点, pane 命令 source 语义, alternate screen 兜底, 清理已完成会话 | [`pane.md`](pane.md) |
-| 安全与协调规则 | [`rules.md`](rules.md) |
-| 驱动 pi agent 的提交键与显示环境注意点 | [`PI.md`](PI.md) |
-| 跨机, 远程 server 或 SSH machine 任务 | [`machine.md`](machine.md) |
+| 定位/调整终端布局或解释布局 ID, 管理 server 会话 | [layout.md](layout.md) |
+| 创建 agent 会话 | [launch.md](launch.md) |
+| 查看/驱动已有 agent, 或处理其交互失败 | [agent.md](agent.md) |
+| 操作原始终端进程或输入输出 | [pane.md](pane.md) |
+| 向 pi 提交任务 | [PI.md](PI.md) |
+| 发现/操作远端目标或管理 SSH machine 配置 | [machine.md](machine.md) |
+| Herdr 窗格内 Chromium 启动失败 | [browser.md](browser.md) |
