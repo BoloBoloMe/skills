@@ -1,0 +1,31 @@
+{
+  "schema": 1,
+  "name": "cliproxyapi",
+  "version": "2026-10-13.1",
+  "kind": "openai-gateway",
+  "contract": 2,
+  "base_url": "http://host.containers.internal:8317/v1",
+  "credential": {
+    "kind": "json-field",
+    "path": "/home/bolo/.config/cliproxyapi/keys.json",
+    "field": "client_api_key"
+  },
+  "providers": {
+    "pi": "cli",
+    "codex": "cli",
+    "kimi_chat": "cliproxy-chat",
+    "kimi_responses": "cliproxy-responses"
+  },
+  "defaults": {
+    "pi": {
+      "model": "glm-5.3",
+      "thinking": "max"
+    },
+    "codex": {
+      "model": "gpt-6-luna"
+    },
+    "kimi": {
+      "model": "glm-5.3"
+    }
+  }
+}

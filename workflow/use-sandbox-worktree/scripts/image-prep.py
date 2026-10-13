@@ -27,6 +27,11 @@ import time
 from dataclasses import dataclass
 from pathlib import Path
 
+_SCRIPT_DIR = str(Path(__file__).resolve().parent)
+if _SCRIPT_DIR not in sys.path:
+    sys.path.insert(0, _SCRIPT_DIR)
+from agent_config.common import CONTRACT, CONTRACT_LABEL
+
 ROOT = Path(__file__).resolve().parents[2]
 SLUG_SCRIPT = ROOT / "use-worktree/scripts/slug.py"
 
@@ -44,8 +49,15 @@ HOST_ONLY_EXTENSIONS = (
     "python-operation-hook",
 )
 HEADER_KEYS = {"build-id", "project-id", "image-ref", "measured-at"}
-IGNORE_SKILLS = shutil.ignore_patterns("__pycache__", ".venv", ".pytest_cache", "*.pyc")
-IGNORE_PI_AGENT = shutil.ignore_patterns("auth.json", "sessions", "*.bak", "AGENTS.md")
+IGNORE_SKILLS = shutil.ignore_patterns("__pycache__", ".venv", ".pytest_cache", "*.pyc", "agent-templates", "tests")
+IGNORE_PI_AGENT = shutil.ignore_patterns("auth.json", "sessions", "*.bak", "AGENTS.md", "models.json", "trust.json", "models*.json", "model-cache*", "models-cache*")
+# 只把公共交互/资源设置进镜像, 不复制主机模型路由或信任答案.
+PUBLIC_PI_SETTINGS = frozenset("""
+theme quietStartup tuiMode hideThinkingBlock steeringMode followUpMode
+fullscreenExitOutput fullscreenScrollbar fullscreenCopyOnSelect fullscreenWheelScrollLines
+editorPaddingX outputPad autocompleteMaxVisible showHardwareCursor terminal images markdown
+extensions skills prompts themes enableSkillCommands defaultTools codemode collapseChangelog
+""".split())
 IGNORE_HOST_ONLY_EXT = shutil.ignore_patterns(
     *(f"{name}*" for name in HOST_ONLY_EXTENSIONS)
 )
@@ -64,7 +76,7 @@ DEFAULT_BASE_REQUIREMENTS = """\
 # base 层需求清单 (D014)
 git>=2.30
 node>=20
-pi>=0.80
+pi==1.2.0
 uv>=0.5
 fd>=1.0 probe="fd --version"
 rg>=13.0
@@ -73,9 +85,9 @@ sshd>=8.0 probe="/usr/sbin/sshd -V"
 herdr>=0.9.3 probe="herdr --version"
 socat>=1.7 probe="dpkg-query -W -f='${Version}' socat | cut -d: -f2-"
 iproute2>=6.0 probe="dpkg-query -W -f='${Version}' iproute2 | cut -d: -f2-"
-codex>=0.154.0 probe="codex --version"
-kimi-code>=0.43.1 probe="kimi --version"
-codex-config probe="grep -c . /home/bolo/.codex/config.toml"
+codex==0.162.1 probe="codex --version"
+kimi-code==2.1.1 probe="kimi --version"
+swt-agent-contract==2 probe="cat /etc/swt-agent-template-contract"
 """
 
 
@@ -255,10 +267,10 @@ RUN apt-get update \\
 RUN curl -LsSf https://astral.sh/uv/install.sh | UV_INSTALL_DIR=/usr/local/bin sh
 
 # 稳定层: pi CLI
-RUN npm i -g @earendil-works/pi-coding-agent
+RUN npm i -g @earendil-works/pi-coding-agent@1.2.0
 
-# 稳定层: codex CLI + kimi-code (npm 全局 latest; bin 名 codex/kimi)
-RUN npm i -g @openai/codex @moonshot-ai/kimi-code
+# 稳定层: 客户端版本固定; 模板契约与解析器一起验收, 不临时追 latest.
+RUN npm i -g @openai/codex@0.162.1 @moonshot-ai/kimi-code@2.1.1
 
 # 稳定层: herdr (官方发布静态二进制, 不依赖 host 现状)
 RUN curl -LsSf -o /usr/local/bin/herdr https://github.com/herdrdev/herdr/releases/download/v0.9.3/herdr-linux-x86_64 \
@@ -271,10 +283,20 @@ RUN useradd --create-home --shell /bin/bash bolo \\
     && chmod 755 /run/sshd \\
     && sed -i 's/^#\\?PermitUserEnvironment.*/PermitUserEnvironment yes/' /etc/ssh/sshd_config
 
-# codex 中转站配置 (零秘密, 密钥走 env_key 环境变量; 容器无 codex 时此文件无害)
-RUN mkdir -p /home/bolo/.codex \\
-    && echo bW9kZWwgPSAiZ3B0LTUuNSIKbW9kZWxfcHJvdmlkZXIgPSAiYWktd29yayIKClttb2RlbF9wcm92aWRlcnMuYWktd29ya10KbmFtZSA9ICJDaGFuZ1poaSIKYmFzZV91cmwgPSAiaHR0cHM6Ly9haS13b3JrLmNoYW5nemhpLnRvcC92MSIKZW52X2tleSA9ICJDSEFOR19aSElfQUlfV09SSyIKd2lyZV9hcGkgPSAicmVzcG9uc2VzIgo= | base64 -d > /home/bolo/.codex/config.toml \\
-    && chown -R bolo:bolo /home/bolo/.codex
+# 兼容审计标记: /home/bolo/.codex/config.toml 只允许 birth 固定快照生成,
+# 主机同名文件绝不 COPY/烘入镜像.
+# 通用 agent 初始化工具与版本契约. 镜像不含模板/路由/凭据.
+COPY agent-tools/ /opt/swt-agent-config/
+LABEL run.sandbox-worktree.agent-template-contract="2"
+RUN printf '2\\n' > /etc/swt-agent-template-contract \\
+    && mkdir -p /opt/swt-agent-bin /home/bolo/.codex /home/bolo/.kimi-code \\
+    && for cli in pi codex kimi; do \\
+        ln -s "$(readlink -f /usr/local/bin/$cli)" "/opt/swt-agent-bin/$cli"; \\
+        rm "/usr/local/bin/$cli"; \\
+        printf '#!/bin/sh\\nexec /usr/local/bin/uv run --no-project --offline python /opt/swt-agent-config/launch.py %s "$@"\\n' "$cli" > "/usr/local/bin/$cli"; \\
+        chmod 755 "/usr/local/bin/$cli"; \\
+    done \\
+    && chown -R bolo:bolo /home/bolo/.codex /home/bolo/.kimi-code
 
 # F012: ssh 非交互 shell 的 PATH 须含 ~/.local/bin (herdr remote 把 binary
 # 装到 ~/.local/bin 后, 远端 shell 要能解析). sshd 对每个会话重设 PATH 为
@@ -285,7 +307,7 @@ RUN mkdir -p /home/bolo/.codex \\
 RUN printf 'SetEnv PATH=/home/bolo/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin XDG_RUNTIME_DIR=/tmp/xdg-1001\\n' >> /etc/ssh/sshd_config \
     && printf 'StreamLocalBindUnlink yes\\n' >> /etc/ssh/sshd_config
 
-# 常变层: skill 库全量 COPY (D014/D018); ~/.pi/agent 机械复制 (D018/D023);
+# 常变层: skill 公共资源 COPY; Pi 只复制交互/键位/扩展等公共设置;
 # auth.json/sessions 不进镜像 (D018); AGENTS.md 不进镜像 (P1-6 母本制, birth 只读挂载);
 # 门禁类扩展留 host (D043 stage 过滤)
 COPY --chown=bolo:bolo skills/ /home/bolo/.agents/skills/
@@ -328,23 +350,57 @@ def generate_project_containerfile(
 
 
 def stage_context(context_dir: Path, skills_dir: Path, pi_agent_dir: Path) -> None:
-    """构建上下文 staging: skills 全量; ~/.pi/agent 除 auth.json/sessions (D018)
-    与门禁类扩展留 host 名单 (D043, extensions/ 只排除显式点名文件)."""
+    """通用构建上下文: 不含模型模板/路由/凭据/会话/信任答案.
+    公共 Pi 资源延续既有门禁扩展过滤, 递归拒绝符号链接."""
     if not skills_dir.is_dir():
         raise EnvError(f"NO-SKILLS-DIR {skills_dir}")
     if not pi_agent_dir.is_dir():
         raise EnvError(f"NO-PI-AGENT-DIR {pi_agent_dir}")
     context_dir.mkdir(parents=True, exist_ok=True)
-    shutil.copytree(skills_dir, context_dir / "skills", ignore=IGNORE_SKILLS,
-                    dirs_exist_ok=True)
+    staged_skills = context_dir / "skills"
+    if staged_skills.exists():
+        shutil.rmtree(staged_skills)
+    shutil.copytree(skills_dir, staged_skills, ignore=IGNORE_SKILLS)
 
     def ignore_pi_agent(directory: str, names: list[str]) -> list[str]:
         hits = list(IGNORE_PI_AGENT(directory, names))
         hits.extend(IGNORE_HOST_ONLY_EXT(directory, names))
         return hits
 
-    shutil.copytree(pi_agent_dir, context_dir / "pi-agent", ignore=ignore_pi_agent,
-                    dirs_exist_ok=True)
+    # copytree dirs_exist_ok 会留下上轮模型/凭据, 不复用 Pi staging.
+    staged_pi = context_dir / "pi-agent"
+    if staged_pi.exists():
+        shutil.rmtree(staged_pi)
+    staged_pi.mkdir()
+    for name in ("keybindings.json", "extensions", "themes", "prompts"):
+        source = pi_agent_dir / name
+        if source.is_symlink():
+            raise EnvError("PI-RESOURCE-SYMLINK 公共资源须先审查, 不跟随主机符号链接")
+        if source.is_dir():
+            if any(p.is_symlink() for p in source.rglob("*")):
+                raise EnvError("PI-RESOURCE-SYMLINK 公共资源内有符号链接, 须用户审查")
+            shutil.copytree(source, staged_pi / name, ignore=ignore_pi_agent)
+        elif source.is_file():
+            shutil.copy2(source, staged_pi / name)
+    settings_path = pi_agent_dir / "settings.json"
+    if settings_path.is_symlink():
+        raise EnvError("PI-RESOURCE-SYMLINK 公共设置是符号链接, 须用户审查")
+    try:
+        settings = json.loads(settings_path.read_text()) if settings_path.is_file() else {}
+        if not isinstance(settings, dict):
+            raise ValueError()
+    except (OSError, ValueError):
+        raise EnvError("BAD-PI-SETTINGS 主机公共设置不可解析") from None
+    public = {k: v for k, v in settings.items() if k in PUBLIC_PI_SETTINGS}
+    (staged_pi / "settings.json").write_text(json.dumps(public, indent=2) + "\n")
+    tools_dir = context_dir / "agent-tools"
+    if tools_dir.exists():
+        shutil.rmtree(tools_dir)
+    tools_dir.mkdir()
+    scripts = Path(__file__).resolve().parent
+    shutil.copytree(scripts / "agent_config", tools_dir / "agent_config", ignore=IGNORE_SKILLS)
+    shutil.copy2(scripts / "agent-runtime.py", tools_dir / "runtime.py")
+    shutil.copy2(scripts / "agent-launch.py", tools_dir / "launch.py")
 
 
 # ---------------------------------------------------------------- podman 接缝
@@ -561,7 +617,7 @@ def cmd_build_base(args: argparse.Namespace) -> int:
         (record_dir / "probe-report.txt").write_text(
             "\n".join(failures) + "\n" + json.dumps(measured, indent=2) + "\n"
         )
-        run_podman(["rmi", "-f", image_id], check=False)
+        # 不删除镜像 ID: 缓存可能与既有 tag/容器共用.
         for failure in failures:
             print(failure, file=sys.stderr)
         return 1
@@ -570,13 +626,14 @@ def cmd_build_base(args: argparse.Namespace) -> int:
     contents = contents_text(build_id, project_id, image_ref, measured)
     (record_dir / "contents.md").write_text(contents)
     contents_digest = hashlib.sha256(contents.encode()).hexdigest()
-    label_keys = ["schema-version", "contents-digest", "build-id"]
+    label_keys = ["schema-version", "contents-digest", "build-id", "agent-template-contract"]
     podman_build(context_dir, containerfile, [image_ref], {
         f"{LABEL_PREFIX}.schema-version": SCHEMA_VERSION,
         f"{LABEL_PREFIX}.contents-digest": contents_digest,
         f"{LABEL_PREFIX}.build-id": build_id,
+        CONTRACT_LABEL: str(CONTRACT),
     })
-    run_podman(["rmi", "-f", image_id], check=False)
+    # phase-1 保留为缓存, 不删可能被现有 tag/容器引用的 ID.
     digest = image_inspect(image_ref, "{{.Digest}}")
     write_build_manifest(
         record_dir, kind="base", project_id=project_id, slug=slug, build_id=build_id,
@@ -601,6 +658,12 @@ def _build_child_layer(
     """display/项目层共用构建 (D039): FROM parent@digest + install 指令按序,
     实测验证, 贴标签 (base-digest = 直接父层 digest, 匹配谓词对象).
     display 层 slug=display 落 records/display/; 项目层 slug 随项目."""
+    # 不给旧父镜像重新贴新契约标签, 也不执行旧模型配置 install 条目.
+    marker = image_inspect(parent_image_id, '{{index .Labels "' + CONTRACT_LABEL + '"}}')
+    if marker != str(CONTRACT):
+        raise EnvError(f"AGENT-CONTRACT 需要契约 {CONTRACT} 的新父镜像, 不复用旧 base/display")
+    if any(entry.name in {"codex-config", "pi-config", "kimi-config", "kimi-code-config"} for entry in entries):
+        raise EnvError("MODEL-CONFIG-IN-IMAGE 模型配置只走 birth 模板, 不执行镜像静态模型配置条目")
     builds_root = records_root / slug / "builds"
     build_id = allocate_build_id(builds_root)
     record_dir = builds_root / build_id
@@ -622,8 +685,7 @@ def _build_child_layer(
         (record_dir / "probe-report.txt").write_text(
             "\n".join(failures) + "\n" + json.dumps(measured, indent=2) + "\n"
         )
-        if image_id != parent_image_id:
-            run_podman(["rmi", "-f", image_id], check=False)
+        # 不删除失败构建的共享缓存 ID.
         for failure in failures:
             print(failure, file=sys.stderr)
         return 1
@@ -631,19 +693,19 @@ def _build_child_layer(
     contents = contents_text(build_id, project_id, image_ref, measured)
     (record_dir / "contents.md").write_text(contents)
     contents_digest = hashlib.sha256(contents.encode()).hexdigest()
-    label_keys = ["schema-version", "contents-digest", "build-id", "base-digest"]
+    label_keys = ["schema-version", "contents-digest", "build-id", "base-digest", "agent-template-contract"]
     labels = {
         f"{LABEL_PREFIX}.schema-version": SCHEMA_VERSION,
         f"{LABEL_PREFIX}.contents-digest": contents_digest,
         f"{LABEL_PREFIX}.build-id": build_id,
         f"{LABEL_PREFIX}.base-digest": parent_digest,
+        CONTRACT_LABEL: str(CONTRACT),
     }
     if kind == "project":
         labels[f"{LABEL_PREFIX}.project-id"] = project_id
         label_keys.insert(0, "project-id")
     podman_build(context_dir, containerfile, [image_ref], labels)
-    if image_id != parent_image_id:
-        run_podman(["rmi", "-f", image_id], check=False)
+    # 不删除共享缓存 ID, 旧镜像/现有容器完全不动.
     digest = image_inspect(image_ref, "{{.Digest}}")
     write_build_manifest(
         record_dir, kind=kind, project_id=project_id, slug=slug, build_id=build_id,
@@ -773,6 +835,9 @@ def cmd_match(args: argparse.Namespace) -> int:
                    reverse=True)
     for digest, candidate in order:
         build_id = candidate["build-id"]
+        if image_inspect(candidate["id"], '{{index .Labels "' + CONTRACT_LABEL + '"}}') != str(CONTRACT):
+            print(f"reason=agent-contract:{build_id}")
+            continue
         contents_path = records_root / slug / "builds" / build_id / "contents.md"
         if not contents_path.is_file():
             print(f"reason=record-missing:{build_id}")

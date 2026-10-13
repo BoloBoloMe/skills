@@ -374,7 +374,7 @@ def cmd_verify(args: argparse.Namespace) -> int:
     # (0) wayland 本机直通探测 (D051): 未挂直通的容器记 SKIP (不影响退出码);
     # 挂了就以 bolo 身份实测 connect 中继 socket, 验证整条权限链
     mounted = _podman(["exec", args.name, "test", "-e",
-                       "/run/swt-wayland-host/wayland-0"], check=False, timeout=30)
+                       "/run/swt-wayland/wayland-0"], check=False, timeout=30)
     if mounted.returncode != 0:
         print("check wayland_passthrough: SKIP (本容器未挂宿主机 wayland 直通)")
     else:

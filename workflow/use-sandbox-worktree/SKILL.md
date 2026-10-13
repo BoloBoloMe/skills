@@ -21,7 +21,7 @@ disable-model-invocation: true
 
 - 你 (host 侧 agent) 只管理生命周期, 不进容器干活.
 - 一切需我拍板的点由脚本以 DECIDE 行表达 (见决策协议节): 逐字转述给我, 我答后带 flag 重跑同一命令, 替我作答即违规.
-- 真远端 (github 等) 对容器完全不暴露; 授权配置常驻两层: 主仓 config (deny 三键 + worktreeConfig 扩展开关, 跨母体共享) + 各母体 config.worktree (hideRefs 与 git-daemon-export-ok, 每对一份, 只放行本对分支) (残余影响见 reference/risks.md). 改造前旧版主仓级 hideRefs 残留会被 birth/resume 自动迁入各母体 config.worktree (含 daemon 重摆与容器 remote 改指), 运行中容器无感, 不需手工处理.
+- 真远端 (github 等) 对容器完全不暴露; 授权配置常驻两层: 主仓 config (deny 三键 + worktreeConfig 扩展开关, 跨母体共享) + 各母体 config.worktree (hideRefs 与 git-daemon-export-ok, 每对一份, 只放行本对分支) (残余影响见 reference/risks.md). 旧记录 resume 沿用既有旧形态恢复机制. 新模板 birth/resume 不自动迁移旧对, 遇到主仓旧形态残留即报告并停止, 不重摆其他 daemon/容器 remote.
 
 ## 环境前置
 
@@ -62,9 +62,10 @@ birth 内部自动跑 image-prep `match`, 需求清单取 `<records-root>/<项�
 uv run python scripts/swt.py birth [--repo <主仓>] --branch <母体分支名原文>
     [--base <源 ref>] [--name <容器名>]
     [--mode whitelist --allow <CIDR>]... | [--mode blacklist [--deny <CIDR>]...]
-    [--image <ref>] [--requirements <file>] [--new-mother | --reuse-mother] [--lan-ip <ipv4>]
+    [--agent-template <名称>] [--image <ref>] [--requirements <file>]
+    [--new-mother | --reuse-mother] [--lan-ip <ipv4>]
 ```
-容器缺省名 `swt-<分支名>`, `--name` 只用于自定义名 — 同母体活跃容器唯一 (见术语), 它不是放行第二个容器的开关. 首次执行通常出 DECIDE (网络模式, 容器主机名, 局域网地址, 镜像), 按决策协议节应答.
+容器缺省名 `swt-<分支名>`, `--name` 只用于自定义名 — 同母体活跃容器唯一 (见术语), 它不是放行第二个容器的开关. 首次执行通常出 DECIDE (agent 模板, 网络模式, 容器主机名, 局域网地址, 镜像), 按决策协议节应答. 模板未填即使只有一个候选也不自动选择. 新容器须兼容通用镜像契约, 不复制主机 OAuth/旧模型环境凭据; 固定快照/启动入口/失败重入/验收见 reference/agent-templates.md. 旧容器不追溯套模板.
 
 **第四步: 交付包**
 逐项向我报告, 缺发只允许以一种形式发生 — 显式打原因, 不静默丢失:
@@ -105,7 +106,7 @@ uv run python scripts/swt.py birth [--repo <主仓>] --branch <母体分支名�
 
 **多对并存**: 同一主仓可同时有多对 (每个母体分支一对, 各自母体目录 + daemon + 容器), 每对互不可见对方分支: 容器读面只见本对分支, 写面只准快进推本对母体分支. 多个容器同推同一母体 (历史残留或未来放开): 容器只准快进推送, 后推的那个会被 git 以历史分叉为由拒绝 — 容器内 `git fetch` → 解冲突 → 重推 (git 原生串行化, 无新机制).
 
-**kimi 凭证**: 容器内 kimi (Kimi Code CLI) 必须独立登录 (容器内 `kimi` → `/login` 走 OAuth), 禁止把 host 的 kimi 凭证复制进容器两处共用: OAuth refresh token 一次性轮换, 同一份两处用时先刷新者生效, 另一边报 400 invalid grant. swt 注入的 host `~/.pi/agent/auth.json` 若含 kimi OAuth 条目同理 — 容器内要用 kimi 就独立登录, 别复用注入文件里的 kimi 条目.
+**kimi 凭证**: 新模板容器 (首版 CLIProxyAPI) 使用模板的客户端 Key, 不需 `/login`, 不复制任何主机 OAuth. 旧容器使用 Kimi OAuth 时仍须独立登录, 禁止复制 host 凭据两处共用: refresh token 一次性轮换, 先刷新者生效, 另一边会报 invalid grant. 旧 resume 不自动套模板或迁移认证.
 
 **母体使用纪律 (转述给我)**: 母体目录是审阅现场: 只读/diff/试跑随意, **禁止编辑跟踪文件** — 母体工作区脏会拒容器 push (推送落地机制自带行为); 未跟踪文件 (编译产物等) 不阻塞. 审阅时不开会自动写文件的工具.
 
@@ -116,7 +117,7 @@ uv run python scripts/swt.py resume [--repo <主仓>] [--branch <母体分支名
 ```
 
 `--branch`/`--name` 定位对, 都缺省 = 本主仓唯一记录对, 多对时点名消歧. 有 CLI 级 DECIDE gate: 检测到可恢复对象先 exit 1, 我确认后带 `--confirm` 重跑. 序列: 收本对残留 daemon + 旧 git 桥 → 旧形态配置自愈迁移 (见角色边界) → start 容器 → 重拉本对 daemon 并重建桥 → **start 后立即重注入防火墙规则** (合并式 `--merge`, 不做整表清空重建) → 同位置自动重拉显示栈 (幂等 `swt-vnc start` + 秒级检查, 失败降级不阻断) → 重保容器内 git 转发器 → 经桥 git 校验 (固定 remote ls-remote + fetch), 校验通过前不开放工作负载. 就绪判定含 git 通道实测: daemon/桥活但容器 remote 失配 (中途失败或旧形态中间态) 会判为可恢复并重跑收敛, 不卡死. retired 容器 resume 直接 exit 2. pasta 复制配置与宿主当前网络失配 (宿主换过网络) 时打印告警提示重建, 不强制. 交付包与 birth 同规格齐发.
-完成标准: 容器 running, 防火墙规则已重注入, git 桥校验通过, 显示栈状态已标注, STATE 反映本对母体分支.
+完成标准: 容器 running, 防火墙规则已重注入, git 桥校验通过, 显示栈状态已标注, STATE 反映本对母体分支. 新模板容器另须固定配置/凭据/网关检查通过, 只验该目标, 不重装模板/复制主机 OAuth/换 Key. 初始化尚未完成时 resume 拒绝, 用同一 birth 补完.
 
 ## 终结 (terminate)
 
@@ -136,9 +137,9 @@ uv run python scripts/image-prep.py match      --repo <主仓> [--requirements <
 uv run python scripts/image-prep.py build      --repo <主仓> [--requirements <file>]
 ```
 
-- 三层结构: **base 层** (OS + git + sshd + node + pi CLI + uv + herdr + socat (git 桥双端) + 容器内排障件 + skill 库全量 COPY (运行期被 host 只读挂载遮蔽, 退化为兜底快照) + `~/.pi/agent` 复制) 固定且跨项目共享; **display 层** FROM 当前 base (VNC 栈 + chromium + waypipe, 清单缺省 `image/requirements-browser.md`); **项目层** FROM 当前 display, 由你读项目信号推导依赖件叠加, 清单与我确认后才构建.
+- 三层结构: **base 层** (OS + git + sshd + node + pi CLI + uv + herdr + socat (git 桥双端) + 容器内排障件 + skill 公共资源 COPY (不含 agent 模板, 运行期被 host 只读挂载遮蔽) + Pi 公共交互/键位/扩展资源 + 固定 agent 初始化工具)  固定且跨项目共享; **display 层** FROM 当前 base (VNC 栈 + chromium + waypipe, 清单缺省 `image/requirements-browser.md`); **项目层** FROM 当前 display, 由你读项目信号推导依赖件叠加, 清单与我确认后才构建.
 - 匹配谓词链: display 须基于当前 base, 项目层须基于当前 display — base 更新后旧 display 自然淘汰, display 更新后旧项目镜像自然淘汰. **base 与 display 都只在我明说时重建**, 无自动检测; display 缺失/过期时项目构建报 `NO-DISPLAY`/`DISPLAY-STALE`, 先 build-display 再 build. skill 纯内容变更不需重建 base (挂载实时生效); pyproject/uv.lock 依赖变更需重建, 否则容器内 venv 种子与 lock 失配且无网重装.
-- 需求清单格式, 推导规则 (含 codex env_key 静态配置条目), 匹配规则细节, 版本语义 (tag/digest/contents.md), 记录落点, base 层复制过滤 → reference/image-prep.md.
+- 需求清单格式, 匹配规则, tag/digest/contents.md, 记录落点, base 复制过滤 → reference/image-prep.md. 新镜像不得写 codex-config 等静态模型路由条目; 模型配置只走 birth 模板. 模板数据/契约/固定快照和测试 → reference/agent-templates.md.
 - image-prep 直用时 match/build 的 `--requirements` 为必填 (birth 内部自动代填缺省路径 `<records-root>/<项目slug>/requirements.md`, 只有绕开 birth 手敲时才需显式给). 旧镜像保留不删.
 
 ## 母本与分发
@@ -152,6 +153,7 @@ uv run python scripts/image-prep.py build      --repo <主仓> [--requirements <
 - 全局: `<records-root>/env.conf`; 项目级: `<records-root>/<项目slug>/env.conf` (同名覆盖全局).
 - 每行一条: `NAME` = 值取 host 当前环境 (**文件不存秘密值**); `NAME=value` = 固定值 (仅限非秘密). `#` 开头为注释.
 - `NAME` 在 host 未设置: stderr 警告并跳过, 不阻塞 birth.
+- 新模板 birth 在改资源前过滤点名的模型凭据/模型路由/配置路径变量, 只报告名字, 不报告值. 不使用 *_KEY 泛匹配. 云/Git 等模型/业务共用凭据冲突须用户决定, 不自动丢弃业务值. 多行环境值不写入 SSH environment. 客户端 Key 另走 stdin/600 文件/固定启动入口, 不放入 create -e 或 SSH environment.
 
 ## 基础服务 (信箱 mesh + LLM 中转, 独立 mailbox skill)
 

@@ -36,6 +36,14 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, NamedTuple
 
+# 支持脚本入口和既有 importlib 测试入口, 不依赖真实部署目录.
+_SCRIPT_DIR = str(Path(__file__).resolve().parent)
+if _SCRIPT_DIR not in sys.path:
+    sys.path.insert(0, _SCRIPT_DIR)
+from agent_config import template as agent_templates
+from agent_config.common import (TemplateError, filtered_env, CONTAINER_LABEL,
+                                 TOKEN_LABEL, DIGEST_LABEL, CONTRACT)
+
 
 SCHEMA = 2
 # 配置两层 (并行母体改造): 仓级 (主仓 config, 跨母体共享) + 对级 (母体 config.worktree, 每对一份).
@@ -1479,11 +1487,11 @@ def host_display_probe(name: str) -> tuple[bool, str]:
 def ensure_host_display(runtime: dict[str, Any], runtime_file: Path, record: dict[str, Any]) -> str:
     """birth/resume 共用的本机直通重保 + 实测 (D051). 失败降级回退 noVNC, 不阻断
     终端工作. 返回 ok / degraded / absent."""
-    if record.get("host-display") != "mounted":
+    if record.get("host-display") not in {"mounted", "ok", "degraded"}:
         return "absent"
     name = str(record.get("name"))
     socket_path = host_wayland_socket()
-    if socket_path is not None:
+    if socket_path is not None and not record.get("agent-template"):
         relax_host_wayland_perms(socket_path)
     ok, detail = host_display_probe(name)
     record["host-display"] = "ok" if ok else "degraded"
@@ -2593,8 +2601,33 @@ def create_and_start_container(args: argparse.Namespace, repo: Path, image: dict
     if existing.returncode == 0:
         records = runtime.get("containers", [])
         record = next((item for item in records if isinstance(item, dict) and item.get("name") == name), None)
+        if record is None and runtime.get("agent-template"):
+            # create 成功但记录落盘前中断: 只接回带本次随机令牌的同一个新容器.
+            # 令牌已先写 runtime, 与旧容器无交集; 先校验, 后登记, 再启动.
+            try:
+                detail = json.loads(existing.stdout)[0]
+                record = {"name": name, "branch": branch, "podman-id": detail.get("Id"),
+                          "image-digest": runtime["agent-template"]["image-digest"], "state": "created",
+                          "retired": False, "display": "pending", "host-display": "absent",
+                          "agent-template": dict(runtime["agent-template"]), "headed-script": None,
+                          "dirty": {"uncommitted": None, "unpushed": None, "relation": None, "reachable": False}}
+                agent_templates.guard(detail, runtime, record)
+                for mount in detail.get("Mounts", []):
+                    if mount.get("Destination") == f"{WAYLAND_CONTAINER_DIR}/wayland-0":
+                        record["host-display"] = "mounted"
+                    elif mount.get("Destination") == HEADED_BROWSER_CONTAINER_PATH:
+                        record["headed-script"] = mount.get("Source")
+            except (TemplateError, ValueError, IndexError, TypeError, AttributeError):
+                raise PreconditionError("同名容器不是本次创建, 不接管/不启动") from None
+            runtime["stage"] = "container-created"
+            upsert_container_record(runtime, record, runtime_file)
         if record is None:
             raise PreconditionError(f"容器名已存在: {name}, 但不属于当前 runtime")
+        if runtime.get("agent-template"):
+            try:
+                agent_templates.guard(json.loads(existing.stdout)[0], runtime, record)
+            except (TemplateError, ValueError, IndexError, TypeError, AttributeError) as exc:
+                raise PreconditionError("模板创建绑定不符, 不启动/改写已有容器") from exc
         refreshed = refresh_container(name, record, runtime, runtime_file)
         refreshed["headed-script"] = record.get("headed-script")
         return refreshed
@@ -2602,6 +2635,11 @@ def create_and_start_container(args: argparse.Namespace, repo: Path, image: dict
         f"sandbox-worktree.repo={repo.resolve()}", f"sandbox-worktree.mother={branch}",
         f"sandbox-worktree.name={name}", f"sandbox-worktree.branch={branch}",
     ]
+    template_meta = runtime.get("agent-template")
+    if isinstance(template_meta, dict):
+        labels.extend([f"{CONTAINER_LABEL}={CONTRACT}",
+                       f"{TOKEN_LABEL}={template_meta['creation-token']}",
+                       f"{DIGEST_LABEL}={template_meta['snapshot-digest']}"])
     command = ["podman", "create", "--name", name]
     for label in labels:
         command.extend(["--label", label])
@@ -2626,7 +2664,10 @@ def create_and_start_container(args: argparse.Namespace, repo: Path, image: dict
     # 经 ~/.ssh/environment 同步.
     wayland_socket = host_wayland_socket()
     if wayland_socket is not None:
-        relax_host_wayland_perms(wayland_socket)
+        if template_meta and (wayland_socket.stat().st_mode & 0o777) != 0o777:
+            raise PreconditionError("本机 wayland socket 需放宽主机权限, 新模板 birth 不擅自 chmod; 请用户决定后再建")
+        if not template_meta:
+            relax_host_wayland_perms(wayland_socket)
         command.extend(["-v", f"{wayland_socket}:{WAYLAND_CONTAINER_DIR}/wayland-0"])
         command.extend(["-e", f"XDG_RUNTIME_DIR={WAYLAND_CONTAINER_DIR}", "-e", "WAYLAND_DISPLAY=wayland-0"])
         env["XDG_RUNTIME_DIR"] = WAYLAND_CONTAINER_DIR
@@ -2671,6 +2712,8 @@ def create_and_start_container(args: argparse.Namespace, repo: Path, image: dict
         "host-display": "mounted" if wayland_socket is not None else "absent",
         "headed-script": str(headed_script) if headed_script is not None else None,
     }
+    if isinstance(template_meta, dict):
+        record["agent-template"] = dict(template_meta)
     runtime["stage"] = "container-created"
     upsert_container_record(runtime, record, runtime_file)
     refreshed = refresh_container(name, record, runtime, runtime_file)
@@ -2913,6 +2956,32 @@ def birth_display_gate(
     return "fail"
 
 
+def template_call(function, *args, partial: bool = False, **kwargs):
+    """保持 swt 退出协议, 仅接收固定工具的脱敏错误."""
+    try:
+        return function(*args, **kwargs)
+    except TemplateError as exc:
+        if partial:
+            raise SwtError(3, "PARTIAL", str(exc)) from None
+        raise PreconditionError(str(exc)) from None
+
+
+def initialize_agent_template(runtime: dict, runtime_file: Path, name: str) -> None:
+    meta = runtime["agent-template"]
+    record = next(r for r in runtime["containers"] if r.get("name") == name)
+    try:
+        report = template_call(agent_templates.operate, runtime, name, install=True, partial=True)
+    except SwtError:
+        meta["status"] = "failed"
+        record["agent-template"] = dict(meta)
+        runtime["stage"] = "agent-template-failed"
+        atomic_write_json(runtime_file, runtime)
+        raise
+    meta.update({"status": "verified", "result": report})
+    record["agent-template"] = dict(meta)
+    atomic_write_json(runtime_file, runtime)
+
+
 def birth(args: argparse.Namespace, repo: Path) -> int:
     records_root = args.records_root.expanduser().resolve()
     if args.lan_ip:
@@ -2922,7 +2991,9 @@ def birth(args: argparse.Namespace, repo: Path) -> int:
     if args.base and not any((args.mode, args.image, args.requirements, args.new_mother, args.reuse_mother)):
         raise PreconditionError("NOT-IMPLEMENTED birth")
     branch = resolve_mother_branch(repo, args.branch)
-    identity_mother = mother_path(repo, branch)
+    # 先认 use-worktree 已建的实际母体, 对级身份不按猜测目录名派生.
+    mother_dir, dirty = find_mother(repo, branch)
+    identity_mother = mother_dir or mother_path(repo, branch)
     identity = resolve_pair_identity(repo, records_root, identity_mother)
     runtime_file = records_root / "runtime" / f"{identity}.json"
     runtime_existing = load_runtime(runtime_file)
@@ -2937,20 +3008,53 @@ def birth(args: argparse.Namespace, repo: Path) -> int:
             raise PreconditionError(
                 f"母体 {identity_mother.name} 已有存活 daemon(pid={active_daemons[0]}), 请先清理 daemon 后再 birth"
             )
-    mother_dir, dirty = find_mother(repo, branch)
     if dirty:
         raise PreconditionError(f"母体工作树脏, 请先人工处理: {mother_dir}")
-    # 显示栈门禁重入 (D041): 上次 birth 已 born 但 display-verify 失败,
-    # 带 --display-continue/--display-recheck (或不带 flag 重问) 只处理显示段,
-    # 不重走全链 (全链重入会 re-clone, 丢容器内未提交工作).
-    reentry = birth_display_gate_reentry(args, repo, records_root, runtime_existing, runtime_file)
-    if reentry is not None:
-        return reentry
     # 容器名单源 (评审修复): 推导一次写回 args, 后续冲突检查/hostname 候选/
     # wire/create 复用同一值, 不再各自 fork slug 子进程. name_explicit 在写回前
-    # 捕获 — born 重入守卫仍要求显式 --name, 不受缺省回填影响.
-    name_explicit = bool(args.name)
+    # 捕获目标名后, 同一次创建的重入只处理该目标.
     args.name = args.name or container_default_name(branch)
+    if not agent_templates.identifier(args.name):
+        raise PreconditionError("容器名非法, 须为安全的单段名称")
+    selected = getattr(args, "agent_template", None)
+    fixed_meta = (runtime_existing or {}).get("agent-template")
+    if runtime_existing and not fixed_meta:
+        raise PreconditionError("已有容器没有模板创建记录, birth 不迁移/改写旧容器; 原容器只走旧 resume")
+    if fixed_meta:
+        if (selected and selected != fixed_meta.get("name")) or args.name != fixed_meta.get("container"):
+            raise PreconditionError("同一次创建的模板/目标已固定, 不允许重入换模板/容器")
+        fixed = template_call(agent_templates.read_snapshot, Path(fixed_meta["snapshot"]), fixed_meta["snapshot-digest"])
+        bundle = {"template": fixed["template"], "catalog": fixed["catalog"]}
+        template_options = [agent_templates.summary(bundle)]
+        selected = fixed_meta["name"]
+        if runtime_existing.get("containers"):
+            template_call(agent_templates.target, runtime_existing, args.name)
+        if runtime_existing.get("stage") == "born":
+            template_call(agent_templates.operate, runtime_existing, args.name, install=False, partial=True)
+            reentry = birth_display_gate_reentry(args, repo, records_root, runtime_existing, runtime_file)
+            if reentry is not None:
+                return reentry
+            record = next(r for r in runtime_existing["containers"] if r.get("name") == args.name)
+            print_delivery_lines("birth: 已就绪 (固定模板未重装)", record.get("ssh-port"), record.get("vnc-port"),
+                                 record.get("display"), Path(record["ssh_private_key"]) if record.get("ssh_private_key") else None,
+                                 read_confirmed_lan_address(records_root), record.get("host-display"), record.get("web-port"),
+                                 headed_script=record.get("headed-script"))
+            print_birth_state(repo, records_root, runtime_file, runtime_existing, runtime_existing.get("mother") or {},
+                              runtime_existing.get("image"), runtime_existing.get("network"), "[SWT] birth: 已完成, 模板未重装")
+            return 0
+    else:
+        if container_exists(args.name):
+            raise PreconditionError("同名容器已存在, 不属于本次模板创建, 不触碰")
+        template_options = template_call(agent_templates.choices)
+        if not template_options:
+            raise PreconditionError("没有可选择的 agent 模板")
+        bundle = template_call(agent_templates.load, selected) if selected else None
+    # 新模板 birth 不自动迁移其他母体/容器. 旧形态需用户另开任务决定.
+    if legacy_pair_branches(repo):
+        raise PreconditionError("主仓仍有旧形态配置, 新模板 birth 不迁移任何已有容器; 请另行决定处理方式")
+    socket_path = host_wayland_socket()
+    if socket_path is not None and (socket_path.stat().st_mode & 0o777) != 0o777:
+        raise PreconditionError("wayland 直通需要 chmod 主机 socket, 本任务不擅自放宽; 请用户决定, 或在无桌面直通环境创建")
     # D003: 一母体同一时刻只有一个活跃容器 — 同母体已有活跃容器 (异名) 时拒绝
     # 新建 (含 born 重入加新 --name 路径); 同名重入 (失败重试) 与 retired 容器
     # 不算冲突; 只拒绝本次新建, 不追溯处置既有容器 (D009). 放在显示门禁重入之后,
@@ -2959,11 +3063,18 @@ def birth(args: argparse.Namespace, repo: Path) -> int:
         runtime_existing, live_repo_containers(repo), branch, args.name)
     if conflict:
         raise PreconditionError(conflict)
-    image = mark_newer_available(prepare_image(args, repo, records_root), runtime_existing)
+    if fixed_meta:
+        image = runtime_existing["image"]
+        if args.image and image_digest(args.image) != fixed_meta["image-digest"]:
+            raise PreconditionError("同一次创建的镜像已固定, 不允许重入换镜像")
+    else:
+        image = mark_newer_available(prepare_image(args, repo, records_root), runtime_existing)
     network_input = {"mode": args.mode, "allow": list(args.allow), "deny": list(args.deny)}
     identity = runtime_file.stem
     # 收据绑定当前外部状态; 用户本次填写的网络答案本身不应使上一张票据失效.
     fingerprint = decision_fingerprint(repo, branch, mother_dir, image)
+    # 整个候选清单摘要参与收据: 首次选择不造成票据漂移, 任一模板变更会废票.
+    fingerprint["agent-template-options"] = template_options
     pending: list[tuple[str, str, list[str]]] = []
 
     stale_receipts: dict[str, bool] = {}
@@ -2971,8 +3082,26 @@ def birth(args: argparse.Namespace, repo: Path) -> int:
     # 存在即复用, 不存在即按 --base/缺省分支新建. PARTIAL runtime (未 born) 重入时
     # 允许 --new-mother (首跑可能已建母体, 重跑须收敛而不是拒绝).
     partial_runtime = bool(runtime_existing and runtime_existing.get("stage") != "born")
-    for decision_kind in ("network-mode", "image-build", "hostname", "lan-address"):
+    for decision_kind in ("network-mode", "image-build", "hostname", "lan-address", "agent-template"):
         stale_receipts[decision_kind] = expire_receipts(records_root, identity, decision_kind, fingerprint)
+    template_decision_id = None
+    template_receipt = matching_receipt(records_root, identity, "agent-template", fingerprint)
+    if selected and template_receipt is not None and not stale_receipts["agent-template"]:
+        # 消费一次性票据前留存用户本次选择和摘要, 不能只记录候选集合.
+        payload = json.loads(template_receipt.read_text(encoding="utf-8"))
+        payload["answer"] = agent_templates.summary(bundle)
+        atomic_write_json(template_receipt, payload)
+        template_decision_id = payload["id"]
+        append_audit_entry(records_root, identity, {"action": "decision-answered", "kind": "agent-template",
+                                                   "decision-id": template_decision_id, "answer": payload["answer"]})
+    template_decision = decision_pending(
+        records_root, identity, "agent-template", fingerprint, selected is not None,
+        "请选择新容器 agent 配置模板 (名称/版本/摘要已绑定收据)",
+        "模板内容/创建前提已变化, 请重新确认模板",
+        ["--agent-template " + item["name"] for item in template_options],
+        stale_receipts["agent-template"])
+    if template_decision:
+        pending.append(template_decision)
 
     network_decision = decision_pending(
         records_root, identity, "network-mode", fingerprint, args.mode is not None,
@@ -3025,31 +3154,44 @@ def birth(args: argparse.Namespace, repo: Path) -> int:
         print_birth_state(repo, records_root, runtime_file, runtime_existing, mother_state, image, network_input, "[SWT] birth: 等待用户决定")
         return 1
 
-    # 并行母体一次性迁移 (幂等): 主仓级 hideRefs 残留迁入各母体 config.worktree 并重摆
-    # per-mother daemon (含桥与容器 remote). 必须先于任何 per-mother 资源动作, 否则
-    # 本对新 daemon 会被残留的主仓级 hideRefs 越权面波及; 迁移后重读本对 runtime
-    # (若本对自身是旧形态, 迁移已更新其 daemon 记录).
-    migrate_legacy_pairs(repo, records_root)
+    # 全部 DECIDE 已答后做固定前置检查. 不迁移旧配置, 不启动已有业务对象.
+    env_map, removed_env = template_call(filtered_env, load_inherited_env(records_root, resolve_project_slug(repo)))
+    if removed_env:
+        print("[SWT] 模板过滤模型/配置变量 (不显示值): " + ", ".join(removed_env), file=sys.stderr)
+    # 凭据/镜像兼容性失败时, 尚未创建母体/daemon/容器.
+    template_call(agent_templates.image_compatible, str(image["ref"]))
+    if not fixed_meta:
+        template_call(agent_templates.credential, agent_templates.snapshot(bundle))
+        snapshot_path = records_root / "runtime" / identity / "agent-templates" / args.name / "snapshot.json"
+        fixed_meta = template_call(agent_templates.creation, snapshot_path, bundle, args.name, str(image["digest"]))
+        fixed_meta["hostname"] = args.hostname
+        fixed_meta["decision-id"] = template_decision_id
+        append_audit_entry(records_root, identity, {"action": "agent-template-selected", **agent_templates.summary(bundle),
+                                                   "decision-id": template_decision_id, "container": args.name})
+    elif args.hostname != fixed_meta.get("hostname") or network_input != {k: runtime_existing["network"].get(k) for k in ("mode", "allow", "deny")}:
+        raise PreconditionError("同一次创建的主机名/网络选择已固定, 不允许重入换参数")
     runtime_existing = load_runtime(runtime_file)
     if runtime_existing is not None and runtime_existing.get("stage") == "idle":
         runtime_existing = None
 
-    if runtime_existing and runtime_existing.get("stage") == "born":
-        if not args.reuse_mother or not name_explicit:
-            raise PreconditionError("已有 birth runtime, 同母体重入必须带 --reuse-mother 和新的 --name")
-        runtime = runtime_existing
-        mother_dir = Path(runtime["mother_dir"]).resolve()
-        daemon_record = runtime.get("daemon")
-        if not isinstance(daemon_record, dict) or not process_alive(daemon_record.get("pid")):
-            raise PreconditionError("已有 runtime 但 daemon 不存活, 请先使用 resume")
-    elif runtime_existing:
-        if runtime_existing.get("stage") not in {"daemon", "container-created", "container-started", "network", "ssh-ready"}:
+    if runtime_existing:
+        if runtime_existing.get("stage") not in {"mother", "config", "daemon", "container-created", "container-started", "network", "ssh-ready", "agent-template-failed"}:
             raise PreconditionError("已有未完成 birth runtime, 请按 PARTIAL 指引处理")
         runtime = runtime_existing
         mother_dir = Path(runtime["mother_dir"]).resolve()
         daemon_record = runtime.get("daemon")
+        if runtime.get("stage") in {"mother", "config"}:
+            place_daemon_export_ok(mother_dir)
+            configure_repo(repo, mother_dir, branch)
+            runtime["config"] = {"swt-form": True}
+            daemon = start_daemon(mother_dir)
+            daemon_record = {"pid": daemon.process.pid, "addr": daemon.address, "port": daemon.port,
+                             "base-path": str(daemon.base_path), "orphan": False}
+            runtime["daemon"] = daemon_record
+            runtime["stage"] = "daemon"
+            atomic_write_json(runtime_file, runtime)
         if not isinstance(daemon_record, dict) or not process_alive(daemon_record.get("pid")):
-            raise PreconditionError("已有 PARTIAL runtime 但 daemon 不存活, 请人工恢复 daemon")
+            raise PreconditionError("已有 PARTIAL runtime 但 daemon 不存活, 请人工恢复该新建对的 daemon")
     else:
         expected = {**expected_repo_config(), **expected_pair_config(branch)}
         validate_config_before_resources(repo, mother_dir, expected)
@@ -3061,7 +3203,7 @@ def birth(args: argparse.Namespace, repo: Path) -> int:
             "schema": SCHEMA, "repo": str(repo.resolve()), "mother": {"branch": branch, "dir": str(mother_dir)},
             "mother_branch": branch, "mother_dir": str(mother_dir), "stage": "mother",
             "config": {"swt-form": False}, "daemon": None, "containers": [], "image": image,
-            "network": network_input,
+            "network": network_input, "agent-template": fixed_meta,
         }
         atomic_write_json(runtime_file, runtime)
         try:
@@ -3073,9 +3215,7 @@ def birth(args: argparse.Namespace, repo: Path) -> int:
             runtime["config"] = {"swt-form": True}
             runtime["stage"] = "config"
             atomic_write_json(runtime_file, runtime)
-            # 迁移可能已为本母体起过 daemon (本对旧形态 + runtime idle/缺失时):
-            # 先收掉再起新的, 否则迁走的那个脱离 runtime 记录成永久孤儿
-            stop_daemon_pids(set(daemon_pids_for_serve_path(mother_dir)))
+            # 本流程不迁移旧对. 前置已拒绝已有 daemon, 此处只起本次新 daemon.
             daemon = start_daemon(mother_dir)
             daemon_record = {"pid": daemon.process.pid, "addr": daemon.address, "port": daemon.port, "base-path": str(daemon.base_path), "orphan": False}
             runtime["daemon"] = daemon_record
@@ -3094,7 +3234,12 @@ def birth(args: argparse.Namespace, repo: Path) -> int:
     try:
         ensure_git_bridge(records_root, identity, runtime)
         atomic_write_json(runtime_file, runtime)
-        env_map = load_inherited_env(records_root, resolve_project_slug(repo))
+        runtime["agent-template"]["filtered-env"] = removed_env
+        # 两份元数据保持一致, guard 每次核对精确创建记录.
+        for item in runtime.get("containers", []):
+            if item.get("name") == args.name:
+                item["agent-template"] = dict(runtime["agent-template"])
+        atomic_write_json(runtime_file, runtime)
         # ISSUE-08 信箱接线: 须在 create 之前 (podman -e 只在创建时烘入);
         # 失败只告警跳过, 不阻断 birth. 登记落容器记录 (多容器并存各自一段).
         # 容器名已于上方单源写回 args.name, wire 与 create 共用同一值.
@@ -3153,7 +3298,7 @@ def birth(args: argparse.Namespace, repo: Path) -> int:
         runtime["stage"] = "network"
         atomic_write_json(runtime_file, runtime)
         key = inject_ssh_key(container, records_root, identity, runtime, runtime_file, env_map)
-        inject_auth_json(container["name"])
+        # 新模板容器不复制任何主机 OAuth, 只使用已绑定快照的客户端 Key.
         ensure_agent_prompt_parents(container["name"])
         ensure_container_git_forward(container["name"])
         remote = fixed_git_remote(mother_dir)
@@ -3161,7 +3306,11 @@ def birth(args: argparse.Namespace, repo: Path) -> int:
         atomic_write_json(runtime_file, runtime)
         wait_for_ssh(key, container["port"])
         inject_git_identity(key, container["port"])
-        assert_container_clone(container, key, branch, remote)
+        if not container["record"].get("clone-ready"):
+            assert_container_clone(container, key, branch, remote)
+            container["record"]["clone-ready"] = True
+            upsert_container_record(runtime, container["record"], runtime_file)
+        initialize_agent_template(runtime, runtime_file, container["name"])
         runtime["stage"] = "born"
         runtime["network"] = {**runtime["network"], "gateway": gateway_address, "container-ip": ip_value, "netns": shared_netns}
         atomic_write_json(runtime_file, runtime)
@@ -3232,6 +3381,7 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     subparsers.choices["birth"].add_argument("--allow", action="append", default=[])
     subparsers.choices["birth"].add_argument("--deny", action="append", default=[])
     subparsers.choices["birth"].add_argument("--image")
+    subparsers.choices["birth"].add_argument("--agent-template", help="新容器的配置模板; 缺省出 DECIDE, 不自动选择")
     subparsers.choices["birth"].add_argument("--requirements")
     subparsers.choices["birth"].add_argument("--new-mother", action="store_true")
     subparsers.choices["birth"].add_argument("--reuse-mother", action="store_true")
@@ -3382,6 +3532,7 @@ def ssh_container_git_status(
 def podman_container_state(
     repo: Path,
     runtimes: list[dict[str, Any]] | dict[str, Any] | None,
+    *, only_name: str | None = None,
 ) -> list[dict[str, Any]]:
     """盘点主仓 label 下全部容器 (并行母体: 跨对聚合). 每容器的脏检查用
     它自己所属对的分支 (记录/label 反推), 不再假设全仓一个母体分支."""
@@ -3406,6 +3557,7 @@ def podman_container_state(
             "-a",
             "--filter",
             f"label=sandbox-worktree.repo={repo}",
+            *(["--filter", f"name=^{re.escape(only_name)}$"] if only_name else []),
             "--format",
             "json",
         ]
@@ -3470,6 +3622,7 @@ def podman_container_state(
                 "vnc-port": vnc_port or retired_record.get("vnc-port"),
                 **web_ports,
                 "display": retired_record.get("display"),
+                "agent-template": retired_record.get("agent-template"),
                 "headed-script": retired_record.get("headed-script"),
                 "network-ip": network_ip,
                 "image-digest": image_digest,
@@ -4154,8 +4307,16 @@ def resume(args: argparse.Namespace, repo: Path) -> int:
     if mother_dir is None:
         raise PreconditionError("runtime 缺少母体目录, 请先人工恢复或 terminate")
     identity = runtime_file.stem
+    template_meta = runtime.get("agent-template")
+    if template_meta and template_meta.get("status") != "verified":
+        raise PreconditionError("新模板初始化未完成, resume 不重装; 请用同一 birth 补完")
+    if template_meta:
+        if legacy_pair_branches(repo):
+            raise PreconditionError("新模板 resume 不迁移主仓旧形态, 请用户另行决定")
+        template_call(agent_templates.target, runtime, args.name or template_meta["container"])
 
-    observed = podman_container_state(repo, [data for _, data in load_repo_runtimes(records_root, repo)])
+    observed = podman_container_state(repo, [data for _, data in load_repo_runtimes(records_root, repo)],
+                                      only_name=template_meta["container"] if template_meta else None)
     target, candidates = resume_container_candidates(runtime, observed, args.name)
     if target.get("retired"):
         raise PreconditionError(
@@ -4190,6 +4351,8 @@ def resume(args: argparse.Namespace, repo: Path) -> int:
     identity = runtime_file.stem
     recoverable = not resume_ready(target, daemon_ready, network_ready, git_ready)
     if not recoverable:
+        if template_meta:
+            template_call(agent_templates.operate, runtime, str(target["name"]), install=False, partial=True)
         runtime.pop("resume", None)
         runtime["stage"] = "born"
         atomic_write_json(runtime_file, runtime)
@@ -4279,7 +4442,10 @@ def resume(args: argparse.Namespace, repo: Path) -> int:
         killed = collect_resume_daemons(repo, mother_dir, branch, runtime)
         # 并行母体迁移自愈 (幂等): 主仓级 hideRefs 残留 → 迁入各母体 config.worktree
         # 并重摆 per-mother daemon; 本对 daemon 由下方标准恢复流程重拉, 迁移跳过本对.
-        migrate_legacy_pairs(repo, records_root, skip_daemon_for=mother_dir)
+        if not template_meta:
+            migrate_legacy_pairs(repo, records_root, skip_daemon_for=mother_dir)
+        elif legacy_pair_branches(repo):
+            raise PreconditionError("新模板 resume 不迁移主仓旧形态, 请另行决定")
         stop_git_bridge(runtime, records_root, identity)
         detail = inspect_container(target_name)
         state = detail.get("State") if isinstance(detail.get("State"), dict) else {}
@@ -4321,14 +4487,18 @@ def resume(args: argparse.Namespace, repo: Path) -> int:
             item for item in runtime.get("containers", [])
             if isinstance(item, dict) and not item.get("retired") and item.get("name") != target_name
         ]
-        apply_sibling_networks(runtime["network"], active_records, {netns})
+        if not template_meta:
+            apply_sibling_networks(runtime["network"], active_records, {netns})
         runtime["stage"] = "resume-network"
         atomic_write_json(runtime_file, runtime)
 
         ensure_display_after_resume(runtime, runtime_file, record)
         ensure_host_display(runtime, runtime_file, record)
         # auth.json 重注入 (D046): 幂等, 顺带让换 key 在 resume 后生效
-        inject_auth_json(target_name)
+        if template_meta:
+            template_call(agent_templates.operate, runtime, target_name, install=False, partial=True)
+        else:
+            inject_auth_json(target_name)
         ensure_container_git_forward(target_name)
 
         record["remote"] = fixed_git_remote(mother_dir)
@@ -4353,7 +4523,8 @@ def resume(args: argparse.Namespace, repo: Path) -> int:
         atomic_write_json(runtime_file, runtime)
         raise SwtError(3, "PARTIAL", f"resume 中途失败: {exc}") from exc
 
-    observed = podman_container_state(repo, [data for _, data in load_repo_runtimes(records_root, repo)])
+    observed = podman_container_state(repo, [data for _, data in load_repo_runtimes(records_root, repo)],
+                                      only_name=template_meta["container"] if template_meta else None)
     print_delivery_lines(
         "resume: 已完成 fail-closed 恢复",
         record.get("ssh-port"), record.get("vnc-port"), record.get("display"),
@@ -4376,10 +4547,23 @@ def network_state(runtime: dict[str, Any] | None) -> dict[str, Any] | None:
     if not isinstance(network, dict):
         return None
     script = Path(__file__).with_name("net-firewall.py")
-    result = run(["uv", "run", "python", str(script), "show"])
+    command = ["uv", "run", "python", str(script), "show"]
+    meta = runtime.get("agent-template") if isinstance(runtime, dict) else None
+    table_present = False
+    if isinstance(meta, dict):
+        # 新模板只查询绑定目标的当前命名空间, 不用全机默认位置误报.
+        try:
+            _record, detail, _cid = agent_templates.target(runtime, str(meta["container"]))
+            netns = container_netns(detail)
+            if detail.get("State", {}).get("Status") == "running" and netns:
+                table_present = run([*command, "--netns", netns]).returncode == 0
+        except (TemplateError, KeyError):
+            pass
+    else:
+        table_present = run(command).returncode == 0
     return {
         "mode": network.get("mode"),
-        "table-present": result.returncode == 0,
+        "table-present": table_present,
         "auto-allow": network.get("auto-allow"),
         "auto-dns": network.get("auto-dns"),
     }
@@ -4503,6 +4687,7 @@ def build_state(
     state["display"] = runtime_display if isinstance(runtime_display, dict) else None
     if runtime:
         state["stage"] = runtime.get("stage")
+        state["agent-template"] = runtime.get("agent-template")
     state["mothers"] = mothers_states(
         repo, records_root, primary=runtime_file.stem if runtime_file else None,
     )
