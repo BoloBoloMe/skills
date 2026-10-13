@@ -31,13 +31,20 @@ test "${HERDR_ENV:-}" = 1
 
 ### 默认策略
 
-开新会话的默认: 开在调用方所在 workspace 的新 tab, tab 名称按格式 `S-<子代理名>-<序号>` 生成; llm/思考深度除非我指定, 否则用 `llm-select` skill 选定; 与 llm 匹配的 coding agent 按 OpenAI → codex, Kimi → kimi, 其他/无匹配 → pi.
+开新会话的默认: 开在调用方所在 workspace 的新 tab, tab 名称按格式 `S-<子代理名>-<序号>` 生成.
 
 **权限与确认**, 以目标 agent 实际运行环境为准, 由你检查判断:
 - 容器内: 我已授权你无限制启动和驱动 agent, 用它支持的最宽权限和免审批模式, 不拦截 LLM 的任何操作. 原生参数以该 agent 的 `--help` 为准. 仓库/目录信任, 启动警告, 工具/命令执行审批直接自行确认 (包括 Codex 启动信任页), 不必再问我或等我手动操作.
 - 非容器或环境未确认: 不特地放宽权限, 授权/信任确认先问我再代答.
 
 `tab create` 返回的 root pane 直接用作 `agent start` 的目标窗格, 沿用当前工作目录. 兄弟窗格, 新工作空间, worktree 或更换 cwd 仅在我明确要求时用; 兄弟窗格的几何与焦点规则见 [`pane.md`](pane.md).
+
+### 启动前选型
+
+每次开新会话, 先完成选型再创建 tab 和启动 agent. 选型决定成本与任务质量, 是启动前置步骤, 不是启动后的可选优化.
+- 我未同时指定 model 与 thinking 时, 调用 `llm-select` skill. 保留我已指定的值, 按评分表补齐缺项; 指定 pi/codex/kimi 只固定 agent kind, 不等于指定模型与思考深度.
+- kind 用我指定的; 未指定时按选定模型匹配: OpenAI → codex, Kimi → kimi, 其他/无匹配 → pi.
+完成标准: 说明选定的 model/thinking/kind, 以及选型所依据的任务画像列 (或我已完整指定), 并将选型落实为目标 agent 的原生启动参数. skill 或评分数据不可用时先报告并问我如何继续.
 
 ### 启动
 
@@ -47,7 +54,7 @@ test "${HERDR_ENV:-}" = 1
 herdr agent start reviewer --kind codex --pane <窗格ID> [-- <agent参数...>]
 ```
 
-kind 用我指定的; `herdr agent` 查看已装 kind 列表和选项. `agent start` 成功的返回条件: Herdr 在同一窗格探测到预期 agent, 且认为它可接受交互输入. 启动期间 agent 若进入 blocked, 命令立即返回 `agent_not_ready`, 但该名字仍可用于 `agent read` 和 `agent send-keys`. 启动默认 30 秒超时.
+`herdr agent` 查看已装 kind 列表和选项; 示例中的 `codex` 须替换为选型确定的 kind. `agent start` 成功的返回条件: Herdr 在同一窗格探测到预期 agent, 且认为它可接受交互输入. 启动期间 agent 若进入 blocked, 命令立即返回 `agent_not_ready`, 但该名字仍可用于 `agent read` 和 `agent send-keys`. 启动默认 30 秒超时.
 完成标准: 所有启动确认已处理, `herdr agent get <名>` 报 `idle`.
 
 ### 处理 blocked
