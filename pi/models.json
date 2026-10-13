@@ -1,13 +1,10 @@
 {
   "providers": {
-    "ai-work-openai": {
-      "baseUrl": "https://ai-work.changzhi.top/v1",
+    "cli": {
+      "baseUrl": "http://192.168.65.165:8317/v1",
       "api": "openai-responses",
-      "apiKey": "$CHANG_ZHI_AI_WORK",
+      "apiKey": "cpa-client-5nqptlMo-8Oyn76bwvbo8VYF02GYczUGvqS7UALYifc9p3ArZ1IIFtjmn0rLefeO",
       "authHeader": true,
-      "compat": {
-        "supportsToolSearch": true
-      },
       "models": [
         {
           "id": "gpt-6-astra",
@@ -24,13 +21,17 @@
             "text",
             "image"
           ],
-          "contextWindow": 1050000,
+          "contextWindow": 872000,
           "maxTokens": 128000,
           "cost": {
             "input": 10,
             "output": 50,
             "cacheRead": 1,
             "cacheWrite": 12.5
+          },
+          "api": "openai-responses",
+          "compat": {
+            "supportsToolSearch": true
           }
         },
         {
@@ -48,13 +49,17 @@
             "text",
             "image"
           ],
-          "contextWindow": 1050000,
+          "contextWindow": 872000,
           "maxTokens": 128000,
           "cost": {
             "input": 4,
             "output": 20,
             "cacheRead": 0.4,
             "cacheWrite": 5
+          },
+          "api": "openai-responses",
+          "compat": {
+            "supportsToolSearch": true
           }
         },
         {
@@ -72,13 +77,17 @@
             "text",
             "image"
           ],
-          "contextWindow": 1050000,
+          "contextWindow": 872000,
           "maxTokens": 128000,
           "cost": {
             "input": 2,
             "output": 12,
             "cacheRead": 0.2,
             "cacheWrite": 2.5
+          },
+          "api": "openai-responses",
+          "compat": {
+            "supportsToolSearch": true
           }
         },
         {
@@ -96,13 +105,17 @@
             "text",
             "image"
           ],
-          "contextWindow": 1050000,
+          "contextWindow": 872000,
           "maxTokens": 128000,
           "cost": {
             "input": 0.2,
             "output": 1.2,
             "cacheRead": 0.02,
             "cacheWrite": 0.25
+          },
+          "api": "openai-responses",
+          "compat": {
+            "supportsToolSearch": true
           }
         },
         {
@@ -121,13 +134,17 @@
             "text",
             "image"
           ],
-          "contextWindow": 1050000,
+          "contextWindow": 872000,
           "maxTokens": 128000,
           "cost": {
             "input": 2,
             "output": 10,
             "cacheRead": 0.1,
             "cacheWrite": 2.5
+          },
+          "api": "openai-responses",
+          "compat": {
+            "supportsToolSearch": true
           }
         },
         {
@@ -146,13 +163,17 @@
             "text",
             "image"
           ],
-          "contextWindow": 1050000,
+          "contextWindow": 872000,
           "maxTokens": 128000,
           "cost": {
             "input": 2,
             "output": 10,
             "cacheRead": 0.2,
             "cacheWrite": 2.5
+          },
+          "api": "openai-responses",
+          "compat": {
+            "supportsToolSearch": true
           }
         },
         {
@@ -171,57 +192,19 @@
             "text",
             "image"
           ],
-          "contextWindow": 1050000,
+          "contextWindow": 872000,
           "maxTokens": 128000,
           "cost": {
             "input": 0.1,
             "output": 0.5,
             "cacheRead": 0.01,
             "cacheWrite": 0.125
+          },
+          "api": "openai-responses",
+          "compat": {
+            "supportsToolSearch": true
           }
         },
-        {
-          "id": "gpt-5.5",
-          "reasoning": true,
-          "thinkingLevelMap": {
-            "off": "none",
-            "minimal": "minimal",
-            "low": "low",
-            "medium": "medium",
-            "high": "high",
-            "xhigh": "xhigh"
-          },
-          "input": [
-            "text",
-            "image"
-          ],
-          "contextWindow": 1050000,
-          "maxTokens": 128000,
-          "cost": {
-            "input": 5,
-            "output": 30,
-            "cacheRead": 0.5,
-            "cacheWrite": 0
-          }
-        }
-      ]
-    },
-    "ai-work-deepseek": {
-      "baseUrl": "https://ai-work.changzhi.top/v1",
-      "api": "openai-completions",
-      "apiKey": "$CHANG_ZHI_AI_WORK",
-      "authHeader": true,
-      "compat": {
-        "supportsStore": false,
-        "supportsDeveloperRole": false,
-        "supportsReasoningEffort": false,
-        "supportsUsageInStreaming": true,
-        "maxTokensField": "max_tokens",
-        "supportsStrictMode": false,
-        "thinkingFormat": "deepseek",
-        "requiresReasoningContentOnAssistantMessages": true
-      },
-      "models": [
         {
           "id": "deepseek-v4.1-flash-expires-on-0910",
           "name": "DeepSeek V4.1 Flash",
@@ -245,25 +228,19 @@
             "output": 0.28,
             "cacheRead": 0.0028,
             "cacheWrite": 0
+          },
+          "api": "openai-completions",
+          "compat": {
+            "supportsStore": false,
+            "supportsDeveloperRole": false,
+            "supportsReasoningEffort": false,
+            "supportsUsageInStreaming": true,
+            "maxTokensField": "max_tokens",
+            "supportsStrictMode": false,
+            "thinkingFormat": "deepseek",
+            "requiresReasoningContentOnAssistantMessages": true
           }
-        }
-      ]
-    },
-    "ai-work-zai": {
-      "baseUrl": "https://ai-work.changzhi.top/v1",
-      "api": "openai-completions",
-      "apiKey": "$CHANG_ZHI_AI_WORK",
-      "authHeader": true,
-      "compat": {
-        "supportsStore": false,
-        "supportsDeveloperRole": false,
-        "supportsReasoningEffort": true,
-        "maxTokensField": "max_tokens",
-        "supportsStrictMode": false,
-        "thinkingFormat": "zai",
-        "zaiToolStream": true
-      },
-      "models": [
+        },
         {
           "id": "glm-5.3-flash",
           "name": "GLM 5.3 Flash",
@@ -287,6 +264,16 @@
             "output": 0.25,
             "cacheRead": 0.015,
             "cacheWrite": 0
+          },
+          "api": "openai-completions",
+          "compat": {
+            "supportsStore": false,
+            "supportsDeveloperRole": false,
+            "supportsReasoningEffort": true,
+            "maxTokensField": "max_tokens",
+            "supportsStrictMode": false,
+            "thinkingFormat": "zai",
+            "zaiToolStream": true
           }
         },
         {
@@ -312,6 +299,16 @@
             "output": 4.4,
             "cacheRead": 0.26,
             "cacheWrite": 0
+          },
+          "api": "openai-completions",
+          "compat": {
+            "supportsStore": false,
+            "supportsDeveloperRole": false,
+            "supportsReasoningEffort": true,
+            "maxTokensField": "max_tokens",
+            "supportsStrictMode": false,
+            "thinkingFormat": "zai",
+            "zaiToolStream": true
           }
         },
         {
@@ -337,6 +334,16 @@
             "output": 1.25,
             "cacheRead": 0.075,
             "cacheWrite": 0
+          },
+          "api": "openai-completions",
+          "compat": {
+            "supportsStore": false,
+            "supportsDeveloperRole": false,
+            "supportsReasoningEffort": true,
+            "maxTokensField": "max_tokens",
+            "supportsStrictMode": false,
+            "thinkingFormat": "zai",
+            "zaiToolStream": true
           }
         }
       ]
