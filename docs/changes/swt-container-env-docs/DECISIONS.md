@@ -219,7 +219,7 @@
 ### F002 各 agent 对 ~/AGENTS.md 的加载行为
 - 状态: 当前有效
 - 来源: 用户陈述 + 反方攻击标 未知
-- 内容: pi 沿 cwd 目录链自动加载各级 AGENTS.md, 容器 cwd 在 /home/bolo/Workspace/<母体目录名> 下时会读到 /home/bolo/AGENTS.md; codex 与 kimi-code 是否自动加载 /home/bolo/AGENTS.md 未确证 (codex 全局配置 ~/.codex/AGENTS.md, kimi 全局 KIMI_CODE_HOME=~/.kimi-code). 该未确证性是取消 ~/AGENTS.md 注入通道, 全量并入提示词 (D013) 的直接依据.
+- 内容: pi 沿 cwd 目录链自动加载各级 AGENTS.md, 容器 cwd 在 /home/bolo/Workspace/<目标分支名> 下时会读到 /home/bolo/AGENTS.md; codex 与 kimi-code 是否自动加载 /home/bolo/AGENTS.md 未确证 (codex 全局配置 ~/.codex/AGENTS.md, kimi 全局 KIMI_CODE_HOME=~/.kimi-code). 该未确证性是取消 ~/AGENTS.md 注入通道, 全量并入提示词 (D013) 的直接依据.
 
 ### F003 现行提示词母本形态与挂载机制
 - 状态: 当前有效
