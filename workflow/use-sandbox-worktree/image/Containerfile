@@ -1,9 +1,14 @@
 # M03 冒烟镜像定义 (localhost/swt-m03, M12 e2e 测试用极简形态), 不是真实 base 层.
 # 真实三层镜像 (base/display/项目层) 由 image-prep.py 生成与构建 (D039).
+#
+# 本镜像须真正满足 agent 模板初始化契约 2 (reference/agent-templates.md):
+# 有契约标记/契约文件, 也有固定版本客户端与初始化工具, 否则 birth 的模板安装步
+# 必然失败 (只贴标签是假契约). 与真 base 的差别只在代码目录来源: 冒烟镜像不复制
+# 副本, agent_config 包经每次 birth 都只读挂载的 skill 库读取本次源码.
 FROM docker.io/library/node:24-bookworm-slim
 
 RUN apt-get update \
-    && apt-get install --no-install-recommends -y git openssh-server socat python3 \
+    && apt-get install --no-install-recommends -y git openssh-server socat python3 ca-certificates curl \
     && rm -rf /var/lib/apt/lists/* \
     && useradd --create-home --shell /bin/bash bolo \
     && ssh-keygen -A \
@@ -11,7 +16,29 @@ RUN apt-get update \
     && chmod 755 /run/sshd \
     && sed -i 's/^#\?PermitUserEnvironment.*/PermitUserEnvironment yes/' /etc/ssh/sshd_config
 
-RUN npm i -g @earendil-works/pi-coding-agent
+# uv (容器内 uv run --offline 执行固定初始化/启动入口)
+RUN curl -LsSf https://astral.sh/uv/install.sh | UV_INSTALL_DIR=/usr/local/bin sh
+
+# 固定版本客户端 (与真 base 同版本, 契约 2 的固定工具)
+RUN npm i -g @earendil-works/pi-coding-agent@1.2.0 @openai/codex@0.162.1 @moonshot-ai/kimi-code@2.1.1
+
+# 初始化工具薄封装: agent_config 包经 birth 只读挂载的 skill 库解析.
+RUN mkdir -p /opt/swt-agent-config \
+    && printf 'from agent_config.runtime import main\nraise SystemExit(main())\n' > /opt/swt-agent-config/runtime.py \
+    && printf 'from agent_config.launch import main\nraise SystemExit(main())\n' > /opt/swt-agent-config/launch.py \
+    && ln -s /home/bolo/.agents/skills/use-sandbox-worktree/scripts/agent_config /opt/swt-agent-config/agent_config
+
+# agent 模板初始化契约 (唯一真相源: scripts/agent_config/common.py 的 CONTRACT = 2).
+LABEL run.sandbox-worktree.agent-template-contract="2"
+RUN printf '2\n' > /etc/swt-agent-template-contract \
+    && mkdir -p /opt/swt-agent-bin /home/bolo/.codex /home/bolo/.kimi-code \
+    && for cli in pi codex kimi; do \
+        ln -s "$(readlink -f /usr/local/bin/$cli)" "/opt/swt-agent-bin/$cli"; \
+        rm "/usr/local/bin/$cli"; \
+        printf '#!/bin/sh\nexec /usr/local/bin/uv run --no-project --offline python /opt/swt-agent-config/launch.py %s "$@"\n' "$cli" > "/usr/local/bin/$cli"; \
+        chmod 755 "/usr/local/bin/$cli"; \
+    done \
+    && chown -R bolo:bolo /home/bolo/.codex /home/bolo/.kimi-code
 
 WORKDIR /home/bolo
 

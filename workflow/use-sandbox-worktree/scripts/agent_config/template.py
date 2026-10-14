@@ -4,6 +4,7 @@ from __future__ import annotations
 import copy
 import json
 import math
+import os
 import re
 import secrets
 import subprocess
@@ -16,6 +17,15 @@ from .common import (CONTRACT, CONTRACT_LABEL, CONTAINER_LABEL, TOKEN_LABEL,
                      pretty, private_json, safe_write, valid_key)
 
 TEMPLATES = Path(__file__).resolve().parents[2] / "agent-templates"
+# 测试可用环境变量覆盖模板根缺省值; 显式传 root= 的调用不受影响.
+TEMPLATES_ENV = "SWT_AGENT_TEMPLATES_DIR"
+
+
+def templates_root() -> Path:
+    override = os.environ.get(TEMPLATES_ENV)
+    return Path(override) if override else TEMPLATES
+
+
 PROTOCOLS = ("openai-responses", "openai-completions")
 THINKING = ("off", "minimal", "low", "medium", "high", "xhigh", "max")
 PI_MODEL_KEYS = {"id", "name", "reasoning", "thinkingLevelMap", "input", "contextWindow", "maxTokens", "cost", "api", "compat"}
@@ -165,7 +175,8 @@ def _validate(template, catalog) -> None:
         raise TemplateError("Codex 固定清单与 Responses 模型集不同")
 
 
-def load(name: str, root: Path = TEMPLATES) -> dict:
+def load(name: str, root: Path | None = None) -> dict:
+    root = templates_root() if root is None else root
     if not identifier(name):
         raise TemplateError("模板名称非法")
     directory = root / name
@@ -186,7 +197,8 @@ def summary(bundle: dict) -> dict:
             "models-version": bundle["catalog"]["version"]}
 
 
-def choices(root: Path = TEMPLATES) -> list[dict]:
+def choices(root: Path | None = None) -> list[dict]:
+    root = templates_root() if root is None else root
     if not root.is_dir():
         raise TemplateError("模板目录缺失")
     return [summary(load(p.name, root)) for p in sorted(root.iterdir()) if p.is_dir()]
