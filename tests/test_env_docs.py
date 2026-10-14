@@ -66,6 +66,39 @@ class RenderDocsTest(unittest.TestCase):
         self.assertIn("未确认", web_ports)
         self.assertIn("SWT_HOST_WEB_PORT", web_ports)
 
+    def test_render_docs_tolerates_missing_scalar_keys(self):
+        scalar_home = {
+            "container": "identity.md",
+            "repo_path": "identity.md",
+            "mother_dir": "identity.md",
+            "branch": "identity.md",
+            "code_path": "identity.md",
+            "template_name": "agents.md",
+            "template_version": "agents.md",
+            "snapshot_digest": "agents.md",
+        }
+        for key, doc in scalar_home.items():
+            with self.subTest(missing=key):
+                facts = make_facts()
+                del facts[key]
+                docs = render_docs(facts)
+                render_generation_section(facts)
+                self.assertIn("未登记", docs[doc])
+        facts = make_facts()
+        del facts["lan_ip"]
+        self.assertIn("未确认", render_docs(facts)["web-ports.md"])
+
+    def test_render_docs_tolerates_missing_deny_and_default_models(self):
+        facts = make_facts()
+        del facts["deny"]
+        network = render_docs(facts)["network.md"]
+        self.assertIn(facts["mode"], network)
+        self.assertIn("以实际连通性为准", network)
+        facts = make_facts()
+        del facts["default_models"]
+        agents = render_docs(facts)["agents.md"]
+        self.assertIn("未登记", agents)
+
     def test_network_blacklist_lists_deny(self):
         deny = ["10.20.30.0/24", "203.0.113.7"]
         network = render_docs(make_facts(mode="blacklist", deny=deny))["network.md"]

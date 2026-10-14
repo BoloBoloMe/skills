@@ -12,22 +12,24 @@ DOC_FILES = ("identity.md", "network.md", "web-ports.md", "agents.md")
 
 _UNCONFIRMED = "未确认"
 _UNREGISTERED = "未登记"
+# default_models 整键缺席时, 三个 agent 的模型均按缺席文案渲染 (D012).
+_DEFAULT_AGENTS = ("pi", "codex", "kimi")
 
 
 def _identity(facts) -> str:
     return "\n".join((
         f"# 容器身份 ({BIRTH_MARKER})",
-        f"- 容器名: {facts['container']}",
-        f"- 主仓路径 (宿主): {facts['repo_path']}",
-        f"- 母体目录: {facts['mother_dir']}",
-        f"- 分支: {facts['branch']}",
-        f"- 容器内代码路径: {facts['code_path']}",
+        f"- 容器名: {facts.get('container', _UNREGISTERED)}",
+        f"- 主仓路径 (宿主): {facts.get('repo_path', _UNREGISTERED)}",
+        f"- 母体目录: {facts.get('mother_dir', _UNREGISTERED)}",
+        f"- 分支: {facts.get('branch', _UNREGISTERED)}",
+        f"- 容器内代码路径: {facts.get('code_path', _UNREGISTERED)}",
         "",
     ))
 
 
 def _network(facts) -> str:
-    mode = facts["mode"]
+    mode = facts.get("mode")
     if mode not in ("whitelist", "blacklist"):
         mode = _UNREGISTERED
     lines = [
@@ -74,12 +76,17 @@ def _web_ports(facts) -> str:
 def _agents(facts) -> str:
     lines = [
         f"# agent 配置 ({BIRTH_MARKER})",
-        f"- 模板: {facts['template_name']} {facts['template_version']}",
-        f"- 快照摘要: {facts['snapshot_digest']}",
+        f"- 模板: {facts.get('template_name', _UNREGISTERED)} {facts.get('template_version', _UNREGISTERED)}",
+        f"- 快照摘要: {facts.get('snapshot_digest', _UNREGISTERED)}",
         "- 默认模型:",
     ]
-    for agent, model in facts["default_models"].items():
-        lines.append(f"  - {agent}: {model}")
+    models = facts.get("default_models")
+    if models is None:
+        for agent in _DEFAULT_AGENTS:
+            lines.append(f"  - {agent}: {_UNREGISTERED}")
+    else:
+        for agent, model in models.items():
+            lines.append(f"  - {agent}: {model}")
     lines.append("")
     return "\n".join(lines)
 
