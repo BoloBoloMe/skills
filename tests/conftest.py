@@ -27,6 +27,19 @@ ROOT = Path(__file__).resolve().parents[1]
 SCRIPT = ROOT / "workflow" / "mailbox" / "scripts" / "mailbox.py"
 ADMIN_TOKEN = "test-admin-token"
 
+sys.path.insert(0, str(Path(__file__).resolve().parent / "fixtures"))
+from agent_template_harness import FakeAgentTemplate  # noqa: E402
+
+
+@pytest.fixture
+def fake_agent_template():
+    """本机自足 agent 模板夹具: 临时模板根 + 假模板 + 假 Key + 模拟网关.
+
+    经 SWT_AGENT_TEMPLATES_DIR 传给子进程; 退出时清理临时根与网关.
+    """
+    with FakeAgentTemplate() as harness:
+        yield harness
+
 
 def sign(key, *parts):
     return hmac.new(key.encode(), "\n".join(parts).encode(), hashlib.sha256).hexdigest()
