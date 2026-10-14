@@ -126,6 +126,12 @@ SKILLS_CONTAINER_DIR = "/home/bolo/.agents/skills"
 LLM_SELECT_HOST_DIR = Path.home() / ".agents" / "llm-select"
 LLM_SELECT_CONTAINER_DIR = "/home/bolo/.agents/llm-select"
 
+# Maven 配置是可选挂载. host 常见权限为 ~/.m2 0700 / settings.xml 0600,
+# rootless bind 后容器 bolo 无法读取, 故 birth 只在源文件存在且可读时把副本
+# 放进受保护的 runtime 目录, 再将副本只读挂到 Maven 默认路径.
+MAVEN_SETTINGS_HOST = Path.home() / ".m2" / "settings.xml"
+MAVEN_SETTINGS_CONTAINER = "/home/bolo/.m2/settings.xml"
+
 
 class SwtError(Exception):
     def __init__(self, code: int, tag: str, message: str) -> None:
@@ -1616,10 +1622,12 @@ def host_port_free(port: int) -> bool:
 def ensure_agent_prompt_parents(container_name: str) -> None:
     """M14 发现 2: 母本单文件挂载的目标父目录若镜像内不存在, podman 会为挂载
     自动建成 root 属主 755, 容器 bolo 在其中无写权限 (kimi ~/.kimi-code 起步即
-    EACCES). 启动后逐个保证父目录存在且 bolo 属主 — 与 D046 注入同模式,
+    EACCES, Maven ~/.m2 本地仓库也无法写入). 启动后逐个保证父目录存在且
+    bolo 属主 — 与 D046 注入同模式,
     install -d 对已存在目录也会应用属主, 幂等."""
-    parents = sorted({target.rsplit("/", 1)[0]
-                      for target in [t for _m, t in AGENT_PROMPT_MOUNTS] + [AGENT_DOCS_TARGET]})
+    parents = sorted({target.rsplit("/", 1)[0] for target in
+                      [t for _m, t in AGENT_PROMPT_MOUNTS]
+                      + [AGENT_DOCS_TARGET, MAVEN_SETTINGS_CONTAINER]})
     script = " && ".join(f"install -d -o bolo -g bolo {shlex.quote(parent)}" for parent in parents)
     result = subprocess.run(
         ["podman", "exec", container_name, "sh", "-c", script],
@@ -2680,6 +2688,36 @@ def assert_llm_select_mountable(llm_select_dir: Path) -> bool:
     return True
 
 
+def stage_maven_settings(source: Path, records_root: Path, identity: str, name: str) -> Path | None:
+    """可选 Maven 配置: 容器可读的快照放在 host 私有目录, 不改 host 原文件权限.
+
+    缺失/不可读/不是普通文件时跳过, 不把 podman 的 -v 指向不存在的源文件
+    (否则 podman 会造目录, 甚至导致 create 失败). 重入时若容器已存在则不调用.
+    """
+    try:
+        if not source.is_file():
+            return None
+        contents = source.read_bytes()
+        target_dir = records_root / "runtime" / identity / "maven" / name
+        target_dir.mkdir(parents=True, exist_ok=True, mode=0o700)
+        os.chmod(target_dir, 0o700)
+        target = target_dir / "settings.xml"
+        # 先写临时文件再替换: 不能在重入时截断已挂进容器的旧副本.
+        with tempfile.NamedTemporaryFile(dir=target_dir, delete=False) as tmp:
+            tmp_path = Path(tmp.name)
+            try:
+                tmp.write(contents)
+                os.chmod(tmp_path, 0o644)  # rootless 映射后容器 bolo 靠 other 位读取
+                os.replace(tmp_path, target)
+            finally:
+                tmp_path.unlink(missing_ok=True)
+        return target
+    except OSError as exc:
+        print(f"[SWT] Maven 配置无法读取/暂存 ({source}): {exc}; 跳过挂载, 不阻断 birth",
+              file=sys.stderr)
+        return None
+
+
 def container_exists(name: str) -> bool:
     """podman 是否已有同名容器 (birth 重入判定, 与 create_and_start_container 同口径)."""
     return run(["podman", "inspect", name]).returncode == 0
@@ -2788,6 +2826,10 @@ def create_and_start_container(args: argparse.Namespace, repo: Path, image: dict
     # 时软跳过, 不动 birth.
     if assert_llm_select_mountable(LLM_SELECT_HOST_DIR):
         command.extend(["-v", f"{LLM_SELECT_HOST_DIR}:{LLM_SELECT_CONTAINER_DIR}:ro"])
+    # Maven 配置可选: 源缺席/不可读就跳过, 不让 podman 为缺失的单文件造目录.
+    maven_settings = stage_maven_settings(MAVEN_SETTINGS_HOST, records_root, identity, name)
+    if maven_settings is not None:
+        command.extend(["-v", f"{maven_settings}:{MAVEN_SETTINGS_CONTAINER}:ro"])
     # web 服务端口段 (D001/D003): 与 22 同款宿主 0.0.0.0 动态分配, 直达局域网,
     # 禁止绑回环; 预留 8800-8805 六个口, 交付包仍只列 8800.
     command.extend(["-p", "22"])
@@ -4040,6 +4082,13 @@ def terminate(args: argparse.Namespace, repo: Path) -> int:
     # 信箱缺席/注销失败只告警, 不阻断 terminate.
     revoke_container_session(target.get("mailbox"))
     remove_container_credentials(target)
+    # 配置可能带仓库凭据, 终结时移除本容器的挂载快照 (保留其他容器的副本).
+    maven_snapshot = records_root / "runtime" / identity / "maven" / target_name
+    try:
+        if maven_snapshot.exists():
+            shutil.rmtree(maven_snapshot)
+    except OSError as exc:
+        raise SwtError(3, "PARTIAL", f"Maven 配置快照清理失败: {maven_snapshot}: {exc}") from exc
     runtime["containers"] = runtime_records
     if has_siblings:
         runtime["stage"] = "born"

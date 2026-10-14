@@ -8,7 +8,7 @@
 
 preflight 退出 86 后:
 1. **投信前记基线**: `ls /tmp/waypipe-server-*.sock 2>/dev/null` 记现有 token 集 — 异常死亡的会话会留 socket 尸体 (N2), 判活只看新 token 差集.
-2. **投信**: exec 类型信, `--to` 显式填当前设备 (定设备纪律见 reference/mailbox.md 展示页网址沟通节), body 为 JSON: `{"tool": "swt.pull-window", "container": "<本容器名>"}`; 发送命令见 reference/mailbox.md 容器侧怎么投信. 服务端形状校验 + container 动态绑定投信 session 自身 (UD-05), 命中直批不问人 (指令能力极窄且无参数注入面, D008).
+2. **投信**: exec 类型信, `--to` 显式填当前设备 (定设备纪律见 [mailbox 的展示页网址沟通节](../../mailbox/reference/mailbox.md)), body 为 JSON: `{"tool": "swt.pull-window", "container": "<本容器名>"}`; 发送命令见 [mailbox 的容器侧投信节](../../mailbox/reference/mailbox.md). 服务端形状校验 + container 动态绑定投信 session 自身 (UD-05), 命中直批不问人 (指令能力极窄且无参数注入面, D008).
 3. **等 ack 后轮询**: ack 只证明信被设备取走, 不证明窗口拉起 — 轮询容器内 `/tmp/waypipe-server-*.sock` 出现基线之外的新 token (F005), 超时 **120s** (UD-02). 新 token 出现 = 会话已建立并拉起 chromium; 页面 URL 已随设备侧拉窗命令附带, 不做事后导航 (M09 实测: 事后导航不可靠, 且容器内禁用局域网映射地址 — hairpin 拒连, 只用容器内 `127.0.0.1:<web端口>`); token 证明会话建立, 不证明用户可见, 可见性靠拉窗命令的软件渲染参数保障.
 4. **超时落兜底**: 120s 未出新 token → 落 noVNC (`DISPLAY=:99`), 并在回复中明确告知用户落了兜底.
 
@@ -18,7 +18,7 @@ preflight 退出 86 后:
 1. **前提**: 设备 Linux Wayland 桌面会话 + waypipe 客户端; Atomic 系发行版 (Bazzite 等) 经 distrobox 安装 (D006).
 2. **密钥**: 设备→容器 ssh 免密经 host 上 `uv run python scripts/swt.py enroll-device-key <容器名>` 一次性发放 (N4: 密码登录无法自动化代执行).
 3. **幂等探测**: `ssh <容器> pgrep -x waypipe` — 已有活跃会话直接回报不再拉起 (D008 幂等; N2 修正: 不用 socket 存在判活, 尸体会残留).
-4. **后台拉起** (即交付包远程直飞命令模板, 变量照 STATE 与交付包实际值代换, 页面 URL 由前置编排一并写入): 命令模板与参数纪律 (chromium 数据目录强制, 音频 socket 转发可选与退化写法, 软件渲染参数, waypipe 版本组合) 已单源化到 mailbox skill — 唯一权威源: `~/.agents/skills/mailbox/reference/pull-window.md` 设备侧拉起模板节; waypipe 已验证版本组合另见同 skill `~/.agents/skills/mailbox/reference/mailbox.md` (两个 skill 目录同在 `~/.agents/skills/` 下, 仓库母本在 `workflow/mailbox/reference/`).
+4. **后台拉起** (即交付包远程直飞命令模板, 变量照 STATE 与交付包实际值代换, 页面 URL 由前置编排一并写入): 命令模板与参数纪律 (chromium 数据目录强制, 音频 socket 转发可选与退化写法, 软件渲染参数, waypipe 版本组合) 已单源化到 mailbox skill — 唯一权威源: [mailbox 的设备侧拉起模板](../../mailbox/reference/pull-window.md); 已验证的 waypipe 版本组合见 [mailbox 的跨机连通节](../../mailbox/reference/mailbox.md). 部署后的副本均位于 `~/.agents/skills/` 下各自的 skill 目录.
 5. **回报**: 拉起后经 herdr notification 通知设备用户窗口已送达.
 
 ## 残尸纪律

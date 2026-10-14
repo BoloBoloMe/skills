@@ -221,5 +221,91 @@ class TestCreateCommandMount(unittest.TestCase):
         self.assertIn("非全局可读", err)
 
 
+class TestOptionalMavenSettingsMount(unittest.TestCase):
+    """私有 host settings.xml 仍让容器 bolo 读到, 缺席/坏文件不阻断 create."""
+
+    def setUp(self):
+        self.m = _load()
+        self.root = Path(tempfile.mkdtemp(prefix="swt-maven-create-"))
+        self.addCleanup(shutil.rmtree, self.root, True)
+        skills = self.root / "skills"
+        skills.mkdir()
+        self.m.SKILLS_HOST_DIR = skills
+        self.m.LLM_SELECT_HOST_DIR = self.root / "missing-llm-select"
+        self.m.MAVEN_SETTINGS_HOST = self.root / ".m2" / "settings.xml"
+
+    def _create(self):
+        records = self.root / "records"
+        fake = _FakePodman("swt-demo")
+        original_run, original_wayland = self.m.run, self.m.host_wayland_socket
+        self.m.run = fake
+        self.m.host_wayland_socket = lambda: None
+        try:
+            with contextlib.redirect_stderr(io.StringIO()) as err:
+                self.m.create_and_start_container(
+                    argparse.Namespace(name="swt-demo", hostname="swt-demo"),
+                    self.root, {"ref": "localhost/test:latest", "digest": "sha256:fake"},
+                    "feat-x", {"schema": self.m.SCHEMA, "containers": [], "stage": "daemon"},
+                    records / "runtime" / "testid.json", {}, records, "testid")
+        finally:
+            self.m.run = original_run
+            self.m.host_wayland_socket = original_wayland
+        return fake.create_command, err.getvalue(), records
+
+    def test_private_file_staged_and_mounted_readonly(self):
+        source = self.m.MAVEN_SETTINGS_HOST
+        source.parent.mkdir(mode=0o700)
+        source.write_bytes(b"<settings>secret</settings>")
+        source.chmod(0o600)
+        command, err, records = self._create()
+        staged = records / "runtime" / "testid" / "maven" / "swt-demo" / "settings.xml"
+        self.assertIn(f"{staged}:/home/bolo/.m2/settings.xml:ro", command)
+        self.assertEqual(staged.read_bytes(), source.read_bytes())
+        self.assertEqual(staged.stat().st_mode & 0o777, 0o644)
+        self.assertEqual(staged.parent.stat().st_mode & 0o777, 0o700)
+        self.assertEqual(source.stat().st_mode & 0o777, 0o600)
+        self.assertNotIn("Maven 配置无法", err)
+        # 快照不会随宿主原文件的后续修改而变化.
+        source.write_bytes(b"updated")
+        self.assertEqual(staged.read_bytes(), b"<settings>secret</settings>")
+
+    def test_missing_file_skips_without_creating_source(self):
+        source = self.m.MAVEN_SETTINGS_HOST
+        command, _, records = self._create()
+        self.assertFalse(source.exists())
+        self.assertFalse((records / "runtime" / "testid" / "maven").exists())
+        self.assertFalse(any(self.m.MAVEN_SETTINGS_CONTAINER in part for part in command))
+
+    def test_directory_instead_of_file_skips(self):
+        self.m.MAVEN_SETTINGS_HOST.mkdir(parents=True)
+        command, _, _ = self._create()
+        self.assertFalse(any(self.m.MAVEN_SETTINGS_CONTAINER in part for part in command))
+
+    def test_unreadable_file_skips_and_warns(self):
+        from unittest.mock import patch
+
+        self.m.MAVEN_SETTINGS_HOST.parent.mkdir()
+        self.m.MAVEN_SETTINGS_HOST.write_bytes(b"secret")
+        original = Path.read_bytes
+        source = self.m.MAVEN_SETTINGS_HOST
+
+        def fail_source_read(path):
+            if path == source:
+                raise PermissionError("denied")
+            return original(path)
+
+        with patch.object(Path, "read_bytes", fail_source_read):
+            command, err, _ = self._create()
+        self.assertIn("跳过挂载", err)
+        self.assertFalse(any(self.m.MAVEN_SETTINGS_CONTAINER in part for part in command))
+
+    def test_maven_directory_is_writable_after_start(self):
+        from unittest.mock import patch
+
+        with patch.object(self.m.subprocess, "run", return_value=subprocess.CompletedProcess([], 0, "", "")) as run:
+            self.m.ensure_agent_prompt_parents("swt-demo")
+        self.assertIn("install -d -o bolo -g bolo /home/bolo/.m2", run.call_args.args[0][-1])
+
+
 if __name__ == "__main__":
     unittest.main()
