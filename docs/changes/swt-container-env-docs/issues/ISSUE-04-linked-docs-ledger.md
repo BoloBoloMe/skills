@@ -1,7 +1,7 @@
 ## 父级
 - `../EXECUTION.md`
 ## 执行
-- [ ] 已实现
+- [x] 已实现
 ## 要构建什么
 非代码联动: SKILL.md 三处 (母本与分发节重写为拼装制, base 层描述 pi CLI → pi/codex/kimi 三 CLI, 交付包 "容器内路径契约" 行加环境文本位置与 ~/docs/), reference/ops.md 挂载示例行更新, reference/agent-templates.md "不替代三份公共 AGENTS.md 母本" 措辞更新, DECISIONS.md 各条 实际影响 回填.
 ## 覆盖依据
