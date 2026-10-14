@@ -28,7 +28,7 @@ disable-model-invocation: true
 # 步骤
 
 1. 建立对 *权威输入* 的理解: 调用 `domain-awareness` skill 只读感知当前工作目录的领域模型, 然后调用 `tdd` skill 理解 TDD 的循环.
-2. 检查输入缺口: 如果缺少 EXECUTION.md, 说明我还没有把任务拆分成可执行的 ISSUE, 你无法继续. 它必须写明 ISSUE 之间的依赖关系, 缺了你就无法提取前沿. 它还必须包含 `tdd` 所需的必要信息, 缺了执行受阻.
+2. 检查输入缺口: 如果缺少 EXECUTION.md, 说明还没有把任务拆分成可执行的 ISSUE, 你无法继续, 需要在另一个独立会话中执行 `to-execution` skill; 输入还必须包含 `tdd` 所需的必要信息, 缺了执行受阻.
 3. 检查出缺口时立即停下来向我汇报, 无缺口则按以下规范执行循环, 直到所有前沿 ISSUE 都完成.
 
 # 执行循环
