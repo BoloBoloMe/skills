@@ -51,7 +51,7 @@ skill 侧 agent-prompts/ 换为五份母本 (PUBLIC.md, ENV.md, PI.md, 空占位
   接缝: 接缝 1.
   测试用例: TC-007.
   先写的失败测试: test_web_ports_contains_bridge_recipe — 架桥配方文本未写.
-  最小绿色实现范围: web-ports.md 含配方全要素 (8801 固定口归 navigate, 起服务读实际端口, 清残留死桥, 桥随服务同生死, URL 拼接, 缺席软失败走信箱, 不改 web_server.py).
+  最小绿色实现范围: web-ports.md 含配方全要素 (8801 固定口归 navigate, 起服务读实际端口, 清残留死桥, 桥随服务同生死, URL 拼接, 缺席软失败, 信箱可用时向宿主索取, 否则请我提供缺失的宿主信息, 不改 web_server.py).
   不得测试: socat 命令逐字与 navigate 原节比对.
   覆盖: AC-007.
 - TS-006:

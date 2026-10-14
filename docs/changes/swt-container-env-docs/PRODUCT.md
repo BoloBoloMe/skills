@@ -25,7 +25,7 @@
 ## 业务规则
 
 - BR-001: 容器三份提示词 = concat(PUBLIC.md, ENV.md, 生成节, PI/CODEX/KIMI.md), 空专属段跳过; 容器内无 ~/AGENTS.md.
-- BR-002: ENV.md 固定纪律条目 0-29 按账本 D008 全文逐字进入三份提示词.
+- BR-002: ENV.md 按账本 D020 保留四类高风险动作的内联纪律, 母本全文逐字进入三份提示词; 旧 0-29 条规格已废止.
 - BR-003: 生成节与四份小抄全部由脚本生成, llm 运行时不现写注入内容. (审计)
 - BR-004: 小抄集合与字段按账本 D012: identity (容器名/主仓路径/母体目录/分支/代码路径), network (模式+deny 清单+快照声明), web-ports (局域网地址+端口变量指引+架桥配方), agents (模板名/版本/摘要+三默认模型); allow 清单与 create 后才知的事实不写入.
 - BR-005: 生成节 = 4 条触发式指针, 在三份提示词中相同, 指针携带本容器事实要点.
@@ -69,7 +69,7 @@
 场景: pi 提示词为四段拼装
 假定 已按 cliproxyapi 模板完成 birth, 容器运行中
 当 读取容器内 /home/bolo/.pi/agent/AGENTS.md
-那么 内容 = PUBLIC.md, ENV.md, 生成节, PI.md 的顺序拼接, ENV 条目 0-29 逐字在内, 末段含 herdr 专属行
+那么 内容 = PUBLIC.md, ENV.md, 生成节, PI.md 的顺序拼接, ENV.md 母本逐字在内, 末段含 herdr 专属行
 
 @AC-002 @normal @G-002 @BR-001
 场景: codex 与 kimi 提示词空专属段跳过
@@ -154,7 +154,7 @@
 场景: 架桥配方完整迁入 web-ports.md
 假定 已按 cliproxyapi 模板完成 birth, 容器运行中
 当 读取容器内 ~/docs/web-ports.md
-那么 socat 架桥配方完整在内: 8801 固定口归 navigate, 起服务读实际端口, 清残留死桥, 桥随服务同生死, URL 拼接, 变量缺席软失败走信箱, 不改 web_server.py
+那么 socat 架桥配方完整在内: 8801 固定口归 navigate, 起服务读实际端口, 清残留死桥, 桥随服务同生死, URL 拼接, 变量缺席软失败, 信箱可用时向宿主索取, 否则请我提供缺失的宿主信息, 不改 web_server.py
 
 @AC-008 @edge @G-001 @BR-008
 场景: 宿主与容器提示词互不同步

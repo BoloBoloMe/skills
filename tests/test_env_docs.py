@@ -129,7 +129,8 @@ class RenderDocsTest(unittest.TestCase):
             "SWT_HOST_WEB_PORT_2",
             "roadmap=",
             "缺席",
-            "信箱",
+            "信箱可用时向宿主会话索取网址",
+            "否则请我提供缺失的宿主地址/映射端口",
             "不改 web_server.py",
         ):
             self.assertIn(token, web_ports)
