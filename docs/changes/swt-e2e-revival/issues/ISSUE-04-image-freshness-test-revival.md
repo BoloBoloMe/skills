@@ -1,7 +1,7 @@
 ## 父级
 - `../EXECUTION.md`
 ## 执行
-- [ ] 已实现
+- [x] 已实现
 ## 要构建什么
 把 `TestReviewP3ImageFreshness::test_rebirth_reports_newer_candidate_digest` 改成驱动**存活的那条路径** (用户 2026-10-14 裁决: 甲 —— 承认老期望过期, 改测试面, 不动产品代码).
 
