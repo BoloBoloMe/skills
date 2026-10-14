@@ -36,6 +36,7 @@
 - ISSUE-02: `issues/ISSUE-02-env-docs-generator.md`; 覆盖: AC-004, AC-007; 依赖: 无
 - ISSUE-03: `issues/ISSUE-03-swt-assembly-acceptance.md`; 覆盖: AC-002, AC-003, AC-005, AC-006, AC-009; 依赖: ISSUE-02
 - ISSUE-04: `issues/ISSUE-04-linked-docs-ledger.md`; 覆盖: 非代码联动; 依赖: ISSUE-01, ISSUE-03
+- ISSUE-05: `issues/ISSUE-05-env-docs-missing-key-contract.md`; 覆盖: 评审发现 (TECHNICAL 接口契约: 缺键按缺席文案渲染不抛); 依赖: ISSUE-02
 
 ## 覆盖矩阵
 
