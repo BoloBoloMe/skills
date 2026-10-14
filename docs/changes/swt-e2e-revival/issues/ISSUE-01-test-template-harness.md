@@ -1,7 +1,7 @@
 ## 父级
 - `../EXECUTION.md`
 ## 执行
-- [ ] 已实现
+- [x] 已实现
 ## 要构建什么
 让"agent 模板"这条链在测试里可以完全本机自足, 并把 M03 冒烟镜像升到契约 2:
 1. 模板根可被测试覆盖: `scripts/agent_config/template.py` 的模板根支持一个环境变量 (建议名 `SWT_AGENT_TEMPLATES_DIR`); 未设时行为与现在逐字一致 (仍指向 `workflow/use-sandbox-worktree/agent-templates`).
