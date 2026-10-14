@@ -49,12 +49,24 @@ git 配置 `receive.denyCurrentBranch=updateInstead` 的效果: 合规 push 被�
 _避免_: 自动同步 (未含 git 语义)
 
 **base 层 / 项目层**:
-**sandbox-worktree** 镜像的两层结构: base 层固定且跨项目共享 (OS + pi CLI + skill 库 + bin), 项目层由 host llm 按项目推导依赖件叠加. 门禁类扩展不属于任何一层 — 留 host 不进容器.
+**sandbox-worktree** 镜像的两层结构: base 层固定且跨项目共享 (OS + pi/codex/kimi CLI + skill 库 + bin), 项目层由 host llm 按项目推导依赖件叠加. 门禁类扩展不属于任何一层 — 留 host 不进容器.
 _避免_: 基础镜像 (未含跨项目共享与固定语义), 项目镜像
 
 **完美复刻**:
-**sandbox-worktree** 容器用户 home 的布局原则: home 路径与 host 字面相同, `~/Workspace/`, `~/.pi/agent` 机械复制, 零适配层. 代码固定 `~/Workspace/<母体目录名>` (规范化目录名, 非原始分支名). 刻意排除 `~/AGENTS.md` 与 `~/docs/` — 它们是 host 环境文档, 容器是独立环境, 注入即误导.
+**sandbox-worktree** 容器用户 home 的布局原则: home 路径与 host 字面相同, `~/Workspace/`, `~/.pi/agent` 机械复制, 零适配层. 代码固定 `~/Workspace/<母体目录名>` (规范化目录名, 非原始分支名). 刻意排除 `~/AGENTS.md` — host 环境文档注入即误导. 容器环境知识不走宿主文档: 固定纪律经 **拼装** 进入各 agent 提示词, 本容器事实由 birth 生成到 `~/docs/` (见 **环境小抄**).
 _避免_: 环境同步 (未含字面路径相同语义), 镜像复刻
+
+**拼装**:
+birth 时脚本把 agent-prompts 母本片段 (PUBLIC + ENV + 各 agent 专属段) 与生成节拼成三份 agent 系统提示词并留档挂载; llm 不参与撰写.
+_避免_: 提示词生成 (过泛), 模板渲染 (与 agent-template 初始化混淆)
+
+**生成节**:
+**拼装** 产物中由脚本生成的段落: 数条触发式指针指向 **环境小抄**; 生成节在三份提示词中相同, 完整提示词仍含各自专属段, 指针携带的事实要点随容器不同.
+_避免_: 索引 (未含触发语义)
+
+**环境小抄**:
+birth 生成到容器 `~/docs/` 的本容器事实文档 (identity/network/web-ports/agents), 只读挂载, 宿主机不持有母本.
+_避免_: 环境文档 (与 host docs 混淆), docs 母本 (不存在)
 
 **决策收据**:
 swt 场景脚本非交互决策协议的载体 (D026): 脚本遇用户拍板点 exit 1 输出 DECIDE 行与绑定的资源指纹 (主仓/母体分支+ref tip/容器 Podman ID/镜像 digest/config 指纹/脏计数), 用户答后带 flag 重跑, 重跑先比对指纹, 变了就重新问, 绝不把旧答案套到新状态上.
