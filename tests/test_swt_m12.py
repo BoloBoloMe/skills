@@ -10,6 +10,7 @@ import shutil
 import shlex
 import socket
 import subprocess
+import sys
 import tempfile
 import time
 import unittest
@@ -18,10 +19,18 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 SCRIPT = ROOT / "workflow/use-sandbox-worktree/scripts/swt.py"
+
+sys.path.insert(0, str(Path(__file__).resolve().parent / "fixtures"))
+from agent_template_harness import FakeAgentTemplate  # noqa: E402
 SCHEMA_EXPECTED = 2  # 并行母体改造后 STATE schema 升 2 (只加字段不改名)
 
 
 class SwtFixture(unittest.TestCase):
+    # ISSUE-01 夹具模板名 (FakeAgentTemplate 缺省名, 经 SWT_AGENT_TEMPLATES_DIR 暴露给子进程).
+    AGENT_TEMPLATE_NAME = "fixture-gateway"
+    # 显式开关: 个别确需宿主桌面直通的用例设 SWT_TEST_ALLOW_HOST_DISPLAY=1 回到真实值.
+    ALLOW_HOST_DISPLAY_ENV = "SWT_TEST_ALLOW_HOST_DISPLAY"
+
     def setUp(self) -> None:
         self.root = Path(tempfile.mkdtemp(prefix="swt-m12-test-"))
         self.repo = self.root / "srv" / "demo"
@@ -49,10 +58,40 @@ class SwtFixture(unittest.TestCase):
         )
         self.records = self.root / "records"
         self.container_names: list[str] = []
+        # ISSUE-02: 本机假网关/假 Key/临时模板根 (TS-002); birth 模板安装依赖它.
+        self.agent_template = FakeAgentTemplate(name=self.AGENT_TEMPLATE_NAME)
+        self.agent_template.start()
+        # ISSUE-02 TS-003: 默认与宿主桌面解耦, 子进程/进程内 host_wayland_socket() 都返回 None.
+        self._wayland_present = "WAYLAND_DISPLAY" in os.environ
+        self._wayland_backup = os.environ.get("WAYLAND_DISPLAY")
+        if not self.allow_host_display():
+            os.environ["WAYLAND_DISPLAY"] = "wayland-absent"
+
+    @classmethod
+    def allow_host_display(cls) -> bool:
+        return os.environ.get(cls.ALLOW_HOST_DISPLAY_ENV) == "1"
 
     def tearDown(self) -> None:
         for name in self.container_names:
             subprocess.run(["podman", "rm", "-f", "-v", name], capture_output=True, text=True, check=False)
+        if self._wayland_present:
+            assert self._wayland_backup is not None
+            os.environ["WAYLAND_DISPLAY"] = self._wayland_backup
+        else:
+            os.environ.pop("WAYLAND_DISPLAY", None)
+        # 测试卫生 (F6): 兑底收走命令行引用本测试 tmpdir 的孤儿进程 (base-path
+        # 可能是主仓父目录或母体父目录, DECIDE 中途/异常路径下 runtime 未记录的
+        # daemon 退出后仍监听; socat git 桥同理). 放基类: migrate_legacy_pairs 类
+        # 用例 (TestMigrationIdempotent) 也会起 legacy daemon/桥.
+        subprocess.run(
+            ["pkill", "-f", f"git daemon.*{self.root}"],
+            capture_output=True, text=True, check=False,
+        )
+        subprocess.run(
+            ["pkill", "-f", f"socat.*{self.root}"],
+            capture_output=True, text=True, check=False,
+        )
+        self.agent_template.stop()
         shutil.rmtree(self.root, ignore_errors=True)
 
     def run_swt(self, *args: str, cwd: Path | None = None, env: dict[str, str] | None = None) -> subprocess.CompletedProcess[str]:
@@ -65,7 +104,21 @@ class SwtFixture(unittest.TestCase):
     def run_swt_exact(self, *args: str, cwd: Path | None = None, env: dict[str, str] | None = None) -> subprocess.CompletedProcess[str]:
         return self._invoke_swt(self._unique_birth_name(args), cwd, env)
 
+    def _with_agent_template(self, args: tuple[str, ...]) -> tuple[str, ...]:
+        # ISSUE-02: birth 一律显式选定夹具模板, 否则模板决策闸出 DECIDE 卡死.
+        if args and args[0] == "birth" and "--agent-template" not in args:
+            return (*args, "--agent-template", self.AGENT_TEMPLATE_NAME)
+        return args
+
     def _invoke_swt(self, args: tuple[str, ...], cwd: Path | None, env: dict[str, str] | None) -> subprocess.CompletedProcess[str]:
+        args = self._with_agent_template(args)
+        # 子进程环境单源构造: 清 SSH_AUTH_SOCK (注入过多密钥会触发 "Too many
+        # authentication failures" 使容器 clone 失败), 钉夹具模板根, 默认去宿主桌面.
+        env = dict(os.environ if env is None else env)
+        env.pop("SSH_AUTH_SOCK", None)
+        env.setdefault("SWT_AGENT_TEMPLATES_DIR", str(self.agent_template.root))
+        if not self.allow_host_display():
+            env["WAYLAND_DISPLAY"] = "wayland-absent"
         # xdist 并行: swt 探 6080 与 pasta 绑定之间存在 TOCTOU 竞态 (产品已知限制,
         # 报错文本明示"请释放占用端口后重跑"), 两类竞态都在夹具层消化:
         # - birth: pasta 端口竞争 PARTIAL → rm 竞态容器 (create 时已钉死端口) 重试,
@@ -704,17 +757,6 @@ class SwtBirthFixture(SwtFixture):
             ["podman", "rm", "-f", "-v", "--all", "--filter", f"label=sandbox-worktree.repo={self.repo.resolve()}"],
             capture_output=True, text=True, check=False,
         )
-        # 测试卫生 (F6): 兑底收走命令行引用本测试 tmpdir 的孤儿进程 (base-path
-        # 可能是主仓父目录或母体父目录, DECIDE 中途/异常路径下 runtime 未记录的
-        # daemon 退出后仍监听; socat git 桥同理)
-        subprocess.run(
-            ["pkill", "-f", f"git daemon.*{self.root}"],
-            capture_output=True, text=True, check=False,
-        )
-        subprocess.run(
-            ["pkill", "-f", f"socat.*{self.root}"],
-            capture_output=True, text=True, check=False,
-        )
         super().tearDown()
 
     def birth_ready(self, name: str | None = None, mode: str = "whitelist") -> dict:
@@ -792,11 +834,14 @@ class SwtBirthFixture(SwtFixture):
         container = state["containers"][-1]
         runtime = self.runtime_data()
         key = Path(runtime["containers"][-1]["ssh_private_key"])
+        env = dict(os.environ)
+        env.pop("SSH_AUTH_SOCK", None)  # 注入密钥过多会触发 Too many authentication failures
         return subprocess.run(
             ["ssh", "-i", str(key), "-o", "BatchMode=yes", "-o", "StrictHostKeyChecking=no",
-             "-o", "UserKnownHostsFile=/dev/null", "-p", str(container["ssh-port"]),
+             "-o", "UserKnownHostsFile=/dev/null", "-o", "IdentitiesOnly=yes",
+             "-p", str(container["ssh-port"]),
              "bolo@127.0.0.1", command],
-            capture_output=True, text=True, check=False,
+            capture_output=True, text=True, check=False, env=env,
         )
 
 
@@ -1579,11 +1624,13 @@ class TestTS301Terminate(SwtBirthFixture):
         self.assertEqual(0, forced.returncode, forced.stderr)
         audit = next((self.records / "runtime").glob("*/audit.jsonl"))
         entries = [json.loads(line) for line in audit.read_text(encoding="utf-8").splitlines() if line]
-        self.assertEqual(1, len(entries))
-        self.assertEqual(decision_id, entries[0]["decision-id"])
-        self.assertEqual(state["containers"][0]["name"], entries[0]["container"])
-        self.assertTrue(entries[0]["podman-id"])
-        self.assertEqual(1, entries[0]["dirty"]["uncommitted"])
+        # 模板选择会在同文件另写一条 action 审计; 本用例只关心 terminate 决策审计.
+        terminations = [entry for entry in entries if entry.get("decision-id") and "action" not in entry]
+        self.assertEqual(1, len(terminations))
+        self.assertEqual(decision_id, terminations[0]["decision-id"])
+        self.assertEqual(state["containers"][0]["name"], terminations[0]["container"])
+        self.assertTrue(terminations[0]["podman-id"])
+        self.assertEqual(1, terminations[0]["dirty"]["uncommitted"])
         self.assertEqual([], list((self.records / "runtime").glob("*/decisions/d-*.json")))
 
 
@@ -1836,11 +1883,14 @@ class TestMultiPairIsolation(SwtBirthFixture):
         runtime = json.loads(runtime_file.read_text(encoding="utf-8"))
         record = next(item for item in runtime["containers"] if item["name"] == container["name"])
         key = Path(record["ssh_private_key"])
+        env = dict(os.environ)
+        env.pop("SSH_AUTH_SOCK", None)  # 注入密钥过多会触发 Too many authentication failures
         return subprocess.run(
             ["ssh", "-i", str(key), "-o", "BatchMode=yes", "-o", "StrictHostKeyChecking=no",
-             "-o", "UserKnownHostsFile=/dev/null", "-p", str(container["ssh-port"]),
+             "-o", "UserKnownHostsFile=/dev/null", "-o", "IdentitiesOnly=yes",
+             "-p", str(container["ssh-port"]),
              "bolo@127.0.0.1", command],
-            capture_output=True, text=True, check=False,
+            capture_output=True, text=True, check=False, env=env,
         )
 
 
@@ -1909,6 +1959,9 @@ class TestLegacyMigrationViaResume(SwtBirthFixture):
         runtime_file = self.runtime_file()
         runtime = self.runtime_data()
         runtime["containers"][0]["remote"] = f"git://127.0.0.1:9418/{self.repo.name}"
+        # 旧形态 (无 agent-template 记录) 才走 resume 迁移路径; 构造真实旧容器快照.
+        runtime.pop("agent-template", None)
+        runtime["containers"][0].pop("agent-template", None)
         runtime_file.write_text(json.dumps(runtime), encoding="utf-8")
 
         decide = self.run_swt("resume", "--repo", str(self.repo), "--records-root", str(self.records))
@@ -2112,6 +2165,11 @@ class TestTS5Resume(SwtBirthFixture):
             check=False, capture_output=True, text=True,
         )
         self.assertEqual(0, created.returncode, created.stderr)
+        # 外来重建容器不在模板记录中; 本用例只验 resume 对 podman-ID 漂移重开收据,
+        # 故以旧形态 (无 agent-template) 快照走旧 resume 路径.
+        runtime.pop("agent-template", None)
+        runtime["containers"][0].pop("agent-template", None)
+        self.runtime_file().write_text(json.dumps(runtime), encoding="utf-8")
         second = self.resume("--confirm")
         self.assertEqual(1, second.returncode, second.stderr)
         second_id = self.decide_id(second)
@@ -2127,6 +2185,10 @@ class TestTS5Resume(SwtBirthFixture):
         runtime = self.runtime_data()
         runtime["containers"][0]["retired"] = True
         runtime["containers"][0]["state"] = "exited"
+        # 历史遗留记录 (无 agent-template) 才按旧 resume 路径报 retired; 新模板容器
+        # 由模板 guard 先拒, 不是本用例要验的行为.
+        runtime.pop("agent-template", None)
+        runtime["containers"][0].pop("agent-template", None)
         runtime_file.write_text(json.dumps(runtime), encoding="utf-8")
         subprocess.run(["podman", "stop", old_name], check=True, capture_output=True, text=True)
         result = self.resume("--name", old_name)
@@ -2172,7 +2234,13 @@ class TestTS5Resume(SwtBirthFixture):
         state = self.state(completed)
         self.assertNotEqual(old_pid, state["daemon"]["pid"])
         self.assertEqual(0, subprocess.run(["kill", "-0", str(state["daemon"]["pid"])], check=False).returncode)
-        audit = json.loads(next((self.records / "runtime").glob("*/audit.jsonl")).read_text(encoding="utf-8").splitlines()[0])
+        audit = next(
+            entry for entry in (
+                json.loads(line) for line in
+                next((self.records / "runtime").glob("*/audit.jsonl")).read_text(encoding="utf-8").splitlines()
+                if line
+            ) if "killed-daemons" in entry
+        )
         self.assertIn(old_pid, audit["killed-daemons"])
 
     def test_ts507_resume_merge_preserves_other_pair_network_rule(self) -> None:

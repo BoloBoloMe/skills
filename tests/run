@@ -2,7 +2,7 @@
 """tests/run — 默认测试入口 (MILESTONE-16): 按改动面选跑, 小改不付全量.
 
 用法:
-  tests/run              按 git 未提交改动面选跑受影响套件 (m12 自动并行, ~40s)
+  tests/run              按 git 未提交改动面选跑受影响套件 (m12 串行, ~9min)
   tests/run --fast       只跑受影响套件的快层 (秒级)
   tests/run --all        全量串行回归 (里程碑关账口径)
   tests/run <其他参数>   原样直通 pytest
@@ -31,7 +31,10 @@ RULES = [
     ("pytest.ini", GLOBAL),
 ]
 
-PARALLEL = {"tests/test_swt_m12.py": "12"}  # 套件 → xdist worker 数
+# E2E-ISSUE-02: m12 真容器 birth 现走假模板/假网关, 容器内客户端检查 (45s 超时)
+# 对并行抢资源敏感, 且 6080 竞态重试会撞模板 guard; 改串行 (原 -n 12). 需要并行
+# 试跑时手动 `pytest tests/test_swt_m12.py -n N`, 见 README 已知事项.
+PARALLEL: dict[str, str] = {}
 
 
 def changed_paths() -> list[str]:
