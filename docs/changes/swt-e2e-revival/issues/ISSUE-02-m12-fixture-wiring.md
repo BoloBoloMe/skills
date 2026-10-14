@@ -1,7 +1,7 @@
 ## 父级
 - `../EXECUTION.md`
 ## 执行
-- [ ] 已实现
+- [x] 已实现
 ## 要构建什么
 把 `tests/test_swt_m12.py` 的真容器 birth 用例接回可跑状态, 并让它们与宿主桌面解耦:
 1. `SwtBirthFixture` (及其子类) 的 birth 路径必须显式选定 agent 模板: 用 ISSUE-01 的夹具模板 (名字由 `SWT_AGENT_TEMPLATES_DIR` 与夹具共同决定) 补上 `--agent-template <name>`; 需要几次调用 (先 DECIDE 再带答复) 就按现夹具的既有风格来, 不要改断言意图.
@@ -61,3 +61,6 @@
 - [ ] m12 整套真容器用例跑通 (例外逐条列出); 夹具默认不直通桌面; 无残留进程与容器; 快层不回归
 ## 被阻塞于
 - ISSUE-01
+
+## 遗留 (2026-10-14)
+- TestReviewP3ImageFreshness::test_rebirth_reports_newer_candidate_digest 仍红: 模板化后重入固定模板的 born 容器不再复算 newer-available, 且换镜像被守卫拒绝; 能力在 swt.py:4700 那条路径仍在. 根因在产品面, 按停止条件未改 scripts/, 待用户裁决.
