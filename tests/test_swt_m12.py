@@ -1415,20 +1415,45 @@ class TestReviewP2DaemonOrphan(SwtBirthFixture):
 
 
 class TestReviewP3ImageFreshness(SwtBirthFixture):
-    def test_rebirth_reports_newer_candidate_digest(self) -> None:
-        before = self.birth_ready()
-        name = before["containers"][0]["name"]
-        runtime_file = self.runtime_file()
-        runtime = self.runtime_data()
-        runtime["containers"][0]["image-digest"] = "sha256:old-running-image"
-        runtime_file.write_text(json.dumps(runtime), encoding="utf-8")
+    def test_running_container_with_newer_build_is_marked_not_upgraded(self) -> None:
+        """D013: 在跑容器的镜像有更新版时, 只读命令 (status) 只标
+        image.newer-available, 不动存活容器. 有无新版的判据是 image_state 的
+        latest_build_digest: <records>/<slug>/builds/*/build.json 里最新的 digest
+        与在跑镜像 digest 是否不同."""
+        born = self.birth_ready()
+        running_record = self.runtime_data()
+        running_digest = running_record["image"]["digest"]
+        running_container_digest = running_record["containers"][0]["image-digest"]
+        builds = self.records / "demo" / "builds"
+
+        # 对照 (真实构造镜像一致): 最新构建记录 digest 与在跑镜像相同 -> 无新版.
+        same = builds / "9999.01.01-1"
+        same.mkdir(parents=True)
+        (same / "build.json").write_text(
+            json.dumps({"digest": running_digest}), encoding="utf-8",
+        )
         result = self.run_swt(
-            "birth", "--repo", str(self.repo), "--records-root", str(self.records),
-            "--branch", "feature/m12", "--image", "localhost/swt-m03:latest",
-            "--mode", "whitelist", "--allow", "127.0.0.1", "--reuse-mother", "--name", name,
+            "status", "--repo", str(self.repo), "--records-root", str(self.records),
         )
         self.assertEqual(0, result.returncode, result.stderr)
-        self.assertTrue(self.state(result)["image"]["newer-available"])
+        self.assertFalse(self.state(result)["image"]["newer-available"])
+
+        # 有更新版可用: 更新的构建记录 digest 与在跑镜像不同 -> 只标不升级.
+        newer = builds / "9999.01.02-1"
+        newer.mkdir(parents=True)
+        (newer / "build.json").write_text(
+            json.dumps({"digest": "sha256:newer-candidate"}), encoding="utf-8",
+        )
+        result = self.run_swt(
+            "status", "--repo", str(self.repo), "--records-root", str(self.records),
+        )
+        self.assertEqual(0, result.returncode, result.stderr)
+        state = self.state(result)
+        self.assertTrue(state["image"]["newer-available"])
+        # 只标不升级的证据: 在跑容器仍在, 其 record 的 image-digest 未变.
+        self.assertEqual([c["name"] for c in born["containers"]], [c["name"] for c in state["containers"]])
+        self.assertEqual(running_container_digest, self.runtime_data()["containers"][0]["image-digest"])
+        self.assertEqual(running_record, self.runtime_data())
 
 
 class TestReviewP4ConfigPartial(SwtBirthFixture):
