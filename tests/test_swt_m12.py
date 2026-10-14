@@ -877,22 +877,39 @@ class TestTS201BirthChain(SwtBirthFixture):
         self.assertEqual(0, self.ssh_run(
             state, f"git -C /home/bolo/Workspace/{branch} ls-remote origin"
         ).returncode)
-        # P1-6: agent 提示词母本只读单文件挂载 (内容 = 各自仓库母本, 写被拒)
-        for master_name, target in (("pi", "/home/bolo/.pi/agent/AGENTS.md"),
-                                    ("codex", "/home/bolo/.codex/AGENTS.md"),
-                                    ("kimi-code", "/home/bolo/.kimi-code/AGENTS.md")):
-            master = (ROOT / f"workflow/use-sandbox-worktree/agent-prompts/{master_name}_AGENTS.md").read_bytes()
+        # ISSUE-03 (TC-005/TC-108): 容器内三份提示词 = 留档拼装产物
+        # (PUBLIC + ENV + 生成节 + 专属段), ~/docs/ 四份小抄 = 留档 docs/, 全部
+        # 只读追加写被拒; 容器内无 ~/AGENTS.md; 生成标记证明挂的是脚本产物.
+        staged_root = next(
+            self.records.glob(f"runtime/*/agent-prompts/{container['name']}"))
+        for staged_name, target in (("pi_AGENTS.md", "/home/bolo/.pi/agent/AGENTS.md"),
+                                    ("codex_AGENTS.md", "/home/bolo/.codex/AGENTS.md"),
+                                    ("kimi-code_AGENTS.md", "/home/bolo/.kimi-code/AGENTS.md")):
+            staged = (staged_root / staged_name).read_bytes()
+            self.assertIn("birth 生成".encode(), staged, msg=staged_name)
             got = subprocess.run(
                 ["podman", "exec", container["name"], "cat", target],
                 capture_output=True, check=False,
             ).stdout
-            self.assertEqual(master, got, msg=target)
-        ro_write = subprocess.run(
-            ["podman", "exec", container["name"], "sh", "-c",
-             "echo x >> /home/bolo/.pi/agent/AGENTS.md"],
+            self.assertEqual(staged, got, msg=target)
+        for doc in ("identity.md", "network.md", "web-ports.md", "agents.md"):
+            staged = (staged_root / "docs" / doc).read_bytes()
+            got = subprocess.run(
+                ["podman", "exec", container["name"], "cat", f"/home/bolo/docs/{doc}"],
+                capture_output=True, check=False,
+            ).stdout
+            self.assertEqual(staged, got, msg=doc)
+        self.assertIn(container["name"], (staged_root / "docs" / "identity.md").read_text(encoding="utf-8"))
+        self.assertNotEqual(0, subprocess.run(
+            ["podman", "exec", container["name"], "test", "-e", "/home/bolo/AGENTS.md"],
             capture_output=True, text=True, check=False,
-        )
-        self.assertNotEqual(0, ro_write.returncode)
+        ).returncode)
+        for target in ("/home/bolo/.pi/agent/AGENTS.md", "/home/bolo/docs/identity.md"):
+            ro_write = subprocess.run(
+                ["podman", "exec", container["name"], "sh", "-c", f"echo x >> {target}"],
+                capture_output=True, text=True, check=False,
+            )
+            self.assertNotEqual(0, ro_write.returncode, msg=target)
         # M14 发现 2: 母本挂载点父目录须 bolo 可写 (镜像缺该目录时 podman 为单文件
         # 挂载自建的父目录是 root 属主, kimi 类 agent 起步即 EACCES)
         for parent in ("/home/bolo/.pi/agent", "/home/bolo/.codex", "/home/bolo/.kimi-code"):

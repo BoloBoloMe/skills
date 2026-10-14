@@ -43,6 +43,7 @@ if _SCRIPT_DIR not in sys.path:
 from agent_config import template as agent_templates
 from agent_config.common import (TemplateError, filtered_env, CONTAINER_LABEL,
                                  TOKEN_LABEL, DIGEST_LABEL, CONTRACT)
+from env_docs import BIRTH_MARKER, DOC_FILES, render_docs, render_generation_section
 
 
 SCHEMA = 2
@@ -83,14 +84,23 @@ def web_port_record_key(index: int) -> str:
     """D003: 容器端口 8800+index 的 STATE 记录键; index 0 沿用既有 `web-port`."""
     return "web-port" if index == 0 else f"web-port-{index + 1}"
 
-# P1-6 agent 系统提示词母本制: 母本在 <skill>/agent-prompts/, birth 留档到
-# runtime/<identity>/agent-prompts/<容器>/ 后只读单文件挂载进容器.
+# P1-6/ISSUE-03 agent 系统提示词母本制: 五份母本在 <skill>/agent-prompts/,
+# birth 拼装成三份提示词留档 runtime/<identity>/agent-prompts/<容器>/ 后只读单文件
+# 挂载进容器; env_docs 生成节与四份小抄落同目录 docs/, 只读挂载到 ~/docs/.
 AGENT_PROMPT_SOURCE_DIR = Path(__file__).resolve().parents[1] / "agent-prompts"
+AGENT_PROMPT_MASTERS = ("PUBLIC.md", "ENV.md", "PI.md", "CODEX.md", "KIMI.md")
 AGENT_PROMPT_MOUNTS = (
     ("pi_AGENTS.md", "/home/bolo/.pi/agent/AGENTS.md"),
     ("codex_AGENTS.md", "/home/bolo/.codex/AGENTS.md"),
     ("kimi-code_AGENTS.md", "/home/bolo/.kimi-code/AGENTS.md"),
 )
+# D013: 容器内不再设 ~/AGENTS.md; 本容器事实小抄挂 ~/docs/.
+AGENT_DOCS_DIR_NAME = "docs"
+AGENT_DOCS_TARGET = "/home/bolo/docs"
+# ISSUE-03 D018 birth 验收: 3 份提示词 + 4 份小抄的容器内路径. 顺序与挂载表一致.
+AGENT_ENV_CONTAINER_FILES = tuple(
+    target for _staged, target in AGENT_PROMPT_MOUNTS
+) + tuple(f"{AGENT_DOCS_TARGET}/{name}" for name in DOC_FILES)
 
 # M08 D003 启动脚本母本制: 母本在 <skill>/headed-browser/, birth 解析 chromium
 # 精确路径 (F006) 生成实例留档 runtime/<identity>/ 后只读单文件挂载进容器固定路径.
@@ -1137,21 +1147,100 @@ def ensure_container_git_forward(name: str) -> None:
     raise SwtError(3, "PARTIAL", "容器 git 转发器未进入监听 (socat 缺失? 镜像须含 socat)")
 
 
-def stage_agent_prompts(records_root: Path, identity: str, container_name: str) -> Path:
-    """P1-6: birth 时把母本拷到 runtime/<identity>/agent-prompts/<容器>/ 留档,
-    返回挂载源目录. 每容器一份: 母本更新只对新 birth 的容器生效, 不动运行中容器."""
+def _normalize_prompt_block(blob: bytes) -> bytes:
+    """拼装块归一: 非空块尾随换行归一为单个, 空专属段消失 (D006 不写占位)."""
+    if not blob.strip():
+        return b""
+    return blob.rstrip(b"\n") + b"\n"
+
+
+def _write_if_changed(path: Path, blob: bytes) -> None:
+    """幂等落盘: 内容未变不动文件 (留档可比对, 重跑同字节)."""
+    if path.is_file() and path.read_bytes() == blob:
+        return
+    path.write_bytes(blob)
+
+
+def stage_agent_prompts(records_root: Path, identity: str, container_name: str, *, net_facts: dict) -> Path:
+    """ISSUE-03 D013/D019: 读五份母本, 按 BR-001 拼装三份提示词 (PUBLIC + ENV +
+    生成节 + 专属段, 空段跳过), env_docs 生成节与四份小抄一并落留档, 返回挂载源
+    目录. 每容器一份: 母本更新只对新 birth 的容器生效, 不动运行中容器. 幂等:
+    同输入同字节, 仅内容变化时重写; 须在 create 前调用 (产物作挂载源)."""
     if not AGENT_PROMPT_SOURCE_DIR.is_dir():
-        raise SwtEnvError(f"agent 提示词母本目录缺失: {AGENT_PROMPT_SOURCE_DIR}")
-    target_dir = records_root / "runtime" / identity / "agent-prompts" / container_name
-    target_dir.mkdir(parents=True, exist_ok=True)
-    for name, _target in AGENT_PROMPT_MOUNTS:
+        raise SwtEnvError(
+            f"agent 提示词母本目录缺失: {AGENT_PROMPT_SOURCE_DIR}; "
+            "请运行 sync-to-pi.py 同步母本后重试")
+    masters: dict[str, bytes] = {}
+    for name in AGENT_PROMPT_MASTERS:
         source = AGENT_PROMPT_SOURCE_DIR / name
         if not source.is_file():
-            raise SwtEnvError(f"agent 提示词母本缺失: {source}")
-        staged = target_dir / name
-        if not staged.is_file() or staged.read_bytes() != source.read_bytes():
-            staged.write_bytes(source.read_bytes())
+            raise SwtEnvError(
+                f"agent 提示词母本缺失: {source}; 请运行 sync-to-pi.py 同步母本后重试")
+        masters[name] = source.read_bytes()
+    facts = {"container": container_name, **net_facts}
+    prefix = (_normalize_prompt_block(masters["PUBLIC.md"])
+              + _normalize_prompt_block(masters["ENV.md"])
+              + render_generation_section(facts).encode())
+    composed = {
+        "pi_AGENTS.md": prefix + _normalize_prompt_block(masters["PI.md"]),
+        "codex_AGENTS.md": prefix + _normalize_prompt_block(masters["CODEX.md"]),
+        "kimi-code_AGENTS.md": prefix + _normalize_prompt_block(masters["KIMI.md"]),
+    }
+    target_dir = records_root / "runtime" / identity / "agent-prompts" / container_name
+    docs_dir = target_dir / AGENT_DOCS_DIR_NAME
+    docs_dir.mkdir(parents=True, exist_ok=True)
+    for name, blob in composed.items():
+        _write_if_changed(target_dir / name, blob)
+    for name, text in render_docs(facts).items():
+        _write_if_changed(docs_dir / name, text.encode())
     return target_dir
+
+
+def verify_env_mounts(container: str) -> None:
+    """ISSUE-03 D018: birth 收尾进容器读 3 份提示词与 4 份小抄, 全部非空且含
+    生成标记才返回. 缺/空/无标记 → SwtError(3, PARTIAL) 文案列缺件清单;
+    调用时点 = 标 born 前."""
+    missing = []
+    for path in AGENT_ENV_CONTAINER_FILES:
+        result = run(["podman", "exec", container, "cat", path])
+        blob = result.stdout if result.returncode == 0 else ""
+        if not blob.strip() or BIRTH_MARKER not in blob:
+            missing.append(path)
+    if missing:
+        raise SwtError(3, "PARTIAL", "env 挂载就位检查缺件: " + ", ".join(missing))
+
+
+def agent_env_facts(args, repo: Path, branch: str, runtime: dict[str, Any], records_root: Path) -> dict[str, Any]:
+    """ISSUE-03 F004: create 前可知事实 → env_docs facts. create 后才知的事实
+    (宿主端口映射/直通态/resolv 解析器) 不入; 缺失键以缺席文案字段交 env_docs."""
+    meta = runtime.get("agent-template")
+    if not isinstance(meta, dict):
+        meta = {}
+    defaults: dict[str, Any] = {}
+    snapshot_path = meta.get("snapshot")
+    if snapshot_path:
+        try:
+            value = agent_templates.read_snapshot(Path(snapshot_path), meta.get("snapshot-digest"))
+        except (TemplateError, OSError, ValueError, KeyError, TypeError):
+            value = None
+        if isinstance(value, dict):
+            defaults = value.get("template", {}).get("defaults", {}) or {}
+    models = {agent: (defaults.get(agent) or {}).get("model", "")
+              for agent in ("pi", "codex", "kimi")}
+    mother_dir = runtime.get("mother_dir") or ""
+    return {
+        "repo_path": str(repo.resolve()),
+        "mother_dir": Path(mother_dir).name if mother_dir else "",
+        "branch": branch,
+        "code_path": f"/home/bolo/Workspace/{branch}",
+        "mode": getattr(args, "mode", None),
+        "deny": list(getattr(args, "deny", []) or []),
+        "lan_ip": read_confirmed_lan_address(records_root),
+        "template_name": meta.get("name", ""),
+        "template_version": meta.get("version", ""),
+        "snapshot_digest": meta.get("snapshot-digest", ""),
+        "default_models": models,
+    }
 
 
 def resolve_container_chromium_path(image_ref: str) -> str | None:
@@ -1529,7 +1618,8 @@ def ensure_agent_prompt_parents(container_name: str) -> None:
     自动建成 root 属主 755, 容器 bolo 在其中无写权限 (kimi ~/.kimi-code 起步即
     EACCES). 启动后逐个保证父目录存在且 bolo 属主 — 与 D046 注入同模式,
     install -d 对已存在目录也会应用属主, 幂等."""
-    parents = sorted({target.rsplit("/", 1)[0] for _master, target in AGENT_PROMPT_MOUNTS})
+    parents = sorted({target.rsplit("/", 1)[0]
+                      for target in [t for _m, t in AGENT_PROMPT_MOUNTS] + [AGENT_DOCS_TARGET]})
     script = " && ".join(f"install -d -o bolo -g bolo {shlex.quote(parent)}" for parent in parents)
     result = subprocess.run(
         ["podman", "exec", container_name, "sh", "-c", script],
@@ -2674,11 +2764,15 @@ def create_and_start_container(args: argparse.Namespace, repo: Path, image: dict
         env["WAYLAND_DISPLAY"] = "wayland-0"
         if Path("/dev/dri").is_dir():
             command.extend(["--device", "/dev/dri"])
-    # agent 提示词母本只读单文件挂载 (P1-6): 每容器留档副本, rootless 下呈现为
-    # root 属主 0644, 容器 bolo 可读不可写
-    prompts_dir = stage_agent_prompts(records_root, identity, name)
-    for master_name, target in AGENT_PROMPT_MOUNTS:
-        command.extend(["-v", f"{prompts_dir / master_name}:{target}:ro"])
+    # agent 提示词与小抄挂载 (ISSUE-03 D013): 三份拼装提示词只读单文件挂载 (每容器
+    # 留档副本, rootless 下呈现为 root 属主 0644, 容器 bolo 可读不可写), 四份本容器
+    # 事实小抄只读目录挂载到 ~/docs/. 产物作挂载源, 必须 create 前生成.
+    prompts_dir = stage_agent_prompts(
+        records_root, identity, name,
+        net_facts=agent_env_facts(args, repo, branch, runtime, records_root))
+    for staged_name, target in AGENT_PROMPT_MOUNTS:
+        command.extend(["-v", f"{prompts_dir / staged_name}:{target}:ro"])
+    command.extend(["-v", f"{prompts_dir / AGENT_DOCS_DIR_NAME}:{AGENT_DOCS_TARGET}:ro"])
     # 启动脚本母本只读单文件挂载 (M08 D003): 实例由 birth 流程解析 chromium
     # 精确路径后落 runtime/<identity>/ 留档, 此处只负责挂载 (UD-06: 解析失败时
     # birth 传 None, 容器仍可终端工作 + noVNC, 仅无直飞).
@@ -3311,6 +3405,8 @@ def birth(args: argparse.Namespace, repo: Path) -> int:
             container["record"]["clone-ready"] = True
             upsert_container_record(runtime, container["record"], runtime_file)
         initialize_agent_template(runtime, runtime_file, container["name"])
+        # ISSUE-03 D018 (BR-009): 标 born 前校验三份提示词与四份小抄确实挂进容器.
+        verify_env_mounts(container["name"])
         runtime["stage"] = "born"
         runtime["network"] = {**runtime["network"], "gateway": gateway_address, "container-ip": ip_value, "netns": shared_netns}
         atomic_write_json(runtime_file, runtime)
