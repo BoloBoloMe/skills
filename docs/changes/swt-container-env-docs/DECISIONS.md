@@ -12,7 +12,7 @@
 - 内容: 写给容器内 llm 的环境信息只收 "删掉后会让它在容器内走弯路" 的条目, 不追求环境信息完备 (用户初轮 Q1 定立). 反方攻击指出该测试只问错误路径, 漏掉触达概率/异常路径/误读风险; 用户 Q16 采纳补强: 裁剪内容时逐项检查四类高风险动作 (git push, 网络访问, web 展示, 改 agent 配置) 是否仍有 ENV.md 内联覆盖, 高风险动作失去内联覆盖的条目不得删.
 - 依赖事实: F006
 - 预计影响: `workflow/use-sandbox-worktree/agent-prompts/ENV.md` 的取舍, `scripts/env_docs.py` 生成文本取舍
-- 实际影响: 未实现 (待实施)
+- 实际影响: 已落地 — `agent-prompts/ENV.md` 条目 0-29 与 `env_docs.py` 生成文本按缺失测试取舍; 四类高风险动作均有 ENV.md 内联覆盖 (网络 5-9, push 10-15, 展示 16-22, agent 配置 25-27)
 
 ### D002 容器环境文档全部由 birth 生成, 宿主机不持有 docs 母本
 - 状态: 当前有效
@@ -20,7 +20,7 @@
 - 内容: 容器内 ~/docs/ 下的内容全部在 birth 阶段由脚本生成, 宿主仓库不维护任何 docs 母本文件 (用户初轮 Q2/Q3: "宿主机不写 docs/ 任何内容, 它们全都是 birth 阶段生成的"). 用户随后补充分工规则: 固定不变的内容写到 ENV.md (经拼装进入提示词), 生成文档只装随容器不同的事实. 该规则后被 D016 细化: "全部生成" 指投放机制, 生成文档可含固定段落 (如 navigate 架桥配方), 随 birth 投放.
 - 依赖事实: F004
 - 预计影响: `scripts/env_docs.py` (新建), `swt.py` stage_agent_prompts
-- 实际影响: 未实现 (待实施)
+- 实际影响: 已落地 — `env_docs.render_docs` 由 create 前事实生成 identity/network/web-ports/agents 四份; `swt.py stage_agent_prompts` (swt.py:1164) 落 `runtime/<identity>/agent-prompts/<容器>/docs/` 并只读目录挂 `/home/bolo/docs`; 宿主仓库无 docs 母本; 生成文本可含固定段落 (web-ports 架桥配方)
 
 ### D003 三份提示词 5 行 sandbox 纪律移出, 单一事实源 (初版: 经 ~/AGENTS.md 注入)
 - 状态: 已替代 (→ D013)
@@ -37,7 +37,7 @@
 - 内容: 宿主 ~/.pi/agent/AGENTS.md = concat(仓库根 agent-prompts/PUBLIC.md, agent-prompts/PI.md), 由 sync-to-pi.py 每次运行无条件重写 (复用 _backup_and_atomic_write: 写前备份 .bak + 原子写), 不再是逐项询问的拷贝项 (用户初轮 Q5 选 A "每次同步自动重写"); 仓库 pi/AGENTS.md 单文件母本删除; 仓库根新增 agent-prompts/ 目录 (PUBLIC.md + PI.md).
 - 依赖事实: F009
 - 预计影响: `sync-to-pi.py` (拼接函数, 移除 pi/AGENTS.md 询问项), 仓库根 `agent-prompts/` (新建), `pi/AGENTS.md` (删除)
-- 实际影响: 未实现 (待实施)
+- 实际影响: 已落地 — `sync-to-pi.py compose_host_agents_md` (316 行) 每次无条件拼接仓库根 `agent-prompts/PUBLIC.md` + `PI.md` 重写宿主 AGENTS.md, 经 `_backup_and_atomic_write` (备份 .bak + 原子写); 仓库根 `agent-prompts/` 已建, `pi/AGENTS.md` 单文件母本已删, 不再是询问项 (tests/test_sync_to_pi_compose.py)
 
 ### D005 双份 PUBLIC/PI 母本逐字同步纪律 (初版)
 - 状态: 已替代 (→ D015)
@@ -54,7 +54,7 @@
 - 内容: workflow/use-sandbox-worktree/agent-prompts/ 下新建 0 字节 CODEX.md 与 KIMI.md, 拼接时空件跳过; 有 agent 专属行再填, 不写占位说明文字 (用户初轮 Q8=A). 理由: 占位说明会成为发给模型的噪音.
 - 依赖事实: 无
 - 预计影响: `workflow/use-sandbox-worktree/agent-prompts/CODEX.md`, `KIMI.md` (新建), `swt.py` 拼接逻辑
-- 实际影响: 未实现 (待实施)
+- 实际影响: 已落地 — `agent-prompts/CODEX.md` 与 `KIMI.md` 为 0 字节; `swt.py stage_agent_prompts` 经 `_normalize_prompt_block` 跳过空段, 拼装产物不含空段 (tests/test_swt_stage_env.py)
 
 ### D007 环境信息 8 大类划分 (初版)
 - 状态: 已替代 (→ D012)
@@ -104,7 +104,7 @@
   每条均附过缺失测试依据 (逐项轮 "删了会" 栏); 硬护栏 (12/15/16/24 等) 保留禁令并配正向目标, 其余按 D010 正向表述.
 - 依赖事实: F005, F006
 - 预计影响: `workflow/use-sandbox-worktree/agent-prompts/ENV.md` (新建)
-- 实际影响: 未实现 (待实施)
+- 实际影响: 已落地 — `agent-prompts/ENV.md` 逐字采用条目 0-29 (30 号排障分流表未收); 随拼装进入三份提示词
 
 ### D009 生成节 = 触发式指针, 定稿 4 行
 - 状态: 当前有效
@@ -117,7 +117,7 @@
   网络行不放行清单不放条数 (清单动态, 写死会过期, 同 D012 理由).
 - 依赖事实: F004
 - 预计影响: `scripts/env_docs.py` 生成节文本, `swt.py` 拼装
-- 实际影响: 未实现 (待实施)
+- 实际影响: 已落地 — `env_docs.render_generation_section` 输出 "## 本容器事实 (birth 生成)" 4 行触发式指针 (network/identity/web-ports/agents), 拼在 ENV.md 之后, 三份相同
 
 ### D010 writing-for-llm 写作约定
 - 状态: 当前有效
@@ -125,7 +125,7 @@
 - 内容: ENV.md 与生成文档统一按 general/writing-for-llm 编写 (用户以 skill 引用方式指定编写参考, 申报无异议): 视角 = 你 (agent) / 我 (用户); 禁令仅限无法正向表述的硬护栏且配正向目标, 其余改写正向 (如 push 被拒直接给 fetch 解冲突重推动作); 条目带为什么 (理由让规则可迁移); 紧凑排版, 空行只留章节/块边界; 触发词前置, 每分支一个触发器; 引导词优先用预训练已有概念.
 - 依赖事实: 无
 - 预计影响: `agent-prompts/ENV.md`, `scripts/env_docs.py` 全部文本
-- 实际影响: 未实现 (待实施)
+- 实际影响: 已落地 — `ENV.md` 与 `env_docs.py` 生成文本按约定编写 (视角/触发词前置/正向表述/紧凑排版); 硬护栏条目 (12/15/16/24 等) 保留禁令并配正向目标
 
 ### D011 反方攻击派遣与选型
 - 状态: 当前有效
@@ -133,7 +133,7 @@
 - 内容: 盘问收尾按 grilling 扫盲区流程派独立子代理反方攻击全部决定 (不继承盘问历史, 只收决定/前提/已排除项), 同时自扫 (用户 Q11: "要派"). 子代理 = herdr 会话 `swt-env-devil`, pi / cli/gpt-5.6-luna / thinking high; 选型依据 llm-select review 画像: 质量底线之上取成本最低且稳定性可用者, glm-5.3-flash/deepseek-v4-flash 更便宜但稳定率 0.49/0.6 且反方任务禁止重试, 失败代价高于差价. 结论全文见 F006, 处置见 D013/D014/D015/D017/D018.
 - 依赖事实: F006
 - 预计影响: 无 (盘问会话操作, 无代码改动)
-- 实际影响: 盘问已执行 (会话已关闭, 结论已取回), 决策落地未实施
+- 实际影响: 盘问已执行 (会话 swt-env-devil 已关闭, 结论见 F006); 处置已随 D013/D014/D015/D017/D018 落地, 本条自身无代码改动
 
 ### D012 docs 文件集收敛为 4 份及各自字段
 - 状态: 当前有效
@@ -146,7 +146,7 @@
   - 不生成: git-delivery.md (字段轮 Q4=B, remote 由 git 自查); mailbox.md (字段轮 Q6=B, 信箱知识一句进 ENV 条目 23 + 用时调 skill mailbox); display-browser.md 与 runtime.md (无 create 前事实, 语义住 ENV.md 条目 20-22/29)
 - 依赖事实: F004, F005
 - 预计影响: `scripts/env_docs.py` (DOC_FILES 与各渲染函数)
-- 实际影响: 未实现 (待实施)
+- 实际影响: 已落地 — `env_docs.DOC_FILES` = identity/network/web-ports/agents 四份, 各渲染函数字段与决策一致; 不生成 git-delivery/mailbox/display-browser/runtime; network 不收 allow 清单
 
 ### D013 容器不设 ~/AGENTS.md, 环境内容并入三份提示词
 - 状态: 当前有效
@@ -158,7 +158,7 @@
   理由: 反方主战场 = codex/kimi 对 ~/AGENTS.md 的触达链不可靠 (F002 加载行为未确证, F006 强指针≠强制触达), 提示词是唯一必生效通道, 全量并入直接消灭该风险. 连带取消: 我此前提议的 SAFETY.md 安全内核 (约 5 行, 用户未采纳即被全量并入取代 — 内核是它的特例) 与启动时 AGENTS.md 存在性检查 (无对象可查; 挂载缺失属 birth bug, 由 D018 验收把关).
 - 依赖事实: F002, F003, F006
 - 预计影响: `swt.py` (AGENT_PROMPT_MOUNTS 去 ~/AGENTS.md 项, stage_agent_prompts 改拼装, ensure_agent_prompt_parents), `scripts/env_docs.py` (生成节), `agent-prompts/ENV.md` (新建), 旧三份 *_AGENTS.md 母本删除
-- 实际影响: 未实现 (待实施)
+- 实际影响: 已落地 — `swt.py AGENT_PROMPT_MOUNTS` 无 ~/AGENTS.md 项 (tests/test_swt_stage_env.py 断言); `stage_agent_prompts` 拼三份 = PUBLIC + ENV + 生成节 + 专属段; 旧三份 *_AGENTS.md 母本已删 (F003 形态被取代); `ensure_agent_prompt_parents` 对挂载父目录修属主
 
 ### D014 network.md 快照声明
 - 状态: 当前有效
@@ -166,7 +166,7 @@
 - 内容: network.md 首行声明 "birth 快照, deny 清单可能运行期变化, 以实际连通性为准" (用户 Q16 采纳; 反方反驳 "生成 docs 仍会过期" 的便宜解). 缺失测试的高风险覆盖检查补强并入 D001.
 - 依赖事实: F005, F006
 - 预计影响: `scripts/env_docs.py` network 文本
-- 实际影响: 未实现 (待实施)
+- 实际影响: 已落地 — `env_docs._network` 首行声明 "birth 快照, deny 清单可能运行期变化, 以实际连通性为准."
 
 ### D015 宿主与容器提示词互不同步, 允许不一致
 - 状态: 当前有效
@@ -175,7 +175,7 @@
 - 依赖事实: 无 (用户裁定)
 - 预计影响: sync-to-pi.py 不新增两环境一致性校验; 反方漂移校验提议不实施
 - 需要调整: 无 (D005 未实现即替代)
-- 实际影响: 未实现 (待实施)
+- 实际影响: 已落地 — `sync-to-pi.py compose_host_agents_md` 只写宿主 AGENTS.md, 对容器侧母本 `workflow/use-sandbox-worktree/agent-prompts/` 零触碰; 未新增两环境一致性校验 (tests/test_sync_to_pi_compose.py 断言 skill 母本漂移不报错)
 
 ### D016 navigate 容器内展示配方迁出 SKILL.md
 - 状态: 当前有效
@@ -183,7 +183,7 @@
 - 内容: workflow/navigate/SKILL.md 删除 "## 容器内展示配方" 整节 (用户新增调整); 制图 step 4 宿主侧起服务交付 URL 流程保留 (Q13=A). 迁移落点 (Q12=A): 固定语义入 ENV.md 条目 17 (8800 归 present, 8801 归 navigate 固定口); socat 桥配方全文入 ~/docs/web-ports.md 生成文本, 含: 起 web_server.py start 从 stdout url 读实际监听端口 P → 接桥前清 8801 残留死桥 → socat TCP-LISTEN:8801,fork,reuseaddr TCP:127.0.0.1:<P> → 桥随服务同生死 → 拼 http://<SWT_HOST_LAN_IP>:<SWT_HOST_WEB_PORT_2>/?roadmap=<ROADMAP.json 绝对路径> 交付 → 变量缺席软失败 + 交付包注明 + 经信箱向宿主索取 → 不改 web_server.py, 容器侧只加 socat 桥. 生成节 web-ports 指针改触发词 "要拼给用户的展示页 URL / 在容器内交付展示页 (起服务/架桥)". 用户确认的规则解释: "docs 全部生成" 指投放机制, 生成文档可含固定段落 (配方是固定文本但属窄分支步骤, 常驻太贵, 随 birth 投放到小抄).
 - 依赖事实: F005
 - 预计影响: `workflow/navigate/SKILL.md` (删节), ENV.md 条目 17, `scripts/env_docs.py` web-ports 文本, 生成节指针行
-- 实际影响: 未实现 (待实施)
+- 实际影响: 已落地 — `workflow/navigate/SKILL.md` "## 容器内展示配方" 节已删 (tests/test_env_docs.py 断言); 8800 归 present/8801 归 navigate 固定语义入 ENV.md 条目 17; socat 架桥配方全文入 `env_docs._web_ports`; 生成节 web-ports 指针用触发词
 
 ### D017 反方结论处置
 - 状态: 当前有效
@@ -191,7 +191,7 @@
 - 内容: 对反方七条反驳与五点立论的逐项处置 (评估经用户裁决): 采纳 — docs 快照声明 (→D014), 缺失测试补高风险覆盖检查 (→D001), 启动校验降级为 birth 验收挂载检查 (→D018); 被 pivot 取代 — 安全内核物化 (D013 全量并入是其超集), 双份母本校验提议 (D015 否决); 舍弃 — agent 可写观察区 (缺失测试不过: 冲突报宿主已是 ENV 纪律, 正式观察区防的弯路不存在, 过度设计), 重型降级模式 (禁 push/外联 — birth 模板验收已把关, 重复门槛不防新弯路).
 - 依赖事实: F006
 - 预计影响: 处置结果分别落在 D001/D013/D014/D015/D018, 本条无直接代码改动
-- 实际影响: 未实现 (待实施)
+- 实际影响: 已落地 (部分) — 采纳三项分别落入 D014 (network 快照声明)/D001 (高风险覆盖检查)/D018 (birth 挂载验收); 被 pivot 取代两项 (安全内核物化/双份母本校验) 未落地; 舍弃两项 (可写观察区/重型降级模式) 未落地
 
 ### D018 birth 验收加挂载就位检查
 - 状态: 当前有效
@@ -199,7 +199,7 @@
 - 内容: birth 收尾 (标 born 前) 进容器读三份提示词与 4 份小抄, 非空且含生成标记才算 born; 缺件按 PARTIAL 报 (用户 Q18=A). 审计依据: 使用者视角审核发现现有 birth 验收只查模型配置/凭据/网关, 不查提示词与小抄是否真挂进容器, 挂载路径写错会静默漏过, 容器 agent 拿着裸提示词开工.
 - 依赖事实: F003
 - 预计影响: `swt.py` birth 验收段 (agent-template install/check 之后)
-- 实际影响: 未实现 (待实施)
+- 实际影响: 已落地 — `swt.py verify_env_mounts` (swt.py:1199) 在标 born 前 (swt.py:3409) 进容器读 3 份提示词 + 4 份小抄, 非空且含 BIRTH_MARKER 才过; 缺件 raise SwtError(3, PARTIAL) 列缺件清单
 
 ### D019 生成内容全脚本产出, llm 不现写
 - 状态: 当前有效
@@ -207,7 +207,7 @@
 - 内容: 生成节与 ~/docs/ 全部由脚本产出 (swt.py 拼装 + scripts/env_docs.py 生成); 宿主侧 agent 与容器内 agent 运行时不手写任何注入内容 (用户收尾声明: "生成的内容, 均由脚本生成, 不要求 llm 现写").
 - 依赖事实: 无
 - 预计影响: `swt.py`, `scripts/env_docs.py`
-- 实际影响: 未实现 (待实施)
+- 实际影响: 已落地 — 生成节与四份小抄全部由 `env_docs.py` 纯函数产出, `swt.py stage_agent_prompts` 拼装; 无 llm 现写路径 (BR-003 审计: env_docs 无 IO/子进程/网络/llm)
 
 ## 事实
 
