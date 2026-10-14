@@ -33,7 +33,7 @@ class ClearSkillsTests(unittest.TestCase):
             old_skill = home / ".agents" / "skills" / "old-skill"
             old_skill.mkdir(parents=True)
 
-            self._run_main(pi_dir, ["y", "", "", "", "", "", "", "n"], home)
+            self._run_main(pi_dir, ["y", "", "", "", "", "", "n"], home)
 
             self.assertTrue(old_skill.is_dir())
 
@@ -44,7 +44,7 @@ class ClearSkillsTests(unittest.TestCase):
             old_skill = home / ".agents" / "skills" / "old-skill"
             old_skill.mkdir(parents=True)
 
-            self._run_main(pi_dir, ["y", "", "", "", "", "", "", "y"], home)
+            self._run_main(pi_dir, ["y", "", "", "", "", "", "y"], home)
 
             self.assertEqual([], list((home / ".agents" / "skills").iterdir()))
 
@@ -116,7 +116,7 @@ class RetireOldExtensionsTests(unittest.TestCase):
                 mock.patch("pathlib.Path.home", return_value=home),
                 mock.patch(
                     "builtins.input",
-                    side_effect=["n", "", "", "", "s", "", "n", "y"],
+                    side_effect=["n", "", "", "s", "", "n", "y"],
                 ),
                 contextlib.redirect_stdout(io.StringIO()),
             ):
