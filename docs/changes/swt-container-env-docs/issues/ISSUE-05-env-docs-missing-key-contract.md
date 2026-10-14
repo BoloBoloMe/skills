@@ -2,7 +2,7 @@
 - `../EXECUTION.md`
 - 来源: 双轴评审发现 (Spec 轴 c4 / 基准点 0e50ddd)
 ## 执行
-- [ ] 已实现
+- [x] 已实现
 ## 要构建什么
 补齐 TECHNICAL.md 已写明的接口契约: 拼装与渲染对缺失事实键按缺席文案渲染, 不抛异常.
 现状: `env_docs.py` 的 identity/agents 渲染对 `repo_path` `mother_dir` `branch` `code_path` `container` `template_name` `template_version` `snapshot_digest` `default_models` 等直接下标取键, 缺键抛 KeyError; `mode` 只有 "非 whitelist/blacklist" 分支, 缺键仍抛. 目前只有 `lan_ip` 与 `deny` 走了缺席分支. 生产路径 `swt.py agent_env_facts` 恒供全键, 所以线上没爆, 但接口契约未满足.
