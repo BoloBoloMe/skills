@@ -81,7 +81,7 @@ uv run python scripts/swt.py birth [--repo <主仓>] --branch <母体分支名�
   - 密钥: `<容器名>.ed25519` (`ssh -i <私钥> ...`), 脚本/herdr 的 BatchMode 走它.
 - herdr remote (走 ssh, 容器无需预启 server, remote attach 按需拉起): 两条完整命令 — 本机 `herdr --remote ssh://bolo@127.0.0.1:<宿主端口>`, 局域网远程机 `herdr --remote ssh://bolo@<host-LAN-IP>:<宿主端口>`; 我会在本机和远程机之间来回切换, 远程机私钥需先从 host 拷贝 (路径见上) 或直接用密码. 该命令须在非 herdr 终端运行 (herdr 会话内被套娃禁用拦截); 已在 herdr 里则走开窗格配方 (存续节).
 - 远程直飞命令模板 (容器带 headed 启动脚本才发): 见 reference/pull-window.md 设备侧拉起第 4 步, 变量照 STATE 与交付包实际值代换.
-- 容器内路径契约: 用户 `bolo` (home 与 host 字面相同), 代码固定克隆在 `/home/bolo/Workspace/<分支名>` (当前分支 = 母体分支); skill 库在 `~/.agents/skills/` (运行期从 host 同路径只读挂载, 实时跟随 host 版本; 项目 `.venv` 是镜像播种的可写匿名卷), pi 配置在 `~/.pi/agent/`.
+- 容器内路径契约: 用户 `bolo` (home 与 host 字面相同), 代码固定克隆在 `/home/bolo/Workspace/<分支名>` (当前分支 = 母体分支); skill 库在 `~/.agents/skills/` (运行期从 host 同路径只读挂载, 实时跟随 host 版本; 项目 `.venv` 是镜像播种的可写匿名卷), pi 配置在 `~/.pi/agent/`. 环境文本位置: 三 agent 全局指令 = birth 拼装的三份提示词, 只读单文件挂 `pi → ~/.pi/agent/AGENTS.md` / `codex → ~/.codex/AGENTS.md` / `kimi → ~/.kimi-code/AGENTS.md`; 本容器事实小抄四份 (`identity.md`/`network.md`/`web-ports.md`/`agents.md`) 只读目录挂 `~/docs/`; 容器内不设 `~/AGENTS.md`.
 - 风险声明: 连同 reference/risks.md 的风险项一起声明.
 完成标准: STATE `stage=born`, 容器内检出分支 = 母体分支, 交付包齐发 (显示栈降级/缺席时相应项改为降级/常态说明, 其余照发).
 
@@ -137,14 +137,14 @@ uv run python scripts/image-prep.py match      --repo <主仓> [--requirements <
 uv run python scripts/image-prep.py build      --repo <主仓> [--requirements <file>]
 ```
 
-- 三层结构: **base 层** (OS + git + sshd + node + pi CLI + uv + herdr + socat (git 桥双端) + 容器内排障件 + skill 公共资源 COPY (不含 agent 模板, 运行期被 host 只读挂载遮蔽) + Pi 公共交互/键位/扩展资源 + 固定 agent 初始化工具)  固定且跨项目共享; **display 层** FROM 当前 base (VNC 栈 + chromium + waypipe, 清单缺省 `image/requirements-browser.md`); **项目层** FROM 当前 display, 由你读项目信号推导依赖件叠加, 清单与我确认后才构建.
+- 三层结构: **base 层** (OS + git + sshd + node + pi/codex/kimi 三 CLI + uv + herdr + socat (git 桥双端) + 容器内排障件 + skill 公共资源 COPY (不含 agent 模板, 运行期被 host 只读挂载遮蔽) + Pi 公共交互/键位/扩展资源 + 固定 agent 初始化工具)  固定且跨项目共享; **display 层** FROM 当前 base (VNC 栈 + chromium + waypipe, 清单缺省 `image/requirements-browser.md`); **项目层** FROM 当前 display, 由你读项目信号推导依赖件叠加, 清单与我确认后才构建.
 - 匹配谓词链: display 须基于当前 base, 项目层须基于当前 display — base 更新后旧 display 自然淘汰, display 更新后旧项目镜像自然淘汰. **base 与 display 都只在我明说时重建**, 无自动检测; display 缺失/过期时项目构建报 `NO-DISPLAY`/`DISPLAY-STALE`, 先 build-display 再 build. skill 纯内容变更不需重建 base (挂载实时生效); pyproject/uv.lock 依赖变更需重建, 否则容器内 venv 种子与 lock 失配且无网重装.
 - 需求清单格式, 匹配规则, tag/digest/contents.md, 记录落点, base 复制过滤 → reference/image-prep.md. 新镜像不得写 codex-config 等静态模型路由条目; 模型配置只走 birth 模板. 模板数据/契约/固定快照和测试 → reference/agent-templates.md.
 - image-prep 直用时 match/build 的 `--requirements` 为必填 (birth 内部自动代填缺省路径 `<records-root>/<项目slug>/requirements.md`, 只有绕开 birth 手敲时才需显式给). 旧镜像保留不删.
 
 ## 母本与分发
 
-- **agent 提示词母本制**: 母本在仓库内 `agent-prompts/{pi,codex,kimi-code}_AGENTS.md` — 改它 = 改容器内 agent 的行为基线. birth 时拷贝到 `<records-root>/runtime/<identity>/agent-prompts/<容器>/` 留档 (可追溯每容器用了哪版), 再只读单文件挂载进容器: pi → `/home/bolo/.pi/agent/AGENTS.md`, codex → `/home/bolo/.codex/AGENTS.md`, kimi-code → `/home/bolo/.kimi-code/AGENTS.md` (官方文档: 全局指令文件随 KIMI_CODE_HOME, 缺省 `~/.kimi-code/`). 母本更新只对新 birth 的容器生效, 不动运行中容器. 维护纪律: 三母本的通用核逐字相同, 改通用核必须三份同步; 容器契约各行与存续节 (显示栈/窗口直飞) 呼应, 改动两边同步.
+- **agent 提示词拼装制**: 母本在仓库内 `agent-prompts/` 五份 — `PUBLIC.md` (三 agent 公共核), `ENV.md` (容器环境纪律 0-29), `PI.md`/`CODEX.md`/`KIMI.md` (各 agent 专属段, codex/kimi 现为 0 字节占位) — 改它 = 改容器内 agent 的行为基线. birth 按 `PUBLIC.md + ENV.md + 生成节 + 专属段` 拼成三份提示词 (空段跳过, 三份只差专属段); 生成节由 `scripts/env_docs.py` 按 create 前事实生成 (4 行触发式指针). 拼装产物连同四份本容器事实小抄落 `<records-root>/runtime/<identity>/agent-prompts/<容器>/` 留档 (可追溯每容器用了哪版), 再只读挂载进容器: 三份提示词单文件挂 pi → `/home/bolo/.pi/agent/AGENTS.md`, codex → `/home/bolo/.codex/AGENTS.md`, kimi-code → `/home/bolo/.kimi-code/AGENTS.md` (官方文档: 全局指令文件随 KIMI_CODE_HOME, 缺省 `~/.kimi-code/`); 四份小抄 (`identity.md`/`network.md`/`web-ports.md`/`agents.md`) 目录挂 `~/docs/`. 容器内不设 `~/AGENTS.md`. 母本更新只对新 birth 的容器生效, 不动运行中容器. 维护纪律: 公共核只改 `PUBLIC.md` 一处, 环境纪律只改 `ENV.md`, 专属段落改各自文件, 无三份逐字同步; 宿主提示词与容器提示词互不同步, 两边允许不一致; 容器契约各行与存续节 (显示栈/窗口直飞) 呼应, 改动两边同步.
 - **分发**: 仓库里的改动到达使用现场有两条路, 别混淆 — swt.py / 本 SKILL.md 与 reference/ (host 侧 agent 读): 仓库根 `uv run python sync-to-pi.py` 同步到 host skills 目录即生效; 信箱脚本在独立 mailbox skill (`workflow/mailbox/scripts/mailbox.py` → `~/.agents/skills/mailbox/`), 同经 sync-to-pi 分发. 设备侧现场是各自的副本, 更新后取信会话重跑脚本即生效 (无扩展, 无后台常驻). `present` skill (容器内): 它是 base 镜像构建期 COPY 进镜像的, 只改仓库文件容器拿不到 — sync-to-pi 后还须重建 base (`image-prep build-base`, 按镜像管理节级联 display/项目层), 之后 birth 的新容器才拿到新版; 现有容器不受影响也不补.
 
 ## 环境变量继承 (env.conf)

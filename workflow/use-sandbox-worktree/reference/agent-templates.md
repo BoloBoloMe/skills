@@ -22,7 +22,7 @@ uv run python scripts/swt.py birth ... --agent-template cliproxyapi
 - `agent-template.py`: 固定校验/生成/安装/验收入口; 不构建镜像, 不接受模板 shell 命令.
 - 同协议的新网关主要新增数据. 新协议/客户端格式须扩展转换器并测试; 不把安装命令塞入模板.
 
-Codex 原生目录须含官方基础指令才能由当前客户端解析. 首版从官方 `rust-v0.162.1` 目录静态取 7 个已声明的 Responses 模型及必要字段, 不从主机取配置, 不在 birth 下载/猜目录. 关闭 WebSocket/Responses Lite/自动升级模型/未验证的实验工具. 原生基础指令是客户端目录数据, 不替代三份公共 AGENTS.md 母本.
+Codex 原生目录须含官方基础指令才能由当前客户端解析. 首版从官方 `rust-v0.162.1` 目录静态取 7 个已声明的 Responses 模型及必要字段, 不从主机取配置, 不在 birth 下载/猜目录. 关闭 WebSocket/Responses Lite/自动升级模型/未验证的实验工具. 原生基础指令是客户端目录数据, 不替代 birth 拼装的三份 agent 提示词 (`PUBLIC.md + ENV.md + 生成节 + 专属段`).
 
 ## 固定快照和目标绑定
 
