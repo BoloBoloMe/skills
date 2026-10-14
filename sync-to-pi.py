@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """pi skill sync
 ----------------
-问答式同步脚本: 将本仓库中的 skills 同步到 ~/.agents/skills/, extensions/pi/AGENTS.md 同步到 pi agent 目录.
+问答式同步脚本: 将本仓库中的 skills 同步到 ~/.agents/skills/, extensions 同步到 pi agent 目录,
+宿主 AGENTS.md 由仓库根 agent-prompts/PUBLIC.md 与 PI.md 拼接生成.
 
 用法:
     python sync-to-pi.py
@@ -312,6 +313,24 @@ def _backup_and_atomic_write(path: Path, text: str) -> None:
             tmp.unlink()
 
 
+def compose_host_agents_md(repo_root: Path, pi_dir: Path) -> None:
+    """宿主 AGENTS.md = 仓库根 agent-prompts/PUBLIC.md 与 PI.md 顺序拼接.
+
+    每次运行无条件重写 (D004), 写前经 _backup_and_atomic_write 备份 .bak.
+    对容器侧母本零触碰 (D015).
+    """
+    masters = repo_root / "agent-prompts"
+    mothers = (masters / "PUBLIC.md", masters / "PI.md")
+    missing = [p for p in mothers if not p.exists()]
+    if missing:
+        raise FileNotFoundError(
+            "缺少母本文件: " + ", ".join(str(p) for p in missing)
+            + " (无法生成宿主 AGENTS.md)")
+    text = (masters / "PUBLIC.md").read_text(encoding="utf-8")
+    text += (masters / "PI.md").read_text(encoding="utf-8")
+    _backup_and_atomic_write(pi_dir / "AGENTS.md", text)
+
+
 def _reconcile_extensions(skills_dir: Path, pi_dir: Path) -> None:
     """扫描 <skills_dir>/*/pi-extension, 对 settings.json extensions 做集合对账 (M3/D012).
 
@@ -422,7 +441,8 @@ def main() -> None:
 
     print(_ct("pi skill sync", _C.BLD))
     print(f"仓库根目录: {SRC(str(repo_root))}")
-    print(Q("本脚本将仓库中的 skills 同步到 ~/.agents/skills/, extensions / pi/AGENTS.md 同步到 pi agent 目录"))
+    print(Q("本脚本将仓库中的 skills 同步到 ~/.agents/skills/, extensions 同步到 pi agent 目录"))
+    print(Q("宿主 AGENTS.md 将无条件由仓库根 agent-prompts/PUBLIC.md 与 PI.md 拼接重写 (写前备份 .bak)"))
     print(SKIP("注意: 目标路径已有内容将被直接覆盖"))
     print(SKIP("首次使用 general/access-web 或 general/present 前, 按其 SKILL.md 的 Setup 完成依赖安装 (uv sync + playwright install chromium)"))
 
@@ -436,6 +456,13 @@ def main() -> None:
     print()
     print(Q(f"pi agent 根目录: {pi_dir}"))
 
+    # ── 1.5 宿主 AGENTS.md 无条件拼接 (D004/BR-007), 无逐项询问 ────────
+    try:
+        compose_host_agents_md(repo_root, pi_dir)
+    except FileNotFoundError as e:
+        print(ERR(f"\n{e}"))
+        sys.exit(1)
+
     # ── 2. 清空选项 ──────────────────────────────────────────────────
     skills_dir = Path.home() / ".agents" / "skills"
     clear_skills = _ask_yn(CNF(f"清空 {skills_dir} 下的所有旧 skills?"))
@@ -444,16 +471,6 @@ def main() -> None:
 
     # ── 3. 逐项询问 ──────────────────────────────────────────────────
     plan: list[PlanItem] = []
-
-    # pi/AGENTS.md (单文件)
-    plan.extend(
-        _query_top_file(
-            repo_root,
-            "pi/AGENTS.md",
-            repo_root / "pi" / "AGENTS.md",
-            pi_dir / "AGENTS.md",
-        )
-    )
 
     # pi/keybindings.json (单文件)
     plan.extend(
