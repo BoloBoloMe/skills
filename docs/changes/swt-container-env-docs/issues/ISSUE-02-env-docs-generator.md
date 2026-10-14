@@ -1,7 +1,7 @@
 ## 父级
 - `../EXECUTION.md`
 ## 执行
-- [ ] 已实现
+- [x] 已实现
 ## 要构建什么
 skill 侧 agent-prompts/ 换为五份母本 (PUBLIC.md, ENV.md, PI.md, 空占位 CODEX.md/KIMI.md, 删旧三份 *_AGENTS.md), ENV.md 条目 0-29 按账本 D008 全文落定; 新建 scripts/env_docs.py 纯函数生成器 (生成节 + 四份小抄, 文本含 navigate 架桥配方); navigate/SKILL.md 删 "容器内展示配方" 节 (制图 step 4 保留); 全部配纯函数单测.
 ## 覆盖依据

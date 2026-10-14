@@ -1,7 +1,7 @@
 ## 父级
 - `../EXECUTION.md`
 ## 执行
-- [ ] 已实现
+- [x] 已实现
 ## 要构建什么
 使用者运行 sync-to-pi.py 后, 宿主 ~/.pi/agent/AGENTS.md 无询问地变为 仓库根 agent-prompts/PUBLIC.md 与 PI.md 的顺序拼接, 旧内容自动备份 .bak; 母本缺失时报错且目标文件不动; 容器侧母本被修改时拼接照常成功 (两环境互不同步); 仓库 pi/AGENTS.md 删除, 仓库根 agent-prompts/ 新建.
 ## 覆盖依据
