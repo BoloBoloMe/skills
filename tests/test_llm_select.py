@@ -95,6 +95,13 @@ class DescribeTests(unittest.TestCase):
         out = score.describe({}, "", {"unscored": True, "free": True})
         self.assertIn("免费", out)
         self.assertIn("未评分", out)
+        self.assertIn("N/A", out)
+        self.assertNotIn("按基准 1", out)
+
+    def test_unscored_does_not_claim_baseline_placeholders(self):
+        out = score.describe({}, "", {"unscored": True})
+        self.assertIn("N/A", out)
+        self.assertIn("不能用于比较", out)
 
     def test_partial_marks_missing_dims(self):
         out = score.describe(FULL_DIMS, "", {"partial": ["speed", "knowledge"]})

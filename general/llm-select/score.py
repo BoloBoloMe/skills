@@ -163,10 +163,10 @@ def describe(scores: dict, note: str, flags: dict) -> str:
     flags: {'unscored', 'partial' (缺失维列表), 'free', 'weak' (evidence 弱依据维列表)}."""
     if flags.get("free"):
         return "免费/零成本: 该模型单位成本为 0, 价格端已封顶, 选型时按最便宜对待." + (
-            " 未评分: 各维仍占位, 总分不具区分度." if flags.get("unscored") else ""
+            " 未评分: 缺失的能力维显示 N/A, 画像总分不能用于比较." if flags.get("unscored") else ""
         )
     if flags.get("unscored"):
-        return "未评分: 各维暂按基准 1 占位, 总分不具区分度."
+        return "未评分: 缺失的能力维显示 N/A, 画像总分不能用于比较."
     strong = [f"{DIM_CN[d]}({fmt(scores[d])})" for d in DIMS if isinstance(scores[d], (int, float)) and scores[d] > 1.05]
     weak = [f"{DIM_CN[d]}({fmt(scores[d])})" for d in DIMS if isinstance(scores[d], (int, float)) and scores[d] < 0.95]
     parts = []
