@@ -6,7 +6,7 @@
 
 两种选择, 各付一种负载:
 
-- **模型调用** skill 的 `description` 常驻上下文. agent 能据描述自动触发它, 其他 skill 也能调用它 (固定格式: "调用 `另一个 skill 的名字` skill"); *模型调用* 天然*包含* *用户可达*, 我也能随时点名. description 要写成触发器: 只写 agent 什么时候该调用它, 不介绍 skill 是什么. 它是 skill 的顶层 *上下文指针*, 被迫始终加载 — 用常驻 *上下文负载* 换可发现性, 所以必须激进剪枝. 内容全是 *参考材料* 的 *模型调用* skill 还有个附带用途: 安置共享 *参考材料*, 其他 skill 调用它即可共用, 多处需要的东西只存一份. 机制: 省略 `disable-model-invocation`, 写面向 LLM 的 description, 带上触发 *分支* (`SKILL.md` 的 *指针* 写法规则全部适用). description 内容里不能用冒号 `:`.
+- **模型调用** skill 的 `description` 常驻上下文. agent 能据描述自动触发它, 其他 skill 也能调用它 (固定格式: "调用 `另一个 skill 的名字` skill"); *模型调用* 天然*包含* *用户可达*, 我也能随时点名. description 要写成触发器: 只写 agent 什么时候该调用它, 不介绍 skill 是什么. 它是 skill 的顶层 *上下文指针*, 被迫始终加载 — 用常驻 *上下文负载* 换可发现性, 所以必须激进剪枝. 内容全是 *参考材料* 的 *模型调用* skill 还有个附带用途: 安置共享 *参考材料*, 其他 skill 调用它即可共用, 多处需要的东西只存一份. 机制: 省略 `disable-model-invocation`, 写面向 LLM 的 description, 带上触发 *分支* (`SKILL.md` 的 *指针* 写法规则全部适用). description 的可计算格式约束由下方脚本校验.
 
 - **用户调用** skill 的 description 不进上下文. agent 不知道它存在, 直到我亲自提名, 或另一个 skill 写 "调用 `x` skill" — agent 根据名字到 skill 目录下找到它. 零 *上下文负载*, 但消耗 *认知负载*: 得有人记得它存在, 并说得出名字. 机制: 设 `disable-model-invocation: true`; `description` 转为面向人类: 一行摘要, 剥掉触发词.
 
@@ -19,7 +19,7 @@
 ## 命名
 
 skill 的名字本身就是一个 *引导词*: 它在我的 prompt 和其他 skill 的 "调用 `x` skill" 里作为 token 反复出现, 每次都触及同一组行为. 命名优先用预训练已有的概念词/术语 (`tdd`, `probe`, `handoff`): 它们免费招募 LLM 先验, 一个 token 锚定一整片行为; 自造词招募不到先验, 还得另花 token 下定义. 没有贴切的现成词, 就退而动词短语 (`explore-repo`, `write-a-skill`), 让名字读起来像命令, 提名即指令.
-硬约束由机制导出: 小写 kebab-case; 目录名必须与 frontmatter `name` 一致, 否则 *按名字抵达* 断裂; 名字必须是我真会在 prompt 里说出的词 — 我不会说的名字, 触发器永远不会被扣动.
+名字必须是我真会在 prompt 里说出的词 — 我不会说的名字, 触发器永远不会被扣动. 格式与目录名的一致性由下方脚本校验; 目录名不一致会让 *按名字抵达* 断裂.
 
 ## 按 *调用* 拆分
 
@@ -31,4 +31,5 @@ skill 的名字本身就是一个 *引导词*: 它在我的 prompt 和其他 ski
 
 ## 脚本
 
+写好或改好 skill 后, 从当前 `writing-for-llm` skill 所在目录定位 `check_skill.py`, 运行 `uv run python <该脚本的绝对路径> <目标 SKILL.md 的绝对路径>`. 脚本不依赖当前工作目录, 同步到别处后仍按所在目录定位. 退出码为 0 才算通过; 否则按报错修改后重跑, 不用目检替代. 它检查 frontmatter 中 `name` 是否为小写 kebab-case 且与目录名一致, 模型调用 skill 的 `description` 是否含冒号, 并拒绝常见的 YAML 空值/布尔值/数值等非文本写法; 模型调用时省略 `disable-model-invocation`. 它只检查这些约束, 不代替完整的 YAML 校验. 这些硬约束不需要 LLM 推断. 它不决定调用方式, 也不判断触发措辞或内容质量.
 需要保存, 复用或含多步逻辑的自动化, 优先写 Python 脚本, 不用 Bash/shell 实现同等逻辑. 默认只用标准库; 必须用第三方库时, 先说明充分理由并取得我同意. 遵循项目声明的运行方式和版本约束, 不预设 `python`, `python3`, `py` 或解释器路径. 避免平台专用的 Python API, 命令和语法. 简短的一次性终端命令不算这里说的脚本.
