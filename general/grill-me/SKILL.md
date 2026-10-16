@@ -1,6 +1,6 @@
 ---
 name: grill-me
-description: 设计盘问.
+description: 盘问我以敲定决策.
 disable-model-invocation: true
 ---
 

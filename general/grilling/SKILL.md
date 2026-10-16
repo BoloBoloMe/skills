@@ -1,6 +1,6 @@
 ---
 name: grilling
-description: 当你认为需要时, 盘问我以敲定设计决策.
+description: 当你认为需要时, 盘问我以敲定决策.
 ---
 
 # 盘问

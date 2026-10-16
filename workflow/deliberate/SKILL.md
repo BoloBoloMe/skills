@@ -1,6 +1,6 @@
 ---
 name: deliberate
-description: 审议并关闭产品与技术决策.
+description: 盘问我以敲定决策, 然后将决策落盘.
 disable-model-invocation: true
 ---
 
