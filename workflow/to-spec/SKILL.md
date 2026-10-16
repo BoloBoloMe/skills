@@ -6,14 +6,11 @@ disable-model-invocation: true
 
 开始前, 调用 `domain-awareness` skill 只读感知当前工作目录的领域模型.
 
-目标: 编写当前变更的两份 spec: 产品写 `PRODUCT.md`, 技术写 `TECHNICAL.md`. spec 是下游执行的权威输入, 缺一份执行链就缺信源. ID 在 feature 内稳定且连续.
+目标: 编写两份 spec: 产品写 `PRODUCT.md`, 技术写 `TECHNICAL.md`. spec 是下游执行的权威输入, 缺一份执行链就缺信源. ID 在 feature 内稳定且连续.
 输出为 `<产物根目录>/PRODUCT.md` 与 `<产物根目录>/TECHNICAL.md`; 产物根目录默认 `docs/changes/<feature-slug>/`, 调用方可指定其他根目录.
 
 写作前, 逐项检查已确认决策与事实是否已包含编写 spec 所需的全部内容. 标准是: 仅通过转述已定决策和事实便可将 spec 中的每一项内容都填出来, 填不出就是有缺口.
-存在缺口或冲突 → 调用 `deliberate` skill 敲定并固化, 把下方缺口盘问要求作为盘问重点传达; deliberate 固化产物后, 以更新后的决策与事实继续.
-
-缺口盘问要求:
-先敲定 Product Spec, 再敲定 Technical Spec.
+存在缺口或冲突 → 调用 `deliberate` skill 敲定并固化, 把下方缺口盘问要求作为盘问重点传达; deliberate 固化产物后, 以更新后的决策与事实继续. 先敲定 Product Spec, 再敲定 Technical Spec.
 
 # 验收标准确认
 
@@ -149,4 +146,12 @@ eg:
 
 完成 TECHNICAL.md 后, 执行本 skill 同目录的 check-tech.py (`uv run <skill 目录>/check-tech.py <TECHNICAL.md 路径>`), 退出码 0; 节名, 节序与测试接缝映射校验一律以脚本结果为准, 禁止目检替代脚本.
 
-两份 spec 落盘后, 在会话中告诉我: 已生成的路径, check-ac.py 与 check-tech.py 的机检结果, 是否发现来源冲突. 不复述文档内容, 不要求我阅读后确认.
+# 子代理检查
+
+两份 spec 都机检通过后, 启动一名子代理做两件事:
+1. 逻辑自洽检查: 充分理解产物内容 (包括决策账本), 校验它们的内容是否能形成逻辑闭环, 彼此的内容是否不多/不漏/不矛盾.
+2. 反方攻击: 站在反方的立场攻击当前决策. 让子代理调用 `opposing-viewpoint` skill 来完成, 你不要自己调用这个 skill 或者是读取其中的内容, 也不必检查它是否存在, 让子代理调用它就好.
+
+发现问题后, 先向我汇报, 不要做额外操作:
+- 自洽检查若发现有问题, 须忠实向我汇报.
+- 反方攻击的结果则需要你先进行评估 (成立与否及理由), 舍弃不成立的, 成立的与自扫结论一同汇报. 有能改变决定的发现, 就回到盘问逐项解决.
