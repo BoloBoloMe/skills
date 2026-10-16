@@ -15,9 +15,7 @@
 
 ## 网络控制 (net-firewall, 一般由 swt 编排)
 
-普通白名单增删/补理由先用 `swt.py network show/update --name <目标>`, 不手拼完整 allow 或调用底层 apply 绕过审批. network 输出末行 `NETWORK {...}`, 0 成功/无变化, 1 等待差异审批, 2 输入或前置不足, 3 执行失败 (即使已回退), 4 缺工具/环境不支持. 只改指定目标, 自动项由目标事实维护. 旧条目缺理由可保留或如实补写"继承自旧任务,用途未核实", 不编造为当前任务必需.
-
-出现 network-change 时先 show 看 pending/checks, 再 `network recover --name <目标>` 预览旧配置恢复, 我批准后带 `--confirm <收据ID>` 重跑. 有限恢复不接管未知规则/同名新 ID, 停止目标只恢复记录而不 start. 恢复失败保留标记, 不通过自动 stop/restart/clear 救场; 不要用旧版脚本处理新事务. 若我显式终结事务原目标, 脚本保留私有事务审计并清活动标记, 不报告为恢复成功. 实际规则与记录不一致须先报告差异让我决定, 对应人工收敛需另行授权, 不以重新审批收编未知状态.
+普通规则维护和 `network-change` 恢复先按 [network.md](network.md) 的预览/审批流程处理. 本节只解释底层机制和另行授权的救场操作, 不替代该流程.
 
 底层正常由 birth/resume/terminate/network 自动调用. 以下是另行授权的手救场原语, 必须从目标 inspect 的 SandboxKey 核对 netns, 不用缺省路径猜业务目标:
 ```text

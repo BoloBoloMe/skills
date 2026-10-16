@@ -1,6 +1,11 @@
-# birth/resume 交付包
+# 接入信息与交付
 
-birth/resume 成功交付, 或 status 显示健康容器且我需要完整接入信息时读取. 只用本次目标容器的实际 STATE/脚本输出, 不猜地址/端口, 不夹带其他母体对. 缺项写明原因, 显示栈降级/旧容器无 web 口也不静默略过. 不自动打开页面.
+birth/resume 成功, 或交付健康容器的现有入口前必读. 只用本次目标容器的实际 STATE/脚本输出, 缺项紧跟原因; 地址/端口未确认就标缺席, 不夹带其他母体对. 不自动打开页面.
+
+## 当前会话持续取信
+
+交付前调用 `mailbox` skill, 在当前宿主会话用 `mailbox_listen(action="start")` 开启/复用持续取信, 核对返回 sessionId 就是当前会话且正在监听. 交付后保留守护, 不停/覆盖其他会话, 不用阻塞裸脚本代替. 服务/扩展缺席则报告未监听及原因, 仍可交付基础入口, 不声称随时可收信.
+容器回信目标来自 birth 创建者真实 `PI_SESSION_ID`, 固定在目标记录/生成提示词/`identity.md` 中, 重入/resume 不改投. 将该目标与当前监听 sessionId 对照报告: 两者不同就说明仍回原会话, 当前监听不会接管原目标的信. 缺值标未登记, 不用容器/Herdr pane ID 或机器级 host 名代替.
 
 ## 展示方式
 
@@ -16,7 +21,7 @@ birth/resume 成功交付, 或 status 显示健康容器且我需要完整接入
 
 会话里用短标题和空行隔开各区, 命令独立代码块, URL 独立一行; 不把多个命令挤进一条项目符号, 不用宽表格装长命令, 不整段粘贴 STATE JSON. 标签与实际值分开, 缺席原因紧跟对应入口, 最后只归纳待处理项, 不重复所有信息.
 
-pi 的 `/list-sandbox` 选择容器后全屏显示详情, 固定概况/分区导航/操作提示, 按用途切换分区并滚动查看长命令; 关闭后返回原会话, 不把凭据/入口注入 LLM 上下文. 小终端也要能滚到完整内容, 不以截断换整齐. 概况只表示已采集事实, 不冒充交互登录或任务验证.
+pi 的 `/list-sandbox` 可分区查看容器详情, 不把凭据/入口注入 LLM 上下文. 已采集概况不是交互登录或任务验证的证据.
 
 ## SSH 登录
 
@@ -69,24 +74,21 @@ noVNC 无密码, SSH 凭据是访问门槛. 栈降级/缺席时报告状态, 不
 
 ### 本机直通与窗口直飞
 
-按 `host-display` 报告: `ok` 可直接在宿主机桌面接窗口, `degraded` 已回退 noVNC, `absent` 是远程/无桌面宿主的常态. 无 headed 启动脚本就明确无远程直飞; 有脚本时按 [pull-window.md](../../mailbox/reference/pull-window.md) 的设备侧模板代入本次端口/地址, 命令与设备前提分开列出.
+按 `host-display` 报告: `ok` 可直接在宿主机桌面接窗口, `degraded` 已回退 noVNC, `absent` 是远程/无桌面宿主的常态. 无 headed 启动脚本就明确无远程直飞; 有脚本时按 [mailbox 的设备侧拉窗模板](../../mailbox/reference/pull-window.md) 代入本次端口/地址, 命令与设备前提分开列出.
 
 ## 凭据与路径
 
-- 人工 SSH 密码: `sandbox`. 密码文件 `<records-root>/runtime/<identity>/ssh/<容器名>.password` (0600).
-- 脚本/Herdr 私钥: 同目录 `<容器名>.ed25519`, 免交互命令用 `ssh -i <私钥> ...`. 不打印私钥内容. 两种凭据随 terminate 清除.
-- identity 为 `<项目slug>-<sha1(母体目录路径)前8位>`, 每对独立.
-- 容器账户 `bolo`, home `/home/bolo`, 代码 `/home/bolo/Workspace/<母体分支名原文>`, 分支含 `/` 时为嵌套目录.
+- 人工 SSH 密码: `sandbox`. 密码文件/脚本与 Herdr 私钥路径取目标记录的 `password_file`/`ssh_private_key`, 不自行计算 identity 或拼路径. 免交互命令用 `ssh -i <私钥> ...`, 不打印私钥正文; 两种凭据随 terminate 清除.
+- 容器账户 `bolo`, home 为 `~`; 代码路径取目标记录的 `clone_dir`, 不拿母体目录名替代分支或代码路径.
 - host `~/.agents/skills/` 同路径只读挂载, 项目 `.venv` 为可写匿名卷, pi 配置 `~/.pi/agent/`.
 - pi/codex/kimi 全局指令为 birth 拼装的只读文件: `~/.pi/agent/AGENTS.md`, `~/.codex/AGENTS.md`, `~/.kimi-code/AGENTS.md`. 本容器事实小抄在 `~/docs/{identity,network,web-ports,agents}.md`, 不设 `~/AGENTS.md`.
-- birth 把创建者的 host 会话 sessionId 固定进三份提示词的生成节和 `identity.md`; 重入/resume 不改投另一个会话. 接手者当前 sessionId 与原目标不同时明确说明, 当前监听不会接管投给原会话的信. 无真实 sessionId 就标未登记, 不拿容器/Herdr pane ID 或机器级 host 名冒充.
-- **交付前在当前 host 会话开启 mailbox 持续取信**, pi 用 `mailbox_listen(action="start")`, 核对返回的 sessionId 就是当前会话且正在监听. 守护在后台等待并把容器来信注入当前会话, 不用阻塞的裸脚本代替. 已监听直接复用, 交付后保留, 不停其他会话. 信箱缺席/扩展未加载时明确报告未监听及原因, 不影响基础入口交付, 也不声称随时可收信.
-- host `~/.m2/settings.xml` 可读时 birth 留私有快照并只读挂到同路径, `~/.m2/` 仍可写 Maven 仓库. 缺失/不可读则跳过; host 后续更新不实时同步, resume 不为旧容器补挂.
+- 收信信息列出上方已核对的当前监听状态与容器原回信目标.
+- 按目标记录报告可选 Maven settings 快照是否挂载; 凭据暴露和更新边界见 [risks.md](risks.md).
 
 ## 检查与注意事项
 
 按 [task-conditions.md](task-conditions.md) 分开报告容器可登录/依赖检查/测试条件/写权限的通过/受阻/未检查, 原因与检查时间. 未给具体任务就标任务条件未检查. 证据仍适用就复用, 无写入批准不跑会自清理的写探针. 条件缺口不阻塞独立工作或基础入口交付, 但不宣称全部任务条件具备.
 
-[risks.md](risks.md) 的风险同区交付, 尤其 Web 局域网无认证/noVNC 无密码/敏感显示内容. 母体只读审阅/diff/试跑, 跟踪文件保持不变, 否则容器 push 被拒; 未跟踪文件不阻塞.
+读取 [risks.md](risks.md), 将风险同区交付, 尤其 Web 局域网无认证/noVNC 无密码/敏感显示内容, 并提醒主流程中的母体只读纪律.
 
-完成标准: STATE `stage=born`, 容器分支与母体一致, Herdr machine 登记可核对, 当前 host 收信状态如实报告, 所有入口/凭据/缺席原因/任务条件/风险均按区可查.
+完成标准: 目标基础通道与 Herdr 登记有事实依据, 当前收信状态与原回信目标已区分, 入口/凭据路径/缺席原因/任务条件/风险均按区可查.
