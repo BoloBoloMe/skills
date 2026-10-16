@@ -61,7 +61,7 @@ def small_roadmap(path: Path) -> Path:
         ("milestone-04", "prototype", "待处理", ["milestone-02"]),
         ("milestone-05", "task", "待处理", ["milestone-03"]),
         ("milestone-06", "research", "待处理", ["milestone-02"]),
-        ("milestone-07", "task", "待处理", ["milestone-04", "milestone-05", "milestone-06"]),
+        ("milestone-07", "acceptance", "待处理", ["milestone-04", "milestone-05", "milestone-06"]),
     ]
     ms = {i: {"title": "巡检 %s" % i[-2:], "type": t, "question": "q", "status": s, "blocked_by": d}
           for i, t, s, d in spec}
@@ -169,6 +169,14 @@ def run(port: int, fixtures: dict) -> None:
         page.on("pageerror", lambda e: errors.append(str(e)[:150]))
         page.goto(url(port, fixtures["small"]))
         page.wait_for_timeout(1800)
+        legend = page.locator("#legend").inner_text()
+        page.evaluate("""() => { window.__acceptLabel = false;
+          const P = CanvasRenderingContext2D.prototype, o = P.fillText;
+          P.fillText = function (t) { if (String(t).includes('验收')) window.__acceptLabel = true;
+            return o.apply(this, arguments); }; }""")
+        page.wait_for_timeout(350)
+        report("验收类型展示", "验收" in legend and "acceptance" in legend and page.evaluate("() => window.__acceptLabel"),
+               "图例和画布标注均识别验收类型")
         report("常规视图帧率", float(page.evaluate(FPS_JS)) >= 55, "%s fps (1440x900, 期望 >= 55)" % page.evaluate(FPS_JS))
 
         page.mouse.move(707, 447)

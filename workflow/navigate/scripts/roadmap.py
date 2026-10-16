@@ -32,7 +32,7 @@ TOP_LEVEL_FIELDS = [
 ]
 
 STATUS_VALUES = ["待处理", "进行中", "已关闭"]
-TYPE_VALUES = ["research", "deliberate", "prototype", "task"]
+TYPE_VALUES = ["research", "deliberate", "prototype", "task", "acceptance"]
 
 # 新增里程碑用户必填字段 (BR-004); 其余成员字段由默认值补齐
 MILESTONE_REQUIRED = ["title", "type", "question"]

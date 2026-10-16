@@ -28,9 +28,9 @@
 | --- | --- | --- | --- | --- |
 | `title` | string | 是 | 无 | 简述 |
 | `status` | string 枚举 | 否 | `待处理` | `待处理` / `进行中` / `已关闭` |
-| `type` | string 枚举 | 是 | 无 | `research` / `deliberate` / `prototype` / `task` |
+| `type` | string 枚举 | 是 | 无 | `research` / `deliberate` / `prototype` / `task` / `acceptance` |
 | `blocked_by` | 里程碑 id 字符串数组 | 否 | `[]` | 引用的 id 必须已存在, 不允许环 (含自环) |
-| `question` | string | 是 | 无 | 本 Milestone 要解决的决策或调查 (详述) |
+| `question` | string | 是 | 无 | 本 Milestone 要解决的问题或完成的工作 (详述) |
 | `artifacts` | 字符串数组 | 否 | `[]` | 产物链接 |
 | `close_summary` | string 或 null | 否 | `null` | 关闭摘要 |
 

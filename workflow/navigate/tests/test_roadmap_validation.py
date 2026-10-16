@@ -85,6 +85,27 @@ def test_new_milestone_missing_required_field(tmp_path, missing):
     assert f.read_bytes() == before
 
 
+def test_acceptance_type_created_and_existing_task_converted(tmp_path):
+    """验收为独立枚举; 新建及旧图 task 转验收均能经守门脚本保存."""
+    f = tmp_path / "ROADMAP.json"
+    write_doc(f, legal_doc())
+    obj, code, _ = run_cli(
+        "save", f, "milestones.milestone-02",
+        json.dumps({"title": "验收", "type": "acceptance", "question": "逐项核对证据"},
+                   ensure_ascii=False))
+    assert code == 0 and obj["success"] is True
+    obj, code, _ = run_cli("query", f, "milestones.milestone-02.type")
+    assert code == 0 and obj["value"] == "acceptance"
+
+    doc = legal_doc()
+    doc["milestones"]["milestone-01"]["type"] = "task"
+    write_doc(f, doc)
+    obj, code, _ = run_cli("save", f, "milestones.milestone-01.type", '"acceptance"')
+    assert code == 0 and obj["success"] is True
+    obj, code, _ = run_cli("query", f, "milestones.milestone-01.type")
+    assert code == 0 and obj["value"] == "acceptance"
+
+
 def test_new_milestone_defaults_filled(tmp_path):
     """TC-003 变体: 合法新增里程碑填充 status/blocked_by 默认值 (BR-004)."""
     f = tmp_path / "ROADMAP.json"

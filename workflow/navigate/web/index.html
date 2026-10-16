@@ -199,6 +199,13 @@ body {
   </div>
   <div class="lg">
     <svg width="22" height="22" viewBox="0 0 22 22">
+      <circle cx="11" cy="11" r="4" fill="#e8a4bc"/>
+      <path d="M11 1.5L20.5 11 11 20.5 1.5 11Z" fill="none" stroke="#e8a4bc" stroke-width="1.1"/>
+    </svg>
+    <span>验收 <small>acceptance</small></span>
+  </div>
+  <div class="lg">
+    <svg width="22" height="22" viewBox="0 0 22 22">
       <circle cx="11" cy="11" r="4.6" fill="#f2e3b8"/>
       <circle cx="11" cy="11" r="7.6" fill="none" stroke="#f2e3b8" stroke-width="1"/>
       <path d="M11 1.8v2M11 18.2v2M1.8 11h2M18.2 11h2" stroke="#f2e3b8" stroke-width="1"/>
@@ -251,7 +258,8 @@ var TYPE_META = {
   research:   { label: '调研', color: '#6fc8e8' },
   deliberate: { label: '权衡', color: '#a48fd8' },
   prototype:  { label: '原型', color: '#e8955c' },
-  task:       { label: '任务', color: '#d8c58a' }
+  task:       { label: '任务', color: '#d8c58a' },
+  acceptance: { label: '验收', color: '#e8a4bc' }
 };
 var STATUS_COLORS = { '待处理': '#8a97b8', '进行中': '#d4b36a', '已关闭': '#79b896' };
 var CLOSED_COLOR = '#6b768c';
@@ -1192,6 +1200,7 @@ var PLANET_PALETTES = {
   deliberate: ['#8a76b8', '#6d5a9e', '#a48fd8', '#5a4a88', '#c0b0e0', '#7a68a8'],   // 紫气巨星
   prototype:  ['#3a2a26', '#54382e', '#6e4634', '#8a5438', '#2a1e1c', '#462e28'],   // 熔岩岩石
   task:       ['#c8a878', '#b89868', '#a8885c', '#d4bc8c', '#9a7850', '#c0a070'],   // 沙漠岩
+  acceptance: ['#b57892', '#975c78', '#dca6bd', '#78445f', '#f1cede', '#af738e'],   // 玫瑰晶岩
   destination:['#e8cf9a', '#d4b378', '#c8a060', '#f0e0b0', '#b89058', '#e0c088'],   // 金气巨星
   moon:       ['#b8bcc4', '#9a9ea8', '#8a8e98', '#c8ccd4', '#7a7e88']              // 卫星
 };
@@ -1203,6 +1212,7 @@ var PLANET_FEATURES = {
   deliberate:  { base: 'storms',  extras: ['cap', 'cracks'] },
   prototype:   { base: 'cracks',  extras: ['craters', 'storms'] },
   task:        { base: 'craters', extras: ['cracks', 'storms'] },
+  acceptance:  { base: 'cracks',  extras: ['cap', 'craters'] },
   moon:        { base: 'craters', extras: ['cap', 'cracks'] },
   destination: { base: 'storms',  extras: ['cap', 'craters'] }
 };
@@ -1600,7 +1610,18 @@ function drawStar(node, t, dt) {
   ctx.stroke();
 
   if (!closed) {
-    if (node.m.type === 'deliberate') {
+    if (node.m.type === 'acceptance') {
+      // 验收节点使用菱形外框, 与普通任务和终点恒星区分
+      ctx.strokeStyle = rgba(color, 0.65);
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(x, y - r * 1.45);
+      ctx.lineTo(x + r * 1.45, y);
+      ctx.lineTo(x, y + r * 1.45);
+      ctx.lineTo(x - r * 1.45, y);
+      ctx.closePath();
+      ctx.stroke();
+    } else if (node.m.type === 'deliberate') {
       // 窄环带 (写实土星式细环)
       ctx.lineWidth = 1;
       ctx.save();
