@@ -9,7 +9,7 @@
       "stability": 1,
       "speed": 1,
       "updatedAt": "YYYY-MM-DD",
-      "note": "一行依据",
+      "note": "能力, 价格, 速度. 适合的任务",
       "evidence": {
         "speed": "依据弱: 无权威数据源, 经验估计"
       }
