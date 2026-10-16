@@ -4,11 +4,12 @@
 # ///
 """PRODUCT.md 验收标准机检脚本 (D011/D012).
 
-用法: uv run check-ac.py <PRODUCT.md 路径>
+用法: uv run check-ac.py <PRODUCT.md 路径> [--draft <验收用例草稿.md>]
+草稿模式以 PRODUCT 暂存稿提供目标/业务规则, 只豁免确认标记, 不修改文件.
 
 确认标记 + 六项格式校验, 规则与同目录 SKILL.md / GHERKIN.md 对齐:
 0. 确认标记: `验收标准` 节必须含 `<!-- confirmed-flow: vN -->` (由 to-spec
-   验收标准确认流程写入), 缺失判为输入错误; 无标记表示用户从未确认过.
+   验收标准确认流程写入), 正式模式缺失判为输入错误; 标记本身不证明实际确认.
 1. 解析: gherkin-official parser 必须成功解析 gherkin 块.
 2. 标签封闭集与 @AC 唯一性 (D003/D007): 只允许 @AC-NNN / @G-NNN /
    @BR-NNN / @normal / @failure / @edge; 每场景 (含场景大纲) 恰好一个 @AC-NNN.
@@ -27,14 +28,15 @@
 
 from __future__ import annotations
 
+import argparse
+from pathlib import Path
 import re
 import sys
 
 from gherkin import Parser
 from gherkin.token_matcher import TokenMatcher
 
-SECTION_HEADING_RE = re.compile(r"^##\s*验收标准\s*$")
-NEXT_SECTION_RE = re.compile(r"^##\s")
+CONFIRMATION_MARKER = "<!-- confirmed-flow: v1 -->"
 FENCE_RE = re.compile(r"^```gherkin[^\n]*\n(.*?)^```", re.S | re.M)
 MARKER_RE = re.compile(r"<!--\s*confirmed-flow:\s*v\d+\s*-->")
 
@@ -56,17 +58,53 @@ ENTRY_RE = re.compile(r"^\s*[-*]\s*(G|BR)-(\d{3})\s*[:：]")
 AUDIT_MARKS = ("(审计)", "（审计）")
 
 
+class InputError(ValueError):
+    """文件或文档结构不符合输入约定, CLI 退出码 2."""
+
+
+class ValidationError(ValueError):
+    """Gherkin 解析或既有规则未通过, CLI 退出码 1."""
+
+
+def section_bounds(markdown: str, section: str, *, required: bool = True) -> tuple[int, int] | None:
+    """返回唯一二级节的正文字符范围, 忽略代码块内的伪标题."""
+    headings: list[tuple[str, int, int]] = []
+    fence: tuple[str, int] | None = None
+    offset = 0
+    for line in markdown.splitlines(keepends=True):
+        text = line.rstrip("\r\n")
+        if fence is not None:
+            char, length = fence
+            if re.fullmatch(rf"[ ]{{0,3}}{re.escape(char)}{{{length},}}[ \t]*", text):
+                fence = None
+        elif match := re.match(r"^[ ]{0,3}(`{3,}|~{3,})", text):
+            fence = (match[1][0], len(match[1]))
+        elif match := re.fullmatch(r"##[ \t]+(.+?)[ \t]*", text):
+            headings.append((match[1], offset, offset + len(line)))
+        offset += len(line)
+    if fence is not None:
+        raise InputError("PRODUCT 中有未闭合代码块, 无法安全确定章节范围")
+    matches = [index for index, (name, _, _) in enumerate(headings) if name == section]
+    if not matches:
+        if required:
+            raise InputError(f"未找到 `## {section}` 节")
+        return None
+    if len(matches) != 1:
+        raise InputError(f"`## {section}` 节重复, 无法确定唯一替换位置")
+    index = matches[0]
+    end = headings[index + 1][1] if index + 1 < len(headings) else len(markdown)
+    return headings[index][2], end
+
+
 def extract_entries(markdown: str, section: str) -> dict[str, bool]:
     """提取 `## <section>` 节中的 G/BR 条目, 返回 {编号: 是否 (审计) 条目}.
 
     节不存在视为空集 (模板允许 业务规则 节无内容), 引用自然全部判为悬挂.
     """
-    m = re.search(rf"^##\s*{re.escape(section)}\s*$", markdown, re.M)
-    if m is None:
+    bounds = section_bounds(markdown, section, required=False)
+    if bounds is None:
         return {}
-    body_start = m.end()
-    nxt = re.search(r"^##\s", markdown[body_start:], re.M)
-    body = markdown[body_start : body_start + nxt.start()] if nxt else markdown[body_start:]
+    body = markdown[bounds[0] : bounds[1]]
     entries: dict[str, bool] = {}
     for line in body.splitlines():
         em = ENTRY_RE.match(line)
@@ -94,50 +132,33 @@ def loc(obj: dict) -> str:
     return f"行 {line}"
 
 
-def fail_input(detail: str) -> None:
-    print(f"[输入] {detail}", file=sys.stderr)
-    sys.exit(2)
-
-
-def extract_gherkin_block(markdown: str) -> tuple[str, int]:
+def extract_gherkin_block(markdown: str, *, require_marker: bool = True) -> tuple[str, int]:
     """定位 `## 验收标准` 节并提取其中唯一的 ```gherkin 块.
 
     返回 (块文本, 块首行在 PRODUCT.md 中的 1 基行号).
     """
-    lines = markdown.splitlines()
-    start = None
-    for i, line in enumerate(lines):
-        if SECTION_HEADING_RE.match(line):
-            start = i + 1
-            break
-    if start is None:
-        fail_input("未找到 `## 验收标准` 节")
-    end = len(lines)
-    for j in range(start, len(lines)):
-        if NEXT_SECTION_RE.match(lines[j]):
-            end = j
-            break
-    section = "\n".join(lines[start:end])
+    start, end = section_bounds(markdown, "验收标准")
+    section = markdown[start:end]
     m = FENCE_RE.search(section)
     if m is None:
-        fail_input("`## 验收标准` 节中未找到 ```gherkin 代码块")
+        raise InputError("`## 验收标准` 节中未找到 ```gherkin 代码块")
     marker = MARKER_RE.search(section)
-    if marker is None:
-        fail_input(
-            "`## 验收标准` 节缺少确认流程标记 `<!-- confirmed-flow: v1 -->` "
-            "(由 to-spec 验收标准确认流程写入; 缺失视为未经用户确认)"
+    if require_marker and marker is None:
+        raise InputError(
+            f"`## 验收标准` 节缺少确认流程标记 `{CONFIRMATION_MARKER}` "
+            "(由 to-spec 验收标准确认流程写入)"
         )
-    if marker.start() > m.start():
-        fail_input(
+    if marker is not None and marker.start() > m.start():
+        raise InputError(
             "确认流程标记 `<!-- confirmed-flow: vN -->` 必须位于 gherkin 代码块之前"
         )
     if FENCE_RE.search(section, m.end()):
-        fail_input("`## 验收标准` 节应恰好一个 ```gherkin 块, 实际多于一个")
+        raise InputError("`## 验收标准` 节应恰好一个 ```gherkin 块, 实际多于一个")
     block = m.group(1)
     if not block.lstrip().startswith("# language:"):
-        fail_input("gherkin 块首行必须是 `# language: zh-CN`")
-    # 块首内容行 (```gherkin 的下一行) 在文件中的行号
-    first_line = start + section[: m.start(1)].count("\n") + 1
+        raise InputError("gherkin 块首行必须是 `# language: zh-CN`")
+    # 保留原文换行, AST 行号与完整 PRODUCT 对齐.
+    first_line = markdown[: start + m.start(1)].count("\n") + 1
     return block, first_line
 
 
@@ -279,25 +300,39 @@ def walk(gdt: dict, v: Violations) -> tuple[int, int, list[tuple[str, str, str]]
     return state["scenarios"], len(state["ac_on"]), state["cover_refs"]
 
 
-def main() -> int:
-    if len(sys.argv) != 2:
-        fail_input("用法: uv run check-ac.py <PRODUCT.md 路径>")
-    try:
-        with open(sys.argv[1], encoding="utf-8") as f:
-            markdown = f.read()
-    except OSError as e:
-        fail_input(f"无法读取 {sys.argv[1]}: {e}")
+def with_draft(markdown: str, draft: str, *, confirmed: bool) -> str:
+    """只替换验收正文, 草稿本身不经 strip/换行转换/重新序列化."""
+    match = FENCE_RE.search(draft)
+    if match is None or draft[:match.start()].strip() or draft[match.end():].strip():
+        raise InputError("草稿只能包含一个完整的 gherkin 代码块及首尾空白")
+    if MARKER_RE.search(draft):
+        raise InputError("草稿不携带确认标记, 由转正脚本在确认后添加")
+    start, end = section_bounds(markdown, "验收标准")
+    newline = "\r\n" if "\r\n" in markdown else "\n"
+    body = newline
+    if confirmed:
+        body += CONFIRMATION_MARKER + newline
+    body += draft
+    if not body.endswith("\n"):
+        body += newline
+    body += newline
+    return markdown[:start] + body + markdown[end:]
 
-    block, first_line = extract_gherkin_block(markdown)
+
+def validate_draft(markdown: str, draft: str) -> tuple[int, int]:
+    return validate_product(with_draft(markdown, draft, confirmed=False), require_marker=False)
+
+
+def validate_product(markdown: str, *, require_marker: bool = True) -> tuple[int, int]:
+    """两种模式共用全部解析/标签/覆盖/编号规则, 只切换标记要求."""
+    block, first_line = extract_gherkin_block(markdown, require_marker=require_marker)
 
     try:
         # 前面补空行, 使 AST 行号与 PRODUCT.md 文件行号对齐
         padded = "\n" * (first_line - 1) + block
         gdt = Parser().parse(padded, TokenMatcher("zh-CN"))
     except Exception as e:
-        print("[解析] gherkin 块解析失败, parser 原始错误 (行号为文件行号):", file=sys.stderr)
-        print(str(e), file=sys.stderr)
-        return 1
+        raise ValidationError(f"[解析] gherkin 块解析失败 (行号为文件行号):\n{e}") from e
 
     v = Violations()
     n_scenarios, n_acs, cover_refs = walk(gdt, v)
@@ -328,10 +363,34 @@ def main() -> int:
                     f"{name} 指向 (审计) 条目, 审计式断言禁止进 Gherkin, 由覆盖矩阵承接",
                 )
     if v:
-        for item in v.items:
-            print(item, file=sys.stderr)
+        raise ValidationError("\n".join(v.items))
+    return n_scenarios, n_acs
+
+
+def read_utf8(path: Path) -> str:
+    # read_text 的通用换行转换会破坏草稿原文的字节一致性.
+    return path.read_bytes().decode("utf-8")
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("product", type=Path, help="正式 PRODUCT 或提供目标/业务规则的暂存稿")
+    parser.add_argument("--draft", type=Path, help="验收正文草稿, 仅豁免确认标记")
+    args = parser.parse_args()
+    try:
+        markdown = read_utf8(args.product)
+        if args.draft is not None:
+            n_scenarios, n_acs = validate_draft(markdown, read_utf8(args.draft))
+        else:
+            n_scenarios, n_acs = validate_product(markdown)
+    except (InputError, OSError, UnicodeError) as exc:
+        print(f"[输入] {exc}", file=sys.stderr)
+        return 2
+    except ValidationError as exc:
+        print(str(exc), file=sys.stderr)
         return 1
-    print(f"check-ac: 通过 - {n_scenarios} 个场景, {n_acs} 个 AC")
+    mode = " (草稿)" if args.draft is not None else ""
+    print(f"check-ac{mode}: 通过 - {n_scenarios} 个场景, {n_acs} 个 AC")
     return 0
 
 
