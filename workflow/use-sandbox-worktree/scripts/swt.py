@@ -46,6 +46,7 @@ from agent_config.common import (TemplateError, filtered_env, CONTAINER_LABEL,
                                  TOKEN_LABEL, DIGEST_LABEL, CONTRACT)
 from env_docs import BIRTH_MARKER, DOC_FILES, render_docs, render_generation_section
 import network_update as network_maintenance
+import herdr_machine
 
 
 SCHEMA = 2
@@ -1239,6 +1240,7 @@ def agent_env_facts(args, repo: Path, branch: str, runtime: dict[str, Any], reco
     mother_dir = runtime.get("mother_dir") or ""
     return {
         "repo_path": str(repo.resolve()),
+        "host_session_id": runtime.get("host-session-id", ""),
         "mother_dir": Path(mother_dir).name if mother_dir else "",
         "branch": branch,
         "code_path": f"/home/bolo/Workspace/{branch}",
@@ -1884,18 +1886,46 @@ def print_delivery_lines(
     + 窗口直飞行 (仅实例脚本在场的容器, ISSUE-07).
     无法附发的项显式打一行原因, 不静默丢失 (F3)."""
     print(f"[SWT] {heading}")
-    if ssh_port is None:
-        return
-    print(f"[SWT] ssh 入口 (本机):   {ssh_entry_payload(ssh_port)}")
-    if lan:
-        print(f"[SWT] ssh 入口 (局域网): {ssh_entry_payload(ssh_port, lan)}")
-    tunnel_printed = False
+
+    def section(title: str) -> None:
+        print(f"\n[SWT] --- {title} ---")
+
+    section("SSH 登录")
+    if ssh_port is not None:
+        print(f"[SWT] ssh 入口 (本机):   {ssh_entry_payload(ssh_port)}")
+        if lan:
+            print(f"[SWT] ssh 入口 (局域网): {ssh_entry_payload(ssh_port, lan)}")
+    else:
+        print("[SWT] ssh 入口未附发: 无 22 端口映射")
+    if lan is None:
+        print("[SWT] 局域网 ssh/herdr 入口未附发: host 局域网地址不可知,"
+              " 请人工确认 host-LAN-IP 后组装对应命令")
+
+    section("Herdr 工作区")
+    if ssh_port is not None:
+        print(f"[SWT] herdr remote (host):    {herdr_remote_payload(ssh_port)}")
+        if lan:
+            print(f"[SWT] herdr remote (局域网): {herdr_remote_payload(ssh_port, lan)}")
+        print("[SWT] 已在宿主 Herdr 中时直接选择容器 machine, 不嵌套启动 Herdr")
+    else:
+        print("[SWT] herdr remote 未附发: 无 SSH 端口")
+
+    section("Web 展示页")
+    for line in web_delivery_lines(web_port, lan):
+        print(line)
+    if web_port is None:
+        print("[SWT] web 入口未附发: 无 web 端口映射 (旧容器或镜像未配置)")
+    if not web_env_injected:
+        print(f"[SWT] {WEB_ENV_MISSING_TEXT}")
+
+    section("桌面 / noVNC / 窗口直飞")
     if display_status == "ok" and vnc_port:
         print(f"[SWT] noVNC (本机):      {novnc_local_url(vnc_port)}")
-        if lan:
+        if ssh_port is None:
+            print("[SWT] noVNC 局域网隧道未附发: 无 SSH 端口")
+        elif lan:
             print(f"[SWT] noVNC (局域网隧道): {novnc_tunnel_command(ssh_port, vnc_port, lan)}"
                   f"{NOVNC_TUNNEL_FOLLOWUP}")
-            tunnel_printed = True
         else:
             print(f"[SWT] noVNC (局域网隧道) 未附发: host 局域网地址不可知, 请人工确认"
                   f" host-LAN-IP 后组装: {novnc_tunnel_command(ssh_port, vnc_port, '<host-LAN-IP>')}")
@@ -1905,26 +1935,26 @@ def print_delivery_lines(
         print(f"[SWT] {DISPLAY_STACK_DEGRADED_TEXT}")
     elif display_status == "ok":
         print(f"[SWT] {DISPLAY_STACK_OK_NO_VNC_TEXT}")
+    else:
+        print("[SWT] noVNC 入口未附发: 显示状态未知")
     if host_display == "ok":
         print(f"[SWT] {HOST_DISPLAY_OK_TEXT}")
     elif host_display == "degraded":
         print(f"[SWT] {HOST_DISPLAY_DEGRADED_TEXT}")
     elif host_display == "absent":
         print(f"[SWT] {HOST_DISPLAY_ABSENT_TEXT}")
-    for line in web_delivery_lines(web_port, lan):
-        print(line)
-    if not web_env_injected:
-        print(f"[SWT] {WEB_ENV_MISSING_TEXT}")
+    else:
+        print("[SWT] 本机直通: 未检查")
     for line in headed_delivery_lines(ssh_port, lan, headed_script):
         print(line)
-    print(f"[SWT] herdr remote (host):    {herdr_remote_payload(ssh_port)}")
-    if lan:
-        print(f"[SWT] herdr remote (局域网): {herdr_remote_payload(ssh_port, lan)}")
-    if lan is None:
-        print("[SWT] 局域网 ssh/herdr 入口未附发: host 局域网地址不可知,"
-              " 请人工确认 host-LAN-IP 后组装对应命令")
+
+    section("登录凭据")
+    print("[SWT] 登录密码: sandbox (noVNC 本身无密码, 远程访问以 SSH 为门槛)")
     if key_path:
         print(f"[SWT] {ssh_key_path_line(key_path)}")
+    else:
+        print("[SWT] ssh 私钥未附发: 记录中无可用路径")
+    print()
 
 
 def image_digest(ref: str) -> str:
@@ -2998,6 +3028,7 @@ def birth_display_gate_reentry(
                    if isinstance(item, dict) and item.get("name") == name), None)
     if record is None:
         raise PreconditionError(f"容器 {name} 缺少 runtime 记录")
+    ensure_herdr_machine(records_root, identity, runtime, runtime_file, record)
     if args.display_continue:
         display["status"] = "degraded"
         record["display"] = "degraded"
@@ -3206,6 +3237,7 @@ def birth(args: argparse.Namespace, repo: Path) -> int:
             if reentry is not None:
                 return reentry
             record = next(r for r in runtime_existing["containers"] if r.get("name") == args.name)
+            ensure_herdr_machine(records_root, runtime_file.stem, runtime_existing, runtime_file, record)
             print_delivery_lines("birth: 已就绪 (固定模板未重装)", record.get("ssh-port"), record.get("vnc-port"),
                                  record.get("display"), Path(record["ssh_private_key"]) if record.get("ssh_private_key") else None,
                                  read_confirmed_lan_address(records_root), record.get("host-display"), record.get("web-port"),
@@ -3338,6 +3370,11 @@ def birth(args: argparse.Namespace, repo: Path) -> int:
         snapshot_path = records_root / "runtime" / identity / "agent-templates" / args.name / "snapshot.json"
         fixed_meta = template_call(agent_templates.creation, snapshot_path, bundle, args.name, str(image["digest"]))
         fixed_meta["hostname"] = args.hostname
+        # 与本次创建一起固定, 重入/恢复不改投到另一个 host 会话.
+        host_session_id = os.environ.get("PI_SESSION_ID", "").strip()
+        if host_session_id and not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}", host_session_id):
+            raise PreconditionError("PI_SESSION_ID 格式非法, 不写入容器提示词")
+        fixed_meta["host-session-id"] = host_session_id
         fixed_meta["decision-id"] = template_decision_id
         append_audit_entry(records_root, identity, {"action": "agent-template-selected", **agent_templates.summary(bundle),
                                                    "decision-id": template_decision_id, "container": args.name})
@@ -3377,6 +3414,7 @@ def birth(args: argparse.Namespace, repo: Path) -> int:
             "mother_branch": branch, "mother_dir": str(mother_dir), "stage": "mother",
             "config": {"swt-form": False}, "daemon": None, "containers": [], "image": image,
             "network": network_input, "agent-template": fixed_meta,
+            "host-session-id": fixed_meta.get("host-session-id", ""),
         }
         atomic_write_json(runtime_file, runtime)
         try:
@@ -3478,6 +3516,8 @@ def birth(args: argparse.Namespace, repo: Path) -> int:
         container["record"]["remote"] = remote
         atomic_write_json(runtime_file, runtime)
         wait_for_ssh(key, container["port"])
+        # SSH 首次可用就加入宿主 Herdr, 不等 clone/客户端初始化或最终交付.
+        ensure_herdr_machine(records_root, identity, runtime, runtime_file, container["record"])
         inject_git_identity(key, container["port"])
         if not container["record"].get("clone-ready"):
             assert_container_clone(container, key, branch, remote)
@@ -3812,6 +3852,7 @@ def podman_container_state(
                 **web_ports,
                 "display": retired_record.get("display"),
                 "agent-template": retired_record.get("agent-template"),
+                "herdr-machine": retired_record.get("herdr-machine"),
                 "headed-script": retired_record.get("headed-script"),
                 "network-ip": network_ip,
                 "image-digest": image_digest,
@@ -4036,6 +4077,25 @@ def remove_container_firewall(
     raise SwtError(3, "PARTIAL", f"nft remove 失败: {result.stderr.strip()}")
 
 
+def ensure_herdr_machine(records_root: Path, identity: str, runtime: dict[str, Any],
+                         runtime_file: Path, record: dict[str, Any]) -> None:
+    """生命周期写入口. 先保存接线意图, CLI 失败保留容器和记录以便幂等重试."""
+    machine = record.get("herdr-machine")
+    if not isinstance(machine, dict):
+        machine = herdr_machine.reservation(records_root, identity, record)
+    record["herdr-machine"] = machine
+    upsert_container_record(runtime, record, runtime_file)
+    try:
+        record["herdr-machine"] = herdr_machine.connect(machine, record)
+    except (herdr_machine.MachineError, OSError) as exc:
+        machine.update({"status": "failed", "reason": str(exc)})
+        upsert_container_record(runtime, record, runtime_file)
+        raise SwtError(3, "PARTIAL", f"容器保留, 添加宿主 Herdr machine 未完成: {exc}; "
+                       "重跑同一 birth/resume, 不要另建容器") from exc
+    upsert_container_record(runtime, record, runtime_file)
+    print(f"[SWT] Herdr machine: {machine['label']} (宿主侧栏, {record['herdr-machine']['id']})")
+
+
 def remove_container_credentials(target: dict[str, Any]) -> None:
     paths: set[Path] = set()
     private_key = target.get("ssh_private_key") or target.get("ssh-private-key")
@@ -4141,6 +4201,10 @@ def terminate(args: argparse.Namespace, repo: Path) -> int:
     # ISSUE-08 (AC-008): 容器终结即注销其信箱 session, 防同名新容器错投旧信;
     # 信箱缺席/注销失败只告警, 不阻断 terminate.
     revoke_container_session(target.get("mailbox"))
+    try:
+        herdr_machine.disconnect(target.get("herdr-machine"))
+    except (herdr_machine.MachineError, OSError) as exc:
+        raise SwtError(3, "PARTIAL", f"容器已清理, Herdr machine 尚未移除: {exc}; 重跑同一 terminate") from exc
     remove_container_credentials(target)
     # 配置可能带仓库凭据, 终结时移除本容器的挂载快照 (保留其他容器的副本).
     maven_snapshot = records_root / "runtime" / identity / "maven" / target_name
@@ -4574,6 +4638,7 @@ def resume(args: argparse.Namespace, repo: Path) -> int:
         atomic_write_json(runtime_file, runtime)
         display_status = ensure_display_after_resume(runtime, runtime_file, target)
         host_display_status = ensure_host_display(runtime, runtime_file, target)
+        ensure_herdr_machine(records_root, identity, runtime, runtime_file, target)
         print_delivery_lines(
             "resume: 已就绪, 什么都没有需要恢复",
             target.get("ssh-port"), target.get("vnc-port"), display_status,
@@ -4720,6 +4785,7 @@ def resume(args: argparse.Namespace, repo: Path) -> int:
         record["remote"] = fixed_git_remote(mother_dir)
         record["ssh-port"] = container_ssh_port(target_name)
         resume_probe(record, record["remote"])
+        ensure_herdr_machine(records_root, identity, runtime, runtime_file, record)
         runtime["stage"] = "born"
         runtime.pop("resume", None)
         runtime["network"]["table-present"] = True
@@ -4834,7 +4900,8 @@ def mothers_states(
         mother_state = mother_state_from_runtime(repo, data)
         worktree_dirty = bool(mother_state["exists"] and mother_state.get("worktree-dirty"))
         pair_containers = [
-            {"name": item.get("name"), "state": item.get("state"), "retired": bool(item.get("retired"))}
+            {"name": item.get("name"), "state": item.get("state"), "retired": bool(item.get("retired")),
+             "herdr-machine": item.get("herdr-machine")}
             for item in data.get("containers", [])
             if isinstance(item, dict)
         ]
@@ -4846,6 +4913,7 @@ def mothers_states(
             "worktree-dirty": worktree_dirty,
             "runtime-stale": mother_state.get("runtime-stale", False),
             "stage": data.get("stage"),
+            "host-session-id": data.get("host-session-id"),
             "config": {"swt-form": pair_config_matches(repo, mother_dir, branch)},
             "daemon": daemon_state(mother_dir, repo, data),
             "containers": pair_containers,
@@ -4904,6 +4972,7 @@ def build_state(
     if runtime:
         state["stage"] = runtime.get("stage")
         state["agent-template"] = runtime.get("agent-template")
+        state["host-session-id"] = runtime.get("host-session-id")
     state["mothers"] = mothers_states(
         repo, records_root, primary=runtime_file.stem if runtime_file else None,
     )
@@ -5173,6 +5242,24 @@ def list_sandbox(args: argparse.Namespace) -> int:
             # 非 running 不交付可达入口, 只给状态行与 resume 提示行.
             access_entries.append(status_entry)
             access_entries.append(f"恢复: uv run python scripts/swt.py resume --name {name}")
+        if record_state == "matched":
+            machine = record.get("herdr-machine")
+            machine = machine if isinstance(machine, dict) else {}
+            if machine.get("status") == "registered":
+                access_entries.append(f"Herdr machine: {machine.get('label', name)} "
+                                      f"(宿主登记记录, id={machine.get('id')}, enabled={machine.get('enabled', True)})")
+            else:
+                action = "仅可 terminate" if lifecycle == "retired" else "重跑 birth/resume"
+                access_entries.append(f"Herdr machine: 未接线/失败, {action}; "
+                                      + str(machine.get("reason") or "旧记录尚未登记"))
+            access_entries.append("登录密码: sandbox (SSH 登录, noVNC 本身无密码)")
+            if record.get("clone_dir"):
+                access_entries.append(f"容器代码路径: {record['clone_dir']}")
+            mother_meta = runtime.get("mother")
+            mother_meta = mother_meta if isinstance(mother_meta, dict) else {}
+            if mother_dir := (runtime.get("mother_dir") or mother_meta.get("dir")):
+                access_entries.append(f"母体路径: {mother_dir} (只读审阅, 不改跟踪文件)")
+            access_entries.append(f"host 会话 sessionId: {runtime.get('host-session-id') or '未登记'}")
         entry = {
             "name": name,
             "repo": repo_label if isinstance(repo_label, str) else None,
@@ -5584,7 +5671,7 @@ def main(argv: list[str]) -> int:
             return network_command(args)
         require_command("git")
         if args.command == "birth":
-            for command in ("podman", "nft", "ssh", "ssh-keygen", "uv"):
+            for command in ("podman", "nft", "ssh", "ssh-keygen", "uv", "herdr"):
                 require_command(command)
             validate_git_hide_refs_syntax()
         if args.command == "status":
@@ -5603,6 +5690,7 @@ def main(argv: list[str]) -> int:
             if args.command == "birth":
                 return birth(args, repo)
             if args.command == "resume":
+                require_command("herdr")
                 for command in MUTATING_COMMANDS:
                     require_command(command)
                 return resume(args, repo)

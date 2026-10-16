@@ -125,6 +125,115 @@ def test_register_and_revoke_session(serves, tmp_path):
     assert proc.stderr.strip()
 
 
+# TS-006 (D022): ensure-session 为每会话写独立 0600 凭证, 幂等复用 (不吊销
+# 在取信实例/不丢待取信); 配置丢失仍复用原密钥; 服务换端口跟新; 异常 sid
+# 走哈希目录名.
+def test_ensure_session_writes_isolated_config(serves, tmp_path):
+    srv = serves()
+    state = tmp_path / "s" / STATE_FILE
+    sid = "pi-session-abcdef"
+
+    proc = _run_machine(tmp_path, state, "ensure-session", sid)
+    assert proc.returncode == 0, proc.stderr
+    out = json.loads(proc.stdout)
+    assert out["id"] == sid and out["created"] is True
+    assert out["server"] == f"http://127.0.0.1:{srv.port}"
+    cfg = Path(out["config"])
+    assert cfg == tmp_path / "machine-home/.agents/mailbox/sessions" / sid / "config.json"
+    assert cfg.exists()
+    assert (cfg.stat().st_mode & 0o777) == 0o600
+    data = json.loads(cfg.read_text())
+    assert data["session"] == sid and data["signing_key"]
+    # 凭证可用: 以该 signing_key 签名 poll, 服务端认账
+    code, resp = poll(srv, sid, data["signing_key"])
+    assert code == 200 and resp["payload"]["letter"] is None
+
+    # 待取信不会被 ensure 弄丢: 先投一封, 再 ensure (复用原密钥), 仍能取到
+    from conftest import make_letter, post_letter
+    code, _ = post_letter(srv, sid, data["signing_key"],
+                          make_letter("keep-1", to=sid))
+    assert code == 200
+    proc = _run_machine(tmp_path, state, "ensure-session", sid)
+    assert proc.returncode == 0, proc.stderr
+    out2 = json.loads(proc.stdout)
+    assert out2["created"] is False and out2["config"] == out["config"]
+    assert json.loads(cfg.read_text())["signing_key"] == data["signing_key"]
+    code, resp = poll(srv, sid, data["signing_key"])
+    assert code == 200 and resp["payload"]["letter"]["id"] == "keep-1"
+
+    # 本地凭证文件丢失: ensure 仍复用现存 session 原密钥 (不吊销), 重写配置
+    cfg.unlink()
+    proc = _run_machine(tmp_path, state, "ensure-session", sid)
+    assert proc.returncode == 0, proc.stderr
+    out3 = json.loads(proc.stdout)
+    assert out3["created"] is False
+    assert json.loads(cfg.read_text())["signing_key"] == data["signing_key"]
+    code, _ = poll(srv, sid, data["signing_key"])
+    assert code == 200
+
+    # 异常字符 sid: 走 sha256 哈希目录名 (防目录穿越/非法名)
+    weird = "../evil/id"
+    proc = _run_machine(tmp_path, state, "ensure-session", weird)
+    assert proc.returncode == 0, proc.stderr
+    weird_cfg = Path(json.loads(proc.stdout)["config"])
+    assert weird_cfg.parent.parent == tmp_path / "machine-home/.agents/mailbox/sessions"
+    assert weird_cfg.parent.name.isalnum() and len(weird_cfg.parent.name) == 32
+
+
+def test_ensure_session_multi_session_isolation(serves, tmp_path):
+    """多会话各自 ensure + 定向投信/取信隔离: A 只取 A 的信, 不串."""
+    from conftest import make_letter, poll, post_letter
+    srv = serves()
+    state = tmp_path / "s" / STATE_FILE
+    sids = ["pi-A", "pi-B"]
+    creds = {}
+    for sid in sids:
+        proc = _run_machine(tmp_path, state, "ensure-session", sid)
+        assert proc.returncode == 0, proc.stderr
+        cfg = Path(json.loads(proc.stdout)["config"])
+        creds[sid] = json.loads(cfg.read_text())
+    # 分别定向投信
+    for sid in sids:
+        code, _ = post_letter(srv, sid, creds[sid]["signing_key"],
+                              make_letter(f"L-{sid}", to=sid))
+        assert code == 200
+    # 各自只取到自己那封
+    for sid in sids:
+        code, resp = poll(srv, sid, creds[sid]["signing_key"])
+        assert code == 200
+        letter = resp["payload"]["letter"]
+        assert letter["id"] == f"L-{sid}" and letter["to"] == sid
+
+
+def test_ensure_session_follows_serve_restart(serves, tmp_path):
+    """服务重启换端口: ensure 每次探测本机 serve, 跟新 server 地址."""
+    srv1 = serves("s1")
+    state1 = tmp_path / "s1" / STATE_FILE
+    sid = "pi-restart"
+    proc = _run_machine(tmp_path, state1, "ensure-session", sid)
+    assert proc.returncode == 0, proc.stderr
+    cfg = Path(json.loads(proc.stdout)["config"])
+    assert json.loads(cfg.read_text())["server"] == f"http://127.0.0.1:{srv1.port}"
+    srv1.stop()
+    # 新 serve (不同状态文件与端口), ensure 应把配置改指新地址
+    srv2 = serves("s2")
+    state2 = tmp_path / "s2" / STATE_FILE
+    proc = _run_machine(tmp_path, state2, "ensure-session", sid)
+    assert proc.returncode == 0, proc.stderr
+    out = json.loads(proc.stdout)
+    assert out["server"] == f"http://127.0.0.1:{srv2.port}"
+    assert json.loads(cfg.read_text())["server"] == out["server"]
+
+
+def test_ensure_session_missing_mailbox(serves, tmp_path):
+    """本机 serve 未发现 → exit 3 + stderr, 不写配置."""
+    proc = _run_machine(tmp_path, tmp_path / "none" / STATE_FILE,
+                        "ensure-session", "pi-session-x")
+    assert proc.returncode == 3
+    assert proc.stdout == ""
+    assert proc.stderr.strip()
+
+
 # TS-005 (TC-010/BR-005): 容器契约 env 名不变守护 — swt.py 删除信箱客户端
 # 实现时不得误删 SWT_* 契约常量 (已烘进镜像与容器契约, 改名零收益高风险).
 # 守护测试: 常量在才绿; 若误删则红, 提示恢复.

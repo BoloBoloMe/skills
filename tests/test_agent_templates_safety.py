@@ -471,9 +471,11 @@ class LifecycleTests(TemporaryCase):
                  "network": {"mode": "whitelist", "allow": [], "deny": []}, "agent-template": meta,
                  "containers": [{"name": "testbox", "agent-template": dict(meta)}]}
         self.swt.atomic_write_json(self.runtime_file, state)
-        with mock.patch.object(template, "target"), mock.patch.object(template, "operate", return_value={"ok": True}) as operate, mock.patch.object(template, "load", side_effect=AssertionError("latest template read")), mock.patch.object(template, "credential", side_effect=AssertionError("host key read")):
+        with mock.patch.object(template, "target"), mock.patch.object(template, "operate", return_value={"ok": True}) as operate, mock.patch.object(template, "load", side_effect=AssertionError("latest template read")), mock.patch.object(template, "credential", side_effect=AssertionError("host key read")), mock.patch.object(self.swt, "ensure_herdr_machine") as herdr:
             self.assertEqual(self.swt.birth(self.args(), self.repo), 0)
         self.assertFalse(operate.call_args.kwargs["install"])
+        herdr.assert_called_once()
+        self.assertEqual(herdr.call_args.args[-1]["name"], "testbox")
         self.assertTrue(all(not value.called for value in self.resources.values()))
 
     def test_initialization_failure_persists_failed_not_born(self):
@@ -546,7 +548,7 @@ class ResumeTests(TemporaryCase):
                          "resume_network_status": (True, ""), "resume_git_ready": True,
                          "resume_decision_fingerprint": {}, "ensure_display_after_resume": "absent",
                          "ensure_host_display": "absent", "build_state": {}, "print_delivery_lines": None,
-                         "print_state": None}
+                         "print_state": None, "ensure_herdr_machine": None}
                 mocks = {name: stack.enter_context(mock.patch.object(self.swt, name, return_value=value)) for name, value in stubs.items()}
                 stack.enter_context(mock.patch.object(self.swt, "run", return_value=subprocess.CompletedProcess([], 0, json.dumps([self.detail]), "")))
                 auth = stack.enter_context(mock.patch.object(self.swt, "inject_auth_json", side_effect=AssertionError("no OAuth update on ready resume")))
@@ -554,6 +556,8 @@ class ResumeTests(TemporaryCase):
                 stack.enter_context(mock.patch.object(template, "target"))
                 self.assertEqual(self.swt.resume(self.args, Path(state["repo"])), 0)
                 auth.assert_not_called()
+                mocks["ensure_herdr_machine"].assert_called_once()
+                self.assertEqual(mocks["ensure_herdr_machine"].call_args.args[-1]["name"], "testbox")
                 if legacy:
                     operate.assert_not_called()
                     self.assertIsNone(mocks["podman_container_state"].call_args.kwargs["only_name"])

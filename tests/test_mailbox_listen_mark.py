@@ -1,14 +1,13 @@
-"""D021 (ISSUE-15) 取信守护标记绑定会话身份 — 生命周期回归.
+"""D022 每会话独立信箱 — 取信守护生命周期与 mailbox_listen 工具回归.
 
 经 node 原生 TS type stripping 加载 pi-extension/index.ts 导出的扩展
-工厂, 假取信脚本 (tests/fixtures/fake-mailbox-python) + 假事件对象
+工厂, 假取信脚本 (tests/pi/mailbox/fake-mailbox-python) + 假事件对象
 (sessionManager.getSessionId 提供会话身份) 模拟 session_start / 命令 /
-session_shutdown 生命周期, 断言 listen.json 标记与子进程行为.
-场景实现: tests/fixtures/listen-mark-smoke.mjs (沿 ISSUE-07 的 jiti
-人工冒烟模式, 按 ISSUE-15 评审裁决落库为可重复回归).
+工具调用 / session_shutdown 生命周期, 断言各会话独立 config/cli-state/
+listen 标记与子进程行为.
 
-已知限制 (评审裁决记录, 不动): "守护进程已死" 只查内存标志, 不验
-listen.json 里 pid 存活 — 跨进程残留标记由 pi_session_id 不匹配兜住.
+场景实现: tests/pi/mailbox/listen-smoke.mjs. 取代 D008/D021 的全局单标记
++ 多会话软提示: 现在每会话按 session id 用独立文件, 互不覆盖不串信, 无警告.
 """
 from __future__ import annotations
 
@@ -23,8 +22,8 @@ import pytest
 from conftest import SCRIPT
 
 EXT = SCRIPT.parent.parent / "pi-extension" / "index.ts"
-FIXTURES = Path(__file__).parent / "fixtures"
-SMOKE_MJS = FIXTURES / "listen-mark-smoke.mjs"
+FIXTURES = Path(__file__).parent / "pi" / "mailbox"
+SMOKE_MJS = FIXTURES / "listen-smoke.mjs"
 FAKE_PY = FIXTURES / "fake-mailbox-python"
 
 
@@ -51,13 +50,26 @@ pytestmark = pytest.mark.skipif(
 )
 
 SCENARIOS = [
-	("foreign-mark-no-autostart", "新会话遇他人标记: 不自动监听, 标记原样"),
-	("same-session-resume", "同会话续接: 自动恢复 + shutdown 杀子留标记 (AC-003)"),
-	("legacy-mark-no-autostart", "旧版无 pi_session_id: 陈旧标记不自动恢复"),
-	("start-binding-stop-own", "start 写入会话绑定; stop 清自己的标记"),
-	("soft-warn-takeover", "start 遇他会话标记: 软提示后接管 (D008)"),
-	("takeover-legacy", "start 接管旧版陈旧标记"),
-	("replacement-stop-ownership", "会话替换停遗留守护; stop 所有权 (只清自己的)"),
+	("no-mark-no-autostart", "新会话无标记: 不自动监听", {}),
+	("same-session-resume", "本会话独立标记: 自动恢复 + shutdown 杀子留标记", {}),
+	("legacy-mark-migrate", "旧版全局标记属本会话: 迁移到本会话路径", {}),
+	("legacy-stale-no-autostart", "旧版无 pi_session_id: 陈旧标记不动", {}),
+	("tool-start-status-stop", "mailbox_listen 工具 start/status/stop 返回双 id", {}),
+	("multi-session-isolation", "两会话进程独立: 标记/子进程/stop 互不覆盖不串信", {}),
+	("ensure-failure-no-autostart", "ensure-session 失败: 不启动, isError 明确报错", {"FAKE_FAIL": "1"}),
+	("container-uses-injected-creds", "容器: 直接用 SWT_* 凭据, 不 ensure 不清 env", {
+		"SWT_MAILBOX_URL": "http://127.0.0.1:1",
+		"SWT_SESSION_ID": "container-deadbeef",
+		"SWT_SESSION_SIGNING_KEY": "fake-signing",
+		"SWT_SESSION_RESPONSE_KEY": "fake-response",
+	}),
+	("session-switch-restart", "同进程会话替换 A→B 都有标记: 先停 A 再恢复 B", {}),
+	("stop-then-start-no-stale-stop", "stop 后立即 start: 旧 close 不停新守护", {}),
+	("concurrent-start-single-poll", "同会话并发 start: 复用 Promise 只起一个 poll", {}),
+	("pending-start-cancelled", "启动进行中 stop: 取消在启, 不起 poll 不写标记", {"FAKE_ENSURE_SLEEP": "1"}),
+	("switch-clears-old-env", "会话切换 A(已启)→B(无标记): 停 A 并清 env 不复用凭据", {}),
+	("pending-A-then-marked-B", "启动中 A→已标记 B: 取消 A 旧尝试, B 能恢复", {"FAKE_ENSURE_SLEEP": "1"}),
+	("pending-stop-then-start-same-sid", "启动中 stop 后立即同 sid start: 新尝试不被误清", {"FAKE_ENSURE_SLEEP": "1"}),
 ]
 
 
@@ -67,16 +79,19 @@ def _fake_py_exec():
 	FAKE_PY.chmod(0o755)
 
 
-@pytest.mark.parametrize("scenario,doc", SCENARIOS, ids=[s[0] for s in SCENARIOS])
-def test_listen_mark_scenario(scenario: str, doc: str, tmp_path):
-	"""每个场景一个隔离 node 进程: 独立 HOME (listen.json 落地) 与取信
-	调用日志, 断言场景内全部 PASS (退出码 0)."""
+@pytest.mark.parametrize(
+	"scenario,doc,extra_env", SCENARIOS, ids=[s[0] for s in SCENARIOS]
+)
+def test_listen_mark_scenario(scenario: str, doc: str, extra_env: dict, tmp_path):
+	"""每个场景一个隔离 node 进程: 独立 HOME (会话文件落地) 与取信调用日志,
+	断言场景内全部 PASS (退出码 0)."""
 	env = {
 		**os.environ,
 		"HOME": str(tmp_path / "home"),
 		"SPAWN_LOG": str(tmp_path / "spawn.log"),
 		"MAILBOX_PYTHON": str(FAKE_PY),
 		"LISTEN_EXT": str(EXT),
+		**(extra_env or {}),
 	}
 	proc = subprocess.run(
 		["node", str(SMOKE_MJS), scenario],
@@ -87,4 +102,31 @@ def test_listen_mark_scenario(scenario: str, doc: str, tmp_path):
 	)
 	assert proc.returncode == 0, (
 		f"场景 {scenario} ({doc}) 失败:\nstdout:\n{proc.stdout}\nstderr:\n{proc.stderr}"
+	)
+
+
+TOOL_SCHEMA_MJS = FIXTURES / "tool-schema-smoke.mjs"
+
+
+def _pi_shim() -> str | None:
+	"""定位 pi 可执行 shim (用其 cmd-shim-target 找 pi 包目录下的 typebox)."""
+	return shutil.which("pi")
+
+
+@pytest.mark.skipif(
+	not _pi_shim(), reason="需 pi 可执行 (定位其自带 typebox/compile 校验器)"
+)
+def test_mailbox_listen_tool_schema_smoke(tmp_path):
+	"""真实校验器冒烟: 用 pi 自带 typebox/compile 编译 mailbox_listen 的
+	parameters (普通 JSON Schema), 验证合法参数通过/非法被拒. 不调模型,
+	不连真实 mailbox."""
+	proc = subprocess.run(
+		["node", str(TOOL_SCHEMA_MJS)],
+		capture_output=True,
+		text=True,
+		timeout=60,
+		env={**os.environ, "PI_SHIM": _pi_shim(), "LISTEN_EXT": str(EXT)},
+	)
+	assert proc.returncode == 0, (
+		f"工具 schema 冒烟失败:\nstdout:\n{proc.stdout}\nstderr:\n{proc.stderr}"
 	)

@@ -60,6 +60,13 @@ class RenderDocsTest(unittest.TestCase):
         for model in facts["default_models"].values():
             self.assertIn(model, agents)
 
+    def test_host_session_is_in_all_generated_facts_and_missing_is_explicit(self):
+        facts = make_facts(host_session_id="host-session-123")
+        self.assertIn("host 会话 sessionId: host-session-123", render_generation_section(facts))
+        self.assertIn("host 会话 sessionId: host-session-123", render_docs(facts)["identity.md"])
+        self.assertIn("host 会话 sessionId: 未登记", render_generation_section(make_facts()))
+        self.assertIn("不改投机器级 host 信箱", render_generation_section(make_facts()))
+
     def test_web_ports_unconfirmed_lan(self):
         docs = render_docs(make_facts(lan_ip=None))
         web_ports = docs["web-ports.md"]

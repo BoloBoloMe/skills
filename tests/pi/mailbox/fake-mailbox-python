@@ -1,0 +1,30 @@
+#!/usr/bin/env bash
+# D022 每会话独立信箱回归夹具: 假 mailbox.py 执行器.
+# 调用形式: <script> <subcommand> [args...] — 首位是脚本路径, shift 掉.
+# - ensure-session <sid>: 在 $HOME/.agents/mailbox/sessions/<sid>/config.json
+#   写 0600 假配置, stdout JSON {id,config,created} (幂等: 已存在 created=false);
+#   FAKE_FAIL=1 时 exit 3 (模拟本机 serve 不在).
+# - 其余子命令 (取信): 追加 "pid=.. cfg=.. state=.. swt=.." 到 $SPAWN_LOG 后
+#   阻塞 (取信长轮询语义).
+shift || true
+if [ "$1" = "ensure-session" ]; then
+  if [ "${FAKE_FAIL:-0}" = "1" ]; then
+    echo "假 ensure-session: 本机信箱未发现" >&2
+    exit 3
+  fi
+  [ -n "${FAKE_ENSURE_SLEEP:-}" ] && sleep "$FAKE_ENSURE_SLEEP"
+  sid="$2"
+  dir="$HOME/.agents/mailbox/sessions/$sid"
+  mkdir -p "$dir"
+  cfg="$dir/config.json"
+  created=false
+  if [ ! -f "$cfg" ]; then
+    printf '{"server":"http://127.0.0.1:1","session":"%s","signing_key":"fake-k","response_key":"fake-r"}\n' "$sid" > "$cfg"
+    chmod 600 "$cfg"
+    created=true
+  fi
+  printf '{"id":"%s","config":"%s","created":%s}\n' "$sid" "$cfg" "$created"
+  exit 0
+fi
+printf 'pid=%s cfg=%s state=%s swt=%s args=%s\n' "$$" "${MAILBOX_CONFIG:-}" "${MAILBOX_CLI_STATE:-}" "${SWT_SESSION_ID:-}" "$*" >> "$SPAWN_LOG"
+exec sleep infinity

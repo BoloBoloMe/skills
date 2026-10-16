@@ -12,7 +12,7 @@ disable-model-invocation: true
 
 ## 前置与决策协议
 
-- 使用 rootless Podman (pasta 网络), nftables, Git; birth 会用一次性小仓库验证 Git 支持所需的 `hideRefs` 与 `extensions.worktreeConfig`, 不支持退出 4. 全部脚本从本 skill 目录按相对路径运行, 使用 `uv run python`.
+- 使用 rootless Podman (pasta 网络), nftables, Git 与支持 `machine list/add/remove` 的宿主 Herdr; birth/resume 创建资源前检查 Herdr 命令在场. birth 会用一次性小仓库验证 Git 支持所需的 `hideRefs` 与 `extensions.worktreeConfig`, 不支持退出 4. 全部脚本从本 skill 目录按相对路径运行, 使用 `uv run python`.
 - 记录根缺省 `~/.agents/sandbox-worktree/`, 可用 `--records-root` 覆盖 (设备密钥登记命令除外). host `~/.agents/skills/` 全树需让容器用户可读 (rootless uid 映射下靠 other 位); 带依赖的 skill 须携带已部署的 `uv.lock`. 可选 Maven settings 快照可能含凭据, 记录目录须保密, 终结容器时清除该容器快照, 细节见 [reference/risks.md](reference/risks.md).
 
 四个生命周期子命令 birth/resume/status/terminate 非交互, 返回码: 0 成功 (含幂等操作), 1 有 DECIDE 待我, 2 前置不足, 3 中途失败须按 PARTIAL 指引重入/救场, 4 环境不支持. exit 1 时 stdout 有 `DECIDE <id> <kind> <问题> 选项: <flag>`; 一次列出可预见的拍板点, 答案由一次性收据绑定当时的资源状态, 状态变了就重新问. 执行中冒出的失败按 PARTIAL 报, 不由你自作决定. 输出中查找 `STATE {...}` 这行 JSON (status 可能在它后面附 URL/窗口入口行), 据字段判断状态; 错误详情看 stderr 的 FAIL/PARTIAL/ENV 行. 脚本原生错误看不懂时查 [reference/errors.md](reference/errors.md).
@@ -25,7 +25,8 @@ uv run python scripts/swt.py status [--repo <主仓>]
 
 `--repo` 不给则从 cwd 推导. status 只读, `STATE.mothers[]` 逐对列分支/目录/daemon/容器, 顶层兼容字段表示主对. 已健康运行的容器 → 报告现有入口, 我需要完整接入信息时按 [reference/delivery.md](reference/delivery.md) 核对, 不另建/恢复; 没有记录或记录为 idle → birth; 容器停止, daemon/网络规则缺失或 git 桥异常 → 定位目标对后 resume; retired 容器 → terminate (resume 拒绝). 多对按母体分支或容器名消歧, 不把别的对当成目标.
 已知任务开始前 (含健康容器接新任务), 增加操作/依赖或环境变化时, 必须按 [reference/task-conditions.md](reference/task-conditions.md) 检查本次需要的实际操作; 默认只读, 写入探测先批准范围. 缺条件只阻塞依赖它的工作. 没给具体任务则标任务条件未检查, 不猜服务清单.
-完成标准: 明确当前目标对与下一步, 或确认现有容器基础通道健康并交付现有入口; 任务条件另按事实分项报告.
+交付现有入口也须按下方 birth 交付段在当前 host 会话开启/复用持续取信, 报告监听状态; 这是会话动作, status 命令本身仍只读.
+完成标准: 明确当前目标对与下一步, 或确认现有容器基础通道健康并交付现有入口及收信状态; 任务条件另按事实分项报告.
 
 ## 诞生 (birth)
 
@@ -50,8 +51,12 @@ uv run python scripts/swt.py birth [--repo <主仓>] --branch <母体分支名�
 
 脚本依收据提示的 DECIDE 收齐模板/网络/主机名/局域网地址/镜像选择; 即使只有一个模板也由我选. `--name` 只是自定义名称, 不能绕过同母体活跃容器唯一约束. 新容器使用兼容通用镜像契约的模板, 不复制主机 OAuth/旧模型凭据; 失败重入和固定快照规则见 [reference/agent-templates.md](reference/agent-templates.md). 旧容器不自动套新模板. display 检查失败时遵照脚本给出的 DECIDE 再问我, 不因显示问题擅自终结工作容器.
 
-成功后读取 [reference/delivery.md](reference/delivery.md), 按目标容器的实际 STATE/脚本输出交付 ssh/noVNC/web/herdr 入口, 凭证, 窗口状态/缺席原因以及 [reference/risks.md](reference/risks.md) 的风险; 不拼猜来的地址, 不静默丢项. 母体使用纪律一并转述: 只读审阅/diff/试跑, 跟踪文件保持不变, 否则容器 push 会被拒; 未跟踪文件不阻塞.
-完成标准: STATE `stage=born`, 容器检出分支与母体分支相同, 交付包与缺席原因齐全; 已知任务的条件按 [reference/task-conditions.md](reference/task-conditions.md) 分项报告, 可登录不代表任务条件齐备.
+容器 SSH 首次就绪即自动添加到宿主 Herdr 的远程机器列表, 标签为容器名, 使用本容器私钥与专用 SSH 别名, 不等最终交付. 登记信息留在容器记录 `herdr-machine`, 失败报 PARTIAL 并保留资源, 重跑同一 birth 收敛, 不另建容器/自动批准替换不兼容的远端 server. 创建者真实 `PI_SESSION_ID` 固定到生成提示词的 host 会话 sessionId, 让容器按会话定向发信; 重入不改写归属, 缺值如实标未登记.
+
+交付前读 `mailbox` skill, 在**当前 host 会话**调用 `mailbox_listen(action="start")` 开启持续取信, 核对返回 sessionId 和监听状态, 之后保留守护随时接收容器消息. 已运行则复用, 不停/覆盖其他会话, 不用阻塞裸取信命令代替. 服务/扩展缺席只标收信未就绪及原因, 不阻断基础入口交付.
+
+成功后读取 [reference/delivery.md](reference/delivery.md), 按目标实际 STATE/脚本输出分区交付: 概况, SSH, Herdr, Web, 桌面, 凭据与路径, 检查与风险. 短标题/空行隔区, 命令独立代码块, URL 独立一行, 不挤成长列表/宽表格或直接粘 STATE. 缺席原因跟随对应项, 不拼地址, 不静默丢项. 母体只读审阅/diff/试跑, 跟踪文件保持不变, 否则容器 push 被拒; 未跟踪文件不阻塞.
+完成标准: STATE `stage=born`, 容器分支与母体相同, Herdr machine 已登记, 当前会话收信状态如实报告, 交付信息按区可查且缺席原因齐全; 已知任务条件按 [reference/task-conditions.md](reference/task-conditions.md) 分项报告, 可登录不代表条件齐备.
 
 ## 恢复 (resume)
 
@@ -61,8 +66,8 @@ uv run python scripts/swt.py resume [--repo <主仓>] [--branch <母体分支名
 
 有未完成 network-change 时先停止并走 network recover, 不靠 resume 绕过. 多对必须指定分支或容器名. 有可恢复对象会先出 DECIDE, 我确认后加 `--confirm` 重跑. 恢复只收敛目标对: 收残留 daemon/旧 git 桥, 重启容器并重建本对 daemon/桥, **start 后立即重注入防火墙规则**, 再检查显示栈与 git 通道 (remote ls-remote/fetch), git 通道通过前不交付工作. 显示栈失败标降级但不阻断终端, 旧镜像无显示栈时标 absent; retired 容器只能 terminate. 旧记录可沿原有恢复机制处理; 新模板 birth/resume 遇主仓旧形态配置会停止, 不自动迁移其他对, 处置见 [reference/ops.md](reference/ops.md). 初始化未完成要重跑同一次 birth 而不是 resume. 宿主换网后 pasta 旧配置可能失配, 按脚本告警评估是否重建.
 
-完成后按 [reference/delivery.md](reference/delivery.md) 与 [reference/risks.md](reference/risks.md) 齐发交付, 不沿用停止前未经核对的入口.
-完成标准: 容器 running, 防火墙已重注入, git 桥校验通过, 显示状态已标注; 新模板的固定配置/凭据/网关检查也通过, STATE 指向本对母体分支.
+恢复时幂等核对/补登记本容器的宿主 Herdr machine, 不重复添加, 不改动别的机器配置. 完成后同 birth 在当前 host 会话开启/复用持续取信, 按 [reference/delivery.md](reference/delivery.md) 与 [reference/risks.md](reference/risks.md) 分区齐发交付, 不沿用未经核对的旧入口. 原生成节的 host sessionId 不因恢复换人而被改写, 与当前会话不同时说明原回信目标, 不宣称已改投.
+完成标准: 容器 running, 防火墙已重注入, git 桥校验通过, Herdr machine 已核对, 显示/收信状态已标注; 新模板固定配置/凭据/网关检查也通过, STATE 指向本对母体分支.
 
 ## 网络维护 (network)
 
@@ -87,8 +92,8 @@ uv run python scripts/swt.py network recover --name <容器名> [--repo <主仓>
 uv run python scripts/swt.py terminate [--repo <主仓>] [--branch <母体分支名原文>] [--name <容器名>] [--force]
 ```
 
-按容器定位, 多个候选时指定 `--name` 或先用 `--branch` 缩小范围. 未提交改动 (包括未跟踪文件), 有未落母体的提交, 或无法检查 (ssh 不通/容器已停) 均按脏处理; 仅落后母体不算脏. 脏时脚本出 DECIDE 并提醒确认容器内 agent 已停手, 我答复后带 `--force` 重跑, 先留审计记录再删. 成功时删目标防火墙规则与容器, 本对最后一个容器终结才收本对 daemon, 其他对不动. **母体目录与配置留存**, 母体存删由我另走 `use-worktree` 流程决定. 运行记录留存并置为 idle, 本容器 ssh 私钥/密码记录和 Maven settings 快照清除.
-完成标准: 目标容器及应收的本对 daemon 已灭, 母体未被修改, 运行记录为 idle, 目标凭据/快照已清除.
+按容器定位, 多个候选时指定 `--name` 或先用 `--branch` 缩小范围. 未提交改动 (包括未跟踪文件), 有未落母体的提交, 或无法检查 (ssh 不通/容器已停) 均按脏处理; 仅落后母体不算脏. 脏时脚本出 DECIDE 并提醒确认容器内 agent 已停手, 我答复后带 `--force` 重跑, 先留审计记录再删. 成功时删目标防火墙规则与容器, 本对最后一个容器终结才收本对 daemon, 其他对不动. **母体目录与配置留存**, 母体存删由我另走 `use-worktree` 流程决定. 运行记录留存并置为 idle, 本容器 ssh 私钥/密码记录和 Maven settings 快照清除. 同时按本容器记录移除宿主 Herdr machine 与专用 SSH Include/配置/known_hosts, 不按显示名称批量删, 不动其他连接. 移除失败报 PARTIAL, 保留记录/凭据供重跑 terminate, 不宣称清理完成.
+完成标准: 目标容器及应收的本对 daemon 已灭, 母体未被修改, 运行记录为 idle, 本容器 Herdr machine/SSH 接线/凭据/快照已清除.
 
 ## 按需参考
 

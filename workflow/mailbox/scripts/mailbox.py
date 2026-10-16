@@ -2,8 +2,9 @@
 """mailbox: 独立信箱 skill (自 use-sandbox-worktree 拆出).
 
 纯标准库单文件. 子命令: serve (前台启动信箱服务) / send / config / status /
-机器子命令 discover / register-session / revoke-session (stdout JSON, 失败
-exit 3, 供 swt 等外部脚本消费, D002); 缺省动作 = 取信 (阻塞长轮询).
+机器子命令 discover / register-session / ensure-session / revoke-session
+(stdout JSON, 失败 exit 3, 供 swt 与 pi 扩展等外部脚本消费, D002);
+缺省动作 = 取信 (阻塞长轮询).
 
 协议与数据模型: docs/changes/swt-mailbox-mesh/TECHNICAL.md.
 信件全内存: 排队/租约/seen_ids 重启即清; SQLite 只存 session 凭证.
@@ -354,6 +355,16 @@ class Mailbox:
         s.revoked = True
         self._save_session(s)
         return s
+
+    def ensure_session(self, session_id):
+        """幂等保证 session 在场 (D022, admin ensure 口): 已存在且未吊销 →
+        返回 (s, False) 复用原密钥 — 不吊销/不重发, 不打扰在取信的同会话
+        实例也不丢待取信; 不存在或已吊销 → 新建并返回 (s, True).
+        mailbox@ 保留前缀由 add_session 抛 MailboxError (admin 映射 403)."""
+        s = self.sessions.get(session_id)
+        if s is not None and not s.revoked:
+            return s, False
+        return self.add_session(session_id), True
 
     def add_neighbor(self, address, shared_key, name=None):
         """运行时加邻居 (D020): 内存生效 + SQLite 持久化 (B8, 重启仍在).
@@ -1523,6 +1534,21 @@ class _AdminHandler(_JsonHandler):
                 except MailboxError as e:
                     return self._json(404, {"error": str(e)})
             return self._json(200, {"id": sid, "revoked": True})
+        if path == "/admin/sessions/ensure":
+            # D022: 幂等保证 session 在场 (持锁): 活着复用原密钥, 否则新建.
+            # 供每会话独立凭证 CLI 反复调用, 不吊销在取信实例也不丢待取信.
+            sid = body.get("id")
+            if not isinstance(sid, str) or not sid:
+                return self._json(400, {"error": "id 须为非空字符串"})
+            m = self.server.mailbox
+            with self.server.cond:
+                try:
+                    s, created = m.ensure_session(sid)
+                except MailboxError as e:
+                    return self._json(403, {"error": str(e)})
+            return self._json(200, {"id": s.id, "signing_key": s.signing_key,
+                                    "response_key": s.response_key,
+                                    "created": created})
         if path == "/admin/neighbors":
             address = body.get("address")
             shared_key = body.get("shared_key")
@@ -1680,6 +1706,25 @@ def write_config_file(path, data):
     path.parent.mkdir(parents=True, exist_ok=True)
     os.chmod(path.parent, 0o700)
     write_json_0600(path, data)
+
+
+def safe_session_dirname(session_id):
+    """session id → 目录安全名 (D022 每会话独立信箱). 规整 id 原样用,
+    含路径分隔/异常字符的 id 用 sha256 前 32 hex 兜底 (防目录穿越/超长)."""
+    sid = str(session_id or "")
+    if re.fullmatch(r"[A-Za-z0-9_-][A-Za-z0-9._-]{0,127}", sid):
+        return sid
+    return hashlib.sha256(sid.encode()).hexdigest()[:32]
+
+
+def session_config_path(session_id, override=None):
+    """本会话独立配置文件路径 (D022): --config 显式指定优先; 缺省
+    <mailbox 配置目录>/sessions/<安全 id>/config.json. 与机器级
+    config.json (hostname-host) 分开, 多 pi 会话互不覆盖."""
+    if override:
+        return Path(override)
+    return (config_path().parent / "sessions"
+            / safe_session_dirname(session_id) / "config.json")
 
 
 def _config_usable(cfg):
@@ -2245,9 +2290,10 @@ class _MachineCommandError(Exception):
     """机器子命令失败 (携带人话, cmd_* 捕获后打 stderr 并 exit 3)."""
 
 
-def _machine_admin_post(found, path, body):
-    """机器子命令内部的 admin 口 POST (仅状态文件命中的信箱才有 admin 凭证).
-    拒绝/不可达/应答畸形一律 _MachineCommandError → exit 3; 超时 5s (D002)."""
+def _raw_admin_post(found, path, body):
+    """机器子命令内部的 admin 口 POST 原语: 返回 (HTTP 状态码, 应答 dict),
+    4xx/5xx 不抛 (供 ensure-session 区分 409 已存在); 传输层失败/应答非 dict
+    抛 _MachineCommandError → exit 3; 超时 5s (D002)."""
     admin_port, admin_token = found.get("admin_port"), found.get("admin_token")
     if not admin_port or not admin_token:
         raise _MachineCommandError(
@@ -2262,17 +2308,26 @@ def _machine_admin_post(found, path, body):
     try:
         with urllib.request.urlopen(request, timeout=5.0) as response:
             payload = json.loads(response.read() or b"{}")
+            code = response.status
     except urllib.error.HTTPError as exc:
+        code = exc.code
         try:
-            detail = json.loads(exc.read() or b"{}").get("error", "")
+            payload = json.loads(exc.read() or b"{}")
         except (json.JSONDecodeError, OSError):
-            detail = ""
-        raise _MachineCommandError(
-            f"admin 拒绝 (HTTP {exc.code}): {detail}") from exc
+            payload = {}
     except (urllib.error.URLError, OSError, json.JSONDecodeError) as exc:
         raise _MachineCommandError(f"admin 口不可达/应答畸形: {exc}") from exc
     if not isinstance(payload, dict):
         raise _MachineCommandError(f"admin 应答畸形: {payload!r}")
+    return code, payload
+
+
+def _machine_admin_post(found, path, body):
+    """admin 口 POST 且 HTTP 200 才算成功; 非 200 → _MachineCommandError."""
+    code, payload = _raw_admin_post(found, path, body)
+    if code != 200:
+        raise _MachineCommandError(
+            f"admin 拒绝 (HTTP {code}): {payload.get('error', '')}")
     return payload
 
 
@@ -2306,6 +2361,48 @@ def cmd_register_session(session_id):
     if any(not isinstance(value, str) or not value for value in creds.values()):
         _machine_exit(f"admin 应答缺注册三元组: {payload!r}")
     print(json.dumps(creds, ensure_ascii=False))
+
+
+def cmd_ensure_session(session_id, config=None):
+    """ensure-session <id> [--config <path>]: 保证本会话有独立可用凭证 (D022).
+    每次都探测本机 serve 并经 admin ensure 口幂等取回现存活跃 session 三元组
+    (活着复用原密钥, 不吊销/不丢待取信; 不存在/已吊销才新建), 再写 0600
+    独立配置 — 顺带跟进服务重启换端口. stdout JSON {id, config, server,
+    created}; 本机 serve 未发现/失败 exit 3."""
+    if not isinstance(session_id, str) or not session_id:
+        _machine_exit("session id 须为非空字符串")
+    cfg = session_config_path(session_id, config)
+    found = _discover_local_mailbox(allow_scan=False)
+    if found is None:
+        _machine_exit("本机信箱未发现 (状态文件缺席/失活), 无法准备 session 凭证")
+    try:
+        code, payload = _raw_admin_post(found, "/admin/sessions/ensure",
+                                        {"id": session_id})
+    except _MachineCommandError as exc:
+        _machine_exit(str(exc))
+    if code == 404:
+        _machine_exit(
+            "本机信箱 serve 版本过旧: 无 /admin/sessions/ensure 接口."
+            " 请重启 mailbox serve (旧进程不会因脚本更新而获得新接口),"
+            " 随后重载 pi 扩展并重试")
+    if code != 200:
+        _machine_exit(f"admin 拒绝 (HTTP {code}): {payload.get('error', '')}")
+    creds = {field: payload.get(field)
+             for field in ("id", "signing_key", "response_key")}
+    missing = [field for field, value in creds.items()
+               if not isinstance(value, str) or not value]
+    if missing:
+        # 不打印 payload 本体 (可能含密钥材料), 只报缺失字段名
+        _machine_exit("admin 应答缺注册字段: " + ",".join(missing)
+                      + " (不打印应答本体, 防密钥落到日志)")
+    server = f"http://127.0.0.1:{found['port']}"
+    write_config_file(cfg, {"server": server, "session": session_id,
+                            "signing_key": creds["signing_key"],
+                            "response_key": creds["response_key"]})
+    print(json.dumps({"id": session_id, "config": str(cfg),
+                      "server": server,
+                      "created": payload.get("created") is True},
+                     ensure_ascii=False))
 
 
 def cmd_revoke_session(session_id):
@@ -2531,6 +2628,12 @@ def main():
     p_register = sub.add_parser(
         "register-session", help="注册 session (机器子命令, stdout JSON 三元组)")
     p_register.add_argument("session_id", help="session id (如 <容器名>-<8hex>)")
+    p_ensure = sub.add_parser(
+        "ensure-session",
+        help="保证本会话独立凭证 (机器子命令, stdout JSON id/config/created)")
+    p_ensure.add_argument("session_id", help="session id (如 pi 会话 id)")
+    p_ensure.add_argument("--config", default=None,
+                          help="独立配置文件路径 (缺省 sessions/<id>/config.json)")
     p_revoke = sub.add_parser(
         "revoke-session", help="注销 session (机器子命令, stdout JSON)")
     p_revoke.add_argument("session_id")
@@ -2552,6 +2655,8 @@ def main():
         cmd_discover()
     elif args.cmd == "register-session":
         cmd_register_session(args.session_id)
+    elif args.cmd == "ensure-session":
+        cmd_ensure_session(args.session_id, args.config)
     elif args.cmd == "revoke-session":
         cmd_revoke_session(args.session_id)
     elif args.cmd == "join-fleet":

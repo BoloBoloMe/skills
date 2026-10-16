@@ -24,6 +24,7 @@ def _identity(facts) -> str:
         f"- 母体目录: {facts.get('mother_dir', _UNREGISTERED)}",
         f"- 分支: {facts.get('branch', _UNREGISTERED)}",
         f"- 容器内代码路径: {facts.get('code_path', _UNREGISTERED)}",
+        f"- host 会话 sessionId: {facts.get('host_session_id') or _UNREGISTERED}",
         "",
     ))
 
@@ -103,9 +104,11 @@ def render_docs(facts) -> dict:
 
 
 def render_generation_section(facts) -> str:
-    """生成节 (D009 定稿 4 行触发式指针), 拼在 ENV.md 之后, 三份提示词相同."""
+    """生成节: host 回信地址 + 4 行触发式指针, 三份提示词相同."""
     return "\n".join((
         f"## 本容器事实 ({BIRTH_MARKER})",
+        f"- host 会话 sessionId: {facts.get('host_session_id') or _UNREGISTERED}",
+        "  需要宿主协助时用 mailbox send --to 此 sessionId; 未登记时先问我, 不改投机器级 host 信箱.",
         "- 网络访问不通/要判断某地址可连性 → 读 ~/docs/network.md (当前模式与 deny 条目)",
         "- 要自证/填报容器身份 (容器名/主仓/分支/代码路径) → 读 ~/docs/identity.md",
         "- 要拼给用户的展示页 URL / 在容器内交付展示页 (起服务/架桥) → "

@@ -13,6 +13,8 @@ disable-model-invocation: true
 
 `config.json` (本机取信/投信凭证, 0600) / `neighbors.json` (邻居表) / `cli-state.json` (取信侧状态) / `state.json` (serve 状态) / `server.db` (session/邻居持久化); 父目录 0700.
 
+**每 pi 会话独立信箱 (D022)**: `sessions/<session-id>/` 下各会话独立 `config.json` (凭证 0600) / `cli-state.json` (取信状态) / `listen.json` (取信守护开关标记). 多 pi 会话可同时取信, 互不覆盖不串信.
+
 旧路径 (`~/.agents/sandbox-worktree/mailbox.json`/`neighbors.json`/`mailbox-state.json`, `~/.local/state/swt-mailbox/`, 老老路径 `~/.config/swt/mailbox.json`) 首次运行自动迁移并提示; 不留兼容 shim.
 
 ## 常用命令
@@ -20,11 +22,20 @@ disable-model-invocation: true
 ```text
 uv run python scripts/mailbox.py serve                                  # 前台启动 (无 systemd 无自启)
 uv run python scripts/mailbox.py send --to <session.id> --type notify --body "..."
+uv run python scripts/mailbox.py ensure-session <session-id>            # 本会话独立凭证 (stdout JSON id/config/server/created)
 uv run python scripts/mailbox.py config set <field> [value]             # 密钥项经 stdin, 不回显
 uv run python scripts/mailbox.py status                                 # 配置状态, 密钥脱敏
 uv run python scripts/mailbox.py                                        # 缺省 = 取信 (阻塞长轮询)
 ```
 
 serve 启动自动注册 `<hostname>-host` session 并写本机配置 — 本机取信零配置. 容器内凭证走 env (`SWT_MAILBOX_URL`/`SWT_SESSION_*`, birth 烘入; 契约名不可改, 非测试注入 env).
+
+## pi 会话取信 (D022)
+
+pi 扩展按当前会话 session id 使用独立信箱: host 上调用 `ensure-session` 在本机 serve 注册独立 session (幂等, 不吊销既有), 取信子进程经 env `MAILBOX_CONFIG`/`MAILBOX_CLI_STATE` 指向 `sessions/<sid>/`; 容器内直接沿用 birth 注入的 `SWT_SESSION_*` 凭据, 不 ensure 也不清容器 env. 与他人会话相互 start/stop/重启不覆盖. 收信地址 = 返回的 `mailboxSessionId` (host = pi session id; 容器 = `SWT_SESSION_ID`).
+
+agent 在交付前自行开启本会话取信守护, 调工具 `mailbox_listen(action=start|stop|status)` (或命令 `/mail-listen`); 不要只提示用户手输, 也不要用 bash 长轮询阻塞.
+
+**接口版本提示**: `/admin/sessions/ensure` 是 serve 新增 admin 口; 运行中的旧 serve 进程不会因脚本更新而获得该接口 — 请重启 serve, 并重载 pi 扩展后再用.
 
 完整协议 (HMAC 签名/时间窗/租约重投/mesh 洪泛/邻居配置/admin 口/指令集) → reference/mailbox.md.

@@ -520,9 +520,12 @@ class TestWebDeliveryUrls(unittest.TestCase):
         self.assertIn("web 入口 (局域网): http://192.168.1.10:49155", output)
 
     def test_no_web_lines_without_web_port(self):
-        """切片 2: 无 web-port (旧容器) → 无 web URL 行, 其余交付行不变 (D009)."""
+        """无 web-port 时保留 Web 分区并说明缺项, 不交付猜测 URL."""
         output = self._delivery_output(web_port=None, lan="192.168.1.10")
-        self.assertNotIn("web 入口", output)
+        self.assertIn("--- Web 展示页 ---", output)
+        self.assertIn("web 入口未附发: 无 web 端口映射", output)
+        self.assertNotIn("web 入口 (本机):", output)
+        self.assertNotIn("web 入口 (局域网):", output)
         self.assertNotIn("http://127.0.0.1:49155", output)
         # 既有行不变
         self.assertIn("ssh 入口 (本机):   ssh -p 49153 bolo@127.0.0.1", output)
@@ -665,8 +668,8 @@ class TestDeliveryCallSitesUseConfirmedAddress(unittest.TestCase):
 
     def test_call_sites_use_confirmed_address_and_web_port(self):
         segments = self._call_segments()
-        # birth 主交付 + 显示门禁重交付 x2 + resume 两路径 = 5 处
-        self.assertEqual(len(segments), 5, f"调用点数量变化, 守卫需同步复核: {len(segments)}")
+        # birth 主交付/固定模板重入 + 显示门禁重交付 x2 + resume 两路径 = 6 处
+        self.assertEqual(len(segments), 6, f"调用点数量变化, 守卫需同步复核: {len(segments)}")
         for segment in segments:
             # 窗口精确性自证: 恰覆盖单次调用 (一个调用名, 右括号收尾)
             self.assertEqual(segment.count("print_delivery_lines("), 1)
@@ -778,8 +781,8 @@ class TestBirthSingleActiveContainer(unittest.TestCase):
     def test_name_writeback_single_source_before_conflict_check(self):
         """评审修复守卫: 容器名推导一次写回 args.name, 位置在冲突检查之前
         (冲突检查/hostname 候选/wire/create 复用同一值, 不再各自 fork slug
-        子进程); born 重入守卫改用写回前捕获的 name_explicit, 不受缺省回填
-        影响 (同母体重入仍必须显式 --name)."""
+        子进程); 固定模板重入在 born 早退前核对本次创建绑定的容器名,
+        不再依赖已退休的 name_explicit 分支."""
         source = SCRIPT.read_text(encoding="utf-8")
         birth_segment = source[source.index("def birth("):]
         writeback_at = birth_segment.index(
@@ -792,13 +795,13 @@ class TestBirthSingleActiveContainer(unittest.TestCase):
         self.assertEqual(
             birth_segment.count("args.name or container_default_name(branch)"), 1,
             "birth 内只允许一处名字推导 (写回点), 其余复用 args.name")
-        capture_at = birth_segment.index("name_explicit = bool(args.name)")
-        self.assertLess(capture_at, writeback_at,
-                        "name_explicit 必须在写回之前捕获, 否则 born 重入守卫失效")
+        bound_name_at = birth_segment.index('args.name != fixed_meta.get("container")')
+        target_guard_at = birth_segment.index('template_call(agent_templates.target, runtime_existing, args.name)')
         born_at = birth_segment.index('runtime_existing.get("stage") == "born"')
-        born_segment = birth_segment[born_at:born_at + 400]
-        self.assertIn("not name_explicit", born_segment)
-        self.assertNotIn("not args.name", born_segment)
+        self.assertLess(writeback_at, bound_name_at)
+        self.assertLess(bound_name_at, born_at)
+        self.assertLess(target_guard_at, born_at)
+        self.assertLess(born_at, check_at)
 
 
 if __name__ == "__main__":

@@ -37,12 +37,15 @@ mock env) 与纯函数归快层.
 
 | 改动面 | 必跑 | 层级 |
 | --- | --- | --- |
-| `scripts/swt.py` (birth/resume/status/terminate/network) | test_swt_m12.py + test_swt_llm_select_mount.py + test_swt_network_update.py + test_swt_network_e2e.py | e2e + 快层 |
+| `scripts/swt.py` (birth/resume/status/terminate/network) | test_swt_m12.py + test_swt_llm_select_mount.py + test_swt_network_update.py + test_swt_network_e2e.py + test_swt_herdr.py | e2e + 快层 |
+| `scripts/herdr_machine.py` (宿主 Herdr 自动接线/回收) | test_swt_herdr.py | 快层, HOME/XDG_STATE_HOME 隔离, 真实 OpenSSH 配置解析与 Herdr list/remove |
+| `scripts/env_docs.py` (生成节/host 回信会话) | test_env_docs.py + test_swt_stage_env.py + test_swt_herdr.py | 快层 |
 | `scripts/net-firewall.py` (nft 黑/白名单/空间写锁) | test_swt_m04.py + test_swt_network_update.py + test_swt_network_e2e.py | e2e + 快层 |
 | `scripts/network_update.py` (白名单维护事务/收据/进程) | test_swt_network_update.py + test_swt_network_e2e.py | e2e + 快层 |
 | `scripts/image-prep.py` (镜像制备 build-base/match/build) | test_swt_m07.py | e2e |
 | `scripts/swt-display.py` (登录墙/swt-vnc/noVNC) | test_swt_m09.py | e2e |
-| `mailbox/scripts/mailbox.py` (信箱, 独立 skill) | test_mailbox_*.py | 快层 (真回环, 秒级) |
+| `mailbox/scripts/mailbox.py` (信箱, 独立 skill) | test_mailbox_*.py | 快层 (真回环) |
+| `mailbox/pi-extension/` / `tests/pi/mailbox/` (每会话取信/工具/场景夹具) | test_mailbox_listen_mark.py + test_mailbox_audit.py | 快层 |
 | 展示链交付/双 URL (birth 输出侧) | test_swt_web_access.py + test_swt_m08_*.py | 快层 |
 | `general/present/scripts/` | general/present/tests/ | 快层 |
 

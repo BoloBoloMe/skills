@@ -237,6 +237,16 @@ class TestPrintDeliveryWiring(M08Case):
                 "birth: 已完成", 49153, None, "absent", None, "192.168.1.10", **kwargs)
         return buffer.getvalue()
 
+    def test_delivery_has_separate_sections_in_use_order(self):
+        output = self._delivery_output(web_port=49200)
+        titles = ["SSH 登录", "Herdr 工作区", "Web 展示页", "桌面 / noVNC / 窗口直飞", "登录凭据"]
+        positions = [output.index(f"\n[SWT] --- {title} ---\n") for title in titles]
+        self.assertEqual(positions, sorted(positions))
+        web = output[positions[2]:positions[3]]
+        self.assertIn("http://127.0.0.1:49200", web)
+        self.assertNotIn("herdr --remote", web)
+        self.assertIn("登录密码: sandbox", output[positions[4]:])
+
     def test_delivery_prints_headed_lines_when_script_present(self):
         output = self._delivery_output(headed_script="/records/runtime/x/swt-headed-browser.sh")
         self.assertIn("waypipe ssh -p 49153", output)
@@ -289,11 +299,11 @@ class TestPrintDeliveryWiring(M08Case):
 
     def test_all_delivery_call_sites_pass_headed_script(self):
         """ISSUE-07 接缝守卫: birth/resume 全部 print_delivery_lines 调用点
-        (5 处: birth 主交付 + 显示门禁重交付 x2 + resume 两路径) 都传 headed_script."""
+        (6 处: birth 主交付/固定模板重入 + 显示门禁重交付 x2 + resume 两路径) 都传 headed_script."""
         source = SCRIPT.read_text(encoding="utf-8")
         segments = [self._extract_call(source, match.start())
                     for match in re.finditer(r"(?<!def )print_delivery_lines\(", source)]
-        self.assertEqual(len(segments), 5, f"调用点数量变化, 守卫需同步复核: {len(segments)}")
+        self.assertEqual(len(segments), 6, f"调用点数量变化, 守卫需同步复核: {len(segments)}")
         for segment in segments:
             self.assertIn("headed_script=", segment,
                           f"交付调用点未接线窗口直飞行: {segment[:120]}")
