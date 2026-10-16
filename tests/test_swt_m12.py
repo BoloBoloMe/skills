@@ -768,7 +768,7 @@ class SwtBirthFixture(SwtFixture):
         if name:
             args.extend(["--name", name, "--reuse-mother"])
         else:
-            args.extend(["--allow", "127.0.0.1", "--new-mother"])
+            args.extend(["--allow-entry", "127.0.0.1", "隔离测试回环通道", "--new-mother"])
         result = self.run_swt(*args)
         self.assertEqual(0, result.returncode, result.stderr)
         return self.state(result)
@@ -865,7 +865,7 @@ class TestTS201BirthChain(SwtBirthFixture):
         self.assertTrue(list((self.records / "runtime").glob("*/decisions/d-*.json")))
 
         result = self.run_swt(
-            *common, "--mode", "whitelist", "--allow", "127.0.0.1", "--new-mother",
+            *common, "--mode", "whitelist", "--allow-entry", "127.0.0.1", "隔离测试回环通道", "--new-mother",
         )
         self.assertEqual(0, result.returncode, result.stderr)
         state = self.state(result)
@@ -1008,7 +1008,7 @@ class TestTS1xxHostname(SwtBirthFixture):
         return (
             "birth", "--repo", str(self.repo), "--records-root", str(self.records),
             "--branch", "feature/m12", "--image", "localhost/swt-m03:latest",
-            "--mode", "whitelist", "--allow", "127.0.0.1", "--new-mother",
+            "--mode", "whitelist", "--allow-entry", "127.0.0.1", "隔离测试回环通道", "--new-mother",
         )
 
     def test_ts101_hostname_without_flag_decides(self) -> None:
@@ -1084,7 +1084,7 @@ class TestTS210NftMerge(SwtBirthFixture):
         while True:
             second_result = self.run_swt(
                 "birth", "--repo", str(self.repo), "--records-root", str(self.records), "--branch", "other",
-                "--image", "localhost/swt-m03:latest", "--mode", "whitelist", "--allow", "127.0.0.1",
+                "--image", "localhost/swt-m03:latest", "--mode", "whitelist", "--allow-entry", "127.0.0.1", "隔离测试回环通道",
                 "--new-mother", "--name", second_name,
             )
             self.assertEqual(0, second_result.returncode, second_result.stderr)
@@ -1135,7 +1135,7 @@ class TestTS211Partial(SwtBirthFixture):
             (fake / command).symlink_to(target)
         args = (
             "birth", "--repo", str(self.repo), "--records-root", str(self.records), "--branch", "feature/m12",
-            "--image", "localhost/swt-m03:latest", "--mode", "whitelist", "--allow", "127.0.0.1", "--new-mother",
+            "--image", "localhost/swt-m03:latest", "--mode", "whitelist", "--allow-entry", "127.0.0.1", "隔离测试回环通道", "--new-mother",
         )
         environment = {**os.environ, "PATH": str(fake)}
         first = self.run_swt(*args, env=environment)
@@ -1207,7 +1207,7 @@ class TestTS206ConfigIdempotence(SwtBirthFixture):
         name = first["containers"][0]["name"]
         second = self.run_swt(
             "birth", "--repo", str(self.repo), "--records-root", str(self.records), "--branch", "feature/m12",
-            "--image", "localhost/swt-m03:latest", "--mode", "whitelist", "--allow", "127.0.0.1",
+            "--image", "localhost/swt-m03:latest", "--mode", "whitelist", "--allow-entry", "127.0.0.1", "隔离测试回环通道",
             "--reuse-mother", "--name", name,
         )
         self.assertEqual(0, second.returncode, second.stderr)
@@ -1693,7 +1693,7 @@ class TestTS301Terminate(SwtBirthFixture):
         second = self.run_swt(
             "birth", "--repo", str(self.repo), "--records-root", str(self.records),
             "--branch", "other", "--image", "localhost/swt-m03:latest",
-            "--mode", "whitelist", "--allow", "127.0.0.1", "--new-mother",
+            "--mode", "whitelist", "--allow-entry", "127.0.0.1", "隔离测试回环通道", "--new-mother",
             "--name", second_name,
         )
         self.assertEqual(0, second.returncode, second.stderr)
@@ -1839,7 +1839,7 @@ class TestMultiPairIsolation(SwtBirthFixture):
         result = self.run_swt(
             "birth", "--repo", str(self.repo), "--records-root", str(self.records),
             "--branch", branch, "--image", "localhost/swt-m03:latest",
-            "--mode", "whitelist", "--allow", "127.0.0.1",
+            "--mode", "whitelist", "--allow-entry", "127.0.0.1", "隔离测试回环通道",
             "--new-mother", "--name", name,
         )
         self.assertEqual(0, result.returncode, result.stderr)
@@ -2273,7 +2273,7 @@ class TestTS5Resume(SwtBirthFixture):
         first = self.birth_ready()
         second_result = self.run_swt(
             "birth", "--repo", str(self.repo), "--records-root", str(self.records), "--branch", "other",
-            "--image", "localhost/swt-m03:latest", "--mode", "whitelist", "--allow", "127.0.0.1",
+            "--image", "localhost/swt-m03:latest", "--mode", "whitelist", "--allow-entry", "127.0.0.1", "隔离测试回环通道",
             "--new-mother", "--name", f"swt-m12-resume-sibling-{self.root.name[-6:]}",
         )
         self.assertEqual(0, second_result.returncode, second_result.stderr)
@@ -2350,7 +2350,7 @@ class TestDisplayGateReentry(SwtBirthFixture):
         return self.run_swt(
             "birth", "--repo", str(self.repo), "--records-root", str(self.records),
             "--branch", "feature/m12", "--image", "localhost/swt-m03:latest",
-            "--mode", "whitelist", "--allow", "127.0.0.1",
+            "--mode", "whitelist", "--allow-entry", "127.0.0.1", "隔离测试回环通道",
             "--reuse-mother", "--name", self.container_name, *extra,
         )
 

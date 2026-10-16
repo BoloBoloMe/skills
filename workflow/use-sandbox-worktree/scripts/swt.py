@@ -19,6 +19,7 @@ import argparse
 import fcntl
 import hashlib
 import ipaddress
+import importlib.util
 import json
 import os
 import re
@@ -44,6 +45,7 @@ from agent_config import template as agent_templates
 from agent_config.common import (TemplateError, filtered_env, CONTAINER_LABEL,
                                  TOKEN_LABEL, DIGEST_LABEL, CONTRACT)
 from env_docs import BIRTH_MARKER, DOC_FILES, render_docs, render_generation_section
+import network_update as network_maintenance
 
 
 SCHEMA = 2
@@ -579,7 +581,8 @@ def atomic_write_text(path: Path, content: str) -> None:
 
 
 def atomic_write_json(path: Path, value: dict[str, Any]) -> None:
-    atomic_write_text(path, json.dumps(value, ensure_ascii=False, indent=2) + "\n")
+    # runtime/收据共用私有持久写入, resume 不得把网络事务文件换回 0644.
+    network_maintenance.FileStore().write(path, value)
 
 
 def resolve_mother_branch(_repo: Path, raw_branch: str) -> str:
@@ -2258,7 +2261,11 @@ def migrate_legacy_pairs(repo: Path, records_root: Path, *, skip_daemon_for: Pat
         update_legacy_container_remote(repo, records_root, branch, mother)
 
 
-def apply_network(plan: NetworkPlan) -> dict[str, Any]:
+def apply_network(
+    plan: NetworkPlan, *, dns_servers: list[str] | None = None, runner=None,
+    expected_snapshot: str | None = None, netns_identity: dict | None = None,
+    allow_reasons: dict | None = None, frozen_auto_allow: list[str] | None = None,
+) -> dict[str, Any]:
     script = Path(__file__).with_name("net-firewall.py")
     command = [
         "uv", "run", "python", str(script), "apply", "--mode", plan.mode,
@@ -2266,28 +2273,35 @@ def apply_network(plan: NetworkPlan) -> dict[str, Any]:
     ]
     if plan.netns:
         command.extend(["--netns", plan.netns])
+    if expected_snapshot:
+        command.extend(["--expect-snapshot", expected_snapshot])
+    if netns_identity:
+        command.extend(["--expect-netns", f"{netns_identity['device']}:{netns_identity['inode']}"])
     auto_allow: list[str] = []
     auto_dns: list[str] = []
     if plan.mode == "whitelist":
         entries = list(plan.allow)
-        if plan.gateway not in entries:
-            entries.append(f"{plan.gateway}/32")
-            auto_allow.append(plan.gateway)
-        for entry in (plan.route_gateway, plan.container_ip):
-            if entry and entry not in entries:
+        normalized = {str(ipaddress.ip_network(entry, strict=False)) for entry in entries}
+        for entry in (plan.gateway, plan.route_gateway, plan.container_ip):
+            if entry and f"{entry}/32" not in normalized:
                 entries.append(f"{entry}/32")
+                normalized.add(f"{entry}/32")
                 auto_allow.append(entry)
+        if frozen_auto_allow is not None:
+            auto_allow = list(frozen_auto_allow)
+            entries = list(plan.allow) + [f"{a}/32" for a in auto_allow]
         for entry in entries:
             command.extend(["--allow", entry])
         # DNS 放行与容器真实解析器对齐 (2026-09-14 swt-firewall-outbound-bypass):
         # 网关单地址在 pasta 拓扑不成立, 必须放行 resolv.conf 里的解析器 (仅 53 端口)
-        if not plan.container:
+        if not plan.container and dns_servers is None:
             print(
                 "[SWT] 告警: 网络计划缺容器名, 无法读取 resolv.conf, "
                 "whitelist DNS 放行退回网关单地址",
                 file=sys.stderr,
             )
-        dns_servers = container_dns_servers(plan.container) if plan.container else []
+        if dns_servers is None:
+            dns_servers = container_dns_servers(plan.container) if plan.container else []
         if plan.container and not dns_servers:
             print(
                 f"[SWT] 告警: 读不到容器 {plan.container} 的 /etc/resolv.conf, "
@@ -2301,10 +2315,12 @@ def apply_network(plan: NetworkPlan) -> dict[str, Any]:
     else:
         for entry in plan.deny:
             command.extend(["--deny", entry])
-    result = run(command, timeout=30)
+    result = (runner or run)(command, timeout=30)
     if result.returncode != 0:
         raise SwtError(3, "PARTIAL", f"nft apply 失败, 容器已登记但网络未就绪: {result.stderr.strip()}")
+    metadata = {"allow-reasons": dict(allow_reasons)} if allow_reasons is not None else {}
     return {
+        **metadata,
         "mode": plan.mode,
         "table-present": True,
         "auto-allow": auto_allow,
@@ -3133,9 +3149,28 @@ def birth(args: argparse.Namespace, repo: Path) -> int:
     identity = resolve_pair_identity(repo, records_root, identity_mother)
     runtime_file = records_root / "runtime" / f"{identity}.json"
     runtime_existing = load_runtime(runtime_file)
+    if runtime_existing is not None:
+        try:
+            network_maintenance.require_no_pending(runtime_existing)
+        except network_maintenance.NetworkError as exc:
+            raise PreconditionError(str(exc)) from exc
     if runtime_existing is not None and runtime_existing.get("stage") == "idle":
         # 上次已彻底终结 (容器空/daemon 灭): 视为全新 birth, runtime 由后续流程重建覆盖.
         runtime_existing = None
+    try:
+        allow_reasons = network_maintenance.normalize_entries(getattr(args, "allow_entry", []))
+    except network_maintenance.NetworkError as exc:
+        raise PreconditionError(str(exc)) from exc
+    if args.mode == "blacklist" and allow_reasons:
+        raise PreconditionError("blacklist 不接受 --allow-entry")
+    if runtime_existing is None and args.allow:
+        raise PreconditionError("新 birth 的 --allow 缺少理由, 请改用 --allow-entry CIDR REASON")
+    if allow_reasons:
+        if args.allow:
+            raise PreconditionError("不能混用 --allow 与 --allow-entry")
+        args.allow = list(allow_reasons)
+    elif runtime_existing:
+        allow_reasons = runtime_existing.get("network", {}).get("allow-reasons")
     if runtime_existing is None:
         # 本对残留检查 (并行母体: 只看本对母体目录, 其他对的 daemon 是并存常态);
         # 旧形态主仓路径 daemon 不在此拦 — 由下方迁移统一重摆.
@@ -3206,6 +3241,8 @@ def birth(args: argparse.Namespace, repo: Path) -> int:
     else:
         image = mark_newer_available(prepare_image(args, repo, records_root), runtime_existing)
     network_input = {"mode": args.mode, "allow": list(args.allow), "deny": list(args.deny)}
+    if allow_reasons is not None:
+        network_input["allow-reasons"] = allow_reasons
     identity = runtime_file.stem
     # 收据绑定当前外部状态; 用户本次填写的网络答案本身不应使上一张票据失效.
     fingerprint = decision_fingerprint(repo, branch, mother_dir, image)
@@ -3243,7 +3280,7 @@ def birth(args: argparse.Namespace, repo: Path) -> int:
         records_root, identity, "network-mode", fingerprint, args.mode is not None,
         "请选择网络模式; whitelist 会自动放行网关地址与容器 resolv.conf 解析器 (DNS, 仅 53 端口); git 走 unix socket 桥, 不占网络白名单",
         "网络/配置状态已变化, 请重新确认",
-        ["--mode whitelist --allow ...", "--mode blacklist [--deny ...]"],
+        ["--mode whitelist --allow-entry CIDR REASON ...", "--mode blacklist [--deny ...]"],
         stale_receipts["network-mode"],
     )
     if network_decision:
@@ -3304,7 +3341,7 @@ def birth(args: argparse.Namespace, repo: Path) -> int:
         fixed_meta["decision-id"] = template_decision_id
         append_audit_entry(records_root, identity, {"action": "agent-template-selected", **agent_templates.summary(bundle),
                                                    "decision-id": template_decision_id, "container": args.name})
-    elif args.hostname != fixed_meta.get("hostname") or network_input != {k: runtime_existing["network"].get(k) for k in ("mode", "allow", "deny")}:
+    elif args.hostname != fixed_meta.get("hostname") or network_input != {k: runtime_existing["network"].get(k) for k in network_input}:
         raise PreconditionError("同一次创建的主机名/网络选择已固定, 不允许重入换参数")
     runtime_existing = load_runtime(runtime_file)
     if runtime_existing is not None and runtime_existing.get("stage") == "idle":
@@ -3419,7 +3456,7 @@ def birth(args: argparse.Namespace, repo: Path) -> int:
                 shared_netns,
                 route_gateway,
                 container["name"],
-            )
+            ), allow_reasons=allow_reasons,
         )
         own_netns = container_netns(container["detail"])
         if own_netns and own_netns != shared_netns:
@@ -3517,6 +3554,7 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     subparsers.choices["birth"].add_argument("--name")
     subparsers.choices["birth"].add_argument("--mode", choices=("whitelist", "blacklist"))
     subparsers.choices["birth"].add_argument("--allow", action="append", default=[])
+    subparsers.choices["birth"].add_argument("--allow-entry", action="append", nargs=2, default=[], metavar=("CIDR", "REASON"))
     subparsers.choices["birth"].add_argument("--deny", action="append", default=[])
     subparsers.choices["birth"].add_argument("--image")
     subparsers.choices["birth"].add_argument("--agent-template", help="新容器的配置模板; 缺省出 DECIDE, 不自动选择")
@@ -3552,6 +3590,19 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
         "list", help="跨仓列出本 host 全部沙盒容器 (只读清单, 末行 LIST 单行 json)")
     list_parser.add_argument("--records-root", type=Path,
                              default=Path.home() / ".agents" / "sandbox-worktree")
+    network = subparsers.add_parser("network", help="查询/审批修改白名单/恢复本工具未完成事务")
+    actions = network.add_subparsers(dest="network_action", required=True)
+    for action in ("show", "update", "recover"):
+        entry = actions.add_parser(action)
+        entry.add_argument("--repo")
+        entry.add_argument("--records-root", type=Path, default=Path.home() / ".agents" / "sandbox-worktree")
+        entry.add_argument("--name", required=True)
+        if action != "show":
+            entry.add_argument("--confirm", metavar="RECEIPT_ID")
+        if action == "update":
+            entry.add_argument("--add", action="append", nargs=2, default=[], metavar=("CIDR", "REASON"))
+            entry.add_argument("--remove", action="append", default=[], metavar="CIDR")
+            entry.add_argument("--reason", action="append", nargs=2, default=[], metavar=("CIDR", "REASON"))
     return parser.parse_args(argv)
 
 
@@ -3903,8 +3954,17 @@ def terminate_state(
 def append_audit_entry(records_root: Path, identity: str, entry: dict[str, Any]) -> Path:
     path = records_root / "runtime" / identity / "audit.jsonl"
     path.parent.mkdir(parents=True, exist_ok=True)
-    with path.open("a", encoding="utf-8") as stream:
+    descriptor = os.open(path, os.O_APPEND | os.O_CREAT | os.O_WRONLY | os.O_NOFOLLOW, 0o600)
+    with os.fdopen(descriptor, "a", encoding="utf-8") as stream:
+        os.fchmod(stream.fileno(), 0o600)
         stream.write(canonical_json(entry) + "\n")
+        stream.flush()
+        os.fsync(stream.fileno())
+    directory = os.open(path.parent, os.O_RDONLY | os.O_DIRECTORY)
+    try:
+        os.fsync(directory)
+    finally:
+        os.close(directory)
     return path
 
 
@@ -4090,6 +4150,13 @@ def terminate(args: argparse.Namespace, repo: Path) -> int:
     except OSError as exc:
         raise SwtError(3, "PARTIAL", f"Maven 配置快照清理失败: {maven_snapshot}: {exc}") from exc
     runtime["containers"] = runtime_records
+    change = runtime.get("network-change")
+    if isinstance(change, dict) and change.get("container") == {"name": target_name, "id": target.get("podman-id")}:
+        # 用户显式终结已删掉原目标, 该事务不应阻塞之后的新 birth 或绑定同名新 ID.
+        # 保留审计, 不把终结说成网络恢复成功, 更不由网络模块自行调用 terminate.
+        append_audit_entry(records_root, identity, {"timestamp": datetime.now(timezone.utc).isoformat(),
+                                                   "action": "network-change-terminated", "change": change})
+        runtime.pop("network-change")
     if has_siblings:
         runtime["stage"] = "born"
         if isinstance(runtime.get("network"), dict):
@@ -4446,6 +4513,10 @@ def resume(args: argparse.Namespace, repo: Path) -> int:
     if located is None:
         raise PreconditionError("没有 runtime 记录, 请先使用 birth")
     runtime_file, runtime = located
+    try:
+        network_maintenance.require_no_pending(runtime)
+    except network_maintenance.NetworkError as exc:
+        raise PreconditionError(str(exc)) from exc
     branch, mother_dir = runtime_mother(runtime)
     if not branch:
         raise PreconditionError("runtime 缺少授权母体分支, 请先人工恢复或 terminate")
@@ -4626,7 +4697,7 @@ def resume(args: argparse.Namespace, repo: Path) -> int:
         plan = network_plan_from_record(network, record, netns)
         if plan is None:
             raise SwtError(3, "PARTIAL", "resume 缺少网络参数, 无法 fail-closed 注入")
-        runtime["network"] = apply_network(plan)
+        runtime["network"] = apply_network(plan, allow_reasons=network.get("allow-reasons"))
         runtime["network"].update({"container-ip": record["network-ip"], "netns": netns})
         active_records = [
             item for item in runtime.get("containers", [])
@@ -5248,6 +5319,190 @@ def list_access_entries(
     return entries
 
 
+class NetworkHost:
+    """只适配当前目标事实/既有应用/只读通道检查, 事务顺序由 network_update 管理."""
+    def __init__(self, request):
+        self.request = request
+        self.runner = network_maintenance.BoundedRunner()
+        spec = importlib.util.spec_from_file_location("swt_firewall", Path(__file__).with_name("net-firewall.py"))
+        self.firewall = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(self.firewall)
+
+    def command(self, argv, *, input=None, timeout=10):
+        try:
+            return self.runner.checked(argv, input=input, timeout=timeout)
+        except network_maintenance.NetworkError as exc:
+            # 观察失败是前置不足; 规则写入另用 runner.checked 保留收尾事实.
+            if exc.code == 3:
+                raise network_maintenance.NetworkError(str(exc), 2) from exc
+            raise
+
+    def output(self, argv, timeout=10):
+        result = self.command(argv, timeout=timeout)
+        if result.returncode != 0:
+            # 外部输出可能包含认证信息, 只报告工具/退出码, 不回显原文.
+            raise network_maintenance.NetworkError(f"{argv[0]} 操作失败, 退出码 {result.returncode}")
+        return result.stdout
+
+    def netns_identity(self, path):
+        if not isinstance(path, str) or not path:
+            raise network_maintenance.NetworkError("inspect 缺少 SandboxKey, 不猜其他 pasta 实例")
+        stat = os.stat(path)
+        return {"path": path, "device": stat.st_dev, "inode": stat.st_ino}
+
+    def locate(self, request):
+        matches = []
+        for path, runtime in load_repo_runtimes(request.records_root, request.repo):
+            for record in runtime.get("containers", []):
+                if isinstance(record, dict) and record.get("name") == request.name:
+                    matches.append((path, runtime, record))
+        if len(matches) != 1:
+            raise network_maintenance.NetworkError("目标必须唯一对应主仓/母体记录, 请核对 --name")
+        path, runtime, record = matches[0]
+        branch, mother = runtime_mother(runtime)
+        if not branch or mother is None:
+            raise network_maintenance.NetworkError("目标缺少母体身份")
+        rows = json.loads(self.output(["podman", "inspect", request.name]))
+        if not isinstance(rows, list) or len(rows) != 1:
+            raise network_maintenance.NetworkError("目标 inspect 不唯一")
+        detail = rows[0]
+        if not isinstance(detail, dict):
+            raise network_maintenance.NetworkError("目标 inspect 不是对象")
+        full_id = detail.get("Id")
+        if not isinstance(full_id, str) or not re.fullmatch(r"[0-9a-f]{64}", full_id) or record.get("podman-id") != full_id:
+            raise network_maintenance.NetworkError("记录绑定的完整容器 ID 与同名容器不一致")
+        labels = detail.get("Config", {}).get("Labels") or {}
+        if labels.get("sandbox-worktree.repo") != str(request.repo) or labels.get("sandbox-worktree.mother") != branch:
+            raise network_maintenance.NetworkError("容器仓库/母体 label 与运行记录不一致")
+        running = detail.get("State", {}).get("Status") == "running"
+        netns = context = None
+        if running:
+            netns = self.netns_identity(container_netns(detail))
+            prefix = ["podman", "unshare", "nsenter", f"--net={netns['path']}"]
+            networks = detail.get("NetworkSettings", {}).get("Networks") or {}
+            addresses = {n["IPAddress"] for n in networks.values() if isinstance(n, dict) and n.get("IPAddress")}
+            if not addresses:
+                addr = self.output([*prefix, "ip", "-o", "-4", "addr", "show"])
+                addresses = {line.split()[3].split("/")[0] for line in addr.splitlines()
+                             if len(line.split()) >= 4 and line.split()[1] != "lo"}
+            if len(addresses) != 1:
+                raise network_maintenance.NetworkError("目标没有唯一 IPv4 源地址")
+            address = str(ipaddress.IPv4Address(next(iter(addresses))))
+            if address != record.get("network-ip"):
+                raise network_maintenance.NetworkError("实际容器源地址与运行记录不一致")
+            gateway_text = self.output(["podman", "exec", full_id, "getent", "hosts", "host.containers.internal"])
+            gateway_match = re.search(r"(?m)^([0-9.]+)\s+", gateway_text)
+            if not gateway_match:
+                raise network_maintenance.NetworkError("无法核对目标网关, 不使用猜测地址")
+            gateway = str(ipaddress.IPv4Address(gateway_match.group(1)))
+            routes = self.output([*prefix, "ip", "-4", "route"])
+            route = re.search(r"(?m)^default via ([0-9.]+)", routes)
+            dns = parse_resolv_conf_nameservers(self.output(["podman", "exec", full_id, "cat", "/etc/resolv.conf"]))
+            if not dns:
+                raise network_maintenance.NetworkError("无法核对目标实际 IPv4 解析器")
+            context = {"container-ip": address, "gateway": gateway,
+                       "route-gateway": route.group(1) if route else None, "dns": sorted(dns)}
+        return network_maintenance.Target(path, runtime, record, full_id, running, netns, context,
+                                          {"identity": path.stem, "mother": {"branch": branch, "dir": str(mother)}})
+
+    def revalidate(self, target):
+        current = self.locate(self.request)
+        if (current.id, current.running, current.netns, current.context, current.pair) != (target.id, target.running, target.netns, target.context, target.pair):
+            raise network_maintenance.NetworkError("目标/网络事实已变化, 请重新核对并审批", 3)
+
+    def observe(self, target):
+        self.revalidate(target)
+        path = target.netns["path"]
+        output = self.output([*self.firewall.nft_command(path), "-j", "list", "table", "inet", "swt"])
+        try:
+            return self.firewall.snapshot_json(json.loads(output), target.context["container-ip"])
+        except (ValueError, KeyError, TypeError) as exc:
+            raise network_maintenance.NetworkError(f"无法解释的受管规则结构: {exc}") from exc
+
+    def expected(self, network, context):
+        return self.firewall.expected_snapshot(network, context)
+
+    def apply(self, target, network, context, actual):
+        self.revalidate(target)
+        plan = NetworkPlan(network["mode"], tuple(network.get("allow", [])), tuple(network.get("deny", [])),
+                           context["gateway"], context["container-ip"], target.netns["path"],
+                           context.get("route-gateway"), target.record["name"])
+        try:
+            apply_network(plan, dns_servers=context["dns"], runner=self.runner.checked,
+                          expected_snapshot=self.firewall.snapshot_digest(actual), netns_identity=target.netns,
+                          allow_reasons=network.get("allow-reasons"), frozen_auto_allow=network.get("auto-allow", []))
+        except SwtError as exc:
+            raise network_maintenance.NetworkError("规则应用失败, 请核对 NETWORK 恢复状态", 3) from exc
+
+    def checks(self, target):
+        self.revalidate(target)
+        key = target.record.get("ssh_private_key")
+        if not key or not Path(key).is_file():
+            raise network_maintenance.NetworkError("缺少目标 SSH 私钥文件", 3)
+        port_text = self.output(["podman", "port", target.id, "22/tcp"])
+        ports = {int(line.rsplit(":", 1)[1]) for line in port_text.splitlines() if ":" in line}
+        if len(ports) != 1:
+            raise network_maintenance.NetworkError("无法核对唯一 SSH 端口", 3)
+        base = container_ssh_base(Path(key), next(iter(ports)))
+        base[1:1] = ["-o", "IdentitiesOnly=yes"]
+        ssh = self.command([*base, "true"])
+        yield "ssh", {"status": "通过" if ssh.returncode == 0 else "失败", "returncode": ssh.returncode}
+        remote = fixed_git_remote(Path(target.pair["mother"]["dir"]))
+        if target.record.get("remote") != remote:
+            raise network_maintenance.NetworkError("记录不是本对固定 Git 桥, 不访问真远端", 3)
+        git = self.command([*base, "git ls-remote " + shlex.quote(remote)])
+        yield "git", {"status": "通过" if git.returncode == 0 else "失败", "returncode": git.returncode,
+                      "detail": "仅查询本对本地桥, 未 fetch/改 remote/访问真远端"}
+
+    def stopped_rules_absent(self, target, change):
+        self.revalidate(target)
+        netns = change.get("netns") or {}
+        try:
+            current = self.netns_identity(netns.get("path"))
+        except FileNotFoundError:
+            return True
+        if current != netns:
+            return False
+        # 共享空间可能还存在: 只有明确原目标规则不在时才允许仅恢复记录.
+        result = self.command([*self.firewall.nft_command(netns["path"]), "-j", "list", "tables"])
+        if result.returncode != 0:
+            return False
+        tables = json.loads(result.stdout).get("nftables", [])
+        if not any(i.get("table", {}).get("family") == "inet" and i.get("table", {}).get("name") == "swt" for i in tables):
+            return True
+        result = self.command([*self.firewall.nft_command(netns["path"]), "-j", "list", "table", "inet", "swt"])
+        if result.returncode != 0:
+            return False
+        snapshot = self.firewall.snapshot_json(json.loads(result.stdout), change["before"]["context"]["container-ip"])
+        return not any(r.startswith("ip saddr ") for c in snapshot.values() for r in c["rules"])
+
+
+def network_command(args):
+    request = network_maintenance.Request(args.network_action, Path(args.repo or "."),
+                                           args.records_root.expanduser().resolve(), args.name,
+                                           getattr(args, "add", []), getattr(args, "remove", []),
+                                           getattr(args, "reason", []), getattr(args, "confirm", None))
+    result = network_maintenance.blank_result(request)
+    lock = None
+    try:
+        for command in ("git", "podman", "nft", "ssh", "uv", "nsenter", "ip"):
+            require_command(command)
+        request.repo = resolve_repo(args.repo)
+        # show 不创建记录/锁文件, 写命令沿用仓级锁在先.
+        if request.action != "show":
+            lock = acquire_lock(request.repo, request.records_root)
+        code, result = network_maintenance.Maintenance(NetworkHost(request)).execute(request)
+    except (SwtError, OSError, network_maintenance.NetworkError, ValueError) as exc:
+        code = exc.code if isinstance(exc, (SwtError, network_maintenance.NetworkError)) else 2
+        result.update(stage="unsupported" if code == 4 else "rejected",
+                      error={"name": type(exc).__name__, "message": str(exc)})
+    finally:
+        if lock is not None:
+            lock.close()
+    network_maintenance.print_result(result)
+    return code
+
+
 def canonical_json(value: Any) -> str:
     return json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
 
@@ -5325,6 +5580,8 @@ def acquire_lock(repo: Path, records_root: Path) -> Any:
 def main(argv: list[str]) -> int:
     try:
         args = parse_args(argv)
+        if args.command == "network":
+            return network_command(args)
         require_command("git")
         if args.command == "birth":
             for command in ("podman", "nft", "ssh", "ssh-keygen", "uv"):
@@ -5356,6 +5613,14 @@ def main(argv: list[str]) -> int:
             raise PreconditionError(f"NOT-IMPLEMENTED {args.command}")
         finally:
             lock.close()
+    except SystemExit as exc:
+        if argv and argv[0] == "network" and exc.code:
+            request = network_maintenance.Request(argv[1] if len(argv) > 1 else "show", Path("."), Path("."), "")
+            result = network_maintenance.blank_result(request)
+            result["error"] = {"name": "ArgumentError", "message": "CLI 参数错误, 未执行"}
+            network_maintenance.print_result(result)
+            return 2
+        raise
     except SwtError as exc:
         print(f"{exc.tag} {exc.message}", file=sys.stderr)
         return exc.code

@@ -12,6 +12,7 @@ birth 用 `podman create -e` 把 host 环境变量烘入容器, 改清单须重�
 
 ## 分发边界
 
+- 修改和验收通过不自动授权同步部署, 须另行明确要求. 网络维护须成套分发同版 `swt.py`/`network_update.py`/`net-firewall.py` 及参考, 旧脚本不能安全处理新 network-change.
 - 修改 `swt.py`/本 skill/`reference/` 等宿主 agent 读的文件: 在仓库根 `uv run python sync-to-pi.py` 同步到 host skill 库后生效. 本仓库提出的 skill 修改只改仓库, 不直接改真实 agent skills.
 - 信箱脚本在独立的 `workflow/mailbox/scripts/mailbox.py`, 同经仓库同步分发到 `~/.agents/skills/mailbox/`; 设备侧有自己的副本, 更新后取信会话重跑脚本才生效.
 - `present` skill 也在 base 镜像构建期 COPY, 新 birth 想使用它的新版本, 同步后还须经审批重建 base/display/项目镜像; 已存在的容器不会更新.

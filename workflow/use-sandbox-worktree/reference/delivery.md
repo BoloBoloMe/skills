@@ -10,4 +10,6 @@ birth/resume 到达成功交付时读本文件; status 显示已有健康容器�
 - **herdr 双入口**: 本机 `herdr --remote ssh://bolo@127.0.0.1:<宿主端口>`, 局域网 `herdr --remote ssh://bolo@<已确认的 host-LAN-IP>:<宿主端口>`. 在普通终端执行, 不在 herdr 内套 herdr; 已在 herdr 中时用 [living.md](living.md) 的开窗格配方. 远程机需先拷贝私钥或使用密码.
 - **容器内路径**: 容器账户 bolo, home `/home/bolo`, 代码在 `/home/bolo/Workspace/<母体分支名原文>` (含 `/` 时为嵌套目录). skill 库从 host 同路径只读挂载到 `~/.agents/skills/`, 项目 `.venv` 为可写匿名卷, pi 配置在 `~/.pi/agent/`. host `~/.m2/settings.xml` 可读时 birth 留一份私有快照并只读挂到容器同路径, `~/.m2/` 仍可写入 Maven 本地仓库; host 文件缺失/不可读就跳过, 不影响 birth, resume 不为旧容器增补. host 文件后续更新不实时同步. pi/codex/kimi 全局指令为 birth 拼装的只读单文件, 分别挂到 `~/.pi/agent/AGENTS.md` / `~/.codex/AGENTS.md` / `~/.kimi-code/AGENTS.md`; 四份本容器事实小抄 (`identity.md`/`network.md`/`web-ports.md`/`agents.md`) 只读挂到 `~/docs/`; 不设 `~/AGENTS.md`.
 
-检查结果: STATE `stage=born`, 容器检出的分支与母体分支一致, 全部可用入口/缺席原因/登录凭证/风险均已交付. 交付脚本已打印大部分入口, 优先核对并转交实际输出, 不凭本文模板猜端口或地址.
+任务交付另须按 [task-conditions.md](task-conditions.md) 核对已有证据, 分开报告容器可登录/依赖检查/测试条件/写权限的通过/受阻/未检查及原因和原检查时间. 未给具体任务则标任务条件未检查. 证据仍适用时复用, 不无故重复探测; 无写入批准不运行会自清理的写探针. 条件缺口不阻塞基础入口交付或独立工作, 但不得宣称全部任务条件具备.
+
+基础入口检查结果: STATE `stage=born`, 容器检出的分支与母体分支一致, 全部可用入口/缺席原因/登录凭证/风险均已交付. 交付脚本已打印大部分入口, 优先核对并转交实际输出, 不凭本文模板猜端口或地址.

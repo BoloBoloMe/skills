@@ -37,8 +37,9 @@ mock env) 与纯函数归快层.
 
 | 改动面 | 必跑 | 层级 |
 | --- | --- | --- |
-| `scripts/swt.py` (birth/resume/status/terminate/switch 生命周期) | test_swt_m12.py + test_swt_llm_select_mount.py | e2e 全量 + 快层 |
-| `scripts/net-firewall.py` (nft 黑/白名单) | test_swt_m04.py | e2e |
+| `scripts/swt.py` (birth/resume/status/terminate/network) | test_swt_m12.py + test_swt_llm_select_mount.py + test_swt_network_update.py + test_swt_network_e2e.py | e2e + 快层 |
+| `scripts/net-firewall.py` (nft 黑/白名单/空间写锁) | test_swt_m04.py + test_swt_network_update.py + test_swt_network_e2e.py | e2e + 快层 |
+| `scripts/network_update.py` (白名单维护事务/收据/进程) | test_swt_network_update.py + test_swt_network_e2e.py | e2e + 快层 |
 | `scripts/image-prep.py` (镜像制备 build-base/match/build) | test_swt_m07.py | e2e |
 | `scripts/swt-display.py` (登录墙/swt-vnc/noVNC) | test_swt_m09.py | e2e |
 | `mailbox/scripts/mailbox.py` (信箱, 独立 skill) | test_mailbox_*.py | 快层 (真回环, 秒级) |
@@ -48,6 +49,15 @@ mock env) 与纯函数归快层.
 红线 (D036): 断言真实外部状态, 不靠 mock 替代系统行为. 分层只动跑法与夹具组织,
 不降低证据等级; 快层用例的 fake 边界是被测系统之外的接缝 (如 podman 不存在于
 该用例假设的环境), 不是把系统行为 mock 掉.
+
+## 沙盒维护改进的独立验证
+
+`uv run python -m pytest --confcutdir=/tmp tests/test_swt_network_update.py tests/test_swt_network_e2e.py -q`
+
+- 快层覆盖 CLI/收据/持久化故障/中断/恢复/进程组收尾.
+- e2e 仅创建独立 pasta 容器/本地 Git 桥/私有 DNS namespace, 逐个按自己的 ID 回收, 不清共享 rootless 桥表. 复用本地镜像, 不自动构建或拉取; birth 用已存在的契约 2 镜像和临时 skills/假模型 Key/本地模拟网关, 不读真实 Maven/模型凭据.
+- `--confcutdir=/tmp` 刻意绕过本目录旧 conftest 的全机新增卷/孤儿清理钩子, 不把同时运行的业务资源纳入测试清理. 新文件的 e2e 标记自带, 不依赖该钩子.
+- 公共文档的操作级检查/授权/报告另做定向执行/回放: `uv run python tests/fixtures/swt_maintenance_replay.py [证据JSON路径]`. 审批/工具链输入是固定场景, 不替代真实现场授权/构建验证. 证据见 `docs/changes/swt-maintenance-improvements/VALIDATION.md`. 不以关键词扫描冒充 agent 行为验证.
 
 ## m12 真容器前置条件 (E2E-ISSUE-02)
 

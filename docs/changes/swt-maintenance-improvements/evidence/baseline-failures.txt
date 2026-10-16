@@ -1,0 +1,24 @@
+FE
+======================================================================
+ERROR: test_name_writeback_single_source_before_conflict_check (test_swt_web_access.TestBirthSingleActiveContainer.test_name_writeback_single_source_before_conflict_check)
+评审修复守卫: 容器名推导一次写回 args.name, 位置在冲突检查之前
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/bolo/Workspace/skills/skills-v2/tests/test_swt_web_access.py", line 795, in test_name_writeback_single_source_before_conflict_check
+    capture_at = birth_segment.index("name_explicit = bool(args.name)")
+ValueError: substring not found
+
+======================================================================
+FAIL: test_call_sites_use_confirmed_address_and_web_port (test_swt_web_access.TestDeliveryCallSitesUseConfirmedAddress.test_call_sites_use_confirmed_address_and_web_port)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/bolo/Workspace/skills/skills-v2/tests/test_swt_web_access.py", line 669, in test_call_sites_use_confirmed_address_and_web_port
+    self.assertEqual(len(segments), 5, f"调用点数量变化, 守卫需同步复核: {len(segments)}")
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 6 != 5 : 调用点数量变化, 守卫需同步复核: 6
+
+----------------------------------------------------------------------
+Ran 2 tests in 0.052s
+
+FAILED (failures=1, errors=1)
+原始 HEAD 复现结果: 1 failed, 1 error

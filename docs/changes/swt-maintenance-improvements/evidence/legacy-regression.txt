@@ -1,0 +1,43 @@
+..................................................................................................F...F...........                       [100%]
+=================================== FAILURES ===================================
+_ TestDeliveryCallSitesUseConfirmedAddress.test_call_sites_use_confirmed_address_and_web_port _
+
+self = <test_swt_web_access.TestDeliveryCallSitesUseConfirmedAddress testMethod=test_call_sites_use_confirmed_address_and_web_port>
+
+    def test_call_sites_use_confirmed_address_and_web_port(self):
+        segments = self._call_segments()
+        # birth 主交付 + 显示门禁重交付 x2 + resume 两路径 = 5 处
+>       self.assertEqual(len(segments), 5, f"调用点数量变化, 守卫需同步复核: {len(segments)}")
+E       AssertionError: 6 != 5 : 调用点数量变化, 守卫需同步复核: 6
+
+tests/test_swt_web_access.py:669: AssertionError
+_ TestBirthSingleActiveContainer.test_name_writeback_single_source_before_conflict_check _
+
+self = <test_swt_web_access.TestBirthSingleActiveContainer testMethod=test_name_writeback_single_source_before_conflict_check>
+
+    def test_name_writeback_single_source_before_conflict_check(self):
+        """评审修复守卫: 容器名推导一次写回 args.name, 位置在冲突检查之前
+        (冲突检查/hostname 候选/wire/create 复用同一值, 不再各自 fork slug
+        子进程); born 重入守卫改用写回前捕获的 name_explicit, 不受缺省回填
+        影响 (同母体重入仍必须显式 --name)."""
+        source = SCRIPT.read_text(encoding="utf-8")
+        birth_segment = source[source.index("def birth("):]
+        writeback_at = birth_segment.index(
+            "args.name = args.name or container_default_name(branch)")
+        check_at = birth_segment.index("birth_active_container_conflict(")
+        self.assertLess(writeback_at, check_at,
+                        "名字写回必须先于冲突检查, 检查直接用 args.name")
+        # 写回唯一: birth 内其余处不再重复推导 (create_and_start_container 自身
+        # 的防御性回退不算 birth 内推导点)
+        self.assertEqual(
+            birth_segment.count("args.name or container_default_name(branch)"), 1,
+            "birth 内只允许一处名字推导 (写回点), 其余复用 args.name")
+>       capture_at = birth_segment.index("name_explicit = bool(args.name)")
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       ValueError: substring not found
+
+tests/test_swt_web_access.py:795: ValueError
+=========================== short test summary info ============================
+FAILED tests/test_swt_web_access.py::TestDeliveryCallSitesUseConfirmedAddress::test_call_sites_use_confirmed_address_and_web_port
+FAILED tests/test_swt_web_access.py::TestBirthSingleActiveContainer::test_name_writeback_single_source_before_conflict_check
+2 failed, 112 passed, 53 deselected, 8 subtests passed in 14.20s

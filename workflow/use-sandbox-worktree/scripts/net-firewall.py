@@ -25,7 +25,7 @@ uid (含 root) 均不可达不可删 (调研 §4.1 实测结论, 本脚本承接
 - blacklist = 默认放行: 仅断 --deny 条目 (护特定环境数据库/redis 场景).
 - 两模式共通: IPv6 兜底 DROP (调研 §4.1).
 - 条目只收 IP/CIDR; 域名须在盘点确认环节解析为 IP 后传入 (nft 无域名语义).
-- 运行期不切换: apply 为表级全量替换, 无增量放行通道; 换模式/换清单 = 整体重建.
+- 运行期不切换模式; 正式增删/理由维护使用 swt network, 本层复用原子换表.
 - apply --merge 在整体重建时保留异己容器的源地址规则; 不带时发现异己源地址即拒绝.
 - remove 按容器源地址删除规则, 最后一个源地址消失时删除整表, 无目标时幂等.
 
@@ -34,11 +34,17 @@ uid (含 root) 均不可达不可删 (调研 §4.1 实测结论, 本脚本承接
 from __future__ import annotations
 
 import argparse
+import fcntl
+import hashlib
 import ipaddress
+import json
 import os
 import re
 import subprocess
 import sys
+import time
+from contextlib import contextmanager
+from pathlib import Path
 from typing import NamedTuple
 
 TABLE = "swt"
@@ -163,7 +169,7 @@ def build_ruleset(
     return "\n".join(lines) + "\n"
 
 
-def cmd_apply(args: argparse.Namespace) -> int:
+def _cmd_apply(args: argparse.Namespace) -> int:
     netns = args.netns
     container_ip = parse_ip(args.container_ip, "--container-ip")
     gateway = parse_ip(args.gateway, "--gateway")
@@ -180,6 +186,19 @@ def cmd_apply(args: argparse.Namespace) -> int:
 
     existing = run_nft(netns, ["-a", "list", "table", "inet", TABLE])
     existing_rules = parse_saddr_rules(existing.stdout) if existing.returncode == 0 else []
+    # 合并前识别所有受管结构, 不默默丢掉未知公共链/目标/异己规则.
+    if existing.returncode == 0 and (args.merge or getattr(args, "expect_snapshot", None)):
+        observed = run_nft(netns, ["-j", "list", "table", "inet", TABLE])
+        try:
+            if observed.returncode != 0:
+                raise ValueError("无法读取 JSON 规则")
+            snapshot = snapshot_json(json.loads(observed.stdout), container_ip)
+            if getattr(args, "expect_snapshot", None) and snapshot_digest(snapshot) != args.expect_snapshot:
+                raise ValueError("目标规则在批准后变化")
+        except (ValueError, KeyError, TypeError) as exc:
+            die(1, "APPLY-UNSAFE-MERGE", str(exc))
+    elif getattr(args, "expect_snapshot", None):
+        die(1, "APPLY-DRIFT", "批准的旧规则表已不存在")
     if args.merge and existing.returncode == 0:
         saddr_lines = [
             line for line in existing.stdout.splitlines()
@@ -279,7 +298,7 @@ def parse_saddr_rules(text: str) -> list[SaddrRule]:
     return rules
 
 
-def cmd_remove(args: argparse.Namespace) -> int:
+def _cmd_remove(args: argparse.Namespace) -> int:
     netns = args.netns
     container_ip = parse_ip(args.container_ip, "--container-ip")
     assert_netns_reachable(netns)
@@ -289,6 +308,13 @@ def cmd_remove(args: argparse.Namespace) -> int:
         print(f"[SWT-NET] ok remove removed=absent table=inet {TABLE}")
         return 0
 
+    observed = run_nft(netns, ["-j", "list", "table", "inet", TABLE])
+    try:
+        if observed.returncode != 0:
+            raise ValueError("无法读取受管表")
+        snapshot_json(json.loads(observed.stdout), container_ip)
+    except (ValueError, KeyError, TypeError) as exc:
+        die(1, "REMOVE-UNSAFE", str(exc))
     matches = [
         rule for rule in parse_saddr_rules(existing.stdout) if rule.source == container_ip
     ]
@@ -337,7 +363,7 @@ def cmd_show(args: argparse.Namespace) -> int:
     return 0
 
 
-def cmd_clear(args: argparse.Namespace) -> int:
+def _cmd_clear(args: argparse.Namespace) -> int:
     netns = args.netns
     assert_netns_reachable(netns)
     result = run_nft(netns, ["delete", "table", "inet", TABLE])
@@ -346,6 +372,218 @@ def cmd_clear(args: argparse.Namespace) -> int:
     else:
         print(f"[SWT-NET] ok clear removed=absent (幂等, 无表可删)")
     return 0
+
+
+@contextmanager
+def write_lock(netns: str, expected: str | None = None, timeout: float = 5):
+    """按 UID 和实际空间设备号/inode 共享, 与记录根/项目无关."""
+    stat = os.stat(netns)
+    identity = f"{stat.st_dev}:{stat.st_ino}"
+    if expected and identity != expected:
+        raise ValueError("网络空间身份变化")
+    base = Path(os.environ.get("XDG_RUNTIME_DIR") or f"/run/user/{os.getuid()}")
+    directory = base / "swt-net-locks"
+    directory.mkdir(mode=0o700, parents=True, exist_ok=True)
+    if directory.is_symlink() or directory.stat().st_uid != os.getuid():
+        raise ValueError("网络写锁目录不安全")
+    directory.chmod(0o700)
+    fd = os.open(directory / f"{stat.st_dev}-{stat.st_ino}.lock", os.O_CREAT | os.O_RDWR | os.O_NOFOLLOW, 0o600)
+    try:
+        os.fchmod(fd, 0o600)
+        deadline = time.monotonic() + timeout
+        while True:
+            try:
+                fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                break
+            except BlockingIOError:
+                if time.monotonic() >= deadline:
+                    raise ValueError("网络空间写锁忙, 未执行")
+                time.sleep(0.02)
+        current = os.stat(netns)
+        if (current.st_dev, current.st_ino) != (stat.st_dev, stat.st_ino):
+            raise ValueError("等待写锁期间网络空间变化")
+        yield
+    finally:
+        os.close(fd)
+
+
+def locked_command(function, args):
+    try:
+        with write_lock(args.netns, getattr(args, "expect_netns", None)):
+            return function(args)
+    except (OSError, ValueError) as exc:
+        die(2, "NETNS-LOCK", str(exc))
+
+
+def cmd_apply(args):
+    # 参数/空间可达性保持原错误协议; 受管表的读/合并/写/核对仍全部在锁内.
+    parse_ip(args.container_ip, "--container-ip")
+    parse_ip(args.gateway, "--gateway")
+    kind = "allow" if args.mode == "whitelist" else "deny"
+    parse_entries(getattr(args, kind), f"--{kind}")
+    for server in args.dns:
+        parse_ip(server, "--dns")
+    assert_netns_reachable(args.netns)
+    return locked_command(_cmd_apply, args)
+
+
+def cmd_remove(args):
+    return locked_command(_cmd_remove, args)
+
+
+def cmd_clear(args):
+    return locked_command(_cmd_clear, args)
+
+
+def snapshot_digest(snapshot: dict) -> str:
+    return hashlib.sha256(json.dumps(snapshot, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+
+
+def normalized_body(body: str) -> str:
+    body = " ".join(body.split())
+    # nft 对 /32 显示为单地址, set 顺序与打印空白不是权限变化.
+    def address(match):
+        return str(ipaddress.ip_network(match.group(), strict=False))
+    body = re.sub(r"\b(?:\d{1,3}\.){3}\d{1,3}(?:/\d+)?\b", address, body)
+    body = body.replace("related,established", "established,related")
+    return body
+
+
+def expected_snapshot(network: dict, context: dict) -> dict:
+    """仍用同一规则生成器, 不另造一套授权引擎."""
+    source = context["container-ip"]
+    entries = list(network.get("allow" if network["mode"] == "whitelist" else "deny", []))
+    if network["mode"] == "whitelist":
+        entries.extend(f"{a}/32" for a in network.get("auto-allow", []))
+    text = build_ruleset(network["mode"], source, context["gateway"], entries,
+                         network.get("auto-dns", []))
+    result = {}
+    chain = None
+    for line in text.splitlines():
+        line = line.strip()
+        match = re.fullmatch(r"chain (\w+) \{", line)
+        if match:
+            chain = match.group(1)
+            result[chain] = {"type": "filter", "hook": chain, "prio": 10, "policy": "accept", "rules": []}
+        elif line == "}":
+            chain = None
+        elif chain and not line.startswith("type "):
+            result[chain]["rules"].append(normalized_body(line))
+    return canonical_snapshot(result)
+
+
+def canonical_snapshot(chains: dict) -> dict:
+    """公共回程规则位置不决定目标权限; 目标规则顺序与重复条目仍保留."""
+    result = {}
+    for name, chain in sorted(chains.items()):
+        rules = chain["rules"]
+        common = [r for r in rules if not r.startswith("ip saddr ")]
+        target = [r for r in rules if r.startswith("ip saddr ")]
+        result[name] = {**chain, "rules": common + target}
+    return result
+
+
+def _json_value(value):
+    if isinstance(value, str):
+        return value
+    if isinstance(value, dict) and set(value) == {"prefix"}:
+        p = value["prefix"]
+        if set(p) == {"addr", "len"}:
+            return f"{p['addr']}/{p['len']}"
+    values = value.get("set") if isinstance(value, dict) and set(value) == {"set"} else value
+    if isinstance(values, list) and all(isinstance(v, str) for v in values):
+        return ",".join(sorted(values, key=lambda v: (v != "established", v)))
+    raise ValueError("未知 nft 比较值")
+
+
+def _json_body(expressions: list) -> str:
+    tokens = []
+    for expr in expressions:
+        if set(expr) == {"counter"}:
+            continue
+        if set(expr) in ({"accept"}, {"drop"}) and next(iter(expr.values())) is None:
+            tokens.append(next(iter(expr)))
+            continue
+        if set(expr) != {"match"}:
+            raise ValueError("未知 nft 表达式")
+        match = expr["match"]
+        if set(match) != {"op", "left", "right"} or match["op"] not in ("==", "in"):
+            raise ValueError("未知 nft 匹配语义")
+        left = match["left"]
+        if left == {"meta": {"key": "nfproto"}}:
+            prefix = "meta nfproto"
+        elif left == {"ct": {"key": "state"}}:
+            prefix = "ct state"
+        elif left == {"ct": {"key": "direction"}}:
+            prefix = "ct direction"
+        elif isinstance(left, dict) and set(left) == {"payload"}:
+            payload = left["payload"]
+            pair = (payload.get("protocol"), payload.get("field"))
+            if set(payload) != {"protocol", "field"} or pair not in {("ip", "saddr"), ("ip", "daddr"), ("tcp", "dport"), ("udp", "dport")}:
+                raise ValueError("未知 nft payload")
+            prefix = " ".join(pair)
+        else:
+            raise ValueError("未知 nft 匹配字段")
+        value = str(match["right"]) if isinstance(match["right"], int) else _json_value(match["right"])
+        tokens.extend([prefix, value])
+    return normalized_body(" ".join(tokens))
+
+
+def snapshot_json(payload: dict, source: str) -> dict:
+    """只承认既有三链/IPv6/回程/源地址规则. 未知结构拒绝, handle/counter 忽略.
+
+    同时验证异己源地址规则可由已有 merge 原样重放, 但不把它们绑定到目标收据.
+    """
+    chains, bodies = {}, {}
+    table_count = 0
+    for item in payload["nftables"]:
+        if set(item) == {"metainfo"}:
+            continue
+        if set(item) == {"table"}:
+            table = item["table"]
+            if table.get("family") != "inet" or table.get("name") != TABLE or set(table) - {"family", "name", "handle"}:
+                raise ValueError("未知 nft 表结构")
+            table_count += 1
+        elif set(item) == {"chain"}:
+            chain = item["chain"]
+            name = chain.get("name")
+            if (name not in CHAINS or name in chains or chain.get("family") != "inet" or chain.get("table") != TABLE
+                    or set(chain) - {"family", "table", "name", "handle", "type", "hook", "prio", "policy"}):
+                raise ValueError("未知或重复 nft 链")
+            wanted = {"type": "filter", "hook": name, "prio": 10, "policy": "accept"}
+            if any(chain.get(k) != v for k, v in wanted.items()):
+                raise ValueError("公共链语义变化")
+            chains[name] = {**wanted, "rules": []}
+            bodies[name] = []
+        elif set(item) == {"rule"}:
+            rule = item["rule"]
+            name = rule.get("chain")
+            if (name not in chains or rule.get("family") != "inet" or rule.get("table") != TABLE
+                    or set(rule) - {"family", "table", "chain", "handle", "expr"}):
+                raise ValueError("未知 nft 规则结构")
+            body = _json_body(rule["expr"])
+            common = {"meta nfproto ipv6 drop", "ct state established,related accept",
+                      "ct state established,related ct direction reply accept"}
+            pattern = r"ip saddr (\d+\.\d+\.\d+\.\d+/32)(?: ip daddr \d+\.\d+\.\d+\.\d+/\d+(?: (?:tcp|udp) dport 53)?)? (?:accept|drop)"
+            match = re.fullmatch(pattern, body)
+            if body not in common and not match:
+                raise ValueError("未知目标/公共规则")
+            bodies[name].append(body)
+            if not match or match.group(1) == normalized_body(source):
+                chains[name]["rules"].append(body)
+        else:
+            raise ValueError("未知 nft 对象, 不静默丢弃")
+    if table_count != 1 or set(chains) != set(CHAINS):
+        raise ValueError("受管三链不完整")
+    for name, rules in bodies.items():
+        common = [r for r in rules if not r.startswith("ip saddr ")]
+        ct = "ct state established,related ct direction reply accept" if name == "output" else "ct state established,related accept"
+        if not rules or rules[0] != "meta nfproto ipv6 drop" or common not in (["meta nfproto ipv6 drop", ct], ["meta nfproto ipv6 drop", "ct state established,related accept"]):
+            raise ValueError("公共 IPv6/回程规则变化或位置不安全")
+        ct_index = next(i for i, r in enumerate(rules) if r.startswith("ct state "))
+        if any(i < ct_index for i, r in enumerate(rules) if re.fullmatch(r"ip saddr [0-9./]+ drop", r)):
+            raise ValueError("源地址兜底丢弃位于回程规则之前")
+    return canonical_snapshot(chains)
 
 
 def parse_args(argv: list[str]) -> argparse.Namespace:
@@ -361,6 +599,8 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     apply_parser.add_argument("--dns", action="append", default=[], metavar="IP")
     apply_parser.add_argument("--merge", action="store_true", help="保留异己容器规则")
     apply_parser.add_argument("--netns", default=default_netns())
+    apply_parser.add_argument("--expect-snapshot", help=argparse.SUPPRESS)
+    apply_parser.add_argument("--expect-netns", help=argparse.SUPPRESS)
 
     remove_parser = subparsers.add_parser("remove", help="按容器源地址删除规则")
     remove_parser.add_argument("--container-ip", required=True)

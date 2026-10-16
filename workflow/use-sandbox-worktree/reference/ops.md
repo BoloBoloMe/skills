@@ -15,15 +15,42 @@
 
 ## 网络控制 (net-firewall, 一般由 swt 编排)
 
-正常路径不需要直接调用 — birth/resume/terminate 自动注入与回收. 手救场用:
+普通白名单增删/补理由先用 `swt.py network show/update --name <目标>`, 不手拼完整 allow 或调用底层 apply 绕过审批. network 输出末行 `NETWORK {...}`, 0 成功/无变化, 1 等待差异审批, 2 输入或前置不足, 3 执行失败 (即使已回退), 4 缺工具/环境不支持. 只改指定目标, 自动项由目标事实维护. 旧条目缺理由可保留或如实补写"继承自旧任务,用途未核实", 不编造为当前任务必需.
+
+出现 network-change 时先 show 看 pending/checks, 再 `network recover --name <目标>` 预览旧配置恢复, 我批准后带 `--confirm <收据ID>` 重跑. 有限恢复不接管未知规则/同名新 ID, 停止目标只恢复记录而不 start. 恢复失败保留标记, 不通过自动 stop/restart/clear 救场; 不要用旧版脚本处理新事务. 若我显式终结事务原目标, 脚本保留私有事务审计并清活动标记, 不报告为恢复成功. 实际规则与记录不一致须先报告差异让我决定, 对应人工收敛需另行授权, 不以重新审批收编未知状态.
+
+底层正常由 birth/resume/terminate/network 自动调用. 以下是另行授权的手救场原语, 必须从目标 inspect 的 SandboxKey 核对 netns, 不用缺省路径猜业务目标:
 ```text
-uv run python scripts/net-firewall.py show                    # 列当前规则表
-uv run python scripts/net-firewall.py remove --container-ip <IP>
-uv run python scripts/net-firewall.py clear                   # 删整表 (幂等)
+uv run python scripts/net-firewall.py show --netns <目标SandboxKey>
+uv run python scripts/net-firewall.py remove --container-ip <IP> --netns <目标SandboxKey>
+uv run python scripts/net-firewall.py clear --netns <目标SandboxKey> # 删整表, 会影响共享该表的其他目标
 ```
 机制: 规则注入容器所在网络命名空间的自有表 `inet swt`, 过滤覆盖 forward/input/output 三链 (output 管容器主动出站, 2026-09-14 出站链修复), 按容器源地址限定, 容器内任意 uid (含 root) 不可达不可删. 容器停 → 命名空间拆 → 规则全失是固有形态, 故每次 start 后必须重注入. 多容器共享一张表: apply 不带 `--merge` 见别的容器规则即拒 (APPLY-CONFLICT, 译解见 errors.md). whitelist 手工 apply 必须带 `--dns <IP>` (容器实际解析器, 从 `podman exec <容器> cat /etc/resolv.conf` 取, 仅 53 端口放行) — 只放网关在 pasta 拓扑解析不通.
 
-## 救场 (无修复原语)
+## 沙盒维护中的低开销取证
+
+- 找凭据先沿配置字段指向的来源/仓库/已知配置位置定向查找; 已找到充分证据就停止. 相关仓库/配置目录内可继续定向查找, 不为每个文件都问; 要扩到整个家目录前先说明必要性与范围, 等我决定. 只报告来源与结果, 不回显秘密值.
+- 只判断已核实的同一分支是否有新增提交待推时, 先成功取得两端完整提交 ID (例如明确 `refs/heads/feat/example`). ID 相同即可停止, 不为比较再完整克隆/抓历史. 结论仅限该分支提交相同, 不外推其他分支或未提交文件. 查询失败/空输出不能当相同. 确需历史/内容时再取必要数据, 不是全面禁止克隆.
+- 截取输出前单独保存原命令退出码, 后续 head/过滤成功不代替它. 已有 swt.run 保留真实 returncode, 不为临时 shell 管道问题重写公共封装. 例如 Bash 中先落临时输出, 再截取 (文件可能含敏感输出, 用私有权限并清理):
+
+```bash
+output=$(mktemp) || exit 2
+if git ls-remote "$remote" "$branch" >"$output" 2>&1; then
+    original_rc=0
+else
+    original_rc=$?
+fi
+# 显示前先确认输出不含秘密; 不适合回显时只报告返回码/脱敏摘要.
+head -n 20 "$output"
+filter_rc=$?
+rm -f "$output"
+printf 'original_rc=%s filter_rc=%s\n' "$original_rc" "$filter_rc"
+exit "$original_rc"
+```
+
+原查询 128 即报告失败, 不能因 head 为 0 推断成功或无提交待推. 任务所需的构件/认证/写入检查另按 [task-conditions.md](task-conditions.md), 不把维护取证扩大成项目默认探测.
+
+## 救场 (无通用修复原语)
 
 swt 无 config/daemon 修复子命令. exit 3 的 PARTIAL 文案给出该半状态的唯一人工恢复路径; 更深的救场由你敲原生命令: `git config --get-all` / `git -C <母体> config --worktree --get-all` / `pgrep -af 'git[ -]daemon'` / `net-firewall.py show` / `podman ps -a`, 诊断后手工收敛. 已知救场场景:
 - **主仓 config 残留旧形态 hideRefs** (并行母体改造前的旧部署形态) → 不要手工改. 仅旧记录的 resume 沿原有自愈路径迁移配置并重摆该对 daemon; 新模板 birth/resume 遇旧形态残留会报告并停止, 不能靠重跑新模板迁移旧对, 须先向我报告并决定怎么处理.
