@@ -1,0 +1,3 @@
+0001e4c7c6e4573edc48a55eaa610bb3  docs/changes/verification-skills/evidence/ISSUE-16/logs/SKILL-green.md
+bc59d779dce50952dc1eaacb5cf1883c  docs/changes/verification-skills/evidence/ISSUE-16/logs/SKILL-red.md
+0001e4c7c6e4573edc48a55eaa610bb3  workflow/verify-change/SKILL.md

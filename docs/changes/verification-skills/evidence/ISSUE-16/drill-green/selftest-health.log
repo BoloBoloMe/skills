@@ -1,0 +1,10 @@
+作者在目标提交上自测关键真实路径 /health 的完整记录.
+记录时间: 2026-10-20T04:06:41+08:00
+目标提交: 65114d4ad0ff42e13c31cc111be82edf0a365b56 (master HEAD, git status --porcelain 无输出)
+运行环境: Linux 7.0.0-31-generic x86_64, Python 3.14.4
+实际命令: cd /tmp/orchestra-16/green-first-acceptance && python3 app.py 18231   然后 curl -s -w '\nHTTP %{http_code}\n' http://127.0.0.1:18231/health
+实际输出:
+{"status": "ok", "ready": true}
+HTTP 200
+curl 退出码: 0
+自测结论: 通过.
