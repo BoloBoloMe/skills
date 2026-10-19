@@ -1,0 +1,4 @@
+# TS-001 绿: 被动句扫描 (改动后)
+$ uv run python docs/changes/verification-skills/evidence/ISSUE-23/scan-passive.py workflow/blast-radius
+扫描文件数=4 命中=0
+exit=0

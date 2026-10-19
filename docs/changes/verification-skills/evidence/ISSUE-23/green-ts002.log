@@ -1,0 +1,13 @@
+# TS-002 绿: 节数/节号/节名对照 (改动后)
+$ uv run python docs/changes/verification-skills/evidence/ISSUE-23/check-section-refs.py
+正文节数=8
+  ## 1. 读变更并定位历史
+  ## 2. 找出关键安全事实
+  ## 3. 给每个事实标证据级别
+  ## 4. 写可失败的证明脚本
+  ## 5. 一次性实验的边界
+  ## 6. 风险与已排除项
+  ## 7. 大或宽变更用多模型同题调查
+  ## 8. 交接
+不符合项=0
+exit=0
