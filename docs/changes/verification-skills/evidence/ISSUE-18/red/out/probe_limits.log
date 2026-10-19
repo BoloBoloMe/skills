@@ -1,0 +1,22 @@
+python 3.14.7 | base cc8c757 | head c342c22
+case             check_limit base->head                       export base->head
+neg_int          return=False         -> return=False         ValueError:金额越界: id-neg_int -> ValueError:金额为负: id-neg_int
+neg_float        return=False         -> return=False         ValueError:金额越界: id-neg_float -> ValueError:金额为负: id-neg_float
+zero             return=False         -> return=False         ValueError:金额越界: id-zero -> ValueError:金额越界: id-zero
+zero_float       return=False         -> return=False         ValueError:金额越界: id-zero_float -> ValueError:金额越界: id-zero_float
+min_plus         return=True          -> return=True          return='order_id,amount_usd\r\nid-min_plus,0.01\r\n' -> return='order_id,amount_usd\r\nid-min_plus,0.01\r\n'
+old_ok_940       return=True          -> return=False         return='order_id,amount_usd\r\nid-old_ok_940,940.0\r\n' -> ValueError:金额越界: id-old_ok_940
+exactly_1000     return=True          -> return=False         return='order_id,amount_usd\r\nid-exactly_1000,1000.0\r\n' -> ValueError:金额越界: id-exactly_1000
+over_1000        return=False         -> return=False         ValueError:金额越界: id-over_1000 -> ValueError:金额越界: id-over_1000
+exactly_800      return=True          -> return=True          return='order_id,amount_usd\r\nid-exactly_800,800.0\r\n' -> return='order_id,amount_usd\r\nid-exactly_800,800.0\r\n'
+just_over_800    return=True          -> return=False         return='order_id,amount_usd\r\nid-just_over_800,800.0001\r\n' -> ValueError:金额越界: id-just_over_800
+nan              return=False         -> return=False         ValueError:金额越界: id-nan  -> ValueError:金额越界: id-nan
+none             return=False         -> return=False         ValueError:金额越界: id-none -> TypeError:'<' not supported between instances of 'NoneType' and 'int'
+str_num          TypeError:'<' not supported between instances of 'int' and 'str' -> TypeError:'<' not supported between instances of 'int' and 'str' TypeError:'<' not supported between instances of 'int' and 'str' -> TypeError:'<' not supported between instances of 'str' and 'int'
+bool_true        return=True          -> return=True          return='order_id,amount_usd\r\nid-bool_true,True\r\n' -> return='order_id,amount_usd\r\nid-bool_true,True\r\n'
+
+real csv rows: [['a-1', 120.5], ['a-2', 940.0], ['a-3', 60.25]]
+base export_batch_real_csv: {'kind': 'ok', 'value': "'order_id,amount_usd\\r\\na-1,120.5\\r\\na-2,940.0\\r\\na-3,60.25\\r\\n'"}
+head export_batch_real_csv: {'kind': 'exc', 'type': 'ValueError', 'msg': '金额越界: a-2'}
+
+ALL ASSERTIONS PASSED

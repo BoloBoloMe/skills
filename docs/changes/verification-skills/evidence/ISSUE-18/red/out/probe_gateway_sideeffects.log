@@ -1,0 +1,9 @@
+正控事件: [('open', "('/tmp/orchestra-18/red-exp/out/control_write.txt', 'w', 524865)")]
+返回: 金额越界: x
+拒绝期间的事件: []
+_audit 调用序列: ['export_request']
+成功 payload: 'order_id,amount_usd\r\nx,800.0\r\n' 事件: [] 审计: ['export_request', 'export_request', 'export_done']
+
+ALL ASSERTIONS PASSED
+临时工作目录为空, 未落盘
+仓库 git status 为空

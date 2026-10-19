@@ -1,0 +1,6 @@
+== base ==
+Decimal('940.0') -> 'order_id,amount_usd\r\nd,940.0\r\n'
+Decimal('-1') -> ValueError 金额越界: d
+== head ==
+Decimal('940.0') -> ValueError 金额越界: d
+Decimal('-1') -> ValueError 金额为负: d

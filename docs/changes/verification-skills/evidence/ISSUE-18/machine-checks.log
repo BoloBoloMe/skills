@@ -1,0 +1,80 @@
+# ISSUE-18 机械检查 2026-10-20T03:02:14+08:00
+
+## 宿主与版本
+Linux 7.0.0-31-generic x86_64
+Ubuntu 26.04.1 LTS
+pi 1.3.0
+herdr 0.9.4
+uv 0.12.5 (x86_64-unknown-linux-gnu)
+
+## 待测源与哈希
+669de23ca27c36970b013a2ee185705468412cf5b8171a1f051fcbeb0d38f564  workflow/blast-radius/SKILL.md
+744574c54d2d5408aa8f239f9c679c946f774d64eb677970c44330276c74e85f  workflow/blast-radius/reference/multimodel.md
+cb685dd2f09cc003c5f3edad19ba669beae7a54a45f474e1514d17412b26089d  workflow/blast-radius/reference/PROVENANCE.md
+5d2c856fd09834b9d45d932a01939d76b80cff11aff87c0b9d2c7173c247b366  workflow/blast-radius/reference/report-style-zh.md
+分支 issue/18, 开工提交 5c21b0b
+
+## 1. check_skill.py
+workflow/blast-radius/SKILL.md: OK
+exit=0
+
+## 2. 全角标点扫描 (translate-a-skill 第 7 节正则), 只扫我写的正文
+rg exit=1 (1 = 无命中)
+
+未扫的原始材料: docs/changes/verification-skills/evidence/ISSUE-18/red/ 与 docs/changes/verification-skills/evidence/ISSUE-18/green/ 下的会话转录 jsonl 和演练报告 md 按原样留存, 含全角标点, 不改写; scan-voice.py 内嵌全角正则字面量, 同属工具代码.
+
+## 3. 视角与句长扫描 (绿, 交付版)
+== workflow/blast-radius/SKILL.md
+exit=0
+
+## 4. 视角与句长扫描 (红, v2 顶端版本)
+exit=1 (1 = 有命中), 命中 36 条, 全文 red/scan-voice.txt
+
+## 5. 英文残留清单 (交付版正文, 均为命令/参数/路径/共享术语)
+      5 git
+      5 diff
+      3 log
+      3 grep
+      3 file:line
+      2 reference/report-style-zh.md
+      2 reference/multimodel.md
+      2 oneline
+      2 TC
+      2 PR
+      1 view
+      1 true
+      1 show
+      1 pr
+      1 p
+      1 name:
+      1 gh
+      1 follow
+      1 flag
+      1 feature
+      1 disable-model-invocation:
+      1 diff.
+      1 description:
+      1 comments
+      1 blast-radius
+      1 blame
+      1 bash
+      1 assert
+      1 all
+      1 agent
+      1 S
+      1 PR.
+      1 L
+      1 JSON
+      1 API
+
+## 6. writing-for-llm 自带测试
+.......                                                [100%]
+7 passed, 18 subtests passed in 0.08s
+exit=0
+
+## 7. 全量快层 (not e2e)
+FAILED tests/test_mailbox_admin.py::test_pending_cap_drops_oldest - TimeoutEr...
+6 failed, 659 passed, 2 skipped, 103 deselected, 33 subtests passed in 275.23s (0:04:35)
+exit=1
+
+基线: 开工时既有失败集合是 6 条 (general/present/tests/test_browser_session.py 5 条 + tests/test_mailbox_admin.py::test_pending_cap_drops_oldest), 都是 socket TimeoutError, 与 ISSUE-07/08 记录一致; 本次 6 条相同, 未新增失败.

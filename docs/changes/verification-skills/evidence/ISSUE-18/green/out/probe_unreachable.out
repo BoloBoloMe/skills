@@ -1,0 +1,8 @@
+AUDIT_URL 未设置          request_export -> AuditUnavailable: AUDIT_URL 未配置: 演练环境没有审计服务凭据
+                       到达 export.export 次数=0  到达 limits.check_limit 次数=0
+AUDIT_URL 设为假地址        request_export -> AuditUnavailable: 审计服务不可达: https://audit.example.invalid
+                       到达 export.export 次数=0  到达 limits.check_limit 次数=0
+
+800 上限在产品入口的拒绝次数: 0 (不可达, 所以是 0)
+仓库工作区: 干净
+=== 结果: 全部断言通过

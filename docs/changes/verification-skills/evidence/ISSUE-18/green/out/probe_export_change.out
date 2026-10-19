@@ -1,0 +1,73 @@
+python: 3.14.7 (main, Aug 14 2026, 15:35:28) [Clang 22.1.3 ] | executable: /home/bolo/.local/share/uv/python/cpython-3.14-linux-x86_64-gnu/bin/python3.14
+repo HEAD: 5d832302339a7ae5db7cbe9a7c4c05439bceeaed | 工作区: 干净
+PASS  运行环境是 CPython 3.14  | 3.14.7
+PASS  被测仓库停在本次变更提交  | 5d832302339a7ae5db7cbe9a7c4c05439bceeaed
+PASS  仓库工作区干净 (未改产品源码)
+PASS  被加载的新代码与仓库同字节: limits.py
+PASS  被加载的新代码与仓库同字节: export.py
+PASS  旧树 MAX_USD == 1000  | 1000
+PASS  新树 MAX_USD == 800  | 800
+旧 check_limit 源码对象: /tmp/orchestra-18/green-exp/out/trees/old/svc/limits.py | 新: /tmp/orchestra-18/green-exp/out/trees/new/svc/limits.py
+PASS  旧树来自基线提交 (路径在 out/trees/old)  | /tmp/orchestra-18/green-exp/out/trees/old/svc/limits.py
+PASS  新树来自仓库 (路径在 out/trees/new)  | /tmp/orchestra-18/green-exp/out/trees/new/svc/limits.py
+
+--- 用例矩阵 (单行) ---
+负数 -1            旧=raise:('ValueError', '金额越界: o')  新=raise:('ValueError', '金额为负: o')
+负数 -0.01         旧=raise:('ValueError', '金额越界: o')  新=raise:('ValueError', '金额为负: o')
+负数 -1e9          旧=raise:('ValueError', '金额越界: o')  新=raise:('ValueError', '金额为负: o')
+零 0              旧=raise:('ValueError', '金额越界: o')  新=raise:('ValueError', '金额越界: o')
+零 -0.0           旧=raise:('ValueError', '金额越界: o')  新=raise:('ValueError', '金额越界: o')
+正 0.01           旧=ok:ok  新=ok:ok
+边界 800           旧=ok:ok  新=ok:ok
+边界 800.0001      旧=ok:ok  新=raise:('ValueError', '金额越界: o')
+中间 940           旧=ok:ok  新=raise:('ValueError', '金额越界: o')
+旧上界 1000         旧=ok:ok  新=raise:('ValueError', '金额越界: o')
+超旧上界 1000.01     旧=raise:('ValueError', '金额越界: o')  新=raise:('ValueError', '金额越界: o')
+nan              旧=raise:('ValueError', '金额越界: o')  新=raise:('ValueError', '金额越界: o')
+inf              旧=raise:('ValueError', '金额越界: o')  新=raise:('ValueError', '金额越界: o')
+None             旧=raise:('ValueError', '金额越界: o')  新=raise:('TypeError', "'<' not supported between instances of 'NoneType' and 'int'")
+字符串 '900'        旧=raise:('TypeError', "'<' not supported between instances of 'int' and 'str'")  新=raise:('TypeError', "'<' not supported between instances of 'str' and 'int'")
+PASS  旧版已拒绝负数 (负数 -1)  | ('raise', 'ValueError', '金额越界: o')
+PASS  新版也拒绝负数 (负数 -1)  | ('raise', 'ValueError', '金额为负: o')
+PASS  负数判定未变, 只是异常消息变了 (负数 -1)  | 金额越界: o -> 金额为负: o
+PASS  旧版已拒绝负数 (负数 -0.01)  | ('raise', 'ValueError', '金额越界: o')
+PASS  新版也拒绝负数 (负数 -0.01)  | ('raise', 'ValueError', '金额为负: o')
+PASS  负数判定未变, 只是异常消息变了 (负数 -0.01)  | 金额越界: o -> 金额为负: o
+PASS  旧版已拒绝负数 (负数 -1e9)  | ('raise', 'ValueError', '金额越界: o')
+PASS  新版也拒绝负数 (负数 -1e9)  | ('raise', 'ValueError', '金额为负: o')
+PASS  负数判定未变, 只是异常消息变了 (负数 -1e9)  | 金额越界: o -> 金额为负: o
+PASS  除 800~1000 区间与 None 外, 其余输入接受/拒绝决定不变
+PASS  旧版把 None 当越界, 抛 ValueError  | ('raise', 'ValueError', '金额越界: o')
+PASS  新版对 None 抛 TypeError (非 ValueError)  | ('raise', 'TypeError', "'<' not supported between instances of 'NoneType' and 'int'")
+PASS  新版接受 800  | ('ok', 'order_id,amount_usd\r\no,800\r\n')
+PASS  新版拒绝 800.0001  | ('raise', 'ValueError', '金额越界: o')
+PASS  旧版接受 940, 新版拒绝
+PASS  旧版接受 1000, 新版拒绝
+
+--- 仓库自带数据 /tmp/orchestra-18/drill-green/scripts/orders.csv ---
+表头: ['order_id', 'amount_usd'] | 行: [('a-1', 120.5), ('a-2', 940.0), ('a-3', 60.25)]
+PASS  仓库自带数据里确实有超过 800 的行  | [('a-2', 940.0)]
+旧版导出结果: ok | 数据行数: 2
+新版导出结果: ('raise', 'ValueError', '金额越界: a-2')
+PASS  旧版能导出这份文件  | ('ok', 'order_id,amount_usd\r\na-1,120.5\r\na-2,940.0\r\na-3,60.25\r\n')
+PASS  新版对这份文件整体失败  | ('raise', 'ValueError', '金额越界: a-2')
+PASS  失败点在 940.0 那一行  | ('raise', 'ValueError', '金额越界: a-2')
+连累的合规行: [('a-1', 120.5), ('a-3', 60.25)]
+PASS  整批拒绝会连累 <=800 的合规行
+PASS  单行 940 新版同样拒绝
+PASS  合规单行 120.5 新版仍可导出
+
+--- check_limit 直接调用 ---
+check_limit(-1) 旧=False 新=False
+check_limit(0) 旧=False 新=False
+check_limit(799.99) 旧=True 新=True
+check_limit(800) 旧=True 新=True
+check_limit(800.5) 旧=True 新=False
+check_limit(940) 旧=True 新=False
+check_limit(1000) 旧=True 新=False
+check_limit(None) 旧=False 新=False
+PASS  旧 check_limit(-1) 已是 False (负数上一版就被拒)
+PASS  新 check_limit(-1) 仍 False
+PASS  check_limit(None) 新旧都返回 False
+
+=== 结果: 全部断言通过
