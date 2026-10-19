@@ -1,0 +1,42 @@
+# search-notes evidence
+date: 2026-10-19T17:54:41+08:00
+git HEAD: 456c360
+SKILL.md sha256: ac11b495033c34adea5226525d6a89f29b46d5ad7065153238ce1aa989e534fb
+search-notes.md sha256: bb6adb0849102f09642adaa86dd6be83dffd41c387e758ebb0a03316716709ea
+
+[prep] rm -rf data
+ls: cannot access 'data': No such file or directory
+exit=2
+
+$ python3 app.py add "会议记录 A"
+added 1: 会议记录 A
+exit=0
+$ python3 app.py add "会议记录 B"
+added 2: 会议记录 B
+exit=0
+$ python3 app.py archive 2
+archived 2
+exit=0
+$ python3 app.py list  (prep 状态)
+1	会议记录 A
+2	会议记录 B [archived]
+exit=0
+
+$ python3 app.py search 会议
+1	会议记录 A
+matches: 1
+exit=0
+
+--- data/notes.json ---
+[
+  {
+    "id": 1,
+    "text": "会议记录 A",
+    "archived": false
+  },
+  {
+    "id": 2,
+    "text": "会议记录 B",
+    "archived": true
+  }
+]

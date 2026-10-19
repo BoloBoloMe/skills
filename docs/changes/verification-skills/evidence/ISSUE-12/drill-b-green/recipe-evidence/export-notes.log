@@ -1,0 +1,68 @@
+# export-notes evidence
+date: 2026-10-19T17:54:45+08:00
+git HEAD: 456c360
+SKILL.md sha256: ac11b495033c34adea5226525d6a89f29b46d5ad7065153238ce1aa989e534fb
+export-notes.md sha256: a319240043cd0b824136b69a6a2675e9d70a8d0559631c53a53a8bb38de54f7b
+
+[prep] rm -rf data /tmp/verify-notes-export.tsv
+ls: cannot access 'data': No such file or directory
+ls: cannot access '/tmp/verify-notes-export.tsv': No such file or directory
+exit=2
+
+$ python3 app.py add "导出笔记 A"
+added 1: 导出笔记 A
+exit=0
+$ python3 app.py add "导出笔记 B"
+added 2: 导出笔记 B
+exit=0
+
+$ python3 app.py export /tmp/verify-notes-export.tsv
+exported 2 notes to /tmp/verify-notes-export.tsv
+exit=0
+
+$ test -f /tmp/verify-notes-export.tsv
+exit=0
+$ wc -l < /tmp/verify-notes-export.tsv
+2
+exit=0
+$ python3 app.py list | wc -l
+2
+exit=0
+
+--- export file raw (cat -A) ---
+1^IM-eM-/M-<M-eM-^GM-:M-gM-,M-^TM-hM-.M-0 A$
+2^IM-eM-/M-<M-eM-^GM-:M-gM-,M-^TM-hM-.M-0 B$
+
+--- data/notes.json ---
+[
+  {
+    "id": 1,
+    "text": "导出笔记 A",
+    "archived": false
+  },
+  {
+    "id": 2,
+    "text": "导出笔记 B",
+    "archived": false
+  }
+]
+
+=== 附加核查: 配方 prep 声称 '导出包含全部笔记, 含已归档的笔记' ===
+$ python3 app.py archive 2
+archived 2
+exit=0
+$ python3 app.py list
+1	导出笔记 A
+2	导出笔记 B [archived]
+exit=0
+$ python3 app.py export /tmp/verify-notes-export-archived.tsv
+exported 2 notes to /tmp/verify-notes-export-archived.tsv
+exit=0
+$ wc -l < /tmp/verify-notes-export-archived.tsv
+2
+$ python3 app.py list | wc -l
+2
+--- archived 导出原文 ---
+1	导出笔记 A
+2	导出笔记 B
+--- 结论: 导出含编号2(已归档), 行数 2 == list 行数 2 ---

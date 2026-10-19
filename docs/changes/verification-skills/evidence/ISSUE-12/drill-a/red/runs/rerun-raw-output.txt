@@ -1,0 +1,65 @@
+1. 加载来源: /tmp/orchestra-12/drill-a/.agents/skills/verify-notes/SKILL.md (读取成功, 含 create-note.md, search-notes.md)
+### [启动] python3 app.py --version
+0.3.0
+exit=0
+### [健康检查] python3 app.py doctor
+notes-cli 0.3.0
+data_path: /tmp/orchestra-12/drill-a/data/notes.json
+notes: 0
+exit=0
+### [新建笔记] python3 app.py add "第一条笔记"
+added 1: 第一条笔记
+exit=0
+### [新建笔记] python3 app.py list
+1	第一条笔记
+exit=0
+### data/notes.json
+[
+  {
+    "id": 1,
+    "text": "第一条笔记",
+    "archived": false
+  }
+]
+### [搜索笔记-准备] python3 app.py add "周会会议记录"
+added 2: 周会会议记录
+exit=0
+### [搜索笔记-准备] python3 app.py add "会议纪要归档测试"
+added 3: 会议纪要归档测试
+exit=0
+### [搜索笔记-准备] python3 app.py list
+1	第一条笔记
+2	周会会议记录
+3	会议纪要归档测试
+exit=0
+### [搜索笔记-准备] python3 app.py archive 3
+archived 3
+exit=0
+### [搜索笔记-准备] python3 app.py list
+1	第一条笔记
+2	周会会议记录
+3	会议纪要归档测试 [archived]
+exit=0
+### [搜索笔记] python3 app.py search 会议
+2	周会会议记录
+3	会议纪要归档测试
+matches: 2
+exit=0
+### data/notes.json
+[
+  {
+    "id": 1,
+    "text": "第一条笔记",
+    "archived": false
+  },
+  {
+    "id": 2,
+    "text": "周会会议记录",
+    "archived": false
+  },
+  {
+    "id": 3,
+    "text": "会议纪要归档测试",
+    "archived": true
+  }
+]

@@ -1,0 +1,16 @@
+# 产品缺陷最小复现 2026-10-19T17:50:30+08:00 commit=481957ed59536bd51919fb4176732e112965472c
+$ python3 app.py add "会议 甲"
+added 1: 会议 甲
+$ python3 app.py add "会议 乙"
+added 2: 会议 乙
+$ python3 app.py archive 1
+archived 1
+$ python3 app.py list
+1	会议 甲 [archived]
+2	会议 乙
+$ python3 app.py search 会议
+1	会议 甲
+2	会议 乙
+matches: 2
+search_rc=0
+期望: 只有 id 2, matches: 1 (PRODUCT.md 搜索笔记: 已归档笔记不出现在搜索结果中)

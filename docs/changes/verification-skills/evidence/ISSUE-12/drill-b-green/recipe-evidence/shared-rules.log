@@ -1,0 +1,52 @@
+# shared rules evidence (启动/健康检查/驱动约定/取证/清理)
+date: 2026-10-19T17:54:51+08:00
+git HEAD: 456c360
+git status --porcelain:
+ M .agents/skills/verify-notes/SKILL.md
+ M .agents/skills/verify-notes/features/create-note.md
+ M .agents/skills/verify-notes/features/search-notes.md
+?? .agents/skills/maintain-verification-skill/
+?? .agents/skills/verify-notes/features/export-notes.md
+app.py sha256: e595dca778508ef32c5091dc27465d0d86ab4b6ee5e37ee6daa16b32ae66989b
+app.py path: /tmp/orchestra-12/drill-b/app.py
+docs/PRODUCT.md sha256: a78f8b8435a6f64b1b121722c1ba61e0d8cfd2da1851da46c8fda11fa521d987
+
+[启动] $ python3 app.py --version
+0.3.0
+exit=0
+
+[健康检查] $ python3 app.py doctor
+notes-cli 0.3.0
+data_path: /tmp/orchestra-12/drill-b/data/notes.json
+notes: 0
+exit=0
+(新环境 notes: 0 已确认)
+
+[配方全部文件 sha256]
+ac11b495033c34adea5226525d6a89f29b46d5ad7065153238ce1aa989e534fb  .agents/skills/verify-notes/SKILL.md
+62e31fa0af26320bd5f40c5bfadba93da6a371d9e9328459f2f02d6fa8c5cccc  .agents/skills/verify-notes/features/create-note.md
+bb6adb0849102f09642adaa86dd6be83dffd41c387e758ebb0a03316716709ea  .agents/skills/verify-notes/features/search-notes.md
+a319240043cd0b824136b69a6a2675e9d70a8d0559631c53a53a8bb38de54f7b  .agents/skills/verify-notes/features/export-notes.md
+
+[清理] rm -rf data /tmp/verify-notes-export.tsv /tmp/verify-notes-export-archived.tsv
+exit=0
+$ ls -d data
+ls: cannot access 'data': No such file or directory
+exit=2
+$ ls /tmp/verify-notes-export*.tsv
+ls: cannot access '/tmp/verify-notes-export*.tsv': No such file or directory
+exit=2
+
+[清理后 git status --porcelain]
+ M .agents/skills/verify-notes/SKILL.md
+ M .agents/skills/verify-notes/features/create-note.md
+ M .agents/skills/verify-notes/features/search-notes.md
+?? .agents/skills/maintain-verification-skill/
+?? .agents/skills/verify-notes/features/export-notes.md
+[evidence 保留]
+total 20
+-rw-rw-r-- 1 bolo bolo  824 Oct 19 17:54 create-note.log
+-rw-rw-r-- 1 bolo bolo 1667 Oct 19 17:54 export-notes.log
+-rw-rw-r-- 1 bolo bolo   34 Oct 19 17:54 export.tsv
+-rw-rw-r-- 1 bolo bolo  839 Oct 19 17:54 search-notes.log
+-rw-rw-r-- 1 bolo bolo 1905 Oct 19 17:54 shared-rules.log

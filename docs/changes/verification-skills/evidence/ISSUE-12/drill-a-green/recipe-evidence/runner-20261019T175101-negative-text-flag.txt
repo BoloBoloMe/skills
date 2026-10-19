@@ -1,0 +1,7 @@
+$ python3 app.py add --text "第一条笔记"
+added 1: --text 第一条笔记
+[exit=0]
+
+$ python3 app.py list
+1	--text 第一条笔记
+[exit=0]

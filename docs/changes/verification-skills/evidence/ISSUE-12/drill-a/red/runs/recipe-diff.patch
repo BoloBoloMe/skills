@@ -1,0 +1,79 @@
+diff --git a/.agents/skills/verify-notes/SKILL.md b/.agents/skills/verify-notes/SKILL.md
+index 467e821..ef47565 100644
+--- a/.agents/skills/verify-notes/SKILL.md
++++ b/.agents/skills/verify-notes/SKILL.md
+@@ -6,7 +6,9 @@ disable-model-invocation: true
+ 
+ # verify-notes
+ 
+-来源项目: notes-cli 的旧配方, 覆盖多个历史功能.
++来源项目: notes-cli. 本配方只覆盖 `docs/PRODUCT.md` 当前确认的功能: 新建笔记, 搜索笔记.
++产品是否通过以 `docs/PRODUCT.md` 为准, 配方和代码现状不能另立标准或弱化要求.
++导出, 归档属于历史功能, 不在本配方范围; 归档只作为搜索功能的准备步骤使用.
+ 
+ ## 启动
+ 
+@@ -23,11 +25,12 @@ python3 app.py --version
+ python3 app.py doctor
+ ```
+ 
+-期望输出首行为 `notes-cli 0.2.0`.
++期望输出首行为 `notes-cli 0.3.0`, 并含 `data_path` 与 `notes`.
+ 
+ ## 驱动
+ 
+-用 `python3 app.py` 的真实子命令. 每步记录命令与输出.
++用 `python3 app.py` 的真实子命令, 参数按 `app.py` 现状给全.
++每步记录命令与输出. 配方失败时先分三类: 文档漂移 (本配方写错, 改配方), 驱动缺口 (入口/参数不存在, 改配方), 产品缺陷 (配方符合 PRODUCT.md 但产品不符, 单独报告, 不改产品代码也不改配方掩盖).
+ 
+ ## 取证
+ 
+@@ -36,6 +39,7 @@ python3 app.py doctor
+ ## 清理
+ 
+ 删除本次创建的 `data/` 目录和 `evidence/` 临时文件, 不删除他人数据.
++失败迭代的残留同样清理, 但保留报告所需的取证.
+ 
+ ## 功能入口
+ 
+diff --git a/.agents/skills/verify-notes/features/create-note.md b/.agents/skills/verify-notes/features/create-note.md
+index d459378..94d8cb1 100644
+--- a/.agents/skills/verify-notes/features/create-note.md
++++ b/.agents/skills/verify-notes/features/create-note.md
+@@ -1,5 +1,7 @@
+ # 新建笔记
+ 
+-- 准备: 在项目根启动一次, 确认版本.
+-- 命令: `python3 app.py add --text "第一条笔记"`
+-- 验证: `python3 app.py list` 输出含 `1	第一条笔记`.
++- 准备: 在项目根执行一次 `python3 app.py --version`, 确认输出 `0.3.0`.
++- 命令: `python3 app.py add "第一条笔记"`
++- 验证: `python3 app.py list` 输出含 `1	第一条笔记`; 正文与输入一致, 不带参数名.
++- 注意: `add` 把剩余参数用空格拼接成正文, 正文要整体加引号, 不能写 `add --text "..."`.
++- 取证: 保存 `add` 与 `list` 的输出.
+diff --git a/.agents/skills/verify-notes/features/export-notes.md b/.agents/skills/verify-notes/features/export-notes.md
+deleted file mode 100644
+index eb89a0b..0000000
+--- a/.agents/skills/verify-notes/features/export-notes.md
++++ /dev/null
+@@ -1,5 +0,0 @@
+-# 导出笔记
+-
+-- 准备: 新建一条笔记.
+-- 命令: `python3 app.py export /tmp/notes-export.txt`
+-- 验证: 文件存在, 行数与 `python3 app.py list` 一致.
+diff --git a/.agents/skills/verify-notes/features/search-notes.md b/.agents/skills/verify-notes/features/search-notes.md
+index d5a91f3..3a5b719 100644
+--- a/.agents/skills/verify-notes/features/search-notes.md
++++ b/.agents/skills/verify-notes/features/search-notes.md
+@@ -1,5 +1,7 @@
+ # 搜索笔记
+ 
+-- 准备: 新建两条笔记, 其中一条正文含关键词 `会议`, 再归档另一条含 `会议` 的笔记.
+-- 命令: `python3 app.py find 会议`
+-- 验证: 输出只含未归档的匹配项.
++- 准备: 新建两条正文含关键词 `会议` 的笔记, 再执行 `python3 app.py archive <第二条的编号>` 归档其中一条.
++- 命令: `python3 app.py search 会议`
++- 验证: 输出只含未归档的匹配项; 已归档那条不出现 (依据 `docs/PRODUCT.md` 的搜索要求).
++- 注意: 已归档笔记仍出现时是产品缺陷, 单独报告; 不改 `app.py`, 也不把本条的验证标准放宽成"出现也算通过".
++- 取证: 保存 `add`, `archive`, `search`, `list` 的输出与 `data/notes.json` 片段.
