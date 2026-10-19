@@ -1,0 +1,182 @@
+$ uv run --with pytest python -m pytest general/writing-for-llm/tests -q
+.......                                                [100%]
+7 passed, 18 subtests passed in 0.08s
+exit=0
+
+$ uv run --with pytest python -m pytest -m "not e2e" -q
+............................F.....................FFF.........F....... [ 10%]
+....................s................................................... [ 21%]
+.................s.............................................................................................F. [ 38%]
+........................................................................ [ 49%]
+........................................................................ [ 59%]
+........................................................................ [ 70%]
+........................................................................ [ 81%]
+........................................................................ [ 92%]
+....................................................                     [100%]
+=================================== FAILURES ===================================
+_____________________ TestCLI.test_exit_code_0_on_success ______________________
+
+self = <tests.test_browser_session.TestCLI testMethod=test_exit_code_0_on_success>
+
+    def test_exit_code_0_on_success(self):
+        with tempfile.TemporaryDirectory() as td:
+            obj, code, _ = _run_main("status", td)
+>       self.assertEqual(code, 0)
+E       AssertionError: 1 != 0
+
+general/present/tests/test_browser_session.py:149: AssertionError
+________ TestJSONOutput.test_state_browser_not_running_when_no_metadata ________
+
+self = <tests.test_browser_session.TestJSONOutput testMethod=test_state_browser_not_running_when_no_metadata>
+
+    def test_state_browser_not_running_when_no_metadata(self):
+        """state returns browser_not_running when no browser.json."""
+        with tempfile.TemporaryDirectory() as td:
+            obj = bs.run_state(td)
+        self.assertFalse(obj["success"])
+>       self.assertEqual(obj["code"], "browser_not_running")
+E       AssertionError: 'access_web_unavailable' != 'browser_not_running'
+E       - access_web_unavailable
+E       + browser_not_running
+
+general/present/tests/test_browser_session.py:289: AssertionError
+___________ TestJSONOutput.test_status_alive_false_when_no_metadata ____________
+
+self = <tests.test_browser_session.TestJSONOutput testMethod=test_status_alive_false_when_no_metadata>
+
+    def test_status_alive_false_when_no_metadata(self):
+        """status returns alive:false when no browser.json exists."""
+        with tempfile.TemporaryDirectory() as td:
+            obj = bs.run_status(td)
+>       self.assertTrue(obj["success"])
+E       AssertionError: False is not true
+
+general/present/tests/test_browser_session.py:281: AssertionError
+_______________ TestJSONOutput.test_success_has_required_fields ________________
+
+self = <tests.test_browser_session.TestJSONOutput testMethod=test_success_has_required_fields>
+
+    def test_success_has_required_fields(self):
+        with tempfile.TemporaryDirectory() as td:
+            obj = bs.run_status(td)
+>       self.assertTrue(obj["success"])
+E       AssertionError: False is not true
+
+general/present/tests/test_browser_session.py:266: AssertionError
+___________________ TestLifecycle.test_recovery_after_close ____________________
+
+self = <tests.test_browser_session.TestLifecycle testMethod=test_recovery_after_close>
+
+    def test_recovery_after_close(self):
+        """After browser close, state returns browser_not_running,
+        then open can restart (mocked)."""
+        with tempfile.TemporaryDirectory() as td:
+            # Phase 1: state shows browser_not_running
+            obj = bs.run_state(td)
+>           self.assertEqual(obj["code"], "browser_not_running")
+E           AssertionError: 'access_web_unavailable' != 'browser_not_running'
+E           - access_web_unavailable
+E           + browser_not_running
+
+general/present/tests/test_browser_session.py:603: AssertionError
+________________________ test_pending_cap_drops_oldest _________________________
+
+serves = <function serves.<locals>._serve at 0x76f56640e400>
+
+    def test_pending_cap_drops_oldest(serves):
+        """TC-022 (AC-013): 新滞留超上限时最老的被丢弃且经管理口可见;
+        上限缺省 100, env MAILBOX_PENDING_CAP 可调."""
+        # env 调小到 3: 第 4 封起丢最老
+        srv = serves("cap3", extra_env={"MAILBOX_PENDING_CAP": "3",
+                                        "MAILBOX_RETRY_SECONDS": "30"})
+        poster = register_session(srv, "cap-1")
+        dead = f"127.0.0.1:{free_port()}"
+        code, _ = _admin(srv, "POST", "/admin/neighbors",
+                         {"address": dead, "shared_key": "k-dead"})
+        assert code == 200
+        for i in range(5):
+            code, resp = post_letter(srv, "cap-1", poster["signing_key"],
+                                     make_letter(letter_id=f"CAP-{i}",
+                                                 to="remote-dev"))
+            assert code == 200, resp
+        code, resp = _admin(srv, "GET", "/admin/pending")
+        ids = [e["id"] for e in resp["pending"]]
+        assert ids == ["CAP-2", "CAP-3", "CAP-4"], \
+            f"超上限应丢最老: {ids}"
+    
+        # 缺省 100: 第 101 封把最老的一封挤掉
+        srv2 = serves("cap-def", extra_env={"MAILBOX_RETRY_SECONDS": "30"})
+        poster2 = register_session(srv2, "cap-2")
+        dead2 = f"127.0.0.1:{free_port()}"
+        code, _ = _admin(srv2, "POST", "/admin/neighbors",
+                         {"address": dead2, "shared_key": "k-dead2"})
+        assert code == 200
+        for i in range(101):
+>           code, _ = post_letter(srv2, "cap-2", poster2["signing_key"],
+                                  make_letter(letter_id=f"DEF-{i}",
+                                              to="remote-dev"))
+
+tests/test_mailbox_admin.py:433: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/conftest.py:164: in post_letter
+    return http_json("POST", srv.port, "/mailbox/post",
+tests/conftest.py:61: in http_json
+    with urllib.request.urlopen(req, timeout=timeout) as resp:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/home/bolo/.local/share/uv/python/cpython-3.14.7-linux-x86_64-gnu/lib/python3.14/urllib/request.py:187: in urlopen
+    return opener.open(url, data, timeout)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/home/bolo/.local/share/uv/python/cpython-3.14.7-linux-x86_64-gnu/lib/python3.14/urllib/request.py:487: in open
+    response = self._open(req, data)
+               ^^^^^^^^^^^^^^^^^^^^^
+/home/bolo/.local/share/uv/python/cpython-3.14.7-linux-x86_64-gnu/lib/python3.14/urllib/request.py:504: in _open
+    result = self._call_chain(self.handle_open, protocol, protocol +
+/home/bolo/.local/share/uv/python/cpython-3.14.7-linux-x86_64-gnu/lib/python3.14/urllib/request.py:464: in _call_chain
+    result = func(*args)
+             ^^^^^^^^^^^
+/home/bolo/.local/share/uv/python/cpython-3.14.7-linux-x86_64-gnu/lib/python3.14/urllib/request.py:1349: in http_open
+    return self.do_open(http.client.HTTPConnection, req)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/home/bolo/.local/share/uv/python/cpython-3.14.7-linux-x86_64-gnu/lib/python3.14/urllib/request.py:1324: in do_open
+    r = h.getresponse()
+        ^^^^^^^^^^^^^^^
+/home/bolo/.local/share/uv/python/cpython-3.14.7-linux-x86_64-gnu/lib/python3.14/http/client.py:1478: in getresponse
+    response.begin()
+/home/bolo/.local/share/uv/python/cpython-3.14.7-linux-x86_64-gnu/lib/python3.14/http/client.py:343: in begin
+    version, status, reason = self._read_status()
+                              ^^^^^^^^^^^^^^^^^^^
+/home/bolo/.local/share/uv/python/cpython-3.14.7-linux-x86_64-gnu/lib/python3.14/http/client.py:304: in _read_status
+    line = str(self.fp.readline(_MAXLINE + 1), "iso-8859-1")
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <socket.SocketIO object at 0x76f5666a57e0>
+b = <memory at 0x76f56609fc40>
+
+    def readinto(self, b):
+        """Read up to len(b) bytes into the writable buffer *b* and return
+        the number of bytes read.  If the socket is non-blocking and no bytes
+        are available, None is returned.
+    
+        If *b* is non-empty, a 0 return value indicates that the connection
+        was shutdown at the other end.
+        """
+        self._checkClosed()
+        self._checkReadable()
+        if self._timeout_occurred:
+            raise OSError("cannot read from timed out object")
+        try:
+>           return self._sock.recv_into(b)
+                   ^^^^^^^^^^^^^^^^^^^^^^^
+E           TimeoutError: timed out
+
+/home/bolo/.local/share/uv/python/cpython-3.14.7-linux-x86_64-gnu/lib/python3.14/socket.py:729: TimeoutError
+=========================== short test summary info ============================
+FAILED general/present/tests/test_browser_session.py::TestCLI::test_exit_code_0_on_success
+FAILED general/present/tests/test_browser_session.py::TestJSONOutput::test_state_browser_not_running_when_no_metadata
+FAILED general/present/tests/test_browser_session.py::TestJSONOutput::test_status_alive_false_when_no_metadata
+FAILED general/present/tests/test_browser_session.py::TestJSONOutput::test_success_has_required_fields
+FAILED general/present/tests/test_browser_session.py::TestLifecycle::test_recovery_after_close
+FAILED tests/test_mailbox_admin.py::test_pending_cap_drops_oldest - TimeoutEr...
+6 failed, 659 passed, 2 skipped, 103 deselected, 33 subtests passed in 275.62s (0:04:35)
+exit=1
