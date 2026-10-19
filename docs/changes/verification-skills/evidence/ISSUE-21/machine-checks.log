@@ -1,0 +1,53 @@
+== check_skill.py ==
+workflow/create-verification-skill/SKILL.md: OK
+exit=0
+workflow/maintain-verification-skill/SKILL.md: OK
+exit=0
+
+== 全角标点扫描 (两份 SKILL.md + ISSUE-21 证据目录, 排除本 log 自身) ==
+rg_exit=1 (1 表示无命中)
+
+== 英文残留扫描 (人工复核用) ==
+workflow/maintain-verification-skill/SKILL.md:2:name: maintain-verification-skill
+workflow/maintain-verification-skill/SKILL.md:3:description: 按当前已确认 PRODUCT.md 维护项目本地验证配方, 分类漂移并让新子会话复跑证明.
+workflow/maintain-verification-skill/SKILL.md:4:disable-model-invocation: true
+workflow/maintain-verification-skill/SKILL.md:7:# maintain-verification-skill
+workflow/maintain-verification-skill/SKILL.md:9:项目本地验证配方 (下称配方) 是目标项目里的一份 skill, 保存启动, 健康检查, 驱动, 取证, 清理规则和按功能组织的入口. 它让陌生 agent 不必每次重新探索, 但通过与否始终由已确认的 PRODUCT.md 判定, 配方不是第二套验收标准.
+workflow/maintain-verification-skill/SKILL.md:10:你负责让配方与当前事实一致, 不修产品. 维护范围由当前 PRODUCT.md 决定, 不由配方里有多少历史功能决定.
+workflow/maintain-verification-skill/SKILL.md:14:必需: 当前已确认的 PRODUCT.md, 目标项目和本次要维护的配方.
+workflow/maintain-verification-skill/SKILL.md:15:- PRODUCT.md: 调用方交付的已确认文件, 或调用方在目标项目中明确指认为当前确认版的文件. 只有旧配方和源码不算有输入.
+workflow/maintain-verification-skill/SKILL.md:17:- 配方: 调用方指定的路径; 未指定时按项目事实定位, 从项目技能加载位置和配方内容确认唯一的项目本地验证 skill.
+workflow/maintain-verification-skill/SKILL.md:18:- TECHNICAL.md / EXECUTION.md 可选. 操作事实 (启动, 版本, 入口, 数据位置) 从项目文档, 源码和实际环境读取, 不因缺少技术或执行文档阻塞.
+workflow/maintain-verification-skill/SKILL.md:19:缺 PRODUCT.md, 目标项目, 唯一配方或必要权限时, 报告缺口并停止. 不用源码现状, 旧配方或我上次看过的事实替代当前产品范围.
+workflow/maintain-verification-skill/SKILL.md:20:完成标准: 能说出 PRODUCT.md 的路径与确认来源, 目标项目路径, 配方目录, 以及本次 Product 覆盖的功能清单.
+workflow/maintain-verification-skill/SKILL.md:24:只核对 Product 覆盖的功能, 加必要的共用规则: 启动, 健康或实例检查, 驱动, 取证, 清理.
+workflow/maintain-verification-skill/SKILL.md:31:按配方实际执行或读项目事实, 每个发现归入下面一类. 判据以本节为准; 容易混淆的样例与证据底线见 [reference/drift-classification.md](reference/drift-classification.md), 那里不重复判据.
+workflow/maintain-verification-skill/SKILL.md:32:- 文档漂移: 配方写的命令, 版本, 路径或期望输出与项目当前事实不符, 产品行为符合 Product.
+workflow/maintain-verification-skill/SKILL.md:34:- 产品缺陷: 配方步骤正确, 产品实际行为仍不满足 Product.
+workflow/maintain-verification-skill/SKILL.md:47:共用批准规则写在 [../create-verification-skill/SKILL.md](../create-verification-skill/SKILL.md) 的 "共用批准规则" 小节, 写入前必读. 它管四件事. 批准绑定到范围; 换范围先请新批准; 运行期临时数据单独批准; 派工单随批准范围下发. 这里只列本次要写的资源, 不重复原文, 改规则时只改那一处.
+workflow/maintain-verification-skill/SKILL.md:54:文档漂移和驱动缺口直接修配方; 缺的步骤, 参数或取证方式补进配方, 让后来者能照着做到. helper 或步骤改过之后要重新实跑, 不能只改文字就交付.
+workflow/maintain-verification-skill/SKILL.md:55:产品缺陷单独写进报告交回. 不改配方把失败解释成通过, 不放宽验证条件, 不用"已知问题"遮住 Product 要求.
+workflow/maintain-verification-skill/SKILL.md:60:配方是给没参与编写的人看的, 作者漏写的条件只有在别人照着做时才会暴露. 用 use-herdr 开一名未参与编写的新子会话, 不要自己跑完全部入口代替.
+workflow/maintain-verification-skill/SKILL.md:61:给它: 目标项目路径, 配方路径, Product 路径, 本次改动的功能与共用规则清单, 已批准的写入与清理范围. 让它先核对配方声明的真实加载或调用入口实际指向项目当前文件, 再按配方跑本次全部新增或修改的功能及各自用户入口; 共用准备和清理可以合并. 不能只跑最方便的一条, 也不能用旧缓存, 同名部署版或复制正文冒充当前配方.
+workflow/maintain-verification-skill/SKILL.md:63:完成标准: 新会话跑过本次全部新改功能与入口, 留下实际加载来源, 操作, 取证, 清理记录; 失败迭代残留已清且证据仍可复核; 没有为复跑另开 verify-change 产品验收层.
+workflow/maintain-verification-skill/SKILL.md:70:- 产品缺陷: 单独列出, 带 Product 条款, 实际行为, 原始输出和位置.
+workflow/maintain-verification-skill/SKILL.md:74:不自动提交, 推送, 开 PR 或合并.
+workflow/create-verification-skill/SKILL.md:2:name: create-verification-skill
+workflow/create-verification-skill/SKILL.md:3:description: 用已确认的产品说明为当前项目生成项目级验证 skill, 覆盖本次相关入口和共用启动, 取证, 清理规则.
+workflow/create-verification-skill/SKILL.md:4:disable-model-invocation: true
+workflow/create-verification-skill/SKILL.md:7:# 生成项目级验证 skill
+workflow/create-verification-skill/SKILL.md:9:把已确认的产品说明和项目里可观察的运行事实, 落成一份项目本地的操作配方, 让没做过这个项目的 agent 照着就能把功能真实跑一遍, 不用每次从零摸索启动方式和入口. 配方只解决"怎么跑, 看什么, 证据放哪", 通过判据始终来自 `PRODUCT.md`: 地图和代码现状与它冲突时以它为准.
+workflow/create-verification-skill/SKILL.md:13:- 必需: 已确认的 `PRODUCT.md`. 它给出本轮覆盖哪些功能和入口, 以及各自怎么算通过. 找不到它, 或它的状态仍是草稿, 待确认时, 报告缺哪个文件, 哪一条没确认, 然后停下. 源码现状不能替代产品判据, 不会因为代码已经这样就去推断"应该怎么算通过".
+workflow/create-verification-skill/SKILL.md:14:- 可选: `TECHNICAL.md`, `EXECUTION.md`, 项目 README, 测试入口. 缺任何一份都继续做, 只在报告里写"未提供".
+workflow/create-verification-skill/SKILL.md:21:只覆盖 `PRODUCT.md` 这一轮涉及的入口, 加这些入口共用的规则: 从空数据启动到真正可用, 只读的实例检查 (进程, 端口归属, 版本), 真实入口操作, 取证, 清理. 项目里其余功能不进配方, 也不为它们铺功能地图. 报告写明本次覆盖哪些功能和入口, 以及哪些功能被排除, 排除理由是什么.
+workflow/create-verification-skill/SKILL.md:23:完成标准: 功能地图里每一项都能追到 `PRODUCT.md` 的一条判据, 追不到的就删掉.
+workflow/create-verification-skill/SKILL.md:34:**共用批准规则.** 下面三条生成与维护配方共用, 只在这里维护. 维护配方时按 `maintain-verification-skill` 的指针读回这里. 那边不另抄一份, 改规则只改这一处.
+workflow/create-verification-skill/SKILL.md:44:产物落在目标项目 `.agents/skills/verify-<应用名>/`:
+workflow/create-verification-skill/SKILL.md:46:- `SKILL.md`: frontmatter 里 `name` 与目录名一致, `description` 是一行人类摘要, `disable-model-invocation: true`; 正文先是共用规则, 再按功能分节写入口和操作. 宿主按 YAML 解析这段 frontmatter, 一个写坏的字段会让整份文件不被加载: 摘要里要出现冒号时用引号包住整个值, 或者干脆换个标点.
+workflow/create-verification-skill/SKILL.md:55:只新增或修改项目本地验证目录 `.agents/skills/verify-<应用名>/` 及它自带的辅助脚本. 产品代码, 项目配置, 既有测试, 全局部署副本保持字节不变: 配方是观察产品的工具, 一旦为了让它跑通而改产品, 它验的就不再是产品了. 应用构建或启动不了时, 报告现象与已尝试的路径, 把受影响的配方原样保留并标为未验证; 不装工具链绕过, 不用替身产物冒充构建结果, 不改产品, 配置或测试让配方看起来跑通.
+workflow/create-verification-skill/SKILL.md:57:完成标准: 交付前在目标项目跑一次范围对照 (`git status --porcelain`, `git diff --stat` 或等价), 结果里除验证目录外没有别的改动, 原始输出进证据.
+workflow/create-verification-skill/SKILL.md:61:派一名没参与编写的会话去跑: 在目标项目里用 `/skill:verify-<应用名>` 加载这份配方, 按它跑完本次新增或修改的全部入口. 你自己敲一遍不算证明: 作者熟悉项目, 恰好绕过漏写的条件, 而配方是写给陌生人的.
+workflow/create-verification-skill/SKILL.md:64:- 拿回记录后核对: 宿主报的 location 是否就是项目里这份文件, 展开的正文是否是当前内容, 每个入口是否都有操作, 取证, 清理记录. 手工粘贴正文不算按名加载.
+workflow/create-verification-skill/SKILL.md:65:- 加载失败, 同名冲突或来源不是这份文件时: 记下宿主原文和冲突诊断, 先修配方再重跑, 直到宿主真的加载出项目里这份文件; 修不好就把缺口写进报告, 不靠改项目配置或写全局部署来绕过. 加载报错时 `/skill:` 会把正文原样丢给会话, 看起来像跑过了, 实际跑的是它自己找来的旧副本.
+workflow/create-verification-skill/SKILL.md:72:写清: 生成路径与文件清单, 本次覆盖的功能与入口, 排除的功能及理由, 实跑覆盖和加载 location, 未验证项与原因, 改动范围对照输出, 哪些可选输入没提供. 只交文件路径, 差异和证据; 不提交, 不推送, 不开 PR.
+rg_exit=0

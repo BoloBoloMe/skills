@@ -1,0 +1,12 @@
+workflow/create-verification-skill/SKILL.md:22: 第三人称指需求方: 调查阶段默认只读. 写文件前先把这次要写的东西整理成一段授权说明, 交用户批准, 批准之前不写配方也不建辅助脚本:
+workflow/create-verification-skill/SKILL.md:33: 第三人称指需求方: 派工单原样写进批准的范围与授权, 要求子会话记录每次实际写入与清理的对象, 命令, 时间与结果. 它要超出范围才能跑通时停下报告, 你转给用户决定, 不替它扩权.
+workflow/maintain-verification-skill/SKILL.md:35: 第三人称指需求方: 定位和分类阶段默认只读. 改配方前先把这次要写的东西整理成一段授权说明, 交用户批准, 批准之前不写配方也不建辅助脚本:
+workflow/maintain-verification-skill/SKILL.md:46: 第三人称指需求方: 派工单原样写进批准的范围与授权, 要求子会话记录每次实际写入与清理的对象, 命令, 时间与结果. 它要超出范围才能跑通时停下报告, 你转给用户决定, 不替它扩权.
+workflow/maintain-verification-skill/SKILL.md:42: 与 create 正文逐字重复: 批准绑定这四样. 同一资源, 对象, 操作与清理范围内的后续写入和复跑直接执行, 可对照原批准复查; 要换范围先停下请求新批准, 旧批准不作新范围的依据. 项目已被信任, 容器工具免审批, 脚本自称会自清理, 都不等于拿到写入权限.
+workflow/maintain-verification-skill/SKILL.md:46: 与 create 正文逐字重复: 派工单原样写进批准的范围与授权, 要求子会话记录每次实际写入与清理的对象, 命令, 时间与结果. 它要超出范围才能跑通时停下报告, 你转给用户决定, 不替它扩权.
+共用规则 '批准绑定这四样' 应只在一份正文出现, 实际: workflow/create-verification-skill/SKILL.md, workflow/maintain-verification-skill/SKILL.md
+共用规则 '派工单原样写进批准的范围与授权' 应只在一份正文出现, 实际: workflow/create-verification-skill/SKILL.md, workflow/maintain-verification-skill/SKILL.md
+workflow/create-verification-skill/SKILL.md: 缺少共用规则所在小节标题 '共用批准规则'
+workflow/maintain-verification-skill/SKILL.md: 没有指向 '共用批准规则' 的指针
+hits=10
+exit=1
