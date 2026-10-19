@@ -1,0 +1,19 @@
+correctness rows 50: 两种归一化实现的输出均与预期逐行一致
+===== rows 200 processes 4 rounds 9 (每轮每侧 4 个进程任务, 双数轮 old 先, 单数轮 new 先) =====
+old n 36 run_med 98.43 ms run_range 98.32-98.57 stage_sum_med 98.33 ms stage_sum_range 98.23-98.46 r_med 10.19% upper 11.34% jobs_per_sec 39.16
+  stage_med normalize=10.02 parse=8.08 render=50.14 write=30.11
+new n 36 run_med 89.24 ms run_range 89.11-89.49 stage_sum_med 89.13 ms stage_sum_range 89.01-89.36 r_med 0.92% upper 0.92% jobs_per_sec 44.18
+  stage_med normalize=0.82 parse=8.11 render=50.13 write=30.11
+delta_run 9.34% p_run 0.0001 | delta_stage_sum 9.35% p_stage_sum 0.0001
+===== rows 5000 processes 4 rounds 9 (每轮每侧 4 个进程任务, 双数轮 old 先, 单数轮 new 先) =====
+old n 36 run_med 101.55 ms run_range 101.15-102.21 stage_sum_med 99.64 ms stage_sum_range 99.41-100.16 r_med 10.40% upper 11.61% jobs_per_sec 37.61
+  stage_med normalize=10.36 parse=8.37 render=50.67 write=30.23
+new n 36 run_med 92.43 ms run_range 92.03-94.01 stage_sum_med 90.47 ms stage_sum_range 90.27-91.25 r_med 1.29% upper 1.31% jobs_per_sec 42.43
+  stage_med normalize=1.17 parse=8.39 render=50.67 write=30.23
+delta_run 8.98% p_run 0.0001 | delta_stage_sum 9.20% p_stage_sum 0.0001
+===== rows 60000 processes 4 rounds 9 (每轮每侧 4 个进程任务, 双数轮 old 先, 单数轮 new 先) =====
+old n 36 run_med 153.36 ms run_range 148.63-174.37 stage_sum_med 126.82 ms stage_sum_range 123.84-148.40 r_med 12.38% upper 14.13% jobs_per_sec 21.99
+  stage_med normalize=15.68 parse=18.99 render=58.97 write=32.37
+new n 36 run_med 143.84 ms run_range 139.13-163.18 stage_sum_med 118.07 ms stage_sum_range 114.23-136.17 r_med 5.48% upper 5.80% jobs_per_sec 23.62
+  stage_med normalize=6.56 parse=20.35 render=59.07 write=32.29
+delta_run 6.21% p_run 0.0002 | delta_stage_sum 6.90% p_stage_sum 0.0001

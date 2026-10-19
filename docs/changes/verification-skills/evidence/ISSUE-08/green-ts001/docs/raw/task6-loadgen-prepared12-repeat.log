@@ -1,0 +1,15 @@
+=== run 1 prepared workers 12 ===
+mode prepared workers 12 jobs_per_sec 981.4
+generator_self_share 0%  app_share 100%
+=== run 2 prepared workers 12 ===
+mode prepared workers 12 jobs_per_sec 977.6
+generator_self_share 0%  app_share 100%
+=== run 3 prepared workers 12 ===
+mode prepared workers 12 jobs_per_sec 980.8
+generator_self_share 0%  app_share 100%
+=== run 4 prepared workers 12 ===
+mode prepared workers 12 jobs_per_sec 978.5
+generator_self_share 0%  app_share 100%
+=== run 5 prepared workers 12 ===
+mode prepared workers 12 jobs_per_sec 981.8
+generator_self_share 0%  app_share 100%

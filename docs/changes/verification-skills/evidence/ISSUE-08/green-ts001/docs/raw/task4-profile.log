@@ -1,0 +1,16 @@
+         6510 function calls in 0.090 seconds
+
+   Ordered by: cumulative time
+   List reduced from 26 to 8 due to restriction <8>
+
+   ncalls  tottime  percall  cumtime  percall filename:lineno(function)
+        1    0.000    0.000    0.090    0.090 /tmp/orchestra-08/lab/src/pipeline.py:68(run_job)
+        3    0.000    0.000    0.088    0.029 /tmp/orchestra-08/lab/src/pipeline.py:15(_sleep)
+        3    0.088    0.029    0.088    0.029 {built-in method time.sleep}
+        1    0.000    0.000    0.050    0.050 /tmp/orchestra-08/lab/src/pipeline.py:53(render)
+        1    0.000    0.000    0.030    0.030 /tmp/orchestra-08/lab/src/pipeline.py:60(write)
+        1    0.000    0.000    0.008    0.008 /tmp/orchestra-08/lab/src/pipeline.py:30(parse)
+        1    0.000    0.000    0.001    0.001 /tmp/orchestra-08/lab/src/pipeline.py:45(normalize_fast)
+        1    0.000    0.000    0.001    0.001 /tmp/orchestra-08/lab/src/pipeline.py:19(_busy)
+
+

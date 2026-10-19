@@ -1,0 +1,12 @@
+=== mode build workers 12 seconds 6 ===
+mode build workers 12 jobs_per_sec 198.3
+generator_self_share 81%  app_share 19%
+=== mode build workers 16 seconds 6 ===
+mode build workers 16 jobs_per_sec 203.3
+generator_self_share 85%  app_share 15%
+=== mode prepared workers 12 seconds 6 ===
+mode prepared workers 12 jobs_per_sec 980.6
+generator_self_share 0%  app_share 100%
+=== mode prepared workers 16 seconds 6 ===
+mode prepared workers 16 jobs_per_sec 1266.8
+generator_self_share 0%  app_share 100%

@@ -1,0 +1,10 @@
+correctness rows 50: 两种归一化实现的输出均与预期逐行一致
+===== rows 200 rounds 9 三臂交替 (每轮轮换起跑顺序) =====
+old_full n 9 median 98.40 ms range 98.31-98.50 non_success 0/9 written_last 200 failed_last 0
+  last_stages parse=8.10 normalize=10.02 render=50.09 write=30.10
+new_full n 9 median 89.27 ms range 89.11-89.39 non_success 0/9 written_last 200 failed_last 0
+  last_stages parse=8.11 normalize=0.82 render=50.15 write=30.12
+new_dry n 9 median 59.12 ms range 59.07-59.18 non_success 9/9 written_last 0 failed_last 0
+  last_stages parse=8.06 normalize=0.81 render=50.14 write=0.00
+原脚本口径 old_full vs new_dry: 98.40 -> 59.12 ms change 39.92% p(median) 0.0032
+同条件 old_full vs new_full: 98.40 -> 89.27 ms change 9.29% p(median) 0.0026

@@ -1,0 +1,24 @@
+=== mode build workers 1 seconds 6 ===
+mode build workers 1 jobs_per_sec 26.7
+generator_self_share 71%  app_share 29%
+=== mode build workers 2 seconds 6 ===
+mode build workers 2 jobs_per_sec 51.9
+generator_self_share 72%  app_share 28%
+=== mode build workers 4 seconds 6 ===
+mode build workers 4 jobs_per_sec 97.9
+generator_self_share 73%  app_share 27%
+=== mode build workers 8 seconds 6 ===
+mode build workers 8 jobs_per_sec 173.2
+generator_self_share 76%  app_share 24%
+=== mode prepared workers 1 seconds 6 ===
+mode prepared workers 1 jobs_per_sec 89.4
+generator_self_share 0%  app_share 100%
+=== mode prepared workers 2 seconds 6 ===
+mode prepared workers 2 jobs_per_sec 179.0
+generator_self_share 0%  app_share 100%
+=== mode prepared workers 4 seconds 6 ===
+mode prepared workers 4 jobs_per_sec 354.4
+generator_self_share 0%  app_share 100%
+=== mode prepared workers 8 seconds 6 ===
+mode prepared workers 8 jobs_per_sec 686.2
+generator_self_share 0%  app_share 100%

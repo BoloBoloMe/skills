@@ -1,0 +1,37 @@
+correctness rows 50: 两种归一化实现的输出均与预期逐行一致
+===== rows 200 concurrency 1 rounds 9 (每轮每侧 1 个请求, 双数轮 old 先, 单数轮 new 先) =====
+old n 9 run_med 98.52 ms run_range 98.34-98.82 stage_sum_med 98.42 ms stage_sum_range 98.24-98.72 r_med 10.18% upper 11.33% jobs_per_sec 10.15
+  stage_med normalize=10.02 parse=8.11 render=50.14 write=30.11
+new n 9 run_med 89.35 ms run_range 89.13-89.45 stage_sum_med 89.24 ms stage_sum_range 89.03-89.35 r_med 0.91% upper 0.92% jobs_per_sec 11.19
+  stage_med normalize=0.82 parse=8.11 render=50.17 write=30.11
+delta_run 9.31% p_run 0.0027 | delta_stage_sum 9.33% p_stage_sum 0.0027
+===== rows 200 concurrency 4 rounds 9 (每轮每侧 4 个请求, 双数轮 old 先, 单数轮 new 先) =====
+old n 36 run_med 109.01 ms run_range 98.64-118.99 stage_sum_med 108.85 ms stage_sum_range 98.50-118.83 r_med 9.69% upper 10.73% jobs_per_sec 33.92
+  stage_med normalize=10.37 parse=15.41 render=50.13 write=30.11
+new n 36 run_med 90.37 ms run_range 89.22-91.50 stage_sum_med 90.02 ms stage_sum_range 89.02-91.33 r_med 0.92% upper 0.93% jobs_per_sec 43.27
+  stage_med normalize=0.83 parse=8.85 render=50.12 write=30.10
+delta_run 17.10% p_run 0.0001 | delta_stage_sum 17.30% p_stage_sum 0.0001
+===== rows 5000 concurrency 1 rounds 9 (每轮每侧 1 个请求, 双数轮 old 先, 单数轮 new 先) =====
+old n 9 run_med 101.44 ms run_range 101.29-101.84 stage_sum_med 99.72 ms stage_sum_range 99.57-100.05 r_med 10.39% upper 11.60% jobs_per_sec 9.74
+  stage_med normalize=10.36 parse=8.38 render=50.73 write=30.22
+new n 9 run_med 92.15 ms run_range 92.08-92.30 stage_sum_med 90.43 ms stage_sum_range 90.35-90.61 r_med 1.25% upper 1.27% jobs_per_sec 10.74
+  stage_med normalize=1.13 parse=8.38 render=50.70 write=30.22
+delta_run 9.16% p_run 0.0036 | delta_stage_sum 9.31% p_stage_sum 0.0034
+===== rows 5000 concurrency 4 rounds 9 (每轮每侧 4 个请求, 双数轮 old 先, 单数轮 new 先) =====
+old n 36 run_med 112.93 ms run_range 102.15-127.54 stage_sum_med 105.31 ms stage_sum_range 99.91-121.98 r_med 10.46% upper 11.68% jobs_per_sec 29.87
+  stage_med normalize=10.70 parse=11.96 render=50.64 write=30.22
+new n 36 run_med 97.13 ms run_range 92.00-104.06 stage_sum_med 91.31 ms stage_sum_range 90.23-95.39 r_med 1.29% upper 1.30% jobs_per_sec 36.33
+  stage_med normalize=1.17 parse=9.24 render=50.63 write=30.21
+delta_run 13.99% p_run 0.0001 | delta_stage_sum 13.29% p_stage_sum 0.0001
+===== rows 60000 concurrency 1 rounds 9 (每轮每侧 1 个请求, 双数轮 old 先, 单数轮 new 先) =====
+old n 9 run_med 141.57 ms run_range 137.44-149.61 stage_sum_med 120.62 ms stage_sum_range 117.25-128.16 r_med 12.50% upper 14.29% jobs_per_sec 6.38
+  stage_med normalize=15.05 parse=14.12 render=58.44 write=32.38
+new n 9 run_med 132.84 ms run_range 130.05-140.15 stage_sum_med 111.59 ms stage_sum_range 109.02-118.23 r_med 5.65% upper 5.99% jobs_per_sec 6.79
+  stage_med normalize=6.28 parse=14.46 render=58.50 write=32.30
+delta_run 6.16% p_run 0.0024 | delta_stage_sum 7.49% p_stage_sum 0.0024
+===== rows 60000 concurrency 4 rounds 9 (每轮每侧 4 个请求, 双数轮 old 先, 单数轮 new 先) =====
+old n 36 run_med 220.70 ms run_range 155.46-310.19 stage_sum_med 166.30 ms stage_sum_range 122.54-241.39 r_med 12.58% upper 14.40% jobs_per_sec 11.68
+  stage_med normalize=18.16 parse=40.92 render=58.56 write=31.75
+new n 36 run_med 210.93 ms run_range 133.98-278.45 stage_sum_med 151.04 ms stage_sum_range 108.37-205.41 r_med 4.22% upper 4.41% jobs_per_sec 12.33
+  stage_med normalize=6.06 parse=39.54 render=57.92 write=31.55
+delta_run 4.43% p_run 0.2906 | delta_stage_sum 9.18% p_stage_sum 0.0533

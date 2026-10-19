@@ -1,0 +1,10 @@
+correctness rows 50: with_norm 与 deleted 两种输出均与各自预期逐行一致
+===== rows 60000 rounds 21 交替 (每轮轮换起跑顺序) =====
+real_old n 21 run_med 138.32 ms run_range 134.74-146.62 stage_sum_med 117.76 ms normalize_med 14.19 ms r_run 10.32% upper_run 11.51% r_stage 12.08% upper_stage 13.74%
+rep_old n 21 run_med 138.19 ms run_range 135.47-146.17 stage_sum_med 117.94 ms normalize_med 14.31 ms r_run 10.33% upper_run 11.52% r_stage 12.10% upper_stage 13.76%
+rep_del_old n 21 run_med 123.19 ms run_range 120.40-131.45 stage_sum_med 102.67 ms normalize_med 0.00 ms r_run 0.00% upper_run 0.00% r_stage 0.00% upper_stage 0.00%
+rep_fast n 21 run_med 128.55 ms run_range 126.20-136.73 stage_sum_med 108.08 ms normalize_med 4.98 ms r_run 3.86% upper_run 4.02% r_stage 4.60% upper_stage 4.83%
+rep_del_fast n 21 run_med 122.59 ms run_range 120.60-133.47 stage_sum_med 102.19 ms normalize_med 0.00 ms r_run 0.00% upper_run 0.00% r_stage 0.00% upper_stage 0.00%
+校准 real_old vs rep_old: run_delta +0.09% stage_sum_delta -0.15%
+rep_del_old vs rep_old: run_med 138.19 -> 123.19 ms gain 10.85% p(median,run) 0.0000 | stage_sum_med 117.94 -> 102.67 ms gain 12.95% p(median,stage_sum) 0.0000
+rep_del_fast vs rep_fast: run_med 128.55 -> 122.59 ms gain 4.64% p(median,run) 0.0001 | stage_sum_med 108.08 -> 102.19 ms gain 5.45% p(median,stage_sum) 0.0001

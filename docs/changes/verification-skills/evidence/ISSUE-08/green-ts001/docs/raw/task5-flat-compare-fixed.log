@@ -1,0 +1,5 @@
+correctness rows 50: 两种归一化实现的输出均与预期逐行一致
+===== rows 200 batch 5 throttle 0.5s rounds 9 (限流在计时区外, 新旧交替) =====
+old batches 9 requests 45 product_batch_med 98.56 ms product_batch_range 98.43-98.71 product_each_med 98.50 ms product_each_range 98.32-98.86 with_throttle_med 598.56 ms
+new batches 9 requests 45 product_batch_med 89.34 ms product_batch_range 89.20-89.44 product_each_med 89.24 ms product_each_range 89.15-89.72 with_throttle_med 589.34 ms
+product_only_delta 9.35% p(median,batch) 0.0034 | with_throttle_delta 1.54% p(median,with_throttle) 0.0034
