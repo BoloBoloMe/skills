@@ -1,3 +1,4 @@
-82cb7913d710dfaf3b898c56d17c618c  skill-versions/SKILL-v1-red.md
-cd7eabce6835454746fcfe6e8ff5e604  skill-versions/SKILL-v2-entry-recipe.md
-45af75c2a10ff902286391bb4ad0160f  skill-versions/SKILL-v3-final.md
+82cb7913d710dfaf3b898c56d17c618c  logs/skill-versions/SKILL-v1-red.md
+cd7eabce6835454746fcfe6e8ff5e604  logs/skill-versions/SKILL-v2-entry-recipe.md
+45af75c2a10ff902286391bb4ad0160f  logs/skill-versions/SKILL-v3-final.md
+f66877da91ddc2ab7df7990aa17bb392  logs/skill-versions/SKILL-v4-final.md

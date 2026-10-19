@@ -7,7 +7,8 @@
 - 源文件: 本工作树 `workflow/verify-change/SKILL.md` (分支 `issue/05`), 三个版本都留了原件在 `logs/skill-versions/`:
   - `SKILL-v1-red.md` md5 `82cb7913d710dfaf3b898c56d17c618c`: 本 ISSUE 改动前的版本, 红演练用它.
   - `SKILL-v2-entry-recipe.md` md5 `cd7eabce6835454746fcfe6e8ff5e604`: 加了入口/配方选择与旧证据适用性规则, AC-010 的绿演练用它.
-  - `SKILL-v3-final.md` md5 `45af75c2a10ff902286391bb4ad0160f`: 最终版, 在 v2 上又加了派工时定材料来源与报告行内引用要求, AC-009 的绿演练用它. v2 到 v3 的差异只有第 4 步一句加第 8 步一句, 见 `logs/skill-diff-v2-v3.txt`; 第 5, 6 步 (入口与配方规则) 在 v2, v3 中逐字相同, 所以 AC-010 的 v2 证据对最终版仍然成立.
+  - `SKILL-v3-final.md` md5 `45af75c2a10ff902286391bb4ad0160f`: 在 v2 上加了派工时定材料来源与报告行内引用要求, AC-009 的绿演练用它. v2 到 v3 的差异只有第 4 步一句加第 8 步一句, 见 `logs/skill-diff-v2-v3.txt`; 第 5, 6 步 (入口与配方规则) 在 v2, v3 中逐字相同, 所以 AC-010 的 v2 证据对最终版仍然成立.
+  - `SKILL-v4-final.md` md5 `f66877da91ddc2ab7df7990aa17bb392`: 提交版. 只把第 7 步里那两段适用性说明从四条材料类型中间移到它们之后, 文字一字未改 (`logs/skill-diff-v3-v4.txt`, 两个版本排序后的行集合完全相同). 因此 v3 上跑出的 AC-009 行为结论对提交版仍成立.
 - 覆盖范围: 只覆盖上述源文件与下面的加载方式, 不表示任何全局部署副本已更新; 未运行 `sync-to-pi.py`.
 
 ## 宿主与加载方式
