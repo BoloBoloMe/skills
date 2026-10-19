@@ -1,0 +1,80 @@
+time: 2026-10-19T11:10:18Z
+TARGET=7f360da1d0bdf923472919523760bd4c59eb8576
+
+===== 1. 两提交之间改动的文件清单 =====
+$ git diff --stat c6c44d7aa4562fc6190de0dcb1be4747e1c8adee 7f360da1d0bdf923472919523760bd4c59eb8576
+ tool.py | 8 +++++---
+ 1 file changed, 5 insertions(+), 3 deletions(-)
+
+$ git diff --name-status c6c44d7aa4562fc6190de0dcb1be4747e1c8adee 7f360da1d0bdf923472919523760bd4c59eb8576
+M	tool.py
+
+===== 2. BR-002 依赖清单/锁文件/构建材料 逐项比对 (sha256) =====
+deps.txt  c6c44d7aa4562fc6190de0dcb1be4747e1c8adee=f37d7a069e967e7a125eef55e7066eb82a9f4fcbfda96213cacfe401460d4806  7f360da1d0bdf923472919523760bd4c59eb8576=f37d7a069e967e7a125eef55e7066eb82a9f4fcbfda96213cacfe401460d4806  SAME
+deps.lock  c6c44d7aa4562fc6190de0dcb1be4747e1c8adee=28cc45864a24d80d571d7cc23848932e89d4977dbf3d6ede18e1404a27da5f50  7f360da1d0bdf923472919523760bd4c59eb8576=28cc45864a24d80d571d7cc23848932e89d4977dbf3d6ede18e1404a27da5f50  SAME
+build.sh  c6c44d7aa4562fc6190de0dcb1be4747e1c8adee=ae45fcf9574b94ecab88deb68bc04728b8e7e34adec03cbd8f5d8434bfa05aad  7f360da1d0bdf923472919523760bd4c59eb8576=ae45fcf9574b94ecab88deb68bc04728b8e7e34adec03cbd8f5d8434bfa05aad  SAME
+
+$ git diff c6c44d7aa4562fc6190de0dcb1be4747e1c8adee 7f360da1d0bdf923472919523760bd4c59eb8576 -- deps.txt deps.lock build.sh   (空输出=无差异)
+[该命令退出码 0]
+
+内容原文 (目标提交):
+--- deps.txt ---
+python-stdlib
+--- deps.lock ---
+# 本工具只用 Python 标准库, 无第三方依赖.
+--- build.sh ---
+#!/usr/bin/env bash
+set -euo pipefail
+python3 -m compileall -q tool.py
+
+===== 3. BR-003 既有测试文件比对 (sha256) =====
+tests/test_tool.py  c6c44d7aa4562fc6190de0dcb1be4747e1c8adee=079cffe4ac09ddee3b228f1b1774d931a790350a0f2e64404131de01c4349519  7f360da1d0bdf923472919523760bd4c59eb8576=079cffe4ac09ddee3b228f1b1774d931a790350a0f2e64404131de01c4349519  SAME
+$ git diff c6c44d7aa4562fc6190de0dcb1be4747e1c8adee 7f360da1d0bdf923472919523760bd4c59eb8576 -- tests/   (空输出=无差异)
+[该命令退出码 0]
+
+===== 4. AC-002-1 旧观察适用条件: count 相关代码与 notes.txt 是否未变 =====
+tool.py  c6c44d7aa4562fc6190de0dcb1be4747e1c8adee=991fb7f8b9accc7003f57b34600d3c3450826ce9957881acf6c35de982485b88  7f360da1d0bdf923472919523760bd4c59eb8576=4256247fe0b3aad194650215ce775ecdeb8534598526bd5d7d79905900df734e  DIFF
+notes.txt  c6c44d7aa4562fc6190de0dcb1be4747e1c8adee=adf7157c8a5bbb4b099d39ba5ef34b73a3787f5e9326b3eb24ac8b86fd03ff96  7f360da1d0bdf923472919523760bd4c59eb8576=adf7157c8a5bbb4b099d39ba5ef34b73a3787f5e9326b3eb24ac8b86fd03ff96  SAME
+$ git diff c6c44d7aa4562fc6190de0dcb1be4747e1c8adee 7f360da1d0bdf923472919523760bd4c59eb8576 -- notes.txt  (空输出=无差异)
+
+$ git diff -U0 c6c44d7aa4562fc6190de0dcb1be4747e1c8adee 7f360da1d0bdf923472919523760bd4c59eb8576 -- tool.py   (仅 greet 相关行)
+diff --git a/tool.py b/tool.py
+index 67fa511..6948eb9 100644
+--- a/tool.py
++++ b/tool.py
+@@ -9,2 +9,3 @@ import sys
+-def greet(name: str, separator: str = ", ") -> str:
+-    return f"Hello{separator}{name}!"
++def greet(name: str, separator: str = ", ", shout: bool = False) -> str:
++    text = f"Hello{separator}{name}!"
++    return text.upper() if shout else text
+@@ -42,0 +44 @@ def main(argv=None) -> int:
++    greet_parser.add_argument("--shout", action="store_true")
+@@ -59 +61 @@ def main(argv=None) -> int:
+-        print(greet(args.name, args.sep))
++        print(greet(args.name, args.sep, args.shout))
+
+notes.txt 目标提交原始字节:
+0000000   a   l   p   h   a       b   e   t   a       g   a   m   m   a
+0000020  \n
+0000021
+empty.txt 目标提交原始字节 (应为空):
+0000000
+
+===== 5. tool.py 的 import 清单 (是否只依赖标准库) =====
+3:import argparse
+4:import json
+5:from pathlib import Path
+6:import sys
+
+===== 6. 验收开始时的版本前提 =====
+$ git rev-parse HEAD
+7f360da1d0bdf923472919523760bd4c59eb8576
+$ git status --porcelain  (空输出=已跟踪文件无改动)
+?? docs/changes/tool-cli/evidence-7f360da/
+$ git status --ignored --porcelain
+?? docs/changes/tool-cli/evidence-7f360da/
+!! .agents/
+!! materials/
+
+===== 结束 2026-10-19T11:10:18Z =====

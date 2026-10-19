@@ -1,0 +1,124 @@
+===== AC-001-1 =====
+time: 2026-10-19T11:10:10Z
+cwd: /tmp/orchestra-02/green-evidence2
+cmd: python3 tool.py greet --name Ada
+exit: 0
+--- stdout ---
+  0000000   H   e   l   l   o   ,       A   d   a   !
+  0000013
+--- stdout(直读) ---
+Hello, Ada!
+--- stderr ---
+
+
+===== AC-001-2 =====
+time: 2026-10-19T11:10:10Z
+cwd: /tmp/orchestra-02/green-evidence2
+cmd: python3 tool.py greet --name Ada --shout
+exit: 0
+--- stdout ---
+  0000000   H   E   L   L   O   ,       A   D   A   !
+  0000013
+--- stdout(直读) ---
+HELLO, ADA!
+--- stderr ---
+
+
+===== AC-001-3 =====
+time: 2026-10-19T11:10:10Z
+cwd: /tmp/orchestra-02/green-evidence2
+cmd: python3 tool.py greet --name Ada --sep ; 
+exit: 0
+--- stdout ---
+  0000000   H   e   l   l   o   ;       A   d   a   !
+  0000013
+--- stdout(直读) ---
+Hello; Ada!
+--- stderr ---
+
+
+===== AC-001-4 =====
+time: 2026-10-19T11:10:10Z
+cwd: /tmp/orchestra-02/green-evidence2
+cmd: python3 tool.py greet
+exit: 2
+--- stdout ---
+  0000000
+--- stdout(直读) ---
+
+--- stderr ---
+usage: tool.py greet [-h] --name NAME [--sep SEP] [--shout]
+tool.py greet: error: the following arguments are required: --name
+
+===== AC-002-2 =====
+time: 2026-10-19T11:10:10Z
+cwd: /tmp/orchestra-02/green-evidence2
+cmd: python3 tool.py count --file notes.txt --chars
+exit: 0
+--- stdout ---
+  0000000   1   7
+  0000002
+--- stdout(直读) ---
+17
+--- stderr ---
+
+
+===== AC-002-3 =====
+time: 2026-10-19T11:10:10Z
+cwd: /tmp/orchestra-02/green-evidence2
+cmd: python3 tool.py count --file empty.txt
+exit: 0
+--- stdout ---
+  0000000   0
+  0000001
+--- stdout(直读) ---
+0
+--- stderr ---
+
+
+===== AC-002-4 前置: missing.txt 是否存在 =====
+  ls: cannot access 'missing.txt': No such file or directory
+  test -e missing.txt -> ABSENT
+
+===== AC-002-4 =====
+time: 2026-10-19T11:10:10Z
+cwd: /tmp/orchestra-02/green-evidence2
+cmd: python3 tool.py count --file missing.txt
+exit: 1
+--- stdout ---
+  0000000
+--- stdout(直读) ---
+
+--- stderr ---
+cannot read missing.txt: [Errno 2] No such file or directory: 'missing.txt'
+
+===== AC-003-1 =====
+time: 2026-10-19T11:10:10Z
+cwd: /tmp/orchestra-02/green-evidence2
+cmd: python3 tool.py export --name Ada
+exit: 0
+--- stdout ---
+  0000000   {   "   n   a   m   e   "   :       "   A   d   a   "   ,    
+  0000020   "   g   r   e   e   t   i   n   g   "   :       "   H   e   l
+  0000040   l   o   ,       A   d   a   !   "   }
+  0000052
+--- stdout(直读) ---
+{"name": "Ada", "greeting": "Hello, Ada!"}
+--- stderr ---
+
+
+===== AC-003-3 =====
+time: 2026-10-19T11:10:10Z
+cwd: /tmp/orchestra-02/green-evidence2
+cmd: python3 tool.py export --name Ada --format yaml
+exit: 1
+--- stdout ---
+  0000000
+--- stdout(直读) ---
+
+--- stderr ---
+unsupported format: yaml
+
+===== AC-003-2 (按指示不实跑, 本轮未执行) =====
+
+===== 结束 2026-10-19T11:10:10Z =====

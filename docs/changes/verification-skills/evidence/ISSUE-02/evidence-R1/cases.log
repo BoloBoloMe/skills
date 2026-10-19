@@ -1,0 +1,96 @@
+=== AC-001-1  [通过]
+cmd: python3 tool.py greet --name Ada
+exit: 0
+stdout: "Hello, Ada!\n"
+stderr: ""
+  PASS  stdout == 'Hello, Ada!\n'
+  PASS  exitcode == 0
+
+=== AC-001-2  [通过]
+cmd: python3 tool.py greet --name Ada --shout
+exit: 0
+stdout: "HELLO, ADA!\n"
+stderr: ""
+  PASS  stdout == 'HELLO, ADA!\n'
+  PASS  exitcode == 0
+
+=== AC-001-3  [通过]
+cmd: python3 tool.py greet --name Ada --sep ; 
+exit: 0
+stdout: "Hello; Ada!\n"
+stderr: ""
+  PASS  stdout == 'Hello; Ada!\n'
+  PASS  exitcode == 0
+
+=== AC-001-4  [通过]
+cmd: python3 tool.py greet
+exit: 2
+stdout: ""
+stderr: "usage: tool.py greet [-h] --name NAME [--sep SEP] [--shout]\ntool.py greet: error: the following arguments are required: --name\n"
+  PASS  exitcode != 0
+  PASS  stderr 包含 '--name'
+
+=== AC-002-1  [通过]
+cmd: python3 tool.py count --file notes.txt
+exit: 0
+stdout: "3\n"
+stderr: ""
+  PASS  stdout == '3\n'
+  PASS  exitcode == 0
+
+=== AC-002-2  [通过]
+cmd: python3 tool.py count --file notes.txt --chars
+exit: 0
+stdout: "17\n"
+stderr: ""
+  PASS  stdout == '17\n'
+  PASS  exitcode == 0
+
+=== AC-002-3  [通过]
+cmd: python3 tool.py count --file empty.txt
+exit: 0
+stdout: "0\n"
+stderr: ""
+  PASS  stdout == '0\n'
+  PASS  exitcode == 0
+
+=== AC-002-4  [通过]
+cmd: python3 tool.py count --file missing.txt
+exit: 1
+stdout: ""
+stderr: "cannot read missing.txt: [Errno 2] No such file or directory: 'missing.txt'\n"
+  PASS  exitcode == 1
+  PASS  stderr 包含 'missing.txt'
+
+=== AC-003-1  [通过]
+cmd: python3 tool.py export --name Ada
+exit: 0
+stdout: "{\"name\": \"Ada\", \"greeting\": \"Hello, Ada!\"}\n"
+stderr: ""
+  PASS  stdout == '{"name": "Ada", "greeting": "Hello, Ada!"}\n'
+  PASS  exitcode == 0
+
+=== AC-003-2  [通过]
+cmd: python3 tool.py export --name Ada --pretty
+exit: 0
+stdout: "{\n  \"name\": \"Ada\",\n  \"greeting\": \"Hello, Ada!\"\n}\n"
+stderr: ""
+  PASS  第 1 行为 '{'
+  PASS  第 2 行为 '  "name": "Ada",'
+  PASS  exitcode == 0
+
+=== AC-003-3  [通过]
+cmd: python3 tool.py export --name Ada --format yaml
+exit: 1
+stdout: ""
+stderr: "unsupported format: yaml\n"
+  PASS  exitcode == 1
+  PASS  stderr 包含 'unsupported format: yaml'
+
+=== AC-004-1  [通过]
+cmd: python3 tool.py health --url http://127.0.0.1:18080/health
+exit: 0
+stdout: "{\"status\": \"ok\", \"ready\": true}\n"
+stderr: ""
+  PASS  stdout 包含 '"ready": true'
+  PASS  exitcode == 0

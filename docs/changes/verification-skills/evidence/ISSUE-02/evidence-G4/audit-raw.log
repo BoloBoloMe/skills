@@ -1,0 +1,38 @@
+# 版本前提与静态审计原始记录
+
+执行时间(UTC): 2026-10-19T11:12:57Z
+
+$ git rev-parse HEAD
+7f360da1d0bdf923472919523760bd4c59eb8576
+
+$ git status --porcelain=v1 -uall
+?? docs/changes/tool-cli/evidence-7f360da-r1/audit-raw.log
+(exit 0)
+
+$ git diff --stat c6c44d7 7f360da
+ tool.py | 8 +++++---
+ 1 file changed, 5 insertions(+), 3 deletions(-)
+
+$ git diff c6c44d7 7f360da -- deps.txt deps.lock build.sh
+(无输出 = 完全一致)
+
+$ git diff c6c44d7 7f360da -- tests/test_tool.py
+(无输出 = 完全一致)
+
+$ git ls-tree c6c44d7 -- deps.txt deps.lock build.sh tests/test_tool.py
+100644 blob 779624644c085151dd81f8f9cd6bd98e97558c71	build.sh
+100644 blob f5f745d19dad8f561d612f4868e0c3c5781cf6cd	deps.lock
+100644 blob bbb52972310fb82afbe4364e741d264ea25f68bc	deps.txt
+100644 blob 970f6ff9ed4bfb61a2a0c5ac790891d0fd5cf199	tests/test_tool.py
+
+$ git ls-tree 7f360da -- deps.txt deps.lock build.sh tests/test_tool.py
+100644 blob 779624644c085151dd81f8f9cd6bd98e97558c71	build.sh
+100644 blob f5f745d19dad8f561d612f4868e0c3c5781cf6cd	deps.lock
+100644 blob bbb52972310fb82afbe4364e741d264ea25f68bc	deps.txt
+100644 blob 970f6ff9ed4bfb61a2a0c5ac790891d0fd5cf199	tests/test_tool.py
+
+$ grep -nE '^(import|from) ' tool.py
+3:import argparse
+4:import json
+5:from pathlib import Path
+6:import sys

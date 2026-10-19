@@ -1,0 +1,65 @@
+time: 2026-10-19T11:10:35Z
+cwd: /tmp/orchestra-02/green-evidence2
+HEAD: 7f360da1d0bdf923472919523760bd4c59eb8576
+
+===== 1. 本轮实际写入的资源 (证据目录内) =====
+  docs/changes/tool-cli/evidence-7f360da/raw/run-scenarios.sh
+  docs/changes/tool-cli/evidence-7f360da/raw/scenario-runs.log
+  docs/changes/tool-cli/evidence-7f360da/raw/static-checks.log
+  docs/changes/tool-cli/evidence-7f360da/raw/static-checks.sh
+  docs/changes/tool-cli/evidence-7f360da/raw/write-scope.log
+  docs/changes/tool-cli/evidence-7f360da/raw/write-scope.sh
+
+===== 2. 本轮用到的临时资源 =====
+  ls: cannot access 'docs/changes/tool-cli/evidence-7f360da/raw/.accept-stderr': No such file or directory
+  说明: raw/.accept-stderr 是 run-scenarios.sh 用来暂存 stderr 的临时文件, 位于证据目录内.
+
+===== 3. 证据目录之外, 验收开始后是否有文件被写入 (排除 .git) =====
+  验收开始时间(本会话首次命令): 2026-10-19T11:09:00Z
+  目标提交时间: 2026-10-19T19:05:29+08:00
+  $ find . -path ./.git -prune -o -path ./$EV -prune -o -type f -newermt $ACCEPT_START -print
+  ./.agents/skills/verify-change/SKILL.md
+  --- 空输出 = 验收开始后证据目录外没有任何写入 ---
+  参考: 工作区文件的 mtime (应为布置仓库时间, 早于验收开始):
+  2026-10-19T19:05:29.3829098770Z ./.gitignore
+  2026-10-19T19:05:29.3838594110Z ./empty.txt
+  2026-10-19T19:05:29.3838594110Z ./notes.txt
+  2026-10-19T19:05:29.3858594020Z ./deps.txt
+  2026-10-19T19:05:29.3878593940Z ./deps.lock
+  2026-10-19T19:05:29.3898593860Z ./build.sh
+  2026-10-19T19:05:29.3908593820Z ./tests/test_tool.py
+  2026-10-19T19:05:29.3928593740Z ./README.md
+  2026-10-19T19:05:29.3948593660Z ./docs/changes/tool-cli/TECHNICAL.md
+  2026-10-19T19:05:29.5124834890Z ./docs/changes/tool-cli/PRODUCT.md
+  2026-10-19T19:05:29.6363326100Z ./tool.py
+  2026-10-19T19:05:30.2775275600Z ./materials/old-observation/README.md
+  2026-10-19T19:05:30.2775385170Z ./materials/old-observation/transcript.log
+  2026-10-19T19:05:30.2788557620Z ./materials/inference-note.md
+  2026-10-19T19:05:30.2798557580Z ./materials/unavailable.md
+  2026-10-19T19:09:34.6467887360Z ./.agents/skills/verify-change/SKILL.md
+
+===== 4. 是否有构建/测试缓存或临时产品文件残留 =====
+  missing.txt 是否存在: ABSENT
+
+===== 5. 清理临时资源 =====
+  已执行: rm -f docs/changes/tool-cli/evidence-7f360da/raw/.accept-stderr
+  清理后检查: GONE
+
+===== 6. 清理后工作区状态 (本次证据目录输出之外不应有变化) =====
+$ git status --porcelain
+?? docs/changes/tool-cli/evidence-7f360da/
+$ git status --ignored --porcelain
+?? docs/changes/tool-cli/evidence-7f360da/
+!! .agents/
+!! materials/
+$ git diff --stat HEAD  (已跟踪文件改动, 空=无)
+
+===== 7. 最终证据目录清单 =====
+  docs/changes/tool-cli/evidence-7f360da/raw/run-scenarios.sh
+  docs/changes/tool-cli/evidence-7f360da/raw/scenario-runs.log
+  docs/changes/tool-cli/evidence-7f360da/raw/static-checks.log
+  docs/changes/tool-cli/evidence-7f360da/raw/static-checks.sh
+  docs/changes/tool-cli/evidence-7f360da/raw/write-scope.log
+  docs/changes/tool-cli/evidence-7f360da/raw/write-scope.sh
+
+===== 结束 2026-10-19T11:10:35Z =====

@@ -1,0 +1,63 @@
+# 材料适用性核对 (AC-002-1)
+
+旧观察来自提交 c6c44d7aa4562fc6190de0dcb1be4747e1c8adee, 本轮目标提交 7f360da1d0bdf923472919523760bd4c59eb8576.
+旧材料的适用条件声称: 本次变更只改 greet 的 --shout, count 与 notes.txt 未变.
+
+## 两提交之间改动的文件
+M	tool.py
+
+## tool.py 完整差异
+diff --git a/tool.py b/tool.py
+index 67fa511..6948eb9 100644
+--- a/tool.py
++++ b/tool.py
+@@ -6,8 +6,9 @@ from pathlib import Path
+ import sys
+ 
+ 
+-def greet(name: str, separator: str = ", ") -> str:
+-    return f"Hello{separator}{name}!"
++def greet(name: str, separator: str = ", ", shout: bool = False) -> str:
++    text = f"Hello{separator}{name}!"
++    return text.upper() if shout else text
+ 
+ 
+ def count(text: str, chars: bool) -> int:
+@@ -40,6 +41,7 @@ def main(argv=None) -> int:
+     greet_parser = commands.add_parser("greet")
+     greet_parser.add_argument("--name", required=True)
+     greet_parser.add_argument("--sep", default=", ")
++    greet_parser.add_argument("--shout", action="store_true")
+ 
+     count_parser = commands.add_parser("count")
+     count_parser.add_argument("--file", required=True)
+@@ -56,7 +58,7 @@ def main(argv=None) -> int:
+     args = parser.parse_args(argv)
+ 
+     if args.command == "greet":
+-        print(greet(args.name, args.sep))
++        print(greet(args.name, args.sep, args.shout))
+         return 0
+     if args.command == "count":
+         try:
+
+## count 函数与 count 子命令分支在两提交间是否逐行一致
+--- c6c44d7aa4562fc6190de0dcb1be4747e1c8adee
+991fb7f8b9accc7003f57b34600d3c3450826ce9957881acf6c35de982485b88  -
+bd8cece9f618e7cb5e9e6c90c55fff5885853a75f9bb6050bb6f113491d8cb97  -
+1c2bfbe3597e4be6ebb26e9a9cf3b30ae861a2b083d465530782717240c964c3  -
+--- HEAD
+4256247fe0b3aad194650215ce775ecdeb8534598526bd5d7d79905900df734e  -
+bd8cece9f618e7cb5e9e6c90c55fff5885853a75f9bb6050bb6f113491d8cb97  -
+1c2bfbe3597e4be6ebb26e9a9cf3b30ae861a2b083d465530782717240c964c3  -
+
+## notes.txt 内容 (HEAD 工作区, od -c)
+0000000   a   l   p   h   a       b   e   t   a       g   a   m   m   a
+0000020  \n
+0000021
+
+## 材料文件 sha256
+247561369b4988cb1667666ba9e6967364de08b5807b44c13ed8caa1ebdd3449  materials/old-observation/README.md
+afcc9f2f11fa7865487ab72116751e33f77f0138b842b45740cc95844da9a6b5  materials/old-observation/transcript.log
+064ee7e04b764916abc772c7571864e8e35012b2c4df68257f5e83c6648092e1  materials/inference-note.md
+c3f9cf181d312cb52ef8439038f2b2d0a004bf01ed2157970fcb186bb9f23c59  materials/unavailable.md

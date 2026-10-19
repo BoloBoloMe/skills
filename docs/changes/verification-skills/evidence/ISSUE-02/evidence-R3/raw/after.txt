@@ -1,0 +1,49 @@
+结束时间: 2026-10-19T19:00:12+08:00
+工作区状态(证据输出后):
+?? docs/changes/tool-cli/verify-r1-bb25738/raw/AC-001-1.code
+?? docs/changes/tool-cli/verify-r1-bb25738/raw/AC-001-1.err
+?? docs/changes/tool-cli/verify-r1-bb25738/raw/AC-001-1.out
+?? docs/changes/tool-cli/verify-r1-bb25738/raw/AC-001-2.code
+?? docs/changes/tool-cli/verify-r1-bb25738/raw/AC-001-2.err
+?? docs/changes/tool-cli/verify-r1-bb25738/raw/AC-001-2.out
+?? docs/changes/tool-cli/verify-r1-bb25738/raw/AC-001-3.code
+?? docs/changes/tool-cli/verify-r1-bb25738/raw/AC-001-3.err
+?? docs/changes/tool-cli/verify-r1-bb25738/raw/AC-001-3.out
+?? docs/changes/tool-cli/verify-r1-bb25738/raw/AC-001-4.code
+?? docs/changes/tool-cli/verify-r1-bb25738/raw/AC-001-4.err
+?? docs/changes/tool-cli/verify-r1-bb25738/raw/AC-001-4.out
+?? docs/changes/tool-cli/verify-r1-bb25738/raw/AC-002-1.code
+?? docs/changes/tool-cli/verify-r1-bb25738/raw/AC-002-1.err
+?? docs/changes/tool-cli/verify-r1-bb25738/raw/AC-002-1.out
+?? docs/changes/tool-cli/verify-r1-bb25738/raw/AC-002-2.code
+?? docs/changes/tool-cli/verify-r1-bb25738/raw/AC-002-2.err
+?? docs/changes/tool-cli/verify-r1-bb25738/raw/AC-002-2.out
+?? docs/changes/tool-cli/verify-r1-bb25738/raw/AC-002-3.code
+?? docs/changes/tool-cli/verify-r1-bb25738/raw/AC-002-3.err
+?? docs/changes/tool-cli/verify-r1-bb25738/raw/AC-002-3.out
+?? docs/changes/tool-cli/verify-r1-bb25738/raw/AC-002-4.code
+?? docs/changes/tool-cli/verify-r1-bb25738/raw/AC-002-4.err
+?? docs/changes/tool-cli/verify-r1-bb25738/raw/AC-002-4.out
+?? docs/changes/tool-cli/verify-r1-bb25738/raw/AC-003-1.code
+?? docs/changes/tool-cli/verify-r1-bb25738/raw/AC-003-1.err
+?? docs/changes/tool-cli/verify-r1-bb25738/raw/AC-003-1.out
+?? docs/changes/tool-cli/verify-r1-bb25738/raw/AC-003-2.code
+?? docs/changes/tool-cli/verify-r1-bb25738/raw/AC-003-2.err
+?? docs/changes/tool-cli/verify-r1-bb25738/raw/AC-003-2.out
+?? docs/changes/tool-cli/verify-r1-bb25738/raw/AC-003-3.code
+?? docs/changes/tool-cli/verify-r1-bb25738/raw/AC-003-3.err
+?? docs/changes/tool-cli/verify-r1-bb25738/raw/AC-003-3.out
+?? docs/changes/tool-cli/verify-r1-bb25738/raw/AC-004-1.code
+?? docs/changes/tool-cli/verify-r1-bb25738/raw/AC-004-1.err
+?? docs/changes/tool-cli/verify-r1-bb25738/raw/AC-004-1.out
+?? docs/changes/tool-cli/verify-r1-bb25738/raw/after.txt
+?? docs/changes/tool-cli/verify-r1-bb25738/raw/console.log
+?? docs/changes/tool-cli/verify-r1-bb25738/raw/env.txt
+?? docs/changes/tool-cli/verify-r1-bb25738/raw/health_stub.py
+?? docs/changes/tool-cli/verify-r1-bb25738/raw/observations.txt
+?? docs/changes/tool-cli/verify-r1-bb25738/raw/run.sh
+已跟踪文件改动:
+端口18080监听:
+closed
+相关进程:
+none

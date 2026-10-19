@@ -1,0 +1,81 @@
+== meta ==
+2026-10-19T10:58:06Z
+bb257385e77783f2906f8d504b791f16665a2731
+?? docs/changes/tool-cli/evidence/bb25738-round1/ac-cases/AC-001-1.stderr
+?? docs/changes/tool-cli/evidence/bb25738-round1/ac-cases/AC-001-1.stdout
+?? docs/changes/tool-cli/evidence/bb25738-round1/ac-cases/AC-001-2.stderr
+?? docs/changes/tool-cli/evidence/bb25738-round1/ac-cases/AC-001-2.stdout
+?? docs/changes/tool-cli/evidence/bb25738-round1/ac-cases/AC-001-3.stderr
+?? docs/changes/tool-cli/evidence/bb25738-round1/ac-cases/AC-001-3.stdout
+?? docs/changes/tool-cli/evidence/bb25738-round1/ac-cases/AC-001-4.stderr
+?? docs/changes/tool-cli/evidence/bb25738-round1/ac-cases/AC-001-4.stdout
+?? docs/changes/tool-cli/evidence/bb25738-round1/ac-cases/AC-002-1.stderr
+?? docs/changes/tool-cli/evidence/bb25738-round1/ac-cases/AC-002-1.stdout
+?? docs/changes/tool-cli/evidence/bb25738-round1/ac-cases/AC-002-2.stderr
+?? docs/changes/tool-cli/evidence/bb25738-round1/ac-cases/AC-002-2.stdout
+?? docs/changes/tool-cli/evidence/bb25738-round1/ac-cases/AC-002-3.stderr
+?? docs/changes/tool-cli/evidence/bb25738-round1/ac-cases/AC-002-3.stdout
+?? docs/changes/tool-cli/evidence/bb25738-round1/ac-cases/AC-002-4.stderr
+?? docs/changes/tool-cli/evidence/bb25738-round1/ac-cases/AC-002-4.stdout
+?? docs/changes/tool-cli/evidence/bb25738-round1/ac-cases/AC-003-1.stderr
+?? docs/changes/tool-cli/evidence/bb25738-round1/ac-cases/AC-003-1.stdout
+?? docs/changes/tool-cli/evidence/bb25738-round1/ac-cases/AC-003-2.stderr
+?? docs/changes/tool-cli/evidence/bb25738-round1/ac-cases/AC-003-2.stdout
+?? docs/changes/tool-cli/evidence/bb25738-round1/ac-cases/AC-003-3.stderr
+?? docs/changes/tool-cli/evidence/bb25738-round1/ac-cases/AC-003-3.stdout
+?? docs/changes/tool-cli/evidence/bb25738-round1/ac-cases/AC-004-1.stderr
+?? docs/changes/tool-cli/evidence/bb25738-round1/ac-cases/AC-004-1.stdout
+?? docs/changes/tool-cli/evidence/bb25738-round1/cases-transcript.log
+?? docs/changes/tool-cli/evidence/bb25738-round1/meta.log
+?? docs/changes/tool-cli/evidence/bb25738-round1/pytest.log
+?? docs/changes/tool-cli/evidence/bb25738-round1/run-cases.sh
+--ignored--
+?? docs/changes/tool-cli/evidence/bb25738-round1/ac-cases/AC-001-1.stderr
+?? docs/changes/tool-cli/evidence/bb25738-round1/ac-cases/AC-001-1.stdout
+?? docs/changes/tool-cli/evidence/bb25738-round1/ac-cases/AC-001-2.stderr
+?? docs/changes/tool-cli/evidence/bb25738-round1/ac-cases/AC-001-2.stdout
+?? docs/changes/tool-cli/evidence/bb25738-round1/ac-cases/AC-001-3.stderr
+?? docs/changes/tool-cli/evidence/bb25738-round1/ac-cases/AC-001-3.stdout
+?? docs/changes/tool-cli/evidence/bb25738-round1/ac-cases/AC-001-4.stderr
+?? docs/changes/tool-cli/evidence/bb25738-round1/ac-cases/AC-001-4.stdout
+?? docs/changes/tool-cli/evidence/bb25738-round1/ac-cases/AC-002-1.stderr
+?? docs/changes/tool-cli/evidence/bb25738-round1/ac-cases/AC-002-1.stdout
+?? docs/changes/tool-cli/evidence/bb25738-round1/ac-cases/AC-002-2.stderr
+?? docs/changes/tool-cli/evidence/bb25738-round1/ac-cases/AC-002-2.stdout
+?? docs/changes/tool-cli/evidence/bb25738-round1/ac-cases/AC-002-3.stderr
+?? docs/changes/tool-cli/evidence/bb25738-round1/ac-cases/AC-002-3.stdout
+?? docs/changes/tool-cli/evidence/bb25738-round1/ac-cases/AC-002-4.stderr
+?? docs/changes/tool-cli/evidence/bb25738-round1/ac-cases/AC-002-4.stdout
+?? docs/changes/tool-cli/evidence/bb25738-round1/ac-cases/AC-003-1.stderr
+?? docs/changes/tool-cli/evidence/bb25738-round1/ac-cases/AC-003-1.stdout
+?? docs/changes/tool-cli/evidence/bb25738-round1/ac-cases/AC-003-2.stderr
+?? docs/changes/tool-cli/evidence/bb25738-round1/ac-cases/AC-003-2.stdout
+?? docs/changes/tool-cli/evidence/bb25738-round1/ac-cases/AC-003-3.stderr
+?? docs/changes/tool-cli/evidence/bb25738-round1/ac-cases/AC-003-3.stdout
+?? docs/changes/tool-cli/evidence/bb25738-round1/ac-cases/AC-004-1.stderr
+?? docs/changes/tool-cli/evidence/bb25738-round1/ac-cases/AC-004-1.stdout
+?? docs/changes/tool-cli/evidence/bb25738-round1/cases-transcript.log
+?? docs/changes/tool-cli/evidence/bb25738-round1/meta.log
+?? docs/changes/tool-cli/evidence/bb25738-round1/pytest.log
+?? docs/changes/tool-cli/evidence/bb25738-round1/run-cases.sh
+!! .agents/skills/verify-change/SKILL.md
+!! materials/delegated-summary.md
+!! materials/health-raw.log
+== hashes ==
+4256247fe0b3aad194650215ce775ecdeb8534598526bd5d7d79905900df734e  tool.py
+adf7157c8a5bbb4b099d39ba5ef34b73a3787f5e9326b3eb24ac8b86fd03ff96  notes.txt
+e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855  empty.txt
+f37d7a069e967e7a125eef55e7066eb82a9f4fcbfda96213cacfe401460d4806  deps.txt
+28cc45864a24d80d571d7cc23848932e89d4977dbf3d6ede18e1404a27da5f50  deps.lock
+ae45fcf9574b94ecab88deb68bc04728b8e7e34adec03cbd8f5d8434bfa05aad  build.sh
+e60619f29f507406762b29bc6982d0532a189fe3e96c2a993687fdbb7afa6c7d  docs/changes/tool-cli/PRODUCT.md
+e2eb5ffb05494afb94af19fac308c95a9e956237cf7421cd3bcbd5ccdb4b946f  materials/delegated-summary.md
+f35893398bc46a24d15ffdba20a0a1156dadb79fbd7ba9cfc5c3af6de068ebeb  materials/health-raw.log
+== python ==
+Python 3.14.7
+== port 18080 ==
+no listener on 18080
+== curl same as raw log ==
+
+HTTP 000
+curl_exit=7

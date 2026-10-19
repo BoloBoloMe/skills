@@ -1,0 +1,2 @@
+PASS  stdout == '17\n'
+PASS  exitcode == 0

@@ -1,0 +1,9 @@
+AC-001-1	exit=0	stdout= H e l l o , A d a ! \n 	stderr=
+AC-001-2	exit=0	stdout= H E L L O , A D A ! \n 	stderr=
+AC-001-3	exit=0	stdout= H e l l o ; A d a ! \n 	stderr=
+AC-001-4	exit=2	stdout=	stderr= u s a g e : t o o l . p y g  r e e t [ - h ] - - n a m e  N A M E [ - - s e p S E P  ] [ - - s h o u t ] \n t o o l  . p y g r e e t : e r r o r  : t h e f o l l o w i n g   a r g u m e n t s a r e r e  q u i r e d : - - n a m e \n 
+AC-002-2	exit=0	stdout= 1 7 \n 	stderr=
+AC-002-3	exit=0	stdout= 0 \n 	stderr=
+AC-002-4	exit=1	stdout=	stderr= c a n n o t r e a d m i s s  i n g . t x t : [ E r r n o   2 ] N o s u c h f i l e   o r d i r e c t o r y : ' m  i s s i n g . t x t ' \n 
+AC-003-1	exit=0	stdout= { " n a m e " : " A d a " ,   " g r e e t i n g " : " H e l  l o , A d a ! " } \n 	stderr=
+AC-003-3	exit=1	stdout=	stderr= u n s u p p o r t e d f o r m  a t : y a m l \n 

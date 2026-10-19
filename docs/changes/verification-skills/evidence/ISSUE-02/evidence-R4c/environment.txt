@@ -1,0 +1,8 @@
+# 环境与前提
+
+- 时间(UTC): 2026-10-19T11:06:05Z
+- 提交: 7f360da1d0bdf923472919523760bd4c59eb8576
+- 分支: main
+- python3: Python 3.14.4
+- 工作区(实跑前): git status --porcelain 输出为
+  | ?? docs/changes/tool-cli/evidence-v2-7f360da/

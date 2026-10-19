@@ -1,0 +1,2 @@
+PASS  exitcode == 1
+PASS  stderr 包含 'unsupported format: yaml'

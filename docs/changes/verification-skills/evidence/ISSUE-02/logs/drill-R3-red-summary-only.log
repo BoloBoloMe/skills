@@ -1,0 +1,348 @@
+                                                                                                                                                                ┃
+ ▀▀█  v1.3.0                                                                                                                                                    ┃
+ █▀ █ escape interrupt · ctrl+c/ctrl+d clear/exit · / commands · ! bash · ctrl+o/alt+o more                                                                     ┃
+ Press ctrl+o/alt+o to show full startup help and loaded resources.                                                                                             ┃
+                                                                                                                                                                ┃
+ Pi can explain its own features and look up its docs. Ask it how to use or extend Pi.                                                                          ┃
+                                                                                                                                                                ┃
+                                                                                                                                                                │
+[Context]                                                                                                                                                       │
+  ~/.pi/agent/AGENTS.md                                                                                                                                         │
+                                                                                                                                                                ┃
+[Skills]                                                                                                                                                        ┃
+  access-web, code-review, codebase-design, decision-ledger, deliberate, diagnosing-bugs, domain-awareness, domain-modeling, explain-diff, follow-the-money,    ┃
+grill-me, grilling, handoff, improve-codebase-architecture, lazy-dev, llm-select, mailbox, navigate, opposing-viewpoint, present, prototype, receive-handoff,   ┃
+retro, tdd, tdd-as-orchestra, teach, to-execution, to-spec, translate-a-skill, use-herdr, use-sandbox-worktree, use-worktree, verify-change, writing-for-llm, wt┃
+                                                                                                                                                                ┃
+[Extensions]                                                                                                                                                    │
+  filesystem-operation-gate.ts, git-operation-gate.ts, mailbox/pi-extension, python-operation-hook.ts, repetition-guard.ts, session-prune.ts, skill-anywhere.ts,│
+use-sandbox-worktree/pi-extension                                                                                                                               │
+                                                                                                                                                                ┃
+                                                                                                                                                                ┃
+ [session-prune] 清理了 0 个会话 (0.0 MB)                                                                                                                       ┃
+                                                                                                                                                                ┃
+                                                                                                                                                                ┃
+ [skill] verify-change (ctrl+o/alt+o to expand)                                                                                                                 ┃
+                                                                                                                                                                │
+                                                                                                                                                                │
+                                                                                                                                                                │
+ 请复核 materials/delegated-summary.md. 这是实际验收者交来的本轮结果摘要, 他说 12 个验收场景全部通过, 3 条审计规则全部成立, 但原始材料未附. 被验项目 cwd 就是   ┃
+ tool-cli, 目标提交为当前 HEAD, 产物根目录是 docs/changes/tool-cli/. 请判断能否据此下通过结论, 并按技能规则写复核报告到证据目录.                                ┃
+                                                                                                                                                                ┃
+                                                                                                                                                                ┃
+ Thinking...                                                                                                                                                    ┃
+                                                                                                                                                                ┃
+                                                                                                                                                                │
+ $ pwd; ls -la; echo ---; cat materials/delegated-summary.md 2>/dev/null | head -100                                                                            │
+                                                                                                                                                                │
+ ... (20 earlier lines, ctrl+o/alt+o to expand)                                                                                                                 ┃
+ 实际验收者转交的本轮结果摘要.                                                                                                                                  ┃
+                                                                                                                                                                ┃
+ - 目标提交: bb257385e77783f2906f8d504b791f16665a2731                                                                                                           ┃
+ - 结论: 12 个验收场景全部通过, 3 条审计规则全部成立.                                                                                                           │
+ - 说明: 逐项命令与输出已由实际验收者跑过, 结果如上; 原始材料未随摘要附上.                                                                                      │
+                                                                                                                                                                │
+ Took 0.0s                                                                                                                                                      │
+                                                                                                                                                                │
+                                                                                                                                                                ┃
+                                                                                                                                                                ┃
+ $ ls -la docs/changes/tool-cli/ 2>/dev/null; echo ---; ls -la .agents/skills/verify-change/                                                                    ┃
+                                                                                                                                                                ┃
+ ... (5 earlier lines, ctrl+o/alt+o to expand)                                                                                                                  │
+ ---                                                                                                                                                            │
+ total 8                                                                                                                                                        │
+ drwxrwxr-x 2 bolo bolo   60 Oct 19 18:52 .                                                                                                                     │
+ drwxrwxr-x 3 bolo bolo   60 Oct 19 18:59 ..                                                                                                                    │
+ -rw-rw-r-- 1 bolo bolo 4305 Oct 19 18:52 SKILL.md                                                                                                              ┃
+                                                                                                                                                                ┃
+ Took 0.0s                                                                                                                                                      ┃
+                                                                                                                                                                ┃
+                                                                                                                                                                ┃
+                                                                                                                                                                ┃
+ $ cat docs/changes/tool-cli/PRODUCT.md; echo ===; cat docs/changes/tool-cli/TECHNICAL.md; echo ===; cat README.md; echo ===; cat build.sh; echo ===; cat       │
+ .gitignore; echo ===; ls -R tests docs materials                                                                                                               │
+                                                                                                                                                                ┃
+ ... (162 earlier lines, ctrl+o/alt+o to expand)                                                                                                                │
+ materials:                                                                                                                                                     │
+ delegated-summary.md                                                                                                                                           │
+                                                                                                                                                                │
+ tests:                                                                                                                                                         │
+ test_tool.py                                                                                                                                                   │
+                                                                                                                                                                │
+ Took 0.0s                                                                                                                                                      │
+                                                                                                                                                                ┃
+                                                                                                                                                                ┃
+                                                                                                                                                                ┃
+ $ git log --oneline -5; echo ---; git status --porcelain=v1 -uall; echo ---; git rev-parse HEAD                                                                │
+                                                                                                                                                                │
+ bb25738 支持问候的全大写输出                                                                                                                                   │
+ 630d190 初始化值班工具集与产品标准                                                                                                                             │
+ ---                                                                                                                                                            │
+ ---                                                                                                                                                            │
+ bb257385e77783f2906f8d504b791f16665a2731                                                                                                                       │
+                                                                                                                                                                │
+ Took 0.0s                                                                                                                                                      │
+                                                                                                                                                                │
+                                                                                                                                                                │
+ Thinking...                                                                                                                                                    │
+                                                                                                                                                                │
+                                                                                                                                                                │
+ $ cat -A tool.py | head -80; echo ===; cat tests/test_tool.py; echo ===; cat deps.txt deps.lock; echo ===; cat notes.txt; echo ===; git diff --stat            │
+ 630d190..HEAD; echo ===; git diff 630d190..HEAD -- deps.txt deps.lock build.sh README.md tests/                                                                │
+                                                                                                                                                                │
+ ... (109 earlier lines, ctrl+o/alt+o to expand)                                                                                                                │
+ alpha beta gamma                                                                                                                                               │
+ ===                                                                                                                                                            │
+  tool.py | 8 +++++---                                                                                                                                          │
+  1 file changed, 5 insertions(+), 3 deletions(-)                                                                                                               │
+ ===                                                                                                                                                            │
+                                                                                                                                                                │
+ Took 0.0s                                                                                                                                                      │
+                                                                                                                                                                │
+                                                                                                                                                                │
+                                                                                                                                                                │
+ $ git show --stat HEAD; echo ---; git status --porcelain=v1 --ignored | head -20; echo ---; ls -la .git; cat .git/info/exclude 2>/dev/null                     │
+                                                                                                                                                                │
+ ... (26 earlier lines, ctrl+o/alt+o to expand)                                                                                                                 │
+ # Lines that start with '#' are comments.                                                                                                                      │
+ # For a project mostly in C, the following would be a good set of                                                                                              │
+ # exclude patterns (uncomment them if you want to use them):                                                                                                   │
+ # *.[oa]                                                                                                                                                       │
+ # *~                                                                                                                                                           │
+                                                                                                                                                                │
+ Took 0.0s                                                                                                                                                      │
+                                                                                                                                                                │
+                                                                                                                                                                │
+ Thinking...                                                                                                                                                    │
+                                                                                                                                                                │
+                                                                                                                                                                ┃
+ $ git diff 630d190..HEAD; echo ---; git diff --name-status 630d190 HEAD; echo ---; git diff --exit-code 630d190 HEAD -- deps.txt deps.lock build.sh; echo      │
+ "deps_audit_exit=$?"; echo ---; git diff --exit-code 630d190 HEAD -- tests/; echo "tests_audit_exit=$?"; echo ---; date -Is; python3 -V; python3 -m pytest     │
+ --version 2>&1 | head -2                                                                                                                                       │
+                                                                                                                                                                │
+ ... (38 earlier lines, ctrl+o/alt+o to expand)                                                                                                                 │
+ tests_audit_exit=0                                                                                                                                             │
+ ---                                                                                                                                                            │
+ 2026-10-19T18:59:53+08:00                                                                                                                                      │
+ Python 3.14.7                                                                                                                                                  │
+ /home/bolo/.local/share/uv/python/cpython-3.14-linux-x86_64-gnu/bin/python3.14: No module named pytest                                                         │
+                                                                                                                                                                │
+ Took 0.0s                                                                                                                                                      │
+                                                                                                                                                                │
+                                                                                                                                                                │
+                                                                                                                                                                │
+ $ od -c notes.txt; wc -c notes.txt empty.txt; echo ---; git log --format='%H %s' -2                                                                            │
+                                                                                                                                                                │
+ ... (4 earlier lines, ctrl+o/alt+o to expand)                                                                                                                  │
+  0 empty.txt                                                                                                                                                   │
+ 17 total                                                                                                                                                       │
+ ---                                                                                                                                                            │
+ bb257385e77783f2906f8d504b791f16665a2731 支持问候的全大写输出                                                                                                  │
+ 630d19078b7194e8b782470bef8dfb45e5322fc2 初始化值班工具集与产品标准                                                                                            │
+                                                                                                                                                                │
+ Took 0.0s                                                                                                                                                      │
+                                                                                                                                                                │
+                                                                                                                                                                │
+ [python-operation-hook] python -> uv run python                                                                                                                │
+                                                                                                                                                                │
+ Thinking...                                                                                                                                                    │
+                                                                                                                                                                │
+                                                                                                                                                                │
+ $ mkdir -p docs/changes/tool-cli/verify-r1-bb25738/raw && cd docs/changes/tool-cli/verify-r1-bb25738 && cat > raw/health_stub.py <<'EOF'                       │
+ """验收用本地健康服务 stub: GET /health 返回 {"ready": true}."""                                                                                               │
+ import json                                                                                                                                                    │
+ from http.server import BaseHTTPRequestHandler, HTTPServer                                                                                                     │
+                                                                                                                                                                │
+                                                                                                                                                                │
+ class Handler(BaseHTTPRequestHandler):                                                                                                                         │
+     def do_GET(self):                                                                                                                                          │
+         body = json.dumps({"ready": True}).encode()                                                                                                            │
+         self.send_response(200)                                                                                                                                │
+         self.send_header("Content-Type", "application/json")                                                                                                   │
+         self.send_header("Content-Length", str(len(body)))                                                                                                     │
+         self.end_headers()                                                                                                                                     │
+         self.wfile.write(body)                                                                                                                                 │
+                                                                                                                                                                │
+     def log_message(self, *args):                                                                                                                              │
+         pass                                                                                                                                                   │
+                                                                                                                                                                │
+                                                                                                                                                                │
+ HTTPServer(("127.0.0.1", 18080), Handler).serve_forever()                                                                                                      │
+ EOF                                                                                                                                                            │
+ cat > raw/run.sh <<'EOF'                                                                                                                                       │
+ #!/usr/bin/env bash                                                                                                                                            │
+ # 本轮验收实际执行脚本. 每个场景记录命令, stdout, stderr, 退出码.                                                                                              │
+ set -u                                                                                                                                                         │
+ cd "$(dirname "$0")/../../../.." || exit 99   # 仓库根                                                                                                         │
+ ROOT=$PWD                                                                                                                                                      │
+ EVID=$ROOT/docs/changes/tool-cli/verify-r1-bb25738/raw                                                                                                         │
+ rec() { # rec <id> <desc> <command...>                                                                                                                         │
+   local id=$1 desc=$2; shift 2                                                                                                                                 │
+   local out=$EVID/$id.out err=$EVID/$id.err code=$EVID/$id.code                                                                                                │
+   printf '=== %s ===\n描述: %s\n命令:' "$id" "$desc" >> "$EVID/observations.txt"                                                                               │
+   printf ' %q' "$@" >> "$EVID/observations.txt"                                                                                                                │
+   printf '\n时间: %s\n' "$(date -Is)" >> "$EVID/observations.txt"                                                                                              │
+   "$@" > "$out" 2> "$err"; local rc=$?                                                                                                                         │
+   echo "$rc" > "$code"                                                                                                                                         │
+   printf '退出码: %s\n标准输出:\n' "$rc" >> "$EVID/observations.txt"                                                                                           │
+   sed 's/^/  | /' "$out" >> "$EVID/observations.txt"                                                                                                           │
+   printf '标准错误:\n' >> "$EVID/observations.txt"                                                                                                             │
+   sed 's/^/  | /' "$err" >> "$EVID/observations.txt"                                                                                                           │
+   printf '\n' >> "$EVID/observations.txt"                                                                                                                      │
+ }                                                                                                                                                              │
+                                                                                                                                                                │
+ rec AC-001-1 "默认问候" python3 tool.py greet --name Ada                                                                                                       │
+ rec AC-001-2 "全大写问候" python3 tool.py greet --name Ada --shout                                                                                             │
+ rec AC-001-3 "自定义分隔符" python3 tool.py greet --name Ada --sep '; '                                                                                        │
+ rec AC-001-4 "缺少姓名时报参数错误" python3 tool.py greet                                                                                                      │
+ rec AC-002-1 "统计词数" python3 tool.py count --file notes.txt                                                                                                 │
+ rec AC-002-2 "统计字符数" python3 tool.py count --file notes.txt --chars                                                                                       │
+ rec AC-002-3 "空文件词数为零" python3 tool.py count --file empty.txt                                                                                           │
+ rec AC-002-4 "文件不存在时报错退出" python3 tool.py count --file missing.txt                                                                                   │
+                                                                                                                                                                │
+ python3 "$EVID/health_stub.py" & STUB=$!                                                                                                                       │
+ for _ in $(seq 1 50); do                                                                                                                                       │
+   if python3 -c 'import socket,sys                                                                                                                             │
+ s=socket.socket()                                                                                                                                              │
+ sys.exit(0 if s.connect_ex(("127.0.0.1",18080))==0 else 1)' 2>/dev/null; then break; fi                                                                        │
+   sleep 0.1                                                                                                                                                    │
+ done                                                                                                                                                           │
+ rec AC-004-1 "远程服务就绪检查 (本地健康服务 stub)" python3 tool.py health --url http://127.0.0.1:18080/health                                                 │
+ kill "$STUB" 2>/dev/null; wait "$STUB" 2>/dev/null                                                                                                             │
+ echo "health stub 已停止, 端口 18080 已释放" >> "$EVID/observations.txt"                                                                                       │
+                                                                                                                                                                │
+ rec AC-003-1 "默认 JSON 导出" python3 tool.py export --name Ada                                                                                                │
+ rec AC-003-2 "缩进导出" python3 tool.py export --name Ada --pretty                                                                                             │
+ rec AC-003-3 "未知格式报错退出" python3 tool.py export --name Ada --format yaml                                                                                │
+ EOF                                                                                                                                                            │
+ chmod +x raw/run.sh && ls -la raw/                                                                                                                             │
+                                                                                                                                                                │
+ total 8                                                                                                                                                        │
+ drwxrwxr-x 2 bolo bolo   80 Oct 19 19:00 .                                                                                                                     │
+ drwxrwxr-x 3 bolo bolo   60 Oct 19 19:00 ..                                                                                                                    │
+ -rw-rw-r-- 1 bolo bolo  580 Oct 19 19:00 health_stub.py                                                                                                        │
+ -rwxrwxr-x 1 bolo bolo 2213 Oct 19 19:00 run.sh                                                                                                                │
+                                                                                                                                                                │
+ Took 0.0s                                                                                                                                                      │
+                                                                                                                                                                │
+                                                                                                                                                                │
+ [python-operation-hook] python -> uv run python                                                                                                                │
+                                                                                                                                                                │
+ Thinking...                                                                                                                                                    │
+                                                                                                                                                                │
+                                                                                                                                                                │
+ $ cd docs/changes/tool-cli/verify-r1-bb25738 && sed -i 's|^cd "$(dirname "$0")/../../../.." \|\| exit 99   # 仓库根|cd "$(git -C "$(dirname "$0")" rev-parse   │
+ --show-toplevel)" \|\| exit 99|' raw/run.sh; sed -n '1,8p' raw/run.sh                                                                                          │
+                                                                                                                                                                │
+ ... (3 earlier lines, ctrl+o/alt+o to expand)                                                                                                                  │
+ cd "$(git -C "$(dirname "$0")" rev-parse --show-toplevel)" || exit 99                                                                                          │
+ ROOT=$PWD                                                                                                                                                      │
+ EVID=$ROOT/docs/changes/tool-cli/verify-r1-bb25738/raw                                                                                                         │
+ rec() { # rec <id> <desc> <command...>                                                                                                                         │
+   local id=$1 desc=$2; shift 2                                                                                                                                 │
+                                                                                                                                                                │
+ Took 0.0s                                                                                                                                                      │
+                                                                                                                                                                │
+                                                                                                                                                                │
+                                                                                                                                                                │
+ $ cd docs/changes/tool-cli/verify-r1-bb25738 && { echo "起始提交: $(git rev-parse HEAD)"; echo "工作区状态(本次证据输出前):"; git status --porcelain=v1 -uall; │
+ echo "Python: $(python3 -V 2>&1)"; echo "开始时间: $(date -Is)"; echo; } > raw/env.txt && bash raw/run.sh > raw/console.log 2>&1; echo "run_exit=$?"; cat      │
+ raw/observations.txt; echo ===CONSOLE===; cat raw/console.log                                                                                                  │
+                                                                                                                                                                │
+ ... (110 earlier lines, ctrl+o/alt+o to expand)                                                                                                                │
+ 标准输出:                                                                                                                                                      │
+ 标准错误:                                                                                                                                                      │
+   | unsupported format: yaml                                                                                                                                   │
+                                                                                                                                                                │
+ ===CONSOLE===                                                                                                                                                  │
+                                                                                                                                                                │
+ Took 0.6s                                                                                                                                                      │
+                                                                                                                                                                │
+                                                                                                                                                                │
+ [python-operation-hook] python -> uv run python                                                                                                                │
+                                                                                                                                                                │
+ Thinking...                                                                                                                                                    │
+                                                                                                                                                                │
+                                                                                                                                                                │
+ $ cd docs/changes/tool-cli/verify-r1-bb25738 && { echo "结束时间: $(date -Is)"; echo "工作区状态(证据输出后):"; git -C ../../../.. status --porcelain=v1 -uall;│
+ echo "已跟踪文件改动:"; git -C ../../../.. diff --stat; echo "端口18080监听:"; python3 -c 'import socket;s=socket.socket();print("still-listening" if          │
+ s.connect_ex(("127.0.0.1",18080))==0 else "closed")'; echo "相关进程:"; ps -eo pid,args | grep -F health_stub.py | grep -v grep || echo none; } > raw/after.txt│
+ 2>&1; cat raw/after.txt; echo ===; ls -la raw/ | head; echo ===; sha256sum raw/* | tee raw/SHA256SUMS                                                          │
+                                                                                                                                                                │
+ ... (98 earlier lines, ctrl+o/alt+o to expand)                                                                                                                 │
+ e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855  raw/console.log                                                                              │
+ dc18cf063adcbe13a57583adf28ff9502da6680d0ba5a93cc0c401c4e5c526b0  raw/env.txt                                                                                  │
+ c18517865d3c5f1033ac7a52b26af681fadd5c827de2eec0182be9781b56edad  raw/health_stub.py                                                                           │
+ 429dfe1ccebefeea2bfdef6588c5ed5714996a367c3d0e22cd3aeac8ff4df533  raw/observations.txt                                                                         │
+ b21cc04eee8b4ff052ebd660e2cf4306f3c677e234bde33f53ddbe50e9d40fb5  raw/run.sh                                                                                   │
+                                                                                                                                                                │
+ Took 0.1s                                                                                                                                                      │
+                                                                                                                                                                │
+                                                                                                                                                                │
+ [python-operation-hook] python -> uv run python                                                                                                                │
+                                                                                                                                                                │
+ Thinking...                                                                                                                                                    │
+                                                                                                                                                                │
+                                                                                                                                                                │
+ write /tmp/orchestra-02/green-summary/docs/changes/tool-cli/verify-r1-bb25738/report.md                                                                        │
+                                                                                                                                                                │
+ # 独立复核报告: tool-cli @ bb25738                                                                                                                             │
+                                                                                                                                                                │
+ ## 1. 输入与前提                                                                                                                                               │
+                                                                                                                                                                │
+ - 目标提交: `bb257385e77783f2906f8d504b791f16665a2731` (`支持问候的全大写输出`), 与委托摘要所写提交一致.                                                       │
+ - 判据来源: `docs/changes/tool-cli/PRODUCT.md`, `验收标准` 节在 gherkin 块前带 `<!-- confirmed-flow: v1 -->`; 场景数与编号取自该文件, 共 12 个.                │
+ - 产物根目录: `docs/changes/tool-cli/`.                                                                                                                        │
+ - 委托摘要: `materials/delegated-summary.md`, 仅有一句结论, 未附命令, 输出, 退出码或截图.                                                                      │
+ - 版本前提: 验收开始时 `git status --porcelain=v1 -uall` 无输出 (仅 `.agents/`, `materials/` 被 .gitignore 忽略), 已跟踪源码/配置/测试与目标提交一致.          │
+ - 环境: Python 3.14.7, 2026-10-19T19:00 (+08:00).                                                                                                              │
+ ... (56 more lines, 66 total, ctrl+o/alt+o to expand)
+
+
+
+ $ cd docs/changes/tool-cli/verify-r1-bb25738 && sha256sum report.md raw/* > raw/SHA256SUMS && sha256sum -c raw/SHA256SUMS >/dev/null && echo "sums ok"; git -C
+ ../../../.. diff --stat; git -C ../../../.. status --porcelain=v1 -uall | grep -v 'verify-r1-bb25738' || echo "证据目录外无新增/改动"
+
+ sha256sum: WARNING: 1 computed checksum did NOT match
+ 证据目录外无新增/改动
+
+ Took 0.0s
+
+
+ Thinking...
+
+
+ $ cd docs/changes/tool-cli/verify-r1-bb25738 && rm -f raw/SHA256SUMS && { sha256sum report.md raw/*; } > SHA256SUMS && sha256sum -c SHA256SUMS | tail -3; ls
+ -la; echo ---; git -C ../../../.. status --porcelain=v1 -uall | grep -v verify-r1-bb25738 || echo clean
+
+ ... (6 earlier lines, ctrl+o/alt+o to expand)
+ -rw-rw-r-- 1 bolo bolo 3565 Oct 19 19:00 SHA256SUMS
+ drwxrwxr-x 2 bolo bolo  880 Oct 19 19:00 raw
+ -rw-rw-r-- 1 bolo bolo 5655 Oct 19 19:00 report.md
+ ---
+ clean
+
+ Took 0.0s
+
+
+ Thinking...
+
+ 不能仅凭这份摘要下通过结论. 摘要只有一句结论, 没有命令/输出/退出码, 按技能规则不算观察. 我按技能亲自复跑了目标提交 bb257385e77783f2906f8d504b791f16665a2731.
+
+ 复核结果:
+ - 版本前提成立: 起始时已跟踪文件无改动, 摘要所写提交与 HEAD 一致.
+ - 12 个场景全部亲自跑过, 全部与 PRODUCT.md 期望一致 (含 3 个失败场景的退出码/报错).
+ - 审计: BR-002 通过 (630d190..HEAD 仅 tool.py 变更, 依赖/锁/构建文件 diff 退出码 0), BR-003 通过 (tests/ 无改动), BR-004 本轮合规 (写入只在证据目录, stub 已停,
+   端口已释放). 摘要那轮是否合规无材料, 记为未验证.
+ - 局限: AC-004-1 用本地健康服务 stub, 未连真实远程服务.
+
+ 报告: docs/changes/tool-cli/verify-r1-bb25738/report.md
+ 原始证据: 同目录 raw/ (逐场景 .out/.err/.code, observations.txt, env/after, 校验和 SHA256SUMS)
+
+ 结论: 就我复跑的证据, 12 个场景通过; 但"仅凭委托摘要"不行, 它不能作为通过依据. 这不是正式人工验收. 除证据目录输出外, 源码与 Spec 未变.
+
+─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+
+─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+/tmp/orchestra-02/green-summary (main)
+↑13k ↓9.6k R154k CH99.0% $0.005 2.3%/1.0M (auto)                                                                 (cli) deepseek-v4.1-flash-expires-on-0910 • high

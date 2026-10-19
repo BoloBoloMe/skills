@@ -1,0 +1,7 @@
+# 补充观察 (非产品判据): 集合测试运行
+cmd: PYTHONDONTWRITEBYTECODE=1 python3 -m pytest -q -p no:cacheprovider
+/home/bolo/.local/share/uv/python/cpython-3.14-linux-x86_64-gnu/bin/python3.14: No module named pytest
+exit=1
+cmd: PYTHONDONTWRITEBYTECODE=1 python3 -m pytest -q -p no:cacheprovider
+exit=1
+stderr: No module named pytest

@@ -1,0 +1,2 @@
+PASS  exitcode != 0
+PASS  stderr 包含 '--name'

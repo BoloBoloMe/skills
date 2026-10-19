@@ -1,0 +1,14 @@
+# 01 version premise
+time: 2026-10-19T19:11:57+08:00
+$ git rev-parse HEAD
+7f360da1d0bdf923472919523760bd4c59eb8576
+$ git status --porcelain=v1 -uall
+?? docs/changes/tool-cli/evidence-7f360da-verify1/logs/01-version.log
+?? docs/changes/tool-cli/evidence-7f360da-verify1/logs/02-br002.log
+exit=0
+$ git log --oneline -2
+7f360da 支持问候的全大写输出
+c6c44d7 初始化值班工具集与产品标准
+$ git diff --name-status c6c44d7 7f360da
+M	tool.py
+exit=0
