@@ -1,0 +1,21 @@
+2026-10-19T20:44:32+08:00
+$ git diff 38724d1 c0505de -- deps.txt deps.lock build.sh
+diff_exit=0
+
+$ git diff --stat 38724d1 c0505de -- deps.txt deps.lock build.sh
+
+$ git diff --name-status 38724d1 c0505de
+M	tests/test_tool.py
+M	tool.py
+
+$ git diff --name-only 38724d1 c0505de -- deps.txt deps.lock build.sh
+names_exit=0
+
+$ git show 38724d1:deps.txt / deps.lock / build.sh sha + content hash
+deps.txt @38724d1 blob=bbb52972310fb82afbe4364e741d264ea25f68bc content_sha=f37d7a069e967e7a125eef55e7066eb82a9f4fcbfda96213cacfe401460d4806
+deps.txt @c0505de blob=bbb52972310fb82afbe4364e741d264ea25f68bc content_sha=f37d7a069e967e7a125eef55e7066eb82a9f4fcbfda96213cacfe401460d4806
+deps.lock @38724d1 blob=f5f745d19dad8f561d612f4868e0c3c5781cf6cd content_sha=28cc45864a24d80d571d7cc23848932e89d4977dbf3d6ede18e1404a27da5f50
+deps.lock @c0505de blob=f5f745d19dad8f561d612f4868e0c3c5781cf6cd content_sha=28cc45864a24d80d571d7cc23848932e89d4977dbf3d6ede18e1404a27da5f50
+build.sh @38724d1 blob=779624644c085151dd81f8f9cd6bd98e97558c71 content_sha=ae45fcf9574b94ecab88deb68bc04728b8e7e34adec03cbd8f5d8434bfa05aad
+build.sh @c0505de blob=779624644c085151dd81f8f9cd6bd98e97558c71 content_sha=ae45fcf9574b94ecab88deb68bc04728b8e7e34adec03cbd8f5d8434bfa05aad
+2026-10-19T20:44:32+08:00

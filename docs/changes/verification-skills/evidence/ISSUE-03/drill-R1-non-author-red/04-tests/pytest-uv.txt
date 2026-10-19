@@ -1,0 +1,5 @@
+$ timeout 120 uv run --no-project --with pytest python -m pytest -q
+...                                                                      [100%]
+3 passed in 0.09s
+[exit=0]
+# 非产品判据: TECHNICAL.md 的操作线索; --with pytest 仅临时环境, 不改项目依赖文件.

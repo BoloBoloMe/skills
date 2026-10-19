@@ -1,0 +1,5 @@
+$ od -c notes.txt
+0000000   a   l   p   h   a       b   e   t   a       g   a   m   m   a
+0000020  \n
+0000021
+[exit=0]

@@ -1,0 +1,5 @@
+$ bash -c git rev-parse c6a3745:build.sh HEAD:build.sh; sha256sum build.sh
+779624644c085151dd81f8f9cd6bd98e97558c71
+779624644c085151dd81f8f9cd6bd98e97558c71
+ae45fcf9574b94ecab88deb68bc04728b8e7e34adec03cbd8f5d8434bfa05aad  build.sh
+[exit=0]

@@ -1,0 +1,8 @@
+# git rev-parse HEAD
+2026-10-19T20:47:27+08:00
+2080aeacb537e549ce3c405783e4736dbdf53393
+
+# git status --porcelain=v1 --untracked-files=all
+?? docs/changes/tool-cli/verify-2080aea-v1/acc-g1/01-git-head.txt
+?? docs/changes/tool-cli/verify-2080aea-v1/acc-g1/TASK.md
+?? docs/changes/tool-cli/verify-2080aea-v1/acc-g2/TASK.md

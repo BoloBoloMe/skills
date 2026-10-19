@@ -1,0 +1,7 @@
+### date -Is (补记时点)
+2026-10-19T20:50:22+08:00
+### stat -c "%y %n" 01..04 证据文件 (落盘时间)
+2026-10-19 20:49:54.985756880 +0800 docs/changes/tool-cli/verify-2080aea-v1/acc-g2/01-git-state.txt
+2026-10-19 20:48:45.204000419 +0800 docs/changes/tool-cli/verify-2080aea-v1/acc-g2/02-name-status.txt
+2026-10-19 20:49:11.325158878 +0800 docs/changes/tool-cli/verify-2080aea-v1/acc-g2/03-per-file-diff.txt
+2026-10-19 20:49:11.332736506 +0800 docs/changes/tool-cli/verify-2080aea-v1/acc-g2/04-file-contents.txt

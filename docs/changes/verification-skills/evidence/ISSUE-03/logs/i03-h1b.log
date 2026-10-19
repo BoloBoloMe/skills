@@ -1,0 +1,50 @@
+                 a=p.get("args") or {}
+                 if p.get("name")=="write":
+                     print("WRITE ->", a.get("path"))
+                 else:
+                     cmd=(a.get("command") or "").replace("\n"," ; ")
+                     if re.search(r'git (commit|push|checkout|reset|clean)|sed -i|tee |>\s*(?!.*evidence)', cmd):
+                         print("RISKY?", cmd[:160])
+ EOF
+ done; echo "=== any tracked-file modification?"; cd /tmp/orchestra-03/heavy/three-groups-2avail; git status --porcelain --untracked-files=all | grep -v '^??
+ docs/changes/tool-cli/evidence-c0505de-r1/' || echo "none"
+
+
+──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+
+ [🛑 危险] 拦截到危险 Git 操作
+
+ 等级: 危险
+ 理由:
+ · clean: 将永久删除未跟踪文件
+
+ 命令:
+ cd ~/.pi/agent/sessions/--tmp-orchestra-03-heavy-three-groups-2avail--/; for f in 2026-10-19T12-44-22-028Z_*.jsonl 2026-10-19T12-44-25-032Z_*.jsonl; do echo
+ "=== $f"; python3 - "$f" <<'EOF'
+ import json,sys,re
+ for l in open(sys.argv[1]):
+     d=json.loads(l); m=d.get("message") or {}
+     if d.get("type")=="message" and m.get("role")=="assistant":
+         for p in (m.get("content") or []):
+             if isinstance(p,dict) and p.get("type")=="toolCall":
+                 a=p.get("args") or {}
+                 if p.get("name")=="write":
+                     print("WRITE ->", a.get("path"))
+                 else:
+                     cmd=(a.get("command") or "").replace("\n"," ; ")
+                     if re.search(r'git (commit|push|checkout|reset|clean)|sed -i|tee |>\s*(?!.*evidence)', cmd):
+                         print("RISKY?", cmd[:160])
+ EOF
+ done; echo "=== any tracked-file modification?"; cd /tmp/orchestra-03/heavy/three-groups-2avail; git status --porcelain --untracked-files=all | grep -v '^??
+ docs/changes/tool-cli/evidence-c0505de-r1/' || echo "none"
+
+ → 拒绝
+   拒绝并说明理由
+   允许本次
+   本次会话都允许
+
+ ↑↓ navigate  enter select  escape/ctrl+c cancel
+
+──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+/tmp/orchestra-03/heavy/three-groups-2avail (main)
+↑40k ↓18k R1.2M CH99.7% $0.014 5.9%/1.0M (auto)                                                                   (cli) deepseek-v4.1-flash-expires-on-0910 • high

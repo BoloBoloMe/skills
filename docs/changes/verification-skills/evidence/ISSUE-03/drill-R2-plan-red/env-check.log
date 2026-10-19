@@ -1,0 +1,18 @@
+[影响判断] 2026-10-19T20:30:43+08:00
+build.sh: 3 行, 只 compileall tool.py, 不读 docs/
+prepare.sh -> tools/build_manifest.py 只读 tool.py, 写 dist/app.txt
+pytest: 无 pytest.ini/pyproject/tox.ini, 默认发现 test_*.py/tests; 证据目录内不放置 test_*.py
+  build/prepare/tools/tests 中对 docs/ 无引用
+结论: 证据写入 docs/changes/tool-cli/verify-f98bbfe-r1/ 不进入构建, 测试发现或运行输入, 无需外置
+
+[验收结束时工作区状态] 命令: git status --porcelain --untracked-files=all
+?? docs/changes/tool-cli/verify-f98bbfe-r1/audit-br002.log
+?? docs/changes/tool-cli/verify-f98bbfe-r1/env-check.log
+?? docs/changes/tool-cli/verify-f98bbfe-r1/run-aux-tests.log
+?? docs/changes/tool-cli/verify-f98bbfe-r1/run-prepare.log
+?? docs/changes/tool-cli/verify-f98bbfe-r1/run-scenarios.log
+[以上仅为证据目录新文件]
+命令: git status --porcelain --ignored=matching --untracked-files=all | grep '^!!'
+!! .agents/
+!! __pycache__/
+!! dist/

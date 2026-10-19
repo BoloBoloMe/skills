@@ -1,0 +1,33 @@
+### git rev-parse HEAD
+2080aeacb537e549ce3c405783e4736dbdf53393
+### git rev-parse HEAD~1
+7bcc69269ab34516909c65ca2b5896862f73a176
+### git status --porcelain=v1 --untracked-files=all
+?? docs/changes/tool-cli/verify-2080aea-v1/PLAN.md
+?? docs/changes/tool-cli/verify-2080aea-v1/acc-g1/01-git-head.txt
+?? docs/changes/tool-cli/verify-2080aea-v1/acc-g1/02-prepare.txt
+?? docs/changes/tool-cli/verify-2080aea-v1/acc-g1/03-lines.txt
+?? docs/changes/tool-cli/verify-2080aea-v1/acc-g1/04-exact-match.txt
+?? docs/changes/tool-cli/verify-2080aea-v1/acc-g1/05-git-status-end.txt
+?? docs/changes/tool-cli/verify-2080aea-v1/acc-g1/REPORT.md
+?? docs/changes/tool-cli/verify-2080aea-v1/acc-g1/TASK.md
+?? docs/changes/tool-cli/verify-2080aea-v1/acc-g2/01-git-state.txt
+?? docs/changes/tool-cli/verify-2080aea-v1/acc-g2/TASK.md
+### git log --oneline -3
+2080aea feat: greet 支持全大写输出
+7bcc692 初始化工具集与产品标准
+### git status --porcelain=v1 --untracked-files=all (完结时)
+?? docs/changes/tool-cli/verify-2080aea-v1/PLAN.md
+?? docs/changes/tool-cli/verify-2080aea-v1/acc-g1/01-git-head.txt
+?? docs/changes/tool-cli/verify-2080aea-v1/acc-g1/02-prepare.txt
+?? docs/changes/tool-cli/verify-2080aea-v1/acc-g1/03-lines.txt
+?? docs/changes/tool-cli/verify-2080aea-v1/acc-g1/04-exact-match.txt
+?? docs/changes/tool-cli/verify-2080aea-v1/acc-g1/05-git-status-end.txt
+?? docs/changes/tool-cli/verify-2080aea-v1/acc-g1/REPORT.md
+?? docs/changes/tool-cli/verify-2080aea-v1/acc-g1/TASK.md
+?? docs/changes/tool-cli/verify-2080aea-v1/acc-g2/01-git-state.txt
+?? docs/changes/tool-cli/verify-2080aea-v1/acc-g2/02-name-status.txt
+?? docs/changes/tool-cli/verify-2080aea-v1/acc-g2/03-per-file-diff.txt
+?? docs/changes/tool-cli/verify-2080aea-v1/acc-g2/04-file-contents.txt
+?? docs/changes/tool-cli/verify-2080aea-v1/acc-g2/REPORT.md
+?? docs/changes/tool-cli/verify-2080aea-v1/acc-g2/TASK.md

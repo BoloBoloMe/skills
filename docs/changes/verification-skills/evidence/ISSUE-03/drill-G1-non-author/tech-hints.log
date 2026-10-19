@@ -1,0 +1,34 @@
+# 技术线索运行(明确声明: 不属本轮产品判据)
+timestamp_start: 2026-10-19T20:33:31+08:00
+cwd: /tmp/orchestra-03/green-non-author  head: 2028383100c4d5c65789c3a56b13c44d6eba8da2
+
+=== $ python3 -m pytest -q ===
+/home/bolo/.local/share/uv/python/cpython-3.14-linux-x86_64-gnu/bin/python3.14: No module named pytest
+exit_code: 1
+
+=== $ bash prepare.sh ===
+built dist/app.txt
+exit_code: 0
+--- dist 目录(被 .gitignore 忽略) ---
+total 4
+drwxrwxr-x 2 bolo bolo  60 Oct 19 20:33 .
+drwxrwxr-x 8 bolo bolo 320 Oct 19 20:33 ..
+-rw-rw-r-- 1 bolo bolo  55 Oct 19 20:33 app.txt
+dist/app.txt 内容:
+tool-cli 1
+commands=greet,count,export
+greet-shout=yes
+
+=== $ bash build.sh (TECHNICAL.md 验证入口) ===
+exit_code: 0
+
+=== $ git status --porcelain (运行后) ===
+?? docs/changes/tool-cli/verify-2028383-v1/
+exit_code: 0
+--- 被忽略文件 git status --ignored --porcelain ---
+?? docs/changes/tool-cli/verify-2028383-v1/
+!! .agents/
+!! __pycache__/
+!! dist/
+
+timestamp_end: 2026-10-19T20:33:31+08:00

@@ -1,0 +1,8 @@
+命令: git diff --name-status 253a873 ceda596
+时间开始: 2026-10-19T20:36:19+08:00
+退出码: 0
+--- stdout ---
+M	tests/test_tool.py
+M	tool.py
+--- stderr ---
+时间结束: 2026-10-19T20:36:19+08:00

@@ -1,0 +1,10 @@
+命令: od -c notes.txt && stat -c %s notes.txt && sha256sum notes.txt
+时间开始: 2026-10-19T20:35:45+08:00
+0000000   a   l   p   h   a       b   e   t   a       g   a   m   m   a
+0000020  \n
+0000021
+字节数: 17
+adf7157c8a5bbb4b099d39ba5ef34b73a3787f5e9326b3eb24ac8b86fd03ff96  notes.txt
+退出码: 0
+--- 对照期望: alpha beta gamma + 一个换行 = 16 字符 + 1 换行 = 17 字节 ---
+时间结束: 2026-10-19T20:35:45+08:00

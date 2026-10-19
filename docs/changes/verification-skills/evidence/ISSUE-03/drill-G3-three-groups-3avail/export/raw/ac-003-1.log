@@ -1,0 +1,5 @@
+2026-10-19T20:44:18+08:00
+$ python3 tool.py export --name Ada
+{"name": "Ada", "greeting": "Hello, Ada!"}
+exit=0
+2026-10-19T20:44:18+08:00

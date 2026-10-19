@@ -1,0 +1,6 @@
+# AC-001-3 command: bash loop, one 'python3 tool.py greet --name <name>' per line of data/greet/names.txt
+# started_at_utc: 2026-10-19T12:44:26Z
+# finished_at_utc: 2026-10-19T12:44:37Z
+# total_lines_processed: 250
+# pass: 250
+# fail: 0

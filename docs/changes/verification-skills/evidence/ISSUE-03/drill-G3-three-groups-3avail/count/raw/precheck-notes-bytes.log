@@ -1,0 +1,7 @@
+2026-10-19T20:44:17+08:00
+$ od -c notes.txt
+0000000   a   l   p   h   a       b   e   t   a       g   a   m   m   a
+0000020  \n
+0000021
+$ wc -c < notes.txt
+17

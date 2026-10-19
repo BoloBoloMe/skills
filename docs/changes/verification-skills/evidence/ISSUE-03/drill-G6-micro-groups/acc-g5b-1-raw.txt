@@ -1,0 +1,123 @@
+==============================================================
+PRODUCT VERIFY g5b-1  target HEAD = 5d3765e9b0d8228b8738a75ea69baef048402c45
+workdir = /tmp/orchestra-03/micro2/micro-groups
+==============================================================
+
+### STEP 1: run prepare.sh
+### CMD: bash prepare.sh
+### START_LOCAL: 2026-10-19 20:53:54 CST
+### START_UTC:   2026-10-19T12:53:54Z
+### EXIT_CODE: 0
+### END_LOCAL:  2026-10-19 20:54:16 CST
+### END_UTC:    2026-10-19T12:54:16Z
+### DURATION_S: 22.26
+### STDOUT (verbatim, 19 bytes):
+built dist/app.txt
+### STDERR (verbatim, 0 bytes):
+### END STEP 1
+
+### STEP 2: inspect dist/app.txt (line structure)
+### CMD: wc -c -l dist/app.txt; sed -n '1,3p' dist/app.txt | cat -A; od -c dist/app.txt
+### START_LOCAL: 2026-10-19 20:54:19 CST
+--- wc -c -l ---
+ 4 85 dist/app.txt
+exit=0
+--- sed -n '1,3p' | cat -A (shows $ = line end, no trailing spaces unmarked) ---
+tool-cli 1$
+commands=greet,count,export$
+greet-shout=yes$
+exit=0
+--- od -c full file ---
+0000000   t   o   o   l   -   c   l   i       1  \n   c   o   m   m   a
+0000020   n   d   s   =   g   r   e   e   t   ,   c   o   u   n   t   ,
+0000040   e   x   p   o   r   t  \n   g   r   e   e   t   -   s   h   o
+0000060   u   t   =   y   e   s  \n   g   r   e   e   t   -   d   i   g
+0000100   e   s   t   =   a   a   6   f   e   6   1   8   e   3   1   9
+0000120   9   9   d   b  \n
+0000125
+exit=0
+--- sed -n '4,' (anything after line 3?) ---
+greet-digest=aa6fe618e31999db$
+count_of_lines_4plus=1
+### END STEP 2
+
+==============================================================
+### STEP 3: per-scenario line reads + strict byte comparison
+### FILE_AT_TEST_TIME: -rw-rw-r-- 1 bolo bolo 85 Oct 19 20:54 dist/app.txt
+
+### AC-001-1 : read line 1 of dist/app.txt and compare strictly (bytes incl. newline) with expected literal
+### CMD: sed -n '1p' dist/app.txt
+### START_LOCAL: 2026-10-19 20:54:24 CST
+### START_UTC:   2026-10-19T12:54:24Z
+### sed exit=0
+### RAW LINE (quoted): >>>tool-cli 1<<<
+### RAW LINE (cat -A): tool-cli 1
+### RAW LINE (od -c): 0000000   t   o   o   l   -   c   l   i       1~0000012~
+### BYTES_HEX:  74 6f 6f 6c 2d 63 6c 69 20 31 
+### EXPECTED (from PRODUCT.md): >>>tool-cli 1<<<
+### EXPECTED BYTES_HEX:  74 6f 6f 6c 2d 63 6c 69 20 31 
+### STRICT_CMP(incl newline): IDENTICAL
+### VERDICT: PASS
+### END_LOCAL: 2026-10-19 20:54:24 CST
+
+### AC-002-1 : read line 2 of dist/app.txt and compare strictly (bytes incl. newline) with expected literal
+### CMD: sed -n '2p' dist/app.txt
+### START_LOCAL: 2026-10-19 20:54:24 CST
+### START_UTC:   2026-10-19T12:54:24Z
+### sed exit=0
+### RAW LINE (quoted): >>>commands=greet,count,export<<<
+### RAW LINE (cat -A): commands=greet,count,export
+### RAW LINE (od -c): 0000000   c   o   m   m   a   n   d   s   =   g   r   e   e   t   ,   c~0000020   o   u   n   t   ,   e   x   p   o   r   t~0000033~
+### BYTES_HEX:  63 6f 6d 6d 61 6e 64 73 3d 67 72 65 65 74 2c 63  6f 75 6e 74 2c 65 78 70 6f 72 74 
+### EXPECTED (from PRODUCT.md): >>>commands=greet,count,export<<<
+### EXPECTED BYTES_HEX:  63 6f 6d 6d 61 6e 64 73 3d 67 72 65 65 74 2c 63  6f 75 6e 74 2c 65 78 70 6f 72 74 
+### STRICT_CMP(incl newline): IDENTICAL
+### VERDICT: PASS
+### END_LOCAL: 2026-10-19 20:54:24 CST
+
+### AC-003-1 : read line 3 of dist/app.txt and compare strictly (bytes incl. newline) with expected literal
+### CMD: sed -n '3p' dist/app.txt
+### START_LOCAL: 2026-10-19 20:54:24 CST
+### START_UTC:   2026-10-19T12:54:24Z
+### sed exit=0
+### RAW LINE (quoted): >>>greet-shout=yes<<<
+### RAW LINE (cat -A): greet-shout=yes
+### RAW LINE (od -c): 0000000   g   r   e   e   t   -   s   h   o   u   t   =   y   e   s~0000017~
+### BYTES_HEX:  67 72 65 65 74 2d 73 68 6f 75 74 3d 79 65 73 
+### EXPECTED (from PRODUCT.md): >>>greet-shout=yes<<<
+### EXPECTED BYTES_HEX:  67 72 65 65 74 2d 73 68 6f 75 74 3d 79 65 73 
+### STRICT_CMP(incl newline): IDENTICAL
+### VERDICT: PASS
+### END_LOCAL: 2026-10-19 20:54:24 CST
+
+==============================================================
+### STEP 4: reproducibility re-run of the documented precondition (bash prepare.sh)
+### NOTE: AC verdicts above are based on STEP 1..3 single run; this step only checks stability.
+### CMD: bash prepare.sh   (2nd time)
+### START_LOCAL: 2026-10-19 20:54:29 CST
+### SHA256_BEFORE: b6a670b3e2fd0e6b5e22ec35cd4c37548c3ad23f42d2bef7125f987adde00324  dist/app.txt
+### EXIT_CODE: 0
+### DURATION_S: 22.28
+### END_LOCAL: 2026-10-19 20:54:52 CST
+### STDOUT: built dist/app.txt
+### STDERR: 
+### SHA256_AFTER: b6a670b3e2fd0e6b5e22ec35cd4c37548c3ad23f42d2bef7125f987adde00324  dist/app.txt
+--- sed -n '1,4p' dist/app.txt | cat -A ---
+tool-cli 1$
+commands=greet,count,export$
+greet-shout=yes$
+greet-digest=aa6fe618e31999db$
+### END STEP 4
+
+==============================================================
+### STEP 5: repo cleanliness (read-only check)
+### CMD: git rev-parse HEAD; git status --porcelain; git check-ignore -v dist/app.txt
+### AT: 2026-10-19T12:54:52Z
+--- git rev-parse HEAD ---
+5d3765e9b0d8228b8738a75ea69baef048402c45
+--- git status --porcelain ---
+?? docs/changes/tool-cli/verify-5d3765e-r1/
+--- git check-ignore -v dist/app.txt ---
+.gitignore:3:dist/	dist/app.txt
+check-ignore exit=0
+### END STEP 5

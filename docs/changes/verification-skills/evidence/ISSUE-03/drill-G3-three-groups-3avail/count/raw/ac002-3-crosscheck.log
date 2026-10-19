@@ -1,0 +1,13 @@
+2026-10-19T20:44:35+08:00
+$ wc -l results.tsv (minus header)
+250
+$ unique files
+250
+$ non-numeric actual
+0
+$ empty actual
+0
+$ sample cross-check with wc -w
+doc001.txt wc-w=2 tool=2
+doc125.txt wc-w=9 tool=9
+doc250.txt wc-w=8 tool=8

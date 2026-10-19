@@ -1,0 +1,6 @@
+[辅助-非产品判据] python3 -m pytest -q
+/home/bolo/.local/share/uv/python/cpython-3.14-linux-x86_64-gnu/bin/python3.14: No module named pytest
+[pytest 退出码 1]
+
+[辅助-非产品判据] bash build.sh
+[build.sh 退出码 0]

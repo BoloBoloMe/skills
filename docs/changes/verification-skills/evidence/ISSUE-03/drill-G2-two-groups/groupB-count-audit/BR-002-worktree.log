@@ -1,0 +1,6 @@
+命令: git diff --exit-code ceda596 -- deps.txt deps.lock prepare.sh build.sh tools/build_manifest.py ; git status --porcelain
+时间开始: 2026-10-19T20:36:32+08:00
+diff-exit 退出码: 0
+?? docs/changes/tool-cli/acceptance-v1-ceda596/
+status 退出码: 0
+时间结束: 2026-10-19T20:36:32+08:00

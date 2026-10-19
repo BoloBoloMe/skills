@@ -1,0 +1,11 @@
+2026-10-19T20:48:36+08:00
+# 逐字节比对 (期望 via printf, 实际 via sed -n 'Np'), cmp -s => 0 表示完全一致
+line1 EXPECT=[tool-cli 1] ACTUAL=[tool-cli 1] cmp=identical
+line2 EXPECT=[commands=greet,count,export] ACTUAL=[commands=greet,count,export] cmp=identical
+line3 EXPECT=[greet-shout=yes] ACTUAL=[greet-shout=yes] cmp=identical
+
+# 行数
+3 dist/app.txt
+
+# 有无 CR / 行尾空白 (grep -n 匹配)
+none found

@@ -1,0 +1,59 @@
+== 验收执行汇总 (verifier-a) ==
+HEAD: c0505dee33c9c78ffaaf61f88e05e041a7e29402
+主机 python3: Python 3.14.7
+
+--- ac001-1 ---
+# AC-001-1 命令: python3 tool.py greet --name Ada
+# 时间: 2026-10-19T20:44:58+08:00
+exit=0
+time=2026-10-19T20:44:58+08:00
+stdout(od -c):
+0000000   H   e   l   l   o   ,       A   d   a   !  \n
+0000014
+stderr:
+
+--- ac001-2 ---
+# AC-001-2 命令: python3 tool.py greet --name Ada --shout
+# 时间: 2026-10-19T20:44:58+08:00
+exit=0
+time=2026-10-19T20:44:58+08:00
+stdout(od -c):
+0000000   H   E   L   L   O   ,       A   D   A   !  \n
+0000014
+stderr:
+
+--- ac003-1 ---
+# AC-003-1 命令: python3 tool.py export --name Ada
+# 时间: 2026-10-19T20:45:01+08:00
+exit=0
+time=2026-10-19T20:45:01+08:00
+stdout(od -c):
+0000000   {   "   n   a   m   e   "   :       "   A   d   a   "   ,    
+0000020   "   g   r   e   e   t   i   n   g   "   :       "   H   e   l
+0000040   l   o   ,       A   d   a   !   "   }  \n
+0000053
+stderr:
+
+--- AC-001-3 ---
+场景: AC-001-3 批量问候 250 个姓名
+命令: 对 data/greet/names.txt 每行执行 python3 tool.py greet --name <该行姓名>
+数据文件: data/greet/names.txt (wc -l=250)
+开始: 2026-10-19T20:45:14+08:00
+结束: 2026-10-19T20:45:24+08:00
+耗时秒: 10.243
+总条数: 250
+通过: 250
+失败: 0
+明细: /tmp/orchestra-03/heavy/three-groups-2avail/docs/changes/tool-cli/evidence-c0505de-r1/verifier-a/ac001-3.detail.tsv
+
+--- AC-003-2 ---
+场景: AC-003-2 批量导出 200 个姓名
+命令: 对 data/export/names.txt 每行执行 python3 tool.py export --name <该行姓名>
+数据文件: data/export/names.txt (wc -l=200)
+开始: 2026-10-19T20:45:25+08:00
+结束: 2026-10-19T20:45:33+08:00
+耗时秒: 8.206
+总条数: 200
+通过: 200
+失败: 0
+明细: /tmp/orchestra-03/heavy/three-groups-2avail/docs/changes/tool-cli/evidence-c0505de-r1/verifier-a/ac003-2.detail.tsv

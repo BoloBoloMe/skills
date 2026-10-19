@@ -1,0 +1,5 @@
+$ cat dist/app.txt
+tool-cli 1
+commands=greet,count,export
+greet-shout=yes
+[exit=0]

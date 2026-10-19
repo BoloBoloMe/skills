@@ -1,0 +1,9 @@
+2026-10-19T20:44:32+08:00
+$ awk -F"\t" ... compare expected vs actual vs exit (0 = pass)
+total=200 pass=200 fail=0
+exit=0
+$ grep -c , exit code checks
+non_zero_exit_lines=0
+blank_actual=0
+rows_from_names=200
+2026-10-19T20:44:32+08:00

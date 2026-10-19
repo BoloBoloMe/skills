@@ -1,0 +1,3 @@
+### CMD: bash prepare.sh
+### START_UTC: 2026-10-19T12:53:51Z
+### START_LOCAL: 2026-10-19 20:53:51 CST

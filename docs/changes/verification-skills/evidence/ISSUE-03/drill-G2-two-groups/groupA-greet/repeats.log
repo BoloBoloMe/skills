@@ -1,0 +1,14 @@
+== 重复稳定性检查 (各 3 次)
+== 时间: 2026-10-19T20:33:49+08:00
+run=1 cmd="python3 tool.py greet --name Ada" stdout_repr=b'Hello, Ada!\n' stderr_repr=b'' Hello, Ada!
+code=0
+run=1 cmd="python3 tool.py greet --name Ada --shout" stdout_repr=b'HELLO, ADA!\n' stderr_repr=b'' HELLO, ADA!
+code=0
+run=2 cmd="python3 tool.py greet --name Ada" stdout_repr=b'Hello, Ada!\n' stderr_repr=b'' Hello, Ada!
+code=0
+run=2 cmd="python3 tool.py greet --name Ada --shout" stdout_repr=b'HELLO, ADA!\n' stderr_repr=b'' HELLO, ADA!
+code=0
+run=3 cmd="python3 tool.py greet --name Ada" stdout_repr=b'Hello, Ada!\n' stderr_repr=b'' Hello, Ada!
+code=0
+run=3 cmd="python3 tool.py greet --name Ada --shout" stdout_repr=b'HELLO, ADA!\n' stderr_repr=b'' HELLO, ADA!
+code=0

@@ -1,0 +1,16 @@
+# case: AC-003-1
+timestamp_start: 2026-10-19T20:33:23+08:00
+cwd: /tmp/orchestra-03/green-non-author
+git_head: 2028383100c4d5c65789c3a56b13c44d6eba8da2
+command: python3 tool.py export --name Ada
+--- raw stdout ---
+{"name": "Ada", "greeting": "Hello, Ada!"}
+--- raw stderr ---
+--- end raw ---
+exit_code: 0
+stdout_hexdump:
+00000000: 7b22 6e61 6d65 223a 2022 4164 6122 2c20  {"name": "Ada", 
+00000010: 2267 7265 6574 696e 6722 3a20 2248 656c  "greeting": "Hel
+00000020: 6c6f 2c20 4164 6121 227d 0a              lo, Ada!"}.
+stderr_hexdump:
+timestamp_end: 2026-10-19T20:33:23+08:00

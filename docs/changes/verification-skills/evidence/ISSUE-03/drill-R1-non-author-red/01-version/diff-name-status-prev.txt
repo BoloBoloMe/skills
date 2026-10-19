@@ -1,0 +1,4 @@
+$ git diff --name-status c6a3745 HEAD
+M	tests/test_tool.py
+M	tool.py
+[exit=0]

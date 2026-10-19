@@ -1,0 +1,5 @@
+$ bash -c git rev-parse c6a3745:prepare.sh HEAD:prepare.sh; sha256sum prepare.sh
+f6c7c1739086dc2697f622624217d649d677f62e
+f6c7c1739086dc2697f622624217d649d677f62e
+d763bb6fa9abeafce050781ccf220c72822dda5c52dc153e4ce4ff96c2fac75e  prepare.sh
+[exit=0]

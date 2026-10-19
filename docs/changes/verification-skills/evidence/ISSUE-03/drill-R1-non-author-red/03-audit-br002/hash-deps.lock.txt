@@ -1,0 +1,5 @@
+$ bash -c git rev-parse c6a3745:deps.lock HEAD:deps.lock; sha256sum deps.lock
+f5f745d19dad8f561d612f4868e0c3c5781cf6cd
+f5f745d19dad8f561d612f4868e0c3c5781cf6cd
+28cc45864a24d80d571d7cc23848932e89d4977dbf3d6ede18e1404a27da5f50  deps.lock
+[exit=0]

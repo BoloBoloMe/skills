@@ -1,0 +1,2 @@
+$ git diff c6a3745 HEAD -- deps.txt deps.lock build.sh prepare.sh tools/build_manifest.py
+[exit=0]

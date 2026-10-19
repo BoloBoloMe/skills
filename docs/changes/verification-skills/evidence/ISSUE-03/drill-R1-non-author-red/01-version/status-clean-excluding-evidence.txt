@@ -1,0 +1,3 @@
+$ git status --porcelain=v1 --untracked-files=all -- . :(exclude)docs/changes/tool-cli/evidence-93ba124-20261019
+[exit=0]
+# 排除项即本轮证据目录; 输出为空表示已跟踪源码/配置/测试无改动, 也无证据目录外的未跟踪产品文件.

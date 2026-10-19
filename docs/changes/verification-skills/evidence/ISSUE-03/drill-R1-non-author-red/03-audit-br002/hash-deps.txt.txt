@@ -1,0 +1,5 @@
+$ bash -c git rev-parse c6a3745:deps.txt HEAD:deps.txt; sha256sum deps.txt
+bbb52972310fb82afbe4364e741d264ea25f68bc
+bbb52972310fb82afbe4364e741d264ea25f68bc
+f37d7a069e967e7a125eef55e7066eb82a9f4fcbfda96213cacfe401460d4806  deps.txt
+[exit=0]

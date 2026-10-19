@@ -1,0 +1,1 @@
+{"error":{"code":"agent_not_idle","message":"cannot read 3000 lines while i03-g5 is working: its alternate-screen history can only be captured by scrolling while idle. Wait and retry, or use --source visible"},"id":"cli:agent:read"}

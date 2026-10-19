@@ -1,0 +1,6 @@
+2026-10-19T20:44:33+08:00
+$ awk -F"\t" "NR>1 && (\$2!=\$3 || \$4!=0)" results.tsv | wc -l
+0
+$ awk NR>1 exit!=0 count
+0
+--- mismatched rows (file expected actual exit) ---

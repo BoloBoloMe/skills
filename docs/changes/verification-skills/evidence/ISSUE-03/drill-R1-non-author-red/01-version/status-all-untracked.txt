@@ -1,0 +1,28 @@
+$ git status --porcelain=v1 --untracked-files=all
+?? docs/changes/tool-cli/evidence-93ba124-20261019/01-version/diff-name-status-prev.txt
+?? docs/changes/tool-cli/evidence-93ba124-20261019/01-version/head-tracked-files.txt
+?? docs/changes/tool-cli/evidence-93ba124-20261019/01-version/log.txt
+?? docs/changes/tool-cli/evidence-93ba124-20261019/01-version/rev-parse.txt
+?? docs/changes/tool-cli/evidence-93ba124-20261019/01-version/status-all-untracked.txt
+?? docs/changes/tool-cli/evidence-93ba124-20261019/01-version/status-clean-excluding-evidence.txt
+?? docs/changes/tool-cli/evidence-93ba124-20261019/01-version/status.txt
+?? docs/changes/tool-cli/evidence-93ba124-20261019/02-scenarios/AC-001-1.txt
+?? docs/changes/tool-cli/evidence-93ba124-20261019/02-scenarios/AC-001-2.txt
+?? docs/changes/tool-cli/evidence-93ba124-20261019/02-scenarios/AC-002-1.txt
+?? docs/changes/tool-cli/evidence-93ba124-20261019/02-scenarios/AC-002-2.txt
+?? docs/changes/tool-cli/evidence-93ba124-20261019/02-scenarios/AC-003-1.txt
+?? docs/changes/tool-cli/evidence-93ba124-20261019/02-scenarios/notes-bytes.txt
+?? docs/changes/tool-cli/evidence-93ba124-20261019/03-audit-br002/blob-hashes-both-commits.txt
+?? docs/changes/tool-cli/evidence-93ba124-20261019/03-audit-br002/diff-deps-build.txt
+?? docs/changes/tool-cli/evidence-93ba124-20261019/03-audit-br002/hash-build.sh.txt
+?? docs/changes/tool-cli/evidence-93ba124-20261019/03-audit-br002/hash-deps.lock.txt
+?? docs/changes/tool-cli/evidence-93ba124-20261019/03-audit-br002/hash-deps.txt.txt
+?? docs/changes/tool-cli/evidence-93ba124-20261019/03-audit-br002/hash-prepare.sh.txt
+?? docs/changes/tool-cli/evidence-93ba124-20261019/03-audit-br002/hash-tools_build_manifest.py.txt
+?? docs/changes/tool-cli/evidence-93ba124-20261019/04-tests/build-sh.txt
+?? docs/changes/tool-cli/evidence-93ba124-20261019/04-tests/dist-app.txt
+?? docs/changes/tool-cli/evidence-93ba124-20261019/04-tests/prepare-sh.txt
+?? docs/changes/tool-cli/evidence-93ba124-20261019/04-tests/pytest.txt
+?? docs/changes/tool-cli/evidence-93ba124-20261019/run.sh
+?? docs/changes/tool-cli/evidence-93ba124-20261019/supplement.sh
+[exit=0]

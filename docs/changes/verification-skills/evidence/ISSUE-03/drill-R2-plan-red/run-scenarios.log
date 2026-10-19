@@ -1,0 +1,9 @@
+[AC-001-1] 命令: sed -n '1p' dist/app.txt
+tool-cli 1
+[退出码 0]
+[AC-002-1] 命令: sed -n '2p' dist/app.txt
+commands=greet,count,export
+[退出码 0]
+[AC-003-1] 命令: sed -n '3p' dist/app.txt
+greet-shout=yes
+[退出码 0]
