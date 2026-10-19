@@ -67,4 +67,6 @@
 
 ## 提交哈希
 
-- 分支 `issue/06`, 提交见本文件所在提交之后的 `git log -1`.
+- 分支 `issue/06`.
+- 交付提交 (技能与全部证据): `b2997bc` `feat: ISSUE-06: 新建 benchmark-checklist 测量基础切片含演练证据`.
+- 本报告补记哈希的提交在其之后, 最终提交以 `git log --oneline -1` 为准.
