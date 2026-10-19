@@ -50,3 +50,7 @@
 ## 提交
 
 本分支 `issue/11`, 提交信息 `feat: ISSUE-11: 新增 create-verification-skill 技能与演练证据`. 提交哈希见同分支的下一个回填提交 (本文件先于提交写好, 无法包含自身哈希).
+
+## 回填
+
+本 ISSUE 的实现与证据提交: `cdf12ba` (feat: ISSUE-11: 新增 create-verification-skill 技能与真实会话演练证据), 分支 `issue/11`, 父提交 `ec9d55f`.
