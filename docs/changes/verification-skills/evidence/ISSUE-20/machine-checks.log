@@ -1,0 +1,19 @@
+== check_skill.py blast-radius
+workflow/blast-radius/SKILL.md: OK
+exit=0
+== check_skill.py benchmark-checklist
+workflow/benchmark-checklist/SKILL.md: OK
+exit=0
+== 全角标点扫描 (改动的两份 PROVENANCE + ISSUE-20 证据)
+rg_exit=1
+== ISSUE-13 provenance artifacts 回归
+checks=50 failures=0
+OK 两个复刻包的许可, 固定来源与逐项差异记录可读
+exit=0
+
+== 二次全角标点扫描 (在 TS-001.md 与日志写完之后, 覆盖 ISSUE-20 全部产物)
+rg_exit=1 (1 表示无命中)
+== 二次对照脚本
+checks=116 failures=0
+OK 两份差异表逐行指到上游原文与本地行, 调用方式与标题结构说法已更正
+exit=0

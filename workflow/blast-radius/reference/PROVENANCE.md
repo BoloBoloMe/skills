@@ -34,8 +34,8 @@ curl -sS -m 20 -w "%{http_code} %{size_download}\n" -o /tmp/iss13-upstream/LICEN
 
 | 源版位置 | 目标版位置 | 影响 | 处理决定 |
 | --- | --- | --- | --- |
-| frontmatter `description` 英文触发词清单 ("Use for 'blast radius of X'...") | frontmatter `description` 单行中文摘要; 保留 `disable-model-invocation: true` | 调用方式从模型自动触发改为用户点名 | 按 DECISIONS D022 用户调用, 触发词只作人类可读摘要 |
-| 标题 `# Blast radius` | 无一级标题, 从引言段开始 | 少一个 H1 | 保留: 仓库内 SKILL.md 不要求 H1, frontmatter 与 H2 结构由 `check_skill.py` 校验通过 |
+| frontmatter `description` 英文触发词清单 ("Use for 'blast radius of X'...", 上游第 3 行) | frontmatter `description` 单行中文摘要, 触发词清单不搬 (本地第 3 行); `disable-model-invocation: true` 上游第 4 行与本地第 4 行逐字相同 | 只改描述措辞; 调用方式没有改变 | 按 DECISIONS D022 把 description 写成一行人类摘要. 不记为调用模式改变: 上游原文第 4 行原本就是用户调用, 本地照抄该行 |
+| 标题 `# Blast radius` (上游第 7 行) | 无一级标题, 从引言段开始 (本地第 7 行起) | 少一个 H1 | 保留, 属人工检查结论: 仓库内 SKILL.md 不要求 H1; `check_skill.py` 不检查标题, 标题层级由人工逐行核对, 不借用机检结果 |
 | 引言段 "Companion to `how` and `why`" | 无 companion 指针; 历史定位命令内联到第 1 节 | 去掉两个上游 sibling 指针, 规则不丢 | 按 DECISIONS D021 自包含, 不留悬空调用 |
 | `## Don't trust your own writeup` 与 `### How sure are you` | 第 3 节 (证据级别 1 到 5) 与第 4 节 (可失败脚本) | 上游 H2 加 H3 拆成两个 H2; 级别序列逐条保留 | 接受: 级别定义与可失败脚本要求仍相邻, 五级文字逐条对应 |
 | Step 1 "Use `why` step 2 to pull the PR and commits" | 第 1 节的 5 条 `git log`/`git show`/`git blame` 命令, 再加托管入口读 PR 正文 | 上游指针变成本地可直接执行的命令 | 按 D021 自足; 取不到 PR 材料时写明来源限制 |
@@ -83,13 +83,16 @@ rg -o "[A-Za-z][A-Za-z0-9_./:@|*\-]*" workflow/blast-radius/SKILL.md | sort | un
 | `name:`, `description:`, `disable-model-invocation:` | frontmatter key |
 | `diff.` | 句末的 `diff` 后接 ASCII 句点 |
 
-命令 3, frontmatter 与标题结构:
+命令 3, 人工标题结构检查 (只列标题, 判定靠人读):
 
 ```bash
 rg -n "^(|name:|description:|license:|compatibility:|metadata:|allowed-tools:|disable-model-invocation:|# |## )" workflow/blast-radius/SKILL.md
 ```
 
-命中 frontmatter 三行 (`name`, `description`, `disable-model-invocation`) 与七个 H2 标题 (`## 1.` 到 `## 7.`); 没有 H1. 上游两级标题被拍平成顺序编号的七个 H2, 差异与理由见上表.
+机检与人工检查分列, 不混成一件事:
+
+- 机检: `check_skill.py` 只查 frontmatter 的 `name` 是否为小写 kebab-case 且与目录名一致, 并拒绝 YAML 空值/布尔值/数值这类非文本写法, 不检查标题 (依据 `general/writing-for-llm/SKILL-MECHANICS.md` 第 34 行与脚本实现). 该脚本在本技能上退出码 0.
+- 人工: 上面的命令只把 frontmatter 行与标题行列出来, 层级结论靠人逐行读. 人读结果: frontmatter 三行 (`name`, `description`, `disable-model-invocation`) 与七个 H2 标题 (`## 1.` 到 `## 7.`); 没有 H1. 上游两级标题被拍平成顺序编号的七个 H2, 差异与理由见上表.
 
 通读测试: 全文按中文直接可执行, 每个操作步骤的先后顺序无需回看英文; 未发现直译腔或需回看原文才能确定顺序处.
 
