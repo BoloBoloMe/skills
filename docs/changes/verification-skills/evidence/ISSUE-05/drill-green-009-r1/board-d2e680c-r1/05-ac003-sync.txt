@@ -1,0 +1,29 @@
+# 05 AC-003-1 sync 实跑 (relay 18290 无监听)
+
+UTC: 2026-10-19T15:44:23Z
+HEAD: d2e680ce826388a3051dec79d7ff68fc68cc6fc1
+
+## 假定条件
+部署方 relay 服务监听 127.0.0.1:18290 -> 不成立 (见 05-ac003-precheck.txt, Connection refused)
+实例 board 在 127.0.0.1:18201 运行 -> 成立 (见 01-serve-start.txt, 02-health.txt)
+
+## 命令
+python3 app.py sync --port 18201 --relay-port 18290
+
+## 原始 stdout
+
+## 原始 stderr
+request failed: HTTP Error 503: Service Unavailable
+
+## 退出码
+1
+
+## 逐字判据核对
+sync-ok instance=board : 未命中
+relay=ok : 未命中
+退出码为 0 : 否
+
+## 结论
+假定条件缺部署方 relay 服务, 本项未验证 (不是产品缺陷). 未启动任何 relay 替身.
+
+exit=1

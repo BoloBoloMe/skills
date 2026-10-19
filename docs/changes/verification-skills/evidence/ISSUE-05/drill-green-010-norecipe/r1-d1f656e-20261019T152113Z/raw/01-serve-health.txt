@@ -1,0 +1,5 @@
+[2026-10-19T15:22:45Z] start instance: python3 app.py serve --port 18201 --instance board --data-dir runtime/board &
+serve_pid=4189728
+[2026-10-19T15:22:46Z] health check
+ok instance=board
+exit=0

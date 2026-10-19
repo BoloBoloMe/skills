@@ -1,0 +1,31 @@
+# 03 AC-001-1 status (relay 18290 此时无监听)
+
+UTC: 2026-10-19T15:44:17Z
+HEAD: d2e680ce826388a3051dec79d7ff68fc68cc6fc1
+
+## 命令
+python3 app.py status --port 18201
+
+## 原始 stdout
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>relay board</title></head>
+<body><h1>relay board</h1>
+<p>instance=board</p>
+<p>state=ready</p>
+<p>version=relay-v2</p></body></html>
+
+## 原始 stderr
+
+## 退出码
+0
+
+## 逐字判据核对 (字面子串)
+instance=board : 命中
+state=ready : 命中
+version=relay-v2 : 命中
+退出码为 0 : 是
+
+## 输出形态备注
+stdout 为 HTML 状态页 (读取器: client_get -> /status-page), 三个字段出现在 <p> 标签内, 不是单行 key=value 文本.
+
+exit=0

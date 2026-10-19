@@ -1,0 +1,25 @@
+# 02-instance-start: 启动实例 board @127.0.0.1:18201, 数据目录 runtime/board
+start_requested_at_utc=2026-10-19T15:12:06.677Z
+## 准备数据目录
++ mkdir -p runtime/board
++ echo mkdir_exit=0
+mkdir_exit=0
++ set +x
+runtime/board_ls:
+total 0
+drwxrwxr-x 2 bolo bolo 40 Oct 19 23:12 .
+drwxrwxr-x 3 bolo bolo 60 Oct 19 23:12 ..
+
+## 启动方式
+setsid nohup python3 app.py serve --port 18201 --instance board --data-dir runtime/board > raw/serve.stdout.log 2> raw/serve.stderr.log < /dev/null &
+spawn_utc=2026-10-19T15:12:06.684Z
+pid=4173079
+pid_file=docs/changes/board/evidence/accept-d1f656e-r1/acceptor/raw/serve.pid
+存活检查(ps):
+    PID    PPID     SID STAT     ELAPSED COMMAND
+4173079 4173074 4173079 Ss         00:01 python3 app.py serve --port 18201 --instance board --data-dir runtime/board
+监听检查:
+LISTEN 0      5           127.0.0.1:18201      0.0.0.0:*    users:(("python3",pid=4173079,fd=3))         
+## serve.stdout.log
+listening on 127.0.0.1:18201 instance=board
+## serve.stderr.log

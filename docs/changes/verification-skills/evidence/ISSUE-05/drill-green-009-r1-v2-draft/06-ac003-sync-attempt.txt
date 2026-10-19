@@ -1,0 +1,58 @@
+# 06 AC-003-1 同步到 relay 服务: python3 app.py sync --port 18201 --relay-port 18290 (缺口记录)
+# 采集时间: 2026-10-19T15:36:50Z
+# 判据 (PRODUCT.md 原文): 假定部署方提供的 relay 服务正在 127.0.0.1:18290 监听且实例 board 正在 127.0.0.1:18201 运行; 当运行 sync; 那么输出含 sync-ok instance=board 与 relay=ok 且退出码为 0
+
+## 前置核对 1: 18290 监听状态
+$ ss -ltnp | grep 18290 (无输出=无监听)
+rc=1
+
+## 前置核对 2: 仓库外部署方 relay 文件搜索 (/tmp 深度 4, 排除本项目与旧副本 vendor; 与 01-preflight.txt 同口径)
+$ find /tmp -maxdepth 4 -name "*relay*" 2>/dev/null
+/tmp/verifier-relay.pid
+/tmp/orchestra-05/red-board2/vendor/relaylib.py
+/tmp/orchestra-05/board/vendor/relaylib.py
+/tmp/orchestra-05/red-stalerecipe/vendor/relaylib.py
+/tmp/orchestra-05/red-board/vendor/relaylib.py
+/tmp/orchestra-05/stalerecipe/vendor/relaylib.py
+/tmp/orchestra-05/norecipe/vendor/relaylib.py
+/tmp/cpa/internal/wsrelay
+/tmp/cliproxyapi-review/CLIProxyAPI-8.0.24/internal/wsrelay
+rc=1
+(以上只有各场景副本自带的 vendor/relaylib.py 依赖副本, 没有任何可运行的部署方 relay 服务文件)
+
+## sync 实际运行 (解释器 1: 字面 python3 -> uv run python)
+$ python3 app.py sync --port 18201 --relay-port 18290
+rc=1
+--- stdout 原文 ---
+--- stdout 结束 ---
+--- stderr 原文 ---
+request failed: HTTP Error 503: Service Unavailable
+--- stderr 结束 ---
+
+## sync 实际运行 (解释器 2: 显式 /usr/bin/python3)
+$ /usr/bin/python3 app.py sync --port 18201 --relay-port 18290
+rc=1
+--- stdout 原文 ---
+--- stdout 结束 ---
+--- stderr 原文 ---
+request failed: HTTP Error 503: Service Unavailable
+--- stderr 结束 ---
+
+## 本文件结论 (缺口记录, 不是产品失败, 也不是通过)
+- 判据前置假定 '部署方 relay 服务正在 127.0.0.1:18290 监听' 不成立: 18290 无监听, 仓库内外均无部署方 relay 服务可启用.
+- 按派工规则未自建替身/本地桩; sync 按两种解释器各跑一次留档 (relay 不在线, 实例侧无状态副作用): 两次均得到实例返回的 relay-unreachable (HTTP 503) 与退出码 1, 说明实例如实回报 relay 不可达.
+- 补充发现: /tmp/verifier-relay.pid 是仓库外的陈旧 pid 文件 (内容与归属核对见本文件附录), 不属于部署方 relay, 未启用未触碰.
+- AC-003-1 记: 未验证 (缺部署方 relay 服务).
+
+## 附录: /tmp/verifier-relay.pid 原样核对 (只看, 未启用未删除)
+# 核对时间: 2026-10-19T15:37:26Z
+$ cat /tmp/verifier-relay.pid
+relay_pid=4176134
+rc=0
+$ stat -c "%y %n" /tmp/verifier-relay.pid
+2026-10-19 23:14:16.265019439 +0800 /tmp/verifier-relay.pid
+$ ps -o pid=,args= -p 4176134 (pid 取自文件内容)
+rc=1
+$ ss -ltnp | grep 18290 (无输出=无监听)
+rc=1
+- 判定: 这是早于本轮开工 (15:30Z) 的陈旧 pid 文件, 指向的进程已不存在, 18290 无监听. 它不是部署方 relay, 与判据无关, 未做任何操作.

@@ -1,0 +1,66 @@
+# 09 停止实例与清理
+# 采集时间: 2026-10-19T15:38:25Z
+
+## 运行期缓存检查 (运行产品可能产生的 gitignore 内缓存)
+$ find . -path ./.git -prune -o -name "__pycache__" -print -o -name ".venv" -print -o -name "uv.lock" -print
+./vendor/__pycache__
+rc=0
+$ ls -la vendor/__pycache__/ 2>/dev/null || echo "(不存在)"
+total 4
+drwxrwxr-x 2 bolo bolo  60 Oct 19 23:35 .
+drwxrwxr-x 3 bolo bolo  80 Oct 19 23:29 ..
+-rw-rw-r-- 1 bolo bolo 161 Oct 19 23:35 relaylib.cpython-314.pyc
+运行产生的 __pycache__ 目录数: 1
+$ find . -path ./.git -prune -o -name "__pycache__" -type d -exec rm -rf {} + (清除运行产生的 pycache, 均为 gitignore 内缓存, 非产品文件)
+rc=0
+$ 复查: find . -path ./.git -prune -o -name "__pycache__" -print
+rc=0 (find 无匹配时 rc=0, 无输出=已无残留)
+
+## 停止实例 (kill 本轮启动的 pid 11711)
+server_pid=11711 (见 03)
+$ kill $SPID (SIGTERM)
+rc=0
+$ ps -o pid=,args= -p $SPID 2>&1 (应无输出或进程不存在)
+rc=1
+
+## 结束时端口状态
+$ ss -ltnp | grep -E "18201|18290" (无输出=均已无监听)
+rc=1 (1=无监听, 符合预期)
+
+## runtime/board 状态 (开工时已存在且为空, 保持原样)
+$ ls -la runtime/ runtime/board/
+runtime/:
+total 0
+drwxrwxr-x 3 bolo bolo  60 Oct 19 23:19 .
+drwxrwxr-x 7 bolo bolo 220 Oct 19 23:29 ..
+drwxrwxr-x 2 bolo bolo  40 Oct 19 23:19 board
+
+runtime/board/:
+total 0
+drwxrwxr-x 2 bolo bolo 40 Oct 19 23:19 .
+drwxrwxr-x 3 bolo bolo 60 Oct 19 23:19 ..
+
+## 最终 git 状态 (确认无新增未跟踪产品文件)
+$ git status --porcelain=v1 -uall
+?? docs/changes/board/evidence/board-d2e680c-r1-blocked/00-blocked.md
+?? docs/changes/board/evidence/board-d2e680c-r1-blocked/01-git-facts.txt
+?? docs/changes/board/evidence/board-d2e680c-r1/00-dispatch-brief.md
+?? docs/changes/board/evidence/board-d2e680c-r1/00-dispatch-plan.md
+?? docs/changes/board/evidence/board-d2e680c-r1/01-preflight.txt
+?? docs/changes/board/evidence/board-d2e680c-r1/02-env-python.txt
+?? docs/changes/board/evidence/board-d2e680c-r1/03-serve-start.txt
+?? docs/changes/board/evidence/board-d2e680c-r1/04-ac001-status.txt
+?? docs/changes/board/evidence/board-d2e680c-r1/05-ac002-report.txt
+?? docs/changes/board/evidence/board-d2e680c-r1/06-ac003-sync-attempt.txt
+?? docs/changes/board/evidence/board-d2e680c-r1/07-br001-version-before-after.txt
+?? docs/changes/board/evidence/board-d2e680c-r1/08-server.stderr.log
+?? docs/changes/board/evidence/board-d2e680c-r1/08-server.stdout.log
+?? docs/changes/board/evidence/board-d2e680c-r1/09-cleanup.txt
+rc=0
+$ git diff HEAD --stat; git diff --cached --stat (均空=已跟踪文件未动)
+rc=0
+
+## 本文件结论
+- 运行产生的 __pycache__ 缓存已清除 (gitignore 内, 非产品文件); runtime/board 保持开工时的空目录原样, 未写入未删除.
+- 实例 pid 11711 已停止, 18201 与 18290 均无监听.
+- 已跟踪产品文件无任何改动; 未跟踪项只有证据目录文件.

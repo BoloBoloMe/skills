@@ -1,0 +1,59 @@
+# 02 环境与开工预检 (验收者原始采集)
+# 采集时间: 2026-10-19T15:35:00Z
+
+## 目标提交与工作区
+$ git rev-parse HEAD
+d2e680ce826388a3051dec79d7ff68fc68cc6fc1
+rc=0
+$ git diff HEAD --stat (空=干净)
+rc=0
+$ git diff --cached --stat (空=干净)
+rc=0
+$ git status --porcelain=v1 -uall
+?? docs/changes/board/evidence/board-d2e680c-r1-blocked/00-blocked.md
+?? docs/changes/board/evidence/board-d2e680c-r1-blocked/01-git-facts.txt
+?? docs/changes/board/evidence/board-d2e680c-r1/00-dispatch-brief.md
+?? docs/changes/board/evidence/board-d2e680c-r1/00-dispatch-plan.md
+?? docs/changes/board/evidence/board-d2e680c-r1/01-preflight.txt
+?? docs/changes/board/evidence/board-d2e680c-r1/02-env-python.txt
+rc=0
+
+## 端口开工状态 (18201/18290)
+$ ss -ltn | grep -E "18201|18290" (无输出=无监听)
+rc=1
+
+## python3 实际执行路径 (python-operation-hook)
+$ type -a python3
+python3 是函数
+python3 () 
+{ 
+    uv run python "$@"
+}
+python3 是 /usr/bin/python3
+python3 是 /bin/python3
+rc=0
+$ python3 --version
+Python 3.14.7
+rc=0
+$ python3 -c "import sys; print(sys.executable)"
+/home/bolo/.local/share/uv/python/cpython-3.14-linux-x86_64-gnu/bin/python3.14
+rc=0
+$ /usr/bin/python3 --version
+Python 3.14.4
+rc=0
+$ /usr/bin/python3 -c "import sys; print(sys.executable)"
+/usr/bin/python3
+rc=0
+$ uv --version
+uv 0.12.5 (x86_64-unknown-linux-gnu)
+rc=0
+
+## 旧材料适用性核对: 1dbbbe1 与目标 d2e680c 的代码/依赖差异
+$ git diff 1dbbbe1baf52ea700f88cfc03599a93757f925b0 d2e680ce826388a3051dec79d7ff68fc68cc6fc1 -- app.py vendor deps.txt (空=相同)
+rc=0
+
+## 本文件结论
+- HEAD=d2e680c, 已跟踪文件干净; 未跟踪项只有证据目录文件 (本轮 r1 + 上一轮 r1-blocked), 与派工计划接受状态一致.
+- 18201/18290 开工时无监听.
+- 字面 python3 在本会话被 hook 换成 uv run python, 实际解释器见上; /usr/bin/python3 为系统解释器. 关键命令将两种都跑.
+- 1dbbbe1 与 d2e680c 在 app.py/vendor/deps.txt 上无差异, 旧观察的代码与依赖条件相同; 但 relay 环境条件已失效 (见 10 报告).

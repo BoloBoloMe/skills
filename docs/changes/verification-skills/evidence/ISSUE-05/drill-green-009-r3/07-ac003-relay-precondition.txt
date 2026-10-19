@@ -1,0 +1,26 @@
+# 07 AC-003-1 前置核对: 部署方 relay 服务 127.0.0.1:18290 是否在监听 (本轮)
+time_utc=2026-10-19T15:56:37Z
+target_commit=5f9544df6035701d27c51d95b481b36e36c9da19
+--- ss -ltn 18290 ---
+ss_grep_exit=1  (1 = 无匹配)
+ss -ltn | grep -c ':18290' -> 0
+--- /dev/tcp 连接尝试 ---
+bash: connect: 连接被拒绝
+bash: 行 1: /dev/tcp/127.0.0.1/18290: 连接被拒绝
+tcp_connect_exit=1
+--- 说明 ---
+AC-003-1 的假定是 '部署方提供的 relay 服务正在 127.0.0.1:18290 监听'; 本轮该前提不成立,
+按规则不自建桩/替身/端口转发制造通过, 结论为未验证, 原始实跑引用上一轮 06-ac003-sync.txt.
+--- 当前 sync 尝试仅作补充观察 (不作为 AC-003 判定依据) ---
+cmd: python3 app.py sync --port 18201 --relay-port 18290
+sync_exit=1
+sync_stdout:
+sync_stderr:
+request failed: HTTP Error 503: Service Unavailable
+--- 引用: 上一轮同一路径的实跑材料 ---
+path: docs/changes/board/evidence/board-verify-65b43e1/06-ac003-sync.txt
+原检查时间: 2026-10-19T15:48:55Z; 提交: 65b43e1268bf029f199f7782a2185a670a4eef7f
+原原始输出: request failed: HTTP Error 503: Service Unavailable ; exit=1
+原文核对: 判据要求含 'sync-ok instance=board' 与 'relay=ok' 且退出码 0, 原输出不含这两项且退出码 1 => 该场景在缺 relay 时无法通过; 结论仍未验证 (前提缺失, 非产品失败)
+适用条件本轮核对: app.py 未变 (diff 仅 PRODUCT.md), vendor/relaylib.py 未变, 环境同机; 18290 仍无监听 (上面 ss 与 /dev/tcp 证实) => 条件未变, 可沿用未验证结论
+time_utc_end=2026-10-19T15:56:38Z

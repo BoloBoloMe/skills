@@ -1,0 +1,2 @@
+ok instance=board
+exit=0

@@ -1,0 +1,21 @@
+# 02 AC-004-1 端口未监听时报错 (本轮实跑, 未起任何实例)
+time_utc=2026-10-19T15:56:16Z
+target_commit=5f9544df6035701d27c51d95b481b36e36c9da19
+cmd: python3 app.py report --port 18299
+exit=1
+--- stdout (原样, 字节数) ---
+0
+--- stdout 内容开始 ---
+--- stdout 内容结束 ---
+--- stderr (原样, 字节数) ---
+63
+--- stderr 内容开始 ---
+request failed: <urlopen error [Errno 111] Connection refused>
+--- stderr 内容结束 ---
+--- 判据核对 ---
+退出码非 0 (判据: exit != 0): 满足 (exit=1)
+stderr 含 'request failed': 满足
+grep_request_failed_exit=0
+grep_match_line:
+1:request failed: <urlopen error [Errno 111] Connection refused>
+time_utc_end=2026-10-19T15:56:16Z

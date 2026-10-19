@@ -1,0 +1,40 @@
+# 04 AC-001-1 状态页: python3 app.py status --port 18201
+# 采集时间: 2026-10-19T15:36:21Z
+# 判据 (PRODUCT.md 原文): 输出含 instance=board, state=ready 与 version=relay-v2 且退出码为 0
+
+## 解释器 1: 字面 python3 -> uv run python (实际路径见 02)
+$ python3 app.py status --port 18201
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>relay board</title></head>
+<body><h1>relay board</h1>
+<p>instance=board</p>
+<p>state=ready</p>
+<p>version=relay-v2</p></body></html>
+rc=0
+--- stderr 原文 (空=无) ---
+--- stderr 结束 ---
+
+## 解释器 2: 显式 /usr/bin/python3
+$ /usr/bin/python3 app.py status --port 18201
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>relay board</title></head>
+<body><h1>relay board</h1>
+<p>instance=board</p>
+<p>state=ready</p>
+<p>version=relay-v2</p></body></html>
+rc=0
+--- stderr 原文 (空=无) ---
+--- stderr 结束 ---
+
+## 判据核对 (对解释器 1 输出逐项 grep)
+grep -F 'instance=board' rc=0
+grep -F 'state=ready' rc=0
+grep -F 'version=relay-v2' rc=0
+
+## 两次输出对比
+两次 stdout 逐字相同: 是
+
+## 本文件结论
+- 解释器 1: 输出同时含 instance=board, state=ready, version=relay-v2, rc=0.
+- 解释器 2 (/usr/bin/python3): 同样满足, rc=0.
+- AC-001-1 判为通过 (依据本文件原始输出与退出码).

@@ -1,0 +1,37 @@
+# 05 AC-002-1 report 单行: python3 app.py report --port 18201
+# 采集时间: 2026-10-19T15:36:33Z
+# 判据 (PRODUCT.md 原文): 输出形如 relay-report instance=board version=relay-v2 dep=<n> 且退出码为 0; 且 dep 值与 deps.txt 记录的依赖版本一致
+
+## 解释器 1: 字面 python3 -> uv run python (实际路径见 02)
+$ python3 app.py report --port 18201
+relay-report instance=board version=relay-v2 dep=1.2
+rc=0
+--- stderr 原文 (空=无) ---
+--- stderr 结束 ---
+
+## 解释器 2: 显式 /usr/bin/python3
+$ /usr/bin/python3 app.py report --port 18201
+relay-report instance=board version=relay-v2 dep=1.2
+rc=0
+--- stderr 原文 (空=无) ---
+--- stderr 结束 ---
+
+## dep 值与 deps.txt 一致性核对 (原文件, 非转述)
+$ cat deps.txt
+relaylib (vendor) 1.2
+rc=0
+$ 从 report 输出提取 dep= 值: printf "%s" "$OUT" | grep -oE "dep=[^ ]+"
+dep=1.2
+rc=0
+$ 从 deps.txt 提取版本字段: awk "{print \$NF}" deps.txt
+1.2
+rc=0
+比对结果: dep=1.2 == deps.txt 版本 1.2 -> 一致
+
+## 形状核对 (判据的形如 relay-report instance=board version=relay-v2 dep=<n>)
+整行匹配 rc=0
+
+## 本文件结论
+- 解释器 1/2 输出均为单行 relay-report instance=board version=relay-v2 dep=1.2, rc=0.
+- dep=1.2 与 deps.txt (relaylib (vendor) 1.2) 的版本字段一致.
+- AC-002-1 判为通过 (依据本文件原始输出, 退出码与上面比对记录).

@@ -1,0 +1,37 @@
+commit d2e680ce826388a3051dec79d7ff68fc68cc6fc1
+Author: luojingyan <921402781@qq.com>
+Date:   Mon Oct 19 23:19:48 2026 +0800
+
+    docs: 补充交接说明
+
+ docs/notes.md | 2 ++
+ 1 file changed, 2 insertions(+)
+
+commit 86c9ae0d1ee76a99e2edeb204523159cfa7a4c17
+Author: luojingyan <921402781@qq.com>
+Date:   Mon Oct 19 23:19:48 2026 +0800
+
+    docs: 记录依赖 1.2 的首轮运行输出
+
+ docs/changes/board/evidence/board-dep-1.2-run/01-health.txt     | 2 ++
+ docs/changes/board/evidence/board-dep-1.2-run/02-status.html    | 7 +++++++
+ docs/changes/board/evidence/board-dep-1.2-run/03-report.txt     | 2 ++
+ docs/changes/board/evidence/board-dep-1.2-run/04-sync.txt       | 2 ++
+ docs/changes/board/evidence/board-dep-1.2-run/RUN.md            | 9 +++++++++
+ docs/changes/board/evidence/board-dep-1.2-run/server.stdout.log | 1 +
+ 6 files changed, 23 insertions(+)
+
+commit 1dbbbe1baf52ea700f88cfc03599a93757f925b0
+Author: luojingyan <921402781@qq.com>
+Date:   Mon Oct 19 23:19:46 2026 +0800
+
+    初始化记录板骨架与产品标准
+
+ .gitignore                    |   4 ++
+ README.md                     |  29 ++++++++
+ app.py                        | 149 ++++++++++++++++++++++++++++++++++++++++++
+ deps.txt                      |   1 +
+ docs/changes/board/PRODUCT.md |  50 ++++++++++++++
+ docs/notes.md                 |   3 +
+ vendor/relaylib.py            |   1 +
+ 7 files changed, 237 insertions(+)

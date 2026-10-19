@@ -1,0 +1,16 @@
+# 04-ac-assert: 对 15:12:13Z 原始输出的逐条断言核对 (本文件只是判读, 原始输出见 ac001-status.* / ac002-report.*)
+recorded_at_utc=2026-10-19T15:12:21.451Z
+
+## AC-001-1 断言
+PASS  输出含 `instance=board`
+PASS  输出含 `state=ready`
+PASS  输出含 `version=relay-v2`
+PASS  退出码为 0
+AC-001-1_ALL = True
+
+## AC-002-1 断言
+PASS  单行输出 (仅 1 个换行, 无多余行)
+PASS  形如 `relay-report instance=board version=relay-v2 dep=<n>`
+PASS  退出码为 0
+PASS  dep 值与 deps.txt 记录的依赖版本一致 (dep=1.3, deps.txt=1.3)
+AC-002-1_ALL = True

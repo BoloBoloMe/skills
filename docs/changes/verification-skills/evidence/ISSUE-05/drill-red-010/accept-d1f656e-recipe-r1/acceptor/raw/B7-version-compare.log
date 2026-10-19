@@ -1,0 +1,18 @@
+[time] 2026-10-19T23:17:04+08:00
+[note] 修正提取: status 用 '<p>version=...' 行, report 用 '^relay-report' 行 (上一版 B7 对 B6 合并日志的贪婪匹配产生多余行)
+R2-status                    <p>version=relay-v2
+P3-ac001-status              <p>version=relay-v2
+B1-status-relaydown          <p>version=relay-v2
+B6-post-sync-recheck         <p>version=relay-v2
+R2-report                    relay-report instance=board version=relay-v2 dep=1.3
+P4-ac002-report              relay-report instance=board version=relay-v2 dep=1.3
+B2-report-relaydown          relay-report instance=board version=relay-v2 dep=1.3
+B6-post-sync-recheck         relay-report instance=board version=relay-v2 dep=1.3
+[diff] P status vs relay-down status
+IDENTICAL
+[diff] P report vs relay-down report
+IDENTICAL
+[diff] relay-down status vs after-sync-fail status
+IDENTICAL
+[diff] relay-down report vs after-sync-fail report
+IDENTICAL

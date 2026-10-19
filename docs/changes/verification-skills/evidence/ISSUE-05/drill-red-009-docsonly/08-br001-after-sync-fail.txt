@@ -1,0 +1,15 @@
+== BR-001 审计: sync 失败后紧接着 status 与 report 复核 ==
+2026-10-19T15:27:13Z
+命令: python3 app.py status --port 18201
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>relay board</title></head>
+<body><h1>relay board</h1>
+<p>instance=board</p>
+<p>state=ready</p>
+<p>version=relay-v2</p></body></html>
+exit=0
+
+命令: python3 app.py report --port 18201
+relay-report instance=board version=relay-v2 dep=1.2
+exit=0
+2026-10-19T15:27:13Z

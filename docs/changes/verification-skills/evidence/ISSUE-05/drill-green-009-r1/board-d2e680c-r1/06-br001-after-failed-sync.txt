@@ -1,0 +1,47 @@
+# 06 BR-001 relay 不可用 (失败 sync 之后) 的 status / report
+
+UTC: 2026-10-19T15:44:27Z
+HEAD: d2e680ce826388a3051dec79d7ff68fc68cc6fc1
+
+## 前置: 已在上一步 (05-ac003-sync.txt) 做一次失败 sync, 退出码 1
+
+## 命令 1
+python3 app.py status --port 18201
+
+## 原始 stdout
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>relay board</title></head>
+<body><h1>relay board</h1>
+<p>instance=board</p>
+<p>state=ready</p>
+<p>version=relay-v2</p></body></html>
+
+## 原始 stderr
+
+## 退出码
+0
+
+## 命令 2
+python3 app.py report --port 18201
+
+## 原始 stdout
+relay-report instance=board version=relay-v2 dep=1.2
+
+## 原始 stderr
+
+## 退出码
+0
+
+## version 前后对照
+status 失败 sync 前: version=relay-v2  (03-ac001-status.raw-stdout, 15:44:17Z)
+status 失败 sync 后: version=relay-v2  (本次, 2026-10-19T15:44:27Z)
+report 失败 sync 前: version=relay-v2  (04-ac002-report.raw-stdout, 15:44:17Z)
+report 失败 sync 后: version=relay-v2  (本次, 2026-10-19T15:44:27Z)
+
+status version 未改变: 是
+report version 未改变: 是
+
+## 附加: health 仍为 ok
+ok instance=board
+
+exit(status)=0 exit(report)=0

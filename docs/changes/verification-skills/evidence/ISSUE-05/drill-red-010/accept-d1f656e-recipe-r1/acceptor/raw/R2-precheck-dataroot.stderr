@@ -1,0 +1,4 @@
+usage: app.py serve [-h] --port PORT --instance INSTANCE --data-dir DATA_DIR
+app.py serve: error: the following arguments are required: --data-dir
+usage: app.py [-h] {serve,health,status,report,sync} ...
+app.py: error: unrecognized arguments: --data-root runtime/board

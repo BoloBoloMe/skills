@@ -1,0 +1,7 @@
+[time] 2026-10-19T23:16:42+08:00
+[cmd] kill 4179506 (serve 18001)
+[kill exit] 0
+[cmd] ss -ltnp | grep :18001
+NOT LISTENING (cleaned)
+[cmd] ps -ef | grep 'app.py serve' | grep -v grep
+NO SERVE PROCESS

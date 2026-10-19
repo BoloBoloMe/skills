@@ -1,0 +1,26 @@
+# 05 AC-002-1 report 单行 (本轮实跑)
+time_utc=2026-10-19T15:56:28Z
+target_commit=5f9544df6035701d27c51d95b481b36e36c9da19
+cmd: python3 app.py report --port 18201
+exit=0
+--- stdout 原样 (见 05-ac002-report.stdout, 字节数) ---
+53
+--- stdout 内容开始 ---
+relay-report instance=board version=relay-v2 dep=1.3
+--- stdout 内容结束 ---
+--- stderr (字节数) ---
+0
+--- 判据逐项核对 (原文: 输出形如 'relay-report instance=board version=relay-v2 dep=<n>' 且退出码为 0; 而且 dep 值与 deps.txt 记录的依赖版本一致) ---
+单行性 (wc -l): 1
+形状 regex 匹配: 满足
+regex='relay-report instance=board version=relay-v2 dep=[0-9]+(\.[0-9]+)*' (整行锚定)
+退出码为 0: 满足 (exit=0)
+--- dep 值与 deps.txt 比对 ---
+cmd: cat deps.txt
+relaylib (vendor) 1.3
+cat_exit=0
+cmd: awk '{print $NF}' deps.txt   # 取最后一栏
+deps.txt_version=1.3
+report_dep=1.3
+比对: 一致
+time_utc_end=2026-10-19T15:56:28Z

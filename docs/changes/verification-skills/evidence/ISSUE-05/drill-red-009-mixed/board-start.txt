@@ -1,0 +1,5 @@
+# 实例 board 启动
+utc=2026-10-19T15:14:28Z
+command: cd /tmp/orchestra-05/red-board && mkdir -p runtime/board && setsid nohup python3 app.py serve --port 18201 --instance board --data-dir runtime/board > docs/changes/board/evidence/board-70bcc79-r1/board-serve-stdout.log 2>&1 &
+board_pid=4176439
+listen: LISTEN 0      5           127.0.0.1:18201      0.0.0.0:*    users:(("python3",pid=4176439,fd=3))         

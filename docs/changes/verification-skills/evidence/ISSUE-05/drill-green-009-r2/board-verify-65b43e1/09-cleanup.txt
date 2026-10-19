@@ -1,0 +1,21 @@
+# 09 清理: 停实例并核对端口
+time_utc=2026-10-19T15:49:06Z
+cmd: kill 30789 ; sleep 1 ; pgrep -af 'app.py serve' ; ss -ltn | grep -E ':18201'
+kill_exit=0
+--- 停止后进程 ---
+pgrep_app_exit=1  (1 = 无 app.py serve 进程)
+--- 停止后端口 ---
+ss_18201_exit=1  (1 = 无监听)
+--- health 复核 (应失败) ---
+cmd: python3 app.py health --port 18201 ; echo exit=$?
+request failed: <urlopen error [Errno 111] Connection refused>
+exit=1
+--- server.stdout.log 全文 (保留) ---
+listening on 127.0.0.1:18201 instance=board
+
+--- 最终 git status --porcelain (只应有本轮证据目录未跟踪; 无已跟踪文件改动) ---
+?? docs/changes/board/evidence/board-verify-65b43e1/
+git_status_exit=0
+--- git diff --stat (应为空) ---
+git_diff_exit=0
+time_utc_end=2026-10-19T15:49:08Z

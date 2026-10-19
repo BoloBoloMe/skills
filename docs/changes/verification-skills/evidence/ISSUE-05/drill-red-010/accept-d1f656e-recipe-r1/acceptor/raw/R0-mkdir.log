@@ -1,0 +1,3 @@
+[step] recipe: mkdir -p runtime/board
+[time] 2026-10-19T23:16:28+08:00
+[exit] 0

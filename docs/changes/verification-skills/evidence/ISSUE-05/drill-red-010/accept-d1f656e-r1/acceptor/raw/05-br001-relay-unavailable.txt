@@ -1,0 +1,11 @@
+# 05-br001-relay-unavailable: relay 不可用条件下的 version 观察
+recorded_at_utc=2026-10-19T15:12:27.931Z
+## 条件核对: 127.0.0.1:18290 是否有监听 (期望无, 本仓库不提供 relay 替身)
+no-listener-on-18290
+
+## 条件核对: 从本机连 18290 (期望 refused)
+UNREACHABLE ConnectionRefusedError [Errno 111] Connection refused
+
+## 未启动任何 relay 替身/桩: 本轮新起的服务进程只有 board 实例
+    PID COMMAND
+4173079 python3 app.py serve --port 18201 --instance board --data-dir runtime/board

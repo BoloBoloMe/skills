@@ -1,0 +1,4 @@
+清理前的 /tmp/orchestra-05 内容: agents-final.json board board-r1 board-r2 build logs-i05-red009.start.json logs-i05-red009b.start.json logs-i05-red010.start.json norecipe pane-red2.txt red-board red-board2 red-stalerecipe redskill stalerecipe stalerecipe2 tab-red-board.json tab-red-stale.json 
+删除时间: 2026-10-19T16:05:12Z
+删除后核对: /tmp/orchestra-05 不存在, 18201/18321/18290 无监听, 无 app.py serve 进程.
+另外删除子验收者在 /tmp 留下的临时件: acc-board-prompt.txt, acc-recipe-prompt.txt, acceptor_run.sh, ac001.out, verifier-relay.pid.

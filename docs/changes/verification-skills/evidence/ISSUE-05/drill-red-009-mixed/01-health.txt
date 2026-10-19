@@ -1,0 +1,4 @@
+$ python3 app.py health --port 18201 (AC-001/AC-002/AC-003 前置假定确认)
+2026-10-19T15:14:28Z
+ok instance=board
+exit=0

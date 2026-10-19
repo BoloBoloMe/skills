@@ -1,0 +1,5 @@
+# BR-001 阶段B1: relay 不可用时的 sync (观察用, 非判据场景)
+utc=2026-10-19T15:15:19Z
+-- $ python3 app.py sync --port 18201 --relay-port 18290 --
+request failed: HTTP Error 503: Service Unavailable
+exit=1

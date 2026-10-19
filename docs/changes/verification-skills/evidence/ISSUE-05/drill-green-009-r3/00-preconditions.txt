@@ -1,0 +1,115 @@
+# 00 执行前前提与环境核对
+time_utc=2026-10-19T15:56:07Z
+target_commit=5f9544df6035701d27c51d95b481b36e36c9da19
+expected_commit=5f9544df6035701d27c51d95b481b36e36c9da19
+--- git status --porcelain ---
+?? docs/changes/board/evidence/board-verify-5f9544d/
+?? docs/changes/board/evidence/board-verify-65b43e1/
+git_status_exit=0
+--- git log -1 --format ---
+5f9544df6035701d27c51d95b481b36e36c9da19 2026-10-19 23:54:56 +0800 docs: 产品标准新增 AC-004 并确认
+--- git diff 65b43e1..HEAD --stat (影响判定) ---
+ docs/changes/board/PRODUCT.md | 6 ++++++
+ 1 file changed, 6 insertions(+)
+diff_stat_exit=0
+--- git diff 65b43e1..HEAD --name-only ---
+docs/changes/board/PRODUCT.md
+--- git diff 65b43e1..HEAD -- docs/changes/board/PRODUCT.md ---
+diff --git a/docs/changes/board/PRODUCT.md b/docs/changes/board/PRODUCT.md
+index 06d9673..bbe294d 100644
+--- a/docs/changes/board/PRODUCT.md
++++ b/docs/changes/board/PRODUCT.md
+@@ -43,6 +43,12 @@
+   假定 部署方提供的 relay 服务正在 127.0.0.1:18290 监听且实例 board 正在 127.0.0.1:18201 运行
+   当 验收者运行 `python3 app.py sync --port 18201 --relay-port 18290`
+   那么 输出含 `sync-ok instance=board` 与 `relay=ok` 且退出码为 0
++
++@AC-004 @normal @G-002
++场景: AC-004-1 端口未监听时报错
++  假定 127.0.0.1:18299 上没有实例在运行
++  当 验收者运行 `python3 app.py report --port 18299`
++  那么 退出码非 0 且 stderr 含 `request failed`
+ ```
+ 
+ ## 决策引用
+--- python3 ---
+Python 3.14.7
+python3_exit=0
+/usr/bin/python3
+--- deps.txt ---
+relaylib (vendor) 1.3
+--- vendor/relaylib.py VERSION ---
+relaylib.VERSION = 1.3
+--- 端口 18201/18290/18299 监听核对 (ss -ltn) ---
+ss_grep_exit=1
+--- ss 全量 LISTEN (环境留存) ---
+State  Recv-Q Send-Q  Local Address:Port  Peer Address:Port
+LISTEN 0      128         127.0.0.1:36737      0.0.0.0:*   
+LISTEN 0      10          127.0.0.1:36775      0.0.0.0:*   
+LISTEN 0      5           127.0.0.1:35603      0.0.0.0:*   
+LISTEN 0      128         127.0.0.1:1455       0.0.0.0:*   
+LISTEN 0      128         127.0.0.1:51121      0.0.0.0:*   
+LISTEN 0      4096        127.0.0.1:631        0.0.0.0:*   
+LISTEN 0      10          127.0.0.1:57235      0.0.0.0:*   
+LISTEN 0      5           127.0.0.1:39087      0.0.0.0:*   
+LISTEN 0      4096    127.0.0.53%lo:53         0.0.0.0:*   
+LISTEN 0      128         127.0.0.1:54545      0.0.0.0:*   
+LISTEN 0      5           127.0.0.1:38416      0.0.0.0:*   
+LISTEN 0      5             0.0.0.0:59859      0.0.0.0:*   
+LISTEN 0      128         127.0.0.1:6080       0.0.0.0:*   
+LISTEN 0      128         127.0.0.1:37859      0.0.0.0:*   
+LISTEN 0      4096       127.0.0.54:53         0.0.0.0:*   
+LISTEN 0      5             0.0.0.0:38417      0.0.0.0:*   
+LISTEN 0      5           127.0.0.1:43795      0.0.0.0:*   
+LISTEN 0      128         127.0.0.1:42519      0.0.0.0:*   
+LISTEN 0      128         127.0.0.1:8317       0.0.0.0:*   
+LISTEN 0      4096          0.0.0.0:22         0.0.0.0:*   
+LISTEN 0      128    192.168.65.165:8317       0.0.0.0:*   
+LISTEN 0      5             0.0.0.0:18199      0.0.0.0:*   
+LISTEN 0      5           127.0.0.1:46673      0.0.0.0:*   
+LISTEN 0      5           127.0.0.1:45789      0.0.0.0:*   
+LISTEN 0      128         127.0.0.1:46025      0.0.0.0:*   
+LISTEN 0      128                 *:46043            *:*   
+LISTEN 0      128                 *:45539            *:*   
+LISTEN 0      128                 *:45489            *:*   
+LISTEN 0      128                 *:46735            *:*   
+LISTEN 0      128                 *:46105            *:*   
+LISTEN 0      128                 *:41679            *:*   
+LISTEN 0      128                 *:41525            *:*   
+LISTEN 0      4096                *:9090             *:*   
+LISTEN 0      128                 *:41839            *:*   
+LISTEN 0      128                 *:41785            *:*   
+LISTEN 0      128                 *:41123            *:*   
+LISTEN 0      128                 *:42639            *:*   
+LISTEN 0      128                 *:43669            *:*   
+LISTEN 0      128                 *:44777            *:*   
+LISTEN 0      128                 *:44547            *:*   
+LISTEN 0      128                 *:45021            *:*   
+LISTEN 0      128                 *:37431            *:*   
+LISTEN 0      128                 *:37763            *:*   
+LISTEN 0      128                 *:37359            *:*   
+LISTEN 0      128                 *:37221            *:*   
+LISTEN 0      128                 *:38843            *:*   
+LISTEN 0      128                 *:38383            *:*   
+LISTEN 0      128                 *:39575            *:*   
+LISTEN 0      128                 *:39549            *:*   
+LISTEN 0      128                 *:39701            *:*   
+LISTEN 0      4096                *:8080             *:*   
+LISTEN 0      128                 *:33431            *:*   
+LISTEN 0      128                 *:33453            *:*   
+LISTEN 0      128                 *:33379            *:*   
+LISTEN 0      128                 *:32941            *:*   
+LISTEN 0      4096             [::]:22            [::]:*   
+LISTEN 0      128                 *:33107            *:*   
+LISTEN 0      128                 *:33097            *:*   
+LISTEN 0      128                 *:34619            *:*   
+LISTEN 0      128                 *:34293            *:*   
+LISTEN 0      4096            [::1]:631           [::]:*   
+LISTEN 0      128                 *:35537            *:*   
+LISTEN 0      128                 *:35721            *:*   
+LISTEN 0      128                 *:35773            *:*   
+LISTEN 0      128                 *:3000             *:*   
+LISTEN 0      128                 *:2222             *:*   
+LISTEN 0      5                   *:3389             *:*   
+LISTEN 0      5                   *:3390             *:*   
+time_utc_end=2026-10-19T15:56:07Z

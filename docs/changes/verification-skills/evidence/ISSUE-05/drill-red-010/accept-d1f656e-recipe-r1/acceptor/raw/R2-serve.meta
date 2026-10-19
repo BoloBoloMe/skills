@@ -1,0 +1,2 @@
+[time] 2026-10-19T23:16:37+08:00
+[cmd] python3 app.py serve --port 18001 --instance board --data-dir runtime/board  (背景启动, setsid)

@@ -1,0 +1,19 @@
+== 验收环境与准备记录 ==
+会话开始时间(UTC): 2026-10-19T15:22:53Z
+命令: cd /tmp/orchestra-05/red-board2 && git rev-parse HEAD && git status --porcelain
+d2e680ce826388a3051dec79d7ff68fc68cc6fc1
+--- git status --porcelain ---
+?? docs/changes/board/evidence/board-d2e680c-r2/
+(说明: 未跟踪项只有本轮证据目录自身, 工作区其余干净)
+
+== 18201 端口冲突观察 (未采取任何 kill 行为) ==
+15:23:48Z 观察: ss -ltn 显示 127.0.0.1:18201 已被 PID 4189728 监听,
+  该进程 cmd = python3 app.py serve --port 18201 --instance board --data-dir runtime/board
+  但 /proc/4189728/cwd -> /tmp/orchestra-05/norecipe, 属另一项目会话的实例, 非本项目.
+15:25:02Z-15:26:02Z 等待 60 秒后复查: 该进程已自行退出 (ps 报 gone), 18201 无监听, 18290 无监听.
+本验收实例由此后我本人启动, 未复用任何他方实例.
+
+== 18290 检查时间点 ==
+2026-10-19T15:26:28Z
+命令: ss -ltn | grep -E '18290|18201'
+exit=1 (grep 无匹配即 1, 表示两端口均无监听)

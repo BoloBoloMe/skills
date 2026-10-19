@@ -1,0 +1,70 @@
+# 09 清理
+
+UTC: 2026-10-19T15:44:43Z
+HEAD: d2e680ce826388a3051dec79d7ff68fc68cc6fc1
+
+## 命令: kill 24581 (app.py serve 实例, 本轮自启)
+退出码: 0
+
+## 残留检查: pgrep -af 'app.py serve --port 18201'
+25587 /bin/bash -c python() { uv run python "$@"; }; python3() { uv run python "$@"; }; cd /tmp/orchestra-05/board-r1 && ED=docs/changes/board/evidence/board-d2e680c-r1 && TS=$(date -u +%Y-%m-%dT%H:%M:%SZ) && HEAD=$(git rev-parse HEAD) && { echo "# 09 清理" echo echo "UTC: $TS" echo "HEAD: $HEAD" echo echo "## 命令: kill 24581 (app.py serve 实例, 本轮自启)" kill 24581 2>&1; sleep 1 echo "退出码: $?" echo echo "## 残留检查: pgrep -af 'app.py serve --port 18201'" pgrep -af 'app.py serve --port 18201' || echo "(无残留进程)" echo echo "## 残留检查: ss -ltn | grep 18201" ss -ltn | grep 18201 || echo "(无输出: 18201 无监听, 已释放)" echo echo "## 残留检查: socket connect 127.0.0.1:18201" python3 - <<'EOF' import socket s=socket.socket(); s.settimeout(2) try:     s.connect(("127.0.0.1",18201)); print("18201: CONNECTED (仍可达)") except OSError as e:     print(f"18201: refused/unreachable: {e}") finally:     s.close() EOF echo echo "## runtime/ 数据" echo "命令: find runtime -mindepth 1 | sort" find runtime -mindepth 1 | sort || true echo "命令: ls -la runtime/board" ls -la runtime/board echo echo "## runtime/ 是否被 .gitignore 忽略" echo ".gitignore 内容: $(tr '\n' ' ' < .gitignore)" echo "git check-ignore -v runtime/board" git check-ignore -v runtime/board || echo "(未被忽略!)" echo echo "## 工作区状态 (排除本证据目录与 runtime)" echo "命令: git status --porcelain=v1 --untracked-files=all" git status --porcelain=v1 --untracked-files=all echo echo "## 说明: runtime/board 为空目录 (Board 只 mkdir, 不写文件), 未产生数据文件; 该目录在 .gitignore 内." echo echo "exit=0" } > "$ED/09-cleanup.txt" 2>&1; cat "$ED/09-cleanup.txt"
+
+## 残留检查: ss -ltn | grep 18201
+(无输出: 18201 无监听, 已释放)
+
+## 残留检查: socket connect 127.0.0.1:18201
+18201: refused/unreachable: [Errno 111] Connection refused
+
+## runtime/ 数据
+命令: find runtime -mindepth 1 | sort
+runtime/board
+命令: ls -la runtime/board
+total 0
+drwxrwxr-x 2 bolo bolo 40 Oct 19 23:44 .
+drwxrwxr-x 3 bolo bolo 60 Oct 19 23:44 ..
+
+## runtime/ 是否被 .gitignore 忽略
+.gitignore 内容: .agents/ runtime/ __pycache__/ .pytest_cache/ 
+git check-ignore -v runtime/board
+.gitignore:2:runtime/	runtime/board
+
+## 工作区状态 (排除本证据目录与 runtime)
+命令: git status --porcelain=v1 --untracked-files=all
+?? docs/changes/board/evidence/board-d2e680c-r1/00-preflight.txt
+?? docs/changes/board/evidence/board-d2e680c-r1/01-serve-start.txt
+?? docs/changes/board/evidence/board-d2e680c-r1/01-serve.stderr.log
+?? docs/changes/board/evidence/board-d2e680c-r1/01-serve.stdout.log
+?? docs/changes/board/evidence/board-d2e680c-r1/02-health.txt
+?? docs/changes/board/evidence/board-d2e680c-r1/03-ac001-status.raw-stdout
+?? docs/changes/board/evidence/board-d2e680c-r1/03-ac001-status.txt
+?? docs/changes/board/evidence/board-d2e680c-r1/04-ac002-report.raw-stdout
+?? docs/changes/board/evidence/board-d2e680c-r1/04-ac002-report.txt
+?? docs/changes/board/evidence/board-d2e680c-r1/05-ac003-precheck.txt
+?? docs/changes/board/evidence/board-d2e680c-r1/05-ac003-sync.raw-stderr
+?? docs/changes/board/evidence/board-d2e680c-r1/05-ac003-sync.raw-stdout
+?? docs/changes/board/evidence/board-d2e680c-r1/05-ac003-sync.txt
+?? docs/changes/board/evidence/board-d2e680c-r1/06-br001-after-failed-sync.txt
+?? docs/changes/board/evidence/board-d2e680c-r1/06-br001-after.raw-report-stdout
+?? docs/changes/board/evidence/board-d2e680c-r1/06-br001-after.raw-status-stdout
+?? docs/changes/board/evidence/board-d2e680c-r1/07-old-evidence-check.txt
+?? docs/changes/board/evidence/board-d2e680c-r1/08-inference-code-read.txt
+?? docs/changes/board/evidence/board-d2e680c-r1/09-cleanup.txt
+?? docs/changes/board/evidence/board-d2e680c-r1/PLAN.md
+
+## 说明: runtime/board 为空目录 (Board 只 mkdir, 不写文件), 未产生数据文件; 该目录在 .gitignore 内.
+
+exit=0
+
+## 残留检查 (补充, 排除本检查自身的 shell 命令行)
+命令: ps -eo pid,cmd | grep '[a]pp.py serve'
+  25685 /bin/bash -c cd /tmp/orchestra-05/board-r1 && ED=docs/changes/board/evidence/board-d2e680c-r1 && { echo echo "## 残留检查 (补充, 排除本检查自身的 shell 命令行)" echo "命令: ps -eo pid,cmd | grep '[a]pp.py serve'" ps -eo pid,cmd | grep '[a]pp.py serve' || echo "(无残留 app.py serve 进程)" echo echo "## 说明: 上面 09 中的 pgrep 命中项 25587 是本次记录脚本自身的 bash -c 命令行 (其文本包含 'app.py serve --port 18201'), 不是实例进程." echo "exit=0" } >> "$ED/09-cleanup.txt" 2>&1; tail -8 "$ED/09-cleanup.txt"
+
+## 说明: 上面 09 中的 pgrep 命中项 25587 是本次记录脚本自身的 bash -c 命令行 (其文本包含 'app.py serve --port 18201'), 不是实例进程.
+exit=0
+
+## 残留检查 (最终, 只查 PID 24581 是否存活 + 端口)
+命令: kill -0 24581
+PID 24581 不存在 (实例已停止)
+命令: ss -ltn | grep 18201
+(无输出: 18201 无监听)
+exit=0

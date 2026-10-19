@@ -1,0 +1,6 @@
+[time] 2026-10-19T23:16:46+08:00
+[cmd] ss -ltnp | grep -E ':18201|:18290'
+none listening on 18201/18290
+[cmd] curl -sS -m 3 http://127.0.0.1:18290/ingest (relay 可用性探针)
+curl: (7) Failed to connect to 127.0.0.1 port 18290 after 0 ms: Could not connect to server
+[curl exit] 7

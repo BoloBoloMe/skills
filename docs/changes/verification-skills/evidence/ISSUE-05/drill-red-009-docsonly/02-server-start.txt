@@ -1,0 +1,14 @@
+== 启动唯一实例 ==
+2026-10-19T15:26:36Z
+命令: mkdir -p runtime/board
+exit=0
+命令: nohup python3 app.py serve --port 18201 --instance board --data-dir runtime/board > docs/changes/board/evidence/board-d2e680c-r2/server.stdout.log 2>&1 &
+serve PID=667
+--- server.stdout.log ---
+listening on 127.0.0.1:18201 instance=board
+--- ps -o pid,lstart,cmd -p 667 ---
+    PID                  STARTED CMD
+    667 一 10月 19 23:26:35 2026 python3 app.py serve --port 18201 --instance board --data-dir runtime/board
+--- ss -ltn | grep 18201 ---
+LISTEN 0      5           127.0.0.1:18201      0.0.0.0:*   
+exit=0

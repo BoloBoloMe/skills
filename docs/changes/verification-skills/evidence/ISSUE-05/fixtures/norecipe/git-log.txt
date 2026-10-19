@@ -1,0 +1,13 @@
+commit d1f656ed1c928f74aa6adf9fd69b067a11f1ad72
+Author: luojingyan <921402781@qq.com>
+Date:   Mon Oct 19 23:09:40 2026 +0800
+
+    初始化记录板骨架与产品标准
+
+ .gitignore                    |   4 ++
+ README.md                     |  29 ++++++++
+ app.py                        | 149 ++++++++++++++++++++++++++++++++++++++++++
+ deps.txt                      |   1 +
+ docs/changes/board/PRODUCT.md |  44 +++++++++++++
+ vendor/relaylib.py            |   1 +
+ 6 files changed, 228 insertions(+)

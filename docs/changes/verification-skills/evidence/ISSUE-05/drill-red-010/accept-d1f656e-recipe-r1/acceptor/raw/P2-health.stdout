@@ -1,0 +1,4 @@
+[time] 2026-10-19T23:16:49+08:00
+[cmd] python3 app.py health --port 18201
+ok instance=board
+[exit] 0

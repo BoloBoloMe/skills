@@ -1,0 +1,55 @@
+# 显式 /usr/bin/python3 复跑 (补充证据, 不改判定)
+utc=2026-10-19T15:18:10Z
+背景: 本机 pi 全局扩展 python-operation-hook 会把 bash 工具调用里的 python3 命令替换成 uv run python.
+钩子替换实证: 同一工具环境里 $ python3 -c 'import sys; print(sys.executable)' 输出 /home/bolo/.local/share/uv/python/cpython-3.14-linux-x86_64-gnu/bin/python3.14 (3.14.7);
+而 command -v python3 = /usr/bin/python3 (指向 python3.14), /usr/bin/python3 --version = Python 3.14.4.
+即: 字面 python3 未走 PATH 的 /usr/bin/python3, 实际被钩子改写为 uv run python (解释器 3.14.7). 两者同为 CPython 3.14 系列.
+
+## 服务启动 (本轮补充均用 /usr/bin/python3 显式启动)
+utc=2026-10-19T15:18:12Z
+启动命令: setsid nohup /usr/bin/python3 /tmp/orchestra-05/relay/relay.py --port 18290 > docs/changes/board/evidence/board-70bcc79-r1/relay2-stdout.log 2>&1 &  (pid=4181850)
+启动命令: cd /tmp/orchestra-05/red-board && mkdir -p runtime/board && setsid nohup /usr/bin/python3 app.py serve --port 18201 --instance board --data-dir runtime/board > docs/changes/board/evidence/board-70bcc79-r1/board2-serve-stdout.log 2>&1 &  (pid=4181870)
+listen 18290: 127.0.0.1:18290
+listen 18201: 127.0.0.1:18201
+health 前置: ok instance=board
+
+## 三条场景命令, 显式 /usr/bin/python3 执行
+
+### AC-001-1
+utc=2026-10-19T15:18:19Z
+$ /usr/bin/python3 app.py status --port 18201
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>relay board</title></head>
+<body><h1>relay board</h1>
+<p>instance=board</p>
+<p>state=ready</p>
+<p>version=relay-v2</p></body></html>
+exit=0
+
+### AC-002-1
+utc=2026-10-19T15:18:19Z
+$ /usr/bin/python3 app.py report --port 18201
+relay-report instance=board version=relay-v2 dep=1.3
+exit=0
+
+### AC-003-1
+utc=2026-10-19T15:18:19Z
+$ /usr/bin/python3 app.py sync --port 18201 --relay-port 18290
+sync-ok instance=board dep=1.3 relay=ok records=3
+exit=0
+
+## 清理 (补充轮)
+utc=2026-10-19T15:18:30Z
+command: kill 4181850  (relay 与 实例 board)
+relay(pid=4181850) 存在? 已退出
+board(pid=) 存在? 已退出
+端口 18201: LISTEN 0      5           127.0.0.1:18201      0.0.0.0:*   
+端口 18290: 未监听
+git status --short:
+?? docs/changes/board/evidence/board-70bcc79-r1/
+更正: 上一条清理里实例 board 的 pid 提取脚本出错 (BPID 落空), board 未被杀掉. 补杀:
+utc=2026-10-19T15:18:50Z
+command: kill 4181870 (经 ss -tlnp 从 18201 监听项取回的 board pid)
+board(pid=4181870) 存在? 已退出
+端口 18201: 未监听
+端口 18290: 未监听

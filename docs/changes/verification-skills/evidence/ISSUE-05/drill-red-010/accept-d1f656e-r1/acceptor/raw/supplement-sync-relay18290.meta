@@ -1,0 +1,9 @@
+label=supplement-sync-relay18290
+argv=python3 app.py sync --port 18201 --relay-port 18290
+cwd=/tmp/orchestra-05/red-stalerecipe
+start_utc=2026-10-19T15:12:32.369Z
+end_utc=2026-10-19T15:12:32.439Z
+duration_s=0.070
+exit_code=1
+stdout_bytes=0
+stderr_bytes=52
