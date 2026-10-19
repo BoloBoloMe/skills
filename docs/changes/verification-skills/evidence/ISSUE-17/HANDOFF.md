@@ -51,4 +51,5 @@
 ## 提交哈希
 
 - 本分支 `issue/17`, 提交信息 `feat: ISSUE-17: create/maintain 技能补写入批准并去重 drift 判据`.
-- 交付提交哈希见随后一个 docs 提交的回填; 本文件无法包含自身提交哈希, 分支最终 HEAD 以 `git log -1` 为准.
+- 交付提交: `4a654df` (feat: ISSUE-17: create/maintain 技能补写入批准并去重 drift 判据), 父提交 `5c21b0b`.
+- 本 HANDOFF 的哈希回填写在随后一个 docs 提交里, 因为文件无法包含自身提交的哈希; 分支最终 HEAD 以 `git log -1` 为准.
