@@ -1,0 +1,11 @@
+commit 04be7ddd9ca795eecbb4a5b2d5beba24617509ed
+Author:     luojingyan <921402781@qq.com>
+AuthorDate: Mon Oct 19 20:26:12 2026 +0800
+Commit:     luojingyan <921402781@qq.com>
+CommitDate: Mon Oct 19 20:26:12 2026 +0800
+
+    feat: greet 支持全大写输出
+
+ tests/test_tool.py | 6 ++++++
+ tool.py            | 8 +++++---
+ 2 files changed, 11 insertions(+), 3 deletions(-)

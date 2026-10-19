@@ -91,7 +91,7 @@ cd /tmp/orchestra-03/author && git show --format= --no-color HEAD | sha256sum
 | `drill-G6-micro-groups/` | micro2 | v2 | 3 | 3 | 1 | 1 | AC-005-3 |
 | `drill-G7-blocked/` | green-blocked | v2 | 6 | 0 | 1 (无人可派) | 0 | AC-004-2 |
 
-每个演练目录的 `NOTES.md` 记录该次的实际输入, 会话, 结果与限制; 目录内是会话自己写出的计划, 报告与原始材料.
+每个演练目录的 `NOTES.md` 记录该次的实际输入, 会话, 结果与限制; 目录内有会话自己写出的计划, 报告与原始材料. 每份 `PRODUCT.md` 是该夹具被验收的产品标准副本; `logs/author-commit.txt` 与 `logs/author-commit.patch` 是真实实现提交的完整信息与补丁.
 
 ## 机械复核
 
@@ -119,7 +119,7 @@ cd /tmp/orchestra-03/author && git show --format= --no-color HEAD | sha256sum
 ## 清理
 
 - 全部演练会话与子会话已用 `herdr tab close` 关闭 (关闭前的完整列表见 `logs/agents-after-all.json` 与 `logs/tabs-after-all.json`).
-- 临时项目 `/tmp/orchestra-03/` 在证据抄完后删除; 可用三个 setup 脚本重建. 夹具的 git 状态快照保留在 `logs/fixture-status.txt`.
+- 临时项目 `/tmp/orchestra-03/` 已在证据抄完后删除 (`ls /tmp | grep -c orchestra-03` 为 0); 需要复跑时用三个 setup 脚本重建. 夹具的 git 状态快照保留在 `logs/fixture-status.txt`.
 - 证据目录只保存验收输出与原始会话记录, 不含密钥或凭据. 未写入 `~/.agents`, `~/.pi`, 未运行同步.
 
 ## 限制
