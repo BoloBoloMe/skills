@@ -1,0 +1,56 @@
+PASS audit-frontmatter: verify-change frontmatter exit 0, name/description/disable-model-invocation 合格
+PASS audit-frontmatter: create-verification-skill frontmatter exit 0, name/description/disable-model-invocation 合格
+PASS audit-frontmatter: maintain-verification-skill frontmatter exit 0, name/description/disable-model-invocation 合格
+PASS audit-frontmatter: blast-radius frontmatter exit 0, name/description/disable-model-invocation 合格
+PASS audit-frontmatter: benchmark-checklist frontmatter exit 0, name/description/disable-model-invocation 合格
+PASS audit-frontmatter: tdd-as-orchestra frontmatter exit 0, name/description/disable-model-invocation 合格
+PASS audit-frontmatter: 项目级配方 docs/changes/verification-skills/evidence/ISSUE-11/generated/TS-001-p1-verify-fixture-SKILL.md (name=verify-fixture) exit 0
+PASS audit-frontmatter: 项目级配方 docs/changes/verification-skills/evidence/ISSUE-11/generated/TS-002-017-p2-verify-fixture-SKILL.md (name=verify-fixture) exit 0
+PASS audit-frontmatter: 项目级配方 docs/changes/verification-skills/evidence/ISSUE-11/generated/TS-002-red-p2-verify-fixture-SKILL.md (name=verify-fixture) exit 0
+PASS audit-frontmatter: 项目级配方 docs/changes/verification-skills/evidence/ISSUE-11/generated/TS-003-green-p3-verify-fixture-SKILL.md (name=verify-fixture) exit 0
+PASS audit-frontmatter: 项目级配方 docs/changes/verification-skills/evidence/ISSUE-11/generated/TS-003-loadfail-p3-verify-fixture-SKILL.md (name=verify-fixture) exit 0
+PASS audit-frontmatter: 项目级配方 docs/changes/verification-skills/evidence/ISSUE-11/generated/TS-003-red-p3-verify-fixture-SKILL.md (name=verify-fixture) exit 0
+PASS audit-frontmatter: 项目级配方 docs/changes/verification-skills/evidence/ISSUE-12/drill-a-green/final-recipe/SKILL.md (name=verify-notes) exit 0
+PASS audit-frontmatter: 项目级配方 docs/changes/verification-skills/evidence/ISSUE-12/drill-b-green/final-recipe/SKILL.md (name=verify-notes) exit 0
+PASS audit-no-git-actions: verify-change 只交付文件与证据, 无 Git 写动作命令
+PASS audit-no-git-actions: create-verification-skill 只交付文件与证据, 无 Git 写动作命令
+PASS audit-no-git-actions: maintain-verification-skill 只交付文件与证据, 无 Git 写动作命令
+PASS audit-no-git-actions: blast-radius 只交付文件与证据, 无 Git 写动作命令
+PASS audit-no-git-actions: benchmark-checklist 只交付文件与证据, 无 Git 写动作命令
+PASS audit-no-git-actions: tdd-as-orchestra 保留本地提交与合并, 没有推送或开 PR
+PASS audit-no-git-actions: verify-change (验收指挥者) 有 4/6 份记录写明只交付文件与证据
+PASS audit-no-git-actions: create-verification-skill (配方生成者) 有 1/1 份记录写明只交付文件与证据
+PASS audit-no-git-actions: maintain-verification-skill (配方维护者) 有 1/1 份记录写明只交付文件与证据
+PASS audit-no-git-actions: blast-radius (调查者) 有 2/2 份记录写明只交付文件与证据
+PASS audit-no-git-actions: benchmark-checklist (性能检查者) 有 2/4 份记录写明只交付文件与证据
+PASS audit-no-git-actions: tdd-as-orchestra (既有 Git 职责) 有 1/1 份记录写明只交付文件与证据
+PASS audit-scope: 相对 ec9d55f 的 3115 个改动文件全部在允许范围
+PASS audit-scope: PRODUCT.md/TECHNICAL.md/DECISIONS.md, ADR, general, tests, pi, sync-to-pi.py 字节不变
+PASS audit-scope: 既有 workflow 技能除 tdd-as-orchestra/SKILL.md 外没有改动
+PASS audit-scope: README.md 只新增五个技能的索引行
+PASS audit-scope: 没有新增统一评测平台或结果 JSON 协议文件
+PASS audit-scope: ~/.agents/skills 与 ~/.pi/skills 下没有五个新技能的部署副本
+PASS audit-security-evidence: ISSUE-10 有写入授权, 写入与清理记录, 残留单列与未批准对象哈希证据
+PASS audit-security-evidence: ISSUE-08 一次性实验边界记录存在且标明冻结目标
+PASS audit-security-evidence: 证据里没有凭据字面量 (占位符 0 处已排除)
+PASS audit-security-evidence: ISSUE-08 TS-003 复查了冻结目标未被修改
+PASS audit-drill-records: ISSUE-01 记录了源文件与版本, 宿主与 pi 版本, 加载方式, 临时项目, 结论边界
+PASS audit-drill-records: ISSUE-02 记录了源文件与版本, 宿主与 pi 版本, 加载方式, 临时项目, 结论边界
+PASS audit-drill-records: ISSUE-03 记录了源文件与版本, 宿主与 pi 版本, 加载方式, 临时项目, 结论边界
+PASS audit-drill-records: ISSUE-04 记录了源文件与版本, 宿主与 pi 版本, 加载方式, 临时项目, 结论边界
+PASS audit-drill-records: ISSUE-05 记录了源文件与版本, 宿主与 pi 版本, 加载方式, 临时项目, 结论边界
+PASS audit-drill-records: ISSUE-06 记录了源文件与版本, 宿主与 pi 版本, 加载方式, 临时项目, 结论边界
+PASS audit-drill-records: ISSUE-07 记录了源文件与版本, 宿主与 pi 版本, 加载方式, 临时项目, 结论边界
+PASS audit-drill-records: ISSUE-08 记录了源文件与版本, 宿主与 pi 版本, 加载方式, 临时项目, 结论边界
+PASS audit-drill-records: ISSUE-09 记录了源文件与版本, 宿主与 pi 版本, 加载方式, 临时项目, 结论边界
+PASS audit-drill-records: ISSUE-10 记录了源文件与版本, 宿主与 pi 版本, 加载方式, 临时项目, 结论边界
+PASS audit-drill-records: ISSUE-11 记录了源文件与版本, 宿主与 pi 版本, 加载方式, 临时项目, 结论边界
+PASS audit-drill-records: ISSUE-12 记录了源文件与版本, 宿主与 pi 版本, 加载方式, 临时项目, 结论边界
+PASS audit-drill-records: ISSUE-13 记录了源文件与版本, 宿主与 pi 版本, 加载方式, 临时项目, 结论边界
+PASS audit-drill-records: ISSUE-14 记录了源文件与版本, 宿主与 pi 版本, 加载方式, 临时项目, 结论边界
+
+WARN 3 项 (写进 AUDIT.md 缺口节):
+  - [audit-no-git-actions] verify-change (验收指挥者): 这些 ISSUE 的顶层记录未写明无自动 Git 动作: ISSUE-04, ISSUE-10
+  - [audit-no-git-actions] benchmark-checklist (性能检查者): 这些 ISSUE 的顶层记录未写明无自动 Git 动作: ISSUE-06, ISSUE-08
+  - [audit-drill-records] ISSUE-06 顶层记录缺补充字段: 提交渠道
+OK: 五项审计 required 全部通过

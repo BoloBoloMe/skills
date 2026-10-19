@@ -1,0 +1,7 @@
+checked=296 resolved=242 unresolved=54
+ISSUE-05 unresolved(7): drill-green-009-r1/REPORT.md, drill-green-009-r2/REPORT.md, drill-green-009-r2/06-ac003-sync.txt, drill-green-010-norecipe/90-report.md, drill-green-010-stale/VERIFICATION-REPORT.md, drill-green-010-stale/recipe-attempt-18001.txt, drill-green-009-r2/REPORT.md
+ISSUE-07 unresolved(7): workflow/blast-radius/reference/source-record.md, ts003-wide-raw/report.md, ts003-wide-raw/merge.md, drill-ts002, drill-ts003-wide, drill-ts003-gap, drill-ts003-local
+ISSUE-08 unresolved(17): green1.md, raw/task2-noop-recheck-21rounds.log, green1.md, raw/task3-e2e-ab-c1-21rounds.log, raw/task3-e2e-proc.log, green1.md, raw/task4-profile.log, green1.md, raw/task5-flat-compare.log, raw/task5-flat-compare-fixed.log, green1.md, green2.md, green2.md, green3.md, green3.md, green3.md, docs/green2.md
+ISSUE-09 unresolved(7): green1.md, green1.md, green1.md, green2-pr.md, green2.md, green2.md, red4.md
+ISSUE-12 unresolved(13): recipe-diff.patch, sessions/d12-c-main.jsonl, recipe-evidence/2025-10-19-defect-archived-in-search.txt, sessions/verify-a1-subsession.jsonl, recipe-diff.patch, sessions/drill-b-verifier-subsession.jsonl, recipe-evidence/runner-20261019T175053-full-run.txt, recipe-diff.patch, recipe-evidence/shared-rules.log, drill-b-verifier, drill-b, drill-b-verifier, drill-c
+ISSUE-14 unresolved(3): green-ts002-fix, ts002-gap-only, ts002-gap-only

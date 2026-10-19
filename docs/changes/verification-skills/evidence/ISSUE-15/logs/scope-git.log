@@ -1,0 +1,19 @@
+## 分支与顶端
+b378e4b docs: 勾选波次 7 已实现并记录编排日志
+ M README.md
+?? docs/changes/verification-skills/evidence/ISSUE-15/
+
+## 相对开工基线 ec9d55f 的改动统计 (按目录)
+   3073 docs/changes/verification-skills/evidence
+     14 docs/changes/verification-skills/issues
+      5 workflow/blast-radius
+      3 workflow/benchmark-checklist
+      2 workflow/maintain-verification-skill
+      1 workflow/verify-change
+      1 workflow/tdd-as-orchestra
+      1 workflow/create-verification-skill
+
+## 权威输入
+(以上为空表示字节不变)
+
+## README 改动

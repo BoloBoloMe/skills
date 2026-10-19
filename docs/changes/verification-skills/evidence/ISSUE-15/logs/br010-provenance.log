@@ -1,0 +1,13 @@
+## BR-010 复用 ISSUE-13 的机检脚本
+checks=50 failures=0
+OK 两个复刻包的许可, 固定来源与逐项差异记录可读
+exit=0
+
+## 两个 LICENSE sha256 与上游对照
+bc957ca6bee02792566a1a028d105e02e247c6e77cf057061674273da77b200e  workflow/blast-radius/LICENSE
+bc957ca6bee02792566a1a028d105e02e247c6e77cf057061674273da77b200e  workflow/benchmark-checklist/LICENSE
+bc957ca6bee02792566a1a028d105e02e247c6e77cf057061674273da77b200e  docs/changes/verification-skills/evidence/ISSUE-13/upstream/pstack-LICENSE.txt
+
+## 固定 SHA 出现处
+workflow/benchmark-checklist/reference/PROVENANCE.md:3
+workflow/blast-radius/reference/PROVENANCE.md:3
