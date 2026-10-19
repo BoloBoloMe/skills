@@ -1,0 +1,21 @@
+round=1 mode=old elapsed_ms=103.70
+round=1 mode=new elapsed_ms=75.42
+round=2 mode=old elapsed_ms=103.61
+round=2 mode=new elapsed_ms=75.23
+round=3 mode=old elapsed_ms=103.13
+round=3 mode=new elapsed_ms=75.11
+round=4 mode=old elapsed_ms=103.15
+round=4 mode=new elapsed_ms=75.27
+round=5 mode=old elapsed_ms=103.16
+round=5 mode=new elapsed_ms=74.96
+round=6 mode=old elapsed_ms=102.96
+round=6 mode=new elapsed_ms=75.03
+round=7 mode=old elapsed_ms=103.09
+round=7 mode=new elapsed_ms=74.94
+summary mode=old n=7 median_ms=103.15 min_ms=102.96 max_ms=103.70 range_ms=0.74
+summary mode=new n=7 median_ms=75.11 min_ms=74.94 max_ms=75.42 range_ms=0.48
+work old_written_ok=7 new_written_ok=7 of=7
+errors old_failed=0 new_failed=0 old_ok=7 new_ok=7
+profile_only_not_report=true
+stages_ms parse=24.00 normalize=12.00 render=30.00 write=8.00 total=74.00
+stage_share parse=32.4% normalize=16.2% render=40.5% write=10.8%

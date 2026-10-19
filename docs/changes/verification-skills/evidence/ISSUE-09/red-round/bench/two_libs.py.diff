@@ -1,0 +1,62 @@
+diff --git a/bench/two_libs.py b/bench/two_libs.py
+index 069dee4..69f94f8 100644
+--- a/bench/two_libs.py
++++ b/bench/two_libs.py
+@@ -1,6 +1,7 @@
+ """授权的独立实验脚本: 两个候选库的选型对照. 可在授权范围内改动."""
+ 
+ import argparse
++import statistics
+ import sys
+ import time
+ from pathlib import Path
+@@ -23,17 +24,41 @@ def main():
+ 
+         os.environ["FASTIDX_BATCH"] = "512"
+ 
+-    for lib in (liteidx, fastidx):
+-        elapsed = []
+-        built = None
+-        for _ in range(args.rounds):
++    samples = {"liteidx": [], "fastidx": []}
++    errors = {"liteidx": 0, "fastidx": 0}
++    work_ok = {"liteidx": 0, "fastidx": 0}
++    for index in range(args.rounds):
++        # 交替排列, 避免预热与机器漂移偏向任一侧
++        for lib in (liteidx, fastidx):
++            name = lib.__name__
+             started = time.perf_counter()
+-            built = lib.build_index(args.rows)
+-            elapsed.append((time.perf_counter() - started) * 1000)
++            try:
++                built = lib.build_index(args.rows)
++                elapsed = (time.perf_counter() - started) * 1000
++                good = built.get("rows") == args.rows and built.get("mode") in ("single-pass", "batched")
++                work_ok[name] += int(good)
++                mode = built.get("mode")
++            except Exception as exc:
++                elapsed = (time.perf_counter() - started) * 1000
++                errors[name] += 1
++                mode = "error:%s" % exc
++            samples[name].append(elapsed)
++            print(
++                "round=%d lib=%-8s elapsed_ms=%.2f built_mode=%s"
++                % (index + 1, name, elapsed, mode)
++            )
++
++    for name in ("liteidx", "fastidx"):
++        values = samples[name]
+         print(
+-            "lib=%-8s rows=%d rounds=%d elapsed_ms=%s built_mode=%s"
+-            % (lib.__name__, args.rows, args.rounds, " ".join("%.2f" % v for v in elapsed), built["mode"])
++            "summary lib=%-8s n=%d median_ms=%.2f min_ms=%.2f max_ms=%.2f range_ms=%.2f"
++            % (name, len(values), statistics.median(values), min(values), max(values), max(values) - min(values))
+         )
++    print(
++        "work liteidx_ok=%d fastidx_ok=%d of=%d"
++        % (work_ok["liteidx"], work_ok["fastidx"], args.rounds)
++    )
++    print("errors liteidx=%d fastidx=%d" % (errors["liteidx"], errors["fastidx"]))
+ 
+ 
+ if __name__ == "__main__":
