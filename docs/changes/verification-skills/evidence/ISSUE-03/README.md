@@ -15,6 +15,7 @@
 - 模型与深度: `cli/deepseek-v4.1-flash-expires-on-0910`, thinking `high`.
 - 启动命令形态: `herdr agent start <会话名> --kind pi --pane <窗格ID> -- --model cli/deepseek-v4.1-flash-expires-on-0910 --thinking high -a`; `-a` 只给该次会话做一次性项目信任, 未改全局配置.
 - 加载方式: 把待测目录复制到临时项目的 `.agents/skills/verify-change/`, 在项目 cwd 开新 pi 会话, 用 `/skill:verify-change <任务>` 点名加载. 每个会话启动画面与 `~/.pi/agent/sessions/` 记录都显示加载的是项目内这份文件.
+- 任务提交渠道: `herdr pane send-text <窗格ID> '<任务文本>'` 加上 `herdr agent send-keys <会话名> "alt+\\"` 提交; 用 `herdr agent read <窗格ID> --source recent-unwrapped` 读回, 完整记录另存 `sessions/`.
 - 验收者由指挥者在演练中自行新开: 它们同样加载项目内的 `.agents/skills/verify-change/`, 但只执行自己的任务书.
 
 ## 实现基线与目标提交
@@ -34,17 +35,17 @@ cd /tmp/orchestra-03/author && git show --format= --no-color HEAD | sha256sum
 
 脚本: `setup-drills.sh` (基础夹具), `setup-heavy-drills.sh` (批量型三组夹具), `setup-micro-drill.sh` (微检查组夹具). 全部只写 `/tmp/orchestra-03/`, 产品标准经 `workflow/to-spec/ac-draft.py preview/promote` 真实转正并带 `<!-- confirmed-flow: v1 -->`, 转正后再跑 `check-ac.py` 通过.
 
-| 夹具 | 目标提交 | 场景数 | 审计 BR | 说明 |
-| --- | --- | --- | --- | --- |
-| `/tmp/orchestra-03/red-delegation` | `93ba124b07ddc1c9cd845a9f7f4256fc6dee8294` | 5 | 1 | 红演练: 单条命令场景 |
-| `/tmp/orchestra-03/red-plan` | `f98bbfebfd974fd68a9f8f3b3ec616fdda637b44` | 3 | 1 | 红演练: 3 个只读检查, 共用 `dist/app.txt` |
-| `/tmp/orchestra-03/green-non-author` | `2028383100c4d5c65789c3a56b13c44d6eba8da2` | 5 | 1 | 绿: AC-004-1, 工作量小, 只用于委派 |
-| `/tmp/orchestra-03/green-two-groups` | `ceda596ed3a3e96d4348a466a98c5d1c625921dd` | 3 | 1 | 绿: 2 组, 2 人可用 |
-| `/tmp/orchestra-03/heavy/three-groups-3avail` | `c0505dee33c9c78ffaaf61f88e05e041a7e29402` | 8 | 1 | 绿: 3 组批量检查, 3 人可用 |
-| `/tmp/orchestra-03/heavy/three-groups-2avail` | `c0505dee33c9c78ffaaf61f88e05e041a7e29402` | 8 | 1 | 绿: 同一夹具, 2 人可用 |
-| `/tmp/orchestra-03/green-single-group` | `42c51b8a51c216d5689a1c918c319ae4474aafd6` | 2 | 1 | 绿: 单一不可分组, 3 人可用 |
-| `/tmp/orchestra-03/micro2/micro-groups` | `5d3765e9b0d8228b8738a75ea69baef048402c45` | 3 | 0 | 绿: 3 个微检查共用 22 秒准备, 3 人可用 |
-| `/tmp/orchestra-03/green-blocked` | `ce3fefedde8bd9059a9828b9642011242e302206` | 5 | 1 | 绿: 无可用非作者 (受控条件) |
+| 夹具 | 起始提交 (初始化) | 目标提交 | 场景数 | 审计 BR | 说明 |
+| --- | --- | --- | --- | --- | --- |
+| `/tmp/orchestra-03/red-delegation` | `c6a3745d7fc51055c0ff74b2ff75c22962973073` | `93ba124b07ddc1c9cd845a9f7f4256fc6dee8294` | 5 | 1 | 红演练: 单条命令场景 |
+| `/tmp/orchestra-03/red-plan` | `4eeabf35f5567f30512a331f1a75060f2f35272b` | `f98bbfebfd974fd68a9f8f3b3ec616fdda637b44` | 3 | 1 | 红演练: 3 个只读检查, 共用 `dist/app.txt` |
+| `/tmp/orchestra-03/green-non-author` | `adb566049dc92e4f47f3ed08880f88d2602a2249` | `2028383100c4d5c65789c3a56b13c44d6eba8da2` | 5 | 1 | 绿: AC-004-1, 工作量小, 只用于委派 |
+| `/tmp/orchestra-03/green-two-groups` | `253a873e0b18642e7207507b54f81676cb8793ee` | `ceda596ed3a3e96d4348a466a98c5d1c625921dd` | 3 | 1 | 绿: 2 组, 2 人可用 |
+| `/tmp/orchestra-03/heavy/three-groups-3avail` | `38724d1f3d249b8f2f5a6478700d2373b1923853` | `c0505dee33c9c78ffaaf61f88e05e041a7e29402` | 8 | 1 | 绿: 3 组批量检查, 3 人可用 |
+| `/tmp/orchestra-03/heavy/three-groups-2avail` | `38724d1f3d249b8f2f5a6478700d2373b1923853` | `c0505dee33c9c78ffaaf61f88e05e041a7e29402` | 8 | 1 | 绿: 同一夹具, 2 人可用 |
+| `/tmp/orchestra-03/green-single-group` | `b0cde8238ee84b94ce0e3f7a39142e75f58a65af` | `42c51b8a51c216d5689a1c918c319ae4474aafd6` | 2 | 1 | 绿: 单一不可分组, 3 人可用 |
+| `/tmp/orchestra-03/micro2/micro-groups` | 目标提交的父提交 (哈希未保留, 见限制) | `5d3765e9b0d8228b8738a75ea69baef048402c45` | 3 | 0 | 绿: 3 个微检查共用 22 秒准备, 3 人可用 |
+| `/tmp/orchestra-03/green-blocked` | `6989bc2e57b111b06ad606c264f61a0accacd2a7` | `ce3fefedde8bd9059a9828b9642011242e302206` | 5 | 1 | 绿: 无可用非作者 (受控条件) |
 
 演练结束后各夹具的 git 状态见 `logs/fixture-status.txt`: 已跟踪源码, 配置, 测试的 `git diff` 全部为空, 唯一新增是各轮证据目录 (未跟踪); `dist/`, `__pycache__/` 在 `.gitignore` 内. 演练没有修改被验项目的产品代码.
 
@@ -126,4 +127,5 @@ cd /tmp/orchestra-03/author && git show --format= --no-color HEAD | sha256sum
 
 - 结论只覆盖本记录的组合: 上述源文件版本 + herdr 0.9.4 + pi 1.3.0 + 该模型与思考深度 + 项目 `.agents/skills/` 加载方式. 其他运行时或全局部署未验证.
 - "没有可用非作者会话"是受控条件 (任务声明 + 会话清单), 不是真实配额系统耗尽.
+- `micro2/micro-groups` 的初始提交哈希没有单独保存 (临时项目删除时只留了目标提交); 它的初始化内容由 `setup-micro-drill.sh` 完整可重建, 目标提交的父提交即初始提交.
 - 并行执行顺序, 证据共享与复验属 ISSUE-04, 本目录不承诺.
