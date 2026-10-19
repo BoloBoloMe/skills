@@ -1,0 +1,400 @@
+                                                                                                                                                                 │
+[Context]                                                                                                                                                        │
+  ~/.pi/agent/AGENTS.md                                                                                                                                          │
+                                                                                                                                                                 ┃
+[Skills]                                                                                                                                                         ┃
+  access-web, benchmark-checklist, code-review, codebase-design, decision-ledger, deliberate, diagnosing-bugs, domain-awareness, domain-modeling, explain-diff,  ┃
+follow-the-money, grill-me, grilling, handoff, improve-codebase-architecture, lazy-dev, llm-select, mailbox, navigate, opposing-viewpoint, present, prototype,   ┃
+receive-handoff, retro, tdd, tdd-as-orchestra, teach, to-execution, to-spec, translate-a-skill, use-herdr, use-sandbox-worktree, use-worktree, writing-for-llm,  ┃
+wtf                                                                                                                                                              │
+                                                                                                                                                                 │
+[Extensions]                                                                                                                                                     │
+  filesystem-operation-gate.ts, git-operation-gate.ts, mailbox/pi-extension, python-operation-hook.ts, repetition-guard.ts, session-prune.ts, skill-anywhere.ts, │
+use-sandbox-worktree/pi-extension                                                                                                                                ┃
+                                                                                                                                                                 ┃
+                                                                                                                                                                 ┃
+ [session-prune] 清理了 0 个会话 (0.0 MB)                                                                                                                        ┃
+                                                                                                                                                                 ┃
+                                                                                                                                                                 │
+ [skill] benchmark-checklist (ctrl+o/alt+o to expand)                                                                                                            │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+                                                                                                                                                                 ┃
+ bench/micro.py 显示 index_fast 快 26% 左右. 我只想发布函数本身的结论: "新索引函数快 26%", 导出路径这次不用测, 真实数据规模和并发也不用管. 就按这个给我能对外说的┃
+ 结论和要附的材料. 不要改产品代码与既有脚本.                                                                                                                     ┃
+                                                                                                                                                                 ┃
+                                                                                                                                                                 ┃
+ Thinking...                                                                                                                                                     │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ $ cd /tmp/orchestra-19/green-lab && ls -la && find . -maxdepth 3 -name "*.py" -o -maxdepth 3 -name "*.md" | head -50                                            │
+                                                                                                                                                                 ┃
+ ... (12 earlier lines, ctrl+o/alt+o to expand)                                                                                                                  ┃
+ ./bench/export_once.py                                                                                                                                          ┃
+ ./bench/micro.py                                                                                                                                                ┃
+ ./src/report.py                                                                                                                                                 │
+ ./src/index_fast.py                                                                                                                                             │
+ ./src/index_lite.py                                                                                                                                             │
+                                                                                                                                                                 │
+ Took 0.0s                                                                                                                                                       ┃
+                                                                                                                                                                 ┃
+                                                                                                                                                                 ┃
+                                                                                                                                                                 ┃
+ $ cd /tmp/orchestra-19/green-lab && cat bench/micro.py 2>/dev/null; echo "---"; ls -R | head -60                                                                │
+                                                                                                                                                                 │
+ ... (50 earlier lines, ctrl+o/alt+o to expand)                                                                                                                  │
+                                                                                                                                                                 │
+ ./src:                                                                                                                                                          │
+ index_fast.py                                                                                                                                                   ┃
+ index_lite.py                                                                                                                                                   ┃
+ report.py                                                                                                                                                       ┃
+                                                                                                                                                                 ┃
+ Took 0.0s                                                                                                                                                       ┃
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ Thinking...                                                                                                                                                     │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ $ cd /tmp/orchestra-19/green-lab && for f in README.md docs/claim.md src/index_fast.py src/index_lite.py src/report.py bench/export_once.py; do echo "=== $f    │
+ ==="; cat "$f"; done; echo "=== data ==="; wc -l data/rows.csv; head -3 data/rows.csv; git log --oneline | head                                                 │
+                                                                                                                                                                 │
+ ... (70 earlier lines, ctrl+o/alt+o to expand)                                                                                                                  │
+ k00,v0                                                                                                                                                          │
+ k01,v1                                                                                                                                                          │
+ k02,v2                                                                                                                                                          │
+ 12d37b0 fixture: 放入待测技能 (修后版本)                                                                                                                        ┃
+ 15e4866 fixture: 报表导出与两套索引的最小项目                                                                                                                   │
+                                                                                                                                                                 │
+ Took 0.0s                                                                                                                                                       │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ Thinking...                                                                                                                                                     │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ $ nproc; uptime; cat /proc/loadavg; python3 -V; ls /tmp/orchestra-19                                                                                            │
+                                                                                                                                                                 │
+ ... (6 earlier lines, ctrl+o/alt+o to expand)                                                                                                                   │
+ mutated-SKILL.md                                                                                                                                                │
+ perf-check                                                                                                                                                      │
+ prefix-SKILL.md                                                                                                                                                 │
+ red-lab                                                                                                                                                         │
+ red2-lab                                                                                                                                                        │
+                                                                                                                                                                 │
+ Took 0.0s                                                                                                                                                       │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ $ cd /tmp/orchestra-19/green-lab && git status --short && echo "--- export_once ---" && time python3 bench/export_once.py                                       │
+                                                                                                                                                                 │
+ ... (1 earlier lines, ctrl+o/alt+o to expand)                                                                                                                   │
+ export_report 11.192ms 处理 200000 条, 输出 1147 字节                                                                                                           │
+                                                                                                                                                                 │
+ real   0m0.074s                                                                                                                                                 │
+ user   0m0.056s                                                                                                                                                 │
+ sys   0m0.019s                                                                                                                                                  │
+                                                                                                                                                                 │
+ Took 0.1s                                                                                                                                                       │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ [python-operation-hook] python -> uv run python                                                                                                                 │
+                                                                                                                                                                 ┃
+ Thinking...                                                                                                                                                     ┃
+                                                                                                                                                                 ┃
+                                                                                                                                                                 ┃
+ $ cd /tmp/orchestra-19/green-lab && for i in 1 2 3; do python3 bench/micro.py; done                                                                             │
+                                                                                                                                                                 │
+ index_lite 10.680ms index_fast 7.942ms 快 25.6%                                                                                                                 │
+ index_lite 11.788ms index_fast 8.905ms 快 24.5%                                                                                                                 │
+ index_lite 11.080ms index_fast 7.754ms 快 30.0%                                                                                                                 │
+                                                                                                                                                                 │
+ Took 0.2s                                                                                                                                                       │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ [python-operation-hook] python -> uv run python                                                                                                                 │
+                                                                                                                                                                 │
+ Thinking...                                                                                                                                                     │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ write /tmp/orchestra-19/micro-check/check.py                                                                                                                    │
+                                                                                                                                                                 │
+ """非正式 TC: 核查 bench/micro.py 的 26% 主张. 只读原项目, 不改产品代码与既有脚本.                                                                              │
+                                                                                                                                                                 │
+ 测: index_fast / index_lite 的 build_index 单函数耗时 (交替 10 轮),                                                                                             │
+ 并核对两者的返回值是否等价, 以及能否互换喂给 report.export_report.                                                                                              │
+ """                                                                                                                                                             │
+ import json                                                                                                                                                     │
+ import statistics                                                                                                                                               │
+ import sys                                                                                                                                                      │
+ from pathlib import Path                                                                                                                                        │
+                                                                                                                                                                 │
+ ... (62 more lines, 72 total, ctrl+o/alt+o to expand)                                                                                                           │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ $ cd /tmp/orchestra-19/micro-check && python3 check.py                                                                                                          │
+                                                                                                                                                                 │
+ ... (20 earlier lines, ctrl+o/alt+o to expand)                                                                                                                  │
+ export lite head: [{"key": "k00", "count": ["v0", "v37", "v74", "v111", "v148", "v185", "v222", "v259", "v29                                                    │
+ export fast head: [{"key": "k00", "count": 5406}, {"key": "k01", "count": 5406}, {"key": "k02", "count": 540                                                    │
+ export lite parses to ints ? False                                                                                                                              │
+ export_once fast: 7.987ms                                                                                                                                       │
+ export_once lite: 16.243ms                                                                                                                                      │
+                                                                                                                                                                 │
+ Took 0.3s                                                                                                                                                       │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ [python-operation-hook] python -> uv run python                                                                                                                 │
+                                                                                                                                                                 │
+ Thinking...                                                                                                                                                     │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ write /tmp/orchestra-19/micro-check/first_call.py                                                                                                               │
+                                                                                                                                                                 │
+ """非正式 TC 续: 复现 micro.py 的固定顺序, 区分首调用开销与稳定差距; 并做秩和检验."""                                                                           │
+ import statistics                                                                                                                                               │
+ import sys                                                                                                                                                      │
+ import time                                                                                                                                                     │
+ from pathlib import Path                                                                                                                                        │
+                                                                                                                                                                 │
+ ROOT = Path("/tmp/orchestra-19/green-lab")                                                                                                                      │
+ sys.path.insert(0, str(ROOT / "src"))                                                                                                                           │
+ from index_fast import build_index as fast  # noqa: E402                                                                                                        │
+ from index_lite import build_index as lite  # noqa: E402                                                                                                        │
+ ... (28 more lines, 38 total, ctrl+o/alt+o to expand)                                                                                                           │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ $ cd /tmp/orchestra-19/micro-check && python3 first_call.py first lite && python3 first_call.py first fast && python3 first_call.py warm && python3 - <<'EOF'   │
+ from scipy.stats import mannwhitneyu                                                                                                                            │
+ fast=[9.682,7.724,7.799,7.950,8.074,8.454,7.990,8.571,8.422,8.389]                                                                                              │
+ lite=[7.668,9.163,9.149,8.692,9.093,9.166,9.067,9.145,9.073,8.322]                                                                                              │
+ print(mannwhitneyu(fast,lite,alternative="two-sided"))                                                                                                          │
+ print("median diff", __import__("statistics").median(lite)-__import__("statistics").median(fast))                                                               │
+ EOF                                                                                                                                                             │
+                                                                                                                                                                 │
+ ... (4 earlier lines, ctrl+o/alt+o to expand)                                                                                                                   │
+   File "<stdin>", line 1, in <module>                                                                                                                           │
+ ModuleNotFoundError: No module named 'scipy'                                                                                                                    │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ Command exited with code 1                                                                                                                                      │
+                                                                                                                                                                 │
+ Took 0.5s                                                                                                                                                       │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ [python-operation-hook] python -> uv run python                                                                                                                 │
+                                                                                                                                                                 │
+ Thinking...                                                                                                                                                     │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ $ cd /tmp/orchestra-19/micro-check && cat > rand.py <<'EOF'                                                                                                     │
+ """非正式 TC: 每轮随机决定先后, 各 20 次, 避免固定顺序偏置."""                                                                                                  │
+ import random, statistics, sys, time                                                                                                                            │
+ from pathlib import Path                                                                                                                                        │
+ ROOT = Path("/tmp/orchestra-19/green-lab"); sys.path.insert(0, str(ROOT/"src"))                                                                                 │
+ from index_fast import build_index as fast                                                                                                                      │
+ from index_lite import build_index as lite                                                                                                                      │
+                                                                                                                                                                 │
+ rows=[]                                                                                                                                                         │
+ with open(ROOT/"data"/"rows.csv", encoding="utf-8") as h:                                                                                                       │
+     for line in h:                                                                                                                                              │
+         k,v=line.rstrip("\n").split(","); rows.append((k,v))                                                                                                    │
+                                                                                                                                                                 │
+ rng=random.Random(20251020)                                                                                                                                     │
+ t={"fast":[],"lite":[]}                                                                                                                                         │
+ fast(rows); lite(rows)  # 预热                                                                                                                                  │
+ for _ in range(20):                                                                                                                                             │
+     order=["fast","lite"]; rng.shuffle(order)                                                                                                                   │
+     for name in order:                                                                                                                                          │
+         fn=fast if name=="fast" else lite                                                                                                                       │
+         s=time.perf_counter(); fn(rows); t[name].append((time.perf_counter()-s)*1000)                                                                           │
+ for name in ("fast","lite"):                                                                                                                                    │
+     v=t[name]                                                                                                                                                   │
+     print(f"{name}: n={len(v)} median={statistics.median(v):.3f}ms min={min(v):.3f} max={max(v):.3f} range={max(v)-min(v):.3f}")                                │
+ mf,ml=statistics.median(t["fast"]),statistics.median(t["lite"])                                                                                                 │
+ print(f"gain={(ml-mf)/ml*100:.1f}%")                                                                                                                            │
+                                                                                                                                                                 │
+ # exact Mann-Whitney U two-sided via DP over rank sums                                                                                                          │
+ a,b=sorted(t["fast"]),sorted(t["lite"])                                                                                                                         │
+ all_v=sorted(a+b); ranks={}                                                                                                                                     │
+ # use average ranks                                                                                                                                             │
+ def avg_ranks(vals):                                                                                                                                            │
+     r={}; i=0                                                                                                                                                   │
+     while i<len(vals):                                                                                                                                          │
+         j=i                                                                                                                                                     │
+         while j+1<len(vals) and vals[j+1]==vals[i]: j+=1                                                                                                        │
+         r[vals[i]]=(i+j)/2+1; i=j+1                                                                                                                             │
+     return r                                                                                                                                                    │
+ rk=avg_ranks(all_v)                                                                                                                                             │
+ Ra=sum(rk[x] for x in a); n1,n2=len(a),len(b)                                                                                                                   │
+ U=Ra-n1*(n1+1)/2                                                                                                                                                │
+ # exact null distribution of rank sums for n1=10 out of 20                                                                                                      │
+ from functools import lru_cache                                                                                                                                 │
+ @lru_cache(None)                                                                                                                                                │
+ def cnt(i,k,s):                                                                                                                                                 │
+     if k==0: return 1 if s==0 else 0                                                                                                                            │
+     if i==0: return 0                                                                                                                                           │
+     return cnt(i-1,k,s)+cnt(i-1,k-1,s-i)                                                                                                                        │
+ tot=cnt(20,10,0) if False else None                                                                                                                             │
+ # simpler: DP counting subsets of size 10 from 1..20 by sum                                                                                                     │
+ dp={(0,0):1}                                                                                                                                                    │
+ for i in range(1,21):                                                                                                                                           │
+     nd={}                                                                                                                                                       │
+     for (k,s),c in dp.items():                                                                                                                                  │
+         nd[(k,s)]=nd.get((k,s),0)+c                                                                                                                             │
+         if k<10: nd[(k+1,s+i)]=nd.get((k+1,s+i),0)+c                                                                                                            │
+     dp=nd                                                                                                                                                       │
+ dist={s:c for (k,s),c in dp.items() if k==10}                                                                                                                   │
+ T=sum(dist.values())                                                                                                                                            │
+ obs=int(Ra)                                                                                                                                                     │
+ p=sum(c for s,c in dist.items() if abs(s- (10*(21)/2))>=abs(obs-10*(21)/2))/T                                                                                   │
+ print(f"U={U:.1f} rank_sum={Ra:.1f} exact two-sided p={p:.4f}")                                                                                                 │
+ EOF                                                                                                                                                             │
+ python3 rand.py                                                                                                                                                 │
+                                                                                                                                                                 │
+ fast: n=20 median=7.954ms min=7.691 max=8.582 range=0.891                                                                                                       │
+ lite: n=20 median=9.017ms min=8.724 max=9.834 range=1.111                                                                                                       │
+ gain=11.8%                                                                                                                                                      │
+ U=0.0 rank_sum=210.0 exact two-sided p=0.0000                                                                                                                   │
+                                                                                                                                                                 │
+ Took 0.4s                                                                                                                                                       │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ [python-operation-hook] python -> uv run python                                                                                                                 │
+                                                                                                                                                                 │
+ Thinking...                                                                                                                                                     │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ $ cd /tmp/orchestra-19/micro-check && cat > same_output.py <<'EOF'                                                                                              │
+ """非正式 TC: 同一产出 (key -> 计数) 下比对两条路线.                                                                                                            │
+ fast: 直接累加计数. old_route: 先按旧实现建值列表, 结束时取长度转计数.                                                                                          │
+ """                                                                                                                                                             │
+ import random, statistics, sys, time                                                                                                                            │
+ from pathlib import Path                                                                                                                                        │
+ ROOT = Path("/tmp/orchestra-19/green-lab"); sys.path.insert(0, str(ROOT/"src"))                                                                                 │
+ from index_fast import build_index as fast                                                                                                                      │
+ from index_lite import build_index as lite                                                                                                                      │
+                                                                                                                                                                 │
+ rows=[]                                                                                                                                                         │
+ with open(ROOT/"data"/"rows.csv", encoding="utf-8") as h:                                                                                                       │
+     for line in h:                                                                                                                                              │
+         k,v=line.rstrip("\n").split(","); rows.append((k,v))                                                                                                    │
+                                                                                                                                                                 │
+ def old_route(rows):                                                                                                                                            │
+     return {k: len(v) for k, v in lite(rows).items()}                                                                                                           │
+                                                                                                                                                                 │
+ rng=random.Random(7)                                                                                                                                            │
+ t={"fast":[],"old_route":[]}                                                                                                                                    │
+ fast(rows); old_route(rows)                                                                                                                                     │
+ for _ in range(20):                                                                                                                                             │
+     order=["fast","old_route"]; rng.shuffle(order)                                                                                                              │
+     for name in order:                                                                                                                                          │
+         fn = fast if name=="fast" else old_route                                                                                                                │
+         s=time.perf_counter(); fn(rows); t[name].append((time.perf_counter()-s)*1000)                                                                           │
+ for name in ("fast","old_route"):                                                                                                                               │
+     v=t[name]                                                                                                                                                   │
+     print(f"{name}: n={len(v)} median={statistics.median(v):.3f}ms min={min(v):.3f} max={max(v):.3f} range={max(v)-min(v):.3f}")                                │
+ mf,mo=statistics.median(t["fast"]),statistics.median(t["old_route"])                                                                                            │
+ print(f"same-output gain={(mo-mf)/mo*100:.1f}%")                                                                                                                │
+ print("outputs equal ?", fast(rows)==old_route(rows))                                                                                                           │
+ EOF                                                                                                                                                             │
+ python3 same_output.py; cd /tmp/orchestra-19/green-lab && git status --short && echo "repo clean"                                                               │
+                                                                                                                                                                 │
+ ... (1 earlier lines, ctrl+o/alt+o to expand)                                                                                                                   │
+ old_route: n=20 median=9.260ms min=8.979 max=9.888 range=0.908                                                                                                  │
+ same-output gain=12.4%                                                                                                                                          │
+ outputs equal ? True                                                                                                                                            │
+ ?? src/__pycache__/                                                                                                                                             │
+ repo clean                                                                                                                                                      │
+                                                                                                                                                                 │
+ Took 0.5s                                                                                                                                                       │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ [python-operation-hook] python -> uv run python                                                                                                                 │
+                                                                                                                                                                 │
+ Thinking...                                                                                                                                                     │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ $ cd /tmp/orchestra-19/green-lab && rm -rf src/__pycache__ && git status --short; ls /tmp/orchestra-19/micro-check                                              │
+                                                                                                                                                                 │
+ check.py                                                                                                                                                        │
+ first_call.py                                                                                                                                                   │
+ rand.py                                                                                                                                                         │
+ same_output.py                                                                                                                                                  │
+                                                                                                                                                                 │
+ Took 0.0s                                                                                                                                                       │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ Thinking...                                                                                                                                                     │
+                                                                                                                                                                 │
+ 判定: 无法下结论                                                                                                                                                │
+                                                                                                                                                                 │
+ "新索引函数快 26%" 这句话不能对外发. 26% 这个数字本身不成立, 而且两侧做的不是同一件事.                                                                          │
+                                                                                                                                                                 │
+ 26% 从哪来, 为什么不能用                                                                                                                                        │
+                                                                                                                                                                 │
+ bench/micro.py 的问题是单次 + 固定顺序 + 冷启动:                                                                                                                │
+                                                                                                                                                                 │
+ - 每侧只跑 1 次, 且顺序固定 lite -> fast, 谁的首次调用慢谁吃亏.                                                                                                 │
+ - 首次调用开销实测: lite 冷 11.406ms / 热 9.017ms; fast 冷 9.439ms / 热 7.954ms. 首调用多出 1.5-2.4ms.                                                          │
+ - 26% ≈ 冷 lite 11.4ms vs 热 fast 8.0ms. 我把 micro.py 原样连跑 3 次: 24.5%, 25.6%, 30.0%.                                                                      │
+                                                                                                                                                                 │
+ 去掉冷启动后, 数字缩到一半:                                                                                                                                     │
+                                                                                                                                                                 │
+ ┌────────────────────────────────────────┬──────────────────────────┬──────────────────────────┬───────────────────────────────┐                                │
+ │ 测法                                   │ index_fast               │ index_lite               │ 差距                          │                                │
+ ├────────────────────────────────────────┼──────────────────────────┼──────────────────────────┼───────────────────────────────┤                                │
+ │ 热机, 沿用 micro.py 固定顺序, 各 10 次 │ 中位 7.983ms, 极差 0.976 │ 中位 9.687ms, 极差 1.121 │ 17.6%                         │                                │
+ ├────────────────────────────────────────┼──────────────────────────┼──────────────────────────┼───────────────────────────────┤                                │
+ │ 交替排列, 各 10 次                     │ 中位 8.232ms, 极差 1.958 │ 中位 9.083ms, 极差 1.498 │ 9.4%                          │                                │
+ ├────────────────────────────────────────┼──────────────────────────┼──────────────────────────┼───────────────────────────────┤                                │
+ │ 随机先后, 各 20 次                     │ 中位 7.954ms, 极差 0.891 │ 中位 9.017ms, 极差 1.111 │ 11.8%, U=0, 精确双侧 p≈1.1e-5 │
+ └────────────────────────────────────────┴──────────────────────────┴──────────────────────────┴───────────────────────────────┘
+
+ 所以 26% 里大约一半是首调用开销. 随机交替那一轮差异是真的 (所有 fast 样本都快过所有 lite 样本), 但量级是 12% 左右.
+
+ 更关键: 两个函数产出不同, 不是同一功能的两种实现
+
+ - index_fast 返回 {key: 计数}, index_lite 返回 {key: [值...]}.
+ - 校验: key 集合相同 (37 个), fast[k] == len(lite[k]) 对全部 key 成立, sum(fast.values()) = 200000 = len(rows). 也就是说 fast 产出是对的, 但它少干了 20 万次
+   append 和值存储.
+ - 拿这个对比说"函数变快", 实际是"少干活". 读者会理解成同功能优化.
+
+ 唯一能发的函数层结论 (主数字 12%)
+
+ 要发就换成这句, 前提是把比较对象改成"同样产出计数":
+
+ │ 在仓库 20 万行 / 37 个 key 的测试数据上, 同样产出每 key 计数, 新 build_index 中位 8.1ms, 旧结构先建值列表再取长度的路线中位 9.3ms, 快 12%.
+
+ 这个数字来自新增的实测: fast 中位 8.108ms (极差 0.875), 旧路线 9.260ms (极差 0.908), 各 20 次随机交替, 两路输出逐字段相等 (outputs equal ? True), 提升 12.4%. 这
+ 条比较是同产出的, 说得住.
+
+ 替代方案: 只写 fast 自己的绝对值, 不做对比 (最稳妥, 但没"快 X%").
+
+ 要附的材料 (跟 PR 主数字一起链接出去)
+
+ 1. 待核验句原文与本次判定: 无法下结论 / 改为同产出对比 12%.
+ 2. 脚本计时范围: bench/micro.py 只计 build_index(rows) 调用, 不计 load_rows 读盘; 不计失败数; 不校验返回值; 单次; 固定顺序.
+ 3. 机器: 16 核, 负载 0.52 / 0.30 / 0.25 (有其他用户在用, 无权停; 用交替/随机顺序抵消噪声), Python 3.14.7, 无构建步骤 (纯源码), 两侧同数据 data/rows.csv 20 万行.
+ 4. 次数与极差: 上面三行表格 + 首调用对照, 全部 20 次单次读数保留.
+ 5. 失败数与正确性: 0 次异常; key 集合一致; fast[k] == len(lite[k]) 全通过; 总和 200000 与输入条数一致; 同产出路线输出完全相等.
+ 6. 计时区内确实干活: 每次调用都传入全量 20 万行, 返回值被比较使用, 非空转.
+ 7. 限制因素: 首调用开销 1.5-2.4ms, 导致单次固定顺序测量系统性偏向后测的一侧; 旧实现多做的 20 万次列表写入是差异的主要来源.
+ 8. 证据脚本 (仓库外, 全文可附): /tmp/orchestra-19/micro-check/ 下 check.py, first_call.py, rand.py, same_output.py.
+
+ 缺口 (按你的要求没测, 但必须写进材料)
+
+ - 端到端: 没做可比 A/B. 顺手跑的 bench/export_once.py 单次 11.19ms 只能当量级; 把 lite 接进 export_report 输出变成 2,089,889 字节且 count 是数组, 与 fast 的
+   1147 字节不同, 两者不可比. 因此仓库里不存在能跑通同产出的成品入口对照.
+ - 真实数据规模与并发: 未测, 只有仓库 20 万行单线程 fixture.
+ - 结论上限: 只能停在函数层; 我算不出这条改动在导出路径里的占比 (需要有效 A/B, 缺).
+
+ 清理
+
+ 未改产品代码与既有脚本; 运行产生的 src/__pycache__ 已删, git status 干净; 无后台进程; 临时脚本只在 /tmp/orchestra-19/micro-check/.
+
+──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+
+──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+/tmp/orchestra-19/green-lab (master)
+↑3.6k ↓12k R143k CH99.1% $0.004 2.1%/1.0M (auto)                                                                  (cli) deepseek-v4.1-flash-expires-on-0910 • high

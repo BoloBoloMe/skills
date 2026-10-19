@@ -1,0 +1,60 @@
+== 修前版 (分支顶端 5c21b0b 的 SKILL.md) ==
+/tmp/orchestra-19/prefix-SKILL.md:36: 被动残句: 出现 被
+/tmp/orchestra-19/prefix-SKILL.md:38: 破折号: 出现 U+2014
+/tmp/orchestra-19/prefix-SKILL.md:58: 被动残句: 出现 被
+/tmp/orchestra-19/prefix-SKILL.md:60: 被动残句: 出现 被
+/tmp/orchestra-19/prefix-SKILL.md:70: 被动残句: 出现 被
+/tmp/orchestra-19/prefix-SKILL.md:70: 超长句: 29 字: 从可复核的占比材料算出被改动那一段占整条用户路径耗时的比例 r
+/tmp/orchestra-19/prefix-SKILL.md:72: 被动残句: 出现 被
+/tmp/orchestra-19/prefix-SKILL.md:74: 被动残句: 出现 被
+/tmp/orchestra-19/prefix-SKILL.md:78: 被动残句: 出现 被
+/tmp/orchestra-19/prefix-SKILL.md:84: 被动残句: 出现 被
+/tmp/orchestra-19/prefix-SKILL.md:92: 超长句: 31 字: 脚本必须自带错误数 (失败与非成功响应) 与工作量 (处理了多少条数据) 输出
+/tmp/orchestra-19/prefix-SKILL.md:100: 第三人称: 用户
+/tmp/orchestra-19/prefix-SKILL.md:102: 悬空引用: 第 4 问没有节对照
+/tmp/orchestra-19/prefix-SKILL.md:102: 悬空引用: 第 7 问没有节对照
+/tmp/orchestra-19/prefix-SKILL.md:106: 第三人称: 用户
+/tmp/orchestra-19/prefix-SKILL.md:108: 悬空引用: 第 7 问没有节对照
+/tmp/orchestra-19/prefix-SKILL.md:116: 悬空引用: 第 4 问没有节对照
+/tmp/orchestra-19/prefix-SKILL.md:116: 悬空引用: 第 7 问没有节对照
+/tmp/orchestra-19/prefix-SKILL.md:126: 被动残句: 出现 被
+/tmp/orchestra-19/prefix-SKILL.md:0: 悬空引用: 全文没有 第 N 问 到节的对照
+/tmp/orchestra-19/prefix-SKILL.md: 20 处命中
+exit=1
+
+== 变异版 ==
+/tmp/orchestra-19/mutated-SKILL.md:36: 被动残句: 出现 被
+/tmp/orchestra-19/mutated-SKILL.md:38: 破折号: 出现 U+2014
+/tmp/orchestra-19/mutated-SKILL.md:58: 被动残句: 出现 被
+/tmp/orchestra-19/mutated-SKILL.md:60: 被动残句: 出现 被
+/tmp/orchestra-19/mutated-SKILL.md:70: 被动残句: 出现 被
+/tmp/orchestra-19/mutated-SKILL.md:70: 超长句: 29 字: 从可复核的占比材料算出被改动那一段占整条用户路径耗时的比例 r
+/tmp/orchestra-19/mutated-SKILL.md:72: 被动残句: 出现 被
+/tmp/orchestra-19/mutated-SKILL.md:74: 被动残句: 出现 被
+/tmp/orchestra-19/mutated-SKILL.md:78: 被动残句: 出现 被
+/tmp/orchestra-19/mutated-SKILL.md:84: 被动残句: 出现 被
+/tmp/orchestra-19/mutated-SKILL.md:92: 超长句: 31 字: 脚本必须自带错误数 (失败与非成功响应) 与工作量 (处理了多少条数据) 输出
+/tmp/orchestra-19/mutated-SKILL.md:100: 第三人称: 用户
+/tmp/orchestra-19/mutated-SKILL.md:102: 悬空引用: 第 4 问没有节对照
+/tmp/orchestra-19/mutated-SKILL.md:102: 悬空引用: 第 7 问没有节对照
+/tmp/orchestra-19/mutated-SKILL.md:106: 第三人称: 用户
+/tmp/orchestra-19/mutated-SKILL.md:108: 悬空引用: 第 7 问没有节对照
+/tmp/orchestra-19/mutated-SKILL.md:116: 悬空引用: 第 4 问没有节对照
+/tmp/orchestra-19/mutated-SKILL.md:116: 悬空引用: 第 7 问没有节对照
+/tmp/orchestra-19/mutated-SKILL.md:126: 被动残句: 出现 被
+/tmp/orchestra-19/mutated-SKILL.md:0: 悬空引用: 全文没有 第 N 问 到节的对照
+/tmp/orchestra-19/mutated-SKILL.md: 20 处命中
+exit=1
+
+== 交付版 ==
+workflow/benchmark-checklist/SKILL.md: OK
+exit=0
+
+== 自检 ==
+自检命中: 悬空引用
+自检命中: 破折号
+自检命中: 第三人称
+自检命中: 被动残句
+自检命中: 超长句
+自检通过: 合格样本无异报, 违规样本五类规则全覆盖
+exit=0
