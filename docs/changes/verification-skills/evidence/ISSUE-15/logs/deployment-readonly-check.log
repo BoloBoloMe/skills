@@ -1,0 +1,16 @@
+## 全局部署副本只读核查 2026-10-20T02:21:07+08:00
+absent /home/bolo/.agents/skills/verify-change
+absent /home/bolo/.pi/skills/verify-change
+absent /home/bolo/.agents/skills/create-verification-skill
+absent /home/bolo/.pi/skills/create-verification-skill
+absent /home/bolo/.agents/skills/maintain-verification-skill
+absent /home/bolo/.pi/skills/maintain-verification-skill
+absent /home/bolo/.agents/skills/blast-radius
+absent /home/bolo/.pi/skills/blast-radius
+absent /home/bolo/.agents/skills/benchmark-checklist
+absent /home/bolo/.pi/skills/benchmark-checklist
+
+## ~/.agents/skills 现有条目数
+34
+## ~/.pi 顶层
+agent

@@ -1,0 +1,21 @@
+total=296 exact=242 nested=36 drift=3 missing=15
+== drift
+  ISSUE-12: recipe-diff.patch -> 3 个同名候选
+  ISSUE-12: recipe-diff.patch -> 3 个同名候选
+  ISSUE-12: recipe-diff.patch -> 3 个同名候选
+== missing
+  ISSUE-05: drill-green-009-r1/REPORT.md
+  ISSUE-05: drill-green-009-r2/REPORT.md
+  ISSUE-05: drill-green-009-r2/REPORT.md
+  ISSUE-07: workflow/blast-radius/reference/source-record.md
+  ISSUE-07: ts003-wide-raw/report.md
+  ISSUE-07: ts003-wide-raw/merge.md
+  ISSUE-07: drill-ts002
+  ISSUE-07: drill-ts003-wide
+  ISSUE-07: drill-ts003-gap
+  ISSUE-07: drill-ts003-local
+  ISSUE-12: drill-b-verifier
+  ISSUE-12: drill-b
+  ISSUE-12: drill-b-verifier
+  ISSUE-12: drill-c
+  ISSUE-14: green-ts002-fix

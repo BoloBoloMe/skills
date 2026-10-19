@@ -1,0 +1,15 @@
+README.md: hits=0
+docs/changes/verification-skills/evidence/ISSUE-15/AUDIT.md: hits=0
+docs/changes/verification-skills/evidence/ISSUE-15/audit_final.py: hits=0
+docs/changes/verification-skills/evidence/ISSUE-15/green-audit-run2.log: hits=0
+docs/changes/verification-skills/evidence/ISSUE-15/logs/br010-provenance.log: hits=0
+docs/changes/verification-skills/evidence/ISSUE-15/logs/check-skill-six.log: hits=0
+docs/changes/verification-skills/evidence/ISSUE-15/logs/deployment-readonly-check.log: hits=0
+docs/changes/verification-skills/evidence/ISSUE-15/logs/fullwidth-scan.log: hits=0
+docs/changes/verification-skills/evidence/ISSUE-15/logs/handoff-path-sample-suffix.log: hits=0
+docs/changes/verification-skills/evidence/ISSUE-15/logs/handoff-path-sample.log: hits=0
+docs/changes/verification-skills/evidence/ISSUE-15/logs/pytest-full-not-e2e.log: hits=0
+docs/changes/verification-skills/evidence/ISSUE-15/logs/pytest-writing-for-llm.log: hits=0
+docs/changes/verification-skills/evidence/ISSUE-15/logs/scope-git.log: hits=0
+docs/changes/verification-skills/evidence/ISSUE-15/red/red-audit-run1.log: hits=0
+TOTAL_HITS 0

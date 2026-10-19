@@ -1,0 +1,7 @@
+workflow/verify-change/SKILL.md: OK
+workflow/create-verification-skill/SKILL.md: OK
+workflow/maintain-verification-skill/SKILL.md: OK
+workflow/blast-radius/SKILL.md: OK
+workflow/benchmark-checklist/SKILL.md: OK
+workflow/tdd-as-orchestra/SKILL.md: OK
+all six exit 0
