@@ -1,0 +1,5 @@
+### node f2-rows-amount.mjs ../repo/var/orders.export.json
+F2 证实: 遍历 rows 不崩, row.amount 全是 undefined,
+  total 变 NaN (JSON 输出成 null), id 3 的 missing 标记丢失. 静默算错, 无任何报错.
+消费者代码将打印: {"total":null,"missing":[]}
+exit=0

@@ -1,0 +1,13 @@
+### node ledger.js HEAD(var/orders.export.json, 新格式)
+file:///tmp/orchestra-07/orders-consumer/src/ledger.js:6
+for (const row of rows) {
+                  ^
+
+TypeError: rows is not iterable
+    at file:///tmp/orchestra-07/orders-consumer/src/ledger.js:6:19
+    at ModuleJob.run (node:internal/modules/esm/module_job:439:25)
+    at async node:internal/modules/esm/loader:643:26
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:5)
+
+Node.js v24.19.0
+exit=1

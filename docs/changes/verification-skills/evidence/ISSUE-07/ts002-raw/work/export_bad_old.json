@@ -1,0 +1,26 @@
+[
+  {
+    "id": 1,
+    "amount": "12.50"
+  },
+  {
+    "id": 2,
+    "amount": "9.99"
+  },
+  {
+    "id": 3,
+    "amount": null
+  },
+  {
+    "id": 6,
+    "amount": ""
+  },
+  {
+    "id": 8,
+    "amount": "abc"
+  },
+  {
+    "id": 10,
+    "amount": null
+  }
+]

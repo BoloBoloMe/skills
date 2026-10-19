@@ -1,0 +1,13 @@
+tree: /tmp/orchestra-07/out/green-ts001/head-tree
+amountlib.__file__: /tmp/orchestra-07/out/green-ts001/head-tree/amountlib/__init__.py
+amountlib.VERSION: 2.4.0
+id=1 payload={"schema": "v2", "amount": "12.50"} -> '12.50'
+id=2 payload={"schema": "v1", "amount_str": "9.99"} -> '9.99'
+id=3 payload={"schema": "v1", "amount_str": ""} -> None
+id=4 payload={"schema": "v1", "amount_str": "   "} -> None
+id=5 payload={"schema": "v1", "amount_str": "0012.50"} -> '12.50'
+id=6 payload={"schema": "v1", "amount_str": "1e3"} -> '1E+3'
+id=7 payload={"schema": "v1", "amount_str": "1,234.50"} -> EXCEPTION ValueError: 无法解析金额: '1,234.50'
+id=8 payload={"schema": "v1"} -> None
+id=9 payload={"schema": "v2", "amount": null, "amount_str": "9.99"} -> '9.99'
+id=10 payload={"schema": "v2", "amount": "", "amount_str": "9.99"} -> '9.99'

@@ -1,0 +1,4 @@
+CREATE TABLE orders (
+  id INTEGER PRIMARY KEY,
+  payload TEXT NOT NULL
+);

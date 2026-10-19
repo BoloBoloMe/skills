@@ -1,0 +1,17 @@
+repo = /tmp/orchestra-07/out/repo-base
+app.orders file = /tmp/orchestra-07/out/repo-base/app/orders.py
+{"id": 1, "payload": {"schema": "v2", "amount": "12.50"}, "result": [{"id": 1, "amount": "12.50"}]}
+{"id": 2, "payload": {"schema": "v1", "amount_str": "9.99"}, "result": [{"id": 2, "amount": "9.99"}]}
+{"id": 3, "payload": {"schema": "v1", "amount_str": ""}, "result": [{"id": 3, "amount": null}]}
+{"id": 4, "payload": {"schema": "v1", "amount_str": null}, "result": [{"id": 4, "amount": null}]}
+{"id": 5, "payload": {"schema": "v1"}, "result": [{"id": 5, "amount": null}]}
+{"id": 6, "payload": {"schema": "v1", "amount_str": " 9.99 "}, "result": [{"id": 6, "amount": "9.99"}]}
+{"id": 7, "payload": {"schema": "v1", "amount_str": "N/A"}, "result": [{"id": 7, "amount": "N/A"}]}
+{"id": 8, "payload": {"schema": "v1", "amount_str": "1,234.50"}, "result": [{"id": 8, "amount": "1,234.50"}]}
+{"id": 9, "payload": {"schema": "v2", "amount": null, "amount_str": "5.00"}, "result": [{"id": 9, "amount": null}]}
+{"id": 10, "payload": {"schema": "v2", "amount": "", "amount_str": "6.00"}, "result": [{"id": 10, "amount": null}]}
+{"id": 11, "payload": {"schema": "v2", "amount": "0"}, "result": [{"id": 11, "amount": "0"}]}
+{"id": 12, "payload": {"schema": "v1", "amount_str": "0"}, "result": [{"id": 12, "amount": "0"}]}
+{"id": 13, "payload": {"schema": "v1", "amount_str": "   "}, "result": [{"id": 13, "amount": ""}]}
+{"id": 14, "payload": {"schema": "v1", "amount_str": "\t\n"}, "result": [{"id": 14, "amount": ""}]}
+JSON_SUMMARY=[{"id": 1, "payload": {"amount": "12.50", "schema": "v2"}, "result": [{"amount": "12.50", "id": 1}]}, {"id": 2, "payload": {"amount_str": "9.99", "schema": "v1"}, "result": [{"amount": "9.99", "id": 2}]}, {"id": 3, "payload": {"amount_str": "", "schema": "v1"}, "result": [{"amount": null, "id": 3}]}, {"id": 4, "payload": {"amount_str": null, "schema": "v1"}, "result": [{"amount": null, "id": 4}]}, {"id": 5, "payload": {"schema": "v1"}, "result": [{"amount": null, "id": 5}]}, {"id": 6, "payload": {"amount_str": " 9.99 ", "schema": "v1"}, "result": [{"amount": "9.99", "id": 6}]}, {"id": 7, "payload": {"amount_str": "N/A", "schema": "v1"}, "result": [{"amount": "N/A", "id": 7}]}, {"id": 8, "payload": {"amount_str": "1,234.50", "schema": "v1"}, "result": [{"amount": "1,234.50", "id": 8}]}, {"id": 9, "payload": {"amount": null, "amount_str": "5.00", "schema": "v2"}, "result": [{"amount": null, "id": 9}]}, {"id": 10, "payload": {"amount": "", "amount_str": "6.00", "schema": "v2"}, "result": [{"amount": null, "id": 10}]}, {"id": 11, "payload": {"amount": "0", "schema": "v2"}, "result": [{"amount": "0", "id": 11}]}, {"id": 12, "payload": {"amount_str": "0", "schema": "v1"}, "result": [{"amount": "0", "id": 12}]}, {"id": 13, "payload": {"amount_str": "   ", "schema": "v1"}, "result": [{"amount": "", "id": 13}]}, {"id": 14, "payload": {"amount_str": "\t\n", "schema": "v1"}, "result": [{"amount": "", "id": 14}]}]

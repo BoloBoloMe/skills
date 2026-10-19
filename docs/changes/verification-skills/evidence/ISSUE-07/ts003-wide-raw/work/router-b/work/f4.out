@@ -1,0 +1,8 @@
+Using CPython 3.14.7
+Creating virtual environment at: .venv
+HEAD: read_orders -> [{'id': 1, 'amount_value': '12.50'}, {'id': 2, 'amount_value': '9.99'}, {'id': 3, 'amount_value': None}]
+HEAD~1: read_orders -> [{'id': 1, 'amount': '12.50'}, {'id': 2, 'amount': '9.99'}, {'id': 3, 'amount': None}]
+F4 证实: id 1/2/3 金额值 HEAD 与 HEAD~1 完全一致: '12.50', '9.99', None.
+  v1 payload (id 2/3) 因无人注册格式化函数, resolve_amount 返回 None, 走 parse_amount 回退.
+  本次提交只改导出键名与文件外层, 未改 amountlib 与解析路径.
+exit=0

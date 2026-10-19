@@ -1,0 +1,7 @@
+repo = /tmp/orchestra-07/out/repo-base
+app.orders file = /tmp/orchestra-07/out/repo-base/app/orders.py
+amountlib._FORMATTERS keys = ['amount_str']
+hasattr(app.orders, 'format_amount_str') = True
+hasattr(app.orders, 'LEGACY_AMOUNT_KEY') = True
+resolve_amount(v1 9.99) = '9.99'
+resolve_amount(v1 空串) = None

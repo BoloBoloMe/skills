@@ -1,0 +1,26 @@
+{
+  "node": "v24.19.0",
+  "steps": [
+    {
+      "id": 1,
+      "amountIsUndefined": true,
+      "totalIsNaN": true
+    },
+    {
+      "id": 2,
+      "amountIsUndefined": true,
+      "totalIsNaN": true
+    },
+    {
+      "id": 3,
+      "amountIsUndefined": true,
+      "totalIsNaN": true
+    }
+  ],
+  "internalTotalIsNaN": true,
+  "assertions": "PASS"
+}
+{
+  "total": null,
+  "missing": []
+}

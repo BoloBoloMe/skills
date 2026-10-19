@@ -1,0 +1,17 @@
+$ uv run python general/writing-for-llm/check_skill.py workflow/blast-radius/SKILL.md
+workflow/blast-radius/SKILL.md: OK
+exit=0
+
+$ rg -n '[，。；：！？、（）【】]' workflow/blast-radius
+exit=1 (1 = 无命中)
+
+$ rg -n '[，。；：！？、（）【】]' docs/changes/verification-skills/evidence/ISSUE-07 --glob '*.md'
+exit=1 (1 = 无命中)
+$ uv run --with pytest python -m pytest general/writing-for-llm/tests -q
+.......                                                [100%]
+7 passed, 18 subtests passed in 0.07s
+
+$ uv run --with pytest python -m pytest -m 'not e2e' -q   # 全量快层
+6 failed, 659 passed, 2 skipped, 103 deselected, 33 subtests passed (274s)
+失败项: general/present/tests/test_browser_session.py (5 项, socket TimeoutError), tests/test_mailbox_admin.py::test_pending_cap_drops_oldest (TimeoutError)
+说明: 本 ISSUE 只新增 workflow/blast-radius/ 与 evidence/, 上述测试不引用这些路径 (rg -l 'blast-radius' tests general 无命中), 失败与本次改动无关, 属开工时既有的环境相关失败.

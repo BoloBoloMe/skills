@@ -1,0 +1,5 @@
+amountlib 2.4.0 @ /tmp/orchestra-07/out/ts003-wide-work/head/amountlib/__init__.py
+envelope: base=array, head=object schema=orders-export/2
+keys: base amount -> head amount_value
+values identical: [(1, '12.50'), (2, '9.99'), (3, None)]
+PASS: 金额值不变 (12.50, 9.99, null)

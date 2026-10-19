@@ -1,0 +1,13 @@
+$ bash setup-fixture.sh   # 2026-10-19T18:24:56+08:00
+payout-service 起始提交: 97338fb517a864b06e068bbc8ba5293368167d84
+payout-service 变更提交: 5dd66d1139327496bfbae9f9f64c48151afe3461
+orders-consumer 起始提交: 296fb0f5e8f49f730dd848e02ae7175d7b2fa928
+
+$ bash setup-variants.sh
+PASS 改动后现有消费者读新导出 (exit 0)
+PASS 宽影响变体的消费者崩掉 (exit 1)
+PASS 宽影响变体导出字段改名
+PASS 宽影响变体导出外层加 schema
+PASS 局限变体上限改为 50
+payout-service 宽影响变体: ecd32e1c1e8f89b84bb0843dd8d1f46d1e9da183
+payout-service 局限变体: b635aee88b87734fc5886c87fc7bc9e507132c5c

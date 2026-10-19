@@ -1,0 +1,300 @@
+ $ W=/tmp/orchestra-07/out/ts003-gap-work                                                                                                                        │
+ cd $W/head && PYTHONPATH=$W/head uv run --no-project python $W/proof_env.py; echo "exit=$?"                                                                     │
+                                                                                                                                                                 │
+ python 3.14.7                                                                                                                                                   │
+ amountlib.VERSION 2.4.0                                                                                                                                         │
+ amountlib.__file__ /tmp/orchestra-07/out/ts003-gap-work/head/amountlib/__init__.py                                                                              │
+ parse_amount <function parse_amount at 0x721678da3530>                                                                                                          │
+ exit=0                                                                                                                                                          │
+                                                                                                                                                                 │
+ Took 0.0s                                                                                                                                                       │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ Thinking...                                                                                                                                                     │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ $ W=/tmp/orchestra-07/out/ts003-gap-work                                                                                                                        │
+ cat > $W/proof_consumer_compat.py <<'PY'                                                                                                                        │
+ """门禁: 新导出必须仍能被订单消费者读成同一份账.                                                                                                                │
+                                                                                                                                                                 │
+ 期望 (基线): total 22.49, missing [3].                                                                                                                          │
+ 判断错就以非零退出, 并原样打印消费者输出与 stderr.                                                                                                              │
+ """                                                                                                                                                             │
+ import json, pathlib, subprocess, sys                                                                                                                           │
+                                                                                                                                                                 │
+ W = pathlib.Path("/tmp/orchestra-07/out/ts003-gap-work")                                                                                                        │
+ LEDGER = "/tmp/orchestra-07/orders-consumer/src/ledger.js"                                                                                                      │
+ EXPECTED = {"total": 22.49, "missing": [3]}                                                                                                                     │
+                                                                                                                                                                 │
+ def run(path):                                                                                                                                                  │
+     p = subprocess.run(["node", LEDGER, str(path)], capture_output=True, text=True)                                                                             │
+     print(f"--- node ledger.js {path.name}  rc={p.returncode}")                                                                                                 │
+     print("stdout:", p.stdout.strip() or "<空>")                                                                                                                │
+     if p.stderr:                                                                                                                                                │
+         print("stderr:", p.stderr.strip().splitlines()[0])                                                                                                      │
+     return p                                                                                                                                                    │
+                                                                                                                                                                 │
+ fails = 0                                                                                                                                                       │
+ for name, path in [("基线导出", W / "base/var/orders.export.json"),                                                                                             │
+                    ("新导出  ", W / "head/var/orders.export.json")]:                                                                                            │
+     p = run(path)                                                                                                                                               │
+     try:                                                                                                                                                        │
+         got = json.loads(p.stdout)                                                                                                                              │
+         assert p.returncode == 0, f"rc={p.returncode}"                                                                                                          │
+         assert abs(got["total"] - EXPECTED["total"]) < 1e-9, got                                                                                                │
+         assert got["missing"] == EXPECTED["missing"], got                                                                                                       │
+         print(f"    PASS {name}")                                                                                                                               │
+     except Exception as e:                                                                                                                                      │
+         fails += 1                                                                                                                                              │
+         print(f"    FAIL {name}: {e}")                                                                                                                          │
+ sys.exit(1 if fails else 0)                                                                                                                                     │
+ PY                                                                                                                                                              │
+ cat > $W/proof_silent_nan.py <<'PY'                                                                                                                             │
+ """探针: 消费者若已适配外层信封 (读 .rows), 但仍读旧键 amount, 会静默算出 null 总额.                                                                            │
+                                                                                                                                                                 │
+ 这条不判"基线正确", 它断言静默错误确实存在: 退出 0, total 变成 null, missing 为空.                                                                              │
+ """                                                                                                                                                             │
+ import json, pathlib, subprocess                                                                                                                                │
+                                                                                                                                                                 │
+ W = pathlib.Path("/tmp/orchestra-07/out/ts003-gap-work")                                                                                                        │
+ SNIP = r"""                                                                                                                                                     │
+ import fs from "node:fs";                                                                                                                                       │
+ const payload = JSON.parse(fs.readFileSync(process.argv[2], "utf8"));                                                                                           │
+ const rows = payload.rows ?? payload;          // 已适配信封                                                                                                    │
+ let total = 0; const missing = [];                                                                                                                              │
+ for (const row of rows) {                                                                                                                                       │
+   if (row.amount === null) { missing.push(row.id); continue; }  // 仍是旧键                                                                                     │
+   total += Number(row.amount);                                                                                                                                  │
+ }                                                                                                                                                               │
+ console.log(JSON.stringify({ total, missing }));                                                                                                                │
+ """                                                                                                                                                             │
+ (W / "envelope_consumer.mjs").write_text(SNIP)                                                                                                                  │
+ for label, f in [("HEAD 导出", W / "head/var/orders.export.json"),                                                                                              │
+                  ("HEAD stdout", W / "head.stdout.json")]:                                                                                                      │
+     p = subprocess.run(["node", str(W / "envelope_consumer.mjs"), str(f)], capture_output=True, text=True)                                                      │
+     print(f"--- {label} rc={p.returncode} {p.stdout.strip()}")                                                                                                  │
+     got = json.loads(p.stdout)                                                                                                                                  │
+     assert p.returncode == 0                                                                                                                                    │
+     assert got["total"] is None and got["missing"] == [], got   # 静默: 退出码 0, 总额 null, 无缺失                                                             │
+ print("confirmed: 退出码 0, total=null, missing=[]  -> 静默算错账")                                                                                             │
+ PY                                                                                                                                                              │
+ cd $W && uv run --no-project python proof_consumer_compat.py; echo "exit=$?"; echo; uv run --no-project python proof_silent_nan.py; echo "exit=$?"              │
+                                                                                                                                                                 │
+ ... (13 earlier lines, ctrl+o/alt+o to expand)                                                                                                                  │
+                                                                                                                                                                 │
+ --- HEAD 导出 rc=0 {"total":null,"missing":[]}                                                                                                                  │
+ --- HEAD stdout rc=0 {"total":null,"missing":[]}                                                                                                                │
+ confirmed: 退出码 0, total=null, missing=[]  -> 静默算错账                                                                                                      │
+ exit=0                                                                                                                                                          │
+                                                                                                                                                                 │
+ Took 0.2s                                                                                                                                                       │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ Thinking...                                                                                                                                                     │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ $ W=/tmp/orchestra-07/out/ts003-gap-work                                                                                                                        │
+ cp -r $W/head $W/head-bad                                                                                                                                       │
+ cd $W/head-bad                                                                                                                                                  │
+ uv run --no-project python - <<'PY'                                                                                                                             │
+ import json, sqlite3, pathlib                                                                                                                                   │
+ db = pathlib.Path("var/orders.db")                                                                                                                              │
+ conn = sqlite3.connect(db)                                                                                                                                      │
+ conn.execute("INSERT INTO orders (id,payload) VALUES (4,?)", (json.dumps({"schema":"v1","amount_str":"1,234.50"}),))                                            │
+ conn.commit(); conn.close()                                                                                                                                     │
+ print("inserted id=4 amount_str='1,234.50'")                                                                                                                    │
+ PY                                                                                                                                                              │
+ rm -f var/orders.export.json                                                                                                                                    │
+ echo "导出前文件: $(ls var/orders.export.json 2>&1)"                                                                                                            │
+ uv run --no-project python scripts/dump_orders.py; echo "dump exit=$?"                                                                                          │
+ echo "导出后文件: $(ls var/orders.export.json 2>&1)"                                                                                                            │
+                                                                                                                                                                 │
+ ... (17 earlier lines, ctrl+o/alt+o to expand)                                                                                                                  │
+   File "/tmp/orchestra-07/out/ts003-gap-work/head-bad/amountlib/core.py", line 20, in parse_amount                                                              │
+     raise ValueError(f"无法解析金额: {raw!r}")                                                                                                                  │
+ ValueError: 无法解析金额: '1,234.50'                                                                                                                            │
+ dump exit=1                                                                                                                                                     │
+ 导出后文件: ls: cannot access 'var/orders.export.json': No such file or directory                                                                               │
+                                                                                                                                                                 │
+ Took 0.1s                                                                                                                                                       │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ Thinking...                                                                                                                                                     │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ $ W=/tmp/orchestra-07/out/ts003-gap-work; cd $W/head-bad                                                                                                        │
+ uv run --no-project python scripts/dump_orders.py >/dev/null 2>&1; echo "restore good export exit=$?"                                                           │
+ md5sum var/orders.export.json                                                                                                                                   │
+ sqlite3 var/orders.db "DELETE FROM orders WHERE id=4;" 2>/dev/null || uv run --no-project python -c "                                                           │
+ import sqlite3;c=sqlite3.connect('var/orders.db');c.execute('DELETE FROM orders WHERE id=4');c.commit()"                                                        │
+ uv run --no-project python scripts/dump_orders.py >/dev/null; md5sum var/orders.export.json                                                                     │
+ uv run --no-project python -c "                                                                                                                                 │
+ import sqlite3,json;c=sqlite3.connect('var/orders.db');c.execute('INSERT INTO orders (id,payload) VALUES                                                        │
+ (4,?)',(json.dumps({'schema':'v1','amount_str':'1,234.50'}),));c.commit()"                                                                                      │
+ before=$(md5sum var/orders.export.json | cut -d' ' -f1); echo "旧文件 md5=$before"                                                                              │
+ uv run --no-project python scripts/dump_orders.py >/dev/null 2>&1; echo "带坏数据 dump exit=$?"                                                                 │
+ after=$(md5sum var/orders.export.json | cut -d' ' -f1); echo "导出后 md5=$after"; [ "$before" = "$after" ] && echo "旧文件原封不动 (陈旧数据继续被消费者读)"    │
+                                                                                                                                                                 │
+ ... (2 earlier lines, ctrl+o/alt+o to expand)                                                                                                                   │
+ 4e6d3dad15815d331a695042261265b9  var/orders.export.json                                                                                                        │
+ 旧文件 md5=4e6d3dad15815d331a695042261265b9                                                                                                                     │
+ 带坏数据 dump exit=1                                                                                                                                            │
+ 导出后 md5=4e6d3dad15815d331a695042261265b9                                                                                                                     │
+ 旧文件原封不动 (陈旧数据继续被消费者读)                                                                                                                         │
+                                                                                                                                                                 │
+ Took 0.2s                                                                                                                                                       │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ Thinking...                                                                                                                                                     │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ $ cd /tmp/orchestra-07/payout-service && ls -a && git log --oneline -5 && find . -path ./.git -prune -o -type f -print | sort                                   │
+                                                                                                                                                                 │
+ ... (20 earlier lines, ctrl+o/alt+o to expand)                                                                                                                  │
+ ./db/seed.py                                                                                                                                                    │
+ ./.gitignore                                                                                                                                                    │
+ ./pyproject.toml                                                                                                                                                │
+ ./README.md                                                                                                                                                     │
+ ./scripts/dump_orders.py                                                                                                                                        │
+                                                                                                                                                                 │
+ Took 0.0s                                                                                                                                                       │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ Thinking...                                                                                                                                                     │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ $ grep -n "" /tmp/orchestra-07/orders-consumer/src/ledger.js; echo ==; wc -c /tmp/orchestra-07/out/ts003-gap-work/{base,head}/var/orders.export.json            │
+                                                                                                                                                                 │
+ ... (12 earlier lines, ctrl+o/alt+o to expand)                                                                                                                  │
+ 13:console.log(JSON.stringify({ total, missing }, null, 2));                                                                                                    │
+ ==                                                                                                                                                              │
+ 130 /tmp/orchestra-07/out/ts003-gap-work/base/var/orders.export.json                                                                                            │
+ 219 /tmp/orchestra-07/out/ts003-gap-work/head/var/orders.export.json                                                                                            │
+ 349 total                                                                                                                                                       │
+                                                                                                                                                                 │
+ Took 0.0s                                                                                                                                                       │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ Thinking...                                                                                                                                                     │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ write /tmp/orchestra-07/out/ts003-gap-work/repro.sh                                                                                                             │
+                                                                                                                                                                 │
+ #!/usr/bin/env bash                                                                                                                                             │
+ # 最便宜的复现: 在临时副本里跑真实入口, 不写两个仓库.                                                                                                           │
+ # 用法: bash repro.sh   需要 git, tar, uv, node.                                                                                                                │
+ set -u                                                                                                                                                          │
+ SRC=/tmp/orchestra-07/drill-ts003-gap                                                                                                                           │
+ CONS=/tmp/orchestra-07/orders-consumer                                                                                                                          │
+ T=$(mktemp -d)                                                                                                                                                  │
+ git -C "$SRC" archive HEAD | tar -x -C "$T"                                                                                                                     │
+ (                                                                                                                                                               │
+   cd "$T" || exit 1                                                                                                                                             │
+ ... (25 more lines, 35 total, ctrl+o/alt+o to expand)                                                                                                           │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ $ cd /tmp/orchestra-07/out/ts003-gap-work && bash repro.sh; echo "repro exit=$?"                                                                                │
+                                                                                                                                                                 │
+ ... (30 earlier lines, ctrl+o/alt+o to expand)                                                                                                                  │
+ consumer exit=1                                                                                                                                                 │
+ == 只解包 .rows, 仍读旧键 amount 的消费者 ==                                                                                                                    │
+ {"total":null,"missing":[]}                                                                                                                                     │
+ peek exit=0                                                                                                                                                     │
+ repro exit=0                                                                                                                                                    │
+                                                                                                                                                                 │
+ Took 0.1s                                                                                                                                                       │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ Thinking...                                                                                                                                                     │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ write /tmp/orchestra-07/out/ts003-gap-report.md                                                                                                                 │
+                                                                                                                                                                 │
+ # 交接: payout-service HEAD e807b06 对导出线格式的影响                                                                                                          │
+                                                                                                                                                                 │
+ 结论: 不要单独合入. 现版消费者会直接崩 (退出码 1); 更麻烦的是金额改名在下游是静默失败, 一旦有人只解包不换键, 账目算成 `total: null`, `missing: []`, 退出码 0. 必│
+ 须与消费者同一发布窗口一起改, 且要同时改两个键 (信封 `rows` 与金额 `amount_value`).                                                                             │
+                                                                                                                                                                 │
+ ## 1. 做了什么                                                                                                                                                  │
+                                                                                                                                                                 │
+ 变更: `e807b06` 只改 2 个文件 2 行.                                                                                                                             │
+                                                                                                                                                                 │
+ - `app/orders.py:15`: 行内键名 `amount` 改为 `amount_value`.                                                                                                    │
+ - `scripts/dump_orders.py:19`: 写文件从裸数组改为 `{"schema": "orders-export/2", "rows": [...]}`.                                                               │
+ ... (198 more lines, 208 total, ctrl+o/alt+o to expand)                                                                                                         │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ Thinking...                                                                                                                                                     │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ $ cd /tmp/orchestra-07/out && grep -n -P '[\x{3000}-\x{303f}\x{ff00}-\x{ffef}]|[，。：；！？（）”“]' ts003-gap-report.md | head -20; echo "----"; grep -n "3. 未│
+ 覆盖" ts003-gap-report.md                                                                                                                                       │
+                                                                                                                                                                 │
+ ----                                                                                                                                                            │
+ 35:3. 未覆盖范围: 生产怎么把这份 JSON 交给消费者 (共享目录 / 管道 / 拷贝), 生产 `orders` 表的数据分布, 这两个仓库之外是否还有读者. 三处都没有配置或部署文件可查,│
+ 见第 3 节 R3 与第 4 节末.                                                                                                                                       │
+                                                                                                                                                                 │
+ Took 0.0s                                                                                                                                                       │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ edit /tmp/orchestra-07/out/ts003-gap-report.md                                                                                                                  │
+                                                                                                                                                                 │
+      ...                                                                                                                                                        │
+   31 - 两个仓库都没有可读的 PR 或评审记录. payout 的 `origin` 指向本机 `/tmp/orchestra-07/drill-ts003-wide`, 历史与本地完全相同; 消费者仓库没有 remote. 提交消息│
+ 里没有 PR 编号. 所以没有讨论材料可引, 也没看到别的分支做过下游适配.                                                                                             │
+   32 - 技能加载: `~/.agents/skills/blast-radius/SKILL.md` 不存在; 本仓库内有 `.agents/skills/blast-radius/SKILL.md` 及其 `reference/`, 本次按该副本执行.        │
+   33 - 能力缺口: 按要求只授权一款模型, 没有第二路同题调查. 下面 4 级事实是实跑证明的, 保留 4 级; 只是少了交叉核对这一层.                                        │
+   34                                                                                                                                                            │
+ - 35 3. 未覆盖范围: 生产怎么把这份 JSON 交给消费者 (共享目录 / 管道 / 拷贝), 生产 `orders` 表的数据分布, 这两个仓库之外是否还有读者. 三处都没有配置或部署文件可 │
+ 查, 见第 3 节 R3 与第 4 节末.
+ + 35 未覆盖范围: 生产怎么把这份 JSON 交给消费者 (共享目录 / 管道 / 拷贝), 生产 `orders` 表的数据分布, 这两个仓库之外是否还有读者. 三处都没有配置或部署文件可查,
+ 见第 3 节 R3 与第 4 节末.
+   36
+   37 ## 2. 关键安全事实与证据级别
+   38
+   39 ### F1. 现版消费者读到新导出会崩, 是响亮失败 (4 级)
+      ...
+
+
+
+ $ cd /tmp/orchestra-07/drill-ts003-gap && git status --porcelain --ignored && echo "payout clean"; cd /tmp/orchestra-07/orders-consumer && git status
+ --porcelain --ignored && echo "consumer clean"; ls -la /tmp/orchestra-07/out/ts003-gap-report.md /tmp/orchestra-07/out/ts003-gap-work
+
+ ... (17 earlier lines, ctrl+o/alt+o to expand)
+ -rw-rw-r--  1 bolo bolo 1233 Oct 19 18:02 proof_consumer_compat.py
+ -rw-rw-r--  1 bolo bolo  480 Oct 19 18:02 proof_env.py
+ -rw-rw-r--  1 bolo bolo 1307 Oct 19 18:02 proof_silent_nan.py
+ -rw-rw-r--  1 bolo bolo  884 Oct 19 18:02 proof_wire_diff.py
+ -rw-rw-r--  1 bolo bolo 1139 Oct 19 18:03 repro.sh
+
+ Took 0.0s
+
+
+ Thinking...
+
+ 报告: /tmp/orchestra-07/out/ts003-gap-report.md; 工作文件: /tmp/orchestra-07/out/ts003-gap-work/.
+
+ 结论: 不要单独合入. 两个仓库都没改, 全在 /tmp 副本里实跑.
+
+ 两个关键事实 (都是 4 级, 跑过真实入口):
+ 1. 现版消费者读新导出直接崩: src/ledger.js:6 拿整个 JSON 当数组迭代, 遇到信封对象抛 rows is not iterable, 退出码 1. 基线读同一份消费者得到 total 22.49, missing
+    [3].
+ 2. 金额改名是静默失败: 谁只加 .rows 解包不换键名, row.amount 变 undefined, Number(undefined)=NaN, 结果 {"total":null,"missing":[]}, 退出码 0. 走 stdout 也一样,
+    因为 dump_orders.py:20 仍打印裸数组 (形状像兼容, 键名已换). 这条比崩溃危险, 不报错.
+
+ 其他: 金额值逐个相同 (12.50/9.99/null), 解析逻辑没退化; 消费者完全不读 schema, 所以 orders-export/2 拦不住旧读者; 父提交 04ddf93 的非数字 amount_str 会让导出
+ exit 1 且旧文件不动 (如 "1,234.50", 已实跑).
+
+ 缺口: 生产怎么把文件交给消费者/生产数据分布/两仓库外的读者 都无法证实 (无部署配置可查); 两个仓库无 PR 材料; 按授权只有一款模型, 没有第二路同题调查.
+
+ 最便宜复现: bash /tmp/orchestra-07/out/ts003-gap-work/repro.sh, 尾部两行 consumer exit=1 与 {"total":null,"missing":[]}.
+
+ 注: ~/.agents/skills/blast-radius/SKILL.md 不存在, 实际用的是仓库内 .agents/skills/blast-radius/, 报告里也写了.
+
+──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+
+──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+/tmp/orchestra-07/drill-ts003-gap (master)
+↑22k ↓23k R704k CH98.8% $0.011 4.4%/1.0M (auto)                                                                   (cli) deepseek-v4.1-flash-expires-on-0910 • high

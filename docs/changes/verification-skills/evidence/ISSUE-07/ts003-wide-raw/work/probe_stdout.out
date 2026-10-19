@@ -1,0 +1,2 @@
+{"total":null,"missing":[],"isNaN":true,"rows":3}
+CONFIRMED: 只改外层不崩溃, 但 total=NaN, missing=[] (静默错误)
