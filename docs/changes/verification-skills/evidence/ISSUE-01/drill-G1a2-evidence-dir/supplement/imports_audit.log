@@ -1,0 +1,6 @@
+$ grep -nE "^(import|from) " greet.py
+3:import argparse
+4:import sys
+exit=0
+$ git ls-files | grep -iE "requirements|pyproject|setup.py|poetry.lock|Pipfile"
+exit=1

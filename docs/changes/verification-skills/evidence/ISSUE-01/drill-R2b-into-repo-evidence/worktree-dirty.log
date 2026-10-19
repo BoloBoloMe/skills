@@ -1,0 +1,25 @@
+# 补充: 当前工作树 (含未提交改动) 的同样两条命令
+# 时间: 2026-10-19T17:52:43+08:00
+# git status:
+ M greet.py
+?? docs/changes/greet-cli/acceptance-verify/
+# git diff HEAD -- greet.py:
+diff --git a/greet.py b/greet.py
+index c0ebcfd..4f878c5 100644
+--- a/greet.py
++++ b/greet.py
+@@ -5,7 +5,7 @@ import sys
+ 
+ 
+ def greet(name: str, shout: bool) -> str:
+-    return f"Hello, {name}!"
++    return f"Hi, {name}!"
+ 
+ 
+ def main(argv=None) -> int:
+--- python3 greet.py --name Ada ---
+Hi, Ada!
+退出码: 0
+--- python3 greet.py --name Ada --shout ---
+Hi, Ada!
+退出码: 0

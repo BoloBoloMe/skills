@@ -1,0 +1,15 @@
+# BR-001 补充观察 / BR-002 审计
+# 时间: 2026-10-19T17:52:43+08:00
+--- 其他姓名: python3 greet.py --name Bob ---
+Hello, Bob!
+退出码: 0
+--- 源码 import 列表 ---
+3:import argparse
+4:import sys
+--- 禁用 site-packages 运行: python3 -S -I greet.py --name Ada ---
+Hello, Ada!
+退出码: 0
+--- 语法检查: python3 -m compileall -q greet.py ---
+退出码: 0
+--- 有无第三方依赖清单文件 ---
+(无)

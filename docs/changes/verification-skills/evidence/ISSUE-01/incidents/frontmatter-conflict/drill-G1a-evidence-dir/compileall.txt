@@ -1,0 +1,2 @@
+=== compileall
+exit=0

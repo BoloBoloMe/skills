@@ -1,0 +1,4 @@
+2:"""按姓名打印问候语, --shout 切换全大写."""
+7:def greet(name: str, shout: bool) -> str:
+14:    parser.add_argument("--shout", action="store_true")
+16:    print(greet(args.name, args.shout))

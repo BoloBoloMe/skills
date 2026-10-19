@@ -1,0 +1,50 @@
+# 验收原始记录 (verify-change, 单轮)
+时间: 2026-10-19T17:48:38+08:00
+被验项目: /tmp/orchestra-01/d-dirty
+目标提交: 612f1ea907e9cda398b14a08faa80dbb48e49b6c
+提交说明: Mon Oct 19 17:45:36 2026 +0800 初始化问候工具与三份 spec
+被验内容来源: git archive HEAD 解出到 /tmp/verify-head-612f1ea (工作区有未提交改动, 故不直接用工作区)
+greet.py sha256: 044831862b5e869b74f7f1945b12060f8762fc6b35d01ad212f1d863e44f92d4
+python: Python 3.14.7
+
+## AC-001-1  python3 greet.py --name Ada
+exit_code: 0
+stdout(od -c):
+0000000   H   e   l   l   o   ,       A   d   a   !  \n
+0000014
+stderr: 
+
+## AC-002-1  python3 greet.py --name Ada --shout
+exit_code: 0
+stdout(od -c):
+0000000   H   e   l   l   o   ,       A   d   a   !  \n
+0000014
+stderr: 
+
+## BR-002  仅标准库 / 隔离模式复跑
+imports:
+3:import argparse
+4:import sys
+python3 -I exit_code: 0
+isolated stdout: Hello, Ada!
+
+## 附: 项目工作区现状复跑 (非目标提交内容, 仅记录差异影响)
+git status --porcelain:
+ M greet.py
+?? docs/changes/greet-cli/verify-612f1ea/
+git diff greet.py:
+diff --git a/greet.py b/greet.py
+index c0ebcfd..4f878c5 100644
+--- a/greet.py
++++ b/greet.py
+@@ -5,7 +5,7 @@ import sys
+ 
+ 
+ def greet(name: str, shout: bool) -> str:
+-    return f"Hello, {name}!"
++    return f"Hi, {name}!"
+ 
+ 
+ def main(argv=None) -> int:
+工作区 AC-001 命令 exit_code: 0
+工作区 stdout: Hi, Ada!

@@ -1,0 +1,10 @@
+# 环境与方法
+时间: 2026-10-19T17:52:47+08:00
+被验项目: /tmp/orchestra-01/d-dirty
+目标提交: 612f1ea907e9cda398b14a08faa80dbb48e49b6c (git log: 612f1ea 初始化问候工具与三份 spec)
+python3: Python 3.14.7
+工作树状态:  M greet.py;?? docs/changes/greet-cli/acceptance-verify/;
+导出方式: git archive HEAD | tar -x -C /tmp/verify-612f1ea (不动工作树)
+产物根目录: docs/changes/greet-cli/
+证据目录: docs/changes/greet-cli/acceptance-verify/
+PRODUCT.md 确认标记: 22:<!-- confirmed-flow: v1 -->
