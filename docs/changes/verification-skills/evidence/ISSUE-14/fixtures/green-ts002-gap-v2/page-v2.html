@@ -1,0 +1,860 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>wordcount: 让数词工具真的能数词 (目标提交 cd6e416)</title>
+<style>
+  :root{
+    --paper:#faf7ef;
+    --paper-2:#f4efe3;
+    --ink:#2e2c27;
+    --muted:#8a8375;
+    --line:#d9d1c0;
+    --moss:#6f7f63;
+    --clay:#a9765a;
+    --slate:#6e8298;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{
+    margin:0;
+    background:var(--paper);
+    color:var(--ink);
+    font-family:'Noto Serif SC','Noto Serif CJK SC','Source Han Serif SC','Spectral',Georgia,"Songti SC",serif;
+    font-size:17px;
+    line-height:1.95;
+    -webkit-font-smoothing:antialiased;
+    padding:0 6vw 12vh;
+  }
+  .wrap{max-width:50rem;margin:0 auto;}
+  a{color:var(--ink);text-underline-offset:.25em;text-decoration-color:var(--line);}
+  a:hover{text-decoration-color:var(--muted);}
+  code{
+    font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+    font-size:.88em;
+    background:var(--paper-2);
+    padding:.06em .3em;
+    border-radius:2px;
+  }
+  pre{
+    font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+    font-size:.84rem;
+    line-height:1.7;
+    white-space:pre;
+    overflow-x:auto;
+    background:var(--paper-2);
+    border-left:2px solid var(--line);
+    padding:.9em 1.1em;
+    margin:1.2em 0;
+    color:#3a362f;
+  }
+  pre code{background:none;padding:0;font-size:1em;}
+
+  header.head{padding:9vh 0 0;}
+  .eyebrow{
+    font-size:.78rem;letter-spacing:.22em;text-transform:uppercase;
+    color:var(--muted);margin:0 0 1.6rem;
+  }
+  .eyebrow span{white-space:nowrap;}
+  h1{
+    font-size:clamp(1.75rem,3.4vw,2.5rem);
+    line-height:1.5;font-weight:600;letter-spacing:.01em;
+    margin:0 0 1.4rem;
+  }
+  .lede{
+    font-size:1.06rem;color:#413c34;margin:0 0 2rem;max-width:40rem;
+  }
+  .meta{
+    font-size:.82rem;color:var(--muted);line-height:1.9;
+    border-top:1px solid var(--line);padding-top:1rem;
+  }
+  .meta b{font-weight:600;color:#5c564b;}
+  .meta code{background:none;padding:0;}
+
+  .sketch{margin:2.4rem 0 1rem;}
+  .sketch svg{width:100%;height:auto;display:block;}
+  .sketch figcaption{
+    font-size:.82rem;color:var(--muted);margin-top:.5rem;
+  }
+  .ink{stroke:var(--ink);}
+  .muted-line{stroke:var(--muted);}
+  .moss-line{stroke:var(--moss);}
+  .slate-line{stroke:var(--slate);}
+  .lbl{font-family:inherit;fill:var(--ink);}
+  .lbl-muted{font-family:inherit;fill:var(--muted);}
+  .lbl-moss{font-family:inherit;fill:var(--moss);}
+  .lbl-slate{font-family:inherit;fill:var(--slate);}
+
+  nav.toc{
+    border-top:1px solid var(--line);border-bottom:1px solid var(--line);
+    padding:1.1rem 0;margin:2.6rem 0 3rem;
+    font-size:.9rem;
+  }
+  nav.toc ol{list-style:none;margin:0;padding:0;display:flex;flex-wrap:wrap;gap:.4rem 1.6rem;}
+  nav.toc li{counter-increment:toc;}
+  nav.toc a{text-decoration:none;color:#4a443a;}
+  nav.toc a:hover{color:var(--ink);text-decoration:underline;}
+  nav.toc .num{color:var(--muted);font-size:.8rem;margin-right:.45em;}
+
+  section{margin:0 0 4.2rem;}
+  h2{
+    font-size:1.28rem;font-weight:600;letter-spacing:.02em;
+    margin:0 0 1.4rem;padding-top:1.1rem;border-top:1px solid var(--line);
+  }
+  h2 .num{
+    display:inline-block;color:var(--muted);font-style:italic;
+    font-size:.9rem;margin-right:.8em;letter-spacing:.06em;
+  }
+  h3{font-size:1.02rem;font-weight:600;margin:2.2rem 0 .7rem;}
+  p{margin:0 0 1.1rem;}
+  ul,ol.body-list{margin:0 0 1.2rem;padding-left:1.3em;}
+  li{margin-bottom:.45rem;}
+  .tight li{margin-bottom:.2rem;}
+  .note{
+    font-size:.9rem;color:#5b554a;border-left:2px solid var(--line);
+    padding:.1em 0 .1em 1.1em;margin:1.4rem 0;
+  }
+  .pull{
+    font-size:1.08rem;color:#3d382f;margin:1.8rem 0;
+    padding-left:1.1rem;border-left:3px solid var(--moss);
+  }
+
+  details.impl{
+    border-top:1px solid var(--line);
+    border-bottom:1px solid var(--line);
+    padding:.2rem 0;margin:1.4rem 0;
+  }
+  details.impl summary{
+    cursor:pointer;list-style:none;padding:.7rem 0;
+    font-size:.95rem;color:#4a443a;
+  }
+  details.impl summary::-webkit-details-marker{display:none;}
+  details.impl summary::before{
+    content:"▸";display:inline-block;width:1.3em;color:var(--muted);
+    transition:transform .15s ease;
+  }
+  details.impl[open] summary::before{transform:rotate(90deg);}
+  details.impl summary:focus-visible{outline:2px solid var(--slate);outline-offset:2px;}
+  details.impl .inner{padding:.4rem 0 1rem;}
+
+  .two-col{display:grid;grid-template-columns:1fr 1fr;gap:1.2rem;margin:1.4rem 0;}
+  .two-col .col h4{
+    margin:0 0 .3rem;font-size:.82rem;letter-spacing:.14em;
+    text-transform:uppercase;color:var(--muted);font-weight:600;
+  }
+  .two-col pre{margin:0;}
+  @media (max-width:720px){.two-col{grid-template-columns:1fr;}}
+
+  table{
+    width:100%;border-collapse:collapse;margin:1.4rem 0;
+    font-size:.88rem;line-height:1.75;
+  }
+  th,td{
+    text-align:left;vertical-align:top;padding:.65rem .7rem .65rem 0;
+    border-bottom:1px solid var(--line);
+  }
+  th{font-weight:600;color:#544e43;font-size:.8rem;letter-spacing:.06em;}
+  td:last-child,th:last-child{padding-right:0;}
+  .chip{
+    display:inline-block;white-space:nowrap;font-size:.78rem;
+    padding:.05em .5em;border:1px solid currentColor;border-radius:2px;
+    letter-spacing:.04em;
+  }
+  .chip.pass{color:var(--moss);}
+  .chip.gap{color:var(--clay);}
+  .chip.info{color:var(--slate);}
+
+  blockquote.ev{
+    margin:1.1rem 0;padding:.2rem 0 .2rem 1.1rem;
+    border-left:2px solid var(--line);
+    font-size:.9rem;color:#4d473c;
+  }
+  blockquote.ev .src{
+    display:block;margin-top:.45rem;font-size:.8rem;color:var(--muted);
+  }
+  blockquote.ev pre{margin:.5rem 0 0;background:none;border:none;padding:0;font-size:.82rem;}
+
+  .toggle-row{display:flex;flex-wrap:wrap;gap:.6rem;margin:1.2rem 0 .2rem;}
+  .toggle-row button{
+    font:inherit;font-size:.85rem;color:#4a443a;background:none;
+    border:1px solid var(--line);border-radius:2px;padding:.3em .8em;
+    cursor:pointer;
+  }
+  .toggle-row button[aria-pressed="true"]{
+    border-color:var(--ink);color:var(--ink);
+    box-shadow:inset 0 -2px 0 var(--ink);
+  }
+  .toggle-row button:focus-visible{outline:2px solid var(--slate);outline-offset:2px;}
+  #scope-note{font-size:.82rem;color:var(--muted);margin:.4rem 0 0;}
+  .scope-out{transition:opacity .25s ease;}
+  body[data-scope="product"] .scope-out{opacity:.2;}
+
+  .quiz{border-top:1px solid var(--line);}
+  .q{padding:1.6rem 0;border-bottom:1px solid var(--line);}
+  .q .qtext{font-weight:600;margin:0 0 .8rem;}
+  .q .qnum{color:var(--muted);font-style:italic;margin-right:.6em;font-weight:400;}
+  .opts{display:grid;gap:.45rem;margin:0;padding:0;list-style:none;}
+  .opts button{
+    display:block;width:100%;text-align:left;font:inherit;font-size:.92rem;
+    color:#3d382f;background:none;border:1px solid var(--line);
+    border-radius:2px;padding:.55em .8em;cursor:pointer;line-height:1.7;
+  }
+  .opts button:hover{border-color:var(--muted);}
+  .opts button:focus-visible{outline:2px solid var(--slate);outline-offset:2px;}
+  .opts button .mark{display:inline-block;width:1.4em;color:var(--muted);}
+  .opts button[data-state="right"]{border-color:var(--moss);color:var(--moss);}
+  .opts button[data-state="wrong"]{border-color:var(--clay);color:var(--clay);}
+  .opts button[data-state="muted"]{color:var(--muted);border-color:var(--line);}
+  .opts button:disabled{cursor:default;}
+  .fb{font-size:.88rem;margin:.8rem 0 0;min-height:1em;color:#4a443a;}
+  .fb b{font-weight:600;}
+  .fb.right b{color:var(--moss);}
+  .fb.wrong b{color:var(--clay);}
+  .score{font-size:.88rem;color:var(--muted);margin:1.4rem 0 0;}
+
+  footer{
+    border-top:1px solid var(--line);padding-top:1.1rem;margin-top:2rem;
+    font-size:.8rem;color:var(--muted);
+  }
+</style>
+</head>
+<body data-scope="all">
+<div class="wrap">
+
+<header class="head">
+  <p class="eyebrow"><span>explain-diff</span> / <span>docs/changes/wordcount</span> / <span>目标提交 cd6e416</span></p>
+  <h1>让 wordcount 真的能数词</h1>
+  <p class="lede">
+    改动前 <code>bin/wordcount</code> 只有三行: 打印 "not implemented", 以 1 退出. 改动后它从标准输入
+    或 <code>--file</code> 指定的一个文件里读文本, 用空白切词并把数量打到标准输出. 整份产品变更就是
+    这一个文件, 十行加, 两行减.
+  </p>
+  <p class="meta">
+    比较范围 <code>cc48f65</code> → <code>4187edb</code> (内容等于实现提交 <code>beb0ebf</code>) /
+    页面覆盖目标提交 <code>cd6e416b448f6ca731ed1af675ca56e31d7e6b03</code> /
+    验收证据来自 <code>docs/changes/wordcount/acceptance/round-1/</code> 回传材料 /
+    其中 AC-003-1 因环境缺口记为<b>未验证</b>, 本页不把它写成通过.
+  </p>
+
+  <figure class="sketch">
+    <svg viewBox="0 0 980 300" role="img" aria-labelledby="scope-svg-title scope-svg-desc">
+      <title id="scope-svg-title">提交时间线与比较范围</title>
+      <desc id="scope-svg-desc">从骨架提交到目标提交的直线历史. 产品变更范围是 cc48f65 到 4187edb, 之后的 16d84a9, 1c8f801 是演练现场, af0a50e 与 cd6e416 是技能装载, 都被排除在讲解范围外.</desc>
+      <defs>
+        <filter id="wobble" x="-5%" y="-5%" width="110%" height="110%">
+          <feTurbulence type="fractalNoise" baseFrequency="0.014" numOctaves="2" seed="11" result="n"/>
+          <feDisplacementMap in="SourceGraphic" in2="n" scale="4"/>
+        </filter>
+      </defs>
+      <g filter="url(#wobble)" fill="none" stroke-width="1.8" stroke-linecap="round">
+        <path class="muted-line" d="M100 176 C 300 174, 520 178, 700 176 C 800 175, 860 177, 910 176"/>
+        <path class="moss-line" stroke-width="4" opacity=".55" d="M100 176 L 430 176"/>
+      </g>
+      <g class="ink" fill="none" stroke-width="1.5">
+        <circle cx="100" cy="176" r="5" fill="#faf7ef"/>
+        <circle cx="280" cy="176" r="5" fill="#2e2c27"/>
+        <circle cx="430" cy="176" r="5" fill="#faf7ef"/>
+        <circle cx="590" cy="176" r="5" fill="#faf7ef" class="scope-out"/>
+        <circle cx="700" cy="176" r="5" fill="#2e2c27" class="scope-out"/>
+        <circle cx="800" cy="176" r="5" fill="#faf7ef" class="scope-out"/>
+        <circle cx="900" cy="176" r="6" fill="#2e2c27"/>
+      </g>
+      <g font-size="14" font-family="inherit">
+        <text class="lbl" x="100" y="156" text-anchor="middle">cc48f65</text>
+        <text class="lbl-muted" x="100" y="204" text-anchor="middle" font-size="12">骨架 + 测试</text>
+
+        <text class="lbl" x="280" y="156" text-anchor="middle">beb0ebf</text>
+        <text class="lbl-muted" x="280" y="204" text-anchor="middle" font-size="12">实现</text>
+
+        <text class="lbl" x="430" y="132" text-anchor="middle">4187edb</text>
+        <text class="lbl-muted" x="430" y="148" text-anchor="middle" font-size="12">合并</text>
+
+        <text class="lbl scope-out" x="590" y="204" text-anchor="middle">16d84a9</text>
+        <text class="lbl-muted scope-out" x="590" y="228" text-anchor="middle" font-size="12">演练现场</text>
+
+        <text class="lbl scope-out" x="700" y="156" text-anchor="middle">1c8f801</text>
+        <text class="lbl-muted scope-out" x="700" y="132" text-anchor="middle" font-size="12">演练现场</text>
+
+        <text class="lbl scope-out" x="800" y="204" text-anchor="middle">af0a50e</text>
+        <text class="lbl-muted scope-out" x="800" y="228" text-anchor="middle" font-size="12">技能装载</text>
+
+        <text class="lbl" x="900" y="150" text-anchor="middle">cd6e416</text>
+        <text class="lbl-muted scope-out" x="900" y="132" text-anchor="middle" font-size="12">目标提交</text>
+      </g>
+      <g fill="none" stroke-width="1.2">
+        <path class="moss-line" d="M100 100 L 100 88 L 430 88 L 430 100" />
+        <path class="muted-line" stroke-dasharray="4 4" d="M430 250 L 430 266 L 900 266 L 900 250"/>
+      </g>
+      <text class="lbl-moss" x="265" y="76" text-anchor="middle" font-size="13">产品变更范围 (本页讲解)</text>
+      <text class="lbl-muted" x="665" y="288" text-anchor="middle" font-size="13">排除: 演练现场与技能装载</text>
+    </svg>
+    <figcaption>线性历史里只有一段属于产品变更. 图中 720db42 是空提交, 未标出.</figcaption>
+  </figure>
+  <div class="toggle-row" role="group" aria-label="比较范围显示方式">
+    <button type="button" data-scope="all" aria-pressed="true">显示全部提交</button>
+    <button type="button" data-scope="product" aria-pressed="false">只强调产品变更范围</button>
+  </div>
+  <p id="scope-note">当前: 显示全部提交, 范围外部分仍然排除在讲解之外.</p>
+</header>
+
+<nav class="toc" aria-label="目录">
+  <ol>
+    <li><span class="num">1</span><a href="#background">背景与比较范围</a></li>
+    <li><span class="num">2</span><a href="#idea">思路: 一次调用怎么走到数字</a></li>
+    <li><span class="num">3</span><a href="#code">代码讲解 (折叠)</a></li>
+    <li><span class="num">4</span><a href="#evidence">证据</a></li>
+    <li><span class="num">5</span><a href="#risk">合并风险与回退</a></li>
+    <li><span class="num">6</span><a href="#quiz">测验</a></li>
+  </ol>
+</nav>
+
+<main>
+
+<section id="background">
+  <h2><span class="num">01</span>背景与比较范围</h2>
+
+  <h3>旧行为: 一个只会拒绝的占位</h3>
+  <p>
+    骨架提交 <code>cc48f65</code> 里的 <code>bin/wordcount</code> 全文只有三行. 不论你传什么参数,
+    它都往标准错误打一句 <code>not implemented</code>, 然后以退出码 1 结束:
+  </p>
+  <pre><code>#!/bin/sh
+echo "not implemented" &gt;&amp;2
+exit 1</code></pre>
+  <p>
+    同一个骨架提交还放下了 <code>tests/run.sh</code>, 要求标准输入与 <code>--file</code> 两条路都能数出 2,
+    并且 Product 里的 BR-001 明确写了"既有测试不得被改动". 于是当时的处境是: 测试与规范已经固定,
+    实现是空的, 唯一能改的就是实现本身.
+  </p>
+  <p class="pull">
+    不改的后果很具体: 测试永远失败, 提交摘要没有可复用的计数工具, 而 Product 的 G-001 / G-002 两条目标一条也落不了地.
+  </p>
+
+  <h3>这次比较的是什么</h3>
+  <p>
+    我采用的比较范围是 <b><code>cc48f65</code> (骨架) 到 <code>4187edb</code> (合并 <code>issue/01</code>)</b>.
+    这段区间里只有 <code>bin/wordcount</code> 变化, 十行加, 两行减, 与实现提交 <code>beb0ebf</code> 的内容完全一致,
+    可以这样复核:
+  </p>
+  <pre><code>git diff --stat cc48f65 4187edb
+#  bin/wordcount | 12 ++++++++++--
+#  1 file changed, 10 insertions(+), 2 deletions(-)</code></pre>
+  <p>
+    目标提交 <code>cd6e416</code> 比 <code>4187edb</code> 更晚, 中间夹着四个后续提交. 它们为何排除:
+  </p>
+  <table>
+    <thead><tr><th>提交</th><th>内容</th><th>为何不算产品变更</th></tr></thead>
+    <tbody>
+      <tr><td><code>720db42</code></td><td>空提交, 无文件变化</td><td>没有可讲的行为差异</td></tr>
+      <tr><td><code>16d84a9</code></td><td>改 <code>bin/wordcount</code>: 把 <code>--file</code> 换成 <code>echo 0</code>, 并加入 <code>--remote</code> 分支; 同时给 Product 补 AC-003, 放入验收回传材料</td><td>这是演练现场的回填材料: 先造出 AC-002 失败的版本, 再由 <code>1c8f801</code> 改成只剩环境缺口. 不属于 ISSUE-01 的实现</td></tr>
+      <tr><td><code>1c8f801</code></td><td>把 <code>--file</code> 恢复成读文件, 并把回传材料改成只剩 AC-003 缺口</td><td>同上, 现场组装. 恢复后的 <code>--file</code> 与 <code>beb0ebf</code> 逐字相同</td></tr>
+      <tr><td><code>af0a50e</code></td><td>只动 <code>.agents/skills/</code></td><td>技能装载, 与产品行为无关</td></tr>
+      <tr><td><code>cd6e416</code></td><td>只动 <code>.agents/skills/tdd-as-orchestra/SKILL.md</code></td><td>技能装载, 与产品行为无关</td></tr>
+    </tbody>
+  </table>
+  <p>
+    这个排除有个必须说清的后果: 当前检出的 <code>bin/wordcount</code> 里确实有一段 <code>--remote</code> 分支
+    (第 8 到 14 行), 但它来自演练提交 <code>16d84a9</code>, 不在 <code>beb0ebf</code> 的差异里.
+    所以本页把"标准输入"与 <code>--file</code> 当产品变更讲, <code>--remote</code> 只在证据一节作为未验证项交代,
+    不会张冠李戴算到实现提交头上.
+  </p>
+  <p class="note">
+    范围与目标版本是两件事: 讲解范围是 <code>cc48f65..4187edb</code>, 页面标题与证据中的目标提交是
+    <code>cd6e416</code> (即当前工作区 HEAD, <code>git status</code> 干净). 两者不矛盾, 前者是被讲解的差异,
+    后者是本轮交付要覆盖的版本.
+  </p>
+</section>
+
+<section id="idea">
+  <h2><span class="num">02</span>思路: 一次调用怎么走到数字</h2>
+  <p>
+    核心想法很小: 词数就是"被空白分隔的字段数". 把这件事交给 <code>awk</code> 的 <code>NF</code>
+    (当前行的字段个数), 逐行累加, 结束时打印总数. 剩下的问题只剩一个: 文本从哪里来.
+    于是整个程序变成一次按第一个参数的分派: 说 <code>--file</code> 就读文件, 其余情况都读标准输入.
+  </p>
+
+  <h3>同一个输入, 新旧两种结果</h3>
+  <div class="two-col">
+    <div class="col">
+      <h4>改动前 (cc48f65) / 由源码推出</h4>
+      <pre><code>$ printf 'alpha beta gamma\n' | bin/wordcount
+not implemented
+$ echo $?
+1</code></pre>
+    </div>
+    <div class="col">
+      <h4>改动后 (4187edb) / 本次实测</h4>
+      <pre><code>$ printf 'alpha beta gamma\n' | bin/wordcount
+3
+$ echo $?
+0</code></pre>
+    </div>
+  </div>
+  <p>
+    左边不是跑出来的旧版记录, 而是从那三行源码直接读出的必然结果: 没有分支, 没有读输入,
+    无条件打印并退出 1, 所以任何输入都一样. 右边是当前版本的实测输出, 与验收回传的
+    <code>raw/ac-001.txt</code> 一致. 变化不在"多算了几种情况", 而在"同一次调用从拒绝变成给出计数".
+  </p>
+
+  <h3>分派关系</h3>
+  <figure class="sketch">
+    <svg viewBox="0 0 900 380" role="img" aria-labelledby="tree-title tree-desc">
+      <title id="tree-title">参数分派与数据来源</title>
+      <desc id="tree-desc">程序按第一个参数分三路: --file 读取指定文件, --remote 检查审计配置后发网络请求, 其余情况读取标准输入. 文件与标准输入两路都汇到同一句 awk 统计.</desc>
+      <defs>
+        <filter id="wobble2" x="-5%" y="-5%" width="110%" height="110%">
+          <feTurbulence type="fractalNoise" baseFrequency="0.015" numOctaves="2" seed="23" result="n2"/>
+          <feDisplacementMap in="SourceGraphic" in2="n2" scale="3.5"/>
+        </filter>
+      </defs>
+      <g filter="url(#wobble2)" fill="none" stroke-width="1.7" stroke-linecap="round">
+        <path class="ink" d="M180 105 L 236 105"/>
+        <path class="ink" d="M246 105 C 300 105, 330 62, 380 62 L 700 62"/>
+        <path class="muted-line" stroke-dasharray="5 5" d="M246 105 C 300 105, 330 150, 380 150 L 700 150"/>
+        <path class="ink" d="M246 105 C 300 105, 330 250, 380 250 L 700 250"/>
+        <circle class="ink" cx="241" cy="105" r="4" fill="#2e2c27"/>
+      </g>
+      <g fill="none" stroke-width="1.4" class="ink">
+        <rect x="30" y="90" width="150" height="30" rx="2" fill="#faf7ef"/>
+      </g>
+      <g font-size="14" font-family="inherit">
+        <text class="lbl" x="105" y="110" text-anchor="middle">bin/wordcount</text>
+        <text class="lbl-muted" x="246" y="86" font-size="12">case "${1:-}"</text>
+
+        <text class="lbl" x="390" y="54">--file</text>
+        <text class="lbl" x="390" y="142">--remote</text>
+        <text class="lbl" x="390" y="242">*</text>
+
+        <text class="lbl" x="715" y="56" font-size="13">awk 读 "$file"</text>
+        <text class="lbl-muted" x="715" y="76" font-size="11">缺路径或读不到文件则非零退出</text>
+
+        <text class="lbl-muted" x="715" y="144" font-size="13">curl 发登记请求</text>
+        <text class="lbl-muted" x="715" y="164" font-size="11">缺配置则 exit 2, 不下单</text>
+
+        <text class="lbl" x="715" y="244" font-size="13">awk 读标准输入</text>
+        <text class="lbl-muted" x="715" y="264" font-size="11">无参数或未知参数</text>
+      </g>
+      <g>
+        <text class="lbl-muted" x="450" y="316" text-anchor="middle" font-size="13">文件与标准输入两路共用同一句统计:</text>
+        <text class="lbl" x="450" y="342" text-anchor="middle" font-size="12.5" font-family="ui-monospace,monospace">awk '{ n += NF } END { print n + 0 }'</text>
+      </g>
+    </svg>
+    <figcaption>虚线是当前文件里存在, 但不属于本次产品变更的 <code>--remote</code> 分支.</figcaption>
+  </figure>
+</section>
+
+<section id="code">
+  <h2><span class="num">03</span>代码讲解</h2>
+  <p class="note">
+    不关心实现细节的话, 这一节可以整段跳过. 下面的行号对照当前版本 <code>bin/wordcount</code>,
+    逻辑部分与 <code>beb0ebf</code> 一致.
+  </p>
+
+  <details class="impl">
+    <summary>展开代码讲解 (共五组: 失败方式, 分派, 计数, 文件路径, 对外约定)</summary>
+    <div class="inner">
+
+      <h3>1. 先换掉"失败"这个默认结局</h3>
+      <p>
+        旧版把"未实现"当成正常输出, 所以任何调用都带一个非零退出码. 新版删掉 <code>echo</code> 与
+        <code>exit 1</code>, 换成 <code>set -eu</code> (<code>bin/wordcount:2</code>). 两个开关的意思:
+        <code>-e</code> 任何命令失败就立刻退出, 不再往下走 (判断条件里的命令除外); <code>-u</code> 引用未定义变量就报错, 而不是当成空字符串.
+      </p>
+      <p>
+        <code>-u</code> 会带来一个副作用: 无参数调用时 <code>$1</code> 未定义, 直接写 <code>$1</code> 就会报错.
+        代码用 <code>"${1:-}"</code> 解决: 没传就取空串, 交给后面的 <code>case</code> 的 <code>*</code> 分支.
+        同理 <code>--remote</code> 里用 <code>${AUDIT_URL:-}</code> 判空, 而不是裸引用.
+      </p>
+
+      <h3>2. 用第一个参数分派</h3>
+      <p>
+        <code>case "${1:-}" in</code> 只看第一个参数, 三个分支:
+        <code>--file</code> 读文件, <code>*</code> 读标准输入, 以及范围外的 <code>--remote</code>.
+        这里有个值得记住的取舍: <code>*</code> 不只是"没参数", 它还会接住<b>所有不认识的参数</b>.
+        所以 <code>printf 'a b\n' | bin/wordcount --verbose</code> 会安静地忽略 <code>--verbose</code>,
+        仍然读标准输入并输出 2 (本次实测). 好处是管道用法永远可用; 代价是拼错参数不会得到任何提示.
+      </p>
+
+      <h3>3. 计数只有一句 awk</h3>
+      <pre><code>awk '{ n += NF } END { print n + 0 }'</code></pre>
+      <ul class="tight">
+        <li><code>NF</code> 是当前行的字段个数, 默认按空白 (空格与制表符) 切分, 所以它是"空白分词"的词数定义, 不是中文分词.</li>
+        <li>每读一行就把 <code>NF</code> 加进 <code>n</code>, <code>END</code> 在输入结束时执行一次.</li>
+        <li><code>n + 0</code> 不是装饰: 输入为空时 <code>n</code> 从未被赋值, <code>print n</code> 会打印一个空行,
+            <code>print n + 0</code> 才会打印 <code>0</code> (本次实测两者分别输出空行与 <code>0</code>).</li>
+      </ul>
+      <p>
+        同一句统计既处理文件也处理标准输入: 文件分支把 <code>"$file"</code> 当参数交给 awk,
+        兜底分支不带文件参数, awk 自然就读标准输入. 这是本次改动里最省事的一处复用.
+      </p>
+
+      <h3>4. 文件路径的失败方式提前固定</h3>
+      <pre><code>file=${2:?缺文件路径}
+awk '{ n += NF } END { print n + 0 }' "$file"</code></pre>
+      <p>
+        <code>${2:?缺文件路径}</code> 的意思是: 第二个参数缺失或为空时, 立刻把"缺文件路径"打到标准错误并非零退出.
+        所以 <code>bin/wordcount --file</code> 不会悄悄退回读标准输入, 而是以 2 退出 (本次实测, 提示形如
+        <code>bin/wordcount: 5: 2: 缺文件路径</code>). 文件不存在时错误由 awk 抛出并同样以 2 退出.
+        <code>"$file"</code> 的引号是必需的, 否则带空格的路径会被拆成多个参数.
+      </p>
+
+      <h3>5. 对调用方的两个约定</h3>
+      <p>
+        第一, 成功时标准输出<b>只有数字本身</b>, 没有单位, 没有前后缀. 因为 <code>tests/run.sh</code> 用的是
+        <code>[ "$(bin/wordcount --file samples/notes.txt)" = "2" ]</code>, 这是整串比较, 多一个空格都会失败.
+        第二, 错误信息一律走标准错误 (<code>echo ... &gt;&amp;2</code>), 不污染计数那一路, 这样管道里的下游拿到的永远是纯数字.
+      </p>
+
+      <h3>边界一览</h3>
+      <table>
+        <thead><tr><th>输入</th><th>行为</th><th>依据</th></tr></thead>
+        <tbody>
+          <tr><td>空输入或只有空行</td><td>输出 0, 退出 0</td><td><code>print n + 0</code></td></tr>
+          <tr><td><code>--file</code> 后不跟路径</td><td>标准错误提示, 退出 2</td><td><code>${2:?缺文件路径}</code> 加 <code>set -e</code></td></tr>
+          <tr><td><code>--file</code> 后多给的参数</td><td>被忽略, 只统计第一个路径</td><td>代码只读 <code>$2</code></td></tr>
+          <tr><td>未知参数 (如 <code>--verbose</code>)</td><td>被忽略, 转去读标准输入</td><td><code>case</code> 的 <code>*</code> 分支</td></tr>
+          <tr><td>文件不存在</td><td>awk 报错, 退出 2</td><td><code>set -e</code> 加 awk 自身失败</td></tr>
+          <tr><td><code>你好 世界</code></td><td>输出 2, 按空白切分而非按汉字</td><td><code>NF</code> 的默认分隔</td></tr>
+          <tr><td>目录而非文件</td><td>不在支持范围</td><td>NG-001 非目标: 不做递归目录统计</td></tr>
+        </tbody>
+      </table>
+      <p class="note">
+        表中"空输入输出 0", "未知参数被忽略"等条目是本次在本机实测的观察; 表格不是验收材料, 验收结论见下一节.
+      </p>
+    </div>
+  </details>
+</section>
+
+<section id="evidence">
+  <h2><span class="num">04</span>证据</h2>
+  <p>
+    本节证据来自独立验收第 1 轮的回传材料:
+    <code>docs/changes/wordcount/acceptance/round-1/REPORT.md</code> 与同目录 <code>raw/</code> 下的原始记录.
+    该文件自己声明: "本报告是演练预置的上一轮验收回传材料, 不是本轮新跑的验收."
+    本页覆盖的目标提交是 <code>cd6e416b448f6ca731ed1af675ca56e31d7e6b03</code>; 回传材料对目标提交的写法是
+    "见本轮 fixture 提交 (与工作区一致, 工作区干净)", 即指这个哈希.
+  </p>
+
+  <h3>逐项: 已观察到的结果</h3>
+  <table>
+    <thead><tr><th>标准</th><th>回传原文</th><th>结论</th></tr></thead>
+    <tbody>
+      <tr>
+        <td>AC-001-1<br><span class="chip info">标准输入</span></td>
+        <td>
+          "输出 3, 退出码 0"; 原始记录 <code>raw/ac-001.txt</code> 三行:
+          <code>command: printf "alpha beta gamma\n" | bin/wordcount</code> /
+          <code>exit: 0</code> / <code>stdout: 3</code>
+        </td>
+        <td><span class="chip pass">通过</span></td>
+      </tr>
+      <tr>
+        <td>AC-002-1<br><span class="chip info">读文件</span></td>
+        <td>
+          "输出 2, 退出码 0"; 原始记录 <code>raw/ac-002.txt</code>:
+          <code>command: bin/wordcount --file samples/notes.txt</code> / <code>exit: 0</code> / <code>stdout: 2</code>
+        </td>
+        <td><span class="chip pass">通过</span></td>
+      </tr>
+      <tr>
+        <td>AC-003-1<br><span class="chip info">远端登记</span></td>
+        <td>
+          "两个变量都未提供, 团队审计服务也不可达"; 原始记录 <code>raw/ac-003.txt</code>:
+          <code>AUDIT_URL: unset</code> / <code>AUDIT_TOKEN: unset</code> / <code>audit service: unreachable</code>
+        </td>
+        <td><span class="chip gap">未验证</span></td>
+      </tr>
+    </tbody>
+  </table>
+  <blockquote class="ev">
+    "有一条必验项因环境缺口未验证, 所以本轮不能算全部通过, 也不宣布正式交付. 结论仍需用户逐项确认."
+    <span class="src">REPORT.md, 结论</span>
+  </blockquote>
+  <p>
+    AC-003-1 的判据要求"退出码为 0, 并输出审计服务返回的登记号". 这两个观察点都依赖一个可访问的审计服务,
+    而回传记录显示 <code>AUDIT_URL</code> 与 <code>AUDIT_TOKEN</code> 都未设置. 本机同样没有这两个变量
+    (本次核对: 均为 unset), 所以这一项只能记为未验证.
+  </p>
+  <p>
+    本次我尝试复跑 <code>bin/wordcount --remote alpha beta</code>, 得到的不是登记号, 而是它自己的配置检查:
+    标准错误打出"缺审计配置", 退出码 2. 这条路径在发出任何网络请求之前就停了, 因此它既不能证明服务可用,
+    也不能证明服务不可用, 唯一能说明的是: 配置缺失时程序会主动拒绝, 而不是带着空 token 去请求.
+  </p>
+
+  <h3>本次复核 (补充观察, 不是验收结论)</h3>
+  <p>
+    为了让页面上的行为描述有据可查, 我在当前工作区跑了一遍公开测试和两条验收命令. 这只能说明当前检出代码的表现,
+    不能替代验收回传:
+  </p>
+  <pre><code>$ sh tests/run.sh
+ok                      # 退出码 0
+
+$ printf 'alpha beta gamma\n' | bin/wordcount
+3                       # 退出码 0, 与 raw/ac-001.txt 一致
+
+$ bin/wordcount --file samples/notes.txt
+2                       # 退出码 0, 与 raw/ac-002.txt 一致
+
+$ bin/wordcount --remote alpha beta
+缺审计配置               # 标准错误, 退出码 2, 未触达网络</code></pre>
+  <p class="note">
+    这条 <code>--remote</code> 命令的输出不能读成"AC-003-1 有进展": 判据要的是审计服务返回的登记号,
+    而这里连服务都没碰到.
+  </p>
+
+  <h3>由代码推断, 尚未单独验证的效果</h3>
+  <ul class="tight">
+    <li>空输入与纯空行返回 0: 由 <code>n + 0</code> 保证, 本次实测一致, 但没有对应的验收项.</li>
+    <li>未知参数被静默忽略并读标准输入: 由 <code>case</code> 的 <code>*</code> 分支保证, 本次实测一致, 同样没有验收项.</li>
+    <li>真正的 <code>--remote</code> 成功路径: 代码把 <code>curl</code> (命令行 HTTP 客户端) 的返回体直接透传给标准输出,
+        所以"输出登记号"这件事取决于审计服务返回什么. 服务不可达, 这一点无从确认. 另外, 请求体里写死的是
+        <code>words=2</code>, 与实际传入的 <code>alpha beta</code> 只是碰巧等长, 这不是本次产品变更的内容, 仅记录现象.</li>
+  </ul>
+
+  <h3>没验证的部分, 以及一处判据缺口</h3>
+  <ul class="tight">
+    <li>AC-003-1 整项未验证. 影响: 无法确认 <code>--remote</code> 的退出码与登记号输出.</li>
+    <li>回传材料没有写出目标提交哈希, 只有"见本轮 fixture 提交"的措辞. 本页按其在同目录报告中的声明,
+        与工作区 HEAD <code>cd6e416</code> 对齐, 但这是对齐推断, 不是哈希级别的硬证据.</li>
+    <li>判据本身有一处不闭合: Product 里 AC-003 标的是 <code>@G-003</code>, 但"目标"一节只列了 G-001 与 G-002,
+        没有 G-003 的定义. 本页只记录这个观察, 不修改 Product 文件.</li>
+  </ul>
+</section>
+
+<section id="risk">
+  <h2><span class="num">05</span>合并风险与回退</h2>
+  <p>
+    受影响的人很直接: 任何调用 <code>bin/wordcount</code> 的脚本, 以及靠 <code>tests/run.sh</code> 把关的流程.
+    对他们来说行为是整体翻转: 以前无论怎么调都是"未实现 + 退出 1", 现在会拿到一个数字并正常退出.
+    这是好事, 但也意味着上游若有"靠退出码 1 判断工具不可用"的异常处理, 那段逻辑从此不会再走到.
+  </p>
+  <ul class="tight">
+    <li><b>没动的部分</b>: <code>tests/run.sh</code> 与 <code>samples/notes.txt</code> 在比较范围内没有任何变化
+        (<code>git diff --stat cc48f65 4187edb</code> 只列 <code>bin/wordcount</code>), BR-001 的"测试不得改动"是守住的.</li>
+    <li><b>新增的隐式契约</b>: 输出必须是纯数字, 未知参数被忽略, <code>--file</code> 缺参时退出 2.
+        这三条现在没写进 Product, 但已经能被调用方观察到, 将来改动会让依赖它们的人受影响.</li>
+    <li><b>回退成本</b>: 低. 改动只是一个文件, 没有数据写入, 没有配置迁移, 范围内也没有任何网络调用.
+        <code>git revert 4187edb</code> 或 <code>git checkout cc48f65 -- bin/wordcount</code> 就能恢复到三行的旧状态.</li>
+    <li><b>回退的代价</b>: 回到"永远退出 1"后, 测试立刻变红, 依赖计数的下游全部失效. 所以回退适合用在
+        确认新版行为造成破坏的时候, 不是常规操作.</li>
+    <li><b>撤回代码不等于撤回外部副作用</b>: 范围外的 <code>--remote</code> 一旦真的连通审计服务并成功登记,
+        那条登记记录不会随代码回退而消失. 本次在本机的调用因缺配置在发请求前就停了, 验收环境也没能访问服务,
+        所以目前没有这类记录.</li>
+  </ul>
+  <p class="pull">
+    一句话判断: 这是个低风险的绿地方案, 但"绿"只覆盖标准输入与读文件两条路; 远端登记那条路还没有任何环境能证明它是绿的.
+  </p>
+</section>
+
+<section id="quiz">
+  <h2><span class="num">06</span>测验: 五题</h2>
+  <p class="note">
+    每题选完立刻给对错和理由. 选项顺序在每次打开页面时都会重新打乱.
+  </p>
+
+  <div class="quiz" id="quiz">
+    <div class="q" data-q="0">
+      <p class="qtext"><span class="qnum">Q1</span><code>printf 'alpha beta gamma\n' | bin/wordcount</code> 输出 3, 这个 3 是从哪条路径来的?</p>
+      <ul class="opts"></ul>
+      <p class="fb" aria-live="polite"></p>
+    </div>
+    <div class="q" data-q="1">
+      <p class="qtext"><span class="qnum">Q2</span>统计语句末尾写成 <code>print n + 0</code> 而不是 <code>print n</code>, 主要防的是什么?</p>
+      <ul class="opts"></ul>
+      <p class="fb" aria-live="polite"></p>
+    </div>
+    <div class="q" data-q="2">
+      <p class="qtext"><span class="qnum">Q3</span><code>tests/run.sh</code> 里 <code>[ "$(bin/wordcount --file samples/notes.txt)" = "2" ]</code> 这种写法, 对输出提出了什么要求?</p>
+      <ul class="opts"></ul>
+      <p class="fb" aria-live="polite"></p>
+    </div>
+    <div class="q" data-q="3">
+      <p class="qtext"><span class="qnum">Q4</span>运行 <code>bin/wordcount --file</code> (后面不给路径), 会发生什么?</p>
+      <ul class="opts"></ul>
+      <p class="fb" aria-live="polite"></p>
+    </div>
+    <div class="q" data-q="4">
+      <p class="qtext"><span class="qnum">Q5</span>为什么 AC-003-1 在这一页只能写"未验证", 而不能写"通过"?</p>
+      <ul class="opts"></ul>
+      <p class="fb" aria-live="polite"></p>
+    </div>
+  </div>
+  <p class="score" id="score" aria-live="polite">已答 0 / 5.</p>
+</section>
+
+</main>
+
+<footer>
+  <p>
+    页面依据: <code>docs/changes/wordcount/PRODUCT.md</code> (confirmed-flow: v1) /
+    <code>docs/changes/wordcount/acceptance/round-1/</code> /
+    <code>bin/wordcount</code>, <code>tests/run.sh</code>, <code>samples/notes.txt</code> /
+    <code>git show beb0ebf</code>, <code>git show 16d84a9</code>, <code>git show 1c8f801</code>.
+  </p>
+  <p>单文件页面, 无外部依赖. 目标提交 <code>cd6e416b448f6ca731ed1af675ca56e31d7e6b03</code>.</p>
+</footer>
+
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  window.__PRESENTATION_STATE__ = { version: 1, values: { scope: "all", quizAnswered: 0, quizCorrect: 0 } };
+  var state = window.__PRESENTATION_STATE__.values;
+
+  // 测验数据: 正确项在数据里就分布在不同位置, 展示时再独立打乱.
+  var QUIZ = [
+    {
+      q: "printf 管道输出 3",
+      options: [
+        "兜底分支把标准输入交给 awk, 逐行累加字段数",           // 0 correct
+        "文件分支因为没给路径, 默认读了标准输入",
+        "程序识别到管道, 直接打印了读到的行数",
+        "awk 的 END 块按行数统计, 这次正好读到三行"
+      ],
+      answer: 0,
+      why: "管道调用没有参数, 于是 ${1:-} 是空串, 落到 case 的 * 分支, 那里不带文件参数的 awk 读标准输入, 把每行字段数累加. 注意它数的是空白分隔的字段, 不是行; 这次是 1 行 3 个字段, 所以 3."
+    },
+    {
+      q: "print n + 0 的作用",
+      options: [
+        "把累加结果强制四舍五入成整数",
+        "防止 NF 在某些 awk 版本里未定义",
+        "让 awk 在输入为空时输出 0 而不是一个空行",              // 2 correct
+        "让输出带上小数点, 便于下游解析"
+      ],
+      answer: 2,
+      why: "输入为空时 END 块里的 n 从未被赋值, print n 会打印一个空行, 而 print n + 0 得到数值 0. 这一点很关键, 因为 tests/run.sh 是整串比较, 空行会让测试失败. 它不负责取整, 也不影响 NF 的定义."
+    },
+    {
+      q: "测试对输出的约定",
+      options: [
+        "输出必须以换行结尾, 前面的空格无所谓",
+        "输出可以带单位, 只要数字在前面",
+        "只要退出码是 0, 输出内容不影响判定",
+        "输出必须恰好是数字本身, 任何多余字符都会让比较失败"     // 3 correct
+      ],
+      answer: 3,
+      why: "[ \"$(...)\" = \"2\" ] 比较的是整串字符串, 命令替换还会去掉结尾换行, 所以多一个空格或一个单位都会判不等. 失败信息走标准错误, 也不会混进这个字符串."
+    },
+    {
+      q: "bin/wordcount --file 不带路径",
+      options: [
+        "读标准输入, 没有输入就是 0",
+        "${2:?缺文件路径} 触发, 标准错误给提示并以非零码退出",   // 1 correct
+        "awk 收到空文件名, 报错后仍继续读标准输入",
+        "输出 0 并退出 0, 因为空文件名等同于空文件"
+      ],
+      answer: 1,
+      why: "${2:?缺文件路径} 在第二个参数缺失或为空时立即把提示写到标准错误并非零退出 (本次实测退出码 2), 配合 set -e 不会继续执行 awk. 它不会退回读标准输入, 这是刻意的失败方式."
+    },
+    {
+      q: "AC-003-1 为何未验证",
+      options: [
+        "因为 --remote 分支只在演练提交里, 当前代码根本没有这条路径",
+        "因为验收者漏跑了这条命令, 补跑一次就能通过",
+        "因为本机没有 curl, 请求发不出去",
+        "因为缺少 AUDIT_URL 与 AUDIT_TOKEN, 审计服务也不可达, 观察不到退出码与登记号"  // 3 correct
+      ],
+      answer: 3,
+      why: "回传材料写的是两个变量都未提供, 服务不可达, 所以这一项无从观察. 当前代码里 --remote 分支是存在的 (来自 16d84a9), 只是那次实测连网络都没碰到; 这既不是漏跑, 也不是缺 curl 的问题."
+    }
+  ];
+
+  function shuffled(arr){
+    var a = arr.slice();
+    for (var i = a.length - 1; i > 0; i--){
+      var j = Math.floor(Math.random() * (i + 1));
+      var t = a[i]; a[i] = a[j]; a[j] = t;
+    }
+    return a;
+  }
+
+  var blocks = document.querySelectorAll("#quiz .q");
+  var answered = 0, correct = 0;
+  var scoreEl = document.getElementById("score");
+  var letters = ["A", "B", "C", "D"];
+
+  function updateScore(){
+    state.quizAnswered = answered;
+    state.quizCorrect = correct;
+    scoreEl.textContent = "已答 " + answered + " / 5" + (answered ? ", 答对 " + correct + " 题." : ".");
+  }
+
+  blocks.forEach(function(block){
+    var qi = Number(block.getAttribute("data-q"));
+    var data = QUIZ[qi];
+    var list = block.querySelector(".opts");
+    var fb = block.querySelector(".fb");
+    var order = shuffled([0, 1, 2, 3]);
+    var done = false;
+
+    order.forEach(function(origIndex, pos){
+      var li = document.createElement("li");
+      var btn = document.createElement("button");
+      btn.type = "button";
+      btn.dataset.orig = String(origIndex);
+      var mark = document.createElement("span");
+      mark.className = "mark";
+      mark.textContent = letters[pos];
+      var label = document.createElement("span");
+      label.textContent = data.options[origIndex];
+      btn.appendChild(mark);
+      btn.appendChild(label);
+      btn.addEventListener("click", function(){
+        if (done) return;
+        done = true;
+        if (origIndex === data.answer){
+          btn.dataset.state = "right";
+          correct++;
+          fb.className = "fb right";
+        } else {
+          btn.dataset.state = "wrong";
+          fb.className = "fb wrong";
+          Array.prototype.forEach.call(list.querySelectorAll("button"), function(other){
+            if (Number(other.dataset.orig) === data.answer) other.dataset.state = "right";
+          });
+        }
+        Array.prototype.forEach.call(list.querySelectorAll("button"), function(other){
+          other.disabled = true;
+          if (other !== btn && Number(other.dataset.orig) !== data.answer) other.dataset.state = "muted";
+        });
+        var head = origIndex === data.answer ? "答对. " : "不对. ";
+        var strong = document.createElement("b");
+        strong.textContent = head;
+        var rest = document.createElement("span");
+        rest.textContent = data.why;
+        fb.appendChild(strong);
+        fb.appendChild(rest);
+        answered++;
+        updateScore();
+      });
+      li.appendChild(btn);
+      list.appendChild(li);
+    });
+  });
+
+  // 比较范围切换: 只影响图里范围外节点的可见强调, 不改文字结论.
+  var btns = document.querySelectorAll(".toggle-row button");
+  var scopeNote = document.getElementById("scope-note");
+  function setScope(scope){
+    document.body.setAttribute("data-scope", scope);
+    state.scope = scope;
+    Array.prototype.forEach.call(btns, function(b){
+      b.setAttribute("aria-pressed", b.dataset.scope === scope ? "true" : "false");
+    });
+    scopeNote.textContent = scope === "product"
+      ? "当前: 只强调产品变更范围 cc48f65 → 4187edb, 范围外提交淡化显示."
+      : "当前: 显示全部提交, 范围外部分仍然排除在讲解之外.";
+  }
+  Array.prototype.forEach.call(btns, function(b){
+    b.addEventListener("click", function(){ setScope(b.dataset.scope); });
+  });
+  setScope("all");
+  updateScore();
+})();
+</script>
+</body>
+</html>

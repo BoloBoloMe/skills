@@ -1,0 +1,8 @@
+* 30ab833 fixture: 装入待测技能 v3
+* 9485c42 fixture: 预置 ts002-gap-only 仅缺口现场
+* f62d932 docs: 勾选 ISSUE-01 已实现并记录评审第 1 轮结论
+*   a298666 merge: issue/01
+|\  
+| * 6f07cc1 feat: ISSUE-01: 实现 wordcount 标准输入与 --file
+|/  
+* 93fcc53 scaffold: 项目骨架, Product, 执行计划与测试

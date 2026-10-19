@@ -1,0 +1,20 @@
+* 6aa65ce docs: 记录评审第 3 轮结论
+* 7118a38 docs: 勾选 ISSUE-03 已实现
+*   4f882c7 Merge branch 'issue/03'
+|\  
+| * 173565f feat: ISSUE-03: 提取词数统计函数消除重复
+|/  
+* e081607 docs: 记录评审第 2 轮结论
+* 84ac1b8 docs: 勾选 ISSUE-02 已实现
+*   469edfa merge: 合并 ISSUE-02 到 main
+|\  
+| * bd22ac4 feat: ISSUE-02: 让 --file 读取文件并统计词数
+|/  
+* 0f8ca0b fixture: 装入待测技能 v3
+* 0028a8e fixture: 预置 ts002-green-gap2 现场
+* f62d932 docs: 勾选 ISSUE-01 已实现并记录评审第 1 轮结论
+*   a298666 merge: issue/01
+|\  
+| * 6f07cc1 feat: ISSUE-01: 实现 wordcount 标准输入与 --file
+|/  
+* 93fcc53 scaffold: 项目骨架, Product, 执行计划与测试

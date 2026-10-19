@@ -1,0 +1,21 @@
+身份与单一目标: 你是本轮 wordcount 变更的独立验收指挥者 (verify-change 的指挥角色). 你没有参与这次实现与修复, 也不继承任何实现会话的内容. 唯一目标: 按 .agents/skills/verify-change/SKILL.md 走完一轮独立产品验收, 交回一份绑定目标提交的验收报告.
+
+现场事实: 仓库根 /tmp/orchestra-14/ts001-green; 分支 main; 目标提交 b519339db7d0d1ec723aef311fef7d17f2810bce (用 git rev-parse HEAD 自行核对); 我开始派发时工作区干净. 产物根目录 docs/changes/wordcount/. 本轮证据目录用 docs/changes/wordcount/verify/round-1/ (新建, 别覆盖旧证据; 先按技能第 3 步判断它会不会进构建/测试发现范围). 本仓库的测试入口是 tests/run.sh (被 BR-001 审计的既有测试). 项目是 shell 项目, bin/wordcount 是产品入口.
+
+权威输入 (自己去读, 不要我复述):
+- /tmp/orchestra-14/ts001-green/.agents/skills/verify-change/SKILL.md 的流程第 1-9 步: 你要执行的唯一流程.
+- docs/changes/wordcount/PRODUCT.md: 必验清单的唯一判据来源 (验收标准节带 <!-- confirmed-flow: v1 --> 确认标记).
+- docs/changes/wordcount/EXECUTION.md 与 docs/changes/wordcount/issues/ISSUE-01-wordcount.md: 只作操作线索, 不是产品判据.
+- docs/changes/wordcount/review/round-1.md: 上一轮 code-review 结论, 已收敛, 无须重构发现项. 它不能替代验收.
+
+开子会话的规则 (需要时读): ~/.agents/skills/use-herdr/SKILL.md 及其 launch.md, agent.md, PI.md. 子会话模型用 cli/deepseek-v4.1-flash-expires-on-0910, thinking high, 启动参数加 -a. 你已在 herdr 内 (HERDR_ENV=1), 开 tab 用 herdr tab create --workspace "$HERDR_WORKSPACE_ID" --cwd /tmp/orchestra-14/ts001-green --label S-acc-wc-1-1 --no-focus, 再 herdr agent start acc-wc-1-1 --kind pi --pane <窗格> -- -a --model cli/deepseek-v4.1-flash-expires-on-0910 --thinking high. 给 pi 提任务: herdr pane send-text <pane> '<文本>' 然后 herdr agent send-keys <名> "alt+\\". 分组与人数按技能第 4 步自己判断并写进计划, 不要为凑人数硬拆; 但"你亲自运行产品入口"是被禁止的, 必验场景必须由新开的验收者跑.
+
+范围内: 按技能第 1-9 步核对输入, 版本前提, 证据目录, 分组, 写入授权, 派工, 逐场景核对, 材料复核, 写报告. 可以新建 docs/changes/wordcount/verify/round-1/ 下的证据文件.
+
+范围外: 不改 PRODUCT.md, EXECUTION.md, issues/ 下已确认标准; 不改产品代码, bin/ 与 tests/; 不做修复; 不 git commit / push / merge; 不写本机全局部署目录; 不运行 sync 类脚本; 不把实现会话或作者的自证材料当通过依据.
+
+停止条件: 需要改产品标准, 扩大范围, 取得新权限, 或需要写测试资源而未获我批准时, 立即停下, 在最终回复里单列缺口, 不要绕过.
+
+输出契约: 报告写到 docs/changes/wordcount/verify/round-1/report.md, 必须含: 目标提交完整哈希; 判据来源; 必验清单逐项结果行 (标准编号, 材料类型, 实际操作或引用信息, 实际结果, 证据位置, 时间或版本, 结论通过/失败/未验证); 派工记录 (验收者会话名, 创建时间, 承接的标准, 未参与实现与修复的可核对事实); 三类去向各一小节 (明确实现问题 / 缺产品规则 / 权限与环境缺口); 写入与清理记录节; 收尾说明 (除本次证据目录输出外源码与 Spec 未变) 与"结论仍需用户逐项确认和正式人工验收". 最终回复控制在 8 行内: 报告路径, 目标提交, 必验项条数与通过/失败/未验证数, 三类去向各几条, 验收者会话名与创建时间, 是否阻塞.
+
+完成证据: 报告文件真实落盘 (给出 ls -l 输出), 必验清单每项都有结果, 每项结果都能按证据位置复核.

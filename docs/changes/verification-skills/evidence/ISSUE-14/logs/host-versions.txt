@@ -1,0 +1,15 @@
+date: 2026-10-20T01:24:45+08:00
+host: Linux 7.0.0-31-generic x86_64
+os: Ubuntu 26.04.1 LTS
+pi: 1.3.0
+herdr: herdr 0.9.4
+herdr status:
+client:
+  version: 0.9.4
+  channel: stable
+  protocol: 22
+  endpoint_protocol_generation: 1
+
+uv: uv 0.12.5 (x86_64-unknown-linux-gnu)
+python(uv): Python 3.14.7
+python(system): Python 3.14.4

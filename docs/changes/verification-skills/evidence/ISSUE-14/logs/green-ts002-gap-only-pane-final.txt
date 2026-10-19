@@ -1,0 +1,80 @@
+                                                                                                                                                                 │
+ ## server 与隔离实验                                                                                                                                            │
+                                                                                                                                                                 │
+ 仅在我明确要停掉 server 及其窗格进程时运行 `herdr server stop`, 不把它当活动会话内的常规恢复手段. 不 kill Herdr 主进程; 需要隔离 server 的实验使用命名测试会话. │
+                                                                                                                                                                 │
+ Took 0.0s                                                                                                                                                       │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ Thinking...                                                                                                                                                     │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ $ cd /tmp/orchestra-14/ts002-gap-only && git status --porcelain && git log --oneline -1 && echo "(clean if nothing above)"                                      │
+                                                                                                                                                                 │
+ 30ab833 fixture: 装入待测技能 v3                                                                                                                                │
+ (clean if nothing above)                                                                                                                                        │
+                                                                                                                                                                 │
+ Took 0.0s                                                                                                                                                       │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ Thinking...                                                                                                                                                     │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ $ ls -d /home/bolo/.agents/skills/*/ 2>/dev/null; ls -d /tmp/orchestra-14/ts002-gap-only/.agents/skills/*/ 2>/dev/null                                          │
+                                                                                                                                                                 │
+ ... (33 earlier lines, ctrl+o/alt+o to expand)                                                                                                                  │
+ /home/bolo/.agents/skills/wtf/                                                                                                                                  │
+ /tmp/orchestra-14/ts002-gap-only/.agents/skills/code-review/                                                                                                    │
+ /tmp/orchestra-14/ts002-gap-only/.agents/skills/explain-diff/                                                                                                   │
+ /tmp/orchestra-14/ts002-gap-only/.agents/skills/tdd-as-orchestra/                                                                                               │
+ /tmp/orchestra-14/ts002-gap-only/.agents/skills/verify-change/                                                                                                  │
+                                                                                                                                                                 │
+ Took 0.0s                                                                                                                                                       │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ $ sed -n 1,40p /home/bolo/.agents/skills/domain-awareness/SKILL.md; echo "===== tdd ====="; sed -n 1,40p /home/bolo/.agents/skills/tdd/SKILL.md
+
+ ... (53 earlier lines, ctrl+o/alt+o to expand)
+ **接缝** 是你测试的公开边界. 也就是观察行为的接口. 你无需伸进内部. 测试放在接缝上. 绝不针对内部实现.
+ **只测试预先确认的接缝和用例.** 写任何测试前, 先写下要测试的接缝和对应测试用例. 然后向我确认. 未确认的接缝上不写测试. 未确认的用例不进入 red -> green 循环. 你不
+ 可能测试一切. 预先同意接缝和用例. 这样测试工作才会落到关键路径和复杂逻辑上. 而不是落到每个边缘情况上.
+
+ 问: "公开接口是什么, 我们要测试哪些接缝?"
+
+ Took 0.0s
+
+
+ Thinking...
+
+
+ $ cd /tmp/orchestra-14/ts002-gap-only && ls WORKFLOW_VOCABULARY.md docs/language docs/adr AGENTS.md 2>&1 | head; echo "---"; ls .agents/skills/verify-change/
+
+ ... (1 earlier lines, ctrl+o/alt+o to expand)
+ ls: cannot access 'docs/language': No such file or directory
+ ls: cannot access 'docs/adr': No such file or directory
+ ls: cannot access 'AGENTS.md': No such file or directory
+ ---
+ SKILL.md
+
+ Took 0.0s
+
+
+ 节点与结论如下 (未收尾, 停在缺口出口):
+
+ 1. 已走节点: domain-awareness 只读感知 (仓库无 WORKFLOW_VOCABULARY.md/docs/language/docs/adr/AGENTS.md, 无领域文档可依) → 处理验收回传 → 判三类去向. 未开子会话,
+    因为实现问题 0 条, 无重构 ISSUE, 讲解页按技能被禁止.
+ 2. 实现问题 0 条 (见 REPORT.md 三类去向), 故不新建 ISSUE; main 仍 30ab833, 工作区干净, 我未改代码/测试/标准.
+ 3. 缺口 A (环境, 报告已列): AC-003-1 需 AUDIT_URL+AUDIT_TOKEN+可达审计服务; raw/ac-003.txt 三条全不满足, 故 AC-003-1 未验证.
+ 4. 缺口 B (标准, 报告未列): PRODUCT.md AC-003 标 @G-003, 但目标只定义 G-001/G-002, G-003 无定义.
+ 5. 缺口 C (计划, 报告未列): EXECUTION.md 任务图只有 ISSUE-01 覆盖 AC-001/AC-002, 无 ISSUE 覆盖 AC-003; 但 bin/wordcount 已写 --remote 分支 (缺配置即 exit 2, 已
+    实测), 该能力无 ISSUE 归属.
+ 6. 未收尾依据: 技能规定缺口未经你处理前不生成 explain-diff 讲解页, 不进入正常收尾; 故未派 explain-diff, 不宣布交付.
+ 7. 要你定: (a) 给 AUDIT 凭据与服务地址, 或明确 AC-003 降级/删除; (b) 补 G-003 定义与 AC-003 对应 ISSUE. 都属改标准或取新权限, 我不自行决定.
+ 8. 产物: 无新文件 (证据即 acceptance/round-1/REPORT.md, raw/ac-001..003.txt, review/round-1.md, git log 30ab833).
+
+──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+
+──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+/tmp/orchestra-14/ts002-gap-only (main)
+↑15k ↓8.6k R188k CH98.9% $0.005 2.4%/1.0M (auto)                                                                  (cli) deepseek-v4.1-flash-expires-on-0910 • high

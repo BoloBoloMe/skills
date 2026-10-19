@@ -1,0 +1,11 @@
+* 582de1f docs: 新增 wordcount 变更讲解页 (绑定 cd6e416b448f6ca731ed1af675ca56e31d7e6b03)
+* cd6e416 fixture: 装入待测技能 v2
+* 1c8f801 fixture: 预置 ts002-green-gap 仅缺口的验收报告现场
+* af0a50e fixture: 装入待测技能 v1
+* 16d84a9 fixture: 预置 ts002-green-gap 现场
+* 720db42 docs: 勾选 ISSUE-01 已实现并记录评审第 1 轮结论
+*   4187edb merge: issue/01
+|\  
+| * beb0ebf feat: ISSUE-01: 实现 wordcount 标准输入与 --file
+|/  
+* cc48f65 scaffold: 项目骨架, Product, 执行计划与测试

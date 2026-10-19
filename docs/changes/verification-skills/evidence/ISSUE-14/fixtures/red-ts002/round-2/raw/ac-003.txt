@@ -1,0 +1,14 @@
+standard: AC-003-1 (PRODUCT.md 验收标准, 第三条场景)
+material_type: 未运行 (缺权限/环境), 只记录了缺什么
+run_at: 2026-10-20T01:12:41+08:00
+cwd: 仓库根 /tmp/orchestra-14/ts002-red
+env_AUDIT_URL: <未设置>
+env_AUDIT_TOKEN: <未设置>
+env_scan_AUDIT_prefix_count: 0
+command_attempted: bin/wordcount --remote alpha beta
+exit_code: 2
+stdout_text: []
+stderr: [缺审计配置]
+expected: 退出码 0 并输出审计服务返回的登记号
+gap: 无 AUDIT_URL (审计服务地址) 与 AUDIT_TOKEN (凭据), 因此无法触达团队审计服务; 按规范不启动本地服务桩改判通过
+verdict: 未验证

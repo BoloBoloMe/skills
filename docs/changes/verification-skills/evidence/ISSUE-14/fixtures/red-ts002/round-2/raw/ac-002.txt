@@ -1,0 +1,13 @@
+standard: AC-002-1 (PRODUCT.md 验收标准, 第二条场景)
+material_type: 当前观察 (本轮实跑)
+run_at: 2026-10-20T01:12:41+08:00
+cwd: 仓库根 /tmp/orchestra-14/ts002-red
+precheck_samples_notes_txt: 0000000 a l p h a b e t a \n
+command: bin/wordcount --file samples/notes.txt
+exit_code: 0
+stdout_exact: 0000000   2  \n
+stdout_text: [2]
+stderr: []
+expected: 输出 2, 退出码 0
+why_changed_from_round1: ISSUE-02/ISSUE-03 之后的 --file 分支现走共用 count 函数, 见 bin/wordcount
+verdict: 通过

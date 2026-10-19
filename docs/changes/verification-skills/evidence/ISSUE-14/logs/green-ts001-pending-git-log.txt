@@ -1,0 +1,32 @@
+* 5e20d11 docs: 记录评审第 4 轮结论, 评审收敛
+* 62fd7e4 docs: 勾选 ISSUE-05 已实现
+*   faa5857 Merge branch 'issue/05'
+|\  
+| * 46ef5dc feat: ISSUE-05: 空路径按用法错误处理并抽 expect_usage_error 辅助函数
+|/  
+* 50dd1db docs: 记录评审第 3 轮结论并拆出 ISSUE-05
+* badd46a docs: 勾选 ISSUE-03 与 ISSUE-04 已实现
+*   07c772f Merge branch 'issue/04'
+|\  
+| * 641cdfb docs: ISSUE-04: README 登记两条测试命令
+* |   9ea2f70 Merge branch 'issue/03'
+|\ \  
+| |/  
+|/|   
+| * eb51da7 feat: ISSUE-03: 参数校验收敛为单一用法错误出口, 词数统计只留一处 awk
+|/  
+* fc61202 docs: 记录评审第 2 轮结论并拆出 ISSUE-03/04
+* 1ba2133 docs: 勾选 ISSUE-02 已实现
+*   5219d9f Merge branch 'issue/02'
+|\  
+| * 2bb9c76 feat: ISSUE-02: 未知参数与缺失 --file 路径改为用法错误并以退出码 2 结束
+|/  
+* 96a506c docs: ISSUE-02: 拆分评审 R-1 为未知参数用法错误
+* 0ebc5cf fixture: 装入待测技能 v3
+* d31da4b fixture: 预置 ts001-review-pending 现场
+* f62d932 docs: 勾选 ISSUE-01 已实现并记录评审第 1 轮结论
+*   a298666 merge: issue/01
+|\  
+| * 6f07cc1 feat: ISSUE-01: 实现 wordcount 标准输入与 --file
+|/  
+* 93fcc53 scaffold: 项目骨架, Product, 执行计划与测试

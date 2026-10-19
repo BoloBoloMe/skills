@@ -1,0 +1,44 @@
+# AC-001-1 证据 (AC-001-1 统计标准输入词数)
+
+会话名: acc-wc-1-1 (pi session 01a15522-5573-7012-a841-9530f4d926b7)
+工作区: /tmp/orchestra-14/ts001-green
+HEAD: b519339db7d0d1ec723aef311fef7d17f2810bce (与目标提交 b519339db7d0d1ec723aef311fef7d17f2810bce 一致)
+判据原文: PRODUCT.md AC-001-1 -> 当 验收者运行 `printf 'alpha beta gamma\n' | bin/wordcount` 那么 输出为 `3`, 退出码为 0
+
+## 命令 1: 确认分支
+```
+$ git rev-parse --abbrev-ref HEAD
+main
+```
+
+## 命令 2: AC-001-1 实跑 (管道的 $? 即最右进程 bin/wordcount 的退出码)
+```
+$ date -Is
+2026-10-20T01:08:19+08:00
+$ printf 'alpha beta gamma\n' | bin/wordcount
+3
+[[product exit code]]=0
+$ date -Is
+2026-10-20T01:08:19+08:00
+```
+
+## 判定
+- 退出码: 0, 符合
+- 输出逐字: 见上方 stdout 行 (仅一个 3 加换行)
+
+## 复跑与输出逐字节核对 (确认稳定)
+```
+$ date -Is
+2026-10-20T01:08:34+08:00
+$ printf 'alpha beta gamma\n' | bin/wordcount | od -c
+0000000   3  \n
+0000002
+$ printf 'alpha beta gamma\n' | bin/wordcount ; echo "exit=$?"
+3
+exit=0
+```
+- 输出恰好是 ASCII `3` 加一个换行 (2 字节), 无多余空格/其他字符; 两次运行结果与退出码一致.
+
+## AC-001-1 结论
+- 结论: 通过
+- 实际现象: 输出 `3`, 产品进程退出码 0, 与 PRODUCT.md "输出为 `3`, 退出码为 0" 逐字相符.

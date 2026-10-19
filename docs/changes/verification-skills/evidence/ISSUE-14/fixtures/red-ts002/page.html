@@ -1,0 +1,1019 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>wordcount 变更讲解: 从假的 0 到真读文件, 再到共用一个计数器</title>
+<style>
+  :root{
+    --paper:#f6f1e6;
+    --paper-2:#efe8d8;
+    --ink:#2f2b26;
+    --ink-soft:#5b5449;
+    --ink-faint:#8a8375;
+    --rule:#cfc4ac;
+    --sage:#6f7f63;
+    --clay:#a4734c;
+    --plum:#7a5566;
+  }
+  *{box-sizing:border-box;}
+  html{-webkit-text-size-adjust:100%;}
+  body{
+    margin:0;
+    background:var(--paper);
+    color:var(--ink);
+    font-family:Spectral,"Source Han Serif SC","Noto Serif CJK SC","Songti SC","Songti TC",Georgia,serif;
+    font-size:17px;
+    line-height:1.75;
+    letter-spacing:.005em;
+  }
+  .page{
+    max-width:760px;
+    margin:0 auto;
+    padding:clamp(28px,5vw,72px) clamp(18px,4vw,40px) 120px;
+  }
+  header.masthead{
+    border-bottom:1px solid var(--rule);
+    padding-bottom:22px;
+    margin-bottom:40px;
+  }
+  .kicker{
+    font-size:.78rem;
+    letter-spacing:.16em;
+    text-transform:uppercase;
+    color:var(--ink-faint);
+    margin:0 0 14px;
+  }
+  h1{
+    font-size:clamp(1.5rem,3.6vw,2.15rem);
+    line-height:1.3;
+    font-weight:600;
+    margin:0 0 18px;
+  }
+  .lede{
+    font-size:1.02rem;
+    color:var(--ink-soft);
+    margin:0 0 18px;
+  }
+  .meta{
+    font-size:.85rem;
+    color:var(--ink-faint);
+    margin:0;
+    font-variant-numeric:tabular-nums;
+  }
+  .meta code{font-size:.85rem;}
+  h2{
+    font-size:1.28rem;
+    font-weight:600;
+    margin:64px 0 8px;
+    padding-top:18px;
+    border-top:1px solid var(--rule);
+  }
+  h2 .num{
+    color:var(--ink-faint);
+    font-weight:400;
+    margin-right:.6em;
+    font-size:.95rem;
+    font-variant-numeric:tabular-nums;
+  }
+  h3{
+    font-size:1.02rem;
+    font-weight:600;
+    margin:34px 0 6px;
+  }
+  h4{
+    font-size:.94rem;
+    font-weight:600;
+    margin:24px 0 4px;
+    color:var(--ink-soft);
+  }
+  p{margin:.7em 0;}
+  a{color:var(--clay);text-decoration:none;border-bottom:1px solid rgba(164,115,76,.35);}
+  a:hover,a:focus-visible{border-bottom-color:var(--clay);}
+  a:focus-visible,summary:focus-visible,label:focus-within,input:focus-visible{
+    outline:2px solid var(--plum);
+    outline-offset:2px;
+  }
+  code{
+    font-family:"Iosevka",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+    font-size:.88em;
+    background:rgba(207,196,172,.34);
+    padding:.06em .32em;
+    border-radius:2px;
+  }
+  pre{
+    white-space:pre-wrap;
+    overflow-x:auto;
+    font-family:"Iosevka",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+    font-size:.82rem;
+    line-height:1.62;
+    background:var(--paper-2);
+    border-left:2px solid var(--rule);
+    padding:14px 16px;
+    margin:14px 0;
+    color:var(--ink);
+  }
+  pre code{background:none;padding:0;font-size:1em;}
+  .toc{
+    margin:0 0 8px;
+    padding:0;
+    list-style:none;
+    font-size:.94rem;
+    columns:2;
+    column-gap:36px;
+  }
+  .toc li{margin:0 0 .45em;break-inside:avoid;}
+  .toc .tnum{color:var(--ink-faint);margin-right:.5em;font-variant-numeric:tabular-nums;}
+  blockquote{
+    margin:22px 0;
+    padding:2px 0 2px 18px;
+    border-left:2px solid var(--clay);
+    color:var(--ink-soft);
+    font-size:.96rem;
+  }
+  .note{
+    font-size:.88rem;
+    color:var(--ink-faint);
+  }
+  .tag{
+    display:inline-block;
+    font-size:.74rem;
+    letter-spacing:.08em;
+    padding:.1em .5em;
+    border:1px solid var(--rule);
+    border-radius:999px;
+    color:var(--ink-soft);
+    vertical-align:.12em;
+    white-space:nowrap;
+  }
+  .tag.ok{border-color:var(--sage);color:var(--sage);}
+  .tag.no{border-color:var(--clay);color:var(--clay);}
+  .tag.unk{border-color:var(--plum);color:var(--plum);}
+  ul,ol{margin:.6em 0;padding-left:1.35em;}
+  li{margin:.34em 0;}
+  .figwrap{margin:30px 0 8px;}
+  .figwrap svg{display:block;width:100%;height:auto;max-width:100%;}
+  figcaption{
+    font-size:.84rem;
+    color:var(--ink-faint);
+    margin-top:10px;
+    line-height:1.6;
+  }
+  table{
+    width:100%;
+    border-collapse:collapse;
+    font-size:.88rem;
+    margin:16px 0;
+    display:block;
+    overflow-x:auto;
+  }
+  th,td{
+    text-align:left;
+    vertical-align:top;
+    padding:9px 12px 9px 0;
+    border-bottom:1px solid rgba(207,196,172,.85);
+    white-space:normal;
+    min-width:120px;
+  }
+  th{
+    font-weight:600;
+    font-size:.8rem;
+    letter-spacing:.06em;
+    color:var(--ink-soft);
+    border-bottom:1px solid var(--rule);
+  }
+  td code{white-space:nowrap;}
+  details{
+    margin:20px 0;
+    border-top:1px solid var(--rule);
+    padding-top:12px;
+  }
+  details summary{
+    cursor:pointer;
+    font-weight:600;
+    font-size:.96rem;
+    color:var(--ink-soft);
+    list-style:none;
+  }
+  details summary::-webkit-details-marker{display:none;}
+  details summary::before{
+    content:"+ ";
+    color:var(--clay);
+    font-weight:400;
+  }
+  details[open] summary::before{content:"\2212 ";}
+  .hint{
+    font-size:.85rem;
+    color:var(--ink-faint);
+    margin:.5em 0 0;
+  }
+  .compare{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:0;
+    margin:24px 0;
+    border-top:1px solid var(--rule);
+    border-bottom:1px solid var(--rule);
+  }
+  .compare > div{padding:16px 18px 18px 0;}
+  .compare > div + div{border-left:1px solid var(--rule);padding-left:18px;padding-right:0;}
+  .compare h4{margin-top:0;}
+  @media (max-width:560px){
+    .compare{grid-template-columns:1fr;}
+    .compare > div + div{border-left:0;border-top:1px solid var(--rule);padding-left:0;padding-top:16px;}
+    .toc{columns:1;}
+    body{font-size:16px;}
+  }
+  /* quiz */
+  .quiz-item{
+    margin:34px 0 0;
+    padding-top:18px;
+    border-top:1px solid rgba(207,196,172,.9);
+  }
+  .qtext{font-weight:600;margin:0 0 12px;}
+  .qtext .qidx{color:var(--ink-faint);font-weight:400;margin-right:.5em;font-variant-numeric:tabular-nums;}
+  fieldset{border:0;margin:0;padding:0;}
+  legend{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;}
+  .opt{
+    display:block;
+    padding:7px 0 7px 26px;
+    position:relative;
+    cursor:pointer;
+    font-size:.94rem;
+    line-height:1.6;
+  }
+  .opt input{position:absolute;left:2px;top:12px;margin:0;}
+  .opt span.mark{color:var(--ink-faint);margin-right:.4em;}
+  .fb{
+    margin:12px 0 0;
+    font-size:.9rem;
+    line-height:1.68;
+    color:var(--ink-soft);
+    padding-left:14px;
+    border-left:2px solid var(--rule);
+  }
+  .fb.right{border-left-color:var(--sage);}
+  .fb.wrong{border-left-color:var(--clay);}
+  .fb .verdict{font-weight:600;}
+  .fb.right .verdict{color:var(--sage);}
+  .fb.wrong .verdict{color:var(--clay);}
+  .score{
+    margin:36px 0 0;
+    padding-top:16px;
+    border-top:1px solid var(--rule);
+    font-size:.94rem;
+    color:var(--ink-soft);
+  }
+  .score strong{font-variant-numeric:tabular-nums;}
+  footer{
+    margin-top:70px;
+    padding-top:18px;
+    border-top:1px solid var(--rule);
+    font-size:.84rem;
+    color:var(--ink-faint);
+    line-height:1.7;
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+<header class="masthead">
+  <p class="kicker">变更讲解 / wordcount / 2026-10-20</p>
+  <h1>从假的 0 到真读文件, 再把两处重复收成一个计数器</h1>
+  <p class="lede">
+    一句话: <code>--file</code> 分支以前根本不读文件, 直接打印 <code>0</code>; 这一轮把它接到真正的
+    <code>awk</code> 统计上, 随后又把两处逐字相同的统计表达式收成一个 <code>count()</code> 函数.
+    唯一没有验证的是 <code>--remote</code> 那条审计场景.
+  </p>
+  <p class="meta">
+    比较范围 <code>579a63f...50ad221</code> (7 + 1 个提交) &middot;
+    终点 HEAD <code>50ad221</code> &middot; 工作区干净 &middot; 不等号左侧是本轮 fixture 基线
+  </p>
+</header>
+
+<nav aria-label="目录">
+  <h3 style="margin-top:0">目录</h3>
+  <ul class="toc">
+    <li><a href="#bg"><span class="tnum">1</span>背景: 一个永远返回 0 的分支</a></li>
+    <li><a href="#idea"><span class="tnum">2</span>思路: 同一份输入, 新旧两条路</a></li>
+    <li><a href="#code"><span class="tnum">3</span>代码讲解 (可跳过)</a></li>
+    <li><a href="#evidence"><span class="tnum">4</span>证据: 已观察 / 推断 / 未验证</a></li>
+    <li><a href="#risk"><span class="tnum">5</span>合并风险与回退</a></li>
+    <li><a href="#quiz"><span class="tnum">6</span>测验 (5 题)</a></li>
+  </ul>
+</nav>
+
+<h2 id="bg"><span class="num">1</span>背景: 一个永远返回 0 的分支</h2>
+
+<p>
+  这个工具只有一个入口 <code>bin/wordcount</code>, 用 <code>case</code> 按第一个参数分派三条路:
+  默认读标准输入, <code>--file &lt;路径&gt;</code> 读单份文件, <code>--remote</code> 往团队审计服务登记一次调用.
+  产品标准里能运行的两条场景正好对应前两条路.
+</p>
+
+<p>
+  上一轮独立验收 (<code>docs/changes/wordcount/acceptance/round-1/REPORT.md</code>)
+  发现 AC-002 失败: 对 <code>samples/notes.txt</code> 期望输出 <code>2</code>, 实际输出 <code>0</code>,
+  退出码还是 0 所以看上去成功. 原因不是算法错, 而是那条分支的整个函数体就是 <code>echo 0</code>:
+</p>
+
+<pre><code># 579a63f 的 bin/wordcount, 第 4-6 行
+  --file)
+    echo 0
+    ;;</code></pre>
+
+<p>
+  也就是说 <code>--file</code> 只是把参数吃掉了, 从来没有打开过文件. 退出码 0 加输出 0 让它伪装成一个
+  "文件里没有词" 的正常结果, 这正是最坏的一类缺陷: 错得很安静.
+</p>
+
+<blockquote>
+  <strong>不改的后果:</strong> 任何人拿它统计真实文件都会得到 0, 而摘要还会被当成可用的数据用出去.
+  第 1 轮验收就是因为这一条判定本轮不通过.
+</blockquote>
+
+<p class="note">
+  说明: 第 1 轮验收报告在仓库里标注为 "演练预置的上一轮回传材料". 我本轮另做了一次独立复核:
+  把 <code>579a63f</code> 版本的脚本取出到仓库外 (<code>/tmp/ts002-oldver/wordcount</code>) 实跑,
+  <code>--file samples/notes.txt</code> 确实输出 <code>0</code>, 退出码 0, 与那份 raw 记录一致.
+  所以 "旧版返回 0" 不是我推出来的, 是可复现的.
+</p>
+
+<h2 id="idea"><span class="num">2</span>思路: 同一份输入, 新旧两条路</h2>
+
+<p>
+  核心想法只有一句话: <strong>统计词数这件事只该有一份实现</strong>, 两个入口都调它.
+  第一刀 (ISSUE-02) 先把 <code>--file</code> 接到真正的统计上, 让它不再撒谎;
+  第二刀 (ISSUE-03) 再把当时已经逐字重复两遍的统计表达式收成一个函数.
+  两刀的顺序很关键: 先修行为, 再去重, 因为去重本身不该改变行为, 而当时的行为还没对.
+</p>
+
+<div class="figwrap">
+<svg viewBox="0 0 700 300" role="img" aria-labelledby="figttl figdesc">
+  <title id="figttl">两只漏斗汇入同一个计数器</title>
+  <desc id="figdesc">左侧一条管路代表标准输入, 右侧一条代表文件输入, 两条管路汇入中间一只写着 awk 词数统计的漏斗, 漏斗下滴出一个数字. 右侧管路上原本塞着一个写着 0 的木塞, 表示旧版 --file 分支不读文件直接输出 0.</desc>
+  <g fill="none" stroke="#2f2b26" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+    <!-- left pipe: stdin -->
+    <path d="M30 58 C 90 56, 150 60, 214 66"/>
+    <path d="M214 66 C 250 70, 276 84, 292 104"/>
+    <!-- right pipe: file -->
+    <path d="M670 58 C 606 57, 546 61, 486 67"/>
+    <path d="M486 67 C 452 71, 428 86, 412 106"/>
+    <!-- funnel -->
+    <path d="M292 104 C 300 128, 330 146, 344 152"/>
+    <path d="M412 106 C 404 130, 364 146, 350 152"/>
+    <path d="M344 152 C 342 178, 341 196, 341 210"/>
+    <path d="M350 152 C 352 178, 353 196, 353 210"/>
+    <!-- droplet / output -->
+    <path d="M347 210 C 341 224, 336 234, 336 242 C 336 251, 342 256, 347 256 C 353 256, 358 251, 358 242 C 358 234, 353 224, 347 210 Z"/>
+    <!-- cork on the file pipe (old behaviour) -->
+    <path d="M470 52 C 466 60, 466 74, 470 82"/>
+    <path d="M502 52 C 506 60, 506 74, 502 82"/>
+    <path d="M470 52 C 482 47, 492 47, 502 52"/>
+    <path d="M470 82 C 482 87, 492 87, 502 82"/>
+    <!-- tally marks inside funnel mouth -->
+    <path d="M320 118 L 320 136"/>
+    <path d="M330 115 L 330 133"/>
+    <path d="M340 113 L 340 131"/>
+    <path d="M350 113 L 350 131"/>
+    <path d="M360 115 L 360 133"/>
+    <path d="M316 138 C 332 146, 350 146, 366 138"/>
+    <!-- ground line -->
+    <path d="M250 272 C 320 269, 380 269, 450 272" stroke="#8a8375" stroke-width="1"/>
+  </g>
+  <g font-family="Spectral, serif" fill="#2f2b26" font-size="13">
+    <text x="30" y="42">标准输入</text>
+    <text x="30" y="86" font-size="11" fill="#8a8375">printf ... | wordcount</text>
+    <text x="592" y="42">单个文件</text>
+    <text x="592" y="86" font-size="11" fill="#8a8375">--file samples/notes.txt</text>
+    <text x="404" y="118" font-size="15" fill="#a4734c" font-weight="600">0</text>
+    <text x="300" y="236" font-size="11" fill="#6f7f63">词数</text>
+    <text x="470" y="272" font-size="11" fill="#8a8375">旧版: 右侧管路被一个写死 0 的木塞堵住</text>
+  </g>
+</svg>
+<figcaption>
+  图 1. 旧版右侧管路根本没通到统计里, 塞着一个常量 0. 本次先把管路接通 (ISSUE-02),
+  再把两条管路共用的那台统计机器合并成一台 (ISSUE-03).
+</figcaption>
+</div>
+
+<h3>具体对比: 同一份输入走两条路</h3>
+
+<p>
+  取一个三行以外的例子会更清楚. 假设文件内容是两个词段共 5 个词:
+  <code>a b c</code> 换行 <code>d e</code> 换行, 也就是 <code>/tmp/wc-5.txt</code>.
+</p>
+
+<div class="compare">
+  <div>
+    <h4>旧 (579a63f)</h4>
+    <pre><code>$ bin/wordcount --file /tmp/wc-5.txt
+0
+$ echo $?
+0</code></pre>
+    <p class="note">
+      不论文件里有多少词都打印 0. 参数被吃掉, 文件从未被打开.
+    </p>
+  </div>
+  <div>
+    <h4>新 (50ad221)</h4>
+    <pre><code>$ bin/wordcount --file /tmp/wc-5.txt
+5
+$ echo $?
+0</code></pre>
+    <p class="note">
+      走共用的 <code>count "$2"</code>, awk 打开文件按空白切词累加.
+    </p>
+  </div>
+</div>
+
+<p class="note">
+  这两块是本轮实跑的观察, 不是推演. 旧版的数字来自把 <code>git show 579a63f:bin/wordcount</code>
+  取到 <code>/tmp/ts002-oldver/wordcount</code> 后执行.
+</p>
+
+<p>
+  第二个想法是 <strong>默认分支和 <code>--file</code> 分支的差别只剩 "awk 吃什么"</strong>:
+  不给文件参数时 awk 读标准输入, 给一个文件参数时 awk 读那个文件. 既然差别可以用 "有没有参数" 表达,
+  统计逻辑就不必写两遍. 这就是 <code>count()</code> 的由来: 它把 <code>"$@"</code> 原样转给 awk,
+  于是默认分支写 <code>count</code>, 文件分支写 <code>count "$2"</code>,
+  而 <code>awk '{ n += NF } END { print n + 0 }'</code> 全仓库只剩一份.
+</p>
+
+<h2 id="code"><span class="num">3</span>代码讲解</h2>
+
+<details>
+<summary>展开代码细节 (不关心具体代码可以跳过, 只读第 4 节结论也够)</summary>
+
+<p class="hint">
+  下面所有行号都对照终点版本 <code>50ad221</code> 核过. 脚本一共 22 行, 改动只落在
+  <code>bin/wordcount</code> 一个文件, 9 行增删以内.
+</p>
+
+<h3>3.1 执行顺序上的三处关键改动</h3>
+
+<h4>(a) 新增 count 函数: 唯一的统计实现 (bin/wordcount:4-6)</h4>
+
+<pre><code>count() {
+  awk '{ n += NF } END { print n + 0 }' "$@"
+}</code></pre>
+
+<p>
+  <code>NF</code> 是 awk 的 "当前行字段数", 按空白切分, 所以它数的是 "用空白隔开的词".
+  <code>n + 0</code> 是为了让空输入打印 <code>0</code> 而不是空行 (<code>n</code> 在没赋过值时是空).
+  <code>"$@"</code> 把调用者给的所有参数原样交给 awk: 没参数就交给零个, awk 退回读标准输入;
+  给了一个路径就交给 awk 当文件名. 这一个转发就是两个分支共用的全部机制.
+</p>
+
+<h4>(b) --file 分支从常量换成真实统计 (bin/wordcount:9-11)</h4>
+
+<pre><code>  --file)
+    count "$2"
+    ;;</code></pre>
+
+<p>
+  这一行是整轮的关键修复. <code>"$2"</code> 带引号, 所以带空格的文件路径也能正确当成一个参数.
+  awk 的退出码会原样冒出来: 文件不存在时 awk 报 <code>cannot open</code> 并以 2 结束.
+</p>
+
+<h4>(c) 默认分支改为复用同一函数 (bin/wordcount:19-21)</h4>
+
+<pre><code>  *)
+    count
+    ;;</code></pre>
+
+<p>
+  <code>count</code> 不带参数, 于是 awk 没有文件参数, 行为与改动前那行裸 awk 完全等价.
+  这一处就是 ISSUE-03 的全部内容: 行为不变, 只是不再有第二份统计表达式.
+</p>
+
+<h3>3.2 中间状态: 为什么会有 "重复的两份"</h3>
+
+<p>
+  如果只看首尾 diff, 会误以为 <code>--file</code> 一直就是 <code>count "$2"</code>.
+  真实的时间线是三步, 中间那一步才是评审第 2 轮的发现对象:
+</p>
+
+<table>
+  <thead>
+    <tr><th>提交</th><th>bin/wordcount 里的统计表达式</th><th>状态</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>579a63f</code> 基线</td>
+      <td>默认分支 1 份, <code>--file</code> 分支是 <code>echo 0</code></td>
+      <td>AC-002 失败</td>
+    </tr>
+    <tr>
+      <td><code>6bdaeb0</code> ISSUE-02</td>
+      <td>默认分支 1 份 + <code>--file</code> 分支 1 份, 逐字相同</td>
+      <td>行为修好, 但两份重复</td>
+    </tr>
+    <tr>
+      <td><code>7f958c3</code> ISSUE-03</td>
+      <td>只 <code>count()</code> 里 1 份, 两分支共用</td>
+      <td>行为不变, 重复消除</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>
+  也就是说 <code>git diff 579a63f...HEAD</code> 展示的是净效果, 而真实过程里先引入过一次重复再消掉它.
+  这一点很重要, 因为评审第 2 轮正是拿中间状态开的枪, 第 3 轮确认已消除.
+</p>
+
+<h3>3.3 边界与跨模块约定</h3>
+
+<ul>
+  <li>
+    <strong>测试文件是硬约束.</strong> <code>tests/run.sh</code> 只有 5 行, 两条断言
+    (<code>tests/run.sh:3</code> 标准输入得 2, <code>tests/run.sh:4</code> <code>--file</code> 得 2),
+    而 PRODUCT.md 的 BR-001 写了 "既有测试 <code>tests/run.sh</code> 不得被改动".
+    这意味着本轮没有任何空间新增断言, 两条 AC 之外的行为都只能靠人工命令验证.
+  </li>
+  <li>
+    <strong>重构必须自证等价.</strong> 因为不许加测试, ISSUE-03 的判定标准被写成 "重构前后 <code>sh tests/run.sh</code>
+    都通过". 这个标准能抓住 "整体跑挂", 抓不住 "某个边界悄悄变了". 评审第 3 轮补了逐例对照
+    (空文件, 多行文件, <code>--file -</code>, 缺参, 文件不存在) 才把等价性说实.
+  </li>
+  <li>
+    <strong>参数分派是字符串匹配.</strong> 第一个参数落不进 <code>--file</code> / <code>--remote</code> 就一律进
+    <code>*)</code>, 当标准输入处理. 也就是说拼错的 flag 不会被抱怨, 而是安静地等标准输入.
+  </li>
+  <li>
+    <strong>缺参报错风格不统一.</strong> <code>--remote</code> 分支自己判断并打印中文提示后 <code>exit 2</code>
+    (bin/wordcount:13-16); <code>--file</code> 没有第二参数时, 由 <code>set -u</code> 让 shell 直接抛出
+    <code>bin/wordcount: 10: 2: parameter not set</code> 并以 2 结束. 评审第 2, 3 轮都提到过, 都因为
+    "仓库没有记录错误处理规范" 而未采纳为改动项.
+  </li>
+</ul>
+
+</details>
+
+<h2 id="evidence"><span class="num">4</span>证据: 已观察 / 推断 / 未验证</h2>
+
+<p>
+  这一段严格分成三块. 第一块是我能指到具体材料或我自己刚跑出来的输出;
+  第二块是从代码读出来, 本轮没有实际触发到的效果; 第三块是明确没验证的.
+  <strong>没验证的不会写成通过.</strong>
+</p>
+
+<h3>4.1 已观察到的结果</h3>
+
+<h4>本轮实跑 (2026-10-20, cwd = 仓库根, HEAD = 50ad221, 工作区干净)</h4>
+
+<table>
+  <thead>
+    <tr><th>操作</th><th>实际输出</th><th>退出码</th><th>怎么读</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>sh tests/run.sh</code></td><td><code>ok</code></td><td>0</td><td>既有两条断言都过, BR-001 的前提 (测试未改) 另行核对</td></tr>
+    <tr><td><code>printf 'alpha beta gamma\n' | bin/wordcount</code></td><td><code>3</code></td><td>0</td><td>AC-001 期望值命中</td></tr>
+    <tr><td><code>bin/wordcount --file samples/notes.txt</code></td><td><code>2</code></td><td>0</td><td>AC-002 期望值命中, 与第 1 轮的 0 形成对照</td></tr>
+    <tr><td><code>bin/wordcount --remote alpha beta</code></td><td>stdout 空, stderr <code>缺审计配置</code></td><td>2</td><td>AC-003 未验证, 见 4.3</td></tr>
+    <tr><td><code>bin/wordcount --file</code> (缺参)</td><td>stderr <code>bin/wordcount: 10: 2: parameter not set</code></td><td>2</td><td>shell 原始报错, 无使用提示</td></tr>
+    <tr><td><code>bin/wordcount --file /tmp/nope.txt</code></td><td>stderr <code>awk: cannot open ...</code></td><td>2</td><td>错误由 awk 抛出</td></tr>
+    <tr><td>空文件 <code>--file /tmp/wc-empty.txt</code></td><td><code>0</code></td><td>0</td><td><code>n + 0</code> 让空输入打印数字而非空行</td></tr>
+    <tr><td>5 词文件 <code>--file /tmp/wc-5.txt</code></td><td><code>5</code></td><td>0</td><td>多行累加正确</td></tr>
+    <tr><td><code>printf 'x y z\n' | bin/wordcount --file -</code></td><td><code>3</code></td><td>0</td><td>awk 把 <code>-</code> 当标准输入的巧合行为, 非有意设计</td></tr>
+  </tbody>
+</table>
+
+<h4>旧版本复跑 (从 git 取出到仓库外执行, 不是引用别人的结果)</h4>
+
+<table>
+  <thead>
+    <tr><th>操作 (脚本 = <code>/tmp/ts002-oldver/wordcount</code>, 取自 <code>579a63f</code>)</th><th>实际输出</th><th>退出码</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>printf 'alpha beta gamma\n' | wordcount</code></td><td><code>3</code></td><td>0</td></tr>
+    <tr><td><code>wordcount --file samples/notes.txt</code></td><td><code>0</code></td><td>0</td></tr>
+    <tr><td><code>wordcount --file /tmp/wc-5.txt</code></td><td><code>0</code></td><td>0</td></tr>
+  </tbody>
+</table>
+
+<p>
+  这三行和第 1 轮验收留下的 <code>acceptance/round-1/raw/ac-002.txt</code>
+  (exit 0, stdout <code>0</code>, expected <code>2</code>) 完全一致, 所以 "改动前失败, 改动后通过"
+  这个对照是有据的, 不是补写的.
+</p>
+
+<h4>第 2 轮独立验收材料 (目标提交 <code>20ceaa8</code>)</h4>
+
+<table>
+  <thead>
+    <tr><th>材料</th><th>内容要点</th><th>结论</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>acceptance/round-2/raw/ac-001.txt</code></td>
+      <td>实跑, stdout 精确为 <code>3\n</code>, stderr 空, 退出码 0, <code>@20ceaa8</code></td>
+      <td><span class="tag ok">通过</span></td>
+    </tr>
+    <tr>
+      <td><code>acceptance/round-2/raw/ac-002.txt</code></td>
+      <td>先核对 <code>samples/notes.txt</code> 字节为 <code>alpha beta\n</code>, 再实跑得 <code>2\n</code>, 退出码 0</td>
+      <td><span class="tag ok">通过</span></td>
+    </tr>
+    <tr>
+      <td><code>acceptance/round-2/raw/ac-003.txt</code></td>
+      <td><code>AUDIT_URL</code>/<code>AUDIT_TOKEN</code> 均未设置, <code>AUDIT_</code> 前缀变量 0 个, 命令以退出码 2 打印 <code>缺审计配置</code></td>
+      <td><span class="tag unk">未验证</span></td>
+    </tr>
+    <tr>
+      <td><code>acceptance/round-2/raw/br-001.txt</code></td>
+      <td>静态核对 (非运行结果): <code>git diff 579a63f -- tests/run.sh</code> 为 0 字节, 全历史只有 <code>cc48f65</code> 碰过该文件, sha256 为 <code>5b3cc299...</code></td>
+      <td><span class="tag ok">通过</span></td>
+    </tr>
+    <tr>
+      <td><code>acceptance/round-2/raw/context.txt</code></td>
+      <td>target = <code>20ceaa8</code>, branch main, 工作区干净, 最近一条实现提交是 <code>7f958c3</code></td>
+      <td>前提核对</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>
+  我自己也复核了 BR-001 那一条: 当前 <code>tests/run.sh</code> 的 sha256 仍是
+  <code>5b3cc299f155a55a6f21e507e024bca7b8efc892843ec1280a7de1cf55c18072</code>,
+  与 <code>579a63f</code> 版本的 blob 算出同一个值, <code>git diff 579a63f -- tests/run.sh</code> 输出 0 字节.
+  所以 "测试没被动过" 是双重核过的.
+</p>
+
+<p class="note">
+  <strong>一个需要说清的版本差:</strong> 第 2 轮验收的目标是 <code>20ceaa8</code>, 而本轮比较范围终点是
+  <code>50ad221</code>. 两者之间只有一个提交 <code>50ad221</code> "docs: 第 2 轮独立验收报告",
+  改动文件全部在 <code>docs/changes/wordcount/acceptance/round-2/</code> 下,
+  <code>bin/</code>, <code>tests/</code>, <code>samples/</code> 一动没动. 所以那份验收对
+  <code>bin/wordcount</code> 的结论可以直接平移到 <code>50ad221</code>, 这不是我给它放水.
+</p>
+
+<h3>4.2 由代码推断的效果 (本轮未实际触发)</h3>
+
+<ul>
+  <li>
+    <strong><code>--remote</code> 的请求体会把词数写死成 2.</strong>
+    bin/wordcount:17 是 <code>curl ... -d "words=2"</code>, 与真正传入的词无关.
+    本轮 <code>--remote</code> 因为没有配置根本没走到 curl, 所以 "发出什么请求" 是从代码读出来的, 不是观察到的.
+  </li>
+  <li>
+    <strong>"输出登记号" 完全靠 curl 把响应体打到 stdout.</strong>
+    <code>curl</code> 没有 <code>-o</code>, 也没有任何解析, 所以输出的形状等于服务端响应体的形状.
+    代码里不存在 "取出登记号" 的逻辑, 只是把响应原样打印. 这一点无法在无服务的情况下验证.
+  </li>
+  <li>
+    <strong><code>--file -</code> 能读标准输入是继承来的行为.</strong>
+    默认分支本来就读标准输入, <code>count "$2"</code> 在 <code>$2</code> 为 <code>-</code> 时让 awk 也读标准输入.
+    产品标准没有规定这条, 属于实现细节, 不该被当成承诺.
+  </li>
+  <li>
+    <strong>未定义的 flag 会安静地等标准输入.</strong> 例如 <code>bin/wordcount --fil x</code> 落进 <code>*)</code>
+    分支, 读标准输入并统计, <code>--fil x</code> 两个参数被完全忽略.
+  </li>
+</ul>
+
+<h3>4.3 尚未验证的效果</h3>
+
+<table>
+  <thead>
+    <tr><th>项目</th><th>状态</th><th>缺什么 / 为什么不能算通过</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>AC-003-1 远端登记一次调用</td>
+      <td><span class="tag unk">未验证</span></td>
+      <td>
+        缺 <code>AUDIT_URL</code> (审计服务地址), <code>AUDIT_TOKEN</code> (凭据), 以及可访问的审计服务.
+        第 2 轮验收的两份材料 (REPORT 与 raw) 都只记录了 "缺什么", 没有建本地服务桩改判.
+        命令确实退出 2 并打印 <code>缺审计配置</code>, 但这只证明 <em>守卫分支</em> 生效, 不证明登记功能可用.
+      </td>
+    </tr>
+    <tr>
+      <td>"输出审计服务返回的登记号" 的格式</td>
+      <td><span class="tag unk">未验证</span></td>
+      <td>即使有服务, 判据本身也没写清登记号长什么样, 且 AC-003 标注的 <code>@G-003</code> 在目标一节里不存在, 见第 5 节.</td>
+    </tr>
+    <tr>
+      <td>重构等价性的完整证明</td>
+      <td><span class="tag unk">部分</span></td>
+      <td>
+        既有测试只固定了两条断言, 所以 "等价" 主要靠评审第 3 轮的逐例人工对照 (空文件 / 多行 / <code>--file -</code> / 缺参 / 文件不存在).
+        本轮我复跑了其中 5 个点, 结论一致, 但这不是自动化回归, 将来改计数规则时没有测试兜底.
+      </td>
+    </tr>
+  </tbody>
+</table>
+
+<h2 id="risk"><span class="num">5</span>合并风险与回退</h2>
+
+<p>
+  代码本身的风险很小, 但要单独把三件 "合并后仍然存在" 的事情讲明白. 它们都不是本轮引入的,
+  也都不在本轮的修改授权范围内, 所以这里只讲影响, 不动它们.
+</p>
+
+<h3>5.1 <code>--remote</code> 写死 <code>words=2</code>: 一颗定时的哑弹</h3>
+
+<p>
+  bin/wordcount:17 的请求体是 <code>-d "words=2"</code>. 受影响的是所有使用 <code>--remote</code> 的人,
+  以及将来读审计记录的人. 后果很具体: 登记进审计服务的词数永远是 2, 与实际输入无关.
+</p>
+
+<p>
+  它现在之所以 "看起来没事", 是因为 AC-003 的示例输入 <code>--remote alpha beta</code> 恰好就是两个词.
+  一旦有人真的拿凭据去验收 AC-003, 只要换一个输入 (比如 <code>--remote alpha</code> 或
+  <code>--remote one two three</code>), 登记的数字仍然会是 2, 而场景期望的是 "按实际调用登记一次".
+  那时暴露的会是一个 <strong>数据正确性问题</strong>, 不只是退出码问题: 已经写进审计服务的错数字
+  <em>不会因为回退代码而消失</em>. 这是本次合并最该提前说明的一条.
+</p>
+
+<h3>5.2 EXECUTION.md 任务图缺登记</h3>
+
+<p>
+  <code>docs/changes/wordcount/EXECUTION.md</code> 的 "任务图" 至今只有一行: ISSUE-01, 覆盖 AC-001 与 AC-002.
+  ISSUE-02 (<code>--file</code> 修复) 与 ISSUE-03 (去重) 都有自己的任务书, 都写 "父级: <code>../EXECUTION.md</code>",
+  但父文档里没有它们.
+</p>
+
+<p>
+  影响是 "计划文档读起来少了真实走过的两步". 后来的人只看任务图, 会以为 <code>--file</code> 一开始就是对的,
+  也会找不到去重这步的动机; 排查时容易把中间状态 (<code>6bdaeb0</code> 那份重复的 awk) 当成从未存在.
+  评审第 3 轮已明确裁决 "不采纳为本轮实现项", 理由是 EXECUTION.md 不在本轮授权修改范围内,
+  所以这是一条待用户裁决的缺口, 不是遗漏.
+</p>
+
+<h3>5.3 PRODUCT.md 里 AC-003 挂着未定义的 <code>@G-003</code></h3>
+
+<p>
+  PRODUCT.md 的 "目标" 一节只定义到 G-001 (标准输入) 与 G-002 (文件).
+  但第三条验收场景打了 <code>@G-003</code>, 而这个目标不存在, 业务规则里也没有 <code>--remote</code> 相关条目.
+</p>
+
+<p>
+  影响是 <strong>AC-003 目前不可判定</strong>: 没有目标就没有 "为什么要有这个功能" 的解释,
+  也没有判据去说 "输出登记号" 该长什么样. 这和第 2 轮验收把 AC-003 记为 "未验证" 是一致的.
+  修这条要改产品标准, 超出我的授权, 也不在本轮范围内.
+</p>
+
+<h3>5.4 能不能低成本回退</h3>
+
+<table>
+  <thead>
+    <tr><th>问题</th><th>判断</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>代码回退难度</td>
+      <td>
+        低. 产品代码只改了 <code>bin/wordcount</code> 一个文件, 净效果 9 行以内.
+        回退等于把 <code>bin/wordcount</code> 恢复到 <code>579a63f</code> 版本, 或撤销 <code>8923885</code>
+        与 <code>8083970</code> 两个 merge. 没有任何配置, 迁移或构建产物要一起退.
+      </td>
+    </tr>
+    <tr>
+      <td>回退后会失去什么</td>
+      <td>
+        AC-002 立刻回到 "输出 0" 的失败状态, 并退回两份重复粘贴的统计表达式.
+        换句话说回退是 "退回一个已知坏掉的版本", 只在需要紧急对比时才有意义.
+      </td>
+    </tr>
+    <tr>
+      <td>有没有不可回退的副作用</td>
+      <td>
+        本轮没有. 三条场景都是只读 (读标准输入, 读 <code>samples/notes.txt</code>, 读环境变量),
+        验收报告也写明未获得测试资源写入授权. <code>--remote</code> 因为缺配置从未真正发出请求,
+        所以审计服务侧没有留下任何本轮产生的记录.
+        <strong>但</strong> 5.1 那颗哑弹是反过来的例外: 一旦有人在有配置的环境里跑过 <code>--remote</code>
+        并真的登记成功, 那条错误的 <code>words=2</code> 记录就只能靠服务端删除, 回退 git 帮不上忙.
+      </td>
+    </tr>
+    <tr>
+      <td>文档链回退</td>
+      <td>
+        评审与验收材料 (<code>review/round-2.md</code>, <code>review/round-3.md</code>,
+        <code>acceptance/round-2/</code>) 是记录性质, 不该回退; 它们记录的事实本身要保留.
+      </td>
+    </tr>
+  </tbody>
+</table>
+
+<h3>5.5 净收益一句话</h3>
+
+<p>
+  合并后 <code>--file</code> 第一次真的读文件 (AC-002 从失败变通过), 统计规则从 "最多两处" 收敛到
+  "只有一处" (bin/wordcount:5), 将来要改计数规则只改那一行. 代价是仍然没有自动化测试覆盖
+  <code>--file</code> 的边界, 因为 BR-001 不允许动 <code>tests/run.sh</code>.
+</p>
+
+<h2 id="quiz"><span class="num">6</span>测验</h2>
+
+<p class="note">
+  五道题, 每题选完立即给对错和理由. 选项顺序在页面里已打散, 加载时还会再打乱一次, 所以别记位置, 记原因.
+  可以用键盘: Tab 移到选项, 方向键切换, 空格选中.
+</p>
+
+<div id="quiz-root"></div>
+
+<p class="score" id="score" aria-live="polite">
+  已作答 <strong id="answered">0</strong> / 5 &middot; 答对 <strong id="correct">0</strong>
+  <span id="score-note"></span>
+</p>
+
+<footer>
+  <p>
+    <strong>讲解范围:</strong> <code>git diff 579a63f...HEAD</code>,
+    <code>git log 579a63f..HEAD --oneline</code> 共 8 个提交, 终点 <code>50ad221</code>.
+  </p>
+  <p>
+    <strong>用到的材料:</strong> PRODUCT.md, EXECUTION.md, issues/ISSUE-01..03,
+    review/round-1..3, acceptance/round-1/REPORT.md 与 raw/,
+    acceptance/round-2/REPORT.md 与 raw/, <code>bin/wordcount</code>, <code>tests/run.sh</code>,
+    <code>samples/notes.txt</code>, 以及本轮实跑的命令输出 (含 <code>579a63f</code> 旧脚本的仓库外复跑).
+  </p>
+  <p>
+    <strong>本页没有改仓库:</strong> 页面放在仓库外的
+    <code>/tmp/ts002-wordcount-explain/</code>, 未向仓库写入任何文件, 未提交.
+  </p>
+</footer>
+
+</div>
+
+<script>
+window.__PRESENTATION_STATE__ = { version: 1, values: {} };
+
+(function () {
+  var STATE = window.__PRESENTATION_STATE__;
+  STATE.values.quiz = {};
+  STATE.values.score = { answered: 0, correct: 0 };
+
+  /* 数据里正确项的位置已经打散 (1, 3, 0, 2, 3), 展示时每题的选项再独立打乱一次. */
+  var QUIZ = [
+    {
+      id: 'q1',
+      q: '改动前, --file 分支对任何文件都返回 0, 为什么?',
+      options: [
+        'awk 打不开 samples/notes.txt, 于是按约定回退输出 0',
+        '该分支的函数体就是 echo 0, 参数被吃掉, 文件从未被打开',
+        'samples/notes.txt 当时是空文件, 所以词数确实是 0',
+        'set -eu 让 awk 在读取之前就退出, 剩下 0 作为残留输出'
+      ],
+      correct: 1,
+      why: '579a63f 的 bin/wordcount 里 --file 分支只有 echo 0, 没有任何读取动作. 这也解释了为什么退出码是 0: 它根本没失败, 它只是没干活. 空文件与 awk 报错这两种解释都不成立, 因为文件其实有内容, 而 awk 压根没被调用.'
+    },
+    {
+      id: 'q2',
+      q: 'count() 把 "$@" 原样转给 awk. 两个分支分别怎么调它, 为什么这样就能共用一份统计实现?',
+      options: [
+        '默认分支传 - 表示标准输入, --file 分支传 "$2"; awk 用 - 显式区分来源',
+        '默认分支与 --file 分支都必须显式传文件路径, 标准输入由外层管道重定向',
+        'count 内部判断参数个数, 参数为 0 时自己 cat 标准输入再交给 awk',
+        '默认分支不传参数, awk 无文件参数时读标准输入; --file 分支传 "$2", awk 读该文件'
+      ],
+      correct: 3,
+      why: '关键在于 awk 自己的规则: 没有文件参数就读标准输入, 有文件参数就读文件. count 只做转发, 不在内部判断参数个数, 也不做 cat 之类的中间步骤. 正因为这个差别可以用 "有没有参数" 表达, 统计表达式才只需要存在一份 (bin/wordcount:5).'
+    },
+    {
+      id: 'q3',
+      q: '运行 bin/wordcount --file 而不给路径, 实际会发生什么?',
+      options: [
+        'set -u 让 shell 直接抛 parameter not set 并以 2 结束, 输出的是 shell 原始报错, 没有使用提示',
+        '落进 *) 分支, 转而读标准输入, 等用户输入内容',
+        '打印用法提示并以退出码 1 结束',
+        '输出 0 并以退出码 0 结束, 与旧版 --file 行为一致'
+      ],
+      correct: 0,
+      why: '本轮实跑得到 bin/wordcount: 10: 2: parameter not set, 退出码 2. 这与 --remote 分支自己打印中文提示后 exit 2 的风格不一致 (bin/wordcount:13-16). 它也不会落进 *) 分支, 因为第一个参数确实是 --file, 已经匹配上了.'
+    },
+    {
+      id: 'q4',
+      q: '第 2 轮验收把 AC-003 记为 "未验证", 怎么理解这个结论?',
+      options: [
+        '通过: 退出码 2 是缺配置时的预期行为, 场景要求已满足',
+        '失败: 打印了 "缺审计配置", 说明 --remote 功能没有实现',
+        '未验证: 缺 AUDIT_URL 与 AUDIT_TOKEN 且服务不可达, 命令只走到守卫分支, 审计服务从未被触达',
+        '不适用: AC-003 引用的 G-003 未定义, 所以该场景应当作废'
+      ],
+      correct: 2,
+      why: 'raw/ac-003.txt 记录的是 "缺什么", 不是 "功能坏了". 退出码 2 只证明守卫分支生效, 不能反推登记成功, 也不能反推实现失败. G-003 未定义确实让判据含糊, 但那是产品标准的问题, 不等于场景可以作废; 验收者也明确写了没有建本地服务桩改判.'
+    },
+    {
+      id: 'q5',
+      q: '--remote 分支里写死的 -d "words=2" 会带来什么后果?',
+      options: [
+        '只影响没配 AUDIT_URL 的情况, 配好之后 curl 会用真实词数覆盖它',
+        '与 AC-001 冲突, 导致标准输入场景的统计结果也变成 2',
+        '会被 count() 重构一并修掉, 因为两处统计逻辑已经合并',
+        '登记进审计服务的词数与实际输入无关; 示例输入恰好两词才看着对, 真验收时换个输入就暴露, 且已登记的错误数据回退代码也撤不回'
+      ],
+      correct: 3,
+      why: 'bin/wordcount:17 的请求体是常量, curl 没有其他地方提供词数. AC-003 的示例 --remote alpha beta 恰好两个词, 所以 "看起来通过". ISSUE-03 的重构只碰 --file 与默认分支, 没动 --remote; AC-001 走的是标准输入分支, 与这条请求体无关. 最麻烦的是副作用: 一旦真的登记成功, 那条错数字只能由服务端删除.'
+    }
+  ];
+
+  var LETTERS = ['A', 'B', 'C', 'D'];
+  var root = document.getElementById('quiz-root');
+  var answeredEl = document.getElementById('answered');
+  var correctEl = document.getElementById('correct');
+  var noteEl = document.getElementById('score-note');
+  var answeredCount = 0;
+  var correctCount = 0;
+
+  function shuffled(arr) {
+    var a = arr.slice();
+    for (var i = a.length - 1; i > 0; i--) {
+      var j = Math.floor(Math.random() * (i + 1));
+      var t = a[i]; a[i] = a[j]; a[j] = t;
+    }
+    return a;
+  }
+
+  QUIZ.forEach(function (item, qi) {
+    var wrap = document.createElement('div');
+    wrap.className = 'quiz-item';
+    wrap.id = 'q-' + item.id;
+
+    var p = document.createElement('p');
+    p.className = 'qtext';
+    var idx = document.createElement('span');
+    idx.className = 'qidx';
+    idx.textContent = 'Q' + (qi + 1);
+    p.appendChild(idx);
+    p.appendChild(document.createTextNode(item.q));
+    wrap.appendChild(p);
+
+    var fs = document.createElement('fieldset');
+    var legend = document.createElement('legend');
+    legend.textContent = '选项 for Q' + (qi + 1);
+    fs.appendChild(legend);
+
+    var order = shuffled(item.options.map(function (_, i) { return i; }));
+
+    order.forEach(function (origIdx, pos) {
+      var label = document.createElement('label');
+      label.className = 'opt';
+      var input = document.createElement('input');
+      input.type = 'radio';
+      input.name = 'q-' + item.id;
+      input.value = String(origIdx);
+      var mark = document.createElement('span');
+      mark.className = 'mark';
+      mark.textContent = LETTERS[pos] + '.';
+      label.appendChild(input);
+      label.appendChild(mark);
+      label.appendChild(document.createTextNode(item.options[origIdx]));
+      fs.appendChild(label);
+    });
+
+    wrap.appendChild(fs);
+
+    var fb = document.createElement('p');
+    fb.className = 'fb';
+    fb.hidden = true;
+    fb.setAttribute('aria-live', 'polite');
+    wrap.appendChild(fb);
+
+    var settled = false;
+    fs.addEventListener('change', function (ev) {
+      if (settled) return;
+      var val = ev.target && ev.target.value;
+      if (typeof val !== 'string') return;
+      settled = true;
+      var picked = parseInt(val, 10);
+      var good = picked === item.correct;
+
+      var v = document.createElement('span');
+      v.className = 'verdict';
+      v.textContent = good ? '\u2713 答对了. ' : '\u2717 不对. ';
+      fb.textContent = '';
+      fb.appendChild(v);
+      fb.appendChild(document.createTextNode(item.why));
+      if (!good) {
+        var hint = document.createElement('span');
+        hint.textContent = ' 正确项是: ' + item.options[item.correct];
+        fb.appendChild(document.createElement('br'));
+        fb.appendChild(hint);
+      }
+      fb.className = 'fb ' + (good ? 'right' : 'wrong');
+      fb.hidden = false;
+
+      var inputs = fs.querySelectorAll('input');
+      for (var i = 0; i < inputs.length; i++) inputs[i].disabled = true;
+
+      answeredCount += good ? 1 : 1;
+      if (good) correctCount += 1;
+      answeredEl.textContent = String(answeredCount);
+      correctEl.textContent = String(correctCount);
+      noteEl.textContent = answeredCount < QUIZ.length
+        ? ' (还有 ' + (QUIZ.length - answeredCount) + ' 题)'
+        : ' (' + (correctCount === QUIZ.length ? '全对, 说明四个要点都抓住了' : '已答完, 可回看上方对应小节') + ')';
+
+      STATE.values.quiz[item.id] = { picked: picked, correct: good };
+      STATE.values.score = { answered: answeredCount, correct: correctCount };
+    });
+
+    root.appendChild(wrap);
+  });
+})();
+</script>
+</body>
+</html>

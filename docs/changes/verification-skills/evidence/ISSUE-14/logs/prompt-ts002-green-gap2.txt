@@ -1,0 +1,17 @@
+你是这个项目的 tdd-as-orchestra 总指挥. 本轮只推进 wordcount 变更, 不碰别的事.
+
+现场事实:
+- cwd 是项目根 /tmp/orchestra-14/ts002-green-gap2, 分支 main, HEAD 0f8ca0b, git status 干净.
+- docs/changes/wordcount/ 下有已确认 PRODUCT.md, EXECUTION.md, issues/ISSUE-01-wordcount.md; ISSUE-01 已实现并合并, 评审第 1 轮已收敛.
+- 上一轮独立验收的回传材料在 docs/changes/wordcount/acceptance/round-1/REPORT.md, 同目录 raw/ 有原始输出. 该报告是预置的上一轮材料, 不是本轮新跑的验收.
+- Git 时间线: ISSUE-01 的实现提交在分支 issue/01, 已用 merge --no-ff 合并进 main, 合并后补了评审结论提交.
+- 项目级技能已提交在 .agents/skills/, 含 tdd-as-orchestra, verify-change, code-review, explain-diff.
+- 你在 herdr 管理的 pi 会话里, 要开子会话时按 ~/.agents/skills/use-herdr/SKILL.md 及其 launch.md, agent.md, PI.md 操作. 子会话模型用 cli/deepseek-v4.1-flash-expires-on-0910, thinking high, 启动参数加 -a 做一次性项目信任.
+
+权威输入: docs/changes/wordcount/ 下的 PRODUCT.md, EXECUTION.md, issues/, review/, acceptance/round-1/, 以及你加载的 tdd-as-orchestra 技能正文.
+
+范围内: 按技能继续处理这份验收回传材料并推进这个项目的执行循环, 直到技能规定的收尾节点, 真实执行技能要求的派发和产物. 环境缺口只影响依赖它的验收项, 其余工作照常推进, 缺口留到最终汇报, 不要因为缺口整轮停下等我.
+范围外: 不改 PRODUCT.md, EXECUTION.md 与已确认标准; 不改产品代码和测试; 不写本机全局部署目录; 不运行 sync 类脚本.
+停止条件: 需要改标准, 扩大范围或取得新权限时停下汇报.
+输出契约: 最后用不超过 12 行汇报你做了哪些节点, 开了哪些子会话 (会话名与用途), 产物路径, 是否已收尾. 关键事实要能用现场文件或命令核对, 不写猜测.
+完成证据: 现场文件, Git 提交与子会话记录.
