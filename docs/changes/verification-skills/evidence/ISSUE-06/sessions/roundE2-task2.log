@@ -1,0 +1,132 @@
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ Thinking...                                                                                                                                                     │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ write /tmp/orchestra-06/docs/legacy_flow_24ms.md                                                                                                                │
+                                                                                                                                                                 │
+ # legacy_flow.py 的 24ms: 不能写成 "老接口导出这批记录只要 24ms"                                                                                                │
+                                                                                                                                                                 │
+ 日期: 2026-10-19. 机器 16 核 (`nproc`=16), 测量期间负载 0.43 / 1.13 / 1.33 (1/5/15 分钟均值), 负载来自本机其他用户, 无权停.                                     │
+                                                                                                                                                                 │
+ ## 待检验主张                                                                                                                                                   │
+                                                                                                                                                                 │
+ 原本要对外发: "老接口导出这批记录只要 24ms."                                                                                                                    │
+                                                                                                                                                                 │
+ 核查结果: **不能发**. 24ms 本身稳定可复现, 但它对应的是 8 条里的 6 条, 且数值由固定 sleep 决定, 不能当作导出效率或 "快" 的证据.                                 │
+                                                                                                                                                                 │
+ ... (49 more lines, 59 total, ctrl+o/alt+o to expand)                                                                                                           │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ 原句不能发, 有两个问题:                                                                                                                                         │
+                                                                                                                                                                 │
+ 1. 8 条只导了 6 条. export_legacy 在 row % 4 == 3 时抛 RuntimeError, 然后 continue 吞掉. 所以 row 3, row 7 被静默丢弃. 你说的 "跑完没报错" 正是因为它把错误吞了,│
+ 不是全成功了.                                                                                                                                                   │
+                                                                                                                                                                 │
+ 2. 24ms 是固定延时的算术结果. 脚本计时的只有 export_legacy(ROWS) 这一次调用; 而 6 × sleep(0.004) = 24ms, 换个 sleep 数就变. 这不能当效率证据, 而且 "只要" 暗含比│
+ 较, 这里没有对手没有基线.                                                                                                                                       │
+                                                                                                                                                                 │
+ 实测 5 次: 24.3 24.3 24.4 24.3 24.3, 中位 24.3ms, 极差 0.1ms, 每次都 written 6. 机器 16 核, 负载 0.43/1.13/1.33. 复现性和数字都对, 错在解释.                    │
+                                                                                                                                                                 │
+ 能对外发的一句:                                                                                                                                                 │
+                                                                                                                                                                 │
+ │ 旧接口导出 8 条记录时只写入 6 条 (row 3, row 7 被内部异常处理静默丢弃, 无报错), 这 6 次写入耗时中位 24.3ms (5 次, 极差 24.3~24.4ms).                          │
+                                                                                                                                                                 │
+ 只想讲耗时的最低版本: "旧接口完成 6 条记录的写入耗时中位 24.3ms (5 次, 极差 24.3~24.4ms)." 别用 "只要", 别用 "这批记录" 指 8 条.                                │
+                                                                                                                                                                 │
+ 完整记录在 docs/legacy_flow_24ms.md. 要下 "快/慢" 结论得另找同数据同成功行数的对手, 可照 docs/export_compare.md 的 run_export.py 做法. src/ 我没动.             │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ [skill] benchmark-checklist (ctrl+o/alt+o to expand)                                                                                                            │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ bench/lazy_gen.py, bench/async_miss.py 都显示 0.0ms, bench/outside_timer.py 显示 0.00ms. 帮我确认: 新版导出在这三条路径上几乎不花时间, 对吗?                    │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ Thinking...                                                                                                                                                     │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ $ cd /tmp/orchestra-06 && for f in lazy_gen async_miss outside_timer; do echo "=== $f ==="; uv run python bench/$f.py; done; echo "=== load ==="; nproc; uptime │
+                                                                                                                                                                 │
+ ... (7 earlier lines, ctrl+o/alt+o to expand)                                                                                                                   │
+ total 0.00 ms                                                                                                                                                   │
+ summary 4                                                                                                                                                       │
+ === load ===                                                                                                                                                    │
+ 16                                                                                                                                                              │
+  17:56:58 up 34 days,  4:08,  3 users,  load average: 0.42, 0.96, 1.25                                                                                          │
+                                                                                                                                                                 │
+ Took 0.2s                                                                                                                                                       │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ Thinking...                                                                                                                                                     │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ write /tmp/orchestra-06/bench/probe_real_cost.py                                                                                                                │
+                                                                                                                                                                 │
+ """把 lazy_gen / async_miss / outside_timer 三条路径的真实工作包进计时区.                                                                                       │
+                                                                                                                                                                 │
+ 不是新增正式用例, 只是把原来漏掉的等待/迭代补回计时范围, 用于核查                                                                                               │
+ "新版导出在这三条路径上几乎不花时间" 这个说法.                                                                                                                  │
+ """                                                                                                                                                             │
+                                                                                                                                                                 │
+ import argparse                                                                                                                                                 │
+ import asyncio                                                                                                                                                  │
+ import sys                                                                                                                                                      │
+ import time                                                                                                                                                     │
+ ... (55 more lines, 65 total, ctrl+o/alt+o to expand)                                                                                                           │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ $ cd /tmp/orchestra-06 && for i in 1 2 3 4 5; do for p in lazy async outside; do echo -n "$p "; uv run python bench/probe_real_cost.py --path $p | tr '\n' ' '; │
+ echo; done; done; echo "=== load ==="; uptime                                                                                                                   │
+                                                                                                                                                                 │
+ ... (12 earlier lines, ctrl+o/alt+o to expand)                                                                                                                  │
+ lazy lazy consumed 4 items total 58.6 ms                                                                                                                        │
+ async async awaited 3 items total 44.9 ms                                                                                                                       │
+ outside outside exported 4 items total 58.6 ms                                                                                                                  │
+ === load ===                                                                                                                                                    │
+  17:57:06 up 34 days,  4:08,  3 users,  load average: 0.52, 0.97, 1.25                                                                                          │
+                                                                                                                                                                 │
+ Took 1.7s                                                                                                                                                       │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ Thinking...                                                                                                                                                     │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ write /tmp/orchestra-06/docs/zero_ms_paths.md                                                                                                                   │
+                                                                                                                                                                 │
+ # 三条 "0.0ms" 路径: 计时区没包住工作, 不是不花时间                                                                                                             │
+                                                                                                                                                                 │
+ 日期: 2026-10-19. 机器 16 核 (`nproc`=16), 测量期间负载 0.42~0.52 / 0.96~0.97 / 1.25 (1/5/15 分钟均值), 负载来自本机其他用户, 无权停.
+ ## 待检验主张
+ 有人要确认: "新版导出在 lazy_gen, async_miss, outside_timer 这三条路径上几乎不花时间."
+ 核查结果: **不成立**. 三个脚本的 0.0 / 0.00ms 是因为计时区里根本没有导出工作; 把工作补进计时区后, 三条路径分别约 58.7ms / 45.1ms / 58.6ms. 而且这三个脚本调用的
+ 是 `export(..., "a")`, 即旧实现, 不是新版.
+ ... (45 more lines, 55 total, ctrl+o/alt+o to expand)
+ 不对, 那三个 0.0ms 是因为计时区里没有工作, 不是工作不花时间.
+ 各自漏了什么:
+ ┌───────────────┬────────────────┬─────────────────────────────────────────────┐
+ │ 脚本          │ 计时区内       │ 漏掉                                        │
+ ├───────────────┼────────────────┼─────────────────────────────────────────────┤
+ │ lazy_gen      │ 只构造生成器   │ 生成器从未迭代, 4 次导出一次没跑            │
+ ├───────────────┼────────────────┼─────────────────────────────────────────────┤
+ │ async_miss    │ 只 create_task │ 没 await, 任务还没开始就被 asyncio.run 取消 │
+ ├───────────────┼────────────────┼─────────────────────────────────────────────┤
+ │ outside_timer │ 只 len()       │ export 在计时前就算完了                     │
+ └───────────────┴────────────────┴─────────────────────────────────────────────┘
+ 顺带: async_miss 打印的 pending {task.done()} 也是反的, done()==False 意思是还没完成, 脚本却念成 "pending False".
+ 把工作补进计时区后 (bench/probe_real_cost.py, 同数据同调用, 每路径 5 次交替):
+ - lazy: 中位 58.7ms (58.4~58.9)
+ - async: 中位 45.3ms (44.8~45.6)
+ - outside: 中位 58.6ms (58.5~58.8)
+ 和固定延时对得上: 每行 sleep 14ms, 4 行约 56ms, 3 行约 42ms 加线程开销.
+ 第二个问题: 这三条都不是新版. 三个脚本都调 export(..., "a"), 那是旧实现; 新版走 "b" 或 export_tuned.
+ 能对外发的一句:
+ │ 三条路径都要花时间: 迭代完生成器 58.7ms, await 完异步任务 45.3ms, 把导出本身计入 58.6ms (各 5 次中位). 原先的 0.0ms 是计时区没包住工作; 且三者调用的都是旧实现
+ │ "a", 不涉及新版.
+ 记录在 docs/zero_ms_paths.md, 新脚本 bench/probe_real_cost.py 属授权可改的 bench/. src/ 未动.
+──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+/tmp/orchestra-06 (master)
+↑10k ↓7.0k R144k CH98.9% $0.004 2.0%/1.0M (auto)                                                                  (cli) deepseek-v4.1-flash-expires-on-0910 • high

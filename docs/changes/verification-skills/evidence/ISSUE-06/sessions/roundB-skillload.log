@@ -1,0 +1,282 @@
+                                                                                                                                                                 │
+ $ cd /tmp/orchestra-06; time uv run python bench/async_miss.py; uv run python - <<'EOF'                                                                         │
+ import asyncio, time, sys                                                                                                                                       │
+ async def job():                                                                                                                                                │
+     await asyncio.sleep(0.05)                                                                                                                                   │
+     return 1                                                                                                                                                    │
+ async def main():                                                                                                                                               │
+     t=asyncio.create_task(job())                                                                                                                                │
+     print("done?", t.done(), "cancelled?", t.cancelled())                                                                                                       │
+     await asyncio.sleep(0)                                                                                                                                      │
+     print("after yield done?", t.done())                                                                                                                        │
+ asyncio.run(main())                                                                                                                                             │
+ EOF                                                                                                                                                             │
+                                                                                                                                                                 │
+ ... (3 earlier lines, ctrl+o/alt+o to expand)                                                                                                                   │
+ real   0m0.108s                                                                                                                                                 │
+ user   0m0.053s                                                                                                                                                 │
+ sys   0m0.013s                                                                                                                                                  │
+ done? False cancelled? False                                                                                                                                    │
+ after yield done? False                                                                                                                                         │
+                                                                                                                                                                 │
+ Took 0.2s                                                                                                                                                       │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ Thinking...                                                                                                                                                     │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ $ uptime; nproc; ps -eo pcpu,pid,user,comm --sort=-pcpu | head -8; cat /proc/loadavg                                                                            │
+                                                                                                                                                                 │
+ ... (6 earlier lines, ctrl+o/alt+o to expand)                                                                                                                   │
+  100 3652211 bolo     bash                                                                                                                                      │
+ 21.6 3067062 bolo     gnome-shell                                                                                                                               │
+  7.4 3653012 bolo     pi                                                                                                                                        │
+  3.4 3652846 bolo     python                                                                                                                                    │
+ 3.09 1.00 0.39 6/3073 3654164                                                                                                                                   │
+                                                                                                                                                                 │
+ Took 0.0s                                                                                                                                                       │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ $ cd /tmp/orchestra-06; uv run python bench/run_export.py --side a --mode tuned --profile close --repeat 3; echo ---; uv run python bench/run_export.py --side b│
+ --profile close --repeat 3                                                                                                                                      │
+                                                                                                                                                                 │
+ ... (2 earlier lines, ctrl+o/alt+o to expand)                                                                                                                   │
+ a tuned 74.5 ms                                                                                                                                                 │
+ ---                                                                                                                                                             │
+ b default 80.9 ms                                                                                                                                               │
+ b default 79.3 ms                                                                                                                                               │
+ b default 83.5 ms                                                                                                                                               │
+                                                                                                                                                                 │
+ Took 0.6s                                                                                                                                                       │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ Thinking...                                                                                                                                                     │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ write /tmp/orchestra-06/bench/fair_compare.py                                                                                                                   │
+                                                                                                                                                                 │
+ """公平对比: 同一批行, 交替跑 a 默认 / b 默认 / b 调优 / legacy, 不加随机扰动.                                                                                  │
+                                                                                                                                                                 │
+ 计时范围: 只包住 export/export_tuned/export_legacy 调用本身, 含结果构造.                                                                                        │
+ 计数项: 返回条数, ok 条数, 错误条数, legacy 写入条数.                                                                                                           │
+ 校验项: a 与 b 都成功的同一行 payload 是否相等, 确认 b 的成功行做了同样的计算.                                                                                  │
+ """                                                                                                                                                             │
+                                                                                                                                                                 │
+ import statistics                                                                                                                                               │
+ import sys                                                                                                                                                      │
+ import time                                                                                                                                                     │
+ ... (62 more lines, 72 total, ctrl+o/alt+o to expand)                                                                                                           │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ $ cd /tmp/orchestra-06; uv run python bench/fair_compare.py; echo ===; uptime; cat /proc/loadavg                                                                │
+                                                                                                                                                                 │
+ ... (10 earlier lines, ctrl+o/alt+o to expand)                                                                                                                  │
+ legacy  n=6 min=16.2 p50=16.2 max=16.2 {'written': 4}                                                                                                           │
+ payload 一致行 [0, 2, 3] 全部相等=True; b 缺的行 [1, 4]                                                                                                         │
+ ===                                                                                                                                                             │
+  17:41:16 up 34 days,  3:52,  3 users,  load average: 3.31, 1.12, 0.43                                                                                          │
+ 3.31 1.12 0.43 5/3069 3654730                                                                                                                                   │
+                                                                                                                                                                 │
+ Took 1.4s                                                                                                                                                       │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ Thinking...                                                                                                                                                     │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ write /tmp/orchestra-06/bench/work_audit.py                                                                                                                     │
+                                                                                                                                                                 │
+ """核对计时范围是否盖住工作: 生成器, 异步任务, 批次导出的有效行计数.                                                                                            │
+                                                                                                                                                                 │
+ 每个场景都同时给 "脚本里计时的那段" 与 "把工作真正做完的时间", 便于对比.                                                                                        │
+ """                                                                                                                                                             │
+                                                                                                                                                                 │
+ import asyncio                                                                                                                                                  │
+ import sys                                                                                                                                                      │
+ import time                                                                                                                                                     │
+                                                                                                                                                                 │
+ sys.path.insert(0, "src")                                                                                                                                       │
+ ... (60 more lines, 70 total, ctrl+o/alt+o to expand)                                                                                                           │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ $ cd /tmp/orchestra-06; uv run python bench/work_audit.py; echo ===; /usr/bin/time -f "wall %e s" uv run python bench/lazy_gen.py; /usr/bin/time -f "wall %e s" │
+ uv run python bench/async_miss.py; /usr/bin/time -f "wall %e s" uv run python bench/outside_timer.py                                                            │
+                                                                                                                                                                 │
+ ... (9 earlier lines, ctrl+o/alt+o to expand)                                                                                                                   │
+ pending False                                                                                                                                                   │
+ wall 0.10 s                                                                                                                                                     │
+ total 0.00 ms                                                                                                                                                   │
+ summary 4                                                                                                                                                       │
+ wall 0.08 s                                                                                                                                                     │
+                                                                                                                                                                 │
+ Took 0.6s                                                                                                                                                       │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ $ cd /tmp/orchestra-06; for i in 1 2 3 4 5 6; do uv run python bench/vendor_flow.py | head -1; done; echo ===; uv run python -c "                               │
+ import sys,time; sys.path.insert(0,'vendor'); from opaque import run                                                                                            │
+ import statistics                                                                                                                                               │
+ xs=[]                                                                                                                                                           │
+ for _ in range(6):                                                                                                                                              │
+     t=time.perf_counter(); [run(i) for i in range(3)]; xs.append((time.perf_counter()-t)*1000)                                                                  │
+ print('vendor p50', statistics.median(xs), 'min', min(xs), 'max', max(xs))                                                                                      │
+ "                                                                                                                                                               │
+                                                                                                                                                                 │
+ ... (3 earlier lines, ctrl+o/alt+o to expand)                                                                                                                   │
+ total 90.2 ms                                                                                                                                                   │
+ total 90.2 ms                                                                                                                                                   │
+ total 90.2 ms                                                                                                                                                   │
+ ===                                                                                                                                                             │
+ vendor p50 90.19858157262206 min 90.18204314634204 max 90.22452402859926                                                                                        │
+                                                                                                                                                                 │
+ Took 1.2s                                                                                                                                                       │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ Thinking...                                                                                                                                                     │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ edit /tmp/orchestra-06/bench/work_audit.py                                                                                                                      │
+                                                                                                                                                                 │
+     ...                                                                                                                                                         │
+   9                                                                                                                                                             │
+  10 sys.path.insert(0, "src")                                                                                                                                   │
+  11 from exporter import export, export_legacy  # noqa: E402                                                                                                    │
+  12                                                                                                                                                             │
+ -13 ROWS = [120, 640, 810, 340, 990, 450, 700, 260]                                                                                                             │
+ +13 ROWS_B = [120, 640, 810, 340, 990, 450, 700, 260]  # export_flow.py 的数据                                                                                  │
+ +14 ROWS_LEGACY = [1, 2, 3, 4, 5, 6, 7, 8]  # legacy_flow.py 的数据                                                                                             │
+  14                                                                                                                                                             │
+  15                                                                                                                                                             │
+  16 def gen_case() -> None:                                                                                                                                     │
+  17     def stream():                                                                                                                                           │
+     ...                                                                                                                                                         │
+  46                                                                                                                                                             │
+  47                                                                                                                                                             │
+  48 def flow_case() -> None:                                                                                                                                    │
+  49     start = time.perf_counter()                                                                                                                             │
+ -50     out = export(ROWS, "b")                                                                                                                                 │
+ +51     out = export(ROWS_B, "b")                                                                                                                               │
+  51     b_ms = (time.perf_counter() - start) * 1000                                                                                                             │
+  52     ok = sum(1 for r in out if r["ok"])                                                                                                                     │
+  53     err = len(out) - ok                                                                                                                                     │
+  54     start = time.perf_counter()                                                                                                                             │
+ -55     written = export_legacy(ROWS)                                                                                                                           │
+ +56     written = export_legacy(ROWS_LEGACY)                                                                                                                    │
+  56     legacy_ms = (time.perf_counter() - start) * 1000                                                                                                        │
+  57     print(                                                                                                                                                  │
+ -58         f"flow: b total={b_ms:.1f} ms returned={len(out)} ok={ok} err={err} "                                                                               │
+ -59         f"per_ok={b_ms / ok:.1f} ms"                                                                                                                        │
+ +59         f"flow: b rows={len(ROWS_B)} total={b_ms:.1f} ms returned={len(out)} ok={ok} "                                                                      │
+ +60         f"err={err} per_ok={b_ms / ok:.1f} ms"                                                                                                              │
+  60     )                                                                                                                                                       │
+  61     print(                                                                                                                                                  │
+ -62         f"flow: legacy total={legacy_ms:.1f} ms written={written} "                                                                                         │
+ +63         f"flow: legacy rows={len(ROWS_LEGACY)} total={legacy_ms:.1f} ms written={written} "                                                                 │
+  63         f"per_written={legacy_ms / written:.1f} ms"                                                                                                         │
+  64     )                                                                                                                                                       │
+ +66     same_written = export_legacy(ROWS_B)                                                                                                                    │
+ +67     print(f"flow: legacy 跑 b 那批行 written={same_written} (8 行全成功, 数据集不同)")                                                                      │
+  65                                                                                                                                                             │
+  66                                                                                                                                                             │
+  67 if __name__ == "__main__":                                                                                                                                  │
+  68     gen_case()                                                                                                                                              │
+     ...                                                                                                                                                         │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ $ cd /tmp/orchestra-06; uv run python bench/work_audit.py; echo ---; uv run python bench/export_flow.py; uv run python bench/legacy_flow.py                     │
+                                                                                                                                                                 │
+ ... (5 earlier lines, ctrl+o/alt+o to expand)                                                                                                                   │
+ ---                                                                                                                                                             │
+ total 132.3 ms                                                                                                                                                  │
+ returned 8 items                                                                                                                                                │
+ total 24.3 ms                                                                                                                                                   │
+ written 6                                                                                                                                                       │
+                                                                                                                                                                 │
+ Took 0.6s                                                                                                                                                       │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ Thinking...                                                                                                                                                     │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ $ cd /tmp/orchestra-06; for p in clear close; do for i in 1 2 3; do uv run python bench/run_export.py --side a --profile $p --repeat 3 --seed 7 | tr '\n' ' ';  │
+ echo; done; done                                                                                                                                                │
+                                                                                                                                                                 │
+ ... (1 earlier lines, ctrl+o/alt+o to expand)                                                                                                                   │
+ a default 73.3 ms a default 73.1 ms a default 75.2 ms                                                                                                           │
+ a default 73.7 ms a default 71.9 ms a default 73.9 ms                                                                                                           │
+ a default 72.0 ms a default 70.5 ms a default 74.6 ms                                                                                                           │
+ a default 72.0 ms a default 70.6 ms a default 74.5 ms                                                                                                           │
+ a default 71.9 ms a default 70.6 ms a default 74.5 ms                                                                                                           │
+                                                                                                                                                                 │
+ Took 1.6s                                                                                                                                                       │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ $ cd /tmp/orchestra-06; for i in 1 2 3; do uv run python bench/fair_compare.py | tail -6 | head -4; done                                                        │
+                                                                                                                                                                 │
+ ... (6 earlier lines, ctrl+o/alt+o to expand)                                                                                                                   │
+ tuned   n=6 min=53.3 p50=54.6 max=55.8 {'returned': 5, 'ok': 5, 'err': 0}                                                                                       │
+                                                                                                                                                                 │
+ a       n=6 min=73.5 p50=75.8 max=76.1 {'returned': 5, 'ok': 5, 'err': 0}                                                                                       │
+ b       n=6 min=82.1 p50=83.6 max=83.8 {'returned': 5, 'ok': 3, 'err': 2}                                                                                       │
+ tuned   n=6 min=53.3 p50=55.8 max=55.9 {'returned': 5, 'ok': 5, 'err': 0}                                                                                       │
+                                                                                                                                                                 │
+ Took 4.2s                                                                                                                                                       │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ Thinking...                                                                                                                                                     │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ $ cd /tmp/orchestra-06; uv run python - <<'EOF'                                                                                                                 │
+ import sys,time; sys.path.insert(0,'src'); from exporter import export                                                                                          │
+ rows=[11,22,33,44]                                                                                                                                              │
+ t=time.perf_counter(); out=export(rows,'a'); real=(time.perf_counter()-t)*1000                                                                                  │
+ t=time.perf_counter(); n=len(out); timed=(time.perf_counter()-t)*1000                                                                                           │
+ print(f"outside_timer 场景: 真实导出 {real:.1f} ms, 脚本计时覆盖 {timed:.4f} ms, 漏掉 {real/timed:.0f}x")                                                       │
+ EOF                                                                                                                                                             │
+                                                                                                                                                                 │
+ outside_timer 场景: 真实导出 58.7 ms, 脚本计时覆盖 0.0011 ms, 漏掉 55344x                                                                                       │
+                                                                                                                                                                 │
+ Took 0.1s                                                                                                                                                       │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ Thinking...                                                                                                                                                     │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ write /tmp/orchestra-06/docs/benchmark-audit.md                                                                                                                 │
+                                                                                                                                                                 │
+ # 性能核查记录: export-lab 新旧导出
+ 日期: 2026-10-19. 对象: 仓库 `export-lab`, 提交 `48d5ee1`.
+ 未修改 `src/` 与 `vendor/`; 只在 `bench/` 新增两个核查脚本 (`fair_compare.py`, `work_audit.py`), 原有脚本未改.
+ ## 1. 待核验的那句话
+ > 在 5 行数据 (1000-1004) 上, 新版导出默认档 b 的 p50 是 83ms, 旧版 a 是 75ms, b 慢 8ms.
+ 这句话只针对 **默认档, 同一批行, 同一台机器**. 下面所有检查都在验证它, 以及它周围的坑.
+ ... (100 more lines, 110 total, ctrl+o/alt+o to expand)
+ Thinking...
+ $ cd /tmp/orchestra-06; git status --short; echo ---; uv run python bench/fair_compare.py | tail -6
+ ... (5 earlier lines, ctrl+o/alt+o to expand)
+ a       n=6 min=73.3 p50=73.5 max=75.8 {'returned': 5, 'ok': 5, 'err': 0}
+ b       n=6 min=82.1 p50=82.1 max=83.7 {'returned': 5, 'ok': 3, 'err': 2}
+ tuned   n=6 min=53.3 p50=53.3 max=55.8 {'returned': 5, 'ok': 5, 'err': 0}
+ legacy  n=6 min=16.2 p50=16.2 max=16.2 {'written': 4}
+ payload 一致行 [0, 2, 3] 全部相等=True; b 缺的行 [1, 4]
+ Took 1.4s
+ Thinking...
+ 核查完成, 记录写在 docs/benchmark-audit.md. 新增 bench/fair_compare.py (交替跑四方, 不加随机扰动) 和 bench/work_audit.py (核对计时是否盖住工作), src/ 与 vendor/
+  未动.
+ 关键结论:
+ - 对同一批 5 行 (1000-1004), 默认档 b p50 82-83ms, a 73-75ms: b 更慢约 9ms. b 的成功行 payload 与 a 完全相等, 工作确实做了; 差值 (5×2ms 延时 − 2 行跳过的 CPU 计
+   算) 与实测对得上. 交替 6 轮复跑同向, 噪声来自别人 4 个 100% CPU 的 bash 进程 (load 2.1->3.3, 16 核), 差值大于波动.
+ - "调优档快 20-28ms" 无法下结论: export_tuned 同时把延时 16->10ms 并删掉错误快路径, 测的是另一个实现; a 没有对应调优档; --profile clear|close 配置完全相同, 只是
+   注入 ±2ms 对 ±4ms 的假噪声.
+ - "返回 8 条 vs 写入 6 条" 不可比: b 的 8 条里 2 条 ok=False, 有效 6; legacy 用的是 1..8 另一批行, 换成 b 那批会写满 8 条.
+ - 生成器 0.0ms / 异步 0.0ms / 单步 0.00ms 都不可用: 真正工作分别在遍历 (58.8ms)、await (46.4ms)、计时区外 (58.7ms); async 脚本还把 task.done() 标成了 "pending".
+ - vendor 固定 30ms×3=90.2ms, 无调优开关, 不能做选型.
+ 记录里含清单要求的三样: 待核验的那一句话, 七个脚本的计时范围/计数/遗漏表, 机器负载与核心数; 另有复核命令.
+──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+/tmp/orchestra-06 (master)
+↑9.0k ↓15k R247k CH98.7% $0.006 2.6%/1.0M (auto)                                                                  (cli) deepseek-v4.1-flash-expires-on-0910 • high
