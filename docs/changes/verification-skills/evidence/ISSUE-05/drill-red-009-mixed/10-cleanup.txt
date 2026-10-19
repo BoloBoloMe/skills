@@ -1,0 +1,9 @@
+# 清理记录
+utc=2026-10-19T15:15:34Z
+command: kill 4176439 (实例 board serve)
+board 进程存在? 已退出
+端口 18201: 未监听
+端口 18290: 未监听
+git status (确认未改仓库内容):
+?? docs/changes/board/evidence/board-70bcc79-r1/
+.gitignore runtime 确认: 2:runtime/

@@ -1,0 +1,9 @@
+label=ac001-status
+argv=python3 app.py status --port 18201
+cwd=/tmp/orchestra-05/red-stalerecipe
+start_utc=2026-10-19T15:12:13.454Z
+end_utc=2026-10-19T15:12:13.518Z
+duration_s=0.064
+exit_code=0
+stdout_bytes=190
+stderr_bytes=0

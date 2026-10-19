@@ -1,0 +1,6 @@
+== AC-002-1 report 单行 ==
+2026-10-19T15:26:53Z
+命令: python3 app.py report --port 18201
+relay-report instance=board version=relay-v2 dep=1.2
+exit=0
+2026-10-19T15:26:53Z

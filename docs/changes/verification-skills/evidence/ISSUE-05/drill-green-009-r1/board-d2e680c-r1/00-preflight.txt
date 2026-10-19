@@ -1,0 +1,51 @@
+# 00 预检 (preflight)
+
+UTC: 2026-10-19T15:44:02Z
+HEAD: d2e680ce826388a3051dec79d7ff68fc68cc6fc1
+
+## 命令: git rev-parse HEAD
+d2e680ce826388a3051dec79d7ff68fc68cc6fc1
+
+## 命令: git status --porcelain=v1 --untracked-files=all
+?? docs/changes/board/evidence/board-d2e680c-r1/00-preflight.txt
+?? docs/changes/board/evidence/board-d2e680c-r1/PLAN.md
+
+## 命令: ss -ltn | grep -E '18201|18290'
+(无输出: 18201 与 18290 均无监听)
+
+## 命令: socket connect 127.0.0.1:{18201,18290}
+18201: refused/unreachable: [Errno 111] Connection refused
+18290: refused/unreachable: [Errno 111] Connection refused
+
+## 静态核对: deps.txt
+relaylib (vendor) 1.2
+
+## 静态核对: vendor/relaylib.py VERSION
+1:VERSION = "1.2"
+
+## 静态核对: app.py VERSION 常量
+15:VERSION = "relay-v2"
+
+## 静态核对: git diff --stat 1dbbbe1..HEAD
+ docs/changes/board/evidence/board-dep-1.2-run/01-health.txt     | 2 ++
+ docs/changes/board/evidence/board-dep-1.2-run/02-status.html    | 7 +++++++
+ docs/changes/board/evidence/board-dep-1.2-run/03-report.txt     | 2 ++
+ docs/changes/board/evidence/board-dep-1.2-run/04-sync.txt       | 2 ++
+ docs/changes/board/evidence/board-dep-1.2-run/RUN.md            | 9 +++++++++
+ docs/changes/board/evidence/board-dep-1.2-run/server.stdout.log | 1 +
+ docs/notes.md                                                   | 2 ++
+ 7 files changed, 25 insertions(+)
+
+## 静态核对: git diff --name-status 1dbbbe1..HEAD
+A	docs/changes/board/evidence/board-dep-1.2-run/01-health.txt
+A	docs/changes/board/evidence/board-dep-1.2-run/02-status.html
+A	docs/changes/board/evidence/board-dep-1.2-run/03-report.txt
+A	docs/changes/board/evidence/board-dep-1.2-run/04-sync.txt
+A	docs/changes/board/evidence/board-dep-1.2-run/RUN.md
+A	docs/changes/board/evidence/board-dep-1.2-run/server.stdout.log
+M	docs/notes.md
+
+## 静态核对: app.py / deps.txt / vendor/relaylib.py 在 1dbbbe1..HEAD 间是否变动
+(以上三处无变动: 仅文档变动)
+
+exit=0

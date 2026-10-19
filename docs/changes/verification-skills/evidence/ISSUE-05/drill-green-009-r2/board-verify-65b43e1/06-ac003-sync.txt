@@ -1,0 +1,30 @@
+# AC-003-1 同步到 relay 服务 (实际尝试, 修正退出码采集; 第 1 次尝试见本文件末 appendix)
+target_commit=65b43e1268bf029f199f7782a2185a670a4eef7f
+time_utc=2026-10-19T15:48:55Z
+前置: 18290 端口状态见 05-br001-before.txt (ss 无监听, TCP 连接被拒绝); 18201 board 实例在跑 (health=ok instance=board)
+cmd: python3 app.py sync --port 18201 --relay-port 18290
+--- 原始输出 (stdout+stderr 合并) ---
+request failed: HTTP Error 503: Service Unavailable
+--- 原始输出结束 ---
+exit=1
+time_utc_end=2026-10-19T15:48:55Z
+
+--- 判据字面核对 (判据要求输出含 'sync-ok instance=board' 与 'relay=ok', 退出码 0) ---
+0
+grep_syncok_exit=1
+0
+grep_relayok_exit=1
+
+--- 补充观察 (非判据命令): 实例对 /sync 的实际 HTTP 响应 ---
+cmd: curl -sS -i 'http://127.0.0.1:18201/sync?relay=18290'
+HTTP/1.0 503 Service Unavailable
+Server: BaseHTTP/0.6 Python/3.14.4
+Date: Mon, 19 Oct 2026 15:48:55 GMT
+Content-Type: text/plain; charset=utf-8
+Content-Length: 66
+
+relay-unreachable: <urlopen error [Errno 111] Connection refused>
+curl_exit=0
+
+--- appendix: 第 1 次尝试 (15:48:50Z, 退出码采集有误, 仅留原始输出) ---
+第1次原始输出: request failed: HTTP Error 503: Service Unavailable

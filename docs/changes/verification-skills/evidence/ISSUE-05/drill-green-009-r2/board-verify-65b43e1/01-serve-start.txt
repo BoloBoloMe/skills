@@ -1,0 +1,17 @@
+# 01 起实例 (README 命令, 后台运行, stdout 落到本目录 server.stdout.log)
+
+target_commit=65b43e1268bf029f199f7782a2185a670a4eef7f
+time_utc_start=2026-10-19T15:48:35Z
+
+cmd: mkdir -p runtime/board
+cmd: python3 app.py serve --port 18201 --instance board --data-dir runtime/board > docs/changes/board/evidence/board-verify-65b43e1/server.stdout.log 2>&1 &
+bg_pid(shell)=30786
+serve_pid=30789  (pgrep -af 'app.py serve')
+
+--- server.stdout.log 内容 ---
+listening on 127.0.0.1:18201 instance=board
+
+--- health 复核 (见 02-health.txt) ---
+cmd: python3 app.py health --port 18201
+ok instance=board
+exit=0

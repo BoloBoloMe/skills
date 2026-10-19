@@ -1,0 +1,71 @@
+== BR-001 audit: version field provenance and invariance under relay unavailability ==
+instance_pid=19453 instance=board bind=127.0.0.1:18321 relay_target=127.0.0.1:18290
+
+### step 1: relay 18290 reachability
+time_utc: 2026-10-19T15:41:24Z
+--- cmd: curl -sS -m 3 http://127.0.0.1:18290/ ---
+curl: (7) Failed to connect to 127.0.0.1 port 18290 after 0 ms: Could not connect to server
+curl_exit_code=7
+
+### step 2: status + report BEFORE any relay interaction
+time_utc: 2026-10-19T15:41:24Z
+--- cmd: python3 app.py status --port 18321 (full) ---
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>relay board</title></head>
+<body><h1>relay board</h1>
+<p>instance=board</p>
+<p>state=ready</p>
+<p>version=relay-v2</p></body></html>
+status_exit_code=0
+--- cmd: python3 app.py report --port 18321 ---
+relay-report instance=board version=relay-v2 dep=1.3
+report_exit_code=0
+
+### step 3: actually try to use relay (python3 app.py sync --port 18321 --relay-port 18290)
+time_utc: 2026-10-19T15:41:25Z
+--- cmd: python3 app.py sync --port 18321 --relay-port 18290 ---
+request failed: HTTP Error 503: Service Unavailable
+sync_exit_code=1
+
+### step 4: status + report AFTER the failed relay use
+time_utc: 2026-10-19T15:41:25Z
+--- cmd: python3 app.py status --port 18321 (full) ---
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>relay board</title></head>
+<body><h1>relay board</h1>
+<p>instance=board</p>
+<p>state=ready</p>
+<p>version=relay-v2</p></body></html>
+status_exit_code=0
+--- cmd: python3 app.py report --port 18321 ---
+relay-report instance=board version=relay-v2 dep=1.3
+report_exit_code=0
+
+### step 5: instance-side sockets after steps 2-4
+time_utc: 2026-10-19T15:41:25Z
+--- cmd: ss -tanp | grep 19453 ---
+LISTEN     0      5                     127.0.0.1:18321                 0.0.0.0:*     users:(("python3",pid=19453,fd=3))           
+--- cmd: ss -tanp | grep 18290 ---
+(no socket to/from 18290)
+
+### step 6: CLI output vs the instance's own HTTP body, same window
+time_utc: 2026-10-19T15:41:25Z
+--- cmd: curl -sS -m 5 http://127.0.0.1:18321/report -o /tmp/br_http_report.txt ---
+curl_exit_code=0
+--- cmd: /usr/bin/python3 app.py report --port 18321 > /tmp/br_cli_report.txt ---
+cli_exit_code=0
+http_body: relay-report instance=board version=relay-v2 dep=1.3
+cli_body : relay-report instance=board version=relay-v2 dep=1.3
+IDENTICAL: cli output == instance /report body (no third party involved)
+
+### step 7: relay re-probe at end of audit
+time_utc: 2026-10-19T15:41:25Z
+--- cmd: curl -sS -m 3 http://127.0.0.1:18290/ ---
+curl: (7) Failed to connect to 127.0.0.1 port 18290 after 0 ms: Could not connect to server
+curl_exit_code=7
+
+### verdict basis
+- relay 18290 unavailable during entire audit window (curl exit 7 both probes).
+- version stayed relay-v2 in both status and report before and after a real, failed relay use.
+- the value equals the instance's own served body; instance holds no socket to 18290.
+- limitation: relay was never available in this round, so the available-vs-unavailable comparison cannot be built; only the unavailable branch is observed.

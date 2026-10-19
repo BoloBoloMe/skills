@@ -1,0 +1,7 @@
+[2026-10-19T15:23:37Z] precise relay-availability check
+ss_grep_output=<>
+ss_grep_exit=1 (1 = no listener on 18290, relay unavailable)
+[2026-10-19T15:23:37Z] instance process & serve.log
+    PID                  STARTED CMD
+4189728 一 10月 19 23:22:44 2026 python3 app.py serve --port 18201 --instance board --data-dir runtime/board
+listening on 127.0.0.1:18201 instance=board

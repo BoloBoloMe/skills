@@ -1,0 +1,53 @@
+== BR-001 supplementary: syscall-level check that status/report path makes no relay call ==
+attempt 1: strace -p attach to main instance pid 19453
+strace: attach: ptrace(PTRACE_SEIZE, 19453): 不允许的操作
+attach_exit_code=1
+result: attach denied (ptrace_scope=1); pid 19453 is not a child of this shell (PPID=1).
+
+fallback: run a second real instance of the same code as a strace child (port 18323, instance=board-audit), then exercise /status-page and /report.
+time_utc: 2026-10-19T15:41:15Z
+strace_pid=20443
+--- serve log ---
+listening on 127.0.0.1:18323 instance=board-audit
+--- health ---
+ok instance=board-audit
+health_exit_code=0
+--- status --port 18323 ---
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>relay board</title></head>
+<body><h1>relay board</h1>
+<p>instance=board-audit</p>
+<p>state=ready</p>
+<p>version=relay-v2</p></body></html>
+status_exit_code=0
+--- report --port 18323 ---
+relay-report instance=board-audit version=relay-v2 dep=1.3
+report_exit_code=0
+--- sync --port 18323 --relay-port 18290 (control: this path DOES attempt relay) ---
+request failed: HTTP Error 503: Service Unavailable
+sync_exit_code=1
+time_utc: 2026-10-19T15:41:18Z
+--- cleanup: audit instance alive? ---
+18323 closed
+
+--- network syscalls observed in strace log ---
+cmd: grep -E 'connect|sendto|socket' /tmp/strace-board-audit.log
+20446 socket(AF_INET, SOCK_STREAM|SOCK_CLOEXEC, IPPROTO_IP) = 3
+20446 socket(AF_UNIX, SOCK_STREAM|SOCK_CLOEXEC|SOCK_NONBLOCK, 0) = 4
+20446 connect(4, {sa_family=AF_UNIX, sun_path="/var/run/nscd/socket"}, 110) = -1 ENOENT (没有那个文件或目录)
+20446 socket(AF_UNIX, SOCK_STREAM|SOCK_CLOEXEC|SOCK_NONBLOCK, 0) = 4
+20446 connect(4, {sa_family=AF_UNIX, sun_path="/var/run/nscd/socket"}, 110) = -1 ENOENT (没有那个文件或目录)
+20492 sendto(4, "HTTP/1.0 200 OK\r\nServer: BaseHTT"..., 153, 0, NULL, 0) = 153
+20492 sendto(4, "ok instance=board-audit\n", 24, 0, NULL, 0) = 24
+20499 sendto(4, "HTTP/1.0 200 OK\r\nServer: BaseHTT"..., 153, 0, NULL, 0) = 153
+20499 sendto(4, "<!DOCTYPE html>\n<html><head><met"..., 196, 0, NULL, 0) = 196
+20506 sendto(4, "HTTP/1.0 200 OK\r\nServer: BaseHTT"..., 153, 0, NULL, 0) = 153
+20506 sendto(4, "relay-report instance=board-audi"..., 59, 0, NULL, 0) = 59
+20513 socket(AF_INET, SOCK_STREAM|SOCK_CLOEXEC, IPPROTO_TCP) = 5
+20513 connect(5, {sa_family=AF_INET, sin_port=htons(18290), sin_addr=inet_addr("127.0.0.1")}, 16) = -1 EINPROGRESS (操作现在正在进行)
+20513 sendto(4, "HTTP/1.0 503 Service Unavailable"..., 170, 0, NULL, 0) = 170
+20513 sendto(4, "relay-unreachable: <urlopen erro"..., 66, 0, NULL, 0) = 66
+--- full strace log line count ---
+21
+--- any occurrence of 18290 in strace log? ---
+16:20513 connect(5, {sa_family=AF_INET, sin_port=htons(18290), sin_addr=inet_addr("127.0.0.1")}, 16) = -1 EINPROGRESS (操作现在正在进行)

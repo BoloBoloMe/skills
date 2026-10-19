@@ -1,0 +1,9 @@
+label=br001-status-relaydown
+argv=python3 app.py status --port 18201
+cwd=/tmp/orchestra-05/red-stalerecipe
+start_utc=2026-10-19T15:12:29.227Z
+end_utc=2026-10-19T15:12:29.293Z
+duration_s=0.066
+exit_code=0
+stdout_bytes=190
+stderr_bytes=0

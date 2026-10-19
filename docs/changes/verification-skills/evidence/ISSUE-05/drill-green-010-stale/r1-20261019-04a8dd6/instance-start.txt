@@ -1,0 +1,6 @@
+== instance start (README entry) ==
+start_time_utc: 2026-10-19T15:40:39Z
+mkdir rc=0
+shell_bg_pid=19453
+--- serve log ---
+listening on 127.0.0.1:18321 instance=board

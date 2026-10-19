@@ -1,0 +1,32 @@
+# 09 清理: 停 18201 实例并核对端口与工作树 (本轮)
+time_utc=2026-10-19T15:56:56Z
+target_commit=5f9544df6035701d27c51d95b481b36e36c9da19
+--- 停止前进程 (ps -eo pid,args 过滤 app.py serve) ---
+  40311 uv run python app.py serve --port 18201 --instance board --data-dir runtime/board
+  40316 /home/bolo/.local/share/uv/python/cpython-3.14-linux-x86_64-gnu/bin/python3.14 app.py serve --port 18201 --instance board --data-dir runtime/board
+--- 环境事实: 本会话 shell 层实际以 uv run python 执行 python3 命令 (见上面进程 argv), 解释器版本: ---
+Python 3.14.7
+uv_python_exit=0
+--- 停止方式: 按 PID 精确 kill (避免 pkill -f 自匹配本采集命令) ---
+kill_targets=40311 40316 
+kill_exit=0
+--- 停止后进程 (应为空) ---
+ps_grep_exit=1  (1 = 无进程)
+--- 停止后端口 18201 (应为无监听) ---
+ss_18201_exit=1  (1 = 无监听)
+--- health 复核 (应失败) ---
+request failed: <urlopen error [Errno 111] Connection refused>
+health_exit=1
+--- server.stdout.log 全文 (保留) ---
+listening on 127.0.0.1:18201 instance=board
+--- 最终 git status --porcelain (应只有证据目录未跟踪) ---
+?? docs/changes/board/evidence/board-verify-5f9544d/
+?? docs/changes/board/evidence/board-verify-65b43e1/
+git_status_exit=0
+--- git diff --stat (应为空) ---
+git_diff_exit=0
+--- git diff --cached --stat (应为空) ---
+git_diff_cached_exit=0
+--- HEAD 复核 ---
+5f9544df6035701d27c51d95b481b36e36c9da19
+time_utc_end=2026-10-19T15:56:58Z

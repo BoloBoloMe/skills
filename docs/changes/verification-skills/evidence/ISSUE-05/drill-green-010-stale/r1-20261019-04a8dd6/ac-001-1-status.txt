@@ -1,0 +1,36 @@
+== AC-001-1 status page ==
+time_utc: 2026-10-19T15:40:52Z
+instance_pid=19453 instance=board bind=127.0.0.1:18321
+
+--- premise: python3 app.py health --port 18321 ---
+ok instance=board
+health_exit_code=0
+
+--- command: python3 app.py status --port 18321 ---
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>relay board</title></head>
+<body><h1>relay board</h1>
+<p>instance=board</p>
+<p>state=ready</p>
+<p>version=relay-v2</p></body></html>
+status_exit_code=0
+== AC-001-1 status page (direct interpreter /usr/bin/python3, bypass uv wrapper) ==
+time_utc: 2026-10-19T15:40:52Z
+Python 3.14.4 (main, Aug 20 2026, 10:41:58) [GCC 15.2.0]
+--- /usr/bin/python3 app.py status --port 18321 ---
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>relay board</title></head>
+<body><h1>relay board</h1>
+<p>instance=board</p>
+<p>state=ready</p>
+<p>version=relay-v2</p></body></html>
+status_exit_code=0
+
+--- grep checks ---
+status_exit_code=0
+FOUND: instance=board
+FOUND: state=ready
+FOUND: version=relay-v2
+--- stderr ---
+--- byte size of stdout ---
+190

@@ -1,0 +1,6 @@
+== AC-003-1 sync 实跑 (relay 不可用, 记录真实失败输出) ==
+2026-10-19T15:27:13Z
+命令: python3 app.py sync --port 18201 --relay-port 18290
+request failed: HTTP Error 503: Service Unavailable
+exit=1
+2026-10-19T15:27:13Z

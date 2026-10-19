@@ -1,0 +1,57 @@
+# 10-final-verify: 清理 runtime/ 与收尾状态核对
+recorded_at_utc=2026-10-19T15:12:46.571Z
+## 删除本轮产生的空 runtime/ (全部内容由本轮 serve 创建, 日志原件已存证据目录)
+rm_exit=0
+runtime-removed
+
+## 端口复核
+no-listener-on-18201-or-18290
+
+## git 状态 (应只剩证据目录下的未跟踪文件, 已跟踪文件无改动)
+?? docs/changes/board/evidence/accept-d1f656e-r1/acceptor/raw/00-preflight.txt
+?? docs/changes/board/evidence/accept-d1f656e-r1/acceptor/raw/01-env-baseline.txt
+?? docs/changes/board/evidence/accept-d1f656e-r1/acceptor/raw/02-instance-start.txt
+?? docs/changes/board/evidence/accept-d1f656e-r1/acceptor/raw/03-deps-compare.txt
+?? docs/changes/board/evidence/accept-d1f656e-r1/acceptor/raw/04-ac-assert.txt
+?? docs/changes/board/evidence/accept-d1f656e-r1/acceptor/raw/05-br001-relay-unavailable.txt
+?? docs/changes/board/evidence/accept-d1f656e-r1/acceptor/raw/06-br001-strace-connect.txt
+?? docs/changes/board/evidence/accept-d1f656e-r1/acceptor/raw/07-br001-http-crosscheck.txt
+?? docs/changes/board/evidence/accept-d1f656e-r1/acceptor/raw/08-br001-version-compare.txt
+?? docs/changes/board/evidence/accept-d1f656e-r1/acceptor/raw/09-cleanup.txt
+?? docs/changes/board/evidence/accept-d1f656e-r1/acceptor/raw/10-final-verify.txt
+?? docs/changes/board/evidence/accept-d1f656e-r1/acceptor/raw/ac001-status.meta
+?? docs/changes/board/evidence/accept-d1f656e-r1/acceptor/raw/ac001-status.stderr
+?? docs/changes/board/evidence/accept-d1f656e-r1/acceptor/raw/ac001-status.stdout
+?? docs/changes/board/evidence/accept-d1f656e-r1/acceptor/raw/ac002-report.meta
+?? docs/changes/board/evidence/accept-d1f656e-r1/acceptor/raw/ac002-report.stderr
+?? docs/changes/board/evidence/accept-d1f656e-r1/acceptor/raw/ac002-report.stdout
+?? docs/changes/board/evidence/accept-d1f656e-r1/acceptor/raw/br001-report-relaydown.meta
+?? docs/changes/board/evidence/accept-d1f656e-r1/acceptor/raw/br001-report-relaydown.stderr
+?? docs/changes/board/evidence/accept-d1f656e-r1/acceptor/raw/br001-report-relaydown.stdout
+?? docs/changes/board/evidence/accept-d1f656e-r1/acceptor/raw/br001-status-relaydown.meta
+?? docs/changes/board/evidence/accept-d1f656e-r1/acceptor/raw/br001-status-relaydown.stderr
+?? docs/changes/board/evidence/accept-d1f656e-r1/acceptor/raw/br001-status-relaydown.stdout
+?? docs/changes/board/evidence/accept-d1f656e-r1/acceptor/raw/br001-trace-report.stderr
+?? docs/changes/board/evidence/accept-d1f656e-r1/acceptor/raw/br001-trace-report.stdout
+?? docs/changes/board/evidence/accept-d1f656e-r1/acceptor/raw/br001-trace-report.strace
+?? docs/changes/board/evidence/accept-d1f656e-r1/acceptor/raw/br001-trace-status.stderr
+?? docs/changes/board/evidence/accept-d1f656e-r1/acceptor/raw/br001-trace-status.stdout
+?? docs/changes/board/evidence/accept-d1f656e-r1/acceptor/raw/br001-trace-status.strace
+?? docs/changes/board/evidence/accept-d1f656e-r1/acceptor/raw/health-01.meta
+?? docs/changes/board/evidence/accept-d1f656e-r1/acceptor/raw/health-01.stderr
+?? docs/changes/board/evidence/accept-d1f656e-r1/acceptor/raw/health-01.stdout
+?? docs/changes/board/evidence/accept-d1f656e-r1/acceptor/raw/http-report.body
+?? docs/changes/board/evidence/accept-d1f656e-r1/acceptor/raw/http-status.body
+?? docs/changes/board/evidence/accept-d1f656e-r1/acceptor/raw/serve.pid
+?? docs/changes/board/evidence/accept-d1f656e-r1/acceptor/raw/serve.stderr.log
+?? docs/changes/board/evidence/accept-d1f656e-r1/acceptor/raw/serve.stdout.log
+?? docs/changes/board/evidence/accept-d1f656e-r1/acceptor/raw/supplement-sync-relay18290.meta
+?? docs/changes/board/evidence/accept-d1f656e-r1/acceptor/raw/supplement-sync-relay18290.stderr
+?? docs/changes/board/evidence/accept-d1f656e-r1/acceptor/raw/supplement-sync-relay18290.stdout
+?? docs/changes/board/evidence/accept-d1f656e-r1/plan.md
+[status_exit=0]
+
+## git diff HEAD --stat (空=已跟踪文件零改动)
+
+## HEAD
+d1f656ed1c928f74aa6adf9fd69b067a11f1ad72

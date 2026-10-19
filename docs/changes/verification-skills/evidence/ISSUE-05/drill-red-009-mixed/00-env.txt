@@ -1,0 +1,10 @@
+# 环境 (验收开始)
+utc=2026-10-19T15:14:07Z
+head=70bcc797930115423300a307463d258aebb04179
+git_status_short:
+?? docs/changes/board/evidence/board-70bcc79-r1/
+python=Python 3.14.7
+sha256 relay.py: dc341d2115b48a364bbf3ed9ca9bfa514bb932d1baa6dc18fa8bd3864639cbc7  /tmp/orchestra-05/relay/relay.py
+sha256 app.py: c8dda0fe9a269a66d9904f6a4e0fe82e54e4a51cb6e79e118bf4c0f3fe5a8195  app.py
+sha256 vendor/relaylib.py: b54d508b5b6ef15ab477f27cb2735bd87829b85fb7e64f2817be44e564573440  vendor/relaylib.py
+ports before: 18201/18290 均未监听

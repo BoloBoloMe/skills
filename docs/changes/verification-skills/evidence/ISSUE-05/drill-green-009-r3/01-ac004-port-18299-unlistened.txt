@@ -1,0 +1,25 @@
+# 01 AC-004-1 前置: 确认 127.0.0.1:18299 无监听 (本轮实跑)
+time_utc=2026-10-19T15:56:10Z
+target_commit=5f9544df6035701d27c51d95b481b36e36c9da19
+--- ss -ltn | grep :18299 ---
+ss_grep_exit=1  (1 = 无匹配)
+--- ss -ltnp 宽匹配 18299 ---
+ss_ltnp_grep_exit=1  (1 = 无匹配)
+--- 直接 TCP 连接尝试 (bash /dev/tcp, 不经过 app.py) ---
+bash: connect: 连接被拒绝
+bash: 行 1: /dev/tcp/127.0.0.1/18299: 连接被拒绝
+tcp_connect_exit=1
+--- 进程侧核对 (不应有本仓 app.py 实例) ---
+40078 /bin/bash -c cd /tmp/orchestra-05/board-r2 && EV=docs/changes/board/evidence/board-verify-5f9544d && T=$(date -u +%Y-%m-%dT%H:%M:%SZ) && { echo "# 01 AC-004-1 前置: 确认 127.0.0.1:18299 无监听 (本轮实跑)" echo "time_utc=$T" echo "target_commit=$(git rev-parse HEAD)" echo "--- ss -ltn | grep :18299 ---" ss -ltn | grep ':18299'; echo "ss_grep_exit=$?  (1 = 无匹配)" echo "--- ss -ltnp 宽匹配 18299 ---" ss -ltnp | grep '18299'; echo "ss_ltnp_grep_exit=$?  (1 = 无匹配)" echo "--- 直接 TCP 连接尝试 (bash /dev/tcp, 不经过 app.py) ---" timeout 3 bash -c 'exec 3<>/dev/tcp/127.0.0.1/18299'; echo "tcp_connect_exit=$?" echo "--- 进程侧核对 (不应有本仓 app.py 实例) ---" pgrep -af 'app.py serve'; echo "pgrep_exit=$?  (1 = 无 app.py serve 进程)" echo "time_utc_end=$(date -u +%Y-%m-%dT%H:%M:%SZ)" } > "$EV/01-ac004-port-18299-unlistened.txt" 2>&1; cat "$EV/01-ac004-port-18299-unlistened.txt"
+pgrep_exit=0  (1 = 无 app.py serve 进程)
+time_utc_end=2026-10-19T15:56:10Z
+
+--- 补充 (time_utc=2026-10-19T15:56:13Z): 上一条 pgrep -af 'app.py serve' 命中的是本次采集命令自身的命令行 (自匹配), 不是实例. 严格核对如下 ---
+cmd: pgrep -af '^python3 app.py serve|/python3 app.py serve'
+40144 /bin/bash -c cd /tmp/orchestra-05/board-r2 && EV=docs/changes/board/evidence/board-verify-5f9544d && { echo "" echo "--- 补充 (time_utc=$(date -u +%Y-%m-%dT%H:%M:%SZ)): 上一条 pgrep -af 'app.py serve' 命中的是本次采集命令自身的命令行 (自匹配), 不是实例. 严格核对如下 ---" echo "cmd: pgrep -af '^python3 app.py serve|/python3 app.py serve'" pgrep -af 'python3 app.py serve'; echo "pgrep_python_exit=$?  (1 = 无 python3 app.py serve 进程)" echo "cmd: ps -eo pid,args | grep -E 'app\.py' | grep -v grep | grep -v 'board-verify'" ps -eo pid,args | grep -E 'app\.py' | grep -v grep | grep -v 'board-verify'; echo "ps_grep_exit=$?  (1 = 无相关进程)" echo "cmd: ss -ltn | grep -c ':18299'" ss -ltn | grep -c ':18299'; echo "(输出 0 = 无监听)" } >> "$EV/01-ac004-port-18299-unlistened.txt" 2>&1; tail -12 "$EV/01-ac004-port-18299-unlistened.txt"
+pgrep_python_exit=0  (1 = 无 python3 app.py serve 进程)
+cmd: ps -eo pid,args | grep -E 'app\.py' | grep -v grep | grep -v 'board-verify'
+ps_grep_exit=1  (1 = 无相关进程)
+cmd: ss -ltn | grep -c ':18299'
+0
+(输出 0 = 无监听)

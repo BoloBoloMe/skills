@@ -1,0 +1,33 @@
+# 本轮验收派工前现场核对
+# 采集时间: 2026-10-19T15:30:36Z
+
+## git rev-parse HEAD
+d2e680ce826388a3051dec79d7ff68fc68cc6fc1
+
+## git status --porcelain=v1 -uall
+?? docs/changes/board/evidence/board-d2e680c-r1-blocked/00-blocked.md
+?? docs/changes/board/evidence/board-d2e680c-r1-blocked/01-git-facts.txt
+?? docs/changes/board/evidence/board-d2e680c-r1/01-preflight.txt
+
+## git diff --stat HEAD
+(空)
+
+## git log -3
+d2e680ce826388a3051dec79d7ff68fc68cc6fc1 2026-10-19 23:19:48 +0800 docs: 补充交接说明
+86c9ae0d1ee76a99e2edeb204523159cfa7a4c17 2026-10-19 23:19:48 +0800 docs: 记录依赖 1.2 的首轮运行输出
+1dbbbe1baf52ea700f88cfc03599a93757f925b0 2026-10-19 23:19:46 +0800 初始化记录板骨架与产品标准
+
+## PRODUCT.md 确认标记
+23:<!-- confirmed-flow: v1 -->
+
+## 端口 18201/18290
+(无监听)
+
+## 部署方 relay 文件搜索 (/tmp, 深度 4)
+/tmp/orchestra-05/red-board2/vendor/relaylib.py
+/tmp/orchestra-05/board/vendor/relaylib.py
+/tmp/orchestra-05/red-stalerecipe/vendor/relaylib.py
+/tmp/orchestra-05/red-board/vendor/relaylib.py
+/tmp/orchestra-05/stalerecipe/vendor/relaylib.py
+/tmp/orchestra-05/norecipe/vendor/relaylib.py
+(以上为搜索结果)

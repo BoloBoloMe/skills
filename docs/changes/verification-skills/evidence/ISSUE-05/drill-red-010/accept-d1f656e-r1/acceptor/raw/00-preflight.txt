@@ -1,0 +1,25 @@
+# 00-preflight: 版本前提核对 (只读)
+recorded_at_utc=2026-10-19T15:12:00.576Z
+recorded_at_local=2026-10-19T23:12:00+08:00
+
+## git rev-parse HEAD
+d1f656ed1c928f74aa6adf9fd69b067a11f1ad72
+
+## git status --porcelain --untracked-files=all
+?? docs/changes/board/evidence/accept-d1f656e-r1/acceptor/raw/00-preflight.txt
+?? docs/changes/board/evidence/accept-d1f656e-r1/plan.md
+
+## git ls-files (已跟踪文件)
+.gitignore
+README.md
+app.py
+deps.txt
+docs/changes/board/PRODUCT.md
+vendor/relaylib.py
+
+## git diff HEAD --stat (已跟踪改动; 空=无改动)
+[diff-exit=0]
+
+## git diff HEAD --name-only
+
+## git stash list (应空)

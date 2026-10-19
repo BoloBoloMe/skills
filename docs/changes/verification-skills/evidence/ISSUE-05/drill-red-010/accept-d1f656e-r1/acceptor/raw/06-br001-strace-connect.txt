@@ -1,0 +1,11 @@
+## strace connect 追踪: status / report 是否会连接 relay 端口 18290
+recorded_at_utc=2026-10-19T15:12:32.370Z
+status_strace_exit=0
+report_strace_exit=0
+--- status connect 记录 ---
+4173907 connect(3, {sa_family=AF_INET, sin_port=htons(18201), sin_addr=inet_addr("127.0.0.1")}, 16) = -1 EINPROGRESS (操作现在正在进行)
+--- report connect 记录 ---
+4173923 connect(3, {sa_family=AF_INET, sin_port=htons(18201), sin_addr=inet_addr("127.0.0.1")}, 16) = -1 EINPROGRESS (操作现在正在进行)
+--- 是否出现 18290 (十六进制 htons 0x4772) ---
+count /tmp/orchestra-05/red-stalerecipe/docs/changes/board/evidence/accept-d1f656e-r1/acceptor/raw/br001-trace-report.strace:0
+count /tmp/orchestra-05/red-stalerecipe/docs/changes/board/evidence/accept-d1f656e-r1/acceptor/raw/br001-trace-status.strace:0

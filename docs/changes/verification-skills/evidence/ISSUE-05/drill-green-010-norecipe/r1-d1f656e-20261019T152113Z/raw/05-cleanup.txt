@@ -1,0 +1,13 @@
+[2026-10-19T15:25:01Z] cleanup: stop instance I started (serve_pid=4189728)
+    PID CMD
+4189728 python3 app.py serve --port 18201 --instance board --data-dir runtime/board
+kill_exit=0
+[2026-10-19T15:25:02Z] post-kill process check
+    PID CMD
+ps_exit=1 (1 = process gone)
+[2026-10-19T15:25:02Z] post-kill port check
+ss_grep_output=<>
+ss_grep_exit=1 (1 = 18201 no longer listening)
+relay_18290_still=<> rc=1 (untouched external service)
+[2026-10-19T15:25:02Z] git status (only evidence dir + ignored runtime/ expected)
+?? docs/changes/board/evidence/

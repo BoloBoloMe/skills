@@ -1,0 +1,12 @@
+# AC-002 dep 值静态材料核对 (非运行输出)
+utc=2026-10-19T15:14:53Z
+-- deps.txt 原文 --
+relaylib (vendor) 1.3
+-- vendor/relaylib.py 中 VERSION 原文 --
+1:VERSION = "1.3"
+-- 比对命令 --
+dep_value=$(python3 app.py report --port 18201 | sed -E "s/.*dep=//"); deps_ver=$(grep -oE "[0-9.]+" deps.txt); lib_ver=$(grep -oE "\"[0-9.]+\"" vendor/relaylib.py | tr -d "\"")
+report 里的 dep 值 = 1.3
+deps.txt 记录的版本 = 1.3
+vendor/relaylib.py VERSION = 1.3
+比对结果: 三者一致

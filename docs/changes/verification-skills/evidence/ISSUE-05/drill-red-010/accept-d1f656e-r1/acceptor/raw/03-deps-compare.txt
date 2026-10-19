@@ -1,0 +1,24 @@
+# 03-deps: deps.txt 原文与 dep 一致性比对 (静态材料核对)
+recorded_at_utc=2026-10-19T15:12:17.727Z
+## deps.txt 原文 (cat -A 显示不可见字符)
+relaylib (vendor) 1.3$
+[cat_exit=0]
+
+## deps.txt sha256 与 git 版本
+a675d74de08422061a5cc1b5e5cd2d0b25ccdc4da02311d515c8c5fdf4202098  deps.txt
+ae33029979573a7f45cbaff969c5fb1274f89433
+
+## vendor/relaylib.py 原文 (dep 值的实际来源)
+VERSION = "1.3"
+[cat_exit=0]
+b54d508b5b6ef15ab477f27cb2735bd87829b85fb7e64f2817be44e564573440  vendor/relaylib.py
+
+## report 原始输出 (在 15:12:13Z 产生, 见 ac002-report.*)
+relay-report instance=board version=relay-v2 dep=1.3
+
+## 自动一致性比对: deps.txt 记录的依赖版本 vs report 的 dep 字段
+deps_txt_raw      = 'relaylib (vendor) 1.3\n'
+deps_txt_version  = 1.3
+report_dep_field  = 1.3
+MATCH             = True
+compare_exit=0

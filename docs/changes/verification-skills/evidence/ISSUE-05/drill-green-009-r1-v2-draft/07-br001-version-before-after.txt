@@ -1,0 +1,81 @@
+# 07 BR-001 (审计): status/report 的 version 只取自实例自身, relay 不可用时也不改变
+# 采集时间: 2026-10-19T15:37:51Z
+# 方法 (按派工单): relay 不可用状态下先取 status/report (前) -> 运行 sync 确认 relay 不可用 -> 再取 status/report (后) -> 前后逐字对比. 全部为实际运行, 不用代码阅读推断.
+
+## 第 1 步: 前 (before) 采集
+$ python3 app.py status --port 18201
+rc=0
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>relay board</title></head>
+<body><h1>relay board</h1>
+<p>instance=board</p>
+<p>state=ready</p>
+<p>version=relay-v2</p></body></html>
+$ python3 app.py report --port 18201
+rc=0
+relay-report instance=board version=relay-v2 dep=1.2
+$ /usr/bin/python3 app.py status --port 18201
+rc=0
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>relay board</title></head>
+<body><h1>relay board</h1>
+<p>instance=board</p>
+<p>state=ready</p>
+<p>version=relay-v2</p></body></html>
+$ /usr/bin/python3 app.py report --port 18201
+rc=0
+relay-report instance=board version=relay-v2 dep=1.2
+
+## 第 2 步: 运行 sync 确认 relay 不可用 (字面 python3 -> uv run python)
+$ python3 app.py sync --port 18201 --relay-port 18290
+rc=1
+--- stdout 原文 (空=无) ---
+--- stdout 结束 ---
+--- stderr 原文 ---
+request failed: HTTP Error 503: Service Unavailable
+--- stderr 结束 ---
+
+## 第 3 步: 后 (after) 采集
+$ python3 app.py status --port 18201
+rc=0
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>relay board</title></head>
+<body><h1>relay board</h1>
+<p>instance=board</p>
+<p>state=ready</p>
+<p>version=relay-v2</p></body></html>
+$ python3 app.py report --port 18201
+rc=0
+relay-report instance=board version=relay-v2 dep=1.2
+$ /usr/bin/python3 app.py status --port 18201
+rc=0
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>relay board</title></head>
+<body><h1>relay board</h1>
+<p>instance=board</p>
+<p>state=ready</p>
+<p>version=relay-v2</p></body></html>
+$ /usr/bin/python3 app.py report --port 18201
+rc=0
+relay-report instance=board version=relay-v2 dep=1.2
+
+## 第 4 步: 前后逐字节对比 (cmp, rc=0 且无输出=逐字节相同)
+$ cmp /tmp/verify-work/br.status.uv.before /tmp/verify-work/br.status.uv.after
+rc=0
+$ cmp /tmp/verify-work/br.report.uv.before /tmp/verify-work/br.report.uv.after
+rc=0
+$ cmp /tmp/verify-work/br.status.sys.before /tmp/verify-work/br.status.sys.after
+rc=0
+$ cmp /tmp/verify-work/br.report.sys.before /tmp/verify-work/br.report.sys.after
+rc=0
+
+## version 行提取 (前 -> 后)
+status(uv)  前: version=relay-v2  后: version=relay-v2
+report(uv)  前: version=relay-v2  后: version=relay-v2
+status(sys) 前: version=relay-v2  后: version=relay-v2
+report(sys) 前: version=relay-v2  后: version=relay-v2
+
+## 本文件结论
+- sync 当时的实测: 实例返回 relay-unreachable (HTTP 503), 客户端 stderr 'request failed: HTTP Error 503: Service Unavailable', 退出码 1 -> relay 不可用成立.
+- 4 组前后输出 (status/report x 两种解释器) cmp 全部 rc=0, 逐字节相同; version 字段前后均为 relay-v2, 未因 relay 不可用改变.
+- BR-001 判为通过 (依据本文件前后原始输出, sync 返回与 cmp 记录; 全部为当前实际运行).

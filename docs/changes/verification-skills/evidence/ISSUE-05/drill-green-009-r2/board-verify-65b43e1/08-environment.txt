@@ -1,0 +1,24 @@
+# 08 环境要点与清理
+time_utc=2026-10-19T15:49:03Z
+target_commit=65b43e1268bf029f199f7782a2185a670a4eef7f
+uname=Linux Ubuntu-Workstation 7.0.0-31-generic #31-Ubuntu SMP PREEMPT_DYNAMIC Sat Aug  1 04:26:38 UTC 2026 x86_64 GNU/Linux
+
+--- python3 在该 shell 里的真实形态 ---
+cmd: type python3
+python3 是函数
+python3 () 
+{ 
+    uv run python "$@"
+}
+cmd: python3 -VV
+Python 3.14.7 (main, Aug 14 2026, 15:35:28) [Clang 22.1.3 ]
+
+--- serve 实例进程 ---
+cmd: pgrep -af 'app.py serve'
+30786 /bin/bash -c python() { uv run python "$@"; }; python3() { uv run python "$@"; }; cd /tmp/orchestra-05/board-r2 && EV=docs/changes/board/evidence/board-verify-65b43e1 && mkdir -p runtime/board && { echo "# 01 起实例"; echo "time_utc_start=$(date -u +%Y-%m-%dT%H:%M:%SZ)"; echo "cmd: mkdir -p runtime/board"; echo "cmd: python3 app.py serve --port 18201 --instance board --data-dir runtime/board   (后台, stdout 见 server.stdout.log)"; } > $EV/01-serve-start.txt 2>&1 cd /tmp/orchestra-05/board-r2 && nohup python3 app.py serve --port 18201 --instance board --data-dir runtime/board > docs/changes/board/evidence/board-verify-65b43e1/server.stdout.log 2>&1 & echo "bg_pid=$!" | tee -a docs/changes/board/evidence/board-verify-65b43e1/01-serve-start.txt sleep 2 echo "--- 02 health ---" | tee -a docs/changes/board/evidence/board-verify-65b43e1/01-serve-start.txt cd /tmp/orchestra-05/board-r2 && { echo "time_utc=$(date -u +%Y-%m-%dT%H:%M:%SZ)"; echo "cmd: python3 app.py health --port 18201"; } > docs/changes/board/evidence/board-verify-65b43e1/02-health.txt python3 app.py health --port 18201 >> docs/changes/board/evidence/board-verify-65b43e1/02-health.txt 2>&1; echo "exit=$?" >> docs/changes/board/evidence/board-verify-65b43e1/02-health.txt cat docs/changes/board/evidence/board-verify-65b43e1/02-health.txt; echo "=== server.stdout ==="; cat docs/changes/board/evidence/board-verify-65b43e1/server.stdout.log; echo "=== pid check ==="; pgrep -af "app.py serve" 
+30789 python3 app.py serve --port 18201 --instance board --data-dir runtime/board
+31499 /bin/bash -c python() { uv run python "$@"; }; python3() { uv run python "$@"; }; cd /tmp/orchestra-05/board-r2 && EV=docs/changes/board/evidence/board-verify-65b43e1 && { echo "# 08 环境要点与清理" echo "time_utc=$(date -u +%Y-%m-%dT%H:%M:%SZ)" echo "target_commit=$(git rev-parse HEAD)" echo "uname=$(uname -a)" echo echo "--- python3 在该 shell 里的真实形态 ---" echo "cmd: type python3" type python3 echo "cmd: python3 -VV" python3 -VV echo echo "--- serve 实例进程 ---" echo "cmd: pgrep -af 'app.py serve'" pgrep -af 'app.py serve' echo echo "--- 18201 / 18290 端口 (清理前) ---" echo "cmd: ss -ltnp | grep -E ':18201|:18290'" ss -ltnp 2>/dev/null | grep -E ':18201|:18290' || echo "(无 18201/18290 匹配)" } > $EV/08-environment.txt 2>&1 cat $EV/08-environment.txt
+
+--- 18201 / 18290 端口 (清理前) ---
+cmd: ss -ltnp | grep -E ':18201|:18290'
+LISTEN 0      5           127.0.0.1:18201      0.0.0.0:*    users:(("python3",pid=30789,fd=3))           

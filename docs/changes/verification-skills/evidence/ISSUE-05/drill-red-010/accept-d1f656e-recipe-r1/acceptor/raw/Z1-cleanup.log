@@ -1,0 +1,23 @@
+[time] 2026-10-19T23:17:07+08:00
+[cmd] find runtime -mindepth 1 -maxdepth 3 | sort
+runtime/board
+[cmd] ls -la runtime/board
+total 0
+drwxrwxr-x 2 bolo bolo 40 Oct 19 23:16 .
+drwxrwxr-x 3 bolo bolo 60 Oct 19 23:16 ..
+[cmd] kill 4179775 (serve 18201)
+[kill exit] 0
+[cmd] ss -ltnp | grep -E ':18001|:18201'
+NO LISTENER on 18001/18201 (cleaned)
+[cmd] ps -ef | grep 'app.py serve' | grep -v grep
+NO SERVE PROCESS
+[cmd] rmdir runtime/board
+[rmdir board exit] 0
+[cmd] rmdir runtime
+[rmdir runtime exit] 0
+[cmd] ls -d runtime 2>&1
+ls: cannot access 'runtime': No such file or directory
+[cmd] ss -ltnp | grep -E ':18001|:18201|:18290'
+none listening
+[cmd] git status --porcelain -uall | grep -v '^?? docs/changes/board/evidence/'
+no non-evidence untracked/modified files

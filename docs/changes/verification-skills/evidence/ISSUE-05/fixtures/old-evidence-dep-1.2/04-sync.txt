@@ -1,0 +1,2 @@
+sync-ok instance=board dep=1.2 relay=ok records=4
+exit=0

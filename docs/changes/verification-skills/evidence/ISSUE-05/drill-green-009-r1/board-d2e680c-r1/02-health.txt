@@ -1,0 +1,20 @@
+# 02 health 预检
+
+UTC: 2026-10-19T15:44:12Z
+HEAD: d2e680ce826388a3051dec79d7ff68fc68cc6fc1
+
+## 命令
+python3 app.py health --port 18201
+
+## 原始 stdout
+ok instance=board
+
+## 原始 stderr
+
+## 退出码
+0
+
+## 判据: 输出为 ok instance=board
+匹配: 是
+
+exit=0

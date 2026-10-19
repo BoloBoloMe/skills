@@ -1,0 +1,42 @@
+== cleanup ==
+time_utc: 2026-10-19T15:41:28Z
+--- before: ss -ltn | grep -E '18321|18323' ---
+LISTEN 0      5           127.0.0.1:18321      0.0.0.0:*   
+--- cmd: kill -TERM 19453 ---
+kill_exit_code=0
+--- after: kill -0 19453 ---
+process 19453 gone
+--- after: ss -ltn | grep -E '18321|18323' ---
+(no listeners on 18321/18323)
+--- after: python3 app.py health --port 18321 ---
+request failed: <urlopen error [Errno 111] Connection refused>
+health_exit_code=1
+--- remove runtime/board-audit (verifier scratch data dir) ---
+rm_exit_code=0
+--- runtime/ contents now ---
+total 4
+drwxrwxr-x 3 bolo bolo  80 Oct 19 23:41 .
+drwxrwxr-x 7 bolo bolo 220 Oct 19 23:40 ..
+drwxrwxr-x 2 bolo bolo  40 Oct 19 23:40 board
+-rw-rw-r-- 1 bolo bolo  44 Oct 19 23:40 board-serve.log
+--- git status --porcelain (tracked files must be clean) ---
+?? docs/changes/board/evidence/
+--- git rev-parse HEAD ---
+04a8dd6ec8f6e231f28a7e1ae67f66a278d5a2c9
+end_time_utc: 2026-10-19T15:41:30Z
+== cleanup follow-up: remove verifier runtime/ scratch (gitignored, did not exist before this round) ==
+time_utc: 2026-10-19T15:41:33Z
+rm_exit_code=0
+total 20
+drwxrwxr-x  6 bolo bolo  200 Oct 19 23:41 .
+drwxrwxr-x 11 bolo bolo  340 Oct 19 23:38 ..
+drwxrwxr-x  3 bolo bolo   60 Oct 19 23:38 .agents
+drwxrwxr-x  7 bolo bolo  240 Oct 19 23:41 .git
+-rw-rw-r--  1 bolo bolo   46 Oct 19 23:38 .gitignore
+-rw-rw-r--  1 bolo bolo  867 Oct 19 23:38 README.md
+-rw-rw-r--  1 bolo bolo 5296 Oct 19 23:38 app.py
+-rw-rw-r--  1 bolo bolo   22 Oct 19 23:38 deps.txt
+drwxrwxr-x  3 bolo bolo   60 Oct 19 23:38 docs
+drwxrwxr-x  3 bolo bolo   80 Oct 19 23:40 vendor
+--- git status --porcelain ---
+?? docs/changes/board/evidence/

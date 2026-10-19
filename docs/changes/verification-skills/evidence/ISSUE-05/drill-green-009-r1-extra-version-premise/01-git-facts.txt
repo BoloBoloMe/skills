@@ -1,0 +1,63 @@
+# 版本前提核对原始输出
+# 采集时间: 2026-10-19T15:23:26Z
+# 说明: git status 中唯一未跟踪项是本证据目录自己的文件, 无其他未跟踪产品文件.
+
+## git rev-parse HEAD
+65b43e1268bf029f199f7782a2185a670a4eef7f
+
+## git rev-parse --verify d2e680c
+d2e680ce826388a3051dec79d7ff68fc68cc6fc1
+
+## git status --porcelain=v1 -uall
+?? docs/changes/board/evidence/board-d2e680c-r1-blocked/01-git-facts.txt
+
+## git diff --stat HEAD (空 = 已跟踪文件与 HEAD 一致)
+## git diff --cached --stat (空 = 暂存区与 HEAD 一致)
+
+## git log -4
+65b43e1268bf029f199f7782a2185a670a4eef7f 2026-10-19 23:19:48 +0800 feat: 依赖升级到 1.3
+d2e680ce826388a3051dec79d7ff68fc68cc6fc1 2026-10-19 23:19:48 +0800 docs: 补充交接说明
+86c9ae0d1ee76a99e2edeb204523159cfa7a4c17 2026-10-19 23:19:48 +0800 docs: 记录依赖 1.2 的首轮运行输出
+1dbbbe1baf52ea700f88cfc03599a93757f925b0 2026-10-19 23:19:46 +0800 初始化记录板骨架与产品标准
+
+## git diff --stat d2e680c..HEAD
+ deps.txt           | 2 +-
+ vendor/relaylib.py | 2 +-
+ 2 files changed, 2 insertions(+), 2 deletions(-)
+
+## git diff d2e680c..HEAD
+diff --git a/deps.txt b/deps.txt
+index e387228..ae33029 100644
+--- a/deps.txt
++++ b/deps.txt
+@@ -1 +1 @@
+-relaylib (vendor) 1.2
++relaylib (vendor) 1.3
+diff --git a/vendor/relaylib.py b/vendor/relaylib.py
+index 5ce0602..1ea4d17 100644
+--- a/vendor/relaylib.py
++++ b/vendor/relaylib.py
+@@ -1 +1 @@
+-VERSION = "1.2"
++VERSION = "1.3"
+
+## 各版本依赖原文
+--- d2e680c:deps.txt
+relaylib (vendor) 1.2
+--- d2e680c:vendor/relaylib.py
+VERSION = "1.2"
+--- HEAD:deps.txt
+relaylib (vendor) 1.3
+--- HEAD:vendor/relaylib.py
+VERSION = "1.3"
+
+## PRODUCT.md 确认标记
+23:<!-- confirmed-flow: v1 -->
+
+## 端口监听 (只做环境确认, 未运行被验产品入口)
+LISTEN 0      5           127.0.0.1:18201      0.0.0.0:*    users:(("python3",pid=4189728,fd=3))         
+
+## 占用 18201 的实例归属
+4189728 python3 app.py serve --port 18201 --instance board --data-dir runtime/board
+## 归属
+pid=4189728 cwd=/tmp/orchestra-05/norecipe

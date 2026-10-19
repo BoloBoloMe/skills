@@ -1,0 +1,14 @@
+# AC-001-1 状态页
+target_commit=65b43e1268bf029f199f7782a2185a670a4eef7f
+time_utc=2026-10-19T15:48:39Z
+cmd: python3 app.py status --port 18201
+--- 原始输出 (stdout, 原样) ---
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>relay board</title></head>
+<body><h1>relay board</h1>
+<p>instance=board</p>
+<p>state=ready</p>
+<p>version=relay-v2</p></body></html>
+--- 原始输出结束 ---
+exit=0
+time_utc_end=2026-10-19T15:48:40Z

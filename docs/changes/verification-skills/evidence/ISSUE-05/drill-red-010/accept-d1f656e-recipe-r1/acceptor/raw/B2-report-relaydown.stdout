@@ -1,0 +1,4 @@
+[time] 2026-10-19T23:16:52+08:00
+[cmd] python3 app.py report --port 18201 (relay 不可用条件下)
+relay-report instance=board version=relay-v2 dep=1.3
+[exit] 0

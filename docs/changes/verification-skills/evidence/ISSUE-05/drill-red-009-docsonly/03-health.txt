@@ -1,0 +1,6 @@
+== health (步骤 2 必跑) ==
+2026-10-19T15:26:53Z
+命令: python3 app.py health --port 18201
+ok instance=board
+exit=0
+2026-10-19T15:26:53Z

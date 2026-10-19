@@ -1,0 +1,9 @@
+label=ac002-report
+argv=python3 app.py report --port 18201
+cwd=/tmp/orchestra-05/red-stalerecipe
+start_utc=2026-10-19T15:12:13.455Z
+end_utc=2026-10-19T15:12:13.518Z
+duration_s=0.063
+exit_code=0
+stdout_bytes=53
+stderr_bytes=0

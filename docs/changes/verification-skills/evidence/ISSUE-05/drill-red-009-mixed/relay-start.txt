@@ -1,0 +1,6 @@
+# 部署方 relay 启动
+utc=2026-10-19T15:14:16Z
+command: setsid nohup python3 /tmp/orchestra-05/relay/relay.py --port 18290 > docs/changes/board/evidence/board-70bcc79-r1/relay-stdout.log 2>&1 &
+relay_pid=4176134
+sha256(/tmp/orchestra-05/relay/relay.py)=dc341d2115b48a364bbf3ed9ca9bfa514bb932d1baa6dc18fa8bd3864639cbc7
+listen: LISTEN 0      5           127.0.0.1:18290      0.0.0.0:*    users:(("python3",pid=4176134,fd=3))         

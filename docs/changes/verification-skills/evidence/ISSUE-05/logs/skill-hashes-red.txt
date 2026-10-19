@@ -1,0 +1,1 @@
+82cb7913d710dfaf3b898c56d17c618c  skill-versions/SKILL-v1-red.md  (本 ISSUE 改动前的版本, 即改动前 workflow/verify-change/SKILL.md)

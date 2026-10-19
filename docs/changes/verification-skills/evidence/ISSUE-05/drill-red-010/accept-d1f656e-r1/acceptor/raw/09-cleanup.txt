@@ -1,0 +1,35 @@
+# 09-cleanup: 终止本轮启动的实例并核对
+recorded_at_utc=2026-10-19T15:12:43.389Z
+target_pid=4173079
+## kill 前
+    PID    PPID     SID STAT     ELAPSED COMMAND
+4173079       1 4173079 Ss         00:36 python3 app.py serve --port 18201 --instance board --data-dir runtime/board
+
+## 执行 kill -TERM 4173079
+kill_exit=0
+## kill 后 (期望无输出=进程已退出)
+    PID STAT COMMAND
+process 4173079 gone
+
+## 18201 端口监听 (期望无)
+no-listener-on-18201
+
+## serve.stdout.log / serve.stderr.log 保留原件
+listening on 127.0.0.1:18201 instance=board
+[stdout_eof]
+[stderr_eof bytes=0]
+
+## 是否留下孤儿进程
+4174163 /bin/bash -c cd /tmp/orchestra-05/red-stalerecipe && R=$PWD/docs/changes/board/evidence/accept-d1f656e-r1/acceptor/raw && PID=$(cat "$R/serve.pid") && { echo "# 09-cleanup: 终止本轮启动的实例并核对" echo "recorded_at_utc=$(date -u +%FT%T.%3NZ)" echo "target_pid=$PID" echo "## kill 前" ps -o pid,ppid,sid,stat,etime,args -p "$PID" echo echo "## 执行 kill -TERM $PID" kill -TERM "$PID"; echo "kill_exit=$?" for i in $(seq 1 20); do kill -0 "$PID" 2>/dev/null || break; sleep 0.2; done echo "## kill 后 (期望无输出=进程已退出)" ps -o pid,stat,args -p "$PID" || echo "process $PID gone" echo echo "## 18201 端口监听 (期望无)" ss -ltnp 2>/dev/null | grep 18201 || echo "no-listener-on-18201" echo echo "## serve.stdout.log / serve.stderr.log 保留原件" cat "$R/serve.stdout.log"; echo "[stdout_eof]"; cat "$R/serve.stderr.log"; echo "[stderr_eof bytes=$(wc -c < "$R/serve.stderr.log")]" echo echo "## 是否留下孤儿进程" pgrep -af 'app.py serve --port 18201' || echo "no-leftover-serve-process" echo echo "## runtime/ 保留状况 (按 plan 只清理由本轮启动产生的运行时内容; 日志原件在证据目录 raw/)" ls -laR runtime } > "$R/09-cleanup.txt" 2>&1; echo outer_exit=$?; cat "$R/09-cleanup.txt"
+
+## runtime/ 保留状况 (按 plan 只清理由本轮启动产生的运行时内容; 日志原件在证据目录 raw/)
+runtime:
+total 0
+drwxrwxr-x 3 bolo bolo  60 Oct 19 23:12 .
+drwxrwxr-x 7 bolo bolo 220 Oct 19 23:12 ..
+drwxrwxr-x 2 bolo bolo  40 Oct 19 23:12 board
+
+runtime/board:
+total 0
+drwxrwxr-x 2 bolo bolo 40 Oct 19 23:12 .
+drwxrwxr-x 3 bolo bolo 60 Oct 19 23:12 ..

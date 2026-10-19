@@ -1,0 +1,2 @@
+relay-report instance=board version=relay-v2 dep=1.2
+exit=0

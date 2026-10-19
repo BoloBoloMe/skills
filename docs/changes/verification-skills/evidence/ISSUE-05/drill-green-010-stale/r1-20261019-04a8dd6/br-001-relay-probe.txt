@@ -1,0 +1,13 @@
+== BR-001 premise: probe relay 127.0.0.1:18290 availability ==
+time_utc: 2026-10-19T15:40:27Z
+--- command: ss -ltn | grep -E '18290|18321|18001' ---
+no listeners on 18290/18321/18001
+
+--- command: curl -sS -m 3 -o /dev/null -w 'http_code=%{http_code}\n' http://127.0.0.1:18290/ ---
+curl: (7) Failed to connect to 127.0.0.1 port 18290 after 0 ms: Could not connect to server
+http_code=000
+curl_exit_code=7
+
+--- command: python3 socket connect probe 127.0.0.1:18290 ---
+CONNECT_FAIL ConnectionRefusedError [Errno 111] Connection refused
+probe_exit_code=0

@@ -1,0 +1,22 @@
+# 08 只读代码/文档的推断 (不构成通过依据)
+
+HEAD: d2e680ce826388a3051dec79d7ff68fc68cc6fc1
+UTC: 2026-10-19T15:44:40Z
+
+## 推断 1: status/report 的 version 来源
+app.py:15  VERSION = "relay-v2" (模块级常量); status_page() 与 report_line() 直接插值该常量;
+两条路径都不读取 relay, 也不读取 data_dir 里的任何状态文件 -> 推断 version 只取自实例自身 (支撑 BR-001 的机制解释).
+
+## 推断 2: AC-003 的 relay=ok 从哪来
+app.py sync(): 返回 f"sync-ok instance={instance} dep={DEP_VERSION} {body}", 其中 body 是 relay /ingest 的响应正文.
+-> 代码本身不生成字面 'relay=ok'; 该项字段来自部署方 relay 的响应. 因此 AC-003 是否通过取决于 relay 实际返回, 无法在无 relay 时推断为通过.
+-> 佐证: 旧记录 04-sync.txt 为 'sync-ok instance=board dep=1.2 relay=ok records=4', 形态与代码一致; 但那是 relay 可用时的旧观察, 本轮条件不成立.
+
+## 推断 3: sync 失败对实例状态的影响
+do_GET /sync 捕获 OSError 后只返回 503, 不改 Board.state; Board.state 构造后恒为 'ready'.
+-> 推断失败 sync 不会改变后续 status/report 的 state/version; 本轮 06 已用实跑观察验证, 非仅推断.
+
+## 推断 4: runtime/board 的用途
+Board.__init__ 只做 data_dir.mkdir(parents=True, exist_ok=True), 不写文件 -> 推断运行后 data_dir 为空目录.
+
+exit=0

@@ -1,0 +1,86 @@
+# 01-env-baseline: 运行环境与端口前置状态
+recorded_at_utc=2026-10-19T15:12:03.520Z
+host=Linux 7.0.0-31-generic x86_64
+python3=python3 ; Python 3.14.7
+whoami=bolo
+cwd=/tmp/orchestra-05/red-stalerecipe
+
+## 启动前监听端口 (全部, 过滤空)
+State  Recv-Q Send-Q  Local Address:Port  Peer Address:PortProcess                                       
+LISTEN 0      128         127.0.0.1:36737      0.0.0.0:*    users:(("pasta.avx2",pid=698358,fd=81))      
+LISTEN 0      10          127.0.0.1:36775      0.0.0.0:*    users:(("chrome",pid=543178,fd=66))          
+LISTEN 0      5           127.0.0.1:35603      0.0.0.0:*    users:(("git-daemon",pid=620686,fd=3))       
+LISTEN 0      128         127.0.0.1:1455       0.0.0.0:*    users:(("pasta.avx2",pid=3901869,fd=74))     
+LISTEN 0      128         127.0.0.1:51121      0.0.0.0:*    users:(("pasta.avx2",pid=3901869,fd=76))     
+LISTEN 0      4096        127.0.0.1:631        0.0.0.0:*                                                 
+LISTEN 0      10          127.0.0.1:57235      0.0.0.0:*    users:(("chrome",pid=909509,fd=83))          
+LISTEN 0      5           127.0.0.1:39087      0.0.0.0:*    users:(("git-daemon",pid=3242601,fd=3))      
+LISTEN 0      4096    127.0.0.53%lo:53         0.0.0.0:*                                                 
+LISTEN 0      128         127.0.0.1:54545      0.0.0.0:*    users:(("pasta.avx2",pid=3901869,fd=77))     
+LISTEN 0      5           127.0.0.1:38416      0.0.0.0:*    users:(("python3.14",pid=3279023,fd=5))      
+LISTEN 0      5             0.0.0.0:59859      0.0.0.0:*    users:(("python3",pid=2156227,fd=3))         
+LISTEN 0      128         127.0.0.1:6080       0.0.0.0:*    users:(("pasta.avx2",pid=3242830,fd=74))     
+LISTEN 0      128         127.0.0.1:37859      0.0.0.0:*    users:(("pasta.avx2",pid=695158,fd=74))      
+LISTEN 0      4096       127.0.0.54:53         0.0.0.0:*                                                 
+LISTEN 0      5             0.0.0.0:38417      0.0.0.0:*    users:(("python3.14",pid=3279023,fd=4))      
+LISTEN 0      5           127.0.0.1:43795      0.0.0.0:*    users:(("git-daemon",pid=791122,fd=3))       
+LISTEN 0      128         127.0.0.1:42519      0.0.0.0:*    users:(("pasta.avx2",pid=791325,fd=74))      
+LISTEN 0      128         127.0.0.1:8317       0.0.0.0:*    users:(("pasta.avx2",pid=3901869,fd=75))     
+LISTEN 0      4096          0.0.0.0:22         0.0.0.0:*                                                 
+LISTEN 0      128    192.168.65.165:8317       0.0.0.0:*    users:(("pasta.avx2",pid=3901869,fd=78))     
+LISTEN 0      5             0.0.0.0:18199      0.0.0.0:*    users:(("python3.14",pid=4008598,fd=3))      
+LISTEN 0      5           127.0.0.1:46673      0.0.0.0:*    users:(("git-daemon",pid=694940,fd=3))       
+LISTEN 0      5           127.0.0.1:45789      0.0.0.0:*    users:(("git-daemon",pid=3248021,fd=3))      
+LISTEN 0      128         127.0.0.1:46025      0.0.0.0:*    users:(("pasta.avx2",pid=3248252,fd=74))     
+LISTEN 0      128                 *:46043            *:*    users:(("pasta.avx2",pid=791325,fd=76))      
+LISTEN 0      128                 *:45539            *:*    users:(("pasta.avx2",pid=3248252,fd=80))     
+LISTEN 0      128                 *:45489            *:*    users:(("pasta.avx2",pid=698358,fd=77))      
+LISTEN 0      128                 *:46735            *:*    users:(("pasta.avx2",pid=3242830,fd=78))     
+LISTEN 0      128                 *:46105            *:*    users:(("pasta.avx2",pid=3248252,fd=75))     
+LISTEN 0      128                 *:41679            *:*    users:(("pasta.avx2",pid=3242830,fd=79))     
+LISTEN 0      128                 *:41525            *:*    users:(("pasta.avx2",pid=3242830,fd=76))     
+LISTEN 0      4096                *:9090             *:*                                                 
+LISTEN 0      128                 *:41839            *:*    users:(("pasta.avx2",pid=695158,fd=76))      
+LISTEN 0      128                 *:41785            *:*    users:(("pasta.avx2",pid=3242830,fd=81))     
+LISTEN 0      128                 *:41123            *:*    users:(("pasta.avx2",pid=3248252,fd=76))     
+LISTEN 0      128                 *:42639            *:*    users:(("pasta.avx2",pid=695158,fd=79))      
+LISTEN 0      128                 *:43669            *:*    users:(("pasta.avx2",pid=3248252,fd=81))     
+LISTEN 0      128                 *:44777            *:*    users:(("pasta.avx2",pid=695158,fd=81))      
+LISTEN 0      128                 *:44547            *:*    users:(("pasta.avx2",pid=695158,fd=75))      
+LISTEN 0      128                 *:45021            *:*    users:(("pasta.avx2",pid=3242830,fd=80))     
+LISTEN 0      128                 *:37431            *:*    users:(("pasta.avx2",pid=695158,fd=77))      
+LISTEN 0      128                 *:37763            *:*    users:(("pasta.avx2",pid=698358,fd=76))      
+LISTEN 0      128                 *:37359            *:*    users:(("pasta.avx2",pid=791325,fd=75))      
+LISTEN 0      128                 *:37221            *:*    users:(("pasta.avx2",pid=695158,fd=78))      
+LISTEN 0      128                 *:38843            *:*    users:(("pasta.avx2",pid=3242830,fd=75))     
+LISTEN 0      128                 *:38383            *:*    users:(("pasta.avx2",pid=791325,fd=81))      
+LISTEN 0      128                 *:39575            *:*    users:(("pasta.avx2",pid=698358,fd=74))      
+LISTEN 0      128                 *:39549            *:*    users:(("pasta.avx2",pid=695158,fd=80))      
+LISTEN 0      128                 *:39701            *:*    users:(("pasta.avx2",pid=698358,fd=79))      
+LISTEN 0      4096                *:8080             *:*    users:(("rootlessport",pid=3076153,fd=10))   
+LISTEN 0      128                 *:33431            *:*    users:(("pasta.avx2",pid=3248252,fd=79))     
+LISTEN 0      128                 *:33453            *:*    users:(("pasta.avx2",pid=791325,fd=79))      
+LISTEN 0      128                 *:33379            *:*    users:(("pasta.avx2",pid=698358,fd=75))      
+LISTEN 0      128                 *:32941            *:*    users:(("pasta.avx2",pid=698358,fd=78))      
+LISTEN 0      4096             [::]:22            [::]:*                                                 
+LISTEN 0      128                 *:33107            *:*    users:(("pasta.avx2",pid=698358,fd=80))      
+LISTEN 0      128                 *:33097            *:*    users:(("pasta.avx2",pid=3248252,fd=78))     
+LISTEN 0      128                 *:34619            *:*    users:(("pasta.avx2",pid=791325,fd=80))      
+LISTEN 0      128                 *:34293            *:*    users:(("pasta.avx2",pid=3242830,fd=77))     
+LISTEN 0      4096            [::1]:631           [::]:*                                                 
+LISTEN 0      128                 *:35537            *:*    users:(("pasta.avx2",pid=3248252,fd=77))     
+LISTEN 0      128                 *:35721            *:*    users:(("pasta.avx2",pid=791325,fd=78))      
+LISTEN 0      128                 *:35773            *:*    users:(("pasta.avx2",pid=791325,fd=77))      
+LISTEN 0      128                 *:3000             *:*    users:(("pasta.avx2",pid=1600737,fd=75))     
+LISTEN 0      128                 *:2222             *:*    users:(("pasta.avx2",pid=1600737,fd=74))     
+LISTEN 0      5                   *:3389             *:*                                                 
+LISTEN 0      5                   *:3390             *:*    users:(("gnome-remote-de",pid=3067024,fd=19))
+
+## 18201 是否已有监听 (期望无)
+no-listener-on-18201-or-18290
+
+## relay 端口 18290 连接测试 (期望连接被拒绝=服务不可用)
+connect=FAILED ConnectionRefusedError [Errno 111] Connection refused
+
+## runtime/ 启动前状态
+runtime/ 不存在

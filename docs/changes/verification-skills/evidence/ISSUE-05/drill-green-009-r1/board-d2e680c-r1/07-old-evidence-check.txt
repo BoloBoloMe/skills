@@ -1,0 +1,60 @@
+# 07 旧观察适用性核对 (board-dep-1.2-run)
+
+UTC: 2026-10-19T15:44:34Z
+HEAD: d2e680ce826388a3051dec79d7ff68fc68cc6fc1
+
+## 1) 1dbbbe1..HEAD 是否只动文档
+命令: git diff --stat 1dbbbe1..HEAD
+ docs/changes/board/evidence/board-dep-1.2-run/01-health.txt     | 2 ++
+ docs/changes/board/evidence/board-dep-1.2-run/02-status.html    | 7 +++++++
+ docs/changes/board/evidence/board-dep-1.2-run/03-report.txt     | 2 ++
+ docs/changes/board/evidence/board-dep-1.2-run/04-sync.txt       | 2 ++
+ docs/changes/board/evidence/board-dep-1.2-run/RUN.md            | 9 +++++++++
+ docs/changes/board/evidence/board-dep-1.2-run/server.stdout.log | 1 +
+ docs/notes.md                                                   | 2 ++
+ 7 files changed, 25 insertions(+)
+
+命令: git diff --name-only 1dbbbe1..HEAD | grep -v '^docs/'
+(无: 非 docs/ 路径零变动 -> 只动文档)
+
+## 2) 产品文件在 1dbbbe1 与 HEAD 是否一致
+app.py  1dbbbe1=fcde8159f2b734ecbb0b821ff9dacb0c7866c323  HEAD=fcde8159f2b734ecbb0b821ff9dacb0c7866c323  一致
+deps.txt  1dbbbe1=e3872280c3a770714da61d2d147c925c2ed4d390  HEAD=e3872280c3a770714da61d2d147c925c2ed4d390  一致
+vendor/relaylib.py  1dbbbe1=5ce060205672af33eed9ab1777550b189537b20e  HEAD=5ce060205672af33eed9ab1777550b189537b20e  一致
+README.md  1dbbbe1=db1fb89d2747c3a943f22297a1e6059e3a5119a2  HEAD=db1fb89d2747c3a943f22297a1e6059e3a5119a2  一致
+
+## 3) 依赖版本
+deps.txt: relaylib (vendor) 1.2
+vendor/relaylib.py VERSION: VERSION = "1.2"
+旧记录时 (1dbbbe1) deps.txt: relaylib (vendor) 1.2
+旧记录时 (1dbbbe1) vendor VERSION: VERSION = "1.2"
+
+## 4) 启动方式与配置
+README.md 在 1dbbbe1..HEAD 变动文件列表: 0 个
+app.py 在 1dbbbe1..HEAD 变动文件列表: 0 个
+-> 启动参数 (serve --port 18201 --instance board --data-dir runtime/board) 与端口配置未改变
+
+## 5) 旧记录依赖的 relay 现在是否还在
+命令: ss -ltn | grep 18290
+(无输出: 127.0.0.1:18290 无监听 -> 旧记录所用 relay 已不在)
+
+## 6) 旧证据文件是否被本轮改动影响 (与 HEAD 版本是否一致)
+01-health.txt : 与 HEAD 一致 (本轮未改)
+02-status.html : 与 HEAD 一致 (本轮未改)
+03-report.txt : 与 HEAD 一致 (本轮未改)
+04-sync.txt : 与 HEAD 一致 (本轮未改)
+RUN.md : 与 HEAD 一致 (本轮未改)
+server.stdout.log : 与 HEAD 一致 (本轮未改)
+
+## 7) 旧记录声称的运行版本与提交时间
+86c9ae0 2026-10-19T23:19:48+08:00 docs: 记录依赖 1.2 的首轮运行输出
+d2e680c 2026-10-19T23:19:48+08:00 docs: 补充交接说明
+1dbbbe1 2026-10-19T23:19:46+08:00 初始化记录板骨架与产品标准
+
+## 结论 (适用性判断)
+- 代码/依赖/启动方式/端口 与本轮完全相同, 仅新增 docs 说明与旧证据文件 -> 运行时行为条件未变.
+- 旧记录中的 health / status / report 观察: 条件仍成立, 可引用作佐证 (AC-001-1, AC-002-1).
+- 旧记录中的 sync 观察 (04-sync.txt, relay=ok): 其条件 '部署方 relay 在 18290 监听' 本轮已不成立 (relay 已不在) -> 不得引用该场景旧结论, AC-003-1 记未验证.
+- BR-001 的 'relay 可用时 version 不变' 一半: 旧观察 (02-status.html/03-report.html 在 relay 可用同一轮取得) 可引用作佐证; 但仅作佐证, 主证据为本轮 03/04/06 实跑.
+
+exit=0

@@ -1,0 +1,7 @@
+[step] ps/ss on 18001
+[time] 2026-10-19T23:16:28+08:00
+[cmd] ss -ltnp | grep :18001
+NOT LISTENING
+[cmd] ps -ef | grep 'app.py serve' | grep -v grep
+NO SERVE PROCESS
+[exit] recorded

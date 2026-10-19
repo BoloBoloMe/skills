@@ -1,0 +1,34 @@
+== AC-002-1 report single line ==
+time_utc: 2026-10-19T15:40:55Z
+instance_pid=19453 instance=board bind=127.0.0.1:18321
+
+--- premise: python3 app.py health --port 18321 ---
+ok instance=board
+health_exit_code=0
+
+--- command: python3 app.py report --port 18321 ---
+relay-report instance=board version=relay-v2 dep=1.3
+report_exit_code=0
+
+--- direct interpreter /usr/bin/python3 app.py report --port 18321 ---
+relay-report instance=board version=relay-v2 dep=1.3
+report_exit_code=0
+
+--- line count of report stdout ---
+report_exit_code=0
+stdout_lines=1 stdout_bytes=53
+--- stderr ---
+
+--- deps.txt raw content ---
+relaylib (vendor) 1.3
+--- vendor/relaylib.py raw content ---
+VERSION = "1.3"
+
+--- shape check against 'relay-report instance=board version=relay-v2 dep=<n>' ---
+report_line_repr: 'relay-report instance=board version=relay-v2 dep=1.3'
+shape_match: True
+dep_value: 1.3
+deps.txt_line: 'relaylib (vendor) 1.3'
+deps_version_from_deps_txt: 1.3
+dep_matches_deps_txt: True
+check_exit_code=0

@@ -1,0 +1,21 @@
+# 各会话里 /skill:verify-change 实际展开的来源与内容哈希
+# 来源行取自 pi 会话 jsonl 的首条 <skill name=... location=...>
+sessions/board-r1/2026-10-19T15-41-48-509Z_01a154d3-7c5d-7647-b15b-6c0b46696856.jsonl: verify-change @ /tmp/orchestra-05/board-r1/.agents/skills/verify-change/SKILL.md md5=45af75c2a10ff902286391bb4ad0160f
+sessions/board-r1/2026-10-19T15-43-27-258Z_01a154d4-fe1a-7081-9f11-984c101a6399.jsonl: 会话内没有 /skill 展开记录
+sessions/board-r2/2026-10-19T15-46-47-123Z_01a154d8-0ad3-775e-b4a3-137370ca43a1.jsonl: verify-change @ /tmp/orchestra-05/board-r2/.agents/skills/verify-change/SKILL.md md5=45af75c2a10ff902286391bb4ad0160f
+sessions/board/2026-10-19T15-20-36-236Z_01a154c0-128b-71d1-811e-342ddc50f426.jsonl: verify-change @ /tmp/orchestra-05/board/.agents/skills/verify-change/SKILL.md md5=cd7eabce6835454746fcfe6e8ff5e604
+sessions/board/2026-10-19T15-30-59-853Z_01a154c9-968c-735c-9c7f-3dacf63e6f3f.jsonl: 会话内没有 /skill 展开记录
+sessions/norecipe/2026-10-19T15-20-19-964Z_01a154bf-d2fb-766a-aafe-554a5766fcc2.jsonl: verify-change @ /tmp/orchestra-05/norecipe/.agents/skills/verify-change/SKILL.md md5=cd7eabce6835454746fcfe6e8ff5e604
+sessions/norecipe/2026-10-19T15-21-26-571Z_01a154c0-d72b-714e-beef-91e54c438937.jsonl: 会话内没有 /skill 展开记录
+sessions/red-board/2026-10-19T15-09-55-723Z_01a154b6-4c8a-76bf-ba6d-cec856251c21.jsonl: verify-change @ /tmp/orchestra-05/red-board/.agents/skills/verify-change/SKILL.md md5=82cb7913d710dfaf3b898c56d17c618c
+sessions/red-board/2026-10-19T15-12-23-955Z_01a154b8-8f92-77ab-afdd-8935a5675aff.jsonl: 会话内没有 /skill 展开记录
+sessions/red-board2/2026-10-19T15-20-01-961Z_01a154bf-8ca9-765e-9a98-aa58aa2c7ef9.jsonl: verify-change @ /tmp/orchestra-05/red-board2/.agents/skills/verify-change/SKILL.md md5=82cb7913d710dfaf3b898c56d17c618c
+sessions/red-board2/2026-10-19T15-21-06-531Z_01a154c0-88e2-7782-ab41-c7b481dbee5b.jsonl: 会话内没有 /skill 展开记录
+sessions/red-stalerecipe/2026-10-19T15-09-59-665Z_01a154b6-5bf1-7203-ac29-e75dd5ea8b39.jsonl: verify-change @ /tmp/orchestra-05/red-stalerecipe/.agents/skills/verify-change/SKILL.md md5=82cb7913d710dfaf3b898c56d17c618c
+sessions/red-stalerecipe/2026-10-19T15-11-29-104Z_01a154b7-b950-72c5-a68f-a0753259dc40.jsonl: 会话内没有 /skill 展开记录
+sessions/red-stalerecipe/2026-10-19T15-15-55-721Z_01a154bb-cac9-77e5-a42c-748b6b97ac50.jsonl: 会话内没有 /skill 展开记录
+sessions/stalerecipe/2026-10-19T15-20-23-482Z_01a154bf-e0ba-7738-bb4e-0147ef7b922a.jsonl: verify-change @ /tmp/orchestra-05/stalerecipe/.agents/skills/verify-change/SKILL.md md5=cd7eabce6835454746fcfe6e8ff5e604
+sessions/stalerecipe/2026-10-19T15-22-33-253Z_01a154c1-dba5-762c-b3b6-de79c40e32d1.jsonl: 会话内没有 /skill 展开记录
+sessions/stalerecipe/2026-10-19T15-31-21-185Z_01a154c9-e9e1-7025-b305-d400d6e0bd4a.jsonl: 会话内没有 /skill 展开记录
+sessions/stalerecipe2/2026-10-19T15-38-26-031Z_01a154d0-656e-70cd-bc54-8e2a397886d1.jsonl: verify-change @ /tmp/orchestra-05/stalerecipe2/.agents/skills/verify-change/SKILL.md md5=cd7eabce6835454746fcfe6e8ff5e604
+sessions/stalerecipe2/2026-10-19T15-39-21-382Z_01a154d1-3da5-7572-90f6-e48d7a72bb6a.jsonl: 会话内没有 /skill 展开记录

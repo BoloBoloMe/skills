@@ -1,0 +1,10 @@
+== verifier session ==
+date_utc: 2026-10-19T15:40:23Z
+PI_SESSION_ID: 01a154d1-3da5-7572-90f6-e48d7a72bb6a
+PI_SESSION_FILE: /home/bolo/.pi/agent/sessions/--tmp-orchestra-05-stalerecipe2--/2026-10-19T15-39-21-382Z_01a154d1-3da5-7572-90f6-e48d7a72bb6a.jsonl
+ls -l PI_SESSION_FILE:
+-rw-rw-r-- 1 bolo bolo 26643 Oct 19 23:40 /home/bolo/.pi/agent/sessions/--tmp-orchestra-05-stalerecipe2--/2026-10-19T15-39-21-382Z_01a154d1-3da5-7572-90f6-e48d7a72bb6a.jsonl
+cwd: /tmp/orchestra-05/stalerecipe2
+HEAD: 04a8dd6ec8f6e231f28a7e1ae67f66a278d5a2c9
+host: Linux Ubuntu-Workstation 7.0.0-31-generic #31-Ubuntu SMP PREEMPT_DYNAMIC Sat Aug  1 04:26:38 UTC 2026 x86_64 GNU/Linux
+python3: Python 3.14.7 (main, Aug 14 2026, 15:35:28) [Clang 22.1.3 ] 

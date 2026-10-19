@@ -1,0 +1,21 @@
+== recipe attempt (as written in .agents/skills/verify-board/SKILL.md) ==
+time_utc: 2026-10-19T15:40:30Z
+--- cmd: mkdir -p runtime/board ---
+rc=0
+--- cmd: python3 app.py serve --port 18001 --data-root runtime/board & ---
+serve_pid=18903
+serve_alive=no
+--- serve stdout/stderr ---
+usage: app.py serve [-h] --port PORT --instance INSTANCE --data-dir DATA_DIR
+app.py serve: error: the following arguments are required: --instance, --data-dir
+--- cmd: python3 app.py health --port 18001 ---
+request failed: <urlopen error [Errno 111] Connection refused>
+health_exit_code=1
+--- cmd: python3 app.py status --port 18001 ---
+request failed: <urlopen error [Errno 111] Connection refused>
+status_exit_code=1
+--- cmd: python3 app.py report --port 18001 ---
+request failed: <urlopen error [Errno 111] Connection refused>
+report_exit_code=1
+--- cleanup: kill serve_pid ---
+serve stopped

@@ -1,0 +1,27 @@
+# 08-br001-version-compare: 四次运行的 version/dep 字段对照 + 代码阅读推断
+recorded_at_utc=2026-10-19T15:12:40.673Z
+
+## 原始产物一览 (每个文件的 sha256)
+0bc89ea37fb6fe2d21b9ff48a8278ff30fe29b66d2613129b29e330ace2c9172  /tmp/orchestra-05/red-stalerecipe/docs/changes/board/evidence/accept-d1f656e-r1/acceptor/raw/ac001-status.stdout
+864e3db240ca8778facb953c6a08d382d490d6eb300305d7d7bdb9140c41553c  /tmp/orchestra-05/red-stalerecipe/docs/changes/board/evidence/accept-d1f656e-r1/acceptor/raw/ac002-report.stdout
+0bc89ea37fb6fe2d21b9ff48a8278ff30fe29b66d2613129b29e330ace2c9172  /tmp/orchestra-05/red-stalerecipe/docs/changes/board/evidence/accept-d1f656e-r1/acceptor/raw/br001-status-relaydown.stdout
+864e3db240ca8778facb953c6a08d382d490d6eb300305d7d7bdb9140c41553c  /tmp/orchestra-05/red-stalerecipe/docs/changes/board/evidence/accept-d1f656e-r1/acceptor/raw/br001-report-relaydown.stdout
+
+## 抽取 version / dep
+ac001-status.stdout                version=['relay-v2'] dep=[]
+br001-status-relaydown.stdout      version=['relay-v2'] dep=[]
+ac002-report.stdout                version=['relay-v2'] dep=['1.3']
+br001-report-relaydown.stdout      version=['relay-v2'] dep=['1.3']
+
+unique version 值 = {'relay-v2'} => 四次运行 version 完全一致 = True
+
+## 代码阅读 (推断, 不作通过依据): app.py 中 version/dep 的产生位置
+13:from relaylib import VERSION as DEP_VERSION  # noqa: E402
+15:VERSION = "relay-v2"
+34:            f"<p>version={VERSION}</p></body></html>\n"
+38:        return f"relay-report instance={self.instance} version={VERSION} dep={DEP_VERSION}"
+42:            {"instance": self.instance, "dep": DEP_VERSION, "ts": now_iso()}
+51:        return f"sync-ok instance={self.instance} dep={DEP_VERSION} {body}"
+
+## 实例版本与实例身份的绑定: instance 由启动参数决定, 见启动命令
+python3 app.py serve --port 18201 --instance board --data-dir runtime/board

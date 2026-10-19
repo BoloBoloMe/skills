@@ -1,0 +1,29 @@
+# 04 AC-002-1 report (relay 18290 此时无监听)
+
+UTC: 2026-10-19T15:44:17Z
+HEAD: d2e680ce826388a3051dec79d7ff68fc68cc6fc1
+
+## 命令
+python3 app.py report --port 18201
+
+## 原始 stdout
+relay-report instance=board version=relay-v2 dep=1.2
+
+## 原始 stderr
+
+## 退出码
+0
+
+## 逐字判据核对
+实测单行: relay-report instance=board version=relay-v2 dep=1.2
+形态 relay-report instance=board version=relay-v2 dep=<n> : 命中
+退出码为 0 : 是
+
+## dep 值静态核对 (静态核对结果, 非运行期比对)
+report 实测 dep=1.2
+deps.txt 记录: relaylib (vendor) 1.2
+vendor/relaylib.py: VERSION = "1.2"
+deps.txt 版本字段 = 1.2; vendor VERSION = 1.2
+dep 与 deps.txt 一致: 是
+
+exit=0

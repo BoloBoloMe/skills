@@ -1,0 +1,23 @@
+# 04 AC-001-1 状态页 (本轮实跑)
+time_utc=2026-10-19T15:56:25Z
+target_commit=5f9544df6035701d27c51d95b481b36e36c9da19
+cmd: python3 app.py status --port 18201
+exit=0
+--- stdout 原样 (见 04-ac001-status.html.raw, 字节数) ---
+190
+--- stdout 内容开始 ---
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>relay board</title></head>
+<body><h1>relay board</h1>
+<p>instance=board</p>
+<p>state=ready</p>
+<p>version=relay-v2</p></body></html>
+--- stdout 内容结束 ---
+--- stderr (字节数) ---
+0
+--- 判据逐项核对 (原文: 输出含 instance=board, state=ready 与 version=relay-v2 且退出码为 0) ---
+含 'instance=board': 满足
+含 'state=ready': 满足
+含 'version=relay-v2': 满足
+退出码为 0: 满足 (exit=0)
+time_utc_end=2026-10-19T15:56:25Z

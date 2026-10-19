@@ -1,0 +1,9 @@
+label=health-01
+argv=python3 app.py health --port 18201
+cwd=/tmp/orchestra-05/red-stalerecipe
+start_utc=2026-10-19T15:12:11.796Z
+end_utc=2026-10-19T15:12:11.859Z
+duration_s=0.063
+exit_code=0
+stdout_bytes=18
+stderr_bytes=0

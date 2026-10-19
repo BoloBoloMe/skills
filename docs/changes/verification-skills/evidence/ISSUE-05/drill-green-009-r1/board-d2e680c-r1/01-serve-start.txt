@@ -1,0 +1,22 @@
+# 01 启动实例 (按 README)
+
+UTC: 2026-10-19T15:44:08Z
+HEAD: d2e680ce826388a3051dec79d7ff68fc68cc6fc1
+
+## 命令
+mkdir -p runtime/board
+python3 app.py serve --port 18201 --instance board --data-dir runtime/board &   # 后台, stdout 见 01-serve.stdout.log
+
+## 实例进程 PID
+24581 (父 shell 24577)
+
+## 命令: ss -ltn | grep 18201
+LISTEN 0      5           127.0.0.1:18201      0.0.0.0:*   
+
+## 原始 stdout (01-serve.stdout.log)
+listening on 127.0.0.1:18201 instance=board
+
+## 原始 stderr (01-serve.stderr.log)
+
+## 退出码: 后台常驻, 未退出 (N/A); 启动成功判据为 stdout 的 listening 行与 18201 监听
+exit=0

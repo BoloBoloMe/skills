@@ -1,0 +1,41 @@
+# 03 启动实例 + health + 进程归属核对 (v2, 修正进程识别)
+# 首次采集时间: 2026-10-19T15:35:20Z; 修正重采时间: 2026-10-19T15:36:03Z
+# 修正说明: v1 里 pgrep -f ... | head -1 误把本验收会话自己的 bash 包装进程 (11709) 当成 server; 真实 server 由 ss 的 users:("python3",pid=11711,fd=3) 与 pgrep 第二行确认为 11711. v1 作废, 本文件为修正版, server 一直是同一进程 11711, 未重启.
+
+## 启动命令 (字面命令, 本会话 python3=uv run python, 解释器见 02)
+$ nohup python3 app.py serve --port 18201 --instance board --data-dir runtime/board >08-server.stdout.log 2>08-server.stderr.log & (在项目根目录后台执行, 15:35:20Z)
+bg_pid=$! = 11711
+
+## server stdout (08-server.stdout.log 原文)
+listening on 127.0.0.1:18201 instance=board
+## server stderr (08-server.stderr.log 原文, 空=无)
+
+## 18201 监听与进程 (修正后重采)
+$ ss -ltnp | grep 18201
+LISTEN 0      5           127.0.0.1:18201      0.0.0.0:*    users:(("python3",pid=11711,fd=3))           
+rc=0
+$ pgrep -af "^python3 app\.py serve --port 18201" (锚定行首, 排除 bash 包装)
+11711 python3 app.py serve --port 18201 --instance board --data-dir runtime/board
+rc=0
+server_pid=11711
+$ readlink /proc/$SPID/cwd
+/tmp/orchestra-05/board
+rc=0
+$ ps -o pid=,ppid=,args= -p $SPID
+  11711       1 python3 app.py serve --port 18201 --instance board --data-dir runtime/board
+rc=0
+
+## health (解释器 1: 字面 python3 -> uv run python, 实际解释器见 02)
+$ python3 app.py health --port 18201
+ok instance=board
+rc=0
+
+## health (解释器 2: 显式 /usr/bin/python3)
+$ /usr/bin/python3 app.py health --port 18201
+ok instance=board
+rc=0
+
+## 本文件结论
+- 实例 board 在 127.0.0.1:18201 运行, server pid=11711, stdout 记录 'listening on 127.0.0.1:18201 instance=board'.
+- 监听进程 11711 的 cwd = /tmp/orchestra-05/board, 命令与 README 一致, 归属本项目实例.
+- health 两种解释器都返回 'ok instance=board', 退出码 0.
