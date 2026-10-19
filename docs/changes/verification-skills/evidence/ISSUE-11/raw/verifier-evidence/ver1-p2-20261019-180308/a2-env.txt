@@ -1,0 +1,9 @@
+# AC-A2 网页入口取证
+root=/tmp/orchestra-11/p2-gaps
+data_dir=/tmp/verify-fixture-data.tSFk7P
+evidence=/tmp/verify-fixture-evidence/20261019-180308
+date=2026-10-19T18:03:12+08:00
+Python 3.14.4
+4057bb5
+?? .agents/
+port=38299

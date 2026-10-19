@@ -1,0 +1,400 @@
+ ./.git -prune -o -type f -print | sort                                                                                                                          │
+                                                                                                                                                                 │
+ ... (24 earlier lines, ctrl+o/alt+o to expand)                                                                                                                  │
+ ./tests/__pycache__/test_notes.cpython-314.pyc                                                                                                                  ┃
+ ./tests/test_notes.py                                                                                                                                           │
+ ./tools/export_csv.py                                                                                                                                           │
+ ./tools/__init__.py                                                                                                                                             │
+ ./tools/stats.py                                                                                                                                                │
+                                                                                                                                                                 │
+ Took 0.0s                                                                                                                                                       │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ Thinking...                                                                                                                                                     ┃
+                                                                                                                                                                 ┃
+                                                                                                                                                                 ┃
+ $ cd /tmp/orchestra-11/p1-dual && for f in notes/cli.py notes/store.py notes/web.py notes/__init__.py tests/test_notes.py tools/export_csv.py tools/stats.py    │
+ deploy/global-skills/verify-fixture/SKILL.md; do echo "=== $f ==="; cat "$f"; done                                                                              │
+                                                                                                                                                                 │
+ ... (207 earlier lines, ctrl+o/alt+o to expand)                                                                                                                 │
+ ---                                                                                                                                                             │
+                                                                                                                                                                 │
+ # 全局部署副本替身                                                                                                                                              │
+                                                                                                                                                                 │
+ 这是临时项目里用来代替全局部署副本的文件, 内容在演练开始前固定, 结束后核对字节未变.                                                                             │
+                                                                                                                                                                 │
+ Took 0.0s                                                                                                                                                       │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ Thinking...                                                                                                                                                     │
+                                                                                                                                                                 │
+                                                                                                                                                                 ┃
+ $ cd /tmp/orchestra-11/p1-dual && export NOTES_DATA_DIR=$(mktemp -d) && echo "data=$NOTES_DATA_DIR" && python3 -m notes.cli add "验证用第一条" && python3 -m    │
+ notes.cli list && echo "--- store file ---" && ls -la "$NOTES_DATA_DIR" && cat "$NOTES_DATA_DIR/notes.json" && echo "--- test ---" && ./check.sh                │
+                                                                                                                                                                 │
+ ... (13 earlier lines, ctrl+o/alt+o to expand)                                                                                                                  │
+ ]--- test ---                                                                                                                                                   │
+ ----------------------------------------------------------------------                                                                                          │
+ Ran 2 tests in 0.001s                                                                                                                                           │
+                                                                                                                                                                 │
+ OK                                                                                                                                                              │
+                                                                                                                                                                 │
+ Took 0.2s                                                                                                                                                       │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ [python-operation-hook] python -> uv run python                                                                                                                 │
+                                                                                                                                                                 │
+ Thinking...                                                                                                                                                     ┃
+                                                                                                                                                                 ┃
+                                                                                                                                                                 ┃
+ $ cd /tmp/orchestra-11/p1-dual && export NOTES_DATA_DIR=$(mktemp -d) && PORT=18791 && python3 -m notes.web --port $PORT > /tmp/orchestra-11/p1-dual/web.log 2>&1│
+ &                                                                                                                                                               │
+ sleep 1.5                                                                                                                                                       │
+ echo "--- GET root before ---"; curl -sS "http://127.0.0.1:18791/" ; echo                                                                                       │
+ echo "--- POST form ---"; curl -sS -i -X POST -d "text=网页提交一条" "http://127.0.0.1:18791/" | head -20                                                       │
+ echo "--- GET root after ---"; curl -sS "http://127.0.0.1:18791/" ; echo                                                                                        │
+ echo "--- log ---"; cat /tmp/orchestra-11/p1-dual/web.log                                                                                                       │
+ pkill -f "notes.web --port 18791"; sleep 0.3; echo "killed"                                                                                                     │
+                                                                                                                                                                 │
+ ... (14 earlier lines, ctrl+o/alt+o to expand)                                                                                                                  │
+ "POST / HTTP/1.1" 201 -                                                                                                                                         │
+ "GET / HTTP/1.1" 200 -                                                                                                                                          │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ Command exited with code 143                                                                                                                                    │
+                                                                                                                                                                 │
+ Took 1.6s                                                                                                                                                       │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ [python-operation-hook] python -> uv run python                                                                                                                 │
+                                                                                                                                                                 │
+ Thinking...                                                                                                                                                     │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ $ pgrep -af "notes.web" || echo "no leftover"; rm -f /tmp/orchestra-11/p1-dual/web.log; cd /tmp/orchestra-11/p1-dual && git status --short && git log --oneline │
+ -3                                                                                                                                                              │
+                                                                                                                                                                 │
+ ... (1 earlier lines, ctrl+o/alt+o to expand)                                                                                                                   │
+ git log --oneline -3                                                                                                                                            │
+ ?? .agents/                                                                                                                                                     │
+ ?? notes/__pycache__/cli.cpython-314.pyc                                                                                                                        │
+ ?? notes/__pycache__/web.cpython-314.pyc                                                                                                                        │
+ 786baa1 drill fixture: p1-dual 初始版本                                                                                                                         │
+                                                                                                                                                                 │
+ Took 0.0s                                                                                                                                                       │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ Thinking...                                                                                                                                                     │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ $ cd /tmp/orchestra-11/p1-dual && export NOTES_DATA_DIR=$(mktemp -d) && echo "data=$NOTES_DATA_DIR" && python3 -m notes.cli add "既有笔记" && PORT=18792 &&     │
+ python3 -m notes.web --port $PORT > /tmp/verify-web.log 2>&1 &                                                                                                  │
+ WPID=$!                                                                                                                                                         │
+ sleep 1.5                                                                                                                                                       │
+ echo "--- GET root (should contain 既有笔记) ---"; curl -sS "http://127.0.0.1:18792/"                                                                           │
+ echo; echo "--- POST form ---"; curl -sS -X POST -d "text=网页新增" "http://127.0.0.1:18792/"                                                                   │
+ echo; echo "--- GET root after ---"; curl -sS "http://127.0.0.1:18792/"                                                                                         │
+ echo; echo "--- CLI list ---"; python3 -m notes.cli list                                                                                                        │
+ kill $WPID; wait $WPID 2>/dev/null; echo "server stopped rc=$?"; cat /tmp/verify-web.log                                                                        │
+                                                                                                                                                                 │
+ ... (9 earlier lines, ctrl+o/alt+o to expand)                                                                                                                   │
+ server stopped rc=143                                                                                                                                           │
+ listening on http://127.0.0.1:18792/                                                                                                                            │
+ "GET / HTTP/1.1" 200 -                                                                                                                                          │
+ "POST / HTTP/1.1" 201 -                                                                                                                                         │
+ "GET / HTTP/1.1" 200 -                                                                                                                                          │
+                                                                                                                                                                 │
+ Took 1.6s                                                                                                                                                       │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ [python-operation-hook] python -> uv run python                                                                                                                 │
+                                                                                                                                                                 │
+ Thinking...                                                                                                                                                     │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ $ pgrep -af "notes.web" || echo "no leftover"; cd /tmp/orchestra-11/p1-dual && ls -la .notes-data 2>/dev/null; cat .notes-data/notes.json 2>/dev/null; echo     │
+ "---"; rm -rf .notes-data; rm -f notes/__pycache__/cli.cpython-314.pyc notes/__pycache__/web.cpython-314.pyc /tmp/verify-web.log; git status --short            │
+                                                                                                                                                                 │
+ ... (5 earlier lines, ctrl+o/alt+o to expand)                                                                                                                   │
+ total 0                                                                                                                                                         │
+ drwxrwxr-x 2 bolo bolo  40 Oct 19 17:41 .                                                                                                                       │
+ drwxrwxr-x 9 bolo bolo 240 Oct 19 17:41 ..                                                                                                                      │
+ ---                                                                                                                                                             │
+ ?? .agents/                                                                                                                                                     │
+                                                                                                                                                                 │
+ Took 0.0s                                                                                                                                                       │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ Thinking...                                                                                                                                                     │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ $ pgrep -af "notes[.]web" ; pkill -f "notes[.]web --port 18792" ; sleep 0.5; pgrep -af "notes[.]web" || echo "no leftover"; type -a python3; which python3;     │
+ python3 -c 'import sys; print(sys.executable)'                                                                                                                  │
+                                                                                                                                                                 │
+ ... (7 earlier lines, ctrl+o/alt+o to expand)                                                                                                                   │
+ }                                                                                                                                                               │
+ python3 是 /usr/bin/python3                                                                                                                                     │
+ python3 是 /bin/python3                                                                                                                                         │
+ /usr/bin/python3                                                                                                                                                │
+ /home/bolo/.local/share/uv/python/cpython-3.14-linux-x86_64-gnu/bin/python3.14                                                                                  │
+                                                                                                                                                                 │
+ Took 0.6s                                                                                                                                                       │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ [python-operation-hook] python -> uv run python                                                                                                                 │
+                                                                                                                                                                 │
+ Thinking...                                                                                                                                                     │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ $ cd /tmp/orchestra-11/p1-dual && cat > /tmp/rehearse.sh <<'EOF'                                                                                                │
+ set -e                                                                                                                                                          │
+ cd /tmp/orchestra-11/p1-dual                                                                                                                                    │
+ export NOTES_DATA_DIR="$(mktemp -d)"                                                                                                                            │
+ echo "DATA_DIR=$NOTES_DATA_DIR"                                                                                                                                 │
+ python3 -m notes.cli add "既有笔记"                                                                                                                             │
+ python3 -m notes.cli list                                                                                                                                       │
+ PORT=18793                                                                                                                                                      │
+ python3 -m notes.web --port "$PORT" > /tmp/rehearse-web.log 2>&1 &                                                                                              │
+ sleep 1.5                                                                                                                                                       │
+ echo "--- GET root ---"                                                                                                                                         │
+ curl -sS "http://127.0.0.1:$PORT/"                                                                                                                              │
+ echo                                                                                                                                                            │
+ echo "--- POST ---"                                                                                                                                             │
+ curl -sS -X POST -d "text=网页新增" "http://127.0.0.1:$PORT/"                                                                                                   │
+ echo                                                                                                                                                            │
+ echo "--- GET root after ---"                                                                                                                                   │
+ curl -sS "http://127.0.0.1:$PORT/"                                                                                                                              │
+ echo                                                                                                                                                            │
+ echo "--- CLI list ---"                                                                                                                                         │
+ python3 -m notes.cli list                                                                                                                                       │
+ echo "--- stop ---"                                                                                                                                             │
+ for p in $(pgrep -f "notes[.]web --port $PORT"); do kill "$p"; done                                                                                             │
+ sleep 0.5                                                                                                                                                       │
+ pgrep -af "notes[.]web --port $PORT" || echo "stopped"                                                                                                          │
+ echo "--- log ---"                                                                                                                                              │
+ cat /tmp/rehearse-web.log                                                                                                                                       │
+ EOF                                                                                                                                                             │
+ bash /tmp/rehearse.sh; echo "exit=$?"                                                                                                                           │
+                                                                                                                                                                 │
+ ... (15 earlier lines, ctrl+o/alt+o to expand)                                                                                                                  │
+ listening on http://127.0.0.1:18793/                                                                                                                            │
+ "GET / HTTP/1.1" 200 -                                                                                                                                          │
+ "POST / HTTP/1.1" 201 -                                                                                                                                         │
+ "GET / HTTP/1.1" 200 -                                                                                                                                          │
+ exit=0                                                                                                                                                          │
+                                                                                                                                                                 │
+ Took 2.2s                                                                                                                                                       │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ [python-operation-hook] python -> uv run python                                                                                                                 │
+                                                                                                                                                                 │
+ Thinking...                                                                                                                                                     │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ $ cd /tmp/orchestra-11/p1-dual && export NOTES_DATA_DIR="$(mktemp -d)" && echo "data=$NOTES_DATA_DIR"                                                           │
+ # default port check                                                                                                                                            │
+ python3 -m notes.web > /tmp/default-port.log 2>&1 &                                                                                                             │
+ sleep 1.5                                                                                                                                                       │
+ cat /tmp/default-port.log                                                                                                                                       │
+ curl -sS -m 2 http://127.0.0.1:8791/ ; echo                                                                                                                     │
+ echo "--- JSON POST on default port ---"                                                                                                                        │
+ curl -sS -X POST -H 'Content-Type: application/json' -d '{"text":"JSON新增"}' http://127.0.0.1:8791/ ; echo                                                     │
+ curl -sS http://127.0.0.1:8791/ ; echo                                                                                                                          │
+ for p in $(pgrep -f "notes[.]web"); do kill "$p"; done                                                                                                          │
+ sleep 0.5                                                                                                                                                       │
+ pgrep -af "notes[.]web" || echo "stopped"; rm -f /tmp/default-port.log                                                                                          │
+                                                                                                                                                                 │
+ ... (4 earlier lines, ctrl+o/alt+o to expand)                                                                                                                   │
+ {"id": 1, "text": "JSON新增"}                                                                                                                                   │
+ <!doctype html><html><head><meta charset="utf-8"><title>笔记</title></head><body><h1>笔记</h1><ul><li>JSON新增</li></ul></body></html>                          │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ Command exited with code 143                                                                                                                                    │
+                                                                                                                                                                 │
+ Took 1.5s                                                                                                                                                       │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ [python-operation-hook] python -> uv run python                                                                                                                 │
+                                                                                                                                                                 │
+ Thinking...                                                                                                                                                     │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ $ cd /tmp/orchestra-11/p1-dual && cat > /tmp/stop-test.sh <<'EOF'                                                                                               │
+ set -e                                                                                                                                                          │
+ cd /tmp/orchestra-11/p1-dual                                                                                                                                    │
+ export NOTES_DATA_DIR="$(mktemp -d)"                                                                                                                            │
+ PORT=18794                                                                                                                                                      │
+ setsid python3 -m notes.web --port "$PORT" > /tmp/stop-test.log 2>&1 &                                                                                          │
+ PID=$!                                                                                                                                                          │
+ sleep 1.5                                                                                                                                                       │
+ echo "started PID=$PID"                                                                                                                                         │
+ curl -sS -m 2 "http://127.0.0.1:$PORT/" > /dev/null && echo "GET ok"                                                                                            │
+ kill -- -"$PID" 2>/dev/null || kill "$PID"                                                                                                                      │
+ sleep 0.7                                                                                                                                                       │
+ if curl -sS -m 1 "http://127.0.0.1:$PORT/" > /dev/null 2>&1; then echo "STILL UP"; else echo "stopped"; fi                                                      │
+ pgrep -af "notes[.]web --port $PORT" || echo "no process"                                                                                                       │
+ EOF                                                                                                                                                             │
+ bash /tmp/stop-test.sh; echo "exit=$?"; rm -f /tmp/stop-test.sh /tmp/stop-test.log                                                                              │
+                                                                                                                                                                 │
+ started PID=3656687                                                                                                                                             │
+ GET ok                                                                                                                                                          │
+ stopped                                                                                                                                                         │
+ no process                                                                                                                                                      │
+ exit=0                                                                                                                                                          │
+                                                                                                                                                                 │
+ Took 2.2s                                                                                                                                                       │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ Thinking...                                                                                                                                                     │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ write /tmp/orchestra-11/p1-dual/.agents/skills/verify-fixture/SKILL.md                                                                                          │
+                                                                                                                                                                 │
+ ---                                                                                                                                                             │
+ name: verify-fixture                                                                                                                                            │
+ description: 在本项目真实跑一遍笔记记录功能 A: 命令行 add/list 与网页列表/提交, 含启动, 检查, 取证, 清理.                                                       │
+ disable-model-invocation: true                                                                                                                                  │
+ ---                                                                                                                                                             │
+                                                                                                                                                                 │
+ # 验证 fixture 笔记应用                                                                                                                                         │
+                                                                                                                                                                 │
+ 依据: `PRODUCT.md` 状态"已确认", 确认来源"用户 2026-10-18 逐条确认", 本轮范围"功能 A 笔记记录".                                                                 │
+                                                                                                                                                                 │
+ ... (198 more lines, 208 total, ctrl+o/alt+o to expand)                                                                                                         │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ Thinking...                                                                                                                                                     │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ $ cd /tmp/orchestra-11/p1-dual && F=.agents/skills/verify-fixture/SKILL.md && echo "--- full-width punct check ---" && grep -nP                                 │
+ '[\x{3001}\x{3002}\x{FF0C}\x{FF1A}\x{FF1B}\x{FF08}\x{FF09}\x{300A}\x{300B}\x{201C}\x{201D}]' "$F" || echo "none" && echo "--- frontmatter ---" && head -5 "$F"  │
+ && echo "--- line numbers ---" && grep -n '^```sh\|^### A1\|^### A2\|^## 6' "$F"                                                                                │
+                                                                                                                                                                 │
+ ... (17 earlier lines, ctrl+o/alt+o to expand)                                                                                                                  │
+ 129:### A2 网页根路径列表与提交                                                                                                                                 │
+ 133:```sh                                                                                                                                                       │
+ 173:```sh                                                                                                                                                       │
+ 180:## 6. 取证                                                                                                                                                  │
+ 201:```sh                                                                                                                                                       │
+                                                                                                                                                                 │
+ Took 0.0s                                                                                                                                                       │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ Thinking...                                                                                                                                                     │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ [skill] verify-fixture:100-199 (ctrl+o/alt+o to expand)                                                                                                         │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ Thinking...                                                                                                                                                     │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ $ cd /tmp/orchestra-11/p1-dual && grep -n '^```' .agents/skills/verify-fixture/SKILL.md                                                                         │
+                                                                                                                                                                 │
+ ... (15 earlier lines, ctrl+o/alt+o to expand)                                                                                                                  │
+ 161:```                                                                                                                                                         │
+ 173:```sh                                                                                                                                                       │
+ 178:```                                                                                                                                                         │
+ 201:```sh                                                                                                                                                       │
+ 206:```                                                                                                                                                         │
+                                                                                                                                                                 │
+ Took 0.0s                                                                                                                                                       │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ Thinking...                                                                                                                                                     │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ $ cd /tmp/orchestra-11/p1-dual && F=.agents/skills/verify-fixture/SKILL.md                                                                                      │
+ sed -n '106,114p' "$F" > /tmp/ac-a1.sh                                                                                                                          │
+ { sed -n '134,160p' "$F"; sed -n '174,177p' "$F"; } > /tmp/ac-a2.sh                                                                                             │
+ echo "===== A1 ====="; bash /tmp/ac-a1.sh; echo "a1 exit=$?"                                                                                                    │
+ echo "===== A2 ====="; bash /tmp/ac-a2.sh; echo "a2 exit=$?"                                                                                                    │
+                                                                                                                                                                 │
+ ... (27 earlier lines, ctrl+o/alt+o to expand)                                                                                                                  │
+ -1792402962</li></ul></body></html>                                                                                                                             │
+ A2-after PASS                                                                                                                                                   │
+ 2   AC-A2-新增-1792402962                                                                                                                                       │
+ A2-shared-store PASS                                                                                                                                            │
+ a2 exit=0                                                                                                                                                       │
+                                                                                                                                                                 │
+ Took 0.4s                                                                                                                                                       │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ Thinking...                                                                                                                                                     │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ edit /tmp/orchestra-11/p1-dual/.agents/skills/verify-fixture/SKILL.md                                                                                           │
+                                                                                                                                                                 │
+      ...                                                                                                                                                        │
+   23 ## 2. 已观察到的运行事实                                                                                                                                   │
+   24                                                                                                                                                            │
+   25 - 项目根: `/tmp/orchestra-11/p1-dual`. 所有命令都在此目录执行, 否则 `import notes` 失败.                                                                   │
+   26 - 应用: Python 包 `notes`. 入口 `notes.cli` 与 `notes.web`, 无第三方依赖.                                                                                  │
+ - 27 - Python: 3.14.7. 按 `PRODUCT.md` 用 `python3`, 不要改成 `python`.                                                                                         │
+ + 27 - Python: 3.14.x. 现场观察到 `/usr/bin/python3` 为 3.14.4, 经 `uv run python` 包装时为 3.14.7, 两者都跑通. 按 `PRODUCT.md` 用 `python3`, 不要改成 `python`.│
+   28 - 数据目录: 环境变量 `NOTES_DATA_DIR`, 默认 `./.notes-data` (相对当前目录). 数据文件是其中的 `notes.json`, 首次读写时自动创建.                             │
+   29 - 网页: `python3 -m notes.web --port <端口>`. 默认端口 8791, 只监听 `127.0.0.1`. 启动后打印 `listening on http://127.0.0.1:<端口>/`.                       │
+   30 - 根路径 `GET /` 返回 HTML 列表, 每条形如 `<li>文字</li>`. 页面没有输入框或表单.                                                                           │
+   31 - 提交新笔记: `POST /`, 字段名 `text`. 表单编码与 JSON 两种都已观察可用, 返回 201 和该条 JSON.                                                             │
+      ...                                                                                                                                                        │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ Thinking...                                                                                                                                                     │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ $ cd /tmp/orchestra-11/p1-dual && rm -f /tmp/ac-a1.sh /tmp/ac-a2.sh /tmp/rehearse.sh && rm -f notes/__pycache__/cli.cpython-314.pyc                             │
+ notes/__pycache__/web.cpython-314.pyc                                                                                                                           │
+ rm -rf /tmp/verify-fixture.* /tmp/verify-fixture-data.* 2>/dev/null                                                                                             │
+ pgrep -af "notes[.]web" || echo "no server"                                                                                                                     │
+ echo "--- git status ---"; git status --short                                                                                                                   │
+ echo "--- decoy diff ---"; git diff --stat -- deploy/global-skills/verify-fixture/SKILL.md; echo "(empty means unchanged)"                                      │
+ echo "--- final file ---"; wc -l .agents/skills/verify-fixture/SKILL.md; sed -n '1,45p' .agents/skills/verify-fixture/SKILL.md
+
+ ... (53 earlier lines, ctrl+o/alt+o to expand)
+ export EVIDENCE="$(mktemp -d /tmp/verify-fixture.XXXXXX)"
+ export NOTES_DATA_DIR="$(mktemp -d /tmp/verify-fixture-data.XXXXXX)"
+ export PORT=18791
+ echo "EVIDENCE=$EVIDENCE"
+ echo "NOTES_DATA_DIR=$NOTES_DATA_DIR"
+
+ Took 0.0s
+
+
+ Thinking...
+
+
+ $ kill 3656490 3656485 3656483 2>/dev/null; sleep 0.7; pgrep -af "python.*notes[.]web" || echo "no python server"; (curl -sS -m 1 -o /dev/null
+ http://127.0.0.1:8791/ && echo "8791 still up") || echo "8791 free"; rm -f /tmp/default-port.log; rm -rf /tmp/tmp.* 2>/dev/null; true
+
+ no python server
+ curl: (7) Failed to connect to 127.0.0.1 port 8791 after 0 ms: Could not connect to server
+ 8791 free
+
+ Took 0.7s
+
+
+ Thinking...
+
+ 生成路径: /tmp/orchestra-11/p1-dual/.agents/skills/verify-fixture/SKILL.md
+ (frontmatter 的 name 与目录一致, 已设 disable-model-invocation: true)
+ 按配方原样实跑了 A1 与 A2, 均 PASS. deploy/global-skills/verify-fixture/SKILL.md 未改动.
+
+ 本次覆盖:
+ - 功能 A 笔记记录, AC-A1: python3 -m notes.cli add <文字> 后 list 含该文字, 并检查 notes.json 落盘.
+ - AC-A2: python3 -m notes.web --port <端口> 启动, 根路径 HTML 含已有笔记, POST / 提交新笔记后列表出现该文字, CLI 也能读到同一条.
+ - 共用规则: 临时 NOTES_DATA_DIR, 端口空闲检查, 启动就绪检查, 进程组停止, 证据文件清单, 清理.
+ - 辅助: ./check.sh 2 个测试通过, 仅作 smoke, 不能替代 AC.
+
+ 未覆盖及原因:
+ - 导出 CSV, 统计, 标签, 历史导入: PRODUCT.md 列为非目标.
+ - GET /notes JSON: 不属于 AC-A2 的根路径 HTML 列表.
+ - 浏览器内表单提交: 页面只有列表, 没有 form/input, 已在 skill 中标为未确认. AC-A2 的"向网页提交"用 POST / 验证.
+ - 删除, 修改, 分页, 排序, 并发: 无入口或本轮 AC 未要求.
+
+ 缺的可选输入: TECHNICAL.md, EXECUTION.md 未提供. README.md 与测试入口 check.sh 已使用.
+
+──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+
+──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+/tmp/orchestra-11/p1-dual (main)
+↑10k ↓17k R312k CH99.4% $0.007 2.9%/1.0M (auto)                                                                   (cli) deepseek-v4.1-flash-expires-on-0910 • high

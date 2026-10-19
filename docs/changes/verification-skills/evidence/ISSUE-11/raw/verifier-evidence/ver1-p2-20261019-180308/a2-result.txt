@@ -1,0 +1,6 @@
+PASS: AC-A2 根路径包含提交前已有的笔记
+PASS: AC-A2 提交之后列表出现新笔记
+PASS: POST / 返回 201
+PASS: POST 响应体带回新笔记
+PASS: 清理后端口已释放
+evidence=/tmp/verify-fixture-evidence/20261019-180308

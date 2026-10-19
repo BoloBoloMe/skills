@@ -1,0 +1,2 @@
+/bin/bash: 行 11: ./target/release/ledger-cli: 没有那个文件或目录
+exit=127

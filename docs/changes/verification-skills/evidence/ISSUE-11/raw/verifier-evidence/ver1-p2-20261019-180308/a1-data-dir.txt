@@ -1,0 +1,2 @@
+data=/tmp/verify-fixture-data.DOG2J7
+TEXT=验证笔记A1-1792404190

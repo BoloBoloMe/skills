@@ -1,0 +1,3 @@
+$ python3 -m notes.cli import-legacy
+missing prerequisite: seed/legacy-export.json
+exit=2

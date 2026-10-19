@@ -1,0 +1,2 @@
+/bin/bash: 行 2: cargo: 未找到命令
+exit=127

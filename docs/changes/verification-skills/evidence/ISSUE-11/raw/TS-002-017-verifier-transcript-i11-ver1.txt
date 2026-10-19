@@ -1,0 +1,812 @@
+# transcript 2026-10-19T10-02-55-417Z_01a1539d-3a39-71f1-959d-4ecca17c3df7.jsonl
+cwd: /tmp/orchestra-11/p2-gaps  session: 01a1539d-3a39-71f1-959d-4ecca17c3df7  time: 2026-10-19T10:02:55.417Z
+model: cli/deepseek-v4.1-flash-expires-on-0910
+thinking: high
+
+===== user 2026-10-19T10:03:01.819Z =====
+<skill name="verify-fixture" location="/tmp/orchestra-11/p2-gaps/.agents/skills/verify-fixture/SKILL.md">
+References are relative to /tmp/orchestra-11/p2-gaps/.agents/skills/verify-fixture.
+
+# verify-fixture: 笔记应用验证配方
+
+## 这份配方验什么
+
+本轮只验 `PRODUCT.md` 的三条功能 (A 笔记记录, B 标签, C 历史数据导入), 共 4 条判据: AC-A1, AC-A2, AC-B1, AC-C1. 判据以项目根的 `PRODUCT.md` 为准; 本配方只写怎么跑, 看什么, 证据放哪.
+
+不覆盖, 理由:
+
+- `tools/export_csv.py` 导出与 `tools/stats.py` 统计: `PRODUCT.md` 明确列为非目标.
+- 网页 `/notes` JSON 接口: `PRODUCT.md` 没把它列为用户入口.
+- `./check.sh` 单元测试: 开发自测, 不是产品判据, 只能当辅助信号.
+- `deploy/global-skills/verify-fixture/SKILL.md`: 固定副本, 只读核对, 不得修改, 也不得当作本次加载来源.
+
+## 共用规则 (每节都适用)
+
+### 1. 项目根
+
+本文件位于 `<项目根>/.agents/skills/verify-fixture/SKILL.md`, 项目根 = 向上三级. 下面所有 `python3 -m ...` 都在项目根执行, 否则 `notes` 包导入失败.
+
+### 2. 解释器
+
+`PRODUCT.md` 写的是 `python3 -m notes.cli` / `python3 -m notes.web`. 本机 `python3 --version` 是 3.14.7. `uv run python -m ...` 也能跑, 配方统一写 `python3`, 两种都试过.
+
+### 3. 数据目录隔离 (每个功能都先做)
+
+默认数据目录是项目里的 `.notes-data`, 直接跑会把验证数据留在项目里. 每节开头换新的临时目录:
+
+```sh
+export NOTES_DATA_DIR=$(mktemp -d /tmp/verify-fixture-data.XXXXXX)
+echo "$NOTES_DATA_DIR"
+```
+
+必须 `export`, 同一节的 add / list / tag / import-legacy / web 共用它. 本节验完 `rm -rf "$NOTES_DATA_DIR"`.
+
+### 4. 端口 (网页节)
+
+不要用默认 8791, 免得撞上别的实例. 取空闲端口:
+
+```sh
+PORT=$(python3 -c 'import socket;s=socket.socket();s.bind(("127.0.0.1",0));print(s.getsockname()[1]);s.close()')
+```
+
+服务只监听 `127.0.0.1`, 访问地址是 `http://127.0.0.1:$PORT/`.
+
+### 5. 证据目录
+
+证据放仓库外的固定根目录, 每次一个 run 子目录, 免得污染 `git status`:
+
+```sh
+EVIDENCE=/tmp/verify-fixture-evidence/$(date +%Y%m%d-%H%M%S)
+mkdir -p "$EVIDENCE"
+python3 --version > "$EVIDENCE/env.txt"
+git -C <项目根> rev-parse --short HEAD >> "$EVIDENCE/env.txt" 2>&1
+git -C <项目根> status --porcelain >> "$EVIDENCE/env.txt"
+```
+
+每一节的 "取证" 小节列出该节必须留下的文件名.
+
+### 6. 只读实例检查
+
+网页节用这三样, 全是只读:
+
+```sh
+ss -ltnp "sport = :$PORT"        # 端口归属: 期望 python3.x, pid=<服务 pid>
+cat "$EVIDENCE/web-server.log"   # 首行 listening on http://127.0.0.1:<端口>/
+python3 --version                # 解释器版本
+```
+
+杀进程只用 `ss` 或日志里确认过的 pid, 不要按进程名批量杀.
+
+### 7. 清理
+
+```sh
+kill "$SERVER_PID"; sleep 0.3
+ss -ltn "sport = :$PORT" | tail -n +2 | wc -l   # 期望 0
+rm -rf "$NOTES_DATA_DIR"
+```
+
+清理命令与实际输出写进 `$EVIDENCE/cleanup.txt`.
+
+### 8. 改动边界
+
+验证只允许产生三类东西: `.agents/skills/verify-fixture/` 下的文件, 仓库外 `/tmp` 下的证据与临时数据, 以及被 `.gitignore` 忽略的 `__pycache__/`. 交付前对照:
+
+```sh
+git -C <项目根> status --porcelain   # 期望只有 `?? .agents/`
+git -C <项目根> diff --stat          # 期望空
+```
+
+出现别的改动就说明验证动了产品, 记下来并停手.
+
+## 功能 A: 笔记记录
+
+### A-1 命令行 add / list (AC-A1)
+
+前置: 无, 空数据目录也能跑 (`list` 输出为空, 退出码 0).
+
+步骤:
+
+```sh
+export NOTES_DATA_DIR=$(mktemp -d /tmp/verify-fixture-data.XXXXXX)
+cd <项目根>
+TEXT="验证笔记A1-$(date +%s)"
+python3 -m notes.cli add "$TEXT" | tee "$EVIDENCE/a1-add.txt"
+python3 -m notes.cli list | tee "$EVIDENCE/a1-list.txt"
+cp "$NOTES_DATA_DIR/notes.json" "$EVIDENCE/a1-notes.json"
+grep -F "$TEXT" "$EVIDENCE/a1-list.txt"
+```
+
+期望:
+
+- `add` 退出码 0, 输出 `added 1: <文字>`.
+- `list` 退出码 0, 输出一行 `<id>\t<文字>`, 上面那条 `grep` 命中.
+- `a1-notes.json` 里能读到同一条文字.
+
+取证: `a1-add.txt`, `a1-list.txt`, `a1-notes.json`.
+
+### A-2 网页 (AC-A2)
+
+前置: 网页读同一个 `NOTES_DATA_DIR`; 先放一条已有笔记, 才能同时验 "已有笔记可见" 和 "提交后可见".
+
+一条命令跑完 (我跑过, 输出 PASS):
+
+```sh
+.agents/skills/verify-fixture/run-ac-a2-web.sh [证据目录]
+```
+
+脚本做的事: 建临时数据目录并塞一条已有笔记, 取空闲端口启动 `python3 -m notes.web --port <端口>`, 轮询到可访问, GET 根路径存 `a2-root-before.html`, 用 `ss` 记端口归属, POST 一条新笔记, 再 GET 存 `a2-root-after.html`, 用 `google-chrome --headless=new` 截 `a2-root.png`, 最后杀进程并确认端口释放. 输出 `PASS` / `FAIL` 行, 有 FAIL 时退出码非 0.
+
+想自己敲的等价步骤:
+
+```sh
+export NOTES_DATA_DIR=$(mktemp -d /tmp/verify-fixture-data.XXXXXX)
+cd <项目根>
+python3 -m notes.cli add "网页前已有笔记"
+PORT=$(python3 -c 'import socket;s=socket.socket();s.bind(("127.0.0.1",0));print(s.getsockname()[1]);s.close()')
+python3 -m notes.web --port "$PORT" > "$EVIDENCE/web-server.log" 2>&1 &
+SERVER_PID=$!
+for i in $(seq 1 50); do curl -fsS "http://127.0.0.1:$PORT/" >/dev/null 2>&1 && break; sleep 0.2; done
+curl -sS "http://127.0.0.1:$PORT/" -o "$EVIDENCE/a2-root-before.html"
+curl -sS -i -X POST --data-urlencode "text=网页提交的验证笔记" "http://127.0.0.1:$PORT/" > "$EVIDENCE/a2-post.txt"
+curl -sS "http://127.0.0.1:$PORT/" -o "$EVIDENCE/a2-root-after.html"
+grep -F "网页前已有笔记" "$EVIDENCE/a2-root-before.html"
+grep -F "网页提交的验证笔记" "$EVIDENCE/a2-root-after.html"
+```
+
+期望:
+
+- 启动日志首行 `listening on http://127.0.0.1:<端口>/`.
+- 根路径 HTML 形如 `...<h1>笔记</h1><ul><li>...`; 提交前含已有笔记.
+- POST 返回 `HTTP/1.0 201 Created`, body 为 `{"id": 2, "text": "网页提交的验证笔记"}`.
+- 第二次 GET 的列表里两条文字都在.
+- 截图里能看到标题 "笔记" 和笔记条目.
+
+取证: `a2-root-before.html`, `a2-post.txt` (脚本里拆成 `a2-post-headers.txt` 与 `a2-post-status.txt`), `a2-root-after.html`, `a2-port-owner.txt`, `web-server.log` (脚本里是 `a2-server.log`), `a2-root.png`, `a2-form-check.txt`, `a2-cleanup.txt`.
+
+已知缺口 (AC-A2 后半句): 根页面只有 `<ul>` 列表, 没有 `<form>`, 没有输入框和按钮, 所以 "在浏览器里提交一条新笔记" 在页面上做不了, 浏览器只能看不能提交. 提交入口是 `POST /` (表单编码, 或 JSON `{"text": ...}`), 只能用 curl 之类直接发. 见 `a2-form-check.txt` 里的 `form=absent` 与截图. 这一项按未验证记录, 见文末清单.
+
+## 功能 B: 标签 (AC-B1)
+
+前置: 数据目录可写; 不需要先有笔记.
+
+步骤:
+
+```sh
+export NOTES_DATA_DIR=$(mktemp -d /tmp/verify-fixture-data.XXXXXX)
+cd <项目根>
+set +e
+python3 -m notes.cli tag "验证标签B1" > "$EVIDENCE/b1-tag.out" 2>&1
+echo "exit=$?" >> "$EVIDENCE/b1-tag.out"
+set -e
+cat "$EVIDENCE/b1-tag.out"
+cp "$NOTES_DATA_DIR/tags.txt" "$EVIDENCE/b1-tags.txt"
+```
+
+期望: 输出恰好一行 `tagged: 验证标签B1`, 接着一行 `exit=0`; `b1-tags.txt` 含该标签名.
+
+取证: `b1-tag.out`, `b1-tags.txt`.
+
+备注: 标签不查重, 重复执行会重复写进 `tags.txt`. 这是观察到的行为, 不是本轮判据.
+
+## 功能 C: 历史数据导入 (AC-C1)
+
+前置: 上游导出流程产出的 `seed/legacy-export.json`, 仓库里没有. 可用环境变量 `NOTES_LEGACY_EXPORT` 指向别的路径; 不设时按当前目录找 `seed/legacy-export.json`.
+
+### C-0 缺前置时的行为 (我跑过)
+
+```sh
+cd <项目根>
+python3 -m notes.cli import-legacy; echo "exit=$?"
+```
+
+期望: stderr 一行 `missing prerequisite: seed/legacy-export.json`, exit=2. 这是缺前置的报错, 不算 AC-C1 通过.
+
+取证: `c1-missing.txt` (命令与输出一起重定向).
+
+### C-1 提供文件后 (我跑过, 用的是仓库外临时文件)
+
+```sh
+export NOTES_DATA_DIR=$(mktemp -d /tmp/verify-fixture-data.XXXXXX)
+cd <项目根>
+SYNTH=$(mktemp -d /tmp/verify-fixture-export.XXXXXX)
+printf '["旧笔记一", "旧笔记二", "旧笔记三"]' > "$SYNTH/legacy-export.json"
+NOTES_LEGACY_EXPORT="$SYNTH/legacy-export.json" python3 -m notes.cli import-legacy | tee "$EVIDENCE/c1-import.txt"
+python3 -m notes.cli list | tee "$EVIDENCE/c1-list.txt"
+cp "$NOTES_DATA_DIR/notes.json" "$EVIDENCE/c1-notes.json"
+grep -c "旧笔记" "$EVIDENCE/c1-list.txt"
+```
+
+期望: `imported 3` 且 exit=0; `list` 三行, 三段文字都在; `grep -c` 输出 `3`.
+
+取证: `c1-import.txt`, `c1-list.txt`, `c1-notes.json`.
+
+重要限制: `$SYNTH/legacy-export.json` 是我手写的 JSON 字符串数组, 只用来验证导入流程, 不是上游真实导出. 真实 `seed/legacy-export.json` 未提供, 所以 AC-C1 针对真实历史数据的那部分按未验证记录. 不要把临时文件放进仓库冒充 `seed/`.
+
+## 未验证清单 (截至本配方生成时)
+
+- AC-A2 在浏览器里直接提交新笔记: 页面无表单无输入框, 做不了. 已验的是 GET 根路径 (curl 与 chrome headless 截图) 和 `POST /` 接口.
+- AC-C1 用上游真实导出文件: 仓库无 `seed/legacy-export.json`, 也没有上游产物. 已验的是同格式临时文件.
+- 默认端口 8791: 没单独跑, 配方一律用 `--port` 指定空闲端口.
+- 并发写入与持久化边界: 不在本轮判据, 未验.
+
+## 交付前自检
+
+1. `sh -n .agents/skills/verify-fixture/run-ac-a2-web.sh` 无语法错误.
+2. 每节跑完后核对上面 "取证" 列出的文件都存在且非空.
+3. `git status --porcelain` 只有 `?? .agents/`; `git diff --stat` 为空.
+4. 加载来源核对: 在项目里用 `/skill:verify-fixture` 加载时, 宿主报的 location 必须是 `<项目根>/.agents/skills/verify-fixture/SKILL.md`, 不是 `deploy/global-skills/verify-fixture/SKILL.md`. 后者是固定副本, sha256 以 `63e832cd` 开头, 运行前后都不许变.
+</skill>
+
+===== assistant 2026-10-19T10:03:03.451Z =====
+[thinking] The user has given me a skill file via the skill mechanism... Actually the message contains the skill content. It seems the task is to run the verification fixture. Let me look at the project.
+
+The message is just the skill content, no explicit instruction. Presumably I should execute the verification. Let me check the project root.
+
+Let me start by exploring.
+[tool bash] {"command": "cd /tmp/orchestra-11/p2-gaps && ls -la && cat PRODUCT.md 2>/dev/null | head -60"}
+[tool bash] {"command": "cd /tmp/orchestra-11/p2-gaps && ls -R .agents 2>/dev/null | head -30; git status --porcelain; git log --oneline -3"}
+
+===== toolResult 2026-10-19T10:03:03.470Z =====
+total 16
+drwxrwxr-x 8 bolo bolo  240 Oct 19 17:59 .
+drwxrwxr-x 7 bolo bolo  360 Oct 19 18:02 ..
+drwxrwxr-x 3 bolo bolo   60 Oct 19 17:43 .agents
+drwxrwxr-x 7 bolo bolo  240 Oct 19 18:02 .git
+-rw-rw-r-- 1 bolo bolo   26 Oct 19 17:59 .gitignore
+-rw-rw-r-- 1 bolo bolo 1276 Oct 19 17:38 PRODUCT.md
+-rw-rw-r-- 1 bolo bolo  210 Oct 19 17:38 README.md
+-rwxrwxr-x 1 bolo bolo   85 Oct 19 17:38 check.sh
+drwxrwxr-x 3 bolo bolo   60 Oct 19 17:38 deploy
+drwxrwxr-x 3 bolo bolo  140 Oct 19 18:01 notes
+drwxrwxr-x 3 bolo bolo   80 Oct 19 18:01 tests
+drwxrwxr-x 2 bolo bolo  100 Oct 19 17:38 tools
+# 产品说明: 笔记应用
+
+- 状态: 已确认
+- 确认来源: 用户 2026-10-18 逐条确认
+- 本轮范围: 功能 A 笔记记录, 功能 B 标签, 功能 C 历史数据导入
+
+## 功能 A: 笔记记录
+
+### 用户入口
+
+- 命令行: `python3 -m notes.cli add <文字>` 新增, `python3 -m notes.cli list` 列出.
+- 网页: `python3 -m notes.web --port <端口>` 启动后, 用浏览器打开 `http://127.0.0.1:<端口>/` 查看列表.
+
+### 通过判据
+
+- AC-A1: 命令行 `add` 之后 `list` 的输出包含刚提交的文字.
+- AC-A2: 网页根路径的 HTML 列表包含已存在的笔记文字; 向网页提交一条新笔记后, 列表出现这条文字.
+
+## 功能 B: 标签
+
+### 用户入口
+
+- 命令行: `python3 -m notes.cli tag <名称>`.
+
+### 通过判据
+
+- AC-B1: 执行 `tag` 后, 进程输出 `tagged: <名称>` 且退出码为 0.
+
+## 功能 C: 历史数据导入
+
+### 用户入口
+
+- 命令行: `python3 -m notes.cli import-legacy`.
+
+### 前置
+
+- 需要上游导出流程产出的历史数据文件 `seed/legacy-export.json`, 本仓库不包含该文件.
+
+### 通过判据
+
+- AC-C1: 提供历史数据文件后, `import-legacy` 的输出包含 `imported <条数>`, 且 `list` 能看到导入的文字.
+
+## 非目标
+
+- 本轮不验收导出与统计.
+
+
+===== toolResult 2026-10-19T10:03:03.470Z =====
+.agents:
+skills
+
+.agents/skills:
+create-verification-skill
+verify-fixture
+
+.agents/skills/create-verification-skill:
+SKILL.md
+
+.agents/skills/verify-fixture:
+SKILL.md
+run-ac-a2-web.sh
+?? .agents/
+4057bb5 drill fixture: 清理 pycache, 忽略运行产物
+add5a22 drill fixture: p2-gaps 初始版本
+
+
+===== assistant 2026-10-19T10:03:05.489Z =====
+[thinking] Let me check the run script and confirm sha256 of deploy copy, then run the verification.
+
+Wait: there are two skills in .agents/skills: create-verification-skill and verify-fixture. The task from the skill content: perform the verification. Let's read the script.
+[tool read] {"path": "/tmp/orchestra-11/p2-gaps/.agents/skills/verify-fixture/run-ac-a2-web.sh"}
+[tool bash] {"command": "cd /tmp/orchestra-11/p2-gaps && cat .gitignore; ls notes tools tests; sha256sum deploy/global-skills/verify-fixture/SKILL.md; diff -q .agents/skills/verify-fixture/SKILL.md deploy/global-skills/verify-fixture/SKILL.md && echo same"}
+
+===== toolResult 2026-10-19T10:03:05.502Z =====
+#!/bin/sh
+# AC-A2 网页入口一次性取证脚本.
+# 用法: .agents/skills/verify-fixture/run-ac-a2-web.sh [证据目录]
+# 不传证据目录时落到 /tmp/verify-fixture-evidence/a2-<时间戳>.
+set -eu
+
+HERE=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+ROOT=$(CDPATH= cd -- "$HERE/../../.." && pwd)
+EVIDENCE=${1:-"/tmp/verify-fixture-evidence/a2-$(date +%Y%m%d-%H%M%S)"}
+mkdir -p "$EVIDENCE"
+EVIDENCE=$(CDPATH= cd -- "$EVIDENCE" && pwd)
+
+PY=python3
+DATA=$(mktemp -d "${TMPDIR:-/tmp}/verify-fixture-data.XXXXXX")
+export NOTES_DATA_DIR="$DATA"
+cd "$ROOT"
+
+{
+  echo "# AC-A2 网页入口取证"
+  echo "root=$ROOT"
+  echo "data_dir=$DATA"
+  echo "evidence=$EVIDENCE"
+  echo "date=$(date -Is)"
+  "$PY" --version
+  git rev-parse --short HEAD 2>/dev/null || echo "git rev-parse: n/a"
+  git status --porcelain 2>/dev/null || true
+} > "$EVIDENCE/a2-env.txt" 2>&1
+
+# 前置: 网页读同一个数据目录, 先放一条已有笔记
+"$PY" -m notes.cli add "网页前已有笔记" > "$EVIDENCE/a2-cli-seed.txt" 2>&1
+
+PORT=$("$PY" -c 'import socket; s=socket.socket(); s.bind(("127.0.0.1",0)); print(s.getsockname()[1]); s.close()')
+echo "port=$PORT" >> "$EVIDENCE/a2-env.txt"
+
+"$PY" -m notes.web --port "$PORT" > "$EVIDENCE/a2-server.log" 2>&1 &
+SERVER_PID=$!
+
+cleanup() {
+  kill "$SERVER_PID" 2>/dev/null || true
+  wait "$SERVER_PID" 2>/dev/null || true
+}
+trap cleanup EXIT INT TERM
+
+i=0
+while [ "$i" -lt 100 ]; do
+  if curl -fsS "http://127.0.0.1:$PORT/" >/dev/null 2>&1; then break; fi
+  sleep 0.1
+  i=$((i + 1))
+done
+if [ "$i" -ge 100 ]; then
+  echo "FAIL: 服务 10 秒内没起来, 看 $EVIDENCE/a2-server.log"
+  exit 1
+fi
+
+curl -sS "http://127.0.0.1:$PORT/" -o "$EVIDENCE/a2-root-before.html"
+if grep -qF "<form" "$EVIDENCE/a2-root-before.html"; then
+  echo "form=present" > "$EVIDENCE/a2-form-check.txt"
+else
+  echo "form=absent" > "$EVIDENCE/a2-form-check.txt"
+fi
+
+ss -ltnp "sport = :$PORT" > "$EVIDENCE/a2-port-owner.txt" 2>&1
+
+curl -sS -o "$EVIDENCE/a2-post-body.json" \
+  -D "$EVIDENCE/a2-post-headers.txt" \
+  -w 'http_code=%{http_code}\n' \
+  -X POST -H 'Content-Type: application/x-www-form-urlencoded' \
+  --data-urlencode "text=网页提交的验证笔记" \
+  "http://127.0.0.1:$PORT/" > "$EVIDENCE/a2-post-status.txt"
+
+curl -sS "http://127.0.0.1:$PORT/" -o "$EVIDENCE/a2-root-after.html"
+
+if command -v google-chrome >/dev/null 2>&1; then
+  google-chrome --headless=new --no-sandbox --disable-gpu --hide-scrollbars \
+    --window-size=1000,600 --screenshot="$EVIDENCE/a2-root.png" \
+    "http://127.0.0.1:$PORT/" > "$EVIDENCE/a2-chrome.log" 2>&1 || true
+else
+  echo "google-chrome 不可用, 跳过截图" > "$EVIDENCE/a2-chrome.log"
+fi
+
+cp "$DATA/notes.json" "$EVIDENCE/a2-notes.json" 2>/dev/null || true
+
+cleanup
+trap - EXIT INT TERM
+i=0
+while [ "$i" -lt 100 ]; do
+  if ! ss -ltn "sport = :$PORT" | tail -n +2 | grep -q .; then break; fi
+  sleep 0.1
+  i=$((i + 1))
+done
+{
+  echo "kill pid=$SERVER_PID; port=$PORT"
+  echo "listeners_after_cleanup=$(ss -ltn "sport = :$PORT" | tail -n +2 | wc -l)"
+  echo "server_log_tail:"
+  tail -n 3 "$EVIDENCE/a2-server.log"
+} > "$EVIDENCE/a2-cleanup.txt" 2>&1
+
+FAIL=0
+check() {
+  if grep -qF "$1" "$2"; then
+    echo "PASS: $3"
+  else
+    echo "FAIL: $3"
+    FAIL=1
+  fi
+}
+check "网页前已有笔记" "$EVIDENCE/a2-root-before.html" "AC-A2 根路径包含提交前已有的笔记"
+check "网页提交的验证笔记" "$EVIDENCE/a2-root-after.html" "AC-A2 提交之后列表出现新笔记"
+check "http_code=201" "$EVIDENCE/a2-post-status.txt" "POST / 返回 201"
+check '"text": "网页提交的验证笔记"' "$EVIDENCE/a2-post-body.json" "POST 响应体带回新笔记"
+check "listeners_after_cleanup=0" "$EVIDENCE/a2-cleanup.txt" "清理后端口已释放"
+
+rm -rf "$DATA"
+echo "evidence=$EVIDENCE"
+exit "$FAIL"
+
+
+===== toolResult 2026-10-19T10:03:05.502Z =====
+__pycache__/
+.notes-data/
+notes:
+__init__.py
+__pycache__
+cli.py
+store.py
+web.py
+
+tests:
+__pycache__
+test_notes.py
+
+tools:
+__init__.py
+export_csv.py
+stats.py
+63e832cd18e6e0c802e8176a39d4b576dac6e4a28ffce0a7d1ffe211a63c5775  deploy/global-skills/verify-fixture/SKILL.md
+文件 .agents/skills/verify-fixture/SKILL.md 和 deploy/global-skills/verify-fixture/SKILL.md 不同
+
+
+Command exited with code 1
+
+===== assistant 2026-10-19T10:03:07.227Z =====
+[thinking] Interesting: the deploy copy differs from the .agents copy. The recipe says the deploy copy is a fixed copy, sha256 starts with 63e832cd — which it does. The .agents copy differs (probably because it's the one being edited? or created). Let me diff them to see.
+
+Then run the verification recipe. Presumably my task is to actually run the verification and report results. Let me do it.
+
+First check the diff.
+[tool bash] {"command": "cd /tmp/orchestra-11/p2-gaps && diff -u deploy/global-skills/verify-fixture/SKILL.md .agents/skills/verify-fixture/SKILL.md | head -80; echo ---; wc -l deploy/global-skills/verify-fixture/SKILL.md .agents/skills/verify-fixture/SKILL.md"}
+
+===== toolResult 2026-10-19T10:03:07.238Z =====
+--- deploy/global-skills/verify-fixture/SKILL.md	2026-10-19 17:38:40.116845946 +0800
++++ .agents/skills/verify-fixture/SKILL.md	2026-10-19 18:02:18.633765039 +0800
+@@ -1,9 +1,234 @@
+ ---
+ name: verify-fixture
+-description: 全局部署副本替身, 用于核对生成过程没有改动它.
++description: fixture 笔记应用的项目级验证配方, 按 PRODUCT.md 跑命令行增改查, 标签, 历史导入与网页列表并留证.
+ disable-model-invocation: true
+ ---
+ 
+-# 全局部署副本替身
++# verify-fixture: 笔记应用验证配方
+ 
+-这是临时项目里用来代替全局部署副本的文件, 内容在演练开始前固定, 结束后核对字节未变.
++## 这份配方验什么
++
++本轮只验 `PRODUCT.md` 的三条功能 (A 笔记记录, B 标签, C 历史数据导入), 共 4 条判据: AC-A1, AC-A2, AC-B1, AC-C1. 判据以项目根的 `PRODUCT.md` 为准; 本配方只写怎么跑, 看什么, 证据放哪.
++
++不覆盖, 理由:
++
++- `tools/export_csv.py` 导出与 `tools/stats.py` 统计: `PRODUCT.md` 明确列为非目标.
++- 网页 `/notes` JSON 接口: `PRODUCT.md` 没把它列为用户入口.
++- `./check.sh` 单元测试: 开发自测, 不是产品判据, 只能当辅助信号.
++- `deploy/global-skills/verify-fixture/SKILL.md`: 固定副本, 只读核对, 不得修改, 也不得当作本次加载来源.
++
++## 共用规则 (每节都适用)
++
++### 1. 项目根
++
++本文件位于 `<项目根>/.agents/skills/verify-fixture/SKILL.md`, 项目根 = 向上三级. 下面所有 `python3 -m ...` 都在项目根执行, 否则 `notes` 包导入失败.
++
++### 2. 解释器
++
++`PRODUCT.md` 写的是 `python3 -m notes.cli` / `python3 -m notes.web`. 本机 `python3 --version` 是 3.14.7. `uv run python -m ...` 也能跑, 配方统一写 `python3`, 两种都试过.
++
++### 3. 数据目录隔离 (每个功能都先做)
++
++默认数据目录是项目里的 `.notes-data`, 直接跑会把验证数据留在项目里. 每节开头换新的临时目录:
++
++```sh
++export NOTES_DATA_DIR=$(mktemp -d /tmp/verify-fixture-data.XXXXXX)
++echo "$NOTES_DATA_DIR"
++```
++
++必须 `export`, 同一节的 add / list / tag / import-legacy / web 共用它. 本节验完 `rm -rf "$NOTES_DATA_DIR"`.
++
++### 4. 端口 (网页节)
++
++不要用默认 8791, 免得撞上别的实例. 取空闲端口:
++
++```sh
++PORT=$(python3 -c 'import socket;s=socket.socket();s.bind(("127.0.0.1",0));print(s.getsockname()[1]);s.close()')
++```
++
++服务只监听 `127.0.0.1`, 访问地址是 `http://127.0.0.1:$PORT/`.
++
++### 5. 证据目录
++
++证据放仓库外的固定根目录, 每次一个 run 子目录, 免得污染 `git status`:
++
++```sh
++EVIDENCE=/tmp/verify-fixture-evidence/$(date +%Y%m%d-%H%M%S)
++mkdir -p "$EVIDENCE"
++python3 --version > "$EVIDENCE/env.txt"
++git -C <项目根> rev-parse --short HEAD >> "$EVIDENCE/env.txt" 2>&1
++git -C <项目根> status --porcelain >> "$EVIDENCE/env.txt"
++```
++
++每一节的 "取证" 小节列出该节必须留下的文件名.
++
++### 6. 只读实例检查
++
++网页节用这三样, 全是只读:
++
++```sh
++ss -ltnp "sport = :$PORT"        # 端口归属: 期望 python3.x, pid=<服务 pid>
++cat "$EVIDENCE/web-server.log"   # 首行 listening on http://127.0.0.1:<端口>/
++python3 --version                # 解释器版本
++```
++
+---
+    9 deploy/global-skills/verify-fixture/SKILL.md
+  234 .agents/skills/verify-fixture/SKILL.md
+  243 total
+
+
+===== assistant 2026-10-19T10:03:08.817Z =====
+[thinking] Now run the verification. Let me set up evidence dir and run sections A-1, A-2, B, C-0, C-1.
+
+Note the project instructions say use `uv run python` for python scripts/modules, but the recipe says python3 and both were tried. The product's documented entry is python3. I'll use python3 per the recipe (it's the product's documented interface). Check python3 version.
+
+Let's run.
+[tool bash] {"command": "cd /tmp/orchestra-11/p2-gaps && python3 --version && EVIDENCE=/tmp/verify-fixture-evidence/$(date +%Y%m%d-%H%M%S) && mkdir -p \"$EVIDENCE\" && echo \"$EVIDENCE\" > /tmp/verify-fixture-evidence/.latest && { python3 --version; git rev-parse --short HEAD; git status --porcelain; } > \"$EVIDENCE/env.txt\" 2>&1; cat \"$EVIDENCE/env.txt\"; echo \"$EVIDENCE\""}
+
+===== toolResult 2026-10-19T10:03:08.849Z =====
+Python 3.14.7
+Python 3.14.7
+4057bb5
+?? .agents/
+/tmp/verify-fixture-evidence/20261019-180308
+
+
+===== assistant 2026-10-19T10:03:10.769Z =====
+[tool bash] {"command": "cd /tmp/orchestra-11/p2-gaps && EVIDENCE=$(cat /tmp/verify-fixture-evidence/.latest) && export NOTES_DATA_DIR=$(mktemp -d /tmp/verify-fixture-data.XXXXXX) && echo \"data=$NOTES_DATA_DIR\" | tee \"$EVIDENCE/a1-data-dir.txt\" && TEXT=\"验证笔记A1-$(date +%s)\" && set +e && python3 -m notes.cli add \"$TEXT\" > \"$EVIDENCE/a1-add.txt\" 2>&1; echo \"add_exit=$?\" >> \"$EVIDENCE/a1-add.txt\"; python3 -m notes.cli list > \"$EVIDENCE/a1-list.txt\" 2>&1; echo \"list_exit=$?\" >> \"$EVIDENCE/a1-list.txt\"; set -e; cat \"$EVIDENCE/a1-add.txt\"; cat \"$EVIDENCE/a1-list.txt\"; cp \"$NOTES_DATA_DIR/notes.json\" \"$EVIDENCE/a1-notes.json\"; grep -F \"$TEXT\" \"$EVIDENCE/a1-list.txt\" && echo \"GREP_HIT\"; echo \"TEXT=$TEXT\" >> \"$EVIDENCE/a1-data-dir.txt\"; rm -rf \"$NOTES_DATA_DIR\""}
+
+===== toolResult 2026-10-19T10:03:10.877Z =====
+data=/tmp/verify-fixture-data.DOG2J7
+added 1: 验证笔记A1-1792404190
+add_exit=0
+1	验证笔记A1-1792404190
+list_exit=0
+1	验证笔记A1-1792404190
+GREP_HIT
+
+
+===== assistant 2026-10-19T10:03:12.079Z =====
+[thinking] A-1 PASS. Now A-2 via script.
+[tool bash] {"command": "cd /tmp/orchestra-11/p2-gaps && EVIDENCE=$(cat /tmp/verify-fixture-evidence/.latest) && sh -n .agents/skills/verify-fixture/run-ac-a2-web.sh && echo \"sh -n OK\" && sh .agents/skills/verify-fixture/run-ac-a2-web.sh \"$EVIDENCE\" | tee \"$EVIDENCE/a2-result.txt\"; echo \"script_exit=$?\""}
+
+===== toolResult 2026-10-19T10:03:12.671Z =====
+sh -n OK
+PASS: AC-A2 根路径包含提交前已有的笔记
+PASS: AC-A2 提交之后列表出现新笔记
+PASS: POST / 返回 201
+PASS: POST 响应体带回新笔记
+PASS: 清理后端口已释放
+evidence=/tmp/verify-fixture-evidence/20261019-180308
+script_exit=0
+
+
+===== assistant 2026-10-19T10:03:13.924Z =====
+[tool bash] {"command": "cd /tmp/orchestra-11/p2-gaps && EVIDENCE=$(cat /tmp/verify-fixture-evidence/.latest) && cat \"$EVIDENCE/a2-form-check.txt\" \"$EVIDENCE/a2-port-owner.txt\" \"$EVIDENCE/a2-post-status.txt\" \"$EVIDENCE/a2-post-body.json\" \"$EVIDENCE/a2-server.log\" \"$EVIDENCE/a2-cleanup.txt\"; head -c 400 \"$EVIDENCE/a2-root-after.html\"; echo; ls -l \"$EVIDENCE\""}
+
+===== toolResult 2026-10-19T10:03:13.938Z =====
+form=absent
+State  Recv-Q Send-Q Local Address:Port  Peer Address:PortProcess                              
+LISTEN 0      5          127.0.0.1:38299      0.0.0.0:*    users:(("python3",pid=3703985,fd=3))
+http_code=201
+{"id": 2, "text": "网页提交的验证笔记"}listening on http://127.0.0.1:38299/
+"GET / HTTP/1.1" 200 -
+"GET / HTTP/1.1" 200 -
+"POST / HTTP/1.1" 201 -
+"GET / HTTP/1.1" 200 -
+"GET / HTTP/1.1" 200 -
+"GET /favicon.ico HTTP/1.1" 200 -
+kill pid=3703985; port=38299
+listeners_after_cleanup=0
+server_log_tail:
+"GET / HTTP/1.1" 200 -
+"GET / HTTP/1.1" 200 -
+"GET /favicon.ico HTTP/1.1" 200 -
+<!doctype html><html><head><meta charset="utf-8"><title>笔记</title></head><body><h1>笔记</h1><ul><li>网页前已有笔记</li><li>网页提交的验证笔记</li></ul></body></html>
+total 88
+-rw-rw-r-- 1 bolo bolo    46 Oct 19 18:03 a1-add.txt
+-rw-rw-r-- 1 bolo bolo    68 Oct 19 18:03 a1-data-dir.txt
+-rw-rw-r-- 1 bolo bolo    40 Oct 19 18:03 a1-list.txt
+-rw-rw-r-- 1 bolo bolo    64 Oct 19 18:03 a1-notes.json
+-rw-rw-r-- 1 bolo bolo    85 Oct 19 18:03 a2-chrome.log
+-rw-rw-r-- 1 bolo bolo   152 Oct 19 18:03 a2-cleanup.txt
+-rw-rw-r-- 1 bolo bolo    31 Oct 19 18:03 a2-cli-seed.txt
+-rw-rw-r-- 1 bolo bolo   229 Oct 19 18:03 a2-env.txt
+-rw-rw-r-- 1 bolo bolo    12 Oct 19 18:03 a2-form-check.txt
+-rw-rw-r-- 1 bolo bolo   124 Oct 19 18:03 a2-notes.json
+-rw-rw-r-- 1 bolo bolo   192 Oct 19 18:03 a2-port-owner.txt
+-rw-rw-r-- 1 bolo bolo    48 Oct 19 18:03 a2-post-body.json
+-rw-rw-r-- 1 bolo bolo   164 Oct 19 18:03 a2-post-headers.txt
+-rw-rw-r-- 1 bolo bolo    14 Oct 19 18:03 a2-post-status.txt
+-rw-rw-r-- 1 bolo bolo   243 Oct 19 18:03 a2-result.txt
+-rw-rw-r-- 1 bolo bolo   187 Oct 19 18:03 a2-root-after.html
+-rw-rw-r-- 1 bolo bolo   151 Oct 19 18:03 a2-root-before.html
+-rw-rw-r-- 1 bolo bolo 11034 Oct 19 18:03 a2-root.png
+-rw-rw-r-- 1 bolo bolo   187 Oct 19 18:03 a2-server.log
+-rw-rw-r-- 1 bolo bolo    34 Oct 19 18:03 env.txt
+
+
+===== assistant 2026-10-19T10:03:15.149Z =====
+[thinking] a2-root.png exists (11KB). Let me view it to confirm visible title and entries.
+
+Also note a2-chrome.log is 85 bytes — check it. Let me view screenshot.
+
+Then B and C.
+[tool read] {"path": "/tmp/verify-fixture-evidence/20261019-180308/a2-root.png"}
+[tool bash] {"command": "cd /tmp/orchestra-11/p2-gaps && EVIDENCE=$(cat /tmp/verify-fixture-evidence/.latest) && cat \"$EVIDENCE/a2-chrome.log\" \"$EVIDENCE/a2-post-headers.txt\""}
+
+===== toolResult 2026-10-19T10:03:15.222Z =====
+Read image file [image/png]
+[image]
+
+===== toolResult 2026-10-19T10:03:15.222Z =====
+11034 bytes written to file /tmp/verify-fixture-evidence/20261019-180308/a2-root.png
+HTTP/1.0 201 Created
+Server: BaseHTTP/0.6 Python/3.14.4
+Date: Mon, 19 Oct 2026 10:03:12 GMT
+Content-Type: application/json; charset=utf-8
+Content-Length: 48
+
+
+
+===== assistant 2026-10-19T10:03:17.129Z =====
+[thinking] Note: server header says Python/3.14.4 while python3 is 3.14.7 — minor. Interesting but not judged.
+
+Now B and C.
+[tool bash] {"command": "cd /tmp/orchestra-11/p2-gaps && EVIDENCE=$(cat /tmp/verify-fixture-evidence/.latest) && export NOTES_DATA_DIR=$(mktemp -d /tmp/verify-fixture-data.XXXXXX) && echo \"data=$NOTES_DATA_DIR\" > \"$EVIDENCE/b1-data-dir.txt\" && set +e; python3 -m notes.cli tag \"验证标签B1\" > \"$EVIDENCE/b1-tag.out\" 2>&1; e=$?; set -e; echo \"exit=$e\" >> \"$EVIDENCE/b1-tag.out\"; cat \"$EVIDENCE/b1-tag.out\"; cp \"$NOTES_DATA_DIR/tags.txt\" \"$EVIDENCE/b1-tags.txt\"; cat \"$EVIDENCE/b1-tags.txt\"; rm -rf \"$NOTES_DATA_DIR\""}
+[tool bash] {"command": "cd /tmp/orchestra-11/p2-gaps && EVIDENCE=$(cat /tmp/verify-fixture-evidence/.latest) && { echo '$ python3 -m notes.cli import-legacy'; python3 -m notes.cli import-legacy; echo \"exit=$?\"; } > \"$EVIDENCE/c1-missing.txt\" 2>&1; cat \"$EVIDENCE/c1-missing.txt\""}
+
+===== toolResult 2026-10-19T10:03:17.197Z =====
+tagged: 验证标签B1
+exit=0
+验证标签B1
+
+
+===== toolResult 2026-10-19T10:03:17.197Z =====
+$ python3 -m notes.cli import-legacy
+missing prerequisite: seed/legacy-export.json
+exit=2
+
+
+===== assistant 2026-10-19T10:03:18.956Z =====
+[tool bash] {"command": "cd /tmp/orchestra-11/p2-gaps && EVIDENCE=$(cat /tmp/verify-fixture-evidence/.latest) && export NOTES_DATA_DIR=$(mktemp -d /tmp/verify-fixture-data.XXXXXX) && SYNTH=$(mktemp -d /tmp/verify-fixture-export.XXXXXX) && printf '[\"旧笔记一\", \"旧笔记二\", \"旧笔记三\"]' > \"$SYNTH/legacy-export.json\" && set +e; NOTES_LEGACY_EXPORT=\"$SYNTH/legacy-export.json\" python3 -m notes.cli import-legacy > \"$EVIDENCE/c1-import.txt\" 2>&1; echo \"import_exit=$?\" >> \"$EVIDENCE/c1-import.txt\"; python3 -m notes.cli list > \"$EVIDENCE/c1-list.txt\" 2>&1; echo \"list_exit=$?\" >> \"$EVIDENCE/c1-list.txt\"; set -e; cat \"$EVIDENCE/c1-import.txt\" \"$EVIDENCE/c1-list.txt\"; cp \"$NOTES_DATA_DIR/notes.json\" \"$EVIDENCE/c1-notes.json\"; grep -c \"旧笔记\" \"$EVIDENCE/c1-list.txt\"; rm -rf \"$NOTES_DATA_DIR\" \"$SYNTH\""}
+
+===== toolResult 2026-10-19T10:03:19.054Z =====
+imported 3
+import_exit=0
+1	旧笔记一
+2	旧笔记二
+3	旧笔记三
+list_exit=0
+3
+
+
+===== assistant 2026-10-19T10:03:21.211Z =====
+[thinking] All sections pass. Now cleanup checks: git status, diff, deploy sha unchanged, evidence completeness, /tmp leftovers.
+
+Also check no leftover temp dirs (I removed them). And check .notes-data not created.
+
+Also verify no leftover server processes/ports.
+
+Let me finalize with a summary report file in evidence dir maybe. The recipe doesn't require a report file but self-check does. I'll write a summary? The skill says evidence files per section; I have all. Maybe add a summary line file. Keep minimal.
+
+Run final checks.
+[tool bash] {"command": "cd /tmp/orchestra-11/p2-gaps && EVIDENCE=$(cat /tmp/verify-fixture-evidence/.latest) && { echo \"== git status ==\"; git status --porcelain; echo \"== git diff --stat ==\"; git diff --stat; echo \"== deploy sha256 ==\"; sha256sum deploy/global-skills/verify-fixture/SKILL.md; echo \"== .notes-data ==\"; ls -d .notes-data 2>&1; echo \"== leftover temp data dirs ==\"; ls -d /tmp/verify-fixture-data.* /tmp/verify-fixture-export.* 2>&1; echo \"== listening python servers on 38299 ==\"; ss -ltn \"sport = :38299\" | tail -n +2 | wc -l; echo \"== evidence files ==\"; ls -l \"$EVIDENCE\" | awk '{print $5, $9}'; } | tee \"$EVIDENCE/final-checks.txt\""}
+
+===== toolResult 2026-10-19T10:03:21.244Z =====
+== git status ==
+?? .agents/
+== git diff --stat ==
+== deploy sha256 ==
+63e832cd18e6e0c802e8176a39d4b576dac6e4a28ffce0a7d1ffe211a63c5775  deploy/global-skills/verify-fixture/SKILL.md
+== .notes-data ==
+ls: cannot access '.notes-data': No such file or directory
+== leftover temp data dirs ==
+ls: cannot access '/tmp/verify-fixture-data.*': No such file or directory
+ls: cannot access '/tmp/verify-fixture-export.*': No such file or directory
+== listening python servers on 38299 ==
+0
+== evidence files ==
+ 
+46 a1-add.txt
+68 a1-data-dir.txt
+40 a1-list.txt
+64 a1-notes.json
+85 a2-chrome.log
+152 a2-cleanup.txt
+31 a2-cli-seed.txt
+229 a2-env.txt
+12 a2-form-check.txt
+124 a2-notes.json
+192 a2-port-owner.txt
+48 a2-post-body.json
+164 a2-post-headers.txt
+14 a2-post-status.txt
+243 a2-result.txt
+187 a2-root-after.html
+151 a2-root-before.html
+11034 a2-root.png
+187 a2-server.log
+37 b1-data-dir.txt
+30 b1-tag.out
+15 b1-tags.txt
+25 c1-import.txt
+57 c1-list.txt
+90 c1-missing.txt
+149 c1-notes.json
+34 env.txt
+502 final-checks.txt
+
+
+===== assistant 2026-10-19T10:03:26.166Z =====
+[thinking] Wait, one issue: the evidence dir has env.txt but the recipe's self-check says "每节跑完后核对上面取证列出的文件都存在且非空" — all present. Note the recipe also mentions `web-server.log` (script writes a2-server.log), fine.
+
+One gap worth flagging: server header says Python/3.14.4 vs python3 3.14.7 — probably venv? Not important.
+
+Another observation: the browser page has no form, so AC-A2's "在浏览器里提交" part not verified — matches known gap.
+
+Also worth noting something: the deploy copy differs from .agents copy, but that's expected: deploy is a fixed stand-in; sha matches 63e832cd start.
+
+Now report concisely in Chinese. Include results per AC and evidence path. Mention the missing-form gap and C1 synthetic data limitation.
+
+Should I also add a summary file? Not required. Keep response short per instructions (电报文, only payload). But multi-step reasoning allowed. Report:
+
+- 4 判据结果
+- 数据目录/端口/清理
+- 缺口
+- 证据路径
+- git 状态
+
+Keep it tight.
+验收跑完, 4 条判据 3 条通过, 1 条只验了一半 (缺表单, 见下).
+
+结果
+- AC-A1 通过: `add` 输出 `added 1: 验证笔记A1-1792404190`, 退出码 0; `list` 一行 `1\t<同文字>`, grep 命中; `notes.json` 同文字.
+- AC-A2 通过 (能验的部分): 根路径 HTML 有 `<h1>笔记</h1>` + `<ul>`, 提交前含 "网页前已有笔记"; `POST /` 返回 `HTTP/1.0 201 Created`, body `{"id": 2, "text": "网页提交的验证笔记"}`; 二次 GET 两条都在; chrome headless 截图可见标题与两条条目. 但页面 `form=absent`, 没有输入框/按钮, 所以 "在浏览器里提交" 这半句做不了, 提交只能走 curl.
+- AC-B1 通过: 输出恰一行 `tagged: 验证标签B1`, 退出码 0, `tags.txt` 含该名.
+- AC-C1 通过 (仅流程): `imported 3` 退出码 0, `list` 三行旧笔记一/二/三, `grep -c` = 3. 用的是我手写的同格式临时 JSON, 真实 `seed/legacy-export.json` 仓库里没有, 上游真实数据这部分仍未验. 缺文件时行为也对: stderr `missing prerequisite: seed/legacy-export.json`, 退出码 2.
+
+环境与清理
+- python3 3.14.7, HEAD 4057bb5. 每节独立临时数据目录, 已全部 rm; 项目内没生成 `.notes-data`.
+- 网页实例端口 38299, `ss` 显示 python3 pid=3703985, 清理后监听数 0, 截图 11KB 正常.
+- 一处小出入: 服务响应头写 `Python/3.14.4`, 而 python3 是 3.14.7 (不影响判据, 记录在此).
+
+改动边界
+- `git status --porcelain` 只有 `?? .agents/`; `git diff --stat` 空; 全程未改产品代码.
+- `deploy/global-skills/verify-fixture/SKILL.md` sha256 仍 `63e832cd18e6...`, 未变.
+
+证据 (27 个文件, 均非空): `/tmp/verify-fixture-evidence/20261019-180308/`
+关键件: `a1-add.txt` `a1-list.txt` `a1-notes.json` `a2-root-before.html` `a2-post-headers.txt` `a2-post-body.json` `a2-root-after.html` `a2-root.png` `a2-form-check.txt` `a2-port-owner.txt` `b1-tag.out` `b1-tags.txt` `c1-missing.txt` `c1-import.txt` `c1-list.txt` `final-checks.txt`
