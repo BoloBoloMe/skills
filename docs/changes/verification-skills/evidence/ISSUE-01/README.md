@@ -5,7 +5,7 @@
 - 待测源文件: `workflow/verify-change/SKILL.md`, 本工作树, 分支 `issue/01`.
 - 基线提交: `ec9d55f` (此时该目录尚不存在, 用于第一条失败演练).
 - 演练实际加载的内容与最终提交一致, md5 `6851c67d67f1001a0c0d3d93a9e3418c`.
-  失败演练另有一版只有判据规则、没有版本前提与证据目录规则的中间稿, md5 `f0e8aa0d4a396388708f9e55f1cae2e8`, 内容见 `incidents/frontmatter-conflict/SKILL-v1-broken-frontmatter.md` (该文件只有 description 行不同, 正文即本版 v1 正文).
+  失败演练另有一版只有判据规则, 没有版本前提与证据目录规则的中间稿, md5 `f0e8aa0d4a396388708f9e55f1cae2e8`, 内容见 `incidents/frontmatter-conflict/SKILL-v1-broken-frontmatter.md` (该文件只有 description 行不同, 正文即本版 v1 正文).
 - 宿主: Ubuntu 26.04 LTS (x86_64); herdr 0.9.4; pi 1.3.0; python3 3.14.7.
 - 模型与深度: `cli/deepseek-v4.1-flash-expires-on-0910`, thinking `high`.
 - 启动命令: `herdr agent start <会话名> --kind pi --pane <窗格ID> -- --model cli/deepseek-v4.1-flash-expires-on-0910 --thinking high -a`.
