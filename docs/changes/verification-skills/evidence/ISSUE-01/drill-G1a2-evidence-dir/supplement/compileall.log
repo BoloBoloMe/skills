@@ -1,0 +1,2 @@
+$ python3 -m compileall -q greet.py
+exit=0

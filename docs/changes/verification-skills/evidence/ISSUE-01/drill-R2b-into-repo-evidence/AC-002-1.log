@@ -1,0 +1,9 @@
+# AC-002-1 大声问候 (目标提交 612f1ea, HEAD 导出树 /tmp/verify-612f1ea)
+# 时间: 2026-10-19T17:52:39+08:00
+# 命令: python3 greet.py --name Ada --shout
+--- stdout+stderr ---
+Hello, Ada!
+--- 退出码: 0 ---
+--- 实际输出字节(od): ---
+0000000   H   e   l   l   o   ,       A   d   a   !  \n
+0000014

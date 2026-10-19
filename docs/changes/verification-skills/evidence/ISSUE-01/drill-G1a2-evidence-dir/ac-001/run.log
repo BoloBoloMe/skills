@@ -1,0 +1,4 @@
+exit=0
+stdout_raw:
+Hello, Ada!$
+stderr_raw:
