@@ -1,0 +1,111 @@
+
+=== repository=/tmp/orchestra-07/drill-ts003-wide ===
+$ rg --files --hidden --no-ignore -g \!\*\*/.git/\*\* -g \!\*\*/.agents/\*\* -g \!\*\*/.venv/\*\* -g \!\*\*/node_modules/\*\* -g \!\*\*/__pycache__/\*\* -g \!\*\*/var/\*\* .
+./.gitignore
+./README.md
+./amountlib/__init__.py
+./amountlib/core.py
+./amountlib/legacy.py
+./pyproject.toml
+./db/schema.sql
+./db/seed.py
+./app/__init__.py
+./app/clamp.py
+./app/legacy_sync.py
+./app/orders.py
+./scripts/dump_orders.py
+exit_code=0
+
+$ rg -n --hidden --no-ignore -g \!\*\*/.git/\*\* -g \!\*\*/.agents/\*\* -g \!\*\*/.venv/\*\* -g \!\*\*/node_modules/\*\* -g \!\*\*/__pycache__/\*\* -g \!\*\*/var/\*\* -e \\bamount\\b .
+./app/orders.py:12:        amount = resolve_amount(payload)
+./app/orders.py:13:        if amount is None:
+./app/orders.py:14:            amount = parse_amount(payload.get("amount_str", ""))
+./app/orders.py:15:        out.append({"id": row[0], "amount_value": None if amount is None else str(amount)})
+./amountlib/legacy.py:15:    v2 payload 直接读 amount 字段; v1 payload 没有 amount, 改查已注册的
+./amountlib/legacy.py:18:    if "amount" in payload:
+./amountlib/legacy.py:19:        return parse_amount(payload["amount"])
+./db/seed.py:9:    (1, {"schema": "v2", "amount": "12.50"}),
+exit_code=0
+
+$ rg -n --hidden --no-ignore -g \!\*\*/.git/\*\* -g \!\*\*/.agents/\*\* -g \!\*\*/.venv/\*\* -g \!\*\*/node_modules/\*\* -g \!\*\*/__pycache__/\*\* -g \!\*\*/var/\*\* -e read_orders\|resolve_amount\|parse_amount\|register_legacy_formatter\|amount_str .
+./db/seed.py:10:    (2, {"schema": "v1", "amount_str": "9.99"}),
+./db/seed.py:11:    (3, {"schema": "v1", "amount_str": ""}),
+./amountlib/__init__.py:1:from .core import VERSION, parse_amount
+./amountlib/__init__.py:2:from .legacy import register_legacy_formatter, resolve_amount
+./amountlib/__init__.py:4:__all__ = ["VERSION", "parse_amount", "register_legacy_formatter", "resolve_amount"]
+./scripts/dump_orders.py:10:from app.orders import read_orders  # noqa: E402
+./scripts/dump_orders.py:17:    rows = read_orders(conn)
+./amountlib/core.py:7:def parse_amount(raw):
+./amountlib/legacy.py:2:from .core import parse_amount
+./amountlib/legacy.py:7:def register_legacy_formatter(field, formatter):
+./amountlib/legacy.py:12:def resolve_amount(payload):
+./amountlib/legacy.py:16:    amount_str 格式化函数. 没有注册时返回 None.
+./amountlib/legacy.py:19:        return parse_amount(payload["amount"])
+./amountlib/legacy.py:20:    formatter = _FORMATTERS.get("amount_str")
+./amountlib/legacy.py:23:    return formatter(payload.get("amount_str"))
+./app/orders.py:4:from amountlib import parse_amount, resolve_amount
+./app/orders.py:7:def read_orders(conn):
+./app/orders.py:12:        amount = resolve_amount(payload)
+./app/orders.py:14:            amount = parse_amount(payload.get("amount_str", ""))
+exit_code=0
+
+$ rg -n --hidden --no-ignore -g \!\*\*/.git/\*\* -g \!\*\*/.agents/\*\* -g \!\*\*/.venv/\*\* -g \!\*\*/node_modules/\*\* -g \!\*\*/__pycache__/\*\* -g \!\*\*/var/\*\* -e orders\[.\]export\[.\]json\|dump_orders\|JSON\[.\]parse\|json\[.\]loads\|readFileSync\|\\brows\\b\|stdout\|jq\|stdin\|process\[.\]argv\|ARCHIVE\|orders_archive .
+./app/legacy_sync.py:3:本地不可运行: 需要 orders_archive 表与 ARCHIVE_TOKEN, 且归档服务只在生产网内可达.
+./app/legacy_sync.py:7:ARCHIVE_URL = "https://archive.example.invalid/orders"
+./app/legacy_sync.py:11:    token = os.environ.get("ARCHIVE_TOKEN")
+./app/legacy_sync.py:13:        raise RuntimeError("缺 ARCHIVE_TOKEN, 本地无法推送归档")
+./app/legacy_sync.py:14:    rows = conn.execute("SELECT id, payload FROM orders_archive").fetchall()
+./app/legacy_sync.py:15:    return {"url": ARCHIVE_URL, "pushed": len(rows)}
+./db/seed.py:27:    print(f"seeded {DB} with {len(ROWS)} rows")
+./app/orders.py:8:    rows = conn.execute("SELECT id, payload FROM orders ORDER BY id").fetchall()
+./app/orders.py:10:    for row in rows:
+./app/orders.py:11:        payload = json.loads(row[1])
+./scripts/dump_orders.py:12:OUT = ROOT / "var" / "orders.export.json"
+./scripts/dump_orders.py:17:    rows = read_orders(conn)
+./scripts/dump_orders.py:19:    OUT.write_text(json.dumps({"schema": "orders-export/2", "rows": rows}, ensure_ascii=False, indent=2))
+./scripts/dump_orders.py:20:    print(json.dumps(rows, ensure_ascii=False))
+exit_code=0
+
+$ rg -n --hidden --no-ignore -g \!\*\*/.git/\*\* -g \!\*\*/.agents/\*\* -g \!\*\*/.venv/\*\* -g \!\*\*/node_modules/\*\* -g \!\*\*/__pycache__/\*\* -g \!\*\*/var/\*\* -e schema\|orders-export\|amount_value .
+./db/seed.py:9:    (1, {"schema": "v2", "amount": "12.50"}),
+./db/seed.py:10:    (2, {"schema": "v1", "amount_str": "9.99"}),
+./db/seed.py:11:    (3, {"schema": "v1", "amount_str": ""}),
+./db/seed.py:20:    conn.executescript(pathlib.Path(__file__).resolve().parent.joinpath("schema.sql").read_text())
+./amountlib/legacy.py:1:"""amountlib 2.4.0: schema v1 payload 的兼容分支."""
+./app/orders.py:15:        out.append({"id": row[0], "amount_value": None if amount is None else str(amount)})
+./scripts/dump_orders.py:19:    OUT.write_text(json.dumps({"schema": "orders-export/2", "rows": rows}, ensure_ascii=False, indent=2))
+exit_code=0
+
+
+=== repository=/tmp/orchestra-07/orders-consumer ===
+$ rg --files --hidden --no-ignore -g \!\*\*/.git/\*\* -g \!\*\*/.agents/\*\* -g \!\*\*/.venv/\*\* -g \!\*\*/node_modules/\*\* -g \!\*\*/__pycache__/\*\* -g \!\*\*/var/\*\* .
+./README.md
+./.gitignore
+./src/ledger.js
+./src/run.sh
+./package.json
+exit_code=0
+
+$ rg -n --hidden --no-ignore -g \!\*\*/.git/\*\* -g \!\*\*/.agents/\*\* -g \!\*\*/.venv/\*\* -g \!\*\*/node_modules/\*\* -g \!\*\*/__pycache__/\*\* -g \!\*\*/var/\*\* -e \\bamount\\b .
+./src/ledger.js:7:  if (row.amount === null) {
+./src/ledger.js:11:  total += Number(row.amount);
+./README.md:3:读取 payout-service 导出的订单 JSON, 按 amount 汇总账目.
+exit_code=0
+
+$ rg -n --hidden --no-ignore -g \!\*\*/.git/\*\* -g \!\*\*/.agents/\*\* -g \!\*\*/.venv/\*\* -g \!\*\*/node_modules/\*\* -g \!\*\*/__pycache__/\*\* -g \!\*\*/var/\*\* -e read_orders\|resolve_amount\|parse_amount\|register_legacy_formatter\|amount_str .
+exit_code=1
+
+$ rg -n --hidden --no-ignore -g \!\*\*/.git/\*\* -g \!\*\*/.agents/\*\* -g \!\*\*/.venv/\*\* -g \!\*\*/node_modules/\*\* -g \!\*\*/__pycache__/\*\* -g \!\*\*/var/\*\* -e orders\[.\]export\[.\]json\|dump_orders\|JSON\[.\]parse\|json\[.\]loads\|readFileSync\|\\brows\\b\|stdout\|jq\|stdin\|process\[.\]argv\|ARCHIVE\|orders_archive .
+./src/ledger.js:3:const rows = JSON.parse(fs.readFileSync(process.argv[2], "utf8"));
+./src/ledger.js:6:for (const row of rows) {
+./README.md:4:生产上这份 JSON 由 payout-service 的 scripts/dump_orders.py 生成.
+exit_code=0
+
+$ rg -n --hidden --no-ignore -g \!\*\*/.git/\*\* -g \!\*\*/.agents/\*\* -g \!\*\*/.venv/\*\* -g \!\*\*/node_modules/\*\* -g \!\*\*/__pycache__/\*\* -g \!\*\*/var/\*\* -e schema\|orders-export\|amount_value .
+exit_code=1
+
+
+=== exact bounded absence assertions: consumer schema/new fields ===
+$ rg -n --hidden --no-ignore -g \!\*\*/.git/\*\* -g \!\*\*/.agents/\*\* -g \!\*\*/.venv/\*\* -g \!\*\*/node_modules/\*\* -g \!\*\*/__pycache__/\*\* -g \!\*\*/var/\*\* -e schema\|orders-export\|amount_value .
+exit_code=1
+PASS: bounded search had no schema/new-field hits; this says nothing about production or other repositories.

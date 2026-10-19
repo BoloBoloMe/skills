@@ -1,0 +1,58 @@
+{
+  "snapshot": "base",
+  "python": "3.14.4 (main, Aug 20 2026, 10:41:58) [GCC 15.2.0]",
+  "sqlite": "3.46.1",
+  "amountlib_version": "2.4.0",
+  "amountlib_path": "/tmp/orchestra-07/out/ts003-wide-work/router-a/base/amountlib/__init__.py",
+  "read_orders": [
+    {
+      "id": 1,
+      "amount": "12.50"
+    },
+    {
+      "id": 2,
+      "amount": "9.99"
+    },
+    {
+      "id": 3,
+      "amount": null
+    }
+  ],
+  "resolve_calls": [
+    {
+      "payload": {
+        "schema": "v2",
+        "amount": "12.50"
+      },
+      "result": "12.50"
+    },
+    {
+      "payload": {
+        "schema": "v1",
+        "amount_str": "9.99"
+      },
+      "result": null
+    },
+    {
+      "payload": {
+        "schema": "v1",
+        "amount_str": ""
+      },
+      "result": null
+    }
+  ],
+  "fallback_calls": [
+    {
+      "input": "9.99",
+      "result": "9.99"
+    },
+    {
+      "input": "",
+      "result": null
+    }
+  ],
+  "formatters": {},
+  "schema_key_dispatch": false,
+  "invalid_error": "无法解析金额: 'not-an-amount'",
+  "assertions": "PASS"
+}

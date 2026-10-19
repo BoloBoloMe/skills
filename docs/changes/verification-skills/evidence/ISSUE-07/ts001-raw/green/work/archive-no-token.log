@@ -1,0 +1,7 @@
+Traceback (most recent call last):
+  File "<string>", line 1, in <module>
+    import sqlite3; from app.legacy_sync import push_to_archive; push_to_archive(sqlite3.connect(':memory:'))
+                                                                 ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/orchestra-07/out/green-ts001/head-tree/app/legacy_sync.py", line 13, in push_to_archive
+    raise RuntimeError("缺 ARCHIVE_TOKEN, 本地无法推送归档")
+RuntimeError: 缺 ARCHIVE_TOKEN, 本地无法推送归档

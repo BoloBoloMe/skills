@@ -1,0 +1,400 @@
+ - 92     assert old_edge["total"] == new_edge["total"] == 22.49, (old_edge, new_edge)                                                                           │
+ + 93     assert old_edge["total"] == new_edge["total"], (old_edge, new_edge)                                                                                    │
+ + 94     assert abs(old_edge["total"] - 22.49) < 1e-9, old_edge                                                                                                 │
+   93     assert 6 not in old_edge["missing"] and 6 in new_edge["missing"], (old_edge, new_edge)                                                                 │
+   94     assert 10 in old_edge["missing"] and 10 not in new_edge["missing"], (old_edge, new_edge)                                                               │
+   95                                                                                                                                                            │
+   96     # 3) v1 坏文本: 旧版导出 'abc' -> 消费者 total 变 null; 新版导出直接失败, 文件不更新                                                                   │
+      ...                                                                                                                                                        │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ $ cd /tmp/orchestra-07/out/ts002-work && PYTHONPATH=/tmp/orchestra-07/drill-ts002 uv run --no-project python proof_consumer.py; echo "EXIT=$?"                  │
+                                                                                                                                                                 │
+ ... (13 earlier lines, ctrl+o/alt+o to expand)                                                                                                                  │
+   File "/tmp/orchestra-07/out/ts002-work/proof_consumer.py", line 93, in main                                                                                   │
+     assert old_edge["total"] == new_edge["total"], (old_edge, new_edge)                                                                                         │
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^                                                                                                               │
+ AssertionError: ({'total': 22.490000000000002, 'missing': [3, 10]}, {'total': 32.480000000000004, 'missing': [3, 6]})                                           │
+ EXIT=1                                                                                                                                                          │
+                                                                                                                                                                 │
+ Took 0.3s                                                                                                                                                       │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ Thinking...                                                                                                                                                     │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ edit /tmp/orchestra-07/out/ts002-work/proof_consumer.py                                                                                                         │
+                                                                                                                                                                 │
+      ...                                                                                                                                                        │
+   89         print(f"edge {impl} ledger:", json.dumps(run_ledger(p), ensure_ascii=False))                                                                       │
+   90     old_edge = run_ledger(WORK / "export_edge_old.json")                                                                                                   │
+   91     new_edge = run_ledger(WORK / "export_edge_new.json")                                                                                                   │
+   92     print("edge diff:", {"old": old_edge, "new": new_edge})                                                                                                │
+ - 93     assert old_edge["total"] == new_edge["total"], (old_edge, new_edge)                                                                                    │
+ + 93     # id=10 (v2 amount=null + amount_str='9.99'): 旧版算缺失, 新版把它算进总额                                                                             │
+   94     assert abs(old_edge["total"] - 22.49) < 1e-9, old_edge                                                                                                 │
+ + 95     assert abs(new_edge["total"] - 32.48) < 1e-9, new_edge                                                                                                 │
+   95     assert 6 not in old_edge["missing"] and 6 in new_edge["missing"], (old_edge, new_edge)                                                                 │
+   96     assert 10 in old_edge["missing"] and 10 not in new_edge["missing"], (old_edge, new_edge)                                                               │
+ - 97                                                                                                                                                            │
+   98     # 3) v1 坏文本: 旧版导出 'abc' -> 消费者 total 变 null; 新版导出直接失败, 文件不更新                                                                   │
+   99     stale = WORK / "export_stale.json"                                                                                                                     │
+  100     stale.write_text(json.dumps([{"id": 1, "amount": "12.50"}], ensure_ascii=False))                                                                       │
+  101     print("stale before:", stale.read_text())                                                                                                              │
+      ...                                                                                                                                                        │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ Thinking...                                                                                                                                                     │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ $ cd /tmp/orchestra-07/out/ts002-work && PYTHONPATH=/tmp/orchestra-07/drill-ts002 uv run --no-project python proof_consumer.py; echo "EXIT=$?"                  │
+                                                                                                                                                                 │
+ ... (13 earlier lines, ctrl+o/alt+o to expand)                                                                                                                  │
+ new bad export stderr tail: ["ValueError: 无法解析金额: 'abc'"]                                                                                                 │
+ stale after (new 失败, 文件没动): [{"id": 1, "amount": "12.50"}]                                                                                                │
+                                                                                                                                                                 │
+ OK: 消费者侧账目变化已复现                                                                                                                                      │
+ EXIT=0                                                                                                                                                          │
+                                                                                                                                                                 │
+ Took 0.4s                                                                                                                                                       │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ Thinking...                                                                                                                                                     │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ $ cd /tmp/orchestra-07/out/ts002-work && PYTHONPATH=/tmp/orchestra-07/drill-ts002 uv run --no-project python -c "                                               │
+ import importlib.util                                                                                                                                           │
+ print('no PYTHONPATH:', importlib.util.find_spec('amountlib'))                                                                                                  │
+ " ; cd /tmp && PYTHONPATH=/tmp/orchestra-07/drill-ts002 uv run --no-project python -c "                                                                         │
+ import importlib.util                                                                                                                                           │
+ s=importlib.util.find_spec('amountlib'); print('with PYTHONPATH:', s.origin if s else None)                                                                     │
+ "; echo "=== consumer grep ==="; grep -rn "format_amount_str\|LEGACY_AMOUNT_KEY\|amount_str" /tmp/orchestra-07/orders-consumer --exclude-dir=.git || echo       │
+ "(consumer: 无命中)"                                                                                                                                            │
+                                                                                                                                                                 │
+ no PYTHONPATH: ModuleSpec(name='amountlib', loader=<_frozen_importlib_external.SourceFileLoader object at 0x7a25be157130>,                                      │
+ origin='/tmp/orchestra-07/drill-ts002/amountlib/__init__.py', submodule_search_locations=['/tmp/orchestra-07/drill-ts002/amountlib'])                           │
+ with PYTHONPATH: /tmp/orchestra-07/drill-ts002/amountlib/__init__.py                                                                                            │
+ === consumer grep ===                                                                                                                                           │
+ (consumer: 无命中)                                                                                                                                              │
+                                                                                                                                                                 │
+ Took 0.0s                                                                                                                                                       │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ $ cd /tmp/orchestra-07/drill-ts002 && echo "=== 仓库内符号检索 (排除 .git) ==="; grep -rn --exclude-dir=.git -e format_amount_str -e LEGACY_AMOUNT_KEY . || echo│
+ "(无命中)"; echo "=== HEAD 里 amount_str 的所有出现 ==="; grep -rn --exclude-dir=.git "amount_str" .; echo "=== 工作树状态 ==="; git status --short; echo "===  │
+ 有无生产库文件 ==="; find . -name "*.db" -o -name "*.sqlite*" | grep -v .venv || echo "(无)"                                                                    │
+                                                                                                                                                                 │
+ ... (9 earlier lines, ctrl+o/alt+o to expand)                                                                                                                   │
+ ./amountlib/legacy.py:20:    formatter = _FORMATTERS.get("amount_str")                                                                                          │
+ ./amountlib/legacy.py:23:    return formatter(payload.get("amount_str"))                                                                                        │
+ === 工作树状态 ===                                                                                                                                              │
+ === 有无生产库文件 ===                                                                                                                                          │
+ (无)                                                                                                                                                            │
+                                                                                                                                                                 │
+ Took 0.0s                                                                                                                                                       │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ Thinking...                                                                                                                                                     │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ $ cd /tmp/orchestra-07/drill-ts002 && find . -name "__pycache__" -type d -print -exec rm -rf {} + 2>/dev/null; echo "--- after"; find . -name "__pycache__" -o  │
+ -name "*.pyc" | head; git status --short; echo "clean?"                                                                                                         │
+                                                                                                                                                                 │
+ ./app/__pycache__                                                                                                                                               │
+ ./amountlib/__pycache__                                                                                                                                         │
+ --- after                                                                                                                                                       │
+ clean?                                                                                                                                                          │
+                                                                                                                                                                 │
+ Took 0.0s                                                                                                                                                       │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ $ cd /tmp && env -u PYTHONPATH uv run --no-project python -c "import importlib.util as u; print('site-packages amountlib:', u.find_spec('amountlib'))"; echo    │
+ "=== 全盘 amountlib 目录 ==="; find / -xdev -type d -name amountlib -not -path "*/proc/*" 2>/dev/null | head                                                    │
+                                                                                                                                                                 │
+ 用户拒绝全盘搜索: find -> /                                                                                                                                     │
+                                                                                                                                                                 │
+ Took 3m 30s                                                                                                                                                     │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ Thinking...                                                                                                                                                     │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ $ cd /tmp && env -u PYTHONPATH uv run --no-project python -c "import importlib.util as u; print('amountlib in interpreter env:', u.find_spec('amountlib'))";    │
+ echo "=== 常见安装位置 ==="; ls -d /usr/lib/python3*/site-packages/amountlib /usr/local/lib/python3*/site-packages/amountlib                                    │
+ /usr/local/lib/python3*/dist-packages/amountlib /home/bolo/.local/lib/python3*/site-packages/amountlib                                                          │
+ /home/bolo/.local/share/uv/python/*/lib/python3*/site-packages/amountlib 2>/dev/null; find /home/bolo/.local/share/uv/python /usr/lib/python3* /usr/local/lib   │
+ -maxdepth 6 -type d -name amountlib 2>/dev/null | head; echo "(end)"                                                                                            │
+                                                                                                                                                                 │
+ amountlib in interpreter env: None                                                                                                                              │
+ === 常见安装位置 ===                                                                                                                                            │
+ (end)                                                                                                                                                           │
+                                                                                                                                                                 │
+ Took 0.0s                                                                                                                                                       │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ Thinking...                                                                                                                                                     │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ $ cd /tmp/orchestra-07/drill-ts002 && git remote -v; echo "(remotes above)"; git branch -a; echo "=== 消费者仓库 remote ==="; git -C                            │
+ /tmp/orchestra-07/orders-consumer remote -v; echo "(end)"                                                                                                       │
+                                                                                                                                                                 │
+ ... (3 earlier lines, ctrl+o/alt+o to expand)                                                                                                                   │
+ * master                                                                                                                                                        │
+   remotes/origin/HEAD -> origin/master                                                                                                                          │
+   remotes/origin/master                                                                                                                                         │
+ === 消费者仓库 remote ===                                                                                                                                       │
+ (end)                                                                                                                                                           │
+                                                                                                                                                                 │
+ Took 0.0s                                                                                                                                                       │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ $ cd /tmp/orchestra-07/out/ts002-work && sed -n '25,45p' proof_orders_compare.py                                                                                │
+                                                                                                                                                                 │
+ ... (16 earlier lines, ctrl+o/alt+o to expand)                                                                                                                  │
+     if impl == "old":                                                                                                                                           │
+         import old_orders  # 由 `git show HEAD~1:app/orders.py` 生成                                                                                            │
+                                                                                                                                                                 │
+         return old_orders                                                                                                                                       │
+     from app.orders import read_orders  # noqa: PLC0415                                                                                                         │
+                                                                                                                                                                 │
+ Took 0.0s                                                                                                                                                       │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ Thinking...                                                                                                                                                     │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ $ cd /tmp/orchestra-07/out/ts002-work && sed -n '100,140p' proof_orders_compare.py                                                                              │
+                                                                                                                                                                 │
+ ... (28 earlier lines, ctrl+o/alt+o to expand)                                                                                                                  │
+     print("\nOK: 比较完成, 上面的差异项全部成立")                                                                                                               │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ if __name__ == "__main__":                                                                                                                                      │
+     main()                                                                                                                                                      │
+                                                                                                                                                                 │
+ Took 0.0s                                                                                                                                                       │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ edit /tmp/orchestra-07/out/ts002-work/proof_orders_compare.py                                                                                                   │
+                                                                                                                                                                 │
+      ...                                                                                                                                                        │
+   32     9: {"schema": "v1", "amount_str": "9,99"},                                                                                                             │
+   33     10: {"schema": "v2", "amount": None, "amount_str": "9.99"},                                                                                            │
+   34     11: {"schema": "v2", "amount": "", "amount_str": ""},                                                                                                  │
+   35     12: {"schema": "v2", "amount": "abc"},                                                                                                                 │
+ + 36     13: {"schema": "v1", "amount_str": 12.5},                                                                                                              │
+ + 37     14: {"schema": "v2", "amount": 12.5},                                                                                                                  │
+   36 }                                                                                                                                                          │
+   37 SEED_IDS = (1, 2, 3)                                                                                                                                       │
+   38                                                                                                                                                            │
+   39                                                                                                                                                            │
+      ...                                                                                                                                                        │
+  112     # 纯数字文本只差前导 0                                                                                                                                 │
+  113     assert table[7] == ("012.50", "12.50"), table[7]                                                                                                       │
+  114     # 两边都会抛的情形                                                                                                                                     │
+  115     assert table[12] == ("ERROR ValueError", "ERROR ValueError"), table[12]                                                                                │
+ +118     # 非字符串 amount: 新旧都在 .strip() 上炸, 不是本次变更引起                                                                                            │
+ +119     assert table[13] == table[14] == ("ERROR AttributeError", "ERROR AttributeError"), (table[13], table[14])                                              │
+  116                                                                                                                                                            │
+  117     # 整批语义: 一条坏数据让整次导出失败, 旧版不会.                                                                                                        │
+ -118     # 12 号 (v2 amount='abc') 新旧都炸, 与本次变更无关, 排除掉看剩下 11 行.                                                                                │
+ -119     batch_ids = [i for i in CASES if i != 12]                                                                                                              │
+ +122     # 12-14 号新旧都炸, 与本次变更无关, 只看 1-11.                                                                                                         │
+ +123     batch_ids = list(range(1, 12))                                                                                                                         │
+  120     old_all = child("old", batch_ids)                                                                                                                      │
+  121     new_all = child("new", batch_ids)                                                                                                                      │
+  122     print("\n整批 11 行 (排除新旧都炸的 12 号):")                                                                                                          │
+  123     print("  old:", json.dumps(old_all, ensure_ascii=False)[:220])                                                                                         │
+      ...                                                                                                                                                        │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ $ cd /tmp/orchestra-07/out/ts002-work && PYTHONPATH=/tmp/orchestra-07/drill-ts002 uv run --no-project python proof_orders_compare.py; echo "EXIT=$?"; find      │
+ /tmp/orchestra-07/drill-ts002 -name "__pycache__" -type d -exec rm -rf {} + 2>/dev/null; true                                                                   │
+                                                                                                                                                                 │
+ ... (18 earlier lines, ctrl+o/alt+o to expand)                                                                                                                  │
+ {"id": 6, "amount": ""}, {"id": 7, "amount": "012.50"}, {"id": 8, "amo                                                                                          │
+   new: {"error": "ValueError: 无法解析金额: 'abc'"}                                                                                                             │
+                                                                                                                                                                 │
+ OK: 比较完成, 上面的差异项全部成立                                                                                                                              │
+ EXIT=0                                                                                                                                                          │
+                                                                                                                                                                 │
+ Took 0.7s                                                                                                                                                       │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ Thinking...                                                                                                                                                     │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ write /tmp/orchestra-07/out/ts002-work/repro_break.py                                                                                                           │
+                                                                                                                                                                 │
+ """最小复现: HEAD 的两处行为变化, 一条命令跑完.                                                                                                                 │
+                                                                                                                                                                 │
+ 运行:                                                                                                                                                           │
+   cd /tmp/orchestra-07/out/ts002-work                                                                                                                           │
+   PYTHONPATH=/tmp/orchestra-07/drill-ts002 uv run --no-project python repro_break.py                                                                            │
+                                                                                                                                                                 │
+ 复现 1: v1 行 amount_str='abc', HEAD 让整次导出抛 ValueError, 基线版本导出 'abc'.                                                                               │
+ 复现 2: v2 行 amount=null 且残留 amount_str='9.99', HEAD 凭空多出金额 9.99.                                                                                     │
+ """                                                                                                                                                             │
+ import json                                                                                                                                                     │
+ ... (22 more lines, 32 total, ctrl+o/alt+o to expand)                                                                                                           │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ $ cd /tmp/orchestra-07/out/ts002-work && PYTHONPATH=/tmp/orchestra-07/drill-ts002 uv run --no-project python repro_break.py; echo "EXIT=$?"; find               │
+ /tmp/orchestra-07/drill-ts002 -name "__pycache__" -type d -exec rm -rf {} + 2>/dev/null; cd /tmp/orchestra-07/drill-ts002 && git status --short && echo "repo   │
+ clean"                                                                                                                                                          │
+                                                                                                                                                                 │
+ 1) HEAD 整次导出失败: 无法解析金额: 'abc'                                                                                                                       │
+ 2) HEAD 导出的金额: 9.99 (基线版本为 None)                                                                                                                      │
+ EXIT=0                                                                                                                                                          │
+ repo clean                                                                                                                                                      │
+                                                                                                                                                                 │
+ Took 0.0s                                                                                                                                                       │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ Thinking...                                                                                                                                                     │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ write /tmp/orchestra-07/out/ts002-report.md                                                                                                                     │
+                                                                                                                                                                 │
+ # ts002 影响范围交接: 删除 amount_str 格式化符号, 改用 parse_amount 回退                                                                                        │
+                                                                                                                                                                 │
+ 结论先给: 三条已知订单行 (db/seed.py) 的导出结果和消费者账目完全不变, 可以合入.                                                                                 │
+ 但变更放宽和收紧了两种 payload 形状: 非数字的 v1 amount_str 会让整次导出失败; v2 里 amount=null 但残留 amount_str 的行会凭空多出金额. 本地没有生产库, 无法判断这│
+ 两类行有多少条. 你提的第二个关键事实 (归档服务丢掉没有 amount 的订单) 本地无法证实, 而且仓库里没有把导出 JSON 送进归档的代码路径.                               │
+                                                                                                                                                                 │
+ ## 1. 做了什么                                                                                                                                                  │
+                                                                                                                                                                 │
+ - 变更: 04ddf93 `删除旧的 amount_str 格式化符号, 改用 parse_amount 回退`, 只有 app/orders.py 一个文件, +5/-14. 基线 011ec25. 仓库一共 2 个提交, 无 PR 或分支材料│
+ 可取 (git remote 指向 /tmp/orchestra-07/payout-service, 不在允许范围, 未读).                                                                                    │
+ - 历史定位: `git log --all --oneline -S"format_amount_str"` / `-S"LEGACY_AMOUNT_KEY"` / `-S"register_legacy_formatter"` 都只命中这两个提交; `git blame HEAD~1 --│
+ app/orders.py` 显示被删的在 app/orders.py:6-16, 由基线提交引入. 没有更早的来历.                                                                                 │
+ - 读过的代码: app/orders.py (新旧两版), app/legacy_sync.py, app/clamp.py, amountlib/{core,legacy,__init__}.py, db/seed.py, db/schema.sql,                       │
+ scripts/dump_orders.py, README.md, pyproject.toml; 消费者仓库的 README.md, package.json, src/ledger.js, src/run.sh.                                             │
+ ... (200 more lines, 210 total, ctrl+o/alt+o to expand)                                                                                                         │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ Thinking...                                                                                                                                                     │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ $ cd /tmp/orchestra-07/out && grep -nP '[\x{3001}\x{3002}\x{FF0C}\x{FF1A}\x{FF1B}\x{FF08}\x{FF09}\x{FF01}\x{FF1F}\x{201C}\x{201D}\x{2018}\x{2019}]'             │
+ ts002-report.md ts002-work/*.py | head -20; echo "---(空即合规)"; wc -l ts002-report.md; cd /tmp/orchestra-07/drill-ts002 && git status --short; echo           │
+ "repo-clean-check-done"                                                                                                                                         │
+                                                                                                                                                                 │
+ ---(空即合规)                                                                                                                                                   │
+ 210 ts002-report.md                                                                                                                                             │
+ repo-clean-check-done                                                                                                                                           │
+                                                                                                                                                                 │
+ Took 0.0s                                                                                                                                                       │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ Thinking...                                                                                                                                                     │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ $ cd /tmp/orchestra-07/out && grep -n "pyc" ts002-report.md                                                                                                     │
+                                                                                                                                                                 │
+ 13:- 说明: 探测过程中 uv 在仓库里生成过 .venv, uv.lock, __pycache__, 已全部删除; `git status --short` 现在为空, 产品代码/测试/配置未改动.                       │
+ 150:  -> (无命中, 只在我自己删除后剩下的 .pyc 里有旧字节, 已清理)                                                                                               │
+                                                                                                                                                                 │
+ Took 0.0s                                                                                                                                                       │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ $ git -C /tmp/orchestra-07/orders-consumer status --short; echo "consumer-clean-check-done"                                                                     │
+                                                                                                                                                                 │
+ consumer-clean-check-done                                                                                                                                       │
+                                                                                                                                                                 │
+ Took 0.0s                                                                                                                                                       │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ edit /tmp/orchestra-07/out/ts002-report.md                                                                                                                      │
+                                                                                                                                                                 │
+      ...                                                                                                                                                        │
+  146 - 注册副作用被移除后, 仓库内没有依赖者: 唯一 import app.orders 的是 scripts/dump_orders.py:10, 它只用 read_orders; app/legacy_sync.py 和 app/clamp.py 不碰 │
+ amountlib. 级别 3.                                                                                                                                              │
+  147 - 被删符号的调用者检索 (命令与范围如下, 排除 .git, 覆盖本仓库 HEAD 全文件和消费者仓库全文件):                                                              │
+  148   ```                                                                                                                                                      │
+  149   cd /tmp/orchestra-07/drill-ts002 && grep -rn --exclude-dir=.git -e format_amount_str -e LEGACY_AMOUNT_KEY .                                              │
+ -150   -> (无命中, 只在我自己删除后剩下的 .pyc 里有旧字节, 已清理)                                                                                              │
+ +150   -> (源码无命中; 另外报了两个我跑脚本时生成的 __pycache__/*.pyc 二进制匹配, 已删除)                                                                       │
+  151   git grep -n "format_amount_str\|LEGACY_AMOUNT_KEY" HEAD~1 -- .                                                                                           │
+  152   -> 只有 HEAD~1:app/orders.py:6,9,16, 即定义处本身                                                                                                        │
+  153   grep -rn "format_amount_str\|LEGACY_AMOUNT_KEY\|amount_str" /tmp/orchestra-07/orders-consumer --exclude-dir=.git                                         │
+  154   -> (无命中)                                                                                                                                              │
+      ...                                                                                                                                                        │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ Thinking...                                                                                                                                                     │
+                                                                                                                                                                 │
+ 报告全文: /tmp/orchestra-07/out/ts002-report.md                                                                                                                 │
+ 脚本与产物: /tmp/orchestra-07/out/ts002-work/ (5 个脚本 + old_orders.py 基线副本)                                                                               │
+ 两个仓库均未改动, git status --short 为空.                                                                                                                      │
+                                                                                                                                                                 │
+ 1. 做了什么                                                                                                                                                     │
+                                                                                                                                                                 │
+ - 读 04ddf93 (仅 app/orders.py, +5/-14) 与基线 011ec25; 仓库只有 2 个提交, 无 PR 材料. git log -S 三个符号只命中这两个提交.                                     │
+ - 读了 app/, amountlib/, db/*, scripts/dump_orders.py, 消费者 README/package.json/src/ledger.js.                                                                │
+ - 跑 4 个证明脚本 + 1 个最小复现; 逐条对比 14 种 payload 形状的新旧输出, 并接 Node 消费者算账.                                                                  │
+ - 未覆盖: 生产 orders 表 (本仓库无 *.db), 归档服务, 这两个仓库之外的消费者.                                                                                     │
+ - 探测时 uv 在仓库生成过 .venv/uv.lock/pycache, 已删净.                                                                                                         │
+                                                                                                                                                                 │
+ 实质变化两处: v1 行从 format_amount_str (strip 后原样返回字符串) 改成 parse_amount (转 Decimal, 非法抛 ValueError); 不再 import 时向 amountlib 全局 _FORMATTERS │
+ 注册, 改为显式回退.                                                                                                                                             │
+                                                                                                                                                                 │
+ 2. 关键安全事实
+
+ F1 跑的是仓库内 amountlib 2.4.0. 级别 4. amountlib.__file__ 在仓库内; 解释器环境 find_spec 为 None; 常见安装目录无副本.
+ F2 (你的事实 a) parse_amount 对 None/""/纯空白返回 None, 非数字抛 ValueError. 级别 4. amountlib/core.py:7-20. 这条保证种子行 amount_str:"" 仍导出 null.
+ F3 三条真实种子行新旧逐字段相同, 消费者 total 22.49 / missing [3] 相同. 级别 4. 这是"已知数据可合"的全部依据.
+ F4 只有这些形状会变 (级别 4): 空白串 ""→None; " 012.50 "→"12.50"; "abc"/"9,99"→ValueError; v2 amount=null + amount_str="9.99"→"9.99". v2 合法数字、v1 正常金额、
+ 数字型 amount (两版同炸) 都不变.
+ F5 被删符号在两个仓库无依赖者. 级别 3 (grep 空结果 + 唯一 import 者只用 read_orders).
+ F6 (你的事实 b) 本地到不了归档服务: 缺 ARCHIVE_TOKEN 时联网前就 RuntimeError, URL 是 .invalid 保留域. 级别 4. 但"归档丢弃无 amount 的订单"未证实. 更关键:
+ app/legacy_sync.py:14 读的是 orders_archive 表, 本仓库没有把导出 JSON 送给归档的代码. 缺口是权限和外部文档, 不是数据.
+
+ 3. 风险
+
+ R1 一条非数字 v1 amount_str 让整次导出失败, 文件不更新, 消费者静默用旧数据. 位置 app/orders.py:14 + dump_orders.py:15-20. 概率未知 (无生产库). 已复现: 新版
+ rc=1, 目标文件保持旧内容. 检查: 对生产库副本跑 dump_orders, 或先跑报告里那条 GLOB SQL 找候选.
+ R2 v2 amount=null 但残留 amount_str 的行凭空多出金额, 总额偏大且不报错. 位置 app/orders.py:12-14 (回退没区分 v1/v2). 复现: 22.49→32.48. 检查:
+ json_type(payload,'$.amount')='null' 且 amount_str 非空的行数.
+ R3 纯空白 amount_str 从 "" 变 null: 总额不变, missing 列表多出这些 id. 代价低, 除非归档把 "" 当金额, 该层未证实.
+ R4 仓库外 import 被删符号会 ImportError. 两仓库内概率 0; 仓库外未知.
+ R5 前导 0 归一 ("012.50"→"12.50"): 消费者 Number() 不变; 仅当别处按字符串比对/入库才有影响, 本范围内无此类代码.
+
+ 4. 已排除项
+
+ - 三条种子行一致 (级别 4); v2 合法金额路径未变 (级别 4); 输出结构/键名/顺序不变 (级别 3).
+ - 两边都失败的形状未变坏: v2 amount 非法→ValueError, 数字型 amount→AttributeError (级别 4).
+ - 注册副作用移除后仓库内无依赖者: 唯一 import 者是 dump_orders.py:10, 只用 read_orders (级别 3).
+ - 符号检索范围与命令已写进报告; 空结果覆盖不到: 仓库外调用方, 运行时反射拼名.
+
+ 5. 最便宜的复现
+
+ ```bash
+   cd /tmp/orchestra-07/out/ts002-work && PYTHONPATH=/tmp/orchestra-07/drill-ts002 uv run --no-project python repro_break.py
+ ```
+
+ 输出:
+
+ ```
+   1) HEAD 整次导出失败: 无法解析金额: 'abc'
+   2) HEAD 导出的金额: 9.99 (基线版本为 None)
+ ```
+
+ 脚本全文在报告第 5 节; 换用 old_orders.py 即得基线 (第 1 例导出 "abc", 第 2 例 None).
+
+ 合入建议: 先在生产库副本跑 R1/R2 两条 SQL. 都是 0 行即可合; 任一处非零, 先定非数字 amount_str 与 v2 残留 amount_str 的处理策略.
+
+──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+
+──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+/tmp/orchestra-07/drill-ts002 (master)
+↑21k ↓31k R1.0M CH99.5% $0.014 5.0%/1.0M (auto)                                                                   (cli) deepseek-v4.1-flash-expires-on-0910 • high

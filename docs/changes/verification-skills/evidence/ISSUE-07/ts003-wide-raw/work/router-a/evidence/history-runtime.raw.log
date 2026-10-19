@@ -1,0 +1,362 @@
+$ date -u; node --version; uv --version; uv run --no-project --no-managed-python --no-python-downloads python --version
+2026年 10月 19日 星期一 10:06:21 UTC
+v24.19.0
+uv 0.12.5 (x86_64-unknown-linux-gnu)
+Python 3.14.4
+
+$ git rev-parse HEAD, HEAD~1; git log; git show; git remote -v; git status --short
+e807b06ca2a9cb88413390a298f55b84d3ac7869
+04ddf931fd161baea18b0a0d315da8d41eb7cf7e
+commit e807b06ca2a9cb88413390a298f55b84d3ac7869
+Author:     drill fixture <drill@example.invalid>
+AuthorDate: Mon Oct 19 17:57:28 2026 +0800
+Commit:     drill fixture <drill@example.invalid>
+CommitDate: Mon Oct 19 17:57:28 2026 +0800
+
+    导出线格式改为 orders-export/2, 金额字段改名 amount_value
+
+commit 04ddf931fd161baea18b0a0d315da8d41eb7cf7e
+Author:     drill fixture <drill@example.invalid>
+AuthorDate: Mon Oct 19 17:39:00 2026 +0800
+Commit:     drill fixture <drill@example.invalid>
+CommitDate: Mon Oct 19 17:39:00 2026 +0800
+
+    删除旧的 amount_str 格式化符号, 改用 parse_amount 回退
+
+commit 011ec2536e0fcb750156fef546a90b1050ab4882
+Author:     drill fixture <drill@example.invalid>
+AuthorDate: Mon Oct 19 17:39:00 2026 +0800
+Commit:     drill fixture <drill@example.invalid>
+CommitDate: Mon Oct 19 17:39:00 2026 +0800
+
+    订单服务基线: amountlib 2.4.0 与 orders.payload 读取
+commit e807b06ca2a9cb88413390a298f55b84d3ac7869
+Author: drill fixture <drill@example.invalid>
+Date:   Mon Oct 19 17:57:28 2026 +0800
+
+    导出线格式改为 orders-export/2, 金额字段改名 amount_value
+
+diff --git a/app/orders.py b/app/orders.py
+index b963c6d..591c419 100644
+--- a/app/orders.py
++++ b/app/orders.py
+@@ -12,5 +12,5 @@ def read_orders(conn):
+         amount = resolve_amount(payload)
+         if amount is None:
+             amount = parse_amount(payload.get("amount_str", ""))
+-        out.append({"id": row[0], "amount": None if amount is None else str(amount)})
++        out.append({"id": row[0], "amount_value": None if amount is None else str(amount)})
+     return out
+diff --git a/scripts/dump_orders.py b/scripts/dump_orders.py
+index 2d49dc8..527d940 100644
+--- a/scripts/dump_orders.py
++++ b/scripts/dump_orders.py
+@@ -16,7 +16,7 @@ def main():
+     conn = sqlite3.connect(ROOT / "var" / "orders.db")
+     rows = read_orders(conn)
+     OUT.parent.mkdir(exist_ok=True)
+-    OUT.write_text(json.dumps(rows, ensure_ascii=False, indent=2))
++    OUT.write_text(json.dumps({"schema": "orders-export/2", "rows": rows}, ensure_ascii=False, indent=2))
+     print(json.dumps(rows, ensure_ascii=False))
+ 
+ 
+origin	/tmp/orchestra-07/payout-service (fetch)
+origin	/tmp/orchestra-07/payout-service (push)
+
+$ git log --follow -p -- app/orders.py
+commit e807b06ca2a9cb88413390a298f55b84d3ac7869
+Author: drill fixture <drill@example.invalid>
+Date:   Mon Oct 19 17:57:28 2026 +0800
+
+    导出线格式改为 orders-export/2, 金额字段改名 amount_value
+
+diff --git a/app/orders.py b/app/orders.py
+index b963c6d..591c419 100644
+--- a/app/orders.py
++++ b/app/orders.py
+@@ -12,5 +12,5 @@ def read_orders(conn):
+         amount = resolve_amount(payload)
+         if amount is None:
+             amount = parse_amount(payload.get("amount_str", ""))
+-        out.append({"id": row[0], "amount": None if amount is None else str(amount)})
++        out.append({"id": row[0], "amount_value": None if amount is None else str(amount)})
+     return out
+
+commit 04ddf931fd161baea18b0a0d315da8d41eb7cf7e
+Author: drill fixture <drill@example.invalid>
+Date:   Mon Oct 19 17:39:00 2026 +0800
+
+    删除旧的 amount_str 格式化符号, 改用 parse_amount 回退
+
+diff --git a/app/orders.py b/app/orders.py
+index 33a62ae..b963c6d 100644
+--- a/app/orders.py
++++ b/app/orders.py
+@@ -1,25 +1,16 @@
+ """订单读取: 把 orders.payload 里的金额解析出来."""
+ import json
+ 
+-from amountlib import register_legacy_formatter, resolve_amount
+-
+-LEGACY_AMOUNT_KEY = "amount_str"
+-
+-
+-def format_amount_str(raw):
+-    """v1 payload 的 amount_str 格式化: null 与空串视为没有金额."""
+-    if raw is None or raw == "":
+-        return None
+-    return raw.strip()
+-
+-
+-register_legacy_formatter(LEGACY_AMOUNT_KEY, format_amount_str)
++from amountlib import parse_amount, resolve_amount
+ 
+ 
+ def read_orders(conn):
+     rows = conn.execute("SELECT id, payload FROM orders ORDER BY id").fetchall()
+     out = []
+     for row in rows:
+-        amount = resolve_amount(json.loads(row[1]))
++        payload = json.loads(row[1])
++        amount = resolve_amount(payload)
++        if amount is None:
++            amount = parse_amount(payload.get("amount_str", ""))
+         out.append({"id": row[0], "amount": None if amount is None else str(amount)})
+     return out
+
+commit 011ec2536e0fcb750156fef546a90b1050ab4882
+Author: drill fixture <drill@example.invalid>
+Date:   Mon Oct 19 17:39:00 2026 +0800
+
+    订单服务基线: amountlib 2.4.0 与 orders.payload 读取
+
+diff --git a/app/orders.py b/app/orders.py
+new file mode 100644
+index 0000000..33a62ae
+--- /dev/null
++++ b/app/orders.py
+@@ -0,0 +1,25 @@
++"""订单读取: 把 orders.payload 里的金额解析出来."""
++import json
++
++from amountlib import register_legacy_formatter, resolve_amount
++
++LEGACY_AMOUNT_KEY = "amount_str"
++
++
++def format_amount_str(raw):
++    """v1 payload 的 amount_str 格式化: null 与空串视为没有金额."""
++    if raw is None or raw == "":
++        return None
++    return raw.strip()
++
++
++register_legacy_formatter(LEGACY_AMOUNT_KEY, format_amount_str)
++
++
++def read_orders(conn):
++    rows = conn.execute("SELECT id, payload FROM orders ORDER BY id").fetchall()
++    out = []
++    for row in rows:
++        amount = resolve_amount(json.loads(row[1]))
++        out.append({"id": row[0], "amount": None if amount is None else str(amount)})
++    return out
+
+$ git log --follow -p -- scripts/dump_orders.py
+commit e807b06ca2a9cb88413390a298f55b84d3ac7869
+Author: drill fixture <drill@example.invalid>
+Date:   Mon Oct 19 17:57:28 2026 +0800
+
+    导出线格式改为 orders-export/2, 金额字段改名 amount_value
+
+diff --git a/scripts/dump_orders.py b/scripts/dump_orders.py
+index 2d49dc8..527d940 100644
+--- a/scripts/dump_orders.py
++++ b/scripts/dump_orders.py
+@@ -16,7 +16,7 @@ def main():
+     conn = sqlite3.connect(ROOT / "var" / "orders.db")
+     rows = read_orders(conn)
+     OUT.parent.mkdir(exist_ok=True)
+-    OUT.write_text(json.dumps(rows, ensure_ascii=False, indent=2))
++    OUT.write_text(json.dumps({"schema": "orders-export/2", "rows": rows}, ensure_ascii=False, indent=2))
+     print(json.dumps(rows, ensure_ascii=False))
+ 
+ 
+
+commit 011ec2536e0fcb750156fef546a90b1050ab4882
+Author: drill fixture <drill@example.invalid>
+Date:   Mon Oct 19 17:39:00 2026 +0800
+
+    订单服务基线: amountlib 2.4.0 与 orders.payload 读取
+
+diff --git a/scripts/dump_orders.py b/scripts/dump_orders.py
+new file mode 100644
+index 0000000..2d49dc8
+--- /dev/null
++++ b/scripts/dump_orders.py
+@@ -0,0 +1,24 @@
++"""把订单导出成另一个仓库的 Node 消费者读取的 JSON."""
++import json
++import pathlib
++import sqlite3
++import sys
++
++ROOT = pathlib.Path(__file__).resolve().parent.parent
++sys.path.insert(0, str(ROOT))
++
++from app.orders import read_orders  # noqa: E402
++
++OUT = ROOT / "var" / "orders.export.json"
++
++
++def main():
++    conn = sqlite3.connect(ROOT / "var" / "orders.db")
++    rows = read_orders(conn)
++    OUT.parent.mkdir(exist_ok=True)
++    OUT.write_text(json.dumps(rows, ensure_ascii=False, indent=2))
++    print(json.dumps(rows, ensure_ascii=False))
++
++
++if __name__ == "__main__":
++    main()
+
+$ git blame -L 1,16 -- app/orders.py; git blame -L 7,24 -- scripts/dump_orders.py
+^011ec25 (drill fixture 2026-10-19 17:39:00 +0800  1) """订单读取: 把 orders.payload 里的金额解析出来."""
+^011ec25 (drill fixture 2026-10-19 17:39:00 +0800  2) import json
+^011ec25 (drill fixture 2026-10-19 17:39:00 +0800  3) 
+04ddf931 (drill fixture 2026-10-19 17:39:00 +0800  4) from amountlib import parse_amount, resolve_amount
+^011ec25 (drill fixture 2026-10-19 17:39:00 +0800  5) 
+^011ec25 (drill fixture 2026-10-19 17:39:00 +0800  6) 
+^011ec25 (drill fixture 2026-10-19 17:39:00 +0800  7) def read_orders(conn):
+^011ec25 (drill fixture 2026-10-19 17:39:00 +0800  8)     rows = conn.execute("SELECT id, payload FROM orders ORDER BY id").fetchall()
+^011ec25 (drill fixture 2026-10-19 17:39:00 +0800  9)     out = []
+^011ec25 (drill fixture 2026-10-19 17:39:00 +0800 10)     for row in rows:
+04ddf931 (drill fixture 2026-10-19 17:39:00 +0800 11)         payload = json.loads(row[1])
+04ddf931 (drill fixture 2026-10-19 17:39:00 +0800 12)         amount = resolve_amount(payload)
+04ddf931 (drill fixture 2026-10-19 17:39:00 +0800 13)         if amount is None:
+04ddf931 (drill fixture 2026-10-19 17:39:00 +0800 14)             amount = parse_amount(payload.get("amount_str", ""))
+e807b06c (drill fixture 2026-10-19 17:57:28 +0800 15)         out.append({"id": row[0], "amount_value": None if amount is None else str(amount)})
+^011ec25 (drill fixture 2026-10-19 17:39:00 +0800 16)     return out
+^011ec25 (drill fixture 2026-10-19 17:39:00 +0800  7) ROOT = pathlib.Path(__file__).resolve().parent.parent
+^011ec25 (drill fixture 2026-10-19 17:39:00 +0800  8) sys.path.insert(0, str(ROOT))
+^011ec25 (drill fixture 2026-10-19 17:39:00 +0800  9) 
+^011ec25 (drill fixture 2026-10-19 17:39:00 +0800 10) from app.orders import read_orders  # noqa: E402
+^011ec25 (drill fixture 2026-10-19 17:39:00 +0800 11) 
+^011ec25 (drill fixture 2026-10-19 17:39:00 +0800 12) OUT = ROOT / "var" / "orders.export.json"
+^011ec25 (drill fixture 2026-10-19 17:39:00 +0800 13) 
+^011ec25 (drill fixture 2026-10-19 17:39:00 +0800 14) 
+^011ec25 (drill fixture 2026-10-19 17:39:00 +0800 15) def main():
+^011ec25 (drill fixture 2026-10-19 17:39:00 +0800 16)     conn = sqlite3.connect(ROOT / "var" / "orders.db")
+^011ec25 (drill fixture 2026-10-19 17:39:00 +0800 17)     rows = read_orders(conn)
+^011ec25 (drill fixture 2026-10-19 17:39:00 +0800 18)     OUT.parent.mkdir(exist_ok=True)
+e807b06c (drill fixture 2026-10-19 17:57:28 +0800 19)     OUT.write_text(json.dumps({"schema": "orders-export/2", "rows": rows}, ensure_ascii=False, indent=2))
+^011ec25 (drill fixture 2026-10-19 17:39:00 +0800 20)     print(json.dumps(rows, ensure_ascii=False))
+^011ec25 (drill fixture 2026-10-19 17:39:00 +0800 21) 
+^011ec25 (drill fixture 2026-10-19 17:39:00 +0800 22) 
+^011ec25 (drill fixture 2026-10-19 17:39:00 +0800 23) if __name__ == "__main__":
+^011ec25 (drill fixture 2026-10-19 17:39:00 +0800 24)     main()
+
+$ git log --all --oneline -S"amount_str" --
+04ddf93 删除旧的 amount_str 格式化符号, 改用 parse_amount 回退
+011ec25 订单服务基线: amountlib 2.4.0 与 orders.payload 读取
+
+$ git log --all --oneline -S"amount_value" --
+e807b06 导出线格式改为 orders-export/2, 金额字段改名 amount_value
+
+$ git log --all --oneline -S"orders-export" --
+e807b06 导出线格式改为 orders-export/2, 金额字段改名 amount_value
+
+$ git log --all --oneline -S"schema" --
+e807b06 导出线格式改为 orders-export/2, 金额字段改名 amount_value
+011ec25 订单服务基线: amountlib 2.4.0 与 orders.payload 读取
+
+$ git -C /tmp/orchestra-07/orders-consumer log --oneline -20; git status --short; git remote -v
+a47893d 账目消费者: 读取导出 JSON 的 amount 并汇总
+
+$ git show HEAD~1
+commit 04ddf931fd161baea18b0a0d315da8d41eb7cf7e
+Author: drill fixture <drill@example.invalid>
+Date:   Mon Oct 19 17:39:00 2026 +0800
+
+    删除旧的 amount_str 格式化符号, 改用 parse_amount 回退
+
+diff --git a/app/orders.py b/app/orders.py
+index 33a62ae..b963c6d 100644
+--- a/app/orders.py
++++ b/app/orders.py
+@@ -1,25 +1,16 @@
+ """订单读取: 把 orders.payload 里的金额解析出来."""
+ import json
+ 
+-from amountlib import register_legacy_formatter, resolve_amount
+-
+-LEGACY_AMOUNT_KEY = "amount_str"
+-
+-
+-def format_amount_str(raw):
+-    """v1 payload 的 amount_str 格式化: null 与空串视为没有金额."""
+-    if raw is None or raw == "":
+-        return None
+-    return raw.strip()
+-
+-
+-register_legacy_formatter(LEGACY_AMOUNT_KEY, format_amount_str)
++from amountlib import parse_amount, resolve_amount
+ 
+ 
+ def read_orders(conn):
+     rows = conn.execute("SELECT id, payload FROM orders ORDER BY id").fetchall()
+     out = []
+     for row in rows:
+-        amount = resolve_amount(json.loads(row[1]))
++        payload = json.loads(row[1])
++        amount = resolve_amount(payload)
++        if amount is None:
++            amount = parse_amount(payload.get("amount_str", ""))
+         out.append({"id": row[0], "amount": None if amount is None else str(amount)})
+     return out
+
+$ git blame -- amountlib/core.py; git blame -- amountlib/legacy.py
+^011ec25 (drill fixture 2026-10-19 17:39:00 +0800  1) """amountlib 2.4.0: 金额文本解析."""
+^011ec25 (drill fixture 2026-10-19 17:39:00 +0800  2) from decimal import Decimal, InvalidOperation
+^011ec25 (drill fixture 2026-10-19 17:39:00 +0800  3) 
+^011ec25 (drill fixture 2026-10-19 17:39:00 +0800  4) VERSION = "2.4.0"
+^011ec25 (drill fixture 2026-10-19 17:39:00 +0800  5) 
+^011ec25 (drill fixture 2026-10-19 17:39:00 +0800  6) 
+^011ec25 (drill fixture 2026-10-19 17:39:00 +0800  7) def parse_amount(raw):
+^011ec25 (drill fixture 2026-10-19 17:39:00 +0800  8)     """把金额文本解析成 Decimal.
+^011ec25 (drill fixture 2026-10-19 17:39:00 +0800  9) 
+^011ec25 (drill fixture 2026-10-19 17:39:00 +0800 10)     空字符串和 None 表示没有金额, 返回 None; 其它非法文本抛 ValueError.
+^011ec25 (drill fixture 2026-10-19 17:39:00 +0800 11)     """
+^011ec25 (drill fixture 2026-10-19 17:39:00 +0800 12)     if raw is None:
+^011ec25 (drill fixture 2026-10-19 17:39:00 +0800 13)         return None
+^011ec25 (drill fixture 2026-10-19 17:39:00 +0800 14)     text = raw.strip()
+^011ec25 (drill fixture 2026-10-19 17:39:00 +0800 15)     if not text:
+^011ec25 (drill fixture 2026-10-19 17:39:00 +0800 16)         return None
+^011ec25 (drill fixture 2026-10-19 17:39:00 +0800 17)     try:
+^011ec25 (drill fixture 2026-10-19 17:39:00 +0800 18)         return Decimal(text)
+^011ec25 (drill fixture 2026-10-19 17:39:00 +0800 19)     except InvalidOperation:
+^011ec25 (drill fixture 2026-10-19 17:39:00 +0800 20)         raise ValueError(f"无法解析金额: {raw!r}")
+^011ec25 (drill fixture 2026-10-19 17:39:00 +0800  1) """amountlib 2.4.0: schema v1 payload 的兼容分支."""
+^011ec25 (drill fixture 2026-10-19 17:39:00 +0800  2) from .core import parse_amount
+^011ec25 (drill fixture 2026-10-19 17:39:00 +0800  3) 
+^011ec25 (drill fixture 2026-10-19 17:39:00 +0800  4) _FORMATTERS = {}
+^011ec25 (drill fixture 2026-10-19 17:39:00 +0800  5) 
+^011ec25 (drill fixture 2026-10-19 17:39:00 +0800  6) 
+^011ec25 (drill fixture 2026-10-19 17:39:00 +0800  7) def register_legacy_formatter(field, formatter):
+^011ec25 (drill fixture 2026-10-19 17:39:00 +0800  8)     """应用启动时注册 v1 payload 字段的格式化函数."""
+^011ec25 (drill fixture 2026-10-19 17:39:00 +0800  9)     _FORMATTERS[field] = formatter
+^011ec25 (drill fixture 2026-10-19 17:39:00 +0800 10) 
+^011ec25 (drill fixture 2026-10-19 17:39:00 +0800 11) 
+^011ec25 (drill fixture 2026-10-19 17:39:00 +0800 12) def resolve_amount(payload):
+^011ec25 (drill fixture 2026-10-19 17:39:00 +0800 13)     """返回 payload 中的金额.
+^011ec25 (drill fixture 2026-10-19 17:39:00 +0800 14) 
+^011ec25 (drill fixture 2026-10-19 17:39:00 +0800 15)     v2 payload 直接读 amount 字段; v1 payload 没有 amount, 改查已注册的
+^011ec25 (drill fixture 2026-10-19 17:39:00 +0800 16)     amount_str 格式化函数. 没有注册时返回 None.
+^011ec25 (drill fixture 2026-10-19 17:39:00 +0800 17)     """
+^011ec25 (drill fixture 2026-10-19 17:39:00 +0800 18)     if "amount" in payload:
+^011ec25 (drill fixture 2026-10-19 17:39:00 +0800 19)         return parse_amount(payload["amount"])
+^011ec25 (drill fixture 2026-10-19 17:39:00 +0800 20)     formatter = _FORMATTERS.get("amount_str")
+^011ec25 (drill fixture 2026-10-19 17:39:00 +0800 21)     if formatter is None:
+^011ec25 (drill fixture 2026-10-19 17:39:00 +0800 22)         return None
+^011ec25 (drill fixture 2026-10-19 17:39:00 +0800 23)     return formatter(payload.get("amount_str"))

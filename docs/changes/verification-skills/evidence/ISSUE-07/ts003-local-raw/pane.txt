@@ -1,0 +1,300 @@
+                                                                                                                                                                 │
+ $ cd /tmp/orchestra-07 && grep -rn "clamp_qty\|clamp" -I . --exclude-dir=.git 2>/dev/null | grep -v "drill-ts003-local/" | head -20; echo "EXIT:$?"; echo "===  │
+ 其他仓库是否有 Node 消费者 ==="; find / -maxdepth 4 -name "*archive*" -o -maxdepth 4 -name "*orders*" 2>/dev/null | grep -v proc | head -20                     │
+                                                                                                                                                                 │
+ ... (42 earlier lines, ctrl+o/alt+o to expand)                                                                                                                  │
+ /usr/lib/x86_64-linux-gnu/libarchive.so.13.8.5                                                                                                                  │
+ /usr/lib/x86_64-linux-gnu/libarchive.so.13                                                                                                                      │
+ /usr/lib/gvfs/gvfsd-archive                                                                                                                                     │
+ /usr/lib/locale/locale-archive                                                                                                                                  │
+ /usr/lib/git-core/git-archive                                                                                                                                   │
+                                                                                                                                                                 │
+ Took 0.2s                                                                                                                                                       │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ Thinking...                                                                                                                                                     │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ $ cd /tmp/orchestra-07 && echo "=== fixture-facts ==="; cat fixture-facts.txt; echo "=== tasks ==="; ls tasks/; echo "=== consumer ==="; find orders-consumer   │
+ -type f -not -path "*/.git/*" -not -path "*/node_modules/*" | head -20                                                                                          │
+                                                                                                                                                                 │
+ ... (13 earlier lines, ctrl+o/alt+o to expand)                                                                                                                  │
+ orders-consumer/README.md                                                                                                                                       │
+ orders-consumer/.gitignore                                                                                                                                      │
+ orders-consumer/package.json                                                                                                                                    │
+ orders-consumer/src/run.sh                                                                                                                                      │
+ orders-consumer/src/ledger.js                                                                                                                                   │
+                                                                                                                                                                 │
+ Took 0.0s                                                                                                                                                       │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ $ cd /tmp/orchestra-07/payout-service && git log --oneline -5 && echo "=== branches ===" && git branch -a && echo "=== diff local vs origin ===" && git log     │
+ --oneline origin/master..master 2>/dev/null; cd /tmp/orchestra-07/drill-ts003-local && echo "=== local master vs origin/master ===" && git log --oneline        │
+ origin/master..master && git diff --stat origin/master..master                                                                                                  │
+                                                                                                                                                                 │
+ ... (4 earlier lines, ctrl+o/alt+o to expand)                                                                                                                   │
+ === diff local vs origin ===                                                                                                                                    │
+ === local master vs origin/master ===                                                                                                                           │
+ 2b905d2 内部数量上限从 99 收到 50                                                                                                                               │
+  app/clamp.py | 2 +-                                                                                                                                            │
+  1 file changed, 1 insertion(+), 1 deletion(-)                                                                                                                  │
+                                                                                                                                                                 │
+ Took 0.0s                                                                                                                                                       │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ Thinking...                                                                                                                                                     │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ $ cd /tmp/orchestra-07/orders-consumer && cat README.md package.json src/run.sh src/ledger.js                                                                   │
+                                                                                                                                                                 │
+ ... (22 earlier lines, ctrl+o/alt+o to expand)                                                                                                                  │
+     continue;                                                                                                                                                   │
+   }                                                                                                                                                             │
+   total += Number(row.amount);                                                                                                                                  │
+ }                                                                                                                                                               │
+ console.log(JSON.stringify({ total, missing }, null, 2));                                                                                                       │
+                                                                                                                                                                 │
+ Took 0.0s                                                                                                                                                       │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ $ cd /tmp/orchestra-07 && ls payout-service; find . -maxdepth 3 -name "*.db" 2>/dev/null; echo "=== payload qty in any drill ==="; grep -rn "qty" -I drill-*/   │
+ --include="*.py" --include="*.json" --include="*.sql" | grep -v clamp.py | head; echo "=== pyproject deps ==="; cat drill-ts003-local/pyproject.toml            │
+                                                                                                                                                                 │
+ ... (7 earlier lines, ctrl+o/alt+o to expand)                                                                                                                   │
+ === pyproject deps ===                                                                                                                                          │
+ [project]                                                                                                                                                       │
+ name = "payout-service"                                                                                                                                         │
+ version = "1.7.0"                                                                                                                                               │
+ requires-python = ">=3.11"                                                                                                                                      │
+                                                                                                                                                                 │
+ Took 0.0s                                                                                                                                                       │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ Thinking...                                                                                                                                                     │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ $ mkdir -p /tmp/orchestra-07/out/ts003-local-work && cd /tmp/orchestra-07/out/ts003-local-work && which uv node python3 && uv --version                         │
+                                                                                                                                                                 │
+ /usr/local/bin/uv                                                                                                                                               │
+ /run/user/1000/fnm_multishells/3697874_1792404078222/bin/node                                                                                                   │
+ /usr/bin/python3                                                                                                                                                │
+ uv 0.12.5 (x86_64-unknown-linux-gnu)                                                                                                                            │
+                                                                                                                                                                 │
+ Took 0.0s                                                                                                                                                       │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ write /tmp/orchestra-07/out/ts003-local-work/scan_callers.py                                                                                                    │
+                                                                                                                                                                 │
+ """证明 clamp_qty 在仓库内外都没有调用者.                                                                                                                       │
+                                                                                                                                                                 │
+ 失败条件 (非零退出): 在扫描范围内找到定义文件之外的任何引用.                                                                                                    │
+ 扫描方式: 文本检索 + AST (抓 import/属性访问), 避免漏掉别名导入.                                                                                                │
+ """                                                                                                                                                             │
+ import ast                                                                                                                                                      │
+ import pathlib                                                                                                                                                  │
+ import sys                                                                                                                                                      │
+                                                                                                                                                                 │
+ REPO = pathlib.Path("/tmp/orchestra-07/drill-ts003-local")                                                                                                      │
+ ... (52 more lines, 62 total, ctrl+o/alt+o to expand)                                                                                                           │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ write /tmp/orchestra-07/out/ts003-local-work/run_e2e.py                                                                                                         │
+                                                                                                                                                                 │
+ """跑真实入口, 比较 HEAD~1 与 HEAD 的导出结果.                                                                                                                  │
+                                                                                                                                                                 │
+ 步骤: 用 git worktree 导出两个版本到临时目录, 各自 seed 出 SQLite, 跑                                                                                           │
+ scripts/dump_orders.py (应用真实入口), 再跑消费仓库的 src/run.sh, 比较输出.                                                                                     │
+ 失败条件 (非零退出): 两版导出 JSON 或消费端汇总不一致.                                                                                                          │
+ """                                                                                                                                                             │
+ import json                                                                                                                                                     │
+ import pathlib                                                                                                                                                  │
+ import shutil                                                                                                                                                   │
+ import subprocess                                                                                                                                               │
+ ... (53 more lines, 63 total, ctrl+o/alt+o to expand)                                                                                                           │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ Thinking...                                                                                                                                                     │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ write /tmp/orchestra-07/out/ts003-local-work/prove_window.py                                                                                                    │
+                                                                                                                                                                 │
+ """证明本次变更只改了一个窗口内的返回值, 且该窗口只能由直接调用触达."""                                                                                         │
+ import importlib.util                                                                                                                                           │
+ import sys                                                                                                                                                      │
+ from pathlib import Path                                                                                                                                        │
+                                                                                                                                                                 │
+ WORK = Path("/tmp/orchestra-07/out/ts003-local-work/trees")                                                                                                     │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ def load(name):                                                                                                                                                 │
+     path = WORK / name / "app" / "clamp.py"                                                                                                                     │
+ ... (21 more lines, 31 total, ctrl+o/alt+o to expand)                                                                                                           │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ $ cd /tmp/orchestra-07/out/ts003-local-work && echo "### scan_callers" && uv run python scan_callers.py; echo "RC=$?"                                           │
+                                                                                                                                                                 │
+ ... (9 earlier lines, ctrl+o/alt+o to expand)                                                                                                                   │
+   File "/tmp/orchestra-07/out/ts003-local-work/scan_callers.py", line 56, in main                                                                               │
+     assert hits == [], f"发现调用者, 需要人工评估: {hits}"                                                                                                      │
+            ^^^^^^^^^^                                                                                                                                           │
+ AssertionError: 发现调用者, 需要人工评估: [(PosixPath('/tmp/orchestra-07/drill-ts003-local/app/clamp.py'), 'text')]                                             │
+ RC=1                                                                                                                                                            │
+                                                                                                                                                                 │
+ Took 0.0s                                                                                                                                                       │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ $ cd /tmp/orchestra-07/out/ts003-local-work && echo "### run_e2e" && uv run python run_e2e.py; echo "RC=$?"                                                     │
+                                                                                                                                                                 │
+ ... (28 earlier lines, ctrl+o/alt+o to expand)                                                                                                                  │
+ 导出 JSON 相同: True                                                                                                                                            │
+ 消费端汇总相同: True                                                                                                                                            │
+ HEAD 消费端汇总: {"total": 22.490000000000002, "missing": [3]}                                                                                                  │
+ PASS: 真实入口的输出与下游消费结果在本次变更前后逐字节相同                                                                                                      │
+ RC=0                                                                                                                                                            │
+                                                                                                                                                                 │
+ Took 0.3s                                                                                                                                                       │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ Thinking...                                                                                                                                                     │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ $ cd /tmp/orchestra-07/out/ts003-local-work && python3 - <<'EOF'                                                                                                │
+ import pathlib                                                                                                                                                  │
+ p = pathlib.Path("scan_callers.py")                                                                                                                             │
+ s = p.read_text()                                                                                                                                               │
+ s = s.replace('            if NEEDLE in text:\n                hits.append((p, "text"))',                                                                       │
+               '            if NEEDLE in text and "app/clamp.py" not in str(p):\n                hits.append((p, "text"))')                                      │
+ p.write_text(s)                                                                                                                                                 │
+ EOF                                                                                                                                                             │
+ echo "### scan_callers (修正后: 定义文件本身不计引用)" && uv run python scan_callers.py; echo "RC=$?"; echo; echo "### prove_window" && uv run python           │
+ prove_window.py; echo "RC=$?"                                                                                                                                   │
+                                                                                                                                                                 │
+ ... (19 earlier lines, ctrl+o/alt+o to expand)                                                                                                                  │
+   File "/tmp/orchestra-07/out/ts003-local-work/prove_window.py", line 27, in <module>                                                                           │
+     assert changed == [51, 60, 99], f"差异窗口与预期不符: {changed}"                                                                                            │
+            ^^^^^^^^^^^^^^^^^^^^^^^                                                                                                                              │
+ AssertionError: 差异窗口与预期不符: [51, 60, 99, 100, 1000]                                                                                                     │
+ RC=1                                                                                                                                                            │
+                                                                                                                                                                 │
+ Took 0.1s                                                                                                                                                       │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ [python-operation-hook] python -> uv run python                                                                                                                 │
+                                                                                                                                                                 │
+ Thinking...                                                                                                                                                     │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ $ cd /tmp/orchestra-07/out/ts003-local-work && python3 - <<'EOF'                                                                                                │
+ import pathlib                                                                                                                                                  │
+ p = pathlib.Path("prove_window.py")                                                                                                                             │
+ s = p.read_text()                                                                                                                                               │
+ s = s.replace('assert changed == [51, 60, 99], f"差异窗口与预期不符: {changed}"',                                                                               │
+               'assert changed == [51, 60, 99, 100, 1000], f"差异窗口与预期不符: {changed}"')                                                                    │
+ s = s.replace('print("PASS: 差异仅在默认 upper 的 51..99 区间; 显式传 upper 时两版完全一致")',                                                                  │
+               'print("PASS: 差异覆盖所有输入 >= 51 (默认 upper 生效时); 显式传 upper 时两版完全一致")')                                                         │
+ p.write_text(s)                                                                                                                                                 │
+ EOF                                                                                                                                                             │
+ uv run python prove_window.py; echo "RC=$?"; echo "=== 仓库内是否有测试 ==="; cd /tmp/orchestra-07/drill-ts003-local && find . -path ./.git -prune -o \( -name  │
+ "test*" -o -name "*_test.py" -o -name "conftest.py" \) -print; echo "(以上为空表示无测试)"                                                                      │
+                                                                                                                                                                 │
+ ... (9 earlier lines, ctrl+o/alt+o to expand)                                                                                                                   │
+ 有差异的输入: [51, 60, 99, 100, 1000]                                                                                                                           │
+ PASS: 差异覆盖所有输入 >= 51 (默认 upper 生效时); 显式传 upper 时两版完全一致                                                                                   │
+ RC=0                                                                                                                                                            │
+ === 仓库内是否有测试 ===                                                                                                                                        │
+ (以上为空表示无测试)                                                                                                                                            │
+                                                                                                                                                                 │
+ Took 0.1s                                                                                                                                                       │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ [python-operation-hook] python -> uv run python                                                                                                                 │
+                                                                                                                                                                 │
+ Thinking...                                                                                                                                                     │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ write /tmp/orchestra-07/out/ts003-local-report.md                                                                                                               │
+                                                                                                                                                                 │
+ # blast-radius: 2b905d2 (clamp_qty upper 99 -> 50)                                                                                                              │
+                                                                                                                                                                 │
+ 调查方式: 单路, 本会话自己做 (调用方指定不开其他模型会话).                                                                                                      │
+                                                                                                                                                                 │
+ ## 结论 (先看这段)                                                                                                                                              │
+                                                                                                                                                                 │
+ - 这次变更**不改变任何运行时输出**. `clamp_qty` 在本仓库和已知消费仓库里零调用者, `app/clamp.py` 从未被任何模块导入.                                            │
+ - 真实入口 `scripts/dump_orders.py` 加下游 Node 消费端, 变更前后输出逐字节相同 (实跑过).                                                                        │
+ - 合入风险低. 但要清楚: 这个提交也**没有真的限制下单数量**, 因为它调用的地方根本不存在. 如果合入动机是"把大单卡在 50", 现在等于没做.                            │
+ - 事实来源限制: remote 是本地路径, 没有 PR / issue 可读, 提交动机未知.                                                                                          │
+ ... (306 more lines, 316 total, ctrl+o/alt+o to expand)                                                                                                         │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ Thinking...                                                                                                                                                     │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ $ cd /tmp/orchestra-07/out/ts003-local-work && python3 - <<'EOF'                                                                                                │
+ import pathlib                                                                                                                                                  │
+ p = pathlib.Path("run_e2e.py")                                                                                                                                  │
+ s = p.read_text()                                                                                                                                               │
+ dup = '''    subprocess.run(                                                                                                                                    │
+         ["git", "-C", str(REPO), "archive", rev],                                                                                                               │
+         stdout=subprocess.PIPE, check=True,                                                                                                                     │
+     )  # smoke: rev 可解析                                                                                                                                      │
+ '''                                                                                                                                                             │
+ assert dup in s                                                                                                                                                 │
+ p.write_text(s.replace(dup, ""))                                                                                                                                │
+ EOF                                                                                                                                                             │
+ uv run python run_e2e.py 2>&1 | tail -6; echo "RC=$?"; echo "=== 仓库是否被改动 ==="; cd /tmp/orchestra-07/drill-ts003-local && git status --porcelain && echo
+ "(空=未改动)"; ls /tmp/orchestra-07/out/ts003-local-report.md
+
+ ... (5 earlier lines, ctrl+o/alt+o to expand)
+ PASS: 真实入口的输出与下游消费结果在本次变更前后逐字节相同
+ RC=0
+ === 仓库是否被改动 ===
+ (空=未改动)
+ /tmp/orchestra-07/out/ts003-local-report.md
+
+ Took 0.3s
+
+
+ [python-operation-hook] python -> uv run python
+
+ 报告: /tmp/orchestra-07/out/ts003-local-report.md (脚本在 /tmp/orchestra-07/out/ts003-local-work/, 仓库未被改动)
+
+ 结论: 合入风险低, 但它是空操作 (不改变任何运行时行为).
+
+ 1. 做了什么
+    只改 app/clamp.py:4 默认 upper=99 -> 50, 一行. 历史: blame 显示该行由 2b905d2 引入, 基线 011ec25 加入函数; git log --all -S clamp_qty 只有基线那一次新增, 从
+    未有人加过调用. remote 是本地路径, 无 PR 可读, 提交动机未知.
+    查了全仓 + 消费仓库 orders-consumer, 跑了扫描 / 边界 / 端到端三个脚本. 没覆盖: 生产 payload 实际内容, 归档链路 legacy_sync (本地不可跑), 本机之外的依赖方.
+
+ 2. 关键事实
+     - F1 零调用者: 18 个文件文本 + AST 双扫, 定义处之外 0 命中; app/__init__.py 空; 无 getattr/importlib/entry_points. 级别 3.
+     - F2 真实链路不变: 两版各跑 scripts/dump_orders.py 再喂 node ledger.js, 导出 JSON 与 {total: 22.49, missing:[3]} 逐字节相同. 级别 4.
+     - F3 唯一差异: 直接调用且不传 upper 时, 输入 >=51 起结果变小 (51->50, 1000->99 变 50); 显式传 upper 完全不变. 级别 4.
+     - F4 无共享格式: 表只有 id,payload, payload 只有 schema/amount/amount_str, 下游只求和 amount. 级别 3.
+
+ 3. 风险
+    R1 空操作 (概率 100%): 若动机是卡大单, 大单照旧通过, 无日志无报错.
+    R2 未来接线: 有人按 99 的旧习惯接线时, 51..99 被静默截成 50, 无异常.
+    R3 仓库外 importer: 未证实, 概率低 (README 只说 Node 读 JSON, pyproject 无入口), 缺依赖方清单.
+    R4 注释与事实不符: app/clamp.py:1 称"仅本模块内部使用", 实际全仓死代码.
+
+ 4. 已排除
+    导出与下游汇总 (实跑比对), amountlib 金额解析 (clamp 不 import 任何东西), legacy_sync (只 import os), DB 列/线格式 (无数量字段), 测试会红 (仓库无任何测试文件
+    ), 配置/flag/99 字样 (99 只出现在金额 9.99).
+
+ 5. 最便宜的复现
+    cd /tmp/orchestra-07/out/ts003-local-work && uv run python scan_callers.py -> 退出码 0 = 零调用者; 有人接线时会打印行号并非零退出.
+
+ 单路声明: 按你指定只做单路, 未做多模型同题核对; 已实跑的事实 (F2/F3) 保持级别 4, 缺口 (F1 覆盖不到仓库外, R3) 已写在报告第 6 节.
+
+──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+
+──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+/tmp/orchestra-07/drill-ts003-local (master)
+↑19k ↓15k R250k CH99.5% $0.008 3.0%/1.0M (auto)                                                                   (cli) deepseek-v4.1-flash-expires-on-0910 • high

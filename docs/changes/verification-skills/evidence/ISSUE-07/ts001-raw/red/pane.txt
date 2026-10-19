@@ -1,0 +1,400 @@
+     ...                                                                                                                                                         │
+  24     (9, {"schema": "v2", "amount": None, "amount_str": "5.00"}),                                                                                            │
+  25     (10, {"schema": "v2", "amount": "", "amount_str": "6.00"}),                                                                                             │
+  26     (11, {"schema": "v2", "amount": "0"}),                                                                                                                  │
+  27     (12, {"schema": "v1", "amount_str": "0"}),                                                                                                              │
+ +28     (13, {"schema": "v1", "amount_str": "   "}),                                                                                                            │
+ +29     (14, {"schema": "v1", "amount_str": "\t\n"}),                                                                                                           │
+  28 ]                                                                                                                                                           │
+  29                                                                                                                                                             │
+  30 print(f"repo = {REPO}")                                                                                                                                     │
+  31 print(f"app.orders file = {sys.modules['app.orders'].__file__}")                                                                                            │
+     ...                                                                                                                                                         │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ $ cd /tmp/orchestra-07/out && echo "=========== BASE ===========" && uv run --no-project python proof/probe_payloads.py "$PWD/repo-base" 2>&1 | tee             │
+ proof/probe-base.log | grep -E '"id": (13|14)|repo ='; echo "=========== HEAD ===========" && uv run --no-project python proof/probe_payloads.py                │
+ "$PWD/repo-head" 2>&1 | tee proof/probe-head.log | grep -E '"id": (13|14)|repo ='                                                                               │
+                                                                                                                                                                 │
+ ... (23 earlier lines, ctrl+o/alt+o to expand)                                                                                                                  │
+ "1,234.50", "schema": "v1"}, "raised": "ValueError"}, {"id": 9, "payload": {"amount": null, "amount_str": "5.00", "schema": "v2"}, "result": [{"amount": "5.00",│
+ "id": 9}]}, {"id": 10, "payload": {"amount": "", "amount_str": "6.00", "schema": "v2"}, "result": [{"amount": "6.00", "id": 10}]}, {"id": 11, "payload":        │
+ {"amount": "0", "schema": "v2"}, "result": [{"amount": "0", "id": 11}]}, {"id": 12, "payload": {"amount_str": "0", "schema": "v1"}, "result": [{"amount": "0",  │
+ "id": 12}]}, {"id": 13, "payload": {"amount_str": "   ", "schema": "v1"}, "result": [{"amount": null, "id": 13}]}, {"id": 14, "payload": {"amount_str": "\t\n", │
+ "schema": "v1"}, "result": [{"amount": null, "id": 14}]}]                                                                                                       │
+                                                                                                                                                                 │
+ Took 0.1s                                                                                                                                                       │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ Thinking...                                                                                                                                                     │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ edit /tmp/orchestra-07/out/proof/scan_db.py                                                                                                                     │
+                                                                                                                                                                 │
+     ...                                                                                                                                                         │
+  19 print(f"rows = {len(rows)}")                                                                                                                                │
+  20                                                                                                                                                             │
+  21 non_numeric_v1 = []                                                                                                                                         │
+  22 fallback_gain = []                                                                                                                                          │
+ +23 new_null_whitespace = []                                                                                                                                    │
+  23 for order_id, raw in rows:                                                                                                                                  │
+  24     payload = json.loads(raw)                                                                                                                               │
+  25     has_amount = "amount" in payload                                                                                                                        │
+  26     amount_value = payload.get("amount")                                                                                                                    │
+     ...                                                                                                                                                         │
+  32         try:                                                                                                                                                │
+  33             parse_amount(amount_str)                                                                                                                        │
+  34         except ValueError:                                                                                                                                  │
+  35             non_numeric_v1.append(order_id)                                                                                                                 │
+ +37     if not has_amount and isinstance(amount_str, str) and amount_str != "" and not amount_str.strip():                                                      │
+ +38         new_null_whitespace.append(order_id)                                                                                                                │
+  36                                                                                                                                                             │
+  37 print(f"v1 且 amount_str 非空但 parse_amount 会抛 ValueError 的行: {non_numeric_v1}")                                                                       │
+  38 print(f"amount 为 null/空串但 amount_str 非空, HEAD 会新增金额的行: {fallback_gain}")                                                                       │
+ +42 print(f"v1 且 amount_str 仅空白, base 输出空串而 HEAD 输出 null 的行: {new_null_whitespace}")                                                               │
+  39 conn.close()                                                                                                                                                │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ $ cd /tmp/orchestra-07/out && cat > proof/export-whitespace-base.json <<'EOF'                                                                                   │
+ [{"id": 13, "amount": ""}]                                                                                                                                      │
+ EOF                                                                                                                                                             │
+ cat > proof/export-whitespace-head.json <<'EOF'                                                                                                                 │
+ [{"id": 13, "amount": null}]                                                                                                                                    │
+ EOF                                                                                                                                                             │
+ echo "### base 风格: amount 为空串" && bash /tmp/orchestra-07/orders-consumer/src/run.sh proof/export-whitespace-base.json | tee proof/consumer-ws-base.out;    │
+ echo "### head 风格: amount 为 null" && bash /tmp/orchestra-07/orders-consumer/src/run.sh proof/export-whitespace-head.json | tee proof/consumer-ws-head.out    │
+                                                                                                                                                                 │
+ ... (7 earlier lines, ctrl+o/alt+o to expand)                                                                                                                   │
+   "total": 0,                                                                                                                                                   │
+   "missing": [                                                                                                                                                  │
+     13                                                                                                                                                          │
+   ]                                                                                                                                                             │
+ }                                                                                                                                                               │
+                                                                                                                                                                 │
+ Took 0.1s                                                                                                                                                       │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ Thinking...                                                                                                                                                     │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ $ cd /tmp/orchestra-07/out && uv run --no-project python proof/scan_db.py "$PWD/repo-head" "$PWD/repo-head/var/orders.db" 2>&1 | tee proof/scan-head.out        │
+                                                                                                                                                                 │
+ ... (1 earlier lines, ctrl+o/alt+o to expand)                                                                                                                   │
+ db   = /tmp/orchestra-07/out/repo-head/var/orders.db                                                                                                            │
+ rows = 3                                                                                                                                                        │
+ v1 且 amount_str 非空但 parse_amount 会抛 ValueError 的行: []                                                                                                   │
+ amount 为 null/空串但 amount_str 非空, HEAD 会新增金额的行: []                                                                                                  │
+ v1 且 amount_str 仅空白, base 输出空串而 HEAD 输出 null 的行: []                                                                                                │
+                                                                                                                                                                 │
+ Took 0.0s                                                                                                                                                       │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ $ cd /tmp/orchestra-07/out && echo "### 原仓库 git 状态与 HEAD" && git -C /tmp/orchestra-07/drill-ts001-red status --porcelain=v1 && git -C                     │
+ /tmp/orchestra-07/drill-ts001-red rev-parse HEAD && echo "### 原仓库未被修改的产品文件哈希" && git -C /tmp/orchestra-07/drill-ts001-red diff --stat HEAD; echo  │
+ "diff_exit=$?"                                                                                                                                                  │
+                                                                                                                                                                 │
+ ### 原仓库 git 状态与 HEAD                                                                                                                                      │
+ 04ddf931fd161baea18b0a0d315da8d41eb7cf7e                                                                                                                        │
+ ### 原仓库未被修改的产品文件哈希                                                                                                                                │
+ diff_exit=0                                                                                                                                                     │
+                                                                                                                                                                 │
+ Took 0.0s                                                                                                                                                       │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ Thinking...                                                                                                                                                     │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ $ timeout 30 grep -rl --exclude-dir=.git --exclude-dir=node_modules --exclude-dir=.venv -e "orders_archive" -e "archive.example.invalid" /home/bolo/Workspace   │
+ /home/bolo/.agents 2>/dev/null | head -20; echo "search_exit=$?"                                                                                                │
+                                                                                                                                                                 │
+ /home/bolo/Workspace/skills/skills-v2.worktrees/ISSUE-07/docs/changes/verification-skills/evidence/ISSUE-07/setup-fixture.sh                                    │
+ search_exit=0                                                                                                                                                   │
+                                                                                                                                                                 │
+ Took 1.2s                                                                                                                                                       │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ $ echo "### 归档 URL 的 TLD 保留状态 (RFC 2606 .invalid)"; grep -n "invalid" /etc/hosts 2>/dev/null; echo "hosts_grep_exit=$?"; echo "### 尝试解析 (不发起      │
+ HTTP)"; timeout 5 getent hosts archive.example.invalid; echo "getent_exit=$?"                                                                                   │
+                                                                                                                                                                 │
+ ### 归档 URL 的 TLD 保留状态 (RFC 2606 .invalid)                                                                                                                │
+ hosts_grep_exit=1                                                                                                                                               │
+ ### 尝试解析 (不发起 HTTP)                                                                                                                                      │
+ getent_exit=2                                                                                                                                                   │
+                                                                                                                                                                 │
+ Took 0.0s                                                                                                                                                       │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ Thinking...                                                                                                                                                     │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ $ sed -n '1,240p' /home/bolo/Workspace/skills/skills-v2.worktrees/ISSUE-07/docs/changes/verification-skills/evidence/ISSUE-07/setup-fixture.sh                  │
+                                                                                                                                                                 │
+ ... (235 earlier lines, ctrl+o/alt+o to expand)                                                                                                                 │
+ def format_amount_str(raw):                                                                                                                                     │
+     """v1 payload 的 amount_str 格式化: null 与空串视为没有金额."""                                                                                             │
+     if raw is None or raw == "":                                                                                                                                │
+         return None                                                                                                                                             │
+     return raw.strip()                                                                                                                                          │
+                                                                                                                                                                 │
+ Took 0.0s                                                                                                                                                       │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ Thinking...                                                                                                                                                     │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ $ sed -n '240,420p' /home/bolo/Workspace/skills/skills-v2.worktrees/ISSUE-07/docs/changes/verification-skills/evidence/ISSUE-07/setup-fixture.sh; echo "===     │
+ evidence dir ==="; find /home/bolo/Workspace/skills/skills-v2.worktrees/ISSUE-07/docs/changes/verification-skills/evidence/ISSUE-07 -maxdepth 2 -type f | head  │
+ -30                                                                                                                                                             │
+                                                                                                                                                                 │
+ ... (87 earlier lines, ctrl+o/alt+o to expand)                                                                                                                  │
+ orders-consumer 起始提交: $CONS_COMMIT                                                                                                                          │
+ EOF                                                                                                                                                             │
+ cat "$ROOT/fixture-facts.txt"                                                                                                                                   │
+ === evidence dir ===                                                                                                                                            │
+ /home/bolo/Workspace/skills/skills-v2.worktrees/ISSUE-07/docs/changes/verification-skills/evidence/ISSUE-07/setup-fixture.sh                                    │
+                                                                                                                                                                 │
+ Took 0.0s                                                                                                                                                       │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ Thinking...                                                                                                                                                     │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ $ cd /tmp/orchestra-07/drill-ts001-red && echo "### refs/tags" && git show-ref && git tag; echo "### log all" && git log --all --oneline --decorate; echo "###  │
+ diff stat" && git diff --stat 011ec25..HEAD; echo "### diff names" && git diff --name-status 011ec25..HEAD                                                      │
+                                                                                                                                                                 │
+ ... (7 earlier lines, ctrl+o/alt+o to expand)                                                                                                                   │
+ ### diff stat                                                                                                                                                   │
+  app/orders.py | 19 +++++--------------                                                                                                                         │
+  1 file changed, 5 insertions(+), 14 deletions(-)                                                                                                               │
+ ### diff names                                                                                                                                                  │
+ M   app/orders.py                                                                                                                                               │
+                                                                                                                                                                 │
+ Took 0.0s                                                                                                                                                       │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ $ echo "### origin repo dirs" && ls -la /tmp/orchestra-07/drill-ts001-red; echo "### consumer status" && git -C /tmp/orchestra-07/orders-consumer status        │
+ --porcelain=v1; echo "### out tree" && find /tmp/orchestra-07/out -maxdepth 2 -type f | sort                                                                    │
+                                                                                                                                                                 │
+ ... (37 earlier lines, ctrl+o/alt+o to expand)                                                                                                                  │
+ /tmp/orchestra-07/out/repo-base/pyproject.toml                                                                                                                  │
+ /tmp/orchestra-07/out/repo-base/README.md                                                                                                                       │
+ /tmp/orchestra-07/out/repo-head/.gitignore                                                                                                                      │
+ /tmp/orchestra-07/out/repo-head/pyproject.toml                                                                                                                  │
+ /tmp/orchestra-07/out/repo-head/README.md                                                                                                                       │
+                                                                                                                                                                 │
+ Took 0.0s                                                                                                                                                       │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ Thinking...                                                                                                                                                     │
+                                                                                                                                                                 │
+ All proof runs are done. Now I'll write the handoff report outside the repo.                                                                                    │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ write /tmp/orchestra-07/out/ts001-report.md                                                                                                                     │
+                                                                                                                                                                 │
+ # ts001 影响范围调查报告                                                                                                                                        │
+                                                                                                                                                                 │
+ - 仓库: `/tmp/orchestra-07/drill-ts001-red`                                                                                                                     │
+ - 起始提交: `011ec2536e0fcb750156fef546a90b1050ab4882`                                                                                                          │
+ - 变更提交: `04ddf931fd161baea18b0a0d315da8d41eb7cf7e` (HEAD)                                                                                                   │
+ - 下游仓库: `/tmp/orchestra-07/orders-consumer`, 起始提交 `a47893d0dea16e39197603ee28b7b8b467efbbee`                                                            │
+ - 调查时间: 2026-10-19                                                                                                                                          │
+ - 产品代码/测试改动: 无. 原仓库 `git status --porcelain` 为空, `git diff --stat HEAD` 为空.                                                                     │
+                                                                                                                                                                 │
+ 技能说明: 本机 `~/.agents/skills/` 下没有 `blast-radius` 技能目录. 本报告按 `/home/bolo/Workspace/skills/skills-v2/docs/changes/verification-skills/` 中        │
+ ISSUE-07 的规格执行, 使用其中规定的五段交接结构和证据阶梯.                                                                                                      │
+ ... (778 more lines, 788 total, ctrl+o/alt+o to expand)                                                                                                         │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ Thinking...                                                                                                                                                     │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ $ cd /tmp/orchestra-07/out && python3 - <<'EOF'                                                                                                                 │
+ import pathlib, unicodedata                                                                                                                                     │
+ p = pathlib.Path("ts001-report.md")                                                                                                                             │
+ text = p.read_text()                                                                                                                                            │
+ bad = {}                                                                                                                                                        │
+ for i, ch in enumerate(text):                                                                                                                                   │
+     o = ord(ch)                                                                                                                                                 │
+     if o in                                                                                                                                                     │
+ (0x3001,0x3002,0xFF0C,0xFF1A,0xFF1B,0xFF08,0xFF09,0xFF01,0xFF1F,0x201C,0x201D,0x2018,0x2019,0x3010,0x3011,0xFF5B,0xFF5D,0x300A,0x300B,0xFF0E,0x2026,0x2014,0x201│
+ 3):                                                                                                                                                             │
+         line = text.count("\n",0,i)+1                                                                                                                           │
+         bad.setdefault(ch, []).append(line)                                                                                                                     │
+ for ch, lines in bad.items():                                                                                                                                   │
+     print(f"U+{ord(ch):04X} {unicodedata.name(ch,'?')} count={len(lines)} lines={sorted(set(lines))[:20]}")                                                     │
+ print("total bad chars:", sum(len(v) for v in bad.values()))                                                                                                    │
+ EOF                                                                                                                                                             │
+                                                                                                                                                                 │
+ U+3001 IDEOGRAPHIC COMMA count=3 lines=[17, 422]                                                                                                                │
+ total bad chars: 3                                                                                                                                              │
+                                                                                                                                                                 │
+ Took 0.0s                                                                                                                                                       │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ [python-operation-hook] python -> uv run python                                                                                                                 │
+                                                                                                                                                                 │
+ Thinking...                                                                                                                                                     │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ $ cd /tmp/orchestra-07/out && grep -n $'\u3001' ts001-report.md | cat -A | head                                                                                 │
+                                                                                                                                                                 │
+ ... (2 earlier lines, ctrl+o/alt+o to expand)                                                                                                                   │
+ M-eM-^NM-^FM-eM-^OM-2M-cM-^@M-^AM-gM-,M-,M-dM-:M-^LM-dM-8M-*M-eM-^PM-^L HEAD                                                                                    │
+ M-fM-#M-^@M-eM-^GM-:M-dM-8M--M-iM-^CM-=M-fM-2M-!M-fM-^\M-^IM-eM-^EM-6M-dM-;M-^VM-hM-0M-^CM-gM-^TM-(M-hM-^@M-^E.                                                 │
+ M-hM-^LM-^CM-eM-^[M-4M-eM-$M-^VM-gM-3M-;M-gM-;M-^_M-fM-^WM- M-fM-3M-^UM-fM-^NM-^RM-iM-^YM-$.$                                                                   │
+ 422:- M-fM-#M-^@M-fM-^_M-%M-fM-^VM-9M-fM-3M-^U: M-eM-/M-9M-gM-^TM-^_M-dM-:M-' orders.db M-eM-^OM-*M-hM-/M-;M-hM-7M-^Q `scan_db.py`, M-fM-^HM-^VM-eM-^\M-( SQL   │
+ M-iM-^GM-^LM-gM--M-^[ v1 M-dM-8M-^T `amount_str` M-iM-^]M-^^M-gM-)M-:M-cM-^@M-^A`CAST` M-eM-$M-1M-hM-4M-%M-gM-^ZM-^DM-hM-!M-^L.$                                │
+                                                                                                                                                                 │
+ Took 0.0s                                                                                                                                                       │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ Thinking...                                                                                                                                                     │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ edit /tmp/orchestra-07/out/ts001-report.md                                                                                                                      │
+                                                                                                                                                                 │
+      ...                                                                                                                                                        │
+   13                                                                                                                                                            │
+   14 1. 对 seed 中 3 条已知真实订单, base 与 HEAD 的导出 JSON 逐字节相同, Node 消费者输出也相同. 证据级 5 (运行应用复现).                                       │
+   15 2. 关键事实 (a) 成立: 仓库内 `amountlib` 版本 2.4.0, `parse_amount("")` 返回 `None`, 不抛错. 空串订单仍然输出 `amount: null`. 证据级 5 (对已知 3 行), 脚本 │
+ 级 4 (对库函数本身).                                                                                                                                            │
+   16 3. 关键事实 (b) 未证实: 外部归档服务是否丢弃没有 amount 的旧订单, 本地没有任何可运行入口, 也没有服务端源码/配置/日志. 停在位置级, 失败路径无法走查.        │
+ - 17 4. 被删符号 `format_amount_str` 和 `LEGACY_AMOUNT_KEY` 在已知两个仓库、全部 Git 历史、第二个同 HEAD 检出中都没有其他调用者. 范围外系统无法排除.            │
+ + 17 4. 被删符号 `format_amount_str` 和 `LEGACY_AMOUNT_KEY` 在已知两个仓库, 全部 Git 历史, 第二个同 HEAD 检出中都没有其他调用者. 范围外系统无法排除.            │
+   18 5. 变更引入了 3 类已知数据形状下的行为变化, 都不在 seed 的 3 行里:                                                                                         │
+   19    - 非数字 `amount_str` 从"原样输出"变成抛 `ValueError`, 会让整次导出失败.                                                                                │
+   20    - 纯空白 `amount_str` 从输出空串 `""` 变成 `null`, 消费者会把它记为 missing, 归档若丢弃 null 订单则可能丢单.                                            │
+   21    - `amount` 为 null/空串且 `amount_str` 有值时, HEAD 会新增金额, 旧代码输出 null.                                                                        │
+      ...                                                                                                                                                        │
+  418 - 位置: `app/orders.py:14` -> `amountlib/core.py:17-20`.                                                                                                   │
+  419 - 行为: base 的 `format_amount_str` 只做 `strip()`, 会把 `"N/A"`, `"1,234.50"`, `"$9.99"` 原样输出. HEAD 的 `parse_amount` 对它们抛 `ValueError`.          │
+ `read_orders` 的循环没有逐行捕获, 所以一行坏数据会让整个 `dump_orders.py` 失败, 不是只跳过该行.                                                                 │
+  420 - 可能性: 生产数据未知. seed 的 3 条已知行里 0 条命中. 一旦存在, 必定触发.                                                                                 │
+  421 - 代价: 导出任务失败, 消费者和归档拿到 0 条新数据. 比 base 输出非数字字符串更早失败, 但影响面从"一行坏"扩大到"整批不出".                                   │
+ -422 - 检查方法: 对生产 orders.db 只读跑 `scan_db.py`, 或在 SQL 里筛 v1 且 `amount_str` 非空、`CAST` 失败的行.                                                  │
+ +422 - 检查方法: 对生产 orders.db 只读跑 `scan_db.py`, 或在 SQL 里筛 v1 且 `amount_str` 非空, `CAST` 失败的行.                                                  │
+  423 - 原始证明: `probe-head.log` 中 id 7 `N/A` 和 id 8 `1,234.50` 都 `raised ValueError`; base 对应输出 `"N/A"` / `"1,234.50"`.                                │
+  424                                                                                                                                                            │
+  425 ### R2. 纯空白 `amount_str` 从空串变成 null, 可能触发归档丢弃                                                                                              │
+  426                                                                                                                                                            │
+      ...                                                                                                                                                        │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ Thinking...                                                                                                                                                     │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ $ cd /tmp/orchestra-07/out && python3 - <<'EOF'                                                                                                                 │
+ import pathlib, unicodedata, collections                                                                                                                        │
+ text = pathlib.Path("ts001-report.md").read_text()                                                                                                              │
+ bad = collections.Counter()                                                                                                                                     │
+ for ch in text:                                                                                                                                                 │
+     o = ord(ch)                                                                                                                                                 │
+     if (0x3000 <= o <= 0x303F) or (0xFF00 <= o <= 0xFFEF) or o in (0x2018,0x2019,0x201C,0x201D,0x2026,0x2014,0x2013):                                           │
+         bad[ch] += 1                                                                                                                                            │
+ if not bad:                                                                                                                                                     │
+     print("OK: no CJK/fullwidth punctuation")                                                                                                                   │
+ for ch, n in bad.items():                                                                                                                                       │
+     print(f"U+{ord(ch):04X} {unicodedata.name(ch,'?')} count={n}")                                                                                              │
+ print("lines:", text.count(chr(10))+1, "chars:", len(text))                                                                                                     │
+ EOF                                                                                                                                                             │
+ echo "=== report tail ==="; tail -5 ts001-report.md                                                                                                             │
+                                                                                                                                                                 │
+ ... (3 earlier lines, ctrl+o/alt+o to expand)                                                                                                                   │
+ 04ddf931fd161baea18b0a0d315da8d41eb7cf7e                                                                                                                        │
+ (无输出)                                                                                                                                                        │
+ ```                                                                                                                                                             │
+                                                                                                                                                                 │
+ 产品代码和测试未修改. 一次误建的 `.venv/` 和 `uv.lock` 已删除, 未进入 Git.                                                                                      │
+                                                                                                                                                                 │
+ Took 0.0s                                                                                                                                                       │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ [python-operation-hook] python -> uv run python                                                                                                                 │
+                                                                                                                                                                 │
+ Thinking...                                                                                                                                                     │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ edit /tmp/orchestra-07/out/ts001-report.md                                                                                                                      │
+                                                                                                                                                                 │
+      ...                                                                                                                                                        │
+  249 ### 2.2 关键事实 (b): 外部归档服务是否丢弃没有 amount 的旧订单                                                                                             │
+  250                                                                                                                                                            │
+  251 事实: 未证实. 本地无法观察服务端是否丢弃 `amount` 缺失或为 null 的订单.                                                                                    │
+  252                                                                                                                                                            │
+ -253 证据级别: 停在 2 (位置), 本地失败路径只能走到 3, 服务端行为未证实. 缺的是: 归档服务源码/配置/日志, 生产网可达入口, 或可核对的接口契约. 没有用猜测代替.     │
+ +253 证据级别: 本地代码可走到 3 (失败路径走查), 外部服务行为停在 2 (位置) 且未证实. 缺的是: 归档服务源码/配置/日志, 生产网可达入口, 或可核对的接口契约. 没有用猜│
+ 测代替.                                                                                                                                                         │
+  254                                                                                                                                                            │
+  255 本地能看到的位置和代码走查:                                                                                                                                │
+  256                                                                                                                                                            │
+  257 - `app/legacy_sync.py:1-15`: 注释写明本地不可运行, 需要 `orders_archive` 表和 `ARCHIVE_TOKEN`, 且归档服务只在生产网内可达.                                 │
+      ...                                                                                                                                                        │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ Thinking...                                                                                                                                                     │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ $ cd /tmp/orchestra-07/out && python3 - <<'EOF'                                                                                                                 │
+ import pathlib                                                                                                                                                  │
+ text = pathlib.Path("ts001-report.md").read_text()                                                                                                              │
+ bad = [ch for ch in text if (0x3000 <= ord(ch) <= 0x303F) or (0xFF00 <= ord(ch) <= 0xFFEF) or ord(ch) in                                                        │
+ (0x2018,0x2019,0x201C,0x201D,0x201E,0x2026,0x2014,0x2013)]                                                                                                      │
+ print("fullwidth/CJK punct count:", len(bad))                                                                                                                   │
+ for key in ["## 1. 做了什么", "## 2. 关键事实与证据级别", "## 3. 风险", "## 4. 已排除项", "## 5. 合并前最便宜复现", "未证实", "证据级别", "format_amount_str"]: │
+     print(key, "->", key in text)                                                                                                                               │
+ print("lines:", text.count(chr(10))+1, "bytes:", len(text.encode()))
+ EOF
+
+ ... (5 earlier lines, ctrl+o/alt+o to expand)
+ ## 5. 合并前最便宜复现 -> True
+ 未证实 -> True
+ 证据级别 -> True
+ format_amount_str -> True
+ lines: 789 bytes: 34160
+
+ Took 0.0s
+
+
+
+ $ cd /tmp/orchestra-07/drill-ts001-red && echo "repo status:"; git status --porcelain=v1; echo "HEAD: $(git rev-parse HEAD)"; echo "report:"; ls -l
+ /tmp/orchestra-07/out/ts001-report.md; echo "proof files:"; ls /tmp/orchestra-07/out/proof/*.py
+
+ ... (5 earlier lines, ctrl+o/alt+o to expand)
+ /tmp/orchestra-07/out/proof/probe_payloads.py
+ /tmp/orchestra-07/out/proof/proof_archive.py
+ /tmp/orchestra-07/out/proof/proof_parse_amount.py
+ /tmp/orchestra-07/out/proof/proof_registration.py
+ /tmp/orchestra-07/out/proof/scan_db.py
+
+ Took 0.0s
+
+
+ [python-operation-hook] python -> uv run python
+
+ Thinking...
+
+ 报告: /tmp/orchestra-07/out/ts001-report.md
+
+ 本机未安装 blast-radius 技能, 已按 Workspace 中 ISSUE-07 的五段交接规格执行. 真实证明脚本在 /tmp/orchestra-07/out/proof/, 命令和原始输出已写入报告附录.
+
+ 关键结论:
+ - 事实 (a) 成立: 仓库 amountlib 2.4.0 的 parse_amount("") 返回 None. 3 条已知 seed 订单在 base/HEAD 下导出逐字节相同, 消费者输出相同. 证据级 5, 仅覆盖已知行.
+ - 事实 (b) 未证实: 归档服务无本地源码/入口/日志, 停在位置级. 本地探测只能看到缺 token 和缺 orders_archive 表.
+ - 被删符号 format_amount_str 和 LEGACY_AMOUNT_KEY 在已知两仓库, 全部历史, 同 HEAD 第二检出中无其他调用者. 范围外无法排除.
+ - 新增风险: 非数字 amount_str 会让整次导出抛 ValueError; 纯空白 amount_str 由空串变 null, 若归档丢弃 null 订单则可能丢单; amount 为 null/空串且 amount_str 有值
+   时 HEAD 会新增金额.
+ - 已排除: 3 条已知行无变化, v2 数字, 零金额, 空串, null, 缺键, 带空白数字均无变化.
+ - 本轮只跑一款模型, 未做多模型同题调查, 报告已标能力缺口.
+ - 原仓库 git 干净, 产品代码和测试未修改.
+
+──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+
+──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+/tmp/orchestra-07/drill-ts001-red (master)
+↑31k ↓43k R1.3M CH99.6% $0.020 7.3%/1.0M (auto)                                                                   (cli) deepseek-v4.1-flash-expires-on-0910 • high

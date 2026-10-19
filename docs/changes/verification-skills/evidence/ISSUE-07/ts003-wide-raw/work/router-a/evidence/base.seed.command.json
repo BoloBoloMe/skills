@@ -1,0 +1,1 @@
+["uv", "run", "--no-project", "--no-managed-python", "--no-python-downloads", "python", "-B", "/tmp/orchestra-07/out/ts003-wide-work/router-a/base/db/seed.py"]

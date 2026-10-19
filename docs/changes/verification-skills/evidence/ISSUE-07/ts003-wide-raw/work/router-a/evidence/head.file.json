@@ -1,0 +1,17 @@
+{
+  "schema": "orders-export/2",
+  "rows": [
+    {
+      "id": 1,
+      "amount_value": "12.50"
+    },
+    {
+      "id": 2,
+      "amount_value": "9.99"
+    },
+    {
+      "id": 3,
+      "amount_value": null
+    }
+  ]
+}

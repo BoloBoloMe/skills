@@ -1,0 +1,400 @@
+ Took 0.0s                                                                                                                                                       │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ $ cd /tmp/orchestra-07/drill-ts003-wide && echo "=== 本仓库 grep: 旧/新字段与导出入口 ===" && grep -rn --exclude-dir=.git --exclude-dir=.venv --exclude-dir=var │
+ -E 'amount_value|amount_str|orders\.export\.json|"amount"|dump_orders' .; echo "=== 本仓库所有 py 文件行数 ==="; find . -name '*.py' -not -path './.venv/*' -not│
+ -path './.git/*' | sort; echo "=== HEAD diff 触及符号的历史 ==="; git log --all --oneline -S'amount_value'; git log --all --oneline -S'orders-export/2'         │
+                                                                                                                                                                 │
+ ... (20 earlier lines, ctrl+o/alt+o to expand)                                                                                                                  │
+ ./db/seed.py                                                                                                                                                    │
+ ./scripts/dump_orders.py                                                                                                                                        │
+ === HEAD diff 触及符号的历史 ===                                                                                                                                │
+ e807b06 导出线格式改为 orders-export/2, 金额字段改名 amount_value                                                                                               │
+ e807b06 导出线格式改为 orders-export/2, 金额字段改名 amount_value                                                                                               │
+                                                                                                                                                                 │
+ Took 0.0s                                                                                                                                                       │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ $ cd /tmp/orchestra-07/orders-consumer && echo "=== 消费者 grep: 字段/外层假设 ===" && grep -rn --exclude-dir=.git --exclude-dir=node_modules -E                │
+ 'amount|rows|orders\.export|schema' .; echo "=== git 历史里所有文件 ==="; git log --all --name-only --pretty=format: | sort -u | sed '/^$/d'                    │
+                                                                                                                                                                 │
+ ... (7 earlier lines, ctrl+o/alt+o to expand)                                                                                                                   │
+ .gitignore                                                                                                                                                      │
+ package.json                                                                                                                                                    │
+ README.md                                                                                                                                                       │
+ src/ledger.js                                                                                                                                                   │
+ src/run.sh                                                                                                                                                      │
+                                                                                                                                                                 │
+ Took 0.0s                                                                                                                                                       │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ Thinking...                                                                                                                                                     │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ $ cd /tmp/orchestra-07/out/ts003-wide-work && ls -la router-a router-b | head -40; echo "=== reports? ==="; ls -l router-a/report.md router-b/report.md         │
+ 2>/dev/null; herdr agent get wide-a 2>&1 | grep -o '"agent_status":"[a-z]*"'; herdr agent get wide-b 2>&1 | grep -o '"agent_status":"[a-z]*"'                   │
+                                                                                                                                                                 │
+ ... (27 earlier lines, ctrl+o/alt+o to expand)                                                                                                                  │
+ drwxrwxr-x 6 bolo bolo  180 Oct 19 18:04 repo                                                                                                                   │
+ drwxrwxr-x 2 bolo bolo   60 Oct 19 17:57 scripts                                                                                                                │
+ === reports? ===                                                                                                                                                │
+ "agent_status":"working"                                                                                                                                        │
+ "agent_status":"working"                                                                                                                                        │
+                                                                                                                                                                 │
+ Took 0.0s                                                                                                                                                       │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ Thinking...                                                                                                                                                     │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ $ sleep 60; herdr pane read w1J:p2S 2>&1 | tail -25; echo "=========== B ==========="; herdr pane read w1J:p2T 2>&1 | tail -25 (timeout 90s)                    │
+                                                                                                                                                                 │
+ ... (53 earlier lines, ctrl+o/alt+o to expand)                                                                                                                  │
+ ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────│
+ ──                                                                                                                                                              │
+ /tmp/orchestra-07/out/ts003-wide-work/router-b                                                                                                                  │
+ ↑29k ↓599 R32k CH0.0% $0.003 1.3%/1.0M (auto)                                                                                          (cli) glm-5.3-flash •    │
+ xhigh                                                                                                                                                           │
+                                                                                                                                                                 │
+ Took 1m 0s                                                                                                                                                      │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ Thinking...                                                                                                                                                     │
+                                                                                                                                                                 │
+ 两路在跑. 我先把自己的证据整理成合并底稿, 并监控进度.                                                                                                           │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ $ cd /tmp/orchestra-07/out/ts003-wide-work && cat > EVIDENCE-self.md <<'EOF'                                                                                    │
+ # 本地自证材料索引 (用于合并)                                                                                                                                   │
+                                                                                                                                                                 │
+ ## 命令与输出                                                                                                                                                   │
+ - 导出: `cd head && uv run python db/seed.py && uv run python scripts/dump_orders.py`                                                                           │
+   - head/var/orders.export.json (对象, schema=orders-export/2, rows[].amount_value)                                                                             │
+   - head.stdout.json (裸数组, rows[].amount_value)                                                                                                              │
+ - 基线: base/ 同命令 -> base/var/orders.export.json (裸数组, amount), base.stdout.json                                                                          │
+ - 真实消费者: `bash /tmp/orchestra-07/orders-consumer/src/run.sh <file>`                                                                                        │
+   - consumer_head_file.{stdout,stderr,exit}: exit=1, TypeError: rows is not iterable (ledger.js:6)                                                              │
+   - consumer_head_stdout.{stdout,stderr,exit}: exit=0, {"total": null, "missing": []}                                                                           │
+   - consumer_base_file.stdout: total 22.490000000000002, missing [3], exit=0                                                                                    │
+ - probe_rows_old_field.mjs: 只适配外层仍用 amount -> total NaN, missing [] (CONFIRMED)                                                                          │
+ - probe_amounts.py: amountlib 2.4.0 本地路径, 金额值 12.50/9.99/null 不变 (PASS)                                                                                │
+ EOF                                                                                                                                                             │
+ echo ok; ls -l router-a/report.md router-b/report.md 2>/dev/null; herdr agent get wide-a 2>&1 | grep -o '"agent_status":"[a-z]*"'; herdr agent get wide-b 2>&1 |│
+ grep -o '"agent_status":"[a-z]*"'                                                                                                                               │
+                                                                                                                                                                 │
+ ok                                                                                                                                                              │
+ "agent_status":"working"                                                                                                                                        │
+ "agent_status":"working"                                                                                                                                        │
+                                                                                                                                                                 │
+ Took 0.0s                                                                                                                                                       │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ $ sleep 180; cd /tmp/orchestra-07/out/ts003-wide-work && ls -l router-a/report.md router-b/report.md 2>/dev/null; herdr agent get wide-a 2>&1 | grep -o         │
+ '"agent_status":"[a-z]*"'; herdr agent get wide-b 2>&1 | grep -o '"agent_status":"[a-z]*"'; echo "=== A tail ==="; herdr pane read w1J:p2S 2>&1 | tail -8; echo │
+ "=== B tail ==="; herdr pane read w1J:p2T 2>&1 | tail -8 (timeout 200s)                                                                                         │
+                                                                                                                                                                 │
+ ... (21 earlier lines, ctrl+o/alt+o to expand)                                                                                                                  │
+ ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────│
+ ──                                                                                                                                                              │
+ /tmp/orchestra-07/out/ts003-wide-work/router-b                                                                                                                  │
+ ↑39k ↓5.9k R123k CH92.3% $0.006 1.9%/1.0M (auto)                                                                                       (cli) glm-5.3-flash •    │
+ xhigh                                                                                                                                                           │
+                                                                                                                                                                 │
+ Took 3m 0s                                                                                                                                                      │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ Thinking...                                                                                                                                                     │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ $ herdr pane read w1J:p2S 2>&1 | tail -45                                                                                                                       │
+                                                                                                                                                                 │
+ ... (43 earlier lines, ctrl+o/alt+o to expand)                                                                                                                  │
+ ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────│
+ ──                                                                                                                                                              │
+ /tmp/orchestra-07/out/ts003-wide-work/router-a                                                                                                                  │
+ ↑36k ↓11k R248k CH93.6% $0.209 4.1%/872k (auto)                                                                                          (cli) gpt-6.1-sol •    │
+ xhigh                                                                                                                                                           │
+                                                                                                                                                                 │
+ Took 0.0s                                                                                                                                                       │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ Thinking...                                                                                                                                                     │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ $ sleep 200; cd /tmp/orchestra-07/out/ts003-wide-work && ls -l router-a/report.md router-b/report.md 2>/dev/null; for a in wide-a wide-b; do echo -n "$a: ";    │
+ herdr agent get $a 2>&1 | grep -o '"agent_status":"[a-z]*"'; done; echo "=== A tail ==="; herdr pane read w1J:p2S 2>&1 | tail -6; echo "=== B tail ==="; herdr  │
+ pane read w1J:p2T 2>&1 | tail -6 (timeout 220s)                                                                                                                 │
+                                                                                                                                                                 │
+ ... (17 earlier lines, ctrl+o/alt+o to expand)                                                                                                                  │
+ ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────│
+ ──                                                                                                                                                              │
+ /tmp/orchestra-07/out/ts003-wide-work/router-b                                                                                                                  │
+ ↑90k ↓13k R211k CH89.3% $0.013 2.9%/1.0M (auto)                                                                                        (cli) glm-5.3-flash •    │
+ xhigh                                                                                                                                                           │
+                                                                                                                                                                 │
+ Took 3m 20s                                                                                                                                                     │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ Thinking...                                                                                                                                                     │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ $ sleep 240; cd /tmp/orchestra-07/out/ts003-wide-work && ls -l router-a/report.md router-b/report.md 2>/dev/null; for a in wide-a wide-b; do echo -n "$a: ";    │
+ herdr agent get $a 2>&1 | grep -o '"agent_status":"[a-z]*"'; done; echo "=== A tail ==="; herdr pane read w1J:p2S 2>&1 | tail -5; echo "=== B tail ==="; herdr  │
+ pane read w1J:p2T 2>&1 | tail -5 (timeout 260s)                                                                                                                 │
+                                                                                                                                                                 │
+ ... (17 earlier lines, ctrl+o/alt+o to expand)                                                                                                                  │
+ ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────│
+ ──                                                                                                                                                              │
+ /tmp/orchestra-07/out/ts003-wide-work/router-b                                                                                                                  │
+ ↑103k ↓20k R335k CH99.3% $0.018 3.6%/1.0M (auto)                                                                                       (cli) glm-5.3-flash •    │
+ xhigh                                                                                                                                                           │
+                                                                                                                                                                 │
+ Took 4m 0s                                                                                                                                                      │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ Thinking...                                                                                                                                                     │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ read /tmp/orchestra-07/out/ts003-wide-work/router-a/report.md                                                                                                   │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ read /tmp/orchestra-07/out/ts003-wide-work/router-b/report.md                                                                                                   │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ Thinking...                                                                                                                                                     │
+                                                                                                                                                                 │
+ 两路报告已出, 结论一致. 先验证两路证明脚本可重跑, 再合并.                                                                                                       │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ read ~/.agents/skills/use-herdr/layout.md                                                                                                                       │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ $ cd /tmp/orchestra-07/out/ts003-wide-work/router-a && ls evidence | head -40 && echo "=== run prove_all ===" && UV_CACHE_DIR="$PWD/.uv-cache"                  │
+ PYTHONDONTWRITEBYTECODE=1 uv run --no-project --no-managed-python --no-python-downloads python -B proofs/prove_all.py 2>&1 | tail -25; echo                     │
+ "exit=${PIPESTATUS[0]}" (timeout 180s)                                                                                                                          │
+                                                                                                                                                                 │
+ ... (62 earlier lines, ctrl+o/alt+o to expand)                                                                                                                  │
+   "missing": []                                                                                                                                                 │
+ }                                                                                                                                                               │
+                                                                                                                                                                 │
+ ALL ASSERTIONS PASSED: F1/F2/F3/F4/F6 本地证明通过; 生产范围未证明.                                                                                             │
+ exit=0                                                                                                                                                          │
+                                                                                                                                                                 │
+ Took 0.4s                                                                                                                                                       │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ $ cd /tmp/orchestra-07/out/ts003-wide-work/router-b && ls work | head -30 && echo "=== f2 ===" && node work/f2-rows-amount.mjs repo/var/orders.export.json 2>&1 │
+ | tail -8; echo "exit=${PIPESTATUS[0]}"; echo "=== f3 ===" && (cd work && node f3-stdout-consumer.mjs 2>&1 | tail -8; echo "exit=${PIPESTATUS[0]}") (timeout    │
+ 120s)                                                                                                                                                           │
+                                                                                                                                                                 │
+ ... (16 earlier lines, ctrl+o/alt+o to expand)                                                                                                                  │
+ exit=0                                                                                                                                                          │
+ === f3 ===                                                                                                                                                      │
+ F3 证实: stdout 仍是裸数组, for...of 不崩, 循环正常走完 (退出码 0).                                                                                             │
+   但 row.amount 是 undefined, total=NaN, missing 丢掉 id 3. 与文件消费者不同: 不崩, 改为静默算错.                                                               │
+ exit=0                                                                                                                                                          │
+                                                                                                                                                                 │
+ Took 0.1s                                                                                                                                                       │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ Thinking...                                                                                                                                                     │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ $ cd /tmp/orchestra-07/out/ts003-wide-work/router-b && uv run python work/f4-values.py 2>&1 | tail -8; echo "exit=${PIPESTATUS[0]}"; echo "=== f1 new ==="; cat │
+ work/f1-new.out; echo "=== f1 old ==="; cat work/f1-old.out (timeout 120s)                                                                                      │
+                                                                                                                                                                 │
+ ... (24 earlier lines, ctrl+o/alt+o to expand)                                                                                                                  │
+   "missing": [                                                                                                                                                  │
+     3                                                                                                                                                           │
+   ]                                                                                                                                                             │
+ }                                                                                                                                                               │
+ exit=0                                                                                                                                                          │
+                                                                                                                                                                 │
+ Took 0.1s                                                                                                                                                       │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ $ cd /tmp/orchestra-07/drill-ts003-wide && git ls-remote origin 2>&1; echo ---; git rev-parse HEAD HEAD~1 origin/master; echo "=== 工作区干净? ==="; git status │
+ --short; echo "=== consumer 状态 ==="; git -C /tmp/orchestra-07/orders-consumer status --short                                                                  │
+                                                                                                                                                                 │
+ ... (3 earlier lines, ctrl+o/alt+o to expand)                                                                                                                   │
+ e807b06ca2a9cb88413390a298f55b84d3ac7869                                                                                                                        │
+ 04ddf931fd161baea18b0a0d315da8d41eb7cf7e                                                                                                                        │
+ 04ddf931fd161baea18b0a0d315da8d41eb7cf7e                                                                                                                        │
+ === 工作区干净? ===                                                                                                                                             │
+ === consumer 状态 ===                                                                                                                                           │
+                                                                                                                                                                 │
+ Took 0.0s                                                                                                                                                       │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ Thinking...                                                                                                                                                     │
+                                                                                                                                                                 │
+ 两路结论一致, 关键脚本我已复跑. 取回两路收尾消息后关闭会话.                                                                                                     │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ $ herdr pane read w1J:p2S 2>&1 | tail -30; echo "================ B ================"; herdr pane read w1J:p2T 2>&1 | tail -30                                  │
+                                                                                                                                                                 │
+ ... (64 earlier lines, ctrl+o/alt+o to expand)                                                                                                                  │
+ ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────│
+ ──                                                                                                                                                              │
+ /tmp/orchestra-07/out/ts003-wide-work/router-b                                                                                                                  │
+ ↑103k ↓20k R335k CH99.3% $0.018 3.6%/1.0M (auto)                                                                                       (cli) glm-5.3-flash •    │
+ xhigh                                                                                                                                                           │
+                                                                                                                                                                 │
+ Took 0.5s                                                                                                                                                       │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ Thinking...                                                                                                                                                     │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ $ herdr tab close w1J:t2Q 2>&1 | tail -2; herdr tab close w1J:t2R 2>&1 | tail -2; herdr agent list 2>&1 | grep -o '"name":"wide-[ab]"' || echo "wide-a/wide-b 已│
+ 关闭"                                                                                                                                                           │
+                                                                                                                                                                 │
+ {"id":"cli:tab:close","result":{"type":"ok"}}                                                                                                                   │
+ {"id":"cli:tab:close","result":{"type":"ok"}}                                                                                                                   │
+ wide-a/wide-b 已关闭                                                                                                                                            │
+                                                                                                                                                                 │
+ Took 0.1s                                                                                                                                                       │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ Thinking...                                                                                                                                                     │
+                                                                                                                                                                 │
+ 合并前把最便宜的复现脚本固化并实跑一次.                                                                                                                         │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ write /tmp/orchestra-07/out/ts003-wide-work/repro.sh                                                                                                            │
+                                                                                                                                                                 │
+ #!/usr/bin/env bash                                                                                                                                             │
+ # payout-service e807b06 合并前最便宜复现: 真 seed + 真导出 + 未改动的消费者.                                                                                   │
+ # 两条链路都检查: 读文件应崩溃; 读 stdout 应静默给出 total:null.                                                                                                │
+ # 任一预期不符, 本脚本非零退出.                                                                                                                                 │
+ set -uo pipefail                                                                                                                                                │
+ W=/tmp/orchestra-07/out/ts003-wide-work/head                                                                                                                    │
+ CONS=/tmp/orchestra-07/orders-consumer/src/run.sh                                                                                                               │
+ TMP=$(mktemp -d)                                                                                                                                                │
+ trap 'rm -rf "$TMP"' EXIT                                                                                                                                       │
+                                                                                                                                                                 │
+ ... (24 more lines, 34 total, ctrl+o/alt+o to expand)                                                                                                           │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ $ cd /tmp/orchestra-07/out/ts003-wide-work && chmod +x repro.sh && bash repro.sh; echo "script_exit=$?" (timeout 120s)                                          │
+                                                                                                                                                                 │
+ ... (17 earlier lines, ctrl+o/alt+o to expand)                                                                                                                  │
+   "missing": []                                                                                                                                                 │
+ }                                                                                                                                                               │
+ stdout_consumer_exit=0                                                                                                                                          │
+ PASS: 文件消费者崩 (exit 1), stdout 消费者静默错账 (exit 0, total:null, missing:[]).                                                                            │
+ script_exit=0                                                                                                                                                   │
+                                                                                                                                                                 │
+ Took 0.2s                                                                                                                                                       │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ Thinking...                                                                                                                                                     │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ write /tmp/orchestra-07/out/ts003-wide-merge.md                                                                                                                 │
+                                                                                                                                                                 │
+ # ts003-wide 多模型同题调查合并记录                                                                                                                             │
+                                                                                                                                                                 │
+ 调查对象: payout-service HEAD `e807b06` (orders-export/2, amount -> amount_value).                                                                              │
+ 合并人: cli/deepseek-v4.1-flash-expires-on-0910, thinking high, 本会话 `br-wide`.                                                                               │
+ 两路互不可见, 各自跑证明, 报告落在不同目录. 合并时逐条事实对齐, 不按整篇投票.                                                                                   │
+                                                                                                                                                                 │
+ ## 1. 会话, 模型与产物                                                                                                                                          │
+                                                                                                                                                                 │
+ | 路 | 会话名 / tab | 模型全名 | thinking | kind | 起止 (本地时间, 按文件 mtime) | 报告 | 脚本与原始输出 |                                                      │
+ | --- | --- | --- | --- | --- | --- | --- | --- |                                                                                                               │
+ ... (45 more lines, 55 total, ctrl+o/alt+o to expand)                                                                                                           │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ Thinking...                                                                                                                                                     │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ write /tmp/orchestra-07/out/ts003-wide-report.md                                                                                                                │
+                                                                                                                                                                 │
+ # payout-service e807b06 blast-radius 交接报告 (多模型同题合并)                                                                                                 │
+                                                                                                                                                                 │
+ 调查对象: HEAD `e807b06ca2a9cb88413390a298f55b84d3ac7869`, "导出线格式改为 orders-export/2, 金额字段改名 amount_value".                                         │
+ 结论: 不建议按当前形态单独合入. 金额计算本身没坏, 坏的是跨仓库共享的导出 JSON: 现有消费者读新文件 100% 崩溃; 若只适配外层或改读 stdout, 消费者会以退出码 0 交付 │
+ 错误账本. 两条都有第 4 级证据.                                                                                                                                  │
+ 建议: 与消费者同批修改 `{schema, rows}` 外层和 `amount_value` 字段, 并明确 stdout 与文件谁是规范出口; 或者保留旧兼容出口. 不要只改一处.                         │
+ 多模型合并记录: `/tmp/orchestra-07/out/ts003-wide-merge.md`.                                                                                                    │
+                                                                                                                                                                 │
+ ## 1. 做了什么                                                                                                                                                  │
+                                                                                                                                                                 │
+ 变更 (事实/2 级): 本次只改 2 个文件各 1 行.                                                                                                                     │
+ ... (223 more lines, 233 total, ctrl+o/alt+o to expand)                                                                                                         │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ Thinking...                                                                                                                                                     │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ $ cd /tmp/orchestra-07/out && for f in ts003-wide-report.md ts003-wide-merge.md; do echo "== $f =="; grep -nP                                                   │
+ '[\x{3000}-\x{303F}\x{FF00}-\x{FFEF}\x{201C}\x{201D}\x{2018}\x{2019}]' "$f" | head -5 || true; done; echo "=== 文件 ==="; ls -l ts003-wide-report.md            │
+ ts003-wide-merge.md; echo "=== 仓库状态 ==="; git -C /tmp/orchestra-07/drill-ts003-wide status --short; git -C /tmp/orchestra-07/orders-consumer status --short;│
+ echo "(空=未改)"                                                                                                                                                │
+                                                                                                                                                                 │
+ ... (2 earlier lines, ctrl+o/alt+o to expand)                                                                                                                   │
+ === 文件 ===                                                                                                                                                    │
+ -rw-rw-r-- 1 bolo bolo  7396 Oct 19 18:18 ts003-wide-merge.md                                                                                                   │
+ -rw-rw-r-- 1 bolo bolo 15134 Oct 19 18:18 ts003-wide-report.md                                                                                                  │
+ === 仓库状态 ===                                                                                                                                                │
+ (空=未改)                                                                                                                                                       │
+                                                                                                                                                                 │
+ Took 0.0s                                                                                                                                                       │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ $ cd /tmp/orchestra-07/out/ts003-wide-work && ls -l probe_amounts.py probe_rows_old_field.mjs repro.sh head/var/orders.export.json base/var/orders.export.json
+ router-a/report.md router-b/report.md && echo "=== agent 残留 ===" && (herdr agent list 2>&1 | grep -o '"name":"wide-[ab]"' || echo none)
+
+ ... (4 earlier lines, ctrl+o/alt+o to expand)
+ -rwxrwxr-x 1 bolo bolo  1887 Oct 19 18:18 repro.sh
+ -rw-rw-r-- 1 bolo bolo 25313 Oct 19 18:15 router-a/report.md
+ -rw-rw-r-- 1 bolo bolo 18314 Oct 19 18:14 router-b/report.md
+ === agent 残留 ===
+ none
+
+ Took 0.0s
+
+
+ Thinking...
+
+ 调查完成. 结论: 不建议按当前形态单独合入.
+
+ 最要紧的两条事实 (均为 4 级证据, 已实跑)
+ - 现有消费者读新导出文件直接崩: ledger.js:6 对顶层对象做 for...of, 报 TypeError: rows is not iterable, 退出码 1. 旧文件正常输出 total 22.49, missing [3].
+ - 若只适配外层或改读 stdout, 不崩但静默错账: row.amount 变 undefined, total 变 NaN, 输出 {"total": null, "missing": []}, 退出码 0, 金额缺失行 id 3 从 missing 消
+   失.
+ - 金额值本身没变: 12.50 / 9.99 / null, HEAD 与 HEAD~1 一致; amountlib 2.4.0 与解析路径未被本次提交触碰 (4 级).
+ - 旧格式读取方本地只找到 orders-consumer/src/ledger.js; 生产与其他仓库的读者查不到, 是最大未知 (2 级).
+
+ 多模型
+ - A 路: cli/gpt-6.1-sol, thinking xhigh.
+ - B 路: cli/glm-5.3-flash, thinking xhigh.
+ - 两路独立跑证明, 结论一致; 我已复跑其脚本. 会话已关闭.
+
+ 产物
+ - 交接报告: /tmp/orchestra-07/out/ts003-wide-report.md
+ - 合并记录: /tmp/orchestra-07/out/ts003-wide-merge.md
+ - 复现脚本: /tmp/orchestra-07/out/ts003-wide-work/repro.sh
+ - 两路报告: .../router-a/report.md, .../router-b/report.md
+
+ 最便宜复现
+ bash /tmp/orchestra-07/out/ts003-wide-work/repro.sh
+ 预期: 文件消费者 exit 1 + TypeError; stdout 消费者 exit 0 + total null. 脚本判断不符会非零退出.
+
+ 两个仓库产品代码, 测试, 配置均未修改, git status 为空.
+
+──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+
+──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+/tmp/orchestra-07/drill-ts003-wide (master)
+↑53k ↓36k R1.9M CH99.5% $0.023 8.6%/1.0M (auto)                                                                   (cli) deepseek-v4.1-flash-expires-on-0910 • high

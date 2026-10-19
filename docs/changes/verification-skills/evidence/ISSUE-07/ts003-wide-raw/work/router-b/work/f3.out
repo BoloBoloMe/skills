@@ -1,0 +1,4 @@
+### node f3-stdout-consumer.mjs
+F3 证实: stdout 仍是裸数组, for...of 不崩, 循环正常走完 (退出码 0).
+  但 row.amount 是 undefined, total=NaN, missing 丢掉 id 3. 与文件消费者不同: 不崩, 改为静默算错.
+exit=0

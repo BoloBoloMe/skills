@@ -1,0 +1,400 @@
+ 'abc'        -> RAISED ValueError: 无法解析金额: 'abc'                                                                                                          │
+ '$9.99'      -> RAISED ValueError: 无法解析金额: '$9.99'                                                                                                        │
+ 0            -> RAISED AttributeError: 'int' object has no attribute 'strip'                                                                                    │
+ 12.5         -> RAISED AttributeError: 'float' object has no attribute 'strip'                                                                                  │
+                                                                                                                                                                 │
+ Took 0.0s                                                                                                                                                       │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ Thinking...                                                                                                                                                     │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ $ cd /tmp/orchestra-07/out/baseline-ts001-work/base && uv run python - <<'PY'                                                                                   │
+ import json, sqlite3                                                                                                                                            │
+ from app.orders import read_orders                                                                                                                              │
+                                                                                                                                                                 │
+ CASES = [                                                                                                                                                       │
+     ("v2_amount", {"schema": "v2", "amount": "12.50"}),                                                                                                         │
+     ("v1_normal", {"schema": "v1", "amount_str": "9.99"}),                                                                                                      │
+     ("v1_empty", {"schema": "v1", "amount_str": ""}),                                                                                                           │
+     ("v1_spaces", {"schema": "v1", "amount_str": "   "}),                                                                                                       │
+     ("v1_null", {"schema": "v1", "amount_str": None}),                                                                                                          │
+     ("v1_missing", {"schema": "v1"}),                                                                                                                           │
+     ("v1_invalid", {"schema": "v1", "amount_str": "abc"}),                                                                                                      │
+     ("v1_dollar", {"schema": "v1", "amount_str": "$9.99"}),                                                                                                     │
+     ("v1_zeros", {"schema": "v1", "amount_str": "001.20"}),                                                                                                     │
+     ("v1_exp", {"schema": "v1", "amount_str": "1e3"}),                                                                                                          │
+     ("v1_plus", {"schema": "v1", "amount_str": "+1.50"}),                                                                                                       │
+     ("v2_empty_amount_valid_str", {"schema": "v2", "amount": "", "amount_str": "7.77"}),                                                                        │
+     ("v2_amount_and_str", {"amount": "12.50", "amount_str": "9.99"}),                                                                                           │
+ ]                                                                                                                                                               │
+                                                                                                                                                                 │
+ def one(payload):                                                                                                                                               │
+     conn = sqlite3.connect(":memory:")                                                                                                                          │
+     conn.execute("CREATE TABLE orders (id INTEGER PRIMARY KEY, payload TEXT NOT NULL)")                                                                         │
+     conn.execute("INSERT INTO orders VALUES (1, ?)", (json.dumps(payload),))                                                                                    │
+     try:                                                                                                                                                        │
+         return repr(read_orders(conn))                                                                                                                          │
+     except Exception as e:                                                                                                                                      │
+         return f"RAISED {type(e).__name__}: {e}"                                                                                                                │
+     finally:                                                                                                                                                    │
+         conn.close()                                                                                                                                            │
+                                                                                                                                                                 │
+ for name, payload in CASES:                                                                                                                                     │
+     print(f"{name:26} {payload!r}")                                                                                                                             │
+     print(f"  -> {one(payload)}")                                                                                                                               │
+                                                                                                                                                                 │
+ conn = sqlite3.connect(":memory:")                                                                                                                              │
+ conn.execute("CREATE TABLE orders (id INTEGER PRIMARY KEY, payload TEXT NOT NULL)")                                                                             │
+ conn.executemany("INSERT INTO orders VALUES (?, ?)", [(i, json.dumps(p)) for i, (_, p) in enumerate(CASES, 1)])                                                 │
+ try:                                                                                                                                                            │
+     print("ALL ROWS TOGETHER ->", read_orders(conn))                                                                                                            │
+ except Exception as e:                                                                                                                                          │
+     print(f"ALL ROWS TOGETHER -> RAISED {type(e).__name__}: {e}")                                                                                               │
+ PY                                                                                                                                                              │
+                                                                                                                                                                 │
+ ... (24 earlier lines, ctrl+o/alt+o to expand)                                                                                                                  │
+ v2_amount_and_str          {'amount': '12.50', 'amount_str': '9.99'}                                                                                            │
+   -> [{'id': 1, 'amount': '12.50'}]                                                                                                                             │
+ ALL ROWS TOGETHER -> [{'id': 1, 'amount': '12.50'}, {'id': 2, 'amount': '9.99'}, {'id': 3, 'amount': None}, {'id': 4, 'amount': ''}, {'id': 5, 'amount': None}, │
+ {'id': 6, 'amount': None}, {'id': 7, 'amount': 'abc'}, {'id': 8, 'amount': '$9.99'}, {'id': 9, 'amount': '001.20'}, {'id': 10, 'amount': '1e3'}, {'id': 11,     │
+ 'amount': '+1.50'}, {'id': 12, 'amount': None}, {'id': 13, 'amount': '12.50'}]                                                                                  │
+                                                                                                                                                                 │
+ Took 0.1s                                                                                                                                                       │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ $ cd /tmp/orchestra-07/out/baseline-ts001-work/head && uv run python - <<'PY'                                                                                   │
+ import json, sqlite3                                                                                                                                            │
+ from app.orders import read_orders                                                                                                                              │
+                                                                                                                                                                 │
+ CASES = [                                                                                                                                                       │
+     ("v2_amount", {"schema": "v2", "amount": "12.50"}),                                                                                                         │
+     ("v1_normal", {"schema": "v1", "amount_str": "9.99"}),                                                                                                      │
+     ("v1_empty", {"schema": "v1", "amount_str": ""}),                                                                                                           │
+     ("v1_spaces", {"schema": "v1", "amount_str": "   "}),                                                                                                       │
+     ("v1_null", {"schema": "v1", "amount_str": None}),                                                                                                          │
+     ("v1_missing", {"schema": "v1"}),                                                                                                                           │
+     ("v1_invalid", {"schema": "v1", "amount_str": "abc"}),                                                                                                      │
+     ("v1_dollar", {"schema": "v1", "amount_str": "$9.99"}),                                                                                                     │
+     ("v1_zeros", {"schema": "v1", "amount_str": "001.20"}),                                                                                                     │
+     ("v1_exp", {"schema": "v1", "amount_str": "1e3"}),                                                                                                          │
+     ("v1_plus", {"schema": "v1", "amount_str": "+1.50"}),                                                                                                       │
+     ("v2_empty_amount_valid_str", {"schema": "v2", "amount": "", "amount_str": "7.77"}),                                                                        │
+     ("v2_amount_and_str", {"amount": "12.50", "amount_str": "9.99"}),                                                                                           │
+ ]                                                                                                                                                               │
+                                                                                                                                                                 │
+ def one(payload):                                                                                                                                               │
+     conn = sqlite3.connect(":memory:")                                                                                                                          │
+     conn.execute("CREATE TABLE orders (id INTEGER PRIMARY KEY, payload TEXT NOT NULL)")                                                                         │
+     conn.execute("INSERT INTO orders VALUES (1, ?)", (json.dumps(payload),))                                                                                    │
+     try:                                                                                                                                                        │
+         return repr(read_orders(conn))                                                                                                                          │
+     except Exception as e:                                                                                                                                      │
+         return f"RAISED {type(e).__name__}: {e}"                                                                                                                │
+     finally:                                                                                                                                                    │
+         conn.close()                                                                                                                                            │
+                                                                                                                                                                 │
+ for name, payload in CASES:                                                                                                                                     │
+     print(f"{name:26} {payload!r}")                                                                                                                             │
+     print(f"  -> {one(payload)}")                                                                                                                               │
+                                                                                                                                                                 │
+ conn = sqlite3.connect(":memory:")                                                                                                                              │
+ conn.execute("CREATE TABLE orders (id INTEGER PRIMARY KEY, payload TEXT NOT NULL)")                                                                             │
+ conn.executemany("INSERT INTO orders VALUES (?, ?)", [(i, json.dumps(p)) for i, (_, p) in enumerate(CASES, 1)])                                                 │
+ try:                                                                                                                                                            │
+     print("ALL ROWS TOGETHER ->", read_orders(conn))                                                                                                            │
+ except Exception as e:                                                                                                                                          │
+     print(f"ALL ROWS TOGETHER -> RAISED {type(e).__name__}: {e}")                                                                                               │
+ PY                                                                                                                                                              │
+                                                                                                                                                                 │
+ ... (22 earlier lines, ctrl+o/alt+o to expand)                                                                                                                  │
+ v2_empty_amount_valid_str  {'schema': 'v2', 'amount': '', 'amount_str': '7.77'}                                                                                 │
+   -> [{'id': 1, 'amount': '7.77'}]                                                                                                                              │
+ v2_amount_and_str          {'amount': '12.50', 'amount_str': '9.99'}                                                                                            │
+   -> [{'id': 1, 'amount': '12.50'}]                                                                                                                             │
+ ALL ROWS TOGETHER -> RAISED ValueError: 无法解析金额: 'abc'                                                                                                     │
+                                                                                                                                                                 │
+ Took 0.1s                                                                                                                                                       │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ Thinking...                                                                                                                                                     │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ $ cd /tmp/orchestra-07/out/baseline-ts001-work/base && echo '$ uv run python db/seed.py' && uv run python db/seed.py && echo '$ uv run python                   │
+ scripts/dump_orders.py' && uv run python scripts/dump_orders.py && echo '$ node /tmp/orchestra-07/orders-consumer/src/ledger.js var/orders.export.json' && node │
+ /tmp/orchestra-07/orders-consumer/src/ledger.js var/orders.export.json && echo '$ cat var/orders.export.json' && cat var/orders.export.json                     │
+                                                                                                                                                                 │
+ ... (21 earlier lines, ctrl+o/alt+o to expand)                                                                                                                  │
+   {                                                                                                                                                             │
+     "id": 3,                                                                                                                                                    │
+     "amount": null                                                                                                                                              │
+   }                                                                                                                                                             │
+ ]                                                                                                                                                               │
+                                                                                                                                                                 │
+ Took 0.1s                                                                                                                                                       │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ $ cd /tmp/orchestra-07/out/baseline-ts001-work/head && echo '$ uv run python db/seed.py' && uv run python db/seed.py && echo '$ uv run python                   │
+ scripts/dump_orders.py' && uv run python scripts/dump_orders.py && echo '$ node /tmp/orchestra-07/orders-consumer/src/ledger.js var/orders.export.json' && node │
+ /tmp/orchestra-07/orders-consumer/src/ledger.js var/orders.export.json && echo '$ cat var/orders.export.json' && cat var/orders.export.json                     │
+                                                                                                                                                                 │
+ ... (21 earlier lines, ctrl+o/alt+o to expand)                                                                                                                  │
+   {                                                                                                                                                             │
+     "id": 3,                                                                                                                                                    │
+     "amount": null                                                                                                                                              │
+   }                                                                                                                                                             │
+ ]                                                                                                                                                               │
+                                                                                                                                                                 │
+ Took 0.1s                                                                                                                                                       │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ Thinking...                                                                                                                                                     │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ $ cd /tmp/orchestra-07/out/baseline-ts001-work && mkdir -p consumer-probes                                                                                      │
+ cat > consumer-probes/old-whitespace.json <<'JSON'                                                                                                              │
+ [{"id": 1, "amount": ""}, {"id": 2, "amount": "9.99"}]                                                                                                          │
+ JSON                                                                                                                                                            │
+ cat > consumer-probes/head-whitespace.json <<'JSON'                                                                                                             │
+ [{"id": 1, "amount": null}, {"id": 2, "amount": "9.99"}]                                                                                                        │
+ JSON                                                                                                                                                            │
+ cat > consumer-probes/old-invalid.json <<'JSON'                                                                                                                 │
+ [{"id": 1, "amount": "abc"}, {"id": 2, "amount": "$9.99"}, {"id": 3, "amount": "9.99"}]                                                                         │
+ JSON                                                                                                                                                            │
+ cat > consumer-probes/exponent.json <<'JSON'                                                                                                                    │
+ [{"id": 1, "amount": "1e3"}, {"id": 2, "amount": "1E+3"}]                                                                                                       │
+ JSON                                                                                                                                                            │
+ for f in consumer-probes/*.json; do echo "=== $f ==="; node /tmp/orchestra-07/orders-consumer/src/ledger.js "$f"; done                                          │
+                                                                                                                                                                 │
+ ... (17 earlier lines, ctrl+o/alt+o to expand)                                                                                                                  │
+ === consumer-probes/old-whitespace.json ===                                                                                                                     │
+ {                                                                                                                                                               │
+   "total": 9.99,                                                                                                                                                │
+   "missing": []                                                                                                                                                 │
+ }                                                                                                                                                               │
+                                                                                                                                                                 │
+ Took 0.1s                                                                                                                                                       │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ Thinking...                                                                                                                                                     │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ $ cd /tmp/orchestra-07/drill-ts001-baseline && echo '$ git grep -n -E "format_amount_str|LEGACY_AMOUNT_KEY|register_legacy_formatter" 011ec25 -- .' && git grep │
+ -n -E 'format_amount_str|LEGACY_AMOUNT_KEY|register_legacy_formatter' 011ec25 -- . && echo '$ git grep -n -E                                                    │
+ "format_amount_str|LEGACY_AMOUNT_KEY|register_legacy_formatter" HEAD -- .' && git grep -n -E 'format_amount_str|LEGACY_AMOUNT_KEY|register_legacy_formatter'    │
+ HEAD -- . || true                                                                                                                                               │
+ echo '$ git grep -n -E "amount_str|parse_amount|resolve_amount" HEAD -- .' && git grep -n -E 'amount_str|parse_amount|resolve_amount' HEAD -- .                 │
+ echo '$ rg -n "amount_str|format_amount_str|register_legacy_formatter|LEGACY_AMOUNT_KEY" /tmp/orchestra-07/orders-consumer' && rg -n                            │
+ 'amount_str|format_amount_str|register_legacy_formatter|LEGACY_AMOUNT_KEY' /tmp/orchestra-07/orders-consumer || echo '(no matches in consumer)'                 │
+                                                                                                                                                                 │
+ ... (25 earlier lines, ctrl+o/alt+o to expand)                                                                                                                  │
+ HEAD:app/orders.py:14:            amount = parse_amount(payload.get("amount_str", ""))                                                                          │
+ HEAD:db/seed.py:10:    (2, {"schema": "v1", "amount_str": "9.99"}),                                                                                             │
+ HEAD:db/seed.py:11:    (3, {"schema": "v1", "amount_str": ""}),                                                                                                 │
+ $ rg -n "amount_str|format_amount_str|register_legacy_formatter|LEGACY_AMOUNT_KEY" /tmp/orchestra-07/orders-consumer                                            │
+ (no matches in consumer)                                                                                                                                        │
+                                                                                                                                                                 │
+ Took 0.0s                                                                                                                                                       │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ $ cd /tmp/orchestra-07/drill-ts001-baseline && echo '=== app/legacy_sync.py ===' && cat app/legacy_sync.py && echo '=== db/schema.sql ===' && cat db/schema.sql │
+ && echo '$ git log --all --oneline -- app/legacy_sync.py db/schema.sql' && git log --all --oneline -- app/legacy_sync.py db/schema.sql                          │
+ echo '$ rg -n "orders_archive|push_to_archive|ARCHIVE_URL|archive" --glob "!.git" .' && rg -n 'orders_archive|push_to_archive|ARCHIVE_URL|archive' --glob       │
+ '!.git' . || true                                                                                                                                               │
+ echo '$ env | grep ARCHIVE_TOKEN || echo "(ARCHIVE_TOKEN unset)"' && (env | grep ARCHIVE_TOKEN || echo '(ARCHIVE_TOKEN unset)')                                 │
+ echo '$ getent hosts archive.example.invalid' && (getent hosts archive.example.invalid || echo '(resolution failed)')                                           │
+ echo '$ curl -m 5 -sS -o /dev/null -w "%{http_code}\n" https://archive.example.invalid/orders' && (curl -m 5 -sS -o /dev/null -w '%{http_code}\n'               │
+ https://archive.example.invalid/orders || echo '(curl failed)')                                                                                                 │
+                                                                                                                                                                 │
+ ... (32 earlier lines, ctrl+o/alt+o to expand)                                                                                                                  │
+ (resolution failed)                                                                                                                                             │
+ $ curl -m 5 -sS -o /dev/null -w "%{http_code}\n" https://archive.example.invalid/orders                                                                         │
+ curl: (6) Could not resolve host: archive.example.invalid                                                                                                       │
+ 000                                                                                                                                                             │
+ (curl failed)                                                                                                                                                   │
+                                                                                                                                                                 │
+ Took 0.0s                                                                                                                                                       │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ Thinking...                                                                                                                                                     │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ $ cd /tmp/orchestra-07/out/baseline-ts001-work/head && uv run python - <<'PY'                                                                                   │
+ import sqlite3                                                                                                                                                  │
+ from app.legacy_sync import push_to_archive                                                                                                                     │
+ conn = sqlite3.connect(":memory:")                                                                                                                              │
+ print("tables:", conn.execute("SELECT name FROM sqlite_master WHERE type='table'").fetchall())                                                                  │
+ try:                                                                                                                                                            │
+     print(push_to_archive(conn))                                                                                                                                │
+ except Exception as e:                                                                                                                                          │
+     print(f"push_to_archive RAISED {type(e).__name__}: {e}")                                                                                                    │
+ PY                                                                                                                                                              │
+                                                                                                                                                                 │
+ tables: []                                                                                                                                                      │
+ push_to_archive RAISED RuntimeError: 缺 ARCHIVE_TOKEN, 本地无法推送归档                                                                                         │
+                                                                                                                                                                 │
+ Took 0.0s                                                                                                                                                       │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ Thinking...                                                                                                                                                     │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ $ cd /tmp/orchestra-07/out/baseline-ts001-work/base && uv run python - <<'PY'                                                                                   │
+ import json, sqlite3                                                                                                                                            │
+ from app.orders import read_orders                                                                                                                              │
+ for payload in [                                                                                                                                                │
+     {"schema": "v2", "amount": None, "amount_str": "7.77"},                                                                                                     │
+     {"schema": "v2", "amount": "   ", "amount_str": "7.77"},                                                                                                    │
+ ]:                                                                                                                                                              │
+     conn = sqlite3.connect(":memory:")                                                                                                                          │
+     conn.execute("CREATE TABLE orders (id INTEGER PRIMARY KEY, payload TEXT NOT NULL)")                                                                         │
+     conn.execute("INSERT INTO orders VALUES (1, ?)", (json.dumps(payload),))                                                                                    │
+     try:                                                                                                                                                        │
+         print(payload, "->", read_orders(conn))                                                                                                                 │
+     except Exception as e:                                                                                                                                      │
+         print(payload, f"-> RAISED {type(e).__name__}: {e}")                                                                                                    │
+ PY                                                                                                                                                              │
+                                                                                                                                                                 │
+ {'schema': 'v2', 'amount': None, 'amount_str': '7.77'} -> [{'id': 1, 'amount': None}]                                                                           │
+ {'schema': 'v2', 'amount': '   ', 'amount_str': '7.77'} -> [{'id': 1, 'amount': None}]                                                                          │
+                                                                                                                                                                 │
+ Took 0.0s                                                                                                                                                       │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ $ cd /tmp/orchestra-07/out/baseline-ts001-work/head && uv run python - <<'PY'                                                                                   │
+ import json, sqlite3                                                                                                                                            │
+ from app.orders import read_orders                                                                                                                              │
+ for payload in [                                                                                                                                                │
+     {"schema": "v2", "amount": None, "amount_str": "7.77"},                                                                                                     │
+     {"schema": "v2", "amount": "   ", "amount_str": "7.77"},                                                                                                    │
+ ]:                                                                                                                                                              │
+     conn = sqlite3.connect(":memory:")                                                                                                                          │
+     conn.execute("CREATE TABLE orders (id INTEGER PRIMARY KEY, payload TEXT NOT NULL)")                                                                         │
+     conn.execute("INSERT INTO orders VALUES (1, ?)", (json.dumps(payload),))                                                                                    │
+     try:                                                                                                                                                        │
+         print(payload, "->", read_orders(conn))                                                                                                                 │
+     except Exception as e:                                                                                                                                      │
+         print(payload, f"-> RAISED {type(e).__name__}: {e}")                                                                                                    │
+ PY                                                                                                                                                              │
+                                                                                                                                                                 │
+ {'schema': 'v2', 'amount': None, 'amount_str': '7.77'} -> [{'id': 1, 'amount': '7.77'}]                                                                         │
+ {'schema': 'v2', 'amount': '   ', 'amount_str': '7.77'} -> [{'id': 1, 'amount': '7.77'}]                                                                        │
+                                                                                                                                                                 │
+ Took 0.0s                                                                                                                                                       │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ Thinking...                                                                                                                                                     │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ $ cd /tmp/orchestra-07/drill-ts001-baseline && echo '$ git ls-files' && git ls-files && echo '$ find . -path ./.git -prune -o -iname "*test*" -print' && find . │
+ -path ./.git -prune -o -iname '*test*' -print && echo '$ git status --short' && git status --short && echo '(end)'                                              │
+                                                                                                                                                                 │
+ ... (12 earlier lines, ctrl+o/alt+o to expand)                                                                                                                  │
+ pyproject.toml                                                                                                                                                  │
+ scripts/dump_orders.py                                                                                                                                          │
+ $ find . -path ./.git -prune -o -iname "*test*" -print                                                                                                          │
+ $ git status --short                                                                                                                                            │
+ (end)                                                                                                                                                           │
+                                                                                                                                                                 │
+ Took 0.0s                                                                                                                                                       │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ $ cd /tmp/orchestra-07/drill-ts001-baseline && echo '$ git diff 011ec25..HEAD -- app/orders.py' && git diff 011ec25..HEAD -- app/orders.py && echo '$ git diff  │
+ --stat 011ec25..HEAD' && git diff --stat 011ec25..HEAD                                                                                                          │
+                                                                                                                                                                 │
+ ... (34 earlier lines, ctrl+o/alt+o to expand)                                                                                                                  │
+          out.append({"id": row[0], "amount": None if amount is None else str(amount)})                                                                          │
+      return out                                                                                                                                                 │
+ $ git diff --stat 011ec25..HEAD                                                                                                                                 │
+  app/orders.py | 19 +++++--------------                                                                                                                         │
+  1 file changed, 5 insertions(+), 14 deletions(-)                                                                                                               │
+                                                                                                                                                                 │
+ Took 0.0s                                                                                                                                                       │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ Thinking...                                                                                                                                                     │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ write /tmp/orchestra-07/out/baseline-ts001.md                                                                                                                   │
+                                                                                                                                                                 │
+ # payout-service HEAD 影响面审查 (baseline-ts001)                                                                                                               │
+                                                                                                                                                                 │
+ - 仓库: `/tmp/orchestra-07/drill-ts001-baseline`                                                                                                                │
+ - 基线: `011ec25` 订单服务基线: amountlib 2.4.0 与 orders.payload 读取                                                                                          │
+ - 待审: `04ddf93` 删除旧的 amount_str 格式化符号, 改用 parse_amount 回退                                                                                        │
+ - 消费者: `/tmp/orchestra-07/orders-consumer` (`a47893d`)                                                                                                       │
+ - 审查方式: 从两个提交分别 `git archive` 到仓库外临时目录运行, 不修改仓库产品代码与测试.                                                                        │
+ - 仓库最终状态: `git status --short` 为空.                                                                                                                      │
+                                                                                                                                                                 │
+ ## 结论                                                                                                                                                         │
+ ... (590 more lines, 600 total, ctrl+o/alt+o to expand)                                                                                                         │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ Thinking...                                                                                                                                                     │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ $ cd /tmp/orchestra-07/out && wc -l baseline-ts001.md && echo '--- fullwidth punctuation hits ---' && rg -n '[，、。：；（）！？【】《》“”‘’]' baseline-ts001.md│
+ || echo '(none)' && echo '--- non-ascii punctuation scan (excluding CJK/ASCII) ---' && uv run --no-project python - <<'PY'                                      │
+ import unicodedata, pathlib                                                                                                                                     │
+ p = pathlib.Path('/tmp/orchestra-07/out/baseline-ts001.md')                                                                                                     │
+ text = p.read_text()                                                                                                                                            │
+ hits = []                                                                                                                                                       │
+ for i, line in enumerate(text.splitlines(), 1):                                                                                                                 │
+     for ch in line:                                                                                                                                             │
+         if ord(ch) < 128:                                                                                                                                       │
+             continue                                                                                                                                            │
+         cat = unicodedata.category(ch)
+         if cat.startswith('P') or cat == 'Sm':
+             hits.append((i, ch, unicodedata.name(ch, '?')))
+ for h in hits[:50]:
+     print(h)
+ print('total hits:', len(hits))
+ PY
+
+ 600 baseline-ts001.md
+ --- fullwidth punctuation hits ---
+ (none)
+ --- non-ascii punctuation scan (excluding CJK/ASCII) ---
+ total hits: 0
+
+ Took 0.0s
+
+
+
+ $ cd /tmp/orchestra-07/drill-ts001-baseline && git status --short && echo '(repo clean check done)' && ls -l /tmp/orchestra-07/out/baseline-ts001.md
+
+ (repo clean check done)
+ -rw-rw-r-- 1 bolo bolo 25413 Oct 19 17:47 /tmp/orchestra-07/out/baseline-ts001.md
+
+ Took 0.0s
+
+
+ Thinking...
+
+ 报告已写到 /tmp/orchestra-07/out/baseline-ts001.md，保留了实际命令和原始输出。
+
+ 结论: 暂缓无条件合入。
+
+ 关键结果:
+
+ - parse_amount("") 实测返回 None，不抛异常；纯空白也返回 None。
+ - 仓库内 3 条种子订单改动前后完全一致: 导出 JSON 相同，Node 消费者结果都是 total: 22.490000000000002, missing: [3]。
+ - 被删的 format_amount_str/LEGACY_AMOUNT_KEY 在仓库和消费者仓库内没有其他调用者，但“导入 app.orders 自动注册 formatter”这个副作用被删了。
+ - 归档服务行为无法本地证实: 归档代码只查 orders_archive 并返回行数，不解析金额；ARCHIVE_TOKEN 缺失，域名也无法解析。是否丢弃 amount: null 必须问归档服务负责人。
+ - 额外发现两个未在问题里点名的变化:
+     - amount_str: "   " 旧代码输出 ""，新代码输出 null，消费者会从“金额 0”变成“缺失”。
+     - amount_str: "abc"/"$9.99" 旧代码原样透传，新代码抛 ValueError，会让整批订单读取和导出失败。
+ - 数值文本表示也会变: "001.20" -> "1.20"，"1e3" -> "1E+3"，数值不变。
+
+ 放行前需确认: 生产旧订单里没有非空且无法解析的 amount_str，纯空白值可接受为缺失，且归档服务接受 amount: null。仓库产品代码和测试未改动，git status 干净。
+
+──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+
+──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+/tmp/orchestra-07/drill-ts001-baseline (master)
+↑13k ↓23k R275k CH99.5% $0.009 3.7%/1.0M (auto)                                                                   (cli) deepseek-v4.1-flash-expires-on-0910 • high

@@ -1,0 +1,8 @@
+repo = /tmp/orchestra-07/out/repo-head
+ARCHIVE_URL = https://archive.example.invalid/orders
+ARCHIVE_TOKEN in env before = False
+[无 token] raised RuntimeError: 缺 ARCHIVE_TOKEN, 本地无法推送归档
+[假 token, 无 orders_archive 表] raised OperationalError: no such table: orders_archive
+[假 token, 有 orders_archive 表] returned {'url': 'https://archive.example.invalid/orders', 'pushed': 1}
+注意: 上面第三次只统计本地表行数, 源码没有任何 HTTP 调用,
+所以它不能证明外部服务收到无 amount 的订单后会丢弃还是保留.

@@ -1,0 +1,8 @@
+### node ledger.js HEAD~1(旧格式, 基线)
+{
+  "total": 22.490000000000002,
+  "missing": [
+    3
+  ]
+}
+exit=0

@@ -1,0 +1,165 @@
+
+$ node --version
+exit_code=0
+--- stdout ---
+v24.19.0
+snapshot source/consumer source/runtime assertions: PASS
+
+$ uv run --no-project --no-managed-python --no-python-downloads python -B /tmp/orchestra-07/out/ts003-wide-work/router-a/base/db/seed.py
+exit_code=0
+--- stdout ---
+seeded /tmp/orchestra-07/out/ts003-wide-work/router-a/base/var/orders.db with 3 rows
+
+$ uv run --no-project --no-managed-python --no-python-downloads python -B /tmp/orchestra-07/out/ts003-wide-work/router-a/base/scripts/dump_orders.py
+exit_code=0
+--- stdout ---
+[{"id": 1, "amount": "12.50"}, {"id": 2, "amount": "9.99"}, {"id": 3, "amount": null}]
+
+$ uv run --no-project --no-managed-python --no-python-downloads python -B /tmp/orchestra-07/out/ts003-wide-work/router-a/proofs/check_amounts.py /tmp/orchestra-07/out/ts003-wide-work/router-a/base
+exit_code=0
+--- stdout ---
+{
+  "snapshot": "base",
+  "python": "3.14.4 (main, Aug 20 2026, 10:41:58) [GCC 15.2.0]",
+  "sqlite": "3.46.1",
+  "amountlib_version": "2.4.0",
+  "amountlib_path": "/tmp/orchestra-07/out/ts003-wide-work/router-a/base/amountlib/__init__.py",
+  "read_orders": [
+    {
+      "id": 1,
+      "amount": "12.50"
+    },
+    {
+      "id": 2,
+      "amount": "9.99"
+    },
+    {
+      "id": 3,
+      "amount": null
+    }
+  ],
+  "resolve_calls": [
+    {
+      "payload": {
+        "schema": "v2",
+        "amount": "12.50"
+      },
+      "result": "12.50"
+    },
+    {
+      "payload": {
+        "schema": "v1",
+        "amount_str": "9.99"
+      },
+      "result": null
+    },
+    {
+      "payload": {
+        "schema": "v1",
+        "amount_str": ""
+      },
+      "result": null
+    }
+  ],
+  "fallback_calls": [
+    {
+      "input": "9.99",
+      "result": "9.99"
+    },
+    {
+      "input": "",
+      "result": null
+    }
+  ],
+  "formatters": {},
+  "schema_key_dispatch": false,
+  "invalid_error": "无法解析金额: 'not-an-amount'",
+  "assertions": "PASS"
+}
+
+$ uv run --no-project --no-managed-python --no-python-downloads python -B /tmp/orchestra-07/out/ts003-wide-work/router-a/repo/db/seed.py
+exit_code=0
+--- stdout ---
+seeded /tmp/orchestra-07/out/ts003-wide-work/router-a/repo/var/orders.db with 3 rows
+
+$ uv run --no-project --no-managed-python --no-python-downloads python -B /tmp/orchestra-07/out/ts003-wide-work/router-a/repo/scripts/dump_orders.py
+exit_code=0
+--- stdout ---
+[{"id": 1, "amount_value": "12.50"}, {"id": 2, "amount_value": "9.99"}, {"id": 3, "amount_value": null}]
+
+$ uv run --no-project --no-managed-python --no-python-downloads python -B /tmp/orchestra-07/out/ts003-wide-work/router-a/proofs/check_amounts.py /tmp/orchestra-07/out/ts003-wide-work/router-a/repo
+exit_code=0
+--- stdout ---
+{
+  "snapshot": "repo",
+  "python": "3.14.4 (main, Aug 20 2026, 10:41:58) [GCC 15.2.0]",
+  "sqlite": "3.46.1",
+  "amountlib_version": "2.4.0",
+  "amountlib_path": "/tmp/orchestra-07/out/ts003-wide-work/router-a/repo/amountlib/__init__.py",
+  "read_orders": [
+    {
+      "id": 1,
+      "amount_value": "12.50"
+    },
+    {
+      "id": 2,
+      "amount_value": "9.99"
+    },
+    {
+      "id": 3,
+      "amount_value": null
+    }
+  ],
+  "resolve_calls": [
+    {
+      "payload": {
+        "schema": "v2",
+        "amount": "12.50"
+      },
+      "result": "12.50"
+    },
+    {
+      "payload": {
+        "schema": "v1",
+        "amount_str": "9.99"
+      },
+      "result": null
+    },
+    {
+      "payload": {
+        "schema": "v1",
+        "amount_str": ""
+      },
+      "result": null
+    }
+  ],
+  "fallback_calls": [
+    {
+      "input": "9.99",
+      "result": "9.99"
+    },
+    {
+      "input": "",
+      "result": null
+    }
+  ],
+  "formatters": {},
+  "schema_key_dispatch": false,
+  "invalid_error": "无法解析金额: 'not-an-amount'",
+  "assertions": "PASS"
+}
+
+$ bash /tmp/orchestra-07/orders-consumer/src/run.sh /tmp/orchestra-07/out/ts003-wide-work/router-a/evidence/base.file.json
+exit_code=0
+--- stdout ---
+{
+  "total": 22.490000000000002,
+  "missing": [
+    3
+  ]
+}
+Traceback (most recent call last):
+  File "/tmp/orchestra-07/out/ts003-wide-work/router-a/proofs/prove_all.py", line 127, in <module>
+    assert json.loads(base_ledger.stdout) == {"total": 22.49, "missing": [3]}
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError

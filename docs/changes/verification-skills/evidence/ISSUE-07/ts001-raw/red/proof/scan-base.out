@@ -1,0 +1,5 @@
+repo = /tmp/orchestra-07/out/repo-base
+db   = /tmp/orchestra-07/out/repo-base/var/orders.db
+rows = 3
+v1 且 amount_str 非空但 parse_amount 会抛 ValueError 的行: []
+amount 为 null/空串但 amount_str 非空, HEAD 会新增金额的行: []
