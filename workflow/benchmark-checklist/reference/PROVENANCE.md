@@ -34,8 +34,8 @@ curl -sS -m 20 -w "%{http_code} %{size_download}\n" -o /tmp/iss13-upstream/LICEN
 
 | 源版位置 | 目标版位置 | 影响 | 处理决定 |
 | --- | --- | --- | --- |
-| frontmatter `description` 英文触发句 ("Use when you run a benchmark or report a speedup...") | frontmatter `description` 单行中文摘要, 列出覆盖的核查项; 保留 `disable-model-invocation: true` | 调用方式从模型自动触发改为用户点名 | 按 DECISIONS D022 用户调用, 触发词只作人类可读摘要 |
-| 标题 `# Benchmark checklist` | `# 性能测量核查` | 标题中文化, 层级不变 | 保留 (标题层级未因翻译改变) |
+| frontmatter `description` 英文触发句 ("Use when you run a benchmark or report a speedup...", 上游第 3 行) | frontmatter `description` 单行中文摘要, 列出覆盖的核查项 (本地第 3 行); `disable-model-invocation: true` 上游第 4 行与本地第 4 行逐字相同 | 只改描述措辞; 调用方式没有改变 | 按 DECISIONS D022 把 description 写成一行人类摘要. 不记为调用模式改变: 上游原文第 4 行原本就是用户调用, 本地照抄该行 |
+| 标题 `# Benchmark checklist` (上游第 7 行) | `# 性能测量核查` (本地第 7 行) | 标题中文化, 层级不变 | 保留, 属人工检查结论: 两侧都只有一个 H1, 没有 H2 层级变动 (机检 `check_skill.py` 不检查标题, 结论只来自人工核对) |
 | 引言段与 "one run is enough ... never a ballpark" 段 | 引言段保留四种判定; 粗估例外后移到 `## 粗估与选型` | 粗估例外的位置从开头移到选型节, 内容不减 | 保留: 例外条件 (单次仍查第 4/7 问, 选型永远不算粗估) 逐条保留 |
 | `## Before you run anything` 三条 | `## 测量前` | 三条保留, 另补脚本随机扰动/固定种子记录与分析器单跑不进报告 | 保留收紧 |
 | `## The questions` 1 到 7 | 拆成 `## 测量前`, `## 两侧按生产方式调优`, `## 重复与波动`, `## 错误计数与工作是否真的发生`, `## 收益上限与端到端`, `## 基线与脚本固定前` 六节, 问题编号只在第 4 与第 7 问引用 | 上游单节七个编号问题按测量阶段拆开 | 接受: 每个问题逐条保留, 无遗漏; 编号引用改为按节名加原编号 |
@@ -88,13 +88,16 @@ rg -o "[A-Za-z][A-Za-z0-9_./:@|*\-]*" workflow/benchmark-checklist/SKILL.md | so
 | `name:`, `description:`, `disable-model-invocation:` | frontmatter key |
 | `true` | frontmatter 取值 |
 
-命令 3, frontmatter 与标题结构:
+命令 3, 人工标题结构检查 (只列标题, 判定靠人读):
 
 ```bash
 rg -n "^(|name:|description:|license:|compatibility:|metadata:|allowed-tools:|disable-model-invocation:|# |## )" workflow/benchmark-checklist/SKILL.md
 ```
 
-命中 frontmatter 三行 (`name`, `description`, `disable-model-invocation`), 一个 H1 (`# 性能测量核查`) 与十一个 H2 (`## 输入与授权` 到 `## 对外报告`). 上游是 H1 加四个 H2 加单节内七个编号问题; 拆节差异与理由见上表.
+机检与人工检查分列, 不混成一件事:
+
+- 机检: `check_skill.py` 只查 frontmatter 的 `name` 是否为小写 kebab-case 且与目录名一致, 并拒绝 YAML 空值/布尔值/数值这类非文本写法, 不检查标题 (依据 `general/writing-for-llm/SKILL-MECHANICS.md` 第 34 行与脚本实现). 该脚本在本技能上退出码 0.
+- 人工: 上面的命令只把 frontmatter 行与标题行列出来, 层级结论靠人逐行读. 人读结果: frontmatter 三行 (`name`, `description`, `disable-model-invocation`), 一个 H1 (`# 性能测量核查`) 与十一个 H2 (`## 输入与授权` 到 `## 对外报告`). 上游是 H1 加四个 H2 加单节内七个编号问题; 拆节差异与理由见上表.
 
 通读测试: 全文按中文直接可执行, 每条检查都能独立照着做; 未发现直译腔或需回看原文才能确定顺序处.
 

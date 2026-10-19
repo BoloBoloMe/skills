@@ -1,0 +1,17 @@
+checks=116 failures=15
+FAIL [workflow/blast-radius 差异表第 1 行] 仍把调用方式记为改变: 调用方式从模型自动触发改为用户点名
+FAIL [workflow/blast-radius 差异表第 1 行] 缺少声明: 上游
+FAIL [workflow/blast-radius 差异表第 1 行] 缺少声明: 第 4 行
+FAIL [workflow/blast-radius 差异表第 1 行] 缺少声明: 调用方式没有改变
+FAIL [workflow/blast-radius] 没有写明 check_skill.py 不检查标题
+FAIL [workflow/blast-radius 差异表第 2 行] 标题结构未标为人工检查: 保留: 仓库内 SKILL.md 不要求 H1, frontmatter 与 H2 结构由 `check_skill.py` 校验通过
+FAIL [workflow/blast-radius 差异表第 2 行] 仍把标题结论挂在 check_skill.py 上
+FAIL [workflow/blast-radius] 标题结构小节未标为人工检查
+FAIL [workflow/benchmark-checklist 差异表第 1 行] 仍把调用方式记为改变: 调用方式从模型自动触发改为用户点名
+FAIL [workflow/benchmark-checklist 差异表第 1 行] 缺少声明: 上游
+FAIL [workflow/benchmark-checklist 差异表第 1 行] 缺少声明: 第 4 行
+FAIL [workflow/benchmark-checklist 差异表第 1 行] 缺少声明: 调用方式没有改变
+FAIL [workflow/benchmark-checklist] 没有写明 check_skill.py 不检查标题
+FAIL [workflow/benchmark-checklist 差异表第 2 行] 标题结构未标为人工检查: 保留 (标题层级未因翻译改变)
+FAIL [workflow/benchmark-checklist] 标题结构小节未标为人工检查
+exit=1
