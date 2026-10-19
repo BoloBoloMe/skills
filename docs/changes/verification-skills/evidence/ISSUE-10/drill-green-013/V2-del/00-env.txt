@@ -1,0 +1,20 @@
+# 环境与仓库快照
+time=2026-10-20T00:30:50+08:00
+pwd=/tmp/orchestra-10/methods-green
+head=ea940821115424b7eb619e985b2304f2b61e9d1d
+target=ea940821115424b7eb619e985b2304f2b61e9d1d
+--- git status --porcelain ---
+?? docs/changes/vault/evidence/
+--- git diff HEAD (tracked) ---
+--- python ---
+Python 3.14.7 (main, Aug 14 2026, 15:35:28) [Clang 22.1.3 ]
+--- PRODUCT.md sha256 ---
+0512602f2ad78dd0393562a46878204eadecaa39fff18316030e2555c80aee84  docs/changes/vault/PRODUCT.md
+--- schema 文件是否存在 ---
+PRODUCT.md
+evidence
+--- 伙伴入口 ---
+PARTNER_URL=<unset>
+--- runtime 初始化证据 ---
+runtime/data/records.jsonl mtime=2026-10-20 00:30:19.586997090 +0800 size=29
+runtime/data/outbox/replication-log.jsonl mtime=2026-10-20 00:30:19.586997090 +0800 size=246

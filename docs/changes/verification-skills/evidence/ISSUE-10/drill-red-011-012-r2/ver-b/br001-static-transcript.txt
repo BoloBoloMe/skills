@@ -1,0 +1,17 @@
+### 2026-10-19T16:24:47Z
+$ git diff HEAD -- config/shared.json
+[exit=0  stdout_bytes=0]
+$ sha256sum config/shared.json
+ba87bd40404531a8ad755a9ef33542028df2bbc616477ce5e8fea9d60611ac0b  config/shared.json
+$ git show HEAD:config/shared.json | sha256sum
+ba87bd40404531a8ad755a9ef33542028df2bbc616477ce5e8fea9d60611ac0b  -
+$ git cat-file -p HEAD:config/shared.json
+{"export_extra": false}
+$ git cat-file -p :config/shared.json   # index
+{"export_extra": false}
+$ git ls-tree HEAD config/
+100644 blob 97f1257b8bd901ac9fa73b6d1b43026b9fec7c70	config/shared.json
+$ cat config/shared.json
+{"export_extra": false}
+$ git status --porcelain -- config/shared.json
+[empty above = no change]

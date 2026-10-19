@@ -1,0 +1,19 @@
+# 版本前提 (orchestrator, 2026-10-20T00:29:11+08:00)
+commit: bc435dbc38ce645010fa853a173963a2bf2386ff
+subject: fixture: 账号备注台初始版本
+commit_date: 2026-10-20T00:16:49+08:00
+status_porcelain:
+?? docs/changes/accounts/evidence/round-1-bc435db/premise.txt
+(empty = clean)
+
+sha256:
+59cfdb943bed5eb9103b193412f53aa6ea818410ec54ec2539f8c3b5a2b76b59  app.py
+ba87bd40404531a8ad755a9ef33542028df2bbc616477ce5e8fea9d60611ac0b  config/shared.json
+dcf3a8ba08f8b32f1c786db0f7957a7e1470a8b991e846c45de0222c224c1c0f  seed/accounts.json
+fd7005890967c99b9b6cb813ce0a64e6620907b3bcab9a1775bb88317d75ef4a  docs/changes/accounts/PRODUCT.md
+cbd33d218455f0e145fd952fdf557d7ad744bbdf014f53beefd9df7f46c3d26b  README.md
+
+runtime_exists: no
+env ADMIN_TOKEN set: no
+env AUDIT_TOKEN set: no
+env AUDIT_URL set: no

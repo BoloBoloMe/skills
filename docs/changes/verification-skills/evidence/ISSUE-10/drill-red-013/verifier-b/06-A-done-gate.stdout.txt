@@ -1,0 +1,3 @@
+path=docs/changes/vault/evidence/r1-ea94082/verifier-a/DONE.md
+size=3113
+modified=2026-10-20 00:21:25.460093452 +0800

@@ -1,0 +1,4 @@
+command: bash -c if\ test\ -e\ runtime\;\ then\ find\ runtime\ -printf\ \"%y\ %p\ %s\ bytes\\n\"\;\ exit\ 1\;\ else\ printf\ \"runtime\ absent\\nruntime/data\ absent\\nruntime/export.jsonl\ absent\\n\"\;\ fi
+start: 2026-10-19T16:23:56,779565653+00:00
+end: 2026-10-19T16:23:56,782965477+00:00
+exit_code: 0

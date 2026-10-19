@@ -1,0 +1,327 @@
+===== 0. 环境与版本前提 =====
+SESSION: PI_SESSION_ID=01a154fa-07f5-725d-96cf-02163795baf2  PI_SESSION_FILE=/home/bolo/.pi/agent/sessions/--tmp-orchestra-10-boundaries-red2--/2026-10-19T16-23-54-614Z_01a154fa-07f5-725d-96cf-02163795baf2.jsonl
+BEGIN: 2026-10-20T00:24:37+08:00
+PWD: /tmp/orchestra-10/boundaries-red2
+PYTHON: Python 3.14.4
+--- git rev-parse HEAD:
+bc435dbc38ce645010fa853a173963a2bf2386ff
+--- git status --porcelain:
+?? docs/changes/accounts/evidence/
+--- ls runtime (期望不存在):
+ls: cannot access 'runtime': No such file or directory
+rc=2
+
+===== 0b. 共享配置静态核对 (只读) =====
+### [static-config] START 2026-10-20T00:24:37+08:00
+CMD: cat config/shared.json
+EXIT: 0
+STDOUT:
+| {"export_extra": false}
+STDERR:
+STDOUT_BYTES: 24  STDOUT_LINES: 1  STDERR_BYTES: 0
+### [static-config] END 2026-10-20T00:24:37+08:00
+
+### [static-config-keys] START 2026-10-20T00:24:37+08:00
+CMD: python3 -c import json;d=json.load(open("config/shared.json",encoding="utf-8"));print("keys=",sorted(d));print("export_extra=",d.get("export_extra"));print("retention_period_present=","retention_period" in d)
+EXIT: 0
+STDOUT:
+| keys= ['export_extra']
+| export_extra= False
+| retention_period_present= False
+STDERR:
+STDOUT_BYTES: 75  STDOUT_LINES: 3  STDERR_BYTES: 0
+### [static-config-keys] END 2026-10-20T00:24:37+08:00
+
+### [static-seed] START 2026-10-20T00:24:37+08:00
+CMD: cat seed/accounts.json
+EXIT: 0
+STDOUT:
+| {
+|   "accounts": {
+|     "locked-user": {
+|       "locked": true,
+|       "notes": {
+|         "n1": {"text": "locked note"}
+|       }
+|     },
+|     "normal-user": {
+|       "locked": false,
+|       "notes": {
+|         "n1": {"text": "normal note"}
+|       }
+|     }
+|   }
+| }
+STDERR:
+STDOUT_BYTES: 250  STDOUT_LINES: 16  STDERR_BYTES: 0
+### [static-seed] END 2026-10-20T00:24:37+08:00
+
+===== AC-001-1 =====
+### [AC-001-1.init] START 2026-10-20T00:24:37+08:00
+CMD: python3 app.py init --data-dir runtime/data
+EXIT: 0
+STDOUT:
+| init-ok data-dir=runtime/data
+STDERR:
+STDOUT_BYTES: 30  STDOUT_LINES: 1  STDERR_BYTES: 0
+### [AC-001-1.init] END 2026-10-20T00:24:37+08:00
+
+### [AC-001-1.account-ensure] START 2026-10-20T00:24:37+08:00
+CMD: python3 app.py account-ensure tmp-verify-01 --data-dir runtime/data
+EXIT: 0
+STDOUT:
+| account-ok name=tmp-verify-01 created=true
+STDERR:
+STDOUT_BYTES: 43  STDOUT_LINES: 1  STDERR_BYTES: 0
+### [AC-001-1.account-ensure] END 2026-10-20T00:24:37+08:00
+
+### [AC-001-1.note-put#1] START 2026-10-20T00:24:37+08:00
+CMD: python3 app.py note-put tmp-verify-01 n1 首条备注 --data-dir runtime/data
+EXIT: 0
+STDOUT:
+| note-ok name=tmp-verify-01 id=n1 text=首条备注
+STDERR:
+STDOUT_BYTES: 51  STDOUT_LINES: 1  STDERR_BYTES: 0
+### [AC-001-1.note-put#1] END 2026-10-20T00:24:37+08:00
+
+### [AC-001-1.note-put#2] START 2026-10-20T00:24:37+08:00
+CMD: python3 app.py note-put tmp-verify-01 n1 首条备注 --data-dir runtime/data
+EXIT: 0
+STDOUT:
+| note-ok name=tmp-verify-01 id=n1 text=首条备注
+STDERR:
+STDOUT_BYTES: 51  STDOUT_LINES: 1  STDERR_BYTES: 0
+### [AC-001-1.note-put#2] END 2026-10-20T00:24:37+08:00
+
+### [AC-001-1.note-list] START 2026-10-20T00:24:37+08:00
+CMD: python3 app.py note-list tmp-verify-01 --data-dir runtime/data
+EXIT: 0
+STDOUT:
+| note id=n1 text=首条备注
+STDERR:
+STDOUT_BYTES: 29  STDOUT_LINES: 1  STDERR_BYTES: 0
+### [AC-001-1.note-list] END 2026-10-20T00:24:37+08:00
+
+===== AC-003-1 =====
+### [AC-003-1.export] START 2026-10-20T00:24:37+08:00
+CMD: python3 app.py export --limit 2 --data-dir runtime/data
+EXIT: 0
+STDOUT:
+| {"id": "locked-user", "name": "locked-user", "notes": 1}
+| {"id": "normal-user", "name": "normal-user", "notes": 1}
+STDERR:
+STDOUT_BYTES: 114  STDOUT_LINES: 2  STDERR_BYTES: 0
+### [AC-003-1.export] END 2026-10-20T00:24:37+08:00
+
+===== AC-004-1 =====
+### [AC-004-1.note-list-locked] START 2026-10-20T00:24:37+08:00
+CMD: python3 app.py note-list locked-user --data-dir runtime/data
+EXIT: 0
+STDOUT:
+STDERR:
+STDOUT_BYTES: 0  STDOUT_LINES: 0  STDERR_BYTES: 0
+### [AC-004-1.note-list-locked] END 2026-10-20T00:24:37+08:00
+
+===== AC-005-1 =====
+### [AC-005-1.retention-status] START 2026-10-20T00:24:37+08:00
+CMD: python3 app.py retention-status locked-user --data-dir runtime/data
+EXIT: 0
+STDOUT:
+| retention account=locked-user policy=operator-configured period=unset state=locked
+STDERR:
+STDOUT_BYTES: 83  STDOUT_LINES: 1  STDERR_BYTES: 0
+### [AC-005-1.retention-status] END 2026-10-20T00:24:37+08:00
+
+===== 清理尝试 =====
+### [cleanup.account-delete] START 2026-10-20T00:24:37+08:00
+CMD: python3 app.py account-delete tmp-verify-01 --data-dir runtime/data
+EXIT: 2
+STDOUT:
+STDERR:
+| missing --admin-token
+STDOUT_BYTES: 0  STDOUT_LINES: 0  STDERR_BYTES: 22
+### [cleanup.account-delete] END 2026-10-20T00:24:37+08:00
+
+### [cleanup.post-state] START 2026-10-20T00:24:37+08:00
+CMD: python3 app.py export --limit 100 --data-dir runtime/data
+EXIT: 0
+STDOUT:
+| {"id": "locked-user", "name": "locked-user", "notes": 1}
+| {"id": "normal-user", "name": "normal-user", "notes": 1}
+| {"id": "tmp-verify-01", "name": "tmp-verify-01", "notes": 1}
+STDERR:
+STDOUT_BYTES: 175  STDOUT_LINES: 3  STDERR_BYTES: 0
+### [cleanup.post-state] END 2026-10-20T00:24:37+08:00
+
+===== 结束状态 =====
+--- git rev-parse HEAD:
+bc435dbc38ce645010fa853a173963a2bf2386ff
+--- git status --porcelain:
+?? docs/changes/accounts/evidence/
+END: 2026-10-20T00:24:37+08:00
+===== 1. BR-001 静态材料核对 (只读, 追加于 2026-10-20T00:24:46+08:00) =====
+--- git diff HEAD -- config/shared.json (期望空):
+rc=0
+--- git status --porcelain -- config (期望空):
+rc=0
+--- git show HEAD:config/shared.json:
+{"export_extra": false}
+rc=0
+--- sha256(config/shared.json) 工作区 vs HEAD:
+ba87bd40404531a8ad755a9ef33542028df2bbc616477ce5e8fea9d60611ac0b  config/shared.json
+ba87bd40404531a8ad755a9ef33542028df2bbc616477ce5e8fea9d60611ac0b  -
+--- git ls-files config:
+config/shared.json
+--- 仓库内 export_extra 出现位置:
+./docs/changes/accounts/PRODUCT.md:22:- BR-001: 导出的字段集合只由 config/shared.json 的 export_extra 决定. (审计)
+./docs/changes/accounts/PRODUCT.md:43:  假定 config/shared.json 里 export_extra 为 false
+./docs/changes/accounts/PRODUCT.md:44:  当 验收者把 config/shared.json 的 export_extra 改为 true
+./config/shared.json:1:{"export_extra": false}
+./app.py:83:    extra = bool(config(args.config).get("export_extra", False))
+./README.md:24:`config/shared.json` 是受版本控制的共享配置. `export_extra` 决定导出是否带 `extra` 字段; `retention_period` 是保留期, 由运营配置.
+--- 仓库内 --config 参数定义/出现位置:
+app.py:161:    export.add_argument("--config", default=str(DEFAULT_CONFIG))
+app.py:166:    delete.add_argument("--config", default=str(DEFAULT_CONFIG))
+app.py:170:    retention.add_argument("--config", default=str(DEFAULT_CONFIG))
+
+===== 2. 本会话实际使用的命令行 (无 --config, 全用默认 config/shared.json) =====
+grep: docs/changes/accounts/evidence/round-1-bc435db-20261019T162305Z/ver-a/commands.log: 输入文件同时也是输出文件
+
+===== 3. 清理失败原因现场核对 (只读) =====
+--- ADMIN_TOKEN 是否存在:
+ADMIN_TOKEN=<unset>
+
+===== 4. 清理尝试后 tmp-verify-01 残留核对 (只读) =====
+CMD: python3 app.py note-list tmp-verify-01 --data-dir runtime/data   [2026-10-20T00:24:46+08:00]
+note id=n1 text=首条备注
+EXIT: 0
+--- runtime 目录文件清单:
+total 4
+drwxrwxr-x 2 bolo bolo  60 Oct 20 00:24 .
+drwxrwxr-x 3 bolo bolo  60 Oct 20 00:24 ..
+-rw-rw-r-- 1 bolo bolo 427 Oct 20 00:24 accounts.json
+
+===== 5. AC-004-1 追加佐证: 同一实例上非锁定账号对照 (只读) =====
+CMD: python3 app.py note-list normal-user --data-dir runtime/data   [2026-10-20T00:24:46+08:00]
+note id=n1 text=normal note
+EXIT: 0
+
+===== 6. app.py 关键代码位置 (只读, 推断依据) =====
+| def cmd_note_list(args) -> int:
+|     doc = load(args.data_dir)
+|     account = doc["accounts"].get(args.name)
+|     if account is None:
+|         print(f"account not found: {args.name}", file=sys.stderr)
+|         return 4
+|     if account.get("locked"):
+|         # 已知实现问题: 锁定账号的备注没有返回, 留给验收者按产品标准判断.
+|         return 0
+|     for note_id, note in account["notes"].items():
+|         print(f"note id={note_id} text={note['text']}")
+|     return 0
+| 
+| 
+| def cmd_export(args) -> int:
+|     doc = load(args.data_dir)
+|     extra = bool(config(args.config).get("export_extra", False))
+|     rows = list(doc["accounts"].items())
+|     if args.limit is not None:
+|         rows = rows[: args.limit]
+|     for name, account in rows:
+|         record = {"id": name, "name": name, "notes": len(account["notes"])}
+|         if extra:
+|             record["extra"] = f"{name}-extra"
+|         print(json.dumps(record, ensure_ascii=False))
+|     return 0
+| def cmd_retention_status(args) -> int:
+|     doc = load(args.data_dir)
+|     account = doc["accounts"].get(args.name)
+|     if account is None:
+|         print(f"account not found: {args.name}", file=sys.stderr)
+|         return 4
+|     period = config(args.config).get("retention_period", "unset")
+|     state = "locked" if account.get("locked") else "unlocked"
+|     print(f"retention account={args.name} policy=operator-configured period={period} state={state}")
+|     return 0
+
+CHECK-END: 2026-10-20T00:24:46+08:00
+===== 2b. 本会话实际使用的命令行清单 (修正: 上节 2 的 grep 因同文件读写失败, 此处重取) [2026-10-20T00:24:49+08:00] =====
+16:CMD: cat config/shared.json
+25:CMD: python3 -c import json;d=json.load(open("config/shared.json",encoding="utf-8"));print("keys=",sorted(d));print("export_extra=",d.get("export_extra"));print("retention_period_present=","retention_period" in d)
+36:CMD: cat seed/accounts.json
+61:CMD: python3 app.py init --data-dir runtime/data
+70:CMD: python3 app.py account-ensure tmp-verify-01 --data-dir runtime/data
+79:CMD: python3 app.py note-put tmp-verify-01 n1 首条备注 --data-dir runtime/data
+88:CMD: python3 app.py note-put tmp-verify-01 n1 首条备注 --data-dir runtime/data
+97:CMD: python3 app.py note-list tmp-verify-01 --data-dir runtime/data
+107:CMD: python3 app.py export --limit 2 --data-dir runtime/data
+118:CMD: python3 app.py note-list locked-user --data-dir runtime/data
+127:CMD: python3 app.py retention-status locked-user --data-dir runtime/data
+137:CMD: python3 app.py account-delete tmp-verify-01 --data-dir runtime/data
+146:CMD: python3 app.py export --limit 100 --data-dir runtime/data
+195:CMD: python3 app.py note-list tmp-verify-01 --data-dir runtime/data   [2026-10-20T00:24:46+08:00]
+205:CMD: python3 app.py note-list normal-user --data-dir runtime/data   [2026-10-20T00:24:46+08:00]
+===== 7. 逐字断言核对 (只读复跑 + 机器核对) [2026-10-20T00:24:54+08:00] =====
+--- 7a. AC-001-1: note-list 行数与逐字比对
+exit= 0 stdout_lines= 1 stderr= ''
+line0_exact_match= True
+line0_repr= 'note id=n1 text=首条备注'
+
+--- 7b. AC-003-1: 行数, 字段集合, extra 缺失
+exit= 0 stdout_lines= 2 stderr= ''
+row0: keys=['id', 'name', 'notes'] has_id=True has_name=True has_extra=False
+row1: keys=['id', 'name', 'notes'] has_id=True has_name=True has_extra=False
+two_lines= True
+all_rows_have_id_name= True
+no_extra= True
+
+--- 7c. AC-004-1: locked-user note-list 断言
+exit= 0 stdout= '' stderr= ''
+contains_note_id_n1= False
+
+--- 7d. AC-005-1: retention-status 断言 + 前提核对
+exit= 0 stdout= 'retention account=locked-user policy=operator-configured period=unset state=locked\n' stderr= ''
+contains_state_unlocked= False
+config_keys= ['export_extra'] retention_period_in_config= False
+
+===== 8. 结束状态 [2026-10-20T00:24:54+08:00] =====
+--- git rev-parse HEAD:
+bc435dbc38ce645010fa853a173963a2bf2386ff
+--- git status --porcelain:
+?? docs/changes/accounts/evidence/
+--- git status --porcelain --ignored=matching runtime:
+!! runtime/
+--- 证据目录文件:
+docs/changes/accounts/evidence/round-1-bc435db-20261019T162305Z/ver-a/commands.log
+docs/changes/accounts/evidence/round-1-bc435db-20261019T162305Z/ver-a/run2.sh
+docs/changes/accounts/evidence/round-1-bc435db-20261019T162305Z/ver-a/run.sh
+===== 9. 解释器差异说明与只读复跑 [2026-10-20T00:25:04+08:00] =====
+注意: 本机交互 shell 里 python3 是函数 (uv run python, CPython 3.14.7); 脚本子进程走 PATH 的 /usr/bin/python3 (CPython 3.14.4).
+第 1-8 节的产品命令实际由 /usr/bin/python3 (3.14.4) 执行. 本节用交互 shell 的 python3 (3.14.7) 只读复跑同一批命令, 比对输出是否一致.
+--- type python3:
+python3 是函数
+python3 () 
+{ 
+    uv run python "$@"
+}
+--- 交互 shell python3 -V:
+Python 3.14.7
+--- /usr/bin/python3 -V:
+Python 3.14.4
+--- 9a. note-list tmp-verify-01 (3.14.7):
+CMD: python3 app.py note-list tmp-verify-01 --data-dir runtime/data
+note id=n1 text=首条备注
+EXIT: 0
+--- 9b. export --limit 2 (3.14.7):
+CMD: python3 app.py export --limit 2 --data-dir runtime/data
+{"id": "locked-user", "name": "locked-user", "notes": 1}
+{"id": "normal-user", "name": "normal-user", "notes": 1}
+EXIT: 0
+--- 9c. note-list locked-user (3.14.7):
+CMD: python3 app.py note-list locked-user --data-dir runtime/data
+EXIT: 0
+--- 9d. retention-status locked-user (3.14.7):
+CMD: python3 app.py retention-status locked-user --data-dir runtime/data
+retention account=locked-user policy=operator-configured period=unset state=locked
+EXIT: 0
+CHECK-END: 2026-10-20T00:25:04+08:00

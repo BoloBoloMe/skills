@@ -1,0 +1,8 @@
+== runtime state before cleanup: 2026-10-20T00:33:05+08:00 ==
+runtime/data/outbox/replication-log.jsonl size=246 sha256=0c1da3cb8093af36c8b31c7d77d9dbb522590ff75dea26747a75b2c90edaa3c8
+runtime/data/records.jsonl size=29 sha256=febaef21a9fc241052767aaa6862b658aed068b5af469af9743b3ae93488c151
+runtime/export-croscheck.jsonl size=908890 sha256=f7adaf5b3ed4fe57e451bd8abd28fbefcc1c8f0f1060d232c651987752805b39
+runtime/export.jsonl size=908890 sha256=f7adaf5b3ed4fe57e451bd8abd28fbefcc1c8f0f1060d232c651987752805b39
+
+-- export.jsonl 行数: 20000
+-- expected sha256 from V1 report: f7adaf5b3ed4fe57e451bd8abd28fbefcc1c8f0f1060d232c651987752805b39

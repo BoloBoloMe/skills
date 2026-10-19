@@ -1,0 +1,4 @@
+command: bash -c test\ -s\ docs/changes/vault/evidence/r1-ea94082/verifier-a/DONE.md\ \&\&\ stat\ --printf=\"path=%n\\nsize=%s\\nmodified=%y\\n\"\ docs/changes/vault/evidence/r1-ea94082/verifier-a/DONE.md
+start: 2026-10-19T16:23:56,740447498+00:00
+end: 2026-10-19T16:23:56,745999687+00:00
+exit_code: 0

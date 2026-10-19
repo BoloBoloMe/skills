@@ -1,0 +1,40 @@
+# time: 2026-10-20T00:19:05+08:00
+# cleanup method: direct removal of tmp-verify-01 from runtime/data/accounts.json (runtime/ is gitignored).
+# account-delete NOT used: it requires --admin-token/ADMIN_TOKEN, which is not authorized this round.
+--- before cleanup: accounts.json time + keys ---
+mtime=2026-10-20 00:19:01.139402682 +0800
+accounts: ['locked-user', 'normal-user', 'tmp-verify-01']
+tmp-verify-01 present: True
+--- cleanup: remove tmp-verify-01 key ---
+removed tmp-verify-01
+--- cleanup exit: 0 ---
+--- after cleanup: accounts.json time + content + key check ---
+mtime=2026-10-20 00:19:05.062958521 +0800
+{
+  "accounts": {
+    "locked-user": {
+      "locked": true,
+      "notes": {
+        "n1": {
+          "text": "locked note"
+        }
+      }
+    },
+    "normal-user": {
+      "locked": false,
+      "notes": {
+        "n1": {
+          "text": "normal note"
+        }
+      }
+    }
+  }
+}
+accounts: ['locked-user', 'normal-user']
+tmp-verify-01 present: False
+--- post-cleanup note-list check (should be account not found, exit 4) ---
+account not found: tmp-verify-01
+--- exit: 4 ---
+--- git status (runtime/ ignored) ---
+?? docs/changes/accounts/evidence/
+--- exit: 0 (script end) ---

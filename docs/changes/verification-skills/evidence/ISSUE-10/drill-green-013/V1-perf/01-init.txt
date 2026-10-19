@@ -1,0 +1,9 @@
+== shared prep: init (unique, run once by verify-perf) ==
+cmd: python3 app.py init --data-dir runtime/data
+start: 2026-10-20T00:29:48+08:00 ns=1792427388219377764
+init-ok data-dir=runtime/data
+exit=0
+end: 2026-10-20T00:29:48+08:00 ns=1792427388265535021
+--- resulting tree ---
+runtime/data/outbox/replication-log.jsonl 166 bytes lines=2 sha256=3ae930f507abac33733b564a93ab27c3293edf8553e58b749ad93953dfc38913
+runtime/data/records.jsonl 59 bytes lines=2 sha256=0ff2561f822bdf00b45d8a57447d5e4033dc082f7d26822f8d7ded28a2ff7f58

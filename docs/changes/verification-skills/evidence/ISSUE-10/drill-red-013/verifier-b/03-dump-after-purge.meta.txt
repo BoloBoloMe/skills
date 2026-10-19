@@ -1,0 +1,4 @@
+command: uv run python app.py record-dump r1 --data-dir runtime/data
+start: 2026-10-19T16:21:59,029008106+00:00
+end: 2026-10-19T16:21:59,069532730+00:00
+exit_code: 0

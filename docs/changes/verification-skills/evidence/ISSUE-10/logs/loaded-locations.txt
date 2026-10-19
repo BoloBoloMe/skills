@@ -1,0 +1,45 @@
+实际加载来源核对 (从会话 jsonl 与会话记录提取)
+
+方法: 在会话 jsonl 中找首条 <skill name=... location=...> 文本, 并对 location 指向的文件算 md5. 子验收者不加载 verify-change, 由指挥会话在派工单里给规则. 方法文件加载只列实际读取 .agents/skills/<name>/SKILL.md 的 read 或 bash 调用, 不把报告正文里提到方法名的写入算作加载.
+
+# verify-change 加载 (均通过 /skill:verify-change 点名, 来源是临时项目 .agents/skills/verify-change/SKILL.md)
+
+- 红演练 r1 指挥 i10-red-bnd, pi session 01a154f3-d846-74db-b82e-28e612ccb471
+  location=/tmp/orchestra-10/boundaries-red/.agents/skills/verify-change/SKILL.md
+  md5=f66877da91ddc2ab7df7990aa17bb392 (v1, 即本 issue 改动前的提交版)
+- 红演练 r2 指挥 i10-red-bnd2, pi session 01a154f8-0caa-725c-8921-df885110e6f8
+  location=/tmp/orchestra-10/boundaries-red2/.agents/skills/verify-change/SKILL.md
+  md5=f66877da91ddc2ab7df7990aa17bb392 (v1)
+- 红演练 AC-013 指挥 i10-red-mth, pi session 01a154f4-6ecd-735e-898e-34c4d8d42837
+  location=/tmp/orchestra-10/methods-red/.agents/skills/verify-change/SKILL.md
+  md5=f66877da91ddc2ab7df7990aa17bb392 (v1)
+- 绿演练 AC-011/AC-012 指挥 i10-green-bnd, pi session 01a154fd-9b79-728c-9be3-dbc7508798f5
+  location=/tmp/orchestra-10/boundaries-green/.agents/skills/verify-change/SKILL.md
+  md5=bc59d779dce50952dc1eaacb5cf1883c (v2, 本 issue 提交版)
+- 绿演练 AC-013 指挥 i10-green-mth, pi session 01a154fd-c52a-753d-a236-d3f603e632a1
+  location=/tmp/orchestra-10/methods-green/.agents/skills/verify-change/SKILL.md
+  md5=bc59d779dce50952dc1eaacb5cf1883c (v2)
+
+# 两项方法的实际加载 (会话 jsonl 里的 read / bash 调用)
+
+绿演练 AC-013:
+- 验收者 verify-perf (pi session 01a154ff-0780-770c-bce8-e95edc780785)
+  read /tmp/orchestra-10/methods-green/.agents/skills/benchmark-checklist/SKILL.md
+  之后在 V1-perf/REPORT.md 第 2 节逐项引用清单的测量前/重复/错误计数/工作量要求.
+- 验收者 verify-del (pi session 01a154ff-9d7f-741c-9fe8-78c5731be73b)
+  read /tmp/orchestra-10/methods-green/.agents/skills/blast-radius/SKILL.md
+  之后在 V2-del/REPORT.md 第 4 节给出关键安全事实, 证据级别与未证实缺口.
+- 指挥会话 i10-green-mth 为写派工单自己 cat 过两份方法文件, 报告与原始材料显示它没有亲自执行方法; 方法结论与证明脚本都出自两名验收者.
+
+红演练 AC-013:
+- 验收者 ver-a (pi session 01a154f5-74ec-74a5-bcff-df438af7c37f)
+  bash cat /tmp/orchestra-10/methods-red/.agents/skills/benchmark-checklist/SKILL.md
+  之后沿用清单做了 5 次计时; 这一项在旧技能下已偶然用上.
+- 验收者 ver-b (pi session 01a154f5-74f2-73ba-85f0-ead31677ad7d)
+  没有读取 .agents/skills/blast-radius/SKILL.md; 旧技能的计划里也没有安排它.
+- 指挥会话 i10-red-mth 没有读取 blast-radius; 报告里没有方法调用记录.
+
+# 说明
+
+- 会话记录里的方法加载是读取临时项目当前的技能文件, 不是把旧部署副本或手抄正文交给验收者.
+- 本机临时项目在证据抄完后删除; 上面的 location 是演练当时的真实路径.

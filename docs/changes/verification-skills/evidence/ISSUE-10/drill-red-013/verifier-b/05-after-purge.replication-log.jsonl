@@ -1,0 +1,3 @@
+{"id": "r1", "action": "replicate", "delivered": true, "partner": "vault-partner"}
+{"id": "r2", "action": "replicate", "delivered": true, "partner": "vault-partner"}
+{"id": "r1", "action": "purge", "delivered": false, "partner": "vault-partner"}

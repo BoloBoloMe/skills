@@ -1,0 +1,16 @@
+{
+  "accounts": {
+    "locked-user": {
+      "locked": true,
+      "notes": {
+        "n1": {"text": "locked note"}
+      }
+    },
+    "normal-user": {
+      "locked": false,
+      "notes": {
+        "n1": {"text": "normal note"}
+      }
+    }
+  }
+}

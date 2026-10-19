@@ -1,0 +1,4 @@
+command: uv run python -c from\ pathlib\ import\ Path\;\ import\ json\;\ p=Path\(\"runtime/data/records.jsonl\"\)\;\ lines=p.read_text\(\).splitlines\(\)\;\ hits=\[\(n\,s\)\ for\ n\,s\ in\ enumerate\(lines\,1\)\ if\ json.loads\(s\).get\(\"id\"\)==\"r1\"\]\;\ print\(\"path=\"+str\(p\)\)\;\ print\(\"r1_line_count=\"+str\(len\(hits\)\)\)\;\ \[print\(str\(n\)+\":\"+s\)\ for\ n\,s\ in\ hits\]
+start: 2026-10-19T16:21:59,078128342+00:00
+end: 2026-10-19T16:21:59,105203159+00:00
+exit_code: 0

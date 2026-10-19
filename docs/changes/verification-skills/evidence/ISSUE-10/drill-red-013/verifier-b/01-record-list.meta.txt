@@ -1,0 +1,6 @@
+assumption_checked_at: 2026-10-19T16:20:56,716598951+00:00
+data_dir_and_records_present: yes
+command: uv run python app.py record-list --data-dir runtime/data
+start: 2026-10-19T16:20:56,719088191+00:00
+end: 2026-10-19T16:20:56,765377390+00:00
+exit_code: 0

@@ -1,0 +1,4 @@
+command: cp -- runtime/data/outbox/replication-log.jsonl docs/changes/vault/evidence/r1-ea94082/verifier-b/04-pre-purge.replication-log.jsonl
+start: 2026-10-19T16:21:39,374771245+00:00
+end: 2026-10-19T16:21:39,377933836+00:00
+exit_code: 0

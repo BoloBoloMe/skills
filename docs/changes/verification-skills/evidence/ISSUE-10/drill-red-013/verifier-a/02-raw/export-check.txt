@@ -1,0 +1,31 @@
+# export 文件核对 (run-5 结束后的 runtime/export.jsonl)
+
+时间: 2026-10-20T00:20:51+08:00
+
+## wc -l
+20000 runtime/export.jsonl
+
+## stat
+size=908890 mtime=2026-10-20 00:20:47.991224101 +0800
+
+## 首 3 行
+{"id": "row-000000", "text": "payload-0"}
+{"id": "row-000001", "text": "payload-1"}
+{"id": "row-000002", "text": "payload-2"}
+
+## 尾 3 行
+{"id": "row-019997", "text": "payload-19997"}
+{"id": "row-019998", "text": "payload-19998"}
+{"id": "row-019999", "text": "payload-19999"}
+
+## md5sum
+0cbdf1a6b8b535dc1cef52b617611dcf  runtime/export.jsonl
+
+## 全量结构校验 (uv run python, 只读文件)
+lines: 20000
+bytes: 908890
+all_json_parse_ok: True
+all_rows_match_expected_pattern_and_order: True
+bad_count: 0
+unique_ids: 20000
+ends_with_newline: True

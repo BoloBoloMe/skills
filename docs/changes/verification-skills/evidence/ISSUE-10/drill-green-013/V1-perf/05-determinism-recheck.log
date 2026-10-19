@@ -1,0 +1,8 @@
+== deterministic-output recheck (sequential, 2026-10-20T00:30:08+08:00) ==
+note: 04-correctness.log 里 croscheck 的 sha256 与 export.jsonl 不同, 原因是那两条命令由我并行发出, 校验进程与写入进程并发, 读到写一半的文件. 下面当前无写入, 串行重算.
+f7adaf5b3ed4fe57e451bd8abd28fbefcc1c8f0f1060d232c651987752805b39  runtime/export.jsonl
+f7adaf5b3ed4fe57e451bd8abd28fbefcc1c8f0f1060d232c651987752805b39  runtime/export-croscheck.jsonl
+cmp: identical
+  20000  908890 runtime/export.jsonl
+  20000  908890 runtime/export-croscheck.jsonl
+  40000 1817780 total

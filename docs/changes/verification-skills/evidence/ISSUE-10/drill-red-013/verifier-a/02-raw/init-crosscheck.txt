@@ -1,0 +1,65 @@
+# 对 B init 原件的适用性核对 (A 侧实际命令与输出)
+
+核对时间: 2026-10-20T00:21:09+08:00
+
+## 原件位置
+total 28
+drwxrwxr-x 2 bolo bolo  220 Oct 20 00:20 .
+drwxrwxr-x 4 bolo bolo  140 Oct 20 00:19 ..
+-rw-rw-r-- 1 bolo bolo 2411 Oct 20 00:20 00-init.md
+-rw-rw-r-- 1 bolo bolo  156 Oct 20 00:20 00-init.meta.txt
+-rw-rw-r-- 1 bolo bolo   59 Oct 20 00:20 00-init.records.jsonl
+-rw-rw-r-- 1 bolo bolo  166 Oct 20 00:20 00-init.replication-log.jsonl
+-rw-rw-r-- 1 bolo bolo    0 Oct 20 00:20 00-init.stderr.txt
+-rw-rw-r-- 1 bolo bolo   30 Oct 20 00:20 00-init.stdout.txt
+-rw-rw-r-- 1 bolo bolo  256 Oct 20 00:20 01-record-list.meta.txt
+-rw-rw-r-- 1 bolo bolo    0 Oct 20 00:20 01-record-list.stderr.txt
+-rw-rw-r-- 1 bolo bolo   33 Oct 20 00:20 01-record-list.stdout.txt
+
+## diff seed/records.jsonl vs runtime/data/records.jsonl
+identical
+
+## diff seed/replication-log.jsonl vs runtime/data/outbox/replication-log.jsonl
+identical
+
+## runtime/data/records.jsonl 现场内容
+{"id": "r1", "text": "alpha"}
+{"id": "r2", "text": "beta"}
+
+## 元数据
+runtime/data/records.jsonl size=59 mtime=2026-10-20 00:20:01.178168919 +0800
+runtime/data/outbox/replication-log.jsonl size=166 mtime=2026-10-20 00:20:01.178214126 +0800
+
+## git status (核对时)
+?? docs/changes/vault/evidence/r1-ea94082/PLAN.md
+?? docs/changes/vault/evidence/r1-ea94082/TASK-A.md
+?? docs/changes/vault/evidence/r1-ea94082/TASK-B.md
+?? docs/changes/vault/evidence/r1-ea94082/verifier-a/00-env.md
+?? docs/changes/vault/evidence/r1-ea94082/verifier-a/01-export-perf.md
+?? docs/changes/vault/evidence/r1-ea94082/verifier-a/02-raw/export-check.txt
+?? docs/changes/vault/evidence/r1-ea94082/verifier-a/02-raw/init-crosscheck.txt
+?? docs/changes/vault/evidence/r1-ea94082/verifier-a/02-raw/run-1.stderr.txt
+?? docs/changes/vault/evidence/r1-ea94082/verifier-a/02-raw/run-1.stdout.txt
+?? docs/changes/vault/evidence/r1-ea94082/verifier-a/02-raw/run-2.stderr.txt
+?? docs/changes/vault/evidence/r1-ea94082/verifier-a/02-raw/run-2.stdout.txt
+?? docs/changes/vault/evidence/r1-ea94082/verifier-a/02-raw/run-3.stderr.txt
+?? docs/changes/vault/evidence/r1-ea94082/verifier-a/02-raw/run-3.stdout.txt
+?? docs/changes/vault/evidence/r1-ea94082/verifier-a/02-raw/run-4.stderr.txt
+?? docs/changes/vault/evidence/r1-ea94082/verifier-a/02-raw/run-4.stdout.txt
+?? docs/changes/vault/evidence/r1-ea94082/verifier-a/02-raw/run-5.stderr.txt
+?? docs/changes/vault/evidence/r1-ea94082/verifier-a/02-raw/run-5.stdout.txt
+?? docs/changes/vault/evidence/r1-ea94082/verifier-a/02-raw/stats.txt
+?? docs/changes/vault/evidence/r1-ea94082/verifier-a/02-raw/supp1-time.stderr.txt
+?? docs/changes/vault/evidence/r1-ea94082/verifier-a/02-raw/supp1-time.stdout.txt
+?? docs/changes/vault/evidence/r1-ea94082/verifier-a/02-raw/supp2-systempy.stderr.txt
+?? docs/changes/vault/evidence/r1-ea94082/verifier-a/02-raw/supp2-systempy.stdout.txt
+?? docs/changes/vault/evidence/r1-ea94082/verifier-a/02-raw/timings.csv
+?? docs/changes/vault/evidence/r1-ea94082/verifier-b/00-init.md
+?? docs/changes/vault/evidence/r1-ea94082/verifier-b/00-init.meta.txt
+?? docs/changes/vault/evidence/r1-ea94082/verifier-b/00-init.records.jsonl
+?? docs/changes/vault/evidence/r1-ea94082/verifier-b/00-init.replication-log.jsonl
+?? docs/changes/vault/evidence/r1-ea94082/verifier-b/00-init.stderr.txt
+?? docs/changes/vault/evidence/r1-ea94082/verifier-b/00-init.stdout.txt
+?? docs/changes/vault/evidence/r1-ea94082/verifier-b/01-record-list.meta.txt
+?? docs/changes/vault/evidence/r1-ea94082/verifier-b/01-record-list.stderr.txt
+?? docs/changes/vault/evidence/r1-ea94082/verifier-b/01-record-list.stdout.txt
