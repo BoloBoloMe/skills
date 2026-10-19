@@ -1,0 +1,22 @@
+== date
+2026-10-19T22:27:12+08:00
+== health: python3 app.py health --port 18101
+ok instance=alpha
+exit=0
+== report: python3 app.py report --port 18101
+relay-report instance=alpha version=relay-v1 state=ready
+exit=0
+== job: python3 app.py job --port 18101 --ms 2500
+job-done instance=alpha elapsed_ms=2500
+exit=0
+== report after job
+relay-report instance=alpha version=relay-v1 state=ready
+exit=0
+== log: python3 app.py log --port 18101
+2026-10-19T14:23:59.174111Z instance=alpha event=job-start ms=2500
+2026-10-19T14:24:01.674366Z instance=alpha event=job-end ms=2500
+2026-10-19T14:27:05.558673Z instance=alpha event=job-start ms=1000
+2026-10-19T14:27:06.558874Z instance=alpha event=job-end ms=1000
+2026-10-19T14:27:12.667703Z instance=alpha event=job-start ms=2500
+2026-10-19T14:27:15.168042Z instance=alpha event=job-end ms=2500
+exit=0

@@ -1,0 +1,19 @@
+time: 2026-10-19T21:35:22+0800
+=== health ===
+ok instance=alpha
+exit=0
+=== report (fixed) ===
+relay-report instance=alpha version=relay-v1 state=ready
+exit=0
+=== job 2500 ===
+job-done instance=alpha elapsed_ms=2500
+exit=0
+=== log ===
+2026-10-19T13:28:37.686565Z instance=alpha event=job-start ms=2500
+2026-10-19T13:28:40.186880Z instance=alpha event=job-end ms=2500
+2026-10-19T13:35:22.488260Z instance=alpha event=job-start ms=2500
+2026-10-19T13:35:24.988456Z instance=alpha event=job-end ms=2500
+exit=0
+=== report after job ===
+relay-report instance=alpha version=relay-v1 state=ready
+exit=0

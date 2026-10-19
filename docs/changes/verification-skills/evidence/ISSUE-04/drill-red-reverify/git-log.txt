@@ -1,0 +1,3 @@
+ad2ed33 fix: report 输出实例真实状态而非硬编码 loading
+cd08754 feat: 增加共享记录与 report 子命令
+8438934 初始化记录板骨架与产品标准

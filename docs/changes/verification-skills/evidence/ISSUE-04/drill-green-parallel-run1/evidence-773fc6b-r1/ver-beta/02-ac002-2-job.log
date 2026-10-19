@@ -1,0 +1,7 @@
+### 02-ac002-2-job
+START 2026-10-19T22:06:57+08:00
+CMD bash -c start=$(date +%s%N); python3 app.py job --port 18102 --ms 4000; rc=$?; end=$(date +%s%N); echo MEASURED_WALL_MS=$(( (end-start)/1000000 )); exit $rc
+job-done instance=beta elapsed_ms=4000
+MEASURED_WALL_MS=4063
+EXIT 0
+END 2026-10-19T22:07:01+08:00

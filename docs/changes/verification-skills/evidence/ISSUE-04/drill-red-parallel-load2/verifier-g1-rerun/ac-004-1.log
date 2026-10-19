@@ -1,0 +1,19 @@
+=== 2026-10-19T22:54:42+08:00 AC-004-1 前置: 后台耗时任务 ===
+cmd: /usr/bin/python3 app.py job --port 18101 --ms 8000 &
+bg_job_pid=4143932
+--- 2026-10-19T22:54:43+08:00 ps 确认 job 仍存活 (原始输出) ---
+4143932       00:01 /usr/bin/python3 app.py job --port 18101 --ms 8000
+--- 2026-10-19T22:54:43+08:00 读日志 ---
+cmd: /usr/bin/python3 app.py log --port 18101
+2026-10-19T14:51:25.474654Z instance=alpha event=job-start ms=500
+2026-10-19T14:51:25.975091Z instance=alpha event=job-end ms=500
+2026-10-19T14:54:29.346076Z instance=alpha event=job-start ms=4000
+2026-10-19T14:54:33.346302Z instance=alpha event=job-end ms=4000
+2026-10-19T14:54:35.919377Z instance=beta event=job-start ms=4000
+2026-10-19T14:54:37.124555Z instance=alpha event=append seq=1 value=alpha
+2026-10-19T14:54:39.919521Z instance=beta event=job-end ms=4000
+2026-10-19T14:54:42.995428Z instance=alpha event=job-start ms=8000
+exit_log=0
+bg_job_exit=0
+--- 后台 job 输出 ---
+job-done instance=alpha elapsed_ms=8000

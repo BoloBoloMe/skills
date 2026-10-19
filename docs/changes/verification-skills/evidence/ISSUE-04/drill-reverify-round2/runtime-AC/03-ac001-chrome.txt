@@ -1,0 +1,10 @@
+# 03 AC-001-1 浏览器渲染并截图
+时间(开始): 2026-10-19T22:29:58+08:00
+命令: google-chrome --headless --disable-gpu --no-sandbox --window-size=900,400 --screenshot=/tmp/orchestra-04/reverify/docs/changes/relay-board/evidence/v2-5906913/runtime-AC/ac001-status-page.png http://127.0.0.1:18101/status-page
+--- 原始 stdout/stderr ---
+8788 bytes written to file /tmp/orchestra-04/reverify/docs/changes/relay-board/evidence/v2-5906913/runtime-AC/ac001-status-page.png
+退出码: 0
+时间(结束): 2026-10-19T22:29:59+08:00
+截图文件:
+-rw-rw-r-- 1 bolo bolo 8788 Oct 19 22:29 docs/changes/relay-board/evidence/v2-5906913/runtime-AC/ac001-status-page.png
+docs/changes/relay-board/evidence/v2-5906913/runtime-AC/ac001-status-page.png: PNG image data, 900 x 400, 8-bit/color RGB, non-interlaced

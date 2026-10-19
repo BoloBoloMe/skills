@@ -1,0 +1,12 @@
+=== 2026-10-19T22:48:48+08:00 AC-005-1 report alpha ===
+relay-report instance=alpha version=relay-v1 state=ready
+exit=0
+=== 2026-10-19T22:48:48+08:00 AC-005-1 report beta ===
+relay-report instance=beta version=relay-v1 state=ready
+exit=0
+=== 2026-10-19T22:48:48+08:00 AC-005-1 screenshot alpha ===
+8788 bytes written to file docs/changes/relay-board/evidence-v1-e398c7c/verifier-g1/ac-005-1-alpha-status.png
+=== 2026-10-19T22:48:48+08:00 AC-005-1 screenshot beta ===
+8695 bytes written to file docs/changes/relay-board/evidence-v1-e398c7c/verifier-g1/ac-005-1-beta-status.png
+-rw-rw-r-- 1 bolo bolo 8788 Oct 19 22:48 docs/changes/relay-board/evidence-v1-e398c7c/verifier-g1/ac-005-1-alpha-status.png
+-rw-rw-r-- 1 bolo bolo 8695 Oct 19 22:48 docs/changes/relay-board/evidence-v1-e398c7c/verifier-g1/ac-005-1-beta-status.png

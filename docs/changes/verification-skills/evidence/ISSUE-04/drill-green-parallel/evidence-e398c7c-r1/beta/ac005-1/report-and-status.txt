@@ -1,0 +1,18 @@
+material_start=2026-10-19T22:15:20+08:00
+--- health ---
+ok instance=beta
+health_exit=0
+--- report raw ---
+relay-report instance=beta version=relay-v1 state=ready
+report_exit=0
+report_elapsed_ms=72
+report_time=2026-10-19T22:15:20+08:00
+--- status raw ---
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>relay board</title></head>
+<body><h1>relay board</h1>
+<p>instance=beta</p>
+<p>state=ready</p>
+<p>version=relay-v1</p></body></html>
+status_exit=0
+status_time=2026-10-19T22:15:20+08:00

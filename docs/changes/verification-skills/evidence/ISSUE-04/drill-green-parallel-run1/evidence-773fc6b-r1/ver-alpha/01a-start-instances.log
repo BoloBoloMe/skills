@@ -1,0 +1,15 @@
+### 01a-start-instances
+START 2026-10-19T22:06:02+08:00
+CMD mkdir -p runtime/alpha runtime/beta runtime/shared; python3 app.py serve --port 18101 --instance alpha --data-dir runtime/alpha --shared-dir runtime/shared & python3 app.py serve --port 18102 --instance beta --data-dir runtime/beta --shared-dir runtime/shared &
+pid_alpha=4078331 pid_beta=4078332
+alpha_start_iso=2026-10-19T22:06:03+08:00
+--- serve-alpha.out ---
+listening on 127.0.0.1:18101 instance=alpha
+--- serve-beta.out ---
+listening on 127.0.0.1:18102 instance=beta
+--- ps ---
+    PID    PPID                  STARTED COMMAND
+4078331 4078328 一 10月 19 22:06:01 2026 python3 app.py serve --port 18101 --instance alpha --data-dir runtime/alpha --shared-dir runtime/shared
+4078332 4078328 一 10月 19 22:06:01 2026 python3 app.py serve --port 18102 --instance beta --data-dir runtime/beta --shared-dir runtime/shared
+EXIT 0
+END 2026-10-19T22:06:04+08:00

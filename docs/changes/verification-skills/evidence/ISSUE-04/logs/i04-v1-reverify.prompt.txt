@@ -1,0 +1,4 @@
+复验: 修复版本已提交, 新目标提交 5906913 (完整哈希取 git rev-parse HEAD).
+调用方安排: 恢复你 (原验收指挥会话) 承担复验. 原验收者 i04-a1-br 的会话已关闭, 需要新开非作者; 原验收者 i04-a1-ac 在修复阶段亲自改了 app.py 并提交了修复 (commit 5906913), 不能再承担独立验收.
+上一轮证据在 docs/changes/relay-board/evidence/v1-cd08754/. 修复作者的关键路径通过日志与状态页截图在 /tmp/orchestra-04/author-materials/green/.
+按技能推进复验.

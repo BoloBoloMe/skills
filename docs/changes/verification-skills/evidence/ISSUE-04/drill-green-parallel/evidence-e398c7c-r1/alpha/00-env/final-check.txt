@@ -1,0 +1,15 @@
+### final_check_utc=2026-10-19T14:15:58Z local=2026-10-19T22:15:58+0800
+### alpha process:
+    PID    PPID     SID                  STARTED COMMAND
+4090884 4090880 4090884 一 10月 19 22:15:07 2026 python3 app.py serve --port 18101 --instance alpha --data-dir runtime/alpha --shared-dir runtime/shared
+### listener 18101:
+LISTEN 0      5           127.0.0.1:18101      0.0.0.0:*    users:(("python3",pid=4090884,fd=3))         
+### health:
+ok instance=alpha
+health_exit=0
+### git status --porcelain:
+?? docs/changes/relay-board/evidence-e398c7c-r1/
+### runtime tree:
+runtime/beta-serve.log 43 bytes mtime=2026-10-19T22:15:04.3482929990
+runtime/shared/events.log 540 bytes mtime=2026-10-19T22:15:38.7461738370
+runtime/shared/record.jsonl 172 bytes mtime=2026-10-19T22:15:17.7022467380

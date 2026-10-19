@@ -1,0 +1,10 @@
+== date
+2026-10-19T22:24:06+08:00
+== cmd: python3 app.py log --port 18101
+2026-10-19T14:23:59.174111Z instance=alpha event=job-start ms=2500
+2026-10-19T14:24:01.674366Z instance=alpha event=job-end ms=2500
+== exit_code: 0
+== grep instance=alpha: 2
+== grep event=job-end: 1
+== date_end
+2026-10-19T22:24:06+08:00

@@ -1,0 +1,16 @@
+=== G4 start 2026-10-19T14:16:55.310453Z
+=== before state of runtime/shared/events.log
+74230d7416dd9d2a6d3b20540e5c09c136935eb1b10bdc1cb2c37c6f53f3ab58  runtime/shared/events.log
+8 runtime/shared/events.log
+540 runtime/shared/events.log
+  File: runtime/shared/events.log
+  Size: 540       	Blocks: 8          IO Block: 4096   regular file
+Device: 0,48	Inode: 1739511     Links: 1
+Access: (0664/-rw-rw-r--)  Uid: ( 1000/    bolo)   Gid: ( 1000/    bolo)
+Access: 2026-10-19 22:16:55.313908584 +0800
+Modify: 2026-10-19 22:15:38.746173837 +0800
+Change: 2026-10-19 22:15:38.746173837 +0800
+ Birth: 2026-10-19 22:15:12.595264429 +0800
+=== copy before
+cp exit=0
+74230d7416dd9d2a6d3b20540e5c09c136935eb1b10bdc1cb2c37c6f53f3ab58  docs/changes/relay-board/evidence-e398c7c-r1/tail/events-before.log

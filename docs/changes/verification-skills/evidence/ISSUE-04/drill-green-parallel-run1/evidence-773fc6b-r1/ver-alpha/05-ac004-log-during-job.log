@@ -1,0 +1,20 @@
+### 05-ac004-log-during-job
+START 2026-10-19T22:06:32+08:00
+CMD (bg) python3 app.py job --port 18101 --ms 6000 &  ; sleep 1.5 ; python3 app.py log --port 18101 ; wait
+--- bg job pid=4079383 ---
+JOB_START_ISO 2026-10-19T22:06:32+08:00
+JOB_END_ISO   2026-10-19T22:06:38+08:00
+LOG_START_ISO 2026-10-19T22:06:33+08:00
+LOG_END_ISO   2026-10-19T22:06:33+08:00
+JOB_EXIT 0
+--- bg job stdout ---
+job-done instance=alpha elapsed_ms=6000
+--- python3 app.py log --port 18101 stdout ---
+2026-10-19T14:06:18.228313Z instance=alpha event=append seq=1 value=alpha
+2026-10-19T14:06:24.443600Z instance=alpha event=job-start ms=4000
+2026-10-19T14:06:28.443779Z instance=alpha event=job-end ms=4000
+2026-10-19T14:06:32.182171Z instance=alpha event=job-start ms=6000
+LOG_EXIT 0
+WINDOW job=[1792418792.128,1792418798.195] log=[1792418793.636,1792418793.708]
+LOG_INSIDE_JOB_WINDOW yes
+END 2026-10-19T22:06:38+08:00

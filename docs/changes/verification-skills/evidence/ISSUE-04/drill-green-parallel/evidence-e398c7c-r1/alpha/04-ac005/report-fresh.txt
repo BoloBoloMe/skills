@@ -1,0 +1,9 @@
+### exec_start_utc=2026-10-19T14:15:47Z local=2026-10-19T22:15:47+0800
+### cmd: python3 app.py report --port 18101  (fresh re-run for item 8 pairing)
+relay-report instance=alpha version=relay-v1 state=ready
+exit=0
+elapsed_ms=64
+### exec_end_utc=2026-10-19T14:15:47Z
+### cmd: python3 app.py health --port 18101
+ok instance=alpha
+exit=0

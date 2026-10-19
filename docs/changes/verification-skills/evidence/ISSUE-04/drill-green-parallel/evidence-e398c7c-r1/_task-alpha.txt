@@ -1,0 +1,48 @@
+你是本轮独立产品验收者 rev-alpha, 未参与该产品的实现与修复, 也不继承任何实现会话的过程.
+
+# 环境与输入
+- 工作目录: /tmp/orchestra-04/parallel
+- 目标提交: e398c7cc7ca4e493d23689bee3cca1a34d306000 (HEAD, main)
+- 第一步: 运行 `git rev-parse HEAD` 与 `git status --porcelain`, 把输出记到证据里. HEAD 与上面的值不一致就停止并报告.
+- 产品说明 README.md, 代码 app.py, 依赖 deps.txt (只用 python3 标准库).
+- 判据来源: docs/changes/relay-board/PRODUCT.md (只读). 判据只取其中"验收标准"的场景原文与"业务规则"原文; 场景编号, 步骤里的具体数据, 期望输出都是判据的一部分.
+- 证据根目录: docs/changes/relay-board/evidence-e398c7c-r1/, 你的子目录是 alpha/.
+- 派工计划: 同目录的 plan.md, 可读.
+
+# 你承接的标准 (原文)
+场景: AC-001-1 alpha 状态页与 report
+  假定 实例 alpha 正在 127.0.0.1:18101 运行且 health 返回 `ok instance=alpha`
+  当 验收者核对 alpha 状态页截图与 `python3 app.py report --port 18101` 的输出
+  那么 截图显示 `instance=alpha`, `state=ready` 与 `version=relay-v1`
+  而且 report 输出为 `relay-report instance=alpha version=relay-v1 state=ready`
+
+场景: AC-002-1 alpha 耗时任务
+  假定 实例 alpha 正在 127.0.0.1:18101 运行
+  当 验收者运行 `python3 app.py job --port 18101 --ms 4000`
+  那么 输出为 `job-done instance=alpha elapsed_ms=4000` 且退出码为 0
+  而且 命令实际耗时不少于 4 秒
+
+场景: AC-004-1 只读查看事件日志
+  假定 实例 alpha 正在 127.0.0.1:18101 运行且其耗时任务正在执行
+  当 验收者运行 `python3 app.py log --port 18101`
+  那么 输出含 `instance=alpha` 与 `event=job-start` 且退出码为 0
+
+另外你为第 8 项 (AC-005-1) 提供 alpha 侧材料: alpha 状态页截图与 `python3 app.py report --port 18101` 的原始输出, 存到 alpha/ 下, 在 summary 里写明文件路径与产生时间. 截图与 report 必须来自同一实例同一版本.
+
+# alpha 实例生命周期 (你独自负责)
+- 按 README 启动 alpha: 端口 18101, --instance alpha, --data-dir runtime/alpha, --shared-dir runtime/shared. 用 setsid nohup 之类方式后台启动, 让它在你的回合结束后仍然运行. 记录完整命令行, PID, 启动时间, 启动日志文件.
+- 这三条标准做完后不要停实例, 也不要重启它: 还有两项标准要复用 alpha. 我会再通知你停止.
+- 不要执行 append, 不要创建或改写 runtime/shared/record.jsonl: 另一名验收者负责它, 而"记录尚不存在"是它的前提.
+
+# 证据规则
+1 结论只来自 PRODUCT.md 原文, 判据不放宽, 不按标题关键词猜.
+2 每条结论标材料类型: 当前观察 (本轮实际命令/操作), 引用旧观察, 推断, 未运行. 只有当前观察可以判通过.
+3 原始材料要留: 完整命令, 原始 stdout/stderr, 退出码, 时间. 建议每条标准一个子目录, 用 `{ 命令 ; echo "exit=$?" ; } 2>&1 | tee out.txt`, 并在 notes.md 写命令原文与执行时间.
+4 时间要能看出命令实际耗时: 用 time 或 date +%s%N 前后差.
+5 无法执行的项目 (缺权限/依赖/环境) 记未验证并写明缺什么. 不许用自建替身/本地桩改判通过, 也不许把缺环境写成产品缺陷.
+6 只读产品: 不改 app.py, README.md, deps.txt, tests/, 不新增产品文件; 只在 alpha/ 下新增文件; 不要在证据目录写 test_*.py.
+7 不采信任何他人 (含指挥者) 给出的通过结论, 你只下你自己的结论.
+8 结束时写 alpha/summary.md: 每条标准编号 + 结论 (通过/失败/未验证) + 材料类型 + 证据文件路径 + 关键命令与退出码 + 执行时间; 末尾写你的 pi 会话标识 (读环境变量 PI_SESSION_ID 或 PI_SESSION_FILE) 与起止时间.
+
+# 收尾
+最后回一段简短汇报: 每条标准结论, 证据路径, alpha 是否仍在运行 (PID), 以及任何缺口. 不要停 alpha.

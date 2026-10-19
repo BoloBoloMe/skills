@@ -1,0 +1,14 @@
+### job_start_utc=2026-10-19T14:15:34Z local=2026-10-19T22:15:34+0800
+### bg job cmd: python3 app.py job --port 18101 --ms 4000
+### bg job pid=4092125
+### log_start_utc=2026-10-19T14:15:35Z local=2026-10-19T22:15:36+0800
+### log_exit=0
+### log_elapsed_ms=66
+### log_end_utc=2026-10-19T14:15:36Z
+### is bg job still running at log time?
+yes, job pid 4092125 alive during log
+### bg job exit=0
+### bg job output:
+job-done instance=alpha elapsed_ms=4000
+### bg job total_elapsed_ms=4065
+### job_end_utc=2026-10-19T14:15:38Z

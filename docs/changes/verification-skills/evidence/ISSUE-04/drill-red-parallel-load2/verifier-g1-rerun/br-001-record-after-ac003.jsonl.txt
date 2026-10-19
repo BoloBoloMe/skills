@@ -1,0 +1,2 @@
+{"seq": 1, "value": "alpha", "instance": "alpha", "ts": "2026-10-19T14:54:37.124383Z"}
+{"seq": 2, "value": "beta", "instance": "beta", "ts": "2026-10-19T14:54:44.202059Z"}

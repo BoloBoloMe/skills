@@ -1,0 +1,35 @@
+time=2026-10-19T22:38:28+08:00
+$ git rev-parse 8438934fc81b67ed518dc4ad2e2f7dbd83b0192a:deps.txt
+ff2c99947923198db10083beab39cf783c26e9b0
+$ git show 8438934fc81b67ed518dc4ad2e2f7dbd83b0192a:deps.txt | md5sum
+99b58cfc58385c367bc855de422b8f5d  -
+$ git show 8438934fc81b67ed518dc4ad2e2f7dbd83b0192a:deps.txt
+python3 标准库, 无第三方依赖
+
+$ git rev-parse cd087542b4610c49ded0a1278fe8065726b62d9d:deps.txt
+ff2c99947923198db10083beab39cf783c26e9b0
+$ git show cd087542b4610c49ded0a1278fe8065726b62d9d:deps.txt | md5sum
+99b58cfc58385c367bc855de422b8f5d  -
+$ git show cd087542b4610c49ded0a1278fe8065726b62d9d:deps.txt
+python3 标准库, 无第三方依赖
+
+$ git rev-parse 59069130494139f96994f144c1ba09d3b51876d6:deps.txt
+ff2c99947923198db10083beab39cf783c26e9b0
+$ git show 59069130494139f96994f144c1ba09d3b51876d6:deps.txt | md5sum
+99b58cfc58385c367bc855de422b8f5d  -
+$ git show 59069130494139f96994f144c1ba09d3b51876d6:deps.txt
+python3 标准库, 无第三方依赖
+
+$ md5sum deps.txt (working tree)
+99b58cfc58385c367bc855de422b8f5d  deps.txt
+$ git rev-parse HEAD:deps.txt
+ff2c99947923198db10083beab39cf783c26e9b0
+
+$ git diff 8438934 -- deps.txt
+[empty above]
+$ git diff cd08754 -- deps.txt
+[empty above]
+$ git diff 5906913 -- deps.txt
+[empty above]
+$ git status --porcelain -- deps.txt
+[empty above]

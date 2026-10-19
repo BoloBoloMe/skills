@@ -1,0 +1,13 @@
+### 04-ac002-job-alpha
+START 2026-10-19T22:06:24+08:00
+CMD python3 app.py job --port 18101 --ms 4000  (measured with date +%s%N before/after in same shell)
+STDOUT_BEGIN
+job-done instance=alpha elapsed_ms=4000
+STDOUT_END
+EXIT 0
+T_START_ISO 2026-10-19T22:06:24+08:00
+T_END_ISO 2026-10-19T22:06:28+08:00
+ELAPSED_NS 4071315665
+ELAPSED_S 4.071
+MEETS_MIN_4S yes
+END 2026-10-19T22:06:28+08:00

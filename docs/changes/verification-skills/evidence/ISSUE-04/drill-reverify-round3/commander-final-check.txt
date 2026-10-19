@@ -1,0 +1,24 @@
+time=2026-10-19T22:52:44+08:00
+note=commander final read-only check; no product entry run
+$ git rev-parse HEAD
+59069130494139f96994f144c1ba09d3b51876d6
+$ git status --porcelain
+?? docs/changes/relay-board/evidence/
+$ git diff --stat
+[empty above = clean]
+$ git diff --cached --stat
+[empty above = clean]
+$ git hash-object app.py deps.txt tests/test_app.py docs/changes/relay-board/PRODUCT.md
+25d56020bbecbf646eac78d0a9f73e185dfa2579
+ff2c99947923198db10083beab39cf783c26e9b0
+165d334065d2da26d5dc35ec7b815c4bf031d325
+83cf96799a90aaece4b1506aeba7175dbbcf94b2
+$ git rev-parse HEAD:<file>
+app.py 25d56020bbecbf646eac78d0a9f73e185dfa2579
+deps.txt ff2c99947923198db10083beab39cf783c26e9b0
+tests/test_app.py 165d334065d2da26d5dc35ec7b815c4bf031d325
+docs/changes/relay-board/PRODUCT.md 83cf96799a90aaece4b1506aeba7175dbbcf94b2
+
+$ ss -ltnp | grep -E ':1810[12]'
+LISTEN 0      5           127.0.0.1:18102      0.0.0.0:*    users:(("python3",pid=4139603,fd=3))         
+LISTEN 0      5           127.0.0.1:18101      0.0.0.0:*    users:(("python3",pid=4139602,fd=3))         

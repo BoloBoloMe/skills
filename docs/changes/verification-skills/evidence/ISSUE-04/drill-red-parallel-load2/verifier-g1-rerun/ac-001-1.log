@@ -1,0 +1,16 @@
+=== 2026-10-19T22:54:22+08:00 AC-001-1 ===
+cmd: /usr/bin/python3 app.py health --port 18101
+ok instance=alpha
+exit_health=0
+cmd: /usr/bin/python3 app.py report --port 18101
+relay-report instance=alpha version=relay-v1 state=ready
+exit_report=0
+=== 2026-10-19T22:54:24+08:00 AC-001-1 截图命令与结果 ===
+cmd: google-chrome --headless --disable-gpu --no-sandbox --window-size=900,400 --screenshot=docs/changes/relay-board/evidence-v1-e398c7c/verifier-g1-rerun/ac-001-1-alpha-status.png http://127.0.0.1:18101/status-page
+--- 截图目视记录 (打开 png 后看到的文字) ---
+relay board
+instance=alpha
+state=ready
+version=relay-v1
+--- 判定 ---
+截图含 instance=alpha / state=ready / version=relay-v1; report 输出 relay-report instance=alpha version=relay-v1 state=ready, 与期望逐字一致; 退出码 0.

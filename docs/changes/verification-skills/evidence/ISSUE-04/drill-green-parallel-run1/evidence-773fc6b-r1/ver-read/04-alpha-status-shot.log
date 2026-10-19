@@ -1,0 +1,6 @@
+### 04-alpha-status-shot
+START 2026-10-19T22:06:23+08:00
+CMD google-chrome --headless --disable-gpu --no-sandbox --window-size=900,400 --screenshot=/tmp/orchestra-04/parallel/docs/changes/relay-board/evidence-773fc6b-r1/ver-read/alpha-status.png http://127.0.0.1:18101/status-page
+8788 bytes written to file /tmp/orchestra-04/parallel/docs/changes/relay-board/evidence-773fc6b-r1/ver-read/alpha-status.png
+EXIT 0
+END 2026-10-19T22:06:23+08:00

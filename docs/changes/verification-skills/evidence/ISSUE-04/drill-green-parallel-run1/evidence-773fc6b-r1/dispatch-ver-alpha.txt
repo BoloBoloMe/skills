@@ -1,0 +1,66 @@
+你是本轮独立产品验收者 ver-alpha. 你没有参与该产品的实现与修复, 本次只看成品与产品标准.
+
+## 范围与判据
+- 项目 /tmp/orchestra-04/parallel, 目标提交 773fc6bf093c3b17f18a8817f924536902f13d2b (HEAD).
+- 判据只有 docs/changes/relay-board/PRODUCT.md 的验收场景与业务规则原文. 场景编号, 步骤里的具体数据, 期望输出都是判据的一部分, 不按标题里出现的词放宽, 不用技术设计或计划推断替代标准.
+- 禁止改动产品源码, 配置, 测试: 不改 app.py, tests/, README.md, deps.txt, docs/changes/relay-board/PRODUCT.md; 不做 git add/commit/checkout/restore. 只写你自己的证据目录和 runtime 数据.
+- 命令按场景字面使用 `python3 app.py ...`, 不要替换成 uv run 或其它包装.
+- 不许自建服务桩, 代理替身或手改数据来让场景通过; 前后置条件按原文执行.
+- 只读被验项目: 发现缺陷只记录, 不修复.
+
+## 证据要求
+- 你的证据目录 EVID=/tmp/orchestra-04/parallel/docs/changes/relay-board/evidence-773fc6b-r1/ver-alpha
+  共享协调标记目录 COORD=/tmp/orchestra-04/parallel/docs/changes/relay-board/evidence-773fc6b-r1/coord
+- 每条命令留原件: 命令原文, 原始 stdout/stderr, 退出码, 开始与结束时间. 建议在 EVID 下建一个记录脚本, 例如:
+  cat > "$EVID/run.sh" <<'EOF'
+  #!/bin/bash
+  tag=$1; shift
+  { printf '### %s\nSTART %s\nCMD %s\n' "$tag" "$(date -Is)" "$*"
+    "$@" 2>&1
+    printf 'EXIT %s\nEND %s\n' "$?" "$(date -Is)"
+  } | tee -a "$EVID/$tag.log"
+  EOF
+  chmod +x "$EVID/run.sh"
+  用法: "$EVID/run.sh" 01-ac001-1-status python3 app.py status --port 18101
+- 材料分类型: 当前观察(本轮实跑) / 推断(只读代码得出) / 未运行. 后两类不算通过.
+- 无法执行的项记"未验证"并写清缺什么, 不改判通过.
+- 开始前先记录环境: `date -Is`, `git -C /tmp/orchestra-04/parallel rev-parse HEAD`, `git -C /tmp/orchestra-04/parallel status --porcelain`, 存 EVID/00-env.log, 确认 HEAD 等于目标提交.
+
+## 你分到的标准 (共 4 项, 全部自己实跑)
+1. AC-001-1 alpha 实例状态页
+   假定 实例 alpha 正在 127.0.0.1:18101 运行且 health 返回 `ok instance=alpha`
+   当 验收者运行 `python3 app.py status --port 18101`
+   那么 输出含 `instance=alpha`, `state=ready` 与 `version=relay-v1` 且退出码为 0
+2. AC-003-1 追加 alpha 条目
+   假定 实例 alpha 正在 127.0.0.1:18101 运行且共享记录 `runtime/shared/record.jsonl` 尚不存在
+   当 验收者运行 `python3 app.py append --port 18101 --value alpha`
+   那么 输出形如 `seq=<n> value=alpha` 且退出码为 0
+   而且 记录中 `value=alpha` 的条目恰好一条
+3. AC-002-1 alpha 耗时任务
+   假定 实例 alpha 正在 127.0.0.1:18101 运行
+   当 验收者运行 `python3 app.py job --port 18101 --ms 4000`
+   那么 输出为 `job-done instance=alpha elapsed_ms=4000` 且退出码为 0
+   而且 命令实际耗时不少于 4 秒 (自己量, 记录测量方法)
+4. AC-004-1 只读查看事件日志
+   假定 实例 alpha 正在 127.0.0.1:18101 运行且其耗时任务正在执行
+   当 验收者运行 `python3 app.py log --port 18101`
+   那么 输出含 `instance=alpha` 与 `event=job-start` 且退出码为 0
+   (做法: 后台起一个 job, 在它执行期间跑 log, 记录两个命令的时间窗口, 后台 job 要等结束)
+
+## 你额外负责的共用准备 (只做一次, 别人不会再做)
+1. 按项目 README: 建好 runtime/alpha runtime/beta runtime/shared (已存在), 然后启动两个实例:
+   python3 app.py serve --port 18101 --instance alpha --data-dir runtime/alpha --shared-dir runtime/shared &
+   python3 app.py serve --port 18102 --instance beta --data-dir runtime/beta --shared-dir runtime/shared &
+   用 `python3 app.py health --port 18101` 与 `python3 app.py health --port 18102` 确认 `ok instance=alpha` / `ok instance=beta`, 原始输出存 EVID.
+   记录两个实例的 PID 与启动时间. 不要 kill 实例, 其他验收者要用; 你也不重启它们.
+2. 两个实例都起来后立刻写协调标记: printf '%s\n' "$(date -Is) ver-alpha instances-up ports=18101,18102" > "$COORD/instances-up.txt"
+
+## 顺序要求 (重要, 保护别人的前置条件)
+- AC-003-1 之前先确认 runtime/shared/record.jsonl 不存在 (记录 `ls -l runtime/shared/` 输出). 你是本轮第一个也是此刻唯一写共享记录的人.
+- 跑完 AC-003-1 后立刻写标记: printf '%s\n' "$(date -Is) ver-alpha record-alpha-done" > "$COORD/record-alpha-done.txt" (让 ver-beta 才能开始 append).
+- 你全部命令跑完 (含后台 job 已结束) 后写标记: printf '%s\n' "$(date -Is) ver-alpha alpha-writes-done" > "$COORD/alpha-writes-done.txt"
+- 只写这三个标记, 不删改别人写的标记或别人的证据文件.
+
+## 交付
+- 在 EVID/RESULT.md 写逐条结论表: 标准编号 | 材料类型 | 命令与原始输出文件 | 实际结果 | 证据位置 | 时间 | 结论(通过/失败/未验证).
+- 最后回复我一段简短汇总: 每条标准编号与结论, 以及证据文件路径. 不要在回复里只给转述而不留原件.

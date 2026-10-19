@@ -1,0 +1,9 @@
+[2026-10-19T21:27:20+08:00] poll#1 exit=1 out=request failed: <urlopen error [Errno 111] Connection refused>
+[2026-10-19T21:27:25+08:00] poll#2 exit=1 out=request failed: <urlopen error [Errno 111] Connection refused>
+[2026-10-19T21:27:30+08:00] poll#3 exit=1 out=request failed: <urlopen error [Errno 111] Connection refused>
+[2026-10-19T21:27:35+08:00] poll#4 exit=1 out=request failed: <urlopen error [Errno 111] Connection refused>
+[2026-10-19T21:27:40+08:00] poll#5 exit=1 out=request failed: <urlopen error [Errno 111] Connection refused>
+[2026-10-19T21:27:45+08:00] poll#6 exit=1 out=request failed: <urlopen error [Errno 111] Connection refused>
+[2026-10-19T21:27:50+08:00] poll#7 exit=1 out=request failed: <urlopen error [Errno 111] Connection refused>
+[2026-10-19T21:27:55+08:00] poll#8 exit=1 out=request failed: <urlopen error [Errno 111] Connection refused>
+[2026-10-19T21:28:00+08:00] poll#9 exit=0 out=ok instance=alpha

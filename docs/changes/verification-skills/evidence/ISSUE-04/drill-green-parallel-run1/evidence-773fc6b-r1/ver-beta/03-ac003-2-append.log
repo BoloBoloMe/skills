@@ -1,0 +1,6 @@
+### 03-ac003-2-append
+START 2026-10-19T22:07:21+08:00
+CMD python3 app.py append --port 18102 --value beta
+seq=2 value=beta
+EXIT 0
+END 2026-10-19T22:07:22+08:00

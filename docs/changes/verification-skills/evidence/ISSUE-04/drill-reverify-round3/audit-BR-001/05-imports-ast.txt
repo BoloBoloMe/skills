@@ -1,0 +1,16 @@
+python_version= 3.14.7 (main, Aug 14 2026, 15:35:28) [Clang 22.1.3 ]
+python_executable= /home/bolo/.local/share/uv/python/cpython-3.14-linux-x86_64-gnu/bin/python3.14
+analysis=AST over app.py; stdlib set = sys.stdlib_module_names
+
+line=3 kind=import module=argparse is_stdlib=STDLIB
+line=4 kind=import module=json is_stdlib=STDLIB
+line=5 kind=import module=sys is_stdlib=STDLIB
+line=6 kind=import module=time is_stdlib=STDLIB
+line=7 kind=from module=datetime is_stdlib=STDLIB
+line=8 kind=from module=http.server is_stdlib=STDLIB
+line=9 kind=from module=pathlib is_stdlib=STDLIB
+line=10 kind=from module=urllib.parse is_stdlib=STDLIB
+line=127 kind=import module=urllib.request is_stdlib=STDLIB
+
+import_statements=9 non_stdlib=0
+non_stdlib_list=(none)

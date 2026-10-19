@@ -1,0 +1,45 @@
+=== 2026-10-19T22:55:01+08:00 BR-001 第1段: 串行流程产生的记录 ===
+cmd: stat -c 'size=%s mtime=%y' runtime/shared/record.jsonl
+size=172 mtime=2026-10-19 22:54:44.201004220 +0800
+cmd: sha256sum runtime/shared/record.jsonl
+6d178b452aa62050795d11d0af760d82a84f1127707c3cfdbfc69fd9df975e19  runtime/shared/record.jsonl
+cmd: /usr/bin/python3 app.py record --port 18101
+{"seq": 1, "value": "alpha", "instance": "alpha", "ts": "2026-10-19T14:54:37.124383Z"}
+{"seq": 2, "value": "beta", "instance": "beta", "ts": "2026-10-19T14:54:44.202059Z"}
+--- 校验 ---
+cmd: /usr/bin/python3 -c '...seq/value 校验...'
+rows 2
+seqs [1, 2]
+seq_unique 2
+seq_is_1_to_n True
+vals ['alpha', 'beta']
+value_unique True
+exit_check=0
+=== 2026-10-19T22:55:04+08:00 BR-001 第2段: 同一共享记录并发追加 ===
+--- 并发前 ---
+2 runtime/shared/record.jsonl
+6d178b452aa62050795d11d0af760d82a84f1127707c3cfdbfc69fd9df975e19  runtime/shared/record.jsonl
+cmd: /usr/bin/python3 app.py append --port 18101 --value gamma &  ;  /usr/bin/python3 app.py append --port 18102 --value delta &
+pids=4144846,4144847
+--- 2026-10-19T22:55:04+08:00 并发期间 ps (证明两者同时在跑) ---
+4144846 /usr/bin/python3 app.py append --port 18101 --value gamma
+4144847 /usr/bin/python3 app.py append --port 18102 --value delta
+exit_alpha=0
+exit_beta=0
+--- 两侧输出 ---
+[alpha] seq=3 value=gamma
+[beta ] seq=3 value=delta
+--- 并发后 record 全文 ---
+{"seq": 1, "value": "alpha", "instance": "alpha", "ts": "2026-10-19T14:54:37.124383Z"}
+{"seq": 2, "value": "beta", "instance": "beta", "ts": "2026-10-19T14:54:44.202059Z"}
+{"seq": 3, "value": "gamma", "instance": "alpha", "ts": "2026-10-19T14:55:05.767297Z"}
+{"seq": 3, "value": "delta", "instance": "beta", "ts": "2026-10-19T14:55:05.768897Z"}
+--- 校验 ---
+rows 4
+seqs [1, 2, 3, 3]
+seq_unique 3
+seq_is_1_to_n False
+vals ['alpha', 'beta', 'gamma', 'delta']
+value_unique True
+size=345 mtime=2026-10-19 22:55:05.767928876 +0800
+9c9294c5e9b57c4dadc17dfc20e7ea3090f7d512f5dbbdd1e1f7e253b698b0b3  runtime/shared/record.jsonl

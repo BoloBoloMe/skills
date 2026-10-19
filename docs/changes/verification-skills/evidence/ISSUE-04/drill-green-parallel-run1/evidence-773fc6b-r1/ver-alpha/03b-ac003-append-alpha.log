@@ -1,0 +1,6 @@
+### 03b-ac003-append-alpha
+START 2026-10-19T22:06:16+08:00
+CMD python3 app.py append --port 18101 --value alpha
+seq=1 value=alpha
+EXIT 0
+END 2026-10-19T22:06:18+08:00

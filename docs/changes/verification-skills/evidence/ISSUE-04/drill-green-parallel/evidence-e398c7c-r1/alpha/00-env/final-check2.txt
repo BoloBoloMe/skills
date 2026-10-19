@@ -1,0 +1,10 @@
+### summary_written_utc=2026-10-19T14:16:09Z local=2026-10-19T22:16:09+0800
+### alpha still running:
+    PID     SID                  STARTED COMMAND
+4090884 4090884 一 10月 19 22:15:07 2026 python3 app.py serve --port 18101 --instance alpha --data-dir runtime/alpha --shared-dir runtime/shared
+LISTEN 0      5           127.0.0.1:18101      0.0.0.0:*    users:(("python3",pid=4090884,fd=3))         
+### health:
+ok instance=alpha
+health_exit=0
+### git status:
+?? docs/changes/relay-board/evidence-e398c7c-r1/

@@ -1,0 +1,19 @@
+### 03-listener-before
+START 2026-10-19T22:06:21+08:00
+CMD bash -c ss -ltnp 2>/dev/null | grep -E ":18101|:18102" ; echo "--- pids ---"; ps -eo pid,lstart,args | grep "app.py serve" | grep -v grep; echo "--- pids of listeners via /proc ---"; for p in $(pgrep -f "app.py serve --port 18101"); do echo "PID $p cmdline: $(tr "\0" " " < /proc/$p/cmdline)"; echo "PID $p cwd: $(readlink /proc/$p/cwd)"; done
+LISTEN 0      5           127.0.0.1:18102      0.0.0.0:*    users:(("python3",pid=4078332,fd=3))         
+LISTEN 0      5           127.0.0.1:18101      0.0.0.0:*    users:(("python3",pid=4078331,fd=3))         
+--- pids ---
+4078331 一 10月 19 22:06:01 2026 python3 app.py serve --port 18101 --instance alpha --data-dir runtime/alpha --shared-dir runtime/shared
+4078332 一 10月 19 22:06:01 2026 python3 app.py serve --port 18102 --instance beta --data-dir runtime/beta --shared-dir runtime/shared
+--- pids of listeners via /proc ---
+PID 4078331 cmdline: python3 app.py serve --port 18101 --instance alpha --data-dir runtime/alpha --shared-dir runtime/shared 
+PID 4078331 cwd: /tmp/orchestra-04/parallel
+PID 4078842 cmdline: /bin/bash /tmp/orchestra-04/parallel/docs/changes/relay-board/evidence-773fc6b-r1/ver-read/run.sh 03-listener-before bash -c ss -ltnp 2>/dev/null | grep -E ":18101|:18102" ; echo "--- pids ---"; ps -eo pid,lstart,args | grep "app.py serve" | grep -v grep; echo "--- pids of listeners via /proc ---"; for p in $(pgrep -f "app.py serve --port 18101"); do echo "PID $p cmdline: $(tr "\0" " " < /proc/$p/cmdline)"; echo "PID $p cwd: $(readlink /proc/$p/cwd)"; done 
+PID 4078842 cwd: /tmp/orchestra-04/parallel
+PID 4078843 cmdline: /bin/bash /tmp/orchestra-04/parallel/docs/changes/relay-board/evidence-773fc6b-r1/ver-read/run.sh 03-listener-before bash -c ss -ltnp 2>/dev/null | grep -E ":18101|:18102" ; echo "--- pids ---"; ps -eo pid,lstart,args | grep "app.py serve" | grep -v grep; echo "--- pids of listeners via /proc ---"; for p in $(pgrep -f "app.py serve --port 18101"); do echo "PID $p cmdline: $(tr "\0" " " < /proc/$p/cmdline)"; echo "PID $p cwd: $(readlink /proc/$p/cwd)"; done 
+PID 4078843 cwd: /tmp/orchestra-04/parallel
+PID 4078846 cmdline: bash -c ss -ltnp 2>/dev/null | grep -E ":18101|:18102" ; echo "--- pids ---"; ps -eo pid,lstart,args | grep "app.py serve" | grep -v grep; echo "--- pids of listeners via /proc ---"; for p in $(pgrep -f "app.py serve --port 18101"); do echo "PID $p cmdline: $(tr "\0" " " < /proc/$p/cmdline)"; echo "PID $p cwd: $(readlink /proc/$p/cwd)"; done 
+PID 4078846 cwd: /tmp/orchestra-04/parallel
+EXIT 0
+END 2026-10-19T22:06:21+08:00

@@ -1,0 +1,27 @@
+=== 2026-10-19T22:54:58+08:00 BR-002 查看前 ===
+cmd: stat -c 'size=%s mtime=%y' runtime/shared/events.log
+size=670 mtime=2026-10-19 22:54:50.994980485 +0800
+cmd: sha256sum runtime/shared/events.log
+e2294717a7e74da5309db2bc88efbaead6d5800d7347150b43ad2d76c1a8b3b1  runtime/shared/events.log
+--- 2026-10-19T22:54:58+08:00 只读查看 ---
+cmd: /usr/bin/python3 app.py log --port 18101
+2026-10-19T14:51:25.474654Z instance=alpha event=job-start ms=500
+2026-10-19T14:51:25.975091Z instance=alpha event=job-end ms=500
+2026-10-19T14:54:29.346076Z instance=alpha event=job-start ms=4000
+2026-10-19T14:54:33.346302Z instance=alpha event=job-end ms=4000
+2026-10-19T14:54:35.919377Z instance=beta event=job-start ms=4000
+2026-10-19T14:54:37.124555Z instance=alpha event=append seq=1 value=alpha
+2026-10-19T14:54:39.919521Z instance=beta event=job-end ms=4000
+2026-10-19T14:54:42.995428Z instance=alpha event=job-start ms=8000
+2026-10-19T14:54:44.202202Z instance=beta event=append seq=2 value=beta
+2026-10-19T14:54:50.995589Z instance=alpha event=job-end ms=8000
+exit_log_alpha=0
+cmd: /usr/bin/python3 app.py log --port 18102
+exit_log_beta=0
+=== 2026-10-19T22:54:58+08:00 查看后 ===
+cmd: stat -c 'size=%s mtime=%y' runtime/shared/events.log
+size=670 mtime=2026-10-19 22:54:50.994980485 +0800
+cmd: sha256sum runtime/shared/events.log
+e2294717a7e74da5309db2bc88efbaead6d5800d7347150b43ad2d76c1a8b3b1  runtime/shared/events.log
+cmd: cmp -s prestate 副本与现文件
+cmp_exit=0

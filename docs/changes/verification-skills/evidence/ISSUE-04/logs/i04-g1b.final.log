@@ -1,0 +1,80 @@
+ ver-alpha done w1J:p53                                                                                                                                          │
+ ver-beta done w1J:p54                                                                                                                                           │
+ ver-read done w1J:p55                                                                                                                                           │
+                                                                                                                                                                 │
+ Took 0.0s                                                                                                                                                       │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ [python-operation-hook] python -> uv run python                                                                                                                 │
+                                                                                                                                                                 │
+ Thinking...                                                                                                                                                     │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ write /tmp/orchestra-04/parallel/docs/changes/relay-board/evidence-773fc6b-r1/REPORT.md                                                                         │
+                                                                                                                                                                 │
+ # 独立产品验收报告 (第 1 轮)                                                                                                                                    │
+                                                                                                                                                                 │
+ - 目标提交: `773fc6bf093c3b17f18a8817f924536902f13d2b` (HEAD, 提交时间 2026-10-19 21:18:27 +0800)                                                               │
+ - 判据来源: `docs/changes/relay-board/PRODUCT.md`, `验收标准` 节 (`<!-- confirmed-flow: v1 -->`) 与 `业务规则` 节                                               │
+ - 证据目录: `docs/changes/relay-board/evidence-773fc6b-r1/` (本轮新建, 未覆盖旧证据; 仓库内无旧证据)                                                            │
+ - 证据目录影响判断: 项目无构建脚本, 无 pytest 配置 (无 pyproject.toml / pytest.ini / setup.cfg / tox.ini), pytest 只收集 `test_*.py`,                           │
+   证据文件不含该命名, 故不进入测试发现或运行输入; `app.py` 不读 `docs/`. 证据留在仓库内, 未外置.                                                                │
+ - 版本绑定: 验收结束时 `git status --porcelain` 只有 `?? docs/changes/relay-board/evidence-773fc6b-r1/`, `git diff --stat` 为空;                                │
+   `git hash-object app.py tests/test_app.py docs/changes/relay-board/PRODUCT.md` 分别等于 HEAD tree 中                                                          │
+   `7d2fda8.../app.py`, `165d334.../tests/test_app.py`, `4cdef5d.../docs/changes/relay-board/PRODUCT.md`.                                                        │
+ ... (92 more lines, 102 total, ctrl+o/alt+o to expand)                                                                                                          │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ Thinking...                                                                                                                                                     │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ $ for t in w1J:t51 w1J:t52 w1J:t53; do herdr tab close $t 2>&1 | tail -1; done; sleep 2; herdr agent list 2>&1 | python3 -c 'import json,sys;
+ d=json.load(sys.stdin); print([a.get("name") for a in d["result"]["agents"] if a.get("name","").startswith("ver-")])'
+
+ {"id":"cli:tab:close","result":{"type":"ok"}}
+ {"id":"cli:tab:close","result":{"type":"ok"}}
+ {"id":"cli:tab:close","result":{"type":"ok"}}
+ []
+
+ Took 2.1s
+
+
+ [python-operation-hook] python -> uv run python
+
+ Thinking...
+
+
+ $ cd /tmp/orchestra-04/parallel && git status --porcelain && du -sh docs/changes/relay-board/evidence-773fc6b-r1 && ls
+ docs/changes/relay-board/evidence-773fc6b-r1 && ss -ltnp 2>/dev/null | grep -cE '18101|18102'
+
+ ... (7 earlier lines, ctrl+o/alt+o to expand)
+ dispatch-ver-read.txt
+ ver-alpha
+ ver-beta
+ ver-read
+ 2
+
+ Took 0.0s
+
+
+ 验收完成. 10 项全部通过 (8 场景 + 2 审计 BR), 0 失败, 0 未验证.
+
+ 报告: docs/changes/relay-board/evidence-773fc6b-r1/REPORT.md (派工计划 PLAN.md, 原始材料在 ver-alpha/ ver-beta/ ver-read/)
+
+ 要点:
+ - 绑定版本 773fc6b: 被跟踪文件 blob 与 HEAD 一致, git diff --stat 空, 改动只有新证据目录.
+ - 三名验收者都是本轮新开会话 (22:03:47 创建, 晚于 21:18:27 的提交), 无继承实现过程, 全程只写证据目录与 runtime 数据.
+ - 分组: alpha 组 (AC-001-1/002-1/003-1/004-1), beta 组 (AC-001-2/002-2/003-2 + BR-001), 只读交叉组 (AC-005-1 + BR-002). 实例启动由 alpha 组做一次, 另两组直接引
+   用同一对进程.
+ - 两个争用片段按计划排序: 共享记录 alpha→beta (标记 22:06:24 交接); BR-002 安静窗口在 22:06:41 / 22:07:58 两个写入结束标记之后, 22:08:12 执行, 前后 sha256 一致
+   (04ef8f49…), 8 行不变.
+ - 我另行复核了截图内容, 三份 events.log 副本哈希一致, 记录文件 seq=1 alpha / seq=2 beta 一致.
+ - 未覆盖: 并发追加不在任何场景内, 本轮不判.
+
+ 两句提醒: 两个实例仍在跑 (PID 4078331/4078332, 未重启), 供你复核; 结论仍需你逐项确认并走正式人工验收, 这不是正式交付或验收关闭.
+
+──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+
+──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+/tmp/orchestra-04/parallel (main)
+↑44k ↓37k R2.0M CH99.7% $0.022 8.2%/1.0M (auto)                                                                   (cli) deepseek-v4.1-flash-expires-on-0910 • high

@@ -1,0 +1,11 @@
+== git rev-parse HEAD
+cd087542b4610c49ded0a1278fe8065726b62d9d
+== git status --porcelain -uall
+?? docs/changes/relay-board/evidence/v1-cd08754/PLAN.md
+?? docs/changes/relay-board/evidence/v1-cd08754/runtime-AC/00-env.txt
+== date
+2026-10-19T22:23:48+08:00
+== python3 -V
+Python 3.14.7
+== google-chrome --version
+Google Chrome 154.0.8037.97 

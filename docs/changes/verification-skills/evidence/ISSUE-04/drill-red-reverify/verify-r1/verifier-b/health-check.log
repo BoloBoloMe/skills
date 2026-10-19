@@ -1,0 +1,6 @@
+time: 2026-10-19T21:28:16+0800
+cmd: python3 app.py health --port 18101
+ok instance=alpha
+exit=0
+--- serve.log content ---
+listening on 127.0.0.1:18101 instance=alpha

@@ -1,0 +1,11 @@
+### exec_start_utc=2026-10-19T14:15:18Z
+### cmd: python3 app.py status --port 18101
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>relay board</title></head>
+<body><h1>relay board</h1>
+<p>instance=alpha</p>
+<p>state=ready</p>
+<p>version=relay-v1</p></body></html>
+exit=0
+elapsed_ms=65
+### exec_end_utc=2026-10-19T14:15:18Z

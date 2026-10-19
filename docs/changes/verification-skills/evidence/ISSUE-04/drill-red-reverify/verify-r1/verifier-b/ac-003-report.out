@@ -1,0 +1,9 @@
+time: 2026-10-19T21:29:14+0800
+=== precondition: health ===
+cmd: python3 app.py health --port 18101
+ok instance=alpha
+exit=0
+=== main cmd ===
+cmd: python3 app.py report --port 18101
+relay-report instance=alpha version=relay-v1 state=loading
+exit=0

@@ -1,0 +1,10 @@
+### exec_start_utc=2026-10-19T14:15:20Z  local=2026-10-19T22:15:20+0800
+### cmd: google-chrome --headless --disable-gpu --no-sandbox --window-size=900,400 --screenshot=/tmp/orchestra-04/parallel/docs/changes/relay-board/evidence-e398c7c-r1/alpha/04-ac005/alpha-status.png http://127.0.0.1:18101/status-page
+8788 bytes written to file /tmp/orchestra-04/parallel/docs/changes/relay-board/evidence-e398c7c-r1/alpha/04-ac005/alpha-status.png
+exit=0
+elapsed_ms=376
+### exec_end_utc=2026-10-19T14:15:20Z
+total 12
+drwxrwxr-x 2 bolo bolo   60 Oct 19 22:15 .
+drwxrwxr-x 7 bolo bolo  140 Oct 19 22:15 ..
+-rw-rw-r-- 1 bolo bolo 8788 Oct 19 22:15 alpha-status.png

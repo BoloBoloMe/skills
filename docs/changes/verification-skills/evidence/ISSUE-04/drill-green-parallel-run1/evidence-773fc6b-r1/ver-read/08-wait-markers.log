@@ -1,0 +1,20 @@
+START 2026-10-19T22:06:29+08:00
+BOTH_MARKERS_PRESENT 2026-10-19T22:07:59+08:00
+--- coord listing ---
+total 16
+drwxrwxr-x 2 bolo bolo 120 2026-10-19 22:07:58.713767590 +0800 .
+drwxrwxr-x 6 bolo bolo 200 2026-10-19 22:04:28.974625177 +0800 ..
+-rw-rw-r-- 1 bolo bolo  54 2026-10-19 22:06:41.354660126 +0800 alpha-writes-done.txt
+-rw-rw-r-- 1 bolo bolo  52 2026-10-19 22:07:58.714913584 +0800 beta-writes-done.txt
+-rw-rw-r-- 1 bolo bolo  67 2026-10-19 22:06:10.151162904 +0800 instances-up.txt
+-rw-rw-r-- 1 bolo bolo  54 2026-10-19 22:06:24.381151853 +0800 record-alpha-done.txt
+--- marker contents ---
+== /tmp/orchestra-04/parallel/docs/changes/relay-board/evidence-773fc6b-r1/coord/alpha-writes-done.txt
+2026-10-19T22:06:41+08:00 ver-alpha alpha-writes-done
+== /tmp/orchestra-04/parallel/docs/changes/relay-board/evidence-773fc6b-r1/coord/beta-writes-done.txt
+2026-10-19T22:07:58+08:00 ver-beta beta-writes-done
+== /tmp/orchestra-04/parallel/docs/changes/relay-board/evidence-773fc6b-r1/coord/instances-up.txt
+2026-10-19T22:06:10+08:00 ver-alpha instances-up ports=18101,18102
+== /tmp/orchestra-04/parallel/docs/changes/relay-board/evidence-773fc6b-r1/coord/record-alpha-done.txt
+2026-10-19T22:06:24+08:00 ver-alpha record-alpha-done
+END 2026-10-19T22:07:59+08:00

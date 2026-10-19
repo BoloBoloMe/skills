@@ -1,0 +1,39 @@
+=== 2026-10-19T22:49:06+08:00 BR-001 第1段: 验收流程产生的记录 (串行: AC-003-1 alpha, AC-003-2 beta) ===
+size=172 mtime=2026-10-19 22:48:31.739305424 +0800
+63499f6463adc868a4fa59ccbb36507d2bd232b4bd64a6ddb0ae0109b1f86dde  runtime/shared/record.jsonl
+{"seq": 1, "value": "alpha", "instance": "alpha", "ts": "2026-10-19T14:48:28.376124Z"}
+{"seq": 2, "value": "beta", "instance": "beta", "ts": "2026-10-19T14:48:31.739315Z"}
+--- seq 列表 ---
+1
+2
+--- seq 去重计数 / 总行数 / value 去重计数 ---
+rows 2
+seqs [1, 2]
+seq_unique 2
+seq_is_1_to_n True
+vals ['alpha', 'beta']
+value_unique True
+=== 2026-10-19T22:49:09+08:00 BR-001 第2段: 同一共享记录上两实例并发追加 (审计规则所限定的共享记录) ===
+--- 并发前 record 行数/sha ---
+2 runtime/shared/record.jsonl
+63499f6463adc868a4fa59ccbb36507d2bd232b4bd64a6ddb0ae0109b1f86dde  runtime/shared/record.jsonl
+--- 同时启动: alpha value=gamma 与 beta value=delta ---
+exit_alpha=0
+exit_beta=0
+--- 两侧输出 ---
+[alpha] seq=3 value=gamma
+[beta ] seq=3 value=delta
+--- 并发后 record 全文 ---
+{"seq": 1, "value": "alpha", "instance": "alpha", "ts": "2026-10-19T14:48:28.376124Z"}
+{"seq": 2, "value": "beta", "instance": "beta", "ts": "2026-10-19T14:48:31.739315Z"}
+{"seq": 3, "value": "gamma", "instance": "alpha", "ts": "2026-10-19T14:49:11.232333Z"}
+{"seq": 3, "value": "delta", "instance": "beta", "ts": "2026-10-19T14:49:11.233422Z"}
+--- 校验 ---
+rows 4
+seqs [1, 2, 3, 3]
+seq_unique 3
+seq_is_1_to_n False
+vals ['alpha', 'beta', 'gamma', 'delta']
+value_unique True
+size=345 mtime=2026-10-19 22:49:11.233167452 +0800
+2e03cd4afc59e850aed0818628bb094d99d022cd7aee06f18de11e5c0962a37f  runtime/shared/record.jsonl

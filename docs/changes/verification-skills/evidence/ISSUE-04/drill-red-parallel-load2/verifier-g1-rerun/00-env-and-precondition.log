@@ -1,0 +1,32 @@
+=== 2026-10-19T22:51:16+08:00 版本确认 ===
+cmd: git rev-parse HEAD
+e398c7cc7ca4e493d23689bee3cca1a34d306000
+exit=0
+cmd: git status --short
+?? docs/changes/relay-board/evidence-v1-e398c7c/
+=== 环境 ===
+cmd: command -v python3
+/usr/bin/python3
+exit=0
+cmd: /usr/bin/python3 -V
+Python 3.14.4
+exit=0
+=== 归档 prestate ===
+cmd: cp runtime/shared/record.jsonl runtime/shared/events.log -> prestate-archive/
+total 8
+-rw-rw-r-- 1 bolo bolo 687 Oct 19 22:49 events.log
+-rw-rw-r-- 1 bolo bolo 345 Oct 19 22:49 record.jsonl
+cp_record_exit=0
+cp_events_exit=0
+7d7fdc8e1aabfffce3dedddd53b903891f5b8fed23e4b9c8ded8461eee9b6b59  docs/changes/relay-board/evidence-v1-e398c7c/verifier-g1-rerun/prestate-archive/events.log
+2e03cd4afc59e850aed0818628bb094d99d022cd7aee06f18de11e5c0962a37f  docs/changes/relay-board/evidence-v1-e398c7c/verifier-g1-rerun/prestate-archive/record.jsonl
+=== 删除共享文件使 AC-003-1 前置重新成立 ===
+rm_exit=0
+--- 删除后 runtime/shared ---
+total 0
+drwxrwxr-x 2 bolo bolo  40 Oct 19 22:51 .
+drwxrwxr-x 5 bolo bolo 100 Oct 19 22:45 ..
+ls: cannot access 'runtime/shared/record.jsonl': No such file or directory
+ls_record_exit=2
+ls: cannot access 'runtime/shared/events.log': No such file or directory
+ls_events_exit=2

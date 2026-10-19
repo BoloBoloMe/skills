@@ -1,0 +1,45 @@
+=== collected_at=2026-10-19T21:27:18+08:00 ===
+=== git status --porcelain ===
+?? docs/changes/relay-board/verify-r1/
+exit=0
+
+=== git ls-tree -r --name-only 8438934 ===
+.gitignore
+README.md
+app.py
+deps.txt
+docs/changes/relay-board/PRODUCT.md
+tests/test_app.py
+exit=0
+
+=== git ls-tree -r --name-only cd08754 ===
+.gitignore
+README.md
+app.py
+deps.txt
+docs/changes/relay-board/PRODUCT.md
+tests/test_app.py
+exit=0
+
+=== aux: import lines in working-tree app.py ===
+3:import argparse
+4:import json
+5:import sys
+6:import time
+7:from datetime import datetime, timezone
+8:from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+9:from pathlib import Path
+10:from urllib.parse import parse_qs, urlparse
+126:    import urllib.request
+exit=0
+
+=== aux: app.py imports at 8438934 ===
+3:import argparse
+4:import sys
+5:import time
+6:from datetime import datetime, timezone
+7:from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+8:from pathlib import Path
+9:from urllib.parse import parse_qs, urlparse
+85:    import urllib.request
+exit=0

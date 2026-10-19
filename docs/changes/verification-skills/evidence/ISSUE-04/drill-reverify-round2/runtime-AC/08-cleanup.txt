@@ -1,0 +1,30 @@
+# 08 清理 (停止服务)
+时间: 2026-10-19T22:30:27+08:00
+停止方式: kill <pgrep -f 'app.py serve --port 18101'>
+命中进程: 4111241, 4111246 (服务进程) 以及 4112457 (执行该清理命令的 bash 自身, 因命令行含同一字符串被 pgrep -f 匹配)
+说明: 该 kill 同时结束了记录本条命令的 shell, 退出码 143 (128+SIGTERM); 服务进程已被终止, 未做任何重试以外的动作.
+
+--- 复查 (cleanup 复查命令, 时间 2026-10-19T22:30:34+08:00) ---
+残留服务进程 (pgrep -af 'app.py serve'):
+无
+端口 18101: 无监听
+health 复查:  (curl 退出码=7)
+
+--- server 日志 ---
+server.stdout.log:
+listening on 127.0.0.1:18101 instance=alpha
+server.stderr.log 字节数: 0 (空, 无异常)
+
+--- 保留的 runtime 日志 ---
+runtime/alpha:
+total 0
+
+runtime/shared:
+total 4
+-rw-rw-r-- 1 bolo bolo 792 Oct 19 22:30 events.log
+runtime/shared/events.log 行数: 12
+
+--- 工作区状态 (结束后) ---
+HEAD: 59069130494139f96994f144c1ba09d3b51876d6
+非证据目录的改动:
+无 (产品代码/配置/测试均未改动)

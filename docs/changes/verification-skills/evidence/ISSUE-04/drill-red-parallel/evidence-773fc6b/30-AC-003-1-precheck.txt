@@ -1,0 +1,10 @@
+=== 时间 ===
+2026-10-19T21:21:27+08:00
+=== ls -la runtime/shared ===
+total 4
+drwxrwxr-x 2 bolo bolo  60 Oct 19 21:21 .
+drwxrwxr-x 5 bolo bolo 100 Oct 19 21:18 ..
+-rw-rw-r-- 1 bolo bolo 262 Oct 19 21:21 events.log
+=== test -f runtime/shared/record.jsonl ===
+NOT_EXISTS
+test_exit=1 (1=不存在)

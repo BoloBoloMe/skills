@@ -1,0 +1,10 @@
+start_time=2026-10-19T22:15:08+08:00
+cmd: setsid nohup python3 app.py serve --port 18102 --instance beta --data-dir runtime/beta --shared-dir runtime/shared > runtime/beta-serve.log 2>&1 < /dev/null &
+setsid_pid=4090711
+serve_pid=4090715
+    PID    PPID    PGID     SID                  STARTED CMD
+4090715 4090711 4090715 4090715 一 10月 19 22:15:03 2026 python3 app.py serve --port 18102 --instance beta --data-dir runtime/beta --shared-dir runtime/shared
+--- listen ---
+LISTEN 0      5           127.0.0.1:18102      0.0.0.0:*    users:(("python3",pid=4090715,fd=3))         
+--- serve log ---
+listening on 127.0.0.1:18102 instance=beta

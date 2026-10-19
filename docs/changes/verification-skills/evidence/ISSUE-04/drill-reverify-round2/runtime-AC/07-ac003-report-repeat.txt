@@ -1,0 +1,13 @@
+# 07 AC-003-1 复跑确认 (稳定性)
+第 1 次 (时间 2026-10-19T22:30:22+08:00):
+命令: python3 app.py report --port 18101
+relay-report instance=alpha version=relay-v1 state=ready
+退出码: 0
+第 2 次 (时间 2026-10-19T22:30:23+08:00):
+命令: python3 app.py report --port 18101
+relay-report instance=alpha version=relay-v1 state=ready
+退出码: 0
+第 3 次 (时间 2026-10-19T22:30:24+08:00):
+命令: python3 app.py report --port 18101
+relay-report instance=alpha version=relay-v1 state=ready
+退出码: 0

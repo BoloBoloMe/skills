@@ -1,0 +1,12 @@
+== parallel
+773fc6bf093c3b17f18a8817f924536902f13d2b
+773fc6b feat: 增加共享记录追加与 report 子命令
+== reverify
+cd087542b4610c49ded0a1278fe8065726b62d9d
+cd08754 feat: 增加共享记录与 report 子命令
+== red-parallel
+773fc6bf093c3b17f18a8817f924536902f13d2b
+773fc6b feat: 增加共享记录追加与 report 子命令
+== red-reverify
+cd087542b4610c49ded0a1278fe8065726b62d9d
+cd08754 feat: 增加共享记录与 report 子命令

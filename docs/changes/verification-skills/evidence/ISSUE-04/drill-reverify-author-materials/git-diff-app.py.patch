@@ -1,0 +1,14 @@
+diff --git a/app.py b/app.py
+index ad83c0e..25d5602 100644
+--- a/app.py
++++ b/app.py
+@@ -59,7 +59,8 @@ class Board:
+         return self.record_path.read_text(encoding="utf-8")
+ 
+     def report(self) -> str:
+-        return report_line(self.instance, "loading")
++        # report 的状态必须反映实例当前状态, 不能写成固定值.
++        return report_line(self.instance, self.state)
+ 
+     def events(self) -> str:
+         if not self.events_path.exists():

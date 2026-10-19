@@ -1,0 +1,14 @@
+=== 2026-10-19T22:54:42+08:00 AC-003-2 前置: 已有 alpha 条目 ===
+{"seq": 1, "value": "alpha", "instance": "alpha", "ts": "2026-10-19T14:54:37.124383Z"}
+=== append beta ===
+cmd: /usr/bin/python3 app.py append --port 18102 --value beta
+seq=2 value=beta
+exit_append=0
+cmd: /usr/bin/python3 app.py record --port 18102
+{"seq": 1, "value": "alpha", "instance": "alpha", "ts": "2026-10-19T14:54:37.124383Z"}
+{"seq": 2, "value": "beta", "instance": "beta", "ts": "2026-10-19T14:54:44.202059Z"}
+exit_record=0
+--- value=beta 计数 ---
+1
+--- value=alpha 计数 ---
+1

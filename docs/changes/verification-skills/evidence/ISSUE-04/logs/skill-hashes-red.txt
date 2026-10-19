@@ -1,0 +1,3 @@
+9ac67b01f3e9a5d3714e3292dcba6277  docs/changes/verification-skills/evidence/ISSUE-04/logs/SKILL-v2-red.md
+9ac67b01f3e9a5d3714e3292dcba6277  workflow/verify-change/SKILL.md
+82cb7913d710dfaf3b898c56d17c618c  workflow/verify-change/SKILL.md

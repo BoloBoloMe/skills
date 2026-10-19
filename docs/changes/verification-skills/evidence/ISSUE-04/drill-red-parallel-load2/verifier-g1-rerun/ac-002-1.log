@@ -1,0 +1,5 @@
+=== 2026-10-19T22:54:29+08:00 AC-002-1 ===
+cmd: /usr/bin/python3 app.py job --port 18101 --ms 4000
+job-done instance=alpha elapsed_ms=4000
+exit=0
+wall_ms=4063

@@ -1,0 +1,11 @@
+=== 2026-10-19T14:15:20.963112Z BR-001 checks
+line_count= 2 parsed= 2
+seqs= [1, 2]
+seq_start_ok= True
+contiguous_ok= True
+unique_seq_ok= True
+value_counts= {'alpha': 1, 'beta': 1}
+each_value_once= True
+alpha_count= 1 beta_count= 1
+keys_ok= True
+exit=0

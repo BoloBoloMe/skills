@@ -1,0 +1,15 @@
+=== 2026-10-19T14:17:08.502141Z 独立旁证: 当前实例状态 (只读, 不写文件)
+--- cmd: python3 app.py health --port 18101
+ok instance=alpha
+exit=0
+--- cmd: python3 app.py health --port 18102
+ok instance=beta
+exit=0
+--- cmd: python3 app.py report --port 18101
+relay-report instance=alpha version=relay-v1 state=ready
+exit=0
+--- cmd: python3 app.py report --port 18102
+relay-report instance=beta version=relay-v1 state=ready
+exit=0
+--- app.py VERSION 常量
+12:VERSION = "relay-v1"

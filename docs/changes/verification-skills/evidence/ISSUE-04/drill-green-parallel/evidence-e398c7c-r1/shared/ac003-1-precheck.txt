@@ -1,0 +1,7 @@
+=== 2026-10-19T14:15:10.693018Z precheck ls runtime/shared
+total 0
+drwxrwxr-x 2 bolo bolo  40 Oct 19 22:12 .
+drwxrwxr-x 5 bolo bolo 120 Oct 19 22:15 ..
+--- ls record.jsonl:
+ls: cannot access 'runtime/shared/record.jsonl': No such file or directory
+exit=2

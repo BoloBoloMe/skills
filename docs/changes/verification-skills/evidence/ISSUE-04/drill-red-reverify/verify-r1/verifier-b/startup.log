@@ -1,0 +1,7 @@
+=== startup ===
+time: 2026-10-19T21:28:00+0800
+cmd: mkdir -p runtime/alpha runtime/shared
+cmd: nohup python3 app.py serve --port 18101 --instance alpha --data-dir runtime/alpha --shared-dir runtime/shared > docs/changes/relay-board/verify-r1/verifier-b/serve.log 2>&1 &
+serve_bg_pid: 4029891
+=== health (wait then check) ===
+cmd: python3 app.py health --port 18101

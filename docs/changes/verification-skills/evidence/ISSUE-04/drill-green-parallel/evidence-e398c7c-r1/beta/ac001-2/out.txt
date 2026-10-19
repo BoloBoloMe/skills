@@ -1,0 +1,10 @@
+exec_start=2026-10-19T22:15:10+08:00
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>relay board</title></head>
+<body><h1>relay board</h1>
+<p>instance=beta</p>
+<p>state=ready</p>
+<p>version=relay-v1</p></body></html>
+exit=0
+elapsed_ms=65
+exec_end=2026-10-19T22:15:10+08:00

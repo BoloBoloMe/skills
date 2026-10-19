@@ -1,0 +1,15 @@
+=== 2026-10-19T22:54:53+08:00 AC-005-1 report 两侧 ===
+cmd: /usr/bin/python3 app.py report --port 18101
+relay-report instance=alpha version=relay-v1 state=ready
+exit_alpha=0
+cmd: /usr/bin/python3 app.py report --port 18102
+relay-report instance=beta version=relay-v1 state=ready
+exit_beta=0
+=== 2026-10-19T22:54:54+08:00 截图命令 ===
+cmd: google-chrome --headless --disable-gpu --no-sandbox --window-size=900,400 --screenshot=docs/changes/relay-board/evidence-v1-e398c7c/verifier-g1-rerun/ac-005-1-alpha-status.png http://127.0.0.1:18101/status-page
+cmd: google-chrome --headless --disable-gpu --no-sandbox --window-size=900,400 --screenshot=docs/changes/relay-board/evidence-v1-e398c7c/verifier-g1-rerun/ac-005-1-beta-status.png http://127.0.0.1:18102/status-page
+--- 截图目视记录 ---
+alpha png: relay board / instance=alpha / state=ready / version=relay-v1
+beta  png: relay board / instance=beta  / state=ready / version=relay-v1
+--- 判定 ---
+两侧截图与各自 report 的 instance, version 相同; 两侧 report 均含 state=ready, 退出码均 0.

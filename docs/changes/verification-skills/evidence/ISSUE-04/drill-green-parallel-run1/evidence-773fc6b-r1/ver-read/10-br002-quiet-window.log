@@ -1,0 +1,77 @@
+### 10-br002-quiet-window
+START 2026-10-19T22:08:12+08:00
+CMD bash -c 
+set -u
+cd /tmp/orchestra-04/parallel
+F=runtime/shared/events.log
+echo "WINDOW_START $(date -Is)"
+echo "== BEFORE sha256sum =="; sha256sum "$F"
+echo "== BEFORE wc -l =="; wc -l "$F"
+echo "== BEFORE stat =="; stat "$F"
+cp -p "$F" /tmp/orchestra-04/parallel/docs/changes/relay-board/evidence-773fc6b-r1/ver-read/events.log.before
+echo "== BEFORE copy =="; sha256sum /tmp/orchestra-04/parallel/docs/changes/relay-board/evidence-773fc6b-r1/ver-read/events.log.before
+echo "---- running: python3 app.py log --port 18101 ----"
+LOGSTART=$(date -Is)
+python3 app.py log --port 18101 > /tmp/orchestra-04/parallel/docs/changes/relay-board/evidence-773fc6b-r1/ver-read/11-br002-log-output.txt 2>&1
+RC=$?
+LOGEND=$(date -Is)
+echo "LOG_RUN start=$LOGSTART end=$LOGEND exit=$RC"
+echo "---- log raw output (from captured file) ----"
+cat /tmp/orchestra-04/parallel/docs/changes/relay-board/evidence-773fc6b-r1/ver-read/11-br002-log-output.txt
+echo "---- end log raw output ----"
+echo "== AFTER sha256sum =="; sha256sum "$F"
+echo "== AFTER wc -l =="; wc -l "$F"
+echo "== AFTER stat =="; stat "$F"
+cp -p "$F" /tmp/orchestra-04/parallel/docs/changes/relay-board/evidence-773fc6b-r1/ver-read/events.log.after
+echo "== AFTER copy =="; sha256sum /tmp/orchestra-04/parallel/docs/changes/relay-board/evidence-773fc6b-r1/ver-read/events.log.after
+echo "== cmp before/after copies =="; cmp /tmp/orchestra-04/parallel/docs/changes/relay-board/evidence-773fc6b-r1/ver-read/events.log.before /tmp/orchestra-04/parallel/docs/changes/relay-board/evidence-773fc6b-r1/ver-read/events.log.after && echo "CMP_IDENTICAL"
+echo "WINDOW_END $(date -Is)"
+
+WINDOW_START 2026-10-19T22:08:12+08:00
+== BEFORE sha256sum ==
+04ef8f49f1f5f6353439431936a6681d32352865d4c338676abd7905e9152a73  runtime/shared/events.log
+== BEFORE wc -l ==
+8 runtime/shared/events.log
+== BEFORE stat ==
+  File: runtime/shared/events.log
+  Size: 540       	Blocks: 8          IO Block: 4096   regular file
+Device: 0,48	Inode: 1739220     Links: 1
+Access: (0664/-rw-rw-r--)  Uid: ( 1000/    bolo)   Gid: ( 1000/    bolo)
+Access: 2026-10-19 22:08:12.271720620 +0800
+Modify: 2026-10-19 22:07:22.579892773 +0800
+Change: 2026-10-19 22:07:22.579892773 +0800
+ Birth: 2026-10-19 22:06:18.228297916 +0800
+== BEFORE copy ==
+04ef8f49f1f5f6353439431936a6681d32352865d4c338676abd7905e9152a73  /tmp/orchestra-04/parallel/docs/changes/relay-board/evidence-773fc6b-r1/ver-read/events.log.before
+---- running: python3 app.py log --port 18101 ----
+LOG_RUN start=2026-10-19T22:08:12+08:00 end=2026-10-19T22:08:12+08:00 exit=0
+---- log raw output (from captured file) ----
+2026-10-19T14:06:18.228313Z instance=alpha event=append seq=1 value=alpha
+2026-10-19T14:06:24.443600Z instance=alpha event=job-start ms=4000
+2026-10-19T14:06:28.443779Z instance=alpha event=job-end ms=4000
+2026-10-19T14:06:32.182171Z instance=alpha event=job-start ms=6000
+2026-10-19T14:06:38.182325Z instance=alpha event=job-end ms=6000
+2026-10-19T14:06:57.659298Z instance=beta event=job-start ms=4000
+2026-10-19T14:07:01.659526Z instance=beta event=job-end ms=4000
+2026-10-19T14:07:22.580653Z instance=beta event=append seq=2 value=beta
+---- end log raw output ----
+== AFTER sha256sum ==
+04ef8f49f1f5f6353439431936a6681d32352865d4c338676abd7905e9152a73  runtime/shared/events.log
+== AFTER wc -l ==
+8 runtime/shared/events.log
+== AFTER stat ==
+  File: runtime/shared/events.log
+  Size: 540       	Blocks: 8          IO Block: 4096   regular file
+Device: 0,48	Inode: 1739220     Links: 1
+Access: (0664/-rw-rw-r--)  Uid: ( 1000/    bolo)   Gid: ( 1000/    bolo)
+Access: 2026-10-19 22:08:12.344720367 +0800
+Modify: 2026-10-19 22:07:22.579892773 +0800
+Change: 2026-10-19 22:07:22.579892773 +0800
+ Birth: 2026-10-19 22:06:18.228297916 +0800
+== AFTER copy ==
+04ef8f49f1f5f6353439431936a6681d32352865d4c338676abd7905e9152a73  /tmp/orchestra-04/parallel/docs/changes/relay-board/evidence-773fc6b-r1/ver-read/events.log.after
+== cmp before/after copies ==
+CMP_IDENTICAL
+WINDOW_END 2026-10-19T22:08:12+08:00
+EXIT 0
+END 2026-10-19T22:08:12+08:00

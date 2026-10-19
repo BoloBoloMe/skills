@@ -1,0 +1,9 @@
+### start command (cwd=/tmp/orchestra-04/parallel):
+setsid nohup python3 app.py serve --port 18101 --instance alpha --data-dir runtime/alpha --shared-dir runtime/shared > docs/changes/relay-board/evidence-e398c7c-r1/alpha/00-env/serve.log 2>&1 &
+### start time: 2026-10-19 22:15:07 +0800 (2026-10-19T14:15:07Z), from ps lstart
+### pid: 4090884  ppid: 4090880  pgid/sid: 4090884 (setsid detached)
+### stdout/stderr log: docs/changes/relay-board/evidence-e398c7c-r1/alpha/00-env/serve.log
+### serve.log content:
+listening on 127.0.0.1:18101 instance=alpha
+### listener:
+LISTEN 0      5           127.0.0.1:18101      0.0.0.0:*    users:(("python3",pid=4090884,fd=3))         

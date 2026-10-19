@@ -1,0 +1,47 @@
+=== stop session ===
+before_stop_time=2026-10-19T22:18:30+08:00
+--- target process (先按端口确认身份) ---
+LISTEN 0      5           127.0.0.1:18102      0.0.0.0:*    users:(("python3",pid=4090715,fd=3))         
+    PID    PPID    PGID     SID                  STARTED CMD
+4090715 4090711 4090715 4090715 一 10月 19 22:15:03 2026 python3 app.py serve --port 18102 --instance beta --data-dir runtime/beta --shared-dir runtime/shared
+--- health before stop ---
+ok instance=beta
+health_exit=0
+health_time=2026-10-19T22:18:30+08:00
+--- 停止命令 ---
+kill -TERM 4090715   # 仅停本轮自启 PID 4090715 (18102 监听者)
+kill_exit=0
+stop_signal_time=2026-10-19T22:18:33+08:00
+process_gone_after=100ms
+--- 停止后进程检查 ---
+    PID CMD
+ps_exit=1
+--- 停止后 setsid 包装进程 ---
+    PID    PPID CMD
+wrapper_ps_exit=1
+--- 停止后端口检查 ---
+grep_18102_exit=1  (1=无匹配, 即不再监听)
+after_stop_time=2026-10-19T22:18:33+08:00
+--- 进程表里是否还有该命令行 ---
+4096090 /bin/bash -c cd /tmp/orchestra-04/parallel && EV=docs/changes/relay-board/evidence-e398c7c-r1/beta && { echo "--- 停止命令 ---" echo "kill -TERM 4090715   # 仅停本轮自启 PID 4090715 (18102 监听者)" kill -TERM 4090715 echo "kill_exit=$?" echo "stop_signal_time=$(date -Is)" for i in $(seq 1 20); do   if ! kill -0 4090715 2>/dev/null; then echo "process_gone_after=${i}00ms"; break; fi   sleep 0.1 done echo "--- 停止后进程检查 ---" ps -o pid,cmd -p 4090715; echo "ps_exit=$?" echo "--- 停止后 setsid 包装进程 ---" ps -o pid,ppid,cmd -p 4090711; echo "wrapper_ps_exit=$?" echo "--- 停止后端口检查 ---" ss -ltnp | grep 18102; echo "grep_18102_exit=$?  (1=无匹配, 即不再监听)" echo "after_stop_time=$(date -Is)" echo "--- 进程表里是否还有该命令行 ---" pgrep -af "app.py serve --port 18102"; echo "pgrep_exit=$?  (1=无匹配)" } 2>&1 | tee -a $EV/stop.txt
+4096091 /bin/bash -c cd /tmp/orchestra-04/parallel && EV=docs/changes/relay-board/evidence-e398c7c-r1/beta && { echo "--- 停止命令 ---" echo "kill -TERM 4090715   # 仅停本轮自启 PID 4090715 (18102 监听者)" kill -TERM 4090715 echo "kill_exit=$?" echo "stop_signal_time=$(date -Is)" for i in $(seq 1 20); do   if ! kill -0 4090715 2>/dev/null; then echo "process_gone_after=${i}00ms"; break; fi   sleep 0.1 done echo "--- 停止后进程检查 ---" ps -o pid,cmd -p 4090715; echo "ps_exit=$?" echo "--- 停止后 setsid 包装进程 ---" ps -o pid,ppid,cmd -p 4090711; echo "wrapper_ps_exit=$?" echo "--- 停止后端口检查 ---" ss -ltnp | grep 18102; echo "grep_18102_exit=$?  (1=无匹配, 即不再监听)" echo "after_stop_time=$(date -Is)" echo "--- 进程表里是否还有该命令行 ---" pgrep -af "app.py serve --port 18102"; echo "pgrep_exit=$?  (1=无匹配)" } 2>&1 | tee -a $EV/stop.txt
+pgrep_exit=0  (1=无匹配)
+=== 补充核对 (排除自身 shell 文本) 2026-10-19T22:18:35+08:00 ===
+--- 仍在监听 18102 的 socket ---
+none
+--- 命令行以 python3 开头且含 app.py serve 的进程 ---
+none
+--- 再次探测 health (应连接失败) ---
+request failed: <urlopen error [Errno 111] Connection refused>
+health_exit=1
+check_time=2026-10-19T22:18:35+08:00
+
+=== 结论 (人工整理, 非命令输出) ===
+- 停止对象: 仅本轮 rev-beta 自启的 beta 实例, 身份双重确认: 18102 监听者 PID 4090715 + 命令行 `python3 app.py serve --port 18102 --instance beta --data-dir runtime/beta --shared-dir runtime/shared`.
+- 停止前 health: `ok instance=beta`, exit=0, 2026-10-19T22:18:30+08:00.
+- 停止命令: `kill -TERM 4090715` (kill_exit=0), 信号时间 2026-10-19T22:18:33+08:00.
+- 进程在 100 ms 内退出: `ps -p 4090715` 空, ps_exit=1; setsid 包装进程 4090711 也已不存在.
+- 端口: `ss -ltn` 无 18102 监听 (none).
+- 无残留 python3 app.py serve 进程 (none).
+- 停止后 health 探测: Connection refused, exit=1 (实例确实不可达).
+- 未重启, 未执行其他产品命令, 未改动产品文件.

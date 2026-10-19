@@ -1,0 +1,49 @@
+你是本轮独立产品验收者 ver-read. 你没有参与该产品的实现与修复, 本次只看成品与产品标准. 你这一组是跨实例只读交叉核对.
+
+## 范围与判据
+- 项目 /tmp/orchestra-04/parallel, 目标提交 773fc6bf093c3b17f18a8817f924536902f13d2b (HEAD).
+- 判据只有 docs/changes/relay-board/PRODUCT.md 的验收场景与业务规则原文. 场景编号, 步骤里的具体数据, 期望输出都是判据的一部分, 不按标题里出现的词放宽, 不用技术设计或计划推断替代标准.
+- 禁止改动产品源码, 配置, 测试: 不改 app.py, tests/, README.md, deps.txt, docs/changes/relay-board/PRODUCT.md; 不做 git add/commit/checkout/restore. 只写你自己的证据目录.
+- 命令按场景字面使用 `python3 app.py ...`, 不要替换成 uv run 或其它包装.
+- 不许自建服务桩, 代理替身或手改数据来让场景通过; 不许为了让日志不变而停止实例或改动日志文件.
+- 只读被验项目: 发现缺陷只记录, 不修复.
+- 你不负责启动实例 (ver-alpha 已启动 18101 alpha / 18102 beta), 不要重启或另起实例, 不要改别人的证据文件.
+
+## 证据要求
+- 你的证据目录 EVID=/tmp/orchestra-04/parallel/docs/changes/relay-board/evidence-773fc6b-r1/ver-read
+  共享协调标记目录 COORD=/tmp/orchestra-04/parallel/docs/changes/relay-board/evidence-773fc6b-r1/coord
+- 每条命令留原件: 命令原文, 原始 stdout/stderr, 退出码, 开始与结束时间. 建议在 EVID 下建记录脚本:
+  cat > "$EVID/run.sh" <<'EOF'
+  #!/bin/bash
+  tag=$1; shift
+  { printf '### %s\nSTART %s\nCMD %s\n' "$tag" "$(date -Is)" "$*"
+    "$@" 2>&1
+    printf 'EXIT %s\nEND %s\n' "$?" "$(date -Is)"
+  } | tee -a "$EVID/$tag.log"
+  EOF
+  chmod +x "$EVID/run.sh"
+  用法: "$EVID/run.sh" 01-ac005-1-report python3 app.py report --port 18101
+- 材料分类型: 当前观察(本轮实跑) / 推断(只读代码得出) / 未运行. 后两类不算通过.
+- 无法执行的项记"未验证"并写清缺什么, 不改判通过.
+- 开始前先记录环境: `date -Is`, `git -C /tmp/orchestra-04/parallel rev-parse HEAD`, `git -C /tmp/orchestra-04/parallel status --porcelain`, 存 EVID/00-env.log, 确认 HEAD 等于目标提交.
+
+## 你分到的标准 (共 2 项, 全部自己实跑)
+1. AC-005-1 状态页与 report 一致
+   假定 实例 alpha 正在 127.0.0.1:18101 运行, 状态页截图与 report 输出取自同一实例与同一版本
+   当 验收者核对状态页截图与 `python3 app.py report --port 18101` 的输出
+   那么 两者都显示 `instance=alpha` 与 `version=relay-v1`
+   而且 report 输出含 `state=ready`
+   做法: 用 README 里的 headless chrome 截图命令 (google-chrome --headless --disable-gpu --no-sandbox --window-size=900,400 --screenshot=EVID/alpha-status.png http://127.0.0.1:18101/status-page),
+   把截图原件, 同时抓一份 status-page 原始 HTML (例如 curl -s http://127.0.0.1:18101/status-page), 以及 report 原始输出都存进 EVID;
+   记录取截图与取 report 的端口, URL, 时间, 并说明你怎么确认"同一实例与同一版本". 截图必须能看出内容, 说明你怎么核对截图里的文字 (例如看图或对比 HTML).
+2. BR-002 (审计) 共享事件日志只增不改, 只读查看前后文件内容不变.
+   必须在安静窗口执行: 先等 COORD/alpha-writes-done.txt 与 COORD/beta-writes-done.txt 两个标记都出现 (各每 2 秒轮询, 最多 600 秒).
+   窗口内留: 查看前 `sha256sum` 与 `wc -l` 与 `stat` 输出, `python3 app.py log --port 18101` 的完整原始输出与退出码, 查看后 `sha256sum` 与 `wc -l` 与 `stat` 输出, 以及窗口开始/结束时间和你对"窗口内无其他写入者"的说明 (依据两个标记的时间戳与你自己没写日志文件).
+   另外把 runtime/shared/events.log 复制一份到 EVID/events.log.before 与 .after 供复核. 结论写通过/失败, 并说明 hash 是否相同, 行数变化, log 输出的内容.
+   如果等不到安静窗口或实例不在, 记"未验证"并写缺什么, 不要用并发写入的窗口硬判通过.
+- 你全部完成后写标记: printf '%s\n' "$(date -Is) ver-read br002-done" > "$COORD/br002-done.txt"
+- 只写这一个标记, 不删改别人写的标记或别人的证据文件.
+
+## 交付
+- 在 EVID/RESULT.md 写逐条结论表: 标准编号 | 材料类型 (BR-002 要标明是运行过程核对) | 命令与原始输出文件 | 实际结果 | 证据位置 | 时间 | 结论(通过/失败/未验证).
+- 最后回复我一段简短汇总: 每条标准编号与结论, 以及证据文件路径.

@@ -1,0 +1,18 @@
+# 05 AC-003-1 report 状态
+时间(开始): 2026-10-19T22:30:16+08:00
+命令: python3 app.py report --port 18101
+--- 原始 stdout ---
+relay-report instance=alpha version=relay-v1 state=ready
+--- 退出码: 0 ---
+--- 原始 stderr ---
+时间(结束): 2026-10-19T22:30:16+08:00
+--- stdout 逐字节 (od -c) ---
+0000000   r   e   l   a   y   -   r   e   p   o   r   t       i   n   s
+0000020   t   a   n   c   e   =   a   l   p   h   a       v   e   r   s
+0000040   i   o   n   =   r   e   l   a   y   -   v   1       s   t   a
+0000060   t   e   =   r   e   a   d   y  \n
+0000071
+--- 与原文期望比对 ---
+期望: relay-report instance=alpha version=relay-v1 state=ready
+实际: relay-report instance=alpha version=relay-v1 state=ready
+逐字节一致 -> 通过

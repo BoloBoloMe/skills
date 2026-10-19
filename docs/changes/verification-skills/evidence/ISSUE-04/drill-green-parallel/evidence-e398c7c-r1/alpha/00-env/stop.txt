@@ -1,0 +1,37 @@
+### stop_request_utc=2026-10-19T14:18:29Z local=2026-10-19T22:18:29+0800
+### identity check before stop (pid 4090884 / port 18101):
+    PID    PPID     SID                  STARTED COMMAND
+4090884 4090880 4090884 一 10月 19 22:15:07 2026 python3 app.py serve --port 18101 --instance alpha --data-dir runtime/alpha --shared-dir runtime/shared
+---
+LISTEN 0      5           127.0.0.1:18101      0.0.0.0:*    users:(("python3",pid=4090884,fd=3))         
+### pre-stop health: python3 app.py health --port 18101
+ok instance=alpha
+health_exit=0
+### stop_time_utc=2026-10-19T14:18:31Z local=2026-10-19T22:18:31+0800
+### stop cmd: kill -TERM 4090884   (SIGTERM to own alpha serve pid, setsid session leader)
+kill_exit=0
+process gone after ~3x100ms
+### post-stop process check:
+pid 4090884 not present
+    PID COMMAND
+ps: no such process 4090884
+### post-stop port check:
+18101 no longer listening
+### post-stop health probe (expect connection refused):
+request failed: <urlopen error [Errno 111] Connection refused>
+health_exit=1
+### other app.py serve processes (must not include alpha):
+4090711 /bin/bash -c cd /tmp/orchestra-04/parallel && mkdir -p docs/changes/relay-board/evidence-e398c7c-r1/beta/{ac001-2,ac002-2,ac005-1} && EV=docs/changes/relay-board/evidence-e398c7c-r1/beta && date -Is && \ setsid nohup python3 app.py serve --port 18102 --instance beta --data-dir runtime/beta --shared-dir runtime/shared > runtime/beta-serve.log 2>&1 < /dev/null &  sleep 1; echo "pid=$!" ; sleep 1; ps aux | grep -v grep | grep "app.py serve" ; echo "--- log ---"; cat runtime/beta-serve.log
+4090715 python3 app.py serve --port 18102 --instance beta --data-dir runtime/beta --shared-dir runtime/shared
+4096014 /bin/bash -c python() { uv run python "$@"; }; python3() { uv run python "$@"; }; cd /tmp/orchestra-04/parallel && EV=docs/changes/relay-board/evidence-e398c7c-r1/alpha/00-env && { echo "### stop_time_utc=$(date -u +%FT%TZ) local=$(date +%FT%T%z)"; echo "### stop cmd: kill -TERM 4090884   (SIGTERM to own alpha serve pid, setsid session leader)"; kill -TERM 4090884; echo "kill_exit=$?"; for i in 1 2 3 4 5 6 7 8 9 10; do sleep 0.3; kill -0 4090884 2>/dev/null || { echo "process gone after ~$((i*3))x100ms"; break; }; done; echo "### post-stop process check:"; if kill -0 4090884 2>/dev/null; then echo "STILL ALIVE: 4090884"; else echo "pid 4090884 not present"; fi; ps -o pid,args -p 4090884 2>/dev/null || echo "ps: no such process 4090884"; echo "### post-stop port check:"; ss -ltnp | grep 18101 && echo "PORT STILL LISTENING" || echo "18101 no longer listening"; echo "### post-stop health probe (expect connection refused):"; python3 app.py health --port 18101; echo "health_exit=$?"; echo "### other app.py serve processes (must not include alpha):"; pgrep -af 'app.py serve' || echo "(none)"; echo "### stop_done_utc=$(date -u +%FT%TZ) local=$(date +%FT%T%z)"; } 2>&1 | tee -a "$EV/stop.txt"
+4096015 /bin/bash -c python() { uv run python "$@"; }; python3() { uv run python "$@"; }; cd /tmp/orchestra-04/parallel && EV=docs/changes/relay-board/evidence-e398c7c-r1/alpha/00-env && { echo "### stop_time_utc=$(date -u +%FT%TZ) local=$(date +%FT%T%z)"; echo "### stop cmd: kill -TERM 4090884   (SIGTERM to own alpha serve pid, setsid session leader)"; kill -TERM 4090884; echo "kill_exit=$?"; for i in 1 2 3 4 5 6 7 8 9 10; do sleep 0.3; kill -0 4090884 2>/dev/null || { echo "process gone after ~$((i*3))x100ms"; break; }; done; echo "### post-stop process check:"; if kill -0 4090884 2>/dev/null; then echo "STILL ALIVE: 4090884"; else echo "pid 4090884 not present"; fi; ps -o pid,args -p 4090884 2>/dev/null || echo "ps: no such process 4090884"; echo "### post-stop port check:"; ss -ltnp | grep 18101 && echo "PORT STILL LISTENING" || echo "18101 no longer listening"; echo "### post-stop health probe (expect connection refused):"; python3 app.py health --port 18101; echo "health_exit=$?"; echo "### other app.py serve processes (must not include alpha):"; pgrep -af 'app.py serve' || echo "(none)"; echo "### stop_done_utc=$(date -u +%FT%TZ) local=$(date +%FT%T%z)"; } 2>&1 | tee -a "$EV/stop.txt"
+### stop_done_utc=2026-10-19T14:18:32Z local=2026-10-19T22:18:32+0800
+
+## 备注: 上面 pgrep -af 'app.py serve' 的输出里 4096014/4096015 是执行该 pgrep 的 bash 自身命令行 (自匹配噪声), 真正在跑的 serve 只有 beta 的 4090715 (18102). alpha 的 4090884 已不存在.
+## 最终复核 (仅端口/进程检查, 无产品命令): 2026-10-19T14:18:39Z
+ps -p 4090884 ->
+    PID TTY          TIME CMD
+(no such process)
+ss -ltnp | grep 18101 ->
+(nothing listening on 18101)
+### final_utc=2026-10-19T14:18:39Z

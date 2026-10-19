@@ -1,0 +1,4 @@
+=== 2026-10-19T14:15:16.441004Z precheck for AC-003-2
+--- record.jsonl content:
+{"seq": 1, "value": "alpha", "instance": "alpha", "ts": "2026-10-19T14:15:14.381610Z"}
+--- grep value=alpha count: 1

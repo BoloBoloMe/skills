@@ -1,0 +1,18 @@
+# 04 AC-002-1 耗时任务
+时间(开始): 2026-10-19T22:30:02+08:00
+命令: python3 app.py job --port 18101 --ms 2500
+--- 原始 stdout ---
+job-done instance=alpha elapsed_ms=2500
+--- 退出码: 0 ---
+--- 原始 stderr ---
+时间(结束): 2026-10-19T22:30:05+08:00
+--- stdout 逐字节 (od -c) ---
+0000000   j   o   b   -   d   o   n   e       i   n   s   t   a   n   c
+0000020   e   =   a   l   p   h   a       e   l   a   p   s   e   d   _
+0000040   m   s   =   2   5   0   0  \n
+0000050
+--- 首个 AC-002 命令的 stdout 逐字节 (复跑同样输出) ---
+退出码: 0
+expected: job-done instance=alpha elapsed_ms=2500
+diff:
+逐字节一致

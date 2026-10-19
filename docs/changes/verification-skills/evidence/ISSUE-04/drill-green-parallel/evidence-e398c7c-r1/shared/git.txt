@@ -1,0 +1,6 @@
+=== 2026-10-19T14:15:05.399159Z git rev-parse HEAD
+e398c7cc7ca4e493d23689bee3cca1a34d306000
+=== git status --porcelain
+?? docs/changes/relay-board/evidence-e398c7c-r1/
+=== branch
+main

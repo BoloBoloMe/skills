@@ -1,0 +1,6 @@
+/skill:verify-change
+对项目 /tmp/orchestra-04/red-reverify 做独立产品验收.
+- 目标提交: cd087542b4610c49ded0a1278fe8065726b62d9d (HEAD)
+- 产物根目录: docs/changes/relay-board/
+- 本轮可用非作者验收者: 2 名, 你可以自己开
+- 端口 18101 以及 runtime/ 目录只给本项目用

@@ -1,0 +1,9 @@
+### 07-listener-after
+START 2026-10-19T22:06:26+08:00
+CMD bash -c ss -ltnp 2>/dev/null | grep ":18101"; ps -o pid,lstart,args -p 4078331; ls -l docs/changes/relay-board/evidence-773fc6b-r1/ver-read/alpha-status.png
+LISTEN 0      5           127.0.0.1:18101      0.0.0.0:*    users:(("python3",pid=4078331,fd=3))         
+    PID                  STARTED COMMAND
+4078331 一 10月 19 22:06:01 2026 python3 app.py serve --port 18101 --instance alpha --data-dir runtime/alpha --shared-dir runtime/shared
+-rw-rw-r-- 1 bolo bolo 8788 Oct 19 22:06 docs/changes/relay-board/evidence-773fc6b-r1/ver-read/alpha-status.png
+EXIT 0
+END 2026-10-19T22:06:26+08:00

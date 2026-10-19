@@ -1,0 +1,15 @@
+### 03c-ac003-verify-record
+START 2026-10-19T22:06:20+08:00
+CMD ls -l runtime/shared/; cat runtime/shared/record.jsonl; python3 -c "count value=alpha"
+--- ls -l runtime/shared/ ---
+total 8
+-rw-rw-r-- 1 bolo bolo 74 Oct 19 22:06 events.log
+-rw-rw-r-- 1 bolo bolo 87 Oct 19 22:06 record.jsonl
+--- cat runtime/shared/record.jsonl ---
+{"seq": 1, "value": "alpha", "instance": "alpha", "ts": "2026-10-19T14:06:18.228128Z"}
+--- count of value=alpha entries (raw file, json parsed) ---
+total_entries=1
+alpha_entries=1
+rows=[{'seq': 1, 'value': 'alpha', 'instance': 'alpha', 'ts': '2026-10-19T14:06:18.228128Z'}]
+EXIT 0
+END 2026-10-19T22:06:20+08:00

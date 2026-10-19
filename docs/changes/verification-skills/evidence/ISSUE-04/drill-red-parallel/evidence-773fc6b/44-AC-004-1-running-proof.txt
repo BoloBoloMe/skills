@@ -1,0 +1,18 @@
+=== job 后台 pid=4018513 ===
+=== job 启动时刻: 2026-10-19T21:21:41+08:00 ===
+=== log 之前 events.log 行数: 6 ===
+=== 证实 job 仍在运行 (kill -0) ===
+job_alive=YES (sleep 之后)
+=== log 命令执行时刻 (调用前): 2026-10-19T21:21:42+08:00 ===
+job_pid=4018513
+job_start=2026-10-19T21:21:41+08:00 (ns=1792416101128935262)
+job_start_stdout=2026-10-19T21:21:41+08:00
+log_start=2026-10-19T21:21:42+08:00
+log_end=2026-10-19T21:21:42+08:00
+job_end=2026-10-19T21:21:46+08:00 (ns=1792416106201761624)
+job_exit=0
+job_wall_delta_ms=5072
+logs_before=6 logs_after=8
+--- job stdout ---
+job-done instance=alpha elapsed_ms=5000$
+--- job stderr ---
