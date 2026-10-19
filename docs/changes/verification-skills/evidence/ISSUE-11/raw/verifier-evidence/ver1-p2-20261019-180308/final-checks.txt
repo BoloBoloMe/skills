@@ -1,0 +1,42 @@
+== git status ==
+?? .agents/
+== git diff --stat ==
+== deploy sha256 ==
+63e832cd18e6e0c802e8176a39d4b576dac6e4a28ffce0a7d1ffe211a63c5775  deploy/global-skills/verify-fixture/SKILL.md
+== .notes-data ==
+ls: cannot access '.notes-data': No such file or directory
+== leftover temp data dirs ==
+ls: cannot access '/tmp/verify-fixture-data.*': No such file or directory
+ls: cannot access '/tmp/verify-fixture-export.*': No such file or directory
+== listening python servers on 38299 ==
+0
+== evidence files ==
+ 
+46 a1-add.txt
+68 a1-data-dir.txt
+40 a1-list.txt
+64 a1-notes.json
+85 a2-chrome.log
+152 a2-cleanup.txt
+31 a2-cli-seed.txt
+229 a2-env.txt
+12 a2-form-check.txt
+124 a2-notes.json
+192 a2-port-owner.txt
+48 a2-post-body.json
+164 a2-post-headers.txt
+14 a2-post-status.txt
+243 a2-result.txt
+187 a2-root-after.html
+151 a2-root-before.html
+11034 a2-root.png
+187 a2-server.log
+37 b1-data-dir.txt
+30 b1-tag.out
+15 b1-tags.txt
+25 c1-import.txt
+57 c1-list.txt
+90 c1-missing.txt
+149 c1-notes.json
+34 env.txt
+502 final-checks.txt

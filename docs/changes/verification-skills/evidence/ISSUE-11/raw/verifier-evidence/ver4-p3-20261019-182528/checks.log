@@ -1,0 +1,20 @@
+# 2026-10-19T18:25:30+08:00 pwd=/tmp/orchestra-11/p3-buildfail
+== cargo --version ==
+/bin/bash: 行 4: cargo: 未找到命令
+exit=127
+== rustc --version ==
+/bin/bash: 行 5: rustc: 未找到命令
+exit=127
+binary: MISSING
+== ls -d .ledger ==
+ls: cannot access '.ledger': No such file or directory
+exit=2
+== ls -d target ==
+ls: cannot access 'target': No such file or directory
+exit=2
+== usage: no args ==
+/bin/bash: 行 4: ./target/release/ledger-cli: 没有那个文件或目录
+exit=127
+== usage: --version ==
+/bin/bash: 行 6: ./target/release/ledger-cli: 没有那个文件或目录
+exit=127

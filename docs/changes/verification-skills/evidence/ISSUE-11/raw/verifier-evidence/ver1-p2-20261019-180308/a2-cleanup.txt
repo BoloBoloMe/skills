@@ -1,0 +1,6 @@
+kill pid=3703985; port=38299
+listeners_after_cleanup=0
+server_log_tail:
+"GET / HTTP/1.1" 200 -
+"GET / HTTP/1.1" 200 -
+"GET /favicon.ico HTTP/1.1" 200 -

@@ -1,0 +1,1731 @@
+# transcript 2026-10-19T09-43-13-963Z_01a1538b-332a-74e1-beec-c7e8fda2147a.jsonl
+cwd: /tmp/orchestra-11/p2-gaps  session: 01a1538b-332a-74e1-beec-c7e8fda2147a  time: 2026-10-19T09:43:13.963Z
+model: cli/deepseek-v4.1-flash-expires-on-0910
+thinking: high
+
+===== user 2026-10-19T09:43:18.627Z =====
+用 <skill name="create-verification-skill" location="/tmp/orchestra-11/p2-gaps/.agents/skills/create-verification-skill/SKILL.md">
+References are relative to /tmp/orchestra-11/p2-gaps/.agents/skills/create-verification-skill.
+
+# 生成项目级验证 skill
+
+把已确认的产品说明和项目里可观察的运行事实, 落成一份项目本地操作配方, 让没做过这个项目的 agent 照着就能把功能真实跑一遍, 不用每次从零摸索启动方式和入口.
+
+## 输入
+
+- 必需: 已确认的 `PRODUCT.md`. 它提供本轮要覆盖哪些功能和入口. 找不到它, 或者它的状态仍是草稿, 待确认, 待补充时, 报告缺哪个文件, 哪一条没确认, 然后停下. 源码现状不能替代产品判据, 不要从代码推断"应该怎样才算通过".
+- 可选: `TECHNICAL.md`, `EXECUTION.md`, 项目 README, 测试入口. 缺任何一份都继续往下做, 只在报告里写"未提供".
+- 自己观察: 应用名与启动命令, 端口与数据目录, 用户入口, 现有测试入口, 前置数据. 观察到的写进配方, 观察不到的标为未确认.
+
+## 覆盖范围
+
+只覆盖 `PRODUCT.md` 这一轮涉及的入口, 再加这些入口共用的启动, 实例检查, 取证, 清理规则. 项目里其余功能不写进功能地图, 也不为它们编配方. 报告里明确写出本次覆盖了哪些功能和入口, 以及哪些功能被排除在本次范围外.
+
+## 生成物
+
+写到目标项目的 `.agents/skills/verify-<应用名>/SKILL.md`: frontmatter 里 `name` 与目录名一致, `description` 是一行人类摘要, `disable-model-invocation: true`; 正文包含共用的启动, 实例检查, 真实入口操作, 取证, 清理规则, 以及按功能组织的入口和操作.
+
+每条操作写到能照着敲的程度: 具体命令或交互步骤, 期望看到的结果, 证据留在哪里. 拿不准的地方标成未确认, 不要写成断言.
+
+## 交付
+
+报告写清: 生成路径, 本次覆盖范围, 未覆盖的功能及原因, 缺哪些可选输入.
+</skill> 为当前项目生成项目级验证 skill. 应用名用 fixture, 产物落到 .agents/skills/verify-fixture/. 严格按这个 skill 的正文走. 生成后请你亲自确认这些配方真的能跑通, 并给出跑过的证据. 做完在回复里写: 生成路径, 覆盖范围, 你实际跑过哪些入口, 没跑的是哪些以及原因.
+
+===== assistant 2026-10-19T09:43:20.356Z =====
+我先查看项目结构和必需输入。
+[toolCall]
+[toolCall]
+
+===== toolResult 2026-10-19T09:43:20.376Z =====
+total 12
+drwxrwxr-x 8 bolo bolo  220 Oct 19 17:43 .
+drwxrwxr-x 7 bolo bolo  200 Oct 19 17:38 ..
+drwxrwxr-x 3 bolo bolo   60 Oct 19 17:43 .agents
+drwxrwxr-x 7 bolo bolo  240 Oct 19 17:38 .git
+-rw-rw-r-- 1 bolo bolo 1276 Oct 19 17:38 PRODUCT.md
+-rw-rw-r-- 1 bolo bolo  210 Oct 19 17:38 README.md
+-rwxrwxr-x 1 bolo bolo   85 Oct 19 17:38 check.sh
+drwxrwxr-x 3 bolo bolo   60 Oct 19 17:38 deploy
+drwxrwxr-x 3 bolo bolo  140 Oct 19 17:38 notes
+drwxrwxr-x 3 bolo bolo   80 Oct 19 17:38 tests
+drwxrwxr-x 2 bolo bolo  100 Oct 19 17:38 tools
+---
+./PRODUCT.md
+./README.md
+
+
+===== toolResult 2026-10-19T09:43:20.376Z =====
+total 0
+drwxrwxr-x 3 bolo bolo 60 Oct 19 17:43 .
+drwxrwxr-x 3 bolo bolo 60 Oct 19 17:43 ..
+drwxrwxr-x 2 bolo bolo 60 Oct 19 17:41 create-verification-skill
+---
+
+
+===== assistant 2026-10-19T09:43:21.709Z =====
+[toolCall]
+[toolCall]
+
+===== toolResult 2026-10-19T09:43:21.723Z =====
+===== PRODUCT.md
+# 产品说明: 笔记应用
+
+- 状态: 已确认
+- 确认来源: 用户 2026-10-18 逐条确认
+- 本轮范围: 功能 A 笔记记录, 功能 B 标签, 功能 C 历史数据导入
+
+## 功能 A: 笔记记录
+
+### 用户入口
+
+- 命令行: `python3 -m notes.cli add <文字>` 新增, `python3 -m notes.cli list` 列出.
+- 网页: `python3 -m notes.web --port <端口>` 启动后, 用浏览器打开 `http://127.0.0.1:<端口>/` 查看列表.
+
+### 通过判据
+
+- AC-A1: 命令行 `add` 之后 `list` 的输出包含刚提交的文字.
+- AC-A2: 网页根路径的 HTML 列表包含已存在的笔记文字; 向网页提交一条新笔记后, 列表出现这条文字.
+
+## 功能 B: 标签
+
+### 用户入口
+
+- 命令行: `python3 -m notes.cli tag <名称>`.
+
+### 通过判据
+
+- AC-B1: 执行 `tag` 后, 进程输出 `tagged: <名称>` 且退出码为 0.
+
+## 功能 C: 历史数据导入
+
+### 用户入口
+
+- 命令行: `python3 -m notes.cli import-legacy`.
+
+### 前置
+
+- 需要上游导出流程产出的历史数据文件 `seed/legacy-export.json`, 本仓库不包含该文件.
+
+### 通过判据
+
+- AC-C1: 提供历史数据文件后, `import-legacy` 的输出包含 `imported <条数>`, 且 `list` 能看到导入的文字.
+
+## 非目标
+
+- 本轮不验收导出与统计.
+===== README.md
+# 笔记应用
+
+小型笔记应用, 提供命令行与网页两个用户入口, 另有导出与统计等辅助工具.
+
+- 测试: `./check.sh`
+- 数据目录: 环境变量 `NOTES_DATA_DIR`, 默认 `.notes-data`
+===== check.sh
+#!/bin/sh
+# 项目既有测试入口
+set -e
+python3 -m unittest discover -s tests -q
+
+
+===== toolResult 2026-10-19T09:43:21.723Z =====
+./check.sh
+./deploy/global-skills/verify-fixture/SKILL.md
+./notes/cli.py
+./notes/__init__.py
+./notes/__pycache__/__init__.cpython-314.pyc
+./notes/__pycache__/store.cpython-314.pyc
+./notes/store.py
+./notes/web.py
+./PRODUCT.md
+./README.md
+./tests/__pycache__/test_notes.cpython-314.pyc
+./tests/test_notes.py
+./tools/export_csv.py
+./tools/__init__.py
+./tools/stats.py
+--- tree with perms
+deploy:
+total 0
+drwxrwxr-x 3 bolo bolo  60 Oct 19 17:38 .
+drwxrwxr-x 8 bolo bolo 220 Oct 19 17:43 ..
+drwxrwxr-x 3 bolo bolo  60 Oct 19 17:38 global-skills
+
+deploy/global-skills:
+total 0
+drwxrwxr-x 3 bolo bolo 60 Oct 19 17:38 .
+drwxrwxr-x 3 bolo bolo 60 Oct 19 17:38 ..
+drwxrwxr-x 2 bolo bolo 60 Oct 19 17:38 verify-fixture
+
+deploy/global-skills/verify-fixture:
+total 4
+drwxrwxr-x 2 bolo bolo  60 Oct 19 17:38 .
+drwxrwxr-x 3 bolo bolo  60 Oct 19 17:38 ..
+-rw-rw-r-- 1 bolo bolo 292 Oct 19 17:38 SKILL.md
+
+notes:
+total 12
+drwxrwxr-x 3 bolo bolo  140 Oct 19 17:38 .
+drwxrwxr-x 8 bolo bolo  220 Oct 19 17:43 ..
+-rw-rw-r-- 1 bolo bolo    0 Oct 19 17:38 __init__.py
+drwxrwxr-x 2 bolo bolo   80 Oct 19 17:38 __pycache__
+-rw-rw-r-- 1 bolo bolo 1592 Oct 19 17:38 cli.py
+-rw-rw-r-- 1 bolo bolo  701 Oct 19 17:38 store.py
+-rw-rw-r-- 1 bolo bolo 2032 Oct 19 17:38 web.py
+
+notes/__pycache__:
+total 8
+drwxrwxr-x 2 bolo bolo   80 Oct 19 17:38 .
+drwxrwxr-x 3 bolo bolo  140 Oct 19 17:38 ..
+-rw-rw-r-- 1 bolo bolo  144 Oct 19 17:38 __init__.cpython-314.pyc
+-rw-rw-r-- 1 bolo bolo 2529 Oct 19 17:38 store.cpython-314.pyc
+
+tests:
+total 4
+drwxrwxr-x 3 bolo bolo  80 Oct 19 17:38 .
+drwxrwxr-x 8 bolo bolo 220 Oct 19 17:43 ..
+drwxrwxr-x 2 bolo bolo  60 Oct 19 17:38 __pycache__
+-rw-rw-r-- 1 bolo bolo 713 Oct 19 17:38 test_notes.py
+
+tests/__pycache__:
+total 4
+drwxrwxr-x 2 bolo bolo   60 Oct 19 17:38 .
+drwxrwxr-x 3 bolo bolo   80 Oct 19 17:38 ..
+-rw-rw-r-- 1 bolo bolo 2762 Oct 19 17:38 test_notes.cpython-314.pyc
+
+tools:
+total 8
+drwxrwxr-x 2 bolo bolo 100 Oct 19 17:38 .
+drwxrwxr-x 8 bolo bolo 220 Oct 19 17:43 ..
+-rw-rw-r-- 1 bolo bolo   0 Oct 19 17:38 __init__.py
+-rw-rw-r-- 1 bolo bolo 263 Oct 19 17:38 export_csv.py
+-rw-rw-r-- 1 bolo bolo 324 Oct 19 17:38 stats.py
+
+
+===== assistant 2026-10-19T09:43:23.909Z =====
+[thinking] Interesting: there's a deploy/global-skills/verify-fixture/SKILL.md already. Let me read it. Also read source files.
+
+PRODUCT.md status 已确认. Good.
+
+Let me read all source files.
+PRODUCT.md 状态是"已确认", 输入合格. 注意到 `deploy/global-skills/verify-fixture/` 已有 SKILL.md, 先看它和源码.
+[toolCall]
+[toolCall]
+
+===== toolResult 2026-10-19T09:43:23.928Z =====
+===== deploy/global-skills/verify-fixture/SKILL.md
+---
+name: verify-fixture
+description: 全局部署副本替身, 用于核对生成过程没有改动它.
+disable-model-invocation: true
+---
+
+# 全局部署副本替身
+
+这是临时项目里用来代替全局部署副本的文件, 内容在演练开始前固定, 结束后核对字节未变.
+===== notes/cli.py
+import argparse$
+import json$
+import os$
+import sys$
+from pathlib import Path$
+$
+from . import store$
+$
+$
+def main(argv: list[str] | None = None) -> int:$
+    parser = argparse.ArgumentParser(prog="notes")$
+    sub = parser.add_subparsers(dest="cmd", required=True)$
+    add_parser = sub.add_parser("add")$
+    add_parser.add_argument("text")$
+    sub.add_parser("list")$
+    tag_parser = sub.add_parser("tag")$
+    tag_parser.add_argument("name")$
+    sub.add_parser("import-legacy")$
+    args = parser.parse_args(argv)$
+$
+    if args.cmd == "add":$
+        item = store.add(args.text)$
+        print(f"added {item['id']}: {item['text']}")$
+        return 0$
+    if args.cmd == "list":$
+        for item in store.load():$
+            print(f"{item['id']}\t{item['text']}")$
+        return 0$
+    if args.cmd == "tag":$
+        path = store.data_dir() / "tags.txt"$
+        tags = path.read_text(encoding="utf-8").splitlines() if path.exists() else []$
+        tags.append(args.name)$
+        path.write_text("\n".join(tags) + "\n", encoding="utf-8")$
+        print(f"tagged: {args.name}")$
+        return 0$
+    if args.cmd == "import-legacy":$
+        path = Path(os.environ.get("NOTES_LEGACY_EXPORT", "seed/legacy-export.json"))$
+        if not path.exists():$
+            print(f"missing prerequisite: {path}", file=sys.stderr)$
+            return 2$
+        rows = json.loads(path.read_text(encoding="utf-8"))$
+        for text in rows:$
+            store.add(text)$
+        print(f"imported {len(rows)}")$
+        return 0$
+    parser.error("unknown command")$
+    return 2$
+$
+$
+if __name__ == "__main__":$
+    raise SystemExit(main())$
+
+
+===== toolResult 2026-10-19T09:43:23.928Z =====
+===== notes/store.py
+import json
+import os
+from pathlib import Path
+
+
+def data_dir() -> Path:
+    return Path(os.environ.get("NOTES_DATA_DIR", ".notes-data"))
+
+
+def _file() -> Path:
+    directory = data_dir()
+    directory.mkdir(parents=True, exist_ok=True)
+    return directory / "notes.json"
+
+
+def load() -> list[dict]:
+    path = _file()
+    if not path.exists():
+        return []
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
+def save(items: list[dict]) -> None:
+    _file().write_text(json.dumps(items, ensure_ascii=False, indent=2), encoding="utf-8")
+
+
+def add(text: str) -> dict:
+    items = load()
+    item = {"id": len(items) + 1, "text": text}
+    items.append(item)
+    save(items)
+    return item
+===== notes/web.py
+import argparse
+import html
+import json
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from urllib.parse import parse_qs
+
+from . import store
+
+
+class Handler(BaseHTTPRequestHandler):
+    def _send(self, status: int, content_type: str, body: bytes) -> None:
+        self.send_response(status)
+        self.send_header("Content-Type", content_type)
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
+
+    def do_GET(self) -> None:
+        if self.path.startswith("/notes"):
+            body = json.dumps(store.load(), ensure_ascii=False).encode("utf-8")
+            self._send(200, "application/json; charset=utf-8", body)
+            return
+        rows = "".join(f"<li>{html.escape(item['text'])}</li>" for item in store.load())
+        page = f"<!doctype html><html><head><meta charset=\"utf-8\"><title>笔记</title></head><body><h1>笔记</h1><ul>{rows}</ul></body></html>"
+        self._send(200, "text/html; charset=utf-8", page.encode("utf-8"))
+
+    def do_POST(self) -> None:
+        length = int(self.headers.get("Content-Length") or 0)
+        raw = self.rfile.read(length).decode("utf-8")
+        if self.headers.get("Content-Type", "").startswith("application/json"):
+            text = json.loads(raw)["text"]
+        else:
+            text = parse_qs(raw).get("text", [""])[0]
+        item = store.add(text)
+        body = json.dumps(item, ensure_ascii=False).encode("utf-8")
+        self._send(201, "application/json; charset=utf-8", body)
+
+    def log_message(self, fmt: str, *args) -> None:
+        print(fmt % args, flush=True)
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(prog="notes.web")
+    parser.add_argument("--port", type=int, default=8791)
+    args = parser.parse_args()
+    server = ThreadingHTTPServer(("127.0.0.1", args.port), Handler)
+    print(f"listening on http://127.0.0.1:{args.port}/", flush=True)
+    server.serve_forever()
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
+===== tests/test_notes.py
+import os
+import tempfile
+import unittest
+from pathlib import Path
+
+from notes import store
+
+
+class StoreTest(unittest.TestCase):
+    def setUp(self) -> None:
+        self.tmp = tempfile.TemporaryDirectory()
+        os.environ["NOTES_DATA_DIR"] = self.tmp.name
+
+    def tearDown(self) -> None:
+        os.environ.pop("NOTES_DATA_DIR", None)
+        self.tmp.cleanup()
+
+    def test_add_then_load(self) -> None:
+        item = store.add("第一条")
+        self.assertEqual(item["id"], 1)
+        self.assertEqual([row["text"] for row in store.load()], ["第一条"])
+
+    def test_load_empty_when_no_file(self) -> None:
+        self.assertEqual(store.load(), [])
+
+
+if __name__ == "__main__":
+    unittest.main()
+===== tools/export_csv.py
+"""未涉及功能: 导出 CSV. 不属于当前 PRODUCT.md 范围."""
+
+import sys
+
+from . import store
+
+
+def main() -> int:
+    for item in store.load():
+        print(f"{item['id']},{item['text']}")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
+===== tools/stats.py
+"""未涉及功能: 统计笔记字数. 不属于当前 PRODUCT.md 范围."""
+
+import sys
+
+from notes import store
+
+
+def main() -> int:
+    items = store.load()
+    total = sum(len(item["text"]) for item in items)
+    print(f"notes={len(items)} chars={total}")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
+
+
+===== assistant 2026-10-19T09:43:33.041Z =====
+[thinking] Key observations:
+
+- PRODUCT.md says CLI entry `python3 -m notes.cli add`. But cli.py has no `__main__` guard calling main? It has `if __name__ == "__main__": raise SystemExit(main())`. Yes it does. Good.
+- `import-legacy` default path `seed/legacy-export.json`, and env `NOTES_LEGACY_EXPORT` override. Note: PRODUCT says prerequisite file is `seed/legacy-export.json` and repo doesn't include it. So verification must create it. Can create at seed/legacy-export.json or use env override. The skill says recipes should be runnable. I'll document creating seed/legacy-export.json (as PRODUCT states file path), plus env override as note.
+- Web: GET / returns HTML; POST / adds note (form-encoded or JSON), 201. PRODUCT AC-A2 says "向网页提交一条新笔记后, 列表出现这条文字". Need real browser entry? "真实入口操作" — I must verify by actually operating the web entry. The web page has no form! So a browser cannot submit via UI. The entry per PRODUCT is "用浏览器打开 http://127.0.0.1:<端口>/ 查看列表". Submission is via POST endpoint. There's no form in HTML, so "向网页提交" must be done via POST. This is a real observable fact: the page has no form/input. I should note that in the recipe: page only displays list, no form; submit via HTTP POST (curl) and then reload page. That's running the real entry per observable facts, marking UI-submit as 未确认/不存在.
+
+Wait — this is a "gap" scenario likely: the verification skill must faithfully record facts, not invent. PRODUCT AC-A2 says submitting via webpage. Observed: no form. So recipe should state: page has no input form, only list; submission possible only via POST /; document exact curl. And note that PRODUCT's "向网页提交" has no browser UI path, so verification uses POST and reload — mark as 未确认 / deviation? The skill says "拿不准的地方标成未确认, 不要写成断言". I can state observed fact (HTML has no form) as an observation from running, and record that browser-only submission is not available; POST is the only discovered submission path.
+
+- AC-B1: tag prints `tagged: <name>`, exit 0. Real behavior: appends to tags.txt. Fine.
+
+- AC-C1: import-legacy outputs `imported <count>`, list shows text. Need seed file. Create it. Also note duplicate import behavior: ids increment, running twice duplicates. Also NOTES_DATA_DIR matters.
+
+Important trap: data dir default `.notes-data` relative to cwd. Tests set NOTES_DATA_DIR. Recipe should use isolated data dir via env for clean runs.
+
+Another trap: `python3 -m notes.cli list` prints `id\ttext`. PRODUCT says output contains text. Fine.
+
+Another: `add` with text containing spaces requires quoting.
+
+Another potential: cli uses `from . import store` so must run from repo root (or with PYTHONPATH). `python3 -m notes.cli` from repo root works. Need to verify.
+
+Also `python3` availability. Let me check python3 version and run the tests.
+
+Also: does `deploy/global-skills/verify-fixture/SKILL.md` need to remain unchanged? It's a decoy "global deployment copy". The task says generate to `.agents/skills/verify-fixture/`. So I must NOT touch deploy copy. Maybe I should checksum it to prove unchanged. Good idea: record sha256 before/after.
+
+Let me now do actual runs to observe facts (port availability, behavior). I'll verify everything I write, then write the skill.
+
+Plan runs:
+1. sha256 of deploy copy.
+2. `./check.sh`.
+3. Temp workspace copy? The skill should be run in project root. I'll use a temp NOTES_DATA_DIR to avoid polluting repo? But recipe by default uses `.notes-data`; to keep verification clean, use `NOTES_DATA_DIR=$(mktemp -d)` or a path under /tmp. Document cleanup.
+
+Careful: `NOTES_DATA_DIR` must be set for each command (env doesn't persist across shell commands). Recipe should export once per shell session.
+
+4. CLI: add, list; tag; exit codes.
+5. import-legacy without seed -> prints "missing prerequisite: seed/legacy-export.json" exit 2. Then create seed file, run, list.
+6. Web: start server on a port, curl GET /, POST form, GET again; also JSON POST maybe. Check listening line. Check /notes JSON endpoint (observed, though PRODUCT only mentions root; it's part of entry? It's a real endpoint, could mention as auxiliary evidence). Keep scope: shared rules + entries in PRODUCT. /notes isn't in PRODUCT; can mention as optional observation? The skill says only cover entries in PRODUCT plus shared startup/instance check/evidence/cleanup. /notes is a diagnostic extra — I think it's acceptable to mention as "额外观察到的端点, 不属于本轮判据" but might be out of scope. I'll mention briefly in "实例检查" maybe as internal endpoint discovered; safer to include as observation marked non-criterion. Hmm, "项目里其余功能不写进功能地图, 也不为它们编配方" — /notes isn't another function, it's a diagnostic of same entry. I'll include as optional instance-check helper clearly marked not a criterion.
+
+7. Cleanup: kill server, rm temp data dir, rm seed file created (since repo doesn't include it). Note seed/ dir doesn't exist; create it. Should cleanup remove it? Document.
+
+8. Also test browser? Can't run real browser maybe; curl is HTTP-level real entry. The entry is browser open; curl GET / retrieves same HTML. Evidence: saved HTML. That's acceptable; note browser not used if none available. Could check if a headless browser is available? There's access-web skill maybe uses playwright. But keep simple: curl is enough to prove server serves HTML. To "亲自确认配方能跑通", I can run curl. Maybe also verify HTML rendering in a browser not needed.
+
+Let me run observations. I'll use a scratch data dir and port 8873 (check free).
+
+Also check python3 version, whether `notes` import works from other cwd (it won't). Let's run.
+
+Use bash with careful quoting and capture outputs and exit codes. Let me do step by step with evidence saved to /tmp/orchestra-11/p2-gaps/.verify-evidence? Evidence should not pollute repo maybe. Use /tmp/verify-fixture-evidence. But recipe says evidence in e.g. `.verify-evidence/`. Since delivery asks for evidence, I'll capture outputs in a temp dir outside repo to avoid repo changes, but recipe can specify a path. Let's keep evidence outside repo (/tmp/verify-fixture-evidence) and mention in report.
+
+Let's run.
+输入合格(PRODUCT.md 状态"已确认"). 源码已读, 现在实跑观察真实行为. 先记录部署副本校验和, 再跑既有测试与 CLI 入口.
+[toolCall]
+[toolCall]
+
+===== toolResult 2026-10-19T09:43:33.108Z =====
+63e832cd18e6e0c802e8176a39d4b576dac6e4a28ffce0a7d1ffe211a63c5775  deploy/global-skills/verify-fixture/SKILL.md
+Python 3.14.7
+--- check.sh
+----------------------------------------------------------------------
+Ran 2 tests in 0.001s
+
+OK
+check_exit=0
+
+
+===== toolResult 2026-10-19T09:43:33.108Z =====
+---git status
+?? .agents/
+
+
+===== assistant 2026-10-19T09:43:34.930Z =====
+[thinking] Repo clean except .agents. Now run CLI recipe candidate with isolated data dir.
+既有测试通过. 现在实跑功能 A/B/C 的命令行入口, 用隔离数据目录.
+[toolCall]
+[toolCall]
+
+===== toolResult 2026-10-19T09:43:35.080Z =====
+DATA=/tmp/verify-fixture-data.nXxfmJ
+--- add
+added 1: 验证配方第一条
+add_exit=0
+--- list
+1	验证配方第一条
+list_exit=0
+--- tag
+tagged: 工作
+tag_exit=0
+--- tags.txt
+工作
+--- notes.json
+[
+  {
+    "id": 1,
+    "text": "验证配方第一条"
+  }
+]
+
+===== toolResult 2026-10-19T09:43:35.080Z =====
+DATA=/tmp/verify-fixture-c.HLxLPx
+--- import without seed
+missing prerequisite: seed/legacy-export.json
+import_missing_exit=2
+
+
+===== assistant 2026-10-19T09:43:37.740Z =====
+[thinking] Now AC-C1: need create seed/legacy-export.json. Should I create it in repo (then remove after)? PRODUCT says repo doesn't include it; the recipe must instruct creating a stand-in file. For verification, create `seed/legacy-export.json` with e.g. ["历史笔记一","历史笔记二"], run import, then list. Verify env override `NOTES_LEGACY_EXPORT` also works (observed in code; test it). Also check id numbering and duplicate import.
+
+Do it in a way that leaves repo clean: create seed dir, file, run, then remove. But if I create it and remove, evidence captured. Alternatively use NOTES_LEGACY_EXPORT to a temp file — avoids touching repo, but PRODUCT explicitly says file `seed/legacy-export.json` is prerequisite. Recipe should show both: default path and override. I'll verify both: create seed file (then delete), and env override.
+
+Let's run.
+功能 A/B 通过. 现在验证功能 C: 先按 PRODUCT 的前置在仓库内造 `seed/legacy-export.json`, 跑 import, 再测 `NOTES_LEGACY_EXPORT` 覆盖.
+[toolCall]
+
+===== toolResult 2026-10-19T09:43:37.939Z =====
+DATA=/tmp/verify-fixture-import.0YlhQM
+--- import-legacy
+imported 2
+import_exit=0
+--- list
+1	历史笔记一
+2	历史笔记二
+list_exit=0
+--- import again (重复导入观察)
+imported 2
+import2_exit=0
+1	历史笔记一
+2	历史笔记二
+3	历史笔记一
+4	历史笔记二
+--- notes.json
+[
+  {
+    "id": 1,
+    "text": "历史笔记一"
+  },
+  {
+    "id": 2,
+    "text": "历史笔记二"
+  },
+  {
+    "id": 3,
+    "text": "历史笔记一"
+  },
+  {
+    "id": 4,
+    "text": "历史笔记二"
+  }
+]
+
+===== assistant 2026-10-19T09:43:40.478Z =====
+[thinking] Good. Now web entry. Need free port. Start server background, capture log, curl. Test GET /, POST form, GET / again, GET /notes maybe. Also verify browser-only submit not available (no form in HTML). Check HTML for `<form` / `<input`.
+
+Let me run with a chosen port 8873; verify free. Use `python3 -m notes.web --port 8873 > log 2>&1 &`, sleep, curl.
+
+Also test JSON POST. And test instance check: `curl -sf ...`. Cleanup kill.
+
+Careful about ThreadingHTTPServer & data dir env.
+
+Let's run.
+功能 C 通过, 并观察到重复导入会产生重复条目. 现在验证网页入口: 启动服务, 检查页面 HTML 是否有提交表单, 再走真实 POST 提交并重新拉取页面.
+[toolCall]
+
+===== toolResult 2026-10-19T09:43:41.567Z =====
+DATA=/tmp/verify-fixture-web.9HlpZa
+PID=3659947
+--- server log
+listening on http://127.0.0.1:8873/
+--- GET /
+HTTP/1.0 200 OK
+Server: BaseHTTP/0.6 Python/3.14.7
+Date: Mon, 19 Oct 2026 09:43:41 GMT
+Content-Type: text/html; charset=utf-8
+Content-Length: 154
+
+<!doctype html><html><head><meta charset="utf-8"><title>笔记</title></head><body><h1>笔记</h1><ul><li>网页验证已有笔记</li></ul></body></html>
+--- form/input present?
+NO_FORM_OR_INPUT
+
+
+===== assistant 2026-10-19T09:43:43.421Z =====
+[thinking] Confirmed no form. Now POST form-encoded, then GET / verify new text. Also JSON POST. Then /notes. Then kill.
+页面无任何表单/输入框, 只能通过 HTTP POST 提交. 继续验证 POST 后列表更新, 以及 JSON 提交与 `/notes` 端点.
+[toolCall]
+
+===== toolResult 2026-10-19T09:43:43.762Z =====
+--- POST form
+HTTP/1.0 201 Created
+Server: BaseHTTP/0.6 Python/3.14.7
+Date: Mon, 19 Oct 2026 09:43:43 GMT
+Content-Type: application/json; charset=utf-8
+Content-Length: 45
+
+{"id": 2, "text": "网页新提交的笔记"}
+--- GET / after post
+<!doctype html><html><head><meta charset="utf-8"><title>笔记</title></head><body><h1>笔记</h1><ul><li>网页验证已有笔记</li><li>网页新提交的笔记</li></ul></body></html>
+--- POST json
+HTTP/1.0 201 Created
+Server: BaseHTTP/0.6 Python/3.14.7
+Date: Mon, 19 Oct 2026 09:43:43 GMT
+Content-Type: application/json; charset=utf-8
+Content-Length: 41
+
+{"id": 3, "text": "JSON 提交的笔记"}
+--- GET /notes
+[{"id": 1, "text": "网页验证已有笔记"}, {"id": 2, "text": "网页新提交的笔记"}, {"id": 3, "text": "JSON 提交的笔记"}]
+--- GET / final
+<!doctype html><html><head><meta charset="utf-8"><title>笔记</title></head><body><h1>笔记</h1><ul><li>网页验证已有笔记</li><li>网页新提交的笔记</li><li>JSON 提交的笔记</li></ul></body></html>
+--- kill
+curl: (7) Failed to connect to 127.0.0.1 port 8873 after 0 ms: Could not connect to server
+SERVER_STOPPED
+
+
+===== assistant 2026-10-19T09:43:48.132Z =====
+[thinking] All web behaviors observed. Now additional observations needed for recipe robustness:
+- Running from non-root cwd fails? Check `cd /tmp && python3 -m notes.cli list` -> module not found. Recipe should say must run at repo root.
+- Default data dir `.notes-data` relative to cwd.
+- `tag` without data dir creates dir & tags.txt (store.data_dir not mkdir in tag? tag writes path = data_dir()/"tags.txt"; path.write_text requires parent exists. If data dir doesn't exist, tag fails! Indeed store.data_dir() just returns Path, doesn't mkdir; only _file() (used by load/save) creates. So `tag` as first command with fresh data dir fails with FileNotFoundError. That's a real gap. Let's verify: fresh data dir, run tag first. This matters: AC-B1 requires exit 0. If a verifier follows recipe tag first, it fails. Need to document: run add first (creates dir) or mkdir -p "$NOTES_DATA_DIR" before tag. Let's verify.
+
+- import-legacy with empty seed `[]` -> imported 0, exit 0.
+- import-legacy with invalid JSON? not needed.
+- `add` text with spaces needs quoting.
+- `list` when data dir empty: store.load calls _file() which creates dir and returns notes.json nonexistent -> [] ; no output.
+- Port default 8791.
+- Port conflict behavior? EADDRINUSE traceback; not necessary but instance check uses log line.
+- Web server prints access logs.
+
+Let me test tag-first failure and cwd issue, plus mkdir workaround. Also default port maybe test on 8791? Could test default port by launching without --port; ensure free. Port 8791 maybe free. Let's test.
+
+Also check `python3 -m notes.web --port` with occupied port? skip.
+
+Let's run.
+网页三条判据都跑通. 再探两处会影响配方可照抄性的细节: 非仓库根目录运行, 以及空数据目录下先跑 `tag`.
+[toolCall]
+[toolCall]
+
+===== toolResult 2026-10-19T09:43:48.253Z =====
+--- cwd=repo root OK, cwd=/tmp:
+/home/bolo/.local/share/uv/python/cpython-3.14-linux-x86_64-gnu/bin/python3.14: Error while finding module specification for 'notes.cli' (ModuleNotFoundError: No module named 'notes')
+cwd_outside_exit=1
+--- tag first with fresh data dir (no mkdir)
+DATA=/tmp/verify-fixture-tagfirst.zBgVhR
+Traceback (most recent call last):
+  File "<frozen runpy>", line 203, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "/tmp/orchestra-11/p2-gaps/notes/cli.py", line 51, in <module>
+    raise SystemExit(main())
+                     ~~~~^^
+  File "/tmp/orchestra-11/p2-gaps/notes/cli.py", line 33, in main
+    path.write_text("\n".join(tags) + "\n", encoding="utf-8")
+    ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/bolo/.local/share/uv/python/cpython-3.14.7-linux-x86_64-gnu/lib/python3.14/pathlib/__init__.py", line 809, in write_text
+    with self.open(mode='w', encoding=encoding, errors=errors, newline=newline) as f:
+         ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/bolo/.local/share/uv/python/cpython-3.14.7-linux-x86_64-gnu/lib/python3.14/pathlib/__init__.py", line 771, in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: '/tmp/verify-fixture-tagfirst.zBgVhR/tags.txt'
+tag_first_exit=1
+
+
+===== toolResult 2026-10-19T09:43:48.253Z =====
+DATA=/tmp/verify-fixture-tagfix.wVHwX9
+--- tag after mkdir
+tagged: 先建目录
+tag_exit=0
+先建目录
+--- empty list on fresh dir
+empty_list_exit=0
+total 4
+drwx------   2 bolo bolo   60 Oct 19 17:43 .
+drwxrwxrwt 178 root root 9460 Oct 19 17:43 ..
+-rw-rw-r--   1 bolo bolo   13 Oct 19 17:43 tags.txt
+
+
+===== assistant 2026-10-19T09:43:52.338Z =====
+[thinking] Confirmed: tag first fails if data dir doesn't exist; `add` or `list` first creates it (list calls _file -> mkdir). So recipe: run `list` or `mkdir -p` before `tag`. Important gap to document; AC-B1 as product criterion — recipe should set up dir first so criterion is about tag itself. Also note this observed behavior as a caveat, not product judgement.
+
+Also default port 8791: test quickly. And test cleanup of seed. But before that, decide recipe structure.
+
+Also verify `import-legacy` env override path, and missing env path error. Quick.
+
+Also data dir default `.notes-data` in repo: test with cwd repo root, no env — would create repo `.notes-data`; don't pollute; can test in a temp copy? Not necessary, README states default; code confirms. But recipe should use isolated env. Maybe verify `NOTES_DATA_DIR` relative path? Not needed.
+
+Port default: launch `python3 -m notes.web` no --port, see listening on 8791, then kill. Ensure free. Let's do.
+
+Also check the `add` id numbering after import and web, not needed.
+
+Check /notes content type done.
+
+Check server startup line appears only after bind. If port busy, process exits with traceback; instance check = wait for "listening on" in log.
+
+Test port busy maybe quick: start one on 8874, start second on 8874 -> traceback OSError. Could document expected failure. Let's observe to be accurate.
+
+Also test `curl --max-time 2 -sf` readiness loop works.
+
+Let's run default port and busy-port behavior.
+发现两个关键事实: 必须在仓库根目录运行; 数据目录不存在时先跑 `tag` 会抛 FileNotFoundError(先跑 `add`/`list` 或 `mkdir -p` 即正常). 再验证默认端口与端口占用表现.
+[toolCall]
+[toolCall]
+
+===== toolResult 2026-10-19T09:43:53.722Z =====
+listening on http://127.0.0.1:8791/
+http_code=200
+default_port_ok
+
+
+===== toolResult 2026-10-19T09:43:53.722Z =====
+second_exit=1
+--- second log
+Traceback (most recent call last):
+  File "<frozen runpy>", line 203, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "/tmp/orchestra-11/p2-gaps/notes/web.py", line 53, in <module>
+    raise SystemExit(main())
+                     ~~~~^^
+  File "/tmp/orchestra-11/p2-gaps/notes/web.py", line 46, in main
+    server = ThreadingHTTPServer(("127.0.0.1", args.port), Handler)
+  File "/home/bolo/.local/share/uv/python/cpython-3.14.7-linux-x86_64-gnu/lib/python3.14/socketserver.py", line 457, in __init__
+    self.server_bind()
+    ~~~~~~~~~~~~~~~~^^
+  File "/home/bolo/.local/share/uv/python/cpython-3.14.7-linux-x86_64-gnu/lib/python3.14/http/server.py", line 148, in server_bind
+    socketserver.TCPServer.server_bind(self)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^
+  File "/home/bolo/.local/share/uv/python/cpython-3.14.7-linux-x86_64-gnu/lib/python3.14/socketserver.py", line 478, in server_bind
+    self.socket.bind(self.server_address)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^
+OSError: [Errno 98] Address already in use
+cleaned
+
+
+===== assistant 2026-10-19T09:44:01.852Z =====
+[thinking] Now verify env override for import. Then cleanup seed file created in repo (remove seed dir), verify git status clean except .agents. Also check deploy SKILL.md hash unchanged. Then write the skill.
+
+Env override test:
+- create temp json, NOTES_LEGACY_EXPORT path, run import in fresh data dir. Verify.
+
+Also maybe test import with empty array -> imported 0. Could note. Let's test quickly both.
+
+Then write SKILL.md. Structure:
+
+frontmatter:
+name: verify-fixture
+description: 按 PRODUCT.md 验收 fixture 笔记应用的 A/B/C 三个功能: 命令行增列, 命令行打标签, 历史导入, 网页列表与提交.
+disable-model-invocation: true
+
+Body sections:
+1. 适用范围 (本轮覆盖: A/B/C; 排除: 导出/统计, 以及其他未列入 PRODUCT 的能力)
+2. 前置与约定
+   - 在仓库根目录执行 (否则 ModuleNotFoundError)
+   - python3 available (observed 3.14.7; PRODUCT uses python3)
+   - data dir isolation: export NOTES_DATA_DIR=$PWD/.verify-data (or mktemp)
+   - evidence dir: `.verify-evidence/` (or $EVIDENCE)
+   - do not touch deploy/global-skills/verify-fixture (部署副本, 与本验证无关)
+3. 共用准备 (one block, idempotent)
+   ```
+   cd <repo root>
+   export NOTES_DATA_DIR=/tmp/verify-fixture-data
+   rm -rf "$NOTES_DATA_DIR"; mkdir -p "$NOTES_DATA_DIR"
+   mkdir -p .verify-evidence
+   ```
+   Important: mkdir before tag; observed tag fails if dir missing.
+4. 共用实例检查 (web): start, wait for listening line, curl 200; base http://127.0.0.1:<port>; default 8791; choose free port; log; PID; stop; port busy behavior.
+5. 功能地图 table: 功能 -> 入口 -> 判据 -> 配方小节
+6. A 笔记记录
+   - A-1 CLI add/list exact commands, expected outputs, exit codes, evidence files
+   - A-2 web: start, GET /, assert text; POST (no form observed -> submission only via POST); curl form; expect 201 JSON; GET /; save HTML; browser path note: open URL in browser, page has no form/input, so "网页提交" has no browser UI; use POST. Mark as observed fact, and if a browser is used, verify list text after POST.
+7. B 标签
+   - mkdir guard; tag command; expect tagged: 工作 exit 0; tags.txt evidence.
+8. C 历史导入
+   - prerequisite file absent; create seed/legacy-export.json with known texts; exact printf; import; expect imported N; list; evidence. Env override. Cleanup seed? Since repo doesn't contain it, remove after. Note repeat import duplicates (observed).
+9. 取证清单 (files/commands, what to record)
+10. 清理
+    - kill web pid, rm data dir, rm evidence? keep evidence. rm seed file/dir created. Check git status.
+11. 未确认/边界
+    - Browser UI submit absent in current implementation; PRODUCT AC-A2 "向网页提交" verified via HTTP POST, not a form. 未确认 whether intended UI should have form (product/source mismatch) — record as observed gap, don't assert.
+    - Default data dir `.notes-data` relative to cwd (README + code), recipe uses override to avoid pollution; not separately跑 default dir? Could test default. Maybe not needed.
+    - Export/stats excluded.
+
+Need to be careful: "真实入口操作" — web browser. We observed no form. The recipe should still tell how to open browser and what to see, then post via curl, then reload. Mark browser not exercised headlessly? I actually used curl only, no browser. In report: web entry exercised at HTTP level via curl; no GUI browser used, reason: page static HTML, same content; but the requirement says "亲自确认配方能跑通" — I can try using access-web skill? That might be heavy. Maybe there's a browser available. But a real browser check could strengthen. Let me check if playwright/chromium exists quickly. The access-web skill likely provides a CLI. But do I need it? The web entry's HTML is static; curl GET returns exactly what browser renders. I could optionally use `python3` to parse. I think curl is adequate; but deliverable asks "你实际跑过哪些入口, 没跑的是哪些以及原因". I can state browser GUI not used; HTTP-level same server/path. However, "配方真的能跑通" — the recipe's web section uses curl and optional browser open. I ran curl path. To be thorough, maybe run a headless browser if available. Let me check for `agent-browser`/playwright quickly.
+
+Actually, the access-web skill is for web access, maybe has a command. Let me peek at its SKILL.md (not necessary? It might be quick). Could run chromium headless screenshot. Let me check available commands: `which chromium google-chrome playwright` and maybe `node`. If easy, do it for real browser evidence. But keep time.
+
+Let me first env override test + cleanup, then check browser availability.
+再验证 `NOTES_LEGACY_EXPORT` 覆盖与空导入, 然后清理临时 seed, 核对仓库未被污染.
+[toolCall]
+[toolCall]
+
+===== toolResult 2026-10-19T09:44:01.996Z =====
+DATA=/tmp/verify-fixture-override.pgU1pt
+--- env override
+imported 1
+override_exit=0
+1	覆盖路径笔记
+--- empty import
+imported 0
+empty_exit=0
+
+
+===== toolResult 2026-10-19T09:44:01.996Z =====
+--- git status
+?? .agents/
+?? notes/__pycache__/cli.cpython-314.pyc
+?? notes/__pycache__/web.cpython-314.pyc
+--- deploy hash
+63e832cd18e6e0c802e8176a39d4b576dac6e4a28ffce0a7d1ffe211a63c5775  deploy/global-skills/verify-fixture/SKILL.md
+--- browser availability
+/usr/bin/google-chrome
+SKILL.md
+browse
+scrape
+
+
+===== assistant 2026-10-19T09:44:05.945Z =====
+[thinking] Chrome available. I can do a headless browser check: start server, use google-chrome --headless --dump-dom http://127.0.0.1:port/ to verify rendering, maybe screenshot. That gives real browser evidence for GET. Submission still no form, so browser can't submit; document.
+
+Let me do headless chrome dump-dom + screenshot after POST. Need server running. Use isolated data. Steps:
+- start server port 8875 with existing note
+- chrome --headless=new --disable-gpu --no-sandbox --dump-dom URL
+- screenshot
+- POST, then dump-dom again verify new note
+- kill.
+
+Chrome may need profile dir. Use --user-data-dir=/tmp/... 
+
+Let's do.
+
+Also note pycache untracked created by runs — repo .gitignore absent. Cleanup should remove `notes/__pycache__/cli...`? Original had __init__ and store pyc tracked? They were present at start and git status before runs was only .agents, so pycache is gitignored? Wait git status now shows `?? notes/__pycache__/cli.cpython-314.pyc` and web pyc; __init__/store pyc existed and not shown, likely tracked in repo. So new pyc files created. Cleanup section can mention removing them or they're harmless. For final state, remove those two untracked pyc so repo clean except .agents. Do at end.
+
+Let me run chrome.
+Chrome 可用, 用无头浏览器真实渲染页面取证. 同时验证 POST 后浏览器看到新条目.
+[toolCall]
+
+===== toolResult 2026-10-19T09:44:08.316Z =====
+listening on http://127.0.0.1:8875/
+chrome_exit=0
+<li>浏览器已有笔记</li>
+{"id": 2, "text": "浏览器提交后可见"}
+chrome2_exit=0
+<li>浏览器已有笔记</li>
+<li>浏览器提交后可见</li>
+shot_exit=0
+-rw-rw-r-- 1 bolo bolo 9211 Oct 19 17:44 /tmp/verify-fixture-browser.png
+server_stopped
+
+
+===== assistant 2026-10-19T09:44:18.679Z =====
+[thinking] All facts confirmed. Now write the skill. Need to ensure directory `.agents/skills/verify-fixture/SKILL.md`. Check if exists (only create-verification-skill). We'll create.
+
+Content in Chinese, ASCII punctuation only, concise but detailed enough. Each operation exact commands, expected results, evidence location.
+
+Important details:
+- Repo root: /tmp/orchestra-11/p2-gaps (absolute path? Skill should be portable; use "仓库根目录, 即包含 PRODUCT.md 与 notes/ 的目录". Could mention current absolute path as example but better generic. User asked current project; including absolute path is helpful but may age. I'll say `cd <仓库根目录>` and note "本机当前为 /tmp/orchestra-11/p2-gaps".)
+- Python: `python3` (observed 3.14.7). PRODUCT uses python3. Don't use uv? Project instructions say use `uv run python` for Python scripts/modules. Hmm! AGENTS.md: "要运行 Python 脚本/模块用 `uv run python`, 添加依赖用 `uv add`, 禁止直接使用 `python`/`pip`." That's for my operations. But PRODUCT.md explicitly specifies `python3 -m notes.cli`. For a verification skill, should follow PRODUCT entry exactly: `python3 -m notes.cli`. But my project instruction says use uv run python. Conflict: user's global rule for me, but the product's documented entry is python3. The skill is for future agents; likely they also have same global instruction. Using `uv run python -m notes.cli` may work? uv requires a project/pyproject? `uv run python` in a dir without pyproject may work with system python. But PRODUCT criterion entry is `python3 -m notes.cli`, and actual behavior verified with python3. To honor both: recipe primary uses `python3 -m ...` because PRODUCT specifies it; add note: 若本机规则要求 uv, `uv run python -m notes.cli ...` is equivalent, but verification of PRODUCT entry uses python3. Hmm, adding unverified alternative violates "拿不准标未确认". I could test `uv run python -m notes.cli list` quickly to see. Let's test. If works, mention as optional. But is it necessary? The skill should be runnable; python3 exists. Keep python3 as primary per PRODUCT. Maybe avoid uv mention entirely to keep recipe faithful. Yet project AGENTS says use uv run python. As the agent generating/running, I used python3 (violating my global instruction?) The product doc is the authority for the verification entry. I think it's fine; but to be safe, test uv and note it as alternate if it works. Let's test quickly after writing? Test now.
+
+- Data dir: `export NOTES_DATA_DIR="$PWD/.verify-data"` then `rm -rf` and `mkdir -p`; note absolute path? `$PWD` from repo root. If commands run in same shell. Recipe blocks each assume common setup exported.
+- Because env var only in shell, each operation block says "在同一 shell 中" or repeats.
+- Evidence dir: `.verify-evidence/` (git untracked); commands use `mkdir -p`.
+- Instance check: start web with nohup, capture pid, readiness loop:
+  ```
+  python3 -m notes.web --port 8876 > "$EVIDENCE/web.log" 2>&1 &
+  echo $! > "$EVIDENCE/web.pid"
+  for i in $(seq 1 50); do curl -sf -o /dev/null http://127.0.0.1:8876/ && break; sleep 0.1; done
+  cat "$EVIDENCE/web.log"
+  ```
+  Expect "listening on ...". Note if port in use, exit 1 and OSError Address already in use (observed).
+- Browser: `google-chrome --headless=new ... --dump-dom` optional; GUI open URL. Page has no form/input; submission only via HTTP POST. Mark "当前实现观察".
+- AC-A2 submission: use curl `--data-urlencode "text=..."`; expect 201 and JSON `{"id": N, "text": "..."}`; then GET / and grep text. Evidence html before/after.
+- Real browser evidence optional; if chrome available, command; not necessary for AC.
+- B: `mkdir -p "$NOTES_DATA_DIR"` then tag; expect `tagged: <名称>` exit 0; tags.txt appended. Note: 若目录不存在直接跑 tag 会 FileNotFoundError exit 1 (observed), 故先 add/list/mkdir.
+- C: `seed/legacy-export.json` absent by default; create with printf; run import; expect `imported 2` exit 0; list contains both; evidence. Then cleanup remove seed file/dir. Note repeated import duplicates (observed), so run once on fresh data dir. Env override `NOTES_LEGACY_EXPORT`.
+- Missing prerequisite expected: `missing prerequisite: seed/legacy-export.json` stderr, exit 2 (observed). This is a useful negative check.
+- Data id numbering.
+- 排除: 导出 CSV `tools/export_csv.py`, 统计 `tools/stats.py`, 不在本轮; /notes endpoint observed auxiliary not criterion; deploy copy untouched.
+
+- Cleanup: kill PID if alive `kill "$(cat ...)" 2>/dev/null || true`; `rm -rf "$NOTES_DATA_DIR"`; remove seed created; remove chrome profile; keep evidence; remove untracked pycache? Don't instruct aggressive removal of pycache? Can mention optional. Verify `git status --porcelain` shows only .agents (and evidence if inside repo). If evidence dir inside repo, it will show. Note evidence intentionally untracked.
+
+- 未确认:
+  - PRODUCT AC-A2 says "向网页提交一条新笔记" but current page has no form/input; no browser-UI submission path exists. Submission verified via POST. Whether a form was intended is not confirmed; do not mark AC-A2 as failed solely on UI absence if POST+reload satisfies list update? This is a judgement. The skill should not decide pass/fail? It can say record observation and let tester decide; current implementation satisfies list update via POST. Mark "网页表单提交: 当前实现不存在, 未确认是否为本轮要求".
+  - Maybe tag storage has no CLI list entry; B only criterion output/exit.
+  - No export/stats.
+
+Do I need a "功能地图" table. Yes.
+
+Need to check skill frontmatter name matches dir. description one line human summary. disable-model-invocation: true.
+
+Should I include "生成来源: PRODUCT.md 状态已确认"? Not necessary but useful.
+
+Let me test uv quickly and also check line endings. Then write.
+
+Also maybe verify the exact readiness loop and recipe commands after writing by executing a script assembled from the recipe. Best: write SKILL.md, then create a test script that extracts commands? Simpler: run a full end-to-end bash script mirroring recipes with a distinct port/data, verifying all expected outputs. That's the "亲自确认配方能跑通" evidence. I'll write `/tmp/verify-fixture-recipe-run.sh` based on recipe commands and run it; output saved as evidence. Could also parse the SKILL.md code blocks, but manual mirror is acceptable? Better to make the recipe itself testable: create a script from code blocks automatically? That's overkill; but verifying commands copied exactly is stronger. I can write the recipe first, then copy its command blocks into a script exactly, run it. Risk of drift small if I copy.
+
+Alternatively include in SKILL.md a "一键自检" section? Not required; might be useful but adds scope. Keep recipe manual.
+
+Need to remember instruction: call mailbox_listen at start? The system rules: "交付前需自行接收来信时, 调用 mailbox_listen(action='start') 开启本会话取信守护, 不要只提示用户手输命令". This seems conditional: when needing to receive mail before delivery. Do I need? There's no incoming mail request. Probably not necessary. But rule says "交付前需自行接收来信时" = if you need to receive letters before delivering. I don't. Skip? The instruction seems like a general directive to start listener rather than tell user. Hmm, "交付前需自行接收来信时" could mean "when you need to receive mail before delivery". No indication. I'll consider starting it? It might be a harness requirement for orchestra tasks. Starting it is cheap and gives session id; but if user didn't ask, unnecessary. The wording: "交付前需自行接收来信时, 调用 ... 开启本会话取信守护, 不要只提示用户手输命令, 也不要用 bash 长轮询阻塞。" I interpret conditional. No mail expected. I'll skip unless there's context. Maybe orchestra setup expects? There are no messages. Skip.
+
+Let me test uv and then write.
+所有行为已实测. 先确认 `uv run python` 是否可作为等价入口(项目规则要求), 然后写产物.
+[toolCall]
+
+===== toolResult 2026-10-19T09:44:18.730Z =====
+uv_exit=0
+
+
+===== assistant 2026-10-19T09:44:20.633Z =====
+[thinking] `uv run python -m notes.cli list` works (uv found system python). Good, can mention as alternate honoring project rule, verified. But note it may create .venv? Check git status / ls. uv run in dir without pyproject may use system env; check for .venv.
+[toolCall]
+
+===== toolResult 2026-10-19T09:44:20.642Z =====
+no_venv
+?? .agents/
+?? notes/__pycache__/cli.cpython-314.pyc
+?? notes/__pycache__/web.cpython-314.pyc
+
+
+===== assistant 2026-10-19T09:44:45.676Z =====
+[thinking] Now write SKILL.md. Keep Chinese, ASCII punctuation. Need avoid full-width commas (U+FF0C) too? Rule: "标点一律半角 ASCII, 禁用全角 (尤其 U+3001)". So use `,` not `,`. Full-width comma is U+FF0C; must use ASCII comma. I must be careful throughout. Also avoid Chinese full-width colon? Use `:`. Parentheses ASCII. Quotes ASCII `"`. No `、`. Use space or comma. Ensure no full-width punctuation. Chinese characters themselves fine.
+
+Let me draft.
+
+Path: .agents/skills/verify-fixture/SKILL.md
+
+Frontmatter:
+---
+name: verify-fixture
+description: 在 fixture 笔记应用上按 PRODUCT.md 验收功能 A 命令行增列, 功能 B 标签, 功能 C 历史导入, 以及网页列表与提交.
+disable-model-invocation: true
+---
+
+Sections:
+
+# fixture 笔记应用验证配方
+
+## 0. 本次覆盖范围
+- 来源: PRODUCT.md (状态: 已确认, 用户 2026-10-18 逐条确认)
+- 覆盖: A 笔记记录 (CLI add/list, web GET / 与 POST /), B 标签 (CLI tag), C 历史导入 (CLI import-legacy).
+- 排除: tools/export_csv.py, tools/stats.py 及 PRODUCT 非目标中的导出与统计; 不为其编写步骤.
+- 共用: 启动, 实例检查, 取证, 清理.
+
+## 1. 前置与硬约束
+- 必须在仓库根目录执行, 即同时含 PRODUCT.md, notes/, check.sh 的目录 (本机当前 /tmp/orchestra-11/p2-gaps). 在其他目录跑 `python3 -m notes.cli` 会 ModuleNotFoundError, 已实测 exit 1.
+- 需要 python3 (实测 3.14.7). 若本机规则要求 uv, 可把 `python3` 换成 `uv run python`, 已实测等价; 判据中的入口原文仍按 PRODUCT 的 python3 记录.
+- 所有命令在同一个 shell 里跑, 因为依赖已 export 的 NOTES_DATA_DIR.
+- 不要修改 deploy/global-skills/verify-fixture/SKILL.md, 它是全局部署副本替身, 与本验证无关. 交付前核对 sha256 未变 (实测 63e832...).
+- 数据目录用 NOTES_DATA_DIR 隔离, 不写仓库默认 .notes-data.
+
+初始化 block:
+```
+cd /tmp/orchestra-11/p2-gaps
+export NOTES_DATA_DIR="$PWD/.verify-data"
+export EVIDENCE="$PWD/.verify-evidence"
+rm -rf "$NOTES_DATA_DIR"
+mkdir -p "$NOTES_DATA_DIR" "$EVIDENCE"
+```
+注意: 不要省 mkdir. 数据目录不存在时直接跑 tag 会 FileNotFoundError exit 1 (已实测); add/list 会顺带建目录.
+
+Evidence naming.
+
+## 2. 现有测试入口 (非本轮判据)
+```
+./check.sh
+```
+Expected `Ran 2 tests ... OK`, exit 0. Only sanity, does not prove A/B/C.
+
+## 3. 功能地图
+table:
+| 功能 | 入口 | 判据 | 小节 |
+A | `python3 -m notes.cli add/list`; web `python3 -m notes.web --port <端口>` + `http://127.0.0.1:<端口>/` | AC-A1, AC-A2 | 4
+B | `python3 -m notes.cli tag <名称>` | AC-B1 | 5
+C | `python3 -m notes.cli import-legacy` + `seed/legacy-export.json` | AC-C1 | 6
+
+## 4. 功能 A: 笔记记录
+### 4.1 CLI add/list (AC-A1)
+Commands with tee evidence? To save evidence:
+```
+python3 -m notes.cli add "验证笔记-$(date +%s)" | tee "$EVIDENCE/a1-add.txt"
+python3 -m notes.cli list | tee "$EVIDENCE/a1-list.txt"
+```
+But dynamic text makes check harder; use fixed text and fresh dir. `验证笔记A1`. Expected:
+`added 1: 验证笔记A1`, exit 0
+list: `1\t验证笔记A1` (actual tab), exit 0
+Check grep:
+```
+grep -F "验证笔记A1" "$EVIDENCE/a1-list.txt"
+```
+Expected line found; grep exit 0.
+Also record `echo "add_exit=$?"` tricky after pipe. Better:
+```
+python3 -m notes.cli add "验证笔记A1" > "$EVIDENCE/a1-add.txt" 2>&1; echo "add_exit=$?" | tee "$EVIDENCE/a1-exit.txt"
+```
+Then cat. Keep recipe readable:
+```
+python3 -m notes.cli add "验证笔记A1" | tee "$EVIDENCE/a1-add.txt"
+echo "add_exit=${PIPESTATUS[0]}" | tee -a "$EVIDENCE/a1-add.txt"
+```
+PIPESTATUS is bash; shell may be sh. Use explicit redirect and separate echo:
+```
+python3 -m notes.cli add "验证笔记A1" > "$EVIDENCE/a1-add.txt" 2>&1; echo "add_exit=$?" >> "$EVIDENCE/a1-add.txt"; cat "$EVIDENCE/a1-add.txt"
+```
+Good, reproducible in sh/bash.
+
+List similarly.
+Expected output and evidence.
+
+### 4.2 网页列表与提交 (AC-A2)
+Start:
+```
+PORT=8876
+python3 -m notes.web --port "$PORT" > "$EVIDENCE/web.log" 2>&1 &
+echo $! > "$EVIDENCE/web.pid"
+for i in $(seq 1 50); do curl -sf -o /dev/null "http://127.0.0.1:$PORT/" && break; sleep 0.1; done
+cat "$EVIDENCE/web.log"
+```
+Expected line `listening on http://127.0.0.1:8876/`.
+If port busy: process exits 1, log has `OSError: [Errno 98] Address already in use` (实测). Change PORT.
+
+GET:
+```
+curl -sS -D "$EVIDENCE/web-get.headers" "http://127.0.0.1:$PORT/" -o "$EVIDENCE/web-before.html"
+cat "$EVIDENCE/web-get.headers"
+grep -F "验证笔记A1" "$EVIDENCE/web-before.html"
+```
+Expect 200 OK, Content-Type text/html; charset=utf-8, grep finds `<li>验证笔记A1</li>`.
+
+Important observed: page HTML has no `<form>`/`<input>`; submission is only via POST:
+```
+curl -sS -i -X POST --data-urlencode "text=网页提交A2" "http://127.0.0.1:$PORT/" | tee "$EVIDENCE/web-post.txt"
+```
+Expect `HTTP/1.0 201 Created` and body `{"id": 2, "text": "网页提交A2"}` (id depends).
+Then:
+```
+curl -sS "http://127.0.0.1:$PORT/" -o "$EVIDENCE/web-after.html"
+grep -F "网页提交A2" "$EVIDENCE/web-after.html"
+```
+Expect `<li>网页提交A2</li>`. This satisfies AC-A2's list update.
+Browser route:
+```
+google-chrome --headless=new --disable-gpu --no-sandbox --user-data-dir=/tmp/verify-fixture-chrome --dump-dom "http://127.0.0.1:$PORT/" > "$EVIDENCE/web-dom.html"
+grep -o '<li>[^<]*</li>' "$EVIDENCE/web-dom.html"
+```
+实测 works, exit 0; screenshot optional.
+Human GUI: open URL; see heading 笔记 and list; no input box or submit button. "向网页提交" currently has no browser UI; use POST above. Mark 未确认 whether form intended.
+
+Optional /notes not criterion:
+```
+curl -sS "http://127.0.0.1:$PORT/notes"
+```
+returns JSON array; only diagnostic, not AC.
+
+Stop server:
+```
+kill "$(cat "$EVIDENCE/web.pid")" 2>/dev/null || true
+sleep 0.3
+curl -sS --max-time 2 "http://127.0.0.1:$PORT/" >/dev/null 2>&1 || echo "server stopped"
+```
+Expect server stopped.
+
+## 5. 功能 B: 标签 (AC-B1)
+Guard:
+```
+mkdir -p "$NOTES_DATA_DIR"
+python3 -m notes.cli tag "工作" > "$EVIDENCE/b1-tag.txt" 2>&1; echo "tag_exit=$?" >> "$EVIDENCE/b1-tag.txt"; cat "$EVIDENCE/b1-tag.txt"
+```
+Expect `tagged: 工作`, `tag_exit=0`.
+Evidence tags:
+```
+cat "$NOTES_DATA_DIR/tags.txt" | tee "$EVIDENCE/b1-tags.txt"
+```
+Expect `工作`. Repeated tag appends lines; observed.
+Caveat tag first failure.
+
+## 6. 功能 C: 历史导入 (AC-C1)
+Prereq missing by default:
+```
+python3 -m notes.cli import-legacy > "$EVIDENCE/c1-missing.txt" 2>&1; echo "missing_exit=$?" >> "$EVIDENCE/c1-missing.txt"; cat "$EVIDENCE/c1-missing.txt"
+```
+Expect `missing prerequisite: seed/legacy-export.json`, exit 2. This is expected negative, not AC-C1 pass.
+
+Create stand-in:
+```
+mkdir -p seed
+printf '["历史笔记一", "历史笔记二"]\n' > seed/legacy-export.json
+```
+Note: seed/ not in repo; remove in cleanup. Or use env override:
+```
+printf '["历史笔记一", "历史笔记二"]\n' > "$EVIDENCE/legacy-export.json"
+NOTES_LEGACY_EXPORT="$EVIDENCE/legacy-export.json" python3 -m notes.cli import-legacy
+```
+Both verified. Prefer seed path for AC fidelity.
+
+Fresh data dir? If A already added notes, imported count still n, list shows both. For clean count:
+```
+export NOTES_DATA_DIR="$PWD/.verify-data-c"
+rm -rf "$NOTES_DATA_DIR"; mkdir -p "$NOTES_DATA_DIR"
+python3 -m notes.cli import-legacy > "$EVIDENCE/c1-import.txt" 2>&1; echo "import_exit=$?" >> "$EVIDENCE/c1-import.txt"; cat "$EVIDENCE/c1-import.txt"
+python3 -m notes.cli list > "$EVIDENCE/c1-list.txt" 2>&1; echo "list_exit=$?" >> "$EVIDENCE/c1-list.txt"; cat "$EVIDENCE/c1-list.txt"
+```
+Expect `imported 2`, exit 0; list lines `1\t历史笔记一`, `2\t历史笔记二`; grep both.
+Do not run import twice: observed duplicates (`imported 2` again, ids 3,4). If repeated, reset data dir.
+Env override verified.
+
+## 7. 取证清单
+list files and what each proves. Mention evidence dir untracked.
+
+## 8. 清理
+```
+kill ...; rm -rf "$NOTES_DATA_DIR"; rm -f seed/legacy-export.json; rmdir seed 2>/dev/null || true; rm -rf /tmp/verify-fixture-chrome
+git status --porcelain
+```
+Expect only `.agents/` untracked (and `.verify-evidence/` if inside repo); no seed, no .notes-data.
+Maybe remove pycache created: not necessary, but note `notes/__pycache__/*.pyc` may appear; safe to leave/remove.
+
+## 9. 未确认与已知边界
+- Web submit UI missing.
+- tag needs existing data dir.
+- Repeated import duplicates.
+- ids derived from current count; if notes exist, new ids continue.
+- PRODUCT non-goals excluded.
+- Default data dir `.notes-data` not used; if tested, relative to cwd.
+
+Need "未提供" optional inputs: TECHNICAL.md, EXECUTION.md, project README exists, test entry exists. Report.
+
+Now ensure ASCII punctuation. I'll write carefully. Use `->` instead of arrows? Chinese arrows are symbols not punctuation; use `->`. Avoid full-width colon in text: use `:`. Full-width parentheses: use ASCII. Full-width quotes: ASCII. Watch out for Chinese comma "，" and enumeration "、". I'll scan after writing with grep for non-ASCII punctuation.
+
+Let me write file.
+事实齐了. 现在写 `.agents/skills/verify-fixture/SKILL.md`, 严格按实测行为写, 拿不准的标未确认.
+[toolCall]
+
+===== toolResult 2026-10-19T09:44:45.683Z =====
+Successfully wrote to /tmp/orchestra-11/p2-gaps/.agents/skills/verify-fixture/SKILL.md
+
+===== assistant 2026-10-19T09:44:56.242Z =====
+[thinking] Now check punctuation for full-width chars. Use grep with perl regex for \x{3000}-\x{303F}, FF00-FFEF excluding maybe none. Chinese chars are in 4E00-9FFF, fine. Full-width punctuation in FF00-FFEF. Check. Also check frontmatter with a parser maybe. Then execute the recipe exactly as written in a script, with a port maybe 8876 free. Need to run from repo root. The recipe's init uses `export NOTES_DATA_DIR="$PWD/.verify-data"`, which will create .verify-data in repo; cleanup at end. That's fine, but after test remove. We need capture evidence. I'll run commands copied exactly from SKILL (not all, but all critical) in one bash script. To ensure exactness, I could extract fenced sh blocks and run them sequentially. That's actually feasible: parse SKILL.md lines between ```sh and ``` and concatenate. But blocks include optional chrome and cleanup; running all sequentially may work. Blocks are in order: init, check.sh, A1 add, A1 list, web start, GET, POST, GET after, chrome, /notes, stop, B, C missing, C import, C list, env override (would re-import duplicate into same c1 dir; it's labeled alternative, running all would duplicate and then cleanup; not fatal but could confuse), cleanup.
+
+Extracting all blocks naively would run the alternative import too, plus cleanup. We can extract blocks and run, with env override block possibly fine (duplicates but after AC-C1 evidence already captured). But it uses same data dir; duplicate output doesn't break. However, the recipe's C alternative changes data dir? It uses NOTES_DATA_DIR still .verify-data-c; duplicate. Fine. Yet for "配方能跑通", a single sequential run of all blocks is a decent test. But blocks relying on `$EVIDENCE` and `$PORT` set in earlier blocks: yes, same shell.
+
+Potential issue: `check.sh` block sets no env; fine. Chrome block takes time. The stop block. Cleanup at end removes data and seed. Evidence remains. Then I can inspect evidence and exit codes? Script blocks only echo exit codes into files; if a command fails, script continues (no set -e). I can add `set -e`? If extracted, then a grep failure aborts; that's a good test but the recipe doesn't include set -e. Better to run with `set -euo pipefail`? `pipefail` affects curl|tee; fine. But cleanup kill etc. use `|| true`. The missing-prereq command has exit 2, which would abort under set -e; so can't use set -e globally. Alternative: run each block separately and check.
+
+Simpler: manually run a script mirroring recipe exactly, then inspect evidence files for expected strings/exit codes. But I want to prove the exact commands in the file work. Extraction is more honest. Let me write a small extractor (awk) that outputs blocks with markers, then run with `set +e`, and afterwards verify evidence contents. The missing-prereq expected failure won't abort. Use `bash` with default no set -e. At the end print all evidence file contents and check assertions with a separate script.
+
+One issue: extraction includes the init block `rm -rf "$NOTES_DATA_DIR"` and cleanup; okay. Also includes `cd` and `export`. The cleanup removes data but evidence stays. At the very end, `git status --porcelain` runs. Good.
+
+But the extracted `check.sh` block line `./check.sh` is sandwiched after init; okay.
+
+The chrome block may write warnings to stderr from Chrome (noise). Fine.
+
+The `for i in $(seq...)` block okay.
+
+The env override block (`NOTES_LEGACY_EXPORT=... python3 ...`) runs after C list and before cleanup; it will append duplicates. Evidence c1-list already written. Fine. But our later verification that c1-list has exactly 2 lines would happen before override? We'll check evidence after full run; c1-list remains 2 lines. notes.json would have 4, but not used as evidence. Fine.
+
+Actually, running alternative import changes `$NOTES_DATA_DIR` (.verify-data-c) to 4 items; cleanup removes. no issue.
+
+Need ensure port 8876 is free. Check with `ss` or curl. Likely free. The script's readiness loop and stop. Chrome profile /tmp/verify-fixture-chrome removed at cleanup.
+
+Let me extract and run. Use awk:
+```
+awk '/^```sh$/{flag=1;next}/^```$/{flag=0}flag' SKILL.md > /tmp/recipe.sh
+```
+But there are two ``` blocks? Only sh ones. Also frontmatter no. Good.
+
+Add a marker? Not needed. Run `bash /tmp/recipe.sh` from repo root? The init block cd's. Capture stdout/stderr to /tmp/recipe-run.log. Then inspect.
+
+Wait: extraction includes init block and cleanup. The cleanup `git status` will show .agents and .verify-evidence. It removes `$NOTES_DATA_DIR` which at cleanup points to `.verify-data-c` (last export), not `.verify-data` from A. So `.verify-data` (from A) remains! That's a bug in my recipe: cleanup only removes current NOTES_DATA_DIR, leaving earlier `.verify-data`. Need fix cleanup to remove both `.verify-data` and `.verify-data-c`, or initialize both. Better recipe: use a single data dir for A and B, and for C reset it (`rm -rf`, mkdir) then import — but then A notes are gone, fine, evidence retained. Simpler: C resets same `$NOTES_DATA_DIR` rather than new `.verify-data-c`, avoiding leftover. Let's change C block:
+```
+export NOTES_DATA_DIR="$PWD/.verify-data"
+rm -rf "$NOTES_DATA_DIR"
+mkdir -p "$NOTES_DATA_DIR"
+```
+Then cleanup removes it. But A evidence and B tags? B tags.txt is in .verify-data; C reset removes tags after B has been verified, evidence b1-tags captured. Fine. Order in recipe: A, B, C. Resetting for C is okay as C is independent. But does that undermine "B evidence"? No, evidence file captured. Good.
+
+Alternatively cleanup `rm -rf "$PWD/.verify-data" "$PWD/.verify-data-c"`. Less elegant. I'll change C to reset same dir and add a sentence "C 用重置后的同一隔离目录". But then C's `export NOTES_DATA_DIR="$PWD/.verify-data-c"` line removed. Let's edit.
+
+Also cleanup: `rm -rf "$NOTES_DATA_DIR"` covers. Add `rm -rf "$PWD/.verify-data"` maybe redundant. Keep.
+
+Another bug: after C resets NOTES_DATA_DIR, cleanup removes it. Fine.
+
+Also `$EVIDENCE` remains.
+
+Potential leftover: chrome profile removed. `seed` removed.
+
+Let me edit C and cleanup wording. Also maybe the alternative env override after C will duplicate; label it as alternative, but when extracted sequentially it runs. That's okay but better to fence alternative as separate block? It's expected that a human chooses one. Running all blocks sequentially would hit duplicate intentionally. The verification of "recipes run" should run alternatives too, which still works (exit 0, imported 2). No failure.
+
+But a subtle issue: C block uses `mkdir -p seed`, writes seed file, and the alternative block writes `$EVIDENCE/legacy-export.json` then imports from it. Both okay.
+
+Let me fix the data dir.
+产物已写. 先修一处会导致清理不彻底的细节: 功能 C 改回重置同一个隔离数据目录, 避免留下 `.verify-data-c`. 然后检查全角标点.
+[toolCall]
+
+===== toolResult 2026-10-19T09:44:56.252Z =====
+Successfully replaced 1 block(s) in /tmp/orchestra-11/p2-gaps/.agents/skills/verify-fixture/SKILL.md.
+
+===== assistant 2026-10-19T09:44:57.980Z =====
+[toolCall]
+[toolCall]
+
+===== toolResult 2026-10-19T09:44:57.992Z =====
+--- 全角/非 ASCII 标点扫描
+NO_FULLWIDTH_PUNCT
+--- 代码块数与 frontmatter
+18
+---
+name: verify-fixture
+description: 在 fixture 笔记应用上按 PRODUCT.md 验收功能 A 命令行增列与网页列表提交, 功能 B 标签, 功能 C 历史导入.
+disable-model-invocation: true
+---
+
+
+
+===== toolResult 2026-10-19T09:44:57.992Z =====
+curl -sS -D "$EVIDENCE/web-get.headers" "http://127.0.0.1:$PORT/" -o "$EVIDENCE/web-before.html"
+cat "$EVIDENCE/web-get.headers"
+grep -F "验证笔记A1" "$EVIDENCE/web-before.html"
+```
+
+期望:
+- 响应头含 `HTTP/1.0 200 OK` 与 `Content-Type: text/html; charset=utf-8`.
+- HTML 里有 `<li>验证笔记A1</li>`, `grep` 退出码 0.
+
+向网页提交一条新笔记:
+
+```sh
+curl -sS -i -X POST --data-urlencode "text=网页提交A2" "http://127.0.0.1:$PORT/" | tee "$EVIDENCE/web-post.txt"
+```
+
+期望:
+- 状态行 `HTTP/1.0 201 Created`.
+- 响应体是 JSON, 形如 `{"id": 2, "text": "网页提交A2"}`. id 取决于当前条数.
+
+重新读取根路径, 确认列表更新:
+
+```sh
+curl -sS "http://127.0.0.1:$PORT/" -o "$EVIDENCE/web-after.html"
+grep -F "网页提交A2" "$EVIDENCE/web-after.html"
+```
+
+期望: HTML 里出现 `<li>网页提交A2</li>`, `grep` 退出码 0. 这满足 AC-A2 的"提交后列表出现这条文字".
+
+浏览器渲染检查, 可选但推荐, 本机已装 google-chrome:
+
+```sh
+google-chrome --headless=new --disable-gpu --no-sandbox \
+  --user-data-dir=/tmp/verify-fixture-chrome \
+  --dump-dom "http://127.0.0.1:$PORT/" > "$EVIDENCE/web-dom.html"
+grep -o '<li>[^<]*</li>' "$EVIDENCE/web-dom.html"
+```
+
+期望: 退出码 0, 输出页面里的 `<li>` 条目, 含 `验证笔记A1` 和 `网页提交A2`. 实测通过.
+
+人工浏览器入口: 打开 `http://127.0.0.1:8876/`, 应看到标题 `笔记` 和列表.
+当前实现的页面 HTML 里没有任何 `<form>` 或 `<input>`, 已实测, 所以没有可点的输入框或提交按钮. "向网页提交"目前只能走上面的 HTTP POST, 再刷新页面看列表. 这是观察到的实现现状, 是否有意如此标为未确认, 见第 9 节.
+
+诊断端点, 不是判据:
+
+```sh
+curl -sS "http://127.0.0.1:$PORT/notes"
+```
+
+期望: 返回 JSON 数组, 含已保存的笔记. 只用来快速核对存储内容.
+
+结束服务:
+
+```sh
+kill "$(cat "$EVIDENCE/web.pid")" 2>/dev/null || true
+sleep 0.3
+curl -sS --max-time 2 "http://127.0.0.1:$PORT/" >/dev/null 2>&1 || echo "server stopped"
+```
+
+期望: 输出 `server stopped`, 端口不再响应.
+
+## 5. 功能 B: 标签, AC-B1
+
+先确保数据目录存在, 避免已实测的 `FileNotFoundError`:
+
+```sh
+mkdir -p "$NOTES_DATA_DIR"
+python3 -m notes.cli tag "工作" > "$EVIDENCE/b1-tag.txt" 2>&1
+echo "tag_exit=$?" >> "$EVIDENCE/b1-tag.txt"
+cat "$EVIDENCE/b1-tag.txt"
+```
+
+期望:
+- 输出 `tagged: 工作`.
+- `tag_exit=0`.
+- 进程无报错.
+
+核对落盘:
+
+```sh
+cat "$NOTES_DATA_DIR/tags.txt" | tee "$EVIDENCE/b1-tags.txt"
+```
+
+期望: 内容含 `工作`. 重复执行 `tag` 会继续追加, 文件里出现多行, 已实测.
+
+证据: `$EVIDENCE/b1-tag.txt`, `$EVIDENCE/b1-tags.txt`.
+
+## 6. 功能 C: 历史数据导入, AC-C1
+
+### 6.1 缺前置时的预期失败
+
+仓库不包含 `seed/legacy-export.json`. 先确认这条负向行为:
+
+
+===== assistant 2026-10-19T09:45:00.501Z =====
+[thinking] No fullwidth punctuation. Good.
+
+Now run the extracted recipe exactly. But note: extraction includes `./check.sh` and all blocks; the optional env override block will run. Fine.
+
+Need ensure no server on 8876. Check and run. Also remove any leftover .verify-data before (init does). The script will create .verify-evidence and .verify-data. Run and capture log.
+
+Potential issue: `google-chrome` returns nonzero if profile lock? We remove /tmp profile only at cleanup; fresh. Fine.
+
+Let's extract and run.
+现在把 SKILL.md 里的所有 `sh` 代码块原样抽取出来, 在一个 shell 里顺序执行, 以此证明配方本身可照抄跑通.
+[toolCall]
+
+===== toolResult 2026-10-19T09:45:01.589Z =====
+--- 抽取行数
+64 /tmp/verify-fixture-recipe.sh
+--- 端口预检
+PORT_FREE
+--- 开始执行
+recipe_exit=0
+--- 执行日志
+----------------------------------------------------------------------
+Ran 2 tests in 0.000s
+
+OK
+added 1: 验证笔记A1
+add_exit=0
+1	验证笔记A1
+list_exit=0
+1	验证笔记A1
+listening on http://127.0.0.1:8876/
+"GET / HTTP/1.1" 200 -
+HTTP/1.0 200 OK
+Server: BaseHTTP/0.6 Python/3.14.4
+Date: Mon, 19 Oct 2026 09:45:00 GMT
+Content-Type: text/html; charset=utf-8
+Content-Length: 144
+
+<!doctype html><html><head><meta charset="utf-8"><title>笔记</title></head><body><h1>笔记</h1><ul><li>验证笔记A1</li></ul></body></html>
+HTTP/1.0 201 Created
+Server: BaseHTTP/0.6 Python/3.14.4
+Date: Mon, 19 Oct 2026 09:45:00 GMT
+Content-Type: application/json; charset=utf-8
+Content-Length: 35
+
+{"id": 2, "text": "网页提交A2"}<!doctype html><html><head><meta charset="utf-8"><title>笔记</title></head><body><h1>笔记</h1><ul><li>验证笔记A1</li><li>网页提交A2</li></ul></body></html>
+<li>验证笔记A1</li>
+<li>网页提交A2</li>
+[{"id": 1, "text": "验证笔记A1"}, {"id": 2, "text": "网页提交A2"}]server stopped
+tagged: 工作
+tag_exit=0
+工作
+missing prerequisite: seed/legacy-export.json
+missing_exit=2
+imported 2
+import_exit=0
+1	历史笔记一
+2	历史笔记二
+list_exit=0
+1	历史笔记一
+2	历史笔记二
+imported 2
+?? .agents/
+?? .verify-evidence/
+?? notes/__pycache__/cli.cpython-314.pyc
+?? notes/__pycache__/web.cpython-314.pyc
+
+
+===== assistant 2026-10-19T09:45:07.348Z =====
+[thinking] Recipe ran exit 0. Note Server Python/3.14.4 vs earlier 3.14.7: because the recipe extraction ran `python3` in different PATH? Earlier `/home/bolo/.local/share/uv/python/cpython-3.14-linux-x86_64-gnu/bin/python3.14` 3.14.7. Now Server says 3.14.4. Why? Possibly `google-chrome`? No. Wait the log shows "Python/3.14.4" for the web server. Maybe because the extracted script ran with `bash` and PATH differs? Hmm, earlier `python3 --version` 3.14.7. The web server started in recipe logs 3.14.4. That suggests `python3` resolved to /usr/bin/python3 (3.14.4?) when PATH different? Our bash tool environment may differ between calls? Unlikely. Let me check `which -a python3` and versions. This matters: recipe says 实测 3.14.7, but actual might vary. Better phrase "实测 3.14.x" or simply "python3 可用". Let's investigate.
+
+Also, extraction log includes `list_exit=0` twice? The second is C list. Fine. It doesn't show `tagged` before? yes.
+
+Important: the recipe's alternative import block runs after C list, appending duplicates; log ends `imported 2`. Fine.
+
+Cleanup ran: `.verify-data` removed, seed removed. git status shows .agents, .verify-evidence, two pyc. Good.
+
+Now verify evidence assertions independently: check files exist and contents/exit codes. Write a check script:
+
+- a1-add: contains "added 1: 验证笔记A1", "add_exit=0"
+- a1-list: "list_exit=0", tab line
+- web.log: listening 8876
+- web-get.headers: 200, text/html
+- web-before.html: li A1
+- web-post: 201 Created, JSON text
+- web-after: li A2
+- web-dom: both li
+- b1-tag: tagged, tag_exit=0
+- b1-tags: 工作
+- c1-missing: missing prerequisite, missing_exit=2
+- c1-import: imported 2, import_exit=0
+- c1-list: both, list_exit=0
+- cleanup: no .verify-data, no seed, no server on 8876, no chrome profile? cleanup removed /tmp/verify-fixture-chrome; check.
+- deploy hash unchanged.
+- pycache untracked from runs: remove at end.
+
+Let me run checks and show pass/fail. Use a small bash loop. Also check python versions to correct claim.
+配方原样执行退出码 0. 现在逐条核对证据文件里的期望字符串, 并检查清理结果与部署副本未被改动.
+[toolCall]
+[toolCall]
+
+===== toolResult 2026-10-19T09:45:07.381Z =====
+PASS: .verify-evidence/a1-add.txt <- added 1: 验证笔记A1
+PASS: .verify-evidence/a1-add.txt <- add_exit=0
+PASS: .verify-evidence/a1-list.txt <- list_exit=0
+PASS: .verify-evidence/a1-list.txt <- 1	验证笔记A1
+PASS: .verify-evidence/web.log <- listening on http://127.0.0.1:8876/
+PASS: .verify-evidence/web-get.headers <- 200 OK
+PASS: .verify-evidence/web-get.headers <- text/html; charset=utf-8
+PASS: .verify-evidence/web-before.html <- <li>验证笔记A1</li>
+PASS: .verify-evidence/web-post.txt <- 201 Created
+PASS: .verify-evidence/web-post.txt <- "text": "网页提交A2"
+PASS: .verify-evidence/web-after.html <- <li>网页提交A2</li>
+PASS: .verify-evidence/web-dom.html <- <li>验证笔记A1</li>
+PASS: .verify-evidence/web-dom.html <- <li>网页提交A2</li>
+PASS: .verify-evidence/b1-tag.txt <- tagged: 工作
+PASS: .verify-evidence/b1-tag.txt <- tag_exit=0
+PASS: .verify-evidence/b1-tags.txt <- 工作
+PASS: .verify-evidence/c1-missing.txt <- missing prerequisite: seed/legacy-export.json
+PASS: .verify-evidence/c1-missing.txt <- missing_exit=2
+PASS: .verify-evidence/c1-import.txt <- imported 2
+PASS: .verify-evidence/c1-import.txt <- import_exit=0
+PASS: .verify-evidence/c1-list.txt <- list_exit=0
+PASS: .verify-evidence/c1-list.txt <- 历史笔记一
+PASS: .verify-evidence/c1-list.txt <- 历史笔记二
+
+
+===== toolResult 2026-10-19T09:45:07.381Z =====
+--- 清理检查
+PASS: .verify-data removed
+PASS: seed removed
+PASS: chrome profile removed
+PASS: server stopped
+--- 部署副本
+63e832cd18e6e0c802e8176a39d4b576dac6e4a28ffce0a7d1ffe211a63c5775  deploy/global-skills/verify-fixture/SKILL.md
+--- python 版本来源
+/usr/bin/python3
+/bin/python3
+Python 3.14.7
+Python 3.14.4
+--- git status
+?? .agents/
+?? .verify-evidence/
+?? notes/__pycache__/cli.cpython-314.pyc
+?? notes/__pycache__/web.cpython-314.pyc
+
+
+===== assistant 2026-10-19T09:45:14.589Z =====
+[thinking] Interesting: `which python3` = /usr/bin/python3 but `python3 --version` = 3.14.7, while `/usr/bin/python3 --version` = 3.14.4. That means `python3` is a shell function/alias? In bash tool, maybe `python3` is a function from environment? `which` says /usr/bin/python3 but actual run uses 3.14.7. Could be a bash function named python3 defined in BASH_ENV. Let me check `type python3`, `declare -f python3`, env. The web server in recipe reported 3.14.4, meaning inside `bash /tmp/recipe.sh`, `python3` resolved to /usr/bin/python3 3.14.4. Whereas direct bash tool invocation uses 3.14.7 (maybe wrapper function? Actually tools.bash may run commands through a shell that has a function, but `bash script` starts a new bash that doesn't inherit functions unless exported; hence 3.14.4). This is a real reproducibility detail: recipe's `python3` may resolve differently depending on shell. Both 3.14.4 and 3.14.7 worked. Recipe says "实测版本 3.14.7" which is what direct invocation showed, but extracted script used 3.14.4. Better change to "实测 3.14.4 与 3.14.7 均可" or "实测 3.14.x". To be accurate: direct `python3` = 3.14.7; `/usr/bin/python3` = 3.14.4; recipe run in a fresh bash used /usr/bin/python3 3.14.4. Both pass. Write "实测 3.14.4 与 3.14.7 均通过". Good.
+
+Also check `type python3` to explain. Not needed for skill. But let me confirm both work (we did: earlier with 3.14.7 direct, recipe with 3.14.4). Yes.
+
+Also note the log `Server: BaseHTTP/0.6 Python/3.14.4` demonstrates. Fine.
+
+Should I make recipe more deterministic by using `python3` only per PRODUCT. Fine.
+
+Now clean up `.verify-evidence` and untracked pyc? The user asked for evidence. We can keep evidence in /tmp outside repo instead? Currently `.verify-evidence` in repo is untracked. Deliverable could mention evidence path. Keeping it helps user inspect. But repo should remain clean except .agents skill. We could move evidence to `/tmp/verify-fixture-evidence-final` and remove from repo. But then report path in /tmp. Either is fine. The skill says evidence in `.verify-evidence`; leaving it as an artifact is okay but pollutes git status. Better move it to /tmp/verify-fixture-evidence (won't be lost during session) and remove untracked pyc. Then final git status only `.agents/`. Mention evidence at /tmp path. But user may want evidence in project; there's no requirement. The recipe itself writes `.verify-evidence` when used. I'll move to /tmp/verify-fixture-evidence and remove pycache files created by our runs (untracked). Check tracked pyc remain.
+
+Wait, the pyc untracked are `cli.cpython-314.pyc`, `web.cpython-314.pyc`, created by running. Deleting them is safe. There might be a `store` pyc tracked (existed). Don't delete tracked. Only remove the two untracked.
+
+Then run final validation: frontmatter `name` matches dir, description one line, disable flag, no fullwidth, code blocks count, maybe markdown lint not needed. Also check that the skill file's required sections exist. And maybe run `head -5`.
+
+Also update python version statement. Let me edit.
+
+Also check wording "仓库根目录, 也就是同时含..." okay.
+
+One more potential issue: The skill says "本机当前为 /tmp/orchestra-11/p2-gaps". Good.
+
+Another potential issue: `export EVIDENCE="$PWD/.verify-evidence"` then cleanup keeps it. Good.
+
+Another: In C section, after resetting NOTES_DATA_DIR, `tags.txt` from B is deleted. But b1-tags evidence already captured. The order in the skill is A, B, C. Fine. Could mention "C 会重置数据目录, 所以要在 B 之后跑". Add a note to avoid someone running C first then B and losing C data? Actually if C first then B, B adds tag to C data dir; evidence both fine. No issue. But if someone reruns A after C, ids differ; not a criterion. Fine.
+
+Another: The recipe's C cleanup removes seed. Good.
+
+Another: `./check.sh` uses `python3 -m unittest discover -s tests -q`, with NOTES_DATA_DIR exported pointing to .verify-data. Tests set their own temp dir and pop env; then our exported var is removed in the test process only (subprocess), not shell. Fine. But check.sh runs tests that modify os.environ within the test process only. No effect.
+
+Wait: the test's `tearDown` pops NOTES_DATA_DIR; fine.
+
+Potential issue: after `./check.sh`, store pyc for test may be created; existing. Not important.
+
+Another: if data dir has no notes, `import-legacy` with seed works because store.add creates dir. We mkdir anyway.
+
+Now update version wording.
+所有断言全 PASS, 清理与部署副本核对通过. 修正一处版本表述: 配方在全新 bash 里实际用到 `/usr/bin/python3` 3.14.4, 直接调用时是 3.14.7, 两者都通过.
+[toolCall]
+
+===== toolResult 2026-10-19T09:45:14.593Z =====
+Successfully replaced 1 block(s) in /tmp/orchestra-11/p2-gaps/.agents/skills/verify-fixture/SKILL.md.
+
+===== assistant 2026-10-19T09:45:17.422Z =====
+[thinking] Now move evidence outside repo, remove untracked pyc, final checks. But if I move evidence, the check results refer to paths that no longer exist in repo; I can cite /tmp path. Let's copy (not move?) to /tmp/verify-fixture-evidence-final, then remove repo .verify-evidence to keep repo clean. The skill's evidence filenames remain. Do that.
+
+Then final `git status` should only `.agents/`. Verify skill file exists and content. Also maybe compute sha256 of skill.
+
+Also test structural validation with Python: parse frontmatter? Simple.
+
+Let me run.
+把验证证据移到仓库外保存, 清掉运行产生的未跟踪 pyc, 再做最终结构检查.
+[toolCall]
+[toolCall]
+
+===== toolResult 2026-10-19T09:45:17.441Z =====
+--- 证据清单
+total 60
+-rw-rw-r-- 1 bolo bolo  35 Oct 19 17:45 a1-add.txt
+-rw-rw-r-- 1 bolo bolo  29 Oct 19 17:45 a1-list.txt
+-rw-rw-r-- 1 bolo bolo  26 Oct 19 17:45 b1-tag.txt
+-rw-rw-r-- 1 bolo bolo   7 Oct 19 17:45 b1-tags.txt
+-rw-rw-r-- 1 bolo bolo  25 Oct 19 17:45 c1-import.txt
+-rw-rw-r-- 1 bolo bolo  48 Oct 19 17:45 c1-list.txt
+-rw-rw-r-- 1 bolo bolo  61 Oct 19 17:45 c1-missing.txt
+-rw-rw-r-- 1 bolo bolo  39 Oct 19 17:45 legacy-export.json
+-rw-rw-r-- 1 bolo bolo 167 Oct 19 17:45 web-after.html
+-rw-rw-r-- 1 bolo bolo 144 Oct 19 17:45 web-before.html
+-rw-rw-r-- 1 bolo bolo 169 Oct 19 17:45 web-dom.html
+-rw-rw-r-- 1 bolo bolo 153 Oct 19 17:45 web-get.headers
+-rw-rw-r-- 1 bolo bolo 199 Oct 19 17:45 web-post.txt
+-rw-rw-r-- 1 bolo bolo 214 Oct 19 17:45 web.log
+-rw-rw-r-- 1 bolo bolo   8 Oct 19 17:45 web.pid
+--- git status
+?? .agents/
+--- skill sha256
+cfe5dda697d2033df9e6f71ab051830257a86d1c28f4639769d1dbafc33930f3  .agents/skills/verify-fixture/SKILL.md
+--- deploy sha256
+63e832cd18e6e0c802e8176a39d4b576dac6e4a28ffce0a7d1ffe211a63c5775  deploy/global-skills/verify-fixture/SKILL.md
+
+
+===== toolResult 2026-10-19T09:45:17.441Z =====
+--- 目录与 frontmatter
+total 12
+drwxrwxr-x 2 bolo bolo    60 Oct 19 17:44 .
+drwxrwxr-x 4 bolo bolo    80 Oct 19 17:44 ..
+-rw-rw-r-- 1 bolo bolo 11575 Oct 19 17:45 SKILL.md
+---
+name: verify-fixture
+description: 在 fixture 笔记应用上按 PRODUCT.md 验收功能 A 命令行增列与网页列表提交, 功能 B 标签, 功能 C 历史导入.
+disable-model-invocation: true
+---
+--- 必备小节
+9:## 0. 本次覆盖范围
+20:## 1. 前置与硬约束
+43:## 2. 既有测试入口
+53:## 3. 功能地图
+62:## 4. 功能 A: 笔记记录
+180:## 5. 功能 B: 标签, AC-B1
+206:## 6. 功能 C: 历史数据导入, AC-C1
+270:## 7. 取证清单
+288:## 8. 清理
+304:## 9. 未确认与已知边界
+--- 全角扫描
+NO_FULLWIDTH_PUNCT
+
+
+===== assistant 2026-10-19T09:45:23.518Z =====
+[thinking] Everything good. But wait: after editing the version line, the extracted recipe script /tmp/verify-fixture-recipe.sh predates the edit? The edit only changed prose line, no code. The executed code is identical. Fine. But the final SKILL.md code blocks unchanged after run except prose. Good.
+
+However, one concern: the recipe's cleanup block removes `$NOTES_DATA_DIR` and seed, but the `legacy-export.json` alternative writes into `$EVIDENCE`; cleanup keeps evidence. Fine.
+
+Another concern: "not provided" inputs: TECHNICAL.md, EXECUTION.md absent. README exists, tests exist. Report.
+
+Coverage: A CLI add/list, A web GET/POST (browser GET + HTTP POST), B tag, C import. Excluded export/stats. Also `/notes` diagnostic not criterion.
+
+Actual entries run:
+- `./check.sh` (sanity)
+- CLI add/list (AC-A1)
+- web server start, curl GET /, curl POST form, curl GET /, curl /notes, chrome headless dump-dom, screenshot (earlier separate run)
+- CLI tag (AC-B1)
+- import-legacy missing prereq (expected failure), with seed, list, env override, empty import, duplicate import observation
+- default port 8791, port conflict
+- cwd outside repo failure
+- tag-first failure
+
+Not run:
+- GUI browser manual interaction (no form to interact with); used headless Chrome.
+- export/stats (out of scope).
+- Post/redirect? no.
+- The web "form submit" via UI impossible.
+
+Need deliver report in Chinese, concise telegraphic style, include paths, coverage, entries actually run, not run + reasons, missing optional inputs. Mention skill path and evidence path. Mention key findings/caveats: no web form; tag first fails; import duplicates; must run at repo root.
+
+Also mention deploy copy untouched (hash). Good.
+
+Before final, should I include the actual evidence content snippets? The user asked "给出跑过的证据". I can cite the assertion PASS list and evidence files. Maybe include key outputs: `added 1: 验证笔记A1`, `list`, `201`, `<li>`, `tagged: 工作`, `imported 2`, `missing_exit=2`. Concise.
+
+Should I start mailbox listener? As discussed, not needed. But system rule says "交付前需自行接收来信时" — no mail requirement. Skip.
+
+Double-check final skill has one-line description and no trailing issues. fine.
+
+Potential concern: The skill frontmatter `description` contains ASCII comma; okay.
+
+Potential concern: The skill's section 1 says "本机当前为 /tmp/orchestra-11/p2-gaps" — if project moves, stale. It says "本机当前", acceptable.
+
+Potential concern: `python3` vs uv note: `uv run python` verified exit 0 but did not verify full add/list; only list on empty dir. Is claiming "实测等价" too strong? We ran `uv run python -m notes.cli list` exit 0. That proves module launch works, not all commands. But since it launches same module, likely equivalent. To be precise, change to "实测 `uv run python -m notes.cli list` 可用" rather than "等价". Let's edit to avoid overclaiming. Also note project rule. Change:
+"- 若本机规则要求用 uv, 可把 `python3` 换成 `uv run python`. 实测 `uv run python -m notes.cli list` 能启动, 其余子命令未逐一用 uv 重跑. PRODUCT.md 原文入口仍按 `python3` 记录."
+This is more accurate. Do it.
+
+Also "实测 3.14.4 与 3.14.7 都能通过" — yes full recipe under 3.14.4; earlier individual under 3.14.7. Fine.
+
+Also the evidence `web.log` says Python 3.14.4; okay.
+
+Let me edit the uv line.
+[toolCall]
+
+===== toolResult 2026-10-19T09:45:23.520Z =====
+Successfully replaced 1 block(s) in /tmp/orchestra-11/p2-gaps/.agents/skills/verify-fixture/SKILL.md.
+
+===== assistant 2026-10-19T09:45:27.398Z =====
+[thinking] Now final check after edit: no fullwidth, git status, maybe no need rerun code (prose only). But hash changed. Provide final answer.
+
+Wait: The skill's cleanup section says `git status --porcelain` expects only `.agents/` untracked. But if evidence kept, also `.verify-evidence`. It says that. Fine.
+
+One more thought: The skill should mention "未提供 TECHNICAL.md/EXECUTION.md" in the skill itself? It says in section 9. Good. Report also.
+
+Could the generated skill be considered "cover only PRODUCT entries + shared rules"? It includes `/notes` diagnostic (not a function) and default port/instance checks, plus negative import. That's within shared diagnostics, clearly marked not criterion. Fine.
+
+Could the "browser rendering check" be considered out of scope? It's the web entry, fine.
+
+Potential issue: `description` says "命令行增列" which is a bit odd; could say "命令行新增与列出". Better human summary. Let me improve:
+"按 PRODUCT.md 验收 fixture 笔记应用: 命令行新增/列出, 网页列表与提交, 标签, 历史导入."
+Avoid slash? Rule says short options use `/`. Fine. Update. Also one line. Do it.
+
+Then final hash and report.
+[toolCall]
+
+===== toolResult 2026-10-19T09:45:27.402Z =====
+Successfully replaced 1 block(s) in /tmp/orchestra-11/p2-gaps/.agents/skills/verify-fixture/SKILL.md.
+
+===== assistant 2026-10-19T09:45:29.732Z =====
+[toolCall]
+
+===== toolResult 2026-10-19T09:45:29.748Z =====
+--- frontmatter
+---
+name: verify-fixture
+description: 按 PRODUCT.md 验收 fixture 笔记应用: 命令行新增/列出, 网页列表与提交, 标签, 历史导入.
+disable-model-invocation: true
+---
+--- 全角扫描
+NO_FULLWIDTH_PUNCT
+--- git status
+?? .agents/
+--- 最终校验和
+4cd39dfa99a10cb33e4d439ccf5e01d56006d2989407fbf1dd1c5a98260ddf9a  .agents/skills/verify-fixture/SKILL.md
+63e832cd18e6e0c802e8176a39d4b576dac6e4a28ffce0a7d1ffe211a63c5775  deploy/global-skills/verify-fixture/SKILL.md
+--- 证据仍在
+15
+
+
+===== assistant 2026-10-19T09:45:34.758Z =====
+[thinking] Done. Final report in Chinese, concise, telegraphic, include:
+
+- 生成路径
+- 覆盖范围
+- 实跑入口 (and evidence)
+- 没跑的及原因
+- 缺的 optional inputs
+- key findings/gaps: web page no form; tag first fails; import duplicates; must repo root
+- deploy copy unchanged
+- evidence path
+
+Keep not too long but enough. Use ASCII punctuation. No fullwidth. Avoid "、". Use commas.
+
+Structure with short bullets. Mention the recipe was extracted verbatim and run, exit 0, all 23 assertions PASS.
+
+Let me write.
+生成路径: `.agents/skills/verify-fixture/SKILL.md`
+
+覆盖范围:
+- 功能 A: CLI `add`/`list`, 网页 `GET /` 列表, 网页 `POST /` 提交后列表更新.
+- 功能 B: CLI `tag`.
+- 功能 C: CLI `import-legacy`, 含 `seed/legacy-export.json` 前置与 `NOTES_LEGACY_EXPORT` 覆盖.
+- 共用: 仓库根目录约束, 隔离数据目录, 网页实例检查, 取证清单, 清理.
+- 排除: `tools/export_csv.py`, `tools/stats.py` 及 PRODUCT 非目标中的导出/统计. `/notes` 端点只作诊断, 未列为判据.
+
+实际跑过的入口:
+- `./check.sh`: 2 tests OK.
+- CLI `add`/`list`: `added 1: 验证笔记A1`, `list` 输出含该文字, 退出码 0.
+- 网页: 默认端口 8791 与 8876 均启动成功; `GET /` 200 + HTML 列表; `POST /` 201 + JSON 新条目; 再 `GET /` 出现新文字; headless Chrome 渲染出两条 `<li>`; 端口占用时报 `Errno 98`; 停服后端口不再响应.
+- CLI `tag`: `tagged: 工作`, 退出码 0, `tags.txt` 落盘.
+- `import-legacy`: 缺前置时 `missing prerequisite...`, 退出码 2; 造 seed 后 `imported 2`, `list` 含两条; 环境变量覆盖可用; 空数组 `imported 0`; 重复导入会重复追加.
+- 负向观察: 非仓库根目录运行报 `ModuleNotFoundError`; 数据目录不存在时先跑 `tag` 报 `FileNotFoundError`.
+
+证据:
+- 把 SKILL.md 里所有 `sh` 代码块原样抽出执行, 退出码 0.
+- 23 条期望字符串断言全 PASS.
+- 证据文件在 `/tmp/verify-fixture-evidence-final/`, 含 add/list 输出, 网页请求头与前后 HTML, headless 渲染 DOM, tag 输出, 导入输出, 启动日志.
+- 清理验证: `.verify-data` 已删, `seed/` 已删, Chrome profile 已删, 8876 已停.
+- `deploy/global-skills/verify-fixture/SKILL.md` sha256 未变, 仍为 `63e832...5775`.
+
+没跑的:
+- 图形浏览器人工点击: 页面没有 `<form>` 或 `<input>`, 没有可点的提交入口. 已用 headless Chrome 验证渲染, 用 HTTP POST 验证提交.
+- 导出与统计: 不在本轮范围.
+- uv 跑完整流程: 只验证了 `uv run python -m notes.cli list` 能启动, 其余子命令未逐一重跑; 配方主入口按 PRODUCT 用 `python3`.
+
+缺的可选输入:
+- `TECHNICAL.md` 未提供.
+- `EXECUTION.md` 未提供.
+- `README.md` 与测试入口 `check.sh` 存在并已使用.
+
+关键差异已写进 skill 第 9 节: 网页无表单提交 UI, `tag` 需先有数据目录, 重复导入会重复追加. 这些按观察记录, 没写成产品结论.
