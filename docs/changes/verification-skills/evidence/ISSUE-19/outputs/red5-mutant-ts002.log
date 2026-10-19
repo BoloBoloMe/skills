@@ -1,0 +1,400 @@
+ ... (8 earlier lines, ctrl+o/alt+o to expand)                                                                                                                   │
+ round 7: lite 8.220 fast 8.478                                                                                                                                  │
+ lite n=7 median=8.279 min=7.903 max=8.498 range=0.595                                                                                                           │
+ fast n=7 median=8.444 min=7.803 max=8.693 range=0.891                                                                                                           │
+ 中位数降幅 -2.0%                                                                                                                                                │
+ 运行失败数: 0 | 处理条数每侧 7 次 x 200000                                                                                                                      │
+                                                                                                                                                                 │
+ Took 0.3s                                                                                                                                                       │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ Thinking...                                                                                                                                                     │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ $ cat > /tmp/orch19-exp/order.py <<'EOF'                                                                                                                        │
+ """非正式一次性实验: 复现 bench/micro.py 的顺序偏差 (先测者承担预热)."""                                                                                        │
+ import sys, time                                                                                                                                                │
+ from pathlib import Path                                                                                                                                        │
+ REPO = Path("/tmp/orchestra-19/red3-lab")                                                                                                                       │
+ sys.path.insert(0, str(REPO / "src"))                                                                                                                           │
+ from index_fast import build_index as fast                                                                                                                      │
+ from index_lite import build_index as lite                                                                                                                      │
+ rows = [tuple(l.rstrip("\n").split(",")) for l in open(REPO/"data"/"rows.csv", encoding="utf-8")]                                                               │
+                                                                                                                                                                 │
+ def t(fn):                                                                                                                                                      │
+     s = time.perf_counter(); fn(rows); return (time.perf_counter()-s)*1000                                                                                      │
+                                                                                                                                                                 │
+ print("== 1) 预热后按 micro.py 顺序 (lite 先) 各 5 轮")                                                                                                         │
+ t(lite); t(fast)                                                                                                                                                │
+ L=[];F=[]                                                                                                                                                       │
+ for _ in range(5):                                                                                                                                              │
+     L.append(t(lite)); F.append(t(fast))                                                                                                                        │
+ print("lite", [f"{x:.3f}" for x in L]); print("fast", [f"{x:.3f}" for x in F])                                                                                  │
+                                                                                                                                                                 │
+ print("== 2) 冷启动, 让 fast 先测 (与 micro.py 相反的顺序) 各 1 轮")                                                                                            │
+ print(f"fast {t(fast):.3f}ms  lite {t(lite):.3f}ms")                                                                                                            │
+ EOF                                                                                                                                                             │
+ cd /tmp/orch19-exp && uv run python order.py                                                                                                                    │
+                                                                                                                                                                 │
+ == 1) 预热后按 micro.py 顺序 (lite 先) 各 5 轮                                                                                                                  │
+ lite ['10.044', '9.792', '10.069', '10.278', '10.207']                                                                                                          │
+ fast ['8.672', '8.808', '8.977', '8.841', '8.350']                                                                                                              │
+ == 2) 冷启动, 让 fast 先测 (与 micro.py 相反的顺序) 各 1 轮                                                                                                     │
+ fast 8.357ms  lite 9.464ms                                                                                                                                      │
+                                                                                                                                                                 │
+ Took 0.2s                                                                                                                                                       │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ Thinking...                                                                                                                                                     │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ $ cd /tmp/orch19-exp && for i in 1 2; do echo "--- alt run $i"; uv run python alt.py | tail -5; echo "--- order run $i"; uv run python order.py; done           │
+                                                                                                                                                                 │
+ ... (19 earlier lines, ctrl+o/alt+o to expand)                                                                                                                  │
+ == 1) 预热后按 micro.py 顺序 (lite 先) 各 5 轮                                                                                                                  │
+ lite ['9.207', '9.275', '9.059', '9.055', '9.163']                                                                                                              │
+ fast ['8.133', '8.189', '8.313', '8.184', '8.217']                                                                                                              │
+ == 2) 冷启动, 让 fast 先测 (与 micro.py 相反的顺序) 各 1 轮                                                                                                     │
+ fast 8.093ms  lite 9.321ms                                                                                                                                      │
+                                                                                                                                                                 │
+ Took 0.9s                                                                                                                                                       │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ Thinking...                                                                                                                                                     │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ $ cat > /tmp/orch19-exp/robust.py <<'EOF'                                                                                                                       │
+ """非正式一次性实验: 交替 AB 测 build_index, 分别在 GC 开启/关闭下各 9 轮."""                                                                                   │
+ import gc, statistics, sys, time                                                                                                                                │
+ from pathlib import Path                                                                                                                                        │
+ REPO = Path("/tmp/orchestra-19/red3-lab")                                                                                                                       │
+ sys.path.insert(0, str(REPO / "src"))                                                                                                                           │
+ from index_fast import build_index as fast                                                                                                                      │
+ from index_lite import build_index as lite                                                                                                                      │
+ rows = [tuple(l.rstrip("\n").split(",")) for l in open(REPO/"data"/"rows.csv", encoding="utf-8")]                                                               │
+                                                                                                                                                                 │
+ def run(mode, rounds=9):                                                                                                                                        │
+     L, F = [], []                                                                                                                                               │
+     for i in range(rounds):                                                                                                                                     │
+         a, b = (lite, fast) if i % 2 == 0 else (fast, lite)                                                                                                     │
+         for fn in (a, b):                                                                                                                                       │
+             if mode == "off":                                                                                                                                   │
+                 gc.collect(); gc.disable()                                                                                                                      │
+             s = time.perf_counter(); fn(rows); d = (time.perf_counter() - s) * 1000                                                                             │
+             if mode == "off":                                                                                                                                   │
+                 gc.enable()                                                                                                                                     │
+             (L if fn is lite else F).append(d)                                                                                                                  │
+     return L, F                                                                                                                                                 │
+                                                                                                                                                                 │
+ def show(tag, L, F):                                                                                                                                            │
+     fmt = lambda xs: f"n={len(xs)} median={statistics.median(xs):.2f}ms min={min(xs):.2f} max={max(xs):.2f} range={max(xs)-min(xs):.2f}"                        │
+     print(tag); print("  lite", fmt(L)); print("  fast", fmt(F))                                                                                                │
+     print(f"  中位数差 {(statistics.median(L)-statistics.median(F)):+.2f}ms "                                                                                   │
+           f"({(statistics.median(L)-statistics.median(F))/statistics.median(L)*100:+.1f}%)")                                                                    │
+                                                                                                                                                                 │
+ lite(rows); fast(rows)  # 预热                                                                                                                                  │
+ show("GC 开启 (脚本默认状态) 9 轮交替", *run("on"))                                                                                                             │
+ show("计时区内关闭 GC 9 轮交替", *run("off"))                                                                                                                   │
+                                                                                                                                                                 │
+ # 正确性: 两次构建的 key->条数 是否与原始数据统计一致, 且两侧是否一致                                                                                           │
+ exp = {}                                                                                                                                                        │
+ for k, _ in rows: exp[k] = exp.get(k, 0) + 1                                                                                                                    │
+ conv = lambda idx: {k: (v if isinstance(v, int) else len(v)) for k, v in idx.items()}                                                                           │
+ print("lite 条数正确:", conv(lite(rows)) == exp, "| fast 条数正确:", conv(fast(rows)) == exp,                                                                   │
+       "| 两侧折算结果一致:", conv(lite(rows)) == conv(fast(rows)))                                                                                              │
+ print("索引值类型 lite:", type(next(iter(lite(rows).values()))).__name__,                                                                                       │
+       "fast:", type(next(iter(fast(rows).values()))).__name__)                                                                                                  │
+ print("数据: data/rows.csv", len(rows), "行, 37 个不同 key")                                                                                                    │
+ EOF                                                                                                                                                             │
+ cd /tmp/orch19-exp && uv run python robust.py                                                                                                                   │
+                                                                                                                                                                 │
+ ... (6 earlier lines, ctrl+o/alt+o to expand)                                                                                                                   │
+   fast n=9 median=7.85ms min=7.77 max=8.13 range=0.36                                                                                                           │
+   中位数差 +1.28ms (+14.1%)                                                                                                                                     │
+ lite 条数正确: True | fast 条数正确: True | 两侧折算结果一致: True                                                                                              │
+ 索引值类型 lite: list fast: int                                                                                                                                 │
+ 数据: data/rows.csv 200000 行, 37 个不同 key                                                                                                                    │
+                                                                                                                                                                 │
+ Took 0.5s                                                                                                                                                       │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ Thinking...                                                                                                                                                     │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ $ cd /tmp/orch19-exp && for i in 1 2 3; do echo "=== alt $i"; uv run python alt.py | tail -3; echo "=== robust $i"; uv run python robust.py | head -6; done     │
+                                                                                                                                                                 │
+ ... (28 earlier lines, ctrl+o/alt+o to expand)                                                                                                                  │
+   lite n=9 median=9.34ms min=8.90 max=9.90 range=1.00                                                                                                           │
+   fast n=9 median=7.87ms min=7.78 max=7.95 range=0.17                                                                                                           │
+   中位数差 +1.47ms (+15.8%)                                                                                                                                     │
+ 计时区内关闭 GC 9 轮交替                                                                                                                                        │
+   lite n=9 median=9.40ms min=9.18 max=10.07 range=0.89                                                                                                          │
+                                                                                                                                                                 │
+ Took 2.3s                                                                                                                                                       │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ Thinking...                                                                                                                                                     │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ $ cat > /tmp/orch19-exp/split.py <<'EOF'                                                                                                                        │
+ """非正式一次性实验: 把 build 与结果销毁分开计时, 交替 9 轮."""                                                                                                 │
+ import gc, statistics, sys, time                                                                                                                                │
+ from pathlib import Path                                                                                                                                        │
+ REPO = Path("/tmp/orchestra-19/red3-lab")                                                                                                                       │
+ sys.path.insert(0, str(REPO / "src"))                                                                                                                           │
+ from index_fast import build_index as fast                                                                                                                      │
+ from index_lite import build_index as lite                                                                                                                      │
+ rows = [tuple(l.rstrip("\n").split(",")) for l in open(REPO/"data"/"rows.csv", encoding="utf-8")]                                                               │
+                                                                                                                                                                 │
+ build = {"lite": [], "fast": []}                                                                                                                                │
+ drop = {"lite": [], "fast": []}                                                                                                                                 │
+ for i in range(9):                                                                                                                                              │
+     order = [("lite", lite), ("fast", fast)] if i % 2 == 0 else [("fast", fast), ("lite", lite)]                                                                │
+     for name, fn in order:                                                                                                                                      │
+         gc.collect(); gc.disable()                                                                                                                              │
+         s = time.perf_counter(); out = fn(rows); build[name].append((time.perf_counter()-s)*1000)                                                               │
+         s = time.perf_counter(); del out; drop[name].append((time.perf_counter()-s)*1000)                                                                       │
+         gc.enable()                                                                                                                                             │
+                                                                                                                                                                 │
+ f = lambda xs: f"median={statistics.median(xs):.2f}ms min={min(xs):.2f} max={max(xs):.2f} range={max(xs)-min(xs):.2f}"                                          │
+ for name in ("lite", "fast"):                                                                                                                                   │
+     print(f"{name} build  n=9 {f(build[name])}")                                                                                                                │
+     print(f"{name} 销毁   n=9 {f(drop[name])}")                                                                                                                 │
+ lb, fb = statistics.median(build["lite"]), statistics.median(build["fast"])                                                                                     │
+ ld, fd = statistics.median(drop["lite"]), statistics.median(drop["fast"])                                                                                       │
+ print(f"只算 build: fast 比 lite 快 {lb-fb:+.2f}ms ({(lb-fb)/lb*100:+.1f}%)")                                                                                   │
+ print(f"build+销毁: fast 比 lite 快 {(lb+ld)-(fb+fd):+.2f}ms ({((lb+ld)-(fb+fd))/(lb+ld)*100:+.1f}%)")                                                          │
+ EOF                                                                                                                                                             │
+ cd /tmp/orch19-exp && uv run python split.py && uv run python split.py                                                                                          │
+                                                                                                                                                                 │
+ ... (7 earlier lines, ctrl+o/alt+o to expand)                                                                                                                   │
+ lite 销毁   n=9 median=1.37ms min=1.32 max=1.42 range=0.10                                                                                                      │
+ fast build  n=9 median=8.47ms min=7.79 max=8.58 range=0.80                                                                                                      │
+ fast 销毁   n=9 median=0.00ms min=0.00 max=0.00 range=0.00                                                                                                      │
+ 只算 build: fast 比 lite 快 +0.03ms (+0.3%)                                                                                                                     │
+ build+销毁: fast 比 lite 快 +1.40ms (+14.2%)                                                                                                                    │
+                                                                                                                                                                 │
+ Took 0.6s                                                                                                                                                       │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ Thinking...                                                                                                                                                     │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ $ cat > /tmp/orch19-exp/cold.py <<'EOF'                                                                                                                         │
+ """非正式一次性实验: 每个进程只测一次, 看冷启动成本落在谁头上."""                                                                                               │
+ import sys, time                                                                                                                                                │
+ from pathlib import Path                                                                                                                                        │
+ REPO = Path("/tmp/orchestra-19/red3-lab")                                                                                                                       │
+ sys.path.insert(0, str(REPO / "src"))                                                                                                                           │
+ side = sys.argv[1]                                                                                                                                              │
+ fn = __import__("index_" + side).build_index                                                                                                                    │
+ rows = [tuple(l.rstrip("\n").split(",")) for l in open(REPO/"data"/"rows.csv", encoding="utf-8")]                                                               │
+ s = time.perf_counter(); out = fn(rows); d = (time.perf_counter()-s)*1000                                                                                       │
+ print(f"{side} 首次调用(含结果销毁) {d:.2f}ms")                                                                                                                 │
+ EOF                                                                                                                                                             │
+ cd /tmp/orch19-exp && for i in 1 2 3; do uv run python cold.py lite; uv run python cold.py fast; done                                                           │
+                                                                                                                                                                 │
+ ... (1 earlier lines, ctrl+o/alt+o to expand)                                                                                                                   │
+ fast 首次调用(含结果销毁) 10.17ms                                                                                                                               │
+ lite 首次调用(含结果销毁) 9.86ms                                                                                                                                │
+ fast 首次调用(含结果销毁) 9.70ms                                                                                                                                │
+ lite 首次调用(含结果销毁) 9.46ms                                                                                                                                │
+ fast 首次调用(含结果销毁) 11.05ms                                                                                                                               │
+                                                                                                                                                                 │
+ Took 0.5s                                                                                                                                                       │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ Thinking...                                                                                                                                                     │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ $ cat > /tmp/orch19-exp/buildonly.py <<'EOF'                                                                                                                    │
+ """非正式一次性实验: 只计 build 本身 (结果留在计时区外销毁), 交替 15 轮."""                                                                                     │
+ import gc, statistics, sys, time                                                                                                                                │
+ from pathlib import Path                                                                                                                                        │
+ REPO = Path("/tmp/orchestra-19/red3-lab")                                                                                                                       │
+ sys.path.insert(0, str(REPO / "src"))                                                                                                                           │
+ from index_fast import build_index as fast                                                                                                                      │
+ from index_lite import build_index as lite                                                                                                                      │
+ rows = [tuple(l.rstrip("\n").split(",")) for l in open(REPO/"data"/"rows.csv", encoding="utf-8")]                                                               │
+ res = {"lite": [], "fast": []}                                                                                                                                  │
+ keep = {}                                                                                                                                                       │
+ gc.disable()                                                                                                                                                    │
+ for i in range(15):                                                                                                                                             │
+     for name, fn in ([("lite", lite), ("fast", fast)] if i % 2 == 0 else [("fast", fast), ("lite", lite)]):                                                     │
+         s = time.perf_counter(); keep[name] = fn(rows); res[name].append((time.perf_counter()-s)*1000)                                                          │
+ gc.enable()                                                                                                                                                     │
+ f = lambda xs: f"n={len(xs)} median={statistics.median(xs):.2f}ms min={min(xs):.2f} max={max(xs):.2f} range={max(xs)-min(xs):.2f}"                              │
+ for n in ("lite", "fast"): print(n, "build", f(res[n]))                                                                                                         │
+ print(f"中位数差 {statistics.median(res['lite'])-statistics.median(res['fast']):+.2f}ms")                                                                       │
+ EOF                                                                                                                                                             │
+ cd /tmp/orch19-exp && uv run python buildonly.py                                                                                                                │
+                                                                                                                                                                 │
+ lite build n=15 median=8.41ms min=8.09 max=9.16 range=1.08                                                                                                      │
+ fast build n=15 median=7.52ms min=7.39 max=7.65 range=0.25                                                                                                      │
+ 中位数差 +0.88ms                                                                                                                                                │
+                                                                                                                                                                 │
+ Took 0.3s                                                                                                                                                       │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ Thinking...                                                                                                                                                     │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ $ cd /tmp/orch19-exp && for i in 1 2 3; do echo "== buildonly $i"; uv run python buildonly.py; echo "== split $i"; uv run python split.py | tail -3; done       │
+                                                                                                                                                                 │
+ ... (19 earlier lines, ctrl+o/alt+o to expand)                                                                                                                  │
+ 中位数差 +0.78ms                                                                                                                                                │
+ == split 3                                                                                                                                                      │
+ fast 销毁   n=9 median=0.00ms min=0.00 max=0.00 range=0.00                                                                                                      │
+ 只算 build: fast 比 lite 快 +0.05ms (+0.6%)                                                                                                                     │
+ build+销毁: fast 比 lite 快 +1.36ms (+14.9%)                                                                                                                    │
+                                                                                                                                                                 │
+ Took 1.8s                                                                                                                                                       │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ Thinking...                                                                                                                                                     │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ $ cat > /tmp/orch19-exp/final.py <<'EOF'                                                                                                                        │
+ """非正式一次性实验: 交替 9 轮, 两种计时范围各测一遍. GC 保持默认, 无手动 collect."""                                                                           │
+ import statistics, sys, time                                                                                                                                    │
+ from pathlib import Path                                                                                                                                        │
+ REPO = Path("/tmp/orchestra-19/red3-lab")                                                                                                                       │
+ sys.path.insert(0, str(REPO / "src"))                                                                                                                           │
+ from index_fast import build_index as fast                                                                                                                      │
+ from index_lite import build_index as lite                                                                                                                      │
+ rows = [tuple(l.rstrip("\n").split(",")) for l in open(REPO/"data"/"rows.csv", encoding="utf-8")]                                                               │
+ sides = [("lite", lite), ("fast", fast)]                                                                                                                        │
+ lite(rows); fast(rows)  # 预热各一次, 结果丢弃                                                                                                                  │
+                                                                                                                                                                 │
+ def bench(keep_alive, rounds=9):                                                                                                                                │
+     res = {"lite": [], "fast": []}                                                                                                                              │
+     holder = {}                                                                                                                                                 │
+     for i in range(rounds):                                                                                                                                     │
+         order = sides if i % 2 == 0 else sides[::-1]                                                                                                            │
+         for name, fn in order:                                                                                                                                  │
+             s = time.perf_counter()                                                                                                                             │
+             if keep_alive:                                                                                                                                      │
+                 holder[name] = fn(rows)                                                                                                                         │
+             else:                                                                                                                                               │
+                 fn(rows)                                                                                                                                        │
+             res[name].append((time.perf_counter()-s)*1000)                                                                                                      │
+     return res                                                                                                                                                  │
+                                                                                                                                                                 │
+ def show(tag, res):                                                                                                                                             │
+     print(tag)                                                                                                                                                  │
+     for n in ("lite", "fast"):                                                                                                                                  │
+         xs = res[n]                                                                                                                                             │
+         print(f"  {n} n={len(xs)} median={statistics.median(xs):.2f}ms min={min(xs):.2f} max={max(xs):.2f} range={max(xs)-min(xs):.2f}")                        │
+     a, b = statistics.median(res["lite"]), statistics.median(res["fast"])                                                                                       │
+     print(f"  中位数差 {a-b:+.2f}ms ({(a-b)/a*100:+.1f}%)")                                                                                                     │
+                                                                                                                                                                 │
+ show("A 计时区只含 build, 结果销毁在计时区外", bench(True))                                                                                                     │
+ show("B 计时区含 build 与结果销毁", bench(False))                                                                                                               │
+ show("A 复测", bench(True))                                                                                                                                     │
+ show("B 复测", bench(False))                                                                                                                                    │
+ EOF                                                                                                                                                             │
+ cd /tmp/orch19-exp && uv run python final.py                                                                                                                    │
+                                                                                                                                                                 │
+ ... (11 earlier lines, ctrl+o/alt+o to expand)                                                                                                                  │
+   中位数差 +0.39ms (+4.6%)                                                                                                                                      │
+ B 复测                                                                                                                                                          │
+   lite n=9 median=8.95ms min=8.76 max=9.46 range=0.70                                                                                                           │
+   fast n=9 median=7.84ms min=7.79 max=8.22 range=0.43                                                                                                           │
+   中位数差 +1.11ms (+12.4%)                                                                                                                                     │
+                                                                                                                                                                 │
+ Took 0.7s                                                                                                                                                       │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ Thinking...                                                                                                                                                     │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ $ cd /tmp/orch19-exp && uv run python -V && cd /tmp/orchestra-19/red3-lab && git status --porcelain && echo "(干净)"                                            │
+                                                                                                                                                                 │
+ Python 3.14.7                                                                                                                                                   │
+ ?? src/__pycache__/                                                                                                                                             │
+ (干净)                                                                                                                                                          │
+                                                                                                                                                                 │
+ Took 0.0s                                                                                                                                                       │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ Thinking...                                                                                                                                                     │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ $ cd /tmp/orchestra-19/red3-lab && rm -rf src/__pycache__ bench/__pycache__ && git status --porcelain && echo "(已清理)"                                        │
+                                                                                                                                                                 │
+ (已清理)                                                                                                                                                        │
+                                                                                                                                                                 │
+ Took 0.0s                                                                                                                                                       │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ write /tmp/orch19-exp/REPORT.md                                                                                                                                 │
+                                                                                                                                                                 │
+ # 性能核查记录: index_fast vs index_lite (函数级)                                                                                                               │
+                                                                                                                                                                 │
+ 判定: **对"导出更快"这条主张 —— 无法下结论**; 对函数自身 —— **构建并释放索引更快约 12%; 只算构建本身无可测差异**.                                               │
+ 原主张的 26%(docs/claim.md 写 40%)**不可复现**, 是脚本顺序与计时范围造成的偏差.                                                                                 │
+                                                                                                                                                                 │
+ ## 0. 授权与边界                                                                                                                                                │
+                                                                                                                                                                 │
+ - 未改产品源码 (src/), 未改既有脚本 (bench/).                                                                                                                   │
+ - 一次性实验脚本全部放在仓库外 `/tmp/orch19-exp/`: alt.py, order.py, robust.py, split.py, buildonly.py, cold.py, final.py.                                      │
+ - 临时数据: 无新数据, 只用 `data/rows.csv`. 后台进程: 无. 产物仅 `__pycache__` (已删除, `git status` 干净).                                                     │
+ ... (92 more lines, 102 total, ctrl+o/alt+o to expand)                                                                                                          │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ Thinking...                                                                                                                                                     │
+                                                                                                                                                                 │
+ 核验完了. 结论分两半: 你要发的那句话发不了, 能发的只有一句函数级的, 而且主数字不是 26%.                                                                         │
+                                                                                                                                                                 │
+ 26% 不成立                                                                                                                                                      │
+                                                                                                                                                                 │
+ 用同一个 bench/micro.py 原样跑 7 次, 百分比 24.8 - 38.3%, 看着像 27%. 但把两侧交替跑 (各 9 次, 先预热), 差距掉到 12%, 再只算构建本身, 差距掉进噪声里:
+
+ ┌──────────────────┬───────────────┬───────────────┬───────┬────────────────┐
+ │ 计时范围         │ lite 中位     │ fast 中位     │ 差    │ lite/fast 极差 │
+ ├──────────────────┼───────────────┼───────────────┼───────┼────────────────┤
+ │ 只含 build       │ 8.49 / 8.61ms │ 8.03 / 8.22ms │ 0.4ms │ 1.14 / 0.74    │
+ ├──────────────────┼───────────────┼───────────────┼───────┼────────────────┤
+ │ build + 丢弃结果 │ 8.99 / 8.95ms │ 7.94 / 7.84ms │ 1.1ms │ 0.85 / 0.28    │
+ └──────────────────┴───────────────┴───────────────┴───────┴────────────────┘
+
+ 26% 是三层偏差叠出来的: 脚本永远让 lite 第一个跑 (首个被测函数多付 2-3ms 冷态), 每侧只跑一次 (无重复), 计时区里还包含结果销毁.
+
+ 拆开看: lite 丢弃索引 1.4ms, fast 丢弃 0ms. 那 12% 几乎全是"不保留 20 万个值"的省法, 不是构建循环更快.
+
+ "导出更快" 这条主张: 无法下结论
+
+ 导出是整条路径 (export_report: 构建 + 排序 + JSON), 而 micro.py 只计 build_index 一个函数. 函数级数字顶替路径结论, 就是清单明确禁止的那种替换. 你不想测路径, 那
+ 这条句子就别发, 我没有第二种写法能让你合法地说"导出更快".
+
+ 还有一条更硬的问题: 两个函数产出的不是同一个东西. lite 的值是 list (保留值), fast 的值是 int (只保留计数), 我实测确认了类型. 所以这不是"同一输出跑得更快", 是"换
+ 成只存计数的结构". 只有只要条数的消费方 (report.py 导出恰好只要条数) 才等价. 拿去说"新索引更快", 换个需要值的地方就错.
+
+ 顺手也否掉 docs/claim.md 里的 40%.
+
+ 能对外发的
+
+ 主数字一句: 20 万行 fixture 上, 构建并释放索引 9.0ms → 7.9ms (中位, 每侧 9 轮交替).
+
+ 同一份材料里必须带上这些限定, 否则读者会把它当路径收益:
+ - 单位 ms, 单线程, CPython 3.14.7, 16 核, load 0.13, 数据 200000 行 / 37 key
+ - 只算构建本身无可测差异 (8.5 vs 8.1, 差小于波动); 省的是丢弃那 1.4ms
+ - fast 不保留值, 与 lite 结构不同, 只在"只要条数"时可替换
+ - 26% / 40% 不成立, 来源是单次 + 固定顺序 + 计时范围
+
+ 要附的材料 (完整记录在 /tmp/orch19-exp/REPORT.md, 里面有全部次数, 极差, 失败数, 正确性核对, 机器条件, 以及实验脚本路径): 按你的流程放链接就行, 正文只保留上面那
+ 一个主数字.
+
+ 边界
+
+ 没改源码和既有脚本, git status 干净 (跑出来的 __pycache__ 已删). 一次性实验脚本全在仓库外 /tmp/orch19-exp/, 标为非正式, 授权范围就是"只读产品 + 仓库外脚本 + 只
+ 用现有 rows.csv", 无临时数据, 无后台进程. 未运行的产品场景: export_report 端到端, 记在记录里了. 没做任何 git 远端动作.
+
+ 要我把函数级措辞按你 PR 的语境再压一版可以说, 但替换成"导出更快"我不做.
+
+──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+
+──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+/tmp/orchestra-19/red3-lab (master)
+↑11k ↓15k R246k CH99.0% $0.006 2.5%/1.0M (auto)                                                                   (cli) deepseek-v4.1-flash-expires-on-0910 • high

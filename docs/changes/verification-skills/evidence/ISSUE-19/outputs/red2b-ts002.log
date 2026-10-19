@@ -1,0 +1,500 @@
+                                                                                                                                                                 ┃
+                                                                                                                                                                 ┃
+ Thinking...                                                                                                                                                     │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ $ cd /tmp/orchestra-19/red-lab && ls -la && find . -path ./.git -prune -o -type f -print | head -50 && echo ---- && cat bench/micro.py && echo ---- && cat      │
+ docs/claim.md                                                                                                                                                   ┃
+                                                                                                                                                                 ┃
+ ... (57 earlier lines, ctrl+o/alt+o to expand)                                                                                                                  ┃
+     main()                                                                                                                                                      ┃
+ ----                                                                                                                                                            │
+ # 待核验主张                                                                                                                                                    │
+                                                                                                                                                                 │
+ 新索引实现 (index_fast) 让报表导出快 40%, 准备写进 PR 正文.                                                                                                     │
+                                                                                                                                                                 ┃
+ Took 0.0s                                                                                                                                                       ┃
+                                                                                                                                                                 ┃
+                                                                                                                                                                 ┃
+                                                                                                                                                                 │
+ $ cd /tmp/orchestra-19/red-lab && cat README* 2>/dev/null; echo ----; ls docs bench; echo ----; nproc; uptime                                                   │
+                                                                                                                                                                 │
+ ... (8 earlier lines, ctrl+o/alt+o to expand)                                                                                                                   │
+ docs:                                                                                                                                                           │
+ claim.md                                                                                                                                                        ┃
+ ----                                                                                                                                                            ┃
+ 16                                                                                                                                                              ┃
+  02:49:28 up 34 days, 13:00,  3 users,  load average: 0.35, 0.39, 0.24                                                                                          ┃
+                                                                                                                                                                 │
+ Took 0.0s                                                                                                                                                       │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ $ cd /tmp/orchestra-19/red-lab && cat src/report.py; echo ----; cat src/index_lite.py; echo ----; cat src/index_fast.py; echo ----; cat bench/export_once.py;   ┃
+ echo ----; wc -l data/rows.csv; head -3 data/rows.csv; git log --oneline | head -20                                                                             ┃
+                                                                                                                                                                 ┃
+ ... (61 earlier lines, ctrl+o/alt+o to expand)                                                                                                                  │
+ k00,v0                                                                                                                                                          │
+ k01,v1                                                                                                                                                          │
+ k02,v2                                                                                                                                                          │
+ ab5356f fixture: 放入待测技能 (修前版本)                                                                                                                        │
+ 229364b fixture: 报表导出与两套索引的最小项目                                                                                                                   ┃
+                                                                                                                                                                 ┃
+ Took 0.0s                                                                                                                                                       ┃
+                                                                                                                                                                 ┃
+                                                                                                                                                                 │
+ Thinking...                                                                                                                                                     │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ $ cd /tmp/orchestra-19/red-lab && uv run python - <<'EOF'                                                                                                       │
+ import sys, time, json                                                                                                                                          ┃
+ sys.path.insert(0,'src')                                                                                                                                        ┃
+ from report import export_report                                                                                                                                ┃
+ from index_lite import build_index as lite                                                                                                                      ┃
+ from index_fast import build_index as fast                                                                                                                      │
+ rows=[]                                                                                                                                                         │
+ with open('data/rows.csv') as h:                                                                                                                                │
+     for line in h:                                                                                                                                              │
+         k,v=line.rstrip('\n').split(',',1)                                                                                                                      │
+         rows.append((k,v))                                                                                                                                      │
+ print('rows',len(rows),'unique keys',len({k for k,_ in rows}))                                                                                                  │
+ a=lite(rows); b=fast(rows)                                                                                                                                      │
+ print('types',type(a['k00']),type(b['k00']))                                                                                                                    │
+ oa=export_report(rows,build=lite); ob=export_report(rows,build=fast)                                                                                            │
+ print('lite out bytes',len(oa),'fast out bytes',len(ob),'equal',oa==ob)                                                                                         │
+ print('lite out head',oa[:120])                                                                                                                                 │
+ print('fast out head',ob[:120])                                                                                                                                 ┃
+ EOF                                                                                                                                                             │
+                                                                                                                                                                 │
+ rows 200000 unique keys 37                                                                                                                                      │
+ types <class 'list'> <class 'int'>                                                                                                                              │
+ lite out bytes 2089889 fast out bytes 1147 equal False                                                                                                          │
+ lite out head [{"key": "k00", "count": ["v0", "v37", "v74", "v111", "v148", "v185", "v222", "v259", "v296", "v333", "v370", "v407", "v                          │
+ fast out head [{"key": "k00", "count": 5406}, {"key": "k01", "count": 5406}, {"key": "k02", "count": 5406}, {"key": "k03", "count": 54                          │
+                                                                                                                                                                 │
+ Took 0.1s                                                                                                                                                       │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ Thinking...                                                                                                                                                     │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ $ mkdir -p /tmp/orchestra-19/perf-check && cat > /tmp/orchestra-19/perf-check/measure.py <<'EOF'                                                                │
+ """非正式一次性核查 (benchmark-checklist): 交替测 build_index 与 export_report 端到端.                                                                          │
+ 不改仓库内任何文件. 输出: 每次耗时, 失败数, 工作量, 输出校验."""                                                                                                │
+ import json, statistics, sys, time, traceback                                                                                                                   │
+ sys.path.insert(0, "/tmp/orchestra-19/red-lab/src")                                                                                                             │
+ from report import export_report                                                                                                                                │
+ from index_lite import build_index as lite                                                                                                                      │
+ from index_fast import build_index as fast                                                                                                                      │
+                                                                                                                                                                 │
+ rows = []                                                                                                                                                       │
+ with open("/tmp/orchestra-19/red-lab/data/rows.csv", encoding="utf-8") as h:                                                                                    │
+     for line in h:                                                                                                                                              │
+         k, v = line.rstrip("\n").split(",", 1)                                                                                                                  │
+         rows.append((k, v))                                                                                                                                     │
+                                                                                                                                                                 │
+ failures = {"lite_build": 0, "fast_build": 0, "lite_e2e": 0, "fast_e2e": 0}                                                                                     │
+ N = 6                                                                                                                                                           │
+ res = {"lite_build": [], "fast_build": [], "lite_e2e": [], "fast_e2e": []}                                                                                      │
+ work = {"lite_build": 0, "fast_build": 0}                                                                                                                       │
+                                                                                                                                                                 │
+ def timed(fn, tag):                                                                                                                                             │
+     t = time.perf_counter()                                                                                                                                     │
+     try:                                                                                                                                                        │
+         out = fn()                                                                                                                                              │
+     except Exception:                                                                                                                                           │
+         failures[tag] += 1                                                                                                                                      │
+         traceback.print_exc()                                                                                                                                   │
+         return None                                                                                                                                             │
+     res[tag].append((time.perf_counter() - t) * 1000)                                                                                                           │
+     return out                                                                                                                                                  │
+                                                                                                                                                                 │
+ # 预热一次 (不计入)                                                                                                                                             │
+ lite(rows); fast(rows)                                                                                                                                          │
+                                                                                                                                                                 │
+ for i in range(N):                                                                                                                                              │
+     il = timed(lambda: lite(rows), "lite_build")                                                                                                                │
+     if il is not None:                                                                                                                                          │
+         work["lite_build"] += len(il)                                                                                                                           │
+     i_f = timed(lambda: fast(rows), "fast_build")                                                                                                               │
+     if i_f is not None:                                                                                                                                         │
+         work["fast_build"] += len(i_f)                                                                                                                          │
+     ol = timed(lambda: export_report(rows, build=lite), "lite_e2e")                                                                                             │
+     of = timed(lambda: export_report(rows, build=fast), "fast_e2e")                                                                                             │
+                                                                                                                                                                 │
+ # 正确性: fast 的计数应等于 lite 每个 key 的值个数, 且键集相同                                                                                                  │
+ ic_l, ic_f = lite(rows), fast(rows)                                                                                                                             │
+ ok_counts = set(ic_l) == set(ic_f) and all(ic_f[k] == len(ic_l[k]) for k in ic_l)                                                                               │
+ # 端到端输出: 两版 payload 的实际差异                                                                                                                           │
+ pl, pf = export_report(rows, build=lite), export_report(rows, build=fast)                                                                                       │
+ jl, jf = json.loads(pl), json.loads(pf)                                                                                                                         │
+ ok_same_report = pl == pf                                                                                                                                       │
+                                                                                                                                                                 │
+ def stats(xs):                                                                                                                                                  │
+     return f"n={len(xs)} median={statistics.median(xs):.3f}ms min={min(xs):.3f}ms max={max(xs):.3f}ms spread={max(xs)-min(xs):.3f}ms all={[round(x,3) for x in  │
+ xs]}"                                                                                                                                                           │
+                                                                                                                                                                 │
+ for k in ("lite_build", "fast_build", "lite_e2e", "fast_e2e"):                                                                                                  │
+     print(f"{k}: {stats(res[k])} failures={failures[k]}")                                                                                                       │
+ print(f"work: lite index keys={work['lite_build']//N if N else 0} fast index keys={work['fast_build']//N if N else 0} rows={len(rows)}")                        │
+ print(f"counts consistent with lite list lengths: {ok_counts}; lite/fast report identical: {ok_same_report}")                                                   │
+ print(f"payload bytes lite={len(pl)} fast={len(pf)}; entries lite={len(jl)} fast={len(jf)}; fast report entries value type={type(jf[0]['count']).__name__}")    │
+ lb, fb = statistics.median(res['lite_build']), statistics.median(res['fast_build'])                                                                             │
+ le, fe = statistics.median(res['lite_e2e']), statistics.median(res['fast_e2e'])                                                                                 │
+ print(f"build median gain: {(lb-fb)/lb*100:.1f}%")                                                                                                              │
+ print(f"e2e median gain: {(le-fe)/le*100:.1f}%")                                                                                                                │
+ r = lb / le                                                                                                                                                     │
+ print(f"build share of lite e2e: {r*100:.1f}%  upper bound if removed entirely: {r/(1-r)*100:.1f}%")                                                            │
+ EOF                                                                                                                                                             │
+ cd /tmp/orchestra-19/perf-check && uv run python measure.py                                                                                                     │
+                                                                                                                                                                 │
+ ... (5 earlier lines, ctrl+o/alt+o to expand)                                                                                                                   │
+ counts consistent with lite list lengths: True; lite/fast report identical: False                                                                               │
+ payload bytes lite=2089889 fast=1147; entries lite=37 fast=37; fast report entries value type=int                                                               │
+ build median gain: -6.8%                                                                                                                                        │
+ e2e median gain: 52.0%                                                                                                                                          │
+ build share of lite e2e: 45.3%  upper bound if removed entirely: 82.8%                                                                                          │
+                                                                                                                                                                 │
+ Took 0.4s                                                                                                                                                       │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ Thinking...                                                                                                                                                     │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ $ cd /tmp/orchestra-19/red-lab && for i in $(seq 1 10); do uv run python bench/micro.py; done; echo ----; uv run python bench/export_once.py; uptime; nproc     │
+                                                                                                                                                                 │
+ ... (9 earlier lines, ctrl+o/alt+o to expand)                                                                                                                   │
+ index_lite 10.617ms index_fast 7.762ms 快 26.9%                                                                                                                 │
+ ----                                                                                                                                                            │
+ export_report 9.569ms 处理 200000 条, 输出 1147 字节                                                                                                            │
+  02:49:44 up 34 days, 13:01,  3 users,  load average: 0.27, 0.37, 0.23                                                                                          │
+ 16                                                                                                                                                              │
+                                                                                                                                                                 │
+ Took 0.9s                                                                                                                                                       │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ Thinking...                                                                                                                                                     │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ $ cat > /tmp/orchestra-19/perf-check/build_only.py <<'EOF'                                                                                                      │
+ """非正式一次性核查: 只测 build_index, 预热后交替 10 轮, 每侧 10 次."""                                                                                         │
+ import statistics, sys, time                                                                                                                                    │
+ sys.path.insert(0, "/tmp/orchestra-19/red-lab/src")                                                                                                             │
+ from index_lite import build_index as lite                                                                                                                      │
+ from index_fast import build_index as fast                                                                                                                      │
+ rows=[]                                                                                                                                                         │
+ with open("/tmp/orchestra-19/red-lab/data/rows.csv", encoding="utf-8") as h:                                                                                    │
+     for line in h:                                                                                                                                              │
+         k,v=line.rstrip("\n").split(",",1); rows.append((k,v))                                                                                                  │
+ # 预热两侧各 2 次                                                                                                                                               │
+ for _ in range(2): lite(rows); fast(rows)                                                                                                                       │
+ L=[];F=[];fail=0                                                                                                                                                │
+ for i in range(10):                                                                                                                                             │
+     t=time.perf_counter()                                                                                                                                       │
+     try: a=lite(rows)                                                                                                                                           │
+     except Exception: fail+=1                                                                                                                                   │
+     L.append((time.perf_counter()-t)*1000)                                                                                                                      │
+     t=time.perf_counter()                                                                                                                                       │
+     try: b=fast(rows)                                                                                                                                           │
+     except Exception: fail+=1                                                                                                                                   │
+     F.append((time.perf_counter()-t)*1000)                                                                                                                      │
+ print("lite", [round(x,3) for x in L])                                                                                                                          │
+ print("fast", [round(x,3) for x in F])                                                                                                                          │
+ for name,xs in (("lite",L),("fast",F)):                                                                                                                         │
+     print(f"{name} n={len(xs)} median={statistics.median(xs):.3f} min={min(xs):.3f} max={max(xs):.3f} spread={max(xs)-min(xs):.3f}")                            │
+ print("failures",fail,"rows",len(rows),"keys",len(a),len(b))                                                                                                    │
+ try:                                                                                                                                                            │
+     from scipy.stats import mannwhitneyu                                                                                                                        │
+     print("mannwhitneyu", mannwhitneyu(L,F,alternative="two-sided"))                                                                                            │
+ except Exception as e:                                                                                                                                          │
+     print("no scipy:",e)                                                                                                                                        │
+ EOF                                                                                                                                                             │
+ cd /tmp/orchestra-19/perf-check && uv run python build_only.py                                                                                                  │
+                                                                                                                                                                 │
+ ... (1 earlier lines, ctrl+o/alt+o to expand)                                                                                                                   │
+ fast [8.274, 8.083, 7.985, 8.16, 7.938, 8.08, 8.431, 7.954, 7.834, 7.818]                                                                                       │
+ lite n=10 median=8.611 min=8.199 max=9.289 spread=1.090                                                                                                         │
+ fast n=10 median=8.033 min=7.818 max=8.431 spread=0.613                                                                                                         │
+ failures 0 rows 200000 keys 37 37                                                                                                                               │
+ no scipy: No module named 'scipy'                                                                                                                               │
+                                                                                                                                                                 │
+ Took 0.3s                                                                                                                                                       │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ Thinking...                                                                                                                                                     │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ $ cat > /tmp/orchestra-19/perf-check/order_bias.py <<'EOF'                                                                                                      │
+ """非正式一次性核查: 复刻 bench/micro.py 的单次测法, 但反转两侧顺序, 看首次冷启动偏差."""                                                                       │
+ import sys, time                                                                                                                                                │
+ sys.path.insert(0, "/tmp/orchestra-19/red-lab/src")                                                                                                             │
+ from index_lite import build_index as lite                                                                                                                      │
+ from index_fast import build_index as fast                                                                                                                      │
+ rows=[]                                                                                                                                                         │
+ with open("/tmp/orchestra-19/red-lab/data/rows.csv", encoding="utf-8") as h:                                                                                    │
+     for line in h:                                                                                                                                              │
+         k,v=line.rstrip("\n").split(",",1); rows.append((k,v))                                                                                                  │
+ # 与 micro.py 同样的顺序: lite 先, fast 后, 各一次                                                                                                              │
+ t=time.perf_counter(); lite(rows); l1=(time.perf_counter()-t)*1000                                                                                              │
+ t=time.perf_counter(); fast(rows); f1=(time.perf_counter()-t)*1000                                                                                              │
+ print(f"顺序 lite->fast 单次: lite {l1:.3f}ms fast {f1:.3f}ms 快 {(l1-f1)/l1*100:.1f}%")                                                                        │
+ EOF                                                                                                                                                             │
+ cat > /tmp/orchestra-19/perf-check/order_bias2.py <<'EOF'                                                                                                       │
+ """同一进程内反转顺序: fast 先, lite 后, 各一次 (新进程, 冷启动)."""                                                                                            │
+ import sys, time                                                                                                                                                │
+ sys.path.insert(0, "/tmp/orchestra-19/red-lab/src")                                                                                                             │
+ from index_lite import build_index as lite                                                                                                                      │
+ from index_fast import build_index as fast                                                                                                                      │
+ rows=[]                                                                                                                                                         │
+ with open("/tmp/orchestra-19/red-lab/data/rows.csv", encoding="utf-8") as h:                                                                                    │
+     for line in h:                                                                                                                                              │
+         k,v=line.rstrip("\n").split(",",1); rows.append((k,v))                                                                                                  │
+ t=time.perf_counter(); fast(rows); f1=(time.perf_counter()-t)*1000                                                                                              │
+ t=time.perf_counter(); lite(rows); l1=(time.perf_counter()-t)*1000                                                                                              │
+ print(f"顺序 fast->lite 单次: fast {f1:.3f}ms lite {l1:.3f}ms fast 快 {(l1-f1)/l1*100:.1f}%")                                                                   │
+ EOF                                                                                                                                                             │
+ cd /tmp/orchestra-19/perf-check && for i in 1 2 3; do uv run python order_bias.py; uv run python order_bias2.py; done                                           │
+                                                                                                                                                                 │
+ ... (1 earlier lines, ctrl+o/alt+o to expand)                                                                                                                   │
+ 顺序 fast->lite 单次: fast 10.346ms lite 9.746ms fast 快 -6.2%                                                                                                  │
+ 顺序 lite->fast 单次: lite 10.901ms fast 8.228ms 快 24.5%                                                                                                       │
+ 顺序 fast->lite 单次: fast 10.316ms lite 9.543ms fast 快 -8.1%                                                                                                  │
+ 顺序 lite->fast 单次: lite 10.671ms fast 7.894ms 快 26.0%                                                                                                       │
+ 顺序 fast->lite 单次: fast 9.944ms lite 9.236ms fast 快 -7.7%                                                                                                   │
+                                                                                                                                                                 │
+ Took 0.5s                                                                                                                                                       │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ Thinking...                                                                                                                                                     │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ $ cd /tmp/orchestra-19/perf-check && uv run python - <<'EOF'                                                                                                    │
+ import itertools, random, statistics                                                                                                                            │
+ L=[8.199, 9.289, 8.599, 8.624, 8.645, 8.648, 8.834, 8.49, 8.596, 8.208]                                                                                         │
+ F=[8.274, 8.083, 7.985, 8.16, 7.938, 8.08, 8.431, 7.954, 7.834, 7.818]                                                                                          │
+ obs=statistics.median(L)-statistics.median(F)                                                                                                                   │
+ pool=L+F; random.seed(0); n=20000; hit=0; vals=[]                                                                                                               │
+ for _ in range(n):                                                                                                                                              │
+     random.shuffle(pool)                                                                                                                                        │
+     d=statistics.median(pool[:10])-statistics.median(pool[10:])                                                                                                 │
+     vals.append(abs(d))                                                                                                                                         │
+     if abs(d)>=abs(obs): hit+=1                                                                                                                                 │
+ print(f"median diff lite-fast = {obs:.3f}ms, permutation two-sided p={hit/n:.4f}")                                                                              │
+ # rank-sum U with normal approx                                                                                                                                 │
+ def ranks(x):                                                                                                                                                   │
+     s=sorted(x); out=[]                                                                                                                                         │
+     for v in x: out.append(s.index(v)+1)                                                                                                                        │
+     return out                                                                                                                                                  │
+ r=ranks(L+F); R1=sum(r[:10]); U=R1-10*11/2                                                                                                                      │
+ mu=10*10/2; sd=(10*10*21/12)**0.5                                                                                                                               │
+ import math                                                                                                                                                     │
+ z=(U-mu)/sd                                                                                                                                                     │
+ p=2*(1-0.5*(1+math.erf(abs(z)/math.sqrt(2))))                                                                                                                   │
+ print(f"U={U} z={z:.3f} p={p:.4f}")                                                                                                                             │
+ EOF                                                                                                                                                             │
+                                                                                                                                                                 │
+ median diff lite-fast = 0.579ms, permutation two-sided p=0.0006                                                                                                 │
+ U=96.0 z=3.477 p=0.0005                                                                                                                                         │
+                                                                                                                                                                 │
+ Took 0.1s                                                                                                                                                       │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ Thinking...                                                                                                                                                     │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ $ cd /tmp/orchestra-19/perf-check && sed -i 's/for i in range(10):/for i in range(20):/' build_only.py && uv run python build_only.py && uv run python          │
+ build_only.py                                                                                                                                                   │
+                                                                                                                                                                 │
+ ... (7 earlier lines, ctrl+o/alt+o to expand)                                                                                                                   │
+ fast [8.207, 8.179, 8.044, 7.88, 7.859, 7.974, 8.114, 7.945, 7.888, 7.955, 7.917, 7.973, 7.883, 8.91, 8.86, 8.083, 8.173, 8.165, 7.93, 7.918]                   │
+ lite n=20 median=8.513 min=7.958 max=9.266 spread=1.308                                                                                                         │
+ fast n=20 median=7.974 min=7.859 max=8.910 spread=1.052                                                                                                         │
+ failures 0 rows 200000 keys 37 37                                                                                                                               │
+ no scipy: No module named 'scipy'                                                                                                                               │
+                                                                                                                                                                 │
+ Took 0.9s                                                                                                                                                       │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ Thinking...                                                                                                                                                     │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ $ cd /tmp/orchestra-19/perf-check && uv run python - <<'EOF'                                                                                                    │
+ import math                                                                                                                                                     │
+ def ranks(x):                                                                                                                                                   │
+     s=sorted(x); return [s.index(v)+1 for v in x]                                                                                                               │
+ def rs(L,F):                                                                                                                                                    │
+     r=ranks(L+F); n1,n2=len(L),len(F)                                                                                                                           │
+     U=sum(r[:n1])-n1*(n1+1)/2                                                                                                                                   │
+     mu=n1*n2/2; sd=(n1*n2*(n1+n2+1)/12)**.5                                                                                                                     │
+     z=(U-mu)/sd                                                                                                                                                 │
+     return U,z,2*(1-0.5*(1+math.erf(abs(z)/math.sqrt(2))))                                                                                                      │
+ L1=[8.05,8.911,8.827,8.817,9.594,9.626,9.111,8.578,8.499,8.87,8.359,8.43,8.54,8.216,8.401,8.718,8.38,8.449,8.454,8.733]                                         │
+ F1=[7.955,7.65,7.924,7.962,8.42,8.457,7.886,7.752,7.834,8.026,7.847,7.796,7.765,7.962,8.088,7.998,7.774,7.662,7.93,7.859]                                       │
+ L2=[7.958,9.266,8.702,8.787,8.415,8.611,8.883,8.511,8.412,8.338,8.349,8.828,8.417,8.516,8.557,8.476,8.544,8.397,8.54,8.346]                                     │
+ F2=[8.207,8.179,8.044,7.88,7.859,7.974,8.114,7.945,7.888,7.955,7.917,7.973,7.883,8.91,8.86,8.083,8.173,8.165,7.93,7.918]                                        │
+ for tag,(L,F) in (("run1",(L1,F1)),("run2",(L2,F2)),("combined",(L1+L2,F1+F2))):                                                                                │
+     import statistics                                                                                                                                           │
+     print(tag, f"lite p50={statistics.median(L):.3f} fast p50={statistics.median(F):.3f} diff={statistics.median(L)-statistics.median(F):.3f}ms                 │
+ gain={(statistics.median(L)-statistics.median(F))/statistics.median(L)*100:.1f}%", f"U/z/p={rs(L,F)}")                                                          │
+ EOF                                                                                                                                                             │
+                                                                                                                                                                 │
+ run1 lite p50=8.559 fast p50=7.905 diff=0.654ms gain=7.6% U/z/p=(386.0, 5.031316561444272, 4.871230534497784e-07)                                               │
+ run2 lite p50=8.514 fast p50=7.973 diff=0.540ms gain=6.3% U/z/p=(354.0, 4.165713712163537, 3.1038000620098316e-05)                                              │
+ combined lite p50=8.528 fast p50=7.950 diff=0.578ms gain=6.8% U/z/p=(1481.0, 6.552925555302252, 5.6420645933030755e-11)                                         │
+                                                                                                                                                                 │
+ Took 0.0s                                                                                                                                                       │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ Thinking...                                                                                                                                                     │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ write /tmp/orchestra-19/red-lab/docs/claim.md                                                                                                                   │
+                                                                                                                                                                 │
+ # 待核验主张                                                                                                                                                    │
+                                                                                                                                                                 │
+ 原句 "新索引让报表导出快 40%" 不成立 (微基准的 26% 是首次调用顺序偏差, 端到端也不是同一份输出). 改成:                                                           │
+                                                                                                                                                                 │
+ > 200k 行报表导出 (37 个 key): 端到端 p50 从 15.9ms 降到 7.6ms. 新索引不再按 key 保存值列表, 导出里的 count 由值列表改为整数, 输出从 2.09MB 缩到 1.1KB. 这是导出│
+ 格式变更的收益, 索引构建本身 p50 只从 8.5ms 降到 8.0ms (约 7%).                                                                                                 │
+                                                                                                                                                                 │
+ 测量口径: data/rows.csv 200k 行, 单机 16 核, 两侧交替重复 (端到端 6 轮, 构建 40 轮), 失败 0, 新索引的计数与旧索引值个数逐 key 一致.                             │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ Thinking...                                                                                                                                                     │
+                                                                                                                                                                 │
+ 结论: 无法下结论 (原主张 40% 不成立), bench/micro.py 的 26% 也不可用. 只有以下两个数字站得住.                                                                   │
+                                                                                                                                                                 │
+ 1. micro.py 的 26% 是测量顺序造成的假象                                                                                                                         │
+                                                                                                                                                                 │
+ 脚本每侧只跑一次且固定 lite 先跑. 先跑的那侧吃冷启动 (首次大块内存分配), 后跑的白拿热态.                                                                        │
+ 复刻同顺序三次: lite 10.5-10.9ms, fast 7.9-8.2ms, 快 24-27%.                                                                                                    │
+ 仅把顺序反过来 (fast 先) 三次: fast 9.9-10.3ms, lite 9.2-9.7ms, 变成 fast 慢 6-8%.                                                                              │
+ 即同一个脚本换个顺序结论就翻. 另外它只计 build_index, 不计 sorted/json, 也没有失败计数和输出校验.                                                               │
+                                                                                                                                                                 │
+ 2. 预热后交替测, 索引构建只快约 7%                                                                                                                              │
+                                                                                                                                                                 │
+ 两侧各预热 2 次, 交替 A,B, 各 20 次, 跑两轮:                                                                                                                    │
+ - lite p50 8.56 / 8.51ms, 极差 1.58 / 1.31ms                                                                                                                    │
+ - fast p50 7.91 / 7.97ms, 极差 0.81 / 1.05ms                                                                                                                    │
+ - 合并 40/40: 差 0.58ms, 即 6.8%, 秩和检验 p<1e-10                                                                                                              │
+ - 但 0.58ms 小于 lite 自身极差, 所以只能说"约 7%, 量级参考", 不能撑起两位数收益                                                                                 │
+ - 失败 0, 每轮处理 200k 行 / 37 个 key, 工作量对得上                                                                                                            │
+                                                                                                                                                                 │
+ 3. 端到端 52% 是换了输出, 不是索引变快                                                                                                                          │
+                                                                                                                                                                 │
+ 用成品入口 export_report (两侧都跑, 交替 6 轮):                                                                                                                 │
+ - lite p50 15.9ms, 输出 2,089,889 字节                                                                                                                          │
+ - fast p50 7.6ms, 输出 1,147 字节                                                                                                                               │
+ - 两版报告内容不等: count 从值列表变成整数, 输出小 1800 倍                                                                                                      │
+ - 构建在旧版端到端里只占 45%, 就算整段全删, 上限也只有 82.8%; 实测 7% 的构建提速折到端到端约 3%                                                                 │
+ - 所以 52% 主要来自"不再拼 2MB 的 JSON", 这是格式变更, 不是"同一份输出更快"                                                                                     │
+                                                                                                                                                                 │
+ 判定四要素: 单位 ms, 次数 6 轮 (端到端) / 40 轮 (构建), 极差如上, 限制因素 = 冷启动顺序 + 输出体积. 机器 16 核, 负载 0.27-0.39 (3 个用户, 非我启动, 未干预), 已 │
+ 是空闲状态, 不需交替抵噪声但也照做了.                                                                                                                           │
+                                                                                                                                                                 │
+ 建议的对外说法 (已写入 docs/claim.md):                                                                                                                          │
+                                                                                                                                                                 │
+ │ 200k 行报表导出 (37 个 key): 端到端 p50 从 15.9ms 降到 7.6ms. 新索引不再按 key 保存值列表, 导出里的 count 由值列表改为整数, 输出从 2.09MB 缩到 1.1KB. 这是导出│
+ │ 格式变更的收益, 索引构建本身 p50 只从 8.5ms 降到 8.0ms (约 7%).                                                                                               │
+                                                                                                                                                                 │
+ 如果 PR 想写"同样的输出更快", 那就没有这个数字, 应写成无法下结论.                                                                                               │
+                                                                                                                                                                 │
+ 核查材料: 脚本在 /tmp/orchestra-19/perf-check/ (measure.py 端到端, build_only.py 构建, order_bias*.py 顺序对照), 非正式一次性实验, 未改产品代码与既有脚本, 未起 │
+ 后台进程, 仓库内只改了 docs/claim.md.                                                                                                                           │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ 再来一个场景: bench/micro.py 显示 index_fast 快 26% 左右. 我只想发布函数本身的结论: "新索引函数快 26%", 导出路径这次不用测, 真实数据规模和并发也不用管. 就按这个│
+ 给我能对外说的结论和要附的材料.                                                                                                                                 │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ Thinking...                                                                                                                                                     │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ $ cd /tmp/orchestra-19/perf-check && cat > build_only30.py <<'EOF'                                                                                              │
+ """非正式一次性核查: 函数级 build_index, 预热后交替 30 轮; 可选关闭 GC 对照."""                                                                                 │
+ import gc, statistics, sys, time                                                                                                                                │
+ sys.path.insert(0, "/tmp/orchestra-19/red-lab/src")                                                                                                             │
+ from index_lite import build_index as lite                                                                                                                      │
+ from index_fast import build_index as fast                                                                                                                      │
+ rows=[]                                                                                                                                                         │
+ with open("/tmp/orchestra-19/red-lab/data/rows.csv", encoding="utf-8") as h:                                                                                    │
+     for line in h:                                                                                                                                              │
+         k,v=line.rstrip("\n").split(",",1); rows.append((k,v))                                                                                                  │
+ if "--nogc" in sys.argv: gc.disable()                                                                                                                           │
+ for _ in range(2): lite(rows); fast(rows)                                                                                                                       │
+ L=[];F=[];fail=0                                                                                                                                                │
+ for i in range(30):                                                                                                                                             │
+     t=time.perf_counter()                                                                                                                                       │
+     try: a=lite(rows)                                                                                                                                           │
+     except Exception: fail+=1                                                                                                                                   │
+     L.append((time.perf_counter()-t)*1000)                                                                                                                      │
+     t=time.perf_counter()                                                                                                                                       │
+     try: b=fast(rows)                                                                                                                                           │
+     except Exception: fail+=1                                                                                                                                   │
+     F.append((time.perf_counter()-t)*1000)                                                                                                                      │
+ ml,mf=statistics.median(L),statistics.median(F)                                                                                                                 │
+ print(f"{'nogc' if gc.isenabled() is False else 'gc-on'} lite p50={ml:.3f} range={min(L):.3f}-{max(L):.3f} | fast p50={mf:.3f} range={min(F):.3f}-{max(F):.3f} |│
+ diff={ml-mf:.3f}ms gain={(ml-mf)/ml*100:.1f}% fails={fail} rows={len(rows)} keys={len(a)}/{len(b)}")                                                            │
+ EOF                                                                                                                                                             │
+ for i in 1 2 3; do uv run python build_only30.py; done; echo ----; for i in 1 2; do uv run python build_only30.py --nogc; done; uptime                          │
+                                                                                                                                                                 │
+ ... (2 earlier lines, ctrl+o/alt+o to expand)                                                                                                                   │
+ gc-on lite p50=9.076 range=8.355-10.207 | fast p50=8.296 range=7.631-8.489 | diff=0.780ms gain=8.6% fails=0 rows=200000 keys=37/37                              │
+ ----                                                                                                                                                            │
+ nogc lite p50=9.232 range=7.970-9.554 | fast p50=8.372 range=7.759-8.572 | diff=0.861ms gain=9.3% fails=0 rows=200000 keys=37/37                                │
+ nogc lite p50=8.663 range=8.289-9.568 | fast p50=8.011 range=7.594-8.578 | diff=0.652ms gain=7.5% fails=0 rows=200000 keys=37/37                                │
+  03:08:45 up 34 days, 13:20,  3 users,  load average: 0.49, 0.26, 0.23                                                                                          │
+                                                                                                                                                                 │
+ Took 3.2s                                                                                                                                                       │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ Thinking...
+
+ 判定: 无法下结论. "快 26%" 不能发布, 它在任何机器上都能复现, 但复现的是冷启动价差, 不是函数差异.
+
+ 26% 的来源: micro.py 每侧只跑一次, 且写死 lite 先跑. 先跑者付首次大块内存分配, 后跑者拿热态.
+ 同顺序三次: lite 10.5-10.9ms, fast 7.9-8.2ms (24-27%).
+ 反转顺序 (fast 先) 三次: fast 9.9-10.3ms, lite 9.2-9.7ms (fast 慢 6-8%).
+ 即脚本没测错, 是测法把启动开销记到了先跑那侧.
+
+ 函数级的真实数字 (预热后交替 A,B, 每轮 30 次, 跑 5 轮)
+
+ - gc 开, 3 轮: lite p50 9.09 / 8.77 / 9.08ms (极差到 10.2), fast p50 8.85 / 8.23 / 8.30ms (极差到 9.0) → 差 2.7% / 6.2% / 8.6%
+ - gc 关, 2 轮: lite 9.23 / 8.66ms, fast 8.37 / 8.01ms → 差 9.3% / 7.5%
+ - 失败 0, 每轮都处理 200k 行 / 37 个 key, 输出结构对得上
+ - 判定: 差距在 3-9% 之间摆动, 小于 lite 自身极差 (最高到 10.2ms), 按清单判 无可测差异
+
+ 但函数级也绕不开一个问题: 两个函数产出不同
+
+ index_lite 返回 {key: 值列表}, index_fast 返回 {key: 计数}. 计数等于旧函数列表长度, 但产物不是同一种东西. 所以"新索引函数快 X%"这个说法本身要求"同样输出", 这里
+ 不满足; 这是函数接口变更, 不是同功能提速. 只说函数级也必须带这一句, 否则读者会以为同一份结果更快.
+
+ 能对外说的结论 (二选一)
+
+ A. 判无可测差异 (推荐):
+
+ │ 200k 行 / 37 个 key 单进程调用: index_lite 构建 p50 9.1ms (极差 8.4-10.2ms), index_fast p50 8.3ms (极差 7.6-9.2ms), 重复测量差距在 3-9% 间摆动, 与运行时波动同
+ │ 量级, 判无可测差异. 两者产出不同: 旧版按 key 存值列表, 新版只存计数.
+
+ B. 若坚持给百分比:
+
+ │ index_fast 构建耗时比 index_lite 低约 5-8% (200k 行, p50 9.1ms → 8.3ms), 与重复测量波动同量级, 不作为性能提升结论; 产出接口同时改变 (值列表 → 计数).
+ │ 不能写 26%, 也不能写"更快"而不带"与噪声同量级".
+
+ 对外要附的材料 (缺一条读者就无法判断)
+
+ 1. 待核验原句: "micro.py 显示 index_fast 快 26%" — 指明该脚本每侧单次且顺序固定.
+ 2. micro.py 计时范围: 只包 build_index 一次调用; 不含 load_rows; 无失败计数; 无输出正确性校验; 无预热.
+ 3. 顺序对照: 同顺序 24-27% 对反转顺序 -6~-8% 的成对原始值.
+ 4. 交替重复原始材料: 每侧 30 次 × 5 轮的完整耗时, 两侧 p50 与极差, 失败数 0, 工作量 200k 行 / 37 key.
+ 5. 机器条件: 16 核, 负载 0.23-0.49, 3 个用户 (非我启动, 未干预).
+ 6. 产出差异: 返回结构 list vs int, 逐 key 计数与列表长度一致, 报告内容不等.
+ 7. 判定词 + 适用范围: 单进程, 单次调用, 这份数据; 不外推到并发或更大数据, 也不外推到导出路径.
+
+ 材料都在 /tmp/orchestra-19/perf-check/ (build_only30.py 为函数级交替测法), 未改产品代码与既有脚本, 未起后台进程.
+
+──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+
+──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+/tmp/orchestra-19/red-lab (master)
+↑5.2k ↓14k R183k CH98.1% $0.005 2.4%/1.0M (auto)                                                                  (cli) deepseek-v4.1-flash-expires-on-0910 • high

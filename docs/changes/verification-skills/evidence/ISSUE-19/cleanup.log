@@ -1,0 +1,24 @@
+close w1E:t3W
+{"id":"cli:tab:close","result":{"type":"ok"}}
+close w1E:t3X
+{"id":"cli:tab:close","result":{"type":"ok"}}
+close w1E:t47
+{"id":"cli:tab:close","result":{"type":"ok"}}
+close w1E:t48
+{"id":"cli:tab:close","result":{"type":"ok"}}
+close w1E:t49
+{"id":"cli:tab:close","result":{"type":"ok"}}
+close w1E:t4A
+{"id":"cli:tab:close","result":{"type":"ok"}}
+close w1E:t4D
+{"id":"cli:tab:close","result":{"type":"ok"}}
+close w1E:t4E
+{"id":"cli:tab:close","result":{"type":"ok"}}
+--- agent list after close:
+no bm19 agents
+--- 临时目录清理 ---
+removed /tmp/orchestra-19
+absent /tmp/rough-check
+removed /tmp/if-scratch
+removed /tmp/orch19-exp
+/tmp/orchestra-19 不存在

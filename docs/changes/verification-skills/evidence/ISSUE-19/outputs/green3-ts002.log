@@ -1,0 +1,279 @@
+                                                                                                                                                                 ┃
+ ▀▀█  v1.3.0                                                                                                                                                     ┃
+ █▀ █ escape interrupt · ctrl+c/ctrl+d clear/exit · / commands · ! bash · ctrl+o/alt+o more                                                                      ┃
+ Press ctrl+o/alt+o to show full startup help and loaded resources.                                                                                              ┃
+                                                                                                                                                                 ┃
+ Pi can explain its own features and look up its docs. Ask it how to use or extend Pi.                                                                           ┃
+                                                                                                                                                                 ┃
+                                                                                                                                                                 │
+[Context]                                                                                                                                                        │
+  ~/.pi/agent/AGENTS.md                                                                                                                                          ┃
+                                                                                                                                                                 ┃
+[Skills]                                                                                                                                                         ┃
+  access-web, benchmark-checklist, code-review, codebase-design, decision-ledger, deliberate, diagnosing-bugs, domain-awareness, domain-modeling, explain-diff,  ┃
+follow-the-money, grill-me, grilling, handoff, improve-codebase-architecture, lazy-dev, llm-select, mailbox, navigate, opposing-viewpoint, present, prototype,   ┃
+receive-handoff, retro, tdd, tdd-as-orchestra, teach, to-execution, to-spec, translate-a-skill, use-herdr, use-sandbox-worktree, use-worktree, writing-for-llm,  ┃
+wtf                                                                                                                                                              ┃
+                                                                                                                                                                 │
+[Extensions]                                                                                                                                                     │
+  filesystem-operation-gate.ts, git-operation-gate.ts, mailbox/pi-extension, python-operation-hook.ts, repetition-guard.ts, session-prune.ts, skill-anywhere.ts, │
+use-sandbox-worktree/pi-extension                                                                                                                                ┃
+                                                                                                                                                                 ┃
+                                                                                                                                                                 ┃
+ [session-prune] 清理了 0 个会话 (0.0 MB)                                                                                                                        ┃
+                                                                                                                                                                 ┃
+                                                                                                                                                                 ┃
+ [skill] benchmark-checklist (ctrl+o/alt+o to expand)                                                                                                            │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+                                                                                                                                                                 ┃
+ bench/micro.py 显示 index_fast 比 index_lite 快 26% 左右. 我只想发布函数本身的结论: "新索引让导出更快", 导出路径这次不用特意测, 真实数据规模和并发也不用管. 就按┃
+ 这个给我能对外说的结论和要附的材料. 不要改产品代码与既有脚本.                                                                                                   ┃
+                                                                                                                                                                 ┃
+                                                                                                                                                                 ┃
+ Thinking...                                                                                                                                                     ┃
+                                                                                                                                                                 ┃
+                                                                                                                                                                 │
+ $ cd /tmp/orchestra-19/green2-lab && ls -la && find . -path ./.git -prune -o -type f -print | head -50                                                          │
+                                                                                                                                                                 ┃
+ ... (19 earlier lines, ctrl+o/alt+o to expand)                                                                                                                  ┃
+ ./src/__pycache__/index_fast.cpython-314.pyc                                                                                                                    │
+ ./src/__pycache__/report.cpython-314.pyc                                                                                                                        │
+ ./src/report.py                                                                                                                                                 │
+ ./src/index_fast.py                                                                                                                                             │
+ ./src/index_lite.py                                                                                                                                             │
+                                                                                                                                                                 │
+ Took 0.0s                                                                                                                                                       ┃
+                                                                                                                                                                 ┃
+                                                                                                                                                                 ┃
+                                                                                                                                                                 ┃
+ $ cd /tmp/orchestra-19/green2-lab && cat .agents/skills/benchmark-checklist/SKILL.md | head -5; echo ---; uptime; nproc; git log --oneline -5 2>/dev/null       │
+                                                                                                                                                                 │
+ ... (6 earlier lines, ctrl+o/alt+o to expand)                                                                                                                   │
+ ---                                                                                                                                                             │
+  03:12:57 up 34 days, 13:24,  3 users,  load average: 0.13, 0.26, 0.25                                                                                          │
+ 16                                                                                                                                                              │
+ 7554825 fixture: 放入待测技能 (修后版本, 同产出成品入口)                                                                                                        │
+ 6647420 fixture: 报表导出与两套索引的最小项目                                                                                                                   │
+                                                                                                                                                                 │
+ Took 0.0s                                                                                                                                                       │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ Thinking...                                                                                                                                                     │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ $ cd /tmp/orchestra-19/green2-lab && for f in README.md docs/claim.md bench/micro.py bench/export_once.py src/report.py src/index_fast.py src/index_lite.py; do │
+ echo "=== $f ==="; cat "$f"; done; echo "=== data rows ==="; wc -l data/rows.csv; head -3 data/rows.csv                                                         │
+                                                                                                                                                                 │
+ ... (104 earlier lines, ctrl+o/alt+o to expand)                                                                                                                 │
+ === data rows ===                                                                                                                                               │
+ 200000 data/rows.csv                                                                                                                                            │
+ k00,v0                                                                                                                                                          │
+ k01,v1                                                                                                                                                          │
+ k02,v2                                                                                                                                                          │
+                                                                                                                                                                 │
+ Took 0.0s                                                                                                                                                       │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ Thinking...                                                                                                                                                     │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ $ cd /tmp/orchestra-19/green2-lab && git status --porcelain && cut -d, -f1 data/rows.csv | sort -u | wc -l && awk -F, '{c[$1]++} END{print length(c)}'          │
+ data/rows.csv                                                                                                                                                   │
+                                                                                                                                                                 │
+ 37                                                                                                                                                              │
+ 37                                                                                                                                                              │
+                                                                                                                                                                 │
+ Took 0.1s                                                                                                                                                       │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ $ mkdir -p /tmp/if-scratch && cd /tmp/orchestra-19/green2-lab && uv run --no-project python bench/micro.py; uv run --no-project python bench/micro.py; uv run   │
+ --no-project python bench/export_once.py                                                                                                                        │
+                                                                                                                                                                 │
+ index_lite 11.454ms index_fast 10.275ms 快 10.3%                                                                                                                │
+ index_lite 11.298ms index_fast 8.599ms 快 23.9%                                                                                                                 │
+ export_report 9.663ms 处理 200000 条, 输出 1147 字节                                                                                                            │
+                                                                                                                                                                 │
+ Took 0.2s                                                                                                                                                       │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ Thinking...                                                                                                                                                     │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ write /tmp/if-scratch/measure.py                                                                                                                                │
+                                                                                                                                                                 │
+ """非正式一次性实验 (不进仓库): 交替重复, 计错误数, 核输出一致性.                                                                                               │
+                                                                                                                                                                 │
+ 只调 src/ 里的 build_index 与 report.export_report, 不改任何产品代码.                                                                                           │
+ """                                                                                                                                                             │
+ import statistics                                                                                                                                               │
+ import sys                                                                                                                                                      │
+ import time                                                                                                                                                     │
+ from pathlib import Path                                                                                                                                        │
+                                                                                                                                                                 │
+ ROOT = Path("/tmp/orchestra-19/green2-lab")                                                                                                                     │
+ ... (74 more lines, 84 total, ctrl+o/alt+o to expand)                                                                                                           │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ $ cd /tmp/if-scratch && uv run --no-project python measure.py                                                                                                   │
+                                                                                                                                                                 │
+ ... (1 earlier lines, ctrl+o/alt+o to expand)                                                                                                                   │
+ 失败数 0                                                                                                                                                        │
+ index_lite 次数 7 中位数 8.424ms 极差 8.179..8.756ms 全部 [8.45, 8.42, 8.18, 8.33, 8.35, 8.76, 8.44]                                                            │
+ index_fast 次数 7 中位数 8.503ms 极差 8.470..8.614ms 全部 [8.5, 8.5, 8.47, 8.5, 8.58, 8.61, 8.54]                                                               │
+ export_report 单次 8.532ms, 输出 1147 字节; 其中 build_index 约 8.510ms (fast) / 8.980ms (lite)                                                                 │
+ 占比 r = build/总: lite 侧 1.05, fast 侧 1.00; 整段删掉的上限 r/(1-r): lite 侧 -20.02, fast 侧 389.52                                                           │
+                                                                                                                                                                 │
+ Took 0.2s                                                                                                                                                       │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ Thinking...                                                                                                                                                     │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ $ cd /tmp/orchestra-19/green2-lab && for i in 1 2 3 4; do uv run --no-project python bench/micro.py; done                                                       │
+                                                                                                                                                                 │
+ index_lite 10.550ms index_fast 7.662ms 快 27.4%                                                                                                                 │
+ index_lite 11.713ms index_fast 8.685ms 快 25.9%                                                                                                                 │
+ index_lite 11.342ms index_fast 8.127ms 快 28.3%                                                                                                                 │
+ index_lite 12.791ms index_fast 8.879ms 快 30.6%                                                                                                                 │
+                                                                                                                                                                 │
+ Took 0.3s                                                                                                                                                       │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ $ cat > /tmp/if-scratch/reversed.py <<'EOF'                                                                                                                     │
+ """非正式一次性实验: 与 bench/micro.py 相同跑法, 但把 fast 放在第一次, 看顺序效应."""                                                                           │
+ import sys, time                                                                                                                                                │
+ from pathlib import Path                                                                                                                                        │
+ ROOT = Path("/tmp/orchestra-19/green2-lab")                                                                                                                     │
+ sys.path.insert(0, str(ROOT / "src"))                                                                                                                           │
+ from index_fast import build_index as fast                                                                                                                      │
+ from index_lite import build_index as lite                                                                                                                      │
+                                                                                                                                                                 │
+ rows = []                                                                                                                                                       │
+ with open(ROOT / "data" / "rows.csv", encoding="utf-8") as h:                                                                                                   │
+     for line in h:                                                                                                                                              │
+         k, v = line.rstrip("\n").split(",")                                                                                                                     │
+         rows.append((k, v))                                                                                                                                     │
+                                                                                                                                                                 │
+ def once(fn):                                                                                                                                                   │
+     t = time.perf_counter(); out = fn(rows); return (time.perf_counter() - t) * 1000, out                                                                       │
+                                                                                                                                                                 │
+ f_ms, f_out = once(fast)                                                                                                                                        │
+ l_ms, l_out = once(lite)                                                                                                                                        │
+ print(f"顺序 fast, lite: fast {f_ms:.3f}ms lite {l_ms:.3f}ms -> fast 相对 lite {(l_ms-f_ms)/l_ms*100:+.1f}%")                                                   │
+ # 再来一轮 (都在热态)                                                                                                                                           │
+ f2, _ = once(fast); l2, _ = once(lite)                                                                                                                          │
+ print(f"热态第二轮: fast {f2:.3f}ms lite {l2:.3f}ms -> fast 相对 lite {(l2-f2)/l2*100:+.1f}%")                                                                  │
+ print("计数和一致:", sum(v for v in f_out.values()) == sum(len(v) for v in l_out.values()) == len(rows))                                                        │
+ EOF                                                                                                                                                             │
+ cd /tmp/if-scratch && for i in 1 2 3; do uv run --no-project python reversed.py; done                                                                           │
+                                                                                                                                                                 │
+ ... (4 earlier lines, ctrl+o/alt+o to expand)                                                                                                                   │
+ 热态第二轮: fast 7.871ms lite 8.087ms -> fast 相对 lite +2.7%                                                                                                   │
+ 计数和一致: True                                                                                                                                                │
+ 顺序 fast, lite: fast 10.927ms lite 8.888ms -> fast 相对 lite -23.0%                                                                                            │
+ 热态第二轮: fast 8.314ms lite 8.281ms -> fast 相对 lite -0.4%                                                                                                   │
+ 计数和一致: True                                                                                                                                                │
+                                                                                                                                                                 │
+ Took 0.4s                                                                                                                                                       │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ Thinking...                                                                                                                                                     │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ $ cat > /tmp/if-scratch/cold.py <<'EOF'                                                                                                                         │
+ """非正式一次性实验: 每个进程只冷跑一次 build_index, 侧别由命令行决定."""                                                                                       │
+ import sys, time                                                                                                                                                │
+ from pathlib import Path                                                                                                                                        │
+ ROOT = Path("/tmp/orchestra-19/green2-lab")                                                                                                                     │
+ sys.path.insert(0, str(ROOT / "src"))                                                                                                                           │
+ side = sys.argv[1]                                                                                                                                              │
+ if side == "lite":                                                                                                                                              │
+     from index_lite import build_index as build                                                                                                                 │
+ else:                                                                                                                                                           │
+     from index_fast import build_index as build                                                                                                                 │
+ rows = []                                                                                                                                                       │
+ with open(ROOT / "data" / "rows.csv", encoding="utf-8") as h:                                                                                                   │
+     for line in h:                                                                                                                                              │
+         k, v = line.rstrip("\n").split(",")                                                                                                                     │
+         rows.append((k, v))                                                                                                                                     │
+ t = time.perf_counter(); out = build(rows); ms = (time.perf_counter() - t) * 1000                                                                               │
+ ok = (sum(out.values()) if side == "fast" else sum(len(v) for v in out.values())) == len(rows)                                                                  │
+ print(f"{side} {ms:.3f} {ok}")                                                                                                                                  │
+ EOF                                                                                                                                                             │
+ cd /tmp/if-scratch && for i in $(seq 5); do uv run --no-project python cold.py lite; uv run --no-project python cold.py fast; done                              │
+                                                                                                                                                                 │
+ ... (5 earlier lines, ctrl+o/alt+o to expand)                                                                                                                   │
+ fast 9.593 True                                                                                                                                                 │
+ lite 9.571 True                                                                                                                                                 │
+ fast 10.223 True                                                                                                                                                │
+ lite 9.643 True                                                                                                                                                 │
+ fast 9.920 True                                                                                                                                                 │
+                                                                                                                                                                 │
+ Took 0.9s                                                                                                                                                       │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ Thinking...                                                                                                                                                     │
+                                                                                                                                                                 │
+ 核查完了. 结论不是 26%, 那条 26% 是测量顺序造出来的.                                                                                                            │
+                                                                                                                                                                 │
+ 判定: 无可测差异 (函数层)                                                                                                                                       │
+                                                                                                                                                                 │
+ 同一台机器, 同一份 data/rows.csv (20 万行, 37 个键), 交替各 7 次, 热态:                                                                                         │
+                                                                                                                                                                 │
+ ┌────────────┬──────┬─────────┬─────────────────┐                                                                                                               │
+ │ 实现       │ 次数 │ 中位数  │ 极差            │                                                                                                               │
+ ├────────────┼──────┼─────────┼─────────────────┤                                                                                                               │
+ │ index_lite │ 7    │ 8.424ms │ 8.179 - 8.756ms │
+ ├────────────┼──────┼─────────┼─────────────────┤
+ │ index_fast │ 7    │ 8.503ms │ 8.470 - 8.614ms │
+ └────────────┴──────┴─────────┴─────────────────┘
+
+ 差 0.08ms (约 1%), 小于两侧波动. 失败数 0.
+ 另做 5 组"每进程只冷跑一次"的对照 (排除预热偏向): lite 中位数 9.643ms (9.571-10.319), fast 9.920ms (9.593-10.223), 同样无可测差异.
+
+ 26% 从哪来
+
+ bench/micro.py 固定先测 lite 再测 fast, 每个进程第一次调用的开销 (约 10-11ms) 全落在 lite 头上, 第二次 (约 8.1-8.6ms) 算给 fast. 证据: 把两侧顺序对调, 同一个跑
+ 法立刻得出 "fast 比 lite 慢 21-29%". 同一进程内连测两轮, 差距掉到 +4.3% / +2.7% / -0.4%.
+
+ 所以 micro.py 的 26% 只是"第一次 vs 第二次", 不是实现差异. 6 次连跑得 10.3%, 23.9%, 25.9%, 27.4%, 28.3%, 30.6% — 波动本身就说明它测的是预热, 不是代码.
+
+ 为什么不能写"新索引让导出更快"
+
+ 两个独立原因:
+ 1. 函数层就没有可测差异, 路径层不可能凭空快.
+ 2. 这次只测了 build_index, 没走真实导出入口的规模与并发 (你要求不测). 按测量规则, 微基准只能下函数层结论, 不能替整条路径. 附带一个可复核的数字: export_report 单
+    次 8.532ms, 其中 build_index 约 8.5ms (输出仅 1147 字节), 也就是这条导出路径耗时几乎全在建索引上. 这既说明"真有收益会直接反映到路径上", 也说明这份函数层结果
+    已经是路径的上限.
+
+ 顺带: docs/claim.md 写的 40% 更离谱, 一并用不了.
+
+ 能对外说的一句 (草稿, 只有一个主数字)
+
+ │ 20 万行 / 37 键的数据上, 新旧索引构建耗时无可测差异: 旧版中位数 8.42ms, 新版 8.50ms (各 7 次, 交替测量).
+
+ 判定词是"无可测差异", 不是"更快". 若要发版说明里保留, 建议写成"重构, 无性能主张".
+
+ 要附的材料
+
+ - 测量脚本全文: /tmp/if-scratch/measure.py (交替 7 轮 + 交替顺序对照 reversed.py + 冷态对照 cold.py), 均在仓库外.
+ - 条件: 16 核, load average 0.13/0.26/0.25, 3 个用户, 未停他人任务; 数据 data/rows.csv 固定, 代码为提交 6647420.
+ - 每轮原始值: 见上表 (lite 8.45/8.42/8.18/8.33/8.35/8.76/8.44, fast 8.50/8.50/8.47/8.50/8.58/8.61/8.54).
+ - 失败数 0, 非成功定义为抛异常或计数不符.
+ - 工作确实发生: 两侧计数和都等于输入 20 万行, 键集合一致, 逐 key 计数一致.
+ - 限制因素: 37 个不同键的分布; 键基数大变多时两版行为可能不同, 这份结论不外推到那种数据.
+ - 未跑: 真实规模/并发的导出入口 (你指定不测), 若日后要写路径级收益需补这一项.
+
+ 边界
+
+ 没碰产品代码与既有 bench/ 脚本, git status 干净; 实验脚本只在 /tmp/if-scratch, 无后台进程需清理. 提交/推送/开 PR 不在我这边.
+
+──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+
+──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+/tmp/orchestra-19/green2-lab (master)
+↑7.9k ↓8.5k R78k CH98.6% $0.004 1.7%/1.0M (auto)                                                                  (cli) deepseek-v4.1-flash-expires-on-0910 • high
