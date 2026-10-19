@@ -1,0 +1,84 @@
+ISSUE-09 机械检查记录
+时间: 2026-10-19 20:20-20:47 CST
+宿主: Ubuntu 26.04.1 LTS, 内核 7.0.0-31-generic, 16 核; herdr 0.9.4 (protocol 22); pi 1.3.0
+
+1) frontmatter 硬约束
+$ uv run python general/writing-for-llm/check_skill.py workflow/benchmark-checklist/SKILL.md
+workflow/benchmark-checklist/SKILL.md: OK
+check_skill_exit=0
+(v0 基线也跑过一次: OK, exit 0)
+
+2) 未改动技能回归核对
+$ uv run python general/writing-for-llm/check_skill.py workflow/blast-radius/SKILL.md
+workflow/blast-radius/SKILL.md: OK
+blast_radius_check_exit=0
+
+3) 全角标点扫描 (区间 U+3000-303F, U+FF00-FFEF, U+2018-201F, U+FE10-FE1F)
+范围: workflow/benchmark-checklist/** 与 docs/changes/verification-skills/evidence/ISSUE-09/**.md
+$ uv run python - <<'PY' (扫描脚本见下方命令摘要)
+hits= 0
+scan_exit=0
+说明: SKILL.md 第 38 行有一个 U+2014 长破折号 (——), 来自 ISSUE-06 既有正文, 本 ISSUE 未引入也未改写该行.
+
+4) 英文残留核对
+本 ISSUE 新增正文里的拉丁词只有 PR 与 Git, 保留理由:
+- PR: AC-029 与 DECISIONS F014 的原文用词, 指代码托管平台的合并请求页; 本仓库既有文档与技能也用这一词, 换成中文会与 AC 原文脱节.
+- Git: 指版本控制动作本身, 无通行中文替代.
+其余词 (uptime, nproc, A, B, p 值符号) 均在既有正文或证据记录里, 不是本 ISSUE 新引入.
+
+5) writing-for-llm 自带测试
+$ uv run --with pytest python -m pytest general/writing-for-llm/tests -q
+7 passed, 18 subtests passed
+exit=0
+
+6) 全量快层 (对照开工时的既有失败集合)
+$ uv run --with pytest python -m pytest -m "not e2e" -q
+6 failed, 659 passed, 2 skipped, 103 deselected, 33 subtests passed in 275.00s
+exit=1
+失败项:
+- general/present/tests/test_browser_session.py 5 个 (socket TimeoutError)
+- tests/test_mailbox_admin.py::test_pending_cap_drops_oldest (TimeoutError)
+判定: 与 ISSUE-07/08 记录的既有失败集合完全一致 (同样 6 项, 6 failed / 659 passed / 2 skipped), 且 `rg -l "benchmark-checklist" tests general` 无命中, 与本 ISSUE 新增路径无关. 未新增失败.
+原始输出: full-suite.log
+
+7) 演练目标项目状态核对
+$ cd /tmp/orchestra-09/lab && git status --short
+?? docs/green2-pr.md
+?? docs/green2.md
+$ git log --oneline -1
+6052846 reset: 清工作区记录, 保留历史
+判定: 两个演练会话只新增未跟踪的记录文件, 没有提交, 没有改产品源码 src/ 或项目配置; red 轮的 bench/two_libs.py 修改属授权的独立实验脚本范围, 差异见 red-round/bench/two_libs.py.diff.
+
+8) 加载来源核对
+$ find /home/bolo/.agents/skills /home/bolo/.pi -maxdepth 4 -type d -name benchmark-checklist
+(无输出)
+$ find /tmp/orchestra-09 -maxdepth 6 -type d -name benchmark-checklist
+/tmp/orchestra-09/lab/.agents/skills/benchmark-checklist
+判定: 演练期间全机只有临时项目这一份同名技能目录, 加载来源即待测副本; 未写任何全局部署副本, 未运行 sync-to-pi.py.
+
+9) 待测源与提交一致性
+$ git show 1049cbb:workflow/benchmark-checklist/SKILL.md | sha256sum
+63cc764b4ca6aaf4f44e9cb879ccf73dd292c2a547d7bc394a1069acaf770553  -   (v0)
+$ sha256sum workflow/benchmark-checklist/SKILL.md
+2a194acce53faf9d8c92e18c14d3109aadb9492bd29f3fe18b986c54a19023fe  -   (v1, 交付版)
+$ cd /tmp/orchestra-09/lab && sha256sum .agents/skills/benchmark-checklist/SKILL.md
+2a194acce53faf9d8c92e18c14d3109aadb9492bd29f3fe18b986c54a19023fe  -   (演练副本, 与交付版一致)
+
+扫描命令摘要 (第 3 项):
+uv run python - <<'EOF'
+import pathlib
+ranges = [(0x3000,0x303F),(0xFF00,0xFFEF),(0x2018,0x201F),(0xFE10,0xFE1F)]
+bad = lambda ch: any(a <= ord(ch) <= b for a, b in ranges)
+paths = list(pathlib.Path("workflow/benchmark-checklist").rglob("*"))
+paths += list(pathlib.Path("docs/changes/verification-skills/evidence/ISSUE-09").rglob("*.md"))
+hits = 0
+for p in paths:
+    if not p.is_file():
+        continue
+    for n, line in enumerate(p.read_text(encoding="utf-8", errors="replace").splitlines(), 1):
+        chars = [c for c in line if bad(c)]
+        if chars:
+            hits += 1
+            print(f"{p}:{n}: " + " ".join(f"U+{ord(c):04X}" for c in chars))
+print("hits=", hits)
+EOF

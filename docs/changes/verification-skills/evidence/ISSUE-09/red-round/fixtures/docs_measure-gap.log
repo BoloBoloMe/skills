@@ -1,0 +1,16 @@
+round=1 mode=old elapsed_ms=103.19
+round=1 mode=new elapsed_ms=75.04
+round=2 mode=old elapsed_ms=103.04
+round=2 mode=new elapsed_ms=75.07
+round=3 mode=old elapsed_ms=103.08
+round=3 mode=new elapsed_ms=75.07
+round=4 mode=old elapsed_ms=103.37
+round=4 mode=new elapsed_ms=75.56
+round=5 mode=old elapsed_ms=103.44
+round=5 mode=new elapsed_ms=75.16
+round=6 mode=old elapsed_ms=103.25
+round=6 mode=new elapsed_ms=75.35
+round=7 mode=old elapsed_ms=102.99
+round=7 mode=new elapsed_ms=75.02
+summary mode=old n=7 median_ms=103.19 min_ms=102.99 max_ms=103.44 range_ms=0.45
+summary mode=new n=7 median_ms=75.07 min_ms=75.02 max_ms=75.56 range_ms=0.54
