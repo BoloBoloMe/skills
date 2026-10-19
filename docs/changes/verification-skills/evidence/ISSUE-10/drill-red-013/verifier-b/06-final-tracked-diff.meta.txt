@@ -1,0 +1,4 @@
+command: git -C /tmp/orchestra-10/methods-red diff --exit-code HEAD --
+start: 2026-10-19T16:23:56,790856879+00:00
+end: 2026-10-19T16:23:56,794541581+00:00
+exit_code: 0

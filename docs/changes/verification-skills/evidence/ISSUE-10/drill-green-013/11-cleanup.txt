@@ -1,0 +1,10 @@
+== cleanup: 2026-10-20T00:33:07+08:00 ==
+cmd: rm -rf runtime
+exit=0
+-- exists? --
+ls: cannot access 'runtime': No such file or directory
+-- git status --porcelain --
+?? docs/changes/vault/evidence/
+-- git rev-parse HEAD --
+ea940821115424b7eb619e985b2304f2b61e9d1d
+-- tracked diff --

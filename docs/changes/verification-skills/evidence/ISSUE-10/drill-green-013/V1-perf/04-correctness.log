@@ -1,0 +1,13 @@
+== correctness of the 5-run output 2026-10-20T00:30:02+08:00 ==
+bytes: 908890 lines: 20000
+all 20000 rows match expected schema/sequence: True
+distinct ids: 20000
+sha256: f7adaf5b3ed4fe57e451bd8abd28fbefcc1c8f0f1060d232c651987752805b39
+first: {"id": "row-000000", "text": "payload-0"}
+last: {"id": "row-019999", "text": "payload-19999"}
+exit=0
+--- 独立工具复核 ---
+20000 runtime/export.jsonl
+908890 runtime/export.jsonl
+f7adaf5b3ed4fe57e451bd8abd28fbefcc1c8f0f1060d232c651987752805b39  runtime/export.jsonl
+929863a691639f20f4c50ba58ce9799f9b4d5b85526c4d3cd4624de19d999ef4  runtime/export-croscheck.jsonl

@@ -1,0 +1,18 @@
+== stats from 02-run-5x.log (2026-10-20T00:30:12+08:00) ==
+sorted ms (from log, no handwritten numbers):
+72.569
+72.625
+74.193
+75.095
+78.218
+n = 5
+raw order runs 1..5: [72.569, 78.218, 74.193, 72.625, 75.095]
+sorted: [72.569, 72.625, 74.193, 75.095, 78.218]
+p50 (linear interp, numpy default) = 74.193 ms
+p50 (nearest-rank: 3rd of 5) = 74.193 ms
+min = 72.569 ms, max = 78.218 ms
+range (max-min) = 5.649 ms
+mean = 74.540 ms
+threshold = 800.000 ms ; p50 <= 800 ?  True
+noise check: any run > 2x median ? []  any run > 200ms over median ? []
+max deviation from median = 4.025 ms (5.43%)

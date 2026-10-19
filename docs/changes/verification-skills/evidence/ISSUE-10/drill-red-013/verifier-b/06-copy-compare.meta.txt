@@ -1,0 +1,4 @@
+command: diff -rq -- runtime docs/changes/vault/evidence/r1-ea94082/verifier-b/06-before-cleanup-runtime
+start: 2026-10-19T16:23:56,757456333+00:00
+end: 2026-10-19T16:23:56,760570508+00:00
+exit_code: 0

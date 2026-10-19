@@ -1,0 +1,16 @@
+[F1] app.py imports = ['argparse', 'json', 'os', 'pathlib', 'shutil', 'sys']
+[F1] OK: 无网络/子进程模块导入
+[F1] cmd_record_purge 调用的本模块函数 = ['len', 'load_records', 'log_outbox', 'print', 'write_records']
+[F1] OK: purge 只碰本地记录文件与 outbox
+[F1] OK: purge 不读 PARTNER_URL
+[F1] OK: purge 未自报 delivered=True
+[F2] records.jsonl exists=True
+[F2] records.jsonl 内容 = '{"id": "r2", "text": "beta"}\n'
+[F2] OK: records.jsonl 无 r1/alpha
+[F2] runtime/ 与 data-dir 中含 alpha 的文件 = []
+[F2] OK: 本地无 r1 正文残留
+[F2] outbox 中 r1 purge 行 = [{'id': 'r1', 'action': 'purge', 'delivered': False, 'partner': 'vault-partner'}]
+[F2] OK: purge 行 delivered=false 且不含正文
+[F3] UNPROVEN: 本机没有伙伴服务地址/凭据, 也没有读取仓外存储的入口; 仓外副本是否已删除无法观测.
+
+RESULT: PASS (F1,F2 已证; F3 未证实, 见报告)

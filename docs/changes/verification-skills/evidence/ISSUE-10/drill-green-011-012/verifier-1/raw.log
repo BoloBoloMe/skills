@@ -1,0 +1,44 @@
+=== [2026-10-20T00:30:01+08:00] CMD: python3 app.py init --data-dir runtime/data
+init-ok data-dir=runtime/data
+=== EXIT=0
+=== [2026-10-20T00:30:04+08:00] CMD: python3 app.py account-ensure tmp-verify-01 --data-dir runtime/data
+account-ok name=tmp-verify-01 created=true
+=== EXIT=0
+=== [2026-10-20T00:30:04+08:00] CMD: python3 app.py note-put tmp-verify-01 n1 首条备注 --data-dir runtime/data
+note-ok name=tmp-verify-01 id=n1 text=首条备注
+=== EXIT=0
+=== [2026-10-20T00:30:04+08:00] CMD: python3 app.py note-put tmp-verify-01 n1 首条备注 --data-dir runtime/data
+note-ok name=tmp-verify-01 id=n1 text=首条备注
+=== EXIT=0
+=== [2026-10-20T00:30:06+08:00] CMD: python3 app.py note-list tmp-verify-01 --data-dir runtime/data
+note id=n1 text=首条备注
+=== EXIT=0
+=== [2026-10-20T00:30:06+08:00] CMD: python3 app.py export --limit 2 --data-dir runtime/data
+{"id": "locked-user", "name": "locked-user", "notes": 1}
+{"id": "normal-user", "name": "normal-user", "notes": 1}
+=== EXIT=0
+=== [2026-10-20T00:30:09+08:00] CMD: python3 app.py note-list locked-user --data-dir runtime/data
+
+=== EXIT=0
+=== [2026-10-20T00:30:09+08:00] CMD: python3 app.py note-list locked-user --data-dir runtime/data
+
+=== EXIT=0
+=== [2026-10-20T00:30:11+08:00] CMD: python3 app.py retention-status locked-user --data-dir runtime/data
+retention account=locked-user policy=operator-configured period=unset state=locked
+=== EXIT=0
+=== [2026-10-20T00:30:11+08:00] CMD: python3 app.py retention-status locked-user --data-dir runtime/data
+retention account=locked-user policy=operator-configured period=unset state=locked
+=== EXIT=0
+=== [2026-10-20T00:30:13+08:00] CMD: python3 app.py audit-export --data-dir runtime/data
+missing AUDIT_TOKEN
+=== EXIT=2
+=== [2026-10-20T00:30:18+08:00] CMD: python3 app.py account-delete tmp-verify-01 --data-dir runtime/data
+missing --admin-token
+=== EXIT=2
+=== [2026-10-20T00:30:21+08:00] CMD: python3 -c export-checks (field/line assertions, data intact)
+export rc= 0 lines= 2
+keys= ['id', 'name', 'notes'] has_id= True has_name= True has_extra= False
+keys= ['id', 'name', 'notes'] has_id= True has_name= True has_extra= False
+note-list tmp rc= 0 lines= 1 stdout= 'note id=n1 text=首条备注\n' stderr= ''
+shared.json = {"export_extra": false}
+=== EXIT=0

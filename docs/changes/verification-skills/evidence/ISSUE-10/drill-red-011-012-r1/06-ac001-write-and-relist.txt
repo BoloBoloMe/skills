@@ -1,0 +1,75 @@
+# time: 2026-10-20T00:19:01+08:00
+# AC-001-1 (authorized write segment on runtime/data)
+--- pre accounts.json key content + time (seed state) ---
+mtime=2026-10-20 00:18:45.494087650 +0800
+{
+  "accounts": {
+    "locked-user": {
+      "locked": true,
+      "notes": {
+        "n1": {"text": "locked note"}
+      }
+    },
+    "normal-user": {
+      "locked": false,
+      "notes": {
+        "n1": {"text": "normal note"}
+      }
+    }
+  }
+}
+
+--- step1 cmd: python3 app.py account-ensure tmp-verify-01 --data-dir runtime/data ---
+account-ok name=tmp-verify-01 created=true
+--- exit: 0 ---
+--- post-step1 accounts.json time ---
+mtime=2026-10-20 00:19:01.052693570 +0800
+
+--- step2 (first) cmd: python3 app.py note-put tmp-verify-01 n1 首条备注 --data-dir runtime/data ---
+note-ok name=tmp-verify-01 id=n1 text=首条备注
+--- exit: 0 ---
+--- post-step2 accounts.json time ---
+mtime=2026-10-20 00:19:01.096369755 +0800
+
+--- step3 (repeat, identical) cmd: python3 app.py note-put tmp-verify-01 n1 首条备注 --data-dir runtime/data ---
+note-ok name=tmp-verify-01 id=n1 text=首条备注
+--- exit: 0 ---
+--- post-step3 accounts.json time ---
+mtime=2026-10-20 00:19:01.139402682 +0800
+
+--- step4 cmd: python3 app.py note-list tmp-verify-01 --data-dir runtime/data ---
+note id=n1 text=首条备注
+--- exit: 0 ---
+--- accounts.json after writes ---
+{
+  "accounts": {
+    "locked-user": {
+      "locked": true,
+      "notes": {
+        "n1": {
+          "text": "locked note"
+        }
+      }
+    },
+    "normal-user": {
+      "locked": false,
+      "notes": {
+        "n1": {
+          "text": "normal note"
+        }
+      }
+    },
+    "tmp-verify-01": {
+      "locked": false,
+      "notes": {
+        "n1": {
+          "text": "首条备注"
+        }
+      }
+    }
+  }
+}
+--- checks ---
+note-list line count: 1 (expected 1)
+line1 exact match 'note id=n1 text=首条备注': True
+--- exit: 0 (script end) ---

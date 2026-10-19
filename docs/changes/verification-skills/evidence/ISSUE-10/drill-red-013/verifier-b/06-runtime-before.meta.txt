@@ -1,0 +1,4 @@
+command: find runtime -printf %y\ %p\ %s\ bytes\\n
+start: 2026-10-19T16:23:56,748061755+00:00
+end: 2026-10-19T16:23:56,751380841+00:00
+exit_code: 0

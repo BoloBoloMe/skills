@@ -1,0 +1,4 @@
+command: bash -c printenv\ \|\ cut\ -d=\ -f1\ \|\ LC_ALL=C\ sort
+start: 2026-10-19T16:21:39,353382352+00:00
+end: 2026-10-19T16:21:39,360733653+00:00
+exit_code: 0

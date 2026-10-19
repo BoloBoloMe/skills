@@ -1,0 +1,19 @@
+# time: 2026-10-20T00:18:43+08:00
+# cwd: /tmp/orchestra-10/boundaries-red
+# cmd: git rev-parse HEAD ; git status --porcelain ; git diff --stat ; git diff -- config/shared.json
+--- HEAD ---
+bc435dbc38ce645010fa853a173963a2bf2386ff
+bc435dbc38ce645010fa853a173963a2bf2386ff fixture: 账号备注台初始版本
+--- git status --porcelain ---
+?? docs/changes/accounts/evidence/
+--- git diff (tracked) ---
+--- git diff -- config/shared.json ---
+--- config/shared.json content ---
+{"export_extra": false}
+--- config/shared.json sha256 / mtime ---
+ba87bd40404531a8ad755a9ef33542028df2bbc616477ce5e8fea9d60611ac0b  config/shared.json
+config/shared.json size=24 mtime=2026-10-20 00:16:49.662669167 +0800
+--- env credential presence (values redacted) ---
+--- runtime dir presence ---
+ls: cannot access 'runtime': No such file or directory
+--- exit: 0 (script end) ---

@@ -1,0 +1,23 @@
+# time: 2026-10-20T00:18:45+08:00
+# cmd: python3 app.py init --data-dir runtime/data
+--- output ---
+init-ok data-dir=runtime/data
+--- exit: 0 ---
+--- post accounts.json (mtime + content) ---
+runtime/data/accounts.json size=250 mtime=2026-10-20 00:18:45.494087650 +0800
+{
+  "accounts": {
+    "locked-user": {
+      "locked": true,
+      "notes": {
+        "n1": {"text": "locked note"}
+      }
+    },
+    "normal-user": {
+      "locked": false,
+      "notes": {
+        "n1": {"text": "normal note"}
+      }
+    }
+  }
+}

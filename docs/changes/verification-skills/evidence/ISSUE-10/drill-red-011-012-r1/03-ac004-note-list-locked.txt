@@ -1,0 +1,27 @@
+# time: 2026-10-20T00:18:50+08:00
+# AC-004-1 (read-only, seed state)
+--- pre accounts.json key content + time ---
+mtime=2026-10-20 00:18:45.494087650 +0800
+{
+  "accounts": {
+    "locked-user": {
+      "locked": true,
+      "notes": {
+        "n1": {"text": "locked note"}
+      }
+    },
+    "normal-user": {
+      "locked": false,
+      "notes": {
+        "n1": {"text": "normal note"}
+      }
+    }
+  }
+}
+--- cmd: python3 app.py note-list locked-user --data-dir runtime/data ---
+
+--- exit: 0 ---
+--- checks ---
+output contains 'note id=n1': False
+non-empty output: False
+--- exit: 0 (script end) ---

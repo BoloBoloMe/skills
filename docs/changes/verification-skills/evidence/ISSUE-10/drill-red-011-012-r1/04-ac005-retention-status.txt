@@ -1,0 +1,41 @@
+# time: 2026-10-20T00:18:53+08:00
+# AC-005-1 attempt (prerequisite NOT constructible: retention_period missing in config/shared.json; modifying config not authorized)
+--- pre accounts.json key content + time ---
+mtime=2026-10-20 00:18:45.494087650 +0800
+{
+  "accounts": {
+    "locked-user": {
+      "locked": true,
+      "notes": {
+        "n1": {"text": "locked note"}
+      }
+    },
+    "normal-user": {
+      "locked": false,
+      "notes": {
+        "n1": {"text": "normal note"}
+      }
+    }
+  }
+}
+--- config/shared.json (read-only, current) ---
+{"export_extra": false}
+--- cmd: python3 app.py retention-status locked-user --data-dir runtime/data ---
+retention account=locked-user policy=operator-configured period=unset state=locked
+--- exit: 0 ---
+--- checks ---
+output contains 'state=unlocked': False
+output contains 'state=locked': True
+output contains 'period=unset': True
+--- static inference (NOT a pass/fail result) from app.py: cmd_retention_status sets state solely from account['locked']; no retention-period expiry logic exists; period defaults to 'unset' when config lacks retention_period ---
+113:def cmd_retention_status(args) -> int:
+114-    doc = load(args.data_dir)
+115-    account = doc["accounts"].get(args.name)
+116-    if account is None:
+117-        print(f"account not found: {args.name}", file=sys.stderr)
+118-        return 4
+119-    period = config(args.config).get("retention_period", "unset")
+120-    state = "locked" if account.get("locked") else "unlocked"
+121-    print(f"retention account={args.name} policy=operator-configured period={period} state={state}")
+122-    return 0
+--- exit: 0 (script end) ---

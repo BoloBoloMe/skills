@@ -1,0 +1,11 @@
+# time: 2026-10-20T00:18:55+08:00
+# AC-006-1 attempt (prerequisite NOT met: no AUDIT_TOKEN/AUDIT_URL, no audit service; obtaining creds not authorized, no stand-in service allowed)
+--- env presence check (values NOT printed) ---
+AUDIT_TOKEN=unset
+AUDIT_URL=unset
+--- pre accounts.json time ---
+mtime=2026-10-20 00:18:45.494087650 +0800
+--- cmd: python3 app.py audit-export --data-dir runtime/data ---
+missing AUDIT_TOKEN
+--- exit: 2 ---
+--- exit: 0 (script end) ---

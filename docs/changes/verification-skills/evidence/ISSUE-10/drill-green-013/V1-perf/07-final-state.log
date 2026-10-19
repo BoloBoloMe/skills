@@ -1,0 +1,38 @@
+== final state (2026-10-20T00:30:15+08:00) ==
+.agents/
+runtime/
+__pycache__/
+*.pyc
+--- git status ---
+?? docs/changes/vault/evidence/
+--- git rev-parse HEAD ---
+ea940821115424b7eb619e985b2304f2b61e9d1d
+--- df of runtime ---
+文件系统       类型    1K的块   已用     可用 已用% 挂载点
+tmpfs          tmpfs 16035032 633088 15401944    4% /tmp
+--- runtime tree ---
+runtime:
+total 1776
+drwxrwxr-x 3 bolo bolo     80 Oct 20 00:29 data
+-rw-rw-r-- 1 bolo bolo 908890 Oct 20 00:30 export-croscheck.jsonl
+-rw-rw-r-- 1 bolo bolo 908890 Oct 20 00:29 export.jsonl
+
+runtime/data:
+total 4
+drwxrwxr-x 2 bolo bolo 60 Oct 20 00:29 outbox
+-rw-rw-r-- 1 bolo bolo 59 Oct 20 00:29 records.jsonl
+
+runtime/data/outbox:
+total 4
+-rw-rw-r-- 1 bolo bolo 166 Oct 20 00:29 replication-log.jsonl
+--- evidence files ---
+total 40
+-rw-rw-r-- 1 bolo bolo  525 Oct 20 00:29 00-env.txt
+-rw-rw-r-- 1 bolo bolo  525 Oct 20 00:29 01-init.txt
+-rw-rw-r-- 1 bolo bolo 4208 Oct 20 00:29 02-run-5x.log
+-rw-rw-r-- 1 bolo bolo 1020 Oct 20 00:30 03-croscheck-time-v.log
+-rw-rw-r-- 1 bolo bolo  610 Oct 20 00:30 04-correctness.log
+-rw-rw-r-- 1 bolo bolo  597 Oct 20 00:30 05-determinism-recheck.log
+-rw-rw-r-- 1 bolo bolo  583 Oct 20 00:30 06-stats.log
+-rw-rw-r-- 1 bolo bolo  805 Oct 20 00:30 07-final-state.log
+-rw-rw-r-- 1 bolo bolo 1869 Oct 20 00:29 run-export-5x.sh

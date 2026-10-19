@@ -1,0 +1,58 @@
+# time: 2026-10-20T00:19:13+08:00
+# BR-001 (audit rule) STATIC MATERIAL CHECK — this is a static code/config comparison, NOT a runtime behavior result.
+--- 1) export implementation: cmd_export builds the field set ---
+81:def cmd_export(args) -> int:
+82-    doc = load(args.data_dir)
+83-    extra = bool(config(args.config).get("export_extra", False))
+84-    rows = list(doc["accounts"].items())
+85-    if args.limit is not None:
+86-        rows = rows[: args.limit]
+87-    for name, account in rows:
+88-        record = {"id": name, "name": name, "notes": len(account["notes"])}
+89-        if extra:
+90-            record["extra"] = f"{name}-extra"
+91-        print(json.dumps(record, ensure_ascii=False))
+92-    return 0
+93-
+94-
+95-def cmd_account_delete(args) -> int:
+96-    if args.admin_token is None:
+97-        print("missing --admin-token", file=sys.stderr)
+
+--- 2) config loader + default config path (only source of export_extra) ---
+10:DEFAULT_CONFIG = Path("config/shared.json")
+30:def config(config_path: str) -> dict:
+83:    extra = bool(config(args.config).get("export_extra", False))
+161:    export.add_argument("--config", default=str(DEFAULT_CONFIG))
+166:    delete.add_argument("--config", default=str(DEFAULT_CONFIG))
+170:    retention.add_argument("--config", default=str(DEFAULT_CONFIG))
+
+--- 3) grep for any other 'extra' / field-injection source in code/config/docs ---
+app.py:83:    extra = bool(config(args.config).get("export_extra", False))
+app.py:89:        if extra:
+app.py:90:            record["extra"] = f"{name}-extra"
+config/shared.json:1:{"export_extra": false}
+README.md:24:`config/shared.json` 是受版本控制的共享配置. `export_extra` 决定导出是否带 `extra` 字段; `retention_period` 是保留期, 由运营配置.
+docs/changes/accounts/PRODUCT.md:22:- BR-001: 导出的字段集合只由 config/shared.json 的 export_extra 决定. (审计)
+docs/changes/accounts/PRODUCT.md:43:  假定 config/shared.json 里 export_extra 为 false
+docs/changes/accounts/PRODUCT.md:44:  当 验收者把 config/shared.json 的 export_extra 改为 true
+docs/changes/accounts/PRODUCT.md:46:  那么 每行导出记录含 `extra` 字段且退出码为 0
+docs/changes/accounts/PRODUCT.md:52:  那么 输出两行, 每行含 `id` 与 `name` 字段, 不含 `extra` 字段, 退出码为 0
+(exit of grep: 0)
+
+--- 4) grep for record field assignments / env-driven fields ---
+88:        record = {"id": name, "name": name, "notes": len(account["notes"])}
+90:            record["extra"] = f"{name}-extra"
+99:    expected = os.environ.get("ADMIN_TOKEN")
+126:    token = os.environ.get("AUDIT_TOKEN")
+127:    url = os.environ.get("AUDIT_URL")
+
+--- 5) config file actually on disk (default relative path) ---
+{"export_extra": false}
+
+--- STATIC conclusion ---
+Base record fields are hard-coded: id, name, notes.
+The only conditional field is 'extra', added iff config(--config).get('export_extra') is truthy.
+No other code path adds/removes export fields; no env var feeds export fields.
+Caveat observed statically: export subcommand accepts --config override; the SPEC default path is config/shared.json and was the only path used this round.
+--- exit: 0 (script end) ---

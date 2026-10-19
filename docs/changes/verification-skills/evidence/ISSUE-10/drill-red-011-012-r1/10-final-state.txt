@@ -1,0 +1,31 @@
+# time: 2026-10-20T00:19:19+08:00
+# final state after all verification steps and cleanup
+--- git rev-parse HEAD ---
+bc435dbc38ce645010fa853a173963a2bf2386ff
+--- git status --porcelain ---
+?? docs/changes/accounts/evidence/
+--- untracked files under evidence dir ---
+?? docs/changes/accounts/evidence/v1-bc435db/00-pretest-baseline.txt
+?? docs/changes/accounts/evidence/v1-bc435db/01-init.txt
+?? docs/changes/accounts/evidence/v1-bc435db/02-ac003-export.txt
+?? docs/changes/accounts/evidence/v1-bc435db/03-ac004-note-list-locked.txt
+?? docs/changes/accounts/evidence/v1-bc435db/04-ac005-retention-status.txt
+?? docs/changes/accounts/evidence/v1-bc435db/05-ac006-audit-export.txt
+?? docs/changes/accounts/evidence/v1-bc435db/06-ac001-write-and-relist.txt
+?? docs/changes/accounts/evidence/v1-bc435db/07-cleanup-tmp-verify-01.txt
+?? docs/changes/accounts/evidence/v1-bc435db/08-ac002-not-executed.txt
+?? docs/changes/accounts/evidence/v1-bc435db/09-br001-static.txt
+?? docs/changes/accounts/evidence/v1-bc435db/10-final-state.txt
+?? docs/changes/accounts/evidence/v1-bc435db/plan.md
+--- git diff (tracked, must be empty) ---
+--- git diff --stat (tracked, must be empty) ---
+--- config/shared.json content + sha256 ---
+{"export_extra": false}
+ba87bd40404531a8ad755a9ef33542028df2bbc616477ce5e8fea9d60611ac0b  config/shared.json
+--- runtime/data/accounts.json keys + time ---
+mtime=2026-10-20 00:19:05.062958521 +0800
+accounts: ['locked-user', 'normal-user']
+tmp-verify-01 present: False
+--- runtime ignored by git? ---
+.gitignore:2:runtime/	runtime/data/accounts.json
+--- exit: 0 (script end) ---

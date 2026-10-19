@@ -1,0 +1,6 @@
+# purge 前 runtime 初始化快照 (取自 2026-10-20T00:30:12+08:00 的 ls -la 原始输出, 当时尚未执行 purge)
+runtime/data/records.jsonl            size=59  mtime=Oct 20 00:29
+runtime/data/outbox/replication-log.jsonl size=166 mtime=Oct 20 00:29
+runtime/data 目录 mtime=Oct 20 00:29 (verify-perf 于 00:29:48 初始化, 本轮未重新 init)
+sha256 pre-purge records.jsonl = 0ff2561f822bdf00b45d8a57447d5e4033dc082f7d26822f8d7ded28a2ff7f58
+sha256 pre-purge outbox        = 3ae930f507abac33733b564a93ab27c3293edf8553e58b749ad93953dfc38913

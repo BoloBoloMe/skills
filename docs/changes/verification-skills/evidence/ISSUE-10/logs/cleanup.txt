@@ -1,0 +1,10 @@
+清理记录 (2026-10-20)
+
+演练会话: 全部已用 herdr tab close 关闭; herdr agent list 中无 orchestra-10 相关存活会话; herdr tab list 中无 i10 标签.
+临时项目: /tmp/orchestra-10 在证据抄完后整体删除; /tmp/o10a 与 /tmp/o10v 为夹具自测目录, 一并删除.
+删除结果: /tmp/orchestra-10 不存在; /tmp/o10a 不存在; /tmp/o10v 不存在; /tmp/v2-del-probe 不存在.
+
+后台进程检查: 扫描 /proc/*/cmdline, 查找 python 解释器启动的 app.py serve 或 relay.py 进程.
+命中: 无
+
+监听端口检查: 18201, 18290, 18321, 18401 均无监听.

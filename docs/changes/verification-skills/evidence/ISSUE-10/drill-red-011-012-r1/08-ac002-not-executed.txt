@@ -1,0 +1,10 @@
+# time: 2026-10-20T00:19:10+08:00
+# AC-002-1: NOT EXECUTED — required write to config/shared.json (export_extra false -> true) was NOT authorized this round.
+# Therefore no observation of 'extra' field is produced; conclusion = 未验证 (not verified), reason = missing authorization to modify config/shared.json.
+--- config/shared.json current content (left untouched) ---
+{"export_extra": false}
+ba87bd40404531a8ad755a9ef33542028df2bbc616477ce5e8fea9d60611ac0b  config/shared.json
+--- git diff -- config/shared.json (must be empty) ---
+--- git status --porcelain config/shared.json (must be empty) ---
+--- note: no temporary config copy / --config override was used as a substitute; that would be a stand-in and is not accepted as evidence for this scenario. ---
+--- exit: 0 (script end) ---

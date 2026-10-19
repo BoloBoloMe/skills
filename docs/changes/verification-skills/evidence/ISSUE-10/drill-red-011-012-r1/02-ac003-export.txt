@@ -1,0 +1,32 @@
+# time: 2026-10-20T00:18:48+08:00
+# AC-003-1 (read-only, seed state)
+--- pre accounts.json key content + time ---
+mtime=2026-10-20 00:18:45.494087650 +0800
+{
+  "accounts": {
+    "locked-user": {
+      "locked": true,
+      "notes": {
+        "n1": {"text": "locked note"}
+      }
+    },
+    "normal-user": {
+      "locked": false,
+      "notes": {
+        "n1": {"text": "normal note"}
+      }
+    }
+  }
+}
+--- cmd: python3 app.py export --limit 2 --data-dir runtime/data ---
+{"id": "locked-user", "name": "locked-user", "notes": 1}
+{"id": "normal-user", "name": "normal-user", "notes": 1}
+--- exit: 0 ---
+--- checks ---
+line_count: 2 (expected 2)
+line1: contains_id=True contains_name=True contains_extra=False keys=['id', 'name', 'notes']
+line2: contains_id=True contains_name=True contains_extra=False keys=['id', 'name', 'notes']
+AC-003-1 assertion (all must be True): True
+--- config/shared.json unchanged proof ---
+ba87bd40404531a8ad755a9ef33542028df2bbc616477ce5e8fea9d60611ac0b  config/shared.json
+--- exit: 0 (script end) ---
