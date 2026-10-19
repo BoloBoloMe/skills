@@ -1,0 +1,21 @@
+身份与单一目标: 你是执行者, 唯一目标: 按 /tmp/orchestra-14/ts001-green/.agents/skills/explain-diff/SKILL.md 为本次 wordcount 变更生成一份 HTML 讲解页并交付路径. 你只写这份讲解页, 不做别的.
+
+现场事实: 仓库根 /tmp/orchestra-14/ts001-green, 分支 main. 本次变更的比较范围: 起点 cc48f65 (项目骨架, 含初始 tests/run.sh 与 docs), 终点 b519339 (git rev-parse HEAD 可核对), 范围 cc48f65..b519339. 范围内提交: beb0ebf (feat: ISSUE-01 实现 bin/wordcount) 经 4187edb (merge --no-ff issue/01) 并入 main, 720db42 (勾选 ISSUE-01 与记录评审结论), a1b5c9d/8d94bbd/b519339 (装入项目级技能 v1/v2, 与产品行为无关但属于终点内容, 讲清它不属于产品变更). 当前工作区相对 b519339 只有未跟踪的 docs/changes/wordcount/verify/ (上一轮独立验收证据), 不提交.
+
+权威输入 (自己去读, 不要我复述):
+- .agents/skills/explain-diff/SKILL.md: 你执行的流程与页面内容/测验质量要求, 尤其第 3 步证据规则与第 4 步"调用 present skill".
+- ~/.agents/skills/present/SKILL.md: 生成与展示讲解页的入口, 按其交付或失败出口执行. 本机是无 GUI 的 SSH 环境, 没有浏览器可用, 按 present 的失败出口交付并把实际交付方式写清, 不要装工具链或造替身页面冒充已展示.
+- docs/changes/wordcount/PRODUCT.md: 变更的产品判据与目标/非目标.
+- docs/changes/wordcount/verify/round-1/report.md: 本轮独立验收报告, 绑定目标提交 b519339db7d0d1ec723aef311fef7d17f2810bce, 逐项结果 AC-001-1 通过, AC-002-1 通过, BR-001 通过, 三类去向均为 0 条. 讲解页"证据"节必须引用这份报告的实际路径, 它覆盖的目标提交和逐项结果, 并如实显示未验证范围 (本轮报告写明 0 条未验证, 但 BR-001 属静态材料核对而非运行行为; 且报告本身声明仍需用户逐项确认和正式人工验收).
+- docs/changes/wordcount/EXECUTION.md 与 docs/changes/wordcount/issues/ISSUE-01-wordcount.md: 任务图与验收标准, 用于讲清为什么这么改.
+- 代码与测试: bin/wordcount, tests/run.sh, samples/notes.txt; 需要旧状态时用 git show cc48f65:<路径>.
+
+范围内: 读仓库, git 只读命令 (log/diff/show), 新建讲解页产物文件. 产物落在 docs/changes/wordcount/explain/ 下 (present skill 有既定目录约定时按其约定, 并在最终回复写出实际路径).
+
+范围外: 不改产品代码, bin/, tests/, samples/, 也不改 PRODUCT.md, EXECUTION.md, issues/, review/ 与 docs/changes/wordcount/verify/ 下任何文件; 不 git commit/push/merge; 不重跑或替代验收 (验收已由独立会话 acc-wc-1-1 完成, 你只引用其报告, 不把作者自测当验收); 不写本机全局部署目录; 不运行 sync 类脚本.
+
+停止条件: 关键结论缺证据且无法补, 或需要改产品标准/扩范围/新权限时, 停下并在回复里单列缺口, 不要编造旧版本运行结果或把未运行的测试写成通过.
+
+输出契约: 讲解页含 SKILL.md 要求的 6 节 (背景/思路/代码讲解/证据/合并风险/测验) 与 5 道中等难度选择题 (作答即时反馈, 正确项位置在数据里打散); 证据节严格分"已观察/由代码推断/未验证"三档, 并引用 docs/changes/wordcount/verify/round-1/report.md 的路径, 覆盖提交与逐项结果. 最终回复 8 行内: 产物绝对路径, 比较范围与终点提交, 证据节引用的验报告路径与 3 条结果, 未验证/缺口项 (若有), 交付方式 (present 的成功或失败出口), 是否阻塞.
+
+完成证据: 讲解页文件真实存在 (给 ls -l), 测验题目能在页面里交互, 证据节引用的验报告路径与当前磁盘文件一致.

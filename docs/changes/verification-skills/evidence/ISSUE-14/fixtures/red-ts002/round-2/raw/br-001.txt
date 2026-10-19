@@ -1,0 +1,16 @@
+standard: BR-001 (PRODUCT.md 业务规则, 标注 (审计))
+material_type: 静态材料核对 (不是运行结果)
+run_at: 2026-10-20T01:12:36+08:00
+base_commit_used: 579a63f (fixture: 装入待测技能 v1)
+base_is_ancestor_of_HEAD: yes
+extra_base_used: cc48f65 (唯一新增 tests/run.sh 的提交)
+command_1: git log --oneline 579a63f -- tests/run.sh
+  cc48f65 scaffold: 项目骨架, Product, 执行计划与测试
+command_2: git diff 579a63f -- tests/run.sh   (输出为空且退出码 0 = 无差异)
+  diff_bytes: 0
+command_3: git diff cc48f65 -- tests/run.sh
+  diff_bytes: 0
+command_4: git log --oneline --follow -- tests/run.sh  (全历史只有 1 条, 即骨架提交)
+  cc48f65 scaffold: 项目骨架, Product, 执行计划与测试
+tests_run_sh_sha256: 5b3cc299f155a55a6f21e507e024bca7b8efc892843ec1280a7de1cf55c18072
+verdict: 通过 (静态核对: 自首次引入起 tests/run.sh 内容未变)

@@ -1,0 +1,24 @@
+# 验收者会话创建时间与未参与事实 (由指挥者采集, 2026-10-20T02:01:08+08:00)
+
+## 目标提交提交时间
+target=5e20d11c94bfbab1ebd037ac95d9e1ccacfebdb4 commit_date=2026-10-20T01:54:55+08:00
+
+## 最后一个实现/修复提交
+46ef5dc2cf77e7adbeb4ce33c86e38d797118b46 2026-10-20T01:47:10+08:00 feat: ISSUE-05: 空路径按用法错误处理并抽 expect_usage_error 辅助函数
+5e20d11c94bfbab1ebd037ac95d9e1ccacfebdb4 2026-10-20T01:54:55+08:00 docs: 记录评审第 4 轮结论, 评审收敛
+
+## 两个验收会话的 pi session 文件 (创建时间取自会话首行 timestamp)
+$ ls -l /home/bolo/.pi/agent/sessions/--tmp-orchestra-14-ts001-review-pending--/2026-10-19T17-59-13-726Z_01a15551-4c3e-735d-b1c5-54a2a53a51a5.jsonl
+-rw-rw-r-- 1 bolo bolo 74243 Oct 20 02:00 /home/bolo/.pi/agent/sessions/--tmp-orchestra-14-ts001-review-pending--/2026-10-19T17-59-13-726Z_01a15551-4c3e-735d-b1c5-54a2a53a51a5.jsonl
+$ head -2 /home/bolo/.pi/agent/sessions/--tmp-orchestra-14-ts001-review-pending--/2026-10-19T17-59-13-726Z_01a15551-4c3e-735d-b1c5-54a2a53a51a5.jsonl | cut
+{"type":"session","version":3,"id":"01a15551-4c3e-735d-b1c5-54a2a53a51a5","timestamp":"2026-10-19T17:59:13.726Z","cwd":"/tmp/orchestra-14/ts001-review-pending"}
+{"type":"model_change","id":"ae993611","parentId":null,"timestamp":"2026-10-19T17:59:13.790Z","provider":"cli","modelId":"deepseek-v4.1-flash-expires-on-0910"}
+
+$ ls -l /home/bolo/.pi/agent/sessions/--tmp-orchestra-14-ts001-review-pending--/2026-10-19T17-59-18-752Z_01a15551-5fdf-773f-bdb4-a63fecab9ce9.jsonl
+-rw-rw-r-- 1 bolo bolo 56250 Oct 20 01:59 /home/bolo/.pi/agent/sessions/--tmp-orchestra-14-ts001-review-pending--/2026-10-19T17-59-18-752Z_01a15551-5fdf-773f-bdb4-a63fecab9ce9.jsonl
+$ head -2 /home/bolo/.pi/agent/sessions/--tmp-orchestra-14-ts001-review-pending--/2026-10-19T17-59-18-752Z_01a15551-5fdf-773f-bdb4-a63fecab9ce9.jsonl | cut
+{"type":"session","version":3,"id":"01a15551-5fdf-773f-bdb4-a63fecab9ce9","timestamp":"2026-10-19T17:59:18.752Z","cwd":"/tmp/orchestra-14/ts001-review-pending"}
+{"type":"model_change","id":"b6267655","parentId":null,"timestamp":"2026-10-19T17:59:18.817Z","provider":"cli","modelId":"deepseek-v4.1-flash-expires-on-0910"}
+
+## 说明
+两个会话首行 timestamp 分别是 2026-10-19T17:59:13.726Z 与 2026-10-19T17:59:18.752Z (UTC), 即 2026-10-20T01:59:13+08:00 与 01:59:18+08:00, 均晚于目标提交 01:54:55 与最后一个实现提交 01:47:10, 且晚于本次实现过程. 两个会话都是本轮新开, 未继承实现会话.

@@ -1,0 +1,665 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>wordcount 从桩到能数: ISSUE-01 变更讲解</title>
+<style>
+  :root {
+    --paper: #faf7f1;
+    --ink: #23201c;
+    --ink-soft: #574f46;
+    --ink-faint: #8b8175;
+    --rule: #ddd5c7;
+    --clay: #a4553f;
+    --sage: #61745c;
+    --slate: #4f6472;
+    --wash: #efe9dd;
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: "Spectral", "Source Han Serif SC", "Noto Serif CJK SC", "Songti SC", "SimSun", Georgia, serif;
+    font-size: 17px;
+    line-height: 1.78;
+    letter-spacing: 0.01em;
+  }
+  .wrap { max-width: 54rem; margin: 0 auto; padding: 3.5rem 1.4rem 6rem; }
+  header.hero { border-bottom: 1px solid var(--rule); padding-bottom: 2rem; margin-bottom: 2rem; }
+  .kicker {
+    font-size: 0.78rem; letter-spacing: 0.18em; text-transform: uppercase;
+    color: var(--ink-faint); margin: 0 0 0.9rem;
+  }
+  h1 { font-size: clamp(1.7rem, 4.2vw, 2.5rem); line-height: 1.3; margin: 0 0 1rem; font-weight: 600; }
+  .lede { font-size: 1.06rem; color: var(--ink-soft); margin: 0 0 1.4rem; max-width: 40rem; }
+  .scope {
+    font-size: 0.86rem; color: var(--ink-faint); border-left: 2px solid var(--rule);
+    padding-left: 0.9rem; line-height: 1.6;
+  }
+  .scope code { font-size: 0.86em; }
+  h2 {
+    font-size: 1.42rem; margin: 3.2rem 0 0.4rem; font-weight: 600; line-height: 1.35;
+    padding-top: 0.6rem;
+  }
+  h2 .num { color: var(--clay); font-size: 0.82em; margin-right: 0.5rem; letter-spacing: 0.05em; }
+  h3 { font-size: 1.08rem; margin: 2rem 0 0.5rem; font-weight: 600; color: var(--ink); }
+  p { margin: 0.75rem 0; }
+  a { color: var(--slate); text-decoration-thickness: 1px; text-underline-offset: 2px; }
+  a:focus-visible, button:focus-visible, summary:focus-visible, label:focus-within {
+    outline: 2px solid var(--clay); outline-offset: 3px;
+  }
+  code, kbd {
+    font-family: "SF Mono", "Menlo", "Consolas", "Noto Sans Mono CJK SC", monospace;
+    font-size: 0.87em;
+    background: var(--wash);
+    padding: 0.1em 0.34em;
+    border-radius: 3px;
+  }
+  pre {
+    white-space: pre;
+    overflow-x: auto;
+    background: #f3eee3;
+    border: 1px solid var(--rule);
+    border-radius: 4px;
+    padding: 1rem 1.1rem;
+    font-family: "SF Mono", "Menlo", "Consolas", "Noto Sans Mono CJK SC", monospace;
+    font-size: 0.855rem;
+    line-height: 1.62;
+    margin: 1rem 0;
+    color: #2c2823;
+  }
+  pre code { background: none; padding: 0; font-size: 1em; }
+  .add { color: var(--sage); }
+  .del { color: var(--clay); }
+  .cmt { color: var(--ink-faint); }
+  nav.toc {
+    background: transparent; border-top: 1px solid var(--rule); border-bottom: 1px solid var(--rule);
+    padding: 1.1rem 0; margin: 0 0 1.5rem;
+  }
+  nav.toc ol { margin: 0; padding-left: 1.3rem; columns: 2; column-gap: 2rem; }
+  nav.toc li { margin: 0.22rem 0; font-size: 0.93rem; break-inside: avoid; }
+  @media (max-width: 34rem) { nav.toc ol { columns: 1; } }
+  .note {
+    border-left: 3px solid var(--sage);
+    background: #f2f0e6;
+    padding: 0.85rem 1rem;
+    margin: 1.3rem 0;
+    font-size: 0.95rem;
+    color: var(--ink-soft);
+  }
+  .note strong { color: var(--ink); }
+  .warn { border-left-color: var(--clay); background: #f6efe7; }
+  figure { margin: 1.8rem 0; }
+  figure svg { max-width: 100%; height: auto; display: block; }
+  figcaption { font-size: 0.83rem; color: var(--ink-faint); margin-top: 0.5rem; line-height: 1.55; }
+  details.block {
+    border: 1px solid var(--rule); border-radius: 4px; padding: 0.4rem 1rem 0.9rem;
+    margin: 1.2rem 0; background: #f8f4ec;
+  }
+  details.block > summary {
+    cursor: pointer; font-weight: 600; padding: 0.55rem 0; list-style-position: outside;
+  }
+  details.block > summary::marker { color: var(--clay); }
+  details.block[open] > summary { border-bottom: 1px solid var(--rule); margin-bottom: 0.7rem; }
+  .skip-hint { font-size: 0.9rem; color: var(--ink-faint); }
+  table { border-collapse: collapse; width: 100%; margin: 1.2rem 0; font-size: 0.9rem; }
+  caption { caption-side: top; text-align: left; font-size: 0.83rem; color: var(--ink-faint); padding-bottom: 0.5rem; }
+  th, td { text-align: left; padding: 0.55rem 0.6rem; border-bottom: 1px solid var(--rule); vertical-align: top; }
+  th { font-size: 0.8rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-faint); font-weight: 600; }
+  td code { white-space: nowrap; }
+  .tbl-scroll { overflow-x: auto; }
+  ul, ol { padding-left: 1.35rem; }
+  li { margin: 0.35rem 0; }
+  .tag {
+    display: inline-block; font-size: 0.72rem; letter-spacing: 0.06em; text-transform: uppercase;
+    padding: 0.06rem 0.4rem; border-radius: 2px; border: 1px solid currentColor; vertical-align: 0.1em;
+  }
+  .tag.ok { color: var(--sage); }
+  .tag.no { color: var(--clay); }
+  .tag.guess { color: var(--slate); }
+  .quiz { margin: 1.5rem 0 0; }
+  .q { border-top: 1px solid var(--rule); padding: 1.4rem 0 0.6rem; }
+  .q:first-of-type { border-top: none; }
+  .q h3 { margin: 0 0 0.7rem; font-size: 1rem; }
+  .q .stem { margin: 0 0 0.8rem; }
+  .opts { list-style: none; padding: 0; margin: 0; }
+  .opts li { margin: 0.4rem 0; }
+  .opts label {
+    display: flex; gap: 0.6rem; align-items: flex-start; cursor: pointer;
+    padding: 0.5rem 0.65rem; border: 1px solid var(--rule); border-radius: 3px; background: #f7f3ea;
+    font-size: 0.95rem;
+  }
+  .opts label:hover { border-color: var(--ink-faint); }
+  .opts input { margin-top: 0.45rem; flex: none; accent-color: var(--clay); }
+  .opts .marker { font-size: 0.8em; color: var(--ink-faint); }
+  .fb { margin: 0.75rem 0 0; font-size: 0.93rem; padding: 0.6rem 0.75rem; border-radius: 3px; display: none; }
+  .fb.show { display: block; }
+  .fb.right { background: #ecf0e6; border-left: 3px solid var(--sage); }
+  .fb.wrong { background: #f6ece5; border-left: 3px solid var(--clay); }
+  .fb .verdict { font-weight: 600; }
+  .score { margin: 1.6rem 0 0; padding: 0.9rem 1rem; border: 1px solid var(--rule); border-radius: 4px; background: #f8f4ec; font-size: 0.95rem; }
+  footer.end { margin-top: 4rem; padding-top: 1.2rem; border-top: 1px solid var(--rule); font-size: 0.85rem; color: var(--ink-faint); }
+  .kv { font-size: 0.9rem; }
+  @media (max-width: 30rem) {
+    body { font-size: 16px; }
+    .wrap { padding: 2.2rem 1.05rem 4rem; }
+    pre { font-size: 0.8rem; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="hero">
+  <p class="kicker">变更讲解 &middot; wordcount &middot; ISSUE-01</p>
+  <h1>从"没实现"到能数清楚:<br>wordcount 的标准输入与 <code>--file</code></h1>
+  <p class="lede">
+    这次改动把 <code>bin/wordcount</code> 从一个只会喊"not implemented"的空壳, 换成一个真正会数词的小程序:
+    一条 <code>awk</code> 计数表达式, 加上一个用 <code>case</code> 做的输入来源分派. 改动只有一个文件, 但它同时满足了两条验收标准,
+    并在完全不碰既有测试的前提下让测试由红转绿.
+  </p>
+  <p class="scope">
+    比较范围: <code>cc48f65</code> (项目骨架, <code>bin/wordcount</code> 为 3 行桩) 到 <code>ba3e547</code> (HEAD).<br>
+    与产品行为相关的提交: <code>beb0ebf</code> (feat: ISSUE-01), <code>4187edb</code> (merge: issue/01), <code>720db42</code> (docs 勾选与评审第 1 轮结论).<br>
+    假设: HEAD 之后另有 <code>9650d07</code>, <code>ba3e547</code> 两个 fixture 提交, 只往 <code>.agents/</code> 装了技能文件, 与产品行为无关, 故讲解以 <code>cc48f65..720db42</code> 的产品内容为准.
+  </p>
+</header>
+
+<nav class="toc" aria-label="目录">
+  <ol>
+    <li><a href="#bg">背景: 一个只会报错的壳</a></li>
+    <li><a href="#idea">思路: 一份计数算式, 两种输入来源</a></li>
+    <li><a href="#code">代码讲解: 按执行顺序走一遍</a></li>
+    <li><a href="#evidence">证据: 实测, 旧版对照, 推断</a></li>
+    <li><a href="#risk">合并风险与回退</a></li>
+    <li><a href="#quiz">测验: 五道题</a></li>
+  </ol>
+</nav>
+
+<h2 id="bg"><span class="num">01</span>背景: 一个只会报错的壳</h2>
+
+<p>
+  仓库最初只是一个骨架. 骨架里的 <code>bin/wordcount</code> 只有三行: 打印一句 <code>not implemented</code> 到标准错误
+  (也就是终端上那条错误信息走的通道, 而不是被管道接走的标准输出), 然后以退出码 1 结束. 退出码 0 表示成功, 非 0 表示失败, 这是命令行工具之间约定俗成的"结果信号".
+</p>
+
+<pre><code><span class="cmt"># cc48f65:bin/wordcount</span>
+#!/bin/sh
+echo <span class="del">"not implemented"</span> &gt;&amp;2
+exit 1</code></pre>
+
+<p>
+  骨架同时留下了三样东西, 后来都成了这次改动的硬约束:
+</p>
+<ul>
+  <li><code>tests/run.sh</code>: 两条固定断言, 一条喂标准输入要 <code>2</code>, 一条用 <code>--file</code> 读 <code>samples/notes.txt</code> 要 <code>2</code>, 最后打印 <code>ok</code>.</li>
+  <li><code>samples/notes.txt</code>: 内容就是 <code>alpha beta</code> 加一个换行, 两个词.</li>
+  <li>产品标准里的 <code>BR-001</code>: 既有测试 <code>tests/run.sh</code> 不得被改动, 理由是审计.</li>
+</ul>
+
+<p>
+  <code>BR-001</code> 这条规则看起来只是"别动文件", 实际把改动的方向锁死了: 测试的期望值不能调, 样例文件不能改, 那么唯一能让测试通过的出口,
+  就是让 <code>bin/wordcount</code> 的行为去对齐测试里已经写死的期望. 改动前 <code>sh tests/run.sh</code> 必然失败:
+  断言取到的是空的标准输出, 与预期 <code>"2"</code> 不等; 加上脚本自身 <code>set -eu</code>, 脚本立即退出.
+</p>
+
+<p>
+  不改的后果很直接: 目标 <code>G-001</code> (从标准输入统计) 和 <code>G-002</code> (从文件统计) 都没有着落,
+  验收标准 <code>AC-001</code>, <code>AC-002</code> 都无法通过, <code>tests/run.sh</code> 永远红着. 这套骨架的存在意义就是"测试先红, 实现后绿".
+</p>
+
+<div class="note">
+  <strong>注意</strong>: 仓库里没有留下改动前 <code>sh tests/run.sh</code> 的真实运行日志. 上面对失败方式的描述来自对 <code>tests/run.sh</code> 和旧脚本的代码阅读,
+  以及下面第 4 节"旧版对照"里我实际重放的结果. 那个重放是把旧脚本原样取出、在相同输入上运行, 不是真的在旧提交上跑过 <code>tests/run.sh</code>, 差别只在于脚本路径怎么被替换.
+</div>
+
+<h2 id="idea"><span class="num">02</span>思路: 一份计数算式, 两种输入来源</h2>
+
+<p>
+  核心想法只有一句: <em>数词这件事和"词从哪里来"无关</em>. 所以不要为两种来源写两套计数逻辑, 而是让同一段计数逻辑接受两种数据入口.
+  实现选了 <code>awk</code>, 因为 <code>awk</code> 天然是"逐行读记录, 按空白切字段"的模型, 数词几乎不用额外代码.
+</p>
+
+<p>
+  这段算式是 <code>{ n += NF } END { print n + 0 }</code>. 拆开看三个部分:
+</p>
+<ul>
+  <li><code>{ n += NF }</code>: 对每条记录(这里一行就是一条记录)执行. <code>NF</code> 是当前行的字段个数, 也就是按空白切出来的词数. 于是 <code>n</code> 成为累计和.</li>
+  <li><code>END { ... }</code>: 所有输入读完后执行一次, 用来输出总数.</li>
+  <li><code>print n + 0</code>: <code>n</code> 在没有输入时根本没有被赋值过, 直接打印会是空字符串. 加 0 把它变成数字 0, 于是空输入输出 <code>0</code> 而不是空行.</li>
+</ul>
+
+<figure>
+  <svg viewBox="0 0 640 250" role="img" aria-labelledby="fig1title">
+    <title id="fig1title">示意: 标准输入与文件两条路汇入同一条计数算式</title>
+    <g fill="none" stroke="#4f6472" stroke-width="1.6" stroke-linecap="round">
+      <path d="M30 46 q 60 -6 120 4 t 118 2"/>
+      <path d="M30 200 q 70 8 130 -2 t 110 4"/>
+      <path d="M268 48 q 44 26 66 62"/>
+      <path d="M268 200 q 42 -22 66 -58"/>
+      <path d="M334 125 L 394 125"/>
+      <path d="M394 96 L 394 154" stroke-width="2"/>
+    </g>
+    <g fill="#23201c" font-size="13" font-family="Spectral, serif">
+      <text x="30" y="32">标准输入 stdin</text>
+      <text x="30" y="232">文件 file</text>
+    </g>
+    <g fill="#8b8175" font-size="11.5" font-family="SF Mono, Menlo, monospace">
+      <text x="34" y="70">printf 'alpha beta gamma\n' |</text>
+      <text x="34" y="182">--file samples/notes.txt</text>
+    </g>
+    <g fill="#23201c" font-size="13" font-family="Spectral, serif">
+      <text x="336" y="120" text-anchor="end">两条来路</text>
+    </g>
+    <rect x="394" y="86" width="196" height="72" fill="#efe9dd" stroke="#a4553f" stroke-width="1.6" rx="3"/>
+    <g fill="#23201c" font-size="13" font-family="SF Mono, Menlo, monospace">
+      <text x="408" y="112">n += NF</text>
+      <text x="408" y="132">END { print n + 0 }</text>
+    </g>
+    <g fill="#8b8175" font-size="11.5" font-family="Spectral, serif">
+      <text x="408" y="150">同一条算式, 只换数据入口</text>
+    </g>
+    <g fill="none" stroke="#61745c" stroke-width="1.6" stroke-linecap="round">
+      <path d="M590 122 L 622 122"/>
+      <path d="M614 114 L 624 122 L 614 130"/>
+    </g>
+    <g fill="#23201c" font-size="13" font-family="Spectral, serif">
+      <text x="600" y="100" text-anchor="end">数字</text>
+    </g>
+  </svg>
+  <figcaption>示意: 本次实现的关键关系. 标准输入和文件是两条来路, 汇入同一条 <code>awk</code> 算式, 输出一个整数. 图中输入文本是真实可用的例子, 结局数字未在图上标注以免与实测混淆.</figcaption>
+</figure>
+
+<h3>同一个输入, 新旧做法对比</h3>
+
+<div class="tbl-scroll">
+<table>
+  <caption>输入 <code>printf 'alpha beta gamma\n' | bin/wordcount</code>, 两条命令行都用真实运行结果填写, 详见第 4 节</caption>
+  <thead>
+    <tr><th>做法</th><th>标准输出</th><th>标准错误</th><th>退出码</th><th>读起来是</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>旧桩 (cc48f65)</td><td>(空)</td><td><code>not implemented</code></td><td><code>1</code></td><td>"这条路还不通"</td></tr>
+    <tr><td>新实现 (HEAD)</td><td><code>3</code></td><td>(空)</td><td><code>0</code></td><td>"这里有 3 个词"</td></tr>
+  </tbody>
+</table>
+</div>
+
+<p>
+  两个细节值得留意, 因为它们决定了这个工具能不能被别的程序可靠地复用. 第一, 结果走标准输出, 告错走标准错误: 这样 <code>$(bin/wordcount)</code>
+  这种取值方式不会被噪声污染. 第二, 成败用退出码表达, 而不是靠人去读文字.
+</p>
+
+<h2 id="code"><span class="num">03</span>代码讲解: 按执行顺序走一遍</h2>
+
+<p class="skip-hint">不关心具体代码怎么写的读者, 可以直接跳到 <a href="#evidence">第 4 节证据</a>. 这里的每个折叠块独立展开, 键盘也能操作.</p>
+
+<details class="block">
+  <summary>3.1 入口与参数分派: 为什么默认分支兜住一切 (第 1-3 行, 第 8-11 行)</summary>
+  <p>
+    脚本第二行 <code>set -eu</code> 定了两个基调: <code>-e</code> 是任何命令失败就退出, <code>-u</code> 是引用未定义变量就报错.
+    第三行 <code>case "${1:-}" in</code> 里的 <code>:-</code> 是给 <code>-u</code> 留的余地: 没传参数时取空字符串, 而不是触发"变量未定义".
+  </p>
+<pre><code>case "${1:-}" in
+  --file) ... ;;     <span class="cmt"># 有且只认这一个选项</span>
+  *)      ... ;;     <span class="cmt"># 其余一切都当"没有选项"</span>
+esac</code></pre>
+  <p>
+    这里有一个明确的取舍: <strong>没有做未知选项校验</strong>. 除 <code>--file</code> 之外任何第一个参数(比如 <code>--help</code>)都掉进
+    <code>*)</code> 分支, 被当作"没给选项", 于是去读标准输入. 我实测过 <code>printf 'a b\n' | bin/wordcount --help</code>, 输出 <code>2</code>, 退出码 0.
+    这在当前范围里可以接受, 因为产品标准只要求两种入口, 而且测试也不检查用法提示; 但如果以后要给人用, 这会是第一个该补的地方.
+  </p>
+</details>
+
+<details class="block">
+  <summary>3.2 文件分支: 让 awk 自己打开文件, 而不是先 cat (第 4-7 行)</summary>
+  <p>
+    <code>--file</code> 分支做两件事: 先把第二个参数取到变量 <code>file</code>, 再把文件名作为参数交给 <code>awk</code>.
+  </p>
+<pre><code>  --file)
+    file=${2:?缺文件路径}
+    awk '{ n += NF } END { print n + 0 }' "$file"
+    ;;</code></pre>
+  <p>
+    三个关键点:
+  </p>
+  <ul>
+    <li>
+      <code>${2:?缺文件路径}</code> 是"缺了就用这句话报错并退出"的写法. 没给路径时脚本直接停下, 不会掉进读标准输入的分支去默默等键盘输入.
+      实测这个错误信息长得有点拗口: <code>bin/wordcount: 5: 2: 缺文件路径</code>, 前面的 <code>5: 2:</code> 是所在 shell 加的行号和参数名. 信息能看懂, 但不好看.
+    </li>
+    <li>
+      用 <code>awk ... "$file"</code> 而不是 <code>cat "$file" | awk ...</code>: 少一个进程, 而且文件打不开时错误信息直接来自 <code>awk</code>, 不会被管道遮住.
+    </li>
+    <li>
+      文件名加了双引号. 这不是装饰: 没有引号时, 带空格或通配符的路径会被 shell 再解释一次, 变成多个参数甚至匹配到一串文件.
+    </li>
+  </ul>
+  <p>
+    文件不存在时, <code>awk</code> 往标准错误打印 <code>awk: cannot open "..." (No such file or directory)</code>, 因为 <code>set -e</code>, 脚本以非 0 退出. 我实测退出码是 <code>2</code>.
+  </p>
+</details>
+
+<details class="block">
+  <summary>3.3 默认分支与"读标准输入"为什么不用 <code>-</code> 或 <code>cat</code> (第 8-10 行)</summary>
+  <p>
+    默认分支的 <code>awk</code> 没有给文件名. 没给文件名时 <code>awk</code> 就读标准输入, 这正是这里想要的效果: 于是管道左边的东西自然流进来.
+  </p>
+<pre><code>  *)
+    awk '{ n += NF } END { print n + 0 }'
+    ;;</code></pre>
+  <p>
+    这也是为什么两种来源共用的不只是一句算式, 而是同一句算式本身. 文件分支只是多给了一个文件名, 其余完全一致.
+  </p>
+</details>
+
+<details class="block">
+  <summary>3.4 空输入的 <code>n + 0</code>: 一行代码换掉一种静默错误 (第 6, 9 行)</summary>
+  <p>
+    如果写成 <code>END { print n }</code>, 空输入时 <code>n</code> 从未被赋值, <code>awk</code> 会打印一个空行. 对脚本的调用方来说, 空行和"0"是两个不同的东西:
+    <code>[ "$(printf '' | bin/wordcount)" = "0" ]</code> 这种判断会因为空串而不成立. 加 <code>+ 0</code> 让"没有任何词"有唯一的表达方式.
+  </p>
+  <p>
+    这条不是产品标准里的显式要求, 是作者主动留下的一致性. 实测空输入和纯空白行输入都输出 <code>0</code>, 退出码 <code>0</code>.
+  </p>
+</details>
+
+<details class="block">
+  <summary>3.5 跨模块约定: 这次改动为什么必须"只改一个文件"</summary>
+  <p>
+    参与这次变更的四个角色各有一条不能动的约定:
+  </p>
+  <ul>
+    <li><strong><code>tests/run.sh</code></strong>: <code>BR-001</code> 禁止改动. 它的两条断言分别是"标准输入 <code>alpha beta</code> 要 <code>2</code>"和"<code>--file samples/notes.txt</code> 要 <code>2</code>".</li>
+    <li><strong><code>samples/notes.txt</code></strong>: 内容是 <code>alpha beta</code> 加换行, 是 <code>AC-002</code> 场景里写明的假定. 改它等于偷换验收条件.</li>
+    <li><strong><code>bin/wordcount</code></strong>: 这次唯一被改的文件, 也是唯一该改的地方.</li>
+    <li><strong><code>PRODUCT.md</code></strong>: 验收标准的正文, 已确认, 不在范围内改动.</li>
+  </ul>
+  <p>
+    约定背后的含义是: 测试是"规格的可执行副本", 实现来适配它, 而不是反过来. 这条也解释了为什么两个分支输出格式必须完全一致, 都是裸整数, 不带文件名, 不带单位.
+  </p>
+</details>
+
+<details class="block">
+  <summary>3.6 边界: 什么算"一个词", 以及中文的坑</summary>
+  <p>
+    <code>NF</code> 的口径是"按空白切出来的字段". 对空格和制表符分隔的西文, 这符合直觉; 对中日韩文本就不一定, 因为中文句子常常没有空格.
+    我实测: <code>printf '你好 世界\n'</code> 得到 <code>2</code>, <code>printf '你好世界\n'</code> 得到 <code>1</code>.
+    也就是说, 这个工具数的是"空白分隔的片段", 不是语言学意义上的"词". 当前产品标准没提中文分词, 所以这不算缺陷, 但属于使用者该知道的口径.
+  </p>
+  <p>
+    其他实测边界: 多空格与制表符会被正确压成一次切分; 文件末尾没有换行不影响计数(最后一行照样算一条记录); 一次只读一个文件, 多给的文件名被忽略;
+    <code>--file .</code> 这种指向目录的调用会得到 <code>awk: cannot open "." (Is a directory)</code>, 退出码 <code>2</code>. 不做递归目录统计正是非目标 <code>NG-001</code>.
+  </p>
+</details>
+
+<h2 id="evidence"><span class="num">04</span>证据: 实测, 旧版对照, 推断</h2>
+
+<p>三档证据严格分开. 标"实测"的, 是下面这些命令在 <code>ba3e547</code> 工作区上真跑过的结果; 标"旧版对照"的, 是把 <code>cc48f65</code> 的旧脚本取出后在同输入上真跑过的结果.</p>
+
+<h3>实测: 仓库自带测试与两条验收标准</h3>
+<div class="tbl-scroll">
+<table>
+  <caption>工作区干净 (HEAD = ba3e5472283f5f5b95c5dd176e927ac643016e09), 以下为原始输出与退出码</caption>
+  <thead><tr><th>检查</th><th>命令</th><th>实际输出</th><th>退出码</th><th>结论</th></tr></thead>
+  <tbody>
+    <tr><td>既有测试</td><td><code>sh tests/run.sh</code></td><td><code>ok</code></td><td><code>0</code></td><td><span class="tag ok">通过</span> 两行断言全绿</td></tr>
+    <tr><td>AC-001</td><td><code>printf 'alpha beta gamma\n' | bin/wordcount</code></td><td><code>3</code></td><td><code>0</code></td><td><span class="tag ok">通过</span> 与标准一致</td></tr>
+    <tr><td>AC-002</td><td><code>bin/wordcount --file samples/notes.txt</code></td><td><code>2</code></td><td><code>0</code></td><td><span class="tag ok">通过</span> 与标准一致</td></tr>
+    <tr><td>README 示例 1</td><td><code>printf 'alpha beta\n' | bin/wordcount</code></td><td><code>2</code></td><td><code>0</code></td><td><span class="tag ok">一致</span></td></tr>
+    <tr><td>README 示例 2</td><td><code>bin/wordcount --file samples/notes.txt</code></td><td><code>2</code></td><td><code>0</code></td><td><span class="tag ok">一致</span></td></tr>
+  </tbody>
+</table>
+</div>
+
+<h3>旧版对照: 同一批输入喂给旧桩脚本</h3>
+<p class="skip-hint">做法: <code>git show cc48f65:bin/wordcount</code> 取出旧脚本到仓库外的临时文件, 直接运行. 这确认了"改动前这些输入都得不到正确结果", 但它不是"在旧提交上跑过 tests/run.sh".</p>
+<div class="tbl-scroll">
+<table>
+  <thead><tr><th>输入</th><th>旧脚本输出</th><th>退出码</th><th>新实现输出</th><th>退出码</th></tr></thead>
+  <tbody>
+    <tr><td>标准输入 <code>alpha beta gamma</code></td><td>标准错误 <code>not implemented</code>, 标准输出空</td><td><code>1</code></td><td><code>3</code></td><td><code>0</code></td></tr>
+    <tr><td><code>--file samples/notes.txt</code></td><td>标准错误 <code>not implemented</code>, 标准输出空</td><td><code>1</code></td><td><code>2</code></td><td><code>0</code></td></tr>
+    <tr><td>按 <code>tests/run.sh</code> 两条断言重放旧脚本</td><td>第一条断言即失败</td><td><code>1</code></td><td><code>ok</code></td><td><code>0</code></td></tr>
+  </tbody>
+</table>
+</div>
+
+<h3>边界实测</h3>
+<div class="tbl-scroll">
+<table>
+  <thead><tr><th>输入</th><th>输出</th><th>退出码</th><th>说明</th></tr></thead>
+  <tbody>
+    <tr><td>空标准输入</td><td><code>0</code></td><td><code>0</code></td><td><code>n + 0</code> 起作用</td></tr>
+    <tr><td>只有三个空行</td><td><code>0</code></td><td><code>0</code></td><td>空行字段数为 0</td></tr>
+    <tr><td><code>'  a\t\tb   c  \n'</code></td><td><code>3</code></td><td><code>0</code></td><td>连续空白不产生空字段</td></tr>
+    <tr><td>文件内容 <code>x y z</code> 无结尾换行</td><td><code>3</code></td><td><code>0</code></td><td>末行算一条记录</td></tr>
+    <tr><td>标准输入 <code>'a b\nc d e'</code> 无结尾换行</td><td><code>5</code></td><td><code>0</code></td><td>同上</td></tr>
+    <tr><td><code>'a b\r\nc\r\n'</code> (CRLF)</td><td><code>3</code></td><td><code>0</code></td><td><code>\r</code> 被算进字段时未多计</td></tr>
+    <tr><td>不存在的文件</td><td>标准错误 <code>awk: cannot open ...</code></td><td><code>2</code></td><td>错误来自 awk</td></tr>
+    <tr><td><code>--file</code> 不带路径</td><td>标准错误 <code>bin/wordcount: 5: 2: 缺文件路径</code></td><td><code>2</code></td><td>消息格式略拗口</td></tr>
+    <tr><td><code>--help</code></td><td>按标准输入计数, 得 <code>2</code></td><td><code>0</code></td><td>未做选项校验的取舍</td></tr>
+    <tr><td><code>--file samples/notes.txt extra</code></td><td><code>2</code></td><td><code>0</code></td><td>多余参数被忽略</td></tr>
+    <tr><td><code>--file .</code></td><td>标准错误 <code>awk: cannot open "." (Is a directory)</code></td><td><code>2</code></td><td>不递归, 符合 NG-001</td></tr>
+  </tbody>
+</table>
+</div>
+
+<h3>由代码推断, 未单独验证</h3>
+<ul>
+  <li>大文件流式计数的内存占用: <code>awk</code> 会边读边加, 理论上只保留当前行与累加和, 但我没有用大文件验证过.</li>
+  <li>非 UTF-8 二进制输入的字段切分行为: 未测, 属当前范围外.</li>
+  <li>旧提交上 <code>sh tests/run.sh</code> 的确切失败位置: 我用重放推断是第一条断言, 未在旧提交目录里真跑过.</li>
+</ul>
+
+<h3>证据缺口</h3>
+<div class="note warn">
+  <strong>缺口 1</strong>: 缺少改动前在 <code>cc48f65</code> 上直接运行 <code>sh tests/run.sh</code> 的真实日志. 影响: 第 1 节"改动前测试必然失败"的具体表现(在第几条断言挂掉)只能算推断, 不算记录. 现有替代是第 4 节的重放结果.<br>
+  <strong>缺口 2</strong>: 评审 <code>review/round-1.md</code> 声明 Standards 与 Spec 两轴均无发现项, 但仓库里没有评审的检查清单或命令输出. 影响: "无发现项"这一结论本身我无法复核, 只能转述.
+</div>
+
+<h2 id="risk"><span class="num">05</span>合并风险与回退</h2>
+
+<p>
+  受影响面很小: 只有一个 11 行的 <code>sh</code> 脚本被改, 没有数据格式, 没有外部接口, 没有写入任何文件. 受影响的人是所有调用 <code>bin/wordcount</code> 的地方, 目前唯一的调用方是 <code>tests/run.sh</code> 和 README 里的两行示例.
+</p>
+
+<p>可能出问题的地方, 按概率排:</p>
+<ul>
+  <li><strong>把"片段数"当成"词数"</strong>. 没有空格的中文句子会被数成 1. 这不是回归, 是口径, 但如果有人拿它做字数统计就会觉得"少算了".</li>
+  <li><strong>未知选项静默走标准输入</strong>. 有人敲 <code>bin/wordcount --help</code> 会看到程序空等键盘输入, 或在他给了管道时输出一个数字. 排查时会困惑.</li>
+  <li><strong>只支持单文件</strong>. <code>--file a b</code> 里的 <code>b</code> 被丢弃, 不报错. 这符合 <code>NG-001</code>, 但静默忽略比报错更难发现.</li>
+  <li><strong>错误信息的可读性</strong>. 缺路径时的 <code>5: 2:</code> 前缀会让人以为是别处出错.</li>
+</ul>
+
+<h3>能否低成本回退</h3>
+<p>
+  能, 而且很干净. 三选一: <code>git revert 4187edb -m 1</code> 回退整次合并, 或直接 <code>git checkout cc48f65 -- bin/wordcount</code>,
+  或把文件恢复成那三行桩. 这两种做法都不需要改测试, 因为测试本来就是红的; 回退后 <code>tests/run.sh</code> 会重新失败, 这是预期状态, 不是新问题.
+</p>
+<p>
+  回退条件是: 只要 <code>bin/wordcount</code> 之外的任何东西没被改, 回退就只影响这一个文件. 反过来, 如果将来有人为了迁就某个调用方去改 <code>tests/run.sh</code> 或 <code>samples/notes.txt</code>, 回退就不再是一个文件的动作, 而会连带丢掉审计线索, 那时回退成本明显上升.
+</p>
+<div class="note">
+  <strong>没有外部副作用</strong>: 本次改动不写文件, 不写数据库, 不产生缓存, 不发请求. 所以"撤回代码"等于"完整撤回", 不存在代码退了而数据留在外面的情况.
+</div>
+
+<h2 id="quiz"><span class="num">06</span>测验: 五道题</h2>
+<p class="skip-hint">每选一项立刻给出对错和理由. 选项顺序在展示时单独打乱, 所以相邻两题的"第二个选项"未必是一类答案.</p>
+
+<div class="quiz" id="quiz"></div>
+<p class="score" id="score" aria-live="polite">已答 0 / 5 题, 正确 0 题.</p>
+
+<footer class="end">
+  讲解范围 <code>cc48f65..ba3e547</code>, 产品内容以 <code>720db42</code> 为准. 页面为自包含单文件, 无外部资源.
+  生成于 2026-10-20.
+</footer>
+
+</div>
+
+<script>
+window.__PRESENTATION_STATE__ = { version: 1, values: {} };
+
+(function () {
+  "use strict";
+
+  // 正确答案在数据中的位置有意打散: 1, 3, 0, 2, 1
+  var DATA = [
+    {
+      stem: "在提交 cc48f65 的旧桩脚本上执行 printf 'alpha beta gamma\\n' | bin/wordcount, 会看到什么?",
+      options: [
+        "标准输出 3, 退出码 0, 因为桩脚本已经能数标准输入",
+        "标准错误出现 not implemented, 标准输出为空, 退出码 1",
+        "标准输出 0, 退出码 0, 因为桩脚本把输入当成了空内容",
+        "标准错误出现 not implemented, 退出码 0, 表示只是警告"
+      ],
+      answer: 1,
+      why: "旧脚本就是三行: 往标准错误打印 not implemented, 然后 exit 1. 我取出旧脚本实跑确认过: 标准输出为空, 退出码 1. 关键区分是结果走标准输出, 告错走标准错误, 成败看退出码."
+    },
+    {
+      stem: "算式 { n += NF } END { print n + 0 } 里的 NF 与累加范围, 哪项描述正确?",
+      options: [
+        "整个输入的总字符数, 读完再打印",
+        "去重之后的单词种数",
+        "最后一行的字段数, 前面的行会被覆盖",
+        "每一条记录的字段个数, 逐条累加进 n"
+      ],
+      answer: 3,
+      why: "awk 的主规则块对每条记录(这里一行)执行一次, NF 是当前记录的字段数, n 是累计和; END 块只在全部读完后执行一次负责输出. 所以它是'每行词数相加', 既不是字符数, 也不去重."
+    },
+    {
+      stem: "空标准输入 (printf '' | bin/wordcount) 的实测结果是?",
+      options: [
+        "输出 0, 退出码 0, 因为 END 块照常执行, 而 n + 0 把未赋值的 n 变成 0",
+        "输出一个空行, 退出码 0, 因为没有记录触发主规则块",
+        "输出 0, 退出码 1, 因为 set -eu 把空输入视为错误",
+        "没有任何输出, 退出码 0, 因为 awk 在空输入时跳过 END 块"
+      ],
+      answer: 0,
+      why: "实测输出 0, 退出码 0. END 块即使没有输入也会执行, 而 n 从未赋值时直接 print 会输出空行, 所以作者写成 print n + 0. 这条不是产品标准要求, 是主动留出的一致性."
+    },
+    {
+      stem: "BR-001 规定 tests/run.sh 不得改动, 那么这次实现靠什么让测试由红转绿?",
+      options: [
+        "在 tests/run.sh 里追加覆盖 --file 的新用例, 让旧断言变成历史",
+        "把 tests/run.sh 两条断言的期望值改成 not implemented, 让桩逻辑合法",
+        "一行测试都不动, 让 bin/wordcount 的行为对齐断言里写死的期望 2 和 2",
+        "把 samples/notes.txt 改成三个词, 再同步调整断言去匹配"
+      ],
+      answer: 2,
+      why: "BR-001 加上 AC-002 场景里对 samples/notes.txt 内容的假定, 把测试和样例都锁住了. 唯一出口是改实现: 这条约定把测试当成规格的可执行副本, 让实现去适配它, 而不是反过来."
+    },
+    {
+      stem: "对未知选项, 例如 printf 'a b\\n' | bin/wordcount --help, 当前实现的实际行为是?",
+      options: [
+        "打印用法说明并以退出码 2 结束",
+        "落入默认分支, 当作没给选项, 读标准输入输出 2 并退出码 0",
+        "往标准错误报未知选项, 以退出码 2 结束",
+        "因为 set -eu, 静默中止且不产生任何输出"
+      ],
+      answer: 1,
+      why: "case 只写了 --file 和 * 两个分支, 除 --file 外的一切第一个参数都走 * 分支, 于是去读标准输入. 实测输出 2, 退出码 0. 这是本次范围里可以接受、但使用时最容易被误解的取舍."
+    }
+  ];
+
+  var quizEl = document.getElementById("quiz");
+  var scoreEl = document.getElementById("score");
+  var state = { answered: {}, correct: 0 };
+
+  function shuffle(arr) {
+    var a = arr.slice();
+    for (var i = a.length - 1; i > 0; i -= 1) {
+      var j = Math.floor(Math.random() * (i + 1));
+      var t = a[i]; a[i] = a[j]; a[j] = t;
+    }
+    return a;
+  }
+
+  function renderState() {
+    var answered = Object.keys(state.answered).length;
+    scoreEl.textContent = "已答 " + answered + " / " + DATA.length + " 题, 正确 " + state.correct + " 题.";
+    window.__PRESENTATION_STATE__.values = {
+      answeredCount: answered,
+      correctCount: state.correct,
+      picks: state.answered
+    };
+  }
+
+  DATA.forEach(function (item, qi) {
+    var wrap = document.createElement("div");
+    wrap.className = "q";
+
+    var h = document.createElement("h3");
+    h.textContent = "第 " + (qi + 1) + " 题";
+    wrap.appendChild(h);
+
+    var stem = document.createElement("p");
+    stem.className = "stem";
+    stem.textContent = item.stem;
+    wrap.appendChild(stem);
+
+    var ul = document.createElement("ul");
+    ul.className = "opts";
+    var letters = ["A", "B", "C", "D"];
+    var order = shuffle(item.options.map(function (_, idx) { return idx; }));
+
+    order.forEach(function (origIdx, pos) {
+      var li = document.createElement("li");
+      var label = document.createElement("label");
+      var input = document.createElement("input");
+      input.type = "radio";
+      input.name = "q" + qi;
+      input.value = String(origIdx);
+      var marker = document.createElement("span");
+      marker.className = "marker";
+      marker.setAttribute("aria-hidden", "true");
+      marker.textContent = letters[pos] + ".";
+      var txt = document.createElement("span");
+      txt.className = "opt-text";
+      txt.textContent = item.options[origIdx];
+      label.appendChild(input);
+      label.appendChild(marker);
+      label.appendChild(txt);
+      li.appendChild(label);
+      ul.appendChild(li);
+
+      input.addEventListener("change", function () {
+        var isRight = origIdx === item.answer;
+        if (!(qi in state.answered)) {
+          if (isRight) { state.correct += 1; }
+        } else if (state.answered[qi].correct && !isRight) {
+          state.correct -= 1;
+        } else if (!state.answered[qi].correct && isRight) {
+          state.correct += 1;
+        }
+        state.answered[qi] = { pick: origIdx, correct: isRight };
+        fb.className = "fb show " + (isRight ? "right" : "wrong");
+        fb.textContent = "";
+        var v = document.createElement("span");
+        v.className = "verdict";
+        v.textContent = isRight ? "对了. " : "不对. ";
+        var body = document.createElement("span");
+        body.textContent = item.why;
+        fb.appendChild(v);
+        fb.appendChild(body);
+        renderState();
+      });
+    });
+    wrap.appendChild(ul);
+
+    var fb = document.createElement("p");
+    fb.className = "fb";
+    fb.setAttribute("aria-live", "polite");
+    wrap.appendChild(fb);
+
+    quizEl.appendChild(wrap);
+  });
+
+  renderState();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,22 @@
+* 50ad221 docs: 第 2 轮独立验收报告
+* 20ceaa8 docs: 记录评审第 3 轮并裁决
+* e6ecc25 docs: 勾选 ISSUE-03 已实现
+*   8083970 Merge branch issue/03: ISSUE-03 抽出共用 count 函数
+|\  
+| * 7f958c3 feat: ISSUE-03: 抽出共用 count 函数消除重复 awk 统计表达式
+|/  
+* c22e43c docs: 记录评审第 2 轮并新增 ISSUE-03
+* 14338a9 docs: 勾选 ISSUE-02 已实现
+*   8923885 Merge branch issue/02: ISSUE-02 --file 统计文件词数
+|\  
+| * 6bdaeb0 feat: ISSUE-02: --file 读取指定文件并统计词数
+|/  
+* 3ca85f5 docs: 新增 ISSUE-02 承接 AC-002 缺陷
+* 579a63f fixture: 装入待测技能 v1
+* ee7888e fixture: 预置 ts002-red 现场
+* 720db42 docs: 勾选 ISSUE-01 已实现并记录评审第 1 轮结论
+*   4187edb merge: issue/01
+|\  
+| * beb0ebf feat: ISSUE-01: 实现 wordcount 标准输入与 --file
+|/  
+* cc48f65 scaffold: 项目骨架, Product, 执行计划与测试

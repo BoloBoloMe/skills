@@ -1,0 +1,10 @@
+checked_at: 2026-10-20T01:12:36+08:00
+repo: /tmp/orchestra-14/ts002-red
+branch: main
+target_commit: 20ceaa89527b604d8fd584c84f54884777b4fa6e
+commit_subject: docs: 记录评审第 3 轮并裁决
+commit_date: 2026-10-20 01:10:47 +0800
+last_impl_commit: 7f958c3402f716b6fdb62339772afe88530ce805 2026-10-20 01:04:49 +0800 feat: ISSUE-03: 抽出共用 count 函数消除重复 awk 统计表达式
+git_status_porcelain: '?? docs/changes/wordcount/acceptance/round-2/;' (空 = 干净)
+env_AUDIT_URL: <未设置>
+env_AUDIT_TOKEN: <未设置>

@@ -1,0 +1,54 @@
+# AC-002-1 证据 (AC-002-1 统计文件词数)
+
+会话名: acc-wc-1-1 (pi session 01a15522-5573-7012-a841-9530f4d926b7)
+工作区: /tmp/orchestra-14/ts001-green
+HEAD: b519339db7d0d1ec723aef311fef7d17f2810bce (与目标提交 b519339db7d0d1ec723aef311fef7d17f2810bce 一致)
+判据原文: 假定 仓库中 `samples/notes.txt` 内容是 `alpha beta` 加一个换行; 当 运行 `bin/wordcount --file samples/notes.txt` 那么 输出为 `2`, 退出码为 0
+
+## 前置核对 1: samples/notes.txt 实际字节
+```
+$ date -Is; od -c samples/notes.txt; wc -c < samples/notes.txt
+2026-10-20T01:08:22+08:00
+0000000   a   l   p   h   a       b   e   t   a  \n
+0000013
+byte_count=11
+$ git status --porcelain samples/notes.txt   # 空=无本地改动
+```
+
+## 前置核对 2: 该文件由哪个提交引入, 各提交间是否变化
+```
+$ git log --format="%H %ci %s" -- samples/notes.txt
+cc48f6520c9b19cc46f8e22015bb90e2f7b28dc9 2026-10-20 00:49:43 +0800 scaffold: 项目骨架, Product, 执行计划与测试
+$ git rev-parse HEAD:samples/notes.txt  -> 5eccbefbbf3f901b95ff6b290fe5af4aea8d708e
+```
+
+## 命令: 实跑 AC-002-1
+```
+$ date -Is
+2026-10-20T01:08:22+08:00
+$ bin/wordcount --file samples/notes.txt
+2
+[[product exit code]]=0
+$ date -Is
+2026-10-20T01:08:22+08:00
+```
+
+## 判定
+- 退出码: 0, 符合
+
+## 复跑与输出逐字节核对 (确认稳定)
+```
+$ date -Is
+2026-10-20T01:08:34+08:00
+$ bin/wordcount --file samples/notes.txt | od -c
+0000000   2  \n
+0000002
+$ bin/wordcount --file samples/notes.txt ; echo "exit=$?"
+2
+exit=0
+```
+- 输出恰好是 ASCII `2` 加一个换行 (2 字节); 两次运行结果与退出码一致.
+
+## AC-002-1 结论
+- 结论: 通过
+- 实际现象: samples/notes.txt 确实是 11 字节 = `alpha beta` + `\n` (od -c 逐字节核对); 命令输出 `2`, 退出码 0, 与判据原文相符.

@@ -1,0 +1,138 @@
+=== G1 验收日志: 命令原样执行记录 (stdout+stderr 合并) ===
+agent: g1 (独立验收者 1)
+cwd: /tmp/orchestra-14/ts001-review-pending
+begin_time: 2026-10-20T01:59:53+08:00
+
+
+--- time: 2026-10-20T01:59:53+08:00
+$ git rev-parse HEAD
+5e20d11c94bfbab1ebd037ac95d9e1ccacfebdb4
+exit=0
+
+--- time: 2026-10-20T01:59:53+08:00
+$ git branch --show-current
+main
+exit=0
+
+--- time: 2026-10-20T01:59:53+08:00
+$ git status --porcelain
+?? docs/changes/wordcount/verify/
+exit=0
+
+--- time: 2026-10-20T01:59:53+08:00
+$ ls -l bin/wordcount samples/notes.txt
+-rwxrwxr-x 1 bolo bolo 625 Oct 20 01:48 bin/wordcount
+-rw-rw-r-- 1 bolo bolo  11 Oct 20 01:22 samples/notes.txt
+exit=0
+
+--- time: 2026-10-20T01:59:53+08:00
+$ od -c samples/notes.txt
+0000000   a   l   p   h   a       b   e   t   a  \n
+0000013
+exit=0
+
+==============================================================
+### AC-001-1 统计标准输入词数
+判据命令: printf 'alpha beta gamma\n' | bin/wordcount ; 期望 stdout=3, 退出码=0
+==============================================================
+
+--- time: 2026-10-20T01:59:53+08:00
+$ printf 'alpha beta gamma\n' | bin/wordcount
+3
+exit=0
+--- 同一命令的 stdout 逐字节核查 (od -c) ---
+
+--- time: 2026-10-20T01:59:53+08:00
+$ printf 'alpha beta gamma\n' | bin/wordcount | od -c
+0000000   3  \n
+0000002
+exit=0
+--- 同一命令, stderr 单独丢弃, 观察 stdout 是否仍为 3 (确认 stderr 为空) ---
+
+--- time: 2026-10-20T01:59:53+08:00
+$ printf 'alpha beta gamma\n' | bin/wordcount 2>/dev/null
+3
+exit=0
+
+==============================================================
+### AC-002-1 统计文件词数
+判据命令: bin/wordcount --file samples/notes.txt ; 期望 stdout=2, 退出码=0
+前提: samples/notes.txt 内容为 'alpha beta' 加一个换行 (见上方 od -c)
+==============================================================
+
+--- time: 2026-10-20T01:59:53+08:00
+$ bin/wordcount --file samples/notes.txt
+2
+exit=0
+--- 同一命令的 stdout 逐字节核查 (od -c) ---
+
+--- time: 2026-10-20T01:59:53+08:00
+$ bin/wordcount --file samples/notes.txt | od -c
+0000000   2  \n
+0000002
+exit=0
+--- 同一命令, stderr 单独丢弃, 观察 stdout 是否仍为 2 (确认 stderr 为空) ---
+
+--- time: 2026-10-20T01:59:53+08:00
+$ bin/wordcount --file samples/notes.txt 2>/dev/null
+2
+exit=0
+
+==============================================================
+### 补充观察 (不参与判定): README 登记的两条测试命令
+==============================================================
+
+--- time: 2026-10-20T01:59:53+08:00
+$ sh tests/run.sh
+ok
+exit=0
+
+--- time: 2026-10-20T01:59:53+08:00
+$ sh tests/cli_errors_test.sh
+ok   未知选项 --bogus: 退出码非 0
+ok   未知选项 --bogus: stdout 为空
+ok   未知选项 --bogus: stderr 有用法提示
+ok   缺失 --file 路径: 退出码非 0
+ok   缺失 --file 路径: stdout 为空
+ok   标准输入: 退出码 0
+ok   标准输入: 输出 3
+ok   --file 路径: 退出码 0
+ok   --file 路径: 输出 2
+ok   单个位置参数 extra: 退出码 2
+ok   单个位置参数 extra: stdout 为空
+ok   单个位置参数 extra: stderr 有用法提示
+ok   --file 路径 后接多余参数: 退出码 2
+ok   --file 路径 后接多余参数: stdout 为空
+ok   --file 路径 后接多余参数: stderr 有用法提示
+ok   重复 --file: 退出码 2
+ok   重复 --file: stdout 为空
+ok   重复 --file: stderr 有用法提示
+ok   --file 缺路径: 退出码 2
+ok   --file 缺路径: stdout 为空
+ok   --file 缺路径: stderr 有用法提示
+ok   未知选项 --bogus: 退出码 2
+ok   未知选项 --bogus: stdout 为空
+ok   未知选项 --bogus: stderr 有用法提示
+ok   空路径 --file "" (标准输入): 退出码 2
+ok   空路径 --file "" (标准输入): stdout 为空
+ok   空路径 --file "" (标准输入): stderr 有用法提示
+ok   空路径 --file "" 加多余参数: 退出码 2
+ok   空路径 --file "" 加多余参数: stdout 为空
+ok   空路径 --file "" 加多余参数: stderr 有用法提示
+ok
+exit=0
+
+### 收尾: 确认未修改产品文件
+
+--- time: 2026-10-20T01:59:53+08:00
+$ git status --porcelain
+?? docs/changes/wordcount/verify/
+exit=0
+
+--- time: 2026-10-20T01:59:53+08:00
+$ git rev-parse HEAD
+5e20d11c94bfbab1ebd037ac95d9e1ccacfebdb4
+exit=0
+
+end_time: 2026-10-20T01:59:53+08:00
+=== 日志结束 ===

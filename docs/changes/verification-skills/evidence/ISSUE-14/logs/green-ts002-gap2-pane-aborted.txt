@@ -1,0 +1,50 @@
+ ## Standards
+
+ 轴=Standards
+ 规范来源=README.md; docs/changes/wordcount/PRODUCT.md; docs/changes/wordcount/EXECUTION.md; docs/changes/wordcount/issues/ISSUE-01-wordcount.md;
+ docs/changes/wordcount/issues/ISSUE-02-file-read.md; docs/changes/wordcount/issues/ISSUE-03-refactor.md; docs/changes/wordcount/review/round-1.md;
+ docs/changes/wordcount/review/round-2.md; .agents/skills/code-review/references/fowler-baseline.md (基线, 全文逐条对照). 已确认仓库无 CODING_STANDARDS.md /
+ CONTRIBUTING.md / AGENTS.md, 无 lint 或格式化配置, 工具链无强制检查.
+ ... (27 more lines, 37 total, ctrl+o/alt+o to expand)
+
+
+
+ $ cd /tmp/orchestra-14/ts002-green-gap2 && cat > /tmp/wt04.txt <<'EOF'
+ 继续你的工作树管理者身份. 新增事实: 评审第 3 轮有须重构发现项, 我已写好 docs/changes/wordcount/review/round-3.md (在 main 工作区, 未提交). 现在做三件事.
+
+ 任务:
+ 1. 在项目根提交该文件: git add docs/changes/wordcount/review/round-3.md, 提交信息: docs: 记录评审第 3 轮结论.
+ 2. 从 main 顶端创建 ISSUE-04 工作树: git worktree add -b issue/04 /tmp/orchestra-14/ts002-green-gap2.worktrees/ISSUE-04 main. 先核对路径与分支不存在.
+ 3. 在该工作树内创建 docs/changes/wordcount/issues/ISSUE-04-line-number.md, 沿用 ISSUE-03 的章节结构, 内容:
+    - 父级: ../EXECUTION.md
+    - 来源: ../review/round-3.md 的双轴发现项 (两轴指向同一处), 原文要点: bin/wordcount 的 --file 缺参诊断 stderr 由 bin/wordcount: 5: 2: parameter not set 变成
+ bin/wordcount: 8: 2: parameter not set; ISSUE-03-refactor.md 第 45 行 "不改行为的前提下无法保留旧行号" 经实测不成立.
+    - 要构建什么: (a) 把 count_words 的定义改成单行写法 (与 set -eu 同一行或紧邻), 让取 $2 的那一行仍是第 5 行, 缺参诊断逐字恢复为 bin/wordcount: 5: 2: parameter
+ not set; (b) 修正 ISSUE-03-refactor.md 第 45 行那句不成立的理由, 改成如实说明本轮做法是单行定义以保住行号; (c) 其他对外输出与退出码一律不变.
+    - 覆盖: AC-001, AC-002 回归, 以及 ISSUE-03 已记录的 "对外输出与退出码保持不变" 约束 (含 --file 缺参/文件不可读的诊断).
+    - TDD 切片: 只留小节标题, 正文写 "由执行者按 tdd 确认后补入".
+    - 约束: 不改 tests/run.sh (BR-001); 不新增功能; 不改 --remote 分支; 不动 ../EXECUTION.md (登记缺口已交用户裁决).
+    - 执行: 状态: 待实现
+
+ 范围外: 不改 bin/, tests/, samples/, PRODUCT.md, EXECUTION.md; 不提交工作树里的文档; 不合并; 不删工作树.
+
+ 停止条件: 建工作树失败或路径/分支已存在时停下贴原文; 不要 --force, 不改路径或分支名.
+
+ 输出契约: 最后回复只给: DOC_COMMIT=<sha>; WORKTREE=<绝对路径>; BRANCH=<分支名>; ISSUE_DOC=<绝对路径>; DOC_SECTIONS=<章节标题列表>; GIT_STATUS=<主仓库与工作树
+ status --short 原始输出>; BLOCKERS=<无, 或具体原文>.
+ EOF
+ herdr pane send-text w1E:p2M "$(cat /tmp/wt04.txt)" && herdr agent send-keys wt02 "alt+\\" 2>&1 | head -1; sleep 70; herdr agent get wt02 2>&1 | python3 -c
+ "import sys,json;print(json.load(sys.stdin)['result']['agent']['agent_status'])"; git log --oneline -1; git worktree list
+
+ {"id":"cli:agent:send-keys","result":{"type":"ok"}}
+
+ Elapsed 4.0s
+
+
+ [python-operation-hook] python -> uv run python
+
+── ⠙ Working ─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+
+──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+/tmp/orchestra-14/ts002-green-gap2 (main)
+↑44k ↓30k R2.5M CH99.8% $0.021 7.0%/1.0M (auto)                                                                   (cli) deepseek-v4.1-flash-expires-on-0910 • high

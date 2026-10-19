@@ -1,0 +1,11 @@
+standard: AC-001-1 (PRODUCT.md 验收标准, 第一条场景)
+material_type: 当前观察 (本轮实跑)
+run_at: 2026-10-20T01:12:41+08:00
+cwd: 仓库根 /tmp/orchestra-14/ts002-red
+command: printf 'alpha beta gamma\n' | bin/wordcount
+exit_code: 0
+stdout_exact: 0000000   3  \n
+stdout_text: [3]
+stderr: []
+expected: 输出 3, 退出码 0
+verdict: 通过

@@ -1,0 +1,16 @@
+* 3c79985 docs: 归档第 2 轮独立验收报告与原始证据
+* 89ea49e docs: 记录评审第 2 轮结论
+* 602dea7 docs: 勾选 ISSUE-02 已实现
+*   9e578b2 merge: 合并 issue/02 (ISSUE-02 修复 --file 分支读取文件并统计词数)
+|\  
+| * 0a7166f feat: ISSUE-02: 修复 --file 分支读取文件并统计词数
+|/  
+* 3dbba65 docs: 新增 ISSUE-02 (验收回传 AC-002-1 实现问题)
+* 7d9c6b7 fixture: 装入待测技能 v3
+* 2aa60b4 fixture: 预置 ts002-green-fix 现场
+* f62d932 docs: 勾选 ISSUE-01 已实现并记录评审第 1 轮结论
+*   a298666 merge: issue/01
+|\  
+| * 6f07cc1 feat: ISSUE-01: 实现 wordcount 标准输入与 --file
+|/  
+* 93fcc53 scaffold: 项目骨架, Product, 执行计划与测试

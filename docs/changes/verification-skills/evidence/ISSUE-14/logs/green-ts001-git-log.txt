@@ -1,0 +1,9 @@
+* b519339 fixture: 装入待测技能 v2
+* 8d94bbd fixture: 装入待测技能 v1
+* a1b5c9d fixture: 预置 ts001-green 现场
+* 720db42 docs: 勾选 ISSUE-01 已实现并记录评审第 1 轮结论
+*   4187edb merge: issue/01
+|\  
+| * beb0ebf feat: ISSUE-01: 实现 wordcount 标准输入与 --file
+|/  
+* cc48f65 scaffold: 项目骨架, Product, 执行计划与测试

@@ -1,0 +1,128 @@
+# G2 BR-001 静态材料核对, 原始输出
+# 目标提交: 5e20d11c94bfbab1ebd037ac95d9e1ccacfebdb4
+# 会话: agent=pi (pi session 01a15551-5fdf-773f-bdb4-a63fecab9ce9), herdr pane=w1E:p3S, cwd=/tmp/orchestra-14/ts001-review-pending
+# 说明: 以下是逐条命令与原样输出, 每条都带 exit 码, 可照抄复现.
+# 开始时间:
+
+$ date -Is
+2026-10-20T01:59:41+08:00
+exit=0
+
+$ git rev-parse HEAD
+5e20d11c94bfbab1ebd037ac95d9e1ccacfebdb4
+exit=0
+
+$ git rev-parse --abbrev-ref HEAD
+main
+exit=0
+
+$ git status --porcelain
+?? docs/changes/wordcount/verify/
+exit=0
+
+$ git log --follow --stat -- tests/run.sh
+commit 93fcc53877c31263444cc169f76b0606f2e9895d
+Author: fixture <fixture@example.invalid>
+Date:   Tue Oct 20 01:22:03 2026 +0800
+
+    scaffold: 项目骨架, Product, 执行计划与测试
+
+ tests/run.sh | 5 +++++
+ 1 file changed, 5 insertions(+)
+exit=0
+
+$ git log --follow --oneline -- tests/run.sh
+93fcc53 scaffold: 项目骨架, Product, 执行计划与测试
+exit=0
+
+$ git log --oneline --all -- tests/run.sh
+93fcc53 scaffold: 项目骨架, Product, 执行计划与测试
+exit=0
+
+$ git rev-parse 93fcc53877c31263444cc169f76b0606f2e9895d
+93fcc53877c31263444cc169f76b0606f2e9895d
+exit=0
+
+$ git merge-base --is-ancestor 93fcc53877c31263444cc169f76b0606f2e9895d HEAD
+exit=0
+
+$ git log --oneline 93fcc53877c31263444cc169f76b0606f2e9895d..HEAD -- tests/run.sh
+exit=0
+
+$ git show 93fcc53877c31263444cc169f76b0606f2e9895d:tests/run.sh
+#!/bin/sh
+set -eu
+[ "$(printf 'alpha beta\n' | bin/wordcount)" = "2" ]
+[ "$(bin/wordcount --file samples/notes.txt)" = "2" ]
+echo ok
+exit=0
+
+$ git show HEAD:tests/run.sh
+#!/bin/sh
+set -eu
+[ "$(printf 'alpha beta\n' | bin/wordcount)" = "2" ]
+[ "$(bin/wordcount --file samples/notes.txt)" = "2" ]
+echo ok
+exit=0
+
+$ git rev-parse 93fcc53877c31263444cc169f76b0606f2e9895d:tests/run.sh
+a85d460255b8266747fe63c847fbdb62cae18f4f
+exit=0
+
+$ git rev-parse HEAD:tests/run.sh
+a85d460255b8266747fe63c847fbdb62cae18f4f
+exit=0
+
+$ git diff 93fcc53877c31263444cc169f76b0606f2e9895d HEAD -- tests/run.sh
+exit=0
+
+$ git diff 93fcc53877c31263444cc169f76b0606f2e9895d:tests/run.sh HEAD:tests/run.sh
+exit=0
+
+$ git hash-object tests/run.sh
+a85d460255b8266747fe63c847fbdb62cae18f4f
+exit=0
+
+$ git diff HEAD -- tests/run.sh
+exit=0
+
+$ git status --porcelain tests/run.sh
+exit=0
+
+$ git ls-files -s tests/run.sh
+100755 a85d460255b8266747fe63c847fbdb62cae18f4f 0	tests/run.sh
+exit=0
+
+$ git log --oneline 93fcc53877c31263444cc169f76b0606f2e9895d..HEAD
+5e20d11 docs: 记录评审第 4 轮结论, 评审收敛
+62fd7e4 docs: 勾选 ISSUE-05 已实现
+faa5857 Merge branch 'issue/05'
+46ef5dc feat: ISSUE-05: 空路径按用法错误处理并抽 expect_usage_error 辅助函数
+50dd1db docs: 记录评审第 3 轮结论并拆出 ISSUE-05
+badd46a docs: 勾选 ISSUE-03 与 ISSUE-04 已实现
+07c772f Merge branch 'issue/04'
+9ea2f70 Merge branch 'issue/03'
+eb51da7 feat: ISSUE-03: 参数校验收敛为单一用法错误出口, 词数统计只留一处 awk
+641cdfb docs: ISSUE-04: README 登记两条测试命令
+fc61202 docs: 记录评审第 2 轮结论并拆出 ISSUE-03/04
+1ba2133 docs: 勾选 ISSUE-02 已实现
+5219d9f Merge branch 'issue/02'
+2bb9c76 feat: ISSUE-02: 未知参数与缺失 --file 路径改为用法错误并以退出码 2 结束
+96a506c docs: ISSUE-02: 拆分评审 R-1 为未知参数用法错误
+0ebc5cf fixture: 装入待测技能 v3
+d31da4b fixture: 预置 ts001-review-pending 现场
+f62d932 docs: 勾选 ISSUE-01 已实现并记录评审第 1 轮结论
+a298666 merge: issue/01
+6f07cc1 feat: ISSUE-01: 实现 wordcount 标准输入与 --file
+exit=0
+
+$ git status --porcelain -uall docs/changes/wordcount/verify/
+?? docs/changes/wordcount/verify/round-1/dispatch-g1.v1-5e20d11.md
+?? docs/changes/wordcount/verify/round-1/dispatch-g2.v1-5e20d11.md
+?? docs/changes/wordcount/verify/round-1/g2-br001.5e20d11.log
+?? docs/changes/wordcount/verify/round-1/plan.v1-5e20d11.md
+exit=0
+
+$ date -Is
+2026-10-20T01:59:41+08:00
+exit=0
