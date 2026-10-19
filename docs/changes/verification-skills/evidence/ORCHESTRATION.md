@@ -120,3 +120,10 @@
 - ISSUE-23 (blast-radius 被动句残留与 PROVENANCE 节数节号):
   - 交付: SKILL.md:24 最后一处非警告 "被" 改主动 (4 处 -> 0); PROVENANCE 人工结论由 "七个 H2" 改 "八个 H2" 并逐个列出八个现有节名, 差异表 13 处节引用补节名并按现有正文修正节号 (原第 5/6/7 节分别改指第 6/7/8 节), 残留英文理由表补 `TC` 一行; multimodel.md:3 同一禁字规则改为 "与下游共享".
   - 缺口: 未做行为演练 (只改注释与来源记录, 不改规则语义); `check-section-refs.py` 只核对节号与节名是否对上正文, 不判断差异表 "影响/处理决定" 两列仍是否准确; 以后改节名必须同步改 PROVENANCE, 否则脚本会红 (刻意设计, 但会挡住只改标题的提交); 未检查其他文档对 blast-radius 节号的引用 (扫描显示无).
+
+### 第二轮评审收口 (ISSUE-21..23) - 已合并
+
+- 依据: evidence/code-review/ 第二轮复核 (STANDARDS-2.md, SPEC-2.md).
+- 合并提交: 0575ffe (21), e389d28 (22), 949f62c (23); 勾选/日志 094be19.
+- 全量测试 6 failed / 659 passed, 与基线一致; 六个技能 check_skill 全 0; 全角与 U+2014 扫描无命中; 权威输入字节不变; 工作树与分支已清空.
+- 收尾: explain-diff 讲解页 evidence/final-report/2026-10-20-verification-skills-diff.html.

@@ -1,0 +1,643 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>验证 skills 与独立产品验收 - 变更讲解</title>
+<style>
+  :root{
+    --paper:#faf7ef;
+    --ink:#2e2c27;
+    --muted:#8b8474;
+    --line:#d6cebd;
+    --moss:#5f6f57;
+    --clay:#9d6b52;
+    --wash:#f2ece0;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{
+    margin:0;
+    background:var(--paper);
+    color:var(--ink);
+    font-family:'Noto Serif SC','Source Han Serif SC','Spectral','Songti SC',serif;
+    -webkit-font-smoothing:antialiased;
+    line-height:1.85;
+    font-size:17px;
+  }
+  .page{max-width:1180px;margin:0 auto;padding:5vh 5vw 12vh;}
+  .layout{display:grid;grid-template-columns:minmax(0,1fr) 14rem;gap:4rem;align-items:start;}
+  @media (max-width:960px){
+    .layout{grid-template-columns:minmax(0,1fr);gap:2rem;}
+    nav.toc{order:2;position:static;}
+    body{font-size:16.5px;}
+  }
+  @media (max-width:600px){
+    table{font-size:.82rem;}
+    th,td{padding:.4rem .35rem;}
+    pre{font-size:.72rem;}
+    .page{padding:3vh 4vw 10vh;}
+  }
+  main{min-width:0;}
+
+  h1{font-size:clamp(1.7rem,3.4vw,2.5rem);line-height:1.45;margin:0 0 .6rem;font-weight:600;letter-spacing:.02em;}
+  h2{font-size:clamp(1.25rem,2.2vw,1.55rem);margin:4.2rem 0 .9rem;padding-top:1.4rem;border-top:1px solid var(--line);letter-spacing:.02em;}
+  h3{font-size:1.08rem;margin:2.4rem 0 .6rem;letter-spacing:.02em;}
+  h4{font-size:1rem;margin:1.7rem 0 .4rem;color:var(--moss);}
+  p{margin:.75rem 0;}
+  a{color:var(--ink);text-decoration-color:var(--muted);text-underline-offset:.22em;}
+  a:hover{color:var(--clay);}
+  code{font-family:'JetBrains Mono','DejaVu Sans Mono',ui-monospace,monospace;font-size:.86em;background:var(--wash);padding:.1em .35em;border-radius:2px;}
+  pre{
+    font-family:'JetBrains Mono','DejaVu Sans Mono',ui-monospace,monospace;
+    font-size:.8rem;line-height:1.7;
+    background:var(--wash);
+    border-left:3px solid var(--line);
+    padding:1rem 1.1rem;
+    overflow-x:auto;
+    white-space:pre;
+    margin:1.1rem 0;
+  }
+  pre code{background:none;padding:0;font-size:1em;}
+  .lead{font-size:1.08rem;line-height:1.95;}
+  .kicker{letter-spacing:.22em;font-size:.76rem;color:var(--muted);text-transform:uppercase;margin-bottom:1.2rem;}
+  .meta{font-size:.9rem;color:var(--muted);line-height:1.9;}
+  .meta code{font-size:.85em;}
+
+  nav.toc{font-size:.9rem;line-height:2;position:sticky;top:5vh;}
+  nav.toc .t{font-size:.76rem;letter-spacing:.2em;color:var(--muted);margin-bottom:.6rem;}
+  nav.toc ol{list-style:none;margin:0;padding:0;}
+  nav.toc li{margin:0;}
+  nav.toc a{text-decoration:none;color:var(--muted);}
+  nav.toc a:hover{color:var(--clay);}
+  nav.toc .sub{padding-left:1.1rem;font-size:.84rem;}
+
+  .art{width:100%;height:auto;display:block;margin:1.6rem 0 .4rem;}
+  .art text{font-family:'Noto Serif SC','Source Han Serif SC',serif;fill:var(--ink);}
+  .art .soft{fill:var(--muted);}
+  .art .nn{fill:var(--paper);}
+  figure{margin:1.6rem 0;}
+
+  .note{border-left:3px solid var(--moss);padding:.5rem 0 .5rem 1rem;margin:1.4rem 0;color:#3b3a33;font-size:.95rem;}
+  .note b{color:var(--moss);}
+  .warn{border-left:3px solid var(--clay);padding:.5rem 0 .5rem 1rem;margin:1.4rem 0;font-size:.95rem;}
+  .warn b{color:var(--clay);}
+  .aside{font-size:.88rem;color:var(--muted);}
+
+  details{border:1px solid var(--line);padding:.2rem 1rem 0;margin:1.4rem 0;background:#fbf9f3;}
+  details summary{cursor:pointer;padding:.85rem 0;font-weight:600;letter-spacing:.02em;}
+  details summary::marker{color:var(--muted);}
+  details[open]{padding-bottom:1rem;}
+
+  table{border-collapse:collapse;width:100%;margin:1.3rem 0;font-size:.9rem;line-height:1.7;table-layout:auto;}
+  th,td{text-align:left;vertical-align:top;padding:.55rem .6rem;border-bottom:1px solid var(--line);}
+  th{font-weight:600;color:var(--moss);border-bottom:1.5px solid var(--line);}
+  td code{font-size:.82em;word-break:break-word;}
+  .nowrap{white-space:nowrap;}
+
+  ul.tree{list-style:none;padding-left:1rem;border-left:1px dotted var(--line);margin:.6rem 0;font-size:.9rem;line-height:1.9;}
+  ul.tree ul{list-style:none;padding-left:1.1rem;border-left:1px dotted var(--line);}
+  ul.tree>li{margin:.1rem 0;}
+  .tick{color:var(--moss);}
+
+  .filter{display:flex;flex-wrap:wrap;gap:1rem;align-items:center;margin:1rem 0 .4rem;font-size:.92rem;}
+  .filter label{display:inline-flex;gap:.4rem;align-items:center;cursor:pointer;}
+  .filter input{accent-color:var(--moss);}
+  [data-ev][hidden]{display:none;}
+
+  .tag{display:inline-block;font-size:.76rem;letter-spacing:.08em;padding:.05rem .4rem;border:1px solid var(--line);border-radius:2px;color:var(--muted);white-space:nowrap;}
+  .tag.ok{border-color:var(--moss);color:var(--moss);}
+  .tag.no{border-color:var(--clay);color:var(--clay);}
+
+  .quiz{border-top:1px solid var(--line);padding-top:1.2rem;margin-top:2rem;}
+  .quiz .q{font-weight:600;margin:1.6rem 0 .7rem;}
+  .quiz .opts{display:grid;gap:.5rem;}
+  .quiz button{
+    font:inherit;font-size:.95rem;text-align:left;background:#fbf9f3;color:var(--ink);
+    border:1px solid var(--line);padding:.6rem .8rem;cursor:pointer;line-height:1.7;
+    border-radius:2px;
+  }
+  .quiz button:hover:not(:disabled){border-color:var(--moss);}
+  .quiz button:focus-visible{outline:2px solid var(--moss);outline-offset:2px;}
+  .quiz button:disabled{cursor:default;}
+  .quiz button.right{border-color:var(--moss);background:#eef0e6;}
+  .quiz button.wrong{border-color:var(--clay);background:#f6e9e2;}
+  .quiz button .mark{font-weight:700;margin-right:.4rem;}
+  .quiz button.right .mark{color:var(--moss);}
+  .quiz button.wrong .mark{color:var(--clay);}
+  .quiz .fb{display:none;margin:.7rem 0 0;padding:.7rem .9rem;background:var(--wash);font-size:.92rem;line-height:1.8;}
+  .quiz .fb.show{display:block;}
+  .quiz .fb b{color:var(--moss);}
+  .score{font-size:.95rem;color:var(--muted);margin-top:1.5rem;}
+
+  dl.gloss{font-size:.92rem;line-height:1.85;}
+  dl.gloss dt{font-weight:600;margin-top:.8rem;color:var(--moss);}
+  dl.gloss dd{margin:.1rem 0 0;}
+  footer{margin-top:5rem;border-top:1px solid var(--line);padding-top:1.2rem;font-size:.86rem;color:var(--muted);line-height:1.9;}
+</style>
+</head>
+<body>
+<div class="page">
+<div class="layout">
+<main>
+
+<p class="kicker">变更讲解 / skills-v2</p>
+<h1>让没参加实现的人来查成品</h1>
+<p class="lead">这次变更在 <code>tdd-as-orchestra</code> 的收尾前插了一个独立验收节点, 并新增五个指令型 skill: 一个组织独立产品验收 (<code>verify-change</code>), 两个把"这个项目怎么跑"写成配方并维护 (<code>create-verification-skill</code> / <code>maintain-verification-skill</code>), 两个负责两类高风险判断 (<code>blast-radius</code> 查影响, <code>benchmark-checklist</code> 查性能数字). 另外补了 README 索引, 并在 <code>docs/changes/verification-skills/evidence/</code> 留下 23 个 ISSUE 的演练材料.</p>
+<p>一句话概括这次改动的因果: 以前的收尾是"作者说做完了, 顺手写一份讲解页"; 现在多一道门, 没参加实现和修复的会话拿着已确认的 <code>PRODUCT.md</code>, 在最终成品上逐项跑, 结果落成一份绑定目标提交的报告, 讲解页只能引用这份报告.</p>
+<p class="meta">
+比较范围: <code>ec9d55f...094be19</code> (开工基线到当前顶端), 分支 <code>v2</code>, 88 个本地提交, 未推送.<br>
+范围内不含 <code>evidence/</code> 的逐行讲解: 那 3300 个文件是证据材料, 本页只在证据章节引用它们.<br>
+代码侧实际改动: 37 个文件, +1197 / -19 行 (README, 23 个 ISSUE 文件, 五个新技能目录, <code>tdd-as-orchestra/SKILL.md</code>).<br>
+本页生成于 2026-10-20, 生成时 <code>HEAD</code> = <code>094be19</code>; 本页自身是本目录新增的未提交文件.
+</p>
+
+<h2 id="bg">1 背景: 原来哪里漏了</h2>
+
+<h3>1.1 旧的收尾链路</h3>
+<p>改动前的 <code>tdd-as-orchestra</code> 是一条线性流程: 取前沿 ISSUE, 实现, 提交, 合并, 勾选, 评审, 采纳评审发现项回重构, 然后"停止并汇报". 旧版最后一句原文是:</p>
+<pre><code>- 停止并汇报: 如果整个流程顺利结束, 那么启动一个新 *执行者* 让它调用 `explain-diff` skill 生成此次变更的报告.
+               如果是中途遇到阻塞, 那么停下用大白话讲清楚 事情的背景/现在的问题是什么/要我做什么/你的建议是什么.</code></pre>
+<p>这里有两个后果. 第一, 评审通过是"代码写得对不对"的判断, 不是"成品符不符合产品标准"的判断; 旧链路里没有任何一步回头去核对已确认的产品场景. 第二, 讲解页由执行者生成, 执行者正是实现那批人, 页面的结论本质上来自作者的自我评价.</p>
+
+<h3>1.2 为什么判定这是缺口 (有依据的部分)</h3>
+<p><code>PRODUCT.md</code> 的背景节直接写了缺口是什么: 流程已经有提前确认标准, 测试追溯和真实证据的要求, 但大型任务在实现, 合并, 评审收敛后还缺少明确的独立成品验收节点. 八条目标 (G-001 到 G-008) 分别对应新的验收能力, 新节点, 派工, 证据分级, 配方生成, 配方维护, 影响调查和性能核查.</p>
+<p>缺口不是纸面推演. 演练里出现过一次: ISSUE-14 的红轮 (用旧版技能跑同一个任务, 期望它失败) 中, 派工单里出现了"独立验收"字样, 旧技能就自己顺手补了一轮验收, 于是这轮没有干净地失败. 这条记录在 <code>evidence/ORCHESTRATION.md</code> 波次 7 的自报缺口里. 它说明缺的不是"再多写几句要求", 而是一个位置明确, 主语明确的节点.</p>
+<div class="note"><b>关于动机材料的边界.</b> 上面两段都有文件依据. 至于"没有这个节点实际造成了多少次漏检", 仓库里没有统计, 本页也不编. 能说的是: 旧链路没有任何一步能产出"非作者核对成品"的证据.</div>
+
+<h3>1.3 不改会怎样</h3>
+<p>按旧链路, 三种材料都能顶替产品结论: 执行计划的勾选框, 技术设计文档里写的要求, 作者自己的通过日志. 这一点在新技能正文里被逐条堵住 (<code>verify-change</code> 第 7 步写明勾选状态不是证据, 技术材料只作操作线索), 而堵住的地方原本就是缺口所在位置. 这是文档写法的反推, 属推断, 不是实测.</p>
+
+<h2 id="idea">2 思路: 三条主线, 一条共同边界</h2>
+
+<figure>
+<svg class="art" viewBox="0 0 660 330" role="img" aria-label="旧流程与新流程对比: 新流程在评审之后插入独立验收, 并有实现问题回流的回路">
+  <defs>
+    <filter id="wob1" x="-5%" y="-5%" width="110%" height="110%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.014" numOctaves="2" seed="11" result="n"/>
+      <feDisplacementMap in="SourceGraphic" in2="n" scale="3"/>
+    </filter>
+    <marker id="ah" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10" fill="none" stroke="#2e2c27" stroke-width="1.6"/>
+    </marker>
+  </defs>
+  <g filter="url(#wob1)" fill="none" stroke="#2e2c27" stroke-width="1.7" stroke-linecap="round">
+    <!-- 旧 -->
+    <text x="20" y="34" stroke="none" font-size="17">旧: 评审一过就收尾</text>
+    <path d="M60 92 H 600" marker-end="url(#ah)"/>
+    <g>
+      <circle cx="90" cy="92" r="6" fill="#faf7ef"/><circle cx="230" cy="92" r="6" fill="#faf7ef"/>
+      <circle cx="370" cy="92" r="6" fill="#faf7ef"/><circle cx="510" cy="92" r="6" fill="#faf7ef"/>
+    </g>
+    <g stroke="none" text-anchor="middle" font-size="15">
+      <text x="90" y="122">实现</text><text x="230" y="122">合并</text>
+      <text x="370" y="122">评审</text><text x="510" y="122">收尾</text>
+    </g>
+    <text x="510" y="144" stroke="none" text-anchor="middle" class="soft" font-size="12.5">作者写讲解页</text>
+
+    <!-- 新 -->
+    <text x="20" y="190" stroke="none" font-size="17">新: 评审收敛后另起会话查成品</text>
+    <path d="M60 240 H 618" marker-end="url(#ah)"/>
+    <g>
+      <circle cx="82" cy="240" r="6" fill="#faf7ef"/><circle cx="196" cy="240" r="6" fill="#faf7ef"/>
+      <circle cx="310" cy="240" r="6" fill="#faf7ef"/><circle cx="424" cy="240" r="6" fill="#faf7ef"/>
+      <circle cx="548" cy="240" r="6" fill="#faf7ef"/>
+    </g>
+    <g stroke="none" text-anchor="middle" font-size="15">
+      <text x="82" y="270">实现</text><text x="196" y="270">合并</text>
+      <text x="310" y="270">评审</text><text x="424" y="270">独立验收</text>
+      <text x="548" y="270">收尾</text>
+    </g>
+    <path d="M424 262 C 380 306, 128 306, 82 262" stroke-dasharray="6 5" marker-end="url(#ah)"/>
+    <text x="253" y="320" stroke="none" text-anchor="middle" class="soft" font-size="13">有实现问题: 拆新 ISSUE 回重构, 再评审</text>
+  </g>
+</svg>
+<figcaption class="aside" style="text-align:center">节点名字取自 <code>tdd-as-orchestra/SKILL.md</code> 第 38 到 49 行. 虚线回路就是"验收回传"节点.</figcaption>
+</figure>
+
+<p>三条主线各自解决一类问题, 但都收在同一条边界上.</p>
+
+<h3>2.1 把验收从实现里切开</h3>
+<p>新节点只有一个动作: 最后一轮评审没有新的须重构项之后, 另起一个独立会话, 让它用 <code>verify-change</code> 组织产品验收. 实现指挥者不准自己用这个技能, 原文理由是"验收要由没参加实现和修复的人来查成品, 自己查自己等于没查". 报告拿回来之后按三类分流: 实现问题拆 ISSUE 回重构; 权限, 环境, 标准, 证据缺口按原停止条件交回给用户; 缺口没处理之前不生成讲解页.</p>
+
+<h3>2.2 把"怎么跑"沉淀成配方</h3>
+<p>以前每个验证会话都要重新摸索这个项目怎么启动, 端口归谁, 数据放哪, 怎么取证, 怎么清理. <code>create-verification-skill</code> 把这套东西写成目标项目里的一份本地 skill (<code>.agents/skills/verify-&lt;应用名&gt;/</code>), <code>maintain-verification-skill</code> 负责让它跟当前事实保持一致. 关键取舍: 配方只是操作材料, 通过判据始终来自 <code>PRODUCT.md</code>. 配方过时是操作缺口, 不是产品缺陷.</p>
+
+<h3>2.3 把两类高风险判断变成点名方法</h3>
+<p><code>blast-radius</code> 管"这改动在 diff 之外会弄坏什么", 用五级证据等级把"我读了代码"和"我在跑着的应用里复现了"分开. <code>benchmark-checklist</code> 管"这个性能数字能不能信", 七问加四个判定词. 两者都由承接对应场景组的验收者自己点名加载, 不新增产品判据.</p>
+
+<h3>2.4 共同边界: 五个技能都不碰 Git 与发布</h3>
+<p>五个文件都写了交付边界: 只交文件路径, 差异和证据, 不提交, 不推送, 不开 PR, 不合并. 这与 <code>PRODUCT.md</code> 的 NG-005 一致: 不迁入原工具的发布流程. 本变更自身的提交与合并仍由 <code>tdd-as-orchestra</code> 的既有职责完成.</p>
+
+<h3>2.5 一个具体场景的新旧对比</h3>
+<p>拿 ISSUE-14 的 <code>ts002</code> 夹具说 (真实演练, 不是推演): 一个词数统计小项目, 某条 PRODUCT 场景在修复前失败.</p>
+<p><b>旧做法:</b> 实现者改完, 跑一遍, 写报告说通过. 讲解页的证据部分引的是自己的话.<br>
+<b>新做法:</b> 实现者改完, 合并, 评审收敛; 另起一个不认识实现者的会话, 拿到 <code>PRODUCT.md</code> 和目标提交, 派非作者验收者按场景跑入口; 报告里每一行都要写材料类型和证据位置; 有实现问题就拆 ISSUE 回重构. 这条回路在演练项目里的真实提交顺序是 <code>3dbba65</code> 新增 ISSUE (验收回传的实现问题) -> <code>0a7166f</code> 修复 -> <code>9e578b2</code> 合并 -> <code>89ea49e</code> 记录评审 -> <code>3c79985</code> 归档验收报告 (<code>evidence/ISSUE-14/logs/green-ts002-fix-git-log.txt</code>).</p>
+<div class="note"><b>为什么全部做成"指令型 skill".</b> 五个新文件都是给 agent 读的文本 (<code>SKILL.md</code>), 没有运行时代码, 且都带 <code>disable-model-invocation: true</code>: 只能被点名调用, 不会被模型自动触发. 所以"效果"取决于读到它的会话是否照做. 这句话决定了后面两件事: 证据只能是真实会话记录, 测试也只能证明"被读到时规则说得清", 不能证明"任何模型都一定遵守".</div>
+
+<h2 id="code">3 代码讲解</h2>
+<details>
+<summary>展开看具体改了什么 (不关心实现细节可以跳过)</summary>
+
+<h3>3.1 变更地图</h3>
+<ul class="tree">
+  <li><code>workflow/tdd-as-orchestra/SKILL.md</code> 新增 6 行 / 删除 4 行: 新增"验收"与"验收回传"两个节点, 改写"停止并汇报", 加一句节点顺序约束</li>
+  <li><code>workflow/verify-change/SKILL.md</code> 新文件, 111 行: 九步流程 + 复验 + 边界</li>
+  <li><code>workflow/create-verification-skill/SKILL.md</code> 新文件, 72 行</li>
+  <li><code>workflow/maintain-verification-skill/</code>
+    <ul>
+      <li><code>SKILL.md</code> 75 行</li>
+      <li><code>reference/drift-classification.md</code> 混淆样例与证据底线</li>
+    </ul>
+  </li>
+  <li><code>workflow/blast-radius/</code>
+    <ul>
+      <li><code>SKILL.md</code> 110 行: 八节</li>
+      <li><code>reference/multimodel.md</code>, <code>reference/report-style-zh.md</code>, <code>reference/PROVENANCE.md</code>, <code>LICENSE</code></li>
+    </ul>
+  </li>
+  <li><code>workflow/benchmark-checklist/</code>
+    <ul>
+      <li><code>SKILL.md</code> 128 行: 输入/一次性实验/测量前/调优/波动/错误计数/收益上限/基线/粗估/判定/对外报告</li>
+      <li><code>reference/PROVENANCE.md</code>, <code>LICENSE</code></li>
+    </ul>
+  </li>
+  <li><code>README.md</code> 新增 5 行索引, 无删改</li>
+  <li><code>docs/changes/verification-skills/issues/</code> 23 个 ISSUE 文件 (15 个原始 + 第一轮评审后的 16..20 + 第二轮收口的 21..23)</li>
+</ul>
+
+<h3>3.2 tdd-as-orchestra: 两个新节点</h3>
+<p>这是整次变更唯一改动既有流程的地方, 也是风险最集中的地方. 第 38 行先加一句硬约束:</p>
+<pre><code>按以下节点推进, 节点顺序不可跳过: 评审没收敛不进入验收, 验收证据没齐不进入正常收尾.</code></pre>
+<p>然后插入两个节点, 并改写收尾节点 (原文第 47 到 49 行, 这里摘关键句):</p>
+<pre><code>- 验收: 最后一轮评审没有新的须重构发现项之后, 才能另起一个独立会话, 让它调用 `verify-change` skill
+        按已确认的 PRODUCT.md 组织产品验收. 实现指挥者不亲自使用 verify-change ...
+        完成标准: 拿回一份绑定本轮目标提交的报告, 每个必验项都有结果.
+- 验收回传: 报告里的明确实现问题就是下一轮重构的输入 ... 报告里的环境, 权限, 标准或证据缺口
+        不是实现缺陷: 按原来的停止条件汇报给我, 只阻塞依赖它的验收项, 不拆成重构 ISSUE.
+- 停止并汇报: ... 派工单必须带上本轮独立验收报告的实际路径, 它覆盖的目标提交和逐项结果;
+        讲解页的证据部分引用这份报告, 如实显示未验证范围 ...</code></pre>
+<p>三处设计取舍值得注意:</p>
+<ul>
+  <li><b>不塞进已有节点.</b> 原文明确"验收也不塞进 <code>code-review</code> 或 <code>explain-diff</code>, 它们是别的节点". 混进去的结果就是 1.2 节那次红轮事故: 旧技能自己顺手补了一轮验收, 谁也说不清那算不算独立验收.</li>
+  <li><b>只加一层, 不加两层.</b> 验收指挥者只负责派工和核对材料, 不亲自跑成品, 也不组织修复. 派工单写清身份, 现场, 范围外, 输出契约和完成证据五样.</li>
+  <li><b>缺口不走重构.</b> 环境, 权限, 标准, 证据缺口不是实现缺陷, 拆成 ISSUE 会让重构者去"修"一个根本不在代码里的问题.</li>
+</ul>
+
+<h3>3.3 verify-change: 九步流程</h3>
+<p>这个技能是整条主线的核心, 九个步骤每一步都带完成标准, 且有明确的主语划分: 指挥者不跑成品.</p>
+<table>
+  <thead><tr><th class="nowrap">步</th><th>做什么</th><th>关键约束 (为什么)</th></tr></thead>
+  <tbody>
+    <tr><td class="nowrap">1</td><td>核对输入: 已确认 <code>PRODUCT.md</code>, 目标提交, 产物根目录; 把场景与审计 BR 抄成必验清单</td><td>技术材料填不上产品标准; 只挑"看起来相关"的项会让没碰过的功能和审计规则整条消失</td></tr>
+    <tr><td class="nowrap">2</td><td>核对版本前提: 目标提交存在, 工作区与它一致</td><td>不许用快照或另一份工作区绕过; 报告必须绑到一个能直接复核的成品版本</td></tr>
+    <tr><td class="nowrap">3</td><td>定证据目录, 判断是否影响构建与测试发现</td><td>影响就外置; 证据目录不是豁免区, 输入中途加场景不追认</td></tr>
+    <tr><td class="nowrap">4</td><td>分组定人数, 给每条必验项定材料来源 (本轮实跑 / 引用旧观察 / 未验证), 需要时把两项方法排进对应组</td><td>关键真实路径一律本轮实跑; 作者日志只作对照; 重复准备成本大于并行收益时只派一人</td></tr>
+    <tr><td class="nowrap">5</td><td>先定写入授权与清理</td><td>默认只读; 批准绑定资源/对象/操作/清理四样; 换范围重新批准; 残留单列, 不算整项通过</td></tr>
+    <tr><td class="nowrap">6</td><td>派出非作者验收者</td><td>"未参与"要用可核对事实证明 (会话创建时间晚于实现提交, 不继承实现过程), 不能只凭自述</td></tr>
+    <tr><td class="nowrap">7</td><td>逐场景核对, 结果归三类去向</td><td>勾选状态不是证据; 配方过时是操作缺口; 缺权限不得用自建服务桩改判通过</td></tr>
+    <tr><td class="nowrap">8</td><td>复核材料与证据类型</td><td>当前观察 / 引用旧观察 / 推断 / 未运行四类分开; 作者材料一律归"引用旧观察"</td></tr>
+    <tr><td class="nowrap">9</td><td>写报告</td><td>逐项成行, 带材料类型与证据位置; 另写派工记录, 三类去向, 写入与清理记录; 收尾只写"除证据目录外源码与 Spec 未变"</td></tr>
+  </tbody>
+</table>
+<p>第 4 步那句"作者跑过的路径正是本次改动碰到的地方, 让它替验收者下结论, 首次验收就退化成作者自证"来自第一轮评审 (<code>SPEC.md</code> 第 3 条), 由 ISSUE-16 落实. 补之前, 通用步骤允许条件适用的旧观察直接复用, 本人实跑规则只写在复验段, 于是首次验收理论上可以只拿作者日志过关. 修复记录在 <code>evidence/ISSUE-16/HANDOFF.md</code>, 复核意见在 <code>evidence/code-review/SPEC-2.md</code> 第 3 条.</p>
+<p><code># 复验</code> 四步是同一套规则的续集: 绑新提交, 换掉参与过修复的人, 按影响重验, 作者材料仍只作引用. 边界节把指挥者的权限收死: 不亲自运行被验产品入口, 不修复, 不替验收者调用两项方法, 不生成或修改项目配方, 不碰 Git.</p>
+
+<h3>3.4 create / maintain: 配方与单一真相源</h3>
+<p>产物固定落在目标项目的 <code>.agents/skills/verify-&lt;应用名&gt;/</code>. 两个技能都先要求"写入授权": 调查阶段默认只读, 写文件前把资源与对象, 操作, 清理, 验证办法四样整理成一段说明交用户批准. 这条要求在第一轮评审时被单独提出来过 (<code>SPEC.md</code> 第 1 条, 判定为要求缺失), 后来补成两处 <code>## 写入授权</code>.</p>
+<p>两个技能共用的批准规则只在 <code>create-verification-skill/SKILL.md:34</code> 维护一份, <code>maintain-verification-skill/SKILL.md:47</code> 改成相对链接指针. 这是第二轮评审 N3 (重复指令) 的收口, 代价写在同一份复核报告里: 只部署 maintain 不带 create 时, 指针会悬空.</p>
+<p>维护侧的分类是关键设计: 文档漂移 (配方写的命令与项目事实不符, 产品是对的), 驱动缺口 (配方缺到达入口的必要条件), 产品缺陷 (配方正确, 产品行为仍不满足 Product). 三类判据只写在 <code>SKILL.md</code>, <code>reference/drift-classification.md</code> 只放混淆样例和证据底线, 不重复判据.</p>
+
+<h3>3.5 blast-radius: 五级证据 + 一次性实验边界</h3>
+<p>核心是第 3 节的证据等级, 用来防止"我读了代码"被说成"应用实跑":</p>
+<pre><code>1. 你直接断言事实成立. 单独没有价值.
+2. 指到真实 file:line, 或库自己的源码.
+3. 逐步走查失败路径, 证明坏情况到不了.
+4. 实际跑过: 调用真实代码, 判断错就失败的脚本或测试.
+5. 在运行中的应用里复现.</code></pre>
+<p>第 5 节"一次性实验的边界"是第一轮评审补的 (<code>SPEC.md</code> 第 2 条, 由 ISSUE-18 落实): 临时实验必须标成"非正式 TC", 只动批准范围内的独立脚本和临时目录, 内部结果不能顶替成品入口通过, 需要改冻结目标或新增正式接缝时停下报告.</p>
+
+<h3>3.6 benchmark-checklist: 七问与四个判定词</h3>
+<p>结论只有四种: 更快, 更慢, 无可测差异, 无法下结论. 七问按测量阶段分布, 正文第 11 行给了一张编号到节名的对照表 (第一轮评审 H2 的修复, 由 ISSUE-19 落实: 原稿引用了"第 4/7 问"却删掉了编号). 收益上限算式是:</p>
+<pre><code>r = 改动那一段占整条用户路径耗时的比例
+完全移除这一段时, 整条路径最多快 r / (1 - r)
+例: 占 10% 的段全删, 上限约 11%. 上限只是天花板, 不是结果.</code></pre>
+<p>粗估例外是收口轮的重点: 用户只要大致量级时可以单次测量, 但只豁免其余五问, 第 4 问 (失败计数与输出正确性) 和第 7 问 (工作是否真的在计时区发生) 不省. ISSUE-22 补的三句边界是: 规划与固定脚本时仍按"基线与脚本固定前"检查, 粗估豁免覆盖不到那两节.</p>
+
+<h3>3.7 README 与 ISSUE 文件</h3>
+<p><code>README.md</code> 只新增 5 行索引, 没有删除或改写既有行, 这点由审计脚本按"只允许新增五行"核对过. 23 个 ISSUE 文件里, 前 15 个是原始任务切片, 后 8 个来自两轮双轴评审的发现项 (16..20 来自 <code>STANDARDS.md</code> 与 <code>SPEC.md</code>, 21..23 来自 <code>STANDARDS-2.md</code> 与 <code>SPEC-2.md</code>). 它们主要是流程产物, 不改变运行时行为, 但改变"后来者能不能复核"这件事.</p>
+
+</details>
+
+<h2 id="evidence">4 证据: 哪些是看到过的, 哪些还没验</h2>
+
+<p>这一节把结论分三级: <b>已观察</b> (有原始输出或会话原件), <b>仅推断</b> (从文本结构推的, 没跑过), <b>未验证</b> (明确缺证据). 每条都给了可复核位置, 全部落在 <code>docs/changes/verification-skills/evidence/</code> 下; 路径相对该目录.</p>
+
+<div class="filter" role="group" aria-label="按材料类型筛选证据">
+  <label><input type="radio" name="evfilter" value="all" checked> 全部</label>
+  <label><input type="radio" name="evfilter" value="observed"> 只看已观察</label>
+  <label><input type="radio" name="evfilter" value="inferred"> 只看推断</label>
+  <label><input type="radio" name="evfilter" value="unverified"> 只看未验证</label>
+</div>
+
+<section data-ev="observed">
+<h3>4.1 已观察</h3>
+<table>
+  <thead><tr><th>结论</th><th>材料类型</th><th>可复核位置</th></tr></thead>
+  <tbody>
+    <tr><td>全量快层测试没有新增失败: 6 failed / 659 passed / 2 skipped / 103 deselected / 33 subtests, 失败集合与开工基线逐条一致</td><td>命令输出</td><td><code>BASELINE.md</code>; <code>ISSUE-15/logs/pytest-full-not-e2e.log</code> (274.02s); 末轮 <code>ISSUE-23/full-suite-summary.log</code> (280.91s) 同结果</td></tr>
+    <tr><td>六个技能 frontmatter 机检全部退出 0</td><td>命令输出</td><td><code>ISSUE-15/logs/check-skill-six.log</code> (六行 <code>OK</code>, 末行 <code>all six exit 0</code>)</td></tr>
+    <tr><td><code>writing-for-llm</code> 自身单测通过</td><td>命令输出</td><td><code>ISSUE-15/logs/pytest-writing-for-llm.log</code> (<code>7 passed, 18 subtests passed</code>)</td></tr>
+    <tr><td>新增与修改的中文文档无全角标点命中</td><td>命令输出</td><td><code>ISSUE-15/logs/fullwidth-scan.log</code> (逐文件 <code>hits=0</code>, <code>TOTAL_HITS 0</code>)</td></tr>
+    <tr><td>两份复刻的许可, 固定来源与逐项差异记录可读; 三份 LICENSE 的 sha256 相同</td><td>命令输出 + 文件</td><td><code>ISSUE-15/logs/br010-provenance.log</code> (<code>checks=50 failures=0</code>, 三行同为 <code>bc957ca6...b200e</code>)</td></tr>
+    <tr><td>差异只落在允许路径: 冻结的 <code>PRODUCT.md</code> / <code>TECHNICAL.md</code> / <code>DECISIONS.md</code> / ADR / <code>general</code> / <code>tests</code> / <code>pi</code> / <code>sync-to-pi.py</code> diff 为空</td><td>命令输出</td><td><code>ISSUE-15/logs/scope-git.log</code> (按目录统计 + "权威输入" 段为空)</td></tr>
+    <tr><td>没有部署: 五个技能在 <code>~/.agents/skills</code> 与 <code>~/.pi/skills</code> 全部 absent, <code>~/.agents/skills</code> 仍是 34 项</td><td>命令输出</td><td><code>ISSUE-15/logs/deployment-readonly-check.log</code></td></tr>
+    <tr><td>真实会话演练存在, 报告绑定具体提交: 验收报告首段写目标提交 <code>612f1ea...</code> 并注明"除证据目录输出外, 源码与 Spec 未变"</td><td>会话产物</td><td><code>ISSUE-01/HANDOFF.md</code>; <code>ISSUE-01/drill-G1a2-evidence-dir/REPORT.md</code>; 同目录的 6 份 <code>ISSUE-01/drill-*.log</code></td></tr>
+    <tr><td>写入授权与残留分开记录: 批准范围原文写进派工单; <code>account-delete</code> 返回 <code>rc=2 (missing --admin-token)</code>, 残留单独成节, 不写成产品失败</td><td>会话记录 + 产物</td><td><code>ISSUE-10/drill-green-011-012/plan.md</code>, <code>report.md</code>; <code>ISSUE-10/logs/cleanup.txt</code></td></tr>
+    <tr><td>"准备 PR 正文"不等于"开了 PR": 演练项目 <code>git log</code> 顶端仍是编排者提交, <code>git status --short</code> 只有两个未跟踪的 <code>docs/green2*.md</code></td><td>文件 + git 输出</td><td><code>ISSUE-09/green-ts002/docs/green2-pr.md</code>; <code>ISSUE-15/AUDIT.md</code> 第 3 节</td></tr>
+    <tr><td>配方确实由项目当前文件加载: 会话展开块给出 <code>location="/tmp/orchestra-11/p2-gaps/.agents/skills/verify-fixture/SKILL.md"</code></td><td>会话转录</td><td><code>ISSUE-11/raw/TS-002-017-verifier-transcript-i11-ver1.txt</code></td></tr>
+    <tr><td>验收回路的真实顺序: 新增 ISSUE -> 修复 -> 合并 -> 评审 -> 归档验收报告</td><td>git 输出</td><td><code>ISSUE-14/logs/green-ts002-fix-git-log.txt</code></td></tr>
+    <tr><td>审计清单自身先红后绿: 加 README 索引前退出 1 (2 FAIL, 3 WARN), 补好后退出 0</td><td>命令输出</td><td><code>ISSUE-15/red/red-audit-run1.log</code>; <code>ISSUE-15/green-audit-run2.log</code></td></tr>
+    <tr><td>交接报告的路径引用有精度问题: 抽样 296 条, 242 条直接可开, 36 条需补轮次子目录, 3 条同名多候选, 3 处真实漂移</td><td>命令输出</td><td><code>ISSUE-15/logs/handoff-path-sample.log</code>, <code>handoff-path-sample-suffix.log</code>; 明细见 <code>AUDIT.md</code> 第 9 节第 4 条</td></tr>
+  </tbody>
+</table>
+</section>
+
+<section data-ev="inferred">
+<h3>4.2 仅推断 (没有运行证据)</h3>
+<table>
+  <thead><tr><th>推断</th><th>依据</th><th>强度说明</th></tr></thead>
+  <tbody>
+    <tr><td>"节点顺序不可跳过"会被真的执行</td><td><code>tdd-as-orchestra/SKILL.md:38</code> 的文本约束</td><td>没有运行时校验或钩子; 靠读到它的会话遵守. 演练里出现过旧技能自行补验收的反例</td></tr>
+    <tr><td>五个技能不会被自动触发, 只能点名</td><td>六份 <code>SKILL.md</code> 都有 <code>disable-model-invocation: true</code>; <code>check_skill.py</code> 机检退出 0</td><td>字段存在是查过的; "模型不会自行触发"是字段语义, 未做行为对照</td></tr>
+    <tr><td>共用批准规则单点维护, 能避免两处修订不同步</td><td><code>create-verification-skill/SKILL.md:34</code> 是唯一原文, <code>maintain-verification-skill/SKILL.md:47</code> 是指针</td><td>结构上可核对; "读者是否真按指针读回"没有行为采样</td></tr>
+    <tr><td>说明性材料改动不影响旧证据适用范围</td><td><code>verify-change</code> 第 3 步与第 8 步的规则原文</td><td>规则写了, 但只在个别演练场景里用过</td></tr>
+  </tbody>
+</table>
+</section>
+
+<section data-ev="unverified">
+<h3>4.3 未验证 / 已知缺口</h3>
+<table>
+  <thead><tr><th>缺口</th><th>影响哪条结论</th><th>出处</th></tr></thead>
+  <tbody>
+    <tr><td>只在一个组合上验证: Ubuntu 26.04.1 x86_64, pi 1.3.0, herdr 0.9.4, 单模型 <code>cli/deepseek-v4.1-flash-expires-on-0910</code>, thinking high</td><td>所有"行为通过"结论的适用范围; 换模型或宿主后规则是否照做未知</td><td><code>ISSUE-15/AUDIT.md</code> 第 1 节第 2 条, 第 9 节第 1, 6 条</td></tr>
+    <tr><td>没有全局部署: 五个技能未进 <code>~/.agents/skills</code>, 没跑 <code>sync-to-pi.py</code></td><td>任何"在其他项目里生效"的说法; 目前只在本仓库源码层面成立</td><td><code>ISSUE-15/AUDIT.md</code> 第 9 节第 10 条; <code>logs/deployment-readonly-check.log</code></td></tr>
+    <tr><td>没有重跑 15 个原始 ISSUE 的真实会话: 临时项目和会话已删, 审计只核可追溯性与一致性</td><td>"行为通过"的强度不超过各 ISSUE 自己留下的证据</td><td><code>ISSUE-15/AUDIT.md</code> 第 1 节第 1 条, 第 9 节第 1 条</td></tr>
+    <tr><td>部分红轮没真正跑红: ISSUE-06/08 红轮不全, ISSUE-09 只跑红 1 条, ISSUE-13 的 blast-radius 变异版一行未偏离, ISSUE-18 的 AC-024-2/3 未跑红, ISSUE-02 两条对照在旧版也能通过</td><td>这些条目证明的是"新规则有效", 不是"旧规则必然失败"</td><td><code>evidence/ORCHESTRATION.md</code> 各波次缺口; <code>ISSUE-15/AUDIT.md</code> 第 9 节第 9 条</td></tr>
+    <tr><td><code>/skill:</code> 点名入口未验证: ISSUE-10 的两项方法由验收者 <code>read</code> 读项目内文件后执行, ISSUE-14 的验收指挥按 <code>SKILL.md</code> 步骤执行</td><td>点名加载路径下的行为没被证明; 只能证明"按当前文件执行"</td><td><code>ISSUE-15/AUDIT.md</code> 第 9 节第 5 条</td></tr>
+    <tr><td>记录层缺口: ISSUE-06 缺"提交渠道"字段; ISSUE-04/06/08/10 顶层记录缺"无自动 Git 动作"一句; 3 处引用路径真实漂移</td><td>不影响 AC-032 判定, 但记录一致性不齐</td><td><code>ISSUE-15/AUDIT.md</code> 第 9 节第 2, 3, 4 条</td></tr>
+    <tr><td>工具缺口: <code>check_skill.py</code> 放行 description 里的"冒号+空格", 而 pi 的 YAML 解析会整份丢弃技能</td><td>同类写法的新技能可能静默不加载; 修它属 <code>general/</code> 范围, 本次禁止改</td><td><code>ISSUE-01/HANDOFF.md</code> 缺口 1; <code>ISSUE-01/incidents/frontmatter-conflict/</code></td></tr>
+    <tr><td>待用户复核: ISSUE-10 把"按 README 建 <code>runtime/data</code> 实例"当成已批准范围的一部分, 但字面批准对象只有临时账号和一条备注</td><td>若复核认为不在范围内, 依赖该实例的 AC-001-1 / AC-003-1 / AC-004-1 / AC-005-1 结论作废</td><td><code>ISSUE-15/AUDIT.md</code> 第 7 节末段</td></tr>
+    <tr><td>性能数字只证明方法与判定流程: 演练用 <code>time.sleep</code> 与小字典模拟</td><td>不能当成真实产品性能或真实收益</td><td><code>ISSUE-15/AUDIT.md</code> 第 9 节第 7 条; <code>ISSUE-09/green-ts002/docs/green2-pr.md</code> 范围与限制节</td></tr>
+    <tr><td>本页现场: 生成时工作区只有一处未跟踪的旧会话 HTML; 本页落在 <code>evidence/final-report/</code> 且未提交, 未包含在 <code>094be19</code> 里</td><td>本页自身的可复核性与提交版本无关, 需按文件路径复核</td><td><code>git status</code> 现场记录 (见页末)</td></tr>
+  </tbody>
+</table>
+</section>
+
+<div class="warn"><b>实测与任务描述的一处差异.</b> evidence 目录实测 <code>du -sh</code> 为 54M, 3300 个文件; 交接里说的"约 130M"没有对上. 本页按实测值写. 另外 <code>AUDIT.md</code> 第 6 节写"3100 个改动文件", 而 <code>scope-git.log</code> 按目录列出的数字相加是 3101, 差 1, 不影响范围结论, 但按原样记录.</div>
+
+<h3>4.4 每一项标准都能追到原件</h3>
+<p>AC-001 到 AC-032 与 BR-009/010/011 的逐项对应表在 <code>ISSUE-15/AUDIT.md</code> 第 11 节, 格式是"标准 -> ISSUE -> 主要原件". 本页没有重列那张表, 因为它有 40 多行, 而核对入口是同一个. 需要逐条查时从那里出发, 每个路径都能在该目录下打开 (除上文记录的 3 处路径漂移, 按实际文件名修正即可).</p>
+
+<h2 id="risk">5 合并风险与回退</h2>
+
+<h3>5.1 谁会受影响</h3>
+<ul>
+  <li><b>以后用 <code>tdd-as-orchestra</code> 的人</b>: 每轮大型任务多一次验收会话, 多一份报告, 收尾前多一道门. 成本明显上升, 这是这次改造的定价.</li>
+  <li><b>其他项目</b>: 零影响. 五个技能没有部署到全局目录 (证据见 4.1), 也没有被任何配置引用; 不运行同步脚本就不生效.</li>
+  <li><b>只看讲解页的人</b>: 页面的证据部分从此要引验收报告, 不能只引作者自述. 这是要求, 不是自动保证.</li>
+</ul>
+
+<h3>5.2 具体风险</h3>
+<ul>
+  <li><b>验收节点可能走形式.</b> "验收者没参加实现"目前靠会话创建时间和操作记录核对, 没有强制机制. 如果派工单写得含糊, 这一步会退化成多开一个会话.</li>
+  <li><b>讲解页被当成验收关闭.</b> 文档两处写明了不等于正式人工验收 (<code>tdd-as-orchestra</code> 收尾节点与 <code>verify-change</code> 边界), 但这是约定, 不是机制.</li>
+  <li><b>仓库体积.</b> 3300 个文件, 54M 进版本库. 影响克隆时间, <code>git diff</code> 统计与全仓库检索. 这是最容易被忽略的代价.</li>
+  <li><b>指针跨目录.</b> <code>maintain-verification-skill</code> 的共用批准规则指向 <code>create-verification-skill</code>; 只部署前者会悬空. 第二轮评审已把这条记为代价而非缺陷.</li>
+  <li><b>规则文字本身会漂移.</b> 五个技能的 <code>SKILL.md</code> 合计约 500 行中文规则, 靠人工通读与标点扫描维护. 第一轮评审提了 12 项发现, 第二轮又新增 4 项, 说明这类文档一次写不对.</li>
+</ul>
+
+<h3>5.3 回退</h3>
+<p>能低成本恢复, 因为改动几乎全是新增文本:</p>
+<ul>
+  <li>五个技能目录, README 的 5 行索引, <code>issues/</code> 与 <code>evidence/</code> 都是新增, 删除即回退.</li>
+  <li>唯一动到既有流程的是 <code>tdd-as-orchestra/SKILL.md</code> 一处段落 (新增 6 行, 删除 4 行). 想保守可以先只回退这一段, 保留五个技能供手动点名使用.</li>
+  <li>回退方法: <code>git revert</code> 对应提交, 或把分支指回 <code>ec9d55f</code>. 技能是纯文本, 没有数据迁移, 没有配置迁移, 回退后行为立刻恢复到旧链路.</li>
+</ul>
+<div class="note"><b>回退不能撤回的东西.</b> 没有部署, 没有对外发布, 演练项目已在 <code>/tmp</code> 删除, 演练会话已关, 所以外部副作用基本为零. 但代码一旦推送, <b>撤回提交不等于撤回历史</b>: 那 54M 证据仍然在仓库对象库里, 克隆体积不会因为 revert 而变小. 要真正减小体积得重写历史, 那是另一件事, 不该顺手做.</div>
+<p>回退触发条件 (建议): 验收节点连续几轮变成走过场, 或者 evidence 体积影响到日常操作, 就先回退 <code>tdd-as-orchestra</code> 那一段; 五个技能留在仓库里当可选工具.</p>
+
+<h2 id="quiz">6 测验: 五道题</h2>
+<p class="aside">每题只有一个正确项, 选项顺序每次打开会打乱. 选完立刻给对错和理由.</p>
+<div class="quiz" id="quiz"></div>
+<p class="score" id="score">已答 0 / 5</p>
+
+<h2 id="gloss">7 词汇表</h2>
+<dl class="gloss">
+  <dt>配方 (verification recipe)</dt><dd>目标项目里的一份本地 skill, 写清怎么启动, 怎么检查实例, 怎么走真实入口, 怎么取证, 怎么清理. 它只解决"怎么跑", 不决定"算不算通过".</dd>
+  <dt>非作者验收</dt><dd>由没有参加本次实现和修复的新会话去核对成品. 目的不是不信任作者, 而是让"通过"这个结论有一个不是作者的人签名.</dd>
+  <dt>红轮</dt><dd>用旧版技能跑同一个任务, 期望它失败. 用来证明新加的规则确实改变了行为, 而不是本来就能过.</dd>
+  <dt>证据等级 (blast-radius)</dt><dd>五级: 直接断言, 指到源码行, 走查失败路径, 跑过可失败脚本, 在运行中的应用里复现. 报告必须说明停在哪一级.</dd>
+  <dt>审计 BR</dt><dd><code>PRODUCT.md</code> 业务规则里标 <code>(审计)</code> 的条目, 例如"五个技能都用用户调用方式". 它们没有 gherkin 场景, 但要单独核对.</dd>
+  <dt>三类去向</dt><dd>验收结果必须分成: 已证实的实现问题 (回重构), 尚缺产品规则 (只停受影响项, 交回决策), 权限或环境缺口 (未验证). 不许混成一句失败.</dd>
+</dl>
+
+<footer>
+本页是讲解材料, 不关闭正式人工验收. 页面结论的证据强度不超过第 4 节标注的范围.<br>
+现场: 仓库 <code>/home/bolo/Workspace/skills/skills-v2</code>, 分支 <code>v2</code>, <code>HEAD</code> = <code>094be19</code>, 比较范围 <code>ec9d55f...HEAD</code>, 未推送.<br>
+本文件: <code>docs/changes/verification-skills/evidence/final-report/2026-10-20-verification-skills-diff.html</code> (未提交).
+</footer>
+
+</main>
+
+<nav class="toc" aria-label="目录">
+  <div class="t">目录</div>
+  <ol>
+    <li><a href="#bg">1 背景: 原来哪里漏了</a></li>
+    <li><a href="#idea">2 思路</a></li>
+    <li class="sub"><a href="#idea">三条主线与共同边界</a></li>
+    <li><a href="#code">3 代码讲解</a></li>
+    <li class="sub"><a href="#code">默认折叠</a></li>
+    <li><a href="#evidence">4 证据</a></li>
+    <li class="sub"><a href="#evidence">已观察 / 推断 / 未验证</a></li>
+    <li><a href="#risk">5 合并风险与回退</a></li>
+    <li><a href="#quiz">6 测验</a></li>
+    <li><a href="#gloss">7 词汇表</a></li>
+  </ol>
+</nav>
+
+</div>
+</div>
+
+<script>
+  window.__PRESENTATION_STATE__ = { version: 1, values: { evidenceFilter: 'all', quiz: {} } };
+
+  /* ---------- 证据筛选 ---------- */
+  (function () {
+    var radios = document.querySelectorAll('input[name="evfilter"]');
+    var blocks = document.querySelectorAll('[data-ev]');
+    function apply(val) {
+      window.__PRESENTATION_STATE__.values.evidenceFilter = val;
+      for (var i = 0; i < blocks.length; i++) {
+        var show = (val === 'all') || (blocks[i].getAttribute('data-ev') === val);
+        blocks[i].hidden = !show;
+      }
+    }
+    for (var i = 0; i < radios.length; i++) {
+      radios[i].addEventListener('change', function () { apply(this.value); });
+    }
+    apply('all');
+  })();
+
+  /* ---------- 测验 ---------- */
+  (function () {
+    /* 正确项在数据里的位置刻意打散: 2, 3, 1, 2, 1 (0 起). 展示时再独立打乱. */
+    var QUIZ = [
+      {
+        id: 'q1',
+        stem: '某个产品场景在最终成品上稳定复现失败. 同时 EXECUTION.md 全部条目已勾选, TECHNICAL.md 又写明"必须调整一处内部代码划分". 按 verify-change, 这一项怎么记?',
+        options: [
+          '记为失败, 并把那处内部代码划分也算成产品失败',
+          '记为通过, 勾选状态说明对应工作项已经做完',
+          '记为失败, 代码划分交回评审, 不进产品判据',
+          '记为未验证, 等计划与技术材料对齐后再判'
+        ],
+        answer: 2,
+        why: '第 7 步写明: 技术材料只作操作线索, 内部代码划分这类技术事项交回既有评审与执行验证, 本轮既不判通过也不判失败; 勾选只说明有人点过框, 说明不了成品行为. 所以产品场景记失败, 技术事项单列而不算产品判据.'
+      },
+      {
+        id: 'q2',
+        stem: '首次验收时, 作者已经留下这条关键路径的通过日志和截图. 为什么规则仍要求验收者本轮自己重跑这条路径?',
+        options: [
+          '作者日志通常没有时间戳, 无法确认是哪一次运行留下的',
+          '关键路径一定是作者改坏的, 所以作者材料不可信',
+          '验收者重跑一遍顺手就能拿到性能数据',
+          '作者跑的正是改动碰到的路径, 拿它顶替等于作者自证'
+        ],
+        answer: 3,
+        why: '第 4 步与第 8 步把作者日志归入"引用旧观察", 只作对照材料; 受影响的关键真实路径一律本轮实跑. 理由是作者跑的正是改动碰到的地方, 让它替验收者下结论, 首次验收就退化成作者自证. 这条是第一轮评审提出, 由 ISSUE-16 补齐的.'
+      },
+      {
+        id: 'q3',
+        stem: '某条必验项要形成性能结论, 验收计划与派工单里该怎样安排 benchmark-checklist?',
+        options: [
+          '指挥者先叫一次, 把结论抄给各组参照',
+          '由承接该场景组的验收者自己点名加载',
+          '由被验项目的实现指挥者在收尾时补做',
+          '在派工单里预先写好预期结论供核对'
+        ],
+        answer: 1,
+        why: '第 4 步写了两项方法是"实际验收者的工具, 不是指挥者亲自验收的捷径": 指挥者只安排组与核对材料, 由该组验收者在需要时点名加载; 边界节也禁止指挥者替验收者调用. 方法结论仍回到 PRODUCT.md 原文判定.'
+      },
+      {
+        id: 'q4',
+        stem: '用户明确只要一个粗略量级时, 哪一组检查仍然必须做?',
+        options: [
+          '两侧调优与每侧至少 5 次交替重复',
+          '收益上限算式与用户端到端占比',
+          '失败计数与输出正确性, 以及工作是否真在计时区发生',
+          '基线方法审查与待固定脚本的两项输出'
+        ],
+        answer: 2,
+        why: '粗估例外只豁免其余五问, 不豁免第 4 问 (失败与非成功响应计数, 输出正确性) 和第 7 问 (工作是否真的发生在计时区内): 一次失败响应或者没干活的计算, 又快又没有意义. 基线用于规划或脚本准备固定时, 另按"基线与脚本固定前"检查.'
+      },
+      {
+        id: 'q5',
+        stem: '验收报告里有一条: 清理未完成, account-delete 缺管理员令牌, 残留一条临时账号. 按 tdd-as-orchestra 的验收回传, 这条算什么, 怎么处理?',
+        options: [
+          '实现缺陷, 拆成新 ISSUE 回重构再评审',
+          '权限缺口, 只阻塞依赖它的项, 按停止条件上报',
+          '产品失败, 该项记不通过并写进讲解页',
+          '清理细节, 记一句残留后照常进入收尾'
+        ],
+        answer: 1,
+        why: '验收回传节点把环境, 权限, 标准, 证据缺口明确排除在实现缺陷之外: 按原来的停止条件汇报, 只阻塞依赖它的验收项, 不拆成重构 ISSUE. verify-change 第 9 步要求残留单列, 既不当作整项通过, 也不写成产品功能失败.'
+      }
+    ];
+
+    var STATE = window.__PRESENTATION_STATE__;
+    var root = document.getElementById('quiz');
+    var scoreEl = document.getElementById('score');
+    var answered = 0;
+
+    function shuffle(arr) {
+      var a = arr.slice();
+      for (var i = a.length - 1; i > 0; i--) {
+        var j = Math.floor(Math.random() * (i + 1));
+        var t = a[i]; a[i] = a[j]; a[j] = t;
+      }
+      return a;
+    }
+
+    QUIZ.forEach(function (item) {
+      var wrap = document.createElement('div');
+      var q = document.createElement('p');
+      q.className = 'q';
+      q.textContent = item.stem;
+      q.id = item.id;
+      wrap.appendChild(q);
+
+      var opts = document.createElement('div');
+      opts.className = 'opts';
+      opts.setAttribute('role', 'group');
+      opts.setAttribute('aria-labelledby', item.id);
+
+      /* 把选项和它的原始序号绑在一起, 打乱后仍能判断对错. */
+      var pairs = item.options.map(function (text, idx) { return { text: text, idx: idx }; });
+      var shuffled = shuffle(pairs);
+
+      shuffled.forEach(function (pair, pos) {
+        var btn = document.createElement('button');
+        btn.type = 'button';
+        btn.setAttribute('data-idx', String(pair.idx));
+        var letter = String.fromCharCode(65 + pos);
+        var label = document.createElement('span');
+        label.className = 'mark';
+        label.textContent = letter;
+        btn.appendChild(label);
+        btn.appendChild(document.createTextNode(pair.text));
+        btn.addEventListener('click', function () {
+          if (opts.getAttribute('data-done') === '1') { return; }
+          opts.setAttribute('data-done', '1');
+          var picked = Number(btn.getAttribute('data-idx'));
+          var ok = (picked === item.answer);
+          var buttons = opts.querySelectorAll('button');
+          for (var i = 0; i < buttons.length; i++) {
+            var b = buttons[i];
+            b.disabled = true;
+            var bi = Number(b.getAttribute('data-idx'));
+            if (bi === item.answer) {
+              b.classList.add('right');
+              b.querySelector('.mark').textContent = '\u2713';
+            } else if (b === btn) {
+              b.classList.add('wrong');
+              b.querySelector('.mark').textContent = '\u2717';
+            }
+          }
+          var fb = document.createElement('div');
+          fb.className = 'fb show';
+          var head = document.createElement('b');
+          head.textContent = ok ? '正确. ' : '错误, 选对的是带 \u2713 的那一项. ';
+          fb.appendChild(head);
+          fb.appendChild(document.createTextNode(item.why));
+          wrap.appendChild(fb);
+          STATE.values.quiz[item.id] = pairIndexOf(picked);
+          answered++;
+          scoreEl.textContent = '已答 ' + answered + ' / ' + QUIZ.length;
+        });
+        opts.appendChild(btn);
+      });
+
+      function pairIndexOf(originalIdx) {
+        /* 记录选项内容在原始数据里的下标, 便于页面状态回溯. */
+        return originalIdx;
+      }
+
+      wrap.appendChild(opts);
+      root.appendChild(wrap);
+    });
+  })();
+</script>
+</body>
+</html>
