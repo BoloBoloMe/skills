@@ -1,0 +1,23 @@
+# 上游只读抓取记录 (2026-10-19)
+
+## 命令与返回码
+```bash
+curl -sS -m 20 -w '%{http_code} %{size_download}' -o /tmp/iss13-upstream/skills_blast-radius_SKILL.md https://raw.githubusercontent.com/cursor/plugins/4382e687a50b8d2c5ce4d141d001186589cff8d5/pstack/skills/blast-radius/SKILL.md
+curl -sS -m 20 -w '%{http_code} %{size_download}' -o /tmp/iss13-upstream/skills_benchmark-checklist_SKILL.md https://raw.githubusercontent.com/cursor/plugins/4382e687a50b8d2c5ce4d141d001186589cff8d5/pstack/skills/benchmark-checklist/SKILL.md
+curl -sS -m 20 -w '%{http_code} %{size_download}' -o /tmp/iss13-upstream/LICENSE https://raw.githubusercontent.com/cursor/plugins/4382e687a50b8d2c5ce4d141d001186589cff8d5/pstack/LICENSE
+```
+
+## 实测结果
+```text
+skills/blast-radius/SKILL.md -> HTTP 200 bytes 3856
+skills/benchmark-checklist/SKILL.md -> HTTP 200 bytes 5002
+LICENSE -> HTTP 200 bytes 1067
+
+bc957ca6bee02792566a1a028d105e02e247c6e77cf057061674273da77b200e  LICENSE
+ba109e96c8f6c1c391baccf19e5d11e14370df7b3f2605e1572cd565a6c0fca0  skills_benchmark-checklist_SKILL.md
+2e10745b97f5862323dcda3b29ca60d56b5c3c98e37020085d26b48efbe0a436  skills_blast-radius_SKILL.md
+  50 skills_blast-radius_SKILL.md
+  39 skills_benchmark-checklist_SKILL.md
+  21 LICENSE
+ 110 total
+```

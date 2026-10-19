@@ -1,0 +1,92 @@
+# ISSUE-13 机械检查 (2026-10-19, 工作树 /home/bolo/Workspace/skills/skills-v2.worktrees/ISSUE-13, 分支 issue/13, 开工基线 e922bfe)
+
+## 1. 验收入口: 两份 LICENSE 存在
+$ test -f workflow/blast-radius/LICENSE && test -f workflow/benchmark-checklist/LICENSE
+exit=0
+
+## 2. 固定 SHA 与版权行命中 (只列命中行号, 不贴全文)
+$ rg -c "4382e687a50b8d2c5ce4d141d001186589cff8d5" workflow/blast-radius/LICENSE workflow/blast-radius/reference/PROVENANCE.md workflow/benchmark-checklist/LICENSE workflow/benchmark-checklist/reference/PROVENANCE.md
+workflow/benchmark-checklist/reference/PROVENANCE.md:3
+workflow/blast-radius/reference/PROVENANCE.md:3
+exit=0
+$ rg -c "Copyright \\(c\\) 2026 Lauren Tan" workflow/blast-radius/LICENSE workflow/benchmark-checklist/LICENSE
+workflow/benchmark-checklist/LICENSE:1
+workflow/blast-radius/LICENSE:1
+exit=0
+
+## 3. check_skill.py (只查 frontmatter, 不当翻译校验器)
+$ uv run python general/writing-for-llm/check_skill.py workflow/blast-radius/SKILL.md
+workflow/blast-radius/SKILL.md: OK
+exit=0
+$ uv run python general/writing-for-llm/check_skill.py workflow/benchmark-checklist/SKILL.md
+workflow/benchmark-checklist/SKILL.md: OK
+exit=0
+
+## 4. translate-a-skill 第 7 节命令 1: 全角标点扫描 (命中数, 期望 0)
+workflow/blast-radius/SKILL.md hits=0
+workflow/benchmark-checklist/SKILL.md hits=0
+docs/changes/verification-skills/evidence/ISSUE-13/TS-001.md hits=0
+docs/changes/verification-skills/evidence/ISSUE-13/TS-002-drill.md hits=0
+docs/changes/verification-skills/evidence/ISSUE-13/README.md hits=0
+docs/changes/verification-skills/evidence/ISSUE-13/HANDOFF.md hits=0
+workflow/blast-radius/reference/PROVENANCE.md hits=0
+workflow/benchmark-checklist/reference/PROVENANCE.md hits=0
+$ 两个包全部文件与证据目录中文文档 (排除 *.jsonl 原始转录与 *.log 日志, 二者含原始输出, 按原样保存不改)
+hits=0
+
+## 5. 第 7 节命令 2: 残留英文审查 (计数, 保留理由见两个 PROVENANCE.md)
+$ rg -o "[A-Za-z][A-Za-z0-9_./:@|*\-]*" workflow/blast-radius/SKILL.md | sort -u | tr '\n' ' '
+agent all API assert bash blame blast-radius comments description: diff diff. disable-model-invocation: feature file:line flag follow gh git grep JSON L log name: oneline p pr PR reference/multimodel.md reference/report-style-zh.md S show true view 
+$ rg -o "[A-Za-z][A-Za-z0-9_./:@|*\-]*" workflow/benchmark-checklist/SKILL.md | sort -u | tr '\n' ' '
+A await B B... benchmark-checklist blast-radius CPU description: disable-model-invocation: Git ms name: nproc p50 PR r r. TC true uptime 
+
+## 6. 第 7 节命令 3: frontmatter 与标题结构 (前 14 行, 完整命令见下行)
+$ rg -n "^(|name:|description:|license:|compatibility:|metadata:|allowed-tools:|disable-model-invocation:|# |## )" workflow/blast-radius/SKILL.md | head -14
+2:name: blast-radius
+3:description: 调查变更在 diff 之外会破坏什么, 用真实代码证明关键安全事实.
+4:disable-model-invocation: true
+13:## 1. 读变更并定位历史
+29:## 2. 找出关键安全事实
+37:## 3. 给每个事实标证据级别
+49:## 4. 写可失败的证明脚本
+62:## 5. 风险与已排除项
+72:## 6. 大或宽变更用多模型同题调查
+82:## 7. 交接
+exit=0
+$ rg -n "^(|name:|description:|license:|compatibility:|metadata:|allowed-tools:|disable-model-invocation:|# |## )" workflow/benchmark-checklist/SKILL.md | head -18
+2:name: benchmark-checklist
+3:description: 报告或采信性能数字前的测量核查, 覆盖测量前主张, 计时范围, 机器负载, 两侧公平调优, 交替重复与统计判断, 错误计数与工作是否真的发生, 收益上限与端到端, 基线与脚本固定前检查, 一次性实验边界, 粗估例外与选型边界, 结论状态与 PR 主数字.
+4:disable-model-invocation: true
+7:# 性能测量核查
+11:## 输入与授权
+15:## 一次性实验的边界
+30:## 测量前
+40:## 两侧按生产方式调优
+48:## 重复与波动
+56:## 错误计数与工作是否真的发生
+66:## 收益上限与端到端
+86:## 基线与脚本固定前
+98:## 粗估与选型
+110:## 判定
+118:## 对外报告
+exit=0
+
+## 7. 交付物核对脚本
+$ uv run python docs/changes/verification-skills/evidence/ISSUE-13/check-provenance-artifacts.py
+checks=50 failures=0
+OK 两个复刻包的许可, 固定来源与逐项差异记录可读
+exit=0
+$ uv run python docs/changes/verification-skills/evidence/ISSUE-13/check-drill-evidence.py
+checks=39 failures=0
+OK 两个复刻的演练记录与差异记录可对照
+exit=0
+
+## 8. general/writing-for-llm 自带测试
+$ uv run --with pytest python -m pytest general/writing-for-llm/tests -q
+.......                                                [100%]
+7 passed, 18 subtests passed in 0.07s
+exit=0
+
+## 9. 全量快层
+命令: uv run --with pytest python -m pytest -m "not e2e" -q
+原始输出: full-suite.log
