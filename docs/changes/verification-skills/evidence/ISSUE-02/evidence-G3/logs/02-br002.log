@@ -1,0 +1,17 @@
+# 02 BR-002 deps/lock/build unchanged
+time: 2026-10-19T19:11:57+08:00
+$ git diff c6c44d7 7f360da -- deps.txt
+exit=0 (no output above = identical)
+$ git diff c6c44d7 7f360da -- deps.lock
+exit=0 (no output above = identical)
+$ git diff c6c44d7 7f360da -- build.sh
+exit=0 (no output above = identical)
+$ git rev-parse c6c44d7:deps.txt 7f360da:deps.txt
+bbb52972310fb82afbe4364e741d264ea25f68bc
+bbb52972310fb82afbe4364e741d264ea25f68bc
+$ git rev-parse c6c44d7:deps.lock 7f360da:deps.lock
+f5f745d19dad8f561d612f4868e0c3c5781cf6cd
+f5f745d19dad8f561d612f4868e0c3c5781cf6cd
+$ git rev-parse c6c44d7:build.sh 7f360da:build.sh
+779624644c085151dd81f8f9cd6bd98e97558c71
+779624644c085151dd81f8f9cd6bd98e97558c71

@@ -1,0 +1,6 @@
+0000000   c   a   n   n   o   t       r   e   a   d       m   i   s   s
+0000020   i   n   g   .   t   x   t   :       [   E   r   r   n   o    
+0000040   2   ]       N   o       s   u   c   h       f   i   l   e    
+0000060   o   r       d   i   r   e   c   t   o   r   y   :       '   m
+0000100   i   s   s   i   n   g   .   t   x   t   '  \n
+0000114

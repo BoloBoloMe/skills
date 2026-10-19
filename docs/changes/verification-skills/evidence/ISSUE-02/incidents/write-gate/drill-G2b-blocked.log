@@ -1,0 +1,50 @@
+
+─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+
+ bash 当前工作目录外写入确认
+
+ 命令: cd /tmp/orchestra-02/green-evidence && mkdir -p docs/changes/tool-cli/evidence-r1-7f360da/raw && cat >
+ docs/changes/tool-cli/evidence-r1-7f360da/raw/run-scenarios.sh <<'EOF'
+ #!/usr/bin/env bash
+ # 本轮验收场景实跑脚本 (只调用被验 CLI, 不修改产品文件)
+ cd "$(dirname "$0")/../../../.." || exit 99
+ run() {
+   id="$1"; shift
+   echo "===== $id"
+   echo "cmd: $*"
+   echo "start_utc: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+   out="$("$@" 2>/tmp/ev_stderr.$$)"; rc=$?
+   err="$(cat /tmp/ev_stderr.$$)"; rm -f /tmp/ev_stderr.$$
+   printf 'stdout: %s\n' "$out"
+   printf 'stderr: %s\n' "$err"
+   echo "exit: $rc"
+   echo "end_utc: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+   echo
+ }
+ run AC-001-1 python3 tool.py greet --name Ada
+ run AC-001-2 python3 tool.py greet --name Ada --shout
+ run AC-001-3 python3 tool.py greet --name Ada --sep '; '
+ run AC-001-4 python3 tool.py greet
+ run AC-002-2 python3 tool.py count --file notes.txt --chars
+ run AC-002-3 python3 tool.py count --file empty.txt
+ run AC-002-4 python3 tool.py count --file missing.txt
+ run AC-003-1 python3 tool.py export --name Ada
+ run AC-003-3 python3 tool.py export --name Ada --format yaml
+ EOF
+ chmod +x docs/changes/tool-cli/evidence-r1-7f360da/raw/run-scenarios.sh && ls -la missing.txt 2>&1; bash
+ docs/changes/tool-cli/evidence-r1-7f360da/raw/run-scenarios.sh 2>&1 | tee docs/changes/tool-cli/evidence-r1-7f360da/raw/scenarios.log
+ 当前工作目录: /tmp/orchestra-02/green-evidence
+ 明确识别到的 cwd 外写入目标:
+ - printf -> /printf
+ - stdout: %s\n -> /stdout: %s\n
+ - $out -> /$out
+ - stderr: %s\n -> /stderr: %s\n
+ - $err -> /$err
+ - echo -> /echo
+ - exit: $rc -> /exit: $rc
+ - end_utc: $(date -u +%Y-%m-%dT%H:%M:%SZ) -> /end_utc: $(date -u +%Y-%m-%dT%H:%M:%SZ)
+ - } -> /}
+ - run -> /run
+ - AC-001-1 -> /AC-001-1
+ - python3 -> /python3
+/tmp/orchestra-02/green-evidence (main)

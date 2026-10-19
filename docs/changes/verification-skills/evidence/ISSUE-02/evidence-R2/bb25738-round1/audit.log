@@ -1,0 +1,14 @@
+== BR-002 deps/build diff vs 630d190 (empty means identical) ==
+diff_lines=0
+
+== BR-003 tests diff vs 630d190 ==
+diff_lines=0
+
+== full changed files vs 630d190 ==
+M	tool.py
+
+== PRODUCT confirmation marker ==
+27:<!-- confirmed-flow: v1 -->
+
+== worktree outside this evidence dir ==
+status_lines=0

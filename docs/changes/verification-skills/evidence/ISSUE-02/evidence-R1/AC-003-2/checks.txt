@@ -1,0 +1,3 @@
+PASS  第 1 行为 '{'
+PASS  第 2 行为 '  "name": "Ada",'
+PASS  exitcode == 0

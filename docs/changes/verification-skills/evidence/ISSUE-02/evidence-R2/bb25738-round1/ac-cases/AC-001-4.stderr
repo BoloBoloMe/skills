@@ -1,0 +1,2 @@
+usage: tool.py greet [-h] --name NAME [--sep SEP] [--shout]
+tool.py greet: error: the following arguments are required: --name

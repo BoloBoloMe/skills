@@ -1,0 +1,171 @@
+===== AC-001-1 =====
+CMD: python3 tool.py greet --name Ada
+EXIT: 0
+STDOUT_BEGIN
+Hello, Ada!
+STDOUT_END
+STDERR_BEGIN
+STDERR_END
+
+===== AC-001-2 =====
+CMD: python3 tool.py greet --name Ada --shout
+EXIT: 0
+STDOUT_BEGIN
+HELLO, ADA!
+STDOUT_END
+STDERR_BEGIN
+STDERR_END
+
+===== AC-001-3 =====
+CMD: python3 tool.py greet --name Ada --sep ; 
+EXIT: 0
+STDOUT_BEGIN
+Hello; Ada!
+STDOUT_END
+STDERR_BEGIN
+STDERR_END
+
+===== AC-001-4 =====
+CMD: python3 tool.py greet
+EXIT: 2
+STDOUT_BEGIN
+STDOUT_END
+STDERR_BEGIN
+usage: tool.py greet [-h] --name NAME [--sep SEP] [--shout]
+tool.py greet: error: the following arguments are required: --name
+STDERR_END
+
+===== AC-002-1 =====
+CMD: python3 tool.py count --file notes.txt
+EXIT: 0
+STDOUT_BEGIN
+3
+STDOUT_END
+STDERR_BEGIN
+STDERR_END
+
+===== AC-002-2 =====
+CMD: python3 tool.py count --file notes.txt --chars
+EXIT: 0
+STDOUT_BEGIN
+17
+STDOUT_END
+STDERR_BEGIN
+STDERR_END
+
+===== AC-002-3 =====
+CMD: python3 tool.py count --file empty.txt
+EXIT: 0
+STDOUT_BEGIN
+0
+STDOUT_END
+STDERR_BEGIN
+STDERR_END
+
+===== AC-002-4 =====
+CMD: python3 tool.py count --file missing.txt
+EXIT: 1
+STDOUT_BEGIN
+STDOUT_END
+STDERR_BEGIN
+cannot read missing.txt: [Errno 2] No such file or directory: 'missing.txt'
+STDERR_END
+
+===== AC-003-1 =====
+CMD: python3 tool.py export --name Ada
+EXIT: 0
+STDOUT_BEGIN
+{"name": "Ada", "greeting": "Hello, Ada!"}
+STDOUT_END
+STDERR_BEGIN
+STDERR_END
+
+===== AC-003-2 =====
+CMD: python3 tool.py export --name Ada --pretty
+EXIT: 0
+STDOUT_BEGIN
+{
+  "name": "Ada",
+  "greeting": "Hello, Ada!"
+}
+STDOUT_END
+STDERR_BEGIN
+STDERR_END
+
+===== AC-003-3 =====
+CMD: python3 tool.py export --name Ada --format yaml
+EXIT: 1
+STDOUT_BEGIN
+STDOUT_END
+STDERR_BEGIN
+unsupported format: yaml
+STDERR_END
+
+===== AC-004-1 =====
+CMD: python3 tool.py health --url http://127.0.0.1:18080/health
+EXIT: 1
+STDOUT_BEGIN
+STDOUT_END
+STDERR_BEGIN
+Traceback (most recent call last):
+  File "/usr/lib/python3.14/urllib/request.py", line 1321, in do_open
+    h.request(req.get_method(), req.selector, req.data, headers,
+    ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+              encode_chunked=req.has_header('Transfer-encoding'))
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/http/client.py", line 1367, in request
+    self._send_request(method, url, body, headers, encode_chunked)
+    ~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/http/client.py", line 1413, in _send_request
+    self.endheaders(body, encode_chunked=encode_chunked)
+    ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/http/client.py", line 1362, in endheaders
+    self._send_output(message_body, encode_chunked=encode_chunked)
+    ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/http/client.py", line 1122, in _send_output
+    self.send(msg)
+    ~~~~~~~~~^^^^^
+  File "/usr/lib/python3.14/http/client.py", line 1066, in send
+    self.connect()
+    ~~~~~~~~~~~~^^
+  File "/usr/lib/python3.14/http/client.py", line 1032, in connect
+    self.sock = self._create_connection(
+                ~~~~~~~~~~~~~~~~~~~~~~~^
+        (self.host,self.port), self.timeout, self.source_address)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/socket.py", line 870, in create_connection
+    raise exceptions[0]
+  File "/usr/lib/python3.14/socket.py", line 855, in create_connection
+    sock.connect(sa)
+    ~~~~~~~~~~~~^^^^
+ConnectionRefusedError: [Errno 111] Connection refused
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/tmp/orchestra-02/red-evidence/tool.py", line 83, in <module>
+    sys.exit(main())
+             ~~~~^^
+  File "/tmp/orchestra-02/red-evidence/tool.py", line 78, in main
+    return health(args.url)
+  File "/tmp/orchestra-02/red-evidence/tool.py", line 26, in health
+    with urlopen(url, timeout=5) as response:
+         ~~~~~~~^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/urllib/request.py", line 187, in urlopen
+    return opener.open(url, data, timeout)
+           ~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/urllib/request.py", line 487, in open
+    response = self._open(req, data)
+  File "/usr/lib/python3.14/urllib/request.py", line 504, in _open
+    result = self._call_chain(self.handle_open, protocol, protocol +
+                              '_open', req)
+  File "/usr/lib/python3.14/urllib/request.py", line 464, in _call_chain
+    result = func(*args)
+  File "/usr/lib/python3.14/urllib/request.py", line 1350, in http_open
+    return self.do_open(http.client.HTTPConnection, req)
+           ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/urllib/request.py", line 1324, in do_open
+    raise URLError(err)
+urllib.error.URLError: <urlopen error [Errno 111] Connection refused>
+STDERR_END
+

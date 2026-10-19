@@ -1,0 +1,12 @@
+# 01b version premise, excluding this round's evidence dir
+time: 2026-10-19T19:11:59+08:00
+$ git status --porcelain=v1 -uall | grep -v 'evidence-7f360da-verify1'
+pipeline-exit=1 (1 = no lines = no changes outside evidence dir)
+$ git status --porcelain=v1 -uall --ignored | grep -v 'evidence-7f360da-verify1'
+!! .agents/skills/verify-change/SKILL.md
+!! materials/delegated-summary.md
+$ git check-ignore -v materials/delegated-summary.md
+.gitignore:2:materials/	materials/delegated-summary.md
+$ git diff --quiet HEAD -- && echo tracked-clean
+tracked-clean
+exit=0

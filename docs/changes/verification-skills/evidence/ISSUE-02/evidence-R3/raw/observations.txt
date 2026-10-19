@@ -1,0 +1,113 @@
+=== AC-001-1 ===
+描述: 默认问候
+命令: python3 tool.py greet --name Ada
+时间: 2026-10-19T19:00:03+08:00
+退出码: 0
+标准输出:
+  | Hello, Ada!
+标准错误:
+
+=== AC-001-2 ===
+描述: 全大写问候
+命令: python3 tool.py greet --name Ada --shout
+时间: 2026-10-19T19:00:03+08:00
+退出码: 0
+标准输出:
+  | HELLO, ADA!
+标准错误:
+
+=== AC-001-3 ===
+描述: 自定义分隔符
+命令: python3 tool.py greet --name Ada --sep \;\ 
+时间: 2026-10-19T19:00:03+08:00
+退出码: 0
+标准输出:
+  | Hello; Ada!
+标准错误:
+
+=== AC-001-4 ===
+描述: 缺少姓名时报参数错误
+命令: python3 tool.py greet
+时间: 2026-10-19T19:00:03+08:00
+退出码: 2
+标准输出:
+标准错误:
+  | usage: tool.py greet [-h] --name NAME [--sep SEP] [--shout]
+  | tool.py greet: error: the following arguments are required: --name
+
+=== AC-002-1 ===
+描述: 统计词数
+命令: python3 tool.py count --file notes.txt
+时间: 2026-10-19T19:00:03+08:00
+退出码: 0
+标准输出:
+  | 3
+标准错误:
+
+=== AC-002-2 ===
+描述: 统计字符数
+命令: python3 tool.py count --file notes.txt --chars
+时间: 2026-10-19T19:00:03+08:00
+退出码: 0
+标准输出:
+  | 17
+标准错误:
+
+=== AC-002-3 ===
+描述: 空文件词数为零
+命令: python3 tool.py count --file empty.txt
+时间: 2026-10-19T19:00:03+08:00
+退出码: 0
+标准输出:
+  | 0
+标准错误:
+
+=== AC-002-4 ===
+描述: 文件不存在时报错退出
+命令: python3 tool.py count --file missing.txt
+时间: 2026-10-19T19:00:03+08:00
+退出码: 1
+标准输出:
+标准错误:
+  | cannot read missing.txt: [Errno 2] No such file or directory: 'missing.txt'
+
+=== AC-004-1 ===
+描述: 远程服务就绪检查 (本地健康服务 stub)
+命令: python3 tool.py health --url http://127.0.0.1:18080/health
+时间: 2026-10-19T19:00:04+08:00
+退出码: 0
+标准输出:
+  | {"ready": true}
+标准错误:
+
+health stub 已停止, 端口 18080 已释放
+=== AC-003-1 ===
+描述: 默认 JSON 导出
+命令: python3 tool.py export --name Ada
+时间: 2026-10-19T19:00:04+08:00
+退出码: 0
+标准输出:
+  | {"name": "Ada", "greeting": "Hello, Ada!"}
+标准错误:
+
+=== AC-003-2 ===
+描述: 缩进导出
+命令: python3 tool.py export --name Ada --pretty
+时间: 2026-10-19T19:00:04+08:00
+退出码: 0
+标准输出:
+  | {
+  |   "name": "Ada",
+  |   "greeting": "Hello, Ada!"
+  | }
+标准错误:
+
+=== AC-003-3 ===
+描述: 未知格式报错退出
+命令: python3 tool.py export --name Ada --format yaml
+时间: 2026-10-19T19:00:04+08:00
+退出码: 1
+标准输出:
+标准错误:
+  | unsupported format: yaml
+

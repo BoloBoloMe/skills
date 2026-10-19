@@ -1,0 +1,36 @@
+# BR-002 依赖清单 锁文件 构建材料 与上一提交比对
+prev=630d19078b7194e8b782470bef8dfb45e5322fc2 head=bb257385e77783f2906f8d504b791f16665a2731
+
+## deps.txt
+blob@prev: bbb52972310fb82afbe4364e741d264ea25f68bc
+blob@head: bbb52972310fb82afbe4364e741d264ea25f68bc
+sha256@prev: f37d7a069e967e7a125eef55e7066eb82a9f4fcbfda96213cacfe401460d4806
+sha256@head: f37d7a069e967e7a125eef55e7066eb82a9f4fcbfda96213cacfe401460d4806
+diff:
+(diff 行数: 0)
+
+## deps.lock
+blob@prev: f5f745d19dad8f561d612f4868e0c3c5781cf6cd
+blob@head: f5f745d19dad8f561d612f4868e0c3c5781cf6cd
+sha256@prev: 28cc45864a24d80d571d7cc23848932e89d4977dbf3d6ede18e1404a27da5f50
+sha256@head: 28cc45864a24d80d571d7cc23848932e89d4977dbf3d6ede18e1404a27da5f50
+diff:
+(diff 行数: 0)
+
+## build.sh
+blob@prev: 779624644c085151dd81f8f9cd6bd98e97558c71
+blob@head: 779624644c085151dd81f8f9cd6bd98e97558c71
+sha256@prev: ae45fcf9574b94ecab88deb68bc04728b8e7e34adec03cbd8f5d8434bfa05aad
+sha256@head: ae45fcf9574b94ecab88deb68bc04728b8e7e34adec03cbd8f5d8434bfa05aad
+diff:
+(diff 行数: 0)
+
+## git diff --stat 630d190..HEAD
+ tool.py | 8 +++++---
+ 1 file changed, 5 insertions(+), 3 deletions(-)
+
+## tool.py 导入 (仅标准库?)
+3:import argparse
+4:import json
+5:from pathlib import Path
+6:import sys

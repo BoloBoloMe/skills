@@ -1,0 +1,125 @@
+"""逐场景运行 PRODUCT.md 中的命令, 记录 stdout/stderr/退出码并做断言."""
+import json
+import os
+import shutil
+import subprocess
+import sys
+import time
+import urllib.request
+from pathlib import Path
+
+ROOT = Path("/tmp/orchestra-02/red-coverage")
+EVD = ROOT / "docs/changes/tool-cli/evidence-v1-bb25738"
+ENV = {**os.environ, "PYTHONDONTWRITEBYTECODE": "1"}
+
+
+def run_case(cid, argv, checks):
+    d = EVD / cid
+    d.mkdir(parents=True, exist_ok=True)
+    cmd = "python3 " + " ".join(argv)
+    r = subprocess.run(["python3", *argv], cwd=ROOT, capture_output=True, text=True, env=ENV)
+    (d / "cmd.txt").write_text(cmd + "\n", encoding="utf-8")
+    (d / "argv.json").write_text(json.dumps(["python3", *argv], ensure_ascii=False) + "\n", encoding="utf-8")
+    (d / "stdout.txt").write_text(r.stdout, encoding="utf-8")
+    (d / "stderr.txt").write_text(r.stderr, encoding="utf-8")
+    (d / "exitcode.txt").write_text(str(r.returncode) + "\n", encoding="utf-8")
+    results = []
+    for label, fn in checks:
+        results.append((label, bool(fn(r))))
+    passed = all(ok for _, ok in results)
+    (d / "checks.txt").write_text(
+        "".join(f"{'PASS' if ok else 'FAIL'}  {label}\n" for label, ok in results), encoding="utf-8"
+    )
+    return {
+        "id": cid, "cmd": cmd, "exit": r.returncode,
+        "stdout": r.stdout, "stderr": r.stderr,
+        "checks": results, "verdict": "通过" if passed else "失败",
+    }
+
+
+def start_stub():
+    p = subprocess.Popen(
+        ["python3", "/tmp/acceptance-bb25738/health_stub.py"],
+        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, env=ENV,
+    )
+    for _ in range(50):
+        try:
+            urllib.request.urlopen("http://127.0.0.1:18080/health", timeout=1).read()
+            return p
+        except Exception:
+            time.sleep(0.1)
+    p.kill()
+    raise SystemExit("health stub failed to start")
+
+
+cases = []
+cases.append(run_case("AC-001-1", ["tool.py", "greet", "--name", "Ada"], [
+    ("stdout == 'Hello, Ada!\\n'", lambda r: r.stdout == "Hello, Ada!\n"),
+    ("exitcode == 0", lambda r: r.returncode == 0),
+]))
+cases.append(run_case("AC-001-2", ["tool.py", "greet", "--name", "Ada", "--shout"], [
+    ("stdout == 'HELLO, ADA!\\n'", lambda r: r.stdout == "HELLO, ADA!\n"),
+    ("exitcode == 0", lambda r: r.returncode == 0),
+]))
+cases.append(run_case("AC-001-3", ["tool.py", "greet", "--name", "Ada", "--sep", "; "], [
+    ("stdout == 'Hello; Ada!\\n'", lambda r: r.stdout == "Hello; Ada!\n"),
+    ("exitcode == 0", lambda r: r.returncode == 0),
+]))
+cases.append(run_case("AC-001-4", ["tool.py", "greet"], [
+    ("exitcode != 0", lambda r: r.returncode != 0),
+    ("stderr 包含 '--name'", lambda r: "--name" in r.stderr),
+]))
+cases.append(run_case("AC-002-1", ["tool.py", "count", "--file", "notes.txt"], [
+    ("stdout == '3\\n'", lambda r: r.stdout == "3\n"),
+    ("exitcode == 0", lambda r: r.returncode == 0),
+]))
+cases.append(run_case("AC-002-2", ["tool.py", "count", "--file", "notes.txt", "--chars"], [
+    ("stdout == '17\\n'", lambda r: r.stdout == "17\n"),
+    ("exitcode == 0", lambda r: r.returncode == 0),
+]))
+cases.append(run_case("AC-002-3", ["tool.py", "count", "--file", "empty.txt"], [
+    ("stdout == '0\\n'", lambda r: r.stdout == "0\n"),
+    ("exitcode == 0", lambda r: r.returncode == 0),
+]))
+cases.append(run_case("AC-002-4", ["tool.py", "count", "--file", "missing.txt"], [
+    ("exitcode == 1", lambda r: r.returncode == 1),
+    ("stderr 包含 'missing.txt'", lambda r: "missing.txt" in r.stderr),
+]))
+cases.append(run_case("AC-003-1", ["tool.py", "export", "--name", "Ada"], [
+    ("stdout == '{\"name\": \"Ada\", \"greeting\": \"Hello, Ada!\"}\\n'",
+     lambda r: r.stdout == '{"name": "Ada", "greeting": "Hello, Ada!"}\n'),
+    ("exitcode == 0", lambda r: r.returncode == 0),
+]))
+cases.append(run_case("AC-003-2", ["tool.py", "export", "--name", "Ada", "--pretty"], [
+    ("第 1 行为 '{'", lambda r: r.stdout.splitlines()[0] == "{"),
+    ("第 2 行为 '  \"name\": \"Ada\",'", lambda r: r.stdout.splitlines()[1] == '  "name": "Ada",'),
+    ("exitcode == 0", lambda r: r.returncode == 0),
+]))
+cases.append(run_case("AC-003-3", ["tool.py", "export", "--name", "Ada", "--format", "yaml"], [
+    ("exitcode == 1", lambda r: r.returncode == 1),
+    ("stderr 包含 'unsupported format: yaml'", lambda r: "unsupported format: yaml" in r.stderr),
+]))
+
+stub = start_stub()
+try:
+    cases.append(run_case("AC-004-1", ["tool.py", "health", "--url", "http://127.0.0.1:18080/health"], [
+        ('stdout 包含 \'"ready": true\'', lambda r: '"ready": true' in r.stdout),
+        ("exitcode == 0", lambda r: r.returncode == 0),
+    ]))
+finally:
+    stub.terminate()
+    stub.wait(timeout=5)
+
+lines = []
+for c in cases:
+    lines.append(f"=== {c['id']}  [{c['verdict']}]")
+    lines.append(f"cmd: {c['cmd']}")
+    lines.append(f"exit: {c['exit']}")
+    lines.append("stdout: " + json.dumps(c["stdout"], ensure_ascii=False))
+    lines.append("stderr: " + json.dumps(c["stderr"], ensure_ascii=False))
+    for label, ok in c["checks"]:
+        lines.append(f"  {'PASS' if ok else 'FAIL'}  {label}")
+    lines.append("")
+(EVD / "cases.log").write_text("\n".join(lines), encoding="utf-8")
+print("\n".join(lines))
+print("SUMMARY:", sum(c["verdict"] == "通过" for c in cases), "/", len(cases), "通过")

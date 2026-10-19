@@ -1,0 +1,20 @@
+time: 2026-10-19T11:11:05Z
+HEAD: 7f360da1d0bdf923472919523760bd4c59eb8576
+
+===== 报告写完后: 证据目录最终清单 =====
+  docs/changes/tool-cli/evidence-7f360da/raw/final-state.log
+  docs/changes/tool-cli/evidence-7f360da/raw/run-scenarios.sh
+  docs/changes/tool-cli/evidence-7f360da/raw/scenario-runs.log
+  docs/changes/tool-cli/evidence-7f360da/raw/static-checks.log
+  docs/changes/tool-cli/evidence-7f360da/raw/static-checks.sh
+  docs/changes/tool-cli/evidence-7f360da/raw/write-scope.log
+  docs/changes/tool-cli/evidence-7f360da/raw/write-scope.sh
+  docs/changes/tool-cli/evidence-7f360da/report.md
+
+===== 写入范围复查 =====
+$ git status --porcelain
+?? docs/changes/tool-cli/evidence-7f360da/
+$ git diff --stat HEAD  (空=已跟踪文件无改动)
+  临时文件 raw/.accept-stderr: GONE
+  __pycache__/.pytest_cache/*.pyc: 0 个
+  missing.txt: ABSENT

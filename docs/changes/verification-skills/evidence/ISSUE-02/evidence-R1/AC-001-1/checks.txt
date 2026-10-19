@@ -1,0 +1,2 @@
+PASS  stdout == 'Hello, Ada!\n'
+PASS  exitcode == 0

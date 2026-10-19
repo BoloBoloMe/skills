@@ -1,0 +1,2 @@
+PASS  stdout 包含 '"ready": true'
+PASS  exitcode == 0

@@ -1,0 +1,24 @@
+# 收尾核对原始记录
+执行时间(UTC): 2026-10-19T11:13:16Z
+
+$ git rev-parse HEAD
+7f360da1d0bdf923472919523760bd4c59eb8576
+
+$ git status --porcelain=v1 -uall
+?? docs/changes/tool-cli/evidence-7f360da-r1/audit-raw.log
+?? docs/changes/tool-cli/evidence-7f360da-r1/closure-raw.log
+?? docs/changes/tool-cli/evidence-7f360da-r1/report-7f360da-r1.md
+
+$ git status --porcelain=v1 -uall | grep -v 'evidence-7f360da-r1/' || echo '(除证据目录外无改动)'
+(除证据目录外无改动)
+
+$ ls -la docs/changes/tool-cli/evidence-7f360da-r1
+total 16
+drwxrwxr-x 2 bolo bolo  100 Oct 19 19:13 .
+drwxrwxr-x 3 bolo bolo  100 Oct 19 19:12 ..
+-rw-rw-r-- 1 bolo bolo 1292 Oct 19 19:12 audit-raw.log
+-rw-rw-r-- 1 bolo bolo  541 Oct 19 19:13 closure-raw.log
+-rw-rw-r-- 1 bolo bolo 7968 Oct 19 19:13 report-7f360da-r1.md
+
+$ git diff HEAD --stat
+(无输出 = 已跟踪文件未改动)

@@ -1,0 +1,58 @@
+# 实跑后的工作区状态 (BR-004)
+
+时间(UTC): 2026-10-19T11:06:30Z
+
+## git status --porcelain
+?? docs/changes/tool-cli/evidence-v2-7f360da/
+
+## git status --porcelain --ignored
+?? docs/changes/tool-cli/evidence-v2-7f360da/
+!! .agents/
+!! materials/
+
+## 仓库内是否存在本轮新产生的临时文件 (missing.txt / __pycache__)
+ls: cannot access 'missing.txt': No such file or directory
+
+## 证据目录内文件清单
+docs/changes/tool-cli/evidence-v2-7f360da/AC-001-1/command.txt
+docs/changes/tool-cli/evidence-v2-7f360da/AC-001-1/exit_code.txt
+docs/changes/tool-cli/evidence-v2-7f360da/AC-001-1/stderr.txt
+docs/changes/tool-cli/evidence-v2-7f360da/AC-001-1/stdout.txt
+docs/changes/tool-cli/evidence-v2-7f360da/AC-001-2/command.txt
+docs/changes/tool-cli/evidence-v2-7f360da/AC-001-2/exit_code.txt
+docs/changes/tool-cli/evidence-v2-7f360da/AC-001-2/stderr.txt
+docs/changes/tool-cli/evidence-v2-7f360da/AC-001-2/stdout.txt
+docs/changes/tool-cli/evidence-v2-7f360da/AC-001-3/command.txt
+docs/changes/tool-cli/evidence-v2-7f360da/AC-001-3/exit_code.txt
+docs/changes/tool-cli/evidence-v2-7f360da/AC-001-3/stderr.txt
+docs/changes/tool-cli/evidence-v2-7f360da/AC-001-3/stdout.txt
+docs/changes/tool-cli/evidence-v2-7f360da/AC-001-4/command.txt
+docs/changes/tool-cli/evidence-v2-7f360da/AC-001-4/exit_code.txt
+docs/changes/tool-cli/evidence-v2-7f360da/AC-001-4/stderr.txt
+docs/changes/tool-cli/evidence-v2-7f360da/AC-001-4/stdout.txt
+docs/changes/tool-cli/evidence-v2-7f360da/AC-002-2/command.txt
+docs/changes/tool-cli/evidence-v2-7f360da/AC-002-2/exit_code.txt
+docs/changes/tool-cli/evidence-v2-7f360da/AC-002-2/stderr.txt
+docs/changes/tool-cli/evidence-v2-7f360da/AC-002-2/stdout.txt
+docs/changes/tool-cli/evidence-v2-7f360da/AC-002-3/command.txt
+docs/changes/tool-cli/evidence-v2-7f360da/AC-002-3/exit_code.txt
+docs/changes/tool-cli/evidence-v2-7f360da/AC-002-3/stderr.txt
+docs/changes/tool-cli/evidence-v2-7f360da/AC-002-3/stdout.txt
+docs/changes/tool-cli/evidence-v2-7f360da/AC-002-4/command.txt
+docs/changes/tool-cli/evidence-v2-7f360da/AC-002-4/exit_code.txt
+docs/changes/tool-cli/evidence-v2-7f360da/AC-002-4/stderr.txt
+docs/changes/tool-cli/evidence-v2-7f360da/AC-002-4/stdout.txt
+docs/changes/tool-cli/evidence-v2-7f360da/AC-003-1/command.txt
+docs/changes/tool-cli/evidence-v2-7f360da/AC-003-1/exit_code.txt
+docs/changes/tool-cli/evidence-v2-7f360da/AC-003-1/stderr.txt
+docs/changes/tool-cli/evidence-v2-7f360da/AC-003-1/stdout.txt
+docs/changes/tool-cli/evidence-v2-7f360da/AC-003-3/command.txt
+docs/changes/tool-cli/evidence-v2-7f360da/AC-003-3/exit_code.txt
+docs/changes/tool-cli/evidence-v2-7f360da/AC-003-3/stderr.txt
+docs/changes/tool-cli/evidence-v2-7f360da/AC-003-3/stdout.txt
+docs/changes/tool-cli/evidence-v2-7f360da/audit-br002-br003.txt
+docs/changes/tool-cli/evidence-v2-7f360da/environment.txt
+docs/changes/tool-cli/evidence-v2-7f360da/material-crosscheck-ac002-1.txt
+docs/changes/tool-cli/evidence-v2-7f360da/run-scenarios.sh
+docs/changes/tool-cli/evidence-v2-7f360da/summary.tsv
+docs/changes/tool-cli/evidence-v2-7f360da/workspace-after-run.txt
