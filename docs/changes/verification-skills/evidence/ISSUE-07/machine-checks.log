@@ -2,6 +2,7 @@ $ uv run python general/writing-for-llm/check_skill.py workflow/blast-radius/SKI
 workflow/blast-radius/SKILL.md: OK
 exit=0
 
+$ rg -n '\p{Han}\p{P}' 不合适, 这里用 translate-a-skill 的全角标点码位集合 (U+FF0C 等), 命令原文见下:
 $ rg -n '[，。；：！？、（）【】]' workflow/blast-radius
 exit=1 (1 = 无命中)
 
@@ -15,3 +16,10 @@ $ uv run --with pytest python -m pytest -m 'not e2e' -q   # 全量快层
 6 failed, 659 passed, 2 skipped, 103 deselected, 33 subtests passed (274s)
 失败项: general/present/tests/test_browser_session.py (5 项, socket TimeoutError), tests/test_mailbox_admin.py::test_pending_cap_drops_oldest (TimeoutError)
 说明: 本 ISSUE 只新增 workflow/blast-radius/ 与 evidence/, 上述测试不引用这些路径 (rg -l 'blast-radius' tests general 无命中), 失败与本次改动无关, 属开工时既有的环境相关失败.
+
+# 全角标点扫描范围: 只扫本 ISSUE 自己写的文档 (SKILL.md, reference/*.md, 演练记录, HANDOFF, 本日志).
+# 原始材料 (pane.txt, 会话报告, raw-sessions/*.jsonl) 是演练会话的原始输出, 按原样保留, 不改写;
+# 其中出现全角标点属被观察对象的行为, 不算本 ISSUE 文档的标点违规.
+
+$ rg -n 全角码位字符类 workflow/blast-radius docs/changes/verification-skills/evidence/ISSUE-07/*.md
+exit=1 (1 = 无命中)
