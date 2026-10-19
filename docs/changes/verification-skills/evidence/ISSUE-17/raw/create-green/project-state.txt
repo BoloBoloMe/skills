@@ -1,0 +1,7 @@
+== git status -uall ==
+?? .agents/skills/verify-notes-cli/SKILL.md
+== git diff --stat ==
+== sha256 product ==
+b9deffc3d364a8dc5238950286ff2c2c0fce33958a6224415b5ba2089a60d5bb  notes.sh
+154f0040405cb7fc0bac273e9ff60b8eacc5ab7e27eb1d5cf8949adcef788ea7  README.md
+9490b5373bd4c7603635124cbcc969c2f59b34d74ebf76c59ffcc67950daecf8  docs/PRODUCT.md

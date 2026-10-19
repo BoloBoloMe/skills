@@ -1,0 +1,4 @@
+workflow/create-verification-skill/SKILL.md: OK
+exit=0
+workflow/maintain-verification-skill/SKILL.md: OK
+exit=0

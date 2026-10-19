@@ -1,0 +1,253 @@
+                                                                                                                                                                ┃
+ ▀▀█  v1.3.0                                                                                                                                                    ┃
+ █▀ █ escape interrupt · ctrl+c/ctrl+d clear/exit · / commands · ! bash · ctrl+o/alt+o more                                                                     ┃
+ Press ctrl+o/alt+o to show full startup help and loaded resources.                                                                                             ┃
+                                                                                                                                                                ┃
+ Pi can explain its own features and look up its docs. Ask it how to use or extend Pi.                                                                          ┃
+                                                                                                                                                                ┃
+                                                                                                                                                                ┃
+[Context]                                                                                                                                                       │
+  ~/.pi/agent/AGENTS.md                                                                                                                                         ┃
+                                                                                                                                                                ┃
+[Skills]                                                                                                                                                        ┃
+  access-web, code-review, codebase-design, decision-ledger, deliberate, diagnosing-bugs, domain-awareness, domain-modeling, explain-diff, follow-the-money,    ┃
+grill-me, grilling, handoff, improve-codebase-architecture, lazy-dev, llm-select, mailbox, maintain-verification-skill, navigate, opposing-viewpoint, present,  ┃
+prototype, receive-handoff, retro, tdd, tdd-as-orchestra, teach, to-execution, to-spec, translate-a-skill, use-herdr, use-sandbox-worktree, use-worktree,       ┃
+verify-fixture, writing-for-llm, wtf                                                                                                                            ┃
+                                                                                                                                                                ┃
+[Extensions]                                                                                                                                                    │
+  filesystem-operation-gate.ts, git-operation-gate.ts, mailbox/pi-extension, python-operation-hook.ts, repetition-guard.ts, session-prune.ts, skill-anywhere.ts,│
+use-sandbox-worktree/pi-extension                                                                                                                               ┃
+                                                                                                                                                                ┃
+                                                                                                                                                                ┃
+ [session-prune] 清理了 0 个会话 (0.0 MB)                                                                                                                       ┃
+                                                                                                                                                                ┃
+                                                                                                                                                                ┃
+ [skill] maintain-verification-skill (ctrl+o/alt+o to expand)                                                                                                   │
+                                                                                                                                                                │
+                                                                                                                                                                │
+                                                                                                                                                                ┃
+ 按当前已确认的 docs/PRODUCT.md 维护本项目的验证配方.                                                                                                           ┃
+                                                                                                                                                                ┃
+                                                                                                                                                                ┃
+ Thinking...                                                                                                                                                    ┃
+                                                                                                                                                                ┃
+                                                                                                                                                                ┃
+ $ cd /tmp/orchestra-17/proj-maintain && ls -la && cat docs/PRODUCT.md 2>/dev/null | head -100                                                                  │
+                                                                                                                                                                │
+ ... (20 earlier lines, ctrl+o/alt+o to expand)                                                                                                                 │
+ - 通过: 每行输出 `<序号>\t<正文>`, 序号从 1 连续递增, 顺序与实际记录一致; 没有记录时输出 `(empty)` 且退出码 0.                                                 ┃
+                                                                                                                                                                ┃
+ ## 非目标                                                                                                                                                      │
+                                                                                                                                                                │
+ - 导出 (`export`) 不在本轮覆盖范围.                                                                                                                            │
+                                                                                                                                                                │
+ Took 0.0s                                                                                                                                                      │
+                                                                                                                                                                │
+                                                                                                                                                                ┃
+                                                                                                                                                                ┃
+ $ cd /tmp/orchestra-17/proj-maintain && git log --oneline -5 && git status --short && ls .agents/skills/ 2>/dev/null                                           │
+                                                                                                                                                                │
+ 7e4ba17 fixture: notes-cli 与待测技能                                                                                                                          │
+ maintain-verification-skill                                                                                                                                    │
+ verify-fixture                                                                                                                                                 │
+                                                                                                                                                                │
+ Took 0.0s                                                                                                                                                      │
+                                                                                                                                                                ┃
+                                                                                                                                                                ┃
+ Thinking...                                                                                                                                                    ┃
+                                                                                                                                                                ┃
+                                                                                                                                                                ┃
+ $ cd /tmp/orchestra-17/proj-maintain && cat README.md notes.sh && cat docs/PRODUCT.md | tail -20 && ls -la docs .agents/skills/*                               │
+                                                                                                                                                                │
+ ... (76 earlier lines, ctrl+o/alt+o to expand)                                                                                                                 │
+ docs:                                                                                                                                                          │
+ total 4                                                                                                                                                        │
+ drwxrwxr-x 2 bolo bolo  60 Oct 20 03:20 .                                                                                                                      │
+ drwxrwxr-x 5 bolo bolo 140 Oct 20 03:20 ..                                                                                                                     │
+ -rw-rw-r-- 1 bolo bolo 551 Oct 20 03:20 PRODUCT.md                                                                                                             │
+                                                                                                                                                                │
+ Took 0.0s                                                                                                                                                      │
+                                                                                                                                                                │
+                                                                                                                                                                │
+                                                                                                                                                                │
+ $ cd /tmp/orchestra-17/proj-maintain && find .agents -type f | head -50 && echo ---- && cat .agents/skills/verify-fixture/SKILL.md 2>/dev/null                 │
+                                                                                                                                                                │
+ ... (24 earlier lines, ctrl+o/alt+o to expand)                                                                                                                 │
+ ## 功能入口                                                                                                                                                    │
+                                                                                                                                                                │
+ - 记录笔记: [features/add.md](features/add.md)                                                                                                                 │
+ - 查看笔记: [features/show.md](features/show.md)                                                                                                               │
+ - 导出笔记: [features/export.md](features/export.md)                                                                                                           │
+                                                                                                                                                                │
+ Took 0.0s                                                                                                                                                      │
+                                                                                                                                                                │
+                                                                                                                                                                │
+ Thinking...                                                                                                                                                    │
+                                                                                                                                                                │
+                                                                                                                                                                │
+ $ cd /tmp/orchestra-17/proj-maintain && for f in .agents/skills/verify-fixture/features/*.md; do echo "=== $f"; cat "$f"; done                                 │
+                                                                                                                                                                │
+ ... (15 earlier lines, ctrl+o/alt+o to expand)                                                                                                                 │
+                                                                                                                                                                │
+ 1. 前置: 数据目录 `data/` 不存在时先 `mkdir -p data/`.                                                                                                         │
+ 2. 操作: `./notes.sh show`.                                                                                                                                    │
+ 3. 期望: 空数据输出 `(empty)`; 有数据时每行 `<序号>\t<正文>`.                                                                                                  │
+ 4. 取证: `./notes.sh show > evidence/<时间>-show.txt`.                                                                                                         │
+                                                                                                                                                                │
+ Took 0.0s                                                                                                                                                      │
+                                                                                                                                                                │
+                                                                                                                                                                │
+                                                                                                                                                                │
+ $ cd /tmp/orchestra-17/proj-maintain && cat .agents/skills/maintain-verification-skill/reference/drift-classification.md && ./notes.sh status; ls data 2>&1    │
+                                                                                                                                                                │
+ ... (18 earlier lines, ctrl+o/alt+o to expand)                                                                                                                 │
+ data_path: /tmp/orchestra-17/proj-maintain/data/items.txt                                                                                                      │
+ ls: cannot access 'data': No such file or directory                                                                                                            │
+                                                                                                                                                                │
+                                                                                                                                                                │
+ Command exited with code 2                                                                                                                                     │
+                                                                                                                                                                │
+ Took 0.0s                                                                                                                                                      │
+                                                                                                                                                                │
+                                                                                                                                                                │
+ Thinking...                                                                                                                                                    │
+                                                                                                                                                                │
+                                                                                                                                                                │
+ $ ls -la /tmp/orchestra-17/ && find /tmp/orchestra-17 -maxdepth 2 -type f | head -30                                                                           │
+                                                                                                                                                                │
+ ... (5 earlier lines, ctrl+o/alt+o to expand)                                                                                                                  │
+ drwxrwxr-x   5 bolo bolo   140 Oct 20 03:20 proj-maintain                                                                                                      │
+ /tmp/orchestra-17/proj-maintain/README.md                                                                                                                      │
+ /tmp/orchestra-17/proj-maintain/notes.sh                                                                                                                       │
+ /tmp/orchestra-17/proj-create/README.md                                                                                                                        │
+ /tmp/orchestra-17/proj-create/notes.sh                                                                                                                         │
+                                                                                                                                                                │
+ Took 0.0s                                                                                                                                                      │
+                                                                                                                                                                │
+                                                                                                                                                                │
+                                                                                                                                                                │
+ $ cd /tmp/orchestra-17/proj-maintain && git status --porcelain && git show --stat --oneline HEAD | head -20 && cat ~/AGENTS.md 2>/dev/null | head -60          │
+                                                                                                                                                                │
+ ... (50 earlier lines, ctrl+o/alt+o to expand)                                                                                                                 │
+ - 主源 `/etc/apt/sources.list.d/ubuntu.sources` 里 sg.archive.ubuntu.com 曾因 403 切到 archive.ubuntu.com, 不要改回去.                                         │
+                                                                                                                                                                │
+ ## 项目仓库                                                                                                                                                    │
+                                                                                                                                                                │
+ 我的所有项目仓库在 `~/Workspace/<项目>/`.                                                                                                                      │
+                                                                                                                                                                │
+ Took 0.0s                                                                                                                                                      │
+                                                                                                                                                                │
+                                                                                                                                                                │
+ Thinking...                                                                                                                                                    │
+                                                                                                                                                                │
+                                                                                                                                                                │
+ mailbox_listen action="status"                                                                                                                                 │
+ 本会话: pi session 01a1559b-c6e0-7527-9db6-4fe2ae89f27a, mailbox session (未知), running=false                                                                 │
+ 取信守护: 未运行 (调用 mailbox_listen start 或 /mail-listen start 开启)                                                                                        │
+                                                                                                                                                                │
+                                                                                                                                                                │
+ Thinking...                                                                                                                                                    │
+                                                                                                                                                                │
+                                                                                                                                                                │
+ $ cd /tmp/orchestra-17/proj-maintain && sha256sum .agents/skills/verify-fixture/SKILL.md .agents/skills/verify-fixture/features/*.md && echo --- && ./notes.sh │
+ doctor; echo "exit=$?"; echo ---; NOTES_DATA=/tmp/nonexistent-check/items.txt ./notes.sh show; echo "exit=$?"                                                  │
+                                                                                                                                                                │
+ ... (5 earlier lines, ctrl+o/alt+o to expand)                                                                                                                  │
+ usage: notes.sh <add|show|status|export>                                                                                                                       │
+ exit=2                                                                                                                                                         │
+ ---                                                                                                                                                            │
+ (empty)                                                                                                                                                        │
+ exit=0                                                                                                                                                         │
+                                                                                                                                                                │
+ Took 0.0s                                                                                                                                                      │
+                                                                                                                                                                │
+                                                                                                                                                                │
+                                                                                                                                                                │
+ $ cd /tmp/orchestra-17/proj-maintain && bash -n notes.sh && ./notes.sh add 2>&1; echo "exit=$?"; ./notes.sh export 2>&1; echo "exit=$?"; git rev-parse HEAD    │
+                                                                                                                                                                │
+ usage: notes.sh add <text>                                                                                                                                     │
+ exit=2                                                                                                                                                         │
+ usage: notes.sh export <path>                                                                                                                                  │
+ exit=2                                                                                                                                                         │
+ 7e4ba17cb708f8f4c05de62994cb6a1a0aa22a43                                                                                                                       │
+                                                                                                                                                                │
+ Took 0.0s                                                                                                                                                      │
+                                                                                                                                                                │
+                                                                                                                                                                │
+ Thinking...                                                                                                                                                    │
+                                                                                                                                                                │
+                                                                                                                                                                │
+ mailbox_listen action="start"                                                                                                                                  │
+ 取信守护已启动: pi session 01a1559b-c6e0-7527-9db6-4fe2ae89f27a, mailbox session 01a1559b-c6e0-7527-9db6-4fe2ae89f27a (已注册独立信箱凭证)                     │
+ (pi session 01a1559b-c6e0-7527-9db6-4fe2ae89f27a, mailbox session 01a1559b-c6e0-7527-9db6-4fe2ae89f27a, running=true)                                          │
+                                                                                                                                                                │
+                                                                                                                                                                │
+ Thinking...                                                                                                                                                    │
+                                                                                                                                                                │
+ 输入核对                                                                                                                                                       │
+                                                                                                                                                                │
+ - PRODUCT: docs/PRODUCT.md (已确认 2026-10-20)                                                                                                                 │
+ - 项目: /tmp/orchestra-17/proj-maintain @ 7e4ba17, 工作区干净                                                                                                  │
+ - 配方: .agents/skills/verify-fixture/ (项目内唯一验证 skill)                                                                                                  │
+ - 本轮功能: 记录笔记 (add), 查看笔记 (show); 共用规则: 健康检查, 数据位置, 取证, 清理                                                                          │
+ - 不动: features/export.md 及索引里的导出条目 (PRODUCT 非目标); 不改 notes.sh, README, PRODUCT                                                                 │
+ - 原始配方哈希已记录 (SKILL 06d0c2f4..., add 256aae1c..., show b6813c1c..., export ddd41ee6...)                                                                │
+                                                                                                                                                                │
+ 发现分类 (只读, 未改)                                                                                                                                          │
+                                                                                                                                                                │
+ ┌───┬───────────────────┬───────────────────────────┬─────────────────────────────────────────────────────────────────────────────────────────────────────────┐│
+ │ # │ 类别              │ 位置                      │ 依据                                                                                                    ││
+ ├───┼───────────────────┼───────────────────────────┼─────────────────────────────────────────────────────────────────────────────────────────────────────────┤│
+ │ 1 │ 文档漂移          │ SKILL.md 共用规则-健康检  │ ./notes.sh doctor 不存在, 实测输出 usage, 退出码 2; 实际健康命令是 ./notes.sh status, 输出 notes-cli    ││
+ │   │                   │ 查                        │ 0.2.0 和 data_path                                                                                      ││
+ ├───┼───────────────────┼───────────────────────────┼─────────────────────────────────────────────────────────────────────────────────────────────────────────┤│
+ │ 2 │ 文档漂移          │ SKILL.md 共用规则-数据目  │ 写 data/notes.txt, 实际默认 data/items.txt (status 实测)                                                │
+ │   │                   │ 录                        │                                                                                                         │
+ ├───┼───────────────────┼───────────────────────────┼─────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+ │ 3 │ 文档漂移+驱动缺口 │ features/add.md 步骤 2    │ 写 add --text "第一条笔记"; PRODUCT 入口是 add <正文>; 脚本只取 $2, 实际会存成 --text, 正文丢失         │
+ ├───┼───────────────────┼───────────────────────────┼─────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+ │ 4 │ 驱动缺口          │ features/add.md           │ 未断言 PRODUCT 的退出码 0, added: <正文>, 以及 show 列表末尾可见; 取证只存了 show                       │
+ ├───┼───────────────────┼───────────────────────────┼─────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+ │ 5 │ 驱动缺口          │ features/show.md          │ 未断言空数据退出码 0, 未断言序号从 1 连续且顺序一致                                                     │
+ ├───┼───────────────────┼───────────────────────────┼─────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+ │ 6 │ 驱动缺口          │ SKILL.md 取证与清理       │ evidence/ 不先创建就重定向会失败; rm -rf data/ 会删项目真实数据, 且没用 NOTES_DATA 隔离                 │
+ ├───┼───────────────────┼───────────────────────────┼─────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+ │ 7 │ 不修              │ features/export.md        │ 历史功能, PRODUCT 非目标, 保持原样                                                                      │
+ ├───┼───────────────────┼───────────────────────────┼─────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+ │ 8 │ 产品缺陷          │ 暂无                      │ 源码看 add/show 符合 PRODUCT; 行为待子会话实跑确认                                                      │
+ └───┴───────────────────┴───────────────────────────┴─────────────────────────────────────────────────────────────────────────────────────────────────────────┘
+
+ 授权申请 (写入前)
+
+ 资源与对象
+ - 改 3 个文件: .agents/skills/verify-fixture/SKILL.md, features/add.md, features/show.md
+ - 不新增脚本, 不改其他文件
+ - 运行期: mktemp -d 生成的 /tmp/notes-cli-verify-* (放 NOTES_DATA), 证据放 /tmp/orchestra-17/evidence/
+
+ 操作
+ - SKILL.md: 健康检查改 ./notes.sh status 并断言版本与数据路径; 数据默认路径改 data/items.txt, 验证时用 NOTES_DATA 指向临时目录, 不碰项目 data/; 取证改
+   EVIDENCE_DIR (默认 ${TMPDIR:-/tmp}/notes-cli-evidence) 且先 mkdir -p; 清理只删本次临时目录; 功能索引不加不减
+ - add.md: 入口改 ./notes.sh add "第一条笔记"; 增加退出码 0, 输出 added: ..., 以及 show 末尾出现该正文的断言和取证
+ - show.md: 分空数据与非空两段; 增加空数据 (empty) 且退出码 0, 以及序号从 1 连续, 顺序与记录一致的断言和取证
+
+ 清理
+ - 删本次 mktemp 目录; 每次失败迭代同法清理
+ - 证据保留在 /tmp/orchestra-17/evidence/, 清理后仍可复核
+ - 只清自己创建的残留, 不动他人实例或文件
+
+ 验证办法
+ - git status --porcelain 只应出现上述 3 个配方文件
+ - 用 use-herdr 开未参与编写的新子会话, 给项目/配方/PRODUCT 路径和本功能清单, 按配方实跑健康检查与 add/show (空+非空), 记录实际加载来源, 命令, 输出, 清理
+ - 子会话无额外写入授权, 超出即停并回报
+
+ 状态
+
+ 已停在写入前, 未改配方, 未建辅助脚本. 批准请回复"批准"或指出要调整的范围. 信箱 session: 01a1559b-c6e0-7527-9db6-4fe2ae89f27a (守护已开).
+
+ mailbox 守护运行中 (已注入 0 封)
+─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+
+─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+/tmp/orchestra-17/proj-maintain (main)
+↑5.9k ↓8.0k R68k CH98.8% $0.003 1.7%/1.0M (auto)                                                                 (cli) deepseek-v4.1-flash-expires-on-0910 • high

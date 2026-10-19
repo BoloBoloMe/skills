@@ -1,0 +1,2 @@
+1. bash: {"command": "cd /tmp/orchestra-17/proj-maintain && cat .agents/skills/maintain-verification-skill/reference/drift-classification.md && ./notes.sh status; ls data 2>&1"}
+drift-classification 相关工具调用数: 1

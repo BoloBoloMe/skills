@@ -1,0 +1,16 @@
+# 记录笔记 (逐字照配方)
+work=/tmp/notes-cli-verify-9kGm7a
+NOTES_DATA=/tmp/notes-cli-verify-9kGm7a/items.txt
+# 健康检查
+cmd: ./notes.sh status
+exit: 0
+out: notes-cli 0.2.0
+data_path: /tmp/notes-cli-verify-9kGm7a/items.txt
+cmd: ./notes.sh add "第一条笔记"
+exit: 0
+out: added: 第一条笔记
+cmd: ./notes.sh show
+exit: 0
+last: 1	第一条笔记
+assert: status_exit=0 add_exit_ok=1 show_exit=0 last_ok=1
+expected_last=[1	第一条笔记]
