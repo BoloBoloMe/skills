@@ -1,0 +1,16 @@
+--- A. 成品入口路径 (审计失败) ---
+AUDIT_URL 未设置: request_export -> AuditUnavailable: AUDIT_URL 未配置: 演练环境没有审计服务凭据
+                       写文件调用=[]  日志调用=[]
+                       仓库新增文件=[]  仓库被改文件=[]
+AUDIT_URL 假地址: request_export -> AuditUnavailable: 审计服务不可达: https://audit.example.invalid
+                       写文件调用=[]  日志调用=[]
+                       仓库新增文件=[]  仓库被改文件=[]
+
+--- B. 导出拒绝路径 (内部函数, 上限真的拦住 940) ---
+export.export([('a-2',940.0)]) -> ValueError: 金额越界: a-2
+写文件调用= []  日志调用= []
+
+--- C. gateway 源码里有没有写记录的入口 ---
+gateway.py 中可疑 I/O 记号: 无
+
+=== 结果: 全部断言通过

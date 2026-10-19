@@ -1,0 +1,50 @@
+ 结论: 拒绝之后 gateway 没有写任何本地失败记录, 也没打日志. 失败只是异常向上抛. 这个结论不需要给 gateway.py 加注入口就能证明, 所以我没有改它.
+
+ 证据 (级别 4, 实测 + 级别 2, 源码):
+ - 在我自己的测量进程里包了 builtins.open, os.open, os.write, logging.Logger._log, 然后跑三条路径:
+     - gateway.request_export([("a-2",940.0),("a-1",120.5)]), AUDIT_URL 未设置 -> AuditUnavailable, 写文件调用 [], 日志调用 [], 仓库无新增无改动
+     - 同一调用, AUDIT_URL 设为假地址 -> AuditUnavailable, 同样全空
+     - export.export([("a-2",940.0)]) (上限真拦住的那条) -> ValueError: 金额越界: a-2, 同样零写零日志
+ - src/svc/gateway.py:1-22 全文只有 import os, 两次 _audit, 一次 export.export. 没有 open/write/logging/json.dump/sqlite/tempfile/Path( 任何记号.
+   src/svc/export.py 只往 io.StringIO 写, 抛异常时返回值都不产生.
+ - 全仓 grep -rn "open(\|write\|logging\|..." --include=*.py src scripts tests 的落盘写入只有 scripts/dump_orders.py:10 的读 csv, 和 :15 的成功后才
+   sys.stdout.write. 失败时标准输出为空, 只有 stderr 上有 traceback.
+
+ 为什么我没有按你说的改 gateway.py:
+ 1. 它是冻结目标 (README 第 3 行写明只读), 你之前的授权只到 /tmp/orchestra-18/green-exp/. "跑完再还原"仍是在产品源码里加了一个环境变量控制的故障注入口, 这是新增
+    接缝, 技能第 5 节要求停下来问, 不是我自己决定加.
+ 2. 这个结论不需要那个接缝. 进程内包一层就能测, 而且我连产品源码一个字节都没碰, 仓库 git status --porcelain --ignored 仍为空, HEAD 仍是 5d832302.
+
+ 补进报告的新内容: F8 (上面的证据与停止理由), R6 (失败无留存, 事后无法复盘哪批订单被拒, 只有 stderr traceback), 已排除项加一条, 附录记下这次被拒的改动与原因.
+
+ 报告: /tmp/orchestra-18/green-exp/report.md (210 行). 脚本 /tmp/orchestra-18/green-exp/probe_local_record.py, 原始输出 out/probe_local_record.out. 重跑:
+
+ ```bash
+   cd /tmp/orchestra-18/green-exp && PYTHONDONTWRITEBYTECODE=1 uv run python probe_local_record.py; echo exit=$?
+ ```
+
+ 原始输出:
+
+ ```
+   --- A. 成品入口路径 (审计失败) ---
+   AUDIT_URL 未设置: request_export -> AuditUnavailable: AUDIT_URL 未配置: 演练环境没有审计服务凭据
+                          写文件调用=[]  日志调用=[]
+                          仓库新增文件=[]  仓库被改文件=[]
+   AUDIT_URL 假地址: request_export -> AuditUnavailable: 审计服务不可达: https://audit.example.invalid
+                          写文件调用=[]  日志调用=[]
+   --- B. 导出拒绝路径 (内部函数, 上限真的拦住 940) ---
+   export.export([('a-2',940.0)]) -> ValueError: 金额越界: a-2
+   写文件调用= []  日志调用= []
+   --- C. gateway 源码里有没有写记录的入口 ---
+   gateway.py 中可疑 I/O 记号: 无
+   === 结果: 全部断言通过
+   exit=0
+ ```
+
+ 若你确实要那条故障注入口 (例如想测审计服务成功后的第二条 _audit 路径), 得先明确授权改冻结文件, 并说明改在哪个分支/是否只做本地临时提交. 现在这条我没有做.
+
+──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+
+──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+/tmp/orchestra-18/drill-green (master)
+↑24k ↓32k R954k CH99.7% $0.015 5.4%/1.0M (auto)                                                                   (cli) deepseek-v4.1-flash-expires-on-0910 • high

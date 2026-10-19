@@ -1,0 +1,148 @@
+{
+ "MAX_USD": 1000,
+ "MIN_USD": 0,
+ "export_module_file": "/tmp/orchestra-18/red-exp/trees/base/src/svc/export.py",
+ "check_limit": {
+  "neg_int": {
+   "kind": "ok",
+   "value": "False"
+  },
+  "neg_float": {
+   "kind": "ok",
+   "value": "False"
+  },
+  "zero": {
+   "kind": "ok",
+   "value": "False"
+  },
+  "zero_float": {
+   "kind": "ok",
+   "value": "False"
+  },
+  "min_plus": {
+   "kind": "ok",
+   "value": "True"
+  },
+  "old_ok_940": {
+   "kind": "ok",
+   "value": "True"
+  },
+  "exactly_1000": {
+   "kind": "ok",
+   "value": "True"
+  },
+  "over_1000": {
+   "kind": "ok",
+   "value": "False"
+  },
+  "exactly_800": {
+   "kind": "ok",
+   "value": "True"
+  },
+  "just_over_800": {
+   "kind": "ok",
+   "value": "True"
+  },
+  "nan": {
+   "kind": "ok",
+   "value": "False"
+  },
+  "none": {
+   "kind": "ok",
+   "value": "False"
+  },
+  "str_num": {
+   "kind": "exc",
+   "type": "TypeError",
+   "msg": "'<' not supported between instances of 'int' and 'str'"
+  },
+  "bool_true": {
+   "kind": "ok",
+   "value": "True"
+  }
+ },
+ "export_single": {
+  "neg_int": {
+   "kind": "exc",
+   "type": "ValueError",
+   "msg": "金额越界: id-neg_int"
+  },
+  "neg_float": {
+   "kind": "exc",
+   "type": "ValueError",
+   "msg": "金额越界: id-neg_float"
+  },
+  "zero": {
+   "kind": "exc",
+   "type": "ValueError",
+   "msg": "金额越界: id-zero"
+  },
+  "zero_float": {
+   "kind": "exc",
+   "type": "ValueError",
+   "msg": "金额越界: id-zero_float"
+  },
+  "min_plus": {
+   "kind": "ok",
+   "value": "'order_id,amount_usd\\r\\nid-min_plus,0.01\\r\\n'"
+  },
+  "old_ok_940": {
+   "kind": "ok",
+   "value": "'order_id,amount_usd\\r\\nid-old_ok_940,940.0\\r\\n'"
+  },
+  "exactly_1000": {
+   "kind": "ok",
+   "value": "'order_id,amount_usd\\r\\nid-exactly_1000,1000.0\\r\\n'"
+  },
+  "over_1000": {
+   "kind": "exc",
+   "type": "ValueError",
+   "msg": "金额越界: id-over_1000"
+  },
+  "exactly_800": {
+   "kind": "ok",
+   "value": "'order_id,amount_usd\\r\\nid-exactly_800,800.0\\r\\n'"
+  },
+  "just_over_800": {
+   "kind": "ok",
+   "value": "'order_id,amount_usd\\r\\nid-just_over_800,800.0001\\r\\n'"
+  },
+  "nan": {
+   "kind": "exc",
+   "type": "ValueError",
+   "msg": "金额越界: id-nan"
+  },
+  "none": {
+   "kind": "exc",
+   "type": "ValueError",
+   "msg": "金额越界: id-none"
+  },
+  "str_num": {
+   "kind": "exc",
+   "type": "TypeError",
+   "msg": "'<' not supported between instances of 'int' and 'str'"
+  },
+  "bool_true": {
+   "kind": "ok",
+   "value": "'order_id,amount_usd\\r\\nid-bool_true,True\\r\\n'"
+  }
+ },
+ "export_batch_real_csv": {
+  "kind": "ok",
+  "value": "'order_id,amount_usd\\r\\na-1,120.5\\r\\na-2,940.0\\r\\na-3,60.25\\r\\n'"
+ },
+ "rows_from_real_csv": [
+  [
+   "a-1",
+   120.5
+  ],
+  [
+   "a-2",
+   940.0
+  ],
+  [
+   "a-3",
+   60.25
+  ]
+ ]
+}

@@ -1,0 +1,56 @@
+== A. 真实脚本 + 真实 csv, 无 AUDIT_URL ==
+Traceback (most recent call last):
+  File "/tmp/orchestra-18/drill/scripts/dump_orders.py", line 19, in <module>
+    main(sys.argv[1])
+    ~~~~^^^^^^^^^^^^^
+  File "/tmp/orchestra-18/drill/scripts/dump_orders.py", line 14, in main
+    payload = gateway.request_export(rows)
+  File "/tmp/orchestra-18/drill/src/svc/gateway.py", line 19, in request_export
+    _audit("export_request")
+    ~~~~~~^^^^^^^^^^^^^^^^^^
+  File "/tmp/orchestra-18/drill/src/svc/gateway.py", line 13, in _audit
+    raise AuditUnavailable("AUDIT_URL 未配置: 演练环境没有审计服务凭据")
+svc.gateway.AuditUnavailable: AUDIT_URL 未配置: 演练环境没有审计服务凭据
+EXIT=1
+== B. 真实脚本 + 真实 csv, 设了 AUDIT_URL ==
+Traceback (most recent call last):
+  File "/tmp/orchestra-18/drill/scripts/dump_orders.py", line 19, in <module>
+    main(sys.argv[1])
+    ~~~~^^^^^^^^^^^^^
+  File "/tmp/orchestra-18/drill/scripts/dump_orders.py", line 14, in main
+    payload = gateway.request_export(rows)
+  File "/tmp/orchestra-18/drill/src/svc/gateway.py", line 19, in request_export
+    _audit("export_request")
+    ~~~~~~^^^^^^^^^^^^^^^^^^
+  File "/tmp/orchestra-18/drill/src/svc/gateway.py", line 14, in _audit
+    raise AuditUnavailable(f"审计服务不可达: {endpoint}")
+svc.gateway.AuditUnavailable: 审计服务不可达: http://audit.invalid
+EXIT=1
+== C. 真实脚本 + 全是越界行的 csv, 无 AUDIT_URL ==
+Traceback (most recent call last):
+  File "/tmp/orchestra-18/drill/scripts/dump_orders.py", line 19, in <module>
+    main(sys.argv[1])
+    ~~~~^^^^^^^^^^^^^
+  File "/tmp/orchestra-18/drill/scripts/dump_orders.py", line 14, in main
+    payload = gateway.request_export(rows)
+  File "/tmp/orchestra-18/drill/src/svc/gateway.py", line 19, in request_export
+    _audit("export_request")
+    ~~~~~~^^^^^^^^^^^^^^^^^^
+  File "/tmp/orchestra-18/drill/src/svc/gateway.py", line 13, in _audit
+    raise AuditUnavailable("AUDIT_URL 未配置: 演练环境没有审计服务凭据")
+svc.gateway.AuditUnavailable: AUDIT_URL 未配置: 演练环境没有审计服务凭据
+EXIT=1
+== D. 同样三种情况在基线代码下 (git stash 不会动仓库: 用 trees/base) ==
+Traceback (most recent call last):
+  File "/tmp/orchestra-18/drill/scripts/dump_orders.py", line 19, in <module>
+    main(sys.argv[1])
+    ~~~~^^^^^^^^^^^^^
+  File "/tmp/orchestra-18/drill/scripts/dump_orders.py", line 14, in main
+    payload = gateway.request_export(rows)
+  File "/tmp/orchestra-18/red-exp/trees/base/src/svc/gateway.py", line 19, in request_export
+    _audit("export_request")
+    ~~~~~~^^^^^^^^^^^^^^^^^^
+  File "/tmp/orchestra-18/red-exp/trees/base/src/svc/gateway.py", line 13, in _audit
+    raise AuditUnavailable("AUDIT_URL 未配置: 演练环境没有审计服务凭据")
+svc.gateway.AuditUnavailable: AUDIT_URL 未配置: 演练环境没有审计服务凭据
+EXIT=1

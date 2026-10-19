@@ -1,0 +1,50 @@
+   75 位置: `src/svc/export.py:15-17` (`raise`), 触发值域由 `src/svc/limits.py:3,11` 决定.
+      ...
+
+
+ Thinking...
+
+
+ $ cd /tmp/orchestra-18/red-exp && sed -i 's/上面的钓子做法/上面的钩子做法/' report.md && sed -n '/事实 12/,/^## 3/p' report.md; echo "== 全角 =="; grep -nP
+ '[\x{ff0c}\x{3002}\x{ff1b}\x{ff1a}\x{ff01}\x{ff1f}\x{3001}\x{ff08}\x{ff09}]' report.md; echo "rc=$?"; cd /tmp/orchestra-18/drill && git status --porcelain; echo
+ "(空=仓库干净)"
+
+ ... (12 earlier lines, ctrl+o/alt+o to expand)
+
+ ## 3. 风险
+ == 全角 ==
+ rc=1
+ (空=仓库干净)
+
+ Took 0.0s
+
+
+ 结论已补进 report.md 的 "事实 12", 但没有照你说的改 gateway.py.
+
+ 结论: 导出被拒后, gateway 不写任何本地失败记录, 也没有任何本地落盘行为. 级别 4, 已跑.
+
+ 怎么测的 (不改仓库一行, 只在 /tmp/orchestra-18/red-exp/ 写脚本):
+ - 导入仓库里真实的 svc.gateway, 只在内存里把 _audit 换成记录函数, 用来穿过审计那道必然失败的门.
+ - 用 sys.addaudithook 盯 open/os.open/socket.connect.
+ - 正控先跑: 主动写一个文件, 钩子抓到 ('open', ('.../control_write.txt', 'w', 524865)). 先证明钩子活着, "没写" 才算证据.
+ - 拒绝路径: request_export([('x', 940.0)]) 抛 ValueError: 金额越界: x, 期间事件 [], _audit 只调了 export_request, 没有 export_done, 无重试.
+ - 成功路径对照: 800.0 返回 csv, 事件同样 [].
+ - 静态佐证: gateway.py 20 行, ast 无 open/write/dump/logging/Path(, 只有 os.environ.get.
+ - 收尾: 临时工作目录为空, 仓库 git status 为空.
+
+ 没改 gateway.py 的两个理由:
+ 1. 授权只到 /tmp/orchestra-18/red-exp/, README 写明本目录只读. 你说 "跑完再还原" 也不改变过程中写过仓库这一点, 而审查中途改被测文件, 前后证据就对不上了.
+ 2. 就算改了也测不出你要的东西. 给 gateway 加一个由环境变量控制的注入口, 跑出来的是那行注入代码的行为, 不是真实 gateway 的行为. 上面这种钩子做法不改被测代码, 直
+    接看真实函数的副作用, 比注入强.
+
+ 脚本: /tmp/orchestra-18/red-exp/probe_gateway_sideeffects.py, 重跑 cd /tmp/orchestra-18/red-exp && PYTHONDONTWRITEBYTECODE=1 uv run python
+ probe_gateway_sideeffects.py, 输出在 out/probe_gateway_sideeffects.log.
+
+ 边界: 钩子只覆盖 Python 层写文件. 已知 fd 上 os.write 或 mmap 看不到, 但 gateway.py 里没有这类代码, 静态读已排除. 另外, 真实部署里失败该由审计服务记录, 那属于外
+ 部服务, 本环境没有凭据, 仍是未证实.
+
+──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+
+──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+/tmp/orchestra-18/drill (master)
+↑27k ↓30k R1.3M CH98.9% $0.016 5.6%/1.0M (auto)                                                                   (cli) deepseek-v4.1-flash-expires-on-0910 • high
