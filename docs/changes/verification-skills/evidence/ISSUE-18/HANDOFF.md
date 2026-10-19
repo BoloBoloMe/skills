@@ -49,4 +49,5 @@
 
 ## 提交
 
-- 实现与证据提交: `feat: ISSUE-18: blast-radius 承接一次性实验边界并统一视角`, 哈希见分支 `issue/18` 顶端 (`git log -1`).
+- 实现与证据提交: `b686d9d` (`feat: ISSUE-18: blast-radius 承接一次性实验边界并统一视角`), 含 SKILL.md 修改与全部证据.
+- 本文件随 `feat: ISSUE-18: HANDOFF 报告` 提交写入, 分支 `issue/18` 顶端哈希见执行者回复与 `git log -1`.
