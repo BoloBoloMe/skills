@@ -1,0 +1,1000 @@
+ Took 0.0s                                                                                                                                                       │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ $ cd /tmp/orchestra-17/proj-maintain && herdr agent start recipe-rescrutiny --kind pi --pane w1E:p42 -- --model 'cli/deepseek-v4.1-flash-expires-on-0910'       │
+ --thinking high 2>&1 | tail -20 (timeout 120s)                                                                                                                  │
+                                                                                                                                                                 │
+ {"id":"cli:agent:start","result":{"agent":{"agent":"pi","agent_status":"idle","cwd":"/tmp/orchestra-17/proj-maintain","focused":false,"foreground_cwd":"/tmp/orc│
+ hestra-17/proj-maintain","interactive_ready":true,"name":"recipe-rescrutiny","pane_id":"w1E:p42","revision":0,"state_change_seq":1532,"tab_id":"w1E:t42","termin│
+ al_id":"term_65e361ccf1b30135","workspace_id":"w1E"},"argv":["pi","--model","cli/deepseek-v4.1-flash-expires-on-0910","--thinking","high"],"type":"agent_started│
+ "}}                                                                                                                                                             │
+                                                                                                                                                                 │
+ Took 3.7s                                                                                                                                                       │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ Thinking...                                                                                                                                                     │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ $ cd /tmp/orchestra-17/proj-maintain && TASK='你是未参与编写的复跑者. 任务: 按配方实跑, 只报告不修改.                                                           │
+                                                                                                                                                                 │
+ 目标项目: /tmp/orchestra-17/proj-maintain                                                                                                                       │
+ 配方: .agents/skills/verify-fixture/SKILL.md (含 features/add.md, features/show.md)                                                                             │
+ 产品判据: docs/PRODUCT.md                                                                                                                                       │
+ 本次范围: 功能 记录笔记(add) 与 查看笔记(show); 共用规则 健康检查, 数据隔离, 取证, 清理. features/export.md 是历史功能, 不在范围, 不要跑也不要改.               │
+                                                                                                                                                                 │
+ 步骤:                                                                                                                                                           │
+ 1. 先核对配方声明的位置与入口确实指向项目当前文件: 读 SKILL.md 里"加载入口"给出的项目根, 确认 docs/PRODUCT.md 存在且是当前版本, features/ 下的 add.md show.md 是│
+ 本配方目录里的文件. 报告实际读到的绝对路径.                                                                                                                     │
+ 2. 严格照配方文字执行 add 与 show 的全部步骤, 各自用户入口都要跑到 (含空数据场景和多次 add 的列表场景), 不要自己简化成一条命令, 不要用默认数据文件, 不要用旧缓存│
+ .                                                                                                                                                               │
+ 3. 逐条对照 PRODUCT.md 的通过条件, 记录实际输出与退出码.                                                                                                        │
+ 4. 清理按配方写的方式做; 确认 evidence/ 里的取证文件仍在.                                                                                                       │
+ 5. 最后输出一份报告: 实际加载来源, 每步命令与关键输出, 通过/不通过判定, 取证文件绝对路径, 清理动作与残留检查, 任何照配方做不通的地方 (原文位置 + 现象).         │
+                                                                                                                                                                 │
+ 注意: 不要修改项目源码, 不要改配方, 不要 git commit. 用 uv run python 而非 python.' && herdr pane send-text w1E:p42 "$TASK" && herdr agent send-keys            │
+ recipe-rescrutiny "alt+\\" && sleep 3 && herdr agent get recipe-rescrutiny (timeout 90s)                                                                        │
+                                                                                                                                                                 │
+ {"id":"cli:agent:send-keys","result":{"type":"ok"}}                                                                                                             │
+ {"id":"cli:agent:get","result":{"agent":{"agent":"pi","agent_status":"idle","cwd":"/tmp/orchestra-17/proj-maintain","focused":false,"foreground_cwd":"/tmp/orche│
+ stra-17/proj-maintain","interactive_ready":true,"name":"recipe-rescrutiny","pane_id":"w1E:p42","revision":1,"state_change_seq":1532,"tab_id":"w1E:t42","terminal│
+ _id":"term_65e361ccf1b30135","terminal_title":"π - proj-maintain","terminal_title_stripped":"π - proj-maintain","workspace_id":"w1E"},"type":"agent_info"}}     │
+                                                                                                                                                                 │
+ Took 3.0s                                                                                                                                                       │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ $ cd /tmp/orchestra-17/proj-maintain && sleep 45 && herdr agent get recipe-rescrutiny 2>&1 | head -5 && herdr agent read recipe-rescrutiny 2>&1 | tail -40      │
+ (timeout 120s)                                                                                                                                                  │
+                                                                                                                                                                 │
+ ... (41 earlier lines, ctrl+o/alt+o to expand)                                                                                                                  │
+ ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────│
+ ─                                                                                                                                                               │
+ /tmp/orchestra-17/proj-maintain (main)                                                                                                                          │
+ 0.0%/1.0M (auto)                                                                                                 (cli) deepseek-v4.1-flash-expires-on-0910 •    │
+ high                                                                                                                                                            │
+                                                                                                                                                                 ┃
+ Took 45.3s                                                                                                                                                      │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ Thinking...                                                                                                                                                     │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ $ cd /tmp/orchestra-17 && herdr pane read w1E:p42 --rows 30 2>&1 | tail -40                                                                                     │
+                                                                                                                                                                 │
+ unknown option: --rows                                                                                                                                          │
+                                                                                                                                                                 │
+ Took 0.0s                                                                                                                                                       │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ $ cd /tmp/orchestra-17 && herdr pane read --help 2>&1 | head -30                                                                                                │
+                                                                                                                                                                 │
+ ... (19 earlier lines, ctrl+o/alt+o to expand)                                                                                                                  │
+                                                                                                                                                                 │
+       --ansi                                                                                                                                                    │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+       --raw                                                                                                                                                     │
+                                                                                                                                                                 │
+ Took 0.0s                                                                                                                                                       │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ $ cd /tmp/orchestra-17 && herdr pane read w1E:p42 --source recent --lines 60 2>&1 | tail -50                                                                    │
+                                                                                                                                                                 │
+ ... (47 earlier lines, ctrl+o/alt+o to expand)                                                                                                                  │
+ ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────│
+ ─                                                                                                                                                               │
+ /tmp/orchestra-17/proj-maintain (main)                                                                                                                          │
+ 0.0%/1.0M (auto)                                                                                                 (cli) deepseek-v4.1-flash-expires-on-0910 •    │
+ high                                                                                                                                                            │
+                                                                                                                                                                 │
+ Took 0.3s                                                                                                                                                       │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ Thinking...                                                                                                                                                     │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ $ cd /tmp/orchestra-17/proj-maintain && TASK='你是未参与编写的复跑者. 任务: 按配方实跑, 只报告不修改.                                                           │
+                                                                                                                                                                 │
+ 目标项目: /tmp/orchestra-17/proj-maintain                                                                                                                       │
+ 配方: .agents/skills/verify-fixture/SKILL.md (含 features/add.md, features/show.md)                                                                             │
+ 产品判据: docs/PRODUCT.md                                                                                                                                       │
+ 本次范围: 功能 记录笔记(add) 与 查看笔记(show); 共用规则 健康检查, 数据隔离, 取证, 清理. features/export.md 是历史功能, 不在范围, 不要跑也不要改.               │
+                                                                                                                                                                 │
+ 步骤:                                                                                                                                                           │
+ 1. 先核对配方声明的位置与入口确实指向项目当前文件: 读 SKILL.md 里"加载入口"给出的项目根, 确认 docs/PRODUCT.md 存在且是当前版本, features/ 下的 add.md show.md 是│
+ 本配方目录里的文件. 报告实际读到的绝对路径.                                                                                                                     │
+ 2. 严格照配方文字执行 add 与 show 的全部步骤, 各自用户入口都要跑到 (含空数据场景和多次 add 的列表场景), 不要自己简化成一条命令, 不要用默认数据文件, 不要用旧缓存│
+ .                                                                                                                                                               │
+ 3. 逐条对照 PRODUCT.md 的通过条件, 记录实际输出与退出码.                                                                                                        │
+ 4. 清理按配方写的方式做; 确认 evidence/ 里的取证文件仍在.                                                                                                       │
+ 5. 最后输出一份报告: 实际加载来源, 每步命令与关键输出, 通过/不通过判定, 取证文件绝对路径, 清理动作与残留检查, 任何照配方做不通的地方 (原文位置 + 现象).         │
+                                                                                                                                                                 │
+ 注意: 不要修改项目源码, 不要改配方, 不要 git commit. 用 uv run python 而非 python.' && herdr pane send-text w1E:p42 "$TASK" && sleep 2 && herdr pane read       │
+ w1E:p42 --source visible 2>&1 | tail -12 (timeout 60s)                                                                                                          │
+                                                                                                                                                                 │
+ ... (9 earlier lines, ctrl+o/alt+o to expand)                                                                                                                   │
+ ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────│
+ ─                                                                                                                                                               │
+ /tmp/orchestra-17/proj-maintain (main)                                                                                                                          │
+ 0.0%/1.0M (auto)                                                                                                 (cli) deepseek-v4.1-flash-expires-on-0910 •    │
+ high                                                                                                                                                            │
+                                                                                                                                                                 │
+ Took 2.0s                                                                                                                                                       │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ $ cd /tmp/orchestra-17 && herdr agent send-keys recipe-rescrutiny "alt+\\" && sleep 8 && herdr agent get recipe-rescrutiny 2>&1 | python3 -c "import json,sys;  │
+ d=json.load(sys.stdin); print(d['result']['agent']['agent_status'])" (timeout 60s)                                                                              │
+                                                                                                                                                                 │
+ {"id":"cli:agent:send-keys","result":{"type":"ok"}}                                                                                                             │
+ working                                                                                                                                                         │
+                                                                                                                                                                 │
+ Took 8.0s                                                                                                                                                       │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ [python-operation-hook] python -> uv run python                                                                                                                 │
+                                                                                                                                                                 │
+ Thinking...                                                                                                                                                     │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ $ sleep 90; cd /tmp/orchestra-17 && herdr agent get recipe-rescrutiny 2>&1 | python3 -c "import json,sys; d=json.load(sys.stdin);                               │
+ print(d['result']['agent']['agent_status'])" (timeout 180s)                                                                                                     │
+                                                                                                                                                                 │
+ done                                                                                                                                                            │
+                                                                                                                                                                 │
+ Took 1m 30s                                                                                                                                                     │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ [python-operation-hook] python -> uv run python                                                                                                                 │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ $ cd /tmp/orchestra-17 && herdr pane read w1E:p42 --source recent-unwrapped --lines 200 2>&1 | tail -90                                                         │
+                                                                                                                                                                 │
+ ... (127 earlier lines, ctrl+o/alt+o to expand)                                                                                                                 │
+ ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────│
+ ─                                                                                                                                                               │
+ /tmp/orchestra-17/proj-maintain (main)                                                                                                                          │
+ ↑6.7k ↓5.4k R84k CH92.9% $0.003 1.5%/1.0M (auto)                                                                 (cli) deepseek-v4.1-flash-expires-on-0910 •    │
+ high                                                                                                                                                            │
+                                                                                                                                                                 │
+ Took 0.6s                                                                                                                                                       │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ Thinking...                                                                                                                                                     │
+                                                                                                                                                                 │
+ 复跑通过,但指出几处文字瑕疵。我来修这些,然后换新会话再跑一轮。                                                                                                  │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ edit /tmp/orchestra-17/proj-maintain/.agents/skills/verify-fixture/SKILL.md                                                                                     │
+                                                                                                                                                                 │
+     ...                                                                                                                                                         │
+  16                                                                                                                                                             │
+  17 ## 共用规则                                                                                                                                                 │
+  18                                                                                                                                                             │
+  19 - 健康检查: 在项目根执行 `./notes.sh status`, 应输出 `notes-cli 0.2.0` 与一行 `data_path: <路径>`.                                                          │
+ -20   命令或版本对不上说明配方过时, 先修配方再跑功能 (不要用 `doctor`, 该子命令不存在).                                                                         │
+ +20   命令或版本对不上说明配方过时: 只负责验证的人就此停下并报告, 不要自己改判据;                                                                               │
+ +21   维护配方的人先修好这条规则再跑功能 (不要用 `doctor`, 该子命令不存在).                                                                                     │
+  21 - 数据隔离: 每次实跑用独立数据文件, 不要用默认的 `data/items.txt`.                                                                                          │
+ -22   默认路径是 `<项目根>/data/items.txt` (README 说明), 用 `NOTES_DATA` 覆盖:                                                                                 │
+ +23   默认路径是 `<项目根>/data/items.txt` (README 说明), 用 `NOTES_DATA` 覆盖.                                                                                 │
+ +24   下面的片段必须在项目根目录执行 (先 `cd <项目根>`), 因为根是相对当前位置上溯三级得出的;                                                                    │
+ +25   换目录执行会静默算出错误的根. 跑完 `echo "$ROOT"` 与 `pwd` 应相同.                                                                                        │
+  23                                                                                                                                                             │
+  24   ```bash                                                                                                                                                   │
+  25   ROOT=$(cd .agents/skills/verify-fixture/../../.. && pwd)                                                                                                  │
+  26   RUN=$(mktemp -d /tmp/notes-verify-XXXXXX)                                                                                                                 │
+  27   export NOTES_DATA=$RUN/items.txt                                                                                                                          │
+  28   ```                                                                                                                                                       │
+  29                                                                                                                                                             │
+ +33 - 环境变量传递: `NOTES_DATA` 用 `export` 设一次, 后续命令都在同一个 shell 里跑.                                                                             │
+ +34   不要写进临时文件再 `source` 或塞进命令行前缀以外的包装, 写错时它会静默回落成默认数据文件                                                                  │
+ +35   (`data/items.txt`), 污染真实数据; 用 `echo "$NOTES_DATA"` 自查非空且指向 `$RUN`.                                                                          │
+  30 - 参数形式: 子命令参数都是位置参数, 没有 `--text` 之类的选项; `add --text "内容"` 会把 `--text` 当正文记录.                                                 │
+  31 - 取证: 先 `mkdir -p evidence/`, 把每次运行的命令与原始输出 (含退出码) 存到                                                                                 │
+  32   `evidence/<时间>-<功能>.txt`, 例如 `evidence/20261020T101500-add.txt`.                                                                                    │
+  33   取证文件留在项目内, 不要随清理删除.                                                                                                                       │
+     ...                                                                                                                                                         │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ edit /tmp/orchestra-17/proj-maintain/.agents/skills/verify-fixture/features/add.md                                                                              │
+                                                                                                                                                                 │
+     ...                                                                                                                                                         │
+   9                                                                                                                                                             │
+  10    ```bash                                                                                                                                                  │
+  11    TS=$(date +%Y%m%dT%H%M%S)                                                                                                                                │
+  12    {                                                                                                                                                        │
+ -13      echo "\$ ./notes.sh add 第一条笔记"                                                                                                                    │
+ +13      echo "$ ./notes.sh add 第一条笔记"                                                                                                                     │
+  14      ./notes.sh add "第一条笔记"; echo "exit=$?"                                                                                                            │
+  15      echo "\$ ./notes.sh add 第二条笔记"                                                                                                                    │
+  16      ./notes.sh add "第二条笔记"; echo "exit=$?"                                                                                                            │
+  17      echo "\$ ./notes.sh show"                                                                                                                              │
+     ...                                                                                                                                                         │
+  20    ```                                                                                                                                                      │
+  21                                                                                                                                                             │
+  22 4. 期望 (逐条对照):                                                                                                                                         │
+  23    - 两次 `add` 退出码都是 0.                                                                                                                               │
+ -24    - 第一行输出 `added: 第一条笔记`, 第二行 `added: 第二条笔记` (正文原样回显, 不带引号).                                                                   │
+ +24    - 两次 `add` 各输出一行 `added: <正文>`: 先 `added: 第一条笔记`, 后 `added: 第二条笔记`                                                                  │
+ +25      (正文原样回显, 不带引号; 前后还有 `$ ...` 命令回显行和 `exit=` 行, 属预期).                                                                            │
+  25    - 末尾那次 `show` 的最后一行是 `<序号>\t第二条笔记`, 且 `第一条笔记` 在它前一行.                                                                         │
+  26 5. 取证: 上面的 `tee` 已把命令, 原始输出和退出码写入 `evidence/$TS-add.txt`; 在报告里给出该路径.                                                            │
+  27 6. 清理: `rm -rf "$RUN"`; `evidence/` 保留.                                                                                                                 │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ edit /tmp/orchestra-17/proj-maintain/.agents/skills/verify-fixture/features/show.md                                                                             │
+                                                                                                                                                                 │
+     ...                                                                                                                                                         │
+  20 4. 有数据场景: 用同一个空数据文件依次记录三条 (正文含空格或中文都算一条, 不要加引号以外的包装):                                                             │
+  21                                                                                                                                                             │
+  22    ```bash                                                                                                                                                  │
+  23    {                                                                                                                                                        │
+ -24      echo "\$ ./notes.sh add \"第一条笔记\""                                                                                                                │
+ +24      echo "$ ./notes.sh add 第一条笔记"                                                                                                                     │
+  25      ./notes.sh add "第一条笔记"; echo "exit=$?"                                                                                                            │
+ +26      echo "$ ./notes.sh add '第二条 带空格的笔记'"                                                                                                          │
+  26      ./notes.sh add "第二条 带空格的笔记"; echo "exit=$?"                                                                                                   │
+ +28      echo "$ ./notes.sh add 第三条笔记"                                                                                                                     │
+  27      ./notes.sh add "第三条笔记"; echo "exit=$?"                                                                                                            │
+  28      echo "\$ ./notes.sh show"                                                                                                                              │
+  29      ./notes.sh show; echo "exit=$?"                                                                                                                        │
+  30    } 2>&1 | tee "evidence/$TS-show-list.txt"                                                                                                                │
+     ...                                                                                                                                                         │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ Thinking...                                                                                                                                                     │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ $ cd /tmp/orchestra-17/proj-maintain && ROOT=$(cd .agents/skills/verify-fixture/../../.. && pwd) && echo "root=$ROOT pwd=$PWD" && RUN=$(mktemp -d               │
+ /tmp/notes-verify-XXXXXX) && export NOTES_DATA=$RUN/items.txt && echo "notes_data=$NOTES_DATA" && mkdir -p evidence && TS=$(date +%Y%m%dT%H%M%S) && {           │
+      echo "$ ./notes.sh add 第一条笔记"                                                                                                                         │
+      ./notes.sh add "第一条笔记"; echo "exit=$?"                                                                                                                │
+      echo "$ ./notes.sh add '第二条 带空格的笔记'"                                                                                                              │
+      ./notes.sh add "第二条 带空格的笔记"; echo "exit=$?"                                                                                                       │
+      echo "$ ./notes.sh add 第三条笔记"                                                                                                                         │
+      ./notes.sh add "第三条笔记"; echo "exit=$?"                                                                                                                │
+      echo "\$ ./notes.sh show"                                                                                                                                  │
+      ./notes.sh show; echo "exit=$?"                                                                                                                            │
+    } 2>&1 | tee "evidence/$TS-show-list.txt" && rm -rf "$RUN" && git status --porcelain                                                                         │
+                                                                                                                                                                 │
+ ... (15 earlier lines, ctrl+o/alt+o to expand)                                                                                                                  │
+ exit=0                                                                                                                                                          │
+  M .agents/skills/verify-fixture/SKILL.md                                                                                                                       │
+  M .agents/skills/verify-fixture/features/add.md                                                                                                                │
+  M .agents/skills/verify-fixture/features/show.md                                                                                                               │
+ ?? evidence/                                                                                                                                                    │
+                                                                                                                                                                 │
+ Took 0.0s                                                                                                                                                       │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ Thinking...                                                                                                                                                     │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ $ cd /tmp/orchestra-17/proj-maintain && herdr tab create --workspace "$HERDR_WORKSPACE_ID" --cwd "$PWD" --label "S-recipe-rerun-2" --no-focus 2>&1 | python3 -c │
+ "import json,sys; print(json.load(sys.stdin)['result']['root_pane']['pane_id'])"                                                                                │
+                                                                                                                                                                 │
+ w1E:p43                                                                                                                                                         │
+                                                                                                                                                                 │
+ Took 0.0s                                                                                                                                                       │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ [python-operation-hook] python -> uv run python                                                                                                                 │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ $ cd /tmp/orchestra-17/proj-maintain && herdr agent start recipe-rerun2 --kind pi --pane w1E:p43 -- --model 'cli/deepseek-v4.1-flash-expires-on-0910' --thinking│
+ high 2>&1 | python3 -c "import json,sys; print(json.load(sys.stdin)['result']['agent']['agent_status'])" (timeout 120s)                                         │
+                                                                                                                                                                 │
+ idle                                                                                                                                                            │
+                                                                                                                                                                 │
+ Took 3.6s                                                                                                                                                       │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ [python-operation-hook] python -> uv run python                                                                                                                 │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ $ cd /tmp/orchestra-17/proj-maintain && sleep 5 && TASK='你是第二遍复跑者, 未参与编写. 只报告不修改, 不改源码不改配方不 commit.                                 │
+                                                                                                                                                                 │
+ 目标项目: /tmp/orchestra-17/proj-maintain                                                                                                                       │
+ 配方: .agents/skills/verify-fixture/SKILL.md + features/add.md + features/show.md                                                                               │
+ 判据: docs/PRODUCT.md                                                                                                                                           │
+ 范围: add, show 两个功能的全部步骤, 以及共用规则 健康检查/数据隔离/取证/清理. export.md 是历史功能, 不读不跑不改.                                               │
+                                                                                                                                                                 │
+ 要求:                                                                                                                                                           │
+ 1. 先确认配方里"加载入口"声明的路径真的指向当前文件 (给绝对路径), 并确认判据 docs/PRODUCT.md 是当前版本.                                                        │
+ 2. 到项目根目录, 照配方文字逐条执行, 命令用代码块里的原样写法, 不改写不省略; 空数据场景和三条记录场景都要跑.                                                    │
+ 3. 逐条核对 PRODUCT.md 的通过条件, 给实际输出和退出码.                                                                                                          │
+ 4. 按配方清理; 确认 evidence/ 下新取证文件仍在, 并确认 git status 只有配方文件 modified 和 evidence/ 未跟踪.                                                    │
+ 5. 报告: 加载来源, 命令与输出摘要, 逐功能通过/不通过, 取证文件绝对路径, 清理与残留检查, 任何照配方做不通处 (文件与条目 + 现象).' && herdr pane send-text w1E:p43│
+ "$TASK" && sleep 2 && herdr agent send-keys recipe-rerun2 "alt+\\" && sleep 8 && herdr agent get recipe-rerun2 2>&1 | python3 -c "import json,sys;              │
+ print(json.load(sys.stdin)['result']['agent']['agent_status'])" (timeout 120s)                                                                                  │
+                                                                                                                                                                 │
+ {"id":"cli:agent:send-keys","result":{"type":"ok"}}                                                                                                             │
+ working                                                                                                                                                         │
+                                                                                                                                                                 │
+ Took 15.0s                                                                                                                                                      │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ [python-operation-hook] python -> uv run python                                                                                                                 │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ $ sleep 120; cd /tmp/orchestra-17 && herdr agent get recipe-rerun2 2>&1 | python3 -c "import json,sys;                                                          │
+ print(json.load(sys.stdin)['result']['agent']['agent_status'])" (timeout 200s)                                                                                  │
+                                                                                                                                                                 │
+ done                                                                                                                                                            │
+                                                                                                                                                                 │
+ Took 2m 0s                                                                                                                                                      │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ [python-operation-hook] python -> uv run python                                                                                                                 │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ $ cd /tmp/orchestra-17 && herdr pane read w1E:p43 --source recent-unwrapped --lines 200 2>&1 | tail -80                                                         │
+                                                                                                                                                                 │
+ ... (107 earlier lines, ctrl+o/alt+o to expand)                                                                                                                 │
+ ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────│
+ ─                                                                                                                                                               │
+ /tmp/orchestra-17/proj-maintain (main)                                                                                                                          │
+ ↑6.4k ↓5.4k R65k CH97.3% $0.003 1.5%/1.0M (auto)                                                                 (cli) deepseek-v4.1-flash-expires-on-0910 •    │
+ high                                                                                                                                                            │
+                                                                                                                                                                 │
+ Took 0.6s                                                                                                                                                       │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ Thinking...                                                                                                                                                     │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ read /tmp/orchestra-17/proj-maintain/.agents/skills/verify-fixture/features/show.md                                                                             │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ edit /tmp/orchestra-17/proj-maintain/.agents/skills/verify-fixture/features/show.md                                                                             │
+                                                                                                                                                                 │
+     ...                                                                                                                                                         │
+   4 没有记录时输出 `(empty)` 且退出码 0.                                                                                                                        │
+   5                                                                                                                                                             │
+   6 1. 准备: 按 `SKILL.md` 共用规则设好 `ROOT`, `RUN`, `NOTES_DATA`, 并 `mkdir -p evidence/`.                                                                   │
+   7 2. 健康检查: `./notes.sh status` 正常 (见 `SKILL.md`).                                                                                                      │
+ - 8 3. 空数据场景 (独立数据文件, 不要先 `add`):                                                                                                                 │
+ + 8 3. 空数据场景 (独立数据文件, 不要先 `add`); PRODUCT 的 "没有记录" 有两条路径, 两条都要跑:                                                                   │
+ + 9    (a) 数据文件不存在, (b) 数据文件存在但为 0 字节:                                                                                                         │
+   9                                                                                                                                                             │
+  10    ```bash                                                                                                                                                  │
+  11    TS=$(date +%Y%m%dT%H%M%S)                                                                                                                                │
+  12    {                                                                                                                                                        │
+ -13      echo "\$ ./notes.sh show   # 空数据"                                                                                                                   │
+ +14      echo "$ test ! -e \"$NOTES_DATA\""                                                                                                                     │
+ +15      test ! -e "$NOTES_DATA"; echo "exit=$?"                                                                                                                │
+ +16      echo "$ ./notes.sh show   # 文件不存在"                                                                                                                │
+  14      ./notes.sh show; echo "exit=$?"                                                                                                                        │
+ +18      echo "$ : > \"$NOTES_DATA\" && ./notes.sh show   # 文件存在但 0 字节"                                                                                  │
+ +19      : > "$NOTES_DATA"                                                                                                                                      │
+ +20      ./notes.sh show; echo "exit=$?"                                                                                                                        │
+  15    } 2>&1 | tee "evidence/$TS-show-empty.txt"                                                                                                               │
+  16    ```                                                                                                                                                      │
+  17                                                                                                                                                             │
+ -18    期望: 唯一输出行是 `(empty)`, 退出码 0.                                                                                                                  │
+ +24    期望: 两次 `show` 都只输出一行 `(empty)` 且退出码 0.                                                                                                     │
+  19                                                                                                                                                             │
+  20 4. 有数据场景: 用同一个空数据文件依次记录三条 (正文含空格或中文都算一条, 不要加引号以外的包装):                                                             │
+  21                                                                                                                                                             │
+  22    ```bash                                                                                                                                                  │
+     ...                                                                                                                                                         │
+  37    顺序与记录顺序一致, 退出码 0.                                                                                                                            │
+  38    核对方法: `./notes.sh show | cat -A` 可看见 `^I` 制表符与行尾 `$`.                                                                                       │
+  39                                                                                                                                                             │
+  40 5. 取证: 两个 `tee` 文件即证据, 报告里给出路径.                                                                                                             │
+ -41 6. 清理: `rm -rf "$RUN"`; `evidence/` 保留.                                                                                                                 │
+ +47    两个文件名带不同后缀 (`-show-empty`, `-show-list`), 同一秒内先后跑也能区分;                                                                              │
+ +48    重跑同一秒会覆盖同名旧证据, 需要保留旧证据时先换 `TS=$(date +%Y%m%dT%H%M%S)` 再跑.                                                                       │
+ +49 6. 清理: 在同一个 shell 里执行 `rm -rf "$RUN"` (变量为空时不要跑, 先 `echo "$RUN"` 确认); `evidence/` 保留.                                                 │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ Thinking...                                                                                                                                                     │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ read /tmp/orchestra-17/proj-maintain/.agents/skills/verify-fixture/features/add.md                                                                              │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ edit /tmp/orchestra-17/proj-maintain/.agents/skills/verify-fixture/features/add.md                                                                              │
+                                                                                                                                                                 │
+ Could not find edits[0] in /tmp/orchestra-17/proj-maintain/.agents/skills/verify-fixture/features/add.md. The oldText must match exactly including all          │
+ whitespace and newlines.                                                                                                                                        │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ Thinking...                                                                                                                                                     │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ $ cd /tmp/orchestra-17/proj-maintain && sed -n '4,6p' .agents/skills/verify-fixture/features/add.md | cat -A | head -5                                          │
+                                                                                                                                                                 │
+ $                                                                                                                                                               │
+ 1. M-eM-^GM-^FM-eM-$M-^G: M-fM-^LM-^I `SKILL.md` M-eM-^EM-1M-gM-^TM-(M-hM-'M-^DM-eM-^HM-^YM-hM-.M->M-eM-%M-= `ROOT`, `RUN`, `NOTES_DATA`, M-eM-9M-6 `mkdir -p   │
+ evidence/`.$                                                                                                                                                    │
+    M-gM-!M-.M-hM-.M-$M-fM-^UM-0M-fM-^MM-.M-fM-^VM-^GM-dM-;M-6M-fM-^XM-/M-gM-)M-:M-gM-^ZM-^DM-fM-^HM-^VM-dM-8M-^MM-eM--M-^XM-eM-^\M-(: `[ -s "$NOTES_DATA" ] &&  │
+ cat "$NOTES_DATA" || echo "(M-fM-^UM-0M-fM-^MM-.M-fM-^VM-^GM-dM-;M-6M-dM-8M-:M-gM-)M-:M-fM-^HM-^VM-dM-8M-^MM-eM--M-^XM-eM-^\M-()"`.$                            │
+                                                                                                                                                                 │
+ Took 0.0s                                                                                                                                                       │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ edit /tmp/orchestra-17/proj-maintain/.agents/skills/verify-fixture/features/add.md                                                                              │
+                                                                                                                                                                 │
+     ...                                                                                                                                                         │
+   2                                                                                                                                                             │
+   3 产品判据: `docs/PRODUCT.md` 功能 "记录笔记" -- 退出码 0; 输出 `added: <正文>`; 之后 `show` 能在列表末尾看到这条正文.                                        │
+   4                                                                                                                                                             │
+   5 1. 准备: 按 `SKILL.md` 共用规则设好 `ROOT`, `RUN`, `NOTES_DATA`, 并 `mkdir -p evidence/`.                                                                   │
+ - 6    确认数据文件是空的或不存在: `[ -s "$NOTES_DATA" ] && cat "$NOTES_DATA" || echo "(数据文件为空或不存在)"`.                                                │
+ + 6    确认数据文件是空的或不存在: `ls -l "$NOTES_DATA"` 应报 No such file, 或报 0 字节;                                                                        │
+ + 7    若它已有内容说明用错了数据文件, 换个 `$RUN` 重来, 不要往里追写 (配方从至少两条记录开始, 不必先清空).                                                     │
+   7 2. 健康检查: `./notes.sh status` 正常 (见 `SKILL.md`).                                                                                                      │
+   8 3. 操作 (正文是位置参数, 不带选项名):                                                                                                                       │
+   9                                                                                                                                                             │
+  10    ```bash                                                                                                                                                  │
+  11    TS=$(date +%Y%m%dT%H%M%S)                                                                                                                                │
+  12    {                                                                                                                                                        │
+  13      echo "$ ./notes.sh add 第一条笔记"                                                                                                                     │
+  14      ./notes.sh add "第一条笔记"; echo "exit=$?"                                                                                                            │
+ -15      echo "\$ ./notes.sh add 第二条笔记"                                                                                                                    │
+ +16      echo "$ ./notes.sh add 第二条笔记"                                                                                                                     │
+  16      ./notes.sh add "第二条笔记"; echo "exit=$?"                                                                                                            │
+  17      echo "\$ ./notes.sh show"                                                                                                                              │
+  18      ./notes.sh show; echo "exit=$?"                                                                                                                        │
+  19    } 2>&1 | tee "evidence/$TS-add.txt"                                                                                                                      │
+     ...                                                                                                                                                         │
+  24    - 两次 `add` 各输出一行 `added: <正文>`: 先 `added: 第一条笔记`, 后 `added: 第二条笔记`                                                                  │
+  25      (正文原样回显, 不带引号; 前后还有 `$ ...` 命令回显行和 `exit=` 行, 属预期).                                                                            │
+  26    - 末尾那次 `show` 的最后一行是 `<序号>\t第二条笔记`, 且 `第一条笔记` 在它前一行.                                                                         │
+  27 5. 取证: 上面的 `tee` 已把命令, 原始输出和退出码写入 `evidence/$TS-add.txt`; 在报告里给出该路径.                                                            │
+ -28 6. 清理: `rm -rf "$RUN"`; `evidence/` 保留.                                                                                                                 │
+ +29    重跑同一秒会覆盖同名旧证据, 需要保留旧证据时先重新取 `TS`.                                                                                               │
+ +30 6. 清理: 在同一个 shell 里执行 `rm -rf "$RUN"` (变量为空时不要跑, 先 `echo "$RUN"` 确认); `evidence/` 保留.                                                 │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ Thinking...                                                                                                                                                     │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ $ cd /tmp/orchestra-17/proj-maintain && herdr tab close w1E:t42 2>&1 | head -3; herdr tab close w1E:t43 2>&1 | head -3; herdr tab create --workspace            │
+ "$HERDR_WORKSPACE_ID" --cwd "$PWD" --label "S-recipe-rerun-3" --no-focus 2>&1 | python3 -c "import json,sys;                                                    │
+ print(json.load(sys.stdin)['result']['root_pane']['pane_id'])"                                                                                                  │
+                                                                                                                                                                 │
+ {"id":"cli:tab:close","result":{"type":"ok"}}                                                                                                                   │
+ {"id":"cli:tab:close","result":{"type":"ok"}}                                                                                                                   │
+ w1E:p44                                                                                                                                                         │
+                                                                                                                                                                 │
+ Took 0.1s                                                                                                                                                       │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ [python-operation-hook] python -> uv run python                                                                                                                 │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ $ cd /tmp/orchestra-17/proj-maintain && herdr agent start recipe-rerun3 --kind pi --pane w1E:p44 -- --model 'cli/deepseek-v4.1-flash-expires-on-0910' --thinking│
+ high 2>&1 | python3 -c "import json,sys; print(json.load(sys.stdin)['result']['agent']['agent_status'])" && sleep 6 && TASK='你是第三遍复跑者, 未参与编写. 只报 │
+ 告不修改, 不改源码不改配方不 commit.                                                                                                                            │
+                                                                                                                                                                 │
+ 目标项目: /tmp/orchestra-17/proj-maintain                                                                                                                       │
+ 配方: .agents/skills/verify-fixture/SKILL.md + features/add.md + features/show.md                                                                               │
+ 判据: docs/PRODUCT.md                                                                                                                                           │
+ 范围: add 与 show 的全部步骤 + 共用规则 (健康检查, 数据隔离, 取证, 清理). export.md 是历史功能, 不读不跑不改.                                                   │
+                                                                                                                                                                 │
+ 要求:                                                                                                                                                           │
+ 1. 先确认配方"加载入口"的路径指向当前文件 (给绝对路径), 并确认 docs/PRODUCT.md 是当前版本.                                                                      │
+ 2. cd 到项目根, 原样照配方代码块执行, 不改写不省略: 含 show 的空数据两条路径 (文件不存在 / 0 字节) 和三条记录场景, 以及 add 的两条记录加 show 复核.             │
+ 3. 逐条对 PRODUCT.md 通过条件给实际输出与退出码.                                                                                                                │
+ 4. 按配方清理; 确认新取证文件仍在, git status 只有配方文件 modified 和 evidence/ 未跟踪.                                                                        │
+ 5. 报告: 加载来源, 命令与输出摘要, 逐功能通过/不通过, 取证文件绝对路径, 清理与残留检查, 任何照配方做不通处 (文件与条目 + 现象).' && herdr pane send-text w1E:p44│
+ "$TASK" && sleep 2 && herdr agent send-keys recipe-rerun3 "alt+\\" && sleep 8 && herdr agent get recipe-rerun3 2>&1 | python3 -c "import json,sys;              │
+ print(json.load(sys.stdin)['result']['agent']['agent_status'])" (timeout 150s)                                                                                  │
+                                                                                                                                                                 │
+ idle                                                                                                                                                            │
+ {"id":"cli:agent:send-keys","result":{"type":"ok"}}                                                                                                             │
+ done                                                                                                                                                            │
+                                                                                                                                                                 │
+ Took 19.6s                                                                                                                                                      │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ [python-operation-hook] python -> uv run python                                                                                                                 │
+                                                                                                                                                                 │
+ Thinking...                                                                                                                                                     │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ $ cd /tmp/orchestra-17 && herdr pane read w1E:p44 --source recent-unwrapped --lines 60 2>&1 | tail -40                                                          │
+                                                                                                                                                                 │
+ ... (36 earlier lines, ctrl+o/alt+o to expand)                                                                                                                  │
+ ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────│
+ ─                                                                                                                                                               │
+ /tmp/orchestra-17/proj-maintain (main)                                                                                                                          │
+ ↑4.3k ↓949 R12k CH66.3% $0.001 0.8%/1.0M (auto)                                                                  (cli) deepseek-v4.1-flash-expires-on-0910 •    │
+ high                                                                                                                                                            │
+                                                                                                                                                                 │
+ Took 0.2s                                                                                                                                                       │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ Thinking...                                                                                                                                                     │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ $ ls -la /.dockerenv 2>&1; cat /proc/1/cgroup 2>/dev/null | head -3                                                                                             │
+                                                                                                                                                                 │
+ ls: cannot access '/.dockerenv': No such file or directory                                                                                                      │
+ 0::/init.scope                                                                                                                                                  │
+                                                                                                                                                                 │
+ Took 0.0s                                                                                                                                                       │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ Thinking...                                                                                                                                                     │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ $ cd /tmp/orchestra-17 && herdr agent send-keys recipe-rerun3 esc && sleep 2 && herdr pane send-text w1E:p44 '补充: 不要做全盘 find / 或扫描 ~ 目录, 只核对项目 │
+ 内路径即可 (/tmp/orchestra-17/proj-maintain 下的文件). 遇到审批提示就 esc 取消并换用项目内的等价命令. 现在继续按配方实跑.' && herdr agent send-keys             │
+ recipe-rerun3 "alt+\\" && sleep 5 && herdr agent get recipe-rerun3 2>&1 | python3 -c "import json,sys;                                                          │
+ print(json.load(sys.stdin)['result']['agent']['agent_status'])" (timeout 90s)                                                                                   │
+                                                                                                                                                                 │
+ {"id":"cli:agent:send-keys","result":{"type":"ok"}}                                                                                                             │
+ {"id":"cli:agent:send-keys","result":{"type":"ok"}}                                                                                                             │
+ working                                                                                                                                                         │
+                                                                                                                                                                 │
+ Took 7.0s                                                                                                                                                       │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ [python-operation-hook] python -> uv run python                                                                                                                 │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ $ sleep 150; cd /tmp/orchestra-17 && herdr agent get recipe-rerun3 2>&1 | python3 -c "import json,sys;                                                          │
+ print(json.load(sys.stdin)['result']['agent']['agent_status'])" (timeout 200s)                                                                                  │
+                                                                                                                                                                 │
+ done                                                                                                                                                            │
+                                                                                                                                                                 │
+ Took 2m 30s                                                                                                                                                     │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ [python-operation-hook] python -> uv run python                                                                                                                 │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ $ cd /tmp/orchestra-17 && herdr pane read w1E:p44 --source recent-unwrapped --lines 300 2>&1 | tail -70                                                         │
+                                                                                                                                                                 │
+ ... (87 earlier lines, ctrl+o/alt+o to expand)                                                                                                                  │
+ ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────│
+ ─                                                                                                                                                               │
+ /tmp/orchestra-17/proj-maintain (main)                                                                                                                          │
+ ↑7.2k ↓4.6k R63k CH95.8% $0.002 1.5%/1.0M (auto)                                                                 (cli) deepseek-v4.1-flash-expires-on-0910 •    │
+ high                                                                                                                                                            │
+                                                                                                                                                                 │
+ Took 0.8s                                                                                                                                                       │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ Thinking...                                                                                                                                                     │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ edit /tmp/orchestra-17/proj-maintain/.agents/skills/verify-fixture/features/add.md                                                                              │
+                                                                                                                                                                 │
+     ...                                                                                                                                                         │
+   2                                                                                                                                                             │
+   3 产品判据: `docs/PRODUCT.md` 功能 "记录笔记" -- 退出码 0; 输出 `added: <正文>`; 之后 `show` 能在列表末尾看到这条正文.                                        │
+   4                                                                                                                                                             │
+   5 1. 准备: 按 `SKILL.md` 共用规则设好 `ROOT`, `RUN`, `NOTES_DATA`, 并 `mkdir -p evidence/`.                                                                   │
+ - 6    确认数据文件是空的或不存在: `ls -l "$NOTES_DATA"` 应报 No such file , 或报 0 字节;                                                                       │
+ + 6    确认数据文件是空的或不存在: `ls -l "$NOTES_DATA"` 应报 No such file (该命令自身退出码 2, 不属失败) 或报 0 字节;                                          │
+   7    若它已有内容说明用错了数据文件, 换个 `$RUN` 重来, 不要往里追写 (配方从至少两条记录开始, 不必先清空).                                                     │
+   8 2. 健康检查: `./notes.sh status` 正常 (见 `SKILL.md`).                                                                                                      │
+   9 3. 操作 (正文是位置参数, 不带选项名):                                                                                                                       │
+  10                                                                                                                                                             │
+     ...                                                                                                                                                         │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ $ cd /tmp/orchestra-17/proj-maintain && herdr tab close w1E:t44 2>&1 | head -2; herdr tab create --workspace "$HERDR_WORKSPACE_ID" --cwd "$PWD" --label         │
+ "S-recipe-rerun-4" --no-focus 2>&1 | python3 -c "import json,sys; print(json.load(sys.stdin)['result']['root_pane']['pane_id'])"                                │
+                                                                                                                                                                 │
+ {"id":"cli:tab:close","result":{"type":"ok"}}                                                                                                                   │
+ w1E:p45                                                                                                                                                         │
+                                                                                                                                                                 │
+ Took 0.1s                                                                                                                                                       │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ [python-operation-hook] python -> uv run python                                                                                                                 │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ $ cd /tmp/orchestra-17/proj-maintain && herdr agent start recipe-rerun4 --kind pi --pane w1E:p45 -- --model 'cli/deepseek-v4.1-flash-expires-on-0910' --thinking│
+ high 2>&1 | python3 -c "import json,sys; print(json.load(sys.stdin)['result']['agent']['agent_status'])" && sleep 6 && TASK='你是第四遍复跑者, 未参与编写. 只报 │
+ 告不修改, 不改源码不改配方不 commit. 只在项目内操作, 不要 find / 或扫描 ~ (会触发审批, 直接跳过).                                                               │
+                                                                                                                                                                 │
+ 目标项目: /tmp/orchestra-17/proj-maintain                                                                                                                       │
+ 配方: .agents/skills/verify-fixture/SKILL.md + features/add.md + features/show.md                                                                               │
+ 判据: docs/PRODUCT.md                                                                                                                                           │
+ 范围: add 与 show 全部步骤 + 共用规则 (健康检查, 数据隔离, 取证, 清理). export.md 是历史功能, 不读不跑不改.                                                     │
+                                                                                                                                                                 │
+ 要求:                                                                                                                                                           │
+ 1. 确认配方"加载入口"路径指向当前文件 (绝对路径), 并确认 docs/PRODUCT.md 是当前版本.                                                                            │
+ 2. cd 项目根, 原样照配方代码块执行, 不改写: 含 show 空数据两条路径 (文件不存在 / 0 字节) 和三条记录场景, 以及 add 两条记录加 show 复核.                         │
+ 3. 逐条对 PRODUCT.md 通过条件给实际输出与退出码.                                                                                                                │
+ 4. 按配方清理; 确认新取证文件仍在, git status 只有配方三文件 modified 和 evidence/ 未跟踪.                                                                      │
+ 5. 报告: 加载来源, 命令与输出摘要, 逐功能通过/不通过, 取证文件绝对路径, 清理与残留检查, 任何照配方做不通处 (文件与条目 + 现象).' && herdr pane send-text w1E:p45│
+ "$TASK" && sleep 2 && herdr agent send-keys recipe-rerun4 "alt+\\" && sleep 8 && herdr agent get recipe-rerun4 2>&1 | python3 -c "import json,sys;              │
+ print(json.load(sys.stdin)['result']['agent']['agent_status'])" (timeout 150s)                                                                                  │
+                                                                                                                                                                 │
+ idle                                                                                                                                                            │
+ {"id":"cli:agent:send-keys","result":{"type":"ok"}}                                                                                                             │
+ working                                                                                                                                                         │
+                                                                                                                                                                 │
+ Took 20.0s                                                                                                                                                      │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ [python-operation-hook] python -> uv run python                                                                                                                 │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ $ sleep 160; cd /tmp/orchestra-17 && herdr agent get recipe-rerun4 2>&1 | python3 -c "import json,sys; d=json.load(sys.stdin)['result']['agent'];               │
+ print(d['agent_status'])" (timeout 220s)                                                                                                                        │
+                                                                                                                                                                 │
+ done                                                                                                                                                            │
+                                                                                                                                                                 │
+ Took 2m 40s                                                                                                                                                     │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ [python-operation-hook] python -> uv run python                                                                                                                 │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ $ cd /tmp/orchestra-17 && herdr pane read w1E:p45 --source recent-unwrapped --lines 300 2>&1 | tail -50                                                         │
+                                                                                                                                                                 │
+ ... (50 earlier lines, ctrl+o/alt+o to expand)                                                                                                                  │
+ ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────│
+ ──                                                                                                                                                              │
+ /tmp/orchestra-17/proj-maintain (main)                                                                                                                          │
+ ↑7.2k ↓6.8k R67k CH97.5% $0.003 1.7%/1.0M (auto)                                                                  (cli) deepseek-v4.1-flash-expires-on-0910 •   │
+ high                                                                                                                                                            │
+                                                                                                                                                                 │
+ Took 0.9s                                                                                                                                                       │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ Thinking...                                                                                                                                                     │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ $ cd /tmp/orchestra-17/proj-maintain && sed -n '18,34p' .agents/skills/verify-fixture/features/show.md                                                          │
+                                                                                                                                                                 │
+ ... (12 earlier lines, ctrl+o/alt+o to expand)                                                                                                                  │
+      echo "$ ./notes.sh add 第一条笔记"                                                                                                                         │
+      ./notes.sh add "第一条笔记"; echo "exit=$?"                                                                                                                │
+      echo "$ ./notes.sh add '第二条 带空格的笔记'"                                                                                                              │
+      ./notes.sh add "第二条 带空格的笔记"; echo "exit=$?"                                                                                                       │
+      echo "$ ./notes.sh add 第三条笔记"                                                                                                                         │
+                                                                                                                                                                 │
+ Took 0.0s                                                                                                                                                       │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ edit /tmp/orchestra-17/proj-maintain/.agents/skills/verify-fixture/features/show.md                                                                             │
+                                                                                                                                                                 │
+     ...                                                                                                                                                         │
+  22    ```                                                                                                                                                      │
+  23                                                                                                                                                             │
+  24    期望: 两次 `show` 都只输出一行 `(empty)` 且退出码 0.                                                                                                     │
+  25                                                                                                                                                             │
+ -26 4. 有数据场景: 用同一个空数据文件依次记录三条 (正文含空格或中文都算一条, 不要加引号以外的包装):                                                             │
+ +26 4. 有数据场景: 用同一个空数据文件依次记录三条 (正文含空格或中文都算一条, 不要加引号以外的包装).                                                             │
+ +27    代码块自己取一次时间戳, 不依赖步骤 3 的 `$TS`, 步骤 3, 4 分开在别的 shell 里跑也不会写出空文件名的证据:                                                  │
+  27                                                                                                                                                             │
+  28    ```bash                                                                                                                                                  │
+ +30    TS=$(date +%Y%m%dT%H%M%S)                                                                                                                                │
+  29    {                                                                                                                                                        │
+  30      echo "$ ./notes.sh add 第一条笔记"                                                                                                                     │
+  31      ./notes.sh add "第一条笔记"; echo "exit=$?"                                                                                                            │
+  32      echo "$ ./notes.sh add '第二条 带空格的笔记'"                                                                                                          │
+     ...                                                                                                                                                         │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ edit /tmp/orchestra-17/proj-maintain/.agents/skills/verify-fixture/features/add.md                                                                              │
+                                                                                                                                                                 │
+     ...                                                                                                                                                         │
+   2                                                                                                                                                             │
+   3 产品判据: `docs/PRODUCT.md` 功能 "记录笔记" -- 退出码 0; 输出 `added: <正文>`; 之后 `show` 能在列表末尾看到这条正文.                                        │
+   4                                                                                                                                                             │
+   5 1. 准备: 按 `SKILL.md` 共用规则设好 `ROOT`, `RUN`, `NOTES_DATA`, 并 `mkdir -p evidence/`.                                                                   │
+ - 6    确认数据文件是空的或不存在: `ls -l "$NOTES_DATA"` 应报 No such file (该命令自身退出码 2, 不属失败) 或报 0 字节;                                          │
+ + 6    确认数据文件是空的或不存在: `ls -l "$NOTES_DATA"` 应报 `ls: cannot access ...: No such file or directory`                                                │
+ + 7    (该命令自身退出码 2, 不属失败) 或报 0 字节;                                                                                                              │
+   7    若它已有内容说明用错了数据文件, 换个 `$RUN` 重来, 不要往里追写 (配方从至少两条记录开始, 不必先清空).                                                     │
+   8 2. 健康检查: `./notes.sh status` 正常 (见 `SKILL.md`).                                                                                                      │
+   9 3. 操作 (正文是位置参数, 不带选项名):                                                                                                                       │
+  10                                                                                                                                                             │
+     ...                                                                                                                                                         │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ $ cd /tmp/orchestra-17/proj-maintain && herdr tab close w1E:t45 2>&1 | head -2; herdr tab create --workspace "$HERDR_WORKSPACE_ID" --cwd "$PWD" --label         │
+ "S-recipe-rerun-5" --no-focus 2>&1 | python3 -c "import json,sys; print(json.load(sys.stdin)['result']['root_pane']['pane_id'])"                                │
+                                                                                                                                                                 │
+ {"id":"cli:tab:close","result":{"type":"ok"}}                                                                                                                   │
+ w1E:p4B                                                                                                                                                         │
+                                                                                                                                                                 │
+ Took 0.1s                                                                                                                                                       │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ [python-operation-hook] python -> uv run python                                                                                                                 │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ $ cd /tmp/orchestra-17/proj-maintain && herdr agent start recipe-rerun5 --kind pi --pane w1E:p4B -- --model 'cli/deepseek-v4.1-flash-expires-on-0910' --thinking│
+ high 2>&1 | python3 -c "import json,sys; print(json.load(sys.stdin)['result']['agent']['agent_status'])" && sleep 6 && TASK='你是第五遍复跑者, 未参与编写, 只报 │
+ 告不修改 (不改源码/配方, 不 commit). 只在项目内操作, 不要 find / 或扫描 ~ (会触发审批, 跳过).                                                                   │
+                                                                                                                                                                 │
+ 目标项目: /tmp/orchestra-17/proj-maintain                                                                                                                       │
+ 配方: .agents/skills/verify-fixture/SKILL.md + features/add.md + features/show.md                                                                               │
+ 判据: docs/PRODUCT.md                                                                                                                                           │
+ 范围: add 与 show 全部步骤 + 共用规则 (健康检查, 数据隔离, 取证, 清理). export.md 历史功能, 不读不跑不改.                                                       │
+                                                                                                                                                                 │
+ 本轮重点: 配方刚改了取证时间戳写法. 请特地验证 show.md 步骤 3 与步骤 4 分别在两个不同 shell (两块独立 bash 调用) 执行时, 证据文件名仍然正常 (不是               │
+ evidence/-show-list.txt 这类空时间戳).                                                                                                                          │
+                                                                                                                                                                 │
+ 要求:                                                                                                                                                           │
+ 1. 确认配方"加载入口"路径指向当前文件 (绝对路径), docs/PRODUCT.md 是当前版本.                                                                                   │
+ 2. cd 项目根, 原样照配方代码块执行, 不改写: show 空数据两条路径 (文件不存在 / 0 字节), show 三条记录场景, add 两条记录加 show 复核. 步骤 3 和 4 分两个独立 shell│
+ 跑.                                                                                                                                                             │
+ 3. 逐条对 PRODUCT.md 通过条件给实际输出与退出码.                                                                                                                │
+ 4. 按配方清理; 确认新取证文件仍在, git status 只有配方三文件 modified 和 evidence/ 未跟踪.                                                                      │
+ 5. 报告: 加载来源, 命令与输出摘要, 取证文件名清单, 逐功能通过/不通过, 清理与残留检查, 任何做不通处 (文件与条目 + 现象).' && herdr pane send-text w1E:p4B "$TASK"│
+ && sleep 2 && herdr agent send-keys recipe-rerun5 "alt+\\" && sleep 8 && herdr agent get recipe-rerun5 2>&1 | python3 -c "import json,sys;                      │
+ print(json.load(sys.stdin)['result']['agent']['agent_status'])" (timeout 150s)                                                                                  │
+                                                                                                                                                                 │
+ idle                                                                                                                                                            │
+ {"id":"cli:agent:send-keys","result":{"type":"ok"}}                                                                                                             │
+ working                                                                                                                                                         │
+                                                                                                                                                                 │
+ Took 20.1s                                                                                                                                                      │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ [python-operation-hook] python -> uv run python                                                                                                                 │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ $ sleep 170; cd /tmp/orchestra-17 && herdr agent get recipe-rerun5 2>&1 | python3 -c "import json,sys;                                                          │
+ print(json.load(sys.stdin)['result']['agent']['agent_status'])" (timeout 220s)                                                                                  │
+                                                                                                                                                                 │
+ done                                                                                                                                                            │
+                                                                                                                                                                 │
+ Took 2m 50s                                                                                                                                                     │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ [python-operation-hook] python -> uv run python                                                                                                                 │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ $ cd /tmp/orchestra-17 && herdr pane read w1E:p4B --source recent-unwrapped --lines 300 2>&1 | tail -55                                                         │
+                                                                                                                                                                 │
+ ... (59 earlier lines, ctrl+o/alt+o to expand)                                                                                                                  │
+ ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────│
+ ──                                                                                                                                                              │
+ /tmp/orchestra-17/proj-maintain (main)                                                                                                                          │
+ ↑6.7k ↓5.4k R72k CH96.2% $0.003 1.5%/1.0M (auto)                                                                  (cli) deepseek-v4.1-flash-expires-on-0910 •   │
+ high                                                                                                                                                            │
+                                                                                                                                                                 │
+ Took 0.9s                                                                                                                                                       │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ Thinking...                                                                                                                                                     │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ edit /tmp/orchestra-17/proj-maintain/.agents/skills/verify-fixture/features/show.md                                                                             │
+                                                                                                                                                                 │
+ Could not find the exact text in /tmp/orchestra-17/proj-maintain/.agents/skills/verify-fixture/features/show.md. The old text must match exactly including all  │
+ whitespace and newlines.                                                                                                                                        │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ $ cd /tmp/orchestra-17/proj-maintain && sed -n '24,30p' .agents/skills/verify-fixture/features/show.md                                                          │
+                                                                                                                                                                 │
+ ... (2 earlier lines, ctrl+o/alt+o to expand)                                                                                                                   │
+ 4. 有数据场景: 用同一个空数据文件依次记录三条 (正文含空格或中文都算一条, 不要加引号以外的包装).                                                                 │
+    代码块自己取一次时间戳, 不依赖步骤 3 的 `$TS`, 步骤 3, 4 分开在别的 shell 里跑也不会写出空文件名的证据:                                                      │
+                                                                                                                                                                 │
+    ```bash                                                                                                                                                      │
+    TS=$(date +%Y%m%dT%H%M%S)                                                                                                                                    │
+                                                                                                                                                                 │
+ Took 0.0s                                                                                                                                                       │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ edit /tmp/orchestra-17/proj-maintain/.agents/skills/verify-fixture/features/show.md                                                                             │
+                                                                                                                                                                 │
+     ...                                                                                                                                                         │
+  23                                                                                                                                                             │
+  24    期望: 两次 `show` 都只输出一行 `(empty)` 且退出码 0.                                                                                                     │
+  25                                                                                                                                                             │
+  26 4. 有数据场景: 用同一个空数据文件依次记录三条 (正文含空格或中文都算一条, 不要加引号以外的包装).                                                             │
+ +27    步骤 3 与 4 最好在同一个 shell 里连贯跑; 换了 shell 时用显式路径接回同一个数据文件:                                                                      │
+ +28    `RUN=<步骤 3 用的目录>; export NOTES_DATA=$RUN/items.txt; echo "$NOTES_DATA"`                                                                            │
+ +29    (不要重跑 `mktemp`, 否则拿到新空文件; 不重设 `NOTES_DATA` 则回落到默认 `data/items.txt`).                                                                │
+  27    代码块自己取一次时间戳, 不依赖步骤 3 的 `$TS`, 步骤 3, 4 分开在别的 shell 里跑也不会写出空文件名的证据:                                                  │
+  28                                                                                                                                                             │
+  29    ```bash                                                                                                                                                  │
+  30    TS=$(date +%Y%m%dT%H%M%S)                                                                                                                                │
+     ...                                                                                                                                                         │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ $ cd /tmp/orchestra-17/proj-maintain && herdr tab close w1E:t4B 2>&1 | head -2; herdr tab create --workspace "$HERDR_WORKSPACE_ID" --cwd "$PWD" --label         │
+ "S-recipe-final" --no-focus 2>&1 | python3 -c "import json,sys; print(json.load(sys.stdin)['result']['root_pane']['pane_id'])"                                  │
+                                                                                                                                                                 │
+ {"id":"cli:tab:close","result":{"type":"ok"}}                                                                                                                   │
+ w1E:p4F                                                                                                                                                         │
+                                                                                                                                                                 │
+ Took 0.1s                                                                                                                                                       │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ [python-operation-hook] python -> uv run python                                                                                                                 │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ $ cd /tmp/orchestra-17/proj-maintain && herdr agent start recipe-final --kind pi --pane w1E:p4F -- --model 'cli/deepseek-v4.1-flash-expires-on-0910' --thinking │
+ high 2>&1 | python3 -c "import json,sys; print(json.load(sys.stdin)['result']['agent']['agent_status'])" && sleep 6 && TASK='你是最终复跑者, 未参与编写, 只报告 │
+ 不修改 (不改源码/配方, 不 commit). 只在项目内操作, 不要 find / 或扫描 ~ (会触发审批).                                                                           │
+                                                                                                                                                                 │
+ 目标项目: /tmp/orchestra-17/proj-maintain                                                                                                                       │
+ 配方: .agents/skills/verify-fixture/SKILL.md + features/add.md + features/show.md                                                                               │
+ 判据: docs/PRODUCT.md                                                                                                                                           │
+ 范围: add 与 show 全部步骤 + 共用规则 (健康检查, 数据隔离, 取证, 清理). export.md 历史功能, 不读不跑不改.                                                       │
+                                                                                                                                                                 │
+ 要求:                                                                                                                                                           │
+ 1. 确认配方"加载入口"路径指向当前文件 (绝对路径), docs/PRODUCT.md 是当前版本.                                                                                   │
+ 2. cd 项目根, 原样照配方代码块执行, 不改写: show 步骤3 空数据两条路径 (文件不存在 / 0 字节), show 步骤4 三条记录 (故意换一个 shell 跑, 按配方新写的提示接回同一 │
+ 数据文件), add 步骤两条记录加 show 复核.                                                                                                                        │
+ 3. 逐条对 PRODUCT.md 通过条件给实际输出与退出码.                                                                                                                │
+ 4. 按配方清理; 确认新取证文件仍在, git status 只有配方三文件 modified 和 evidence/ 未跟踪.                                                                      │
+ 5. 报告: 加载来源, 命令与输出摘要, 取证文件名清单, 逐功能通过/不通过, 清理与残留检查, 任何做不通处 (文件与条目 + 现象).' && herdr pane send-text w1E:p4F "$TASK"│
+ && sleep 2 && herdr agent send-keys recipe-final "alt+\\" && sleep 8 && herdr agent get recipe-final 2>&1 | python3 -c "import json,sys;                        │
+ print(json.load(sys.stdin)['result']['agent']['agent_status'])" (timeout 150s)                                                                                  │
+                                                                                                                                                                 │
+ idle                                                                                                                                                            │
+ {"id":"cli:agent:send-keys","result":{"type":"ok"}}                                                                                                             │
+ working                                                                                                                                                         │
+                                                                                                                                                                 │
+ Took 19.7s                                                                                                                                                      │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ [python-operation-hook] python -> uv run python                                                                                                                 │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ $ sleep 165; cd /tmp/orchestra-17 && herdr agent get recipe-final 2>&1 | python3 -c "import json,sys;                                                           │
+ print(json.load(sys.stdin)['result']['agent']['agent_status'])" (timeout 220s)                                                                                  │
+                                                                                                                                                                 │
+ done                                                                                                                                                            │
+                                                                                                                                                                 │
+ Took 2m 45s                                                                                                                                                     │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ [python-operation-hook] python -> uv run python                                                                                                                 │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ $ cd /tmp/orchestra-17 && herdr pane read w1E:p4F --source recent-unwrapped --lines 300 2>&1 | tail -50                                                         │
+                                                                                                                                                                 │
+ ... (48 earlier lines, ctrl+o/alt+o to expand)                                                                                                                  │
+ ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────│
+ ─                                                                                                                                                               │
+ /tmp/orchestra-17/proj-maintain (main)                                                                                                                          │
+ ↑10k ↓5.7k R97k CH97.4% $0.003 1.8%/1.0M (auto)                                                                  (cli) deepseek-v4.1-flash-expires-on-0910 •    │
+ high                                                                                                                                                            │
+                                                                                                                                                                 │
+ Took 0.8s                                                                                                                                                       │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ Thinking...                                                                                                                                                     │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ $ cd /tmp/orchestra-17 && herdr tab close w1E:t4F 2>&1 | head -2; ls -d /tmp/notes-verify-* 2>&1 | head; ls -d /tmp/notes-extra-* 2>&1 | head -3; ls -d /tmp/o17│
+ 2>&1; cd /tmp/orchestra-17/proj-maintain && ls data 2>&1; git status --porcelain; ls evidence | wc -l; ls evidence                                              │
+                                                                                                                                                                 │
+ ... (26 earlier lines, ctrl+o/alt+o to expand)                                                                                                                  │
+ 20261020T031207-show-list.txt                                                                                                                                   │
+ 20261020T031209-add.txt                                                                                                                                         │
+ 20261020T031532-show-empty.txt                                                                                                                                  │
+ 20261020T031534-show-list.txt                                                                                                                                   │
+ 20261020T031536-add.txt                                                                                                                                         │
+                                                                                                                                                                 │
+ Took 0.1s                                                                                                                                                       │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ $ rm -rf /tmp/o17 && mkdir -p /tmp/orchestra-17/proj-maintain/evidence/superseded-iterations && cd /tmp/orchestra-17/proj-maintain/evidence && for f in         │
+ 20261020T0259*.txt 20261020T0300*.txt 20261020T0302*.txt 20261020T0305*.txt 20261020T0308*.txt 20261020T0312*.txt; do mv "$f" superseded-iterations/            │
+ 2>/dev/null; done; ls; echo "--- superseded:"; ls superseded-iterations | wc -l; cd /tmp/orchestra-17/proj-maintain && git status --porcelain && git diff --stat│
+ && diff -r /tmp/orchestra-17/baseline/verify-fixture .agents/skills/verify-fixture --brief                                                                      │
+                                                                                                                                                                 │
+ ... (15 earlier lines, ctrl+o/alt+o to expand)                                                                                                                  │
+ 文件 /tmp/orchestra-17/baseline/verify-fixture/features/show.md 和 .agents/skills/verify-fixture/features/show.md 不同                                          │
+ 文件 /tmp/orchestra-17/baseline/verify-fixture/SKILL.md 和 .agents/skills/verify-fixture/SKILL.md 不同                                                          │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ Command exited with code 1                                                                                                                                      │
+                                                                                                                                                                 │
+ Took 0.0s                                                                                                                                                       │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ $ cd /tmp/orchestra-17/proj-maintain && git diff -- .agents/skills/verify-fixture/SKILL.md && echo "===== export.md unchanged:" && git status --porcelain       │
+ .agents/skills/verify-fixture/features/export.md; echo "(空即未改)"                                                                                             │
+                                                                                                                                                                 │
+ ... (53 earlier lines, ctrl+o/alt+o to expand)                                                                                                                  │
+ +历史功能, 当前 PRODUCT.md 未覆盖, 本配方不为它担保, 也不要拿它当通过判据:                                                                                      │
+ +                                                                                                                                                               │
+  - 导出笔记: [features/export.md](features/export.md)                                                                                                           │
+ ===== export.md unchanged:                                                                                                                                      │
+ (空即未改)                                                                                                                                                      │
+                                                                                                                                                                 │
+ Took 0.0s                                                                                                                                                       │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ Thinking...                                                                                                                                                     │
+                                                                                                                                                                 │
+ 维护完成. 报告如下.                                                                                                                                             │
+                                                                                                                                                                 │
+ 本次范围                                                                                                                                                        │
+                                                                                                                                                                 │
+ - 判据: docs/PRODUCT.md (工作区版本与 HEAD d55efe2 内容一致, 未改动)                                                                                            │
+ - 目标项目: /tmp/orchestra-17/proj-maintain; 配方: .agents/skills/verify-fixture/ (SKILL.md, features/add.md, features/show.md)                                 │
+ - 核对的: 功能 add, show; 共用规则 健康检查, 数据隔离, 取证, 清理                                                                                               │
+ - 不动: features/export.md (Product 已列非目标, 未读入判据, 未跑, 文件零改动)                                                                                   │
+ - 未验证: export 实际行为; 同一秒重跑覆盖同名证据的极端情况; PRODUCT.md 之外的边界 (空正文, 含制表符正文)                                                       │
+                                                                                                                                                                 │
+ 分类发现                                                                                                                                                        │
+                                                                                                                                                                 │
+ 文档漂移 (配方写的命令/路径与事实不符, 产品本身没问题)                                                                                                          │
+ 1. SKILL.md 健康检查写 ./notes.sh doctor; 脚本无此子命令, 实测退出码 2 输出 usage. 实为 status (输出 notes-cli 0.2.0, data_path: ...)                           │
+ 2. SKILL.md 数据目录写 data/notes.txt; 实际 data/items.txt                                                                                                      │
+ 3. add.md 写 ./notes.sh add --text "第一条笔记"; 脚本只取位置参数, 实测把 --text 当正文 (added: --text, 第三条参数被丢弃)                                       │
+                                                                                                                                                                 │
+ 驱动缺口 (照原文做会失败或取不到证)                                                                                                                             │
+ 4. 取证目录不存在就 tee evidence/... 会失败; 原文没有 mkdir -p evidence/                                                                                        │
+ 5. 清理写 rm -rf data/, 会连带删掉用户既有数据; 且 add/show 共用默认文件互相污染. 改为 NOTES_DATA 指向 mktemp -d 临时文件, 清理只删自己那个目录                 │
+ 6. show.md 缺 Product 要求的关联复核 ("之后 show 能在列表末尾看到"), 只孤立跑 show                                                                              │
+ 7. Product 的 "没有记录" 有两条路径 (文件不存在 / 0 字节), 原文只覆盖一条                                                                                       │
+ 8. 跨 shell 隐患 (复跑实测踩到): 时间戳变量或 NOTES_DATA 丢失时, 证据文件名变成空 -show-list.txt, 数据静默回落到 data/items.txt. 已写明两处提示
+
+ 产品缺陷: 无. add 与 show 实测行为均满足 Product 全部条款.
+
+ 已证实修正
+
+ git status: 只有三个配方文件 modified (+116/-12), 源码/配置/测试零改动, 未 commit.
+
+ - SKILL.md: 新增"加载入口" (项目根 = 上溯三级, 判据路径, 冲突时以 PRODUCT 为准); 健康检查改 status 并说明对不上时验证者停手报告; 数据隔离片段 + 环境变量传递注意
+   ; 参数形式是位置参数; 取证含退出码; 清理只动自己创建的数据; 功能表区分"Product 覆盖"与"历史功能不担保"
+ - features/add.md: 位置参数写法, 两条记录 + show 末尾复核, 逐条期望, tee 带命令回显与 exit=, 清理与时间戳提示
+ - features/show.md: 空数据两条路径, 三条记录 (含空格正文) + cat -A 核对制表符, 步骤 4 自带时间戳, 换 shell 时显式接回同一数据文件
+
+ 复跑证据 (最终版本那一轮):
+ - evidence/20261020T031532-show-empty.txt, ...31534-show-list.txt, ...31536-add.txt
+
+ 子会话复跑记录 (6 轮, 均为未参与编写的新会话, pi + deepseek-v4.1-flash high):
+
+ ┌──────┬──────────────────┬─────────────────────────────────────┐
+ │ 轮次 │ 用途             │ 结果                                │
+ ├──────┼──────────────────┼─────────────────────────────────────┤
+ │ 1    │ 初版实跑         │ add/show 通过; 反馈 5 处文字瑕疵    │
+ ├──────┼──────────────────┼─────────────────────────────────────┤
+ │ 2    │ 修文字后         │ 通过; 反馈 4 处                     │
+ ├──────┼──────────────────┼─────────────────────────────────────┤
+ │ 3    │ 补空数据双路径后 │ 通过; 反馈 4 处                     │
+ ├──────┼──────────────────┼─────────────────────────────────────┤
+ │ 4    │ 修措辞后         │ 通过; 指出跨 shell $TS 隐患         │
+ ├──────┼──────────────────┼─────────────────────────────────────┤
+ │ 5    │ 时间戳自取后     │ 通过; 指出跨 shell 数据文件接回未写 │
+ ├──────┼──────────────────┼─────────────────────────────────────┤
+ │ 6    │ 最终版           │ 通过, 无阻塞项                      │
+ └──────┴──────────────────┴─────────────────────────────────────┘
+
+ 每轮都核对了配方声明的加载来源确实指向项目当前文件 (绝对路径 + PRODUCT.md 与 HEAD 同哈希), 无旧缓存或别处同名副本参与.
+
+ 清理与缺口
+
+ - /tmp/notes-verify-*, /tmp/o17 无残留; 项目内 data/ 从未创建, 默认数据未被污染
+ - evidence/ 保留: 顶层 3 个属最终版本证据, 此前 18 个迭代证据移到 evidence/superseded-iterations/ (未删, 可复核)
+ - 我创建的 6 个 herdr 会话全部已关闭
+ - 缺口: evidence/ 目前是未跟踪目录, 是否入库或加忽略由你决定 (属项目配置, 我不动)
+ - 第 1 轮子会话自身有一次操作失误 (把环境变量写临时文件再 source, 导致写入默认 data/items.txt), 它已自删该文件与作废证据并重跑; 这属于复跑者操作问题, 但暴露了配
+   方没写环境变量传递方式, 已补进 SKILL.md
+
+──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+
+──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+/tmp/orchestra-17/proj-maintain (main)
+↑35k ↓22k R1.9M CH97.8% $0.017 5.0%/1.0M (auto)                                                                   (cli) deepseek-v4.1-flash-expires-on-0910 • high

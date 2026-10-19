@@ -1,0 +1,8 @@
+# 查看笔记 / 空数据
+work=/tmp/notes-cli-verify-Kds7lb
+NOTES_DATA=/tmp/notes-cli-verify-Kds7lb/items.txt
+items.txt_exists=no
+cmd: ./notes.sh show
+exit: 0
+out: (empty)
+assert: exit=0 out_ok=1

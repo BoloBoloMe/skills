@@ -1,0 +1,13 @@
+# 查看笔记/有数据 (第二轮)
+work=/tmp/tmp.TeGIOmau10
+NOTES_DATA=/tmp/tmp.TeGIOmau10/items.txt
+cmd: ./notes.sh add "第一条笔记"
+added: 第一条笔记
+cmd: ./notes.sh add "第二条笔记"
+added: 第二条笔记
+cmd: ./notes.sh show
+exit: 0
+out:
+1	第一条笔记
+2	第二条笔记
+assert: exit=0 out_ok=1 lines=2

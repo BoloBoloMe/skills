@@ -1,0 +1,216 @@
+== git status -uall ==
+ M .agents/skills/verify-fixture/SKILL.md
+ M .agents/skills/verify-fixture/features/add.md
+ M .agents/skills/verify-fixture/features/show.md
+?? evidence/20261020T031532-show-empty.txt
+?? evidence/20261020T031534-show-list.txt
+?? evidence/20261020T031536-add.txt
+?? evidence/superseded-iterations/20261020T025909-show-empty.txt
+?? evidence/superseded-iterations/20261020T025909-show-list.txt
+?? evidence/superseded-iterations/20261020T030052-add.txt
+?? evidence/superseded-iterations/20261020T030055-show-empty.txt
+?? evidence/superseded-iterations/20261020T030055-show-list.txt
+?? evidence/superseded-iterations/20261020T030226-show-list.txt
+?? evidence/superseded-iterations/20261020T030251-add.txt
+?? evidence/superseded-iterations/20261020T030254-show-empty.txt
+?? evidence/superseded-iterations/20261020T030254-show-list.txt
+?? evidence/superseded-iterations/20261020T030547-add.txt
+?? evidence/superseded-iterations/20261020T030549-show-empty.txt
+?? evidence/superseded-iterations/20261020T030549-show-list.txt
+?? evidence/superseded-iterations/20261020T030854-add.txt
+?? evidence/superseded-iterations/20261020T030857-show-empty.txt
+?? evidence/superseded-iterations/20261020T030857-show-list.txt
+?? evidence/superseded-iterations/20261020T031205-show-empty.txt
+?? evidence/superseded-iterations/20261020T031207-show-list.txt
+?? evidence/superseded-iterations/20261020T031209-add.txt
+== git diff --stat ==
+ .agents/skills/verify-fixture/SKILL.md         | 39 ++++++++++++++++--
+ .agents/skills/verify-fixture/features/add.md  | 33 +++++++++++++--
+ .agents/skills/verify-fixture/features/show.md | 56 ++++++++++++++++++++++++--
+ 3 files changed, 116 insertions(+), 12 deletions(-)
+== git diff (recipes) ==
+diff --git a/.agents/skills/verify-fixture/SKILL.md b/.agents/skills/verify-fixture/SKILL.md
+index 04107ad..2213ffd 100644
+--- a/.agents/skills/verify-fixture/SKILL.md
++++ b/.agents/skills/verify-fixture/SKILL.md
+@@ -7,16 +7,47 @@ disable-model-invocation: true
+ # notes-cli 验证配方
+ 
+ 本项目本地配方让陌生 agent 按 `docs/PRODUCT.md` 实跑记录与查看两个入口.
++通过与否只由 `docs/PRODUCT.md` 判定; 本配方只负责怎么启动, 驱动, 取证, 清理.
++
++## 加载入口
++
++- 项目根: 本配方位于 `<项目根>/.agents/skills/verify-fixture/`, 即项目根是本文件所在目录上溯三级.
++- 产品判据: `<项目根>/docs/PRODUCT.md`, 执行前先读; 与配方描述冲突时以它为准并报告.
+ 
+ ## 共用规则
+ 
+-- 健康检查: `./notes.sh doctor`, 应输出 `notes-cli 0.2.0` 与数据路径.
+-- 数据目录: `data/notes.txt`.
+-- 取证: 每次运行输出存到 `evidence/<时间>-<功能>.txt`.
+-- 清理: `rm -rf data/`.
++- 健康检查: 在项目根执行 `./notes.sh status`, 应输出 `notes-cli 0.2.0` 与一行 `data_path: <路径>`.
++  命令或版本对不上说明配方过时: 只负责验证的人就此停下并报告, 不要自己改判据;
++  维护配方的人先修好这条规则再跑功能 (不要用 `doctor`, 该子命令不存在).
++- 数据隔离: 每次实跑用独立数据文件, 不要用默认的 `data/items.txt`.
++  默认路径是 `<项目根>/data/items.txt` (README 说明), 用 `NOTES_DATA` 覆盖.
++  下面的片段必须在项目根目录执行 (先 `cd <项目根>`), 因为根是相对当前位置上溯三级得出的;
++  换目录执行会静默算出错误的根. 跑完 `echo "$ROOT"` 与 `pwd` 应相同.
++
++  ```bash
++  ROOT=$(cd .agents/skills/verify-fixture/../../.. && pwd)
++  RUN=$(mktemp -d /tmp/notes-verify-XXXXXX)
++  export NOTES_DATA=$RUN/items.txt
++  ```
++
++- 环境变量传递: `NOTES_DATA` 用 `export` 设一次, 后续命令都在同一个 shell 里跑.
++  不要写进临时文件再 `source` 或塞进命令行前缀以外的包装, 写错时它会静默回落成默认数据文件
++  (`data/items.txt`), 污染真实数据; 用 `echo "$NOTES_DATA"` 自查非空且指向 `$RUN`.
++- 参数形式: 子命令参数都是位置参数, 没有 `--text` 之类的选项; `add --text "内容"` 会把 `--text` 当正文记录.
++- 取证: 先 `mkdir -p evidence/`, 把每次运行的命令与原始输出 (含退出码) 存到
++  `evidence/<时间>-<功能>.txt`, 例如 `evidence/20261020T101500-add.txt`.
++  取证文件留在项目内, 不要随清理删除.
++- 清理: 只清自己创建的数据: `rm -rf "$RUN"`; 若确实创建了默认数据文件, 也只删自己新建的 `data/items.txt`
++  (运行前已存在则保留). 不删别人的实例或数据, 不删 `evidence/`.
++- 时间戳可用 `date +%Y%m%dT%H%M%S`.
+ 
+ ## 功能入口
+ 
++本次 PRODUCT.md 覆盖的功能:
++
+ - 记录笔记: [features/add.md](features/add.md)
+ - 查看笔记: [features/show.md](features/show.md)
++
++历史功能, 当前 PRODUCT.md 未覆盖, 本配方不为它担保, 也不要拿它当通过判据:
++
+ - 导出笔记: [features/export.md](features/export.md)
+diff --git a/.agents/skills/verify-fixture/features/add.md b/.agents/skills/verify-fixture/features/add.md
+index 29019b1..f6e3cd4 100644
+--- a/.agents/skills/verify-fixture/features/add.md
++++ b/.agents/skills/verify-fixture/features/add.md
+@@ -1,6 +1,31 @@
+ # 记录笔记
+ 
+-1. 前置: 数据目录 `data/` 不存在时先 `mkdir -p data/`.
+-2. 操作: `./notes.sh add --text "第一条笔记"`.
+-3. 期望: 退出码 0, 输出 `added: 第一条笔记`.
+-4. 取证: `./notes.sh show > evidence/<时间>-add.txt`.
++产品判据: `docs/PRODUCT.md` 功能 "记录笔记" -- 退出码 0; 输出 `added: <正文>`; 之后 `show` 能在列表末尾看到这条正文.
++
++1. 准备: 按 `SKILL.md` 共用规则设好 `ROOT`, `RUN`, `NOTES_DATA`, 并 `mkdir -p evidence/`.
++   确认数据文件是空的或不存在: `ls -l "$NOTES_DATA"` 应报 `ls: cannot access ...: No such file or directory`
++   (该命令自身退出码 2, 不属失败) 或报 0 字节;
++   若它已有内容说明用错了数据文件, 换个 `$RUN` 重来, 不要往里追写 (配方从至少两条记录开始, 不必先清空).
++2. 健康检查: `./notes.sh status` 正常 (见 `SKILL.md`).
++3. 操作 (正文是位置参数, 不带选项名):
++
++   ```bash
++   TS=$(date +%Y%m%dT%H%M%S)
++   {
++     echo "$ ./notes.sh add 第一条笔记"
++     ./notes.sh add "第一条笔记"; echo "exit=$?"
++     echo "$ ./notes.sh add 第二条笔记"
++     ./notes.sh add "第二条笔记"; echo "exit=$?"
++     echo "\$ ./notes.sh show"
++     ./notes.sh show; echo "exit=$?"
++   } 2>&1 | tee "evidence/$TS-add.txt"
++   ```
++
++4. 期望 (逐条对照):
++   - 两次 `add` 退出码都是 0.
++   - 两次 `add` 各输出一行 `added: <正文>`: 先 `added: 第一条笔记`, 后 `added: 第二条笔记`
++     (正文原样回显, 不带引号; 前后还有 `$ ...` 命令回显行和 `exit=` 行, 属预期).
++   - 末尾那次 `show` 的最后一行是 `<序号>\t第二条笔记`, 且 `第一条笔记` 在它前一行.
++5. 取证: 上面的 `tee` 已把命令, 原始输出和退出码写入 `evidence/$TS-add.txt`; 在报告里给出该路径.
++   重跑同一秒会覆盖同名旧证据, 需要保留旧证据时先重新取 `TS`.
++6. 清理: 在同一个 shell 里执行 `rm -rf "$RUN"` (变量为空时不要跑, 先 `echo "$RUN"` 确认); `evidence/` 保留.
+diff --git a/.agents/skills/verify-fixture/features/show.md b/.agents/skills/verify-fixture/features/show.md
+index f39f697..6071337 100644
+--- a/.agents/skills/verify-fixture/features/show.md
++++ b/.agents/skills/verify-fixture/features/show.md
+@@ -1,6 +1,54 @@
+ # 查看笔记
+ 
+-1. 前置: 数据目录 `data/` 不存在时先 `mkdir -p data/`.
+-2. 操作: `./notes.sh show`.
+-3. 期望: 空数据输出 `(empty)`; 有数据时每行 `<序号>\t<正文>`.
+-4. 取证: `./notes.sh show > evidence/<时间>-show.txt`.
++产品判据: `docs/PRODUCT.md` 功能 "查看笔记" -- 每行 `<序号>\t<正文>`, 序号从 1 连续递增, 顺序与实际记录一致;
++没有记录时输出 `(empty)` 且退出码 0.
++
++1. 准备: 按 `SKILL.md` 共用规则设好 `ROOT`, `RUN`, `NOTES_DATA`, 并 `mkdir -p evidence/`.
++2. 健康检查: `./notes.sh status` 正常 (见 `SKILL.md`).
++3. 空数据场景 (独立数据文件, 不要先 `add`); PRODUCT 的 "没有记录" 有两条路径, 两条都要跑:
++   (a) 数据文件不存在, (b) 数据文件存在但为 0 字节:
++
++   ```bash
++   TS=$(date +%Y%m%dT%H%M%S)
++   {
++     echo "$ test ! -e \"$NOTES_DATA\""
++     test ! -e "$NOTES_DATA"; echo "exit=$?"
++     echo "$ ./notes.sh show   # 文件不存在"
++     ./notes.sh show; echo "exit=$?"
++     echo "$ : > \"$NOTES_DATA\" && ./notes.sh show   # 文件存在但 0 字节"
++     : > "$NOTES_DATA"
++     ./notes.sh show; echo "exit=$?"
++   } 2>&1 | tee "evidence/$TS-show-empty.txt"
++   ```
++
++   期望: 两次 `show` 都只输出一行 `(empty)` 且退出码 0.
++
++4. 有数据场景: 用同一个空数据文件依次记录三条 (正文含空格或中文都算一条, 不要加引号以外的包装).
++   步骤 3 与 4 最好在同一个 shell 里连贯跑; 换了 shell 时用显式路径接回同一个数据文件:
++   `RUN=<步骤 3 用的目录>; export NOTES_DATA=$RUN/items.txt; echo "$NOTES_DATA"`
++   (不要重跑 `mktemp`, 否则拿到新空文件; 不重设 `NOTES_DATA` 则回落到默认 `data/items.txt`).
++   代码块自己取一次时间戳, 不依赖步骤 3 的 `$TS`, 步骤 3, 4 分开在别的 shell 里跑也不会写出空文件名的证据:
++
++   ```bash
++   TS=$(date +%Y%m%dT%H%M%S)
++   {
++     echo "$ ./notes.sh add 第一条笔记"
++     ./notes.sh add "第一条笔记"; echo "exit=$?"
++     echo "$ ./notes.sh add '第二条 带空格的笔记'"
++     ./notes.sh add "第二条 带空格的笔记"; echo "exit=$?"
++     echo "$ ./notes.sh add 第三条笔记"
++     ./notes.sh add "第三条笔记"; echo "exit=$?"
++     echo "\$ ./notes.sh show"
++     ./notes.sh show; echo "exit=$?"
++   } 2>&1 | tee "evidence/$TS-show-list.txt"
++   ```
++
++   期望 `show` 输出三行, 制表符分隔, 序号 1, 2, 3 连续递增:
++   `1<TAB>第一条笔记`, `2<TAB>第二条 带空格的笔记`, `3<TAB>第三条笔记`;
++   顺序与记录顺序一致, 退出码 0.
++   核对方法: `./notes.sh show | cat -A` 可看见 `^I` 制表符与行尾 `$`.
++
++5. 取证: 两个 `tee` 文件即证据, 报告里给出路径.
++   两个文件名带不同后缀 (`-show-empty`, `-show-list`), 同一秒内先后跑也能区分;
++   重跑同一秒会覆盖同名旧证据, 需要保留旧证据时先换 `TS=$(date +%Y%m%dT%H%M%S)` 再跑.
++6. 清理: 在同一个 shell 里执行 `rm -rf "$RUN"` (变量为空时不要跑, 先 `echo "$RUN"` 确认); `evidence/` 保留.
+== sha256 product ==
+b9deffc3d364a8dc5238950286ff2c2c0fce33958a6224415b5ba2089a60d5bb  notes.sh
+154f0040405cb7fc0bac273e9ff60b8eacc5ab7e27eb1d5cf8949adcef788ea7  README.md
+9490b5373bd4c7603635124cbcc969c2f59b34d74ebf76c59ffcc67950daecf8  docs/PRODUCT.md
+== evidence listing ==
+evidence/20261020T031532-show-empty.txt
+evidence/20261020T031534-show-list.txt
+evidence/20261020T031536-add.txt
+evidence/superseded-iterations/20261020T025909-show-empty.txt
+evidence/superseded-iterations/20261020T025909-show-list.txt
+evidence/superseded-iterations/20261020T030052-add.txt
+evidence/superseded-iterations/20261020T030055-show-empty.txt
+evidence/superseded-iterations/20261020T030055-show-list.txt
+evidence/superseded-iterations/20261020T030226-show-list.txt
+evidence/superseded-iterations/20261020T030251-add.txt
+evidence/superseded-iterations/20261020T030254-show-empty.txt
+evidence/superseded-iterations/20261020T030254-show-list.txt
+evidence/superseded-iterations/20261020T030547-add.txt
+evidence/superseded-iterations/20261020T030549-show-empty.txt
+evidence/superseded-iterations/20261020T030549-show-list.txt
+evidence/superseded-iterations/20261020T030854-add.txt
+evidence/superseded-iterations/20261020T030857-show-empty.txt
+evidence/superseded-iterations/20261020T030857-show-list.txt
+evidence/superseded-iterations/20261020T031205-show-empty.txt
+evidence/superseded-iterations/20261020T031207-show-list.txt
+evidence/superseded-iterations/20261020T031209-add.txt

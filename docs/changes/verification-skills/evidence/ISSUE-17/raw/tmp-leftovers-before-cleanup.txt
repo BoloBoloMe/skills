@@ -1,0 +1,20 @@
+ls: cannot access '/tmp/notes-cli-verify*': No such file or directory
+ls: cannot access '/tmp/notes-verify-*': No such file or directory
+ls: cannot access '/tmp/o17': No such file or directory
+ls: cannot access '/tmp/orchestra-17/verify-fixture': No such file or directory
+-rw-rw-r-- 1 bolo bolo  1432 Oct 20 02:54 /tmp/verifier-task.txt
+-rw-rw-r-- 1 bolo bolo  1024 Oct 20 02:54 /tmp/verifier-task2.txt
+drwx------ 2 bolo bolo    60 Oct 20 02:53 /tmp/verify-notes-cli-data.RrTbHg
+drwx------ 2 bolo bolo   220 Oct 20 02:53 /tmp/verify-notes-cli-evidence.BJCQdv
+drwx------ 2 bolo bolo   240 Oct 20 02:55 /tmp/verify-notes-cli-evidence.o5kupS
+drwx------ 2 bolo bolo   240 Oct 20 02:54 /tmp/verify-notes-cli-evidence.pFjxyB
+-rw-rw-r-- 1 bolo bolo 69044 Oct 20 02:55 /tmp/verify-notes-cli-verifier-report.txt
+--- evidence ---
+/tmp/orchestra-17/evidence/20261020-032352-status.txt
+/tmp/orchestra-17/evidence/20261020-032402-add.txt
+/tmp/orchestra-17/evidence/20261020-032404-show-empty.txt
+/tmp/orchestra-17/evidence/20261020-032407-show-data.txt
+/tmp/orchestra-17/evidence/20261020-032446-status.txt
+/tmp/orchestra-17/evidence/20261020-032450-add.txt
+/tmp/orchestra-17/evidence/20261020-032452-show-empty.txt
+/tmp/orchestra-17/evidence/20261020-032455-show-data.txt

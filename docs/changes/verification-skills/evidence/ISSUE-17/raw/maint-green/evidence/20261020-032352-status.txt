@@ -1,0 +1,7 @@
+work=/tmp/notes-cli-verify-WFWvrE
+notes_data=/tmp/notes-cli-verify-WFWvrE/items.txt
+cmd: ./notes.sh status
+exit: 0
+out:
+notes-cli 0.2.0
+data_path: /tmp/notes-cli-verify-WFWvrE/items.txt

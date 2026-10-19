@@ -1,0 +1,131 @@
+== git status -uall ==
+ M .agents/skills/verify-fixture/SKILL.md
+ M .agents/skills/verify-fixture/features/add.md
+ M .agents/skills/verify-fixture/features/show.md
+== git diff --stat ==
+ .agents/skills/verify-fixture/SKILL.md         | 13 +++++---
+ .agents/skills/verify-fixture/features/add.md  | 30 +++++++++++++++---
+ .agents/skills/verify-fixture/features/show.md | 44 +++++++++++++++++++++++---
+ 3 files changed, 74 insertions(+), 13 deletions(-)
+== diff ==
+diff --git a/.agents/skills/verify-fixture/SKILL.md b/.agents/skills/verify-fixture/SKILL.md
+index 04107ad..124a97c 100644
+--- a/.agents/skills/verify-fixture/SKILL.md
++++ b/.agents/skills/verify-fixture/SKILL.md
+@@ -6,14 +6,17 @@ disable-model-invocation: true
+ 
+ # notes-cli 验证配方
+ 
+-本项目本地配方让陌生 agent 按 `docs/PRODUCT.md` 实跑记录与查看两个入口.
++本项目本地配方让陌生 agent 按 `docs/PRODUCT.md` 实跑记录与查看两个入口. 是否通过只按 PRODUCT.md 判定, 本配方只给操作步骤和取证方式.
+ 
+ ## 共用规则
+ 
+-- 健康检查: `./notes.sh doctor`, 应输出 `notes-cli 0.2.0` 与数据路径.
+-- 数据目录: `data/notes.txt`.
+-- 取证: 每次运行输出存到 `evidence/<时间>-<功能>.txt`.
+-- 清理: `rm -rf data/`.
++在项目根目录 (本文件所在目录往上三级) 执行.
++
++- 健康检查: `./notes.sh status`, 退出码须为 0; 第一行 `notes-cli 0.2.0`, 第二行 `data_path: <NOTES_DATA>`.
++- 数据隔离: 每轮先 `WORK=$(mktemp -d)`, `export NOTES_DATA="$WORK/items.txt"`; 默认路径 `data/items.txt` 只作参考, 验证不写项目 `data/`.
++- 取证: `export EVIDENCE_DIR="${EVIDENCE_DIR:-${TMPDIR:-/tmp}/notes-cli-evidence}"`, `mkdir -p "$EVIDENCE_DIR"`; 把每步命令, 原始输出和退出码写入 `$EVIDENCE_DIR/<YYYYmmdd-HHMMSS>-<功能>.txt`.
++- 清理: 只 `rm -rf "$WORK"`; 证据保留, 不清项目数据, 不动他人文件或进程.
++- 断言失败: 把实际值写进日志并停止, 如实报告, 不改命令或期望值.
+ 
+ ## 功能入口
+ 
+diff --git a/.agents/skills/verify-fixture/features/add.md b/.agents/skills/verify-fixture/features/add.md
+index 29019b1..04cb4d8 100644
+--- a/.agents/skills/verify-fixture/features/add.md
++++ b/.agents/skills/verify-fixture/features/add.md
+@@ -1,6 +1,28 @@
+ # 记录笔记
+ 
+-1. 前置: 数据目录 `data/` 不存在时先 `mkdir -p data/`.
+-2. 操作: `./notes.sh add --text "第一条笔记"`.
+-3. 期望: 退出码 0, 输出 `added: 第一条笔记`.
+-4. 取证: `./notes.sh show > evidence/<时间>-add.txt`.
++PRODUCT 条款: 入口 `./notes.sh add <正文>`; 退出码 0; 输出 `added: <正文>`; 之后 `show` 能在列表末尾看到这条正文.
++
++## 步骤
++
++1. 按 [../SKILL.md](../SKILL.md) 共用规则建临时数据目录和取证目录, 令 `LOG="$EVIDENCE_DIR/$(date +%Y%m%d-%H%M%S)-add.txt"`.
++
++2. 执行并记录输出与退出码:
++
++```bash
++out=$(./notes.sh add "第一条笔记"); ec=$?
++printf 'cmd: ./notes.sh add "第一条笔记"\nexit: %s\nout: %s\n' "$ec" "$out" | tee "$LOG"
++```
++
++3. 断言: `ec` 为 0; `out` 恰为 `added: 第一条笔记`.
++
++4. 验证列表末尾:
++
++```bash
++show=$(./notes.sh show); sec=$?
++last=$(printf '%s\n' "$show" | tail -n 1)
++printf 'cmd: ./notes.sh show\nexit: %s\nlast: %s\n' "$sec" "$last" | tee -a "$LOG"
++```
++
++断言: `sec` 为 0; `last` 等于 `1<TAB>第一条笔记`. 临时目录从空开始, 所以序号是 1; 用 `printf '1\t%s\n' '第一条笔记'` 生成期望值逐字比较.
++
++5. 清理: `rm -rf "$WORK"`; 保留 `$LOG`.
+diff --git a/.agents/skills/verify-fixture/features/show.md b/.agents/skills/verify-fixture/features/show.md
+index f39f697..def688d 100644
+--- a/.agents/skills/verify-fixture/features/show.md
++++ b/.agents/skills/verify-fixture/features/show.md
+@@ -1,6 +1,42 @@
+ # 查看笔记
+ 
+-1. 前置: 数据目录 `data/` 不存在时先 `mkdir -p data/`.
+-2. 操作: `./notes.sh show`.
+-3. 期望: 空数据输出 `(empty)`; 有数据时每行 `<序号>\t<正文>`.
+-4. 取证: `./notes.sh show > evidence/<时间>-show.txt`.
++PRODUCT 条款: 入口 `./notes.sh show`; 每行 `<序号>\t<正文>`, 序号从 1 连续递增, 顺序与实际记录一致; 无记录时输出 `(empty)` 且退出码 0.
++
++## 空数据
++
++1. 按 [../SKILL.md](../SKILL.md) 共用规则建临时数据目录和取证目录. 不要创建 `items.txt`. 令 `LOG="$EVIDENCE_DIR/$(date +%Y%m%d-%H%M%S)-show-empty.txt"`.
++
++2. 执行并记录输出与退出码:
++
++```bash
++out=$(./notes.sh show); ec=$?
++printf 'cmd: ./notes.sh show\nexit: %s\nout: %s\n' "$ec" "$out" | tee "$LOG"
++```
++
++3. 断言: `ec` 为 0; `out` 恰为 `(empty)`.
++
++4. 清理: `rm -rf "$WORK"`; 保留 `$LOG`.
++
++## 有数据
++
++1. 新建临时数据目录和取证目录, 令 `LOG="$EVIDENCE_DIR/$(date +%Y%m%d-%H%M%S)-show-data.txt"`.
++
++2. 写入两条记录, 记录到同一日志:
++
++```bash
++printf 'cmd: ./notes.sh add "第一条笔记"\n' >> "$LOG"
++./notes.sh add "第一条笔记" >> "$LOG" 2>&1
++printf 'cmd: ./notes.sh add "第二条笔记"\n' >> "$LOG"
++./notes.sh add "第二条笔记" >> "$LOG" 2>&1
++```
++
++3. 执行并记录:
++
++```bash
++out=$(./notes.sh show); ec=$?
++printf 'cmd: ./notes.sh show\nexit: %s\nout:\n%s\n' "$ec" "$out" | tee -a "$LOG"
++```
++
++4. 断言: `ec` 为 0; `out` 恰为两行, 第一行 `1<TAB>第一条笔记`, 第二行 `2<TAB>第二条笔记`; 顺序与写入一致, 序号从 1 连续. 用 `printf '1\t第一条笔记\n2\t第二条笔记\n'` 生成期望值逐字比较.
++
++5. 清理: `rm -rf "$WORK"`; 保留 `$LOG`.
+== sha256 product ==
+b9deffc3d364a8dc5238950286ff2c2c0fce33958a6224415b5ba2089a60d5bb  notes.sh
+154f0040405cb7fc0bac273e9ff60b8eacc5ab7e27eb1d5cf8949adcef788ea7  README.md
+9490b5373bd4c7603635124cbcc969c2f59b34d74ebf76c59ffcc67950daecf8  docs/PRODUCT.md
+== data dir ==
+ls: cannot access 'data': No such file or directory

@@ -1,0 +1,3 @@
+ffa308ac02c957a424a9ebffd0c008d1dffe667e29338e14c63fb0793a6ade47  workflow/create-verification-skill/SKILL.md
+181a88a39beab1e093f744b2f8997390695b92a556a878e26ff61edeae26f38e  workflow/maintain-verification-skill/SKILL.md
+403187355afb1047b6e6067f841a0cc9d49240601ce91c155ef9d138544b2503  workflow/maintain-verification-skill/reference/drift-classification.md

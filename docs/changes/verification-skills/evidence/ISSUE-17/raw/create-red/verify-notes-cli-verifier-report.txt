@@ -1,0 +1,400 @@
+ └───────────────────────────────────────────┴───────────────────────────────┴──────┘                                                                           │
+                                                                                                                                                                │
+ 全部满足才算本轮两个入口通过. 任一条不满足: 记录证据路径和实际输出, 判失败, 不改产品来迁就配方.                                                                │
+                                                                                                                                                                │
+ 清理                                                                                                                                                           │
+                                                                                                                                                                │
+ ```bash                                                                                                                                                        │
+   "$CAP" cleanup -- bash -c "rm -rf '$WORK' && echo cleaned"                                                                                                   │
+   git status --porcelain                                                                                                                                       │
+ ```                                                                                                                                                            │
+                                                                                                                                                                │
+ 期望: cleanup.log 退出码 0 并输出 cleaned; git status --porcelain 为空 (或只列出本配方目录, 如果它尚未提交). 证据目录 $EVIDENCE 保留到报告写完, 之后可自行 rm  │
+ -rf "$EVIDENCE".                                                                                                                                               │
+                                                                                                                                                                │
+ 未验证与边界                                                                                                                                                   │
+                                                                                                                                                                │
+ - export: 本轮非目标, 未验证.                                                                                                                                  │
+ - status: 只作只读实例检查, 未按功能判据验证.                                                                                                                  │
+ - add 空正文, 未定义行为: 未验证.                                                                                                                              │
+ - 多字节/特殊字符正文: 只验证了中文, 其他编码未覆盖.                                                                                                           │
+ - 并行写入, 大文件, 数据文件手工损坏: 未验证.                                                                                                                  │
+   </skill>                                                                                                                                                     │
+                                                                                                                                                                │
+ 只做这一件事: 用该斜杠命令加载 /tmp/orchestra-17/proj-create 里的项目配方, 不要用 read/cat 代替. 加载后重跑配方覆盖的全部入口 (2a 空数据, 入口1 记录, 2b 列表与│
+ 制表符检查), 用新临时目录和新 EVIDENCE, 然后清理.                                                                                                              │
+                                                                                                                                                                │
+ 报告必须原样贴出:                                                                                                                                              │
+ 1. 你提交斜杠命令后宿主显示的内容, 含它给出的 skill location 原文; 若宿主只展开正文而没有显示 location, 就写"宿主未显示 location".                             │
+ 2. 该 location 是否等于 /tmp/orchestra-17/proj-create/.agents/skills/verify-notes-cli/SKILL.md.                                                                │
+ 3. 本次重跑每个入口的命令, 实际输出, 退出码, 新证据文件绝对路径.                                                                                               │
+ 4. 清理命令与 git status --porcelain 原样输出.                                                                                                                 │
+                                                                                                                                                                │
+ 不修改产品/配置, 不提交 git, 不运行 export. 若 /skill: 命令加载失败或加载到别处, 原样贴报错并停下.                                                             │
+                                                                                                                                                                │
+                                                                                                                                                                │
+ Thinking...                                                                                                                                                    │
+                                                                                                                                                                │
+                                                                                                                                                                │
+ $ cd /tmp/orchestra-17/proj-create && sed -n '1,80p'                                                                                                           │
+ /home/bolo/.local/share/pnpm/store/v11/links/@earendil-works/pi-coding-agent/1.3.0/268b6a8e09231f6fafe0c9af8f9ad48ece3ca7b14917cd52d80b4d32da6f3c58/node_module│
+ s/@earendil-works/pi-coding-agent/docs/skills.md                                                                                                               │
+                                                                                                                                                                │
+ ... (81 earlier lines, ctrl+o/alt+o to expand)                                                                                                                 │
+ | `license` | License name or bundled license file |                                                                                                           │
+ | `compatibility` | Environment requirements |                                                                                                                 │
+ | `metadata` | Additional key-value metadata |                                                                                                                 │
+ | `allowed-tools` | Experimental pre-approved tool list |                                                                                                      │
+ | `disable-model-invocation` | Hide the skill from automatic model selection |                                                                                 │
+                                                                                                                                                                │
+ Took 0.0s                                                                                                                                                      │
+                                                                                                                                                                │
+                                                                                                                                                                │
+                                                                                                                                                                │
+ $ which pi; pi --help 2>&1 | head -50                                                                                                                          │
+                                                                                                                                                                │
+ ... (46 earlier lines, ctrl+o/alt+o to expand)                                                                                                                 │
+   --skill <path>                 Load a skill file or directory (can be used multiple times)                                                                   │
+   --no-skills, -ns               Disable skills discovery and loading                                                                                          │
+   --prompt-template <path>       Load a prompt template file or directory (can be used multiple times)                                                         │
+   --no-prompt-templates, -np     Disable prompt template discovery and loading                                                                                 │
+   --theme <path>                 Load a theme file or directory (can be used multiple times)                                                                   │
+                                                                                                                                                                │
+ Took 0.2s                                                                                                                                                      │
+                                                                                                                                                                │
+                                                                                                                                                                │
+ Thinking...                                                                                                                                                    │
+                                                                                                                                                                │
+                                                                                                                                                                │
+ $ sed -n '1,120p' /home/bolo/.agents/skills/use-herdr/SKILL.md                                                                                                 │
+                                                                                                                                                                │
+ ... (30 earlier lines, ctrl+o/alt+o to expand)                                                                                                                 │
+ | 查看/驱动已有 agent, 或处理其交互失败 | [agent.md](agent.md) |                                                                                               │
+ | 操作原始终端进程或输入输出 | [pane.md](pane.md) |                                                                                                            │
+ | 向 pi 提交任务 | [PI.md](PI.md) |                                                                                                                            │
+ | 发现/操作远端目标或管理 SSH machine 配置 | [machine.md](machine.md) |                                                                                        │
+ | Herdr 窗格内 Chromium 启动失败 | [browser.md](browser.md) |                                                                                                  │
+                                                                                                                                                                │
+ Took 0.0s                                                                                                                                                      │
+                                                                                                                                                                │
+                                                                                                                                                                │
+                                                                                                                                                                │
+ codemode                                                                                                                                                       │
+ const names = ALL_TOOLS.map(t => t.name || t).join(", ");                                                                                                      │
+ return names;                                                                                                                                                  │
+                                                                                                                                                                │
+ read, bash, edit, write, mailbox_listen                                                                                                                        │
+                                                                                                                                                                │
+ Took 0.1s                                                                                                                                                      │
+                                                                                                                                                                │
+                                                                                                                                                                │
+ Thinking...                                                                                                                                                    │
+                                                                                                                                                                │
+                                                                                                                                                                │
+ $ echo "HERDR_ENV=${HERDR_ENV:-unset}"; command -v herdr || echo "no herdr"; env | grep -i -E '^(HERDR|PI_)' | sed 's/=.*/=<set>/'                             │
+                                                                                                                                                                │
+ ... (9 earlier lines, ctrl+o/alt+o to expand)                                                                                                                  │
+ PI_SESSION_ID=<set>                                                                                                                                            │
+ HERDR_ENV=<set>                                                                                                                                                │
+ HERDR_TAB_ID=<set>                                                                                                                                             │
+ HERDR_SOCKET_PATH=<set>                                                                                                                                        │
+ HERDR_WORKSPACE_ID=<set>                                                                                                                                       │
+                                                                                                                                                                │
+ Took 0.0s                                                                                                                                                      │
+                                                                                                                                                                │
+                                                                                                                                                                │
+                                                                                                                                                                │
+ $ sed -n '1,120p' /home/bolo/.agents/skills/use-herdr/pane.md                                                                                                  │
+                                                                                                                                                                │
+ ... (30 earlier lines, ctrl+o/alt+o to expand)                                                                                                                 │
+ `--lines` 向 Herdr 索要更多行, 取自窗格可用屏幕和宿主 scrollback. 调大它仍看不到某条已完成响应的更多内容, 该窗格很可能在 alternate screen 里跑 agent. 离开     │
+ alternate screen 的行不进 Herdr 的宿主 scrollback, 加大行数找不回它们. 部分受支持的 idle agent 可由 Herdr 读取应用自身历史并恢复视口, 但并非所有应用和回复都能 │
+ 这样取回.                                                                                                                                                      │
+ 读取失败后, 让该 agent 把完整响应写到临时目录中的 Markdown 文件, 只回文件路径, 再从目标环境读文件. 这仅作兜底, 首次任务仍用常规输出, 避免把每次交互都变成文件交│
+ 接.                                                                                                                                                            │
+                                                                                                                                                                │
+ Took 0.0s                                                                                                                                                      │
+                                                                                                                                                                │
+                                                                                                                                                                │
+ Thinking...                                                                                                                                                    │
+                                                                                                                                                                │
+                                                                                                                                                                │
+ $ sed -n '1,140p' /home/bolo/.agents/skills/use-herdr/agent.md; echo ===; sed -n '1,120p' /home/bolo/.agents/skills/use-herdr/PI.md                            │
+                                                                                                                                                                │
+ ... (65 earlier lines, ctrl+o/alt+o to expand)                                                                                                                 │
+ ```                                                                                                                                                            │
+                                                                                                                                                                │
+ 行尾双反斜杠经 shell 转义, Herdr 收到的键名是 `alt+\`.                                                                                                         │
+                                                                                                                                                                │
+ pi 完成很快, 状态快照也可能滞后; 判断实际进度时结合最新 `agent read` 和仓库文件变化, 不只看状态字段.                                                           │
+                                                                                                                                                                │
+ Took 0.0s                                                                                                                                                      │
+                                                                                                                                                                │
+                                                                                                                                                                │
+                                                                                                                                                                │
+ $ herdr --help 2>&1 | head -60; echo ===; herdr pane --help 2>&1 | head -40; echo ===; herdr agent --help 2>&1 | head -40                                      │
+                                                                                                                                                                │
+ ... (120 earlier lines, ctrl+o/alt+o to expand)                                                                                                                │
+     https://herdr.dev/agent-guide.md                                                                                                                           │
+   Debug or investigate a problem with Herdr:                                                                                                                   │
+     https://herdr.dev/llms.txt                                                                                                                                 │
+   Control Herdr panes, agents, or workspaces:                                                                                                                  │
+     SKIP if a Herdr skill is already in your context. Otherwise run: herdr --skill                                                                             │
+                                                                                                                                                                │
+ Took 0.0s                                                                                                                                                      │
+                                                                                                                                                                │
+                                                                                                                                                                │
+ Thinking...                                                                                                                                                    │
+                                                                                                                                                                │
+                                                                                                                                                                │
+ $ herdr agent list 2>&1 | head -30; echo ===; herdr pane current 2>&1 | head -20                                                                               │
+                                                                                                                                                                │
+ ... (71 earlier lines, ctrl+o/alt+o to expand)                                                                                                                 │
+ ===                                                                                                                                                            │
+ {"id":"cli:pane:current","result":{"pane":{"agent":"pi","agent_status":"working","cwd":"/tmp/orchestra-17/proj-create","focused":false,"foreground_cwd":"/tmp/o│
+ rchestra-17/proj-create","pane_id":"w1E:p30","revision":1,"scroll":{"max_offset_from_bottom":0,"offset_from_bottom":0,"viewport_rows":50},"tab_id":"w1E:t30","t│
+ erminal_id":"term_65e360a30c1b7133","terminal_title":"π - proj-create","terminal_title_stripped":"π -                                                          │
+ proj-create","workspace_id":"w1E"},"type":"pane_current"}}                                                                                                     │
+                                                                                                                                                                │
+ Took 0.0s                                                                                                                                                      │
+                                                                                                                                                                │
+                                                                                                                                                                │
+ Thinking...                                                                                                                                                    │
+                                                                                                                                                                │
+                                                                                                                                                                │
+ $ cd /tmp/orchestra-17/proj-create                                                                                                                             │
+ herdr pane send-text w1E:p30 '/skill:verify-notes-cli 严格按配方重跑全部入口: 2a 空数据, 入口1 记录, 2b 列表与制表符检查. 用新的临时数据目录与新 EVIDENCE, 结束│
+ 按配方清理. 报告原样贴出宿主加载该 skill 给出的 skill location 原文, 确认是否等于 /tmp/orchestra-17/proj-create/.agents/skills/verify-notes-cli/SKILL.md, 并给 │
+ 出每条命令实际输出, 退出码, 证据文件绝对路径, 清理命令与 git status --porcelain 原样输出. 不修改产品/配置, 不提交 git, 不运行 export.' 2>&1                    │
+ echo "send_text_rc=$?"                                                                                                                                         │
+ sleep 1                                                                                                                                                        │
+ herdr agent send-keys verifier-notes 'alt+\' 2>&1                                                                                                              │
+ echo "send_keys_rc=$?"                                                                                                                                         │
+ sleep 2                                                                                                                                                        │
+ herdr pane read w1E:p30 --source recent-unwrapped --lines 30 2>&1 | tail -40                                                                                   │
+                                                                                                                                                                │
+ ... (32 earlier lines, ctrl+o/alt+o to expand)                                                                                                                 │
+ ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────│
+ ──                                                                                                                                                             │
+ /tmp/orchestra-17/proj-create (main)                                                                                                                           │
+ ↑20k ↓8.4k R155k CH87.7% $0.006 3.1%/1.0M (auto)                                                                 (cli) deepseek-v4.1-flash-expires-on-0910 •   │
+ high                                                                                                                                                           │
+                                                                                                                                                                │
+ Took 3.0s                                                                                                                                                      │
+                                                                                                                                                                │
+                                                                                                                                                                │
+                                                                                                                                                                │
+ [skill] verify-notes-cli (ctrl+o/alt+o to expand)                                                                                                              │
+                                                                                                                                                                │
+                                                                                                                                                                │
+                                                                                                                                                                │
+ 严格按配方重跑全部入口: 2a 空数据, 入口1 记录, 2b 列表与制表符检查. 用新的临时数据目录与新 EVIDENCE, 结束按配方清理. 报告原样贴出宿主加载该 skill 给出的 skill │
+ location 原文, 确认是否等于 /tmp/orchestra-17/proj-create/.agents/skills/verify-notes-cli/SKILL.md, 并给出每条命令实际输出, 退出码, 证据文件绝对路径, 清理命令 │
+ 与 git status --porcelain 原样输出. 不修改产品/配置, 不提交 git, 不运行 export.                                                                                │
+                                                                                                                                                                │
+                                                                                                                                                                │
+ Thinking...                                                                                                                                                    │
+                                                                                                                                                                │
+                                                                                                                                                                │
+ $ set +e                                                                                                                                                       │
+ cd /tmp/orchestra-17/proj-create                                                                                                                               │
+ WORK=$(mktemp -d /tmp/verify-notes-cli-data.XXXXXX)                                                                                                            │
+ export NOTES_DATA=$WORK/items.txt                                                                                                                              │
+ EVIDENCE=$(mktemp -d /tmp/verify-notes-cli-evidence.XXXXXX)                                                                                                    │
+ export EVIDENCE                                                                                                                                                │
+ CAP=.agents/skills/verify-notes-cli/capture.sh                                                                                                                 │
+ rm -f "$NOTES_DATA"                                                                                                                                            │
+ echo "WORK=$WORK"; echo "EVIDENCE=$EVIDENCE"                                                                                                                   │
+ test -e "$NOTES_DATA" && echo "FILE=EXISTS" || echo "FILE=ABSENT"                                                                                              │
+ echo "=== status ==="; "$CAP" status -- ./notes.sh status; echo "rc=$?"                                                                                        │
+ echo "=== 2a ==="; rm -f "$NOTES_DATA"; "$CAP" show-empty -- ./notes.sh show; echo "rc=$?"                                                                     │
+ echo "=== add ==="                                                                                                                                             │
+ "$CAP" add-1 -- ./notes.sh add "买牛奶"; echo "rc=$?"                                                                                                          │
+ "$CAP" add-2 -- ./notes.sh add "写周报"; echo "rc=$?"                                                                                                          │
+ "$CAP" add-3 -- ./notes.sh add "买牛奶"; echo "rc=$?"                                                                                                          │
+ echo "=== data-raw ==="; "$CAP" data-raw -- bash -c 'cat "$NOTES_DATA"'; echo "rc=$?"                                                                          │
+ echo "=== 2b ==="                                                                                                                                              │
+ "$CAP" show-3 -- ./notes.sh show; echo "rc=$?"                                                                                                                 │
+ "$CAP" show-3-fields -- bash -c './notes.sh show | awk -F"\t" "{print NR\" fields=\"NF}"'; echo "rc=$?"                                                        │
+ "$CAP" show-3-single -- bash -c './notes.sh show | grep -c "^[0-9][0-9]*   "'; echo "rc=$?"                                                                    │
+ echo "WORK=$WORK" > /tmp/vnc-paths2.txt; echo "EVIDENCE=$EVIDENCE" >> /tmp/vnc-paths2.txt; cat /tmp/vnc-paths2.txt                                             │
+                                                                                                                                                                │
+ ... (75 earlier lines, ctrl+o/alt+o to expand)                                                                                                                 │
+ --- output ---                                                                                                                                                 │
+ 3                                                                                                                                                              │
+ rc=0                                                                                                                                                           │
+ WORK=/tmp/verify-notes-cli-data.q9q4sa                                                                                                                         │
+ EVIDENCE=/tmp/verify-notes-cli-evidence.o5kupS                                                                                                                 │
+                                                                                                                                                                │
+ Took 0.1s                                                                                                                                                      │
+                                                                                                                                                                │
+                                                                                                                                                                │
+                                                                                                                                                                │
+ $ set +e                                                                                                                                                       │
+ cd /tmp/orchestra-17/proj-create                                                                                                                               │
+ source /tmp/vnc-paths2.txt                                                                                                                                     │
+ export NOTES_DATA=$WORK/items.txt                                                                                                                              │
+ export EVIDENCE                                                                                                                                                │
+ CAP=.agents/skills/verify-notes-cli/capture.sh                                                                                                                 │
+ "$CAP" cleanup -- bash -c "rm -rf '$WORK' && echo cleaned"; echo "rc=$?"                                                                                       │
+ test -e "$WORK" && echo "WORK=EXISTS" || echo "WORK=REMOVED"                                                                                                   │
+ echo "=== git status --porcelain ==="                                                                                                                          │
+ git status --porcelain                                                                                                                                         │
+ echo "=== end ==="                                                                                                                                             │
+ ls -la "$EVIDENCE"                                                                                                                                             │
+                                                                                                                                                                │
+ ... (19 earlier lines, ctrl+o/alt+o to expand)                                                                                                                 │
+ -rw-rw-r--   1 bolo bolo   186 Oct 20 02:55 show-3-fields.log                                                                                                  │
+ -rw-rw-r--   1 bolo bolo   141 Oct 20 02:55 show-3-single.log                                                                                                  │
+ -rw-rw-r--   1 bolo bolo   134 Oct 20 02:55 show-3.log                                                                                                         │
+ -rw-rw-r--   1 bolo bolo   110 Oct 20 02:55 show-empty.log                                                                                                     │
+ -rw-rw-r--   1 bolo bolo   171 Oct 20 02:55 status.log                                                                                                         │
+                                                                                                                                                                │
+ Took 0.0s                                                                                                                                                      │
+                                                                                                                                                                │
+                                                                                                                                                                │
+ 补充验收报告: /skill:verify-notes-cli 宿主加载 + 全入口重跑                                                                                                    │
+                                                                                                                                                                │
+ 0. 我如何"在输入框里提交"                                                                                                                                      │
+                                                                                                                                                                │
+ 我这个 agent 自身没有"往自己输入框打字"的工具. 但我运行在 Herdr 窗格内 (HERDR_ENV=1, pane w1E:p30, agent 名 verifier-notes), 所以用 Herdr 直接对本窗格的真实输 │
+ 入框操作:                                                                                                                                                      │
+                                                                                                                                                                │
+ ```bash                                                                                                                                                        │
+   herdr pane send-text w1E:p30 '/skill:verify-notes-cli 严格按配方重跑全部入口: ...'   # rc=0                                                                  │
+   herdr agent send-keys verifier-notes 'alt+\'                                        # {"type":"ok"}                                                          │
+ ```                                                                                                                                                            │
+                                                                                                                                                                │
+ 即: 文本写入本会话输入框, 再用本配置的提交键 alt+\ 提交 (不是 read/cat 冒充). 提交后宿主把该消息识别为 skill 命令, 本次的 user 消息就是宿主展开的结果.         │
+                                                                                                                                                                │
+ 1. 宿主显示的内容 (原样)                                                                                                                                       │
+                                                                                                                                                                │
+ herdr pane read w1E:p30 --source recent-unwrapped 抓到的提交后屏幕:                                                                                            │
+                                                                                                                                                                │
+ ```                                                                                                                                                            │
+    Steering: <skill name="verify-notes-cli" location="/tmp/orchestra-17/proj-create/.agents/skills/verify-notes-cli/SKILL.md">                                 │
+    ↳ Alt+Up to edit all queued messages                                                                                                                        │
+ ```                                                                                                                                                            │
+                                                                                                                                                                │
+ 随后宿主送到本会话的 user 消息开头 (原样):                                                                                                                     │
+                                                                                                                                                                │
+ ```                                                                                                                                                            │
+   <skill name="verify-notes-cli" location="/tmp/orchestra-17/proj-create/.agents/skills/verify-notes-cli/SKILL.md">                                            │
+   References are relative to /tmp/orchestra-17/proj-create/.agents/skills/verify-notes-cli.                                                                    │
+ ```                                                                                                                                                            │
+                                                                                                                                                                │
+ 宿主显示了 location, 原文为:                                                                                                                                   │
+ /tmp/orchestra-17/proj-create/.agents/skills/verify-notes-cli/SKILL.md                                                                                         │
+                                                                                                                                                                │
+ 2. location 是否等于目标路径                                                                                                                                   │
+                                                                                                                                                                │
+ 相等. 逐字符一致:                                                                                                                                              │
+ /tmp/orchestra-17/proj-create/.agents/skills/verify-notes-cli/SKILL.md == /tmp/orchestra-17/proj-create/.agents/skills/verify-notes-cli/SKILL.md               │
+ (相对引用基准 References are relative to /tmp/orchestra-17/proj-create/.agents/skills/verify-notes-cli 也指向同一目录, 未加载到 ~/.agents/skills 或其他副本.)  │
+                                                                                                                                                                │
+ 3. 本轮重跑 (全部新目录)                                                                                                                                       │
+                                                                                                                                                                │
+ - 数据: NOTES_DATA=/tmp/verify-notes-cli-data.q9q4sa/items.txt (新), 起点 FILE=ABSENT                                                                          │
+ - 证据: /tmp/verify-notes-cli-evidence.o5kupS (新)                                                                                                             │
+ - 顺序: 准备 → 2a → 入口 1 → 2b → 清理                                                                                                                         │
+                                                                                                                                                                │
+ ### 3.0 只读实例检查 (不作功能判据)                                                                                                                            │
+                                                                                                                                                                │
+ ┌───────────────────────────────────┬─────────────────────────────────────────────────────────────────┬────────┬──────────────────────────────────────────────┐│
+ │ 命令                              │ 实际输出                                                        │ 退出码 │ 证据                                         ││
+ ├───────────────────────────────────┼─────────────────────────────────────────────────────────────────┼────────┼──────────────────────────────────────────────┤│
+ │ capture.sh status -- ./notes.sh   │ notes-cli 0.2.0 / data_path:                                    │ 0      │ /tmp/verify-notes-cli-evidence.o5kupS/status ││
+ │ status                            │ /tmp/verify-notes-cli-data.q9q4sa/items.txt                     │        │ .log                                         ││
+ └───────────────────────────────────┴─────────────────────────────────────────────────────────────────┴────────┴──────────────────────────────────────────────┘│
+                                                                                                                                                                │
+ ### 3.1 入口 2a: 空数据                                                                                                                                        │
+                                                                                                                                                                │
+ ┌─────────────────────────────────────────────────────────────┬────────────────────┬─────────────┬────────┬───────────────────────────────────────────────────┐│
+ │ 命令                                                        │ 期望               │ 实际        │ 退出码 │ 证据                                              ││
+ ├─────────────────────────────────────────────────────────────┼────────────────────┼─────────────┼────────┼───────────────────────────────────────────────────┤│
+ │ rm -f "$NOTES_DATA" 后 capture.sh show-empty -- ./notes.sh  │ 单行 (empty), rc 0 │ 单行        │ 0      │ /tmp/verify-notes-cli-evidence.o5kupS/show-empty. ││
+ │ show                                                        │                    │ (empty)     │        │ log                                               ││
+ └─────────────────────────────────────────────────────────────┴────────────────────┴─────────────┴────────┴───────────────────────────────────────────────────┘│
+                                                                                                                                                                │
+ 结论: 通过                                                                                                                                                     │
+                                                                                                                                                                │
+ ### 3.2 入口 1: 记录笔记                                                                                                                                       │
+                                                                                                                                                                │
+ ┌─────────────────────────────────────────────┬────────────────────────────┬───────────────┬────────┬─────────────────────────────────────────────────┐        │
+ │ 命令                                        │ 期望                       │ 实际 stdout   │ 退出码 │ 证据                                            │        │
+ ├─────────────────────────────────────────────┼────────────────────────────┼───────────────┼────────┼─────────────────────────────────────────────────┤        │
+ │ capture.sh add-1 -- ./notes.sh add "买牛奶" │ added: 买牛奶              │ added: 买牛奶 │ 0      │ /tmp/verify-notes-cli-evidence.o5kupS/add-1.log │        │
+ ├─────────────────────────────────────────────┼────────────────────────────┼───────────────┼────────┼─────────────────────────────────────────────────┤        │
+ │ capture.sh add-2 -- ./notes.sh add "写周报" │ added: 写周报              │ added: 写周报 │ 0      │ /tmp/verify-notes-cli-evidence.o5kupS/add-2.log │        │
+ ├─────────────────────────────────────────────┼────────────────────────────┼───────────────┼────────┼─────────────────────────────────────────────────┤        │
+ │ capture.sh add-3 -- ./notes.sh add "买牛奶" │ added: 买牛奶 (重复不报错) │ added: 买牛奶 │ 0      │ /tmp/verify-notes-cli-evidence.o5kupS/add-3.log │        │
+ └─────────────────────────────────────────────┴────────────────────────────┴───────────────┴────────┴─────────────────────────────────────────────────┘        │
+                                                                                                                                                                │
+ 辅助证据: capture.sh data-raw -- bash -c 'cat "$NOTES_DATA"', rc 0, 输出 买牛奶 / 写周报 / 买牛奶, 证据 /tmp/verify-notes-cli-evidence.o5kupS/data-raw.log.    │
+ "之后 show 能看到" 见 3.3, 满足. 结论: 通过                                                                                                                    │
+                                                                                                                                                                │
+ ### 3.3 入口 2b: 有记录列表 + 制表符检查                                                                                                                       │
+                                                                                                                                                                │
+ ┌───────────────────────────────────────────┬────────────────────────────┬───────────────────────────┬────────┬───────────────────────────────────────────────┐│
+ │ 命令                                      │ 期望                       │ 实际输出                  │ 退出码 │ 证据                                          ││
+ ├───────────────────────────────────────────┼────────────────────────────┼───────────────────────────┼────────┼───────────────────────────────────────────────┤│
+ │ capture.sh show-3 -- ./notes.sh show      │ 三行 1\t买牛奶 / 2\t写周报 │ 完全相同 (真制表符)       │ 0      │ /tmp/verify-notes-cli-evidence.o5kupS/show-3. ││
+ │                                           │  / 3\t买牛奶               │                           │        │ log                                           ││
+ ├───────────────────────────────────────────┼────────────────────────────┼───────────────────────────┼────────┼───────────────────────────────────────────────┤│
+ │ capture.sh show-3-fields -- bash -c '...  │ 每行 N fields=2            │ 1 fields=2 / 2 fields=2 / │ 0      │ /tmp/verify-notes-cli-evidence.o5kupS/show-3- ││
+ │ awk -F"\t" ...'                           │                            │ 3 fields=2                │        │ fields.log                                    ││
+ ├───────────────────────────────────────────┼────────────────────────────┼───────────────────────────┼────────┼───────────────────────────────────────────────┤│
+ │ 可选 capture.sh show-3-single -- bash -c  │ 3                          │ 3                         │ 0      │ /tmp/verify-notes-cli-evidence.o5kupS/show-3- ││
+ │ '... grep -c ...'                         │                            │                           │        │ single.log                                    ││
+ └───────────────────────────────────────────┴────────────────────────────┴───────────────────────────┴────────┴───────────────────────────────────────────────┘│
+                                                                                                                                                                │
+ 结论: 通过 — 序号从 1 连续, 顺序与添加一致, 重复正文各占一行, 分隔符为制表符.
+
+ ### 3.4 判通过汇总
+
+ ┌───────────────────────────────────────────┬───────────────────────────────┬──────┐
+ │ 判据                                      │ 证据                          │ 结论 │
+ ├───────────────────────────────────────────┼───────────────────────────────┼──────┤
+ │ add 退出码 0 且输出 added: <正文>         │ add-1/2/3.log                 │ 通过 │
+ ├───────────────────────────────────────────┼───────────────────────────────┼──────┤
+ │ show 在列表末尾看到刚加正文               │ show-3.log                    │ 通过 │
+ ├───────────────────────────────────────────┼───────────────────────────────┼──────┤
+ │ 空数据 show 输出 (empty) 且 rc 0          │ show-empty.log                │ 通过 │
+ ├───────────────────────────────────────────┼───────────────────────────────┼──────┤
+ │ show 每行 序号\t正文, 从 1 连续, 顺序一致 │ show-3.log, show-3-fields.log │ 通过 │
+ └───────────────────────────────────────────┴───────────────────────────────┴──────┘
+
+ 本轮两入口全部通过. 与上一轮 (read 加载) 结果一致, 无差异.
+
+ 4. 清理
+
+ 命令:
+
+ ```bash
+   "$CAP" cleanup -- bash -c "rm -rf '/tmp/verify-notes-cli-data.q9q4sa' && echo cleaned"
+ ```
+
+ 实际输出 cleaned, 退出码 0, 证据 /tmp/verify-notes-cli-evidence.o5kupS/cleanup.log; 复核 WORK=REMOVED.
+
+ git status --porcelain 原样输出:
+
+ ```
+   ?? .agents/skills/verify-notes-cli/
+ ```
+
+ 仅本配方目录未提交, 符合配方允许项. notes.sh, docs/, README.md, capture.sh 未改动; 未运行 export; 未提交 git.
+
+ 5. 偏差与未验证
+
+ - 偏差: "在 pi 输入框输入" 由 Herdr 对本窗格发文本 + alt+\ 提交实现, 不是我手工敲键; 宿主确实按 /skill:verify-notes-cli 命令路径加载并按名展开, 显示 location
+   即上引原文.
+ - 偏差: 该消息作为 steering/queued 消息进入本会话, 宿主提示 Alt+Up to edit all queued messages.
+ - 偏差: capture.sh 把 stdout/stderr 合并, 且 # cmd: 行的引号会被 $* 吃掉. 不影响本轮判定.
+ - 未验证: export (非目标), status (无功能判据), add 空正文, 其他编码/特殊字符, 并发/大文件/数据损坏.
+ - 上一轮证据目录 /tmp/verify-notes-cli-evidence.pFjxyB 与本轮 /tmp/verify-notes-cli-evidence.o5kupS 均保留, 可自行删除.
+
+─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+
+─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+/tmp/orchestra-17/proj-create (main)
+↑24k ↓11k R255k CH98.5% $0.007 3.8%/1.0M (auto)                                                                  (cli) deepseek-v4.1-flash-expires-on-0910 • high

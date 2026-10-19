@@ -1,0 +1,10 @@
+# 健康检查 (第二轮, 当前磁盘配方)
+work=/tmp/tmp.dBDBNOlDEw
+NOTES_DATA=/tmp/tmp.dBDBNOlDEw/items.txt
+cmd: ./notes.sh status
+exit: 0
+out:
+notes-cli 0.2.0
+data_path: /tmp/tmp.dBDBNOlDEw/items.txt
+assert: exit=[0] line1=[notes-cli 0.2.0] line2=[data_path: /tmp/tmp.dBDBNOlDEw/items.txt]
+status_run: exit_ok=1 l1_ok=1 l2_ok=1
