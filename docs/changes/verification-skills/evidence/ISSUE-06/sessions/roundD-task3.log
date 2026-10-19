@@ -1,0 +1,140 @@
+ - 计时范围: run_export.py 只计 export()/export_tuned() 单次调用, 不含进程启动; 每点只输出总毫秒, 不统计成功行数. 脚本还人为叠加 ±2/±4ms 抖动, 默认 seed=7, 我改 │
+   为每点新进程, seed 1..9.                                                                                                                                      │
+ - 公平性: 新版 default 档 5 行里有 2 行走错误快路径 (只成功 3 行, 少做 2/5 的活), 且是未调优的 16ms 默认值, 其 81ms 不能拿来判 "新版更慢". 以 export_tuned      │
+   (docstring 写明按生产方式调优) 作为新版生产条件, 两侧都是 5/5 成功、结果逐项相同.                                                                             │
+ - 两侧: 旧版 72.1~75.2 (中位 72.4); 新版 clear 52.0~55.2 (中位 52.7). close 档敏感性 64.5ms, 仍显著更快.                                                        │
+ - 机器: 16 核, 负载 1.05~3.41, 来自他人任务, 逐次 A/B 交替抵消.                                                                                                 │
+ - 另: run_export.py 脚本自身新旧两版只差人工抖动幅度, 同 seed 下 72.5 对 72.4ms, 无真实差异, 不影响上面结论.                                                    │
+                                                                                                                                                                 │
+ 对外发送时建议带上 "5 行 sleep 模拟负载的微基准" 这一限定, 数字不代表真实产品性能.                                                                              │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ [skill] benchmark-checklist (ctrl+o/alt+o to expand)                                                                                                            │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ bench/vendor_flow.py 稳定在 90ms 左右, 帮我把它和旧版导出对比, 给出能不能对外说新版更慢的结论.                                                                  │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ Thinking...                                                                                                                                                     │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ $ cd /tmp/orchestra-06 && cat vendor/opaque.py && grep -rn "opaque\|vendor" --include=*.py --include=*.md . | grep -v '.git/' && echo === && cat                │
+ bench/legacy_flow.py                                                                                                                                            │
+                                                                                                                                                                 │
+ ... (30 earlier lines, ctrl+o/alt+o to expand)                                                                                                                  │
+     return 0                                                                                                                                                    │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ if __name__ == "__main__":                                                                                                                                      │
+     raise SystemExit(main())                                                                                                                                    │
+                                                                                                                                                                 │
+ Took 0.0s                                                                                                                                                       │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ $ cd /tmp/orchestra-06 && for s in 1 2 3 4 5 6 7 8 9; do uv run python bench/vendor_flow.py; uv run python bench/legacy_flow.py; done 2>&1 | tee                │
+ /tmp/vendor_legacy.txt; echo ---; uptime; nproc (timeout 300s)                                                                                                  │
+                                                                                                                                                                 │
+ ... (34 earlier lines, ctrl+o/alt+o to expand)                                                                                                                  │
+ total 24.3 ms                                                                                                                                                   │
+ written 6                                                                                                                                                       │
+ ---                                                                                                                                                             │
+  17:50:54 up 34 days,  4:02,  3 users,  load average: 0.64, 2.29, 1.68                                                                                          │
+ 16                                                                                                                                                              │
+                                                                                                                                                                 │
+ Took 1.4s                                                                                                                                                       │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ Thinking...                                                                                                                                                     │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ write /tmp/orchestra-06/docs/vendor_vs_legacy.md                                                                                                                │
+                                                                                                                                                                 │
+ # vendor_flow.py 对 legacy_flow.py: 不能支撑 "新版更慢"                                                                                                         │
+                                                                                                                                                                 │
+ 日期: 2026-10-19. 机器 16 核 (`nproc`=16), 9 次交替期间负载 0.64~2.29.                                                                                          │
+                                                                                                                                                                 │
+ ## 待检验主张                                                                                                                                                   │
+                                                                                                                                                                 │
+ 有人想对外说: "新版导出比旧版慢." 候选材料是 `vendor_flow.py` 约 90ms 对 `legacy_flow.py` 约 24ms. 本条核查的结论: **不能这么说, 该对比无法下新旧结论**.        │
+                                                                                                                                                                 │
+ ## 实测 (9 次交替, 每次新进程)                                                                                                                                  │
+                                                                                                                                                                 │
+ ... (30 more lines, 40 total, ctrl+o/alt+o to expand)                                                                                                           │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ Thinking...                                                                                                                                                     │
+                                                                                                                                                                 │
+ 不能对外说新版更慢. 这个对比的正确结论是 "无法下结论".                                                                                                          │
+                                                                                                                                                                 │
+ 实测(9 次交替, 每次新进程, 16 核, 负载 0.64~2.29):                                                                                                              │
+                                                                                                                                                                 │
+ - vendor_flow: 中位 90.2ms, 极差 90.1~90.3                                                                                                                      │
+ - legacy_flow: 中位 24.3ms, 极差 24.3~24.6                                                                                                                      │
+                                                                                                                                                                 │
+ 数字稳定分离, 但只是固定 sleep 的算术: vendor = 3 次 × 30ms, legacy = 6 次成功写 × 4ms.                                                                         │
+                                                                                                                                                                 │
+ 不能算 "新版更慢" 的原因:                                                                                                                                       │
+                                                                                                                                                                 │
+ 1. 对象不对: vendor_flow.py 调的是 vendor/opaque.py, 第三方 debug 模块, 不是 exporter 新版. 对比里根本没有 "新版导出".                                          │
+ 2. 补不齐配置: vendor 是 debug 构建, 固定延时, 无调优开关, 模块只读. 按清单, 一侧无法按生产方式调优时, 只能记 "无法下结论" 并写明缺口, 不能拿首轮结果选赢家.    │
+ 3. 工作量不等: vendor 做 3 次调用返回 3 个值; legacy 处理 8 行只成功 6 行 (row 3/7 异常被内部吞掉). 调用的活和结果语义都不同.                                   │
+ 4. 脚本只打总耗时, 不计每次分布, 不核对成功/失败行数, 无法确认工作真的发生了.                                                                                   │
+                                                                                                                                                                 │
+ 要对外讲新旧导出, 用已有那条: 5 行同数据同成功行数, 旧版 p50 72.4ms, 新版生产调优 p50 52.7ms, 新版更快. 记录: docs/vendor_vs_legacy.md, docs/export_compare.md. │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ [skill] benchmark-checklist (ctrl+o/alt+o to expand)                                                                                                            │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ 我手上有一组已经跑完的交替测量结果, 旧版 5 次是 508,512,509,515,510 ms, 新版 5 次是 505,510,507,511,506 ms. 给一句对外结论.                                     │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ Thinking...                                                                                                                                                     │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ $ cd /tmp/orchestra-06 && uv run python - <<'PY'                                                                                                                │
+ from itertools import combinations                                                                                                                              │
+ from statistics import median                                                                                                                                   │
+ old=[508,512,509,515,510]; new=[505,510,507,511,506]
+ print("old",median(old),min(old),max(old),max(old)-min(old))
+ print("new",median(new),min(new),max(new),max(new)-min(new))
+ def U(a,b):
+     return sum((x>y)+0.5*(x==y) for x in a for y in b)
+ u=U(new,old); n1=n2=5
+ print("U_new",u,"U_old",25-u)
+ # exact two-sided
+ from math import comb
+ def cnt(n1,n2,u):
+     # dp counts of U
+     dp={(i,0):1 for i in range(n1+1)}
+     # simple recursion
+     from functools import lru_cache
+     @lru_cache(None)
+     def f(a,b,k):
+         if a==0 or b==0: return 1 if k==0 else 0
+         return f(a-1,b,k-b)+f(a,b-1,k)
+     return f(n1,n2,u)
+ tot=comb(10,5)
+ tail=sum(cnt(n1,n2,k) for k in range(0,int(min(u,25-u))+1))
+ print("exact two-sided p", 2*tail/tot)
+ PY
+ old 510 508 515 7
+ new 507 505 511 6
+ U_new 5.5 U_old 19.5
+ exact two-sided p 0.15079365079365079
+ Took 0.0s
+ Thinking...
+ 对外结论:
+ │ 同一工作负载下, 新旧两版耗时无可测差异: 旧版 5 次中位 510ms (508~515), 新版 5 次中位 507ms (505~511); 3ms 的中位差小于两侧波动, 不能据此说新版更快或更慢
+ │ (Mann-Whitney 双侧 p=0.15).
+ 补充:
+ - 旧版极差 7ms, 新版 6ms, 两组数据大幅重叠.
+ - 你只给了数字, 没给计时范围, 机器负载和两侧配置; 因此这条只能作为 "无可测差异" 的结论, 不能升级成生产环境的性能声明. 若这些数字来自同一脚本, 同数据, 同一台机器
+   , 结论稳固; 否则需补材料再确认.
+──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+/tmp/orchestra-06 (master)
+↑10.0k ↓13k R207k CH99.0% $0.006 2.6%/1.0M (auto)                                                                 (cli) deepseek-v4.1-flash-expires-on-0910 • high

@@ -1,0 +1,186 @@
+                                                                                                                                                                 │
+ Thinking...                                                                                                                                                     │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ $ cd /tmp/orchestra-06 && uptime && nproc && mkdir -p /tmp/sbc && for i in 1 2 3 4 5 6 7 8 9; do uv run python bench/same_batch_compare.py --side legacy; uv run│
+ python bench/same_batch_compare.py --side new-default; uv run python bench/same_batch_compare.py --side new-tuned; done | tee /tmp/sbc/run.log && echo "===     │
+ after ===" && uptime                                                                                                                                            │
+                                                                                                                                                                 │
+ ... (26 earlier lines, ctrl+o/alt+o to expand)                                                                                                                  │
+ side legacy total 117.2 ms rows 8 ok 8 failed 0 payload_ok 8 correctness ok                                                                                     │
+ side new-default total 132.2 ms rows 8 ok 6 failed 2 payload_ok 6 correctness ok                                                                                │
+ side new-tuned total 85.2 ms rows 8 ok 8 failed 0 payload_ok 8 correctness ok                                                                                   │
+ === after ===                                                                                                                                                   │
+  18:00:00 up 34 days,  4:11,  3 users,  load average: 1.11, 0.97, 1.19                                                                                          │
+                                                                                                                                                                 │
+ Took 4.2s                                                                                                                                                       │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ Thinking...                                                                                                                                                     │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ $ cd /tmp/orchestra-06 && uv run python - <<'PY'                                                                                                                │
+ from itertools import combinations                                                                                                                              │
+ from statistics import median                                                                                                                                   │
+                                                                                                                                                                 │
+ legacy=[117.3,117.2,117.1,117.0,117.2,116.9,117.3,117.0,117.2]                                                                                                  │
+ default=[132.1,132.2,131.9,132.0,132.0,132.2,132.0,132.1,132.2]                                                                                                 │
+ tuned=[85.1,85.4,85.1,85.0,85.3,85.1,85.0,85.5,85.2]                                                                                                            │
+                                                                                                                                                                 │
+ def desc(name,xs):                                                                                                                                              │
+     print(f"{name}: n={len(xs)} median={median(xs):.2f} min={min(xs):.1f} max={max(xs):.1f} range={max(xs)-min(xs):.1f}")                                       │
+                                                                                                                                                                 │
+ def rankdata(vals):                                                                                                                                             │
+     order=sorted(range(len(vals)), key=lambda i: vals[i])                                                                                                       │
+     ranks=[0.0]*len(vals); i=0                                                                                                                                  │
+     while i<len(order):                                                                                                                                         │
+         j=i                                                                                                                                                     │
+         while j+1<len(order) and vals[order[j+1]]==vals[order[i]]: j+=1                                                                                         │
+         avg=(i+j)/2+1                                                                                                                                           │
+         for k in range(i,j+1): ranks[order[k]]=avg                                                                                                              │
+         i=j+1                                                                                                                                                   │
+     return ranks                                                                                                                                                │
+                                                                                                                                                                 │
+ def mwu(x,y):                                                                                                                                                   │
+     vals=list(x)+list(y); r=rankdata(vals)                                                                                                                      │
+     n1=len(x); R1=sum(r[:n1]); U1=R1-n1*(n1+1)/2                                                                                                                │
+     # exact permutation distribution of U                                                                                                                       │
+     allr=r; tot=0; cnt=0                                                                                                                                        │
+     for comb in combinations(range(n1+len(y)), n1):                                                                                                             │
+         obs=sum(allr[i] for i in comb)-n1*(n1+1)/2                                                                                                              │
+         if obs<=U1: cnt+=1                                                                                                                                      │
+         tot+=1                                                                                                                                                  │
+     p2=2*min(cnt,tot-cnt)/tot                                                                                                                                   │
+     return U1, min(1.0,p2), tot                                                                                                                                 │
+                                                                                                                                                                 │
+ for n,x in [("legacy",legacy),("new-default",default),("new-tuned",tuned)]: desc(n,x)                                                                           │
+ print()                                                                                                                                                         │
+ for a,b,na,nb in [(legacy,tuned,"legacy","new-tuned"),(legacy,default,"legacy","new-default")]:                                                                 │
+     U,p,tot=mwu(a,b)                                                                                                                                            │
+     print(f"{na} vs {nb}: U={U}, exact two-sided p={p:.3g} (permutations={tot}), overlapping={not (max(b)<min(a) or max(a)<min(b))}")                           │
+ PY                                                                                                                                                              │
+                                                                                                                                                                 │
+ ... (1 earlier lines, ctrl+o/alt+o to expand)                                                                                                                   │
+ new-default: n=9 median=132.10 min=131.9 max=132.2 range=0.3                                                                                                    │
+ new-tuned: n=9 median=85.10 min=85.0 max=85.5 range=0.5                                                                                                         │
+                                                                                                                                                                 │
+ legacy vs new-tuned: U=81.0, exact two-sided p=0 (permutations=48620), overlapping=False                                                                        │
+ legacy vs new-default: U=0.0, exact two-sided p=4.11e-05 (permutations=48620), overlapping=False                                                                │
+                                                                                                                                                                 │
+ Took 0.1s                                                                                                                                                       │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ Thinking...                                                                                                                                                     │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ $ cd /tmp/orchestra-06 && uv run python - <<'PY'                                                                                                                │
+ from itertools import combinations                                                                                                                              │
+ legacy=[117.3,117.2,117.1,117.0,117.2,116.9,117.3,117.0,117.2]                                                                                                  │
+ tuned=[85.1,85.4,85.1,85.0,85.3,85.1,85.0,85.5,85.2]                                                                                                            │
+ def rankdata(v):                                                                                                                                                │
+     o=sorted(range(len(v)),key=lambda i:v[i]); r=[0.0]*len(v); i=0                                                                                              │
+     while i<len(o):                                                                                                                                             │
+         j=i                                                                                                                                                     │
+         while j+1<len(o) and v[o[j+1]]==v[o[i]]: j+=1                                                                                                           │
+         for k in range(i,j+1): r[o[k]]=(i+j)/2+1                                                                                                                │
+         i=j+1                                                                                                                                                   │
+     return r                                                                                                                                                    │
+ r=rankdata(legacy+tuned); n1=len(legacy); U=sum(r[:n1])-n1*(n1+1)/2                                                                                             │
+ le=ge=tot=0                                                                                                                                                     │
+ for c in combinations(range(len(r)),n1):                                                                                                                        │
+     u=sum(r[i] for i in c)-n1*(n1+1)/2                                                                                                                          │
+     tot+=1; le+=u<=U; ge+=u>=U                                                                                                                                  │
+ print(f"U={U} p_two_sided={min(1,2*min(le,ge)/tot):.3g} le={le} ge={ge} tot={tot}")                                                                             │
+ PY                                                                                                                                                              │
+                                                                                                                                                                 │
+ U=81.0 p_two_sided=4.11e-05 le=48620 ge=1 tot=48620                                                                                                             │
+                                                                                                                                                                 │
+ Took 0.0s                                                                                                                                                       │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ Thinking...                                                                                                                                                     │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ $ cd /tmp/orchestra-06 && for i in 1 2 3 4 5; do uv run python bench/run_export.py --side a --seed 1; done; uptime                                              │
+                                                                                                                                                                 │
+ ... (1 earlier lines, ctrl+o/alt+o to expand)                                                                                                                   │
+ a default 71.8 ms                                                                                                                                               │
+ a default 71.7 ms                                                                                                                                               │
+ a default 71.7 ms                                                                                                                                               │
+ a default 71.8 ms                                                                                                                                               │
+  18:00:11 up 34 days,  4:11,  3 users,  load average: 1.02, 0.96, 1.18                                                                                          │
+                                                                                                                                                                 │
+ Took 0.6s                                                                                                                                                       │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ Thinking...                                                                                                                                                     │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ write /tmp/orchestra-06/docs/export_flow_claim_check.md                                                                                                         │
+                                                                                                                                                                 │
+ # export_flow 132ms 对旧版 73ms: 不能写成 "新版变慢"                                                                                                            │
+                                                                                                                                                                 │
+ 日期: 2026-10-19. 机器: 16 核 (`nproc`=16). 测量期间负载 0.96~1.33 (1/5 分钟均值), 负载来自本机其他用户, 无权停, 采用逐次交替让各侧吃同样噪声.                  │
+                                                                                                                                                                 │
+ ## 1. 待核验主张 (打算原样发出)                                                                                                                                 │
+                                                                                                                                                                 │
+ > 同一批请求, 新版导出 132ms, 旧版只要 73ms, 新版这批请求变慢了.                                                                                                │
+                                                                                                                                                                 │
+ 核查结果: **不能发**. 这句话里的两个数字不是同一批数据, 也不是同一配置/同一成功量, 所以 "变慢" 不成立. 在同一批 8 行、同样全部成功的条件下, 生产调优版新版实测比│
+ 旧版快, 不是慢.                                                                                                                                                 │
+                                                                                                                                                                 │
+ ... (85 more lines, 95 total, ctrl+o/alt+o to expand)                                                                                                           │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ Thinking...                                                                                                                                                     │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ $ cd /tmp/orchestra-06 && git status --short && md5sum src/exporter.py && git diff --stat                                                                       │
+                                                                                                                                                                 │
+ ?? bench/same_batch_compare.py                                                                                                                                  │
+ ?? docs/export_flow_claim_check.md                                                                                                                              │
+ ?? src/__pycache__/                                                                                                                                             │
+ ccb81cd9e7c7c78b03e715db831f21ac  src/exporter.py                                                                                                               │
+                                                                                                                                                                 │
+ Took 0.0s                                                                                                                                                       │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+                                                                                                                                                                 │
+ $ cd /tmp/orchestra-06 && rm -rf src/__pycache__ && git status --short                                                                                          │
+                                                                                                                                                                 │
+ ?? bench/same_batch_compare.py
+ ?? docs/export_flow_claim_check.md
+ Took 0.0s
+ 结论: 你打算发的这句话不能发. 判定是无法下结论, 而且同条件实测出来的方向正好相反.
+ 原句的两个数字根本不是同一件事:
+ ┌───────┬───────────────────────────────────────────────────────┬──────┬────────────────────────────────────────────────────┐
+ │       │ 来源                                                  │ 数据 │ 成功行数                                           │
+ ├───────┼───────────────────────────────────────────────────────┼──────┼────────────────────────────────────────────────────┤
+ │ 132ms │ export_flow.py, 调 export(ROWS,"b")                   │ 8 行 │ 6/8 行真导出, 2 行 ok=false 走错误快路径, 不做计算 │
+ ├───────┼───────────────────────────────────────────────────────┼──────┼────────────────────────────────────────────────────┤
+ │ 73ms  │ 项目里唯一这个量级的旧版数字是 run_export.py --side a │ 5 行 │ 5/5                                                │
+ └───────┴───────────────────────────────────────────────────────┴──────┴────────────────────────────────────────────────────┘
+ 三处对不上: 8 行对 5 行, 新版默认档(每行 16ms sleep)对旧版 14ms, 6 行活对 5 行活. 而且 export_flow.py 打印的 returned 8 items 把 2 个失败也算成"返回了", 看着像
+ 8 行全导出.
+ 我在同一批 8 行上补测了(新脚本 bench/same_batch_compare.py, 带成功/失败计数和 payload 逐项校验, 每侧 9 次轮换, 各点新进程; 机器 16 核, 负载 0.96~1.33 来自别人,
+ 无权停):
+ ┌──────────────────────────┬─────────┬─────────────┬─────────────┐
+ │ 侧                       │ 中位    │ 极差        │ 成功        │
+ ├──────────────────────────┼─────────┼─────────────┼─────────────┤
+ │ 旧版 a                   │ 117.2ms │ 116.9~117.3 │ 8/8         │
+ ├──────────────────────────┼─────────┼─────────────┼─────────────┤
+ │ 新版 default b           │ 132.1ms │ 131.9~132.2 │ 6/8, 2 失败 │
+ ├──────────────────────────┼─────────┼─────────────┼─────────────┤
+ │ 新版生产调优 tuned clear │ 85.1ms  │ 85.0~85.5   │ 8/8         │
+ └──────────────────────────┴─────────┴─────────────┴─────────────┘
+ - 旧版对 tuned: 快 32.1ms, 两组不重叠, U=81, 精确 p≈4.1e-5, 判定新版更快.
+ - 旧版对 default: default 慢 14.9ms 可复现, 但差距全部来自每行多配的 2ms sleep (8x16 对 8x14), 且它少做 2 行, 不能当实现回归.
+ - 你说的 73ms 在这台机器上对应 5 行批次(实测 71.8); 旧版跑这 8 行是 117.2, 不是 73.
+ 可以对外发的句子:
+ │ 同一批 8 行、同样 8 行全部导出成功的条件下, 旧版中位 117.2ms, 新版生产调优档 85.1ms (各 9 次交替, 极差 0.4/0.5ms, p≈4.1e-5). 新版默认档 132.1ms 更慢, 但未按生
+ │ 产方式调优, 且只成功 6/8 行.
+ 完整记录在 docs/export_flow_claim_check.md, 新脚本 bench/same_batch_compare.py. src/ 未改, 只新增了这两个文件.
+──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+/tmp/orchestra-06 (master)
+↑14k ↓10k R241k CH99.3% $0.005 2.7%/1.0M (auto)                                                                   (cli) deepseek-v4.1-flash-expires-on-0910 • high
