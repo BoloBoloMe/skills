@@ -1,0 +1,6 @@
+### 06-alpha-report
+START 2026-10-19T22:06:25+08:00
+CMD python3 app.py report --port 18101
+relay-report instance=alpha version=relay-v1 state=ready
+EXIT 0
+END 2026-10-19T22:06:25+08:00

@@ -1,0 +1,1 @@
+relay-report instance=alpha version=relay-v1 state=ready

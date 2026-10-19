@@ -1,0 +1,15 @@
+time=2026-10-19T22:38:28+08:00
+$ git ls-tree -r --name-only HEAD | grep -Ei '(^|/)(requirements[^/]*|.*\.lock|pyproject\.toml|setup\.py|setup\.cfg|Pipfile[^/]*|poetry\.lock|uv\.lock|environment\.ya?ml|MANIFEST\.in|build\.py|package\.json|go\.mod|Cargo\.toml)$'
+(no dependency/build manifest files in HEAD)
+
+$ find . -path ./.git -prune -o -path ./runtime -prune -o -type f \( -iname 'requirements*' -o -iname '*.lock' -o -iname 'pyproject.toml' -o -iname 'setup.py' -o -iname 'setup.cfg' -o -iname 'Pipfile*' -o -iname 'poetry.lock' -o -iname 'uv.lock' -o -iname 'environment.yml' -o -iname 'environment.yaml' -o -iname 'MANIFEST.in' -o -iname 'build.py' -o -iname 'package.json' -o -iname 'go.mod' -o -iname 'Cargo.toml' \) -print
+(end find)
+
+$ git ls-tree -r --name-only HEAD
+.gitignore
+README.md
+app.py
+deps.txt
+docs/changes/relay-board/PRODUCT.md
+tests/test_app.py
+

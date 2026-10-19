@@ -1,0 +1,17 @@
+=== 2026-10-19T22:48:34+08:00 AC-004-1 前置: 后台启动 alpha 耗时任务 ms=8000 ===
+bg_job_pid=4135680
+--- 2026-10-19T22:48:35+08:00 job 是否仍在运行 ---
+4135680       00:01 uv run python app.py job --port 18101 --ms 8000
+--- 2026-10-19T22:48:35+08:00 log --port 18101 ---
+2026-10-19T14:48:15.409551Z instance=alpha event=job-start ms=4000
+2026-10-19T14:48:19.409751Z instance=alpha event=job-end ms=4000
+2026-10-19T14:48:21.196026Z instance=beta event=job-start ms=4000
+2026-10-19T14:48:25.196419Z instance=beta event=job-end ms=4000
+2026-10-19T14:48:28.376284Z instance=alpha event=append seq=1 value=alpha
+2026-10-19T14:48:31.739481Z instance=beta event=append seq=2 value=beta
+2026-10-19T14:48:34.274999Z instance=alpha event=job-start ms=8000
+exit_log=0
+--- 等待后台 job 结束并回收 ---
+bg_job_exit=0
+--- 后台 job 输出 ---
+job-done instance=alpha elapsed_ms=8000

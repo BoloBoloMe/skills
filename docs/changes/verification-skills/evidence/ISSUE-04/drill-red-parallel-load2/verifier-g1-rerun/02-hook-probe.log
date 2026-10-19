@@ -1,0 +1,14 @@
+=== 2026-10-19T22:51:25+08:00 环境探针: 裸 python3 与绝对路径的差异 (仅环境说明, 非判据) ===
+cmd: python3 -c 'import sys;print(sys.executable, sys.version.split()[0])'
+/home/bolo/.local/share/uv/python/cpython-3.14-linux-x86_64-gnu/bin/python3.14 3.14.7
+exit=0
+cmd: /usr/bin/python3 -c 'import sys;print(sys.executable, sys.version.split()[0])'
+/usr/bin/python3 3.14.4
+exit=0
+cmd: 后台起裸 python3 app.py job --port 18101 --ms 500, 立刻 ps 看命令行
+job-done instance=alpha elapsed_ms=500
+--- 记录说明 ---
+上面最后一个 ps 没有输出: 500ms 的 job 在 sleep 1 前就退出, 是本探针设计失误, 与产品无关.
+本探针只为对比解释器: 裸 python3 走 uv 管的 3.14.7; 绝对路径走系统 3.14.4.
+本条探针非判据; 判据各项一律用绝对路径执行, 并在每份证据里保留实际命令行.
+副作用: 该探针在 events.log 写下 2 行 job-start/job-end (alpha ms=500); AC-003-1 只要求 record.jsonl 不存在, 不受影响.

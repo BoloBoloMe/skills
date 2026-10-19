@@ -1,0 +1,9 @@
+### 13-final-env
+START 2026-10-19T22:08:37+08:00
+CMD bash -c date -Is; git -C /tmp/orchestra-04/parallel rev-parse HEAD; git -C /tmp/orchestra-04/parallel status --porcelain; echo "== modified tracked files =="; git -C /tmp/orchestra-04/parallel diff --stat
+2026-10-19T22:08:37+08:00
+773fc6bf093c3b17f18a8817f924536902f13d2b
+?? docs/changes/relay-board/evidence-773fc6b-r1/
+== modified tracked files ==
+EXIT 0
+END 2026-10-19T22:08:37+08:00

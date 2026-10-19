@@ -1,0 +1,20 @@
+=== 截图文件 ===
+-rw-rw-r-- 1 bolo bolo 8788 Oct 19 21:21 /tmp/orchestra-04/red-parallel/docs/changes/relay-board/evidence-773fc6b/status-alpha.png
+4374f026939db8238ab13de9ed80aad7c997cd3ebc9a89504509d5ac51248803  /tmp/orchestra-04/red-parallel/docs/changes/relay-board/evidence-773fc6b/status-alpha.png
+/tmp/orchestra-04/red-parallel/docs/changes/relay-board/evidence-773fc6b/status-alpha.png: PNG image data, 900 x 400, 8-bit/color RGB, non-interlaced
+=== 截图时刻 / report 时刻 ===
+start: 2026-10-19T21:21:52+08:00
+end: 2026-10-19T21:21:52+08:00
+start: 2026-10-19T21:21:52+08:00
+end: 2026-10-19T21:21:52+08:00
+=== status-page HTTP 原文 (用于与截图对照) ===
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>relay board</title></head>
+<body><h1>relay board</h1>
+<p>instance=alpha</p>
+<p>state=ready</p>
+<p>version=relay-v1</p></body></html>
+=== report 断言计数 ===
+instance=alpha -> 1
+version=relay-v1 -> 1
+state=ready -> 1

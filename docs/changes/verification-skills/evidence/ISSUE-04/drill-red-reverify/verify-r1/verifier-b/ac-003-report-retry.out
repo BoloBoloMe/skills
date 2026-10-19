@@ -1,0 +1,10 @@
+time: 2026-10-19T21:29:32+0800
+--- retry 1 ---
+relay-report instance=alpha version=relay-v1 state=loading
+exit=0
+--- retry 2 ---
+relay-report instance=alpha version=relay-v1 state=loading
+exit=0
+--- retry 3 ---
+relay-report instance=alpha version=relay-v1 state=loading
+exit=0

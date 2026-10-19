@@ -1,0 +1,5 @@
+验收任务暂停. 调用方改派修复任务给你 (这是新的任务, 不是继续验收):
+- 在 /tmp/orchestra-04/reverify 修掉你刚发现的 AC-003-1 缺陷: report 的输出应反映实例真实状态 ready, 现在被写死成 loading.
+- 只改产品代码 app.py, 跑项目测试, 提交一个新 commit.
+- 修复后把关键路径 report 的通过日志和状态页截图保存到 /tmp/orchestra-04/author-materials/green/ (作者材料).
+- 不写验收报告, 不改 PRODUCT.md, 不改 tests.

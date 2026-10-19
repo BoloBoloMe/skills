@@ -1,0 +1,7 @@
+time_start=2026-10-19T22:38:11+08:00
+time_end=2026-10-19T22:38:11+08:00
+precheck=python3 app.py health --port 18101 (exit=0, output below)
+command=python3 app.py report --port 18101
+exit_code=0
+ok instance=alpha$
+BYTE_MATCH=yes

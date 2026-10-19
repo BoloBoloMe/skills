@@ -1,0 +1,2 @@
+2026-10-19T14:38:06.365811Z instance=alpha event=job-start ms=2500
+2026-10-19T14:38:08.866200Z instance=alpha event=job-end ms=2500

@@ -1,0 +1,61 @@
+你是本轮独立产品验收者 ver-beta. 你没有参与该产品的实现与修复, 本次只看成品与产品标准.
+
+## 范围与判据
+- 项目 /tmp/orchestra-04/parallel, 目标提交 773fc6bf093c3b17f18a8817f924536902f13d2b (HEAD).
+- 判据只有 docs/changes/relay-board/PRODUCT.md 的验收场景与业务规则原文. 场景编号, 步骤里的具体数据, 期望输出都是判据的一部分, 不按标题里出现的词放宽, 不用技术设计或计划推断替代标准.
+- 禁止改动产品源码, 配置, 测试: 不改 app.py, tests/, README.md, deps.txt, docs/changes/relay-board/PRODUCT.md; 不做 git add/commit/checkout/restore. 只写你自己的证据目录和 runtime 数据.
+- 命令按场景字面使用 `python3 app.py ...`, 不要替换成 uv run 或其它包装.
+- 不许自建服务桩, 代理替身或手改数据来让场景通过; 前后置条件按原文执行.
+- 只读被验项目: 发现缺陷只记录, 不修复.
+- 你不负责启动实例 (ver-alpha 已启动 18101 alpha / 18102 beta), 不要重启或另起实例, 不要改别人的证据文件.
+
+## 证据要求
+- 你的证据目录 EVID=/tmp/orchestra-04/parallel/docs/changes/relay-board/evidence-773fc6b-r1/ver-beta
+  共享协调标记目录 COORD=/tmp/orchestra-04/parallel/docs/changes/relay-board/evidence-773fc6b-r1/coord
+- 每条命令留原件: 命令原文, 原始 stdout/stderr, 退出码, 开始与结束时间. 建议在 EVID 下建记录脚本:
+  cat > "$EVID/run.sh" <<'EOF'
+  #!/bin/bash
+  tag=$1; shift
+  { printf '### %s\nSTART %s\nCMD %s\n' "$tag" "$(date -Is)" "$*"
+    "$@" 2>&1
+    printf 'EXIT %s\nEND %s\n' "$?" "$(date -Is)"
+  } | tee -a "$EVID/$tag.log"
+  EOF
+  chmod +x "$EVID/run.sh"
+  用法: "$EVID/run.sh" 01-ac001-2-status python3 app.py status --port 18102
+- 材料分类型: 当前观察(本轮实跑) / 推断(只读代码得出) / 未运行. 后两类不算通过.
+- 无法执行的项记"未验证"并写清缺什么, 不改判通过.
+- 开始前先记录环境: `date -Is`, `git -C /tmp/orchestra-04/parallel rev-parse HEAD`, `git -C /tmp/orchestra-04/parallel status --porcelain`, 存 EVID/00-env.log, 确认 HEAD 等于目标提交.
+
+## 你分到的标准 (共 4 项, 全部自己实跑/核对)
+1. AC-001-2 beta 实例状态页
+   假定 实例 beta 正在 127.0.0.1:18102 运行且 health 返回 `ok instance=beta`
+   当 验收者运行 `python3 app.py status --port 18102`
+   那么 输出含 `instance=beta`, `state=ready` 与 `version=relay-v1` 且退出码为 0
+   (假定部分也自己跑 `python3 app.py health --port 18102` 留原件)
+2. AC-002-2 beta 耗时任务
+   假定 实例 beta 正在 127.0.0.1:18102 运行
+   当 验收者运行 `python3 app.py job --port 18102 --ms 4000`
+   那么 输出为 `job-done instance=beta elapsed_ms=4000` 且退出码为 0
+   而且 命令实际耗时不少于 4 秒 (自己量, 记录测量方法)
+3. AC-003-2 追加 beta 条目
+   假定 实例 beta 正在 127.0.0.1:18102 运行且共享记录 `runtime/shared/record.jsonl` 已有 alpha 条目
+   当 验收者运行 `python3 app.py append --port 18102 --value beta`
+   那么 输出形如 `seq=<n> value=beta` 且退出码为 0
+   而且 记录中 `value=beta` 的条目恰好一条
+4. BR-001 (审计) 共享记录的序号从 1 开始连续递增且不重复, 每个 value 只出现一次.
+   断言对象是本轮真实写入的共享记录文件 runtime/shared/record.jsonl. 用实际文件内容核对, 必须留:
+   `nl -ba runtime/shared/record.jsonl`, 文件 sha256, 以及一段你自己写的核对输出 (可以用 python3 直接跑 stdin 脚本),
+   逐项给出: seq 列表是否 1..N 连续, 是否有重复 seq, 每个 value 出现次数. 结论写通过/失败并说明依据的具体行.
+
+## 顺序要求 (重要)
+- 先等标记 COORD/instances-up.txt 出现 (每 2 秒轮询, 最多 300 秒), 再开始任何命令; 等不到就记"未验证: 共享准备未就绪"并说明缺什么, 不要自己启动实例.
+- 你可以在等待期间先写 00-env.log 和 run.sh.
+- AC-003-2 之前必须等标记 COORD/record-alpha-done.txt 出现 (每 2 秒轮询, 最多 300 秒). 依据: 该场景假定记录中已有 alpha 条目, 而 AC-003-1 由 ver-alpha 先执行. 你是本轮第二个写共享记录的人.
+- 记录文件写入期间不要有其他 append (你自己串行执行 AC-003-2 与 BR-001 即可).
+- 你全部完成后写标记: printf '%s\n' "$(date -Is) ver-beta beta-writes-done" > "$COORD/beta-writes-done.txt"
+- 只写这一个标记, 不删改别人写的标记或别人的证据文件.
+
+## 交付
+- 在 EVID/RESULT.md 写逐条结论表: 标准编号 | 材料类型 (BR-001 要标明是静态材料核对还是运行产物核对) | 命令与原始输出文件 | 实际结果 | 证据位置 | 时间 | 结论(通过/失败/未验证).
+- 最后回复我一段简短汇总: 每条标准编号与结论, 以及证据文件路径.

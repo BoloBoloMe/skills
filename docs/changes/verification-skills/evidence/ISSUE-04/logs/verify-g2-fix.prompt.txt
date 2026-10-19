@@ -1,0 +1,5 @@
+验收到此暂停. 调用方改派给你一个修复任务:
+- 在 /tmp/orchestra-04/red-reverify 修掉你刚发现的 AC-003-1 缺陷: report 的输出应当反映实例真实状态 ready, 现在被写死成 loading.
+- 只改产品代码 app.py, 跑项目测试, 提交一个新 commit.
+- 修完后把关键路径 report 的通过日志与状态页截图保存到 /tmp/orchestra-04/author-materials/red/ (作者材料).
+- 不要写验收报告, 不要改 PRODUCT.md.

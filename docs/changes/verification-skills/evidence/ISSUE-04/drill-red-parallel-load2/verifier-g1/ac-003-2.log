@@ -1,0 +1,14 @@
+=== 2026-10-19T22:48:30+08:00 AC-003-2 前置: 已有 alpha 条目 ===
+{"seq": 1, "value": "alpha", "instance": "alpha", "ts": "2026-10-19T14:48:28.376124Z"}
+--- append beta ---
+seq=2 value=beta
+exit_append_beta=0
+--- record 全文 ---
+{"seq": 1, "value": "alpha", "instance": "alpha", "ts": "2026-10-19T14:48:28.376124Z"}
+{"seq": 2, "value": "beta", "instance": "beta", "ts": "2026-10-19T14:48:31.739315Z"}
+exit_record=0
+--- value=beta 条目计数 ---
+1
+grep_exit=0
+--- value=alpha 条目计数 (确认未被破坏) ---
+1

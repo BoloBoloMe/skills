@@ -1,0 +1,6 @@
+### 02-beta-health
+START 2026-10-19T22:06:18+08:00
+CMD python3 app.py health --port 18102
+ok instance=beta
+EXIT 0
+END 2026-10-19T22:06:18+08:00

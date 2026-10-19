@@ -1,0 +1,5 @@
+=== 2026-10-19T14:17:01.632263Z log-output vs events.log diff (excluding trailing exit line)
+diff exit=0
+   8 docs/changes/relay-board/evidence-e398c7c-r1/tail/log-output-lines.txt
+   8 docs/changes/relay-board/evidence-e398c7c-r1/tail/events-before.log
+  16 total

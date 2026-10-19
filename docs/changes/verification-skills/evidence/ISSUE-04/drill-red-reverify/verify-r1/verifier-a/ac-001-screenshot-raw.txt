@@ -1,0 +1,18 @@
+collected_at=2026-10-19T21:28:03+08:00
+=== health re-check before screenshot ===
+ok instance=alpha
+exit=0
+
+=== chrome version ===
+Google Chrome 154.0.8037.97 
+exit=0
+
+=== screenshot cmd ===
+google-chrome --headless --disable-gpu --no-sandbox --window-size=900,400 --screenshot=<evid>/ac-001-status-page.png --virtual-time-budget=3000 http://127.0.0.1:18101/status-page
+8788 bytes written to file /tmp/orchestra-04/red-reverify/docs/changes/relay-board/verify-r1/verifier-a/ac-001-status-page.png
+exit=0
+
+=== png file ===
+-rw-rw-r-- 1 bolo bolo 8788 Oct 19 21:28 docs/changes/relay-board/verify-r1/verifier-a/ac-001-status-page.png
+docs/changes/relay-board/verify-r1/verifier-a/ac-001-status-page.png: PNG image data, 900 x 400, 8-bit/color RGB, non-interlaced
+57e24e1551247a5497cee2a3ce6bf0b0  docs/changes/relay-board/verify-r1/verifier-a/ac-001-status-page.png

@@ -1,0 +1,6 @@
+### 03-ac003-2-pre-record
+START 2026-10-19T22:07:13+08:00
+CMD cat runtime/shared/record.jsonl
+{"seq": 1, "value": "alpha", "instance": "alpha", "ts": "2026-10-19T14:06:18.228128Z"}
+EXIT 0
+END 2026-10-19T22:07:13+08:00

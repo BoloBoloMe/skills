@@ -1,0 +1,22 @@
+=== BR-001 审计: 共享记录 seq 与 value ===
+时间: 2026-10-19T21:21:57+08:00
+文件: runtime/shared/record.jsonl
+字节数: 172
+sha256: fa059e3ef640c8311e222ba6fdf6240a1d620b5a2e568380338b7d7d35f994d1
+行数: 2
+=== 全文 (cat -A) ===
+{"seq": 1, "value": "alpha", "instance": "alpha", "ts": "2026-10-19T13:21:29.077625Z"}$
+{"seq": 2, "value": "beta", "instance": "beta", "ts": "2026-10-19T13:21:35.764105Z"}$
+=== 全文 (cat) ===
+{"seq": 1, "value": "alpha", "instance": "alpha", "ts": "2026-10-19T13:21:29.077625Z"}
+{"seq": 2, "value": "beta", "instance": "beta", "ts": "2026-10-19T13:21:35.764105Z"}
+=== 逐行核对 ===
+line1: seq=1 value=alpha instance=alpha keys=['instance', 'seq', 'ts', 'value']
+line2: seq=2 value=beta instance=beta keys=['instance', 'seq', 'ts', 'value']
+seq 序列 = [1, 2]
+从 1 开始 = True
+连续递增 = True
+有重复 = False
+每行 value 计数 = {'alpha': 1, 'beta': 1}
+每个 value 只出现一次 = True
+结论: 从1起=True 连续=True 无重复=True value唯一=True

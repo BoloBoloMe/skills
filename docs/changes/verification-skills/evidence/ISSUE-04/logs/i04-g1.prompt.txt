@@ -1,0 +1,3 @@
+/skill:verify-change 对项目 /tmp/orchestra-04/parallel 做独立产品验收: 目标提交 773fc6bf093c3b17f18a8817f924536902f13d2b (HEAD), 产物根目录 docs/changes/relay-board/.
+本轮可用非作者验收者 3 名, 你可以自己开新会话.
+端口 18101 (alpha) 与 18102 (beta) 以及 runtime/ 目录只给本项目用.

@@ -1,0 +1,5 @@
+time: 2026-10-19T21:36:58+0800
+head: ad2ed33496a31c59333dccdd6422e69a89bbbc19
+cmd: python3 app.py job --port 18101 --ms 2500
+job-done instance=alpha elapsed_ms=2500
+exit=0

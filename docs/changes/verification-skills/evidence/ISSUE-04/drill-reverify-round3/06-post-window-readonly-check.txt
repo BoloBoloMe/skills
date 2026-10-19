@@ -1,0 +1,31 @@
+post-window read-only check, time=2026-10-19T22:48:43+08:00
+note=session interrupted after 22:38:28; this check is after restore, no AC rerun, no service restart
+
+$ git rev-parse HEAD
+59069130494139f96994f144c1ba09d3b51876d6
+$ git status --porcelain
+?? docs/changes/relay-board/evidence/
+$ git diff --stat
+[empty above = clean]
+$ git diff --cached --stat
+[empty above = clean]
+$ git hash-object app.py README.md deps.txt tests/test_app.py docs/changes/relay-board/PRODUCT.md
+25d56020bbecbf646eac78d0a9f73e185dfa2579
+75dc54367bca1877e1f9e61c09f0af1eb44ec245
+ff2c99947923198db10083beab39cf783c26e9b0
+165d334065d2da26d5dc35ec7b815c4bf031d325
+83cf96799a90aaece4b1506aeba7175dbbcf94b2
+$ git rev-parse HEAD:<file>
+app.py 25d56020bbecbf646eac78d0a9f73e185dfa2579
+README.md 75dc54367bca1877e1f9e61c09f0af1eb44ec245
+deps.txt ff2c99947923198db10083beab39cf783c26e9b0
+tests/test_app.py 165d334065d2da26d5dc35ec7b815c4bf031d325
+docs/changes/relay-board/PRODUCT.md 83cf96799a90aaece4b1506aeba7175dbbcf94b2
+
+$ ss -ltnp 2>/dev/null | grep 18101
+LISTEN 0      5           127.0.0.1:18101      0.0.0.0:*    users:(("python3",pid=4134574,fd=3))         
+$ pgrep -af 'app.py serve'
+4134574 python3 app.py serve --port 18101 --instance alpha --data-dir runtime/alpha --shared-dir runtime/shared
+4134575 python3 app.py serve --port 18102 --instance beta --data-dir runtime/beta --shared-dir runtime/shared
+4135912 /bin/bash -c cd /tmp/orchestra-04/reverify && E=docs/changes/relay-board/evidence/v3-5906913 && { echo "post-window read-only check, time=$(date -Is)"; echo "note=session interrupted after 22:38:28; this check is after restore, no AC rerun, no service restart"; echo; echo "\$ git rev-parse HEAD"; git rev-parse HEAD; echo "\$ git status --porcelain"; git status --porcelain; echo "\$ git diff --stat"; git diff --stat; echo "[empty above = clean]"; echo "\$ git diff --cached --stat"; git diff --cached --stat; echo "[empty above = clean]"; echo "\$ git hash-object app.py README.md deps.txt tests/test_app.py docs/changes/relay-board/PRODUCT.md"; git hash-object app.py README.md deps.txt tests/test_app.py docs/changes/relay-board/PRODUCT.md; echo "\$ git rev-parse HEAD:<file>"; for f in app.py README.md deps.txt tests/test_app.py docs/changes/relay-board/PRODUCT.md; do echo -n "$f "; git rev-parse "HEAD:$f"; done; echo; echo "\$ ss -ltnp 2>/dev/null | grep 18101"; ss -ltnp 2>/dev/null | grep 18101 || echo "(none)"; echo "\$ pgrep -af 'app.py serve'"; pgrep -af 'app.py serve' || echo "(no app.py serve process)"; } | tee "$E/06-post-window-readonly-check.txt"
+4135913 /bin/bash -c cd /tmp/orchestra-04/reverify && E=docs/changes/relay-board/evidence/v3-5906913 && { echo "post-window read-only check, time=$(date -Is)"; echo "note=session interrupted after 22:38:28; this check is after restore, no AC rerun, no service restart"; echo; echo "\$ git rev-parse HEAD"; git rev-parse HEAD; echo "\$ git status --porcelain"; git status --porcelain; echo "\$ git diff --stat"; git diff --stat; echo "[empty above = clean]"; echo "\$ git diff --cached --stat"; git diff --cached --stat; echo "[empty above = clean]"; echo "\$ git hash-object app.py README.md deps.txt tests/test_app.py docs/changes/relay-board/PRODUCT.md"; git hash-object app.py README.md deps.txt tests/test_app.py docs/changes/relay-board/PRODUCT.md; echo "\$ git rev-parse HEAD:<file>"; for f in app.py README.md deps.txt tests/test_app.py docs/changes/relay-board/PRODUCT.md; do echo -n "$f "; git rev-parse "HEAD:$f"; done; echo; echo "\$ ss -ltnp 2>/dev/null | grep 18101"; ss -ltnp 2>/dev/null | grep 18101 || echo "(none)"; echo "\$ pgrep -af 'app.py serve'"; pgrep -af 'app.py serve' || echo "(no app.py serve process)"; } | tee "$E/06-post-window-readonly-check.txt"

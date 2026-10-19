@@ -1,0 +1,18 @@
+=== 2026-10-19T14:17:08.501735Z AC-005-1 materials metadata (rerun sha256 + stat)
+4374f026939db8238ab13de9ed80aad7c997cd3ebc9a89504509d5ac51248803  docs/changes/relay-board/evidence-e398c7c-r1/alpha/04-ac005/alpha-status.png
+4374f026939db8238ab13de9ed80aad7c997cd3ebc9a89504509d5ac51248803  docs/changes/relay-board/evidence-e398c7c-r1/alpha/01-ac001/alpha-status.png
+d52bb2deb308eeddfba77975795b332827e00f875fc5152641d9efb16ee8f21c  docs/changes/relay-board/evidence-e398c7c-r1/beta/ac005-1/beta-status.png
+3637f8b5daa6c6868e81d7a6425e38ccb639d8a8f5bfcb0e177af94f62a3cf93  docs/changes/relay-board/evidence-e398c7c-r1/alpha/04-ac005/report.txt
+e7917e123def23248a331af8f7d327cb2ededa3c4d7f4392726ad7ff3e117391  docs/changes/relay-board/evidence-e398c7c-r1/alpha/04-ac005/report-fresh.txt
+3637f8b5daa6c6868e81d7a6425e38ccb639d8a8f5bfcb0e177af94f62a3cf93  docs/changes/relay-board/evidence-e398c7c-r1/alpha/01-ac001/report.txt
+058b85727c7d2db9215fceff73bf6528fa69e5b6216cabf875bf8f49822aea22  docs/changes/relay-board/evidence-e398c7c-r1/beta/ac005-1/report-and-status.txt
+--- stat mtimes
+2026-10-19 22:15:20.727236258 +0800 8788 docs/changes/relay-board/evidence-e398c7c-r1/alpha/04-ac005/alpha-status.png
+2026-10-19 22:15:22.499230120 +0800 8695 docs/changes/relay-board/evidence-e398c7c-r1/beta/ac005-1/beta-status.png
+2026-10-19 22:15:23.822225537 +0800 231 docs/changes/relay-board/evidence-e398c7c-r1/alpha/04-ac005/report.txt
+2026-10-19 22:15:47.555143321 +0800 335 docs/changes/relay-board/evidence-e398c7c-r1/alpha/04-ac005/report-fresh.txt
+2026-10-19 22:15:23.822225537 +0800 231 docs/changes/relay-board/evidence-e398c7c-r1/alpha/01-ac001/report.txt
+2026-10-19 22:15:20.544236892 +0800 495 docs/changes/relay-board/evidence-e398c7c-r1/beta/ac005-1/report-and-status.txt
+--- png header (file type)
+docs/changes/relay-board/evidence-e398c7c-r1/alpha/04-ac005/alpha-status.png: PNG image data, 900 x 400, 8-bit/color RGB, non-interlaced
+docs/changes/relay-board/evidence-e398c7c-r1/beta/ac005-1/beta-status.png:    PNG image data, 900 x 400, 8-bit/color RGB, non-interlaced

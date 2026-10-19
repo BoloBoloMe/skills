@@ -1,0 +1,19 @@
+=== 2026-10-19T22:49:04+08:00 BR-002 查看前 events.log 元数据 ===
+size=540 mtime=2026-10-19 22:48:42.274268620 +0800
+0980115664ae080d2da47e10a2fbdbc09518a3f3bf418ad5e8752dd160314d34  runtime/shared/events.log
+--- 2026-10-19T22:49:04+08:00 log --port 18101 ---
+2026-10-19T14:48:15.409551Z instance=alpha event=job-start ms=4000
+2026-10-19T14:48:19.409751Z instance=alpha event=job-end ms=4000
+2026-10-19T14:48:21.196026Z instance=beta event=job-start ms=4000
+2026-10-19T14:48:25.196419Z instance=beta event=job-end ms=4000
+2026-10-19T14:48:28.376284Z instance=alpha event=append seq=1 value=alpha
+2026-10-19T14:48:31.739481Z instance=beta event=append seq=2 value=beta
+2026-10-19T14:48:34.274999Z instance=alpha event=job-start ms=8000
+2026-10-19T14:48:42.275199Z instance=alpha event=job-end ms=8000
+exit_log=0
+--- 2026-10-19T22:49:04+08:00 log --port 18102 ---
+exit_log_beta=0
+=== 2026-10-19T22:49:04+08:00 查看后 events.log 元数据 ===
+size=540 mtime=2026-10-19 22:48:42.274268620 +0800
+0980115664ae080d2da47e10a2fbdbc09518a3f3bf418ad5e8752dd160314d34  runtime/shared/events.log
+cmp_exit=0

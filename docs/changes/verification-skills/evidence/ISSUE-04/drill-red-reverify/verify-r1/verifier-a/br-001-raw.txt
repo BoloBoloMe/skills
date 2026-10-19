@@ -1,0 +1,24 @@
+# BR-001 raw evidence  collected_at=2026-10-19T21:27:15+08:00
+
+=== cmd1: git show 8438934:deps.txt ===
+python3 标准库, 无第三方依赖
+exit=0
+
+=== cmd2: git show cd08754:deps.txt ===
+python3 标准库, 无第三方依赖
+exit=0
+
+=== cmd3: git diff 8438934 cd08754 -- deps.txt ===
+exit=0
+
+=== cmd4: byte compare via sha256 ===
+6390d8992b2242f1e885b0de7ad65c20fbcba97ecfc0980b1f9675b5f90f9d68  -
+6390d8992b2242f1e885b0de7ad65c20fbcba97ecfc0980b1f9675b5f90f9d68  -
+exit=0
+
+=== cmd5: git diff --stat 8438934 cd08754 -- deps.txt ===
+exit=0
+
+=== cmd6: full changed file list between the two commits ===
+M	app.py
+exit=0

@@ -1,0 +1,16 @@
+=== 2026-10-19T22:54:35+08:00 AC-003-1 前置 ===
+cmd: ls -l runtime/shared/record.jsonl
+ls: cannot access 'runtime/shared/record.jsonl': No such file or directory
+ls_exit=2
+=== 2026-10-19T22:54:35+08:00 append alpha ===
+cmd: /usr/bin/python3 app.py append --port 18101 --value alpha
+seq=1 value=alpha
+exit_append=0
+cmd: /usr/bin/python3 app.py record --port 18101
+{"seq": 1, "value": "alpha", "instance": "alpha", "ts": "2026-10-19T14:54:37.124383Z"}
+exit_record=0
+--- value=alpha 条目计数 ---
+cmd: /usr/bin/python3 app.py record --port 18101 | grep -c '"value": "alpha"'
+1
+grep_exit=0
+1 runtime/shared/record.jsonl

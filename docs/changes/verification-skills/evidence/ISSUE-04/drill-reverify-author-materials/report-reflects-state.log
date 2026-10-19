@@ -1,0 +1,7 @@
+== date
+2026-10-19T22:27:21+08:00
+== 证明 report 读的是实例当前状态而非固定字符串
+default -> relay-report instance=alpha version=relay-v1 state=ready
+state=busy -> relay-report instance=alpha version=relay-v1 state=busy
+state=ready -> relay-report instance=alpha version=relay-v1 state=ready
+exit=0

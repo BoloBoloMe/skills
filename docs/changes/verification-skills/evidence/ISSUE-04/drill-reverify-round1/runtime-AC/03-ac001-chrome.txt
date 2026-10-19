@@ -1,0 +1,7 @@
+== date
+2026-10-19T22:23:55+08:00
+== cmd: google-chrome --headless --disable-gpu --no-sandbox --window-size=900,400 --screenshot=docs/changes/relay-board/evidence/v1-cd08754/runtime-AC/ac001-status-page.png http://127.0.0.1:18101/status-page
+8788 bytes written to file docs/changes/relay-board/evidence/v1-cd08754/runtime-AC/ac001-status-page.png
+== exit_code: 0
+== ls -l
+-rw-rw-r-- 1 bolo bolo 8788 Oct 19 22:23 docs/changes/relay-board/evidence/v1-cd08754/runtime-AC/ac001-status-page.png

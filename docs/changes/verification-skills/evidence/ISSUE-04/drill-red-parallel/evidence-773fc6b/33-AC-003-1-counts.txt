@@ -1,0 +1,12 @@
+=== AC-003-1 计数 (记录文件为 JSONL, 故用带引号的模式) ===
+2026-10-19T21:21:32+08:00
+grep -c '"value": "alpha"' runtime/shared/record.jsonl = 1
+grep -c '"value": "beta"'  runtime/shared/record.jsonl = 0
+grep -c 'value=alpha' (裸模式, 仅作交叉参考, JSON 文本无此串) = 0
+总行数 = 1
+--- 按行解析 ---
+lines= 1
+values= {'alpha': 1}
+seqs= [1]
+value=alpha 出现次数=1
+value=beta 出现次数=0

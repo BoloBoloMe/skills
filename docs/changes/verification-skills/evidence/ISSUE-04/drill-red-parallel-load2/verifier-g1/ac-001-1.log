@@ -1,0 +1,19 @@
+=== 2026-10-19T22:48:10+08:00 health alpha/beta ===
+ok instance=alpha
+exit_health_alpha=0
+ok instance=beta
+exit_health_beta=0
+=== 2026-10-19T22:48:10+08:00 AC-001-1 report ===
+relay-report instance=alpha version=relay-v1 state=ready
+exit_report_alpha=0
+=== 2026-10-19T22:48:10+08:00 AC-001-1 screenshot ===
+8788 bytes written to file docs/changes/relay-board/evidence-v1-e398c7c/verifier-g1/ac-001-1-alpha-status.png
+exit_chrome_alpha=0
+-rw-rw-r-- 1 bolo bolo 8788 Oct 19 22:48 docs/changes/relay-board/evidence-v1-e398c7c/verifier-g1/ac-001-1-alpha-status.png
+--- 截图目视记录 (我打开 png 后看到的文字) ---
+relay board
+instance=alpha
+state=ready
+version=relay-v1
+--- 判定 ---
+截图含 instance=alpha, state=ready, version=relay-v1; report 输出 = relay-report instance=alpha version=relay-v1 state=ready (完全一致); report 退出码 0.

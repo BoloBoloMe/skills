@@ -1,0 +1,6 @@
+### 01b-health-alpha
+START 2026-10-19T22:06:07+08:00
+CMD python3 app.py health --port 18101
+ok instance=alpha
+EXIT 0
+END 2026-10-19T22:06:07+08:00

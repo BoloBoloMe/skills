@@ -1,0 +1,11 @@
+time: 2026-10-19T21:30:56+0800
+trigger: verifier-a/ac-001-done.marker 存在 (内容: 2026-10-19T21:28:17+08:00), 三条必验项已完成
+cmd: kill 4029891  (我自己启动的 serve 进程, PID 见 startup.log)
+kill_exit=0
+--- process check after kill ---
+no serve process left
+port 18101 free
+--- final serve.log ---
+listening on 127.0.0.1:18101 instance=alpha
+2026-10-19T21:30:57+0800
+stop-done-time: 2026-10-19T21:30:57+0800

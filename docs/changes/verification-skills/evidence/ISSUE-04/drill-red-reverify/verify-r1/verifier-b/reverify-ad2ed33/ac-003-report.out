@@ -1,0 +1,19 @@
+time: 2026-10-19T21:37:04+0800
+=== precondition: health ===
+cmd: python3 app.py health --port 18101
+ok instance=alpha
+exit=0
+=== main cmd ===
+cmd: python3 app.py report --port 18101
+relay-report instance=alpha version=relay-v1 state=ready
+exit=0
+=== repeat x3 (5s interval) ===
+--- retry 1 ---
+relay-report instance=alpha version=relay-v1 state=ready
+exit=0
+--- retry 2 ---
+relay-report instance=alpha version=relay-v1 state=ready
+exit=0
+--- retry 3 ---
+relay-report instance=alpha version=relay-v1 state=ready
+exit=0

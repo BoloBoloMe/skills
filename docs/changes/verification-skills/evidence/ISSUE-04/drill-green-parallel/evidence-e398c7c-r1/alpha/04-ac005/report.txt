@@ -1,0 +1,6 @@
+### exec_start_utc=2026-10-19T14:15:23Z local=2026-10-19T22:15:23+0800
+### cmd: python3 app.py report --port 18101
+relay-report instance=alpha version=relay-v1 state=ready
+exit=0
+elapsed_ms=70
+### exec_end_utc=2026-10-19T14:15:23Z

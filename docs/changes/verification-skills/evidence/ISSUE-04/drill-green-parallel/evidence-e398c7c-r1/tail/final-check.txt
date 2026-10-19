@@ -1,0 +1,44 @@
+=== 2026-10-19T14:17:39.714140Z final check: record/events unchanged since G4
+0f41eca29bafabc85683141d4f9246909c9ab588cd4c36617b4b6141d49b91bd  runtime/shared/record.jsonl
+74230d7416dd9d2a6d3b20540e5c09c136935eb1b10bdc1cb2c37c6f53f3ab58  runtime/shared/events.log
+--- git status --porcelain
+?? docs/changes/relay-board/evidence-e398c7c-r1/
+--- git diff --stat (tracked)
+--- HEAD
+e398c7cc7ca4e493d23689bee3cca1a34d306000
+--- 我的新增文件
+docs/changes/relay-board/evidence-e398c7c-r1/shared:
+total 52
+drwxrwxr-x 2 bolo bolo  300 Oct 19 22:15 .
+drwxrwxr-x 6 bolo bolo  200 Oct 19 22:15 ..
+-rw-rw-r-- 1 bolo bolo  157 Oct 19 22:15 ac003-1-log.txt
+-rw-rw-r-- 1 bolo bolo   25 Oct 19 22:15 ac003-1-out.txt
+-rw-rw-r-- 1 bolo bolo  255 Oct 19 22:15 ac003-1-precheck.txt
+-rw-rw-r-- 1 bolo bolo  155 Oct 19 22:15 ac003-2-log.txt
+-rw-rw-r-- 1 bolo bolo   24 Oct 19 22:15 ac003-2-out.txt
+-rw-rw-r-- 1 bolo bolo  197 Oct 19 22:15 ac003-2-precheck.txt
+-rw-rw-r-- 1 bolo bolo  252 Oct 19 22:15 br001-check.txt
+-rw-rw-r-- 1 bolo bolo  837 Oct 19 22:15 br001-material.txt
+-rw-rw-r-- 1 bolo bolo  184 Oct 19 22:15 git.txt
+-rw-rw-r-- 1 bolo bolo 3587 Oct 19 22:15 notes.md
+-rw-rw-r-- 1 bolo bolo  172 Oct 19 22:15 record-copy.jsonl
+-rw-rw-r-- 1 bolo bolo 3913 Oct 19 22:17 summary.md
+-rw-rw-r-- 1 bolo bolo  442 Oct 19 22:15 wait.log
+
+docs/changes/relay-board/evidence-e398c7c-r1/tail:
+total 56
+drwxrwxr-x 2 bolo bolo  300 Oct 19 22:17 .
+drwxrwxr-x 6 bolo bolo  200 Oct 19 22:15 ..
+-rw-rw-r-- 1 bolo bolo  490 Oct 19 22:17 ac005-1-crosscheck.txt
+-rw-rw-r-- 1 bolo bolo 2080 Oct 19 22:17 ac005-1-material.txt
+-rw-rw-r-- 1 bolo bolo  938 Oct 19 22:16 br002-after.txt
+-rw-rw-r-- 1 bolo bolo  789 Oct 19 22:16 br002-before.txt
+-rw-rw-r-- 1 bolo bolo  265 Oct 19 22:17 br002-diff.txt
+-rw-rw-r-- 1 bolo bolo  662 Oct 19 22:16 br002-log-log.txt
+-rw-rw-r-- 1 bolo bolo  547 Oct 19 22:16 br002-log-out.txt
+-rw-rw-r-- 1 bolo bolo  540 Oct 19 22:16 events-after.log
+-rw-rw-r-- 1 bolo bolo  540 Oct 19 22:16 events-before.log
+-rw-rw-r-- 1 bolo bolo  443 Oct 19 22:17 final-check.txt
+-rw-rw-r-- 1 bolo bolo  540 Oct 19 22:17 log-output-lines.txt
+-rw-rw-r-- 1 bolo bolo 5381 Oct 19 22:17 notes.md
+-rw-rw-r-- 1 bolo bolo 2271 Oct 19 22:17 order.md

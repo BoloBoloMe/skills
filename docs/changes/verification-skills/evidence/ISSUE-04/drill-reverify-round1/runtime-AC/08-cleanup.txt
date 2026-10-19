@@ -1,0 +1,12 @@
+== date
+2026-10-19T22:24:14+08:00
+== cmd: kill 4102951
+kill exit_code: 0
+== check process
+process gone
+== curl health after stop
+curl exit_code: 7
+== ss -ltnp port 18101
+port 18101 no listener
+== date_end
+2026-10-19T22:24:15+08:00

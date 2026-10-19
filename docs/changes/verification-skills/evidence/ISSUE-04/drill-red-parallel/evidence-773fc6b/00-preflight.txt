@@ -1,0 +1,28 @@
+=== git rev-parse HEAD ===
+773fc6bf093c3b17f18a8817f924536902f13d2b
+=== git log -1 ===
+773fc6bf093c3b17f18a8817f924536902f13d2b feat: 增加共享记录追加与 report 子命令
+=== git status --porcelain ===
+?? docs/changes/relay-board/evidence-773fc6b/
+=== git ls-files ===
+.gitignore
+README.md
+app.py
+deps.txt
+docs/changes/relay-board/PRODUCT.md
+tests/test_app.py
+=== python3 --version ===
+Python 3.14.7
+=== date ===
+2026-10-19T21:21:01+08:00
+=== ls -la runtime/shared (清空前) ===
+total 0
+drwxrwxr-x 2 bolo bolo  40 Oct 19 21:18 .
+drwxrwxr-x 5 bolo bolo 100 Oct 19 21:18 ..
+=== ls -la runtime ===
+total 0
+drwxrwxr-x 5 bolo bolo 100 Oct 19 21:18 .
+drwxrwxr-x 7 bolo bolo 220 Oct 19 21:18 ..
+drwxrwxr-x 2 bolo bolo  40 Oct 19 21:18 alpha
+drwxrwxr-x 2 bolo bolo  40 Oct 19 21:18 beta
+drwxrwxr-x 2 bolo bolo  40 Oct 19 21:18 shared

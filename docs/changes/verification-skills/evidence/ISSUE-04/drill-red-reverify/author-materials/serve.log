@@ -1,0 +1,12 @@
+listening on 127.0.0.1:18101 instance=alpha
+time: 2026-10-19T21:35:33+0800
+cmd: kill 4041196
+exit=0
+bolo     4041199  0.2  0.0 187172 23676 ?        S    21:35   0:00 python3 app.py serve --port 18101 --instance alpha --data-dir runtime/alpha --shared-dir runtime/shared
+LISTEN 0      5           127.0.0.1:18101      0.0.0.0:*    users:(("python3",pid=4041199,fd=3))         
+note: 4041196 was the subshell wrapper; actual serve pid 4041199
+time: 2026-10-19T21:35:36+0800
+cmd: kill 4041199
+exit=0
+no serve process
+port free

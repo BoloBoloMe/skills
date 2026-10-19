@@ -1,0 +1,15 @@
+=== 清空动作 (AC-003-1 假定: 共享记录尚不存在) ===
+cmd: rm -f runtime/shared/*
+2026-10-19T21:21:03+08:00
+rm exit=0
+=== 清空后 ls -la runtime/shared ===
+total 0
+drwxrwxr-x 2 bolo bolo  40 Oct 19 21:18 .
+drwxrwxr-x 5 bolo bolo 100 Oct 19 21:18 ..
+=== runtime 目录仍在 ===
+total 0
+drwxrwxr-x 5 bolo bolo 100 Oct 19 21:18 .
+drwxrwxr-x 7 bolo bolo 220 Oct 19 21:18 ..
+drwxrwxr-x 2 bolo bolo  40 Oct 19 21:18 alpha
+drwxrwxr-x 2 bolo bolo  40 Oct 19 21:18 beta
+drwxrwxr-x 2 bolo bolo  40 Oct 19 21:18 shared

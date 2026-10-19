@@ -1,0 +1,5 @@
+time_start=2026-10-19T22:38:02+08:00
+time_end=2026-10-19T22:38:03+08:00
+command=google-chrome --headless --disable-gpu --no-sandbox --window-size=900,400 --screenshot=<evidence>/ac001-status-page.png http://127.0.0.1:18101/status-page
+exit_code=0
+status cmd exit=0

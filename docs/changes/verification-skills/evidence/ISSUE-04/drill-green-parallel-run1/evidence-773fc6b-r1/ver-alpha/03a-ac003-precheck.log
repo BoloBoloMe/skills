@@ -1,0 +1,8 @@
+### 03a-ac003-precheck
+START 2026-10-19T22:06:15+08:00
+CMD ls -l runtime/shared/ ; test -e runtime/shared/record.jsonl && echo EXISTS || echo ABSENT
+--- ls -l runtime/shared/ ---
+total 0
+record.jsonl ABSENT
+EXIT 0
+END 2026-10-19T22:06:15+08:00

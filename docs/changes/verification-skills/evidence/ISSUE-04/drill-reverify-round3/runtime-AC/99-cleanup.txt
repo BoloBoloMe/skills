@@ -1,0 +1,19 @@
+time=2026-10-19T22:38:15+08:00
+command=kill -TERM 4121893
+pgrep after:
+4121899 python3 app.py serve --port 18101 --instance alpha --data-dir runtime/alpha --shared-dir runtime/shared
+4122573 /bin/bash -c cd /tmp/orchestra-04/reverify && E=docs/changes/relay-board/evidence/v3-5906913/runtime-AC && t0=$(date -Is) && pid=$(pgrep -f "app.py serve --port 18101" | head -1) && echo "pid=$pid" && kill -TERM "$pid"; sleep 1; { echo "time=$t0"; echo "command=kill -TERM $pid"; echo "pgrep after:"; pgrep -af "app.py serve" || echo "no app.py serve process"; echo "ss 18101 count: $(ss -ltnp 2>/dev/null | grep -c 18101)"; echo "ss 18101 raw:"; ss -ltnp 2>/dev/null | grep 18101 || echo "(none)"; } | tee "$E/99-cleanup.txt"; echo "--- server logs ---"; echo "[stdout]"; cat "$E/serve.stdout.txt"; echo "[stderr]"; cat "$E/serve.stderr.txt"; echo "--- runtime tree ---"; find runtime -type f -printf '%p %s bytes\n' | sort | tee "$E/99-runtime-files.txt"
+4122600 /bin/bash -c cd /tmp/orchestra-04/reverify && E=docs/changes/relay-board/evidence/v3-5906913/runtime-AC && t0=$(date -Is) && pid=$(pgrep -f "app.py serve --port 18101" | head -1) && echo "pid=$pid" && kill -TERM "$pid"; sleep 1; { echo "time=$t0"; echo "command=kill -TERM $pid"; echo "pgrep after:"; pgrep -af "app.py serve" || echo "no app.py serve process"; echo "ss 18101 count: $(ss -ltnp 2>/dev/null | grep -c 18101)"; echo "ss 18101 raw:"; ss -ltnp 2>/dev/null | grep 18101 || echo "(none)"; } | tee "$E/99-cleanup.txt"; echo "--- server logs ---"; echo "[stdout]"; cat "$E/serve.stdout.txt"; echo "[stderr]"; cat "$E/serve.stderr.txt"; echo "--- runtime tree ---"; find runtime -type f -printf '%p %s bytes\n' | sort | tee "$E/99-runtime-files.txt"
+ss 18101 count: 1
+ss 18101 raw:
+LISTEN 0      5           127.0.0.1:18101      0.0.0.0:*    users:(("python3",pid=4121899,fd=3))         
+correction: first pgrep matched bash wrapper; actual server pid=4121899 (from ss output)
+time=2026-10-19T22:38:19+08:00
+command=kill -TERM 4121899
+pgrep after:
+4122667 /bin/bash -c cd /tmp/orchestra-04/reverify && E=docs/changes/relay-board/evidence/v3-5906913/runtime-AC && pid=4121899 && { echo "correction: first pgrep matched bash wrapper; actual server pid=$pid (from ss output)"; echo "time=$(date -Is)"; echo "command=kill -TERM $pid"; } | tee -a "$E/99-cleanup.txt" && kill -TERM "$pid"; sleep 1.5; { echo "pgrep after:"; pgrep -af "app.py serve" || echo "no app.py serve process"; echo "ss 18101 count: $(ss -ltnp 2>/dev/null | grep -c 18101)"; echo "ss 18101 raw:"; ss -ltnp 2>/dev/null | grep 18101 || echo "(none)"; echo "time=$(date -Is)"; } | tee -a "$E/99-cleanup.txt"
+4122703 /bin/bash -c cd /tmp/orchestra-04/reverify && E=docs/changes/relay-board/evidence/v3-5906913/runtime-AC && pid=4121899 && { echo "correction: first pgrep matched bash wrapper; actual server pid=$pid (from ss output)"; echo "time=$(date -Is)"; echo "command=kill -TERM $pid"; } | tee -a "$E/99-cleanup.txt" && kill -TERM "$pid"; sleep 1.5; { echo "pgrep after:"; pgrep -af "app.py serve" || echo "no app.py serve process"; echo "ss 18101 count: $(ss -ltnp 2>/dev/null | grep -c 18101)"; echo "ss 18101 raw:"; ss -ltnp 2>/dev/null | grep 18101 || echo "(none)"; echo "time=$(date -Is)"; } | tee -a "$E/99-cleanup.txt"
+ss 18101 count: 0
+ss 18101 raw:
+(none)
+time=2026-10-19T22:38:20+08:00

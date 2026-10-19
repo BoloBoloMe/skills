@@ -1,0 +1,13 @@
+2026-10-19T22:15:25+08:00
+--- runtime/shared ---
+total 8
+drwxrwxr-x 2 bolo bolo  80 Oct 19 22:15 .
+drwxrwxr-x 5 bolo bolo 120 Oct 19 22:15 ..
+-rw-rw-r-- 1 bolo bolo 276 Oct 19 22:15 events.log
+-rw-rw-r-- 1 bolo bolo 172 Oct 19 22:15 record.jsonl
+record_exists=yes
+--- events.log (read-only view) ---
+2026-10-19T14:15:12.595404Z instance=beta event=job-start ms=4000
+2026-10-19T14:15:14.381742Z instance=alpha event=append seq=1 value=alpha
+2026-10-19T14:15:16.595622Z instance=beta event=job-end ms=4000
+2026-10-19T14:15:17.703079Z instance=beta event=append seq=2 value=beta

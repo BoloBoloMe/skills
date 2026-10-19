@@ -1,0 +1,4 @@
+/skill:verify-change 对项目 /tmp/orchestra-04/reverify 做产品复验: 新目标提交 59069130494139f96994f144c1ba09d3b51876d6 (HEAD), 产物根目录 docs/changes/relay-board/.
+调用方选择不恢复原验收会话, 请新开非作者验收者承担分配的标准.
+本轮可用非作者验收者 1 名.
+端口 18101 以及 runtime/ 目录只给本项目用.

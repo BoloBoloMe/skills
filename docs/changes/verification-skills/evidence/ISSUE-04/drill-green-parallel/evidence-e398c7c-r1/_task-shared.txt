@@ -1,0 +1,60 @@
+你是本轮独立产品验收者 rev-shared, 未参与该产品的实现与修复, 也不继承任何实现会话的过程.
+
+# 环境与输入
+- 工作目录: /tmp/orchestra-04/parallel
+- 目标提交: e398c7cc7ca4e493d23689bee3cca1a34d306000 (HEAD, main)
+- 第一步: 运行 `git rev-parse HEAD` 与 `git status --porcelain`, 把输出记到证据里. HEAD 与上面的值不一致就停止并报告.
+- 产品说明 README.md, 代码 app.py, 依赖 deps.txt (只用 python3 标准库).
+- 判据来源: docs/changes/relay-board/PRODUCT.md (只读). 判据只取其中"验收标准"的场景原文与"业务规则"原文; 场景编号, 步骤里的具体数据, 期望输出都是判据的一部分.
+- 证据根目录: docs/changes/relay-board/evidence-e398c7c-r1/, 你的子目录是 shared/ 与 tail/.
+- 派工计划: 同目录的 plan.md, 可读.
+
+# 你承接的标准 (原文)
+场景: AC-003-1 追加 alpha 条目
+  假定 实例 alpha 正在 127.0.0.1:18101 运行且共享记录 `runtime/shared/record.jsonl` 尚不存在
+  当 验收者运行 `python3 app.py append --port 18101 --value alpha`
+  那么 输出形如 `seq=<n> value=alpha` 且退出码为 0
+  而且 记录中 `value=alpha` 的条目恰好一条
+
+场景: AC-003-2 追加 beta 条目
+  假定 实例 beta 正在 127.0.0.1:18102 运行且共享记录 `runtime/shared/record.jsonl` 已有 alpha 条目
+  当 验收者运行 `python3 app.py append --port 18102 --value beta`
+  那么 输出形如 `seq=<n> value=beta` 且退出码为 0
+  而且 记录中 `value=beta` 的条目恰好一条
+
+业务规则: BR-001: 共享记录的序号从 1 开始连续递增且不重复, 每个 value 只出现一次. (审计)
+
+# 收尾两条 (等我通知后再做)
+业务规则: BR-002: 共享事件日志只增不改, 只读查看前后文件内容不变. (审计)
+
+场景: AC-005-1 两个实例的状态材料互相一致
+  假定 实例 alpha 与 beta 都在运行, 两侧的状态页截图与 report 输出已由各自负责人产出
+  当 验收者核对两侧截图与 report 输出
+  那么 每一侧的 instance 与 version 在截图和 report 中相同
+  而且 两侧 report 输出都含 `state=ready`
+
+# 实例由别人启动, 你只等就绪
+- 端口 18101 (alpha) 与 18102 (beta) 由另两名验收者启动, 你不要自己 serve, 不要停他们的实例.
+- 用 `python3 app.py health --port 18101` 与 `--port 18102` 轮询等待就绪 (每次尝试与时间记到 shared/wait.log); 两条都返回 `ok instance=alpha` / `ok instance=beta` 再开始. 60 秒内未就绪就记未验证并汇报.
+- 前提核对: 开始 AC-003-1 前用 ls 记录 runtime/shared/record.jsonl 不存在. 若已存在, 不要删除它, 记未验证并汇报 (说明是谁的写入).
+
+# 执行要求
+1 AC-003-1 与 AC-003-2 必须由你顺序执行, 中间不要并发, 也不要让别的会话代跑; 各自记录开始与结束时间.
+2 AC-003-1 与 AC-003-2 用同一份 runtime/shared/record.jsonl (共享目录 runtime/shared). 不要换目录或另起记录.
+3 BR-001 用这两项实际产生的记录内容核对: 留记录全文副本与哈希 (如 sha256sum), 逐条核对序号, 重复, value 出现次数. 不要为测并发额外制造无关条目; 判据只要求本轮记录满足规则.
+4 BR-002 必须在没有任何写者时执行: 另两名验收者的耗时任务与你自己的 append 都会写 runtime/shared/events.log. 所以你做完 AC-003-1, AC-003-2, BR-001 后停下等我通知 "G1/G2/G3 写入结束". 收到通知后再做:
+   - BR-002: 先对 runtime/shared/events.log 取哈希 + 记录行数与修改时间, 再运行 `python3 app.py log --port 18101`, 再取一次哈希/行数/修改时间, 比较前后是否不变; 材料放 tail/.
+   - AC-005-1: 读 alpha/ 与 beta/ 下那两名验收者产出的截图与 report 原件, 自己核对每侧 instance 与 version 在截图和 report 中相同, 两侧 report 都含 state=ready; 记录原件路径, 产生时间, 你核对的时间. 你自己判断这些原件覆盖的实例/版本是否适用, 不照抄他们的通过结论. 材料放 tail/.
+   - 写 tail/order.md: 前一段执行者是谁 (以我的通知为准), 你何时开始与结束, 依据 plan.md 的哪一条; 并注明你没有在别人写入期间做 BR-002.
+
+# 证据规则
+1 结论只来自 PRODUCT.md 原文, 判据不放宽, 不按标题关键词猜.
+2 每条结论标材料类型: 当前观察 (本轮实际命令/操作), 引用旧观察, 推断, 未运行. 只有当前观察可以判通过.
+3 原始材料要留: 完整命令, 原始 stdout/stderr, 退出码, 时间. 用 `{ 命令 ; echo "exit=$?" ; } 2>&1 | tee out.txt`, 并在 notes.md 写命令原文与时间.
+4 无法执行的项目记未验证并写明缺什么. 不许用自建替身/本地桩改判通过, 也不许把缺环境写成产品缺陷.
+5 只读产品: 不改 app.py, README.md, deps.txt, tests/, 不新增产品文件; 只在 shared/ 与 tail/ 下新增文件; 不要写 test_*.py; 不要改 alpha/ 与 beta/ 下的文件.
+6 不采信任何他人 (含指挥者) 给出的通过结论, 你只下你自己的结论.
+7 中途停下时, 先写 shared/summary.md 记 AC-003-1, AC-003-2, BR-001 的结论, 并在末尾写明"等待指挥者通知后执行 BR-002 与 AC-005-1"; 汇报里也说明这一点.
+
+# 最终收尾
+收到通知并做完收尾两条后, 更新 summary.md 补上 BR-002 与 AC-005-1, 末尾写你的 pi 会话标识 (环境变量 PI_SESSION_ID 或 PI_SESSION_FILE) 与起止时间; 回一段简短汇报: 5 条标准各自的结论, 证据路径, 任何缺口.

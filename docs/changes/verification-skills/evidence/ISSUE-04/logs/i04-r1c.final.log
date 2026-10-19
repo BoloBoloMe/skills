@@ -1,0 +1,50 @@
+ -rw-rw-r-- 1 bolo bolo  519 Oct 19 22:51 02-hook-probe.log
+ -rw-rw-r-- 1 bolo bolo   44 Oct 19 22:51 alpha-serve.log
+ -rw-rw-r-- 1 bolo bolo   43 Oct 19 22:51 beta-serve.log
+ drwxrwxr-x 2 bolo bolo   80 Oct 19 22:51 prestate-archive
+
+ Took 2m 30s
+
+
+
+ $ herdr pane read w1J:p5J 2>&1 | tail -40
+
+ ... (38 earlier lines, ctrl+o/alt+o to expand)
+ ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+ ──
+ /tmp/orchestra-04/red-parallel (main)
+ ↑15k ↓15k R458k CH99.0% $0.008 3.0%/1.0M (auto)                                                                   (cli) deepseek-v4.1-flash-expires-on-0910 •
+ high
+
+ Took 0.3s
+
+
+ Thinking...
+
+
+ $ cd /tmp && herdr agent send-keys i04-rp-v1 esc; sleep 3; herdr pane read w1J:p5J 2>&1 | tail -12
+
+ ... (11 earlier lines, ctrl+o/alt+o to expand)
+ ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+ ──
+ /tmp/orchestra-04/red-parallel (main)
+ ↑15k ↓15k R489k CH99.2% $0.008 3.1%/1.0M (auto)                                                                   (cli) deepseek-v4.1-flash-expires-on-0910 •
+ high
+
+ Took 3.0s
+
+
+ Thinking...
+
+
+ $ sleep 90; herdr agent get i04-rp-v1 2>&1 | grep -o '"agent_status":"[a-z]*"'; herdr pane read w1J:p5J 2>&1 | tail -8; ls
+ /tmp/orchestra-04/red-parallel/docs/changes/relay-board/evidence-v1-e398c7c/verifier-g1-rerun/
+
+ Elapsed 50.0s
+
+
+── ⠦ Working ─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+
+──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+/tmp/orchestra-04/red-parallel (main)
+↑34k ↓19k R1.2M CH99.5% $0.013 5.4%/1.0M (auto)                                                                   (cli) deepseek-v4.1-flash-expires-on-0910 • high

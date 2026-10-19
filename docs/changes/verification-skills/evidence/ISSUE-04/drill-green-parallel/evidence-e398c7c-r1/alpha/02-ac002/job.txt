@@ -1,0 +1,7 @@
+### exec_start_utc=2026-10-19T14:15:26Z local=2026-10-19T22:15:26+0800
+### cmd: python3 app.py job --port 18101 --ms 4000
+job-done instance=alpha elapsed_ms=4000
+exit=0
+elapsed_ms=4067
+elapsed_ns=4067316912
+### exec_end_utc=2026-10-19T14:15:30Z

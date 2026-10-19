@@ -1,0 +1,9 @@
+step: 71-BR-002-a-log
+cwd: /tmp/orchestra-04/red-parallel
+cmd: python3 app.py log --port 18101
+command-line: python3 app.py log --port 18101
+start: 2026-10-19T21:22:01+08:00
+end: 2026-10-19T21:22:01+08:00
+exit: 0
+duration_ns: 66077778
+duration_ms: 66

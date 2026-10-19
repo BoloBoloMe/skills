@@ -1,0 +1,10 @@
+=== 2026-10-19T22:49:16+08:00 清理: 停止 alpha/beta ===
+LISTEN 0      5           127.0.0.1:18102      0.0.0.0:*    users:(("python3",pid=4134575,fd=3))         
+LISTEN 0      5           127.0.0.1:18101      0.0.0.0:*    users:(("python3",pid=4134574,fd=3))         
+kill 4134574
+kill 4134575
+--- 清理后端口监听 ---
+(无监听)
+--- 清理后 health 探测(应失败) ---
+request failed: <urlopen error [Errno 111] Connection refused>
+exit_health_after_cleanup=1

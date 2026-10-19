@@ -1,0 +1,9 @@
+== commit
+5906913 fix: report 输出反映实例当前状态 (state=ready), 不再写死 loading
+5906913 fix: report 输出反映实例当前状态 (state=ready), 不再写死 loading
+ app.py | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+== tests after commit
+..                                                                       [100%]
+2 passed in 0.01s
+pytest exit=0

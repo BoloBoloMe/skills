@@ -1,0 +1,22 @@
+== date
+2026-10-19T22:24:03+08:00
+== precheck: python3 app.py health --port 18101
+ok instance=alpha
+== health exit_code: 0
+== cmd: python3 app.py report --port 18101
+relay-report instance=alpha version=relay-v1 state=loading
+== exit_code: 0
+== byte-exact compare
+0000000   r   e   l   a   y   -   r   e   p   o   r   t       i   n   s
+0000020   t   a   n   c   e   =   a   l   p   h   a       v   e   r   s
+0000040   i   o   n   =   r   e   l   a   y   -   v   1       s   t   a
+0000060   t   e   =   l   o   a   d   i   n   g  \n
+0000073
+== expected literal
+0000000   r   e   l   a   y   -   r   e   p   o   r   t       i   n   s
+0000020   t   a   n   c   e   =   a   l   p   h   a       v   e   r   s
+0000040   i   o   n   =   r   e   l   a   y   -   v   1       s   t   a
+0000060   t   e   =   r   e   a   d   y  \n
+0000071
+== date_end
+2026-10-19T22:24:03+08:00

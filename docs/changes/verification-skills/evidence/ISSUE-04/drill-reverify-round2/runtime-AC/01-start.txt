@@ -1,0 +1,10 @@
+# 01 启动实例 (唯一一次)
+命令: python3 app.py serve --port 18101 --instance alpha --data-dir runtime/alpha --shared-dir runtime/shared
+启动时间: 2026-10-19T22:29:50+08:00
+4111240
+4111241
+4111246
+--- server stdout ---
+listening on 127.0.0.1:18101 instance=alpha
+--- ss ---
+LISTEN 0      5           127.0.0.1:18101      0.0.0.0:*   

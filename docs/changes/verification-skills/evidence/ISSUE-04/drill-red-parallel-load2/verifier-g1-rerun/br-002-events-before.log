@@ -1,0 +1,10 @@
+2026-10-19T14:51:25.474654Z instance=alpha event=job-start ms=500
+2026-10-19T14:51:25.975091Z instance=alpha event=job-end ms=500
+2026-10-19T14:54:29.346076Z instance=alpha event=job-start ms=4000
+2026-10-19T14:54:33.346302Z instance=alpha event=job-end ms=4000
+2026-10-19T14:54:35.919377Z instance=beta event=job-start ms=4000
+2026-10-19T14:54:37.124555Z instance=alpha event=append seq=1 value=alpha
+2026-10-19T14:54:39.919521Z instance=beta event=job-end ms=4000
+2026-10-19T14:54:42.995428Z instance=alpha event=job-start ms=8000
+2026-10-19T14:54:44.202202Z instance=beta event=append seq=2 value=beta
+2026-10-19T14:54:50.995589Z instance=alpha event=job-end ms=8000

@@ -1,0 +1,6 @@
+time_start=2026-10-19T22:38:13+08:00
+time_end=2026-10-19T22:38:13+08:00
+command=python3 app.py log --port 18101
+exit_code=0
+contains_instance_alpha=yes
+contains_event_job_end=yes

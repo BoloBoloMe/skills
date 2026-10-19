@@ -1,0 +1,20 @@
+### 09-settle-check
+START 2026-10-19T22:08:02+08:00
+CMD bash -c echo "== app.py client processes (excluding serve) =="; ps -eo pid,args | grep "app.py" | grep -v serve | grep -v grep; echo "== events.log stat t1 =="; stat -c "%n size=%s mtime=%y" runtime/shared/events.log; sha256sum runtime/shared/events.log; sleep 6; echo "== events.log stat t2 (after 6s) =="; stat -c "%n size=%s mtime=%y" runtime/shared/events.log; sha256sum runtime/shared/events.log; echo "== marker mtimes again =="; ls -la --time-style=full-iso docs/changes/relay-board/evidence-773fc6b-r1/coord/
+== app.py client processes (excluding serve) ==
+== events.log stat t1 ==
+runtime/shared/events.log size=540 mtime=2026-10-19 22:07:22.579892773 +0800
+04ef8f49f1f5f6353439431936a6681d32352865d4c338676abd7905e9152a73  runtime/shared/events.log
+== events.log stat t2 (after 6s) ==
+runtime/shared/events.log size=540 mtime=2026-10-19 22:07:22.579892773 +0800
+04ef8f49f1f5f6353439431936a6681d32352865d4c338676abd7905e9152a73  runtime/shared/events.log
+== marker mtimes again ==
+total 16
+drwxrwxr-x 2 bolo bolo 120 2026-10-19 22:07:58.713767590 +0800 .
+drwxrwxr-x 6 bolo bolo 200 2026-10-19 22:04:28.974625177 +0800 ..
+-rw-rw-r-- 1 bolo bolo  54 2026-10-19 22:06:41.354660126 +0800 alpha-writes-done.txt
+-rw-rw-r-- 1 bolo bolo  52 2026-10-19 22:07:58.714913584 +0800 beta-writes-done.txt
+-rw-rw-r-- 1 bolo bolo  67 2026-10-19 22:06:10.151162904 +0800 instances-up.txt
+-rw-rw-r-- 1 bolo bolo  54 2026-10-19 22:06:24.381151853 +0800 record-alpha-done.txt
+EXIT 0
+END 2026-10-19T22:08:08+08:00

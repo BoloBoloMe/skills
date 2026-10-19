@@ -1,0 +1,17 @@
+=== 2026-10-19T14:15:20.961011Z BR-001 material
+--- wc -l runtime/shared/record.jsonl
+2 runtime/shared/record.jsonl
+--- sha256sum
+0f41eca29bafabc85683141d4f9246909c9ab588cd4c36617b4b6141d49b91bd  runtime/shared/record.jsonl
+--- stat
+  File: runtime/shared/record.jsonl
+  Size: 172       	Blocks: 8          IO Block: 4096   regular file
+Device: 0,48	Inode: 1739514     Links: 1
+Access: (0664/-rw-rw-r--)  Uid: ( 1000/    bolo)   Gid: ( 1000/    bolo)
+Access: 2026-10-19 22:15:20.964235437 +0800
+Modify: 2026-10-19 22:15:17.702246738 +0800
+Change: 2026-10-19 22:15:17.702246738 +0800
+ Birth: 2026-10-19 22:15:14.381258243 +0800
+--- copy (cp runtime/shared/record.jsonl shared/record-copy.jsonl)
+exit=0
+0f41eca29bafabc85683141d4f9246909c9ab588cd4c36617b4b6141d49b91bd  docs/changes/relay-board/evidence-e398c7c-r1/shared/record-copy.jsonl

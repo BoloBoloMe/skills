@@ -1,0 +1,12 @@
+== date
+2026-10-19T22:24:08+08:00
+== repeat 2 (confirm only): python3 app.py report --port 18101
+relay-report instance=alpha version=relay-v1 state=loading
+== exit_code: 0
+== repeat 3 after 3s: python3 app.py report --port 18101
+relay-report instance=alpha version=relay-v1 state=loading
+== exit_code: 0
+== raw HTTP: curl -s http://127.0.0.1:18101/report
+relay-report instance=alpha version=relay-v1 state=loading
+== date_end
+2026-10-19T22:24:12+08:00

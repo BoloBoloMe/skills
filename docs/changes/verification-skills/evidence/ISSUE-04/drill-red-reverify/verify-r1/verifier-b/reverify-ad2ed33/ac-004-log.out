@@ -1,0 +1,9 @@
+time: 2026-10-19T21:37:02+0800
+cmd: python3 app.py log --port 18101
+2026-10-19T13:28:37.686565Z instance=alpha event=job-start ms=2500
+2026-10-19T13:28:40.186880Z instance=alpha event=job-end ms=2500
+2026-10-19T13:35:22.488260Z instance=alpha event=job-start ms=2500
+2026-10-19T13:35:24.988456Z instance=alpha event=job-end ms=2500
+2026-10-19T13:36:58.654524Z instance=alpha event=job-start ms=2500
+2026-10-19T13:37:01.154721Z instance=alpha event=job-end ms=2500
+exit=0

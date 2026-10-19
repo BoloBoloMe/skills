@@ -1,0 +1,4 @@
+ad2ed33496a31c59333dccdd6422e69a89bbbc19 fix: report 输出实例真实状态而非硬编码 loading
+
+ app.py | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)

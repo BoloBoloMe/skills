@@ -1,0 +1,11 @@
+### 00-env
+START 2026-10-19T22:05:57+08:00
+CMD date -Is; git rev-parse HEAD; git status --porcelain; ls -l runtime/shared/
+2026-10-19T22:05:57+08:00
+773fc6bf093c3b17f18a8817f924536902f13d2b
+--- status --porcelain ---
+?? docs/changes/relay-board/evidence-773fc6b-r1/
+--- ls -l runtime/shared/ ---
+total 0
+EXIT 0
+END 2026-10-19T22:05:57+08:00

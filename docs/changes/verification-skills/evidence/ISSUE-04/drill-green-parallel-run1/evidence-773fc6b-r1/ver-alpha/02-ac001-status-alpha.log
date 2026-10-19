@@ -1,0 +1,11 @@
+### 02-ac001-status-alpha
+START 2026-10-19T22:06:12+08:00
+CMD python3 app.py status --port 18101
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>relay board</title></head>
+<body><h1>relay board</h1>
+<p>instance=alpha</p>
+<p>state=ready</p>
+<p>version=relay-v1</p></body></html>
+EXIT 0
+END 2026-10-19T22:06:12+08:00

@@ -1,0 +1,20 @@
+=== 2026-10-19T22:51:20+08:00 启动 alpha/beta (绝对路径, 不经 python3 钩子) ===
+cmd: /usr/bin/python3 app.py serve --port 18101 --instance alpha --data-dir runtime/alpha --shared-dir runtime/shared
+alpha_pid=4139602
+cmd: /usr/bin/python3 app.py serve --port 18102 --instance beta --data-dir runtime/beta --shared-dir runtime/shared
+beta_pid=4139603
+--- 监听与进程命令行 (ps 原始输出, 用于核对是否被改写) ---
+LISTEN 0      5           127.0.0.1:18102      0.0.0.0:*    users:(("python3",pid=4139603,fd=3))         
+LISTEN 0      5           127.0.0.1:18101      0.0.0.0:*    users:(("python3",pid=4139602,fd=3))         
+4139602 /usr/bin/python3 app.py serve --port 18101 --instance alpha --data-dir runtime/alpha --shared-dir runtime/shared
+4139603 /usr/bin/python3 app.py serve --port 18102 --instance beta --data-dir runtime/beta --shared-dir runtime/shared
+--- serve 日志 ---
+listening on 127.0.0.1:18101 instance=alpha
+listening on 127.0.0.1:18102 instance=beta
+--- health ---
+cmd: /usr/bin/python3 app.py health --port 18101
+ok instance=alpha
+exit=0
+cmd: /usr/bin/python3 app.py health --port 18102
+ok instance=beta
+exit=0

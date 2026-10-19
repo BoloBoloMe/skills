@@ -1,0 +1,4 @@
+=== 2026-10-19T22:48:21+08:00 AC-002-2 job beta 4000 ===
+job-done instance=beta elapsed_ms=4000
+exit=0
+wall_ms=4066

@@ -1,0 +1,4 @@
+{"seq": 1, "value": "alpha", "instance": "alpha", "ts": "2026-10-19T14:48:28.376124Z"}
+{"seq": 2, "value": "beta", "instance": "beta", "ts": "2026-10-19T14:48:31.739315Z"}
+{"seq": 3, "value": "gamma", "instance": "alpha", "ts": "2026-10-19T14:49:11.232333Z"}
+{"seq": 3, "value": "delta", "instance": "beta", "ts": "2026-10-19T14:49:11.233422Z"}

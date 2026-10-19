@@ -1,0 +1,51 @@
+=== 停止实例: 2026-10-19T21:22:12+08:00 ===
+alpha_pid=4017492 beta_pid=4017493
+--- kill 前存活检查 ---
+    PID CMD
+4017492 python3 app.py serve --port 18101 --instance alpha --data-dir runtime/alpha --shared-dir runtime/shared
+4017493 python3 app.py serve --port 18102 --instance beta --data-dir runtime/beta --shared-dir runtime/shared
+--- kill 4017492 4017493 ---
+kill exit=0
+--- kill 后存活检查 (应为空) ---
+    PID CMD
+ps exit=1
+--- 端口监听检查 (应无输出) ---
+ss_grep_exit=1 (1=无监听)
+--- 残余 app.py 进程检查 ---
+4019559 /bin/bash -c cd /tmp/orchestra-04/red-parallel && EV=docs/changes/relay-board/evidence-773fc6b && source $EV/support/run_step.sh {   echo "=== 收尾: 记录文件在 BR-001 审计后未被改动 ==="   echo "时间: $(date -Iseconds)"   echo "字节数 = $(stat -c %s runtime/shared/record.jsonl) (BR-001 时为 172)"   echo "sha256 = $(sha256sum runtime/shared/record.jsonl | cut -d' ' -f1)"   echo "BR-001 时 sha256 = fa059e3ef640c8311e222ba6fdf6240a1d620b5a2e568380338b7d7d35f994d1" } > $EV/89-BR-001-postcheck.txt 2>&1 cat $EV/89-BR-001-postcheck.txt # 停实例 alpha_pid=$(grep alpha_pid $EV/02-serve-pids.txt | cut -d= -f2) beta_pid=$(grep beta_pid $EV/02-serve-pids.txt | cut -d= -f2) {   echo "=== 停止实例: $(date -Iseconds) ==="   echo "alpha_pid=$alpha_pid beta_pid=$beta_pid"   echo "--- kill 前存活检查 ---"   ps -o pid,cmd -p $alpha_pid $beta_pid   echo "--- kill $alpha_pid $beta_pid ---"   kill $alpha_pid $beta_pid; echo "kill exit=$?"   sleep 1   echo "--- kill 后存活检查 (应为空) ---"   ps -o pid,cmd -p $alpha_pid $beta_pid; echo "ps exit=$?"   echo "--- 端口监听检查 (应无输出) ---"   ss -ltnp 2>/dev/null | grep -E ':1810[12]' ; echo "ss_grep_exit=$? (1=无监听)"   echo "--- 残余 app.py 进程检查 ---"   pgrep -af 'app.py serve' ; echo "pgrep_exit=$? (1=无残余)" } > $EV/90-teardown.txt 2>&1 cat $EV/90-teardown.txt echo "=== 证据目录清单 ==="; ls -la $EV
+pgrep_exit=0 (1=无残余)
+=== 90 补充: pgrep 自匹配排除后复核 2026-10-19T21:22:16+08:00 ===
+pgrep -af 'python3 app.py serve' 输出:
+4019658 /bin/bash -c cd /tmp/orchestra-04/red-parallel && EV=docs/changes/relay-board/evidence-773fc6b && {   echo "=== 90 补充: pgrep 自匹配排除后复核 $(date -Iseconds) ==="   echo "pgrep -af 'python3 app.py serve' 输出:"   pgrep -af 'python3 app.py serve'; echo "pgrep_exit=$? (1=无残余)"   echo "ss 18101/18102:"   ss -ltn 2>/dev/null | grep -E ':1810[12]'; echo "ss_grep_exit=$? (1=无监听)"   echo "端口连通性复核 (curl 预期失败):"   curl -sS -m 2 http://127.0.0.1:18101/health; echo "curl_alpha_exit=$?"   curl -sS -m 2 http://127.0.0.1:18102/health; echo "curl_beta_exit=$?" } >> $EV/90-teardown.txt 2>&1; tail -n 12 $EV/90-teardown.txt # 工作区状态复核: 除证据目录外无改动 git status --porcelain
+pgrep_exit=0 (1=无残余)
+ss 18101/18102:
+ss_grep_exit=1 (1=无监听)
+端口连通性复核 (curl 预期失败):
+curl: (7) Failed to connect to 127.0.0.1 port 18101 after 0 ms: Could not connect to server
+curl_alpha_exit=7
+curl: (7) Failed to connect to 127.0.0.1 port 18102 after 0 ms: Could not connect to server
+curl_beta_exit=7
+=== 90 再补充: 用 ps + [a] 技巧排除自匹配 2026-10-19T21:22:18+08:00 ===
+ps -eo pid,cmd | grep '[a]pp.py serve' 输出 (预期为空):
+grep_exit=1 (1=无残余)
+python3 进程清单 (核对无 serve):
+   1622 /usr/bin/python3 /usr/bin/networkd-dispatcher --run-startup-triggers
+   1920 /usr/bin/python3 /usr/share/unattended-upgrades/unattended-upgrade-shutdown --wait-for-signal
+ 696174 /usr/bin/python3 /usr/bin/websockify --web /usr/share/novnc 0.0.0.0:6080 localhost:5900
+ 699410 /usr/bin/python3 /usr/bin/websockify --web /usr/share/novnc 0.0.0.0:6080 localhost:5900
+ 792389 /usr/bin/python3 /usr/bin/websockify --web /usr/share/novnc 0.0.0.0:6080 localhost:5900
+1784876 python3 /home/bolo/.agents/skills/mailbox/scripts/mailbox.py
+2156227 /home/bolo/Workspace/skills/skills-v2/.venv/bin/python3 /home/bolo/.agents/skills/present/scripts/web_server.py __serve__ 59859 ["/tmp/to-spec-ac-w9we9uhu/review"] 0.0.0.0
+3244480 /usr/bin/python3 /usr/bin/websockify --web /usr/share/novnc 0.0.0.0:6080 localhost:5900
+3249990 /usr/bin/python3 /usr/bin/websockify --web /usr/share/novnc 0.0.0.0:6080 localhost:5900
+3279023 /home/bolo/.local/share/uv/python/cpython-3.14-linux-x86_64-gnu/bin/python3.14 scripts/mailbox.py serve
+3299168 python3 /home/bolo/.agents/skills/mailbox/scripts/mailbox.py
+3462971 python3 /usr/bin/wsdd --no-host --discovery --listen /run/user/1000/gvfsd/wsdd
+3753141 python3 /home/bolo/.agents/skills/mailbox/scripts/mailbox.py
+3785517 python3 /home/bolo/.agents/skills/mailbox/scripts/mailbox.py
+4008598 /home/bolo/.local/share/uv/python/cpython-3.14-linux-x86_64-gnu/bin/python3.14 -m http.server 18199
+4018344 python3 /home/bolo/.agents/skills/mailbox/scripts/mailbox.py
+4019667 /bin/bash -c python() { uv run python "$@"; }; python3() { uv run python "$@"; }; sleep 45; herdr agent get br13-red 2>&1 | python3 -c "import json,sys; print(json.load(sys.stdin)['result']['agent']['agent_status'])"
+4019713 /bin/bash -c cd /tmp/orchestra-04/red-parallel && EV=docs/changes/relay-board/evidence-773fc6b && {   echo "=== 90 再补充: 用 ps + [a] 技巧排除自匹配 $(date -Iseconds) ==="   echo "ps -eo pid,cmd | grep '[a]pp.py serve' 输出 (预期为空):"   ps -eo pid,cmd | grep '[a]pp.py serve'; echo "grep_exit=$? (1=无残余)"   echo "python3 进程清单 (核对无 serve):"   ps -eo pid,cmd | grep '[p]ython3' ; echo "grep_exit=$?" } >> $EV/90-teardown.txt 2>&1; tail -n 10 $EV/90-teardown.txt
+4110216 python3 /home/bolo/.agents/skills/mailbox/scripts/mailbox.py
+grep_exit=0

@@ -1,0 +1,6 @@
+attempt=1 port=18101 time=2026-10-19T14:15:07.607004Z rc=1 out=request failed: <urlopen error [Errno 111] Connection refused> 
+attempt=1 port=18102 time=2026-10-19T14:15:07.675919Z rc=0 out=ok instance=beta 
+attempt=2 port=18101 time=2026-10-19T14:15:08.749551Z rc=0 out=ok instance=alpha 
+attempt=2 port=18102 time=2026-10-19T14:15:08.815401Z rc=0 out=ok instance=beta 
+READY-AT 2026-10-19T14:15:08.884744Z attempts=2
+okA=1 okB=1 attempts=2

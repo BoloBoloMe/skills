@@ -1,0 +1,14 @@
+=== reverify startup (target ad2ed33) ===
+time: 2026-10-19T21:36:53+0800
+head: ad2ed33496a31c59333dccdd6422e69a89bbbc19
+port precheck: 0 listeners on 18101
+cmd: mkdir -p runtime/alpha runtime/shared
+cmd: nohup python3 app.py serve --port 18101 --instance alpha --data-dir runtime/alpha --shared-dir runtime/shared > docs/changes/relay-board/verify-r1/verifier-b/reverify-ad2ed33/serve.log 2>&1 &
+listening check:
+listening on 127.0.0.1:18101 instance=alpha
+=== health ===
+cmd: python3 app.py health --port 18101
+ok instance=alpha
+exit=0
+--- listeners ---
+LISTEN 0      5           127.0.0.1:18101      0.0.0.0:*    users:(("python3",pid=4043549,fd=3))         

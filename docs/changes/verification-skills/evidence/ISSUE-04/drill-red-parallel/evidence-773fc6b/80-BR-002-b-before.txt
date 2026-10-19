@@ -1,0 +1,16 @@
+=== BR-002(b) 只增不改: 追加前快照 ===
+时间: 2026-10-19T21:22:05+08:00
+快照: /tmp/orchestra-04/red-parallel/docs/changes/relay-board/evidence-773fc6b/80-BR-002-b-events-before.log
+字节数 = 540
+行数 = 8
+sha256 = 8f2d4c41ab6d26d6f86c94f3ea127575e204f068ede0dd9159d7a374cd624bcc
+快照 sha256 = 8f2d4c41ab6d26d6f86c94f3ea127575e204f068ede0dd9159d7a374cd624bcc
+快照全文 (cat -A):
+2026-10-19T13:21:13.903192Z instance=alpha event=job-start ms=4000$
+2026-10-19T13:21:17.903426Z instance=alpha event=job-end ms=4000$
+2026-10-19T13:21:20.311204Z instance=beta event=job-start ms=4000$
+2026-10-19T13:21:24.311567Z instance=beta event=job-end ms=4000$
+2026-10-19T13:21:29.077745Z instance=alpha event=append seq=1 value=alpha$
+2026-10-19T13:21:35.764249Z instance=beta event=append seq=2 value=beta$
+2026-10-19T13:21:41.183300Z instance=alpha event=job-start ms=5000$
+2026-10-19T13:21:46.183433Z instance=alpha event=job-end ms=5000$

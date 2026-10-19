@@ -1,0 +1,11 @@
+### 04-br001-python-check
+START 2026-10-19T22:07:31+08:00
+CMD python3 -
+lines: 2
+seq list: [1, 2]
+seq == 1..N continuous: True
+duplicate seq: none
+value counts: {'alpha': 1, 'beta': 1}
+each value exactly once: True
+EXIT 0
+END 2026-10-19T22:07:31+08:00
