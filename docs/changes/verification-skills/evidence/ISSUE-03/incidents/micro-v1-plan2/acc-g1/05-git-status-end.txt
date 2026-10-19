@@ -1,0 +1,12 @@
+2026-10-19T20:48:38+08:00
+# git status --porcelain=v1 --untracked-files=all (结尾)
+?? docs/changes/tool-cli/verify-2080aea-v1/PLAN.md
+?? docs/changes/tool-cli/verify-2080aea-v1/acc-g1/01-git-head.txt
+?? docs/changes/tool-cli/verify-2080aea-v1/acc-g1/02-prepare.txt
+?? docs/changes/tool-cli/verify-2080aea-v1/acc-g1/03-lines.txt
+?? docs/changes/tool-cli/verify-2080aea-v1/acc-g1/04-exact-match.txt
+?? docs/changes/tool-cli/verify-2080aea-v1/acc-g1/05-git-status-end.txt
+?? docs/changes/tool-cli/verify-2080aea-v1/acc-g1/TASK.md
+?? docs/changes/tool-cli/verify-2080aea-v1/acc-g2/TASK.md
+# git rev-parse HEAD (结尾)
+2080aeacb537e549ce3c405783e4736dbdf53393

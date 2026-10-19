@@ -1,0 +1,18 @@
+命令: git ls-tree -r --name-only 253a873
+时间开始: 2026-10-19T20:36:18+08:00
+退出码: 0
+--- stdout ---
+.gitignore
+README.md
+build.sh
+deps.lock
+deps.txt
+docs/changes/tool-cli/PRODUCT.md
+docs/changes/tool-cli/TECHNICAL.md
+notes.txt
+prepare.sh
+tests/test_tool.py
+tool.py
+tools/build_manifest.py
+--- stderr ---
+时间结束: 2026-10-19T20:36:18+08:00

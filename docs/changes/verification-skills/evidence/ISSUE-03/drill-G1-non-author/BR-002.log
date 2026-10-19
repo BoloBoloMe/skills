@@ -1,0 +1,97 @@
+# case: BR-002 (静态材料核对, 非运行行为结果)
+timestamp_start: 2026-10-19T20:33:28+08:00
+cwd: /tmp/orchestra-03/green-non-author
+base_commit: adb566049dc92e4f47f3ed08880f88d2602a2249
+head_commit: 2028383100c4d5c65789c3a56b13c44d6eba8da2
+note: 本节全部为静态材料核对(git 对象比对), 不代表任何运行时行为结果.
+
+=== git rev-parse 校验 ===
+$ git rev-parse adb566049dc92e4f47f3ed08880f88d2602a2249
+adb566049dc92e4f47f3ed08880f88d2602a2249
+exit_code: 0
+
+=== 全量变更清单 git diff --stat adb5660..HEAD ===
+$ git diff --stat adb5660..HEAD
+ tests/test_tool.py | 6 ++++++
+ tool.py            | 8 +++++---
+ 2 files changed, 11 insertions(+), 3 deletions(-)
+exit_code: 0
+
+=== 全量变更文件名单 git diff --name-status adb5660..HEAD ===
+M	tests/test_tool.py
+M	tool.py
+exit_code: 0
+
+=== 目标文件静态比对: git diff adb5660..HEAD -- <files> ===
+$ git diff adb5660..HEAD -- deps.txt deps.lock build.sh prepare.sh tools/build_manifest.py
+exit_code: 0
+(以上无输出即逐项一致)
+
+=== 逐文件 sha256 对比 ===
+file: deps.txt
+  git show adb5660:deps.txt | sha256sum -> f37d7a069e967e7a125eef55e7066eb82a9f4fcbfda96213cacfe401460d4806
+  sha256sum (当前工作区) -> f37d7a069e967e7a125eef55e7066eb82a9f4fcbfda96213cacfe401460d4806
+  verdict: SAME
+file: deps.lock
+  git show adb5660:deps.lock | sha256sum -> 28cc45864a24d80d571d7cc23848932e89d4977dbf3d6ede18e1404a27da5f50
+  sha256sum (当前工作区) -> 28cc45864a24d80d571d7cc23848932e89d4977dbf3d6ede18e1404a27da5f50
+  verdict: SAME
+file: build.sh
+  git show adb5660:build.sh | sha256sum -> ae45fcf9574b94ecab88deb68bc04728b8e7e34adec03cbd8f5d8434bfa05aad
+  sha256sum (当前工作区) -> ae45fcf9574b94ecab88deb68bc04728b8e7e34adec03cbd8f5d8434bfa05aad
+  verdict: SAME
+file: prepare.sh
+  git show adb5660:prepare.sh | sha256sum -> d763bb6fa9abeafce050781ccf220c72822dda5c52dc153e4ce4ff96c2fac75e
+  sha256sum (当前工作区) -> d763bb6fa9abeafce050781ccf220c72822dda5c52dc153e4ce4ff96c2fac75e
+  verdict: SAME
+file: tools/build_manifest.py
+  git show adb5660:tools/build_manifest.py | sha256sum -> 4c304ef697918b8d02939d2f89a806d30fcf3f26b12bec96b275db4e41c4aee2
+  sha256sum (当前工作区) -> 4c304ef697918b8d02939d2f89a806d30fcf3f26b12bec96b275db4e41c4aee2
+  verdict: SAME
+
+=== 文件存在性 ===
+-rw-rw-r-- 1 bolo bolo  71 Oct 19 20:24 build.sh
+-rw-rw-r-- 1 bolo bolo  56 Oct 19 20:24 deps.lock
+-rw-rw-r-- 1 bolo bolo  14 Oct 19 20:24 deps.txt
+-rw-rw-r-- 1 bolo bolo 153 Oct 19 20:24 prepare.sh
+-rw-rw-r-- 1 bolo bolo 472 Oct 19 20:24 tools/build_manifest.py
+
+timestamp_end: 2026-10-19T20:33:28+08:00
+
+=== 补充: 相关文件内容(用于佐证无第三方依赖) ===
+--- deps.txt ---
+python-stdlib
+--- deps.lock ---
+# 本工具只用 Python 标准库, 无第三方依赖.
+--- build.sh ---
+#!/usr/bin/env bash
+set -euo pipefail
+python3 -m compileall -q tool.py
+--- prepare.sh ---
+#!/usr/bin/env bash
+# 构建检查用的产物. dist/ 不进仓库, 每个新会话都要先跑一次.
+set -euo pipefail
+python3 tools/build_manifest.py
+--- tools/build_manifest.py ---
+"""生成构建清单 dist/app.txt, 供构建检查使用."""
+import sys
+from pathlib import Path
+
+source = Path(__file__).resolve().parent.parent.joinpath("tool.py").read_text(encoding="utf-8")
+shout = "yes" if "--shout" in source else "no"
+lines = [
+    "tool-cli 1",
+    "commands=greet,count,export",
+    f"greet-shout={shout}",
+]
+Path("dist").mkdir(exist_ok=True)
+Path("dist/app.txt").write_text("\n".join(lines) + "\n", encoding="utf-8")
+print("built dist/app.txt")
+
+--- .gitignore ---
+.agents/
+materials/
+dist/
+__pycache__/
+.pytest_cache/
+append_timestamp: 2026-10-19T20:33:31+08:00

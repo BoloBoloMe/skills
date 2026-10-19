@@ -1,0 +1,8 @@
+== AC-001-1 默认问候 ==
+UTC: 2026-10-19T12:49:12Z
+cwd: /tmp/orchestra-03/green-single-group
+$ python3 tool.py greet --name Ada
+--- stdout ---
+Hello, Ada!
+--- stderr ---
+--- exit code: 0 ---

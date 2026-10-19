@@ -1,0 +1,21 @@
+== BR-002: b0cde82..HEAD 变更文件清单 ==
+UTC: 2026-10-19T12:49:24Z
+$ git diff --stat b0cde82..HEAD
+ tests/test_tool.py | 6 ++++++
+ tool.py            | 8 +++++---
+ 2 files changed, 11 insertions(+), 3 deletions(-)
+exit=0
+
+$ git diff --name-status b0cde82..HEAD
+M	tests/test_tool.py
+M	tool.py
+exit=0
+
+$ git log --oneline b0cde82..HEAD
+42c51b8 feat: greet 支持全大写输出
+exit=0
+
+$ git rev-parse HEAD b0cde82
+42c51b8a51c216d5689a1c918c319ae4474aafd6
+b0cde8238ee84b94ce0e3f7a39142e75f58a65af
+exit=0

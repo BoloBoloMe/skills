@@ -1,0 +1,24 @@
+2026-10-19T20:44:35+08:00
+$ git rev-parse HEAD
+c0505dee33c9c78ffaaf61f88e05e041a7e29402
+
+$ git status --porcelain -- deps.txt deps.lock build.sh (空 = 工作区未改这三文件)
+
+$ sha256sum 工作区文件
+f37d7a069e967e7a125eef55e7066eb82a9f4fcbfda96213cacfe401460d4806  deps.txt
+28cc45864a24d80d571d7cc23848932e89d4977dbf3d6ede18e1404a27da5f50  deps.lock
+ae45fcf9574b94ecab88deb68bc04728b8e7e34adec03cbd8f5d8434bfa05aad  build.sh
+
+$ cat deps.txt / deps.lock / build.sh (当前内容, 供核对)
+--- deps.txt
+python-stdlib
+--- deps.lock
+# 本工具只用 Python 标准库, 无第三方依赖.
+--- build.sh
+#!/usr/bin/env bash
+set -euo pipefail
+python3 -m compileall -q tool.py
+
+$ git status --porcelain (整体, 应只含本轮新增证据目录)
+?? docs/changes/tool-cli/evidence-c0505de/
+2026-10-19T20:44:35+08:00

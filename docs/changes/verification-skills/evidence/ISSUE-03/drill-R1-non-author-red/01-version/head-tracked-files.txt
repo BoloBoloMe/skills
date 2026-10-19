@@ -1,0 +1,14 @@
+$ git ls-tree -r --name-only HEAD
+.gitignore
+README.md
+build.sh
+deps.lock
+deps.txt
+docs/changes/tool-cli/PRODUCT.md
+docs/changes/tool-cli/TECHNICAL.md
+notes.txt
+prepare.sh
+tests/test_tool.py
+tool.py
+tools/build_manifest.py
+[exit=0]

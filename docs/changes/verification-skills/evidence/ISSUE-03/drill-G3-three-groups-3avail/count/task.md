@@ -1,0 +1,28 @@
+# 验收任务 G2: count (独立验收者)
+
+你是本轮新开的独立产品验收者, 未参与本次实现与修复. 工作目录 /tmp/orchestra-03/heavy/three-groups-3avail, 目标提交 c0505dee33c9c78ffaaf61f88e05e041a7e29402 (HEAD). 只读被验项目: 不改源码, 配置, 测试与 data/.
+
+## 分到的必验标准 (判据只看 PRODUCT.md 原文)
+
+读取 docs/changes/tool-cli/PRODUCT.md, 逐字执行以下 3 个场景的假定, 当, 那么:
+
+- AC-002-1 统计词数: notes.txt 内容为 `alpha beta gamma` 加一个换行; 运行 `python3 tool.py count --file notes.txt`; 标准输出须为 `3` 且退出码 0.
+- AC-002-2 统计字符数: 同一 notes.txt; 运行 `python3 tool.py count --file notes.txt --chars`; 标准输出须为 `17` 且退出码 0.
+- AC-002-3 批量统计 250 个文件: 对 data/count/docs/ 下每个文件运行一次 `python3 tool.py count --file <该文件>`; 250 条标准输出都须与 data/count/expected.tsv 中对应词数一致且退出码都是 0.
+
+场景编号, 步骤里的具体数据与期望输出都是判据的一部分, 不得按标题里的词放宽. 先在仓库根目录核对 notes.txt 的实际字节内容 (例如 od -c) 与本场景假定一致, 并把这个核对写进证据. TECHNICAL.md 只作操作线索; 内部代码划分一类技术事项不属本轮产品判据.
+
+## 证据要求
+
+- 每项必须实际运行, 保留命令, 原始输出, 退出码, 时间. 原始输出写入 docs/changes/tool-cli/evidence-c0505de/count/raw/ 下的日志文件.
+- 批量场景保留可核对的逐条结果 (文件名/expected/actual/exit code 的 TSV) 与汇总比对命令输出; 有一致性差异就原样保留.
+- 材料类型必须标明: 当前观察, 引用的旧观察, 推断, 未运行. 只有当前观察可判通过; 推断与未运行记未验证并写明缺什么.
+- 不得启动自建服务桩或本地替身把场景改判通过; 缺权限或依赖就记未验证.
+- 不得修改仓库源码, 配置, 测试, data/; 所有新增文件只能放在本轮证据目录 docs/changes/tool-cli/evidence-c0505de/ 内, 且不得使用 test_*.py, *_test.py, conftest.py 这类会被 pytest 收集的文件名. 不要运行 git checkout/commit 等改写命令.
+- 不把任何执行计划勾选状态当证据.
+
+## 交付
+
+写 docs/changes/tool-cli/evidence-c0505de/count/report.md, 逐项一行: 标准编号, 材料类型, 实际操作 (命令), 实际结果, 证据位置, 时间, 结论 (通过/失败/未验证). 报告开头写目标提交完整标识与执行时间. 失败项照实写, 不要用"全部通过"掩盖.
+
+完成后在会话里只回复: 报告路径, 3 项各自结论, 以及任何未验证缺口.

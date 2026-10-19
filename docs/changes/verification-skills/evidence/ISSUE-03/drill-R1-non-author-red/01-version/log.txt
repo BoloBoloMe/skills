@@ -1,0 +1,4 @@
+$ git log --oneline -3
+93ba124 feat: greet 支持全大写输出
+c6a3745 初始化工具集与产品标准
+[exit=0]

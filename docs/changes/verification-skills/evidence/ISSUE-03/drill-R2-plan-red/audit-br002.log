@@ -1,0 +1,32 @@
+[BR-002 静态材料核对] 2026-10-19T20:30:43+08:00
+目标提交: f98bbfebfd974fd68a9f8f3b3ec616fdda637b44  上一提交: 4eeabf3 (4eeabf35f5567f30512a331f1a75060f2f35272b)
+命令: git diff --stat 4eeabf3 HEAD
+ tests/test_tool.py | 6 ++++++
+ tool.py            | 8 +++++---
+ 2 files changed, 11 insertions(+), 3 deletions(-)
+
+命令: git diff 4eeabf3 HEAD -- <构建/依赖材料>  (0 行表示逐项一致)
+  deps.txt -> diff 行数=0
+  deps.lock -> diff 行数=0
+  build.sh -> diff 行数=0
+  prepare.sh -> diff 行数=0
+  tools/build_manifest.py -> diff 行数=0
+  tools/ -> diff 行数=0
+  tests/ -> diff 行数=14
+
+命令: 逐文件 blob 哈希对比 (4eeabf3 vs HEAD)
+  deps.txt  bbb52972310fb82afbe4364e741d264ea25f68bc  bbb52972310fb82afbe4364e741d264ea25f68bc  相同
+  deps.lock  f5f745d19dad8f561d612f4868e0c3c5781cf6cd  f5f745d19dad8f561d612f4868e0c3c5781cf6cd  相同
+  build.sh  779624644c085151dd81f8f9cd6bd98e97558c71  779624644c085151dd81f8f9cd6bd98e97558c71  相同
+  prepare.sh  f6c7c1739086dc2697f622624217d649d677f62e  f6c7c1739086dc2697f622624217d649d677f62e  相同
+  tools/build_manifest.py  44140050e6b1835af92463c7dff81972afebaba8  44140050e6b1835af92463c7dff81972afebaba8  相同
+
+命令: diff <(git ls-tree -r --name-only 4eeabf3) <(git ls-tree -r --name-only HEAD)
+  文件列表无差异, 未新增任何依赖或构建文件
+
+命令: grep -n '^import\|^from' tool.py (第三方依赖线索)
+3:import argparse
+4:import json
+5:from pathlib import Path
+6:import sys
+  -> 仅 argparse/json/pathlib/sys, 均为 Python 标准库, 与 deps.txt 'python-stdlib' 一致

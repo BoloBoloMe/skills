@@ -1,0 +1,48 @@
+# supplement.log -- verifier-b 补充说明 (AC-002-3 相关), 2026-10-19
+# 性质: 说明性材料, 非产品运行结果; 未重跑产品, 全部依据当时真实执行记录.
+
+## (a) ac002-3.log 里 "PASS=0 FAIL=0 TOTAL=0" 一行的来历
+
+ac002-3.log 现有 4 行, 顺序为:
+  1: 2026-10-19T20:45:59+08:00        <- 批量轮开始时间戳 (date -Is > ac002-3.log)
+  2: 2026-10-19T20:46:10+08:00        <- 批量轮结束时间戳 (date -Is >> ac002-3.log)
+  3: PASS=0 FAIL=0 TOTAL=0            <- 本条解释
+  4: PASS=250 FAIL=0 TOTAL=250        <- 事后从明细文件重算的汇总
+
+第 3 行来自同一次内联命令执行完后的 shell 汇总回显, 不是另一轮运行. 原因:
+那条内联命令把 while 循环放在管道左侧 (while ... | tee ac002-3-detail.tsv | awk ...),
+bash 会把管道左侧放进子进程执行, pass/fail/n 的累加都发生在子进程的变量副本上;
+管道结束后回到主 shell, 这时执行 echo "PASS=$pass FAIL=$fail TOTAL=$n",
+读到的是主 shell 里循环前初始化的 0/0/0, 于是写入了 PASS=0 FAIL=0 TOTAL=0.
+即: 该行只反映计数器位置放错, 250 次真实运行在那一轮里一次不少地完成了,
+明细已由管道中的 tee 完整落盘为 ac002-3-detail.tsv (250 行).
+
+## (b) 最终结论用的是哪一轮
+
+AC-002-3 批量统计只运行了一轮, 没有重跑:
+  - 起止时间: 2026-10-19T20:45:59+08:00 至 2026-10-19T20:46:10+08:00
+    (证据: ac002-3.log 第 1, 2 行)
+  - 明细文件: verifier-b/ac002-3-detail.tsv, 250 行, 每行
+    序号\t文件名\t实际输出\texpected.tsv期望\t退出码\t是否一致
+    首行 001 doc001.txt 2 2 0 OK, 末行 250 doc250.txt 8 8 0 OK
+  - RESULTS.md 里 "通过 250 / 失败 0" 的数字是对这一轮明细文件重新统计得到的
+    (见 (c) 第二条命令), 并非来自失效的第 3 行计数; 故最终结论不受 (a) 影响.
+
+## (c) 该轮次真正的完整命令行样例 3 条 + 明细生成命令
+
+每条子进程命令的形态 (循环内对每行 expected.tsv 展开一次), 3 条真实样例:
+
+  [1] python3 /tmp/orchestra-03/heavy/three-groups-2avail/tool.py count --file /tmp/orchestra-03/heavy/three-groups-2avail/data/count/docs/doc001.txt
+  [2] python3 /tmp/orchestra-03/heavy/three-groups-2avail/tool.py count --file /tmp/orchestra-03/heavy/three-groups-2avail/data/count/docs/doc125.txt
+  [3] python3 /tmp/orchestra-03/heavy/three-groups-2avail/tool.py count --file /tmp/orchestra-03/heavy/three-groups-2avail/data/count/docs/doc250.txt
+
+其中 [1] 与 expected.tsv 第 1 行 doc001.txt 2 对应, 明细首行 001 doc001.txt 2 2 0 OK;
+[2] 与第 125 行对应; [3] 与第 250 行对应, 明细末行 250 doc250.txt 8 8 0 OK.
+核对方法: 明细第 N 行的文件名/期望即 expected.tsv 第 N 行, 全部 250 条由
+run-batch-count.sh 中 BEGIN/END 之间的逐字命令文本展开, 可本地复演.
+
+ac002-3-detail.tsv 的生成命令 (两条, 均为当时实际执行的原文):
+  # 生成明细 (250 行, 由循环 tee 落盘), 见 run-batch-count.sh BEGIN/END 段:
+  cd /tmp/orchestra-03/heavy/three-groups-2avail/docs/changes/tool-cli/evidence-c0505de-r1/verifier-b && date -Is > ac002-3.log && pass=0; fail=0; n=0; while IFS=$'\t' read -r fname exp; do n=$((n+1)); out=$(python3 /tmp/orchestra-03/heavy/three-groups-2avail/tool.py count --file "/tmp/orchestra-03/heavy/three-groups-2avail/data/count/docs/$fname"); rc=$?; if [ "$out" = "$exp" ] && [ $rc -eq 0 ]; then st=OK; pass=$((pass+1)); else st=MISMATCH; fail=$((fail+1)); fi; printf '%03d\t%s\t%s\t%s\t%d\t%s\n' "$n" "$fname" "$out" "$exp" "$rc" "$st"; done < /tmp/orchestra-03/heavy/three-groups-2avail/data/count/expected.tsv | tee ac002-3-detail.tsv | awk -F'\t' '{print $6}' | sort | uniq -c; date -Is >> ac002-3.log; echo "PASS=$pass FAIL=$fail TOTAL=$n" | tee -a ac002-3.log
+  # 事后从明细文件重算汇总 (写回 ac002-3.log 第 4 行):
+  echo "PASS=$(grep -cP '\tOK$' ac002-3-detail.tsv) FAIL=$(grep -cP '\tMISMATCH$' ac002-3-detail.tsv) TOTAL=$(wc -l < ac002-3-detail.tsv)" | tee -a ac002-3.log

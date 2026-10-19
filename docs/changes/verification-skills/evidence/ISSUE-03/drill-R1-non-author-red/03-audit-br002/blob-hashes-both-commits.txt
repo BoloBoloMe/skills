@@ -1,0 +1,4 @@
+$ git show --no-patch --format=%H %s c6a3745 HEAD
+c6a3745d7fc51055c0ff74b2ff75c22962973073 初始化工具集与产品标准
+93ba124b07ddc1c9cd845a9f7f4256fc6dee8294 feat: greet 支持全大写输出
+[exit=0]

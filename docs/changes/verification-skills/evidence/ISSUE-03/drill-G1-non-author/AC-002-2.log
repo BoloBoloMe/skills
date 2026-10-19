@@ -1,0 +1,14 @@
+# case: AC-002-2
+timestamp_start: 2026-10-19T20:33:23+08:00
+cwd: /tmp/orchestra-03/green-non-author
+git_head: 2028383100c4d5c65789c3a56b13c44d6eba8da2
+command: python3 tool.py count --file notes.txt --chars
+--- raw stdout ---
+17
+--- raw stderr ---
+--- end raw ---
+exit_code: 0
+stdout_hexdump:
+00000000: 3137 0a                                  17.
+stderr_hexdump:
+timestamp_end: 2026-10-19T20:33:23+08:00

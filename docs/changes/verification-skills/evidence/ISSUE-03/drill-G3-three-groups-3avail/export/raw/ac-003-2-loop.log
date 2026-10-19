@@ -1,0 +1,4 @@
+2026-10-19T20:44:21+08:00
+$ while IFS= read -r name; do actual=$(python3 tool.py export --name "$name"); rc=$?; expected=$(printf "{\"name\": \"%s\", \"greeting\": \"Hello, %s!\"}" "$name" "$name"); printf "%s\t%s\t%s\t%s\t%s\n" "$i" "$name" "$expected" "$actual" "$rc"; done < data/export/names.txt > results.tsv
+loop_exit=0
+2026-10-19T20:44:29+08:00

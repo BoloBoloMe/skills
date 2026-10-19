@@ -1,0 +1,10 @@
+场景: AC-001-3 批量问候 250 个姓名
+命令: 对 data/greet/names.txt 每行执行 python3 tool.py greet --name <该行姓名>
+数据文件: data/greet/names.txt (wc -l=250)
+开始: 2026-10-19T20:45:14+08:00
+结束: 2026-10-19T20:45:24+08:00
+耗时秒: 10.243
+总条数: 250
+通过: 250
+失败: 0
+明细: /tmp/orchestra-03/heavy/three-groups-2avail/docs/changes/tool-cli/evidence-c0505de-r1/verifier-a/ac001-3.detail.tsv

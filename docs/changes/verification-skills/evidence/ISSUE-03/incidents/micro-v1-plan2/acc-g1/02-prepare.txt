@@ -1,0 +1,9 @@
+# command: bash prepare.sh
+# cwd: /tmp/orchestra-03/green-micro-groups
+2026-10-19T20:48:30+08:00
+--- stdout/stderr ---
+built dist/app.txt
+--- exit code: 0 ---
+
+# ls -l dist/app.txt
+-rw-rw-r-- 1 bolo bolo 55 Oct 19 20:48 dist/app.txt

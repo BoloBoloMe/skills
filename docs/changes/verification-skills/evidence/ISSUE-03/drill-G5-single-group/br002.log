@@ -1,0 +1,58 @@
+== BR-002: 依赖清单/锁文件/构建材料 逐项比对 b0cde82 vs HEAD ==
+UTC: 2026-10-19T12:49:36Z
+
+--- deps.txt ---
+$ git diff b0cde82 HEAD -- deps.txt
+exit=0
+$ git ls-tree b0cde82 -- deps.txt ; git ls-tree HEAD -- deps.txt
+100644 blob bbb52972310fb82afbe4364e741d264ea25f68bc	deps.txt
+100644 blob bbb52972310fb82afbe4364e741d264ea25f68bc	deps.txt
+
+--- deps.lock ---
+$ git diff b0cde82 HEAD -- deps.lock
+exit=0
+$ git ls-tree b0cde82 -- deps.lock ; git ls-tree HEAD -- deps.lock
+100644 blob f5f745d19dad8f561d612f4868e0c3c5781cf6cd	deps.lock
+100644 blob f5f745d19dad8f561d612f4868e0c3c5781cf6cd	deps.lock
+
+--- build.sh ---
+$ git diff b0cde82 HEAD -- build.sh
+exit=0
+$ git ls-tree b0cde82 -- build.sh ; git ls-tree HEAD -- build.sh
+100644 blob 779624644c085151dd81f8f9cd6bd98e97558c71	build.sh
+100644 blob 779624644c085151dd81f8f9cd6bd98e97558c71	build.sh
+
+--- prepare.sh ---
+$ git diff b0cde82 HEAD -- prepare.sh
+exit=0
+$ git ls-tree b0cde82 -- prepare.sh ; git ls-tree HEAD -- prepare.sh
+100644 blob f6c7c1739086dc2697f622624217d649d677f62e	prepare.sh
+100644 blob f6c7c1739086dc2697f622624217d649d677f62e	prepare.sh
+
+--- 结论用补充: 两提交中根目录全部文件 ---
+$ git ls-tree -r --name-only b0cde82
+.gitignore
+README.md
+build.sh
+deps.lock
+deps.txt
+docs/changes/tool-cli/PRODUCT.md
+docs/changes/tool-cli/TECHNICAL.md
+notes.txt
+prepare.sh
+tests/test_tool.py
+tool.py
+tools/build_manifest.py
+$ git ls-tree -r --name-only HEAD
+.gitignore
+README.md
+build.sh
+deps.lock
+deps.txt
+docs/changes/tool-cli/PRODUCT.md
+docs/changes/tool-cli/TECHNICAL.md
+notes.txt
+prepare.sh
+tests/test_tool.py
+tool.py
+tools/build_manifest.py

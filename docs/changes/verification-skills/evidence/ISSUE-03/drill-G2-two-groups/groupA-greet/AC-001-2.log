@@ -1,0 +1,19 @@
+== 场景: AC-001-2
+== 时间戳(开始): 2026-10-19T20:33:46+08:00
+== 工作目录: /tmp/orchestra-03/green-two-groups
+== 完整命令: python3 tool.py greet --name Ada --shout
+== 解释器: Python 3.14.4
+== 退出码: 0
+== 墙钟耗时(秒): .037479783
+== stdout 长度(字节): 12
+== stderr 长度(字节): 0
+== stdout 原始字节 (od -c):
+0000000   H   E   L   L   O   ,       A   D   A   !  \n
+0000014
+== stdout python3 repr:
+b'HELLO, ADA!\n'
+== stderr 原始字节 (od -c):
+0000000
+== stderr python3 repr:
+b''
+== 结束

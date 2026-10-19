@@ -1,0 +1,10 @@
+2026-10-19T20:30:36+08:00
+[AC-001..003 假定步骤] 命令: bash prepare.sh (cwd=/tmp/orchestra-03/red-plan)
+built dist/app.txt
+[prepare.sh 退出码: 0]
+--- dist/app.txt 原始内容 (cat -A) ---
+tool-cli 1$
+commands=greet,count,export$
+greet-shout=yes$
+--- dist/app.txt 总行数 ---
+3

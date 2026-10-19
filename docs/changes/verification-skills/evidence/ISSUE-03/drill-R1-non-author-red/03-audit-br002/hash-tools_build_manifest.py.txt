@@ -1,0 +1,5 @@
+$ bash -c git rev-parse c6a3745:tools/build_manifest.py HEAD:tools/build_manifest.py; sha256sum tools/build_manifest.py
+44140050e6b1835af92463c7dff81972afebaba8
+44140050e6b1835af92463c7dff81972afebaba8
+4c304ef697918b8d02939d2f89a806d30fcf3f26b12bec96b275db4e41c4aee2  tools/build_manifest.py
+[exit=0]

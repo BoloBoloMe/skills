@@ -1,0 +1,34 @@
+### git diff 7bcc692 2080aea -- deps.txt
+### git rev-parse 7bcc692:deps.txt
+bbb52972310fb82afbe4364e741d264ea25f68bc
+### git rev-parse 2080aea:deps.txt
+bbb52972310fb82afbe4364e741d264ea25f68bc
+
+### git diff 7bcc692 2080aea -- deps.lock
+### git rev-parse 7bcc692:deps.lock
+f5f745d19dad8f561d612f4868e0c3c5781cf6cd
+### git rev-parse 2080aea:deps.lock
+f5f745d19dad8f561d612f4868e0c3c5781cf6cd
+
+### git diff 7bcc692 2080aea -- build.sh
+### git rev-parse 7bcc692:build.sh
+779624644c085151dd81f8f9cd6bd98e97558c71
+### git rev-parse 2080aea:build.sh
+779624644c085151dd81f8f9cd6bd98e97558c71
+
+### git diff 7bcc692 2080aea -- prepare.sh
+### git rev-parse 7bcc692:prepare.sh
+f6c7c1739086dc2697f622624217d649d677f62e
+### git rev-parse 2080aea:prepare.sh
+f6c7c1739086dc2697f622624217d649d677f62e
+
+### git diff 7bcc692 2080aea -- tools/build_manifest.py
+### git rev-parse 7bcc692:tools/build_manifest.py
+44140050e6b1835af92463c7dff81972afebaba8
+### git rev-parse 2080aea:tools/build_manifest.py
+44140050e6b1835af92463c7dff81972afebaba8
+
+### git diff --name-status 7bcc692 2080aea (全树, 证其余文件未改)
+M	tests/test_tool.py
+M	tool.py
+### git diff 7bcc692 2080aea -- .gitignore notes.txt README.md docs/ (其余可能相关文件, 应为空)

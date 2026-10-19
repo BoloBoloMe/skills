@@ -1,0 +1,10 @@
+$ git diff --stat c6a3745 HEAD -- deps.txt deps.lock build.sh prepare.sh tools/build_manifest.py
+[diff_exit=0]
+$ sha256sum deps.txt deps.lock build.sh prepare.sh tools/build_manifest.py
+f37d7a069e967e7a125eef55e7066eb82a9f4fcbfda96213cacfe401460d4806  deps.txt
+28cc45864a24d80d571d7cc23848932e89d4977dbf3d6ede18e1404a27da5f50  deps.lock
+ae45fcf9574b94ecab88deb68bc04728b8e7e34adec03cbd8f5d8434bfa05aad  build.sh
+d763bb6fa9abeafce050781ccf220c72822dda5c52dc153e4ce4ff96c2fac75e  prepare.sh
+4c304ef697918b8d02939d2f89a806d30fcf3f26b12bec96b275db4e41c4aee2  tools/build_manifest.py
+[sha_exit=0]
+# 验收运行之后再取一次哈希, 用于确认本轮操作未改动依赖/构建材料.

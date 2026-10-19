@@ -1,0 +1,14 @@
+# case: AC-001-2
+timestamp_start: 2026-10-19T20:33:23+08:00
+cwd: /tmp/orchestra-03/green-non-author
+git_head: 2028383100c4d5c65789c3a56b13c44d6eba8da2
+command: python3 tool.py greet --name Ada --shout
+--- raw stdout ---
+HELLO, ADA!
+--- raw stderr ---
+--- end raw ---
+exit_code: 0
+stdout_hexdump:
+00000000: 4845 4c4c 4f2c 2041 4441 210a            HELLO, ADA!.
+stderr_hexdump:
+timestamp_end: 2026-10-19T20:33:23+08:00

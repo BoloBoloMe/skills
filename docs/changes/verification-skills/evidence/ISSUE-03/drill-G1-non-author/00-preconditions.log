@@ -1,0 +1,27 @@
+# 前置条件核对
+timestamp: 2026-10-19T20:33:34+08:00
+cwd: /tmp/orchestra-03/green-non-author
+
+=== $ git rev-parse HEAD ===
+2028383100c4d5c65789c3a56b13c44d6eba8da2
+exit_code: 0
+期望: 2028383100c4d5c65789c3a56b13c44d6eba8da2
+
+=== $ git status --porcelain (验收开始时) ===
+?? docs/changes/tool-cli/verify-2028383-v1/
+exit_code: 0
+(仅证据目录为未跟踪项)
+
+=== notes.txt 前提核对: 内容应为 'alpha beta gamma' 加一个换行 ===
+$ xxd notes.txt
+00000000: 616c 7068 6120 6265 7461 2067 616d 6d61  alpha beta gamma
+00000010: 0a                                       .
+$ wc -c notes.txt
+17 notes.txt
+(17 字节 = 15 可见字符 + 1 空格*2 + 换行; 与 'alpha beta gamma' + \n 一致)
+
+=== $ git log --oneline -3 ===
+2028383 feat: greet 支持全大写输出
+adb5660 初始化工具集与产品标准
+
+=== git status --porcelain (证据写入后复核) ===

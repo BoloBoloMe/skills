@@ -1,0 +1,33 @@
+================ deps.txt ================
+python-stdlib
+
+================ deps.lock ================
+# 本工具只用 Python 标准库, 无第三方依赖.
+
+================ build.sh ================
+#!/usr/bin/env bash
+set -euo pipefail
+python3 -m compileall -q tool.py
+
+================ prepare.sh ================
+#!/usr/bin/env bash
+# 构建检查用的产物. dist/ 不进仓库, 每个新会话都要先跑一次.
+set -euo pipefail
+python3 tools/build_manifest.py
+
+================ tools/build_manifest.py ================
+"""生成构建清单 dist/app.txt, 供构建检查使用."""
+import sys
+from pathlib import Path
+
+source = Path(__file__).resolve().parent.parent.joinpath("tool.py").read_text(encoding="utf-8")
+shout = "yes" if "--shout" in source else "no"
+lines = [
+    "tool-cli 1",
+    "commands=greet,count,export",
+    f"greet-shout={shout}",
+]
+Path("dist").mkdir(exist_ok=True)
+Path("dist/app.txt").write_text("\n".join(lines) + "\n", encoding="utf-8")
+print("built dist/app.txt")
+

@@ -1,0 +1,51 @@
+命令: git diff 253a873 ceda596 -- tool.py tests/test_tool.py (观察记录, 不属 BR-002 对象)
+时间开始: 2026-10-19T20:36:32+08:00
+diff --git a/tests/test_tool.py b/tests/test_tool.py
+index 970f6ff..6daf2da 100644
+--- a/tests/test_tool.py
++++ b/tests/test_tool.py
+@@ -21,3 +21,9 @@ def test_word_count():
+     result = run("count", "--file", str(ROOT / "notes.txt"))
+     assert result.stdout == "3\n"
+     assert result.returncode == 0
++
++
++def test_shout_greeting_is_uppercase():
++    result = run("greet", "--name", "Ada", "--shout")
++    assert result.stdout == "HELLO, ADA!\n"
++    assert result.returncode == 0
+diff --git a/tool.py b/tool.py
+index 3663027..0d6f9a8 100644
+--- a/tool.py
++++ b/tool.py
+@@ -6,8 +6,9 @@ from pathlib import Path
+ import sys
+ 
+ 
+-def greet(name: str, separator: str = ", ") -> str:
+-    return f"Hello{separator}{name}!"
++def greet(name: str, separator: str = ", ", shout: bool = False) -> str:
++    greeting = f"Hello{separator}{name}!"
++    return greeting.upper() if shout else greeting
+ 
+ 
+ def count(text: str, chars: bool) -> int:
+@@ -25,6 +26,7 @@ def main(argv=None) -> int:
+     greet_parser = commands.add_parser("greet")
+     greet_parser.add_argument("--name", required=True)
+     greet_parser.add_argument("--sep", default=", ")
++    greet_parser.add_argument("--shout", action="store_true")
+ 
+     count_parser = commands.add_parser("count")
+     count_parser.add_argument("--file", required=True)
+@@ -36,7 +38,7 @@ def main(argv=None) -> int:
+     args = parser.parse_args(argv)
+ 
+     if args.command == "greet":
+-        print(greet(args.name, args.sep))
++        print(greet(args.name, args.sep, args.shout))
+         return 0
+     if args.command == "count":
+         try:
+退出码: 0
+时间结束: 2026-10-19T20:36:32+08:00

@@ -1,0 +1,29 @@
+2026-10-19T20:48:32+08:00
+# sed -n '1p' dist/app.txt
+tool-cli 1
+# sed -n '2p' dist/app.txt
+commands=greet,count,export
+# sed -n '3p' dist/app.txt
+greet-shout=yes
+
+# awk per-line with markers
+line 1=[tool-cli 1]
+line 2=[commands=greet,count,export]
+line 3=[greet-shout=yes]
+
+# cat -A dist/app.txt
+tool-cli 1$
+commands=greet,count,export$
+greet-shout=yes$
+
+# od -c dist/app.txt
+0000000   t   o   o   l   -   c   l   i       1  \n   c   o   m   m   a
+0000020   n   d   s   =   g   r   e   e   t   ,   c   o   u   n   t   ,
+0000040   e   x   p   o   r   t  \n   g   r   e   e   t   -   s   h   o
+0000060   u   t   =   y   e   s  \n
+0000067
+
+# byte compare (printf expected vs actual, cmp)
+line1 hex: 74 6f 6f 6c 2d 63 6c 69 20 31 0a
+line2 hex: 63 6f 6d 6d 61 6e 64 73 3d 67 72 65 65 74 2c 63 6f 75 6e 74 2c 65 78 70 6f 72 74 0a
+line3 hex: 67 72 65 65 74 2d 73 68 6f 75 74 3d 79 65 73 0a

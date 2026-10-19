@@ -1,0 +1,23 @@
+# 各场景标准输出逐字节 (确认仅多一个行尾换行, 无其他字符差异)
+--- python3 tool.py greet --name Ada | od -c
+0000000   H   e   l   l   o   ,       A   d   a   !  \n
+0000014
+[pipe_exit=0]
+--- python3 tool.py greet --name Ada --shout | od -c
+0000000   H   E   L   L   O   ,       A   D   A   !  \n
+0000014
+[pipe_exit=0]
+--- python3 tool.py count --file notes.txt | od -c
+0000000   3  \n
+0000002
+[pipe_exit=0]
+--- python3 tool.py count --file notes.txt --chars | od -c
+0000000   1   7  \n
+0000003
+[pipe_exit=0]
+--- python3 tool.py export --name Ada | od -c
+0000000   {   "   n   a   m   e   "   :       "   A   d   a   "   ,    
+0000020   "   g   r   e   e   t   i   n   g   "   :       "   H   e   l
+0000040   l   o   ,       A   d   a   !   "   }  \n
+0000053
+[pipe_exit=0]

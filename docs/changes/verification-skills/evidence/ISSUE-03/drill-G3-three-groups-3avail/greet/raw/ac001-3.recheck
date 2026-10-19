@@ -1,0 +1,5 @@
+# independent re-check, command: awk over results.tsv and byte comparison of each raw stdout
+# at_utc: 2026-10-19T12:44:41Z
+tsv_rows=250 tsv_ok=250 tsv_bad=0
+stdout_files_checked=250 bad=0
+stdout_file_count=250 stderr_file_count=250

@@ -1,0 +1,25 @@
+== 开工前 git 状态 ==
+2026-10-19T12:48:52Z
+$ git rev-parse HEAD
+42c51b8a51c216d5689a1c918c319ae4474aafd6
+exit=0
+$ git status --porcelain --untracked-files=all
+?? docs/changes/tool-cli/verify-v1-20261019T1250Z/git-state.log
+?? docs/changes/tool-cli/verify-v1-20261019T1250Z/plan.md
+?? docs/changes/tool-cli/verify-v1-20261019T1250Z/task-acc-verify.md
+exit=0
+== 收工 git 状态 ==
+2026-10-19T12:50:01Z
+$ git rev-parse HEAD
+42c51b8a51c216d5689a1c918c319ae4474aafd6
+exit=0
+$ git status --porcelain --untracked-files=all
+?? docs/changes/tool-cli/verify-v1-20261019T1250Z/ac001-1.log
+?? docs/changes/tool-cli/verify-v1-20261019T1250Z/ac001-2.log
+?? docs/changes/tool-cli/verify-v1-20261019T1250Z/br002-diff-list.log
+?? docs/changes/tool-cli/verify-v1-20261019T1250Z/br002.log
+?? docs/changes/tool-cli/verify-v1-20261019T1250Z/git-state.log
+?? docs/changes/tool-cli/verify-v1-20261019T1250Z/plan.md
+?? docs/changes/tool-cli/verify-v1-20261019T1250Z/summary.md
+?? docs/changes/tool-cli/verify-v1-20261019T1250Z/task-acc-verify.md
+exit=0
