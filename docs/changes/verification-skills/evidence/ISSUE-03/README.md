@@ -97,7 +97,7 @@ cd /tmp/orchestra-03/author && git show --format= --no-color HEAD | sha256sum
 ## 机械复核
 
 - 会话摘要: `SUMMARY.md` 由 `summarize-sessions.py` 从 `sessions/` 原始 JSONL 统计, 列出每个会话的启动时间, bash 次数, 真正执行成品 (`python3 tool.py ...`) 的次数, 执行 `prepare.sh` 的次数, `herdr` 控制调用次数, 写文件次数, 执行样例与第一条用户输入.
-- 指挥者不亲自操作成品: 9 个指挥会话的 `product_runs` 都是 0 (红演练的旧版指挥者是 2 和 3); 验收者的 `product_runs` 都大于 0. `product_runs` 排除 `herdr pane send-text` / `herdr agent prompt` 这类把命令文本转交验收者的转发调用, 但写任务书的 heredoc 可能仍被计入, 所以逐条核对见 `NOTES.md` 与 `SUMMARY.md` 的执行样例. 表中的 `git commit` 列同样是文本线索 (有一个指挥者的该列来自读取会话文件的 Python 单行命令), 不表示它提交过.
+- 指挥者不亲自操作成品: 7 个绿演练指挥会话的 `product_runs` 都是 0, 红演练的两名旧版指挥者分别是 2 和 3; 各验收者都有自己的实际执行记录 (`product_runs` 或 `prep_runs` 大于 0, 微检查组的验收者是通过 `prepare.sh` 间接执行产品). `product_runs` 排除 `herdr pane send-text` / `herdr agent prompt` 这类把命令文本转交验收者的转发调用, 但写任务书的 heredoc 可能仍被计入, 所以逐条核对见 `NOTES.md` 与 `SUMMARY.md` 的执行样例. 表中的 `git commit` 列同样是文本线索 (有一个指挥者的该列来自读取会话文件的 Python 单行命令), 不表示它提交过.
 - 不逐条 AC 开会话: 绿演练的必验项与会话数为 4/2 (G2), 9/3 (G3), 9/2 (G4), 3/1 (G5), 3/1 (G6), 6/1 (G1); 计划里明确写了"不按 AC 逐条开".
 - 自主启动不例行等批准: 各绿演练的计划写完后同一会话直接建 tab 并启动验收者, 没有再向用户提问; 会话记录里没有"等待批准/请确认"一类的段落 (可对 `sessions/*/*.jsonl` 与 `SUMMARY.md` 复核), `drill-G4-three-groups-2avail/dispatch-time.txt` 留了派工时间 `2026-10-19T20:44:49+08:00`.
 - 未参与事实: 每份计划都写了验收者会话标识, 创建时间与实现提交时间的先后; 原始会话文件首行给出会话 ID 与启动时间, 可与 `SUMMARY.md` 对照.
