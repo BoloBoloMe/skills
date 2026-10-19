@@ -1,0 +1,3 @@
+checks=1 failures=1
+FAIL 缺少演练报告: /home/bolo/Workspace/skills/skills-v2.worktrees/ISSUE-13/docs/changes/verification-skills/evidence/ISSUE-13/TS-002-drill.md
+exit=1

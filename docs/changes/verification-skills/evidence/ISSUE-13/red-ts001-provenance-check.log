@@ -1,0 +1,12 @@
+checks=19 failures=11
+FAIL [workflow/blast-radius] 缺少 LICENSE
+FAIL [workflow/blast-radius/source-record.md] 缺少translate-a-skill 第 7 节全角标点命令
+FAIL [workflow/blast-radius/source-record.md] 缺少标点检查结果
+FAIL [workflow/blast-radius/source-record.md] 缺少标题结构命令
+FAIL [workflow/blast-radius/source-record.md] 缺少证据目录
+FAIL [workflow/blast-radius/source-record.md] 差异表缺少字段: 源版位置
+FAIL [workflow/blast-radius/source-record.md] 差异表缺少字段: 目标版位置
+FAIL [workflow/blast-radius/source-record.md] 差异表缺少字段: 影响
+FAIL [workflow/blast-radius/source-record.md] 差异表缺少字段: 处理决定
+FAIL [workflow/benchmark-checklist] 缺少 LICENSE
+FAIL [workflow/benchmark-checklist] 缺少来源差异记录: reference/PROVENANCE.md 或 reference/source-record.md
