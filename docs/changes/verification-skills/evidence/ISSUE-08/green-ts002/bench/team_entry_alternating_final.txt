@@ -1,0 +1,80 @@
+--- round 1 new
+version new rows 50 repeat 5
+samples_ms 89.3 89.2 89.3 89.3 89.3
+median_ms 89.3 min_ms 89.2 max_ms 89.3 range_ms 0.2
+stages_ms parse 8.2 normalize 0.8 render 50.1 write 30.1
+jobs_ok 5 jobs_bad 0 rows_planned 250 rows_submitted 250 written 250 failed 0 row_mismatch 0 cache_hits 0
+correctness ok
+total_ms 446.4
+--- round 1 old
+version old rows 50 repeat 5
+samples_ms 98.4 98.3 98.5 98.4 98.6
+median_ms 98.4 min_ms 98.3 max_ms 98.6 range_ms 0.4
+stages_ms parse 8.1 normalize 10.0 render 50.2 write 30.3
+jobs_ok 5 jobs_bad 0 rows_planned 250 rows_submitted 250 written 250 failed 0 row_mismatch 0 cache_hits 0
+correctness ok
+total_ms 492.2
+--- round 2 new
+version new rows 50 repeat 5
+samples_ms 89.3 89.2 89.2 89.2 89.3
+median_ms 89.2 min_ms 89.2 max_ms 89.3 range_ms 0.2
+stages_ms parse 8.1 normalize 0.8 render 50.1 write 30.2
+jobs_ok 5 jobs_bad 0 rows_planned 250 rows_submitted 250 written 250 failed 0 row_mismatch 0 cache_hits 0
+correctness ok
+total_ms 446.2
+--- round 2 old
+version old rows 50 repeat 5
+samples_ms 98.5 98.5 98.7 98.6 98.7
+median_ms 98.6 min_ms 98.5 max_ms 98.7 range_ms 0.2
+stages_ms parse 8.1 normalize 10.0 render 50.3 write 30.3
+jobs_ok 5 jobs_bad 0 rows_planned 250 rows_submitted 250 written 250 failed 0 row_mismatch 0 cache_hits 0
+correctness ok
+total_ms 493.0
+--- round 3 new
+version new rows 50 repeat 5
+samples_ms 89.1 89.3 89.1 89.5 89.5
+median_ms 89.3 min_ms 89.1 max_ms 89.5 range_ms 0.4
+stages_ms parse 8.3 normalize 0.8 render 50.3 write 30.1
+jobs_ok 5 jobs_bad 0 rows_planned 250 rows_submitted 250 written 250 failed 0 row_mismatch 0 cache_hits 0
+correctness ok
+total_ms 446.6
+--- round 3 old
+version old rows 50 repeat 5
+samples_ms 98.5 98.5 98.3 98.4 98.6
+median_ms 98.5 min_ms 98.3 max_ms 98.6 range_ms 0.3
+stages_ms parse 8.1 normalize 10.0 render 50.1 write 30.3
+jobs_ok 5 jobs_bad 0 rows_planned 250 rows_submitted 250 written 250 failed 0 row_mismatch 0 cache_hits 0
+correctness ok
+total_ms 492.2
+--- round 4 new
+version new rows 50 repeat 5
+samples_ms 89.1 89.4 89.3 89.2 89.4
+median_ms 89.3 min_ms 89.1 max_ms 89.4 range_ms 0.3
+stages_ms parse 8.2 normalize 0.8 render 50.1 write 30.3
+jobs_ok 5 jobs_bad 0 rows_planned 250 rows_submitted 250 written 250 failed 0 row_mismatch 0 cache_hits 0
+correctness ok
+total_ms 446.5
+--- round 4 old
+version old rows 50 repeat 5
+samples_ms 98.5 98.7 98.7 98.6 98.5
+median_ms 98.6 min_ms 98.5 max_ms 98.7 range_ms 0.2
+stages_ms parse 8.1 normalize 10.0 render 50.1 write 30.3
+jobs_ok 5 jobs_bad 0 rows_planned 250 rows_submitted 250 written 250 failed 0 row_mismatch 0 cache_hits 0
+correctness ok
+total_ms 493.0
+--- round 5 new
+version new rows 50 repeat 5
+samples_ms 89.4 89.2 89.1 89.3 89.5
+median_ms 89.3 min_ms 89.1 max_ms 89.5 range_ms 0.4
+stages_ms parse 8.2 normalize 0.8 render 50.3 write 30.1
+jobs_ok 5 jobs_bad 0 rows_planned 250 rows_submitted 250 written 250 failed 0 row_mismatch 0 cache_hits 0
+correctness ok
+total_ms 446.6
+--- round 5 old
+version old rows 50 repeat 5
+samples_ms 98.4 98.4 98.4 98.6 98.4
+median_ms 98.4 min_ms 98.4 max_ms 98.6 range_ms 0.2
+stages_ms parse 8.1 normalize 10.0 render 50.1 write 30.1
+jobs_ok 5 jobs_bad 0 rows_planned 250 rows_submitted 250 written 250 failed 0 row_mismatch 0 cache_hits 0
+correctness ok
+total_ms 492.2

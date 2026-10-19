@@ -1,0 +1,141 @@
+diff --git a/bench/team_entry.py b/bench/team_entry.py
+index 9d13668..3a48ace 100644
+--- a/bench/team_entry.py
++++ b/bench/team_entry.py
+@@ -1,18 +1,129 @@
+-"""候选团队入口: 跑一批导出, 只打总耗时. 没有错误数, 也没有工作量输出."""
++"""团队持续优化入口: 跑一批导出, 逐次计时, 报告错误数与工作量.
+ 
++计时区: 每次 run_job 调用本身. 负载构造与预热都在计时区之外.
++错误定义: 产品返回的 failed 数, 写出行数与提交行数不符, 缓存命中 (计时区内没做完整工作),
++阶段缺失或耗时为 0, 以及 run_job 抛异常.
++工作量: 提交行数, 产品报告写出行数, 成功作业数.
++任一校验不通过时以非零码退出.
++"""
++
++import argparse
++import statistics
+ import sys
+ import time
+ 
+ sys.path.insert(0, "src")
+-from pipeline import run_job  # noqa: E402
++from pipeline import normalize, normalize_fast, parse, render, run_job, write  # noqa: E402
++
++STAGES = ("parse", "normalize", "render", "write")
++SAMPLE = [{"id": 1, "name": " x "}, {"id": 2, "name": "y "}]
++EXPECTED_NAMES = ["X", "Y"]
++EXPECTED_BODY = "1,X\n2,Y"
++
++
++def payload(seed: int, rows: int) -> dict:
++    return {"rows": [{"id": seed * rows + j, "name": f" n{j}-{seed} "} for j in range(rows)]}
++
++
++def self_check() -> list[str]:
++    """不计时的固定小样本核对: 归一化两版结果一致且正确, 渲染与写出条数对得上."""
++    errors: list[str] = []
++    parsed, _ = parse({"rows": SAMPLE})
++    old_rows, _ = normalize([dict(row) for row in parsed])
++    fast_rows, _ = normalize_fast([dict(row) for row in parsed])
++    for label, rows in (("normalize", old_rows), ("normalize_fast", fast_rows)):
++        names = [row["name"] for row in rows]
++        if names != EXPECTED_NAMES:
++            errors.append(f"self_check {label}: names {names} != {EXPECTED_NAMES}")
++    body, _ = render(fast_rows)
++    if body != EXPECTED_BODY:
++        errors.append(f"self_check render: body {body!r} != {EXPECTED_BODY!r}")
++    stats, _ = write(body)
++    if stats != {"written": 2, "failed": 0}:
++        errors.append(f"self_check write: stats {stats} != {{'written': 2, 'failed': 0}}")
++    return errors
+ 
+ 
+ def main() -> int:
+-    start = time.perf_counter()
+-    for i in range(5):
+-        run_job({"rows": [{"id": i * 10 + j, "name": " x "} for j in range(50)]})
+-    print(f"total_ms {(time.perf_counter() - start) * 1000:.1f}")
+-    return 0
++    parser = argparse.ArgumentParser()
++    parser.add_argument("--rows", type=int, default=50)
++    parser.add_argument("--repeat", type=int, default=5)
++    parser.add_argument("--version", choices=["old", "new"], default="new")
++    args = parser.parse_args()
++    if args.rows <= 0 or args.repeat <= 0:
++        parser.error("--rows and --repeat must be positive")
++    fast = args.version == "new"
++    self_check_errors = self_check()
++
++    # 预热不计时, 用独立 payload 避免污染被测作业的产品缓存.
++    run_job(payload(-1, args.rows), fast_normalize=fast)
++
++    payloads = [payload(i, args.rows) for i in range(args.repeat)]
++    samples: list[float] = []
++    stages_last: dict[str, float] = {}
++    rows_planned = args.rows * args.repeat
++    rows_ok = 0
++    written_total = 0
++    failed_total = 0
++    cache_hits = 0
++    bad_jobs = 0
++    row_mismatch_total = 0
++    errors: list[str] = list(self_check_errors)
++
++    loop_start = time.perf_counter()
++    for index, item in enumerate(payloads):
++        start = time.perf_counter()
++        try:
++            stats, stages = run_job(item, fast_normalize=fast)
++        except Exception as exc:  # 作业异常也要计数, 不能静默丢掉
++            bad_jobs += 1
++            errors.append(f"job {index}: {type(exc).__name__}: {exc}")
++            continue
++        samples.append((time.perf_counter() - start) * 1000)
++        stages_last = stages
++
++        written = int(stats.get("written", -1))
++        failed = int(stats.get("failed", -1))
++        written_total += written
++        failed_total += failed
++        rows_ok += args.rows
++
++        if "cache" in stages:
++            cache_hits += 1
++            bad_jobs += 1
++            errors.append(f"job {index}: cache hit, 计时区内没有做完整工作")
++        missing = [name for name in STAGES if float(stages.get(name, 0.0)) <= 0.0]
++        if missing:
++            bad_jobs += 1
++            errors.append(f"job {index}: stages missing/zero {missing}")
++        if written != args.rows:
++            bad_jobs += 1
++            row_mismatch_total += abs(written - args.rows)
++            errors.append(f"job {index}: written {written} != rows {args.rows}")
++        if failed != 0:
++            bad_jobs += 1
++            errors.append(f"job {index}: failed {failed} != 0")
++
++    batch_wall_ms = (time.perf_counter() - loop_start) * 1000
++    print(f"version {args.version} rows {args.rows} repeat {args.repeat}")
++    if samples:
++        print(f"samples_ms {' '.join(f'{value:.1f}' for value in samples)}")
++        print(
++            f"median_ms {statistics.median(samples):.1f} min_ms {min(samples):.1f} "
++            f"max_ms {max(samples):.1f} range_ms {max(samples) - min(samples):.1f}"
++        )
++        stage_text = " ".join(f"{name} {float(stages_last.get(name, 0.0)):.1f}" for name in STAGES)
++        print(f"stages_ms {stage_text}")
++    print(
++        f"jobs_ok {len(samples)} jobs_bad {bad_jobs} rows_planned {rows_planned} "
++        f"rows_submitted {rows_ok} written {written_total} failed {failed_total} "
++        f"row_mismatch {row_mismatch_total} cache_hits {cache_hits}"
++    )
++    print(f"correctness {'ok' if not self_check_errors else 'FAILED'}")
++    print(f"total_ms {batch_wall_ms:.1f}")
++    for error in errors:
++        print(f"ERROR {error}")
++    return 1 if (bad_jobs or row_mismatch_total or failed_total or rows_ok != rows_planned or self_check_errors) else 0
+ 
+ 
+ if __name__ == "__main__":

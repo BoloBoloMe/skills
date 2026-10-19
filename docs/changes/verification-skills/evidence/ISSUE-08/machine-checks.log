@@ -1,0 +1,23 @@
+=== 2026-10-19T19:56:34+08:00 ===
+--- check_skill ---
+workflow/benchmark-checklist/SKILL.md: OK
+check_skill exit=0
+--- fullwidth scan (skill) ---
+rg exit=1
+--- fullwidth scan (evidence md) ---
+docs/changes/verification-skills/evidence/ISSUE-08/red-round/docs/task5.md:68:- 解释型项目, 无发布版/调试版之分; 两侧没有可调的生产标志、连接池、事务或缓存预热差异.
+rg exit=0
+.......                                                [100%]
+7 passed, 18 subtests passed in 0.08s
+                   ^^^^^^^^^^^^^^^^^^^^^^^
+E           TimeoutError: timed out
+
+/home/bolo/.local/share/uv/python/cpython-3.14.7-linux-x86_64-gnu/lib/python3.14/socket.py:729: TimeoutError
+=========================== short test summary info ============================
+FAILED general/present/tests/test_browser_session.py::TestCLI::test_exit_code_0_on_success
+FAILED general/present/tests/test_browser_session.py::TestJSONOutput::test_state_browser_not_running_when_no_metadata
+FAILED general/present/tests/test_browser_session.py::TestJSONOutput::test_status_alive_false_when_no_metadata
+FAILED general/present/tests/test_browser_session.py::TestJSONOutput::test_success_has_required_fields
+FAILED general/present/tests/test_browser_session.py::TestLifecycle::test_recovery_after_close
+FAILED tests/test_mailbox_admin.py::test_pending_cap_drops_oldest - TimeoutEr...
+6 failed, 659 passed, 2 skipped, 103 deselected, 33 subtests passed in 274.48s (0:04:34)

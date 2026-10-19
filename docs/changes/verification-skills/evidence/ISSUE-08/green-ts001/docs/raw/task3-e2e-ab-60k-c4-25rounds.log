@@ -1,0 +1,7 @@
+correctness rows 50: 两种归一化实现的输出均与预期逐行一致
+===== rows 60000 concurrency 4 rounds 25 (每轮每侧 4 个请求, 双数轮 old 先, 单数轮 new 先) =====
+old n 100 run_med 215.01 ms run_range 139.50-295.48 stage_sum_med 157.80 ms stage_sum_range 114.04-245.74 r_med 11.67% upper 13.21% jobs_per_sec 11.97
+  stage_med normalize=15.49 parse=42.05 render=58.24 write=31.58
+new n 100 run_med 195.61 ms run_range 136.21-297.89 stage_sum_med 140.61 ms stage_sum_range 106.92-225.79 r_med 4.37% upper 4.57% jobs_per_sec 12.70
+  stage_med normalize=5.58 parse=35.58 render=58.42 write=31.55
+delta_run 9.02% p_run 0.0045 | delta_stage_sum 10.89% p_stage_sum 0.0007

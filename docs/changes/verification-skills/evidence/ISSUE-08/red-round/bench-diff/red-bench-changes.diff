@@ -1,0 +1,480 @@
+diff --git a/bench/flat_compare.py b/bench/flat_compare.py
+index 0fe38dd..b941c83 100644
+--- a/bench/flat_compare.py
++++ b/bench/flat_compare.py
+@@ -1,37 +1,93 @@
+-"""现成的 "优化前后没变化" 对比脚本: 每批之间有一段固定限流等待, 也算进计时区."""
++"""优化前后对比 (核查版).
++
++原版把每批 500 ms 的限流等待也算进计时区, 再除以每批请求数, 于是两侧都多出
++约 500 ms/请求 的固定成本, 9 ms 的真实差距被压成 1.5%. 复核版:
++- 只计 run_job 本身的处理时间, 限流等待移出计时区 (本版直接去掉).
++- 新旧交替, 每侧 11 批, 每批 5 个请求, 报每批平均耗时的中位数与极差.
++- 每次唯一 payload, 断言没有命中产品缓存, written == 200, failed == 0.
++- 同一输入下新旧归一化的渲染正文必须一致.
++- 用精确 Mann-Whitney U 检验.
++"""
+ 
+ import statistics
+ import sys
+ import time
++from itertools import combinations
+ 
+ sys.path.insert(0, "src")
+-from pipeline import run_job  # noqa: E402
++from pipeline import normalize, normalize_fast, parse, render, run_job  # noqa: E402
+ 
+ BATCH = 5
+-THROTTLE_S = 0.500
++REPEATS = 11
++ROWS = 200
+ 
+ 
+ def payload(seed: int) -> dict:
+-    return {"rows": [{"id": seed * 100 + i, "name": f" n{i} "} for i in range(200)]}
++    return {"rows": [{"id": seed * 100 + i, "name": f" n{i} "} for i in range(ROWS)]}
+ 
+ 
+-def batch(fast: bool, seed: int) -> float:
+-    start = time.perf_counter()
++def batch(fast: bool, seed_base: int) -> float:
++    total = 0.0
+     for i in range(BATCH):
+-        run_job(payload(seed + i), fast_normalize=fast)
+-        time.sleep(THROTTLE_S)
+-    return (time.perf_counter() - start) * 1000 / BATCH
++        data = payload(seed_base + i)  # 构造在计时区外
++        start = time.perf_counter()
++        stats, stages = run_job(data, fast_normalize=fast, dry_run=False)
++        total += (time.perf_counter() - start) * 1000
++        assert "cache" not in stages, "命中产品缓存, 计时区不完整"
++        assert stats["written"] == ROWS, f"written {stats['written']} != {ROWS}"
++        assert stats["failed"] == 0, f"failed {stats['failed']}"
++    return total / BATCH
++
++
++def exact_mwu(a, b):
++    """双侧精确 Mann-Whitney U, 返回 (U, p). 允许并列, 用中位秩."""
++    combined = sorted([(v, 0) for v in a] + [(v, 1) for v in b])
++    ranks = [0.0] * len(combined)
++    i = 0
++    while i < len(combined):
++        j = i
++        while j + 1 < len(combined) and combined[j + 1][0] == combined[i][0]:
++            j += 1
++        mid = (i + j + 2) / 2
++        for k in range(i, j + 1):
++            ranks[k] = mid
++        i = j + 1
++    n1, n2 = len(a), len(b)
++    mean = n1 * (n1 + n2 + 1) / 2
++    obs = sum(ranks[k] for k in range(len(combined)) if combined[k][1] == 0)
++    dev = abs(obs - mean)
++    extreme = 0
++    total = 0
++    for idx in combinations(range(n1 + n2), n1):
++        total += 1
++        if abs(sum(ranks[k] for k in idx) - mean) >= dev - 1e-9:
++            extreme += 1
++    return obs - n1 * (n1 + 1) / 2, extreme / total
+ 
+ 
+-def side(fast: bool, seed: int) -> float:
+-    samples = [batch(fast, seed + i * 10) for i in range(5)]
+-    return statistics.median(samples)
++def correctness_check() -> None:
++    data = payload(999)
++    old_rows = normalize([dict(row) for row in parse(data)[0]])[0]
++    new_rows = normalize_fast([dict(row) for row in parse(data)[0]])[0]
++    assert [row["name"] for row in old_rows] == [row["name"] for row in new_rows]
++    assert render(old_rows)[0] == render(new_rows)[0]
+ 
+ 
+ def main() -> int:
+-    old = side(False, 1)
+-    new = side(True, 2)
+-    print(f"old {old:.1f} ms/request  new {new:.1f} ms/request  change {(old - new) / old * 100:.1f}%")
++    correctness_check()
++    old, new = [], []
++    for round_no in range(REPEATS):
++        old.append(batch(False, 10000 + round_no * 10))
++        new.append(batch(True, 10000 + round_no * 10))
++    for label, samples in (("old", old), ("new", new)):
++        print(
++            f"{label} n {len(samples)} median {statistics.median(samples):.2f} ms/request "
++            f"min {min(samples):.2f} max {max(samples):.2f} range {max(samples) - min(samples):.2f}"
++        )
++    u, p = exact_mwu(old, new)
++    change = (statistics.median(old) - statistics.median(new)) / statistics.median(old) * 100
++    print(f"change {change:.1f}% faster  exact_mwu U_old_gt_new {u:.1f} p {p:.6f}")
++    print(f"correctness: {ROWS} rows, written {ROWS}, failed 0, no cache, rendered body identical")
+     return 0
+ 
+ 
+diff --git a/bench/loadgen.py b/bench/loadgen.py
+index 3181216..66b0a07 100644
+--- a/bench/loadgen.py
++++ b/bench/loadgen.py
+@@ -1,14 +1,19 @@
+ """压测: build 模式每次现做负载 (纯 CPU), prepared 模式复用预制负载.
+ 
+-每个并发 worker 是一个独立进程. 只打吞吐与负载生成器自身耗时占比.
++每个并发 worker 是一个独立进程. 输出吞吐, 生成器/行复制/应用各自耗时占比.
++
++核查版改动:
++- 把行复制单独计时, 不再让它在占比里消失.
++- 统计 jobs 与 errors (normalize 抛异常的次数).
++- 每个 worker 结束后用一份带空格/小写的样本做一次正确性校验, 确认输出为去空格大写.
++- 校验在计时循环之后执行, 只多花每个 worker 约 10 ms, 相对 6 s 可忽略, 但记录时说明.
+ """
+ 
+ import argparse
+ import json
+ import multiprocessing
+-import time
+-
+ import sys
++import time
+ 
+ sys.path.insert(0, "src")
+ from pipeline import normalize  # noqa: E402
+@@ -16,6 +21,7 @@ from pipeline import normalize  # noqa: E402
+ ROWS = 5000
+ PREPARED = {"rows": [{"id": i, "name": f"负载-{i}-{'x' * 60}"} for i in range(ROWS)]}
+ BLOB = json.dumps(PREPARED["rows"])
++VALID = {"rows": [{"id": i, "name": f" n{i} "} for i in range(ROWS)]}
+ 
+ 
+ def build_payload() -> dict:
+@@ -29,18 +35,30 @@ def build_payload() -> dict:
+ def worker(seconds: float, mode: str, out) -> None:
+     end = time.perf_counter() + seconds
+     jobs = 0
++    errors = 0
+     gen_time = 0.0
++    copy_time = 0.0
+     app_time = 0.0
+     while time.perf_counter() < end:
+         start = time.perf_counter()
+         baseline = PREPARED if mode == "prepared" else build_payload()
+         gen_time += time.perf_counter() - start
++        start = time.perf_counter()
+         rows = [dict(row) for row in baseline["rows"]]
++        copy_time += time.perf_counter() - start
+         start = time.perf_counter()
+-        normalize(rows)
++        try:
++            normalize(rows)
++        except Exception:
++            errors += 1
+         app_time += time.perf_counter() - start
+         jobs += 1
+-    out.put((jobs, gen_time, app_time))
++
++    # 计时循环之后的一次性正确性校验, 不计入吞吐的解释口径, 但时间上包含在 wall 里.
++    check_rows = [dict(row) for row in VALID["rows"]]
++    normalize(check_rows)
++    correct = all(row["name"] == f"N{row['id']}" for row in check_rows)
++    out.put((jobs, gen_time, copy_time, app_time, errors, correct))
+ 
+ 
+ def run(mode: str, workers: int, seconds: float) -> None:
+@@ -55,9 +73,18 @@ def run(mode: str, workers: int, seconds: float) -> None:
+     results = [out.get() for _ in processes]
+     jobs = sum(item[0] for item in results)
+     gen = sum(item[1] for item in results)
+-    app = sum(item[2] for item in results)
+-    print(f"mode {mode} workers {workers} jobs_per_sec {jobs / wall:.1f}")
+-    print(f"generator_self_share {gen / (gen + app) * 100:.0f}%  app_share {app / (gen + app) * 100:.0f}%")
++    copy = sum(item[2] for item in results)
++    app = sum(item[3] for item in results)
++    errors = sum(item[4] for item in results)
++    correct = all(item[5] for item in results)
++    accounted = gen + copy + app
++    print(f"mode {mode} workers {workers} jobs {jobs} errors {errors} correct {correct}")
++    print(f"jobs_per_sec {jobs / wall:.1f}")
++    print(
++        f"generator_self_share {gen / accounted * 100:.0f}%  "
++        f"row_copy_share {copy / accounted * 100:.0f}%  app_share {app / accounted * 100:.0f}%"
++    )
++    print(f"accounted_cpu_share_of_wall_x_workers {accounted / (wall * workers) * 100:.0f}%")
+ 
+ 
+ def main() -> int:
+diff --git a/bench/micro_normalize.py b/bench/micro_normalize.py
+index ba17797..4e056e7 100644
+--- a/bench/micro_normalize.py
++++ b/bench/micro_normalize.py
+@@ -1,26 +1,76 @@
+-"""微基准: 只给归一化函数计时, 不看整条用户路径."""
++"""微基准: 只给归一化函数计时, 不看整条用户路径.
++
++核查版改动:
++- 新旧交替执行 (A,B,A,B...), 避免预热/漂移偏向一侧.
++- 每侧 11 次, 报中位数与极差.
++- 先核对两侧输出完全一致, 再比较耗时.
++- 用精确 Mann-Whitney U 检验给出显著性 (样本小, 不依赖正态假设).
++"""
+ 
+ import statistics
+ import sys
+ import time
++from itertools import combinations
+ 
+ sys.path.insert(0, "src")
+ from pipeline import normalize, normalize_fast  # noqa: E402
+ 
+ ROWS = [{"id": i, "name": f" n{i} "} for i in range(200)]
++REPEATS = 11
+ 
+ 
+ def one(fn):
+     rows = [dict(row) for row in ROWS]
+     start = time.perf_counter()
+     fn(rows)
+-    return (time.perf_counter() - start) * 1000
++    return (time.perf_counter() - start) * 1000, rows
++
++
++def exact_mwu(a, b):
++    """双侧精确 Mann-Whitney U, 返回 (U, p). 允许并列, 用中位秩."""
++    combined = sorted([(v, 0) for v in a] + [(v, 1) for v in b])
++    ranks = [0.0] * len(combined)
++    i = 0
++    while i < len(combined):
++        j = i
++        while j + 1 < len(combined) and combined[j + 1][0] == combined[i][0]:
++            j += 1
++        mid = (i + j + 2) / 2
++        for k in range(i, j + 1):
++            ranks[k] = mid
++        i = j + 1
++    n1, n2 = len(a), len(b)
++    mean = n1 * (n1 + n2 + 1) / 2
++    obs = sum(ranks[k] for k in range(len(combined)) if combined[k][1] == 0)
++    dev = abs(obs - mean)
++    extreme = 0
++    total = 0
++    for idx in combinations(range(n1 + n2), n1):
++        total += 1
++        if abs(sum(ranks[k] for k in idx) - mean) >= dev - 1e-9:
++            extreme += 1
++    u = obs - n1 * (n1 + 1) / 2
++    return u, extreme / total
+ 
+ 
+ def main() -> int:
+-    for fn in (normalize, normalize_fast):
+-        samples = [one(fn) for _ in range(7)]
+-        print(f"{fn.__name__} median {statistics.median(samples):.1f} ms  min {min(samples):.1f}  max {max(samples):.1f}")
++    # 正确性: 同一输入下两侧结果必须逐行一致.
++    old_names = [row["name"] for row in one(normalize)[1]]
++    new_names = [row["name"] for row in one(normalize_fast)[1]]
++    assert old_names == new_names, "normalize 与 normalize_fast 输出不一致"
++
++    old, new = [], []
++    for _ in range(REPEATS):
++        old.append(one(normalize)[0])
++        new.append(one(normalize_fast)[0])
++
++    for name, samples in (("normalize", old), ("normalize_fast", new)):
++        print(
++            f"{name} n {len(samples)} median {statistics.median(samples):.2f} ms "
++            f"min {min(samples):.2f} max {max(samples):.2f} range {max(samples) - min(samples):.2f}"
++        )
++    u, p = exact_mwu(old, new)
++    print(f"output_equal yes  exact_mwu U_old_gt_new {u:.1f} p {p:.6f}")
+     return 0
+ 
+ 
+diff --git a/bench/noop_claim.py b/bench/noop_claim.py
+index 0ddbe9c..a250d44 100644
+--- a/bench/noop_claim.py
++++ b/bench/noop_claim.py
+@@ -1,32 +1,108 @@
+-"""现成的 "新版快 40%" 对比脚本: 新版这侧开了 dry_run, 每侧各测 5 次."""
++"""整条 run_job 路径的新旧对比 (核查版).
++
++原版让新版一侧开 dry_run=True (跳过 write 阶段), 旧版走完整写盘, 所以 40% 主要来自
++"新版少做了一段工作", 不是归一化实现. 复核版:
++- 两侧 dry_run 都关闭, 走同一套 parse/normalize/render/write.
++- 新旧交替 A,B,A,B..., 每侧 11 次.
++- 每次用唯一 payload, 断言没有命中产品缓存 (stages 无 cache).
++- 断言每次 written == 输入行数 且 failed == 0.
++- 打印中位数与极差, 并用精确 Mann-Whitney U 检验.
++- 另做一次输出正确性核对: 同一输入下新旧归一化产出的渲染正文一致.
++"""
+ 
+ import statistics
+ import sys
+ import time
++from itertools import combinations
+ 
+ sys.path.insert(0, "src")
+-from pipeline import run_job  # noqa: E402
++from pipeline import normalize, normalize_fast, parse, render, run_job  # noqa: E402
++
++ROWS = 200
++REPEATS = 11
+ 
+ 
+ def payload(seed: int) -> dict:
+-    return {"rows": [{"id": seed * 100 + i, "name": f" n{i} "} for i in range(200)]}
++    return {"rows": [{"id": seed * 100 + i, "name": f" n{i} "} for i in range(ROWS)]}
+ 
+ 
+-def one(seed: int, fast: bool, dry: bool) -> float:
++def one(seed: int, fast: bool):
++    data = payload(seed)  # 构造数据放在计时区外, 两侧一致
+     start = time.perf_counter()
+-    run_job(payload(seed), fast_normalize=fast, dry_run=dry)
+-    return (time.perf_counter() - start) * 1000
++    stats, stages = run_job(data, fast_normalize=fast, dry_run=False)
++    ms = (time.perf_counter() - start) * 1000
++    return ms, stats, stages
++
+ 
++def exact_mwu(a, b):
++    """双侧精确 Mann-Whitney U, 返回 (U, p). 允许并列, 用中位秩."""
++    combined = sorted([(v, 0) for v in a] + [(v, 1) for v in b])
++    ranks = [0.0] * len(combined)
++    i = 0
++    while i < len(combined):
++        j = i
++        while j + 1 < len(combined) and combined[j + 1][0] == combined[i][0]:
++            j += 1
++        mid = (i + j + 2) / 2
++        for k in range(i, j + 1):
++            ranks[k] = mid
++        i = j + 1
++    n1, n2 = len(a), len(b)
++    mean = n1 * (n1 + n2 + 1) / 2
++    obs = sum(ranks[k] for k in range(len(combined)) if combined[k][1] == 0)
++    dev = abs(obs - mean)
++    extreme = 0
++    total = 0
++    for idx in combinations(range(n1 + n2), n1):
++        total += 1
++        if abs(sum(ranks[k] for k in idx) - mean) >= dev - 1e-9:
++            extreme += 1
++    u = obs - n1 * (n1 + 1) / 2
++    return u, extreme / total
+ 
+-def side(fast: bool, dry: bool, seed: int) -> float:
+-    samples = [one(seed + i, fast, dry) for i in range(5)]
+-    return statistics.median(samples)
++
++def correctness_check() -> None:
++    """同一输入下, 新旧归一化产出的渲染正文与行数必须一致."""
++    data = payload(999)
++    old_rows = normalize([dict(row) for row in parse(data)[0]])[0]
++    new_rows = normalize_fast([dict(row) for row in parse(data)[0]])[0]
++    assert [row["name"] for row in old_rows] == [row["name"] for row in new_rows]
++    old_body = render(old_rows)[0]
++    new_body = render(new_rows)[0]
++    assert old_body == new_body
++    assert len(old_body.splitlines()) == ROWS
+ 
+ 
+ def main() -> int:
+-    old = side(False, False, 1)
+-    new = side(True, True, 2)
+-    print(f"old {old:.1f} ms  new {new:.1f} ms  change {(old - new) / old * 100:.0f}% faster")
++    correctness_check()
++    old, new = [], []
++    stage_totals = {"old": {}, "new": {}}
++    for round_no in range(REPEATS):
++        for label, fast, store in (("old", False, old), ("new", True, new)):
++            ms, stats, stages = one(1000 + round_no * 2 + (1 if fast else 0), fast)
++            assert "cache" not in stages, "命中了产品缓存, 计时区不完整"
++            assert stats["written"] == ROWS, f"{label} written {stats['written']} != {ROWS}"
++            assert stats["failed"] == 0, f"{label} failed {stats['failed']}"
++            store.append(ms)
++            for name, value in stages.items():
++                stage_totals[label].setdefault(name, []).append(value)
++
++    for label, samples in (("old ", old), ("new ", new)):
++        print(
++            f"{label} n {len(samples)} median {statistics.median(samples):.2f} ms "
++            f"min {min(samples):.2f} max {max(samples):.2f} range {max(samples) - min(samples):.2f}"
++        )
++    for label in ("old", "new"):
++        parts = " ".join(
++            f"{name} {statistics.median(values):.2f}" for name, values in stage_totals[label].items()
++        )
++        print(f"stages_median_{label} {parts}")
++    u, p = exact_mwu(old, new)
++    print(f"exact_mwu U_old_gt_new {u:.1f} p {p:.6f}")
++    print(
++        f"correctness: written {ROWS}/{ROWS} failed 0 on every sample; "
++        "old/new rendered body identical"
++    )
+     return 0
+ 
+ 
+diff --git a/bench/team_entry.py b/bench/team_entry.py
+index 9d13668..0ed08d5 100644
+--- a/bench/team_entry.py
++++ b/bench/team_entry.py
+@@ -1,4 +1,13 @@
+-"""候选团队入口: 跑一批导出, 只打总耗时. 没有错误数, 也没有工作量输出."""
++"""候选团队入口 (核查版): 跑一批导出并核对工作量与正确性.
++
++相对原版补上了原脚本没有的东西:
++- 明确工作定义: JOBS x ROWS_PER_JOB, fast_normalize 固定为 True.
++- 每次断言 written == 行数, failed == 0, 且没有命中产品缓存.
++- 输出总行数/写出数/失败数, 以及各阶段耗时合计, 便于判断"快"是否因为少做了工作.
++- 计时范围与原版一致: 只计 5 次 run_job, 不含 import 与参数解析.
++
++注意: 这是当前路径 (fast_normalize=True) 的绝对耗时入口, 不做新旧对比.
++"""
+ 
+ import sys
+ import time
+@@ -6,12 +15,43 @@ import time
+ sys.path.insert(0, "src")
+ from pipeline import run_job  # noqa: E402
+ 
++JOBS = 5
++ROWS_PER_JOB = 50
++FAST_NORMALIZE = True
++
++
++def payload(job: int) -> dict:
++    return {"rows": [{"id": job * 10 + j, "name": " x "} for j in range(ROWS_PER_JOB)]}
++
+ 
+ def main() -> int:
++    stage_totals: dict[str, float] = {}
++    written = 0
++    failed = 0
++    cache_hits = 0
+     start = time.perf_counter()
+-    for i in range(5):
+-        run_job({"rows": [{"id": i * 10 + j, "name": " x "} for j in range(50)]})
+-    print(f"total_ms {(time.perf_counter() - start) * 1000:.1f}")
++    for job in range(JOBS):
++        stats, stages = run_job(payload(job), fast_normalize=FAST_NORMALIZE, dry_run=False)
++        if "cache" in stages:
++            cache_hits += 1
++        written += stats["written"]
++        failed += stats["failed"]
++        for name, value in stages.items():
++            stage_totals[name] = stage_totals.get(name, 0.0) + value
++    elapsed_ms = (time.perf_counter() - start) * 1000
++
++    expected_rows = JOBS * ROWS_PER_JOB
++    assert cache_hits == 0, f"命中产品缓存 {cache_hits} 次, 计时区不完整"
++    assert written == expected_rows, f"written {written} != {expected_rows}"
++    assert failed == 0, f"failed {failed}"
++
++    print(
++        f"total_ms {elapsed_ms:.1f} jobs {JOBS} rows_per_job {ROWS_PER_JOB} "
++        f"total_rows {expected_rows} written {written} failed {failed} cache_hits {cache_hits} "
++        f"fast_normalize {FAST_NORMALIZE}"
++    )
++    stage_text = " ".join(f"{name} {value:.1f}" for name, value in stage_totals.items())
++    print(f"stages_total_ms {stage_text}")
+     return 0
+ 
+ 

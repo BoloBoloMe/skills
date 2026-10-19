@@ -1,0 +1,19 @@
+correctness rows 50: with_norm 与 deleted 两种输出均与各自预期逐行一致
+===== rows 200 rounds 9 交替 (每轮轮换起跑顺序) =====
+real_old n 9 run_med 98.54 ms run_range 98.35-98.75 stage_sum_med 98.43 ms normalize_med 10.02 ms r_run 10.17% upper_run 11.33% r_stage 10.18% upper_stage 11.34%
+rep_old n 9 run_med 98.57 ms run_range 98.40-98.91 stage_sum_med 98.47 ms normalize_med 10.02 ms r_run 10.17% upper_run 11.32% r_stage 10.18% upper_stage 11.33%
+rep_del_old n 9 run_med 88.53 ms run_range 88.34-88.68 stage_sum_med 88.42 ms normalize_med 0.00 ms r_run 0.00% upper_run 0.00% r_stage 0.00% upper_stage 0.00%
+rep_fast n 9 run_med 89.36 ms run_range 89.16-89.63 stage_sum_med 89.25 ms normalize_med 0.82 ms r_run 0.92% upper_run 0.93% r_stage 0.92% upper_stage 0.93%
+rep_del_fast n 9 run_med 88.53 ms run_range 88.41-88.69 stage_sum_med 88.42 ms normalize_med 0.00 ms r_run 0.00% upper_run 0.00% r_stage 0.00% upper_stage 0.00%
+校准 real_old vs rep_old: run_delta -0.04% stage_sum_delta -0.04%
+rep_del_old vs rep_old: run_med 98.57 -> 88.53 ms gain 10.19% p(median,run) 0.0034 | stage_sum_med 98.47 -> 88.42 ms gain 10.21% p(median,stage_sum) 0.0034
+rep_del_fast vs rep_fast: run_med 89.36 -> 88.53 ms gain 0.93% p(median,run) 0.0032 | stage_sum_med 89.25 -> 88.42 ms gain 0.93% p(median,stage_sum) 0.0032
+===== rows 60000 rounds 9 交替 (每轮轮换起跑顺序) =====
+real_old n 9 run_med 140.99 ms run_range 137.00-144.21 stage_sum_med 119.42 ms normalize_med 14.75 ms r_run 10.31% upper_run 11.50% r_stage 12.25% upper_stage 13.96%
+rep_old n 9 run_med 138.47 ms run_range 135.94-144.72 stage_sum_med 118.01 ms normalize_med 14.49 ms r_run 10.44% upper_run 11.66% r_stage 12.22% upper_stage 13.92%
+rep_del_old n 9 run_med 125.52 ms run_range 122.05-131.26 stage_sum_med 104.51 ms normalize_med 0.00 ms r_run 0.00% upper_run 0.00% r_stage 0.00% upper_stage 0.00%
+rep_fast n 9 run_med 131.20 ms run_range 128.58-141.08 stage_sum_med 110.64 ms normalize_med 5.75 ms r_run 4.20% upper_run 4.39% r_stage 4.93% upper_stage 5.19%
+rep_del_fast n 9 run_med 123.45 ms run_range 121.39-132.12 stage_sum_med 103.28 ms normalize_med 0.00 ms r_run 0.00% upper_run 0.00% r_stage 0.00% upper_stage 0.00%
+校准 real_old vs rep_old: run_delta +1.79% stage_sum_delta +1.18%
+rep_del_old vs rep_old: run_med 138.47 -> 125.52 ms gain 9.35% p(median,run) 0.0032 | stage_sum_med 118.01 -> 104.51 ms gain 11.44% p(median,stage_sum) 0.0032
+rep_del_fast vs rep_fast: run_med 131.20 -> 123.45 ms gain 5.91% p(median,run) 0.0109 | stage_sum_med 110.64 -> 103.28 ms gain 6.65% p(median,stage_sum) 0.0109
