@@ -1,0 +1,47 @@
+$ uv run python general/writing-for-llm/check_skill.py workflow/benchmark-checklist/SKILL.md
+workflow/benchmark-checklist/SKILL.md: OK
+exit=0
+
+$ rg -n "全角标点字符类" workflow/benchmark-checklist/SKILL.md
+exit=1
+
+$ rg -n "U+2014 破折号" workflow/benchmark-checklist/SKILL.md
+exit=1
+
+$ rg -n "被" workflow/benchmark-checklist/SKILL.md
+exit=1
+
+$ rg -no "[A-Za-z][A-Za-z0-9_.-]*" workflow/benchmark-checklist/SKILL.md | cut -d: -f2 | sort | uniq -c | sort -rn
+      3 r
+      3 PR
+      2 ms
+      2 TC
+      2 A
+      1 uptime
+      1 true
+      1 p50
+      1 nproc
+      1 name
+      1 disable-model-invocation
+      1 description
+      1 blast-radius
+      1 benchmark-checklist
+      1 await
+      1 Git
+      1 CPU
+      1 B...
+      1 B
+
+$ rg -n "全角标点或 U+2014" docs/changes/verification-skills/evidence/ISSUE-22/*.md docs/changes/verification-skills/evidence/ISSUE-22/*.py
+exit=1
+
+# 测试结果摘录, 全文见 tests.log
+writing-for-llm tests: 7 passed, 18 subtests passed (exit 0)
+全量快层 -m "not e2e": 6 failed, 659 passed, 2 skipped, 103 deselected, 33 subtests passed (exit 1)
+6 条失败与 evidence/BASELINE.md 逐条相同:
+FAILED general/present/tests/test_browser_session.py::TestCLI::test_exit_code_0_on_success
+FAILED general/present/tests/test_browser_session.py::TestJSONOutput::test_state_browser_not_running_when_no_metadata
+FAILED general/present/tests/test_browser_session.py::TestJSONOutput::test_status_alive_false_when_no_metadata
+FAILED general/present/tests/test_browser_session.py::TestJSONOutput::test_success_has_required_fields
+FAILED general/present/tests/test_browser_session.py::TestLifecycle::test_recovery_after_close
+FAILED tests/test_mailbox_admin.py::test_pending_cap_drops_oldest - TimeoutEr...

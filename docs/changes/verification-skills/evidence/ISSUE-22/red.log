@@ -1,0 +1,24 @@
+# TS-001/TS-002 红: 修前 SKILL.md, 提交 711b463
+$ uv run python check-issue22.py --selftest
+自检命中: 豁免越界
+自检命中: 边界未挂回
+自检命中: 锚点长句
+自检命中: 长子句
+自检通过: 合格样本无异报, 违规样本四类规则全覆盖
+exit=0
+
+$ uv run python check-issue22.py workflow/benchmark-checklist/SKILL.md
+workflow/benchmark-checklist/SKILL.md: 豁免清单仍含 ## 基线与脚本固定前
+workflow/benchmark-checklist/SKILL.md: 粗估节没有保留基线规划审查句
+workflow/benchmark-checklist/SKILL.md: 粗估节没有保留脚本固定检查句
+workflow/benchmark-checklist/SKILL.md: 62: 长句 64 字 (锚点 以下情形都会产出没有工作的快数字): 以下情形都会产出没有工作的快数字: 无人迭代的生成器, 无人 await 的异步
+workflow/benchmark-checklist/SKILL.md: 78: 长句 50 字 (锚点 微结果旁边必须附用户端到端路径的实测): 微结果旁边必须附用户端到端路径的实测: 走真实入口, 带真实数据规模与并发, 并
+workflow/benchmark-checklist/SKILL.md: 78: 长句 30 字 (锚点 微结果旁边必须附用户端到端路径的实测): 只在函数层发结论, 也照样附这组数, 否则读者会拿函数数字替整条路径
+workflow/benchmark-checklist/SKILL.md: 78: 长句 30 字 (锚点 微结果旁边必须附用户端到端路径的实测): 授权内补不齐就列出缺口, 并把结论限在函数层, 不写成整条路径的收益
+workflow/benchmark-checklist/SKILL.md: 104: 长句 38 字 (锚点 同一轮只强制查两件事): 同一轮只强制查两件事: 第 4 问的失败计数与输出正确性, 以及第 7 问的工作
+workflow/benchmark-checklist/SKILL.md: 104: 长句 26 字 (锚点 同一轮只强制查两件事): 一次失败响应或者没干活的计算, 又快又没有意义, 这两项不省
+workflow/benchmark-checklist/SKILL.md: 108: 长句 69 字 (锚点 选型不算粗估): 选型不算粗估: 在两个库或两套配置之间取舍时, 按完整对照处理两侧的版本, 数据
+workflow/benchmark-checklist/SKILL.md: 108: 长句 42 字 (锚点 选型不算粗估): 我说只要一个大致数字也改不了这一点, 选错库的代价由之后所有运行承担, 省下的测
+workflow/benchmark-checklist/SKILL.md: 108: 长句 27 字 (锚点 选型不算粗估): 授权内补不齐就写无法下结论与缺口, 不按单次数字指一个赢家
+workflow/benchmark-checklist/SKILL.md: 12 处命中
+exit=1
