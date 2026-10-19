@@ -1,0 +1,21 @@
+# 全量快层 (EXECUTION 测试策略, 开工基线见 ../BASELINE.md)
+日期: 2026-10-20T04:48:53+08:00  分支: issue/23  开工基线提交: 711b463  基线结果: 6 failed, 659 passed, 2 skipped, 103 deselected
+$ uv run --with pytest python -m pytest -m "not e2e" -q
+169:FAILED general/present/tests/test_browser_session.py::TestCLI::test_exit_code_0_on_success
+170:FAILED general/present/tests/test_browser_session.py::TestJSONOutput::test_state_browser_not_running_when_no_metadata
+171:FAILED general/present/tests/test_browser_session.py::TestJSONOutput::test_status_alive_false_when_no_metadata
+172:FAILED general/present/tests/test_browser_session.py::TestJSONOutput::test_success_has_required_fields
+173:FAILED general/present/tests/test_browser_session.py::TestLifecycle::test_recovery_after_close
+174:FAILED tests/test_mailbox_admin.py::test_pending_cap_drops_oldest - TimeoutEr...
+175:6 failed, 659 passed, 2 skipped, 103 deselected, 33 subtests passed in 280.91s (0:04:40)
+---- 尾部原样 ----
+/home/bolo/.local/share/uv/python/cpython-3.14.7-linux-x86_64-gnu/lib/python3.14/socket.py:729: TimeoutError
+=========================== short test summary info ============================
+FAILED general/present/tests/test_browser_session.py::TestCLI::test_exit_code_0_on_success
+FAILED general/present/tests/test_browser_session.py::TestJSONOutput::test_state_browser_not_running_when_no_metadata
+FAILED general/present/tests/test_browser_session.py::TestJSONOutput::test_status_alive_false_when_no_metadata
+FAILED general/present/tests/test_browser_session.py::TestJSONOutput::test_success_has_required_fields
+FAILED general/present/tests/test_browser_session.py::TestLifecycle::test_recovery_after_close
+FAILED tests/test_mailbox_admin.py::test_pending_cap_drops_oldest - TimeoutEr...
+6 failed, 659 passed, 2 skipped, 103 deselected, 33 subtests passed in 280.91s (0:04:40)
+退出码记录: pytest 报告 6 failed, 与基线既有失败集合完全相同 (全部 general/present 与 mailbox 环境超时类)

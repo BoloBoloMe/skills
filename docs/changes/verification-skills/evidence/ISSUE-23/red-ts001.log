@@ -1,0 +1,8 @@
+# TS-001 红: 被动句扫描 (改动前)
+$ uv run python docs/changes/verification-skills/evidence/ISSUE-23/scan-passive.py workflow/blast-radius
+[命中] workflow/blast-radius/SKILL.md:24: git log --all --oneline -S"<符号>"      # 符号被增删的历史提交
+[命中] workflow/blast-radius/reference/PROVENANCE.md:95: - 人工: 上面的命令只把 frontmatter 行与标题行列出来, 层级结论靠人逐行读. 人读结果: frontmatter 三行 (`name`, `description`, `disable-model-invocation`) 与七个 H2 标题 (`## 1.` 到 `## 7.`); 没有 H1. 上游两级标题被拍平成顺序编号的七个 H2, 差异与理由见上表.
+[命中] workflow/blast-radius/reference/PROVENANCE.md:101: 代表场景与对照结论写在 `docs/changes/verification-skills/evidence/ISSUE-13/TS-002-drill.md`, 含临时项目路径与提交, 会话名, 加载方式, 命令与原始输出. 对照口径是本文件的逐项差异表: 演练要确认汉化后仍然只用真实运行的代码证明关键安全事实, 级别与风险/已排除项结构未被削弱.
+[命中] workflow/blast-radius/reference/multimodel.md:3: 只有变更的实际影响大或宽时才做这一层: 跨多个模块, 跨仓库, 改了被下游共享的线格式, 数据库列或公共接口, 或者失败代价高到值得多一路眼睛. diff 行数, 文件数, "只是个小函数" 都不作数: 几十行改一个共享格式也算宽.
+扫描文件数=4 命中=4
+exit=1

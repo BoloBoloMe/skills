@@ -21,7 +21,7 @@ git log --oneline -20                  # 近期提交, 找到本次变更的邻�
 git show <变更提交>                     # diff 与提交消息
 git blame -L <起始行>,<结束行> -- <文件>  # 这行由哪个提交引入
 git log --follow -p -- <文件>           # 跨重命名的文件历史
-git log --all --oneline -S"<符号>"      # 符号被增删的历史提交
+git log --all --oneline -S"<符号>"      # 找到增删该符号的提交
 ```
 
 从提交消息里取分支或 PR 编号. 再用实际可用的托管入口读正文与讨论. 例如 `gh pr view <编号> --comments`. 取不到这类材料时写明来源限制. 不编造 PR 或历史.
