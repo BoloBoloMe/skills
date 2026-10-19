@@ -1,0 +1,7 @@
+== 起点 ==
+commit=711b463 分支=issue/21
+== 命令 ==
+uv run python docs/changes/verification-skills/evidence/ISSUE-21/check-issue21.py workflow/create-verification-skill/SKILL.md workflow/maintain-verification-skill/SKILL.md
+== 输出 ==
+hits=0
+exit=0
