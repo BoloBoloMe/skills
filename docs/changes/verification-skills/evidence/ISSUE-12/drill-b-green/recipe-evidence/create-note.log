@@ -1,0 +1,36 @@
+# create-note evidence
+date: 2026-10-19T17:54:39+08:00
+git HEAD: 456c360
+app.py sha256: e595dca778508ef32c5091dc27465d0d86ab4b6ee5e37ee6daa16b32ae66989b
+SKILL.md sha256: ac11b495033c34adea5226525d6a89f29b46d5ad7065153238ce1aa989e534fb
+create-note.md sha256: 62e31fa0af26320bd5f40c5bfadba93da6a371d9e9328459f2f02d6fa8c5cccc
+
+[prep] rm -rf data; ls -d data
+ls: cannot access 'data': No such file or directory
+exit=2
+
+$ python3 app.py --version
+0.3.0
+exit=0
+
+$ python3 app.py add "第一条笔记"
+added 1: 第一条笔记
+exit=0
+
+$ python3 app.py list
+1	第一条笔记
+exit=0
+
+--- data/notes.json ---
+[
+  {
+    "id": 1,
+    "text": "第一条笔记",
+    "archived": false
+  }
+]
+
+--- first line check (1 TAB 第一条笔记) ---
+0000000   1  \t 347 254 254 344 270 200 346 235 241 347 254 224 350 256
+0000020 260  \n
+0000022

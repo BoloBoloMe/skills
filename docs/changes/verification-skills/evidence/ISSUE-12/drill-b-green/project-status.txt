@@ -1,0 +1,6 @@
+ M .agents/skills/verify-notes/SKILL.md
+ M .agents/skills/verify-notes/features/create-note.md
+ M .agents/skills/verify-notes/features/search-notes.md
+?? .agents/skills/maintain-verification-skill/
+?? .agents/skills/verify-notes/features/export-notes.md
+?? maintain-report.md

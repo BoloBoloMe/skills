@@ -1,0 +1,68 @@
+# 维护取证 2026-10-19T17:50:13+08:00
+commit: 481957ed59536bd51919fb4176732e112965472c
+worktree: ?? .agents/skills/maintain-verification-skill/;
+
+## 修改前实测 (旧配方健康检查与命令)
+$ python3 app.py --version
+0.3.0
+$ python3 app.py doctor
+notes-cli 0.3.0
+data_path: /tmp/orchestra-12/drill-a/data/notes.json
+notes: 3
+$ python3 app.py add --text "第一条笔记"
+added 4: --text 第一条笔记
+$ python3 app.py list
+1	--text 第一条笔记
+2	会议 甲 [archived]
+3	会议 乙
+4	--text 第一条笔记
+$ python3 app.py add "会议 甲"
+added 5: 会议 甲
+$ python3 app.py add "会议 乙"
+added 6: 会议 乙
+$ python3 app.py archive 1
+archived 1
+$ python3 app.py search 会议
+2	会议 甲
+3	会议 乙
+5	会议 甲
+6	会议 乙
+matches: 4
+search_rc=0
+$ python3 app.py find 会议
+unknown command: find
+find_rc=2
+
+## data/notes.json 片段
+[
+  {
+    "id": 1,
+    "text": "--text 第一条笔记",
+    "archived": true
+  },
+  {
+    "id": 2,
+    "text": "会议 甲",
+    "archived": true
+  },
+  {
+    "id": 3,
+    "text": "会议 乙",
+    "archived": false
+  },
+  {
+    "id": 4,
+    "text": "--text 第一条笔记",
+    "archived": false
+  },
+  {
+    "id": 5,
+    "text": "会议 甲",
+    "archived": false
+  },
+  {
+    "id": 6,
+    "text": "会议 乙",
+    "archived": false
+  }
+]

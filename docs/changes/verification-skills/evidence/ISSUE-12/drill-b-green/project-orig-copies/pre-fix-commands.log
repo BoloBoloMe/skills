@@ -1,0 +1,19 @@
+# 旧配方命令在当前 app.py 上的实际表现 (复现, 修改配方前发现)
+date: 2026-10-19T17:55:40+08:00
+git HEAD: 456c360
+
+$ python3 app.py --health
+unknown command: --health
+exit=2
+
+$ python3 app.py find 会议
+unknown command: find
+exit=2
+
+$ python3 app.py add --text "第一条笔记"
+added 1: --text 第一条笔记
+exit=0
+
+$ python3 app.py list
+1	--text 第一条笔记
+exit=0

@@ -1,0 +1,39 @@
+### runner-rerun search-notes  2026-10-19T17:51:54+08:00  HEAD=481957ed59536bd51919fb4176732e112965472c
+### cwd: /tmp/orchestra-12/drill-a ; data/ 已 rm -rf
+
+$ python3 app.py add 会议 甲
+added 1: 会议 甲
+[exit=0]
+
+$ python3 app.py add 会议 乙
+added 2: 会议 乙
+[exit=0]
+
+$ python3 app.py archive 1
+archived 1
+[exit=0]
+
+$ python3 app.py search 会议
+1	会议 甲
+2	会议 乙
+matches: 2
+[exit=0]
+
+$ python3 app.py list
+1	会议 甲 [archived]
+2	会议 乙
+[exit=0]
+
+### data/notes.json:
+[
+  {
+    "id": 1,
+    "text": "会议 甲",
+    "archived": true
+  },
+  {
+    "id": 2,
+    "text": "会议 乙",
+    "archived": false
+  }
+]

@@ -1,0 +1,23 @@
+### cwd: /tmp/orchestra-12/drill-a  (feature: create-note, 独立从空 data/ 开始)
+### git HEAD: 481957ed59536bd51919fb4176732e112965472c
+
+$ python3 app.py --version
+0.3.0
+[exit=0]
+
+$ python3 app.py add 第一条笔记
+added 1: 第一条笔记
+[exit=0]
+
+$ python3 app.py list
+1	第一条笔记
+[exit=0]
+
+### data/notes.json:
+[
+  {
+    "id": 1,
+    "text": "第一条笔记",
+    "archived": false
+  }
+]
