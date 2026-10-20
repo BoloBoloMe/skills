@@ -172,9 +172,9 @@ class ExtensionRegistrationReconcileTests(unittest.TestCase):
             self.assertIn(str(ext_a), synced)
             self.assertIn(str(ext_b), synced)
 
-            # (b) 登记回收: sidecar 记录的路径对应目录已删 →
-            #     settings 与 sidecar 均移除该项
-            shutil.rmtree(ext_b)
+            # (b) 登记回收: sidecar 记录的路径所属 skill 目录整体删除 →
+            #     settings 与 sidecar 均移除该项 (目录还在仅扩展缺失属于部署不完整)
+            shutil.rmtree(skills_dir / "beta")
             reconcile()
             extensions = load(settings)["extensions"]
             self.assertIn(str(ext_a), extensions)
@@ -447,14 +447,197 @@ class ExtensionIntegrityGateTests(unittest.TestCase):
         self.assertEqual([], json.loads(
             self.settings.read_text(encoding="utf-8"))["extensions"])
 
-    def test_skill_without_pi_extension_is_still_reclaimed(self):
-        """普通 skill (无 pi-extension) 不触发门禁, 旧登记正常回收."""
+    def test_skill_without_pi_extension_is_not_a_candidate(self):
+        """无 pi-extension 的普通 skill 不成为候选, 若曾被登记则视为残缺报错."""
         (self.skills_dir / "plain").mkdir(parents=True)
         (self.skills_dir / "plain" / "SKILL.md").write_text("# plain", encoding="utf-8")
-        stale = str(self.skills_dir / "plain" / "pi-extension")
-        self._seed_state([stale])
+        self._seed_state([])
 
         self._reconcile()
+
+        self.assertEqual([], json.loads(
+            self.settings.read_text(encoding="utf-8"))["extensions"])
+        self.assertEqual([], json.loads(
+            self.sidecar.read_text(encoding="utf-8"))["extensions"])
+
+        # 同一 skill 曾被登记为扩展 → 现在扩展目录不在但 skill 目录还在:
+        # 新规则视为部署不完整而报错 (回收只限 skill 目录整体消失),
+        # 该行为由 ManagedExtensionMissingTests 钉住.
+        self._seed_state([str(self.skills_dir / "plain" / "pi-extension")])
+        self.snapshot_settings = self.settings.read_bytes()
+        with self.assertRaises(sync_to_pi.IncompleteDeploymentError):
+            self._reconcile()
+        self.assertEqual(
+            self.snapshot_settings, self.settings.read_bytes())
+
+
+class PlanConflictTests(unittest.TestCase):
+    """计划阶段目标路径唯一性: 同一 dst 两个来源必须报错, 不允许静默覆盖."""
+
+    def test_incident_shape_aborts_before_empty_source_filter(self):
+        """迁移遗留的空壳目录与真目录同落一个 dst 也先报冲突, 不靠兜底掩盖."""
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            general = root / "general" / "mailbox"
+            legacy = root / "workflow" / "mailbox"
+            (general / "scripts").mkdir(parents=True)
+            (general / "SKILL.md").write_text("real", encoding="utf-8")
+            (legacy / "scripts" / "__pycache__").mkdir(parents=True)
+            dst = root / "skills" / "mailbox"
+            plan = [
+                sync_to_pi.PlanItem(general, dst, "general/mailbox", True),
+                sync_to_pi.PlanItem(legacy, dst, "workflow/mailbox", True),
+            ]
+
+            with self.assertRaises(sync_to_pi.PlanConflictError) as ctx:
+                sync_to_pi._check_plan_conflicts(plan)
+
+            self.assertIn("workflow/mailbox", str(ctx.exception))
+
+    def test_same_destination_from_two_sources_is_rejected(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            general = root / "general" / "mailbox"
+            legacy = root / "workflow" / "mailbox"
+            general.mkdir(parents=True)
+            legacy.mkdir(parents=True)
+            dst = root / "skills" / "mailbox"
+            plan = [
+                sync_to_pi.PlanItem(general, dst, "general/mailbox", True),
+                sync_to_pi.PlanItem(legacy, dst, "workflow/mailbox", True),
+            ]
+
+            with self.assertRaises(sync_to_pi.PlanConflictError) as ctx:
+                sync_to_pi._check_plan_conflicts(plan)
+
+            message = str(ctx.exception)
+            self.assertIn("general/mailbox", message)
+            self.assertIn("workflow/mailbox", message)
+            self.assertIn(str(dst), message)
+
+    def test_textually_different_paths_to_same_target_conflict(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            src_a = root / "a"
+            src_b = root / "b"
+            src_a.mkdir()
+            src_b.mkdir()
+            dst = root / "skills" / "mailbox"
+            plan = [
+                sync_to_pi.PlanItem(src_a, dst, "a", True),
+                sync_to_pi.PlanItem(
+                    src_b, root / "skills" / ".." / "skills" / "mailbox", "b", True),
+            ]
+
+            with self.assertRaises(sync_to_pi.PlanConflictError):
+                sync_to_pi._check_plan_conflicts(plan)
+
+    def test_distinct_destinations_pass(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "a").mkdir()
+            (root / "b").mkdir()
+            plan = [
+                sync_to_pi.PlanItem(root / "a", root / "skills" / "a", "a", True),
+                sync_to_pi.PlanItem(root / "b", root / "skills" / "b", "b", True),
+            ]
+
+            sync_to_pi._check_plan_conflicts(plan)  # 不抛
+
+
+class EmptySourceDirTests(unittest.TestCase):
+    """只剩忽略项的源目录不得把真部署目录换成空壳."""
+
+    def _make_empty_source(self, root):
+        source = root / "workflow" / "mailbox"
+        (source / "scripts" / "__pycache__").mkdir(parents=True)
+        (source / "scripts" / "__pycache__" / "mailbox.cpython-314.pyc").write_bytes(b"x")
+        return source
+
+    def test_execute_skips_empty_source_and_keeps_destination(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            source = self._make_empty_source(root)
+            dest = root / "skills" / "mailbox"
+            (dest / "pi-extension").mkdir(parents=True)
+            (dest / "SKILL.md").write_text("real", encoding="utf-8")
+            (dest / "pi-extension" / "index.ts").write_text(
+                "export default {}", encoding="utf-8")
+
+            out = io.StringIO()
+            with contextlib.redirect_stdout(out):
+                sync_to_pi.execute_plan(
+                    [sync_to_pi.PlanItem(source, dest, "workflow/mailbox", True)])
+
+            self.assertEqual("real", (dest / "SKILL.md").read_text(encoding="utf-8"))
+            self.assertTrue((dest / "pi-extension" / "index.ts").is_file())
+            self.assertIn("空壳源目录", out.getvalue())
+
+    def test_drop_empty_sources_removes_item_from_plan(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            empty = self._make_empty_source(root)
+            full = root / "general" / "mailbox"
+            full.mkdir(parents=True)
+            (full / "SKILL.md").write_text("real", encoding="utf-8")
+            plan = [
+                sync_to_pi.PlanItem(full, root / "skills" / "mailbox", "general/mailbox", True),
+                sync_to_pi.PlanItem(empty, root / "skills" / "mailbox", "workflow/mailbox", True),
+            ]
+
+            with contextlib.redirect_stdout(io.StringIO()):
+                kept = sync_to_pi._drop_empty_sources(plan)
+
+            self.assertEqual(["general/mailbox"], [i.label for i in kept])
+
+
+class ManagedExtensionMissingTests(unittest.TestCase):
+    """sidecar 在册的 skill 目录还在但扩展目录缺失 → 部署不完整, 不删登记."""
+
+    def setUp(self):
+        self.tmproot = tempfile.TemporaryDirectory()
+        root = Path(self.tmproot.name)
+        self.skills_dir = root / "skills"
+        self.pi_dir = root / "agent"
+        self.settings = self.pi_dir / "settings.json"
+        self.sidecar = self.pi_dir / "extensions.synced.json"
+        self.skills_dir.mkdir(parents=True)
+        self.pi_dir.mkdir(parents=True)
+
+    def tearDown(self):
+        self.tmproot.cleanup()
+
+    def test_skill_dir_without_extension_keeps_registration(self):
+        # 半壳失败后的现场: skills/mailbox 在, 但 pi-extension/ 被覆盖成空
+        skill = self.skills_dir / "mailbox"
+        skill.mkdir(parents=True)
+        (skill / "SKILL.md").write_text("# mailbox", encoding="utf-8")
+        managed = str(skill / "pi-extension")
+        payload = json.dumps(
+            {"extensions": [managed]}, ensure_ascii=False, indent=2) + "\n"
+        self.settings.write_text(payload, encoding="utf-8")
+        self.sidecar.write_text(payload, encoding="utf-8")
+        settings_before = self.settings.read_bytes()
+        sidecar_before = self.sidecar.read_bytes()
+
+        with self.assertRaises(sync_to_pi.IncompleteDeploymentError) as ctx:
+            with contextlib.redirect_stdout(io.StringIO()):
+                sync_to_pi._reconcile_extensions(self.skills_dir, self.pi_dir)
+
+        self.assertIn("mailbox", str(ctx.exception))
+        self.assertIn(managed, str(ctx.exception))
+        self.assertEqual(settings_before, self.settings.read_bytes())
+        self.assertEqual(sidecar_before, self.sidecar.read_bytes())
+
+    def test_removed_skill_is_still_reclaimed(self):
+        managed = str(self.skills_dir / "gone" / "pi-extension")
+        payload = json.dumps(
+            {"extensions": [managed]}, ensure_ascii=False, indent=2) + "\n"
+        self.settings.write_text(payload, encoding="utf-8")
+        self.sidecar.write_text(payload, encoding="utf-8")
+
+        with contextlib.redirect_stdout(io.StringIO()):
+            sync_to_pi._reconcile_extensions(self.skills_dir, self.pi_dir)
 
         self.assertEqual([], json.loads(
             self.settings.read_text(encoding="utf-8"))["extensions"])

@@ -324,6 +324,10 @@ class IncompleteDeploymentError(OSError):
     """skill 目录内容不全, 按部署失败处理."""
 
 
+class PlanConflictError(ValueError):
+    """同一目标路径被多个计划项写入 (后者会静默覆盖前者)."""
+
+
 # 登记扩展前必须存在的 skill 内文件 (相对 skill 根目录)
 _SKILL_REQUIRED_FILES = ("SKILL.md", "pi-extension/index.ts")
 
@@ -426,6 +430,50 @@ def _atomic_replace_dir(src: Path, dst: Path, ignore=None) -> None:
             shutil.rmtree(retired, ignore_errors=True)
 
 
+def _effective_files(src: Path) -> dict[str, int]:
+    """源目录中真正会被同步的文件 → {相对路径: 字节数}; 已剔除忽略项."""
+    return _tree_fingerprint(src, _SYNC_IGNORE)
+
+
+def _drop_empty_sources(plan: list[PlanItem]) -> list[PlanItem]:
+    """去掉除忽略项外无文件的源目录: 否则会把真实部署目录换成空壳.
+
+    例: 迁移后遗留的 workflow/mailbox 只剩 __pycache__, 扁平化后与
+    general/mailbox 同落 skills/mailbox, 拷进去就是空壳.
+    """
+    kept: list[PlanItem] = []
+    for item in plan:
+        if item.is_dir and not _effective_files(item.src):
+            print(ERR(
+                f"  ! 跳过空壳源目录 {item.label} (除忽略项外没有任何文件),"
+                f" 不会覆盖 {item.dst}"))
+            continue
+        kept.append(item)
+    return kept
+
+
+def _check_plan_conflicts(plan: list[PlanItem]) -> None:
+    """计划阶段的目标路径唯一性检查: 同一路径两个来源则报错终止."""
+    seen: dict[str, list[PlanItem]] = {}
+    for item in plan:
+        try:
+            key = str(item.dst.resolve())
+        except OSError:
+            key = str(item.dst.absolute())
+        seen.setdefault(key, []).append(item)
+
+    conflicts = [
+        f"  {dst} ← " + " / ".join(f"{i.label} (源 {i.src})" for i in items)
+        for dst, items in sorted(seen.items())
+        if len(items) > 1
+    ]
+    if conflicts:
+        raise PlanConflictError(
+            "计划里有多个来源写同一目标路径, 拒绝执行 (后者会静默覆盖前者):\n"
+            + "\n".join(conflicts)
+            + "\n请检查是否有迁移/改名后遗留的旧目录 (例如同一 skill 同时存在于两个顶层目录).")
+
+
 def _atomic_copy_file(src: Path, dst: Path) -> None:
     """单文件原子拷贝: 写同目录临时文件 → 校验字节数 → os.replace."""
     parent = dst.parent
@@ -494,7 +542,8 @@ def _reconcile_extensions(skills_dir: Path, pi_dir: Path) -> None:
 
     完整性门禁: 只登记 SKILL.md 与 pi-extension/index.ts 均存在的 skill;
     目录在而内容不全 = 部署失败, 不改动 settings.json 与 sidecar, 抛
-    IncompleteDeploymentError (调用方负责告警).
+    IncompleteDeploymentError (调用方负责告警). sidecar 在册且父 skill 目录
+    仍在但扩展目录缺席, 同样按部署不完整报错, 只对 "skill 整体消失" 回收登记.
     新增当前扫描集路径; 移除 sidecar 在册且扫描集缺席的路径 (双条件);
     既不在 sidecar 又不在扫描集的 settings 项 (用户手工项) 永不增删.
     管理标记 sidecar: <pi_dir>/extensions.synced.json. 写前备份, 原子写.
@@ -502,11 +551,6 @@ def _reconcile_extensions(skills_dir: Path, pi_dir: Path) -> None:
     """
     import json
 
-    scan_set, broken = _scan_extension_dirs(skills_dir)
-    if broken:
-        raise IncompleteDeploymentError(
-            "skill 部署不完整, 视为部署失败; 本次不改动 settings.json 与 sidecar. "
-            + "; ".join(broken))
     settings_path = pi_dir / "settings.json"
     sidecar_path = pi_dir / "extensions.synced.json"
 
@@ -523,6 +567,29 @@ def _reconcile_extensions(skills_dir: Path, pi_dir: Path) -> None:
     if not isinstance(extensions, list):
         extensions = []
         settings["extensions"] = extensions
+
+    scan_set, problems = _scan_extension_dirs(skills_dir)
+    # 区分 "skill 被删" 和 "部署不完整": sidecar 在册的路径, 只要其父 skill 目录
+    # 还在就不当回收处理 — 扩展文件缺席说明本次部署没拷全 (例如被另一个同名源的空壳
+    # 目录覆盖), 得报错而不是静默删除登记.
+    for path in managed:
+        if not isinstance(path, str) or path in scan_set:
+            continue
+        ext_dir = Path(path)
+        if ext_dir.is_dir():
+            continue  # 目录在而内容不全已由 broken 路径覆盖
+        skill_dir = ext_dir.parent
+        if not skill_dir.is_dir():
+            continue  # skill 整体不在 → 正常回收
+        problems.append(
+            f"{skill_dir.name}: skill 目录仍在但登记的扩展目录缺失 ({path})")
+
+    if problems:
+        raise IncompleteDeploymentError(
+            "skill 部署不完整, 视为部署失败; 本次不改动 settings.json 与 sidecar. "
+            + "; ".join(problems)
+            + ". 如确认该扩展已从 skill 正式移除, 请手工从 settings.json"
+            " 与 extensions.synced.json 删除对应路径")
 
     added = [p for p in scan_set if p not in extensions]
     removed_set = {p for p in managed if p not in scan_set}
@@ -555,6 +622,7 @@ def execute_plan(plan: list[PlanItem], clear_skills_dir: Path | None = None, mer
 
     ok_count = 0
     fail_count = 0
+    skip_count = 0
 
     if clear_skills_dir is not None:
         try:
@@ -569,6 +637,12 @@ def execute_plan(plan: list[PlanItem], clear_skills_dir: Path | None = None, mer
     for item in plan:
         try:
             if item.is_dir:
+                if not _effective_files(item.src):
+                    print(ERR(
+                        f"  ! 跳过空壳源目录 {item.label} (除忽略项外没有任何文件),"
+                        f" 保留 {item.dst} 原内容"))
+                    skip_count += 1
+                    continue
                 _atomic_replace_dir(item.src, item.dst, _SYNC_IGNORE)
             else:
                 _atomic_copy_file(item.src, item.dst)
@@ -588,6 +662,8 @@ def execute_plan(plan: list[PlanItem], clear_skills_dir: Path | None = None, mer
             fail_count += 1
 
     print()
+    if skip_count:
+        print(Q(f"跳过 {skip_count} 个空壳源目录"))
     if fail_count == 0:
         print(OK(f"全部完成: {ok_count} 项操作成功"))
     else:
@@ -686,6 +762,18 @@ def main() -> None:
         ))
     else:
         print(ERR(f"\n模型配置源不存在: {models_src}, 跳过同步选项"))
+
+    # ── 3.8 计划校验: 目标路径唯一性 + 剔除空壳源目录 ──────────────
+    #     迁移/改名后遗留的旧目录会与真目录落同一 dst, 后者静默覆盖前者:
+    #     先在全量计划上查重名, 报错终止; 单来源但只剩忽略项的空壳目录
+    #     再把自身剔出计划, 以免把真部署换成空目录.
+    try:
+        _check_plan_conflicts(plan)
+    except PlanConflictError as e:
+        print()
+        print(ERR(str(e)))
+        sys.exit(1)
+    plan = _drop_empty_sources(plan)
 
     # ── 4. 展示计划, 确认 ────────────────────────────────────────────
     if not plan and not clear_skills and not merge_models:
