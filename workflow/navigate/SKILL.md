@@ -36,7 +36,7 @@ ROADMAP.json 的 `unknown_seas` 字段 (字符串数组) 存的就是这些模�
 - prototype (HITL): 调用 `prototype` skill 与我做粗糙原型, 提升讨论保真度, 产出原型文件. **何时创建**: 问题是 "它应该是什么样子/如何运行" 时. 可交互有反馈的原型隐含着很多文字说不清楚的隐性知识信息, 你应该积极使用原型, 提高设计的清晰度.
 - deliberate (HITL): 调用 `deliberate` skill 盘问我, 固化决策. 调用时按 [产物结构](TEMPLATES.md) 指定产物根目录. **何时创建**: 需要决策, 且选项/取舍无法靠 research 暴露事实或靠 prototype 提升保真度直接看清, 须逐条盘问我. 默认类型.
 - task (AFK/HITL): AFK 非编码任务直接处理; AFK 编码任务则调用 `tdd-as-orchestra` skill 来处理; HITL 需要我在场协作才能完成的操作. **何时创建**: 目的地要求实际完成的工作, 包括决策前疏通讨论的手工活, 决策后的实施与验证.
-- acceptance (HITL): 固定的终点前验收 Milestone, 先由代理独立收集证据, 后与我现场逐项确认. **何时创建**: 制图时创建, 不与普通 task 混用.
+- acceptance (HITL): 固定的终点前验收 Milestone, 先由代理汇集别人已产出的证据, 后与我现场逐项确认. **何时创建**: 制图时创建, 不与普通 task 混用.
 
 **完成标准**:
 
@@ -51,7 +51,7 @@ Milestone 详情 (标题/状态/类型/阻塞于/问题/产物/关闭摘要) 只
 ## 验收终点
 
 每张 Roadmap 从制图起保留唯一的终点前 `acceptance` Milestone. 它依赖所有通往目的地的已知工作; 后续探明必要工作时追加依赖, 在未知海域厘清前不提前领取. 验收最后关闭, 然后才能正式交付. 单会话无需制图时也须验收, 不能把没有路线图当成跳过确认的理由.
-实施或产物定稿前按 [验收标准](ACCEPTANCE-GUIDE.md#验收标准) 与我对齐; 领取验收时按 [证据与确认](ACCEPTANCE-GUIDE.md#证据与确认) 先独立收集证据 (已有覆盖同一交付提交与同一标准版本的独立核验报告则直接引用, 只补缺口), 再由我逐项确认. 关键结论缺证据且我尚未决定如何处理时, 暂停生成最终页面. 只有逐项确认通过才能关闭验收; 关闭摘要记录结果和报告路径.
+实施或产物定稿前按 [验收标准](ACCEPTANCE-GUIDE.md#验收标准) 与我对齐; 领取验收时按 [证据与确认](ACCEPTANCE-GUIDE.md#证据与确认) 只汇集别人已产出的证据, 不自行运行或补造 (已有覆盖同一交付提交与同一标准版本的独立核验报告则直接引用), 再由我逐项确认. 关键结论缺证据且我尚未决定如何处理时, 暂停生成最终页面. 只有逐项确认通过才能关闭验收; 关闭摘要记录结果和报告路径.
 
 ## 读写纪律
 
@@ -103,7 +103,7 @@ ROADMAP.json 的一切读写只经守门脚本 `workflow/navigate/scripts/roadma
    完成标准: 已知当前目的地, 完成边界和前沿 (前沿 = 未关闭且 `blocked_by` 全部已关闭的里程碑, 由数据推导); 验收已在终点前.
 2. **选前沿认领. ** 按顺序领取前沿的第一个 Milestone; 若前沿还有与它互相独立的 AFK Milestone, 一并领取: 独立即无阻塞关系, 不触碰同一文件, 这样的 AFK 工作串行排队纯属浪费, 并行是免费提速. 验收 Milestone 只有其他必要工作均完成, `unknown_seas` 已厘清且验收标准已确认时才能领取, 不能因阻塞列表暂时为空而提前领取. 每个领取的 Milestone 经 `save <file> milestones.<id>.status '"进行中"'` 标记认领.
    完成标准: 领取的 Milestone 状态均已改为进行中; 每个未领取的前沿 Milestone 都能说出原因 (HITL, 不独立, 或验收尚未具备开始条件).
-3. **放大解决. ** 按 Milestone 类型分流, 需要时经 `query` 读取被阻塞者的上下文或已关闭 Milestone 的产物. 本轮领取了多个 → 每个 AFK Milestone 委派一名子代理同时开工; HITL 逐个与我进行. 验收按 [证据与确认](ACCEPTANCE-GUIDE.md#证据与确认) 先独立收集证据, 后由我逐项确认, 未确认前保持进行中.
+3. **放大解决. ** 按 Milestone 类型分流, 需要时经 `query` 读取被阻塞者的上下文或已关闭 Milestone 的产物. 本轮领取了多个 → 每个 AFK Milestone 委派一名子代理同时开工; HITL 逐个与我进行. 验收按 [证据与确认](ACCEPTANCE-GUIDE.md#证据与确认) 先汇集别人已产出的证据, 后由我逐项确认, 未确认前保持进行中.
    完成标准见 [Milestone](#milestone).
 4. **收口产物. ** 按 Milestone 类型确认产物归属: research 分析文件; deliberate 决策/领域文档; prototype 按它自己的规则管理产物; task 完成证据或代码提交; acceptance 验收报告和逐项证据. 产物链接经 `save <file> milestones.<id>.artifacts <JSON数组>` 记入 `artifacts`. 提交信息: 下游 skill 有规定则用其规定; 否则 `doc: <milestone-id> <产物简述>`.
    完成标准: 本 Milestone 产物已提交或已有可追溯链接; 无独立产物/非 git 仓库时已记录原因.
