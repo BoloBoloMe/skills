@@ -700,7 +700,7 @@ export default function (pi: ExtensionAPI) {
 
 	pi.registerCommand("mail-send", {
 		description:
-			"投信: /mail-send <to> <type> <body> (缺参交互补全; 目标离线会拒发, 需强制时用 bash 跑 send --force)",
+			"投信: /mail-send <to> <type> <body> (缺参交互补全; 目标离线会拒发)",
 		handler: async (args, ctx) => {
 			const parts = args.trim().split(/\s+/).filter(Boolean);
 			let to = parts[0] ?? "";
@@ -739,14 +739,12 @@ export default function (pi: ExtensionAPI) {
 		name: "mailbox_listen",
 		label: "Mailbox Listen",
 		description:
-			"开启/停止/查看本 pi 会话的信箱取信守护. 守护按当前会话使用独立信箱" +
-			"(host 按 pi session id 注册, 容器用 birth 注入凭据); 收到来信会自动" +
-			"注入本会话. action=start 开启或恢复, stop 停止, status 查看. " +
-			"结果含 pi session id 与 mailbox session id (投信 --to 用后者).",
+			"管理本 pi 会话的取信守护: start 开启/恢复, stop 停止, status 查看. " +
+			"来信自动注入, pi 忙时排队. 返回 piSessionId/mailboxSessionId/running; " +
+			"收信地址用 mailboxSessionId. host 按 pi 会话独立, 容器沿用 birth 凭据, " +
+			"同容器可能共用地址.",
 		promptGuidelines: [
-			"交付前需自行接收来信时, 调用 mailbox_listen(action=\"start\") 开启本会话取信守护, 不要只提示用户手输命令, 也不要用 bash 长轮询阻塞.",
-			"他人要给你投信时, 收件地址用本工具返回的 mailbox session id.",
-			"投信 (send / mail-send) 前先跑 presence 查目标在线; 明确离线就停下报告, 等对方开守护或经我确认才 --force; 空 --to 查不了状态, 只用于谁收都行的通知.",
+			"收发信前调用 `mailbox` skill, 按其 pi 分支准备本会话身份与取信守护.",
 		],
 		parameters: {
 			type: "object",

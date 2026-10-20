@@ -272,23 +272,24 @@ def test_pull_window_url_param(serves, tmp_path, monkeypatch, capsys):
 
 
 def test_docs_contain_recipes():
-    """ISSUE-09 TS-004 (TC-050, BR-008, D011 E4/B5/E5): 文档批 —
-    pull-window.md 含 chromium --user-data-dir 强制与音频 -R 退化写法;
-    mailbox.md 含 mesh 前提/反向隧道配方(含标记文件与 ClientAliveInterval)/
-    换址联动清单/waypipe 已验证版本组合."""
+    """配方内容审计: 浏览器失败约束, 可选音频, 隧道与换址纪律仍可抵达.
+    仅检查文档结构/内容, 不代替真实拉窗或连通性验证.
+    """
     pw = (ROOT / "workflow" / "mailbox" / "reference" /
           "pull-window.md").read_text()
     assert "--user-data-dir" in pw      # E4: chromium 单例坑, 强制独立数据目录
-    assert "-R" in pw and "退化" in pw   # E4: 音频 socket 转发可选 + 退化写法
+    assert "-R" in pw and "省去该段" in pw  # 音频可选, 缺失不阻断窗口
+    assert "--disable-gpu --disable-gpu-compositing" in pw
+    for version in ("0.8.4", "0.11.0", "minimal"):
+        assert version in pw, version  # 兼容性记录与拉窗配方就近放置
 
     mb = (ROOT / "workflow" / "mailbox" / "reference" / "mailbox.md").read_text()
-    for kw in ("至少一个方向可达",   # B5: mesh 前提
-               "反向隧道",           # B5: 标准配方
-               "标记文件",           # B5: 隧道远端留标记
-               "ClientAliveInterval",  # B5: 僵尸 -R 端口提醒
-               "防火墙白名单",       # B5: 换址联动清单
-               "0.8.4", "0.11.0", "minimal"):  # E5: 已验证版本组合
+    for kw in ("每个投信方向", "反向转发", "标记文件",
+               "ClientAliveInterval", "防火墙许可"):
         assert kw in mb, kw
+    assert "[pull-window.md](pull-window.md)" in mb
+    template = next(line for line in mb.splitlines() if line.startswith("ssh -N -R "))
+    assert "<对端隧道端口>:127.0.0.1:<本端实际信箱端口>" in template
 
 
 def test_rate_limit_key_unified(monkeypatch):
