@@ -9,6 +9,7 @@ TS-005 test_dual_session_scatter.
 """
 from __future__ import annotations
 
+import json
 import os
 import subprocess
 import sys
@@ -20,9 +21,13 @@ from conftest import SCRIPT, make_letter, poll, post_letter, register_session
 
 
 def cli_env(port, session_id, signing_key, response_key, workdir):
-    """容器式 env 凭证; MAILBOX_CONFIG 指向临时目录隔离 state file."""
+    """显式同身份配置与容器 env, 取信凭据/状态均在临时目录."""
     workdir = Path(workdir)
     workdir.mkdir(parents=True, exist_ok=True)
+    (workdir / "mailbox.json").write_text(json.dumps({
+        "server": f"http://127.0.0.1:{port}", "session": session_id,
+        "signing_key": signing_key, "response_key": response_key,
+    }))
     env = dict(os.environ)
     env.update({
         "SWT_MAILBOX_URL": f"http://127.0.0.1:{port}",

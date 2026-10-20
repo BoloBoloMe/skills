@@ -49,6 +49,13 @@ pytestmark = pytest.mark.skipif(
 	not _node_supports_ts(), reason="需 node >= 23.6 (原生 TS type stripping) 运行扩展场景"
 )
 
+CONTAINER_ENV = {
+	"SWT_MAILBOX_URL": "http://127.0.0.1:1",
+	"SWT_SESSION_ID": "container-deadbeef",
+	"SWT_SESSION_SIGNING_KEY": "fake-signing",
+	"SWT_SESSION_RESPONSE_KEY": "fake-response",
+}
+
 SCENARIOS = [
 	("no-mark-no-autostart", "新会话无标记: 不自动监听", {}),
 	("same-session-resume", "本会话独立标记: 自动恢复 + shutdown 杀子留标记", {}),
@@ -57,12 +64,11 @@ SCENARIOS = [
 	("tool-start-status-stop", "mailbox_listen 工具 start/status/stop 返回双 id", {}),
 	("multi-session-isolation", "两会话进程独立: 标记/子进程/stop 互不覆盖不串信", {}),
 	("ensure-failure-no-autostart", "ensure-session 失败: 不启动, isError 明确报错", {"FAKE_FAIL": "1"}),
-	("container-uses-injected-creds", "容器: 直接用 SWT_* 凭据, 不 ensure 不清 env", {
-		"SWT_MAILBOX_URL": "http://127.0.0.1:1",
-		"SWT_SESSION_ID": "container-deadbeef",
-		"SWT_SESSION_SIGNING_KEY": "fake-signing",
-		"SWT_SESSION_RESPONSE_KEY": "fake-response",
-	}),
+	("container-independent-pi", "容器: pi 独立身份, 接线仅用于注册", CONTAINER_ENV),
+	("multi-session-isolation", "同容器两个 pi 独立收信", CONTAINER_ENV),
+	("same-session-resume", "容器同一 pi 会话恢复身份不变", CONTAINER_ENV),
+	("ensure-failure-no-autostart", "容器旧服务不可注册时不回退", {**CONTAINER_ENV, "FAKE_FAIL": "1"}),
+	("ensure-failure-no-autostart", "注册返回错误 id 时不启动或回退", {**CONTAINER_ENV, "FAKE_WRONG_ID": "1"}),
 	("session-switch-restart", "同进程会话替换 A→B 都有标记: 先停 A 再恢复 B", {}),
 	("stop-then-start-no-stale-stop", "stop 后立即 start: 旧 close 不停新守护", {}),
 	("concurrent-start-single-poll", "同会话并发 start: 复用 Promise 只起一个 poll", {}),
@@ -86,7 +92,7 @@ def test_listen_mark_scenario(scenario: str, doc: str, extra_env: dict, tmp_path
 	"""每个场景一个隔离 node 进程: 独立 HOME (会话文件落地) 与取信调用日志,
 	断言场景内全部 PASS (退出码 0)."""
 	env = {
-		**os.environ,
+		**{k: v for k, v in os.environ.items() if k not in CONTAINER_ENV},
 		"HOME": str(tmp_path / "home"),
 		"SPAWN_LOG": str(tmp_path / "spawn.log"),
 		"MAILBOX_PYTHON": str(FAKE_PY),

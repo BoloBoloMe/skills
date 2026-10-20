@@ -8,6 +8,7 @@
 #   阻塞 (取信长轮询语义).
 shift || true
 if [ "$1" = "ensure-session" ]; then
+  printf 'id=%s parent=%s\n' "$2" "${SWT_SESSION_ID:-}" >> "$SPAWN_LOG.ensure"
   if [ "${FAKE_FAIL:-0}" = "1" ]; then
     echo "假 ensure-session: 本机信箱未发现" >&2
     exit 3
@@ -23,8 +24,11 @@ if [ "$1" = "ensure-session" ]; then
     chmod 600 "$cfg"
     created=true
   fi
-  printf '{"id":"%s","config":"%s","created":%s}\n' "$sid" "$cfg" "$created"
+  result_sid="$sid"
+  [ "${FAKE_WRONG_ID:-0}" = "1" ] && result_sid=wrong-session
+  printf '{"id":"%s","config":"%s","created":%s}\n' "$result_sid" "$cfg" "$created"
   exit 0
 fi
 printf 'pid=%s cfg=%s state=%s swt=%s args=%s\n' "$$" "${MAILBOX_CONFIG:-}" "${MAILBOX_CLI_STATE:-}" "${SWT_SESSION_ID:-}" "$*" >> "$SPAWN_LOG"
+[ -n "$1" ] && exit 0
 exec sleep infinity

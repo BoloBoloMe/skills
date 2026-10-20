@@ -13,6 +13,7 @@ host 场景 (state.json 提供 admin 面凭证) 报真实计数, 容器 env 凭�
 """
 from __future__ import annotations
 
+import json
 import os
 import subprocess
 import sys
@@ -51,19 +52,7 @@ def test_queued_returns_depth(serves, tmp_path):
     # status 集成: 输出本机会话待取数
     cli = tmp_path / "cli"
     cli.mkdir(parents=True)
-    env = dict(os.environ)
-    for k in ("SWT_MAILBOX_URL", "SWT_SESSION_ID",
-              "SWT_SESSION_SIGNING_KEY", "SWT_SESSION_RESPONSE_KEY"):
-        env.pop(k, None)
-    env.update({
-        "SWT_MAILBOX_URL": f"http://127.0.0.1:{srv.port}",
-        "SWT_SESSION_ID": "qdev",
-        "SWT_SESSION_SIGNING_KEY": key,
-        "SWT_SESSION_RESPONSE_KEY": creds["response_key"],
-        "MAILBOX_CONFIG": str(cli / "mailbox.json"),
-        "MAILBOX_STATE": str(cli / "state.json"),
-        "MAILBOX_NEIGHBORS": str(cli / "neighbors.json"),
-    })
+    env = _status_env(srv, "qdev", creds, cli, cli / "state.json")
     r = subprocess.run([sys.executable, str(SCRIPT), "status"], env=env,
                        capture_output=True, text=True, timeout=30)
     assert r.returncode == 0
@@ -73,6 +62,10 @@ def test_queued_returns_depth(serves, tmp_path):
 def _status_env(srv, session_id, creds, cli, state_file):
     """status 子进程 env: env 凭证 + 全路径隔离 (state_file 指向哪决定
     host/容器形态: 指向 serve 真实 state.json = host, 缺席 = 容器)."""
+    (cli / "mailbox.json").write_text(json.dumps({
+        "server": f"http://127.0.0.1:{srv.port}", "session": session_id,
+        "signing_key": creds["signing_key"], "response_key": creds["response_key"],
+    }))
     env = dict(os.environ)
     for k in ("SWT_MAILBOX_URL", "SWT_SESSION_ID",
               "SWT_SESSION_SIGNING_KEY", "SWT_SESSION_RESPONSE_KEY"):

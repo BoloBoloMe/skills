@@ -9,15 +9,15 @@
  *   自行开启本会话取信守护, 返回 piSessionId/mailboxSessionId/运行态.
  *
  * 每会话独立信箱 (D022):
- *  - host: 按 ctx.sessionManager.getSessionId() 在本机 serve admin 口注册独立
+ *  - 宿主/容器都按 ctx.sessionManager.getSessionId() 注册独立
  *    session, 用独立文件:
  *      ~/.agents/mailbox/sessions/<sid>/config.json    本会话凭证 (0600)
  *      ~/.agents/mailbox/sessions/<sid>/cli-state.json 本会话取信状态
  *      ~/.agents/mailbox/sessions/<sid>/listen.json    本会话监听开关标记
  *    取信子进程经 env MAILBOX_CONFIG/MAILBOX_CLI_STATE 指向本会话路径, 相互
  *    start/stop/重启不覆盖也不串信; 接收方可 --to <本会话 sid> 定向投信.
- *  - 容器 (birth 注入 SWT_SESSION_*): 无本机 serve, 直接沿用容器契约凭据,
- *    不执行 ensure-session, 也不清掉容器 env; mailboxSessionId = SWT_SESSION_ID.
+ *  - 容器的 SWT_SESSION_* 仅供 ensure-session 在宿主受限接口注册子会话.
+ *    poll/send 使用独立配置并清掉接线 env, mailboxSessionId 恒等于 pi sid.
  *
  * 裸脚本/机器级契约不变: 机器级 ~/.agents/mailbox/config.json (hostname-host)
  * 与容器 SWT_SESSION_* 原样保留; 旧版单文件全局 listen.json (含 pi_session_id)
@@ -44,7 +44,7 @@ const LEGACY_LISTEN_JSON = path.join(MAILBOX_DIR, "listen.json");
 const OWNER = `${os.hostname()}/${process.pid}`;
 /** 守护最近回执的保留条数 (D014: 汇入 /mail 与 widget). */
 const RECEIPTS_KEEP = 20;
-/** 容器契约 env (host 取信子进程须清掉, 免容器身份串到 host 会话信箱). */
+/** 容器接线 env: 仅供注册, pi 收发信子进程均须清掉. */
 const CONTAINER_ENV_KEYS = [
 	"SWT_MAILBOX_URL",
 	"SWT_SESSION_ID",
@@ -59,9 +59,9 @@ interface ListenMark {
 	/** 写标记的 pi 会话身份: ctx.sessionManager.getSessionId(). 旧版文件
 	 * 无此字段 = 陈旧标记: 不自动恢复. */
 	pi_session_id?: string;
-	/** 本取信使用的信箱 session id (host = pi sid; 容器 = SWT_SESSION_ID). */
+	/** 本取信使用的信箱 session id, 宿主/容器均等于 pi sid. */
 	mailbox_session_id?: string;
-	/** 本会话凭证文件路径 (host; 供 status 展示). */
+	/** 本会话凭证文件路径, 供 status 展示. */
 	config?: string;
 	[key: string]: unknown;
 }
@@ -75,10 +75,8 @@ interface DaemonState {
 	receipts: string[];
 	startedAt: string | null;
 	injected: number;
-	/** 取信子进程 env 覆盖 (host: MAILBOX_CONFIG/CLI_STATE; 容器: 容器契约). */
+	/** 取信子进程 env 覆盖 (MAILBOX_CONFIG/CLI_STATE). */
 	env: Record<string, string> | null;
-	/** 是否容器凭据模式 (决定是否保留 SWT_* env). */
-	container: boolean;
 	/** 当前守护的 pi 会话 id (session_start 比对用). */
 	sid: string | null;
 	/** 当前信箱 session id (回报用). */
@@ -131,20 +129,6 @@ function sessionIdOf(ctx: ExtensionContext): string | null {
 	} catch {
 		return null;
 	}
-}
-
-/** 容器凭据探测: birth 注入的 SWT_SESSION_* 齐全即容器模式 (无本机 serve). */
-function containerEnvOf(): Record<string, string> | null {
-	const url = process.env.SWT_MAILBOX_URL;
-	const sid = process.env.SWT_SESSION_ID;
-	const key = process.env.SWT_SESSION_SIGNING_KEY;
-	if (!url || !sid || !key) return null;
-	return {
-		SWT_MAILBOX_URL: url,
-		SWT_SESSION_ID: sid,
-		SWT_SESSION_SIGNING_KEY: key,
-		SWT_SESSION_RESPONSE_KEY: process.env.SWT_SESSION_RESPONSE_KEY ?? "",
-	};
 }
 
 function notify(ctx: ExtensionContext, message: string, type?: "info" | "warning" | "error"): void {
@@ -230,7 +214,11 @@ function runScript(
 	timeoutMs = 30_000,
 	env?: Record<string, string>,
 ): Promise<{ code: number | null; stdout: string; stderr: string }> {
-	const childEnv = env ? { ...process.env, ...env } : process.env;
+	const childEnv = { ...process.env, ...env };
+	// ensure-session 不传 env, 保留容器接线凭据; 收发信只使用准备好的 pi 配置.
+	if (env?.MAILBOX_CONFIG) {
+		for (const key of CONTAINER_ENV_KEYS) delete childEnv[key];
+	}
 	return new Promise((resolve) => {
 		const child = spawn(PYTHON, [SCRIPT, ...args], {
 			stdio: ["ignore", "pipe", "pipe"],
@@ -256,7 +244,7 @@ function runScript(
 	});
 }
 
-/** 准备 host 本会话独立信箱凭证 (D022): 幂等执行 mailbox.py ensure-session.
+/** 准备本 pi 会话独立信箱凭证: 宿主/容器统一执行 mailbox.py ensure-session.
  * 返回 env 覆盖 (MAILBOX_CONFIG/CLI_STATE) 或失败原因. */
 async function ensureSessionEnv(
 	ctx: ExtensionContext,
@@ -272,7 +260,8 @@ async function ensureSessionEnv(
 		return { sid, error: r.stderr.trim() || `ensure-session 退出码 ${r.code}` };
 	}
 	try {
-		const out = JSON.parse(r.stdout) as { config?: unknown; created?: unknown };
+		const out = JSON.parse(r.stdout) as { id?: unknown; config?: unknown; created?: unknown };
+		if (out.id !== sid) return { sid, error: "ensure-session 返回 id 与 pi 会话不符" };
 		if (typeof out.config !== "string" || !out.config) {
 			return { sid, error: "ensure-session 应答缺 config 字段" };
 		}
@@ -299,7 +288,6 @@ export default function (pi: ExtensionAPI) {
 		startedAt: null,
 		injected: 0,
 		env: null,
-		container: false,
 		sid: null,
 		mailboxSid: null,
 		gen: 0,
@@ -308,12 +296,10 @@ export default function (pi: ExtensionAPI) {
 	/** 同会话并发 start 复用进行中的 Promise, 不起双 poll. */
 	let startInFlight: Promise<StartResult> | null = null;
 
-	/** 取信子进程 env: 本会话覆盖 + 继承进程; host 模式清掉容器 env. */
+	/** 取信子进程 env: 本会话覆盖 + 继承进程, 始终清掉容器接线 env. */
 	function pollEnv(): NodeJS.ProcessEnv {
 		const env: NodeJS.ProcessEnv = { ...process.env, ...(daemon.env ?? {}) };
-		if (!daemon.container) {
-			for (const key of CONTAINER_ENV_KEYS) delete env[key];
-		}
+		for (const key of CONTAINER_ENV_KEYS) delete env[key];
 		return env;
 	}
 
@@ -372,7 +358,6 @@ export default function (pi: ExtensionAPI) {
 		}
 		// 清本会话身份与 env: 防会话切换后 /mail-send 误用旧会话凭据
 		daemon.env = null;
-		daemon.container = false;
 		daemon.sid = null;
 		daemon.mailboxSid = null;
 		daemon.pendingSid = null;
@@ -470,10 +455,12 @@ export default function (pi: ExtensionAPI) {
 		});
 	}
 
-	/** 启动本会话取信守护 (D022): 容器直接用 SWT_* 凭据 (不 ensure); host 先
-	 * ensure-session 备好独立凭证. 同会话并发 start 复用进行中 Promise. */
+	/** 启动本会话取信守护: 一律先 ensure-session 准备 pi 独立身份. */
 	async function startDaemon(ctx: ExtensionContext, notice?: string): Promise<StartResult> {
-		if (startInFlight) return startInFlight;
+		if (startInFlight) {
+			if (daemon.pendingSid === sessionIdOf(ctx)) return startInFlight;
+			haltDaemon();
+		}
 		const attempt = doStartDaemon(ctx, notice);
 		startInFlight = attempt;
 		try {
@@ -496,6 +483,7 @@ export default function (pi: ExtensionAPI) {
 				running: daemon.running,
 			};
 		}
+		if (daemon.running && daemon.sid !== sid) haltDaemon();
 		if (daemon.running) {
 			return {
 				ok: true,
@@ -508,31 +496,18 @@ export default function (pi: ExtensionAPI) {
 		const gen = daemon.gen; // 启动尝试代次: await 后核对, 已取消则不启动
 		daemon.pendingSid = sid;
 		try {
-			const container = containerEnvOf();
-			let env: Record<string, string>;
-			let mailboxSid: string;
-			let created = false;
-			if (container) {
-				// 容器: 沿用 birth 注入凭据, 不 ensure/不清 env
-				mailboxSid = container.SWT_SESSION_ID;
-				env = { ...container, MAILBOX_CLI_STATE: sessionPaths(sid).cliState };
-			} else {
-				const prepared = await ensureSessionEnv(ctx);
-				if (!prepared || prepared.env === undefined) {
-					const detail = (prepared && "error" in prepared && prepared.error) || "";
-					return {
-						ok: false,
-						message: "本会话信箱凭证准备失败" + (detail ? `: ${detail}` : "") +
-							" (host 需本机 mailbox serve 在跑且已加载当前脚本版本; 旧 serve 请重启, pi 扩展请重载)",
-						piSessionId: sid,
-						mailboxSessionId: null,
-						running: false,
-					};
-				}
-				mailboxSid = sid;
-				created = prepared.created;
-				env = prepared.env;
+			const prepared = await ensureSessionEnv(ctx);
+			if (!prepared || prepared.env === undefined) {
+				const detail = (prepared && "error" in prepared && prepared.error) || "";
+				return {
+					ok: false,
+					message: "本会话信箱凭证准备失败" + (detail ? `: ${detail}` : "") +
+						" (需可达且同版的 mailbox serve; 不回退机器/容器共用身份)",
+					piSessionId: sid, mailboxSessionId: null, running: false,
+				};
 			}
+			const mailboxSid = sid;
+			const { env, created } = prepared;
 			if (gen !== daemon.gen || daemon.pendingSid !== sid) {
 				// await 期间被 stop/shutdown/会话切换取消: 不写标记不起 poll
 				return {
@@ -544,10 +519,9 @@ export default function (pi: ExtensionAPI) {
 				};
 			}
 			daemon.env = env;
-			daemon.container = !!container;
 			daemon.sid = sid;
 			daemon.mailboxSid = mailboxSid;
-			writeListenMark(sid, mailboxSid, container ? undefined : env.MAILBOX_CONFIG);
+			writeListenMark(sid, mailboxSid, env.MAILBOX_CONFIG);
 			daemon.running = true;
 			daemon.lastError = null;
 			daemon.startedAt = new Date().toISOString();
@@ -600,18 +574,19 @@ export default function (pi: ExtensionAPI) {
 		};
 	}
 
-	/** 供 /mail 与 /mail-send 复用: 本会话凭证 env (守护已备好则直接用;
-	 * 容器直接用 SWT_*; host 未启动则即取一次). */
-	async function sessionEnvOrFallback(
+	/** 供 /mail 与 /mail-send 复用 pi 身份, 准备失败绝不退回机器/容器凭据. */
+	async function sessionEnvForPi(
 		ctx: ExtensionContext,
 	): Promise<Record<string, string> | undefined> {
 		const sid = sessionIdOf(ctx);
 		// 只复用属于当前会话的 env; 会话切换后 halt 已清, 免用旧会话凭据
 		if (daemon.env && daemon.sid === sid) return daemon.env;
-		const container = containerEnvOf();
-		if (container) return container;
 		const prepared = await ensureSessionEnv(ctx);
-		return prepared?.env;
+		if (!prepared?.env) {
+			notify(ctx, "本会话信箱凭证准备失败, 未执行收发操作", "error");
+			return undefined;
+		}
+		return prepared.env;
 	}
 
 	// ── 生命周期 ──────────────────────────────────────────────────
@@ -657,7 +632,8 @@ export default function (pi: ExtensionAPI) {
 		description: "信箱总览: 服务状态/配置/待取 + 守护状态 + 最近回执信",
 		handler: async (_args, ctx) => {
 			const lines: string[] = [];
-			const env = await sessionEnvOrFallback(ctx);
+			const env = await sessionEnvForPi(ctx);
+			if (!env) return;
 			const r = await runScript(["status"], 30_000, env);
 			lines.push(...r.stdout.trim().split("\n").filter(Boolean));
 			lines.push("");
@@ -723,7 +699,8 @@ export default function (pi: ExtensionAPI) {
 				notify(ctx, "已取消: 缺正文", "warning");
 				return;
 			}
-			const env = await sessionEnvOrFallback(ctx);
+			const env = await sessionEnvForPi(ctx);
+			if (!env) return;
 			const r = await runScript(["send", "--to", to, "--type", type, "--body", body], 30_000, env);
 			if (r.code === 0) {
 				notify(ctx, r.stdout.trim() || "已投递");
@@ -741,8 +718,7 @@ export default function (pi: ExtensionAPI) {
 		description:
 			"管理本 pi 会话的取信守护: start 开启/恢复, stop 停止, status 查看. " +
 			"来信自动注入, pi 忙时排队. 返回 piSessionId/mailboxSessionId/running; " +
-			"收信地址用 mailboxSessionId. host 按 pi 会话独立, 容器沿用 birth 凭据, " +
-			"同容器可能共用地址.",
+			"宿主/容器均使用独立信箱, 启动成功时 mailboxSessionId 恒等于 piSessionId.",
 		promptGuidelines: [
 			"收发信前调用 `mailbox` skill, 按其 pi 分支准备本会话身份与取信守护.",
 		],

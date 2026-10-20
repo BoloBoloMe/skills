@@ -8,9 +8,9 @@
 
 - **本机服务**: `uv run python <脚本> serve` 前台运行, 不自带 systemd 或开机启动. 首次缺配置时会注册 `<hostname>-host` 并写本机凭据, 这是机器端点, 不是某个 pi 会话.
 - **设备端点**: 在服务所在机器用 `register-session <已确定的设备 session id>` 注册, 将返回凭据安全交给设备. 设备用 `config set server/session/signing_key/response_key` 配置; 密钥从 stdin 输入, 不放命令行或回话正文. 以 `status` 核实配置与服务可达, 只转述必要的脱敏状态.
-- **容器端点**: 调用 `use-sandbox-worktree` skill 管理 birth/terminate 接线. birth 为容器注册带随机后缀的 session 并注入 `SWT_MAILBOX_URL`/`SWT_SESSION_*`, terminate 注销. 接线缺席会告警, 不等于 birth 失败; 在接线恢复前报告不能投信. 现存容器重入不重写注入凭据.
+- **容器接线**: 调用 `use-sandbox-worktree` skill 管理 birth/terminate 接线. birth 为容器注册带随机后缀的接线 session 并注入 `SWT_MAILBOX_URL`/`SWT_SESSION_*`; 容器内 pi 用它认证注册各自的 pi 会话 id, 不将接线 id 当 pi 收件地址. terminate 注销接线及其名下所有 pi session. 接线缺席会告警, 不等于 birth 失败; 在接线恢复前报告不能投信. 现存容器重入不重写注入凭据.
 
-默认数据位于 home 下 `.agents/mailbox/`, 路径覆盖以运行配置/脚本为准; 用已有命令取得实际路径与端口. 容器凭据优先于配置文件. 凭据文件按 0600, 所在目录按 0700 保护; `discover`/注册应答可能含 admin token 或密钥, 仅供自动化或安全配置消费, 不粘贴到公开输出. 旧路径迁移由脚本处理, 无需手动维护两套配置.
+默认数据位于 home 下 `.agents/mailbox/`, 路径覆盖以运行配置/脚本为准; 用已有命令取得实际路径与端口. 显式 `MAILBOX_CONFIG` 优先且失败不回退容器身份; 未显式选配置的非 pi 裸 CLI 保留容器 env 优先的兼容行为. 凭据文件按 0600, 所在目录按 0700 保护; `discover`/注册应答可能含 admin token 或密钥, 仅供自动化或安全配置消费, 不粘贴到公开输出. 旧路径迁移由脚本处理, 无需手动维护两套配置.
 
 ## 非 pi 手动收信
 
@@ -62,6 +62,8 @@ ssh -N -R <对端隧道端口>:127.0.0.1:<本端实际信箱端口> <对端 SSH 
 | 滞留信 | `GET /admin/pending`, `POST /admin/pending/retry`, `POST /admin/pending/drop` |
 | session 与在线 | `GET /admin/sessions`, `GET /admin/presence` |
 | 指令集 | `POST /admin/whitelist` |
+
+容器注册 pi 信箱另走信箱口 `POST /mailbox/sessions/ensure`, 不开放 admin 口. 请求用接线签名密钥签 `session\nsig_ts\nensure-session\n目标pi-id`, 响应用接线响应密钥验签. 已有 id 只能由原接线身份重取, 冲突/已吊销均拒绝; 子会话不能再注册子会话. 父子归属随凭据入库, 重启保留, 注销父身份会级联注销子会话.
 
 具体请求/响应以 `<脚本>` 对应 handler 为准, 不手工重实现 HMAC, 重投或去重. 排障看 stderr 中 `forward-failed`, `address-updated`, `address-update-rejected`, `letter-expired` 等事件及其信件/目标字段.
 

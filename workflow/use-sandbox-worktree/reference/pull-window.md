@@ -8,7 +8,7 @@
 
 preflight 退出 86 后:
 1. **投信前记基线**: `ls /tmp/waypipe-server-*.sock 2>/dev/null` 记现有 token 集 — 异常死亡的会话会留 socket 尸体, 判活只看新 token 差集.
-2. **投信**: 调用 `mailbox` skill, 按其 `reference/web.md` 确定当前设备并遵守主文件投信流程. exec 类型信, `--to` 显式填该设备, body 为 JSON: `{"tool": "swt.pull-window", "container": "<本容器名>"}`. 服务端形状校验 + container 动态绑定投信 session 自身, 命中直批不问人 (指令能力极窄且无参数注入面).
+2. **投信**: 调用 `mailbox` skill, 按其 `reference/web.md` 确定当前设备并遵守主文件投信流程. exec 类型信, `--to` 显式填该设备, body 为 JSON: `{"tool": "swt.pull-window", "container": "<本容器名>"}`. 服务端形状校验 + container 动态绑定投信 pi session 的已登记容器归属, 命中直批不问人 (指令能力极窄且无参数注入面).
 3. **等 ack 后轮询**: ack 只证明信被设备取走, 不证明窗口拉起 — 轮询容器内 `/tmp/waypipe-server-*.sock` 出现基线之外的新 token, 超时 **120s**. 新 token 出现 = 会话已建立并拉起 chromium; 页面 URL 已随设备侧拉窗命令附带, 不做事后导航 (实测事后导航不可靠, 且容器内禁用局域网映射地址 — hairpin 拒连, 只用容器内 `127.0.0.1:<web端口>`); token 证明会话建立, 不证明用户可见, 可见性靠拉窗命令的软件渲染参数保障.
 4. **超时落兜底**: 120s 未出新 token → 落 noVNC (`DISPLAY=:99`), 并在回复中明确告知用户落了兜底.
 

@@ -30,14 +30,15 @@ def load_module():
 
 
 def cli_env(monkeypatch, srv, session_id, signing_key, response_key, workdir):
-    """容器式 env 凭证注入; MAILBOX_CONFIG 指向临时目录隔离 state file."""
+    """非 pi 裸 CLI 的容器式凭据, 取信状态单独隔离, 不选择 pi 配置."""
     workdir = Path(workdir)
     workdir.mkdir(parents=True, exist_ok=True)
     monkeypatch.setenv("SWT_MAILBOX_URL", f"http://127.0.0.1:{srv.port}")
     monkeypatch.setenv("SWT_SESSION_ID", session_id)
     monkeypatch.setenv("SWT_SESSION_SIGNING_KEY", signing_key)
     monkeypatch.setenv("SWT_SESSION_RESPONSE_KEY", response_key)
-    monkeypatch.setenv("MAILBOX_CONFIG", str(workdir / "mailbox.json"))
+    monkeypatch.delenv("MAILBOX_CONFIG", raising=False)
+    monkeypatch.setenv("MAILBOX_CLI_STATE", str(workdir / "cli-state.json"))
 
 
 def spy_acks(mod, monkeypatch):

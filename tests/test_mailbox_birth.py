@@ -186,7 +186,8 @@ def _container_cli_env(baked: dict, local_port: int, workdir: Path) -> dict:
     env = dict(os.environ)
     env.update(baked)
     env["SWT_MAILBOX_URL"] = f"http://127.0.0.1:{local_port}"
-    env["MAILBOX_CONFIG"] = str(workdir / "config.json")
+    env.pop("MAILBOX_CONFIG", None)  # 裸 CLI 兼容路径, 未选择 pi 独立配置
+    env["MAILBOX_CLI_STATE"] = str(workdir / "cli-state.json")
     env["HOME"] = str(workdir / "home")  # 隔离真实家目录 (迁移不碰真文件)
     return env
 
@@ -224,7 +225,7 @@ def test_container_send(swt, serves, tmp_path, monkeypatch):
     for name in ("SWT_MAILBOX_URL", "SWT_SESSION_ID",
                  "SWT_SESSION_SIGNING_KEY", "SWT_SESSION_RESPONSE_KEY"):
         monkeypatch.setenv(name, baked[name])
-    monkeypatch.setenv("MAILBOX_CONFIG", str(tmp_path / "cli" / "config.json"))
+    monkeypatch.delenv("MAILBOX_CONFIG", raising=False)
     creds = mailbox.load_credentials()
     assert creds["session"] == sender
     assert creds["signing_key"] == baked["SWT_SESSION_SIGNING_KEY"]

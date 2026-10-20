@@ -32,9 +32,13 @@ from conftest import (SCRIPT, ack_letter, free_port, make_letter, poll,
 
 
 def cli_env(port, session_id, signing_key, response_key, workdir):
-    """容器式 env 凭证; MAILBOX_CONFIG 指向临时目录隔离 state file."""
+    """容器式 env 与显式同身份配置, 凭据/状态路径隔离且不碰真机文件."""
     workdir = Path(workdir)
     workdir.mkdir(parents=True, exist_ok=True)
+    (workdir / "mailbox.json").write_text(json.dumps({
+        "server": f"http://127.0.0.1:{port}", "session": session_id,
+        "signing_key": signing_key, "response_key": response_key,
+    }))
     env = dict(os.environ)
     env.update({
         "SWT_MAILBOX_URL": f"http://127.0.0.1:{port}",

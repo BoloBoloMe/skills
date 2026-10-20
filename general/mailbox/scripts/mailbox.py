@@ -210,13 +210,14 @@ class Session:
     """通信端点统一身份 (D005)."""
 
     def __init__(self, id, signing_key, response_key,
-                 revoked=False, last_poll=0.0, created_at=0.0):
+                 revoked=False, last_poll=0.0, created_at=0.0, parent_id=None):
         self.id = id
         self.signing_key = signing_key    # 请求签名密钥
         self.response_key = response_key  # 响应签名密钥
         self.revoked = revoked
         self.last_poll = last_poll
         self.created_at = created_at
+        self.parent_id = parent_id  # 容器接线身份, 用于归属/级联注销/拉窗绑定, 不是收件地址
 
 
 class Neighbor:
@@ -324,6 +325,10 @@ class Mailbox:
                 "CREATE TABLE IF NOT EXISTS sessions ("
                 " id TEXT PRIMARY KEY, signing_key TEXT, response_key TEXT,"
                 " revoked INTEGER, last_poll REAL, created_at REAL)")
+            columns = {row[1] for row in self._db.execute("PRAGMA table_info(sessions)")}
+            if "parent_id" not in columns:
+                self._db.execute("ALTER TABLE sessions ADD COLUMN parent_id TEXT")
+                self._db.commit()
             self._db.execute(
                 "CREATE TABLE IF NOT EXISTS whitelist ("
                 " instruction TEXT PRIMARY KEY)")
@@ -343,11 +348,11 @@ class Mailbox:
                 self.whitelist.add(instruction)
             for row in self._db.execute(
                     "SELECT id, signing_key, response_key, revoked, last_poll,"
-                    " created_at FROM sessions"):
+                    " created_at, parent_id FROM sessions"):
                 self.sessions[row[0]] = Session(row[0], row[1], row[2],
-                                                bool(row[3]), row[4], row[5])
+                                                bool(row[3]), row[4], row[5], row[6])
 
-    def add_session(self, session_id, signing_key=None, response_key=None):
+    def add_session(self, session_id, signing_key=None, response_key=None, *, parent_id=None):
         if session_id.startswith(RECEIPT_FROM_PREFIX):
             # 回执保留命名空间 (D013): 注册 mailbox@ 前缀会使正常信被取信侧
             # 当回执静默 ack 不呈现, 注册侧直接拒绝
@@ -357,7 +362,7 @@ class Mailbox:
         s = Session(session_id,
                     signing_key or uuid.uuid4().hex,
                     response_key or uuid.uuid4().hex,
-                    created_at=self._now())
+                    created_at=self._now(), parent_id=parent_id)
         self.sessions[session_id] = s
         self._save_session(s)
         return s
@@ -370,10 +375,10 @@ class Mailbox:
         with self._db_lock:
             self._db.execute(
                 "INSERT OR REPLACE INTO sessions"
-                " (id, signing_key, response_key, revoked, last_poll, created_at)"
-                " VALUES (?, ?, ?, ?, ?, ?)",
+                " (id, signing_key, response_key, revoked, last_poll, created_at, parent_id)"
+                " VALUES (?, ?, ?, ?, ?, ?, ?)",
                 (s.id, s.signing_key, s.response_key, int(s.revoked),
-                 s.last_poll, s.created_at))
+                 s.last_poll, s.created_at, s.parent_id))
             if commit:
                 self._db.commit()
 
@@ -386,8 +391,14 @@ class Mailbox:
         s = self.sessions.get(session_id)
         if s is None:
             raise MailboxError(f"未知 session: {session_id}")
-        s.revoked = True
-        self._save_session(s)
+        # 容器终结时同时吊销其 pi 信箱, 不让独立地址逃过 terminate 清理.
+        for item in self.sessions.values():
+            if item.id == session_id or item.parent_id == session_id:
+                item.revoked = True
+                self._save_session(item, commit=False)
+        if self._db is not None:
+            with self._db_lock:
+                self._db.commit()
         return s
 
     def ensure_session(self, session_id):
@@ -399,6 +410,23 @@ class Mailbox:
         if s is not None and not s.revoked:
             return s, False
         return self.add_session(session_id), True
+
+    def ensure_child_session(self, parent_id, session_id, sig_ts, sig):
+        """凭现有接线身份注册独立 pi 信箱. 不发放管理权限, 不接管别人的 id.
+        请求签名绑定操作名与目标 id, 防挪用 poll 签名或篡改目标.
+        同一父身份重试只取回自己的未吊销子会话; 不复活已吊销会话.
+        """
+        parent = self._verify(parent_id, sig_ts, sig, "ensure-session", session_id)
+        if parent.parent_id is not None:
+            raise MailboxError("子会话不能继续注册子会话")
+        if not re.fullmatch(r"[A-Za-z0-9_-][A-Za-z0-9._-]{0,127}", session_id):
+            raise MailboxError("pi session id 格式不合法")
+        existing = self.sessions.get(session_id)
+        if existing is not None:
+            if existing.parent_id != parent_id or existing.revoked:
+                raise MailboxError("目标 session 已存在且不属于本接线身份, 或已吊销; 拒绝接管")
+            return existing, False
+        return self.add_session(session_id, parent_id=parent_id), True
 
     def add_neighbor(self, address, shared_key, name=None):
         """运行时加邻居 (D020): 内存生效 + SQLite 持久化 (B8, 重启仍在).
@@ -529,6 +557,10 @@ class Mailbox:
             raise MailboxError(f"未知 session: {session_id}")
         if s.revoked:
             raise MailboxError(f"session 已吊销: {session_id}")
+        if s.parent_id is not None:
+            parent = self.sessions.get(s.parent_id)
+            if parent is None or parent.revoked:
+                raise MailboxError("注册此 session 的接线身份已失效")
         self._check_ts(sig_ts)
         expect = sign(s.signing_key, session_id, str(sig_ts), *extra)
         if not hmac.compare_digest(expect, sig):
@@ -565,8 +597,11 @@ class Mailbox:
         if letter.type == "exec":
             # D006: exec 过指令集白名单, 不在集合降级 request 走收件侧权限流程
             ins = _parse_instruction(letter.body)
-            if self._pull_window_hit(ins, session_id) or (
-                    ins is not None and _canonical(ins) in self.whitelist):
+            poster = self.sessions.get(session_id)
+            parent_id = poster.parent_id if poster is not None else None
+            if (self._pull_window_hit(ins, session_id)
+                    or (parent_id is not None and self._pull_window_hit(ins, parent_id))
+                    or (ins is not None and _canonical(ins) in self.whitelist)):
                 letter.note = "指令集命中 → 收件侧直批 (D006)"
             else:
                 letter.downgraded = True
@@ -1565,6 +1600,8 @@ class _Handler(_JsonHandler):
         if not isinstance(body, dict):
             return self._bad(endpoint, "bad json")
 
+        if path == "/mailbox/sessions/ensure":
+            return self._handle_ensure_session(body, endpoint)
         if path == "/mailbox/post":
             return self._handle_post(body, endpoint)
         if path == "/mailbox/poll":
@@ -1580,6 +1617,25 @@ class _Handler(_JsonHandler):
         if path == "/mailbox/address-update":
             return self._handle_address_update(body)
         self._json(404, {"error": "not found"})
+
+    def _handle_ensure_session(self, body, endpoint):
+        """容器可达的受限注册口: 只管理签名身份自己名下的 pi 子会话."""
+        party, rkey = self._party(body, endpoint)
+        m = self.server.mailbox
+        with self.server.cond:
+            try:
+                sid = body["id"]
+                if not isinstance(sid, str) or not isinstance(body.get("session"), str):
+                    raise ValueError("session/id 须为字符串")
+                child, created = m.ensure_child_session(
+                    body["session"], sid, body["sig_ts"], str(body.get("sig", "")))
+            except (KeyError, TypeError, ValueError):
+                return self._bad(party, "session/id/sig_ts 字段缺失或畸形", rkey)
+            except MailboxError as exc:
+                return self._signed(403, party, {"ok": False, "error": str(exc)}, rkey)
+        return self._signed(200, party, {"ok": True, "id": child.id,
+                            "signing_key": child.signing_key,
+                            "response_key": child.response_key, "created": created}, rkey)
 
     def _handle_neighbor_presence(self, body):
         """POST /mailbox/presence (邻居间在线查询, neighbor_key 认证):
@@ -2186,20 +2242,28 @@ def gate_pull_window(container, state):
     return None
 
 
-def load_credentials():
-    """凭证探测: 容器走 env (SWT_MAILBOX_URL + SWT_SESSION_*), 设备走配置文件.
-    缺凭证 → None (调用方 exit 3)."""
+def load_container_credentials():
+    """birth 注入的接线身份. 供 ensure-session 注册 pi 身份或非 pi 裸 CLI 使用."""
     url = os.environ.get("SWT_MAILBOX_URL", "").strip()
     sid = os.environ.get("SWT_SESSION_ID", "").strip()
     skey = os.environ.get("SWT_SESSION_SIGNING_KEY", "").strip()
     if url and sid and skey:
         return {"server": url, "session": sid, "signing_key": skey,
                 "response_key": os.environ.get("SWT_SESSION_RESPONSE_KEY", "")}
+    return None
+
+
+def load_credentials():
+    """显式 MAILBOX_CONFIG 优先且失败不退回容器身份; 否则保留裸 CLI 的 env 契约."""
+    if not os.environ.get("MAILBOX_CONFIG"):
+        container = load_container_credentials()
+        if container is not None:
+            return container
     try:
         data = json.loads(config_path().read_text())
     except (OSError, json.JSONDecodeError):
         return None
-    if data.get("server") and data.get("session") and data.get("signing_key"):
+    if isinstance(data, dict) and data.get("server") and data.get("session") and data.get("signing_key"):
         return data
     return None
 
@@ -2818,39 +2882,70 @@ def cmd_register_session(session_id):
     print(json.dumps(creds, ensure_ascii=False))
 
 
+def _ensure_session_credentials(session_id):
+    """宿主用本机 admin, 容器用接线身份签名的受限注册口, 绝不下发 admin token."""
+    parent = load_container_credentials()
+    if parent is None and any(os.environ.get(key) for key in (
+            "SWT_MAILBOX_URL", "SWT_SESSION_ID", "SWT_SESSION_SIGNING_KEY", "SWT_SESSION_RESPONSE_KEY")):
+        raise _MachineCommandError("容器接线凭据不完整, 不回退本机身份")
+    if parent is not None:
+        if not parent["response_key"]:
+            raise _MachineCommandError("容器接线缺响应验签密钥, 拒绝注册 pi 信箱")
+        server = parent["server"].rstrip("/")
+        sid = parent["session"]
+        ts = str(time.time())
+        try:
+            reply = http_post(server + "/mailbox/sessions/ensure", {
+                "session": sid, "id": session_id, "sig_ts": ts,
+                "sig": sign(parent["signing_key"], sid, ts, "ensure-session", session_id),
+            }, timeout=10)
+        except urllib.error.HTTPError as exc:
+            if exc.code == 404:
+                raise _MachineCommandError(
+                    "宿主 mailbox serve 版本过旧: 无 /mailbox/sessions/ensure 接口;"
+                    " 需同步并重启服务, 随后重载 pi 扩展. 不回退共用容器信箱") from exc
+            raise _MachineCommandError(f"pi 信箱注册被拒 (HTTP {exc.code}), 不回退容器身份") from exc
+        except (OSError, urllib.error.URLError, http.client.HTTPException, json.JSONDecodeError) as exc:
+            raise _MachineCommandError("pi 信箱注册不可达或应答畸形") from exc
+        payload = reply.get("payload") if isinstance(reply, dict) else None
+        if (not isinstance(payload, dict) or not isinstance(payload.get("nonce"), str)
+                or not isinstance(reply.get("sig"), str)):
+            raise _MachineCommandError("pi 信箱注册应答畸形, 未保存凭据")
+        expected = sign(parent["response_key"], sid, payload["nonce"],
+                        json.dumps(payload, sort_keys=True))
+        if not hmac.compare_digest(expected, reply["sig"]) or payload.get("ok") is not True:
+            raise _MachineCommandError("pi 信箱注册响应验签失败或被拒, 未保存凭据")
+        return payload, server
+    found = _discover_local_mailbox(allow_scan=False)
+    if found is None:
+        raise _MachineCommandError("本机信箱未发现 (状态文件缺席/失活), 无法准备 session 凭证")
+    code, payload = _raw_admin_post(found, "/admin/sessions/ensure", {"id": session_id})
+    if code == 404:
+        raise _MachineCommandError(
+            "本机信箱 serve 版本过旧: 无 /admin/sessions/ensure 接口."
+            " 请重启 mailbox serve, 随后重载 pi 扩展并重试")
+    if code != 200:
+        raise _MachineCommandError(f"admin 拒绝 (HTTP {code})")
+    return payload, f"http://127.0.0.1:{found['port']}"
+
+
 def cmd_ensure_session(session_id, config=None):
-    """ensure-session <id> [--config <path>]: 保证本会话有独立可用凭证 (D022).
-    每次都探测本机 serve 并经 admin ensure 口幂等取回现存活跃 session 三元组
-    (活着复用原密钥, 不吊销/不丢待取信; 不存在/已吊销才新建), 再写 0600
-    独立配置 — 顺带跟进服务重启换端口. stdout JSON {id, config, server,
-    created}; 本机 serve 未发现/失败 exit 3."""
+    """保证 pi 会话独立凭据, 宿主/容器均以 pi id 注册. stdout 不含密钥.
+    容器仅以 birth 接线身份注册自己名下的子会话, 失败不回退共用收件地址.
+    """
     if not isinstance(session_id, str) or not session_id:
         _machine_exit("session id 须为非空字符串")
     cfg = session_config_path(session_id, config)
-    found = _discover_local_mailbox(allow_scan=False)
-    if found is None:
-        _machine_exit("本机信箱未发现 (状态文件缺席/失活), 无法准备 session 凭证")
     try:
-        code, payload = _raw_admin_post(found, "/admin/sessions/ensure",
-                                        {"id": session_id})
+        payload, server = _ensure_session_credentials(session_id)
     except _MachineCommandError as exc:
         _machine_exit(str(exc))
-    if code == 404:
-        _machine_exit(
-            "本机信箱 serve 版本过旧: 无 /admin/sessions/ensure 接口."
-            " 请重启 mailbox serve (旧进程不会因脚本更新而获得新接口),"
-            " 随后重载 pi 扩展并重试")
-    if code != 200:
-        _machine_exit(f"admin 拒绝 (HTTP {code}): {payload.get('error', '')}")
     creds = {field: payload.get(field)
              for field in ("id", "signing_key", "response_key")}
     missing = [field for field, value in creds.items()
                if not isinstance(value, str) or not value]
-    if missing:
-        # 不打印 payload 本体 (可能含密钥材料), 只报缺失字段名
-        _machine_exit("admin 应答缺注册字段: " + ",".join(missing)
-                      + " (不打印应答本体, 防密钥落到日志)")
-    server = f"http://127.0.0.1:{found['port']}"
+    if missing or creds["id"] != session_id:
+        _machine_exit("注册应答字段缺失或 id 与 pi 会话不符, 未保存凭据")
     write_config_file(cfg, {"server": server, "session": session_id,
                             "signing_key": creds["signing_key"],
                             "response_key": creds["response_key"]})
@@ -3111,7 +3206,7 @@ def main():
     p_register.add_argument("session_id", help="session id (如 <容器名>-<8hex>)")
     p_ensure = sub.add_parser(
         "ensure-session",
-        help="保证本会话独立凭证 (机器子命令, stdout JSON id/config/created)")
+        help="保证 pi 会话独立凭证 (宿主/容器通用, stdout JSON id/config/created)")
     p_ensure.add_argument("session_id", help="session id (如 pi 会话 id)")
     p_ensure.add_argument("--config", default=None,
                           help="独立配置文件路径 (缺省 sessions/<id>/config.json)")

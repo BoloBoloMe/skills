@@ -15,6 +15,6 @@ birth 用 `podman create -e` 把 host 环境变量烘入容器, 改清单须重�
 - 修改和验收通过不自动授权同步部署, 须另行明确要求. 网络维护须成套分发同版 `swt.py`/`network_update.py`/`net-firewall.py` 及参考, 旧脚本不能安全处理新 network-change.
 - Herdr 自动接线需同版 `scripts/swt.py`/`scripts/herdr_machine.py`; 定向收信与 `mailbox_listen` 工具需同步同版 mailbox 脚本/扩展后重载 pi. 容器提示词里的 host sessionId 只在新 birth 生成, 不暗改现有只读快照.
 - 修改 `swt.py`/本 skill/`reference/` 等宿主 agent 读的文件: 在仓库根 `uv run python sync-to-pi.py` 同步到 host skill 库后生效. 本仓库提出的 skill 修改只改仓库, 不直接改真实 agent skills.
-- 信箱脚本在独立的 `general/mailbox/scripts/mailbox.py`, 同经仓库同步分发到 `~/.agents/skills/mailbox/`; 设备侧有自己的副本, 更新后取信会话重跑脚本才生效.
+- 信箱脚本在独立的 `general/mailbox/scripts/mailbox.py`, 同经仓库同步分发到 `~/.agents/skills/mailbox/`; 设备侧有自己的副本, 更新后取信会话重跑脚本才生效. 容器 pi 独立信箱需同版服务与扩展: 按维护授权同步/重启 serve 并重载 pi, 重启会丢内存中的信. 原容器接线凭据可继续注册 pi id, 不需因此重建; 旧服务缺接口时拒绝取信, 不回退共用地址.
 - `present` skill 也在 base 镜像构建期 COPY, 新 birth 想使用它的新版本, 同步后还须经审批重建 base/display/项目镜像; 已存在的容器不会更新.
 - 三份 agent 全局指令是 birth 留档的只读快照, 与实时挂载的 skill 库不同, 母本变化不回写现有容器. 带依赖的 skill 项目改 `pyproject.toml`/`uv.lock` 时, 容器中的 `.venv` 种子不会自动同步, 须经镜像重建审批.
