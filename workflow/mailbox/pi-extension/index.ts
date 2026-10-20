@@ -746,7 +746,7 @@ export default function (pi: ExtensionAPI) {
 		promptGuidelines: [
 			"交付前需自行接收来信时, 调用 mailbox_listen(action=\"start\") 开启本会话取信守护, 不要只提示用户手输命令, 也不要用 bash 长轮询阻塞.",
 			"他人要给你投信时, 收件地址用本工具返回的 mailbox session id.",
-			"给其他会话投信前先用 presence 子命令查目标在线状态 (mailbox.py presence <目标>); 明确离线时 send 会拒发, 确认对方稍后会取信才加 --force. /mail 可看本机在线 session.",
+			"投信 (send / mail-send) 前先跑 presence 查目标在线; 明确离线就停下报告, 等对方开守护或经我确认才 --force; 空 --to 查不了状态, 只用于谁收都行的通知.",
 		],
 		parameters: {
 			type: "object",

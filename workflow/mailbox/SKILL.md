@@ -23,12 +23,14 @@ disable-model-invocation: true
 uv run python scripts/mailbox.py serve                                  # 前台启动 (无 systemd 无自启)
 uv run python scripts/mailbox.py send --to <session.id> --type notify --body "..."
 uv run python scripts/mailbox.py ensure-session <session-id>            # 本会话独立凭证 (stdout JSON id/config/server/created)
-uv run python scripts/mailbox.py presence <session-id>                  # 查目标在线状态 (投信前先查, 省 token)
+uv run python scripts/mailbox.py presence <session-id>                  # 查目标在线状态 (online/offline/unknown)
 uv run python scripts/mailbox.py send --to <id> --type notify --body "..."  # 目标明确离线会拒发; --force 强制投递
 uv run python scripts/mailbox.py config set <field> [value]             # 密钥项经 stdin, 不回显
 uv run python scripts/mailbox.py status                                 # 配置状态, 密钥脱敏
 uv run python scripts/mailbox.py                                        # 缺省 = 取信 (阻塞长轮询)
 ```
+
+**投信纪律**: 写正文前先跑 `presence <目标 session>`; 目标 id 不知道就先问我, 不猜. 查到 online / unknown 才写正文; offline 就停下, 报告"对方没在收信", 由我决定等它开守护还是 `--force` 先排队. 空 `--to` 查不了状态, 只用于谁收都行的通知. 完成标准: 每条信都能说出目标当时的在线结论 (离线强投的能说出是我确认过的).
 
 serve 启动自动注册 `<hostname>-host` session 并写本机配置 — 本机取信零配置. 容器内凭证走 env (`SWT_MAILBOX_URL`/`SWT_SESSION_*`, birth 烘入; 契约名不可改, 非测试注入 env).
 
@@ -42,6 +44,6 @@ agent 在交付前自行开启本会话取信守护, 调工具 `mailbox_listen(a
 
 ## 在线状态 (心跳 presence)
 
-服务端在长轮询 hold 中每 5 秒回一次心跳应答 (`payload.heartbeat=true`, 客户端立即重连), 据此维护每个 session 的 `online`/`offline`/`unknown` (缺省 15 秒无心跳算离线; 在等 poll 也算在线). 投信前先查 `presence <目标 session>`: 明确离线时 `send` 直接拒发 (exit 3, 不浪费 token 写正文); `--force` 可强制投递 (确认对方稍后会取信). 本机不认识的目标由服务端向邻居问一层 (1.5 秒预算), 都不认识 → `unknown`, 照常尝试投递. 已吊销 session 不再排队 (404).
+服务端在长轮询 hold 中每 5 秒回一次心跳应答 (`payload.heartbeat=true`, 客户端立即重连), 据此维护每个 session 的 `online`/`offline`/`unknown` (缺省 15 秒无心跳算离线; 在等 poll 也算在线). 目标明确离线时 `send` 直接拒发 (exit 3), `--force` 跳过预查强制投递. 本机不认识的目标由服务端向邻居问一层 (1.5 秒预算), 都不认识 → `unknown`, 照常尝试投递. 已吊销 session 不再排队 (404).
 
 完整协议 (HMAC 签名/时间窗/租约重投/mesh 洪泛/邻居配置/admin 口/指令集) → reference/mailbox.md.
