@@ -22,7 +22,8 @@ from pathlib import Path
 from conftest import SCRIPT, poll, register_session
 
 
-def send_cli(srv, session_id, creds, workdir, to, body="测试", timeout=30):
+def send_cli(srv, session_id, creds, workdir, to, body="测试", timeout=30,
+             force=False):
     """以设备配置文件凭证跑 send 子命令 (隔离 env 与真实家目录)."""
     workdir = Path(workdir)
     workdir.mkdir(parents=True, exist_ok=True)
@@ -39,9 +40,10 @@ def send_cli(srv, session_id, creds, workdir, to, body="测试", timeout=30):
         env.pop(k, None)
     env["MAILBOX_CONFIG"] = str(cfg)
     env["HOME"] = str(workdir / "home")  # 隔离真实家目录 (防迁移误伤)
+    extra = ["--force"] if force else []
     return subprocess.run(
         [sys.executable, str(SCRIPT), "send", "--to", to,
-         "--type", "notify", "--body", body],
+         "--type", "notify", "--body", body] + extra,
         env=env, capture_output=True, text=True, timeout=timeout)
 
 
@@ -50,7 +52,9 @@ def test_send_receipt_two_lines(serves, tmp_path):
     srv = serves()
     sender = register_session(srv, "dev-send")
     register_session(srv, "dev-recv")
-    r = send_cli(srv, "dev-send", sender, tmp_path / "cli", to="dev-recv")
+    # 收件方未开取信守护 → 在线预查判离线; 本用例只验回执分行, 强制投递
+    r = send_cli(srv, "dev-send", sender, tmp_path / "cli", to="dev-recv",
+                 force=True)
     assert r.returncode == 0, f"send 失败: {r.stderr}"
     lines = [l.strip() for l in r.stdout.splitlines() if l.strip()]
     assert any(l.startswith("目标 session=dev-recv") for l in lines), \

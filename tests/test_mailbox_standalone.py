@@ -63,8 +63,9 @@ def test_standalone_full_loop(tmp_path):
         assert cfg["server"] == f"http://127.0.0.1:{port}"
 
         # 设备侧 send: 凭证来自 serve 写好的本机配置 (无任何容器 env)
+        # 本机 session 还没取过信 (离线) → 强制投递, 验证排队后取信成环
         sent = subprocess.run(
-            [sys.executable, str(SCRIPT), "send", "--to", sid,
+            [sys.executable, str(SCRIPT), "send", "--force", "--to", sid,
              "--type", "notify", "--body", "独立成环"],
             env=env, capture_output=True, text=True, timeout=15)
         assert sent.returncode == 0, f"send 失败: {sent.stderr}"

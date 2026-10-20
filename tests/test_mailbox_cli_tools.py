@@ -57,7 +57,8 @@ def test_send_notify(serves, tmp_path):
     env["MAILBOX_CONFIG"] = str(cfg)
     env["HOME"] = str(tmp_path / "home")  # 隔离真实家目录 (防迁移误伤)
 
-    r = subprocess.run([sys.executable, str(SCRIPT), "send",
+    # 收件方没有取信守护 → 在线预查判离线; 本用例验投递链路, 强制投递
+    r = subprocess.run([sys.executable, str(SCRIPT), "send", "--force",
                         "--to", "dev-recv", "--type", "notify", "--body", "测试"],
                        env=env, capture_output=True, text=True, timeout=15)
     assert r.returncode == 0, f"send 失败: {r.stderr}"

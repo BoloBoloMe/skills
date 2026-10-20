@@ -25,6 +25,11 @@ env:
   MAILBOX_MAX_CONCURRENT_POLLS / MAILBOX_PENDING_CAP (滞留转发上限, 缺省
   100, 超限丢最老) / MAILBOX_TTL_SECONDS (信件 TTL 秒, 缺省 86400 = 24h,
   到期由清扫器丢弃并向发件人发失败回执) /
+  MAILBOX_HEARTBEAT_SECONDS (服务端在长轮询 hold 中回心跳的周期秒, 缺省 5,
+  0 = 关闭心跳 — 客户端改按 hold 周期刷在线) / MAILBOX_PRESENCE_TTL_SECONDS
+  (在线状态过期秒, 缺省 15) / MAILBOX_PRESENCE_QUERY_BUDGET (邻居在线查询
+  总预算秒, 缺省 1.5) / MAILBOX_RETRY_BUDGET_SECONDS (单轮滞留重试
+  时间预算秒, 缺省 10) /
   MAILBOX_FLOOD_BUDGET_SECONDS (post 洪泛判定预算, 缺省 2, 测试时间注入用) /
   MAILBOX_FLEET_KEY (舰队密钥路径, 缺省 ~/.agents/mailbox/fleet.key, D016) /
   MAILBOX_BEACON_PORT (信标绑定端口, 缺省 38437) / MAILBOX_BEACON_DEST
@@ -69,11 +74,17 @@ MAX_CONCURRENT_POLLS = 5    # 同 session 并发 poll 上限 (D016)
 FLOOD_BUDGET_SECONDS = 2.0  # post 洪泛判定预算 (非功能要求, env 可调)
 PENDING_CAP = 100           # 滞留转发上限, 超限丢最老 (AC-013, env 可调)
 TTL_SECONDS = 86400.0       # 信件 TTL 缺省 24h (D012, env 可调)
+HEARTBEAT_SECONDS = 5.0     # 服务端 hold 中回心跳周期 (presence 新鲜度粒度)
+PRESENCE_TTL_SECONDS = 15.0  # 在线状态过期秒 (缺省 3×心跳, env 可调)
+PRESENCE_QUERY_BUDGET = 1.5  # 邻居 presence 查询总预算秒 (串行会让 send 变慢)
+RETRY_BUDGET_SECONDS = 10.0  # 单轮滞留重试时间预算, 防 TTL 清扫被拖住
 BEACON_PORT = 38437         # 自组网 UDP 信标端口 (D016, 同网段广播)
 BEACON_INTERVAL = 5.0       # 信标收发周期秒 (env MAILBOX_BEACON_INTERVAL)
 HELLO_RETRY_SECONDS = 300.0 # 被拒/失败握手的重试间隔 (每指纹)
 FORWARD_TIMEOUT = 5.0       # 单邻居转发超时上限 (后台重试路径沿用)
 MAX_BODY_BYTES = 1024 * 1024  # 单信正文上限 1MB (BR-006/AC-021)
+MAX_REQUEST_BYTES = MAX_BODY_BYTES + 64 * 1024  # 请求体硬上限: 超限不读直接拒
+# (防畸形/恶意 Content-Length 让 handler 一次性分配巨量内存)
 MSG_TYPES = ("notify", "open_url", "exec", "request")
 RECEIPT_FROM_PREFIX = "mailbox@"  # 回执信保留身份 (D013): from=mailbox@<hostname>
 RECEIPT_ID_SUFFIX = {"delivered": "delivered", "read": "read",
@@ -182,6 +193,11 @@ class UnknownRecipient(Exception):
     """收件 session 不在本机 (mesh 转发属 ISSUE-05, 本 ISSUE 直接拒绝), HTTP 404."""
 
 
+class RecipientOffline(Exception):
+    """收件人在本机但不在线 (无取信守护/心跳已过期), HTTP 409.
+    只在调用方要求 require_online 时抛 (显式投信); 回执/转发不受影响."""
+
+
 def check_sig_ts(now, ts):
     """签名时间窗校验 (±TS_WINDOW, 沿用 ±5min 防重放): 超窗抛 MailboxError.
     session 签名 (Mailbox._check_ts) 与自组网 hello/换址共用 (单点收口).
@@ -269,24 +285,37 @@ class Mailbox:
 
     def __init__(self, db_path=None, now=time.time, lease_seconds=LEASE_SECONDS,
                  monotonic=time.monotonic, pending_cap=PENDING_CAP,
-                 ttl_seconds=TTL_SECONDS):
+                 ttl_seconds=TTL_SECONDS, heartbeat_seconds=HEARTBEAT_SECONDS,
+                 presence_ttl=PRESENCE_TTL_SECONDS):
         self._now = now            # 墙钟: 签名时间窗 ±5min / last_poll / TTL
-        self._mono = monotonic     # 单调钟: 租约计时 (TECHNICAL 边界与异常处理)
+        self._mono = monotonic     # 单调钟: 租约/在线状态计时 (不受校时影响)
         self.lease_seconds = lease_seconds  # 租约时长 (D009), serve 可经 env 覆盖
         self.pending_cap = pending_cap      # 滞留上限 (AC-013), serve 可经 env 覆盖
         self.ttl_seconds = ttl_seconds      # 信件 TTL (D012), serve 可经 env 覆盖
+        self.heartbeat_seconds = heartbeat_seconds  # 服务端心跳周期 (0=关闭)
+        self.presence_ttl = presence_ttl    # 在线状态过期秒 (0=永不判离线)
         self.sessions = {}    # id -> Session
         self.queue = {}       # to_session -> [Letter]
         self.leases = {}      # letter_id -> (Letter, lease_token, 租出时刻)
-        self.processed = set()  # 已回执 letter_id (ack 幂等)
-        self.seen_ids = {}    # letter_id -> ts, 防重放/幂等投信
+        # 已回执 letter_id -> 单调时刻 (ack 幂等; 带时间才能被清扫器回收)
+        self.processed = {}
+        self.seen_ids = {}    # letter_id -> 墙钟 ts, 防重放/幂等投信
         self.whitelist = set()  # exec 指令集规范形 (D006 内容级防线)
         self.concurrent_polls = {}  # session_id -> 在等 poll 数 (D016)
+        # 在线状态: session_id -> 最后一次心跳/取信时刻 (单调钟, 全内存).
+        # 长轮询在等 (concurrent_polls>0) 也视为在线; 两者都没有且超
+        # presence_ttl = 离线. serve 重启即清 (没有新心跳就不该算在线).
+        self.presence = {}
+        self._online_logged = set()  # 已打 session-online 日志的集合 (只报跳变)
+        self._last_poll_saved = {}  # session -> 上次 last_poll 落盘值 (写减频)
         self.neighbors = []   # list[Neighbor], serve 启动时从邻居表加载
         self.pending_forwards = []  # list[PendingForward], 邻居不可达内存暂存 (B4)
         self._pending_lock = threading.Lock()  # 暂存增删与请求处理线程并发
         self._spawned_routes = []  # 内部注入回执的远端洪泛目标 (锁外投递)
         self._spawn_lock = threading.Lock()
+        # SQLite 连接跨线程共享 (check_same_thread=False): 写入串行化,
+        # 防并发 commit 抛 "database is locked"/串事务
+        self._db_lock = threading.RLock()
         self._db = None
         if db_path is not None:
             Path(db_path).parent.mkdir(parents=True, exist_ok=True)
@@ -333,15 +362,20 @@ class Mailbox:
         self._save_session(s)
         return s
 
-    def _save_session(self, s):
-        if self._db is not None:
+    def _save_session(self, s, commit=True):
+        """写穿 session 行. commit=False 供高频路径 (每次心跳) 合并提交:
+        last_poll 只是空 to 路由兜底, 不需要每条心跳一次 fsync."""
+        if self._db is None:
+            return
+        with self._db_lock:
             self._db.execute(
                 "INSERT OR REPLACE INTO sessions"
                 " (id, signing_key, response_key, revoked, last_poll, created_at)"
                 " VALUES (?, ?, ?, ?, ?, ?)",
                 (s.id, s.signing_key, s.response_key, int(s.revoked),
                  s.last_poll, s.created_at))
-            self._db.commit()
+            if commit:
+                self._db.commit()
 
     def get_session(self, session_id):
         return self.sessions.get(session_id)
@@ -397,13 +431,14 @@ class Mailbox:
         """邻居写穿 SQLite (B8: admin 加/改的进 DB 持久)."""
         if self._db is None:
             return
-        if old_address is not None and old_address != n.address:
-            self._db.execute("DELETE FROM neighbors WHERE address=?",
-                             (old_address,))
-        self._db.execute(
-            "INSERT OR REPLACE INTO neighbors (address, shared_key, name)"
-            " VALUES (?, ?, ?)", (n.address, n.shared_key, n.name))
-        self._db.commit()
+        with self._db_lock:
+            if old_address is not None and old_address != n.address:
+                self._db.execute("DELETE FROM neighbors WHERE address=?",
+                                 (old_address,))
+            self._db.execute(
+                "INSERT OR REPLACE INTO neighbors (address, shared_key, name)"
+                " VALUES (?, ?, ?)", (n.address, n.shared_key, n.name))
+            self._db.commit()
 
     def remove_neighbor(self, address):
         """删邻居 (D011 B1): 内存与 DB 同删; 未知地址 → None (admin 层 404).
@@ -412,9 +447,10 @@ class Mailbox:
             if n.address == address:
                 del self.neighbors[i]
                 if self._db is not None:
-                    self._db.execute("DELETE FROM neighbors WHERE address=?",
-                                     (address,))
-                    self._db.commit()
+                    with self._db_lock:
+                        self._db.execute(
+                            "DELETE FROM neighbors WHERE address=?", (address,))
+                        self._db.commit()
                 return n
         return None
 
@@ -478,10 +514,11 @@ class Mailbox:
         canonical = _canonical(instruction)
         self.whitelist.add(canonical)
         if self._db is not None:
-            self._db.execute(
-                "INSERT OR IGNORE INTO whitelist (instruction) VALUES (?)",
-                (canonical,))
-            self._db.commit()
+            with self._db_lock:
+                self._db.execute(
+                    "INSERT OR IGNORE INTO whitelist (instruction) VALUES (?)",
+                    (canonical,))
+                self._db.commit()
 
     def _check_ts(self, sig_ts):
         check_sig_ts(self._now(), float(sig_ts))
@@ -498,11 +535,13 @@ class Mailbox:
             raise MailboxError("签名无效")
         return s
 
-    def post(self, session_id, sig_ts, sig, letter_d):
+    def post(self, session_id, sig_ts, sig, letter_d, require_online=False):
         """投信. 签名式 HMAC(signing_key, session\\nsig_ts\\nletter.id\\nletter.body).
         from 验签 (D013/AC-022): letter.from 必须等于签名 session, 不符拒收
         (仅 post 验; 邻居 forward 不验, 回执信由服务端内部注入不走 post).
-        重复 id 幂等 (返回 None); 收信件排队后由 server 层唤醒等待中的 poll."""
+        重复 id 幂等 (返回 None); 收信件排队后由 server 层唤醒等待中的 poll.
+        require_online=True: 收件人在本机但不在线 → RecipientOffline (不被消
+        耗 token 的客户端用来兜底并发窗口; 远端目标不受此门禁影响)."""
         self._verify(session_id, sig_ts, sig,
                      str(letter_d["id"]), str(letter_d["body"]))
         letter = Letter.from_dict(letter_d)
@@ -512,7 +551,7 @@ class Mailbox:
                 f"{session_id!r} (D013)")
         if not self._validate_incoming(letter, session_id):
             return None  # 幂等: 重复 id 直接 ok
-        return self._route(letter, source=None)
+        return self._route(letter, source=None, require_online=require_online)
 
     def _validate_incoming(self, letter, session_id=None):
         """入信公共校验 (post/forward 同一套): seen_ids 幂等 (已见 → False)
@@ -534,22 +573,33 @@ class Mailbox:
                 letter.note = "指令集外 → 降级 request, 走收件侧权限流程 (D006)"
         return True
 
-    def _route(self, letter, source):
+    def _route(self, letter, source, require_online=False):
         """路由 (D007): 收件人在本机 → 排队, 返回 (letter, []);
         不在 → 返回 (letter, 洪泛目标邻居列表) (排除来源邻居).
-        无处可去 (无邻居可转) → UnknownRecipient.
+        无处可去 (无邻居可转) → UnknownRecipient; 收件人已吊销 → 同
+        UnknownRecipient (不再白存到 TTL); require_online 且本机收件人
+        不在线 → RecipientOffline (不记 seen_ids, 对方上线后可重投).
         返回值非 None 时, HTTP 投递由 server 层在锁外执行."""
         if not letter.to_session:
-            # 空 to = 最近活跃 session (TECHNICAL 数据模型)
+            # 空 to = 最近在线的活跃 session, 全都不在线才退回最近活跃
             target = self._most_recent_poller()
             if target is None:
                 raise UnknownRecipient("空收件人且无活跃 session (无人 poll 过)")
             letter.to_session = target
-        if letter.to_session in self.sessions:
+        target = self.sessions.get(letter.to_session)
+        if target is not None and not target.revoked:
+            if require_online \
+                    and self.presence_state(letter.to_session) != "online":
+                raise RecipientOffline(
+                    f"收件 session 在本机但不在线: {letter.to_session}")
             self.seen_ids[letter.id] = self._now()
             self.queue.setdefault(letter.to_session, []).append(letter)
             self._spawn_receipt("delivered", letter)  # 送达回执 (D012): 进队列即发
             return letter, []
+        if target is not None:
+            # 已吊销的 session 不会再来取信: 当作无处可送, 不在本机无限排队
+            raise UnknownRecipient(
+                f"收件 session 已吊销: {letter.to_session}")
         targets = [n for n in self.neighbors if n is not source]
         if not targets:
             # 无处可去不记 seen: 若邻居端只是暂未注册收件人, 重试仍能送达
@@ -610,10 +660,15 @@ class Mailbox:
         注入失败回执 (确定性 id, AC-019), 回执信自身到期静默丢弃 (不递归).
         调用方 (serve 重试线程) 须持 server cond, 回执远端部分经 drain_spawned
         锁外补投. 两段式: 先取尽再丢弃, 避免迭代中 _route 插入新队列;
-        每封信有效期只算一次 (评审修复: 单趟分流, 不二算)."""
+        每封信有效期只算一次 (评审修复: 单趟分流, 不二算).
+        顺带做三件清理 (长期运行不被无界增长拖垮): 过期租约全量收回重投
+        (不只在那一个 session 再 poll 时才收), seen_ids/processed 超 TTL
+        剪掉, 空队列删掉."""
         now = self._now()
+        self._requeue_expired()  # 过期租约全局收回 (否则只能等本 session 再 poll)
         expired = []
-        for q in self.queue.values():
+        for sid in list(self.queue):
+            q = self.queue[sid]
             keep, drop = [], []
             for letter in q:
                 if self._effective_expiry(letter) > now:
@@ -622,7 +677,11 @@ class Mailbox:
                     drop.append(letter)
             if drop:
                 expired.extend(drop)
+            if keep:
                 q[:] = keep
+            else:
+                # 空队列不留 (长跑内存/统计干净; 再投时 setdefault 重建)
+                del self.queue[sid]
         with self._pending_lock:
             kept, dropped = [], []
             for entry in self.pending_forwards:
@@ -633,6 +692,14 @@ class Mailbox:
             self.pending_forwards = kept
         for entry in dropped:
             expired.append(entry.letter)
+        # 幂等/防重放记录的保留期 = 信件 TTL (过期信已丢, 同 id 再投算新信)
+        for lid, ts in list(self.seen_ids.items()):
+            if now - ts > self.ttl_seconds:
+                del self.seen_ids[lid]
+        mono = self._mono()
+        for lid, at in list(self.processed.items()):
+            if mono - at > self.ttl_seconds:
+                del self.processed[lid]
         for letter in expired:
             log_event("letter-expired", letter=letter.id,
                       to=letter.to_session)  # AC-037 滞留/队列丢弃行
@@ -668,12 +735,14 @@ class Mailbox:
             log_event("pending-dropped", letter=oldest.letter.id,
                       to=oldest.letter.to_session, reason="cap")  # AC-037
 
-    def retry_pending(self):
+    def retry_pending(self, budget=RETRY_BUDGET_SECONDS):
         """重试暂存信: 发出则移除, 仍不可达则留待下轮 (邻居端 seen-id 兜底
-        重复). 邻居转发状态机: 待转发 --可达--> 已发出, --重试定时器--> 待转发."""
+        重复). 邻居转发状态机: 待转发 --可达--> 已发出, --重试定时器--> 待转发.
+        budget 限本轮总耗时: 滞留在列的信可能几百封, 全走完 5s 超时就是
+        十几分钟, 会把同线程的 TTL 清扫/在线状态刷新拖到停摆."""
         with self._pending_lock:
             pending, self.pending_forwards = self.pending_forwards, []
-        self.retry_entries(pending)
+        self.retry_entries(pending, budget=budget)
 
     def _restage(self, entry):
         """重试仍失败回列; 同键 (信件 id + 邻居地址) 已在列则不重复入列
@@ -686,12 +755,22 @@ class Mailbox:
             self.pending_forwards.append(entry)
             self._enforce_pending_cap()
 
-    def retry_entries(self, entries):
+    def retry_entries(self, entries, budget=None):
         """对一组滞留条目立即补投 (B4): 发出即移除, 失败则账目更新 (次数 +1 /
-        最后错误) 后回列; 邻居端 seen-id 兜底重复投递."""
+        最后错误) 后回列; 邻居端 seen-id 兜底重复投递. budget 限本轮总耗时,
+        没来得及试的条目原样回列 (下轮再试)."""
         sent = 0
+        deadline = None if budget is None else time.monotonic() + budget
         for entry in entries:
-            ok, error = forward_attempt(entry.neighbor, entry.letter)
+            timeout = FORWARD_TIMEOUT
+            if deadline is not None:
+                remaining = deadline - time.monotonic()
+                if remaining <= 0:
+                    self._restage(entry)
+                    continue
+                timeout = min(timeout, remaining)
+            ok, error = forward_attempt(entry.neighbor, entry.letter,
+                                        timeout=timeout)
             entry.neighbor.reachable = ok
             if ok:
                 sent += 1
@@ -742,10 +821,63 @@ class Mailbox:
         return container_name_of(poster_session_id) == ins["container"]
 
     def _most_recent_poller(self):
-        """最近活跃 = last_poll 最新的已注册未吊销 session; 无 → None."""
+        """空 to 的缺省目标: 优先最近活跃的在线 session (在线 = 真有人在听);
+        一个在线的都没有才退回最近活跃 (保留重启后 last_poll 持久化语义)."""
         polled = [s for s in self.sessions.values()
                   if s.last_poll > 0 and not s.revoked]
-        return max(polled, key=lambda s: s.last_poll).id if polled else None
+        if not polled:
+            return None
+        online = [s for s in polled if self.presence_state(s.id) == "online"]
+        return max(online or polled, key=lambda s: s.last_poll).id
+
+    # ---- 在线状态 (心跳 / presence) -------------------------------------
+
+    def touch_presence(self, session_id):
+        """记一次心跳/取信活跃 (调用方须持 server cond). 只报在线跳变日志."""
+        self.presence[session_id] = self._mono()
+        if session_id not in self._online_logged:
+            self._online_logged.add(session_id)
+            log_event("session-online", session=session_id)
+
+    def presence_state(self, session_id):
+        """本机判断: online / offline / unknown (unknown = 本机没注册这个).
+        长轮询在等 → online (客户端此刻必然连着); 否则看心跳是否在 TTL 内.
+        presence_ttl <= 0 时不按时间判离线 (有过心跳即在线)."""
+        s = self.sessions.get(session_id)
+        if s is None:
+            return "unknown"
+        if s.revoked:
+            return "offline"  # 已吊销: 不会再取信, 即使刚有心跳也不算在线
+        if self.concurrent_polls.get(session_id):
+            return "online"
+        last = self.presence.get(session_id)
+        if last is None:
+            return "offline"
+        if self.presence_ttl <= 0 or self._mono() - last <= self.presence_ttl:
+            return "online"
+        return "offline"
+
+    def presence_entry(self, session_id):
+        """单个 session 的在线快照 (age = 距上次心跳秒数, 从未有过 → None)."""
+        last = self.presence.get(session_id)
+        s = self.sessions.get(session_id)
+        return {"id": session_id, "state": self.presence_state(session_id),
+                "age": None if last is None
+                else round(self._mono() - last, 3),
+                "revoked": bool(s.revoked) if s is not None else False}
+
+    def presence_snapshot(self, session_ids=None):
+        ids = list(session_ids) if session_ids is not None \
+            else sorted(self.sessions)
+        return [self.presence_entry(sid) for sid in ids]
+
+    def sweep_presence(self):
+        """在线→离线跳变日志 (调用方持 cond, 后台线程周期调用): 超 TTL 且
+        无在等 poll 的 session 记一次 session-offline; 只做观测, 不改路由."""
+        for sid in list(self._online_logged):
+            if self.presence_state(sid) != "online":
+                self._online_logged.discard(sid)
+                log_event("session-offline", session=sid)
 
     def verify_session_sig(self, session_id, sig_ts, sig):
         """无副作用的 session 签名校验 (queued 查询用):
@@ -754,10 +886,16 @@ class Mailbox:
 
     def verify_poller(self, session_id, sig_ts, sig):
         """取信校验. 签名式 HMAC(signing_key, session\\nsig_ts).
-        last_poll 持久化: 重启后空 to 的 "最近活跃" 路由依据不丢."""
+        last_poll 持久化: 重启后空 to 的 "最近活跃" 路由依据不丢.
+        同时刷在线状态 (心跳 = 每次取信, 含服务端提前返回的心跳应答).
+        last_poll 只是路由兜底, 不必每条心跳都 commit (写放大): 距上次
+        落盘 >= 60s 才写一次."""
         s = self._verify(session_id, sig_ts, sig)
         s.last_poll = self._now()
-        self._save_session(s)
+        self.touch_presence(session_id)
+        if s.last_poll - self._last_poll_saved.get(session_id, 0.0) >= 60.0:
+            self._last_poll_saved[session_id] = s.last_poll
+            self._save_session(s)
         return s
 
     def enter_poll(self, session_id, limit):
@@ -797,6 +935,20 @@ class Mailbox:
                 del self.leases[lid]
                 self.queue.setdefault(letter.to_session, []).append(letter)
 
+    def release_lease(self, letter_id, lease_token):
+        """应答没写出去 (客户端已断) → 立即收回租约并放回队首, 不等 30min
+        过期 (否则信卡在租约里, 对端看不到待取数). token 不符不动, 返回
+        是否收回."""
+        entry = self.leases.get(letter_id)
+        if entry is None:
+            return False
+        letter, token, _leased_at = entry
+        if not hmac.compare_digest(token, str(lease_token)):
+            return False
+        del self.leases[letter_id]
+        self.queue.setdefault(letter.to_session, []).insert(0, letter)
+        return True
+
     def _expire_lease(self, letter):
         del self.leases[letter.id]
         self.queue.setdefault(letter.to_session, []).append(letter)
@@ -817,7 +969,7 @@ class Mailbox:
             self._expire_lease(letter)  # 过期租约收回重投, 旧 token 作废
             raise AckConflict("租约已过期, 信件已收回重投")
         del self.leases[letter.id]
-        self.processed.add(letter.id)
+        self.processed[letter.id] = self._mono()
         self._spawn_receipt("read", letter)  # 已读回执 (D012): ack 成功即发
         return letter
 
@@ -989,6 +1141,7 @@ class FleetBeacon:
             "MAILBOX_BEACON_INTERVAL", str(BEACON_INTERVAL)))
         self.hello_retry = HELLO_RETRY_SECONDS
         self.seen = {}   # 对端指纹 -> 最近握手尝试时刻 (成功/被拒共用节流)
+        self._handshakes_left = 0  # 本轮信标周期剩余握手名额 (防洪水拖死信标线程)
         self.stop = threading.Event()
         self._last_addr = None
 
@@ -1018,6 +1171,7 @@ class FleetBeacon:
     def tick(self):
         self.check_move()
         self.announce()
+        self._handshakes_left = 2  # 每个周期最多两次握手 (每次最多 5s)
         self.listen()
 
     def announce(self):
@@ -1055,7 +1209,14 @@ class FleetBeacon:
         last = self.seen.get(fp)
         if last is not None and now - last < self.hello_retry:
             return
+        if self._handshakes_left <= 0:
+            # 名额用完: 下个信标周期再试 (信标会被重复广播, 不漏)
+            return
+        self._handshakes_left -= 1
         self.seen[fp] = now
+        if len(self.seen) > 500:  # 假信标洪水: 剪旧指纹, 防无界增长
+            cutoff = now - 3600
+            self.seen = {k: v for k, v in self.seen.items() if v >= cutoff}
         ts = now
         body = {"fingerprint": self.fingerprint(), "hostname": self.hostname,
                 "address": self.advertised(), "ts": ts,
@@ -1151,6 +1312,8 @@ class MailboxHttpServer(ThreadingHTTPServer):
         self.cond = cond  # 长轮询 hold: post notify_all 唤醒
         self.hold_seconds = HOLD_SECONDS
         self.max_concurrent_polls = MAX_CONCURRENT_POLLS
+        self.heartbeat_seconds = HEARTBEAT_SECONDS  # 服务端→客户端心跳周期 (0=关)
+        self.presence_query_budget = PRESENCE_QUERY_BUDGET  # 邻居在线查询总预算
         self.flood_budget_seconds = FLOOD_BUDGET_SECONDS  # 洪泛判定预算 (D011 A4)
         self.beacon = None  # 自组网信标 (ISSUE-10): serve 挂载, hello 端点用
 
@@ -1169,6 +1332,52 @@ class MailboxHttpServer(ThreadingHTTPServer):
             flood_targets(self.mailbox, letter, targets,
                           self.flood_budget_seconds)
 
+    def neighbor_presence(self, targets, budget=PRESENCE_QUERY_BUDGET):
+        """向各邻居并行问在线状态 (不持 cond, 调用方须在锁外调).
+        只问一层 (邻居不会再转发查询), 防查询环. 聚合: 任一在线即在线;
+        都不在线但有人认识就算离线; 全都不知道 → unknown. 不可达邻居
+        不贡献答案 (拿不到就当作不知道, 宁放行不丢信)."""
+        neighbors = list(self.mailbox.neighbors)
+        if not neighbors or not targets:
+            return {t: "unknown" for t in targets}
+        results = []
+        lock = threading.Lock()
+
+        def ask(neighbor):
+            try:
+                resp = http_post(
+                    f"http://{neighbor.address}/mailbox/presence",
+                    {"neighbor_key": neighbor.shared_key,
+                     "targets": list(targets)},
+                    timeout=budget)
+            except (urllib.error.HTTPError, urllib.error.URLError,
+                    OSError, json.JSONDecodeError, ValueError):
+                return
+            presence = resp.get("presence") if isinstance(resp, dict) else None
+            if isinstance(presence, dict):
+                with lock:
+                    results.append(presence)
+
+        threads = [threading.Thread(target=ask, args=(n,), daemon=True)
+                   for n in neighbors]
+        deadline = time.monotonic() + budget
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join(timeout=max(0.0, deadline - time.monotonic()))
+        out = {}
+        for target in targets:
+            # unknown 不贡献答案 (邻居不认识就是不知道, 不能当成离线)
+            states = [r.get(target) for r in results
+                      if r.get(target) in ("online", "offline")]
+            if "online" in states:
+                out[target] = "online"
+            elif states:
+                out[target] = "offline"
+            else:
+                out[target] = "unknown"
+        return out
+
 
 class AdminHttpServer(ThreadingHTTPServer):
     daemon_threads = True
@@ -1185,13 +1394,22 @@ class AdminHttpServer(ThreadingHTTPServer):
         return self.server_address[1]
 
 
+class _OversizeBody(Exception):
+    """请求体超过 MAX_REQUEST_BYTES 或 Content-Length 畸形 (不读就拒,
+    防畸形长度让 handler 一次性分配巨量内存)."""
+
+
 class _JsonHandler(BaseHTTPRequestHandler):
     server_version = f"{SERVICE_NAME}/{VERSION}"
+    # 单请求读写超时: 防半开连接/慢速客户端把 handler 线程挂成僵尸
+    timeout = 30
 
     def log_message(self, *args):
         pass
 
     def _json(self, code, obj):
+        """写 JSON 应答; 返回是否真的写出 (客户端断开 → False, 供取信路径
+        立即收回租约而不等 30min 过期)."""
         body = json.dumps(obj, ensure_ascii=False).encode()
         try:
             self.send_response(code)
@@ -1199,14 +1417,22 @@ class _JsonHandler(BaseHTTPRequestHandler):
             self.send_header("Content-Length", str(len(body)))
             self.end_headers()
             self.wfile.write(body)
-        except (BrokenPipeError, ConnectionResetError):
+            return True
+        except (BrokenPipeError, ConnectionResetError, TimeoutError):
             # ISSUE-14: 客户端在应答写出前断开 (如取信 --timeout 短于 hold,
             # AC-016 正常用法), 无处投递, 静默放弃; 其他异常照常上抛,
             # 不吞真服务端错误
-            pass
+            return False
 
     def _body(self):
-        raw = self.rfile.read(int(self.headers.get("Content-Length", 0)))
+        try:
+            length = int(self.headers.get("Content-Length") or 0)
+        except ValueError:
+            raise _OversizeBody("Content-Length 畸形")
+        if length < 0 or length > MAX_REQUEST_BYTES:
+            raise _OversizeBody(
+                f"请求体超上限 ({MAX_REQUEST_BYTES} 字节)")
+        raw = self.rfile.read(length)
         return json.loads(raw or b"{}")
 
 
@@ -1218,7 +1444,7 @@ class _Handler(_JsonHandler):
         payload.setdefault("nonce", uuid.uuid4().hex)
         sig = sign(key, party, payload["nonce"],
                    json.dumps(payload, sort_keys=True))
-        self._json(code, {"payload": payload, "sig": sig})
+        return self._json(code, {"payload": payload, "sig": sig})
 
     def _bad(self, party, error, key=""):
         return self._signed(400, party, {"ok": False, "error": error}, key)
@@ -1239,6 +1465,8 @@ class _Handler(_JsonHandler):
             self._handle_queued(parsed)
         elif parsed.path == "/mailbox/sessions":
             self._handle_sessions(parsed)
+        elif parsed.path == "/mailbox/presence":
+            self._handle_presence(parsed)
         else:
             self._json(404, {"error": "not found"})
 
@@ -1285,13 +1513,53 @@ class _Handler(_JsonHandler):
             # 已吊销不列; 密钥任何形态不出此端点 (创建时一次性下发).
             sessions = [{"id": s.id, "last_poll": s.last_poll}
                         for s in m.sessions.values() if not s.revoked]
-        return self._signed(200, party, {"ok": True, "sessions": sessions}, rkey)
+            presence = {s.id: m.presence_state(s.id) for s in m.sessions.values()
+                        if not s.revoked}
+        return self._signed(200, party, {"ok": True, "sessions": sessions,
+                                         "presence": presence}, rkey)
+
+    def _handle_presence(self, parsed):
+        """在线状态查询 (心跳 presence). 签名同 queued 式, 不记 last_poll.
+        参数 target (逗号分隔) 查指定 session; 省略 = 本机全部 session 快照.
+        本机不认识的 target 向各邻居并行问一层 (邻居不会再转发).
+        响应含 presence 表与心跳/TTL 参数, 供客户端决定是否投信."""
+        params = {k: v[0] for k, v in parse_qs(parsed.query).items()}
+        party, rkey = self._party(params, "mailbox/presence")
+        m = self.server.mailbox
+        with self.server.cond:
+            try:
+                m.verify_session_sig(str(params.get("session", "")),
+                                     params["sig_ts"],
+                                     str(params.get("sig", "")))
+            except KeyError as e:
+                return self._bad(party, f"缺字段: {e}", rkey)
+            except (ValueError, TypeError) as e:
+                return self._bad(party, f"字段畸形: {e}", rkey)
+            except MailboxError as e:
+                return self._signed(403, party, {"ok": False,
+                                                 "error": str(e)}, rkey)
+            raw = str(params.get("target", "")).strip()
+            targets = [t.strip() for t in raw.split(",") if t.strip()]
+            entries = ([m.presence_entry(t) for t in targets[:50]]
+                       if targets else m.presence_snapshot())
+        unknown = [e["id"] for e in entries if e["state"] == "unknown"]
+        if unknown:
+            remote = self.server.neighbor_presence(unknown)
+            for entry in entries:
+                if entry["id"] in remote:
+                    entry["state"] = remote[entry["id"]]
+        return self._signed(200, party, {
+            "ok": True, "presence": entries,
+            "heartbeat_seconds": m.heartbeat_seconds,
+            "presence_ttl": m.presence_ttl}, rkey)
 
     def do_POST(self):
         path = urlparse(self.path).path
         endpoint = path.lstrip("/")
         try:
             body = self._body()
+        except _OversizeBody as e:
+            return self._signed(413, endpoint, {"ok": False, "error": str(e)})
         except json.JSONDecodeError:
             return self._bad(endpoint, "bad json")
         if not isinstance(body, dict):
@@ -1305,11 +1573,29 @@ class _Handler(_JsonHandler):
             return self._handle_ack(body, endpoint)
         if path == "/mailbox/forward":
             return self._handle_forward(body)
+        if path == "/mailbox/presence":
+            return self._handle_neighbor_presence(body)
         if path == "/mailbox/hello":
             return self._handle_hello(body)
         if path == "/mailbox/address-update":
             return self._handle_address_update(body)
         self._json(404, {"error": "not found"})
+
+    def _handle_neighbor_presence(self, body):
+        """POST /mailbox/presence (邻居间在线查询, neighbor_key 认证):
+        只回本机认识的 target, 不认识回 unknown, 不再向其他邻居转发
+        (防查询环). 上限 50 个 target; 响应不签名 (与 forward 同口径)."""
+        targets = body.get("targets")
+        if not isinstance(targets, list) \
+                or not all(isinstance(t, str) for t in targets):
+            return self._json(400, {"ok": False,
+                                    "error": "缺字段: targets (字符串数组)"})
+        m = self.server.mailbox
+        with self.server.cond:
+            if m._neighbor_by_key(str(body.get("neighbor_key", ""))) is None:
+                return self._json(403, {"ok": False, "error": "neighbor_key 无效"})
+            presence = {t: m.presence_state(t) for t in targets[:50]}
+        return self._json(200, {"ok": True, "presence": presence})
 
     def _handle_hello(self, body):
         """POST /mailbox/hello (自组网握手, D016/AC-031/032): 舰队密钥 HMAC
@@ -1394,14 +1680,21 @@ class _Handler(_JsonHandler):
                 f"正文超 1MB 上限 ({MAX_BODY_BYTES} 字节), 拒收 "
                 "(信箱只传控制消息, 传文件走 git)"}, rkey)
         m = self.server.mailbox
+        # require_online: 客户端已先查过在线状态, 此处兜底并发窗口 (目标刚
+        # 掉线) — 只对本机目标生效, 远端目标交给邻居路由
+        require_online = body.get("require_online") is True
         with self.server.cond:
             try:
                 routed = m.post(str(body.get("session", "")), body["sig_ts"],
-                                str(body.get("sig", "")), letter_d)
+                                str(body.get("sig", "")), letter_d,
+                                require_online=require_online)
             except KeyError as e:
                 return self._bad(party, f"缺字段: {e}", rkey)
             except (ValueError, TypeError) as e:
                 return self._bad(party, f"字段畸形: {e}", rkey)
+            except RecipientOffline as e:
+                return self._signed(409, party, {"ok": False, "error": str(e),
+                                                 "route": "target_offline"}, rkey)
             except UnknownRecipient as e:
                 return self._signed(404, party, {"ok": False, "error": str(e),
                                                  "route": "unknown_recipient"}, rkey)
@@ -1445,19 +1738,35 @@ class _Handler(_JsonHandler):
                               f" ({self.server.max_concurrent_polls})"}, rkey)
             try:
                 deadline = time.monotonic() + self.server.hold_seconds
+                hb = self.server.heartbeat_seconds
+                next_beat = (time.monotonic() + hb) if hb > 0 else deadline
                 while True:
                     got = m.try_deliver(session)
                     if got is not None:
                         letter, token = got
-                        return self._signed(200, session.id,
-                                            {"letter": letter.to_dict(),
-                                             "lease_token": token}, rkey)
-                    remaining = deadline - time.monotonic()
-                    if remaining <= 0:
+                        if self._signed(200, session.id,
+                                        {"letter": letter.to_dict(),
+                                         "lease_token": token}, rkey):
+                            return
+                        # 应答没写出去 (客户端在 hold 中走了): 立即收回租约
+                        # 放回队首, 不等 30min 过期 (否则信卡住看不到待取数)
+                        m.release_lease(letter.id, token)
+                        return
+                    now = time.monotonic()
+                    if now >= deadline:
                         return self._signed(200, session.id,
                                             {"letter": None, "lease_token": ""},
                                             rkey)
-                    self.server.cond.wait(timeout=remaining)
+                    if now >= next_beat:
+                        # 服务端→客户端心跳: 提前结束本轮 hold, 客户端收到
+                        # 空载荷会立刻重连; 客户端死掉则 TTL 后判离线
+                        m.touch_presence(session.id)
+                        return self._signed(200, session.id, {
+                            "letter": None, "lease_token": "",
+                            "heartbeat": True,
+                            "presence_ttl": m.presence_ttl}, rkey)
+                    self.server.cond.wait(
+                        timeout=min(deadline, next_beat) - now)
             finally:
                 m.exit_poll(session.id)
 
@@ -1500,6 +1809,8 @@ class _AdminHandler(_JsonHandler):
         path = urlparse(self.path).path
         try:
             body = self._body()
+        except _OversizeBody as e:
+            return self._json(413, {"error": str(e)})
         except json.JSONDecodeError:
             return self._json(400, {"error": "bad json"})
         if not isinstance(body, dict):
@@ -1590,7 +1901,8 @@ class _AdminHandler(_JsonHandler):
             with self.server.cond:
                 sessions = [{"id": s.id, "revoked": s.revoked,
                              "last_poll": s.last_poll,
-                             "created_at": s.created_at}
+                             "created_at": s.created_at,
+                             "state": m.presence_state(s.id)}
                             for s in m.sessions.values()]
             # 密钥不出管理面 (BR-006 同口径): 创建时一次性下发, 列表永不回显
             return self._json(200, {"sessions": sessions})
@@ -1605,6 +1917,12 @@ class _AdminHandler(_JsonHandler):
             return self._json(200, {"neighbors": neighbors})
         if path == "/admin/pending":
             return self._json(200, {"pending": m.pending_snapshot()})
+        if path == "/admin/presence":
+            with self.server.cond:
+                presence = m.presence_snapshot()
+            return self._json(200, {"presence": presence,
+                                    "heartbeat_seconds": m.heartbeat_seconds,
+                                    "presence_ttl": m.presence_ttl})
         if path == "/admin/stats":
             with self.server.cond:
                 stats = {
@@ -1637,10 +1955,10 @@ class _AdminHandler(_JsonHandler):
                                 "dropped": len(entries)})
 
     def _body_or_none(self):
-        """读请求体: 坏 JSON/非 dict → None (调用方打 400)."""
+        """读请求体: 坏 JSON/超限/非 dict → None (调用方打 400)."""
         try:
             body = self._body()
-        except json.JSONDecodeError:
+        except (json.JSONDecodeError, _OversizeBody):
             return None
         return body if isinstance(body, dict) else None
 
@@ -1756,7 +2074,24 @@ def auto_credential(mailbox, server_url):
     cfg = config_path()
     if cfg.exists():
         if _config_usable(cfg):
-            return  # 已有可用配置, 不动
+            # serve 重启可能换端口 (旧端口被占): 本机自注册配置跟到新地址,
+            # 否则 CLI 一直连旧端口 (人读配置只改 server, 密钥不动)
+            try:
+                data = json.loads(cfg.read_text())
+            except (OSError, json.JSONDecodeError):
+                return
+            host_sid = f"{socket.gethostname()}-host"
+            if data.get("session") == host_sid \
+                    and data.get("server") != server_url:
+                # 密钥也一并刷新: DB 丢过/换过时只改地址会让本机凭证失效
+                s = mailbox.get_session(host_sid) or mailbox.add_session(host_sid)
+                data.update({"server": server_url, "session": s.id,
+                             "signing_key": s.signing_key,
+                             "response_key": s.response_key})
+                write_config_file(cfg, data)
+                print(f"[mailbox] 本机配置 server 已跟到新端口: {server_url}",
+                      file=sys.stderr)
+            return  # 已有可用配置, 不动其它字段
         stale = _archive_stale_config(cfg)
         print(f"[mailbox] 本机配置 {cfg} 不是有效新格式 (缺 server/session/signing_key),"
               f" 已归档到 {stale}; 重新自动发放本机凭证.", file=sys.stderr)
@@ -1896,6 +2231,61 @@ def save_cli_state(state, override=None):
     write_json_0600(p, state)
 
 
+def _http_error_detail(exc):
+    """从 HTTPError 应答里取人话 error (读不出就空串); 不把 HTTPError 往上抛."""
+    try:
+        payload = json.loads(exc.read() or b"{}").get("payload") or {}
+    except (json.JSONDecodeError, ValueError, AttributeError, OSError):
+        return ""
+    return str(payload.get("error", "")) if isinstance(payload, dict) else ""
+
+
+def query_presence(url, sid, skey, target="", timeout=10.0):
+    """查在线状态 (GET /mailbox/presence, queued 同式签名). 失败 → None
+    (调用方按"未知"处理: 不能因为查询失败就拒发). target 缺省 = 全部.
+    注意: 本机不认识的目标会由服务端向邻居问一层, 可能多花 1-2 秒."""
+    sig_ts = str(time.time())
+    params = {"session": sid, "sig_ts": sig_ts,
+              "sig": sign(skey, sid, sig_ts)}
+    if target:
+        params["target"] = target
+    try:
+        with urllib.request.urlopen(
+                url.rstrip("/") + "/mailbox/presence?" + urlencode(params),
+                timeout=timeout) as response:
+            payload = json.loads(response.read() or b"{}").get("payload") or {}
+    except (urllib.error.HTTPError, urllib.error.URLError, OSError,
+            http.client.HTTPException, json.JSONDecodeError, ValueError):
+        return None
+    return payload if isinstance(payload, dict) and payload.get("ok") else None
+
+
+PRESENCE_WORDS = {"online": "在线", "offline": "离线",
+                  "unknown": "未知 (本机与邻居都不认识这个 session)"}
+
+
+def cmd_presence(target, as_json=False):
+    """presence <session-id>: 投信前先查目标在线状态 (对方不在线就不花 token
+    写正文). stdout 人读一行或 JSON; 查询失败 exit 3; 离线本身 exit 0
+    (那是一个正常答案, 不是命令失败)."""
+    url, sid, skey = _require_credentials()
+    payload = query_presence(url, sid, skey, target)
+    if payload is None:
+        _machine_exit("在线状态查询失败 (信箱不可达/拒绝/应答畸形)")
+    entry = next((e for e in payload.get("presence") or []
+                  if e.get("id") == target), None) or {}
+    state = entry.get("state", "unknown")
+    age = entry.get("age")
+    if as_json:
+        print(json.dumps({"id": target, "state": state, "age": age,
+                          "heartbeat_seconds": payload.get("heartbeat_seconds"),
+                          "presence_ttl": payload.get("presence_ttl")},
+                         ensure_ascii=False))
+        return
+    age_text = "" if age is None else f", 最后活跃 {age:g} 秒前"
+    print(f"目标 session={target} 状态={PRESENCE_WORDS.get(state, state)}{age_text}")
+
+
 def ack_letter(url, sid, skey, letter_id, lease_token, outcome="handled"):
     sig_ts = str(time.time())
     return http_post(url + "/mailbox/ack",
@@ -1967,10 +2357,11 @@ def cmd_fetch(timeout=None, count=None, cli_state=None):
             save_cli_state(state, cli_state)
         except urllib.error.HTTPError:
             save_cli_state(state, cli_state)  # 服务端明确拒绝 (已处理/租约失效): 清掉不再纠缠
-        except OSError:
-            pass  # 网络故障: 不落盘, 文件仍留 pending_ack, 下次调用重试回执
+        except (OSError, http.client.HTTPException, json.JSONDecodeError):
+            pass  # 网络故障/应答畸形: 不落盘, 文件仍留 pending_ack, 下次调用重试回执
     # AC-015: 首次连接失败立即明报再退避 (不静默); 明报行只打一次不刷屏
     reported_down = False
+    reported_errors = set()  # 服务端错误只报一次不刷屏
     fetched = 0  # --count 已取封数 (AC-016)
 
     def _timed_out():
@@ -1985,7 +2376,8 @@ def cmd_fetch(timeout=None, count=None, cli_state=None):
         回执失败则租约到期重投, 下轮循环/租约兜底, 不阻塞取信 (D003/D009/D014)."""
         try:
             ack_letter(url, sid, skey, letter_id, lease_token, outcome=outcome)
-        except (urllib.error.HTTPError, OSError):
+        except (urllib.error.HTTPError, OSError, http.client.HTTPException,
+                json.JSONDecodeError):
             pass
 
     # 故障自愈 (AC-003): 网络断/服务未就绪一律退避重试, 不 print 不 exit
@@ -2004,14 +2396,24 @@ def cmd_fetch(timeout=None, count=None, cli_state=None):
                              {"session": sid, "sig_ts": sig_ts,
                               "sig": sign(skey, sid, sig_ts)},
                              timeout=poll_timeout)
-        except urllib.error.HTTPError:
+        except urllib.error.HTTPError as e:
             # 服务有应答 (409 并发冲突/403, serve 可能尚未就绪): 服务活着,
-            # 不算不可达, 静默退避 (AC-003); 明报行只覆盖连接失败 (AC-015)
+            # 不算不可达; 409 并发上限是正常现象 (其他 listener 占着配额),
+            # 静默退避; 其他 4xx/5xx 持续存在就是配置/服务问题 (凭证被
+            # 吐销/接口不对), 静默重试永远好不了 — 每种错误明报一次
             failed = True
-        except (urllib.error.URLError, OSError):
-            # 连接拒绝/超时 = 服务未起/不可达: 首次立即明报再退避,
-            # 明报行只打一次不刷屏 (AC-015); 但 --timeout 收紧 poll 超时
-            # 导致的读超时且已到时不做不可达, 走下方统一到时出口
+            if e.code != 409:
+                detail = _http_error_detail(e)
+                note = f"{e.code} {detail}".strip()
+                if note not in reported_errors:
+                    reported_errors.add(note)
+                    print(f"信箱服务拒绝取信 ({note}), 退避重试中",
+                          file=sys.stderr, flush=True)
+        except (urllib.error.URLError, OSError, http.client.HTTPException,
+                json.JSONDecodeError):
+            # 连接拒绝/超时/应答畸形 = 服务未起/不可达/坏代理: 首次立即明报
+            # 再退避, 明报行只打一次不刷屏 (AC-015); 但 --timeout 收紧 poll
+            # 超时导致的读超时且已到时不做不可达, 走下方统一到时出口
             failed = True
             expired = deadline is not None and time.monotonic() >= deadline
             if not reported_down and not expired:
@@ -2022,13 +2424,19 @@ def cmd_fetch(timeout=None, count=None, cli_state=None):
             if _timed_out():
                 return
             if deadline is not None:
-                time.sleep(min(backoff, deadline - time.monotonic()))
+                # 到时边界可能刚过 (sleep 负值会抛 ValueError), 夹到 0
+                time.sleep(max(0.0, min(backoff,
+                                        deadline - time.monotonic())))
             else:
                 time.sleep(backoff)
             backoff = min(backoff * 2, 5.0)
             continue
         backoff = 0.5
+        if not isinstance(resp, dict):
+            continue  # 应答不是对象 (坏代理/非信箱服务): 继续等
         payload = resp.get("payload") or {}
+        if not isinstance(payload, dict):
+            continue
         letter = payload.get("letter")
         if letter is None:
             if _timed_out():
@@ -2078,7 +2486,25 @@ def cmd_fetch(timeout=None, count=None, cli_state=None):
 # ======================================================================
 
 def cmd_send(args):
+    """投信. 默认先查目标在线状态 (省 token): 本机已注册但不在线 → 不投
+    (exit 3, 提示加 --force); 未知/远端目标照常尝试转发. --force 跳过预查
+    并让服务端不再做在线兜底."""
     url, sid, skey = _require_credentials()
+    force = bool(getattr(args, "force", False))
+    if not force and args.to:
+        info = query_presence(url, sid, skey, args.to, timeout=5.0)
+        entry = None
+        if info is not None:
+            entry = next((e for e in info.get("presence") or []
+                          if e.get("id") == args.to), None)
+        if entry and entry.get("state") == "offline":
+            age = entry.get("age")
+            hint = "" if age is None else f", 最后活跃 {age:g} 秒前"
+            print(f"致命: 目标 session={args.to} 不在线{hint}; 未发送. "
+                  "省 token 的预防: 对方取信守护没开 (或已退出). "
+                  "确认对方会取信/稍后再发时用 --force 强制投递.",
+                  file=sys.stderr)
+            sys.exit(3)
     letter = {"id": uuid.uuid4().hex, "ts": time.time(), "from": sid,
               "to": args.to, "type": args.type, "body": args.body}
     sig_ts = str(time.time())
@@ -2087,17 +2513,29 @@ def cmd_send(args):
                          {"session": sid, "sig_ts": sig_ts,
                           "sig": sign(skey, sid, sig_ts,
                                       letter["id"], letter["body"]),
-                          "letter": letter}, timeout=10)
+                          "letter": letter,
+                          # 服务端兜底: 目标刚掉线的并发窗口也不白存
+                          "require_online": not force and bool(args.to)},
+                         timeout=10)
     except urllib.error.HTTPError as e:
         detail = ""
+        route = ""
         try:
-            detail = json.loads(e.read() or b"{}").get("payload", {}).get("error", "")
-        except (json.JSONDecodeError, AttributeError):
+            payload = json.loads(e.read() or b"{}").get("payload") or {}
+            if isinstance(payload, dict):
+                detail = payload.get("error", "")
+                route = payload.get("route", "")
+        except (json.JSONDecodeError, AttributeError, ValueError, OSError):
             pass
-        print(f"致命: 服务端拒绝投信 ({e.code}) {detail}", file=sys.stderr)
+        if route == "target_offline":
+            print(f"致命: 目标 session={args.to} 不在线, 未投递: {detail} "
+                  "(对方会取信时加 --force)", file=sys.stderr)
+        else:
+            print(f"致命: 服务端拒绝投信 ({e.code}) {detail}", file=sys.stderr)
         sys.exit(3)
-    except (urllib.error.URLError, OSError) as e:
-        print(f"致命: 信箱不可达: {e}", file=sys.stderr)
+    except (urllib.error.URLError, OSError, http.client.HTTPException,
+            json.JSONDecodeError) as e:
+        print(f"致命: 信箱不可达/应答畸形: {e}", file=sys.stderr)
         sys.exit(3)
     payload = resp.get("payload") or {}
     if not payload.get("ok"):
@@ -2185,6 +2623,19 @@ def _print_queued(server, creds):
         print("待取: (查询失败)")
 
 
+def _print_presence(server, creds):
+    """在线 session (心跳 presence): 查询失败不阻塞 status 输出."""
+    payload = query_presence(server, creds["session"], creds["signing_key"],
+                             timeout=3.0)
+    if payload is None:
+        print("在线 session: (查询失败)")
+        return
+    online = [e.get("id") for e in payload.get("presence") or []
+              if e.get("state") == "online"]
+    detail = f" ({', '.join(online)})" if online else ""
+    print(f"在线 session: {len(online)} 个{detail}")
+
+
 def _print_neighbor_count():
     """邻居数 (D018): state.json 提供本地 admin 面凭证 (host 场景) 时经
     GET /admin/neighbors 取真实计数; 拿不到 admin 面 (容器 env 凭证场景)
@@ -2225,6 +2676,7 @@ def cmd_status():
         if alive:
             if creds:
                 _print_queued(server, creds)
+                _print_presence(server, creds)
             _print_neighbor_count()
         return
     # 无地址可探: 状态文件兑底 (AC-014 同机组件读文件先验活,
@@ -2479,7 +2931,13 @@ def cmd_serve(args):
                                          str(PENDING_CAP))),
                       ttl_seconds=float(
                           os.environ.get("MAILBOX_TTL_SECONDS",
-                                         str(TTL_SECONDS))))
+                                         str(TTL_SECONDS))),
+                      heartbeat_seconds=float(
+                          os.environ.get("MAILBOX_HEARTBEAT_SECONDS",
+                                         str(HEARTBEAT_SECONDS))),
+                      presence_ttl=float(
+                          os.environ.get("MAILBOX_PRESENCE_TTL_SECONDS",
+                                         str(PRESENCE_TTL_SECONDS))))
     # 邻居表 = SQLite 持久化 (admin 运行时加入/修改, B8) + JSON 文件 (D020 手工
     # 配置, 只作启动种子); 按地址与名字双重去重 — 同名时 DB (admin 改过的) 优先,
     # 文件旧地址不再种入 (B2 换址后不改文件的已知张力, 见 reference/mailbox.md)
@@ -2499,6 +2957,9 @@ def cmd_serve(args):
             "MAILBOX_FLOOD_BUDGET_SECONDS", str(FLOOD_BUDGET_SECONDS)))
         server.max_concurrent_polls = int(os.environ.get(
             "MAILBOX_MAX_CONCURRENT_POLLS", str(MAX_CONCURRENT_POLLS)))
+        server.heartbeat_seconds = mailbox.heartbeat_seconds
+        server.presence_query_budget = float(os.environ.get(
+            "MAILBOX_PRESENCE_QUERY_BUDGET", str(PRESENCE_QUERY_BUDGET)))
         admin = AdminHttpServer(mailbox, cond, admin_token, args.admin_port)
     except (RuntimeError, OSError) as e:
         print(e, file=sys.stderr)
@@ -2524,15 +2985,20 @@ def cmd_serve(args):
     admin_thread = threading.Thread(target=admin.serve_forever, daemon=True)
     admin_thread.start()
     retry_seconds = float(os.environ.get("MAILBOX_RETRY_SECONDS", "5"))
+    retry_budget = float(os.environ.get("MAILBOX_RETRY_BUDGET_SECONDS",
+                                        str(RETRY_BUDGET_SECONDS)))
     retry_stop = threading.Event()
 
     def _retry_loop():
         while not retry_stop.wait(retry_seconds):
-            mailbox.retry_pending()
-            # TTL 清扫 (D012): 与滞留重试同线程, 队列/滞留变更持 cond 唤醒 poll;
-            # 失败回执的远端部分锁外补投
+            # 重试限时: 潬留信很多时不能把本轮拖成十几分钟 (后续清扫/在线
+            # 状态刷新同线程)
+            mailbox.retry_pending(budget=retry_budget)
+            # TTL 清扫 (D012) + 在线状态跳变日志: 与滞留重试同线程, 队列/滞留
+            # 变更持 cond 唤醒 poll; 失败回执的远端部分锁外补投
             with cond:
                 mailbox.sweep_expired()
+                mailbox.sweep_presence()
                 cond.notify_all()
             server.flood_spawned()
 
@@ -2550,7 +3016,12 @@ def cmd_serve(args):
         admin.shutdown()
         admin.server_close()
         server.server_close()
-        spath.unlink(missing_ok=True)
+        # 只清自己的状态文件: 同机跑多个 serve 时后启的实例会覆盖 state.json,
+        # 先退的实例不能把别人 (还在跑的) 发现信息抹掉
+        cur = _load_state_file()
+        if cur is not None and cur.get("admin_token") == admin_token \
+                and cur.get("port") == server.port:
+            spath.unlink(missing_ok=True)
 
 
 class _Parser(argparse.ArgumentParser):
@@ -2616,6 +3087,13 @@ def main():
     p_send.add_argument("--to", required=True, help="收件 session.id")
     p_send.add_argument("--type", required=True, choices=MSG_TYPES)
     p_send.add_argument("--body", required=True, help="信件正文")
+    p_send.add_argument("--force", action="store_true",
+                        help="跳过目标在线预查, 强行投递 (对方稍后会取信时用)")
+    p_presence = sub.add_parser(
+        "presence", help="查目标 session 在线状态 (投信前先查, 省 token)")
+    p_presence.add_argument("target", help="目标 session.id")
+    p_presence.add_argument("--json", action="store_true",
+                            help="stdout 输出 JSON (机器消费)")
     p_config = sub.add_parser("config", help="配置管理")
     p_config_set = p_config.add_subparsers(dest="config_cmd").add_parser(
         "set", help="逐项修改配置")
@@ -2647,6 +3125,8 @@ def main():
         cmd_serve(args)
     elif args.cmd == "send":
         cmd_send(args)
+    elif args.cmd == "presence":
+        cmd_presence(args.target, args.json)
     elif args.cmd == "config" and args.config_cmd == "set":
         cmd_config_set(args)
     elif args.cmd == "status":

@@ -699,7 +699,8 @@ export default function (pi: ExtensionAPI) {
 	});
 
 	pi.registerCommand("mail-send", {
-		description: "投信: /mail-send <to> <type> <body> (缺参交互补全)",
+		description:
+			"投信: /mail-send <to> <type> <body> (缺参交互补全; 目标离线会拒发, 需强制时用 bash 跑 send --force)",
 		handler: async (args, ctx) => {
 			const parts = args.trim().split(/\s+/).filter(Boolean);
 			let to = parts[0] ?? "";
@@ -745,6 +746,7 @@ export default function (pi: ExtensionAPI) {
 		promptGuidelines: [
 			"交付前需自行接收来信时, 调用 mailbox_listen(action=\"start\") 开启本会话取信守护, 不要只提示用户手输命令, 也不要用 bash 长轮询阻塞.",
 			"他人要给你投信时, 收件地址用本工具返回的 mailbox session id.",
+			"给其他会话投信前先用 presence 子命令查目标在线状态 (mailbox.py presence <目标>); 明确离线时 send 会拒发, 确认对方稍后会取信才加 --force. /mail 可看本机在线 session.",
 		],
 		parameters: {
 			type: "object",

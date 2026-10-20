@@ -23,6 +23,8 @@ disable-model-invocation: true
 uv run python scripts/mailbox.py serve                                  # 前台启动 (无 systemd 无自启)
 uv run python scripts/mailbox.py send --to <session.id> --type notify --body "..."
 uv run python scripts/mailbox.py ensure-session <session-id>            # 本会话独立凭证 (stdout JSON id/config/server/created)
+uv run python scripts/mailbox.py presence <session-id>                  # 查目标在线状态 (投信前先查, 省 token)
+uv run python scripts/mailbox.py send --to <id> --type notify --body "..."  # 目标明确离线会拒发; --force 强制投递
 uv run python scripts/mailbox.py config set <field> [value]             # 密钥项经 stdin, 不回显
 uv run python scripts/mailbox.py status                                 # 配置状态, 密钥脱敏
 uv run python scripts/mailbox.py                                        # 缺省 = 取信 (阻塞长轮询)
@@ -37,5 +39,9 @@ pi 扩展按当前会话 session id 使用独立信箱: host 上调用 `ensure-s
 agent 在交付前自行开启本会话取信守护, 调工具 `mailbox_listen(action=start|stop|status)` (或命令 `/mail-listen`); 不要只提示用户手输, 也不要用 bash 长轮询阻塞.
 
 **接口版本提示**: `/admin/sessions/ensure` 是 serve 新增 admin 口; 运行中的旧 serve 进程不会因脚本更新而获得该接口 — 请重启 serve, 并重载 pi 扩展后再用.
+
+## 在线状态 (心跳 presence)
+
+服务端在长轮询 hold 中每 5 秒回一次心跳应答 (`payload.heartbeat=true`, 客户端立即重连), 据此维护每个 session 的 `online`/`offline`/`unknown` (缺省 15 秒无心跳算离线; 在等 poll 也算在线). 投信前先查 `presence <目标 session>`: 明确离线时 `send` 直接拒发 (exit 3, 不浪费 token 写正文); `--force` 可强制投递 (确认对方稍后会取信). 本机不认识的目标由服务端向邻居问一层 (1.5 秒预算), 都不认识 → `unknown`, 照常尝试投递. 已吊销 session 不再排队 (404).
 
 完整协议 (HMAC 签名/时间窗/租约重投/mesh 洪泛/邻居配置/admin 口/指令集) → reference/mailbox.md.
