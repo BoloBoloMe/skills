@@ -29,6 +29,6 @@ server 错误在 stderr 上返回 JSON, 退出码 1; CLI 语法错误退出码 2
 | 创建 agent 会话 | [launch.md](launch.md) |
 | 查看/驱动已有 agent, 或处理其交互失败 | [agent.md](agent.md) |
 | 操作原始终端进程或输入输出 | [pane.md](pane.md) |
-| 向 pi 提交任务 | [PI.md](PI.md) |
+| 向 pi 提交任务, 或 pi 会话之间通信 | [PI.md](PI.md) |
 | 发现/操作远端目标或管理 SSH machine 配置 | [machine.md](machine.md) |
 | Herdr 窗格内 Chromium 启动失败 | [browser.md](browser.md) |

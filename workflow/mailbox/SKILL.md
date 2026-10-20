@@ -38,7 +38,11 @@ serve 启动自动注册 `<hostname>-host` session 并写本机配置 — 本机
 
 pi 扩展按当前会话 session id 使用独立信箱: host 上调用 `ensure-session` 在本机 serve 注册独立 session (幂等, 不吊销既有), 取信子进程经 env `MAILBOX_CONFIG`/`MAILBOX_CLI_STATE` 指向 `sessions/<sid>/`; 容器内直接沿用 birth 注入的 `SWT_SESSION_*` 凭据, 不 ensure 也不清容器 env. 与他人会话相互 start/stop/重启不覆盖. 收信地址 = 返回的 `mailboxSessionId` (host = pi session id; 容器 = `SWT_SESSION_ID`).
 
-agent 在交付前自行开启本会话取信守护, 调工具 `mailbox_listen(action=start|stop|status)` (或命令 `/mail-listen`); 不要只提示用户手输, 也不要用 bash 长轮询阻塞.
+agent 需要接收反馈时就在委派/请求前开启本会话取信守护, 最迟在交付前开启, 调工具 `mailbox_listen(action=start|stop|status)` (或命令 `/mail-listen`); 不要只提示用户手输, 也不要用 bash 长轮询阻塞.
+
+**本会话投信身份**: host 上执行 `presence`/`send` 时, 先用 `ensure-session <mailbox_listen 返回的 piSessionId>` 取得 `config` 路径, 再给每条 CLI 命令加 `MAILBOX_CONFIG=<返回路径>` 环境变量. 开启取信守护只给其子进程设置环境, 不会让 bash 的裸 `send` 自动改用本 pi 会话身份. 容器仍沿用 birth 注入的 `SWT_SESSION_*`, 不 ensure 也不清环境.
+
+**地址独立性**: 上述每会话独立信箱适用于 host; 同一容器中的多个 pi 沿用 birth 凭据时, `mailboxSessionId` 会相同, 不能当作独立收件人, 也不能靠正文标识避免互相抢信. Herdr 中双方都是 pi 且地址独立时, 优先推送而非轮询对方会话; 地址交换, 反馈和失败退路见 `use-herdr` skill 的 `PI.md`.
 
 **接口版本提示**: `/admin/sessions/ensure` 是 serve 新增 admin 口; 运行中的旧 serve 进程不会因脚本更新而获得该接口 — 请重启 serve, 并重载 pi 扩展后再用.
 

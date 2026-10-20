@@ -18,14 +18,14 @@ agent 命令的目标只能是唯一存活 agent 名, 或当前容纳它的窗�
 
 ## 提交与等待
 
-先处理阻塞和启动确认, 再提交任务. 向 pi 提交前必须读 [PI.md](PI.md), 其他 agent 用:
+先处理阻塞和启动确认, 再提交任务. 向 pi 提交前必须读 [PI.md](PI.md); 双方都是 pi 时, 通信与进度反馈优先走其中的 mailbox 流程, 不定时读屏轮询. 其他 agent 用:
 
 ```bash
 herdr agent prompt reviewer "<任务文本>" --wait --timeout 120000
 ```
 
 `agent prompt` 尊重实时 bracketed-paste 模式, 把文本和编码 Enter 一次有序发出, 两者写完才报告提交成功. 审批或提问对话框中, 它在发送任何输入前返回 `agent_blocked`, 按下面的恢复规则处理.
-普通工作用 `--wait`, 等第一个稳定的 `idle`/`done`/`blocked`. 不带 `--until` 的 `agent wait` 使用相同默认值; 仅在需要特定状态时用 `--until`, 如 `agent wait reviewer --until blocked --timeout 120000`.
+走 Herdr 等待时, 普通工作用 `--wait`, 等第一个稳定的 `idle`/`done`/`blocked`. 不带 `--until` 的 `agent wait` 使用相同默认值; 仅在需要特定状态时用 `--until`, 如 `agent wait reviewer --until blocked --timeout 120000`.
 从非 working 态发出的 prompt 带 `--wait` 时, 必须观测到 `working` 或 `blocked` 活动. Herdr 最多等 5 秒, 无关的 idle/done 或会话变化不满足这个条件; 观测不到返回 `agent_prompt_stalled`, 你的超时先到则返回 `timeout`. 超时包括提交耗时, 不设超时时, 活动之后的稳定状态等待无限期. 等待跟踪生命周期而非单个 turn; agent 已在工作时, 当前 turn 完成即可满足它.
 
 ## 交互失败恢复
