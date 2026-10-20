@@ -74,7 +74,7 @@ noVNC 无密码, SSH 凭据是访问门槛. 栈降级/缺席时报告状态, 不
 
 ### 本机直通与窗口直飞
 
-按 `host-display` 报告: `ok` 可直接在宿主机桌面接窗口, `degraded` 已回退 noVNC, `absent` 是远程/无桌面宿主的常态. 无 headed 启动脚本就明确无远程直飞; 有脚本时按 [mailbox 的设备侧拉窗模板](../../mailbox/reference/pull-window.md) 代入本次端口/地址, 命令与设备前提分开列出.
+按 `host-display` 报告: `ok` 可直接在宿主机桌面接窗口, `degraded` 已回退 noVNC, `absent` 是远程/无桌面宿主的常态. 无 headed 启动脚本就明确无远程直飞; 有脚本时调用 `mailbox` skill, 按其 `reference/pull-window.md` 代入本次端口/地址, 命令与设备前提分开列出.
 
 ## 凭据与路径
 

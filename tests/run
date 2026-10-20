@@ -21,8 +21,8 @@ ROOT = Path(__file__).resolve().parents[1]
 GLOBAL = "GLOBAL"  # conftest/pytest.ini 级改动: 快层全量兜底
 
 RULES = [
-    ("workflow/mailbox/scripts/mailbox.py", "tests/test_mailbox_*.py"),
-    ("workflow/mailbox/pi-extension/", "tests/test_mailbox_listen_mark.py tests/test_mailbox_audit.py"),
+    ("general/mailbox/scripts/mailbox.py", "tests/test_mailbox_*.py"),
+    ("general/mailbox/pi-extension/", "tests/test_mailbox_listen_mark.py tests/test_mailbox_audit.py"),
     ("tests/pi/mailbox/", "tests/test_mailbox_listen_mark.py tests/test_mailbox_audit.py"),
     ("workflow/use-sandbox-worktree/scripts/swt.py", "tests/test_swt_m12.py tests/test_swt_llm_select_mount.py tests/test_swt_network_update.py tests/test_swt_network_e2e.py tests/test_swt_herdr.py"),
     ("workflow/use-sandbox-worktree/scripts/herdr_machine.py", "tests/test_swt_herdr.py"),

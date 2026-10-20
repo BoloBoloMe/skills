@@ -275,7 +275,7 @@ def test_docs_contain_recipes():
     """配方内容审计: 浏览器失败约束, 可选音频, 隧道与换址纪律仍可抵达.
     仅检查文档结构/内容, 不代替真实拉窗或连通性验证.
     """
-    pw = (ROOT / "workflow" / "mailbox" / "reference" /
+    pw = (ROOT / "general" / "mailbox" / "reference" /
           "pull-window.md").read_text()
     assert "--user-data-dir" in pw      # E4: chromium 单例坑, 强制独立数据目录
     assert "-R" in pw and "省去该段" in pw  # 音频可选, 缺失不阻断窗口
@@ -283,7 +283,7 @@ def test_docs_contain_recipes():
     for version in ("0.8.4", "0.11.0", "minimal"):
         assert version in pw, version  # 兼容性记录与拉窗配方就近放置
 
-    mb = (ROOT / "workflow" / "mailbox" / "reference" / "mailbox.md").read_text()
+    mb = (ROOT / "general" / "mailbox" / "reference" / "mailbox.md").read_text()
     for kw in ("每个投信方向", "反向转发", "标记文件",
                "ClientAliveInterval", "防火墙许可"):
         assert kw in mb, kw
@@ -317,7 +317,8 @@ def test_swt_pull_window_doc_points_to_mailbox():
               "pull-window.md").read_text()
 
     # 指针在场: 指向 mailbox skill 的 pull-window 参考文档
-    assert "mailbox/reference/pull-window.md" in swt_pw
+    assert "调用 `mailbox` skill" in swt_pw
+    assert "`reference/pull-window.md`" in swt_pw
 
     # 不复述模板细节: chromium 单例坑参数与完整拉起命令只留在 mailbox 侧
     assert "--user-data-dir" not in swt_pw

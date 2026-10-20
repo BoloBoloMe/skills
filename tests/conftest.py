@@ -24,7 +24,7 @@ from pathlib import Path
 import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
-SCRIPT = ROOT / "workflow" / "mailbox" / "scripts" / "mailbox.py"
+SCRIPT = ROOT / "general" / "mailbox" / "scripts" / "mailbox.py"
 ADMIN_TOKEN = "test-admin-token"
 
 sys.path.insert(0, str(Path(__file__).resolve().parent / "fixtures"))

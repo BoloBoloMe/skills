@@ -1,8 +1,8 @@
 """swt birth 信箱接线测试: 经 mailbox 机器子命令 (mailbox-standalone ISSUE-02).
 
 接缝 (TECHNICAL.md swt↔脚本, D002): 生产适配器 = subprocess 调
-workflow/mailbox/scripts/mailbox.py 机器子命令 (discover / register-session /
-revoke-session, stdout JSON / exit 3); 脚本路径 parents[2] 相对定位零配置.
+general/mailbox/scripts/mailbox.py 机器子命令 (discover / register-session /
+revoke-session, stdout JSON / exit 3); 按仓库分类/部署平铺布局定位脚本.
 测试适配器 (TECHNICAL 接缝与适配器节):
 - 假脚本: 按行为表吐罐头 JSON 或 exit 3, 调用面记 calls.log — 验证
   birth 接线确实经 subprocess 且 env 四元组烘入 (TS-003/TC-008),
@@ -44,6 +44,31 @@ def _load_swt():
 @pytest.fixture
 def swt():
     return _load_swt()
+
+
+def test_mailbox_script_from_general(swt):
+    """仓库中的 swt 接线须调用 general/mailbox, 不依赖原工作流目录."""
+    expected = ROOT / "general" / "mailbox" / "scripts" / "mailbox.py"
+    assert swt.MAILBOX_SCRIPT == expected
+    assert expected.is_file()
+
+
+@pytest.mark.parametrize("layout", ["repository", "deployed", "missing"])
+def test_mailbox_script_layouts(swt, tmp_path, monkeypatch, layout):
+    """只支持仓库分类目录与部署后的平铺目录, 缺包时保留预期部署路径."""
+    if layout == "repository":
+        swt_file = tmp_path / "repo/workflow/use-sandbox-worktree/scripts/swt.py"
+        expected = tmp_path / "repo/general/mailbox/scripts/mailbox.py"
+    else:
+        swt_file = tmp_path / "skills/use-sandbox-worktree/scripts/swt.py"
+        expected = tmp_path / "skills/mailbox/scripts/mailbox.py"
+    swt_file.parent.mkdir(parents=True)
+    swt_file.touch()
+    if layout != "missing":
+        expected.parent.mkdir(parents=True)
+        expected.touch()
+    monkeypatch.setattr(swt, "__file__", str(swt_file))
+    assert swt._mailbox_script_path() == expected
 
 
 # ---------------------------------------------------------------------------

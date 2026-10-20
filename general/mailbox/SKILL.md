@@ -1,7 +1,6 @@
 ---
 name: mailbox
-description: 会话间收发信, 管理信箱服务与跨机路由.
-disable-model-invocation: true
+description: 会话间收发信或维护信箱时使用.
 ---
 
 # mailbox

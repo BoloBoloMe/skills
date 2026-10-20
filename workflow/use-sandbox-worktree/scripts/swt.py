@@ -2456,10 +2456,17 @@ def container_default_name(branch: str) -> str:
 # D005) → 新 env 变量烘入 → runtime 登记. terminate 时注销 session (AC-008).
 # mailbox-standalone ISSUE-02 (D002): 接线改经 mailbox skill 机器子命令
 # (discover / register-session / revoke-session, stdout JSON / exit 3),
-# swt 不再自带信箱客户端. 脚本定位: 仓库 workflow/<skill>/scripts/ 与部署
-# ~/.agents/skills/<skill>/scripts/ 同构, parents[2] 相对定位零配置.
+# swt 不再自带信箱客户端. 仓库中信箱位于 general/mailbox, 部署后为平铺的兄弟 skill.
 # 信箱是增强不是命脉: 任一步失败只告警跳过, 不阻断 birth.
-MAILBOX_SCRIPT = Path(__file__).resolve().parents[2] / "mailbox" / "scripts" / "mailbox.py"
+def _mailbox_script_path() -> Path:
+    skill_parent = Path(__file__).resolve().parents[2]
+    repository_script = skill_parent.parent / "general" / "mailbox" / "scripts" / "mailbox.py"
+    if repository_script.is_file():
+        return repository_script
+    return skill_parent / "mailbox" / "scripts" / "mailbox.py"
+
+
+MAILBOX_SCRIPT = _mailbox_script_path()
 MAILBOX_SUBPROCESS_TIMEOUT = 30.0  # 子命令内部探测+admin 上限 (扫描 5s + HTTP 5s) 余量
 MAILBOX_ENV_URL = "SWT_MAILBOX_URL"           # 容器契约 env 名不可改 (BR-005)
 MAILBOX_ENV_SESSION = "SWT_SESSION_ID"

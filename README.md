@@ -13,6 +13,7 @@
 | [`grill-me`](general/grill-me/SKILL.md) | 结合领域感知和盘问流程, 帮助澄清设计问题. |
 | [`handoff`](general/handoff/SKILL.md) | 将当前会话压缩成脱敏交接文档, 供后续 agent 接手. |
 | [`llm-select`](general/llm-select/SKILL.md) | 根据设备评分和任务画像, 为子代理选择模型与 thinking 档位. |
+| [`mailbox`](general/mailbox/SKILL.md) | 会话间收发信与信箱维护. |
 | [`opposing-viewpoint`](general/opposing-viewpoint/SKILL.md) | 从反方分析既有观点, 找出薄弱前提并提出替代主张. |
 | [`present`](general/present/SKILL.md) | 把内容生成自包含 HTML 页面并在本地或远程展示. |
 | [`receive-handoff`](general/receive-handoff/SKILL.md) | 读取交接文档, 汇报理解和建议, 不擅自开始后续任务. |
@@ -41,7 +42,6 @@
 | [`follow-the-money`](workflow/follow-the-money/SKILL.md) | 沿价值流审查变更, 检查授权, 数量和执行造成的资损风险. |
 | [`improve-codebase-architecture`](workflow/improve-codebase-architecture/SKILL.md) | 发现架构摩擦, 并提出把浅模块深化的重构机会. |
 | [`lazy-dev`](workflow/lazy-dev/SKILL.md) | 用决策阶梯和实现阶梯收敛到最小且无未来负担的方案. |
-| [`mailbox`](workflow/mailbox/SKILL.md) | 管理 session 间传信的 mailbox mesh. |
 | [`maintain-verification-skill`](workflow/maintain-verification-skill/SKILL.md) | 按当前已确认的产品说明维护项目本地验证配方, 分类漂移并让新会话复跑证明. |
 | [`navigate`](workflow/navigate/SKILL.md) | 在目的地和路线不清时, 用 Roadmap 和 Milestone 组织探索. |
 | [`prototype`](workflow/prototype/SKILL.md) | 构建一次性原型, 验证逻辑状态模型或 UI 外观问题. |

@@ -44,8 +44,8 @@ mock env) 与纯函数归快层.
 | `scripts/network_update.py` (白名单维护事务/收据/进程) | test_swt_network_update.py + test_swt_network_e2e.py | e2e + 快层 |
 | `scripts/image-prep.py` (镜像制备 build-base/match/build) | test_swt_m07.py | e2e |
 | `scripts/swt-display.py` (登录墙/swt-vnc/noVNC) | test_swt_m09.py | e2e |
-| `mailbox/scripts/mailbox.py` (信箱, 独立 skill) | test_mailbox_*.py | 快层 (真回环) |
-| `mailbox/pi-extension/` / `tests/pi/mailbox/` (每会话取信/工具/场景夹具) | test_mailbox_listen_mark.py + test_mailbox_audit.py | 快层 |
+| `general/mailbox/scripts/mailbox.py` (通用信箱 skill) | test_mailbox_*.py | 快层 (真回环) |
+| `general/mailbox/pi-extension/` / `tests/pi/mailbox/` (每会话取信/工具/场景夹具) | test_mailbox_listen_mark.py + test_mailbox_audit.py | 快层 |
 | 展示链交付/双 URL (birth 输出侧) | test_swt_web_access.py + test_swt_m08_*.py | 快层 |
 | `general/present/scripts/` | general/present/tests/ | 快层 |
 

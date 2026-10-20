@@ -10,7 +10,7 @@ from pathlib import Path
 import pytest
 
 
-SCRIPT = Path(__file__).resolve().parents[1] / "workflow/mailbox/scripts/mailbox.py"
+SCRIPT = Path(__file__).resolve().parents[1] / "general/mailbox/scripts/mailbox.py"
 
 
 @pytest.fixture(scope="module")

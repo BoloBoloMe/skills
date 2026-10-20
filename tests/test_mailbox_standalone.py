@@ -2,7 +2,7 @@
 
 TS-002 test_standalone_full_loop: 临时 HOME, 无 swt 环境与容器 env,
 serve 自注册 <hostname>-host 并写新路径配置, send/fetch 环回.
-(红态锚点 = 搬迁前: workflow/mailbox/scripts/mailbox.py 未建时本测试
+(红态锚点 = 独立拆出前: mailbox.py 未建时本测试
 形态不存在, 同 TS-001 红跑已证.)
 """
 from __future__ import annotations

@@ -367,7 +367,7 @@ def test_receipt_wording_in_docs():
     """TS-008/BR-004 (审计): reference/mailbox.md 钉死回执 best-effort 语义
     措辞 "收到 = 确定发生, 缺席 = 未知", 并写明 serve 重启丢 pending 时
     失败回执发不出 (D012/D014)."""
-    text = (ROOT / "workflow" / "mailbox" / "reference" / "mailbox.md"
+    text = (ROOT / "general" / "mailbox" / "reference" / "mailbox.md"
             ).read_text(encoding="utf-8")
     assert "收到 = 确定发生, 缺席 = 未知" in text, \
         "回执语义措辞未按 BR-004 钉死"
