@@ -66,7 +66,7 @@ uv run python $M status                     # 查看配置, 密钥只显前 8 �
 - `seen_ids`/`processed` 按信件 TTL 剪, 空队列删掉; SQLite 写入串行化; 心跳触发的 `last_poll` 落盘 60 秒节流 (只作空 to 兜底, 不必每条心跳 commit).
 - 已吊销 session 投信直接 404, 不再排队白存到 TTL; 同机多 serve 共用 `state.json` 时, 先退的实例不会删掉后起实例写的发现信息.
 
-## 每 pi 会话独立信箱 (D022)
+## 每 pi 会话独立信箱
 
 同一台机器可同时跑多个 pi 取信会话; 每个会话按 `ctx.sessionManager.getSessionId()` 用独立信箱, 相互 start/stop/重启不覆盖也不串信.
 
@@ -82,7 +82,7 @@ uv run python $M status                     # 查看配置, 密钥只显前 8 �
 
 **mesh 前提**: 两台设备的信箱互通要求**至少一个方向可达** — A 能连 B 或 B 能连 A, 满足即可建邻居互投. 双向皆无路由 (对端 NAT 后/防火墙双向阻隔) 时任何协议层自愈都无效, 只能反向隧道.
 
-**反向隧道标准配方** (B5, 双向不可达时由能主动出网的一端发起):
+**反向隧道标准配方** (双向不可达时由能主动出网的一端发起):
 
 ```bash
 ssh -N -R 138417:127.0.0.1:38417 <user>@<对端>
@@ -93,24 +93,24 @@ ssh -N -R 138417:127.0.0.1:38417 <user>@<对端>
 - **远端标记文件**: 隧道落点端 (对端) 在 `~/.agents/mailbox/tunnels/<发起方session>.json` 留 `{peer, 端口, 建立时间}` — 排障时查端口归属, 防重复建隧道/端口冲突; 隧道撤除时删.
 - **sshd 提醒**: 对端 sshd 建议配 `ClientAliveInterval 30` + `ClientAliveCountMax 3` 后 reload — 发起方挂起时及时回收会话, 消僵尸 `-R` 监听端口 (实测踩坑).
 
-**跨机换址联动清单** (B5): 任一端地址变化时, **防火墙白名单与邻居地址必须同时改**, 只改一半即不通 —
+**跨机换址联动清单**: 任一端地址变化时, **防火墙白名单与邻居地址必须同时改**, 只改一半即不通 —
 1. 对端防火墙/出向白名单放行新地址;
 2. 对端邻居表 (admin 口或 neighbors.json) 改新地址;
 3. 改完重投滞留信.
 
-**waypipe 版本组合** (E5, 拉窗已验证): 容器 waypipe 0.8.4 (发行包 0.8.4-3) / host 自编译 minimal (`~/.local/bin/waypipe`, 无版本号回显) / 设备 0.11.0 — 三方版本不必对齐, 混用实测出窗.
+**waypipe 版本组合** (拉窗已验证): 容器 waypipe 0.8.4 (发行包 0.8.4-3) / host 自编译 minimal (`~/.local/bin/waypipe`, 无版本号回显) / 设备 0.11.0 — 三方版本不必对齐, 混用实测出窗.
 
 ## 无感自组网 (fleet mesh)
 
-已入群设备同网段零手工互连 (M5/ISSUE-10): serve 周期收发 UDP 信标 (端口 38437, 载荷 `{address, hostname, fingerprint}`), 听到新指纹即向对端信箱口 `POST /mailbox/hello` 做舰队密钥 HMAC 挑战应答互证; 双向证明通过后各自派生两两独立的链路密钥并自动建邻居 (按 hostname 同名 upsert, 语义同 admin 邻居管理). 链路密钥由舰队密钥 + 双方指纹确定性派生, 协商经认证通道完成, **密钥本身不上 wire** — 单链路泄露不扩散.
+已入群设备同网段零手工互连: serve 周期收发 UDP 信标 (端口 38437, 载荷 `{address, hostname, fingerprint}`), 听到新指纹即向对端信箱口 `POST /mailbox/hello` 做舰队密钥 HMAC 挑战应答互证; 双向证明通过后各自派生两两独立的链路密钥并自动建邻居 (按 hostname 同名 upsert, 语义同 admin 邻居管理). 链路密钥由舰队密钥 + 双方指纹确定性派生, 协商经认证通道完成, **密钥本身不上 wire** — 单链路泄露不扩散.
 
-舰队密钥 `~/.agents/mailbox/fleet.key` (0600, env `MAILBOX_FLEET_KEY` 路径覆盖), 只经 ssh 分发 (BR-009). 新设备入群唯一人工动作:
+舰队密钥 `~/.agents/mailbox/fleet.key` (0600, env `MAILBOX_FLEET_KEY` 路径覆盖), 只经 ssh 分发. 新设备入群唯一人工动作:
 
 ```bash
 uv run python scripts/mailbox.py join-fleet <老设备ssh地址>   # ssh 拉取舰队密钥, 落本地 0600
 ```
 
-之后同网段组网全程无人工 (AC-035). 无舰队密钥的设备不发信标不参与组网, 发起的握手一律被拒 (403, 不进邻居表; 零确认入群 NG-009 不做). serve 启动时若 fleet.key 缺席且 MAILBOX_FLEET_KEY 未设 (空串视同未设) 会自动生成随机密钥落盘 0600 (父目录 0700) 并打日志与 stderr 提示 (ISSUE-13/D020) — 自生成即自成单节点舰队, 异钥握手仍拒; env 已设 (即使指向不存在路径) 则完全不生成, 此时不发信标不组网.
+之后同网段组网全程无人工. 无舰队密钥的设备不发信标不参与组网, 发起的握手一律被拒 (403, 不进邻居表; 不做零确认入群). serve 启动时若 fleet.key 缺席且 MAILBOX_FLEET_KEY 未设 (空串视同未设) 会自动生成随机密钥落盘 0600 (父目录 0700) 并打日志与 stderr 提示 — 自生成即自成单节点舰队, 异钥握手仍拒; env 已设 (即使指向不存在路径) 则完全不生成, 此时不发信标不组网.
 
 **边界: 信标只覆盖同网段** (UDP 广播不出网段). 跨网段/VPN 场景信标够不着, 依靠认证换址宣告愈合 (对端可单向到达时) 或手工告知地址加邻居, 双向皆无路由仍需反向隧道 (见上节).
 
@@ -122,7 +122,7 @@ uv run python scripts/mailbox.py join-fleet <老设备ssh地址>   # ssh 拉取�
 
 (127.0.0.1:38416, header `X-Admin-Token`, token 读状态文件)
 - 发 session 凭证: `POST /admin/sessions {"id": "<名字>"}` → 应答 `{id, signing_key, response_key}`
-- 幂等保证 session (D022 每会话独立信箱): `POST /admin/sessions/ensure {"id": "<名字>"}` → 应答 `{id, signing_key, response_key, created}`. 已存在且未吊销 → 复用原密钥 (`created=false`, 不吊销不打扰在取信的同会话实例也不丢待取信); 不存在/已吊销才新建 (`created=true`). 供 `ensure-session` 机器子命令反复调用, 每次跟进 serve 重启换端口. **注意**: 这是新增接口, 运行中的旧 serve 进程不会因脚本更新而获得它 — 旧服务上 `ensure-session` 会报 404 并提示重启 serve, 请重启 serve 并重载 pi 扩展后再用.
+- 幂等保证 session (每会话独立信箱): `POST /admin/sessions/ensure {"id": "<名字>"}` → 应答 `{id, signing_key, response_key, created}`. 已存在且未吊销 → 复用原密钥 (`created=false`, 不吊销不打扰在取信的同会话实例也不丢待取信); 不存在/已吊销才新建 (`created=true`). 供 `ensure-session` 机器子命令反复调用, 每次跟进 serve 重启换端口. **注意**: 这是新增接口, 运行中的旧 serve 进程不会因脚本更新而获得它 — 旧服务上 `ensure-session` 会报 404 并提示重启 serve, 请重启 serve 并重载 pi 扩展后再用.
 - 邻居管理: `POST /admin/neighbors {address, shared_key, name?}` (带 name 且同名 → upsert 覆盖地址不新增条目, 换址就这样改) / `GET /admin/neighbors` → `{neighbors: [{address, name, status}]}` (status = 最近一次转发结果 `unknown`/`ok`/`unreachable`, 重启回 unknown; 密钥不回显) / `PATCH /admin/neighbors {address, new_address?/shared_key?/name?}` / `DELETE /admin/neighbors {address}` (内存与 DB 同删; 删除后不再向该邻居转发)
 - 滞留管理 (邻居不可达的信): `GET /admin/pending` → `{pending: [{id, to, neighbor, last_error, retries, age}]}` (age 秒) / `POST /admin/pending/retry {id}` 立即补投 (发出即移出, 未知 id 404) / `POST /admin/pending/drop {id}` 丢弃; 滞留数量上限缺省 100 (env `MAILBOX_PENDING_CAP`), 新滞留超限丢最老 (丢弃只在 GET 计数里可见, 信不补投)
 - 在线状态: `GET /admin/presence` → `{presence: [{id, state, age, revoked}], heartbeat_seconds, presence_ttl}` (`state` = online/offline/unknown, `age` = 距上次心跳秒数); `GET /admin/sessions` 条目也带 `state`. 信箱口的查询端点是 `GET /mailbox/presence` (session 签名, 见「在线状态与心跳」节).

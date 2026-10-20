@@ -63,9 +63,9 @@ ROADMAP.json 的一切读写只经守门脚本 `workflow/navigate/scripts/roadma
 
 `<file>` 指路线图文件 `docs/changes/<feature-slug>/roadmap/ROADMAP.json`. `<path>` 用点分隔, 数字段为数组下标, 下标等于数组长度即追加; 完整 path 语法与字段说明见 [产物结构](TEMPLATES.md). 脚本 stdout 输出单行 JSON, 退出码 0 成功 / 1 失败; 失败时读 `error` 字段修正后重试.
 
-**明文禁令 (D002)**: llm 禁用 read/write/edit 工具直接触碰 ROADMAP.json — 不得读取, 创建, 修改或删除该文件; 内容一律经上面的脚本进出. 脚本是 JSON 正确性的守门员: 非法枚举值, 缺失必填字段, 坏引用, 越界下标都会被拦截并返回错误.
+**明文禁令**: llm 禁用 read/write/edit 工具直接触碰 ROADMAP.json — 不得读取, 创建, 修改或删除该文件; 内容一律经上面的脚本进出. 脚本是 JSON 正确性的守门员: 非法枚举值, 缺失必填字段, 坏引用, 越界下标都会被拦截并返回错误.
 
-**旧格式重建 (D014)**: 现场出现 `ROADMAP.md` 或 `MILESTONE-NN.md` (旧版路线图格式) 时, 用 read 工具读旧文件, 再经脚本把内容重建为 ROADMAP.json; 不提供迁移命令, 一次性重建即可. 旧格式的 "范围外" 区段重建为 `off_course`, "未决迷雾" 区段重建为 `unknown_seas`.
+**旧格式重建**: 现场出现 `ROADMAP.md` 或 `MILESTONE-NN.md` (旧版路线图格式) 时, 用 read 工具读旧文件, 再经脚本把内容重建为 ROADMAP.json; 不提供迁移命令, 一次性重建即可. 旧格式的 "范围外" 区段重建为 `off_course`, "未决迷雾" 区段重建为 `unknown_seas`.
 
 ## 调用模式
 

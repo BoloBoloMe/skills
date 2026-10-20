@@ -6,7 +6,7 @@
 
 `docs/changes/<feature-slug>/roadmap/ROADMAP.json`
 
-## 顶层字段 (D005)
+## 顶层字段
 
 | 字段 | 类型 | 必填 | 默认值 | 说明 |
 | --- | --- | --- | --- | --- |
@@ -18,9 +18,9 @@
 | `unknown_seas` | 字符串数组 | 否 | `[]` | 未知海域: 范围内但尚无法精确表述为 Milestone 的模糊视图 |
 | `off_course` | 对象数组 | 否 | `[]` | 歧路: 目的地之外主动排除的工作, 每项 `{what, reason}` |
 
-写入约束: 未列出的顶层字段会被脚本拒绝写入 (D006(d)). 每次 save 在内存完成写入后对整文档跑完整 schema 校验 (含 `blocked_by` 环检测), 任一校验失败则不落盘并返回错误 (D007 兜底闸门).
+写入约束: 未列出的顶层字段会被脚本拒绝写入. 每次 save 在内存完成写入后对整文档跑完整 schema 校验 (含 `blocked_by` 环检测), 任一校验失败则不落盘并返回错误 (整文档校验是兜底闸门).
 
-## milestones 成员字段 (D005/D006)
+## milestones 成员字段
 
 里程碑 id 形如 `milestone-01`, 非纯数字, 不被当作数组下标.
 
@@ -36,7 +36,7 @@
 
 新增里程碑必须整体创建: `save <file> milestones.<new-id> <JSON对象>`, 对象含必填 `title`/`type`/`question`; 脚本补齐默认 `status`/`blocked_by`/`artifacts`/`close_summary`. 不可分字段逐个创建 (会缺字段而被整文档校验拒绝).
 
-## 不落盘的派生量 (D005)
+## 不落盘的派生量
 
 JSON 只存路线图与里程碑逻辑数据, 零展示信息 (不存坐标/颜色等). 以下均由数据推导, 不写文件:
 
@@ -44,7 +44,7 @@ JSON 只存路线图与里程碑逻辑数据, 零展示信息 (不存坐标/颜�
 - 已关闭决策: 各里程碑的 `close_summary` + `artifacts`.
 - 阻塞关系: 各里程碑 `blocked_by` 的并集 (网页端据此画 DAG).
 
-## path 语法 (D004)
+## path 语法
 
 - 点分隔, 如 `milestones.milestone-01.status`, `destination`, `notes.2`.
 - 数字段定位数组元素: `notes.2` = 第三条笔记.
@@ -52,7 +52,7 @@ JSON 只存路线图与里程碑逻辑数据, 零展示信息 (不存坐标/颜�
 - 对数组字段整体 save (如 `save <file> notes <JSON数组>`) 全量替换同样合法.
 - 中间节点不存在时由脚本自动创建.
 
-## CLI 调用 (D003)
+## CLI 调用
 
 `<file>` 即上面的 ROADMAP.json 路径. stdout 单行 UTF-8 JSON, 退出码 0 成功 / 1 失败.
 
@@ -79,8 +79,8 @@ uv run python workflow/navigate/scripts/roadmap.py delete <file>
 
 ## 禁令与旧格式
 
-- llm 禁用 read/write/edit 工具直接触碰 ROADMAP.json; 一切读写经上述脚本 (D002).
-- 现场出现旧版 `ROADMAP.md` / `MILESTONE-NN.md` 时, 用 read 读旧文件后经脚本重建为 ROADMAP.json; 不提供迁移命令 (D014).
+- llm 禁用 read/write/edit 工具直接触碰 ROADMAP.json; 一切读写经上述脚本.
+- 现场出现旧版 `ROADMAP.md` / `MILESTONE-NN.md` 时, 用 read 读旧文件后经脚本重建为 ROADMAP.json; 不提供迁移命令.
 
 ## 目录约定
 

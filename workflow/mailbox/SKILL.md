@@ -13,7 +13,7 @@ disable-model-invocation: true
 
 `config.json` (本机取信/投信凭证, 0600) / `neighbors.json` (邻居表) / `cli-state.json` (取信侧状态) / `state.json` (serve 状态) / `server.db` (session/邻居持久化); 父目录 0700.
 
-**每 pi 会话独立信箱 (D022)**: `sessions/<session-id>/` 下各会话独立 `config.json` (凭证 0600) / `cli-state.json` (取信状态) / `listen.json` (取信守护开关标记). 多 pi 会话可同时取信, 互不覆盖不串信.
+**每 pi 会话独立信箱**: `sessions/<session-id>/` 下各会话独立 `config.json` (凭证 0600) / `cli-state.json` (取信状态) / `listen.json` (取信守护开关标记). 多 pi 会话可同时取信, 互不覆盖不串信.
 
 旧路径 (`~/.agents/sandbox-worktree/mailbox.json`/`neighbors.json`/`mailbox-state.json`, `~/.local/state/swt-mailbox/`, 老老路径 `~/.config/swt/mailbox.json`) 首次运行自动迁移并提示; 不留兼容 shim.
 
@@ -34,7 +34,7 @@ uv run python scripts/mailbox.py                                        # 缺省
 
 serve 启动自动注册 `<hostname>-host` session 并写本机配置 — 本机取信零配置. 容器内凭证走 env (`SWT_MAILBOX_URL`/`SWT_SESSION_*`, birth 烘入; 契约名不可改, 非测试注入 env).
 
-## pi 会话取信 (D022)
+## pi 会话取信
 
 pi 扩展按当前会话 session id 使用独立信箱: host 上调用 `ensure-session` 在本机 serve 注册独立 session (幂等, 不吊销既有), 取信子进程经 env `MAILBOX_CONFIG`/`MAILBOX_CLI_STATE` 指向 `sessions/<sid>/`; 容器内直接沿用 birth 注入的 `SWT_SESSION_*` 凭据, 不 ensure 也不清容器 env. 与他人会话相互 start/stop/重启不覆盖. 收信地址 = 返回的 `mailboxSessionId` (host = pi session id; 容器 = `SWT_SESSION_ID`).
 

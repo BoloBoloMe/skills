@@ -6,7 +6,7 @@ x11vnc>=0.9 install="apt-get update && apt-get install --no-install-recommends -
 websockify>=0.10 install="apt-get update && apt-get install --no-install-recommends -y websockify" probe="dpkg-query -W -f='${Version}' websockify | cut -d: -f2-"
 novnc>=1.3 install="apt-get update && apt-get install --no-install-recommends -y novnc" probe="dpkg-query -W -f='${Version}' novnc | cut -d: -f2-"
 fonts-noto-cjk install="apt-get update && apt-get install --no-install-recommends -y fonts-noto-cjk" probe="dpkg-query -W -f='${Version}' fonts-noto-cjk | cut -d: -f2-"
-# M08 (N6): 窗口直飞 — 容器侧 waypipe 服务端 (apt 0.8.4, N5); libpulse0 供
+# 窗口直飞 — 容器侧 waypipe 服务端 (apt 0.8.4); libpulse0 供
 # chromium 走 /tmp/swt/pulse-b.sock 设备音频. 置于 chromium 条目前.
 waypipe>=0.8 install="apt-get update && apt-get install --no-install-recommends -y waypipe" probe="waypipe --version"
 libpulse0 install="apt-get update && apt-get install --no-install-recommends -y libpulse0" probe="dpkg-query -W -f='${Version}' libpulse0 | cut -d: -f2-"
@@ -16,7 +16,7 @@ libpulse0 install="apt-get update && apt-get install --no-install-recommends -y 
 # google-chrome-for-testing (均 root 属主), 存在才 chown (目录非必现).
 # probe 的 chrome-linux* 同时兼容新旧布局 (chrome-linux64 / chrome-linux).
 chromium>=100 install="cd /home/bolo/.agents/skills/access-web/browse && HOME=/home/bolo uv run playwright install --with-deps chromium && chown -R bolo:bolo /home/bolo/.cache && for d in /home/bolo/.local /home/bolo/.config; do [ ! -e \"$d\" ] || chown -R bolo:bolo \"$d\"; done" probe="/home/bolo/.cache/ms-playwright/chromium-*/chrome-linux*/chrome --version"
-# swt-vnc = ISSUE-04 #2 的三动作脚本, install 一行写不完, base64 内嵌
+# swt-vnc = 三动作脚本, install 一行写不完, base64 内嵌
 # (解码命令: echo <串> | base64 -d). 内嵌的适用边界: 内容小到单行可容且
 # 稳定少改; 若脚本继续增长, 或需要高频评审其 diff, 应改走独立通道
 # (构建期 COPY 预置脚本或独立安装器), 不再延长本行.
