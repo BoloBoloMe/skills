@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "name": "cliproxyapi",
-  "version": "2026-10-13.1",
+  "version": "2026-10-20.1",
   "kind": "openai-gateway",
   "contract": 2,
   "base_url": "http://host.containers.internal:8317/v1",
@@ -18,14 +18,14 @@
   },
   "defaults": {
     "pi": {
-      "model": "glm-5.3",
+      "model": "deepseek-v4.1-flash-expires-on-0910",
       "thinking": "max"
     },
     "codex": {
       "model": "gpt-6-luna"
     },
     "kimi": {
-      "model": "glm-5.3"
+      "model": "deepseek-v4.1-flash-expires-on-0910"
     }
   }
 }

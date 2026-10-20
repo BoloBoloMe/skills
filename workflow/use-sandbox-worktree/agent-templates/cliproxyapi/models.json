@@ -1,11 +1,12 @@
 {
   "schema": 1,
-  "version": "2026-10-13.1",
+  "version": "2026-10-20.1",
   "sources": [
     "/home/bolo/Workspace/cliproxyapi/models.pi.example.json (2026-10-13 静态参考, 不作为运行期来源)",
     "https://raw.githubusercontent.com/openai/codex/main/codex-rs/models-manager/models.json (GPT context_window=272000, max_context_window=872000)",
     "/home/bolo/docs/cliproxyapi.md (路由/规格/已验证能力边界)",
-    "https://raw.githubusercontent.com/openai/codex/rust-v0.162.1/codex-rs/models-manager/models.json (版本固定, 只取 7 个 Responses 模型的必要字段/原生基础指令; 禁 WebSocket/Responses Lite/自动升级)"
+    "https://raw.githubusercontent.com/openai/codex/rust-v0.162.1/codex-rs/models-manager/models.json (版本固定, 只取 7 个 Responses 模型的必要字段/原生基础指令; 禁 WebSocket/Responses Lite/自动升级)",
+    "2026-10-20 网关 GET /v1/models 实测 15 条: 模板只保留 9 个文本/推理模型, 图像模型与 codex-auto-review 不列入客户端目录"
   ],
   "models": [
     {
@@ -265,76 +266,6 @@
         "input": 0.075,
         "output": 0.25,
         "cacheRead": 0.015,
-        "cacheWrite": 0
-      },
-      "api": "openai-completions",
-      "compat": {
-        "supportsStore": false,
-        "supportsDeveloperRole": false,
-        "supportsReasoningEffort": true,
-        "maxTokensField": "max_tokens",
-        "supportsStrictMode": false,
-        "thinkingFormat": "zai",
-        "zaiToolStream": true
-      }
-    },
-    {
-      "id": "glm-5.3",
-      "name": "GLM 5.3",
-      "reasoning": true,
-      "thinkingLevelMap": {
-        "off": null,
-        "minimal": null,
-        "low": null,
-        "medium": null,
-        "high": "high",
-        "xhigh": "xhigh",
-        "max": "max"
-      },
-      "input": [
-        "text"
-      ],
-      "contextWindow": 1000000,
-      "maxTokens": 131072,
-      "cost": {
-        "input": 1.4,
-        "output": 4.4,
-        "cacheRead": 0.26,
-        "cacheWrite": 0
-      },
-      "api": "openai-completions",
-      "compat": {
-        "supportsStore": false,
-        "supportsDeveloperRole": false,
-        "supportsReasoningEffort": true,
-        "maxTokensField": "max_tokens",
-        "supportsStrictMode": false,
-        "thinkingFormat": "zai",
-        "zaiToolStream": true
-      }
-    },
-    {
-      "id": "glm-5.3-flashx",
-      "name": "GLM 5.3 FlashX",
-      "reasoning": true,
-      "thinkingLevelMap": {
-        "off": null,
-        "minimal": null,
-        "low": null,
-        "medium": null,
-        "high": "high",
-        "xhigh": "xhigh",
-        "max": "max"
-      },
-      "input": [
-        "text"
-      ],
-      "contextWindow": 1000000,
-      "maxTokens": 131072,
-      "cost": {
-        "input": 0.37,
-        "output": 1.25,
-        "cacheRead": 0.075,
         "cacheWrite": 0
       },
       "api": "openai-completions",
