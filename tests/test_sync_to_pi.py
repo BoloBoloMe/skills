@@ -2,6 +2,7 @@ import contextlib
 import importlib.util
 import io
 import json
+import os
 import shutil
 import tempfile
 import unittest
@@ -141,10 +142,18 @@ class ExtensionRegistrationReconcileTests(unittest.TestCase):
             pi_dir = root / "agent"
             settings = pi_dir / "settings.json"
             sidecar = pi_dir / "extensions.synced.json"
-            ext_a = skills_dir / "alpha" / "pi-extension"
-            ext_b = skills_dir / "beta" / "pi-extension"
-            ext_a.mkdir(parents=True)
-            ext_b.mkdir(parents=True)
+
+            def make_skill(name):
+                """建一个内容完整的 skill 目录 (SKILL.md + pi-extension/index.ts)."""
+                skill = skills_dir / name
+                (skill / "pi-extension").mkdir(parents=True)
+                (skill / "SKILL.md").write_text("# " + name, encoding="utf-8")
+                (skill / "pi-extension" / "index.ts").write_text(
+                    "export default {}", encoding="utf-8")
+                return skill / "pi-extension"
+
+            ext_a = make_skill("alpha")
+            ext_b = make_skill("beta")
 
             def load(path):
                 return json.loads(path.read_text(encoding="utf-8"))
@@ -185,6 +194,272 @@ class ExtensionRegistrationReconcileTests(unittest.TestCase):
             extensions = load(settings)["extensions"]
             self.assertEqual([str(ext_a), "/my/manual/ext"], extensions)
             self.assertNotIn("/my/manual/ext", load(sidecar)["extensions"])
+
+
+class AtomicDirSyncTests(unittest.TestCase):
+    """部署目录改原子替换: 拷到临时路径校验后整体换名, 失败保留旧内容."""
+
+    def _make_source(self, root):
+        source = root / "src" / "mailbox"
+        (source / "reference").mkdir(parents=True)
+        (source / "SKILL.md").write_text("new skill body", encoding="utf-8")
+        (source / "reference" / "pi.md").write_text("ref", encoding="utf-8")
+        (source / "__pycache__").mkdir()
+        (source / "__pycache__" / "junk.pyc").write_bytes(b"junk")
+        return source
+
+    def _make_dest(self, root):
+        dest = root / "skills" / "mailbox"
+        dest.mkdir(parents=True)
+        (dest / "SKILL.md").write_text("old skill body", encoding="utf-8")
+        (dest / "OLD.md").write_text("old only", encoding="utf-8")
+        return dest
+
+    def _run_plan(self, plan):
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            sync_to_pi.execute_plan(plan)
+        return out.getvalue()
+
+    def _assert_old_dest_intact(self, dest):
+        self.assertEqual(
+            "old skill body", (dest / "SKILL.md").read_text(encoding="utf-8"))
+        self.assertEqual("old only", (dest / "OLD.md").read_text(encoding="utf-8"))
+        self.assertFalse((dest / "reference").exists())
+
+    def _assert_no_leftovers(self, dest):
+        self.assertEqual([dest.name], sorted(p.name for p in dest.parent.iterdir()))
+
+    def test_normal_path_replaces_whole_directory(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            source = self._make_source(root)
+            dest = self._make_dest(root)
+            stale = dest.parent / ".mailbox.sync-new-stale"
+            stale.mkdir()
+
+            output = self._run_plan(
+                [sync_to_pi.PlanItem(source, dest, "mailbox", True)])
+
+            self.assertEqual(
+                "new skill body", (dest / "SKILL.md").read_text(encoding="utf-8"))
+            self.assertEqual(
+                "ref", (dest / "reference" / "pi.md").read_text(encoding="utf-8"))
+            self.assertFalse((dest / "OLD.md").exists())
+            self.assertFalse((dest / "__pycache__").exists())
+            self.assertFalse(stale.exists())
+            self._assert_no_leftovers(dest)
+            self.assertIn("全部完成", output)
+
+    def test_copy_failure_keeps_old_destination(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            source = self._make_source(root)
+            dest = self._make_dest(root)
+
+            with mock.patch.object(
+                sync_to_pi.shutil, "copytree", side_effect=OSError("磁盘已满")
+            ):
+                output = self._run_plan(
+                    [sync_to_pi.PlanItem(source, dest, "mailbox", True)])
+
+            self._assert_old_dest_intact(dest)
+            self._assert_no_leftovers(dest)
+            self.assertIn("失败", output)
+            self.assertIn("1 失败", output)
+
+    def test_half_copied_directory_is_rejected(self):
+        """拷贝中途停下没抛异常 (半成品) 也能被完整性校验拦住."""
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            source = self._make_source(root)
+            dest = self._make_dest(root)
+
+            def half_baked(src, dst, **kwargs):
+                Path(dst, "SKILL.md").write_text("new skill body", encoding="utf-8")
+                return dst
+
+            with mock.patch.object(
+                sync_to_pi.shutil, "copytree", side_effect=half_baked
+            ):
+                output = self._run_plan(
+                    [sync_to_pi.PlanItem(source, dest, "mailbox", True)])
+
+            self._assert_old_dest_intact(dest)
+            self._assert_no_leftovers(dest)
+            self.assertIn("拷贝结果不完整", output)
+
+    def test_symlinked_destination_is_refused(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            source = self._make_source(root)
+            real = root / "real-skill"
+            real.mkdir()
+            (real / "SKILL.md").write_text("real", encoding="utf-8")
+            dest = root / "skills" / "mailbox"
+            dest.parent.mkdir(parents=True)
+            dest.symlink_to(real, target_is_directory=True)
+
+            output = self._run_plan(
+                [sync_to_pi.PlanItem(source, dest, "mailbox", True)])
+
+            self.assertEqual("real", (real / "SKILL.md").read_text(encoding="utf-8"))
+            self.assertEqual(["mailbox"], sorted(p.name for p in dest.parent.iterdir()))
+            self.assertIn("失败", output)
+
+    def test_file_copy_failure_keeps_old_file(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            source = root / "keybindings.json"
+            source.write_text("new", encoding="utf-8")
+            dest = root / "agent" / "keybindings.json"
+            dest.parent.mkdir(parents=True)
+            dest.write_text("old", encoding="utf-8")
+
+            with mock.patch.object(
+                sync_to_pi.shutil, "copy2", side_effect=OSError("磁盘已满")
+            ):
+                output = self._run_plan(
+                    [sync_to_pi.PlanItem(source, dest, "keybindings.json", False)])
+
+            self.assertEqual("old", dest.read_text(encoding="utf-8"))
+            self.assertEqual(["keybindings.json"], sorted(p.name for p in dest.parent.iterdir()))
+            self.assertIn("失败", output)
+
+
+class ExtensionIntegrityGateTests(unittest.TestCase):
+    """扩展登记完整性门禁: 半成品 skill 不登记, 也不回收既有登记."""
+
+    def setUp(self):
+        self.tmproot = tempfile.TemporaryDirectory()
+        root = Path(self.tmproot.name)
+        self.skills_dir = root / "skills"
+        self.pi_dir = root / "agent"
+        self.settings = self.pi_dir / "settings.json"
+        self.sidecar = self.pi_dir / "extensions.synced.json"
+        self.skills_dir.mkdir(parents=True)
+        self.pi_dir.mkdir(parents=True)
+
+    def tearDown(self):
+        self.tmproot.cleanup()
+
+    def _seed_state(self, ext_paths):
+        payload = json.dumps(
+            {"extensions": list(ext_paths)}, ensure_ascii=False, indent=2) + "\n"
+        self.settings.write_text(payload, encoding="utf-8")
+        self.sidecar.write_text(payload, encoding="utf-8")
+
+    def _reconcile(self):
+        with contextlib.redirect_stdout(io.StringIO()):
+            sync_to_pi._reconcile_extensions(self.skills_dir, self.pi_dir)
+
+    def _make_skill(self, name="mailbox", *, skill_md=True, index_ts=True):
+        skill = self.skills_dir / name
+        ext = skill / "pi-extension"
+        ext.mkdir(parents=True)
+        if skill_md:
+            (skill / "SKILL.md").write_text("# " + name, encoding="utf-8")
+        if index_ts:
+            (ext / "index.ts").write_text("export default {}", encoding="utf-8")
+        return ext
+
+    def _assert_state_bytes_unchanged(self):
+        self.assertEqual(self.settings_before, self.settings.read_bytes())
+        self.assertEqual(self.sidecar_before, self.sidecar.read_bytes())
+        self.assertEqual([], sorted(
+            p.name for p in self.pi_dir.iterdir() if p.name.endswith(".bak")))
+
+    def _snapshot_state(self):
+        self.settings_before = self.settings.read_bytes()
+        self.sidecar_before = self.sidecar.read_bytes()
+
+    def test_missing_skill_md_blocks_and_keeps_state(self):
+        ext = self._make_skill(skill_md=False)
+        self._seed_state([str(ext)])
+        self._snapshot_state()
+
+        with self.assertRaises(sync_to_pi.IncompleteDeploymentError) as ctx:
+            self._reconcile()
+
+        self.assertIn("SKILL.md", str(ctx.exception))
+        self.assertIn("mailbox", str(ctx.exception))
+        self._assert_state_bytes_unchanged()
+
+    def test_missing_index_ts_blocks_and_keeps_state(self):
+        ext = self._make_skill(index_ts=False)
+        self._seed_state([str(ext)])
+        self._snapshot_state()
+
+        with self.assertRaises(sync_to_pi.IncompleteDeploymentError) as ctx:
+            self._reconcile()
+
+        self.assertIn("pi-extension/index.ts", str(ctx.exception))
+        self._assert_state_bytes_unchanged()
+
+    def test_unreadable_index_ts_blocks(self):
+        if not hasattr(os, "geteuid") or os.geteuid() == 0:
+            self.skipTest("root 可读任意文件, 无法构造不可读场景")
+        ext = self._make_skill()
+        entry = ext / "index.ts"
+        entry.chmod(0)
+        try:
+            self._seed_state([str(ext)])
+            self._snapshot_state()
+            with self.assertRaises(sync_to_pi.IncompleteDeploymentError):
+                self._reconcile()
+            self._assert_state_bytes_unchanged()
+        finally:
+            entry.chmod(0o644)
+
+    def test_complete_skill_is_registered(self):
+        ext = self._make_skill()
+
+        self._reconcile()
+
+        settings = json.loads(self.settings.read_text(encoding="utf-8"))
+        sidecar = json.loads(self.sidecar.read_text(encoding="utf-8"))
+        self.assertEqual([str(ext)], settings["extensions"])
+        self.assertEqual([str(ext)], sidecar["extensions"])
+
+    def test_partial_deployment_does_not_register_any_path(self):
+        """半成品存在时连正常 skill 也暂不登记, 整体状态不变."""
+        self._make_skill("good")
+        self._make_skill("mailbox", index_ts=False)
+        self._seed_state([])
+        self._snapshot_state()
+
+        with self.assertRaises(sync_to_pi.IncompleteDeploymentError):
+            self._reconcile()
+
+        self._assert_state_bytes_unchanged()
+
+    def test_hidden_staging_dir_is_not_registered(self):
+        """中断残留的隐藏暂存目录即使含 pi-extension 也不当作 skill."""
+        leftover = self.skills_dir / ".mailbox.sync-new-abcd"
+        (leftover / "pi-extension").mkdir(parents=True)
+        (leftover / "SKILL.md").write_text("# half", encoding="utf-8")
+        (leftover / "pi-extension" / "index.ts").write_text(
+            "export default {}", encoding="utf-8")
+        self._seed_state([])
+
+        self._reconcile()
+
+        self.assertEqual([], json.loads(
+            self.settings.read_text(encoding="utf-8"))["extensions"])
+
+    def test_skill_without_pi_extension_is_still_reclaimed(self):
+        """普通 skill (无 pi-extension) 不触发门禁, 旧登记正常回收."""
+        (self.skills_dir / "plain").mkdir(parents=True)
+        (self.skills_dir / "plain" / "SKILL.md").write_text("# plain", encoding="utf-8")
+        stale = str(self.skills_dir / "plain" / "pi-extension")
+        self._seed_state([stale])
+
+        self._reconcile()
+
+        self.assertEqual([], json.loads(
+            self.settings.read_text(encoding="utf-8"))["extensions"])
+        self.assertEqual([], json.loads(
+            self.sidecar.read_text(encoding="utf-8"))["extensions"])
 
 
 if __name__ == "__main__":

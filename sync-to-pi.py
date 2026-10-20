@@ -10,8 +10,10 @@
 跨平台: Windows / Linux / macOS, 纯 Python 标准库.
 """
 
+import os
 import sys
 import shutil
+import tempfile
 from pathlib import Path
 
 
@@ -298,8 +300,6 @@ def _merge_models(src: Path, dst: Path) -> int:
 
 def _backup_and_atomic_write(path: Path, text: str) -> None:
     """备份已有文件为 .bak 后原子写入 (tmp + os.replace)."""
-    import os
-
     if path.exists():
         backup = path.with_name(path.name + ".bak")
         shutil.copy2(path, backup)
@@ -308,6 +308,136 @@ def _backup_and_atomic_write(path: Path, text: str) -> None:
     try:
         tmp.write_text(text, encoding="utf-8")
         os.replace(tmp, path)
+    finally:
+        if tmp.exists():
+            tmp.unlink()
+
+
+# ============================================================================
+# 原子替换: 先拷到同父临时路径并校验, 再整体换名, 失败保留旧内容
+# ============================================================================
+class SyncVerificationError(OSError):
+    """暂存副本与源不一致 (半成品拷贝)."""
+
+
+class IncompleteDeploymentError(OSError):
+    """skill 目录内容不全, 按部署失败处理."""
+
+
+# 登记扩展前必须存在的 skill 内文件 (相对 skill 根目录)
+_SKILL_REQUIRED_FILES = ("SKILL.md", "pi-extension/index.ts")
+
+
+def _is_readable_file(path: Path) -> bool:
+    if not path.is_file():
+        return False
+    try:
+        with path.open("rb") as fh:
+            fh.read(1)
+    except OSError:
+        return False
+    return True
+
+
+def _tree_fingerprint(root: Path, ignore=None) -> dict[str, int]:
+    """收集 root 下普通文件 → {相对路径: 字节数}; ignore 同 shutil.ignore_patterns."""
+    files: dict[str, int] = {}
+    for dirpath, dirnames, filenames in os.walk(root, followlinks=False):
+        dirnames.sort()
+        skipped = set(ignore(dirpath, dirnames + filenames)) if ignore else set()
+        dirnames[:] = [d for d in dirnames if d not in skipped]
+        for name in sorted(filenames):
+            if name in skipped:
+                continue
+            path = Path(dirpath) / name
+            if path.is_symlink():
+                continue
+            try:
+                files[path.relative_to(root).as_posix()] = path.stat().st_size
+            except OSError as e:
+                raise SyncVerificationError(f"无法读取 {path}: {e}") from e
+    return files
+
+
+def _verify_copy(src: Path, staged: Path, ignore=None) -> None:
+    """校验暂存副本完整: 文件集合与逐文件字节数一致, 且副本文件可读."""
+    expected = _tree_fingerprint(src, ignore)
+    actual = _tree_fingerprint(staged)
+    problems: list[str] = []
+    missing = sorted(set(expected) - set(actual))
+    extra = sorted(set(actual) - set(expected))
+    differ = sorted(k for k in set(expected) & set(actual) if expected[k] != actual[k])
+    if missing:
+        problems.append(f"缺 {len(missing)} 个文件: {', '.join(missing[:5])}")
+    if extra:
+        problems.append(f"多 {len(extra)} 个文件: {', '.join(extra[:5])}")
+    if differ:
+        problems.append(f"{len(differ)} 个文件大小不符: {', '.join(differ[:5])}")
+    unreadable = sorted(rel for rel in actual if not _is_readable_file(staged / rel))
+    if unreadable:
+        problems.append(f"{len(unreadable)} 个文件不可读: {', '.join(unreadable[:5])}")
+    if problems:
+        raise SyncVerificationError("拷贝结果不完整 (" + "; ".join(problems) + ")")
+
+
+def _sweep_stale_staging(dst: Path) -> None:
+    """清理上次中断残留的同名暂存目录 (<parent>/.<name>.sync-new-* / .sync-old-*)."""
+    parent = dst.parent
+    if not parent.is_dir():
+        return
+    prefix = f".{dst.name}.sync-"
+    for child in parent.iterdir():
+        if child.name.startswith(prefix) and child.is_dir():
+            shutil.rmtree(child, ignore_errors=True)
+
+
+def _atomic_replace_dir(src: Path, dst: Path, ignore=None) -> None:
+    """用 src 整体替换 dst: 拷到同父临时目录 → 校验 → 旧目录换名 → 新目录换名.
+
+    任一步失败都不触碰旧 dst 内容 (旧的只在最后换名时才让位), 临时目录清理后抛出.
+    dst 为符号链接或非目录时拒绝替换, 交由调用方报错.
+    """
+    if dst.is_symlink() or (dst.exists() and not dst.is_dir()):
+        raise OSError(f"拒绝替换符号链接或非目录目标: {dst}")
+
+    parent = dst.parent
+    parent.mkdir(parents=True, exist_ok=True)
+    _sweep_stale_staging(dst)
+    staged = Path(tempfile.mkdtemp(prefix=f".{dst.name}.sync-new-", dir=parent))
+    retired: Path | None = None
+    try:
+        shutil.copytree(src, staged, ignore=ignore, dirs_exist_ok=True)
+        _verify_copy(src, staged, ignore)
+        if dst.exists():
+            retired = Path(tempfile.mkdtemp(prefix=f".{dst.name}.sync-old-", dir=parent))
+            retired.rmdir()
+            os.replace(dst, retired)
+        try:
+            os.replace(staged, dst)
+        except Exception:
+            if retired is not None and not dst.exists():
+                os.replace(retired, dst)
+                retired = None
+            raise
+    finally:
+        if staged.exists():
+            shutil.rmtree(staged, ignore_errors=True)
+        if retired is not None and retired.exists():
+            shutil.rmtree(retired, ignore_errors=True)
+
+
+def _atomic_copy_file(src: Path, dst: Path) -> None:
+    """单文件原子拷贝: 写同目录临时文件 → 校验字节数 → os.replace."""
+    parent = dst.parent
+    parent.mkdir(parents=True, exist_ok=True)
+    fd, tmp_name = tempfile.mkstemp(prefix=f".{dst.name}.sync-new-", dir=parent)
+    os.close(fd)
+    tmp = Path(tmp_name)
+    try:
+        shutil.copy2(src, tmp)
+        if tmp.stat().st_size != src.stat().st_size:
+            raise SyncVerificationError(f"拷贝不完整: {src} → {dst}")
+        os.replace(tmp, dst)
     finally:
         if tmp.exists():
             tmp.unlink()
@@ -331,9 +461,40 @@ def compose_host_agents_md(repo_root: Path, pi_dir: Path) -> None:
     _backup_and_atomic_write(pi_dir / "AGENTS.md", text)
 
 
+def _scan_extension_dirs(skills_dir: Path) -> tuple[list[str], list[str]]:
+    """扫描 skills_dir 下的 pi-extension 目录, 按完整性分流.
+
+    返回 (完整集, 不完整描述). 完整性门禁: skill 根的 SKILL.md 与
+    pi-extension/index.ts 都必须存在且可读 — 目录在而内容不全是部署失败,
+    不得登记也不得因此回收既有登记.
+    """
+    complete: list[str] = []
+    broken: list[str] = []
+    if not skills_dir.is_dir():
+        return complete, broken
+    for skill_dir in sorted(p for p in skills_dir.iterdir() if p.is_dir()):
+        if skill_dir.name.startswith("."):  # 跳过中断残留的暂存目录
+            continue
+        ext_dir = skill_dir / "pi-extension"
+        if not ext_dir.is_dir():
+            continue
+        missing = [
+            rel for rel in _SKILL_REQUIRED_FILES
+            if not _is_readable_file(skill_dir / rel)
+        ]
+        if missing:
+            broken.append(f"{skill_dir.name}: 缺/不可读 {', '.join(missing)}")
+            continue
+        complete.append(str(ext_dir))
+    return sorted(complete), broken
+
+
 def _reconcile_extensions(skills_dir: Path, pi_dir: Path) -> None:
     """扫描 <skills_dir>/*/pi-extension, 对 settings.json extensions 做集合对账 (M3/D012).
 
+    完整性门禁: 只登记 SKILL.md 与 pi-extension/index.ts 均存在的 skill;
+    目录在而内容不全 = 部署失败, 不改动 settings.json 与 sidecar, 抛
+    IncompleteDeploymentError (调用方负责告警).
     新增当前扫描集路径; 移除 sidecar 在册且扫描集缺席的路径 (双条件);
     既不在 sidecar 又不在扫描集的 settings 项 (用户手工项) 永不增删.
     管理标记 sidecar: <pi_dir>/extensions.synced.json. 写前备份, 原子写.
@@ -341,8 +502,11 @@ def _reconcile_extensions(skills_dir: Path, pi_dir: Path) -> None:
     """
     import json
 
-    scan_set = sorted(
-        str(p) for p in skills_dir.glob("*/pi-extension") if p.is_dir())
+    scan_set, broken = _scan_extension_dirs(skills_dir)
+    if broken:
+        raise IncompleteDeploymentError(
+            "skill 部署不完整, 视为部署失败; 本次不改动 settings.json 与 sidecar. "
+            + "; ".join(broken))
     settings_path = pi_dir / "settings.json"
     sidecar_path = pi_dir / "extensions.synced.json"
 
@@ -405,12 +569,9 @@ def execute_plan(plan: list[PlanItem], clear_skills_dir: Path | None = None, mer
     for item in plan:
         try:
             if item.is_dir:
-                if item.dst.exists():
-                    shutil.rmtree(item.dst)
-                shutil.copytree(item.src, item.dst, ignore=_SYNC_IGNORE)
+                _atomic_replace_dir(item.src, item.dst, _SYNC_IGNORE)
             else:
-                item.dst.parent.mkdir(parents=True, exist_ok=True)
-                shutil.copy2(item.src, item.dst)
+                _atomic_copy_file(item.src, item.dst)
             print(OK(f"  \u2713 {item.label}"))
             ok_count += 1
         except Exception as e:
@@ -443,7 +604,8 @@ def main() -> None:
     print(f"仓库根目录: {SRC(str(repo_root))}")
     print(Q("本脚本将仓库中的 skills 同步到 ~/.agents/skills/, extensions 同步到 pi agent 目录"))
     print(Q("宿主 AGENTS.md 将无条件由仓库根 agent-prompts/PUBLIC.md 与 PI.md 拼接重写 (写前备份 .bak)"))
-    print(SKIP("注意: 目标路径已有内容将被直接覆盖"))
+    print(SKIP("注意: 目标路径已有内容将被整体替换 (逐项原子换名)"))
+    print(SKIP("      拷贝或校验失败时保留旧内容并报错, 不留半成品目录"))
     print(SKIP("首次使用 general/access-web 或 general/present 前, 按其 SKILL.md 的 Setup 完成依赖安装 (uv sync + playwright install chromium)"))
 
     # ── 1. 探测 pi 目录 ──────────────────────────────────────────────
