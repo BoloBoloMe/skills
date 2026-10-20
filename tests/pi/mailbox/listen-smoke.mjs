@@ -76,15 +76,60 @@ function makeCtx(sid) {
 }
 
 const scenarios = {
-  // S1 新会话无标记: 不自动监听, 无子进程
-  "no-mark-no-autostart": async () => {
+  // S1 无监听记录也自动取信, 重复事件不重复启动, 关闭会话杀掉本窗口子进程.
+  "no-mark-autostart": async () => {
     const s = await loadFactory();
     const me = makeCtx("sess-ME");
+    check("S1 扩展工厂阶段不启动资源", spawns().length === 0);
     await s.fire("session_start", me.ctx);
     await sleep(300);
-    check("S1 新会话: 不启动守护", spawns().length === 0);
-    check("S1 新会话: 无标记落地", read(markPath("sess-ME")) === null);
+    const pid = spawns()[0]?.pid;
+    check("S1 新会话: 自动启动取信进程", spawns().length === 1 && alive(pid));
+    check("S1 新会话: 信箱 id 等于 pi id", json(markPath("sess-ME"))?.mailbox_session_id === "sess-ME");
+    await s.fire("session_start", me.ctx);
+    check("S1 重复事件: 本窗口只起一次", spawns().length === 1);
     await s.fire("session_shutdown", me.ctx);
+    await sleep(150);
+    check("S1 关闭会话: 取信进程已停止", !alive(pid));
+    await s.fire("agent_settled", me.ctx);
+    check("S1 关闭后: 不重新拉起取信", spawns().length === 1);
+  },
+
+  // 同一 pi id 的两个窗口均取信, 不做单窗口限制/自动接管.
+  "same-session-two-windows": async () => {
+    const a = await loadFactory();
+    const b = await loadFactory();
+    const me = makeCtx("same-session");
+    await a.fire("session_start", me.ctx);
+    await sleep(200);
+    const aPid = spawns()[0]?.pid;
+    await b.fire("session_start", me.ctx);
+    await sleep(200);
+    const bPid = spawns()[1]?.pid;
+    check("同 id 双窗口: 两个取信进程都启动", spawns().length === 2 && alive(aPid) && alive(bPid));
+    check("同 id 双窗口: 使用同一会话地址/配置", spawns().every((p) => p.cfg === configPath("same-session")));
+    await a.fire("session_shutdown", me.ctx);
+    await sleep(150);
+    const status = await b.tool("mailbox_listen", { action: "status" }, me.ctx);
+    check("关闭 A: 只停止 A 的取信进程", !alive(aPid) && alive(bPid) && status.details?.running === true);
+    check("关闭 A: B 不重启也不另起接管进程", spawns().length === 2);
+    await b.fire("session_shutdown", me.ctx);
+    await sleep(150);
+    check("关闭 B: B 的取信进程也停止", !alive(bPid));
+  },
+
+  "auto-start-shutdown-pending": async () => {
+    const s = await loadFactory();
+    const me = makeCtx("auto-pending");
+    const pending = s.fire("session_start", me.ctx);
+    await sleep(200);
+    await s.fire("session_shutdown", me.ctx);
+    await pending;
+    await sleep(150);
+    check("自启未完成即关闭: 不起取信进程", spawns().length === 0);
+    check("自启未完成即关闭: 不写监听记录", read(markPath("auto-pending")) === null);
+    const status = await s.tool("mailbox_listen", { action: "status" }, me.ctx);
+    check("自启未完成即关闭: 保持停止状态", status.details?.running === false);
   },
 
   // S2 本会话独立标记: 自动恢复; shutdown 杀子留标记
@@ -98,7 +143,7 @@ const scenarios = {
     check("S2 续接: 守护自动恢复 (子进程已拉起)", sp.length >= 1 && sp.every((x) => alive(x.pid)));
     check("S2 续接: 子进程 env 指向本会话 config", sp.length >= 1 && sp[0].cfg === configPath("sess-ME"));
     check("S2 续接: 子进程 env 指向本会话 cli-state", sp.length >= 1 && sp[0].state === `${SESSIONS}/sess-ME/cli-state.json`);
-    check("S2 续接: 提示自动恢复", me.notes.some((n) => n.m.includes("自动恢复")));
+    check("S2 续接: 提示自动启动/恢复", me.notes.some((n) => n.m.includes("自动启动/恢复")));
     check("S2 标记 pi_session_id 仍是本会话", json(markPath("sess-ME"))?.pi_session_id === "sess-ME");
     check("S2 恢复后的信箱 id 等于 pi id", json(markPath("sess-ME"))?.mailbox_session_id === "sess-ME");
     await s.fire("session_shutdown", me.ctx);
@@ -120,15 +165,16 @@ const scenarios = {
     await s.fire("session_shutdown", me.ctx);
   },
 
-  // S4 旧版全局标记无 pi_session_id: 陈旧, 不自动恢复且不动
-  "legacy-stale-no-autostart": async () => {
+  // S4 陈旧记录不用于身份绑定, 也不阻止当前会话自启.
+  "legacy-stale-autostart": async () => {
     const s = await loadFactory();
     writeLegacy({ owner: "legacy/1", pid: 1 });
     const before = read(LEGACY_MARK);
     const me = makeCtx("sess-ME");
     await s.fire("session_start", me.ctx);
     await sleep(300);
-    check("S4 陈旧标记: 不启动守护", spawns().length === 0);
+    check("S4 陈旧标记: 不阻止自动取信", spawns().length === 1);
+    check("S4 陈旧标记: 仍绑定当前 pi id", json(markPath("sess-ME"))?.mailbox_session_id === "sess-ME");
     check("S4 陈旧标记: 原样不动", read(LEGACY_MARK) === before);
     await s.fire("session_shutdown", me.ctx);
   },
@@ -187,6 +233,8 @@ const scenarios = {
   "ensure-failure-no-autostart": async () => {
     const s = await loadFactory();
     const me = makeCtx("sess-FAIL");
+    await s.fire("session_start", me.ctx);
+    check("S7 自启失败: 警告但不阻断 pi 启动", me.notes.some((n) => n.t === "warning" && n.m.includes("准备失败")));
     const r = await s.tool("mailbox_listen", { action: "start" }, me.ctx);
     check("S7 ensure 失败: start 报失败", r.details?.ok === false);
     check("S7 ensure 失败: isError=true", r.isError === true);
@@ -236,8 +284,10 @@ const scenarios = {
       return test();
     };
     try {
-      const ra = await a.tool("mailbox_listen", { action: "start" }, ca.ctx);
-      const rb = await b.tool("mailbox_listen", { action: "start" }, cb.ctx);
+      await a.fire("session_start", ca.ctx);
+      await b.fire("session_start", cb.ctx);
+      const ra = await a.tool("mailbox_listen", { action: "status" }, ca.ctx);
+      const rb = await b.tool("mailbox_listen", { action: "status" }, cb.ctx);
       check("真实服务: A 信箱 id=pi id", ra.details?.running === true && ra.details?.mailboxSessionId === "real-pi-A");
       check("真实服务: B 信箱 id=pi id", rb.details?.running === true && rb.details?.mailboxSessionId === "real-pi-B");
       send("real-pi-A", "only-A-message");
@@ -250,9 +300,9 @@ const scenarios = {
       const fresh = makeCtx("real-pi-NEW");
       await a.fire("session_start", fresh.ctx);
       const before = await a.tool("mailbox_listen", { action: "status" }, fresh.ctx);
-      check("真实服务: /new 不沿用旧取信进程", before.details?.running === false);
-      const started = await a.tool("mailbox_listen", { action: "start" }, fresh.ctx);
-      check("真实服务: /new 绑定新的 pi id", started.details?.mailboxSessionId === "real-pi-NEW");
+      check("真实服务: /new 自动取信且绑定新 id", before.details?.running === true && before.details?.mailboxSessionId === "real-pi-NEW");
+      send("real-pi-NEW", "new-session-message");
+      check("真实服务: /new 无需手动开启即可收到信", await until(() => a.injections.length === 2) && String(a.injections[1].content).includes("new-session-message"));
       await a.fire("session_shutdown", fresh.ctx);
       resumed = await loadFactory();
       await resumed.fire("session_start", ca.ctx);
@@ -296,7 +346,7 @@ const scenarios = {
     await sleep(300);
     const pid1 = spawns().slice(-1)[0].pid;
     await s.tool("mailbox_listen", { action: "stop" }, me.ctx);
-    await s.tool("mailbox_listen", { action: "start" }, me.ctx); // 立即重启
+    await s.fire("session_start", me.ctx); // 无记录也随会话重启, stop 不是永久禁用
     await sleep(600); // 让旧 close 到达
     const status = await s.tool("mailbox_listen", { action: "status" }, me.ctx);
     const newPid = spawns().slice(-1)[0].pid;
@@ -341,15 +391,16 @@ const scenarios = {
   "switch-clears-old-env": async () => {
     const s = await loadFactory();
     const a = makeCtx("sess-A");
-    await s.tool("mailbox_listen", { action: "start" }, a.ctx);
+    await s.fire("session_start", a.ctx);
     await sleep(300);
+    const aPid = spawns()[0]?.pid;
     const b = makeCtx("sess-B");
     await s.fire("session_start", b.ctx);
     await sleep(200);
-    check("S13 切到无标记会话: 守护停", spawns().every((x) => !alive(x.pid)));
+    check("S13 切到无标记会话: A 守护停", !alive(aPid));
     const status = await s.tool("mailbox_listen", { action: "status" }, b.ctx);
-    check("S13 B 不复用 A: mailboxSessionId=null", status.details?.mailboxSessionId === null);
-    check("S13 B 不复用 A: running=false", status.details?.running === false);
+    check("S13 B 不复用 A: mailboxSessionId=B", status.details?.mailboxSessionId === "sess-B");
+    check("S13 B 自动启动取信", status.details?.running === true && spawns().some((x) => x.cfg === configPath("sess-B") && alive(x.pid)));
     check("S13 A 标记仍在 (未误删)", json(markPath("sess-A"))?.pi_session_id === "sess-A");
     await s.fire("session_shutdown", b.ctx);
   },

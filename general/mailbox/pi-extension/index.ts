@@ -5,17 +5,18 @@
  *   /mail                            总览: 守护状态 + mailbox.py status + 最近回执信
  *   /mail-listen start|stop|status   取信守护 (D007/D008)
  *   /mail-send <to> <type> <body>    投信, 缺参交互补全, 带参直发
- * 一工具 (D022): mailbox_listen(action=start|stop|status) — 供 agent 在交付前
- *   自行开启本会话取信守护, 返回 piSessionId/mailboxSessionId/运行态.
+ * 一工具 (D022): mailbox_listen(action=start|stop|status) — 查询/重试/手动停止取信,
+ *   返回 piSessionId/mailboxSessionId/运行态. 每个窗口随 pi 会话自动启动/关闭取信.
  *
  * 每会话独立信箱 (D022):
  *  - 宿主/容器都按 ctx.sessionManager.getSessionId() 注册独立
  *    session, 用独立文件:
  *      ~/.agents/mailbox/sessions/<sid>/config.json    本会话凭证 (0600)
  *      ~/.agents/mailbox/sessions/<sid>/cli-state.json 本会话取信状态
- *      ~/.agents/mailbox/sessions/<sid>/listen.json    本会话监听开关标记
- *    取信子进程经 env MAILBOX_CONFIG/MAILBOX_CLI_STATE 指向本会话路径, 相互
- *    start/stop/重启不覆盖也不串信; 接收方可 --to <本会话 sid> 定向投信.
+ *      ~/.agents/mailbox/sessions/<sid>/listen.json    监听记录, 不作为自启开关
+ *    取信子进程经 env MAILBOX_CONFIG/MAILBOX_CLI_STATE 指向本会话路径.
+ *    不同 id 的 start/stop/重启不覆盖也不串信; 接收方可 --to <本会话 sid> 投信.
+ *    同 id 多窗口各自启动取信, 共享地址/状态文件, 不做单窗口限制或自动接管.
  *  - 容器的 SWT_SESSION_* 仅供 ensure-session 在宿主受限接口注册子会话.
  *    poll/send 使用独立配置并清掉接线 env, mailboxSessionId 恒等于 pi sid.
  *
@@ -56,8 +57,8 @@ const CONTAINER_ENV_KEYS = [
 interface ListenMark {
 	/** 写标记的进程标识 (hostname/pid, 展示用). */
 	owner: string;
-	/** 写标记的 pi 会话身份: ctx.sessionManager.getSessionId(). 旧版文件
-	 * 无此字段 = 陈旧标记: 不自动恢复. */
+	/** 写记录的 pi 会话身份: ctx.sessionManager.getSessionId().
+	 * 旧版无此字段的记录不用于身份绑定, 不影响自启. */
 	pi_session_id?: string;
 	/** 本取信使用的信箱 session id, 宿主/容器均等于 pi sid. */
 	mailbox_session_id?: string;
@@ -340,9 +341,8 @@ export default function (pi: ExtensionAPI) {
 		return lines;
 	}
 
-	/** 停守护但不清任何持久标记: 杀子进程 + 置停 + 代次自增 (旧 close 失效).
-	 * session_shutdown 与脚本异常退出共用 (重启后 listen 标记仍在,
-	 * 下次 session_start 照常自动恢复, AC-003). */
+	/** 停本窗口守护: 杀子进程 + 置停 + 代次自增 (旧 close 失效).
+	 * 不清持久记录, 不影响同 id 其他窗口. 下次 session_start 无条件尝试自启. */
 	function haltDaemon(): void {
 		daemon.running = false;
 		daemon.waitingSettled = false;
@@ -592,23 +592,13 @@ export default function (pi: ExtensionAPI) {
 	// ── 生命周期 ──────────────────────────────────────────────────
 
 	pi.on("session_start", async (_event, ctx) => {
-		// D022: 仅当本会话独立标记存在 (同会话续接/重启) 才自动恢复.
-		// 同进程会话替换 A→B 且两者都有标记: 先停 A 的守护 (daemon.sid != 当前
-		// sid), 再恢复 B, 绝不能因标记存在就沿用 A 的 running 守护.
+		// 每个窗口的新建/恢复/重载均自启, 不依赖 listen 标记, 不限制其他窗口.
 		const sid = sessionIdOf(ctx);
-		const mark = readListenMark(sid);
-		if (mark && sid) {
-			if (daemon.running && daemon.sid === sid && !startInFlight) return; // 已是本会话
-			if (startInFlight && daemon.pendingSid === sid) return; // 同会话启动中
-			if (daemon.running || daemon.child || startInFlight) haltDaemon(); // 先停旧会话/取消在启
-			const r = await startDaemon(ctx, "检测到本会话的 listen 标记, 取信守护已自动恢复");
-			notify(ctx, r.message, r.ok ? "info" : "warning");
-			return;
-		}
-		if (daemon.running || daemon.child || startInFlight) {
-			haltDaemon();
-			updateWidget(ctx);
-		}
+		if (sid && daemon.running && daemon.sid === sid && !startInFlight) return;
+		if (sid && startInFlight && daemon.pendingSid === sid) return;
+		if (daemon.running || daemon.child || startInFlight) haltDaemon();
+		const r = await startDaemon(ctx, "随 pi 会话自动启动/恢复");
+		notify(ctx, r.message, r.ok ? "info" : "warning");
 	});
 
 	pi.on("agent_settled", async (_event, ctx) => {
@@ -620,9 +610,8 @@ export default function (pi: ExtensionAPI) {
 	});
 
 	pi.on("session_shutdown", async () => {
-		// 只杀子进程, 不清 listen.json/cli-state: 取消/重载/会话替换/正常
-		// 退出都合流到此, 清了会把持久开关退化成仅崩溃恢复 (AC-003); 幂等.
-		// 始终 halt (含自增 gen): 取消可能在进行中的 start.
+		// 退出/切换/重载只停本窗口的子进程, 并取消可能在进行中的启动.
+		// 保留凭据与取信记录, 不注销信箱, 不停止同 id 的其他窗口.
 		haltDaemon();
 	});
 
@@ -716,7 +705,7 @@ export default function (pi: ExtensionAPI) {
 		name: "mailbox_listen",
 		label: "Mailbox Listen",
 		description:
-			"管理本 pi 会话的取信守护: start 开启/恢复, stop 停止, status 查看. " +
+			"取信随 pi 会话在本窗口自动启动/关闭; start 重试/恢复, stop 手动停止, status 查看. " +
 			"来信自动注入, pi 忙时排队. 返回 piSessionId/mailboxSessionId/running; " +
 			"宿主/容器均使用独立信箱, 启动成功时 mailboxSessionId 恒等于 piSessionId.",
 		promptGuidelines: [

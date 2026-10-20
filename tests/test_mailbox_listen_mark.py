@@ -7,7 +7,7 @@
 listen 标记与子进程行为.
 
 场景实现: tests/pi/mailbox/listen-smoke.mjs. 取代 D008/D021 的全局单标记
-+ 多会话软提示: 现在每会话按 session id 用独立文件, 互不覆盖不串信, 无警告.
++ 多会话软提示: 不同 id 用独立文件, 同 id 多窗口各自自启/关闭, 不加单窗口限制.
 """
 from __future__ import annotations
 
@@ -57,14 +57,18 @@ CONTAINER_ENV = {
 }
 
 SCENARIOS = [
-	("no-mark-no-autostart", "新会话无标记: 不自动监听", {}),
+	("no-mark-autostart", "新会话无记录: 自动取信, 关闭即停止", {}),
+	("same-session-two-windows", "同 id 多窗口均自启, 关闭只停自己的客户端", {}),
+	("same-session-two-windows", "容器内同 id 多窗口各自取信", CONTAINER_ENV),
+	("auto-start-shutdown-pending", "自启过程中关闭会话: 取消取信启动", {"FAKE_ENSURE_SLEEP": "1"}),
 	("same-session-resume", "本会话独立标记: 自动恢复 + shutdown 杀子留标记", {}),
 	("legacy-mark-migrate", "旧版全局标记属本会话: 迁移到本会话路径", {}),
-	("legacy-stale-no-autostart", "旧版无 pi_session_id: 陈旧标记不动", {}),
+	("legacy-stale-autostart", "旧版陈旧记录不影响当前会话自启", {}),
 	("tool-start-status-stop", "mailbox_listen 工具 start/status/stop 返回双 id", {}),
 	("multi-session-isolation", "两会话进程独立: 标记/子进程/stop 互不覆盖不串信", {}),
 	("ensure-failure-no-autostart", "ensure-session 失败: 不启动, isError 明确报错", {"FAKE_FAIL": "1"}),
 	("container-independent-pi", "容器: pi 独立身份, 接线仅用于注册", CONTAINER_ENV),
+	("no-mark-autostart", "容器新 pi 自动取信/关闭", CONTAINER_ENV),
 	("multi-session-isolation", "同容器两个 pi 独立收信", CONTAINER_ENV),
 	("same-session-resume", "容器同一 pi 会话恢复身份不变", CONTAINER_ENV),
 	("ensure-failure-no-autostart", "容器旧服务不可注册时不回退", {**CONTAINER_ENV, "FAKE_FAIL": "1"}),
