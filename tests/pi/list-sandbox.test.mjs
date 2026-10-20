@@ -346,9 +346,9 @@ test("视口高度读 tui.terminal.rows, 缺席/非法回退 (spec-3)", () => {
 
 // ── 用户调整 1: 全屏访问入口视图 (分区/导航/滚动) ──────────────────────
 
-/** 超长隧道命令, 用于验证折行不截断. */
-const LONG_TUNNEL =
-	"ssh -p 49153 -L 6080:127.0.0.1:49154 bolo@192.168.2.20  然后浏览器开 http://127.0.0.1:6080/vnc.html?resize=scale";
+/** 超长窗口直飞命令, 用于验证折行不截断. */
+const LONG_COMMAND =
+	"waypipe ssh -p 49153 -R /tmp/swt/pulse-b.sock:/run/user/$(id -u)/pulse/native bolo@192.168.2.20 /home/bolo/.local/bin/swt-headed-browser.sh --disable-gpu --disable-gpu-compositing --no-first-run --no-default-browser-check --start-maximized http://127.0.0.1:8800";
 
 /** 全屏视图 fixture: 覆盖六个分区 + 一条超长命令 + 两条异常行. */
 const RICH_ENTRY = {
@@ -367,10 +367,10 @@ const RICH_ENTRY = {
 		"web 入口 (本机): http://127.0.0.1:49155",
 		"herdr remote (host): herdr --remote ssh://bolo@127.0.0.1:49153",
 		"Herdr machine: swt-feature-a (宿主侧栏, id=swt-abc123, enabled=True)",
-		`noVNC (局域网隧道) [eth0 候选 (未确认可达)]: ${LONG_TUNNEL}`,
+		"noVNC (局域网) [eth0 候选 (未确认可达)]: http://192.168.2.20:49154/vnc.html?resize=scale",
 		"web 入口 (局域网) [eth0 候选 (未确认可达)]: http://192.168.2.20:49155",
 		"herdr remote (局域网) [eth0 候选 (未确认可达)]: herdr --remote ssh://bolo@192.168.2.20:49153",
-		"窗口直飞 (设备侧执行) [eth0 候选 (未确认可达)]: waypipe ssh -p 49153 bolo@192.168.2.20",
+		`窗口直飞 (设备侧执行) [eth0 候选 (未确认可达)]: ${LONG_COMMAND}`,
 		"窗口直飞前提: 设备须 Linux Wayland 桌面 + waypipe 客户端",
 		"本机直通: wayland 已接通, 容器内 headed 窗口直接弹在宿主机桌面",
 		"ssh 私钥: /home/u/keys/swt-feature-a-private-ed25519.key",
@@ -424,10 +424,10 @@ test("buildSections 按用途分区: noVNC 归桌面, Web 只指 web-port 展示
 	assert.equal(byId.web.length, 3);
 	assert.ok(byId.web.every((l) => l.startsWith("web 入口")));
 	assert.ok(!byId.web.some((l) => l.startsWith("noVNC")), "noVNC 不归 Web");
-	// 桌面: noVNC 本机 + 局域网隧道 + 直飞/直通
+	// 桌面: noVNC 本机/局域网双 URL + 直飞/直通
 	assert.equal(byId.desktop.length, 5);
 	assert.ok(byId.desktop.some((l) => l.startsWith("noVNC (本机)")));
-	assert.ok(byId.desktop.some((l) => l.startsWith("noVNC (局域网隧道)")));
+	assert.ok(byId.desktop.some((l) => l.startsWith("noVNC (局域网)")));
 	assert.ok(byId.desktop.some((l) => l.startsWith("窗口直飞 (设备侧执行)")));
 	assert.ok(byId.desktop.some((l) => l.startsWith("本机直通")));
 	// 凭据/路径: 私钥 + 新前缀
@@ -576,27 +576,27 @@ test("createEntryViewer 滚动: j/k 逐行, PgDn/PgUp 逐屏, End/Home 到底/�
 	assert.equal(viewer.scrollOffset(), 0, "Home 应回顶");
 });
 
-test("长命令不截断: 组件正文折行拼回原文 (超长隧道命令完整)", () => {
+test("长命令不截断: 组件正文折行拼回原文 (超长窗口直飞命令完整)", () => {
 	const sections = buildSections(RICH_ENTRY);
-	const tunnelIndex = sections.findIndex((s) => s.lines.some((l) => l.includes(LONG_TUNNEL)));
-	assert.ok(tunnelIndex >= 0, "fixture 应有超长隧道命令");
+	const commandIndex = sections.findIndex((s) => s.lines.some((l) => l.includes(LONG_COMMAND)));
+	assert.ok(commandIndex >= 0, "fixture 应有超长窗口直飞命令");
 	const frame = composeViewerFrame({
 		entry: RICH_ENTRY,
 		sections,
-		active: tunnelIndex,
+		active: commandIndex,
 		offset: 0,
 		width: 50,
 		rows: 40,
 	});
 	const restored = frame.bodyLines.map((line) => line.replace(/^ {2}/, "")).join("");
-	assert.ok(restored.includes(LONG_TUNNEL), "帧正文应含完整隧道命令");
+	assert.ok(restored.includes(LONG_COMMAND), "帧正文应含完整窗口直飞命令");
 
 	const viewer = createEntryViewer(RICH_ENTRY, fakeHost(40), undefined, () => {});
-	viewer.selectSection(sections[tunnelIndex].id);
+	viewer.selectSection(sections[commandIndex].id);
 	const lines = viewer.render(50);
 	for (const line of lines) assert.ok(displayWidth(line) <= 50, "组件每行不得超宽");
 	const rendered = lines.map((line) => line.replace(/^ {2}/, "")).join("");
-	assert.ok(rendered.includes(LONG_TUNNEL), "组件渲染同样不得截断长命令");
+	assert.ok(rendered.includes(LONG_COMMAND), "组件渲染同样不得截断长命令");
 });
 
 test("CJK 折行: 组件每行按显示宽不超宽且字符不丢", () => {

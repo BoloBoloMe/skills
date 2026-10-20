@@ -461,10 +461,10 @@ class _DisplayContainerTestCase(unittest.TestCase):
             )
 
     def _start_container(self, name: str, geom: str | None = None) -> None:
-        """swt birth 同型: -p 127.0.0.1::6080 回环动态 (测试互不抢 6080)
+        """swt birth 同型: -p 0.0.0.0::6080 局域网动态 (测试互不抢 6080)
         + --shm-size=1g, 然后 exec swt-vnc start."""
         args = ["podman", "run", "-d", "--shm-size", "1g", "--name", name,
-                "-p", "127.0.0.1::6080"]
+                "-p", "0.0.0.0::6080"]
         if geom:
             args += ["-e", f"GEOM={geom}"]
         args.append(self.image)
@@ -511,8 +511,8 @@ class _DisplayContainerTestCase(unittest.TestCase):
 
 
 class TestDisplayContainerE2E(_DisplayContainerTestCase):
-    """TS-003: 回环发布容器 + swt-vnc start -> GEOM resolution,
-    5900 0.0.0.0 监听, 宿主端口回环发现; swt-vnc status/stop 幂等."""
+    """TS-003: 局域网发布容器 + swt-vnc start -> GEOM resolution,
+    5900 0.0.0.0 监听, 宿主映射端口发现; swt-vnc status/stop 幂等."""
 
     def _host_vnc_port(self, name: str) -> int:
         result = subprocess.run(
@@ -534,7 +534,7 @@ class TestDisplayContainerE2E(_DisplayContainerTestCase):
         running, shm_size = inspect.split("|")
         self.assertEqual(running, "true")
         self.assertEqual(int(shm_size), 1 << 30)  # --shm-size 1g
-        # 宿主侧经回环映射的 6080 可 TCP 连上
+        # 宿主侧经 0.0.0.0 映射的 6080 可从本机 TCP 连上
         host_port = self._host_vnc_port(name)
         with socket.create_connection(("127.0.0.1", host_port), timeout=10):
             pass

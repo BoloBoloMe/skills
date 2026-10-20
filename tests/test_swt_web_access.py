@@ -72,8 +72,10 @@ class _FakeRun:
     create 记录命令; 后续 inspect 回运行中容器 JSON; `podman port <名>` 全量回读
     六个 web 口映射 (D003)."""
 
-    def __init__(self, container_name: str, web_mappings: dict[int, str] | None = None):
+    def __init__(self, container_name: str, web_mappings: dict[int, str] | None = None,
+                 vnc_mapping: str = "0.0.0.0:49154"):
         self.container_name = container_name
+        self.vnc_mapping = vnc_mapping
         self.web_mappings = (web_mappings if web_mappings is not None
                              else {8800: "0.0.0.0:49155"})
         self.calls: list[list[str]] = []
@@ -102,7 +104,7 @@ class _FakeRun:
                 if command[3] == "22":
                     return subprocess.CompletedProcess(command, 0, "0.0.0.0:49153\n", "")
                 return subprocess.CompletedProcess(command, 1, "", "no mapping")
-            lines = ["22/tcp -> 0.0.0.0:49153"]
+            lines = ["22/tcp -> 0.0.0.0:49153", f"6080/tcp -> {self.vnc_mapping}"]
             for port, mapping in self.web_mappings.items():
                 lines.append(f"{port}/tcp -> {mapping}")
             return subprocess.CompletedProcess(command, 0, "\n".join(lines) + "\n", "")
@@ -115,7 +117,8 @@ class TestBirthPublishesWebPort(unittest.TestCase):
         self.root = Path(mkdtemp(prefix="swt-web-access-"))
         self.addCleanup(rmtree, self.root, True)
 
-    def _run_create(self, web_mappings: dict[int, str] | None = None) -> _FakeRun:
+    def _run_create(self, web_mappings: dict[int, str] | None = None, *,
+                    port_free: bool = True, vnc_mapping: str = "0.0.0.0:49154") -> _FakeRun:
         m = self.m
         records_root = self.root / "records"
         identity = "testid"
@@ -125,13 +128,13 @@ class TestBirthPublishesWebPort(unittest.TestCase):
         runtime = {"schema": m.SCHEMA, "containers": [], "stage": "daemon"}
         image = {"ref": "localhost/test:latest", "digest": "sha256:fake"}
         args = argparse.Namespace(name="swt-demo", hostname="swt-demo")
-        fake = _FakeRun("swt-demo", web_mappings=web_mappings)
+        fake = _FakeRun("swt-demo", web_mappings=web_mappings, vnc_mapping=vnc_mapping)
         original_run = m.run
         original_wayland = m.host_wayland_socket
         original_port_free = m.host_port_free
         m.run = fake
         m.host_wayland_socket = lambda: None
-        m.host_port_free = lambda port: True
+        m.host_port_free = lambda port: port_free
         try:
             m.create_and_start_container(
                 args, repo, image, "feat-x", runtime, runtime_file, {},
@@ -191,6 +194,27 @@ class TestBirthPublishesWebPort(unittest.TestCase):
         record = self._persisted_record()
         self.assertIsNone(record["web-port"])
         self.assertIsNone(record["web-port-6"])
+
+    def test_novnc_prefers_6080_on_all_host_interfaces(self):
+        fake = self._run_create()
+        published = self._publish_args(fake.create_command)
+        self.assertIn("0.0.0.0:6080:6080", published)
+        self.assertFalse(any(spec.startswith("127.0.0.1") for spec in published))
+
+    def test_novnc_busy_6080_falls_back_to_lan_dynamic_port(self):
+        fake = self._run_create(port_free=False, vnc_mapping="0.0.0.0:49254")
+        published = self._publish_args(fake.create_command)
+        self.assertIn("0.0.0.0::6080", published)
+        self.assertNotIn("0.0.0.0:6080:6080", published)
+        record = self._persisted_record()
+        self.assertEqual(record["vnc-port"], 49254)
+        self.assertEqual(record["vnc-lan-port"], 49254)
+
+    def test_novnc_readback_does_not_claim_legacy_loopback_is_lan(self):
+        self._run_create(vnc_mapping="127.0.0.1:49154")
+        record = self._persisted_record()
+        self.assertEqual(record["vnc-port"], 49154)
+        self.assertIsNone(record["vnc-lan-port"])
 
     def test_create_command_ends_with_image_ref(self):
         """回归: image ref 必须是 create 命令最后一个参数 (旧 bug: llm-select `-v`

@@ -267,9 +267,12 @@ class TestListRunningEntries(ListCase):
         self.assertTrue(any("ssh -p 49153 bolo@192.168.1.10" in line
                             and "密码 sandbox" in line for line in entries), entries)
         self.assertTrue(any(str(key_path) in line for line in entries), entries)
-        # noVNC 本机 URL
+        # noVNC 双 URL, 不再依赖 SSH 转发
         self.assertTrue(any("http://127.0.0.1:49154/vnc.html?resize=scale" in line
                             for line in entries), entries)
+        self.assertTrue(any("http://192.168.1.10:49154/vnc.html?resize=scale" in line
+                            for line in entries), entries)
+        self.assertFalse(any("-L 6080" in line or "隧道" in line for line in entries), entries)
         # web 双 URL
         self.assertTrue(any("http://127.0.0.1:49155" in line for line in entries), entries)
         self.assertTrue(any("http://192.168.1.10:49155" in line for line in entries), entries)
@@ -284,6 +287,37 @@ class TestListRunningEntries(ListCase):
         # host-display 三态行 (ok)
         self.assertTrue(any("本机直通" in line and "wayland" in line
                             for line in entries), entries)
+
+
+class TestListNoVncDirectAccess(ListCase):
+    def _entries(self, ports: str):
+        self.records.mkdir()
+        # 故意留一个过期 LAN 端口, 必须以 podman 实查的发布范围为准.
+        record = runtime_record("swt-direct-a", podman_id="id-swt-direct-a".ljust(64, "0"))
+        record["vnc-lan-port"] = 49999
+        write_runtime_file(self.records, [record])
+        (self.records / "lan-address").write_text("192.168.1.10\n", encoding="utf-8")
+        fake = running_fake("swt-direct-a", "id-swt-direct-a".ljust(64, "0"), ports,
+                            ip_lines(("wlan0", "192.168.1.10")))
+        code, out, err = self.run_list(fake)
+        self.assertEqual(code, 0, err)
+        return self.parse_list(out)["containers"][0]["access-entries"]
+
+    def test_novnc_lan_url_does_not_require_ssh_mapping(self):
+        entries = self._entries(port_output(None, 49254, None))
+        self.assertTrue(any("http://192.168.1.10:49254/vnc.html?resize=scale" in line
+                            for line in entries), entries)
+        self.assertFalse(any("-L " in line or "隧道" in line for line in entries), entries)
+
+    def test_legacy_loopback_has_local_url_and_no_false_lan_url(self):
+        entries = self._entries("22/tcp -> 0.0.0.0:49153\n"
+                                "6080/tcp -> 127.0.0.1:49254\n")
+        self.assertTrue(any("http://127.0.0.1:49254/vnc.html?resize=scale" in line
+                            for line in entries), entries)
+        self.assertFalse(any("http://192.168.1.10:49254" in line or "49999" in line
+                             for line in entries), entries)
+        self.assertTrue(any("旧容器需经确认后重建" in line for line in entries), entries)
+        self.assertFalse(any("-L " in line for line in entries), entries)
 
 
 class TestListLans(ListCase):
@@ -321,11 +355,11 @@ class TestListLans(ListCase):
         self.assertNotIn("100.64.0.5", json.dumps(entry, ensure_ascii=False))
         entries = entry["access-entries"]
         candidate_lines = [line for line in entries if "192.168.2.20" in line]
-        # eth0 候选组全套 (D007): ssh/隧道/web/herdr/直飞 五行逐网卡代换
+        # eth0 候选组全套 (D007): ssh/noVNC/web/herdr/直飞 五行逐网卡代换
         self.assertEqual(len(candidate_lines), 5, candidate_lines)
         self.assertTrue(any("ssh -p 49210 bolo@192.168.2.20" in line
                             for line in candidate_lines), candidate_lines)
-        self.assertTrue(any("-L 6080:127.0.0.1:49211 bolo@192.168.2.20" in line
+        self.assertTrue(any("http://192.168.2.20:49211/vnc.html?resize=scale" in line
                             for line in candidate_lines), candidate_lines)
         self.assertTrue(any("http://192.168.2.20:49212" in line
                             for line in candidate_lines), candidate_lines)

@@ -331,7 +331,7 @@ function subjectOf(line: string): SectionId | null {
 	}
 	if (line.startsWith("ssh 入口")) return "ssh";
 	if (line.startsWith("herdr remote") || line.startsWith("Herdr machine")) return "herdr";
-	// Web 只指容器 web-port 展示页; noVNC (本机 URL/局域网隧道) 是桌面交付.
+	// Web 只指容器 web-port 展示页; noVNC (本机/局域网直连 URL) 是桌面交付.
 	if (line.startsWith("web 入口")) return "web";
 	if (
 		line.startsWith("noVNC") ||

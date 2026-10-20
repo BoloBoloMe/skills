@@ -159,7 +159,7 @@ class SwtFixture(unittest.TestCase):
                 check=False,
                 env=env,
             )
-            if not (result.returncode == 3 and "Listen failed for HOST TCP port 127.0.0.1/6080" in result.stderr):
+            if not (result.returncode == 3 and "Listen failed for HOST TCP port 0.0.0.0/6080" in result.stderr):
                 return result
             time.sleep(1)
             if "--confirm" in args:
@@ -981,7 +981,8 @@ class TestTS201BirthChain(SwtBirthFixture):
         bindings_json, shm_size = inspect_out.split("|")
         bindings = json.loads(bindings_json)
         self.assertEqual(int(shm_size), 1 << 30)  # --shm-size=1g (chromium 必需)
-        self.assertEqual(bindings["6080/tcp"][0]["HostIp"], "127.0.0.1")  # 只绑回环
+        self.assertEqual(bindings["6080/tcp"][0]["HostIp"], "0.0.0.0")  # 局域网直连
+        self.assertEqual(container["vnc-lan-port"], container["vnc-port"])
         # D046: auth.json 启动后注入 (bolo 属主 600, 非只读挂载 — rootless
         # uid_map 下挂载会让 host bolo 文件在容器内呈现为 root 属主, F014)
         if (Path.home() / ".pi" / "agent" / "auth.json").is_file():
@@ -992,15 +993,16 @@ class TestTS201BirthChain(SwtBirthFixture):
             ).stdout.strip()
             self.assertEqual("bolo 600", stat_out)
         # 决策 8 + 补充: 交付固定项 — ssh 双入口 + herdr 双命令, 直连形式废除;
-        # 隧道命令仅在显示栈 ok 时随发 (absent 时为降级说明, 无可随道)
+        # noVNC 双 URL 仅在显示栈 ok 时随发, 无端口转发命令
         self.assertIn("ssh 入口 (本机)", result.stdout)
         self.assertIn("ssh 入口 (局域网)", result.stdout)
         self.assertNotIn("ssh bolo@", result.stdout)
         self.assertEqual(2, result.stdout.count("herdr --remote"))
+        self.assertNotIn("-L 6080", result.stdout)
         if container["display"] == "ok":
-            self.assertIn("-L 6080:127.0.0.1:", result.stdout)
+            self.assertIn("noVNC (局域网): http://", result.stdout)
         else:
-            self.assertIn("无 noVNC 交付", result.stdout)
+            self.assertIn("无 noVNC 入口", result.stdout)
         self.assertTrue(list((self.records / "runtime").glob("*.json")))
 
 class TestTS1xxHostname(SwtBirthFixture):
@@ -1074,7 +1076,7 @@ class TestTS213SshKey(SwtBirthFixture):
 class TestTS210NftMerge(SwtBirthFixture):
     def test_second_pair_rules_stay_in_each_container_netns(self) -> None:
         """并行母体: 两对各自的容器规则在各自 SandboxKey; 6080 被占时第二容器
-        回落到回环动态端口 (D040)."""
+        回落到局域网可访问的动态端口."""
         second_name = f"swt-m12-merge-second-{self.root.name[-6:]}"
         first = self.birth_ready()
         # D040 回落 (6080 被占 ⇒ 动态端口) 确定性构造: xdist 并行下 6080 多数时间
@@ -1106,14 +1108,15 @@ class TestTS210NftMerge(SwtBirthFixture):
         second = next(item for item in state["containers"] if item["name"] == second_name)
         self.assertIsInstance(first["vnc-port"], int)
         self.assertIsInstance(second["vnc-port"], int)
-        # D040: 第二容器诞生时 6080 已被显式占用, 回落到回环动态端口.
+        # 第二容器诞生时 6080 已被占用, 回落到局域网可访问的动态端口.
         self.assertNotEqual(6080, second["vnc-port"])
         second_bindings = json.loads(subprocess.run(
             ["podman", "inspect", second["name"], "--format",
              "{{json .HostConfig.PortBindings}}"],
             capture_output=True, text=True, check=True,
         ).stdout)
-        self.assertEqual(second_bindings["6080/tcp"][0]["HostIp"], "127.0.0.1")
+        self.assertEqual(second_bindings["6080/tcp"][0]["HostIp"], "0.0.0.0")
+        self.assertEqual(second["vnc-lan-port"], second["vnc-port"])
 
 class TestTS211Partial(SwtBirthFixture):
     def test_port_start_failure_leaves_runtime_and_second_birth_converges(self) -> None:

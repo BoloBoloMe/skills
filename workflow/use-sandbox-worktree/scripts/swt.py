@@ -1476,11 +1476,12 @@ def container_ssh_port(name: str) -> int:
     return port
 
 
-def parse_podman_ports(stdout: str) -> dict[str, int]:
+def parse_podman_ports(stdout: str, *, lan_only: bool = False) -> dict[str, int]:
     """podman port 全量输出 -> {容器端口: 宿主端口}.
 
     同一容器端口多表项时优先 0.0.0.0/[::]; 回环发布 (127.0.0.1) 落
     fallback. 多映射容器 (22 + 6080) 不能再用 '取末行' 旧法.
+    lan_only 只取宿主 0.0.0.0 发布, 用于 IPv4 局域网 URL, 避免给旧回环容器假入口.
     """
     preferred: dict[str, int] = {}
     fallback: dict[str, int] = {}
@@ -1490,7 +1491,7 @@ def parse_podman_ports(stdout: str) -> dict[str, int]:
         container_side, _, host_side = (part.strip() for part in line.partition("->"))
         container_port = container_side.split("/")[0]
         _host_ip, _, host_port = host_side.rpartition(":")
-        if not host_port.isdigit():
+        if not host_port.isdigit() or (lan_only and _host_ip != "0.0.0.0"):
             continue
         if _host_ip in ("0.0.0.0", "[::]"):
             preferred.setdefault(container_port, int(host_port))
@@ -1499,10 +1500,12 @@ def parse_podman_ports(stdout: str) -> dict[str, int]:
     return {**fallback, **preferred}
 
 
-def container_vnc_port(name: str) -> int | None:
-    """容器 6080 (noVNC) 的宿主映射端口; 无映射返回 None (缺省镜像无显示栈也允许)."""
-    _result, port = _directed_port_query(name, "6080")
-    return port
+def container_vnc_ports(name: str) -> tuple[int | None, int | None]:
+    """容器 noVNC 的本机/局域网宿主端口; 不把旧回环映射当局域网入口."""
+    result = run(["podman", "port", name])
+    output = result.stdout if result.returncode == 0 else ""
+    return (parse_podman_ports(output).get("6080"),
+            parse_podman_ports(output, lan_only=True).get("6080"))
 
 
 def container_web_ports(name: str) -> dict[str, int | None]:
@@ -1612,11 +1615,11 @@ def run_display_verify(name: str, evidence_dir: Path) -> tuple[bool, str]:
 
 
 def host_port_free(port: int) -> bool:
-    """宿主回环端口是否可绑 (pasta 发布端口占用检测, 多容器回落动态用)."""
+    """宿主全接口端口是否可绑 (pasta 发布端口占用检测, 多容器回落动态用)."""
     probe = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     probe.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     try:
-        probe.bind(("127.0.0.1", port))
+        probe.bind(("0.0.0.0", port))
         return True
     except OSError:
         return False
@@ -1732,16 +1735,10 @@ def ssh_entry_payload(ssh_port: int, lan: str | None = None) -> str:
     return f"ssh -p {ssh_port} bolo@{host}  (用户 bolo, 密码 sandbox)"
 
 
-def novnc_local_url(vnc_port: int) -> str:
-    return f"http://127.0.0.1:{vnc_port}/vnc.html?resize=scale"
-
-
-def novnc_tunnel_command(ssh_port: int, vnc_port: int, lan: str) -> str:
-    """noVNC 局域网隧道命令 (地址段由调用方代换, <host-LAN-IP> 占位亦可)."""
-    return f"ssh -p {ssh_port} -L 6080:127.0.0.1:{vnc_port} bolo@{lan}"
-
-
-NOVNC_TUNNEL_FOLLOWUP = "  然后浏览器开 http://127.0.0.1:6080/vnc.html?resize=scale"
+def novnc_url(vnc_port: int, lan: str | None = None) -> str:
+    """noVNC 直连 URL, lan 缺省即宿主本机, 不依赖 SSH."""
+    host = lan if lan is not None else "127.0.0.1"
+    return f"http://{host}:{vnc_port}/vnc.html?resize=scale"
 
 
 def web_local_url(web_port: int) -> str:
@@ -1762,15 +1759,19 @@ def ssh_key_path_line(key_path: Any) -> str:
     return f"ssh 私钥: {key_path}"
 
 
-DISPLAY_STACK_ABSENT_TEXT = "显示栈: 该容器镜像未内置 swt-vnc, 无 noVNC 交付, 亦无隧道命令可附发"
+DISPLAY_STACK_ABSENT_TEXT = "显示栈: 该容器镜像未内置 swt-vnc, 无 noVNC 入口"
 DISPLAY_STACK_DEGRADED_TEXT = (
     "显示栈: 降级 (检查未过, 可用 swt display-check 诊断); 终端工作不受影响,"
-    " 隧道命令待显示栈恢复后随下次交付附发"
+    " noVNC URL 待显示栈恢复后随下次交付附发"
 )
-DISPLAY_STACK_OK_NO_VNC_TEXT = ("显示栈 ok 但容器无 6080 映射, 隧道命令未附发 (异常形态, 可跑 swt display-check 诊断)")
+DISPLAY_STACK_OK_NO_VNC_TEXT = "显示栈 ok 但容器无 6080 映射, noVNC URL 未附发 (异常形态, 可跑 swt display-check 诊断)"
+NOVNC_LAN_UNPUBLISHED_TEXT = (
+    "noVNC (局域网) 未附发: 6080 未发布到宿主 0.0.0.0;"
+    " 旧容器需经确认后重建, stop/start 不改变端口映射"
+)
 HOST_DISPLAY_OK_TEXT = (
     "本机直通: wayland 已接通 — 容器内 headed 窗口 (登录墙等) 将直接弹在宿主机桌面,"
-    " 本机场景可不开 noVNC; 远程仍走上方隧道"
+    " 本机场景可不开 noVNC; 远程可用 noVNC 局域网 URL"
 )
 HOST_DISPLAY_DEGRADED_TEXT = "本机直通: 降级 (wayland 实测未过, 已回退 noVNC; 可用 swt display-check 诊断)"
 HOST_DISPLAY_ABSENT_TEXT = "本机直通: absent (无宿主机桌面会话/纯服务器宿主常态, 显示走 noVNC)"
@@ -1879,9 +1880,10 @@ def print_delivery_lines(
     web_port: int | None = None,
     headed_script: str | None = None,
     web_env_injected: bool = True,
+    vnc_lan_port: int | None = None,
 ) -> None:
     """固定交付项 (每次 birth/resume 交付齐发, 禁止遗漏, D039/决策 8):
-    ssh 双入口 (本机/局域网, 都带端口) + noVNC URL + 局域网隧道命令
+    ssh 双入口 (本机/局域网, 都带端口) + noVNC 本机/局域网双 URL
     + herdr remote 双命令 + web 双 URL (仅 web-port 容器, D003/D007)
     + 窗口直飞行 (仅实例脚本在场的容器, ISSUE-07).
     无法附发的项显式打一行原因, 不静默丢失 (F3)."""
@@ -1920,15 +1922,14 @@ def print_delivery_lines(
 
     section("桌面 / noVNC / 窗口直飞")
     if display_status == "ok" and vnc_port:
-        print(f"[SWT] noVNC (本机):      {novnc_local_url(vnc_port)}")
-        if ssh_port is None:
-            print("[SWT] noVNC 局域网隧道未附发: 无 SSH 端口")
+        print(f"[SWT] noVNC (本机):   {novnc_url(vnc_port)}")
+        if vnc_lan_port is None:
+            print(f"[SWT] {NOVNC_LAN_UNPUBLISHED_TEXT}")
         elif lan:
-            print(f"[SWT] noVNC (局域网隧道): {novnc_tunnel_command(ssh_port, vnc_port, lan)}"
-                  f"{NOVNC_TUNNEL_FOLLOWUP}")
+            print(f"[SWT] noVNC (局域网): {novnc_url(vnc_lan_port, lan)}")
         else:
-            print(f"[SWT] noVNC (局域网隧道) 未附发: host 局域网地址不可知, 请人工确认"
-                  f" host-LAN-IP 后组装: {novnc_tunnel_command(ssh_port, vnc_port, '<host-LAN-IP>')}")
+            print("[SWT] noVNC (局域网) 未附发: host 局域网地址无已确认值,"
+                  " 确认 (--lan-ip) 后随下次交付附发")
     elif display_status == "absent":
         print(f"[SWT] {DISPLAY_STACK_ABSENT_TEXT}")
     elif display_status in ("degraded", "fail"):
@@ -1949,7 +1950,7 @@ def print_delivery_lines(
         print(line)
 
     section("登录凭据")
-    print("[SWT] 登录密码: sandbox (noVNC 本身无密码, 远程访问以 SSH 为门槛)")
+    print("[SWT] 登录密码: sandbox (仅 SSH 登录; noVNC 局域网直连无认证, 同网段可查看/控制桌面)")
     if key_path:
         print(f"[SWT] {ssh_key_path_line(key_path)}")
     else:
@@ -2429,11 +2430,11 @@ def refresh_container(
         if started.returncode != 0:
             raise SwtError(3, "PARTIAL", f"PARTIAL container-start {name}; 请释放占用端口后重跑 birth: {started.stderr.strip()}")
     port = container_ssh_port(name)
-    vnc_port = container_vnc_port(name)
+    vnc_port, vnc_lan_port = container_vnc_ports(name)
     web_ports = container_web_ports(name)
     detail = inspect_container(name)
     record.update({"podman-id": detail.get("Id"), "state": "running", "ssh-port": port,
-                   "vnc-port": vnc_port, **web_ports})
+                   "vnc-port": vnc_port, "vnc-lan-port": vnc_lan_port, **web_ports})
     runtime["stage"] = "container-started"
     upsert_container_record(runtime, record, runtime_file)
     return {"name": name, "port": port, "record": record, "detail": detail}
@@ -2829,12 +2830,12 @@ def create_and_start_container(args: argparse.Namespace, repo: Path, image: dict
     # 环境变量继承 (创建时烘入镜像 env, ssh 面由 inject_ssh_key 写 ~/.ssh/environment)
     for env_name, env_value in env.items():
         command.extend(["-e", f"{env_name}={env_value}"])
-    # 显示栈发布 (D040): 只绑宿主回环; chromium 必需 --shm-size=1g;
-    # 宿主 6080 已被占 (多容器并存) 时回落同回环动态端口, URL/隧道按实际端口交付
+    # noVNC 发布到宿主 0.0.0.0, 局域网直连; chromium 必需 --shm-size=1g.
+    # 宿主 6080 被占 (多容器并存) 时回落动态端口, 双 URL 按实际映射交付.
     if host_port_free(6080):
-        command.extend(["-p", "127.0.0.1:6080:6080"])
+        command.extend(["-p", "0.0.0.0:6080:6080"])
     else:
-        command.extend(["-p", "127.0.0.1::6080"])
+        command.extend(["-p", "0.0.0.0::6080"])
     command.extend(["--shm-size", "1g"])
     # git 桥 socket 目录 (P0-1): host 侧 socat 在此建 git.sock, 容器转发器连它
     bridge_dir = git_bridge_dir(records_root, identity)
@@ -3047,6 +3048,7 @@ def birth_display_gate_reentry(
             read_confirmed_lan_address(records_root), record.get("host-display"),
             record.get("web-port"),
             headed_script=record.get("headed-script"),
+            vnc_lan_port=record.get("vnc-lan-port"),
         )
         print_birth_state(repo, records_root, runtime_file, runtime, runtime.get("mother") or {}, image, runtime.get("network"), "[SWT] birth: 已完成 (显示栈降级)")
         return 0
@@ -3067,6 +3069,7 @@ def birth_display_gate_reentry(
             read_confirmed_lan_address(records_root), record.get("host-display"),
             record.get("web-port"),
             headed_script=record.get("headed-script"),
+            vnc_lan_port=record.get("vnc-lan-port"),
         )
         print_birth_state(repo, records_root, runtime_file, runtime, runtime.get("mother") or {}, image, runtime.get("network"), "[SWT] birth: 已完成 (显示栈重验通过)")
         return 0
@@ -3248,7 +3251,8 @@ def birth(args: argparse.Namespace, repo: Path) -> int:
             print_delivery_lines("birth: 已就绪 (固定模板未重装)", record.get("ssh-port"), record.get("vnc-port"),
                                  record.get("display"), Path(record["ssh_private_key"]) if record.get("ssh_private_key") else None,
                                  read_confirmed_lan_address(records_root), record.get("host-display"), record.get("web-port"),
-                                 headed_script=record.get("headed-script"))
+                                 headed_script=record.get("headed-script"),
+                                 vnc_lan_port=record.get("vnc-lan-port"))
             print_birth_state(repo, records_root, runtime_file, runtime_existing, runtime_existing.get("mother") or {},
                               runtime_existing.get("image"), runtime_existing.get("network"), "[SWT] birth: 已完成, 模板未重装")
             return 0
@@ -3569,6 +3573,7 @@ def birth(args: argparse.Namespace, repo: Path) -> int:
         container["record"].get("web-port"),
         headed_script=container.get("headed-script"),
         web_env_injected=web_env_injected,
+        vnc_lan_port=container["record"].get("vnc-lan-port"),
     )
     observed_daemon = daemon_state(mother_dir, repo, runtime)
     state = build_state(
@@ -3856,6 +3861,8 @@ def podman_container_state(
                 "state": state.get("Status") or row.get("State") or row.get("Status"),
                 "ssh-port": ssh_port,
                 "vnc-port": vnc_port or retired_record.get("vnc-port"),
+                "vnc-lan-port": (parse_podman_ports(port_result.stdout, lan_only=True).get("6080")
+                                 if port_result.returncode == 0 else None),
                 **web_ports,
                 "display": retired_record.get("display"),
                 "agent-template": retired_record.get("agent-template"),
@@ -4393,6 +4400,7 @@ def ensure_display_after_resume(
     (D041). 失败降级: 更新 STATE 显示栈状态并汇报注明, 不阻断终端工作.
     返回: ok / degraded / absent."""
     name = str(record.get("name"))
+    record["vnc-port"], record["vnc-lan-port"] = container_vnc_ports(name)
     if not container_has_swt_vnc(name):
         record["display"] = "absent"
         upsert_container_record(runtime, record, runtime_file)
@@ -4654,6 +4662,7 @@ def resume(args: argparse.Namespace, repo: Path) -> int:
             host_display_status,
             target.get("web-port"),
             headed_script=target.get("headed-script"),
+            vnc_lan_port=target.get("vnc-lan-port"),
         )
         # STATE 用刚写盘的 runtime 容器记录 (含本分支刚更新的 display),
         # 不用函数头取的 observed 快照 — 那是显示栈检查前的旧值, 会与交付行自相矛盾
@@ -4822,6 +4831,7 @@ def resume(args: argparse.Namespace, repo: Path) -> int:
         record.get("host-display"),
         record.get("web-port"),
         headed_script=record.get("headed-script"),
+        vnc_lan_port=record.get("vnc-lan-port"),
     )
     print_state(
         build_state(repo, records_root, runtime_file, runtime, mother=_UNSET, containers=observed,
@@ -5217,6 +5227,7 @@ def list_sandbox(args: argparse.Namespace) -> int:
                 mapped_ports.get("22"), mapped_ports.get("6080"), mapped_ports.get("8800"),
                 record.get("display"), host_display, record.get("headed-script"),
                 record.get("ssh_private_key"), lan_groups, lan_skipped_confirmed,
+                vnc_lan_port=parse_podman_ports(port_result.stdout, lan_only=True).get("6080"),
             )
         elif record_state != "matched":
             # 记录缺失/损坏 (D011/AC-005): 照列不隐藏, 指引只有手工 podman rm,
@@ -5238,6 +5249,7 @@ def list_sandbox(args: argparse.Namespace) -> int:
                     record.get("display"), host_display, record.get("headed-script"),
                     record.get("ssh_private_key"), lan_groups, lan_skipped_confirmed,
                     record_unusable=True,
+                    vnc_lan_port=parse_podman_ports(port_result.stdout, lan_only=True).get("6080"),
                 ))
             else:
                 # 非 running (BR-003): 无可达入口, 入口不组装, 记录派生入口缺席
@@ -5318,6 +5330,7 @@ def list_access_entries(
     lan_groups: list[dict[str, Any]],
     skipped_confirmed: str | None = None,
     record_unusable: bool = False,
+    vnc_lan_port: int | None = None,
 ) -> list[str]:
     """running 容器的访问入口行组装 (matched 与 missing/corrupt 记录共用,
     D008 入口子集, AC-002/AC-003): 记录派生字段缺席时自动降级为 reason 行.
@@ -5333,11 +5346,13 @@ def list_access_entries(
     if ssh_port is not None:
         entries.append(f"ssh 入口 (本机): {ssh_entry_payload(ssh_port)}")
     else:
-        # BR-004: ssh 面整体缺席不静默 (ssh 双入口/隧道/herdr/直飞都依赖 22 端口)
-        entries.append("ssh 入口未附发: 容器无 22 端口映射; ssh 双入口/noVNC 局域网隧道/"
+        # BR-004: ssh 面整体缺席不静默; noVNC 直连不依赖 22 端口.
+        entries.append("ssh 入口未附发: 容器无 22 端口映射; ssh 双入口/"
                        "herdr remote/窗口直飞均依赖 22 端口 (异常形态, 可 podman port 复查)")
     if display == "ok" and vnc_port:
-        entries.append(f"noVNC (本机): {novnc_local_url(vnc_port)}")
+        entries.append(f"noVNC (本机): {novnc_url(vnc_port)}")
+        if vnc_lan_port is None:
+            entries.append(NOVNC_LAN_UNPUBLISHED_TEXT)
     elif display == "absent":
         entries.append(DISPLAY_STACK_ABSENT_TEXT)
     elif display in ("degraded", "fail"):
@@ -5361,9 +5376,8 @@ def list_access_entries(
         tag = "已确认" if group["kind"] == "confirmed" else f"{group['iface']} 候选 (未确认可达)"
         if ssh_port is not None:
             entries.append(f"ssh 入口 (局域网) [{tag}]: {ssh_entry_payload(ssh_port, lan)}")
-        if display == "ok" and vnc_port and ssh_port is not None:
-            entries.append(f"noVNC (局域网隧道) [{tag}]: {novnc_tunnel_command(ssh_port, vnc_port, lan)}"
-                           f"{NOVNC_TUNNEL_FOLLOWUP}")
+        if display == "ok" and vnc_port and vnc_lan_port is not None:
+            entries.append(f"noVNC (局域网) [{tag}]: {novnc_url(vnc_lan_port, lan)}")
         if web_port is not None:
             entries.append(f"web 入口 (局域网) [{tag}]: {web_lan_url(lan, web_port)}")
         if ssh_port is not None:
