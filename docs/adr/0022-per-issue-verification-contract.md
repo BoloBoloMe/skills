@@ -4,4 +4,4 @@
 
 TDD 从"每个 issue 的必经步骤"降为需要红绿循环的用例: 缺陷修复里有正确接缝的回归测试, 行为变更里需要锁住的复杂逻辑. 结构变更是先观察既有行为再改, 检查在动手前就应通过; 类型检查与 lint 无法单独证明行为未变. 硬套红绿会诱发绑定实现的测试: 行为没变, 重构却弄坏测试.
 
-编排节点按 issue 声明派活, 执行者不现场换契约; `code-review` 的 Spec 轴核对交付证据与声明契约是否一致, 例如标结构变更却没有任何行为钉住物, 标行为变更却只有测试通过而没在真东西上验过. 最终独立验收 (`verify-change`) 不受契约影响, 仍按已确认的 PRODUCT.md 复核, 契约只承担执行者自证, 不构成验收结论. 完整规则见 [verification-contract](../../workflow/verification-contract/SKILL.md).
+编排节点按 issue 声明派活, 执行者不现场换契约; `code-review` 的 Spec 轴核对交付证据与声明契约是否一致, 例如标结构变更却没有任何能观察既有行为的检查, 标行为变更却只有测试通过而没在真东西上验过. 最终独立验收 (`verify-change`) 不受契约影响, 仍按已确认的 PRODUCT.md 复核, 契约只承担执行者自证, 不构成验收结论. 完整规则见 [verification-contract](../../workflow/verification-contract/SKILL.md).

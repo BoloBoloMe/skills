@@ -32,7 +32,7 @@ disable-model-invocation: true
 3. `docs/changes/<feature-slug>/` 下的 `DECISIONS.md`, `PRODUCT.md`, `TECHNICAL.md`, `EXECUTION.md`, `issues/`.
 4. 以上均无, 询问我 spec 在哪. 如果我说没有, **Spec** 轴跳过并报告 `no spec available`.
 
-完成标准: spec 状态已归类为路径, 已获取内容, 或 `no spec available`; 每个使用的来源都有路径, URL 或提交证据.
+完成标准: spec 状态已归类为路径, 已获取内容, 或 `no spec available`; 每个使用的来源都有路径, URL 或提交证据; 存在 issue 文件时已定位各 issue 的 `验证契约`, `验证入口` 与 `交付证据`, 供 Spec reviewer 核对.
 
 ### 3. 确定规范来源
 
