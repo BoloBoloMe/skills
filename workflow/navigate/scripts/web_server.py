@@ -12,8 +12,7 @@ HTTP 端点 (绑定 0.0.0.0, 网段可读为已接受取舍, 不做认证/TLS):
   GET /api/roadmap?path=...  - 仅放行以 .json 结尾且存在的绝对路径, 否则结构化错误
   GET /__control__/ping      - 判活 (service/pid 指纹)
 
-空闲自退: 最后一次请求 (覆盖所有端点含判活) 后 24h 无新请求则退出并清理运行时文件;
-阈值经 NAVIGATE_WEB_TTL_SECONDS 可缩短 (测试用).
+服务启动后持续运行, 直到显式 stop.
 
 结构: run_* 是命令核心, 一律返回结果 dict, 不碰 stdout 与 sys.exit.
 main() 是薄 CLI 适配器: argv 解析, JSON 序列化, 退出码.
@@ -24,7 +23,6 @@ import datetime
 import errno
 import fcntl
 import json
-import math
 import os
 import random
 import signal
@@ -46,9 +44,6 @@ INDEX_PATH = Path(__file__).resolve().parent.parent / "web" / "index.html"
 
 # 默认端口被占时的回退候选次数 (随机 49152-65534, 对齐 present 重建先例)
 _PORT_FALLBACK_ATTEMPTS = 10
-
-_DEFAULT_TTL_SECONDS = 86400  # 默认空闲 24h 自退
-
 
 # ---------------------------------------------------------------------------
 # Result construction (core produces dicts, never prints or exits)
@@ -333,16 +328,10 @@ class _Handler(BaseHTTPRequestHandler):
     """HTTP 处理器: 判活 ping + 占位页 + 路线图数据端点."""
 
     runtime_dir = Path(".")
-    # 最后任一请求的 time.monotonic() 时间戳; 单属性赋值在 GIL 下原子,
-    # 更新轻量无锁 (watchdog 只读). 覆盖所有端点含判活 ping.
-    last_activity = 0.0
     protocol_version = "HTTP/1.1"
 
     def log_message(self, fmt, *args):
         _log(self.runtime_dir, f"{self.client_address[0]} - {fmt % args}")
-
-    def _note_activity(self):
-        type(self).last_activity = time.monotonic()
 
     def _write_json(self, code, obj):
         body = json.dumps(obj, ensure_ascii=False).encode("utf-8")
@@ -366,7 +355,6 @@ class _Handler(BaseHTTPRequestHandler):
             pass
 
     def do_GET(self):
-        self._note_activity()
         try:
             parsed = urlparse(self.path)
             path = parsed.path
@@ -447,32 +435,11 @@ class _Handler(BaseHTTPRequestHandler):
 
 
 # ---------------------------------------------------------------------------
-# Idle TTL
-# ---------------------------------------------------------------------------
-
-def _idle_ttl_seconds(runtime_dir):
-    """空闲 TTL: env NAVIGATE_WEB_TTL_SECONDS 覆盖, 默认 86400s.
-    非法值 (非数字/非正/非有限) 记日志并回退默认, 不拒绝启动."""
-    raw = os.environ.get("NAVIGATE_WEB_TTL_SECONDS")
-    if raw is None:
-        return _DEFAULT_TTL_SECONDS
-    try:
-        value = float(raw)
-    except ValueError:
-        _log(runtime_dir, f"invalid NAVIGATE_WEB_TTL_SECONDS={raw!r}; fallback to {_DEFAULT_TTL_SECONDS}")
-        return _DEFAULT_TTL_SECONDS
-    if not math.isfinite(value) or value <= 0:
-        _log(runtime_dir, f"non-positive/non-finite NAVIGATE_WEB_TTL_SECONDS={raw!r}; fallback to {_DEFAULT_TTL_SECONDS}")
-        return _DEFAULT_TTL_SECONDS
-    return value
-
-
-# ---------------------------------------------------------------------------
 # Serve entry (child process only)
 # ---------------------------------------------------------------------------
 
 def _serve(port):
-    """守护进程入口: 绑定端口, 写 server.json, 开 HTTP 服务, 空闲自退."""
+    """守护进程入口: 绑定端口, 写 server.json, 持续提供 HTTP 服务."""
     port = int(port)
     runtime_dir = _runtime_dir()
     _ensure_runtime_dir(runtime_dir)
@@ -505,30 +472,13 @@ def _serve(port):
     _atomic_write_json(runtime_dir / "server.json", data)
     _log(runtime_dir, f"server started on {BIND}:{port} pid={os.getpid()}")
 
-    # 空闲 TTL 自退: watchdog 周期检查, 空闲超 TTL -> shutdown, serve_forever
-    # 返回后清理运行时文件, 进程自然退出. 检查间隔 = TTL/4, 下限 0.1s 上限 30s:
-    # 默认 86400s 时 30s 一查, 秒级 TTL 时及时退出; 最坏退出延迟 = TTL + 间隔.
-    ttl = _idle_ttl_seconds(runtime_dir)
-    _Handler.last_activity = time.monotonic()
-    interval = max(0.1, min(ttl / 4.0, 30.0))
-
-    def _idle_watchdog():
-        while True:
-            time.sleep(interval)
-            if time.monotonic() - _Handler.last_activity > ttl:
-                _log(runtime_dir, f"idle exceeded ttl={ttl}s; shutting down")
-                server.shutdown()
-                return
-
-    threading.Thread(target=_idle_watchdog, daemon=True).start()
-
     try:
         server.serve_forever()
     except Exception as e:
         _log(runtime_dir, f"serve error: {e}")
     finally:
         server.server_close()
-        # 空闲自退路径清运行时文件; stop 路径经 SIGTERM 直接终止, 由 run_stop 清理.
+        # 正常 stop 经 SIGTERM 终止并由 run_stop 清理; 这里处理意外退出.
         try:
             (runtime_dir / "server.json").unlink()
         except FileNotFoundError:
