@@ -51,5 +51,5 @@
 | [`to-spec`](workflow/to-spec/SKILL.md) | 把已确认的产品和技术决策整理成两份权威 spec. |
 | [`use-sandbox-worktree`](workflow/use-sandbox-worktree/SKILL.md) | 管理 host worktree 与 sandbox 容器绑定对的生命周期. |
 | [`use-worktree`](workflow/use-worktree/SKILL.md) | 识别, 创建, 删除和迁移 Git worktree, 并执行安全检查. |
-| [`verification-contract`](workflow/verification-contract/SKILL.md) | 按 issue 的活儿类型选定验证契约, 给出每类契约的做法与完成证据. |
+| [`verification-contract`](workflow/verification-contract/SKILL.md) | 按 issue 的改动类型确定验证方式和交付证据. |
 | [`verify-change`](workflow/verify-change/SKILL.md) | 独立产品验收, 只按被验项目已确认的产品标准逐项核对最终成品, 委派非作者实跑. |
