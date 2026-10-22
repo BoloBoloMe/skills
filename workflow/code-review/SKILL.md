@@ -29,7 +29,7 @@ disable-model-invocation: true
 
 1. 我作为参数传入的路径或内容.
 2. commit message 中的 issue 引用.
-3. `docs/changes/<feature-slug>/` 下的 `DECISIONS.md`, `PRODUCT.md`, `TECHNICAL.md`, `EXECUTION.md`.
+3. `docs/changes/<feature-slug>/` 下的 `DECISIONS.md`, `PRODUCT.md`, `TECHNICAL.md`, `EXECUTION.md`, `issues/`.
 4. 以上均无, 询问我 spec 在哪. 如果我说没有, **Spec** 轴跳过并报告 `no spec available`.
 
 完成标准: spec 状态已归类为路径, 已获取内容, 或 `no spec available`; 每个使用的来源都有路径, URL 或提交证据.
@@ -59,7 +59,8 @@ disable-model-invocation: true
 
 - 完整的 diff 命令和 commit 列表.
 - spec 的路径或已获取的内容.
-- 任务简述: `报告 (a) spec 要求但缺失或不完整的实现; (b) diff 中出现了但 spec 未要求的行为, 即范围蔓延; (c) 看似已实现但实现方式有误的需求. 每条发现引用 spec 原文. 每个发现必须已读取对应 hunk 所在完整函数/方法及必要调用方; 无 spec 证据不得报告. 400 词以内.`
+- issue 或 `EXECUTION.md` 中声明的验证契约 (若有).
+- 任务简述: `报告 (a) spec 要求但缺失或不完整的实现; (b) diff 中出现了但 spec 未要求的行为, 即范围蔓延; (c) 看似已实现但实现方式有误的需求; (d) 交付的证据与该 issue 声明的验证契约不符, 例如标结构变更却没有任何行为钉住物, 标行为变更却只有测试通过而没在真东西上验过. 每条发现引用 spec 原文. 每个发现必须已读取对应 hunk 所在完整函数/方法及必要调用方; 无 spec 证据不得报告. 400 词以内.`
 
 如果 spec 缺失, 跳过 Spec reviewer 并在最终报告中注明.
 

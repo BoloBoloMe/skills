@@ -38,6 +38,7 @@
 | [`diagnosing-bugs`](workflow/diagnosing-bugs/SKILL.md) | 为硬 bug 和性能回归建立反馈循环并定位原因. |
 | [`domain-awareness`](workflow/domain-awareness/SKILL.md) | 只读发现当前仓库的领域语言, 边界和相关 ADR. |
 | [`domain-modeling`](workflow/domain-modeling/SKILL.md) | 维护领域语言和 ADR, 持续澄清模糊的领域概念. |
+| [`drive-execution`](workflow/drive-execution/SKILL.md) | 将大型任务分给执行者和审核者, 按 issue 的验证契约与 worktree 流程协作. |
 | [`explain-diff`](workflow/explain-diff/SKILL.md) | 生成包含背景, 主旨, 证据, 合并风险和测验的交互式 diff 讲解页. |
 | [`follow-the-money`](workflow/follow-the-money/SKILL.md) | 沿价值流审查变更, 检查授权, 数量和执行造成的资损风险. |
 | [`improve-codebase-architecture`](workflow/improve-codebase-architecture/SKILL.md) | 发现架构摩擦, 并提出把浅模块深化的重构机会. |
@@ -46,9 +47,9 @@
 | [`navigate`](workflow/navigate/SKILL.md) | 在目的地和路线不清时, 用 Roadmap 和 Milestone 组织探索. |
 | [`prototype`](workflow/prototype/SKILL.md) | 构建一次性原型, 验证逻辑状态模型或 UI 外观问题. |
 | [`tdd`](workflow/tdd/SKILL.md) | 在小型编程任务中用面向接缝的测试执行 TDD 循环. |
-| [`tdd-as-orchestra`](workflow/tdd-as-orchestra/SKILL.md) | 将大型任务分给执行者和审核者, 按 TDD 与 worktree 流程协作. |
 | [`to-execution`](workflow/to-execution/SKILL.md) | 把 Product/Technical Spec 拆成 Execution Spec 和可执行 issues. |
 | [`to-spec`](workflow/to-spec/SKILL.md) | 把已确认的产品和技术决策整理成两份权威 spec. |
 | [`use-sandbox-worktree`](workflow/use-sandbox-worktree/SKILL.md) | 管理 host worktree 与 sandbox 容器绑定对的生命周期. |
 | [`use-worktree`](workflow/use-worktree/SKILL.md) | 识别, 创建, 删除和迁移 Git worktree, 并执行安全检查. |
+| [`verification-contract`](workflow/verification-contract/SKILL.md) | 按 issue 的活儿类型选定验证契约, 给出每类契约的做法与完成证据. |
 | [`verify-change`](workflow/verify-change/SKILL.md) | 独立产品验收, 只按被验项目已确认的产品标准逐项核对最终成品, 委派非作者实跑. |

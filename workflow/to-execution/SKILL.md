@@ -37,7 +37,7 @@ disable-model-invocation: true
 
 **宽重构是垂直切片的例外**: 一次机械改动 (重命名列, 改共享符号类型) 的 blast radius 扩散到整个代码库, 没有切片能独立保持绿色. 遇到这类变更时读 [refactor-expand-contract.md](refactor-expand-contract.md), 按其中的扩展-收缩序列拆分.
 
-起草完成标准: 每个 AC 被至少一个拟议 issue 覆盖或明确说明无需执行任务; PRODUCT.md `业务规则` 节中标 (审计) 的断言必须进覆盖矩阵并有承接条目 (人工验证或 issue); TECHNICAL.md 非功能要求/安全策略中的验证性要求均有承接; TECHNICAL.md 模块接口的每条不变量/错误模式, 要么有 TC 承接, 要么在所属 issue 的 TDD 切片节标注不测及理由; 每个切片符合上述垂直切片规则; 每条 blocker 都是前置 issue 完成后本 issue 才能开始的真实依赖, 且 blocker 图无环; 宽重构已按 refactor-expand-contract.md 拆分或明确不适用.
+起草完成标准: 每个 AC 被至少一个拟议 issue 覆盖或明确说明无需执行任务; PRODUCT.md `业务规则` 节中标 (审计) 的断言必须进覆盖矩阵并有承接条目 (人工验证或 issue); TECHNICAL.md 非功能要求/安全策略中的验证性要求均有承接; TECHNICAL.md 模块接口的每条不变量/错误模式, 要么有 TC 承接, 要么在所属 issue 的 `测试切片` 节标注不测及理由; 每个切片符合上述垂直切片规则; 每条 blocker 都是前置 issue 完成后本 issue 才能开始的真实依赖, 且 blocker 图无环; 宽重构已按 refactor-expand-contract.md 拆分或明确不适用.
 
 # 固化 Execution Spec 和 issues
 
@@ -47,7 +47,7 @@ disable-model-invocation: true
 
 完成标准: 
 `EXECUTION.md` 任务图中的每个引用可解析, 每个 AC/BR/TC 都能在覆盖矩阵中追溯到验证入口; 
-每个 issue 有代码定位提示和可执行 TDD 切片, 或明确标记非代码/人工验证/HITL 特例; 
+每个 issue 有代码定位提示和 `验证契约` (五类之一, 含完成证据), 契约需要测试推进时还有可执行测试切片, 或明确标记非代码/人工验证/HITL 特例; 
 决策引用单向完整: 每个 issue 的 相关决策 节引用真实存在的决策 ID, 或已明确无相关决策.
 
 使用下方模板写 `EXECUTION.md`.
@@ -66,7 +66,7 @@ disable-model-invocation: true
 - 必须通过的 build/lint/test/benchmark/人工验证及通过标准.
 ## 测试策略
 - AC 与标 (审计) 的 BR 断言对应的测试类型和验证入口; 接缝与测试适配器以 TECHNICAL.md 测试接缝映射表为唯一来源.
-- 每个 issue 至少有一个可执行 TDD 切片, 或明确说明该 issue 是非代码/人工验证/HITL 特例.
+- 每个 issue 声明五类验证契约之一 (见 `verification-contract` skill) 并写清完成证据; 契约需要测试推进时给出测试切片, 或说明该 issue 是非代码/人工验证/HITL 特例.
 ## 任务图
 - ISSUE-01: `issues/ISSUE-01-<slug>.md`; 覆盖: AC-001; 依赖: 无.
 ## 覆盖矩阵
@@ -99,12 +99,16 @@ disable-model-invocation: true
 明确不能修改的模块, API, schema, 行为或非目标.
 ## 代码定位提示
 入口文件, 相关模块, 已有测试位置和必要阅读顺序. 只写定位线索, 不写逐文件实现计划.
-## TDD 切片
+## 验证契约
+- 契约: 行为变更 / 结构变更 / 缺陷修复 / 性能改进 / 非行为改动, 五选一. 判据与完成证据见 `verification-contract` skill.
+- 完成证据: 本 issue 交付时须附的证据类型与落点 (命令与输出 / 钉住物与前后复跑 / 红态与绿态 / 基线与改后数字 / 构建加 lint 加真跑一次).
+## 测试切片 (条件保留)
+契约需要用测试推进时保留, 否则整节省略并写明省略理由.
 - TS-001:
   接缝: TECHNICAL.md 测试接缝映射表中该 AC 对应的接缝与测试适配器.
   测试用例: TC-001.
-  先写的失败测试: 一句话说明测试名称和预期失败原因.
-  最小绿色实现范围: 让该测试通过所需的最小行为范围.
+  检查形态: 先红后绿 (缺陷修复, 或行为变更里锁行为的测试), 或先绿保绿 (结构变更的钉住物). 先红写预期失败原因; 先绿写它描述的是哪条既有行为.
+  最小实现范围: 让该检查成立所需的最小改动范围.
   不得测试: 内部实现, 私有方法, 内部协作者调用次数或未确认用例.
   覆盖: AC-001.
 ## 验证入口
