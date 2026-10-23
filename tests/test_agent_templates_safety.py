@@ -74,14 +74,23 @@ class DataTests(TemporaryCase):
     def test_deterministic_and_native_catalog_consumed(self):
         self.assertEqual(template.snapshot(self.bundle), template.snapshot(copy.deepcopy(self.bundle)))
         files = self.value["files"]
+        expected_models = {"deepseek-flash", "glm-5.3-flash", "gpt-6-luna", "gpt-6.1-sol"}
+        pi = json.loads(files[".pi/agent/models.json"])
+        self.assertEqual({m["id"] for m in pi["providers"]["cli"]["models"]}, expected_models)
+        pi_settings = json.loads(files[".pi/agent/settings.overlay.json"])
+        self.assertEqual(pi_settings["defaultModel"], "deepseek-flash")
         codex = tomllib.loads(files[".codex/config.toml"])
+        self.assertEqual(codex["model"], "gpt-6-luna")
         self.assertEqual(codex["model_catalog_json"], "/home/bolo/.codex/models.json")
         catalog = json.loads(files[".codex/models.json"])
-        self.assertEqual(len(catalog["models"]), 7)
+        self.assertEqual({m["slug"] for m in catalog["models"]}, {"gpt-6-luna", "gpt-6.1-sol"})
         self.assertTrue(all(m["upgrade"] is None and not m["prefer_websockets"] for m in catalog["models"]))
         kimi = tomllib.loads(files[".kimi-code/config.toml"])
-        self.assertEqual(kimi["default_model"], "cliproxy-chat/glm-5.3")
-        self.assertEqual(len(kimi["models"]), 11)
+        self.assertEqual(kimi["default_model"], "cliproxy-chat/deepseek-flash")
+        self.assertEqual(set(kimi["models"]), {
+            "cliproxy-chat/deepseek-flash", "cliproxy-chat/glm-5.3-flash",
+            "cliproxy-responses/gpt-6-luna", "cliproxy-responses/gpt-6.1-sol",
+        })
         self.assertEqual({p["base_url"] for p in kimi["providers"].values()}, {self.bundle["template"]["base_url"]})
         self.assertNotIn(KEY, json.dumps(self.value))
         self.assertNotIn(MANAGEMENT, json.dumps(self.value))
@@ -114,7 +123,7 @@ class DataTests(TemporaryCase):
         second = template.creation(self.root / "snapshot.json", changed, "testbox", "sha256:fake")
         self.assertNotEqual(first["snapshot"], second["snapshot"])
         self.assertNotEqual(first["creation-token"], second["creation-token"])
-        self.assertEqual(template.read_snapshot(Path(first["snapshot"]))["template"]["version"], "2026-10-13.1")
+        self.assertEqual(template.read_snapshot(Path(first["snapshot"]))["template"]["version"], "2026-10-20.2")
 
     def test_shared_business_credentials_require_decision(self):
         with self.assertRaises(common.TemplateError) as error:
@@ -238,17 +247,17 @@ class InstallerTests(TemporaryCase):
             self.assertNotIn("--print", cmd)
 
 
-@unittest.skipUnless(shutil.which("pi"), "没有主机 Pi, 真实解析验收留给新测试容器")
+@unittest.skipUnless((Path("/opt/swt-agent-bin/pi").is_file()), "没有 Pi 原始解析器, 真实解析验收留给新测试容器")
 class PiParserTests(TemporaryCase):
     def test_actual_pi_parser_and_auth_resolver_in_private_home(self):
         self.installed()
         env = common.client_env({"PATH": os.environ["PATH"], "TERM": "dumb"}, KEY, home=self.home)
         flags = ["--offline", "--no-extensions", "--no-mcp", "--no-skills", "--no-prompt-templates", "--no-context-files", "--no-approve"]
-        listed = subprocess.run([shutil.which("pi"), *flags, "--list-models", "cli"], cwd=self.home, env=env, capture_output=True, text=True, timeout=30)
+        listed = subprocess.run([str(runtime.REAL_BIN_DIR / "pi"), *flags, "--list-models", "cli"], cwd=self.home, env=env, capture_output=True, text=True, timeout=30)
         self.assertEqual(listed.returncode, 0, "Pi 真实解析失败, 原始输出不打印")
         for model in self.bundle["catalog"]["models"]:
             self.assertIn(model["id"], listed.stdout, "Pi 未列出模板模型")
-        auth = subprocess.run([shutil.which("pi"), "auth", "check", "--provider", "cli", "--json", "--offline"], cwd=self.home, env=env, capture_output=True, text=True, timeout=30)
+        auth = subprocess.run([str(runtime.REAL_BIN_DIR / "pi"), "auth", "check", "--provider", "cli", "--json", "--offline"], cwd=self.home, env=env, capture_output=True, text=True, timeout=30)
         self.assertEqual(auth.returncode, 0, "Pi 凭据解析失败, 原始输出不打印")
         self.assertNotIn(KEY, auth.stdout + auth.stderr)
         self.assertEqual(json.loads(auth.stdout)["status"], "ready")
