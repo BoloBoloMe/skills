@@ -131,10 +131,9 @@ disable-model-invocation: true
 - ISSUE 引用. 无则写"无".
 ```
 
-只核验, 不修改成品的 issue 用下方模板: 只填核验栏目, 不套改动契约, 不新增实施分类.
+只核验, 不修改成品的 issue 用下方纯核验模板: 只填核验栏目, 不套改动契约, 不新增实施分类.
 
 ```markdown
-## 纯核验 issue 模板
 ## 父级
 - `../EXECUTION.md`
 ## 执行
