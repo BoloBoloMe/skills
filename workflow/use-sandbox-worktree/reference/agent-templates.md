@@ -27,7 +27,15 @@ Codex 固定原生模型目录须含官方基础指令, 不从主机配置或 bi
 ## 凭据与验收边界
 
 凭据来源由所选模板的 `credential` 指定, 只读取 JSON 的 `client_api_key` 字段. 源必须为当前账户所有的普通文件且权限 600, 拒绝符号链接; 不复制整个文件, management_key/上游 Key/OAuth 不进容器. 云/Git 等与模型共用的业务环境变量冲突须由我决定, 不自动继承或丢弃; env.conf 继承规则见 [maintenance.md](maintenance.md).
-Key 仅经 stdin 注入容器 `.config/swt-agent/client-key.json`, 属主 bolo, 文件 600/目录 700; 不进镜像/argv/create -e/SSH environment/普通日志. pi/codex/kimi 固定启动入口读取该文件并设入子进程环境, 无须 source shell 文件. 客户端诊断可能含 Key, 只用脱敏报告.
+Key 仅经 stdin 注入容器 `.config/swt-agent/client-key.json`, 属主 bolo, 文件 600/目录 700; 不进镜像/argv/create -e/SSH environment/普通日志. pi/codex/kimi 固定启动入口读取该文件并设入子进程环境, 无须 source shell 文件. 客户端配置只保存变量引用, 不写 Key 原文:
+
+| 客户端 | 配置引用 |
+| --- | --- |
+| Pi `models.json` | `"apiKey": "$SWT_AGENT_CLIENT_KEY"` |
+| Codex `config.toml` | `env_key = "SWT_AGENT_CLIENT_KEY"` |
+| Kimi `config.toml` 的两个 provider | `api_key_env = "SWT_AGENT_CLIENT_KEY"` |
+
+这是启动时注入的进程环境变量, 不将 Key 广播到所有登录 shell. 共享 600 文件用于容器 stop/start 后恢复, 不是各客户端各存一份; 启动时缺失/权限不符即拒绝运行, 不使用继承来的同名变量兜底. 不在 `env.conf`, `/etc/environment` 或 shell 启动脚本里另写密钥, 不用 `env`/`printenv` 展示客户端环境. 宿主仓库 `pi/models.json` 则读取 `$CLIPROXYAPI_KEY`, 设置方法见仓库 `pi/README.md`; 它不改变容器模板的固定快照/凭据来源. 客户端诊断可能含 Key, 只用脱敏报告.
 网关验收仅 GET `/v1/models`, 禁止认证重定向/隐式代理; 响应只检查模板模型是否齐全, 不自动导入额外派生模型. 网关失败不选供应商回退. HTTP 网关未加密, 只用已确认的本机/可信内网入口.
 客户端自动验收只做本地解析: Pi 列模型和 auth check, Codex 用 features list 加载配置与固定原生目录, Kimi 用 doctor config. Codex doctor 额外检查更新/网络/沙盒, 不用于 birth/resume 验收. Key 文件权限/环境注入与网关认证分别检查, 本地解析不是请求/工具流证据; Kimi 的高级推理/工具流须单独实测, 不沿用 Pi compat 的结论.
 Pi 内置目录/模板 enabledModels 不是认证隔离. 新镜像不复制 auth/OAuth/主机模型目录/信任答案, 新容器不继承已知旧模型凭据/路由变量, 默认和轮换都选模板 provider. 模板约束初始配置, 不阻止容器内进程读取客户端 Key 或以后自行改配置/运行原始客户端, 不是真正零凭据沙盒.

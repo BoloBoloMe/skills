@@ -11,6 +11,7 @@ import shutil
 import stat
 import sys
 import tempfile
+import tomllib
 import unittest
 from pathlib import Path
 from unittest import mock
@@ -51,9 +52,16 @@ class TemplateTest(unittest.TestCase):
             "client_api_key", "!jq", "127.0.0.1:8317",
         ):
             self.assertNotIn(forbidden, combined)
-        self.assertIn("api_key_env = \"SWT_AGENT_CLIENT_KEY\"", files[".kimi-code/config.toml"])
-        self.assertIn("env_key = \"SWT_AGENT_CLIENT_KEY\"", files[".codex/config.toml"])
         pi_models = json.loads(files[".pi/agent/models.json"])
+        self.assertEqual(pi_models["providers"]["cli"]["apiKey"], "$" + self.common.KEY_ENV)
+        codex = tomllib.loads(files[".codex/config.toml"])
+        codex_provider = codex["model_providers"][codex["model_provider"]]
+        self.assertEqual(codex_provider["env_key"], self.common.KEY_ENV)
+        self.assertNotIn("experimental_bearer_token", codex_provider)
+        kimi = tomllib.loads(files[".kimi-code/config.toml"])
+        for provider in kimi["providers"].values():
+            self.assertEqual(provider["api_key_env"], self.common.KEY_ENV)
+            self.assertNotIn("api_key", provider)
         models = pi_models["providers"]["cli"]["models"]
         self.assertEqual({m["api"] for m in models}, {"openai-responses", "openai-completions"})
         self.assertIn("defaultModel", json.loads(files[".pi/agent/settings.overlay.json"]))
@@ -125,6 +133,9 @@ class RuntimeTest(unittest.TestCase):
             )
             self.assertEqual(0o600, stat.S_IMODE((root / ".config/swt-agent/client-key.json").stat().st_mode))
             self.assertEqual("k" * 32, json.loads((root / ".config/swt-agent/client-key.json").read_text())["client_api_key"])
+            for path in root.rglob("*"):
+                if path.is_file() and path != root / common.KEY_PATH:
+                    self.assertNotIn("k" * 32, path.read_text(), "Key 只能落在共享凭据文件")
             with mock.patch.object(runtime, "check_clients", lambda key, owner: None), \
                  mock.patch.object(runtime, "check_gateway", lambda value, key: None):
                 report = runtime.check_payload({"snapshot": value}, root, owner,

@@ -46,7 +46,7 @@
     "cli": {
       "baseUrl": "http://192.168.65.165:8317/v1",
       "api": "openai-responses",
-      "apiKey": "cpa-client-5nqptlMo-8Oyn76bwvbo8VYF02GYczUGvqS7UALYifc9p3ArZ1IIFtjmn0rLefeO",
+      "apiKey": "$CLIPROXYAPI_KEY",
       "authHeader": true,
       "models": [
         {

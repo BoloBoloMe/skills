@@ -218,6 +218,13 @@ class InstallerTests(TemporaryCase):
         with self.assertRaises(common.TemplateError):
             launch.launch_env(self.home, {})
 
+    def test_launcher_rejects_missing_store_instead_of_using_inherited_key(self):
+        self.installed()
+        common.safe_write(self.home / common.READY_PATH, common.pretty({"contract": common.CONTRACT, "snapshot-digest": self.value["snapshot-digest"]}), mode=0o644)
+        (self.home / common.KEY_PATH).unlink()
+        with self.assertRaises(common.TemplateError):
+            launch.launch_env(self.home, {common.KEY_ENV: KEY, "CLIPROXYAPI_KEY": KEY})
+
     def test_real_entrypoint_for_each_client_uses_env_not_argv(self):
         self.installed()
         common.safe_write(self.home / common.READY_PATH, common.pretty({"contract": common.CONTRACT, "snapshot-digest": self.value["snapshot-digest"]}), mode=0o644)
@@ -261,6 +268,25 @@ class PiParserTests(TemporaryCase):
         self.assertEqual(auth.returncode, 0, "Pi 凭据解析失败, 原始输出不打印")
         self.assertNotIn(KEY, auth.stdout + auth.stderr)
         self.assertEqual(json.loads(auth.stdout)["status"], "ready")
+
+    def test_repo_pi_config_resolves_environment_and_rejects_missing_key(self):
+        agent_dir = self.home / ".pi/agent"
+        common.safe_write(agent_dir / "models.json", (ROOT / "pi/models.json").read_text())
+        env = {"PATH": os.environ["PATH"], "HOME": str(self.home), "TERM": "dumb",
+               "PI_CODING_AGENT_DIR": str(agent_dir), "PI_OFFLINE": "1"}
+        command = [str(runtime.REAL_BIN_DIR / "pi"), "auth", "print-api-key",
+                   "--provider", "cli", "--offline"]
+        # 仅解析临时 HOME 和假 Key, 捕获输出, 不连接网关/生成内容.
+        with_key = subprocess.run(command, cwd=self.home, env={**env, "CLIPROXYAPI_KEY": KEY},
+                                  capture_output=True, text=True, timeout=30)
+        self.assertEqual(with_key.returncode, 0, "Pi 环境变量解析失败, 原始输出不打印")
+        self.assertTrue(with_key.stdout.strip() == KEY, "Pi 必须解析出环境变量的值")
+        without_key = subprocess.run(command, cwd=self.home, env=env,
+                                     capture_output=True, text=True, timeout=30)
+        self.assertNotEqual(without_key.returncode, 0, "缺少环境变量时不得使用占位符或回退密钥")
+        for path in self.home.rglob("*"):
+            if path.is_file():
+                self.assertNotIn(KEY, path.read_text(), "Pi 不得将环境变量 Key 写入配置/认证文件")
 
 
 class HostBindingTests(TemporaryCase):

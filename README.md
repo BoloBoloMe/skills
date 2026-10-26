@@ -2,6 +2,10 @@
 
 本仓库沉淀可复用的 AI coding agent skills.
 
+## Pi 配置
+
+`pi/models.json` 的密钥只引用环境变量: CLIProxyAPI 用 `CLIPROXYAPI_KEY`, ai-work 用 `CHANG_ZHI_AI_WORK`. 启动前设置, 不将明文写回配置; 安全设置方法与容器注入区别见 [pi/README.md](pi/README.md).
+
 ## 目录
 
 ### 通用技能

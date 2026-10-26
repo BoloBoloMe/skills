@@ -17,6 +17,24 @@ assert SPEC.loader is not None
 SPEC.loader.exec_module(sync_to_pi)
 
 
+class ModelEnvironmentTests(unittest.TestCase):
+    def test_merge_preserves_environment_reference_without_expanding_or_saving_key(self):
+        key = "fake-sync-client-key-not-real-12345678"
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            source = root / "source.json"
+            target = root / "models.json"
+            source.write_text(json.dumps({"providers": {"cli": {"apiKey": "$CLIPROXYAPI_KEY"}}}))
+            target.write_text(json.dumps({"providers": {"cli": {"apiKey": "old-fake-key"}}}))
+            output = io.StringIO()
+            with mock.patch.dict(os.environ, {"CLIPROXYAPI_KEY": key}), contextlib.redirect_stdout(output):
+                self.assertEqual(sync_to_pi._merge_models(source, target), 1)
+            self.assertEqual(json.loads(target.read_text())["providers"]["cli"]["apiKey"], "$CLIPROXYAPI_KEY")
+            for path in root.iterdir():
+                self.assertNotIn(key, path.read_text(), "同步不能把环境变量中的 Key 写入文件")
+            self.assertNotIn(key, output.getvalue())
+
+
 class ClearSkillsTests(unittest.TestCase):
     def _run_main(self, pi_dir, answers, home):
         with (
