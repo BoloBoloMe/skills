@@ -41,7 +41,7 @@ disable-model-invocation: true
 
 # 固化 Execution Spec 和 issues
 
-拆分内容不送人工审核: 通过起草完成标准自检后直接固化, 产物根目录按约定落盘. 按模板生成拆分出的 issues, 再生成引用真实 issue 路径的 `EXECUTION.md`. 按依赖顺序编号. TC (测试用例) 编号全局唯一且无需集中分配: 覆盖某 AC 的主用例与 AC 同号 (`AC-005 -> TC-005`), 同一 AC 的额外用例和审计 BR 用例从 `TC-101` 起顺序编号. 信源与决策的引用路径按实际位置解析, 不假设它们位于产物根目录. 
+拆分内容不送人工审核: 通过起草完成标准自检后直接固化, 产物根目录按约定落盘. 按模板生成拆分出的 issues, 再生成引用真实 issue 路径的 `EXECUTION.md`. 按依赖顺序编号. TC (测试用例) 编号全局唯一, 各 issue 自行编号, 无需集中分配: 覆盖某 AC 的主用例与 AC 同号 (`AC-005 -> TC-005`); 同一 AC 的额外用例和审计 BR 用例用 `TC-<issue 两位编号>-<两位序号>`, 如 ISSUE-02 的第一条额外用例为 `TC-02-01`. 信源与决策的引用路径按实际位置解析, 不假设它们位于产物根目录. 
 存在相关 DECISIONS.md 时, 每个 issue 单向引用相关决策 ID, 见 issue 模板的 相关决策 节. 引用只从产物指向账本: DECISIONS.md 是权威信源, 产物是派生视图, 账本不记录产物引用. 不新增或改变决策内容. 无相关决策时 issue 写"无".
 不复制 PRODUCT.md/TECHNICAL.md 的正文, 只引用稳定 ID (AC/BR/G/NG) 或与模板逐字一致的固定节名, 以及执行所需摘要. 全局允许范围, 禁止范围, 完成定义, 验证策略只在 `EXECUTION.md` 写一次; issue 的对应节只写本 issue 的增量, 与全局相同就写"同全局".
 
@@ -58,6 +58,8 @@ disable-model-invocation: true
 - Product Spec: `<PRODUCT.md 实际路径>`
 - Technical Spec: `<TECHNICAL.md 实际路径>`
 - 决策引用 (只读, 非意图来源): `<DECISIONS.md 实际路径>` 或"无"
+## 评审起点
+- 首次派工前由 `drive-execution` 填入完整提交号与核实依据; 此前写"待填".
 ## 全局允许范围
 - 以 TECHNICAL.md 模块划分末尾的模块/目录边界为准, 列可修改的模块, 目录, 文件模式或行为范围.
 ## 全局禁止范围
@@ -89,7 +91,7 @@ disable-model-invocation: true
 ## 要交付什么
 实施结果.
 ## 覆盖依据
-- Product: `<PRODUCT.md 实际路径>`, AC-001
+- Product: `<PRODUCT.md 实际路径>`, AC-001; 准备类 issue 无 AC 时写 G-001/NG-001/BR-001.
 - Technical: `<TECHNICAL.md 实际路径>`, <节名> (如 模块接口/测试接缝/非功能要求; 无对应节则写"无")
 ## 相关决策
 - `<DECISIONS.md 实际路径>`: D001. 无则写"无".
@@ -108,7 +110,7 @@ disable-model-invocation: true
 仅采用测试推进时保留本节; 其余在验证入口写明验证方式, 无需专门补一个空的测试切片.
 - TS-001:
   接缝: TECHNICAL.md 测试接缝映射表中该 AC 对应的接缝与测试适配器; 结构变更可引用既有行为检查.
-  测试用例: TC-001 或结构变更所用的既有检查入口.
+  测试用例: 覆盖 AC 的主用例 TC-001, 额外用例写 `TC-<issue 两位编号>-<序号>`, 结构变更可引用既有检查入口.
   检查形态: 先红后绿 (缺陷修复, 或行为变更里锁行为的测试), 或先绿保绿 (结构变更的既有行为检查). 先红写预期失败原因; 先绿写它描述的是哪条既有行为.
   最小实现范围: 让该检查成立所需的最小改动范围.
   不得测试: 内部实现, 私有方法, 内部协作者调用次数或未确认用例.
@@ -141,7 +143,7 @@ disable-model-invocation: true
 ## 要核验什么
 本次要确认的结果, 及其对应的 AC/BR/非功能要求.
 ## 覆盖依据
-- Product: `<PRODUCT.md 实际路径>`, AC-001
+- Product: `<PRODUCT.md 实际路径>`, AC-001 或 G-001/BR-001.
 - Technical: `<TECHNICAL.md 实际路径>`, <节名; 无则写"无">
 ## 相关决策
 - `<DECISIONS.md 实际路径>`: D001. 无则写"无".
