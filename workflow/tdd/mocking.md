@@ -1,5 +1,7 @@
 # 何时 mock
 
+若尚未读过 `verification-contract` skill, 先调用它判断是否需要替代服务; 已读则沿用共用底线. 本节只说明替代应放在哪里, 不能拿替代结果证明真实服务的行为.
+
 只在**系统边界** mock:
 
 - 外部 API (payment, email 等)
