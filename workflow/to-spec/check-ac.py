@@ -22,8 +22,8 @@
    "描述非空" 视为存在非关键字行 (如 给定/则/英文关键字), 判为违规.
 5. 标签位置: 标签只允许出现在场景/场景大纲行; 功能级/例子块级标签会
    向下继承, 破坏每场景恰好一个 @AC 的语义, 一律判为违规.
-6. 编号对账: 场景引用的 @G-NNN/@BR-NNN 必须在 PRODUCT.md 的 目标/业务规则 节
-   真实存在; @BR 不得指向标 (审计) 的审计式断言.
+6. 编号对账: 目标/业务规则编号不得重复; 场景引用的 @G-NNN/@BR-NNN 必须在
+   PRODUCT.md 对应节真实存在; @BR 不得指向标 (审计) 的审计式断言.
 """
 
 from __future__ import annotations
@@ -96,23 +96,32 @@ def section_bounds(markdown: str, section: str, *, required: bool = True) -> tup
     return headings[index][2], end
 
 
-def extract_entries(markdown: str, section: str) -> dict[str, bool]:
-    """提取 `## <section>` 节中的 G/BR 条目, 返回 {编号: 是否 (审计) 条目}.
+def extract_entry_texts(markdown: str, section: str) -> dict[str, str]:
+    """校验与预览共用条目原文 (含续行), 避免审计判定或编号定位分歧.
 
-    节不存在视为空集 (模板允许 业务规则 节无内容), 引用自然全部判为悬挂.
+    节不存在视为空集, 重复编号无法唯一引用, 按输入错误拒绝.
     """
     bounds = section_bounds(markdown, section, required=False)
     if bounds is None:
         return {}
-    body = markdown[bounds[0] : bounds[1]]
-    entries: dict[str, bool] = {}
-    for line in body.splitlines():
-        em = ENTRY_RE.match(line)
-        if em:
-            entries[f"{em.group(1)}-{em.group(2)}"] = any(
-                mark in line for mark in AUDIT_MARKS
-            )
-    return entries
+    entries: dict[str, list[str]] = {}
+    current = None
+    for line in markdown[bounds[0]:bounds[1]].splitlines(keepends=True):
+        match = ENTRY_RE.match(line)
+        if match:
+            current = f"{match[1]}-{match[2]}"
+            if current in entries:
+                raise InputError(f"`{section}` 节的 {current} 重复, 无法确定唯一条目")
+            entries[current] = []
+        if current is not None:
+            entries[current].append(line)
+    return {key: "".join(lines).rstrip("\r\n") for key, lines in entries.items()}
+
+
+def extract_entries(markdown: str, section: str) -> dict[str, bool]:
+    """返回 {编号: 是否 (审计) 条目}, 审计标记按完整条目识别, 包括续行."""
+    return {key: any(mark in text for mark in AUDIT_MARKS)
+            for key, text in extract_entry_texts(markdown, section).items()}
 
 
 class Violations:
