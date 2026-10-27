@@ -1,0 +1,42 @@
+<!--
+  2026-10-26 事故最小复现: 页面在图上看不到, 只看到 mermaid 源码.
+
+  两个缺陷同现:
+  1. `<pre class="mermaid">` 放在默认折叠的 `<details>` 里, 渲染时量不到宽度;
+  2. 页面脚本加了一段"展开时把图擦回源码再重画"的补丁, 重画失败就永久停在源码.
+
+  用途: check_page.py 的回归样例, 期望被判 diagram_in_hidden 与 manual_rerender.
+  这不是可交付页面, 不要照抄.
+-->
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head><meta charset="UTF-8"><title>事故复现: 图解退化成源码</title></head>
+<body>
+<details>
+  <summary>3.3 诞生主链</summary>
+  <figure>
+<pre class="mermaid">
+sequenceDiagram
+  participant A as 宿主 agent
+  participant S as swt.py
+  A->>S: birth --repo ... --branch ...
+  S-->>A: exit 1 + DECIDE 行
+</pre>
+  </figure>
+</details>
+
+<script>/* pi-present-mermaid-inline */ var mermaid = { initialize: function () {}, run: function () {} };</script>
+<script>
+document.querySelectorAll('details').forEach(function (d) {
+  d.addEventListener('toggle', function () {
+    if (!d.open) { return; }
+    d.querySelectorAll('pre.mermaid').forEach(function (pre, i) {
+      pre.removeAttribute('data-processed');
+      pre.textContent = window.__MERMAID_SRC__[i];
+      mermaid.run({ nodes: [pre] });
+    });
+  });
+});
+</script>
+</body>
+</html>

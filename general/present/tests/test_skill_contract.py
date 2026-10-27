@@ -27,6 +27,31 @@ class TestSkillContract(unittest.TestCase):
         self.assertIn('<pre class="mermaid">', skill)
         self.assertIn("不输出裸 Mermaid 源码", skill)
 
+    def test_diagram_rules_block_known_failure_modes(self):
+        """2026-10-26 事故: 图放进折叠块 + 页面脚本二次渲染 -> 页面停在源码上."""
+        skill = (SKILL_DIR / "SKILL.md").read_text(encoding="utf-8")
+        # 图与隐藏容器互斥
+        self.assertIn("图表不得放进默认隐藏的容器", skill)
+        self.assertIn("`hidden` 属性", skill)
+        # 只渲染一次, 禁止擦除后重画
+        self.assertIn("图表只渲染一次", skill)
+        self.assertIn("擦回源码再重画", skill)
+
+    def test_self_check_is_mandatory_before_delivery(self):
+        skill = (SKILL_DIR / "SKILL.md").read_text(encoding="utf-8")
+        remote = (SKILL_DIR / "REMOTE.md").read_text(encoding="utf-8")
+        self.assertIn("scripts/check_page.py", skill)
+        self.assertIn("<check> <html-file>", skill)
+        self.assertIn("自检 `success` 为 true", skill)
+        # 远程看不到渲染结果, 同样必须过自检
+        self.assertIn("<check>", remote)
+
+    def test_rework_discipline_is_documented(self):
+        """先复现定位, 再改; 不先换实现盖掉现象."""
+        skill = (SKILL_DIR / "SKILL.md").read_text(encoding="utf-8")
+        self.assertIn("返工纪律", skill)
+        self.assertIn("不先用别的实现把现象盖过去", skill)
+
     def test_remote_ssh_mode_contract(self):
         """TC-024: 远程规则按需披露, 关键行为仍受文档契约保护."""
         skill = (SKILL_DIR / "SKILL.md").read_text(encoding="utf-8")
