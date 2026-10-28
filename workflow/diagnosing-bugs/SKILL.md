@@ -1,6 +1,7 @@
 ---
 name: diagnosing-bugs
 description: 当我让你找 bug, 或报告功能报错/失败/变慢时触发, 诊断硬 bug 与性能回归.
+disable-model-invocation: true
 ---
 
 硬 bug 的纪律: 只有理由明确时才允许跳过阶段.
