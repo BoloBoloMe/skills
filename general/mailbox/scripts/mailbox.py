@@ -2365,10 +2365,18 @@ def print_letter(letter):
     downgraded = raw_type == "exec" and bool(letter.get("downgraded"))
     ltype = "request" if downgraded else raw_type
     type_note = " (exec 已降级)" if downgraded else ""
+    try:
+        sent_at = datetime.datetime.fromtimestamp(
+            letter["ts"], datetime.timezone.utc).astimezone().isoformat(
+                sep=" ", timespec="seconds")
+        sent_at = f"{sent_at[:19]} {sent_at[19:]}"
+    except (KeyError, TypeError, ValueError, OverflowError, OSError):
+        sent_at = "未知"  # 时间不可用也不影响正文呈现
     lines = [
         f"来信 {letter.get('id', '')}",
         f"类型: {ltype}{type_note}",
         f"发件人: {letter.get('from', '')}",
+        f"发送时间: {sent_at}",
         "",
         str(letter.get("body", "")),
         "",
