@@ -4,6 +4,8 @@ description: 构建一次性原型回答设计问题 — 逻辑验证或 UI 外�
 disable-model-invocation: true
 ---
 
+本 skill 是可选手段: 不强制调用, 也不构成完成标准. 完成标准见 [verification-contract](../verification-contract/SKILL.md).
+
 # 原型
 
 原型是回答一个设计问题的一次性代码.

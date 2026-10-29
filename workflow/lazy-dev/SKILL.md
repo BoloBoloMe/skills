@@ -4,6 +4,8 @@ description: 设计与实现都追求极致精简时使用, 懒设计的决策�
 disable-model-invocation: true
 ---
 
+本 skill 是可选手段: 不强制调用, 也不构成完成标准. 完成标准见 [verification-contract](../verification-contract/SKILL.md).
+
 # 懒品味
 
 好的设计和好的代码, 不是写得够不够全面漂亮, 而在 *正确*, *最小*, *无未来负担*. 关键在找到用 *最少代码* 撬动 *最大收益* 的杠杆支点, 不为推测需求多写一行.

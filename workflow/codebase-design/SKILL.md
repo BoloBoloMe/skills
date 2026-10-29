@@ -4,6 +4,8 @@ description: 模块, 接口, 接缝, 深模块 等设计词汇与可测试性原
 disable-model-invocation: true
 ---
 
+本 skill 是可选手段: 不强制调用, 也不构成完成标准. 完成标准见 [verification-contract](../verification-contract/SKILL.md).
+
 开始前, 调用 `domain-awareness` skill 只读感知当前工作目录的领域模型.
 
 # 代码库设计

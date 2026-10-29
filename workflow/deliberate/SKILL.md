@@ -4,6 +4,8 @@ description: 盘问我以敲定决策, 然后将决策落盘.
 disable-model-invocation: true
 ---
 
+本 skill 是可选手段: 不强制调用, 也不构成完成标准. 完成标准见 [verification-contract](../verification-contract/SKILL.md).
+
 调用 `domain-awareness` skill 只读感知当前工作目录的领域模型. 调用 `grilling` skill 盘问我. 本流程只在账本落盘后由独立反方子会话调用 `opposing-viewpoint` skill.
 我确认结束盘问后: 使用 `domain-modeling` 维护领域语言文件或 ADR; 调用 `decision-ledger` 完整记录会话中明确的事实和决策, 不写摘要. 产物落盘后核对完整性与自洽性.
 账本落盘后, 必须派未参与盘问与落盘的独立子会话对已确认决策做一次反方攻击. 给它原始需求的原文或可读取出处, 账本, 已核实的相关代码入口/调用方及依据. 反方找出关键前提或推理的薄弱处, 提出替代主张; 受影响却未入账的旧行为也是攻击面. 子会话继续追查相关代码; 查无旧入口时记录检索范围, 需求不可得或相关代码无法检查时报告缺口. 报告逐项给出论证与依据, 标明未证实之处.
