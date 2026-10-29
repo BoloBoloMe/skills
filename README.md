@@ -50,10 +50,10 @@
 | [`maintain-verification-skill`](workflow/maintain-verification-skill/SKILL.md) | 按当前已确认的产品说明维护项目本地验证配方, 分类漂移并让新会话复跑证明. |
 | [`navigate`](workflow/navigate/SKILL.md) | 在目的地和路线不清时, 用 Roadmap 和 Milestone 组织探索. |
 | [`prototype`](workflow/prototype/SKILL.md) | 构建一次性原型, 验证逻辑状态模型或 UI 外观问题. |
-| [`tdd`](workflow/tdd/SKILL.md) | 在小型编程任务中用面向接缝的测试执行 TDD 循环. |
+| [`tdd`](workflow/tdd/SKILL.md) | 修 bug 且能用低成本测试复现时, 用它取红态证据. |
 | [`to-execution`](workflow/to-execution/SKILL.md) | 把 Product/Technical Spec 拆成 Execution Spec 和可执行 issues. |
 | [`to-spec`](workflow/to-spec/SKILL.md) | 把已确认的产品和技术决策整理成两份权威 spec. |
 | [`use-sandbox-worktree`](workflow/use-sandbox-worktree/SKILL.md) | 管理 host worktree 与 sandbox 容器绑定对的生命周期. |
 | [`use-worktree`](workflow/use-worktree/SKILL.md) | 识别, 创建, 删除和迁移 Git worktree, 并执行安全检查. |
-| [`verification-contract`](workflow/verification-contract/SKILL.md) | 按 issue 的改动类型确定验证方式和交付证据. |
+| [`verification-contract`](workflow/verification-contract/SKILL.md) | 按 issue 的改动类型确定验证方式和交付证据; 唯一强制验证权威, 安全底线见同目录 `SAFETY.md`. |
 | [`verify-change`](workflow/verify-change/SKILL.md) | 独立产品验收, 只按被验项目已确认的产品标准逐项核对最终成品, 委派非作者实跑. |

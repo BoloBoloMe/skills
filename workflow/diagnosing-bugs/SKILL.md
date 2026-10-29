@@ -4,13 +4,14 @@ description: 当我让你找 bug, 或报告功能报错/失败/变慢时触发, 
 disable-model-invocation: true
 ---
 
+本 skill 是一种诊断手段, 不是必经步骤. 缺陷修复的完成证据仍按 [verification-contract](../verification-contract/SKILL.md) 缺陷修复节: 红态真出现过, 修复后同一检查通过, 原始场景复跑. 阶段 3, 4 在循环足够锐利时可按需跳过; 阶段 1, 2 的红态与复现确认不可省.
+
 硬 bug 的纪律: 只有理由明确时才允许跳过阶段.
 探索代码库时, 调用 `domain-awareness` skill 感知领域模型, 并查阅所触及区域的 ADR. 开始复现前若尚未读过 `verification-contract` skill, 调用它; 已读则复用其共用底线及缺陷修复证据要求, 不重复调用.
 
 ## 脱敏
 
-本流程要求你展示命令, 输出和捕获的工件. **先脱敏一切机密**: 原地写 `<REDACTED>`. 循环尽量基于环境变量构建, 让凭据留在环境里, 而不是出现在你展示的内容里. 捕获的工件携带 auth header: 只引用携带信号的行.
-脱敏后的输出不足以诊断时, 明说并问我.
+见 [verification-contract/SAFETY.md](../verification-contract/SAFETY.md) 的脱敏节, 本节不复述.
 
 ## 阶段 1: 构建反馈循环
 

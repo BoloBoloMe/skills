@@ -48,7 +48,7 @@ TECHNICAL.md/EXECUTION.md 可选, 缺少不阻塞. 从项目文档, 源码和实
 - 数据保留: 每轮实跑的数据位置, 查看办法与占用; 复跑及实例停止按已调用的共用底线执行.
 - 验证办法: 配方目录的范围检查命令. 加载复跑方式, 数据可访问性及意外残留检查; 应保留的数据不算残留.
 
-写入前必读 [../create-verification-skill/SKILL.md](../create-verification-skill/SKILL.md) 的 **共用批准规则**. 本节只列维护资源, 不重述共用规则.
+写入前必读 [../verification-contract/SAFETY.md](../verification-contract/SAFETY.md) 的 **写入与授权** 节. 本节只列维护资源, 不重述共用规则.
 
 完成标准: 改配方前已有上述范围与验证办法的批准记录. 派工单范围一致, 写入与数据保留记录可对照复查. 否则已停在批准之前.
 
