@@ -91,7 +91,7 @@ disable-model-invocation: true
 实施结果.
 ## 覆盖依据
 - Product: `<PRODUCT.md 实际路径>`, AC-001; 准备类 issue 无 AC 时写 G-001/NG-001/BR-001.
-- Technical: `<TECHNICAL.md 实际路径>`, <节名> (如 模块接口/测试接缝/非功能要求; 无对应节则写"无")
+- Technical: `<TECHNICAL.md 实际路径>`, <节名> (如 模块接口/接缝与依赖/非功能要求; 无对应节则写"无")
 ## 相关决策
 - `<DECISIONS.md 实际路径>`: D001. 无则写"无".
 ## 允许范围
