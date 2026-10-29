@@ -8,11 +8,9 @@
 校验四项, 规则与同目录 SKILL.md 的 TECHNICAL.md 模板对齐:
 1. 节名封闭集: `## ` 标题只允许模板固定节名, 逐字一致; "(条件保留)" 是模板
    标注, 落盘标题不得携带; 不重复出现同一节.
-2. 必备节齐全: 模块划分/模块接口/接缝与适配器/测试接缝/决策引用 必须全部
-   出现; 条件节 (安全策略/非功能要求/关键流程) 不满足保留条件时整节省略.
+2. 必备节齐全: 模块划分/模块接口/接缝与依赖/决策引用 必须全部出现;
+   条件节 (安全策略/非功能要求/关键流程) 不满足保留条件时整节省略.
 3. 节序合法: 全部 `## ` 节的先后顺序必须是模板序的子序列.
-4. 测试接缝映射: 测试接缝 节内至少一行映射, 形如
-   "AC-NNN 或 BR-NNN (审计) -> 模块 -> 接缝 -> 测试适配器".
 """
 
 from __future__ import annotations
@@ -24,8 +22,7 @@ import sys
 SECTIONS: tuple[tuple[str, bool], ...] = (
     ("模块划分", True),
     ("模块接口", True),
-    ("接缝与适配器", True),
-    ("测试接缝", True),
+    ("接缝与依赖", True),
     ("安全策略", False),
     ("非功能要求", False),
     ("关键流程", False),
@@ -34,19 +31,9 @@ SECTIONS: tuple[tuple[str, bool], ...] = (
 
 HEADING_RE = re.compile(r"^##\s+(.+?)\s*$", re.M)
 FENCE_RE = re.compile(r"^```[^\n]*\n.*?^```", re.S | re.M)
-MAPPING_RE = re.compile(r"^\s*(?:[-*]\s*)?(?:AC|BR)-\d{3}\b.*->", re.M)
-
-
 def fail_input(detail: str) -> None:
     print(f"[输入] {detail}", file=sys.stderr)
     sys.exit(2)
-
-
-def section_body(stripped: str, name: str) -> str | None:
-    """返回 `## name` 节正文 (到下一 `## ` 或文末); 节不存在返回 None."""
-    pattern = re.compile(rf"^## {re.escape(name)}\s*$\n(.*?)(?=^## |\Z)", re.S | re.M)
-    m = pattern.search(stripped)
-    return m.group(1) if m else None
 
 
 def main() -> int:
@@ -93,13 +80,6 @@ def main() -> int:
     if seq != sorted(seq):
         violations.append(
             f"[节序] 节顺序与模板不一致: {' -> '.join(name for name, _ in found)}"
-        )
-
-    body = section_body(stripped, "测试接缝")
-    if body is not None and not MAPPING_RE.search(body):
-        violations.append(
-            "[测试接缝] 节内无映射行: 至少一行形如 "
-            "'AC-NNN 或 BR-NNN (审计) -> 模块 -> 接缝 -> 测试适配器'"
         )
 
     if violations:
