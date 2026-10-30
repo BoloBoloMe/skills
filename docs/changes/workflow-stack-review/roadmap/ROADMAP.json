@@ -9,7 +9,7 @@
     "无证据事项, 不作为验收项: token 节省幅度 (只有字节与行数代理), 术语 skill 的触发率与漏触发率, 相同正文是否重复读取的真实行为, 四个孤儿 skill 的实际使用频率. D015 已撤去另写正文复用规则的要求.",
     "环境: 代码在 ~/Workspace/refactor-skill-around-verification, 分支同名, origin 经本地 git 桥到宿主母体, 只快进推, push 即交付. 仓库禁止修改真实已安装 skills, 不运行会改安装目录的同步; 原同步验证语句不能覆盖该禁令, 安装效果未验证. 改 roadmap.py 或 web/index.html 后必须跑 uv run python -m pytest workflow/navigate/tests, pytest.ini 的 testpaths 顺序不许动. 展示页用容器 8800 (已确认宿主映射).",
     "只改本仓库内容, 禁止修改真实已安装 skills, 这是仓库 AGENTS.md 的硬要求.",
-    "本变更工程共识的权威决策位于 milestone-01/DECISIONS.md. 收录门槛适用范围以 D013 为准; milestone-02 期间我又确认 D014/D015, 分别替代 D009/D011: domain-awareness 直接删除旧词汇读取要求和恒定引用, 不改接新 skill; 不另写正文复用规则. 旧决策和原反方材料保留历史, 不作为被替代方案的当前实施依据. 实际实施归 milestone-02. 我对 wtf 重新列明的其余六项回复确认后, AC-02-01 至 AC-02-08 已全部确认; 独立复核完成前 milestone-02 保持进行中.",
+    "本变更工程共识的权威决策位于 milestone-01/DECISIONS.md. 收录门槛适用范围以 D013 为准; D014/D015 分别替代 D009/D011: domain-awareness 直接删除旧词汇读取要求和恒定引用, 不改接新 skill; 不另写正文复用规则. 旧决策和原反方材料保留历史. 我对 wtf 重新列明的其余六项回复确认后, AC-02-01 至 AC-02-08 已全部确认. milestone-02 实施提交 dcf06358c9a9ecff600228fa5eb300a65deec46e, 三个 SKILL.md 格式检查和新 skill quick_validate 均通过. Herdr 的 status/agent list 报 Operation not permitted, mailbox 服务也不可达, 尚未派出独立复核或发送宿主请求. 独立复核完成前保持进行中, 复核请求和作者自检记录见本节点 artifacts; 不提前关闭或宣称正式交付.",
     "本轮反方核实的后续影响已接入 milestone-02/03/04 问题: 配方参考文件的第三处泛用迭代, PoC 未证实长期阻塞和证据留存, 广义 demo 与旧一次性代码约定及内部路径/分支命名. 仅登记问题, 不替后续 HITL 裁决.",
     "海域复核: 原触发/误加载体感项不在本次已确认完成边界和验收指标内, 作为后续效果评估列入 off_course. 工程共识与 domain-awareness 的职责及入口关系以 D001/D014 为准, 正文复用规则按 D015 撤去, 实际模型遵从率仍不声称已验证. 验收证据接口的精确决定已在 milestone-06, 不再把同一问题重复列成未知海域; 不承诺长期模型行为永不漂移.",
     "编码执行的已知前置条件: 仓库 drive-execution/SKILL.md 步骤2要求 EXECUTION.md/可执行issues, 当前本变更尚无这些输入. 已新增 milestone-09 在 milestone-04 编码前由独立会话准备输入并与我确认相关标准, 不等到领取编码任务后才绕过缺口. 若 milestone-06 将新增编码工作, 再按其实际决定补齐相应输入, 不提前猜实现."
@@ -40,7 +40,10 @@
       ],
       "artifacts": [
         "docs/changes/workflow-stack-review/ACCEPTANCE.md",
-        "docs/changes/workflow-stack-review/milestone-01/DECISIONS.md"
+        "docs/changes/workflow-stack-review/milestone-01/DECISIONS.md",
+        "workflow/software-engineering-consensus/SKILL.md",
+        "docs/changes/workflow-stack-review/milestone-02/IMPLEMENTATION.md",
+        "docs/changes/workflow-stack-review/milestone-02/REVIEW-REQUEST.md"
       ],
       "close_summary": null
     },
