@@ -6,7 +6,7 @@
 
 两种选择, 各付一种负载:
 
-- **模型调用** skill 的 `description` 常驻上下文. agent 能据描述自动触发它, 其他 skill 也能调用它 (固定格式: "调用 `另一个 skill 的名字` skill"); *模型调用* 天然*包含* *用户可达*, 我也能随时点名. description 要写成触发器: 只写 agent 什么时候该调用它, 不介绍 skill 是什么. 它是 skill 的顶层 *上下文指针*, 被迫始终加载 — 用常驻 *上下文负载* 换可发现性, 所以必须激进剪枝. 内容全是 *参考材料* 的 *模型调用* skill 还有个附带用途: 安置共享 *参考材料*, 其他 skill 调用它即可共用, 多处需要的东西只存一份. 机制: 省略 `disable-model-invocation`, 写面向 LLM 的 description, 带上触发 *分支* (`SKILL.md` 的 *指针* 写法规则全部适用). description 的可计算格式约束由下方脚本校验.
+- **模型调用** skill 的 `description` 常驻上下文. agent 能据描述自动触发它, 其他 skill 也能调用它 (固定格式: "调用 `另一个 skill 的名字` skill"); *模型调用* 天然*包含* *用户可达*, 我也能随时点名. description 要写成触发器: 只写 agent 什么时候该调用它, 不介绍 skill 是什么. 它是 skill 的顶层 *上下文指针*, 被迫始终加载 — 用常驻 *上下文负载* 换可发现性, 所以必须激进剪枝. 内容全是 *参考材料* 的 *模型调用* skill 还有个附带用途: 安置共享 *参考材料*, 其他 skill 调用它即可共用, 多处需要的东西只存一份. 机制: 省略 `disable-model-invocation`, 写面向 LLM 的 description, 带上触发 *分支* (`SKILL.md` 的 *指针* 写法规则全部适用). description 的可计算格式约束由下方脚本校验. description 是 *冗余枚举* 的高发处: 把触发 *分支* 写成 `场景 (场景1/场景2/场景3)` 时, 常驻的括号清单每轮付费, 还把自动触发缩小到列出来的场景. 措辞指到 *分支* 本身, 不列举它长什么样.
 
 - **用户调用** skill 的 description 不进上下文. agent 不知道它存在, 直到我亲自提名, 或另一个 skill 写 "调用 `x` skill" — agent 根据名字到 skill 目录下找到它. 零 *上下文负载*, 但消耗 *认知负载*: 得有人记得它存在, 并说得出名字. 机制: 设 `disable-model-invocation: true`; `description` 转为面向人类: 一行摘要, 剥掉触发词.
 
