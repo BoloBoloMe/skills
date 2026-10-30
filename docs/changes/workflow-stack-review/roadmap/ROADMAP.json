@@ -9,7 +9,7 @@
     "无证据事项, 不作为验收项: token 节省幅度 (只有字节与行数代理), 术语 skill 的触发率与漏触发率, 相同正文是否重复读取的真实行为, 四个孤儿 skill 的实际使用频率. D015 已撤去另写正文复用规则的要求.",
     "环境: 代码在 ~/Workspace/refactor-skill-around-verification, 分支同名, origin 经本地 git 桥到宿主母体, 只快进推, push 即交付. 仓库禁止修改真实已安装 skills, 不运行会改安装目录的同步; 原同步验证语句不能覆盖该禁令, 安装效果未验证. 改 roadmap.py 或 web/index.html 后必须跑 uv run python -m pytest workflow/navigate/tests, pytest.ini 的 testpaths 顺序不许动. 展示页用容器 8800 (已确认宿主映射).",
     "只改本仓库内容, 禁止修改真实已安装 skills, 这是仓库 AGENTS.md 的硬要求.",
-    "本变更工程共识的权威决策位于 milestone-01/DECISIONS.md. 收录门槛适用范围以 D013 为准; D014/D015 分别替代 D009/D011: domain-awareness 直接删除旧词汇读取要求和恒定引用, 不改接新 skill; 不另写正文复用规则. 旧决策和原反方材料保留历史. 我对 wtf 重新列明的其余六项回复确认后, AC-02-01 至 AC-02-08 已全部确认. milestone-02 实施提交 dcf06358c9a9ecff600228fa5eb300a65deec46e, 三个 SKILL.md 格式检查和新 skill quick_validate 均通过. Herdr 的 status/agent list 报 Operation not permitted, mailbox 服务也不可达, 尚未派出独立复核或发送宿主请求. 独立复核完成前保持进行中, 复核请求和作者自检记录见本节点 artifacts; 不提前关闭或宣称正式交付.",
+    "本变更工程共识的权威决策位于 milestone-01/DECISIONS.md, 收录门槛适用范围按 D013. D014/D015 已替代 D009/D011: domain-awareness 直接删除旧词汇读取要求和恒定引用, 不改接新 skill; 不另写正文复用规则. 旧决策和原反方材料保留历史. AC-02-01 至 AC-02-08 经我确认后已实施, 源码提交 dcf06358c9a9ecff600228fa5eb300a65deec46e. Herdr 初次受阻后, 我明确要求直接启动子代理, 本轮已由内置独立代理完成复核, 证据提交 c7d5509c9519a6ac2a3df6848996cb5d30b6a928, 无待处理发现, milestone-02 已关闭. AC-02-08 仅在指定原作者会话可见记录和本次复核范围内通过, 不扩展为记录外或全机器保证; 未验证安装或模型效果, 终点人工验收仍由 milestone-08 承担. 宿主信箱查询失败不等于已通知, 完成通知状态须以实际投递结果为准.",
     "本轮反方核实的后续影响已接入 milestone-02/03/04 问题: 配方参考文件的第三处泛用迭代, PoC 未证实长期阻塞和证据留存, 广义 demo 与旧一次性代码约定及内部路径/分支命名. 仅登记问题, 不替后续 HITL 裁决.",
     "海域复核: 原触发/误加载体感项不在本次已确认完成边界和验收指标内, 作为后续效果评估列入 off_course. 工程共识与 domain-awareness 的职责及入口关系以 D001/D014 为准, 正文复用规则按 D015 撤去, 实际模型遵从率仍不声称已验证. 验收证据接口的精确决定已在 milestone-06, 不再把同一问题重复列成未知海域; 不承诺长期模型行为永不漂移.",
     "编码执行的已知前置条件: 仓库 drive-execution/SKILL.md 步骤2要求 EXECUTION.md/可执行issues, 当前本变更尚无这些输入. 已新增 milestone-09 在 milestone-04 编码前由独立会话准备输入并与我确认相关标准, 不等到领取编码任务后才绕过缺口. 若 milestone-06 将新增编码工作, 再按其实际决定补齐相应输入, 不提前猜实现."
@@ -34,7 +34,7 @@
       "title": "建工程共识 skill 并迁移/统一术语",
       "type": "task",
       "question": "按 milestone-01/DECISIONS.md 当前有效 D001/D002/D004-D008/D010/D013-D015 及反方处理记录, 新建 workflow/software-engineering-consensus/SKILL.md, 模型自动调用且 description 为 涉及软件工程时调用., 正文全部内联. 迁入 WORKFLOW_VOCABULARY.md 的两条定义/避免项和维护规则, 收录门槛适用范围按 D013 而非旧 D003; 补完整 MVP/PoC/demo/迭代词条及交付/验证边界, 不再新增 v0 到 vn 词条. 删除旧文件; domain-awareness 按 D014 直接删除旧词汇读取要求和恒定引用, 不改指向新 skill; 按 D015 不另写正文复用规则. README 工作流表增加入口, PUBLIC 不加入口, 不留第二份内容. 一并核对活跃工作流中泛指尝试/修正/复跑的迭代称谓, 已知含 maintain-verification-skill/SKILL.md 两处和 reference/drift-classification.md 一处; 不改技术义生成器遍历/算法/代码注释或历史证据, 不改安全和数据保留语义, 不给其他 skill 加迭代流程. 新/修改的 SKILL.md 通过仓库 check_skill.py, 入口与唯一维护位置可核对. ACCEPTANCE.md 的 AC-02-01 至 AC-02-08 均已经我明确确认: 两项修正后, 我对 wtf 重新列明的其余六项回复确认. 实施须完成三个 SKILL.md 的格式检查, 并由未参与修改的另一位代理独立复核, 未完成复核不能关闭本节点. 禁止修改真实已安装 skills 或运行会改安装目录的同步, 不以未测安装效果/模型触发率报通过.",
-      "status": "进行中",
+      "status": "已关闭",
       "blocked_by": [
         "milestone-01"
       ],
@@ -43,9 +43,12 @@
         "docs/changes/workflow-stack-review/milestone-01/DECISIONS.md",
         "workflow/software-engineering-consensus/SKILL.md",
         "docs/changes/workflow-stack-review/milestone-02/IMPLEMENTATION.md",
-        "docs/changes/workflow-stack-review/milestone-02/REVIEW-REQUEST.md"
+        "docs/changes/workflow-stack-review/milestone-02/REVIEW-REQUEST.md",
+        "docs/changes/workflow-stack-review/milestone-02/REVIEW.md",
+        "docs/changes/workflow-stack-review/milestone-02/CHECKS.log",
+        "docs/changes/workflow-stack-review/milestone-02/AUTHOR-TOOLS.log"
       ],
-      "close_summary": null
+      "close_summary": "已在 dcf06358c9a9ecff600228fa5eb300a65deec46e 新建工程共识 skill, 完整迁移两条旧定义及避免项/收录规则并删除旧文件, 写清 MVP/PoC/demo/迭代边界, README 登记入口, 三处泛用称谓改为失败尝试且保留数据义务. domain-awareness 按我新确认的 D014 直接删除旧词汇读取要求和恒定引用, 不加新指针; D015 撤去正文复用规则. 我确认 AC-02-01 至 AC-02-08 后完成实施, 三个 SKILL.md 作者及独立格式检查均通过. Herdr 首次受阻后, 按我本轮指示改用未参与修改的内置子代理独立复核, 报告/原始记录提交 c7d5509c9519a6ac2a3df6848996cb5d30b6a928, 无待处理发现; AC-02-08 仅覆盖指定原作者会话可见记录和本次复核, 不作全机器保证. 产物均在 artifacts, 未验证安装或模型效果, milestone-08 尚未人工验收, 不代表正式交付, 本轮不领取其他里程碑或提前推送."
     },
     "milestone-03": {
       "title": "定 PoC 执行与 demo 兼容策略",
