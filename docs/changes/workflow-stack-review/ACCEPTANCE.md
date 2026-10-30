@@ -1,6 +1,6 @@
 # workflow-stack-review 验收标准
 
-本文件当前覆盖 milestone-01, milestone-02 和 milestone-05 的已确认标准. 其他里程碑的详细标准后续经我确认后追加. 本文件记录标准, 不记录验收通过结论.
+本文件当前覆盖 milestone-01, milestone-02, milestone-05 和 milestone-06 的已确认标准. 其他里程碑的详细标准后续经我确认后追加. 本文件记录标准, 不记录验收通过结论.
 确认依据: 本轮对话中我对 Q5 回答 A, 在解释五项细节后对 Q6 回答 A; 在 Q16 对完整边界和本里程碑完成标准选择 A 并结束盘问 (2026-10-30). Q17=A 后补明确收录门槛的适用范围, 不改变已确认的里程碑完成标准. 下面的 AC-05 条目保持原样, 其原确认版本仍可由提交 57e93dce741f343ec45b567b8eec6ba6a1e684c9 追溯.
 
 ## milestone-01 已确认标准
@@ -33,6 +33,19 @@
 - AC-05-06: 五处修正, README 句子及来源说明的相关调整均有逐项可核对差异. 改过的三个 SKILL.md 均通过 `general/writing-for-llm/check_skill.py`, 留下实际命令, 原始结果与所查版本. 由未参与修改者独立复核文本和边界, 报告绑定目标提交.
 - AC-05-07: 不运行会修改真实已安装 skills 的同步操作, 不修改已安装 skills 或全局配置. 检查只证明仓库文档与规定的静态约束, 模型实际遵从率和安装目录同步效果不在本次已验证范围, 不宣称已验证.
 
+## milestone-06 已确认标准
+
+确认依据: 2026-10-30 盘问定稿. 我对 Q1 (实验边界收敛) 回答 A; Q2 (影响复查) 在质疑必要性与报告读者后回答 A, 并修正: 报告读者是流程内 llm (总指挥), 不是人; Q3 (验收统一口径) 在澄清 ACCEPTANCE.md 定位与 verify-change 转正阀门后回答 A, 并要求落正文遵守 writing-for-llm 冗余枚举禁令; Q4 (不收验收词条) 回答 A; Q5 (不加自动校验) 回答 A, Q7 定维护规则落 README 且受众为维护本仓库的 llm; Q6 (删 grill-me) 回答 B. 我确认 AC-06-01, 02, 04-08; AC-06-03 在把口头 "指挥会话" 正名为 drive-execution 既有角色名 总指挥 后确认, 随后结束盘问.
+
+- AC-06-01: `workflow/benchmark-checklist/SKILL.md` 删除与 blast-radius 重复的调查方法/授权边界条目, 改为指针; 保留的每一条都满足既有分界句 "只规定测量实验条件, 不重写调查方法". blast-radius 的一次性实验边界节成为唯一完整维护处. `workflow/benchmark-checklist/reference/PROVENANCE.md` 与 `workflow/blast-radius/reference/PROVENANCE.md` 相关行同步, 不改历史决策原文.
+- AC-06-02: `workflow/drive-execution/SKILL.md` 旧行为影响复查节点改为门槛触发: 整轮全部 issue 为非行为改动或纯核验, 且差异不触碰共享接口/数据格式/跨模块路径时免做, EXECUTION.md 留一行免做理由; 其余情况照做, IMPACT-REVIEW.md 只在实做轮产出. "节点顺序不可跳过" 句同步收窄为门槛命中时不可跳过.
+- AC-06-03: `workflow/drive-execution/SKILL.md` 写明 IMPACT-REVIEW.md 的读者为总指挥 (分流: 明确实现破坏拆返工 ISSUE, 产品取舍报缺口交用户) 与下一轮影响复查的审核者 (核对上轮闭环); 不作为 code-review 或 verify-change 的输入判据; 保留 "调查报告, 不新增产品判据" 与逐轮保留规则.
+- AC-06-04: `workflow/navigate/SKILL.md` 验收终点节以单句可判真假边界写明: 验收 = 交付物满足确认判据; 判据能在真实入口重复执行的, 派 verify-change 按已确认 PRODUCT.md 执行, 不能的由到达确认汇集他人已产出证据执行. 不出现按交付物类型枚举的表述. verify-change 不回指; 验收指南现有转正规则与口径一致, 不动.
+- AC-06-05: 不新增调用边校验测试. README 调用关系口径行旁补一句面向仓库维护者的规则: 调用边变更时人工核对调用图与 skill 正文, 并经非作者复核.
+- AC-06-06: 删除 `general/grill-me/` 目录及 README 通用技能表对应行; 两份 PUBLIC 与历史决策文档不动.
+- AC-06-07: 改动的 SKILL.md 均通过 `general/writing-for-llm/check_skill.py`; 由未参与修改的代理独立复核全部 AC-06 条目, 报告绑定目标提交 (沿 AC-02-07/AC-05-06 先例).
+- AC-06-08: 边界: 不修改真实已安装 skills, 不运行同步, 不宣称安装效果/遵从率已验证; 引用 blast-radius 边界节不算调用边, README 调用图只删 grill-me 行不新增条目.
+
 ## 正式验收边界
 
-milestone-01 提供决策账本及独立反方处理材料, milestone-02 和 milestone-05 提供各自实施和独立复核材料. 正式终点验收仍由 milestone-08 汇集证据并交我逐项确认. 阶段性完成, 实施者自检和独立复核均不自动关闭 milestone-08.
+milestone-01, milestone-03 和 milestone-06 提供决策账本及独立反方处理材料, milestone-02 和 milestone-05 提供各自实施和独立复核材料. 正式终点验收仍由 milestone-08 汇集证据并交我逐项确认. 阶段性完成, 实施者自检和独立复核均不自动关闭 milestone-08.
