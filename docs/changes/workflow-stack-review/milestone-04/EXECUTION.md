@@ -6,7 +6,7 @@
 - 决策引用 (只读, 非意图来源): `../milestone-01/DECISIONS.md` 的 D004, D005, D006, D007, D013; `../milestone-03/DECISIONS.md` 的 D001, D002, D004, D005, D011, D012, D013, D014, D015, D016, D017, D018, D019.
 
 ## 评审起点
-- 待填
+- `962e2996593eeedc1d2da335baa813763dd47d30` (milestone-09 提交的输入集: PRODUCT.md, TECHNICAL.md, EXECUTION.md, issues/, milestone-09 记录). 依据: 该提交是 milestone-04 编码前的最后状态, 也是本轮全部输入落盘的完整提交号; 编码工作从它之后开始, 故影响复查与双轴评审的自起点都取它, 不随 HEAD 前移.
 
 ## 全局允许范围
 - `workflow/demo/`: 由 `workflow/prototype/` 改名而来, 可改 `SKILL.md`, `LOGIC.md`, `UI.md`.
