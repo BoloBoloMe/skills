@@ -54,10 +54,14 @@
       "title": "定 PoC 执行与 demo 兼容策略",
       "type": "deliberate",
       "question": "在 milestone-01 已确认概念边界下决定: (a) PoC 由谁承接, 是 demo 的一支/research/裸 task, 不把 PoC 当产品迭代; (b) AFK 还是 HITL; (c) 完成标准如何取得有条件边界的可行/不可行实测结论和可复查依据, 未证实按 Q12=A 保持未完成, 环境长期不可得或我主动放弃时如何处理必要工作/验收依赖和完成边界, 不能默认把范围内阻塞工作划成歧路; (d) research 的实验创建条件半句切给 PoC 后还剩什么; (e) roadmap.py 是否收 prototype 作 demo 别名还是改枚举, 旧数据/入口如何兼容; (f) demo 已是演示用途, 可展示现成 MVP/PoC 结果或新样品, 旧 prototype 一次性代码/冒烟/归档清理规则哪些保留或调整, 不能把现有成品自动当一次性代码; 若 PoC 同挂 demo, 证据可复查与原型清理如何协调. prototype 自身目录/前缀/路由/分支旧名称的兼容也须讲清. 细节明朗时对齐相关产物和后续实施的详细验收标准, 不重复已确认部分.",
-      "status": "进行中",
+      "status": "已关闭",
       "blocked_by": [],
-      "artifacts": [],
-      "close_summary": null
+      "artifacts": [
+        "docs/changes/workflow-stack-review/milestone-03/DECISIONS.md",
+        "docs/changes/workflow-stack-review/milestone-03/OPPOSITION.md",
+        "docs/changes/workflow-stack-review/milestone-03/OPPOSITION-RESOLUTION.md"
+      ],
+      "close_summary": "Q1-Q19 盘问确认: demo 取代 prototype (skill 与类型一并改名, 三子形态路径只换词面, 定位改为可回看的演示材料, 范围收窄到只管造材料, 完成标准只要求我看过并能判断, 变体集进 demo 分支备查), poc 成为独立 AFK 类型 (不新建 skill, 词义用指针, 结论边界拆分, 终止只记关闭摘要), research 收窄为外部已存在事实 (内部实测类调查归 task), 网页 demo/poc 独立视觉, 记 ADR 0024. 独立反方 (glm-5.3-flash, 未参与盘问) 指出类型切分漏掉需实测非可行性一类及 D010 双判据等 5 项, 我逐项核实后裁决, 新增 D018 并改写 D014/D015/D016/D017/D019, 无驳回项. 全部决策尚未实施, 实施与可观察标准归 milestone-04."
     },
     "milestone-04": {
       "title": "demo 改名与 PoC 类型落地",
