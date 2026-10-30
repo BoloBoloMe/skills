@@ -17,8 +17,8 @@
       },
       "models": [
         {
-          "id": "deepseek-v4.1-flash-expires-on-0910",
-          "name": "DeepSeek V4.1 Flash",
+          "id": "deepseek-flash",
+          "name": "DeepSeek Flash",
           "reasoning": true,
           "thinkingLevelMap": {
             "off": null,
