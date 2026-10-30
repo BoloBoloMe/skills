@@ -6,12 +6,12 @@
     "侦查结论: 方向 A 主张保留主体, 纸面 5 对互指里的反向边全属文档读取, 产物引用与重新派活, 改措辞即可, 唯一真重复是 benchmark 与 blast-radius 各约 12 行的实验边界. 方向 B 主张把已长出的 6 层写成文, 诚实结论是收益为可判性而非 token, 且需真搬 v-c 的方法路由与验收证据语义. 方向 C 主张按需加载与入口选择, 但有 24 个 skill 刻意禁用模型调用, 该主轴被否决; 其载入链代理值仍留作参考: 小改动 5-7KB, bug 14-18KB, 独立验收 27-44KB.",
     "选定: 不整包接受任一方向. 采用清单式实施: 三件已拍板改造, 五处已批准的措辞修正, 一组打包裁决的流程接口. 分层成文, 方法路由上移, 入口地图, 抽共用底线四项经裁决排除, 见 off_course.",
     "边判定口径 (已认可): 调用图只画执行调用 (实线); 权威引用, 分工声明, 条件引用产物, 重新派活都不算调用边. 按此口径原来看见的 4 条环消失, 指向 v-c 的虚线边一律不改.",
-    "无证据事项, 不作为验收项: token 节省幅度 (只有字节与行数代理), 术语 skill 的触发率与漏触发率, 已读则复用守卫在模型侧的真实遵从率, 四个孤儿 skill 的实际使用频率.",
+    "无证据事项, 不作为验收项: token 节省幅度 (只有字节与行数代理), 术语 skill 的触发率与漏触发率, 相同正文是否重复读取的真实行为, 四个孤儿 skill 的实际使用频率. D015 已撤去另写正文复用规则的要求.",
     "环境: 代码在 ~/Workspace/refactor-skill-around-verification, 分支同名, origin 经本地 git 桥到宿主母体, 只快进推, push 即交付. 仓库禁止修改真实已安装 skills, 不运行会改安装目录的同步; 原同步验证语句不能覆盖该禁令, 安装效果未验证. 改 roadmap.py 或 web/index.html 后必须跑 uv run python -m pytest workflow/navigate/tests, pytest.ini 的 testpaths 顺序不许动. 展示页用容器 8800 (已确认宿主映射).",
     "只改本仓库内容, 禁止修改真实已安装 skills, 这是仓库 AGENTS.md 的硬要求.",
-    "本变更工程共识的权威决策位于 milestone-01/DECISIONS.md, 尤其收录门槛适用范围以 D013 为准, D003 历史原样保留. 独立反方及逐项核实处理材料位于同目录, 新 skill 的实际实施归 milestone-02.",
+    "本变更工程共识的权威决策位于 milestone-01/DECISIONS.md. 收录门槛适用范围以 D013 为准; milestone-02 期间我又确认 D014/D015, 分别替代 D009/D011: domain-awareness 直接删除旧词汇读取要求和恒定引用, 不改接新 skill; 不另写正文复用规则. 旧决策和原反方材料保留历史, 不作为被替代方案的当前实施依据. 实际实施归 milestone-02, 当前仅 AC-02-01/02 已确认, 其余详细标准仍待确认.",
     "本轮反方核实的后续影响已接入 milestone-02/03/04 问题: 配方参考文件的第三处泛用迭代, PoC 未证实长期阻塞和证据留存, 广义 demo 与旧一次性代码约定及内部路径/分支命名. 仅登记问题, 不替后续 HITL 裁决.",
-    "海域复核: 原触发/误加载体感项不在本次已确认完成边界和验收指标内, 作为后续效果评估列入 off_course. 工程共识与 domain-awareness 的职责/指针关系已由 D001/D009 讲清, 实际模型遵从率仍不声称已验证. 验收证据接口的精确决定已在 milestone-06, 不再把同一问题重复列成未知海域; 不承诺长期模型行为永不漂移.",
+    "海域复核: 原触发/误加载体感项不在本次已确认完成边界和验收指标内, 作为后续效果评估列入 off_course. 工程共识与 domain-awareness 的职责及入口关系以 D001/D014 为准, 正文复用规则按 D015 撤去, 实际模型遵从率仍不声称已验证. 验收证据接口的精确决定已在 milestone-06, 不再把同一问题重复列成未知海域; 不承诺长期模型行为永不漂移.",
     "编码执行的已知前置条件: 仓库 drive-execution/SKILL.md 步骤2要求 EXECUTION.md/可执行issues, 当前本变更尚无这些输入. 已新增 milestone-09 在 milestone-04 编码前由独立会话准备输入并与我确认相关标准, 不等到领取编码任务后才绕过缺口. 若 milestone-06 将新增编码工作, 再按其实际决定补齐相应输入, 不提前猜实现."
   ],
   "milestones": {
@@ -33,12 +33,15 @@
     "milestone-02": {
       "title": "建工程共识 skill 并迁移/统一术语",
       "type": "task",
-      "question": "按 milestone-01/DECISIONS.md 当前有效 D001/D002/D004-D013 及反方处理记录, 新建 workflow/software-engineering-consensus/SKILL.md, 模型自动调用且 description 为 涉及软件工程时调用., 正文全部内联. 迁入 WORKFLOW_VOCABULARY.md 的两条定义/避免项和维护规则, 收录门槛适用范围按 D013 而非旧 D003; 补完整 MVP/PoC/demo/迭代词条及交付/验证边界, 不再新增 v0 到 vn 词条. 删除旧文件并更新 domain-awareness 两处指针和 README 工作流表, PUBLIC 不加入口, 不留第二份内容. 一并核对活跃工作流中泛指尝试/修正/复跑的迭代称谓, 已知含 maintain-verification-skill/SKILL.md 两处和 reference/drift-classification.md 一处; 不改技术义生成器遍历/算法/代码注释或历史证据, 不改安全和数据保留语义, 不给其他 skill 加迭代流程. 新/修改的 SKILL.md 通过仓库 check_skill.py, 入口与唯一维护位置可核对; 详细可观察标准最迟实施前按 navigate 指引确认. 禁止修改真实已安装 skills 或运行会改安装目录的同步, 不以未测安装效果/模型触发率报通过.",
+      "question": "按 milestone-01/DECISIONS.md 当前有效 D001/D002/D004-D008/D010/D013-D015 及反方处理记录, 新建 workflow/software-engineering-consensus/SKILL.md, 模型自动调用且 description 为 涉及软件工程时调用., 正文全部内联. 迁入 WORKFLOW_VOCABULARY.md 的两条定义/避免项和维护规则, 收录门槛适用范围按 D013 而非旧 D003; 补完整 MVP/PoC/demo/迭代词条及交付/验证边界, 不再新增 v0 到 vn 词条. 删除旧文件; domain-awareness 按 D014 直接删除旧词汇读取要求和恒定引用, 不改指向新 skill; 按 D015 不另写正文复用规则. README 工作流表增加入口, PUBLIC 不加入口, 不留第二份内容. 一并核对活跃工作流中泛指尝试/修正/复跑的迭代称谓, 已知含 maintain-verification-skill/SKILL.md 两处和 reference/drift-classification.md 一处; 不改技术义生成器遍历/算法/代码注释或历史证据, 不改安全和数据保留语义, 不给其他 skill 加迭代流程. 新/修改的 SKILL.md 通过仓库 check_skill.py, 入口与唯一维护位置可核对. 当前仅 ACCEPTANCE.md 的 AC-02-01/02 已经我明确确认, 其余详细可观察标准仍待确认, 不以局部修正推定整组批准. 禁止修改真实已安装 skills 或运行会改安装目录的同步, 不以未测安装效果/模型触发率报通过.",
       "status": "进行中",
       "blocked_by": [
         "milestone-01"
       ],
-      "artifacts": [],
+      "artifacts": [
+        "docs/changes/workflow-stack-review/ACCEPTANCE.md",
+        "docs/changes/workflow-stack-review/milestone-01/DECISIONS.md"
+      ],
       "close_summary": null
     },
     "milestone-03": {
