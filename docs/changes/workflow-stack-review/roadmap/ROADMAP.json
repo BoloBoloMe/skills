@@ -34,7 +34,7 @@
       "title": "建工程共识 skill 并迁移/统一术语",
       "type": "task",
       "question": "按 milestone-01/DECISIONS.md 当前有效 D001/D002/D004-D013 及反方处理记录, 新建 workflow/software-engineering-consensus/SKILL.md, 模型自动调用且 description 为 涉及软件工程时调用., 正文全部内联. 迁入 WORKFLOW_VOCABULARY.md 的两条定义/避免项和维护规则, 收录门槛适用范围按 D013 而非旧 D003; 补完整 MVP/PoC/demo/迭代词条及交付/验证边界, 不再新增 v0 到 vn 词条. 删除旧文件并更新 domain-awareness 两处指针和 README 工作流表, PUBLIC 不加入口, 不留第二份内容. 一并核对活跃工作流中泛指尝试/修正/复跑的迭代称谓, 已知含 maintain-verification-skill/SKILL.md 两处和 reference/drift-classification.md 一处; 不改技术义生成器遍历/算法/代码注释或历史证据, 不改安全和数据保留语义, 不给其他 skill 加迭代流程. 新/修改的 SKILL.md 通过仓库 check_skill.py, 入口与唯一维护位置可核对; 详细可观察标准最迟实施前按 navigate 指引确认. 禁止修改真实已安装 skills 或运行会改安装目录的同步, 不以未测安装效果/模型触发率报通过.",
-      "status": "待处理",
+      "status": "进行中",
       "blocked_by": [
         "milestone-01"
       ],
