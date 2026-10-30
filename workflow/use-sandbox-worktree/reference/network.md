@@ -22,6 +22,14 @@ uv run python scripts/swt.py network recover --repo <主仓> --name <容器名> 
 3. **按实际检查交回结果.** 成功检查覆盖规则/SSH/只读本地 Git 桥/DNS 规则, 不代表上游 DNS 或任务服务已实测; 任务验证另按 [task-conditions.md](task-conditions.md).
    完成标准: 报告 `NETWORK.stage/checks/pending`, 说明失败/回退/残留与下一步; 仅在输出证实完成时称维护成功.
 
+## 复用清单 (约定, 机制未实现)
+
+新 birth 不读任何预设名单: 白名单只来自命令行 `--allow-entry` 或同一母体未终结的记录. 项目级基线放 `<records-root>/<项目slug>/network-allow.conf`, 每行 `<CIDR> <理由...>`, `#` 注释与空行忽略, 理由取到行尾. 起容器时由执行者读出条目, 逐条展开成 `--allow-entry`; 命令行条目优先于文件, 冲突以命令行为准并报告.
+
+只收跨需求稳定项: 依赖源 (Maven Central/镜像/私有仓库), 公司内网固定设施, 共用测试环境. 按需求才用的第三方渠道 (支付/短信/具体业务方域名) 不入, 免把一次性放行固化成默认. 增删按需求评审, 与 `requirements.md` 同属项目级配置, 不进 Git.
+
+`swt.py` 尚未实现自动读取; 机制化须先改脚本并成套分发. 汇报时不得把本约定说成"已自动生效"或"下次会自己带上".
+
 ## 未完成事务
 
 中断/回退失败会保留 `network-change`, 此时 update/birth/resume 都须暂停. 先 show 看 pending/checks, 再用 recover 预览本工具事务的旧状态恢复; 按同一审批协议获准后执行. 原完整 ID 仍在的停止目标只恢复记录, 不启动容器.
