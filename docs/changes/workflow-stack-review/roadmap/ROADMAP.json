@@ -133,13 +133,26 @@
       "title": "准备 demo/PoC 编码改造的规格与执行输入",
       "type": "task",
       "question": "HITL 准备工作, 不是编码实施. milestone-04 是 AFK 编码任务, navigate 要求调用 drive-execution, 而仓库 drive-execution 步骤2在缺 EXECUTION.md/可执行issues 时必须停下并另会话用 to-execution. 当前本变更缺这些输入, 先基于 milestone-01 当前有效概念决策及 milestone-03 的具体策略, 与我确认 milestone-04 的详细可观察验收标准; 按 to-spec/to-execution 各自输入要求准备所需 PRODUCT.md/TECHNICAL.md 和 EXECUTION.md/issues, 需要我确认的标准不由代理替答. 为 to-execution 指定 AFK 编码任务的产物根 docs/changes/workflow-stack-review/milestone-04/, 在独立会话拆分, issue 含验证契约/入口和可复查完成定义, 并为 drive-execution 准备可核实评审起点. 只准备已批准改造的直接执行输入, 不新增功能或开始实现. 完成标准: 必需输入真实可读且无未确认标准/缺失验证契约, milestone-04 能按 drive-execution 正常进入派工; 所有输入路径记入本节点产物. 如仍有产品取舍则回我确认, 不临时绕开缺口.",
-      "status": "待处理",
+      "status": "已关闭",
       "blocked_by": [
         "milestone-01",
         "milestone-03"
       ],
-      "artifacts": [],
-      "close_summary": null
+      "artifacts": [
+        "docs/changes/workflow-stack-review/milestone-09/IMPLEMENTATION.md",
+        "docs/changes/workflow-stack-review/milestone-09/SPEC-CHECK.md",
+        "docs/changes/workflow-stack-review/milestone-09/SPEC-CHECK-02.md",
+        "docs/changes/workflow-stack-review/milestone-04/PRODUCT.md",
+        "docs/changes/workflow-stack-review/milestone-04/TECHNICAL.md",
+        "docs/changes/workflow-stack-review/milestone-04/EXECUTION.md",
+        "docs/changes/workflow-stack-review/milestone-04/issues/ISSUE-01-milestone-type-enum.md",
+        "docs/changes/workflow-stack-review/milestone-04/issues/ISSUE-02-demo-skill-rename-rewrite.md",
+        "docs/changes/workflow-stack-review/milestone-04/issues/ISSUE-03-navigate-type-vocabulary.md",
+        "docs/changes/workflow-stack-review/milestone-04/issues/ISSUE-04-web-demo-poc-visuals.md",
+        "docs/changes/workflow-stack-review/milestone-04/issues/ISSUE-05-adr-naming-record.md",
+        "docs/changes/workflow-stack-review/milestone-04/issues/ISSUE-06-regression-and-audit.md"
+      ],
+      "close_summary": "milestone-04 的编码输入已备齐并经仓库主人确认: PRODUCT.md 22 条 AC (审阅版本 5aedcd4d, 已采纳), TECHNICAL.md check-tech 通过, EXECUTION.md 与六个垂直切片 issues 的覆盖矩阵为 AC-001..AC-022 逐条给出验证入口, 评审起点 962e299. 两轮独立检查的 9 项发现全部解决, 3 条低危按裁决落进 issue 边界. 未开始编码, 未改已安装 skills. 环境注意: pytest 前须停掉占用默认端口的 navigate 守护; check-ac 需 uv run --with gherkin-official."
     }
   },
   "unknown_seas": [],
