@@ -1,0 +1,125 @@
+{
+  "schema_version": "0.0.1",
+  "title": "workflow skill 栈审视与改造",
+  "destination": "workflow/ 这套 skill 栈完成三件已拍板的改造 (模型自动调用的术语 skill, prototype 改名 demo, PoC 成为 navigate 里程碑类型), 五处措辞与 SAFETY 指针违规已修, 三处流程接口待裁决项已定并落地, 全部改动经 pytest 与 check_skill.py 通过, 并由我逐项验收后推送到宿主母体.",
+  "notes": [
+    "侦查结论: 方向 A 主张保留主体, 纸面 5 对互指里的反向边全属文档读取, 产物引用与重新派活, 改措辞即可, 唯一真重复是 benchmark 与 blast-radius 各约 12 行的实验边界. 方向 B 主张把已长出的 6 层写成文, 诚实结论是收益为可判性而非 token, 且需真搬 v-c 的方法路由与验收证据语义. 方向 C 主张按需加载与入口选择, 但有 24 个 skill 刻意禁用模型调用, 该主轴被否决; 其载入链代理值仍留作参考: 小改动 5-7KB, bug 14-18KB, 独立验收 27-44KB.",
+    "选定: 不整包接受任一方向. 采用清单式实施: 三件已拍板改造, 五处已批准的措辞修正, 一组打包裁决的流程接口. 分层成文, 方法路由上移, 入口地图, 抽共用底线四项经裁决排除, 见 off_course.",
+    "边判定口径 (已认可): 调用图只画执行调用 (实线); 权威引用, 分工声明, 条件引用产物, 重新派活都不算调用边. 按此口径原来看见的 4 条环消失, 指向 v-c 的虚线边一律不改.",
+    "无证据事项, 不作为验收项: token 节省幅度 (只有字节与行数代理), 术语 skill 的触发率与漏触发率, 已读则复用守卫在模型侧的真实遵从率, 四个孤儿 skill 的实际使用频率.",
+    "环境: 代码在 ~/Workspace/refactor-skill-around-verification, 分支同名, origin 经本地 git 桥到宿主母体, 只快进推, push 即交付. 改后跑 uv run python sync-to-pi.py. 改 roadmap.py 或 web/index.html 后必须跑 uv run python -m pytest workflow/navigate/tests, pytest.ini 的 testpaths 顺序不许动. 展示页用容器 8800 (已确认宿主映射).",
+    "只改本仓库内容, 禁止修改真实已安装 skills, 这是仓库 AGENTS.md 的硬要求."
+  ],
+  "milestones": {
+    "milestone-01": {
+      "title": "定术语 skill 的形态与落点",
+      "type": "deliberate",
+      "question": "决定新术语 skill 的: (a) 放 workflow/ 还是 general/; (b) 目录名与 frontmatter name; (c) description 的触发措辞 (它是模型自动调用, 是例外中的例外, 要按 writing-for-llm 的 SKILL-MECHANICS 判分支与剪枝); (d) WORKFLOW_VOCABULARY.md 的哪些内容整体迁入, 哪些留在 domain-awareness; (e) domain-awareness 第 9 与 12 行两处指针怎么改; (f) README 与 agent-prompts/PUBLIC.md 是否加指针. 约束: 它只收词与定义, 不兼做 skill 入口地图; MVP 与 v0 到 vn 的迭代解释只写在这里, 其他 skill 不加任何迭代指令.",
+      "status": "待处理",
+      "blocked_by": [],
+      "artifacts": [],
+      "close_summary": null
+    },
+    "milestone-02": {
+      "title": "建术语 skill 并迁移词汇表",
+      "type": "task",
+      "question": "按 milestone-01 的结论新建 skill 目录与 SKILL.md, 迁入 WORKFLOW_VOCABULARY.md 的内容并补 MVP, PoC, demo, v0 到 vn 词条; 改 domain-awareness 的两处指针与 README; 处理原词汇表文件 (删除或留指针, 依 01 的结论, 不留第二份内容). 验证: 新 SKILL.md 通过 writing-for-llm 的 check_skill.py, 跑 uv run python sync-to-pi.py 后检查安装目录, 不修改真实已安装 skills. 完成标准: 词汇表内容只有一处真相源, 新 skill 自检通过, 仓库工作区只含本次改动.",
+      "status": "待处理",
+      "blocked_by": [
+        "milestone-01"
+      ],
+      "artifacts": [],
+      "close_summary": null
+    },
+    "milestone-03": {
+      "title": "定 PoC 类型与 prototype 兼容策略",
+      "type": "deliberate",
+      "question": "决定: (a) PoC 由谁承接 —— demo 的一支, research, 还是裸 task; (b) AFK 还是 HITL; (c) 完成标准怎么写 (技术可行性结论要什么形态); (d) navigate 里 research 的创建条件含 或等一个无处可查的结论须先做实验测出 这半句, 切给 PoC 之后 research 剩下什么; (e) roadmap.py 是否收 prototype 作 demo 的别名, 还是直接改枚举 (现存 ROADMAP 无 prototype 实例, 无数据迁移).",
+      "status": "待处理",
+      "blocked_by": [],
+      "artifacts": [],
+      "close_summary": null
+    },
+    "milestone-04": {
+      "title": "demo 改名与 PoC 类型落地",
+      "type": "task",
+      "question": "workflow/prototype/ 整目录改名 workflow/demo/, 并改 6 文件约 16 处: navigate/SKILL.md 的种类节与调用处, scripts/roadmap.py 的类型枚举, TEMPLATES.md, web/index.html, tests/visual/render_checks.py, README. 按 milestone-03 结论加 PoC 里程碑类型 (枚举, 校验, 模板行, 网页显示, navigate 种类节) 并删掉 research 创建条件里的实验半句. 验证: uv run python -m pytest workflow/navigate/tests 全绿, 跑 sync-to-pi.py.",
+      "status": "待处理",
+      "blocked_by": [
+        "milestone-03"
+      ],
+      "artifacts": [],
+      "close_summary": null
+    },
+    "milestone-05": {
+      "title": "措辞与 SAFETY 指针修正",
+      "type": "task",
+      "question": "执行已批准的 5 处: (1) verify-change 第 5 步删掉复述 SAFETY 写入与授权节的两句, 改成指向该节的一句, 保留验收特有的派工单写入批准范围, 逐次记录, 超范围停下不替它扩权三条; (2) blast-radius 第 4 节 写仓库或运行有副作用前先问我 改成按 SAFETY 写入与授权节先获批; (3) blast-radius 第 5 节首段与清理 bullet 同上改指针; (4) maintain-verification-skill 第 67 行改成正面表述且不点名 verify-change; (5) blast-radius 开头去掉验收指挥者这个只在天 verify-change 里定义的术语. 另把已认可的边判定口径写成一句: 调用图只画执行调用, 引用与分工声明与重新派活不进图; 落点先按 README 现有 skill 表之前一段, 现场若发现更合适的位置先问我. 验证: sync-to-pi.py 后抽查安装目录对应段落.",
+      "status": "待处理",
+      "blocked_by": [],
+      "artifacts": [],
+      "close_summary": null
+    },
+    "milestone-06": {
+      "title": "打包裁决三处流程接口",
+      "type": "deliberate",
+      "question": "决定: (a) benchmark 与 blast-radius 那 8 条实验边界是否收到一处, 收在谁家; (b) IMPACT-REVIEW.md 由谁消费 —— code-review 的 Spec 轴读, verify-change 列为操作线索, 还是承认只给人看并在 drive-execution 写清楚; (c) navigate 的 acceptance 与 verify-change 是否互相点名, 两边证据语义漂移怎么处理; (d) 是否加调用边清单校验测试防回归 (自动分类脆弱, 也可人工维护边清单); (e) general/grill-me 反向调 domain-awareness 怎么处置.",
+      "status": "待处理",
+      "blocked_by": [],
+      "artifacts": [],
+      "close_summary": null
+    },
+    "milestone-07": {
+      "title": "落地流程接口改动",
+      "type": "task",
+      "question": "只按 milestone-06 判定要动的项动手; 判定不动的项在关闭摘要里记一笔理由, 不默默跳过. 验证: uv run python -m pytest -m not e2e 全绿, 改过 roadmap.py 或网页的话另跑 navigate tests, 跑 sync-to-pi.py.",
+      "status": "待处理",
+      "blocked_by": [
+        "milestone-06"
+      ],
+      "artifacts": [],
+      "close_summary": null
+    },
+    "milestone-08": {
+      "title": "终点验收",
+      "type": "acceptance",
+      "question": "汇集别人已产出的证据, 与我逐项确认三件已拍板改造, 五处措辞修正, 流程接口改动全部落地且自检通过; 只在全部必验项有充分证据且我逐项确认后才关闭, 关闭后推送交付.",
+      "status": "待处理",
+      "blocked_by": [
+        "milestone-01",
+        "milestone-02",
+        "milestone-03",
+        "milestone-04",
+        "milestone-05",
+        "milestone-06",
+        "milestone-07"
+      ],
+      "artifacts": [],
+      "close_summary": null
+    }
+  },
+  "unknown_seas": [
+    "术语 skill 上线后的实际触发率与漏触发率, 没有实测通道, 只能靠以后使用体感",
+    "措辞澄清是否真的减少了误加载, 只能靠以后体感",
+    "术语 skill 与 domain-awareness 的职责相邻, 是否会互相抢触发, 只能上线后观察",
+    "navigate 的验收证据语义与 verify-change 的会不会继续漂移, 取决于 milestone-06 对两个验收是否互相点名的结论"
+  ],
+  "off_course": [
+    {
+      "what": "把 workflow 栈写成文的分层规则, 含层数与归层裁决",
+      "reason": "用户 2026-10-30 裁决: 不需要"
+    },
+    {
+      "what": "把 verification-contract 的方法路由上移到 to-execution",
+      "reason": "用户裁决: 不搬. 保留 v-c 提名方法 skill, 现场便利优先于纸面纯净"
+    },
+    {
+      "what": "新增模型可见的入口地图 skill",
+      "reason": "用户拒绝: 模型不该知道 skill 存在, 手动点名与 skill 正文指名已足够"
+    },
+    {
+      "what": "抽共用底线文件并让方法 skill 改指它, 顺带修只为底线加载全文那三处",
+      "reason": "用户明确不做: 边判定口径定下后环已不成问题, 只剩三处减载, 不值得"
+    }
+  ]
+}
