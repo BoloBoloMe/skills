@@ -78,90 +78,6 @@
           }
         },
         {
-          "id": "gpt-5.6-sol",
-          "reasoning": true,
-          "thinkingLevelMap": {
-            "off": "none",
-            "minimal": "minimal",
-            "low": "low",
-            "medium": "medium",
-            "high": "high",
-            "xhigh": "xhigh"
-          },
-          "input": [
-            "text",
-            "image"
-          ],
-          "contextWindow": 872000,
-          "maxTokens": 128000,
-          "cost": {
-            "input": 4,
-            "output": 20,
-            "cacheRead": 0.4,
-            "cacheWrite": 5
-          },
-          "api": "openai-responses",
-          "compat": {
-            "supportsToolSearch": true
-          }
-        },
-        {
-          "id": "gpt-5.6-terra",
-          "reasoning": true,
-          "thinkingLevelMap": {
-            "off": "none",
-            "minimal": "minimal",
-            "low": "low",
-            "medium": "medium",
-            "high": "high",
-            "xhigh": "xhigh"
-          },
-          "input": [
-            "text",
-            "image"
-          ],
-          "contextWindow": 872000,
-          "maxTokens": 128000,
-          "cost": {
-            "input": 2,
-            "output": 12,
-            "cacheRead": 0.2,
-            "cacheWrite": 2.5
-          },
-          "api": "openai-responses",
-          "compat": {
-            "supportsToolSearch": true
-          }
-        },
-        {
-          "id": "gpt-5.6-luna",
-          "reasoning": true,
-          "thinkingLevelMap": {
-            "off": "none",
-            "minimal": "minimal",
-            "low": "low",
-            "medium": "medium",
-            "high": "high",
-            "xhigh": "xhigh"
-          },
-          "input": [
-            "text",
-            "image"
-          ],
-          "contextWindow": 872000,
-          "maxTokens": 128000,
-          "cost": {
-            "input": 0.2,
-            "output": 1.2,
-            "cacheRead": 0.02,
-            "cacheWrite": 0.25
-          },
-          "api": "openai-responses",
-          "compat": {
-            "supportsToolSearch": true
-          }
-        },
-        {
           "id": "gpt-6.1-sol",
           "reasoning": true,
           "thinkingLevelMap": {
@@ -183,35 +99,6 @@
             "input": 2,
             "output": 10,
             "cacheRead": 0.1,
-            "cacheWrite": 2.5
-          },
-          "api": "openai-responses",
-          "compat": {
-            "supportsToolSearch": true
-          }
-        },
-        {
-          "id": "gpt-6-sol",
-          "reasoning": true,
-          "thinkingLevelMap": {
-            "off": "none",
-            "minimal": null,
-            "low": "low",
-            "medium": "medium",
-            "high": "high",
-            "xhigh": "xhigh",
-            "max": "max"
-          },
-          "input": [
-            "text",
-            "image"
-          ],
-          "contextWindow": 872000,
-          "maxTokens": 128000,
-          "cost": {
-            "input": 2,
-            "output": 10,
-            "cacheRead": 0.2,
             "cacheWrite": 2.5
           },
           "api": "openai-responses",
@@ -249,8 +136,8 @@
           }
         },
         {
-          "id": "deepseek-v4.1-flash-expires-on-0910",
-          "name": "DeepSeek V4.1 Flash",
+          "id": "deepseek-flash",
+          "name": "DeepSeek Flash",
           "reasoning": true,
           "thinkingLevelMap": {
             "off": null,
@@ -341,41 +228,6 @@
             "input": 1.4,
             "output": 4.4,
             "cacheRead": 0.26,
-            "cacheWrite": 0
-          },
-          "api": "openai-completions",
-          "compat": {
-            "supportsStore": false,
-            "supportsDeveloperRole": false,
-            "supportsReasoningEffort": true,
-            "maxTokensField": "max_tokens",
-            "supportsStrictMode": false,
-            "thinkingFormat": "zai",
-            "zaiToolStream": true
-          }
-        },
-        {
-          "id": "glm-5.3-flashx",
-          "name": "GLM 5.3 FlashX",
-          "reasoning": true,
-          "thinkingLevelMap": {
-            "off": null,
-            "minimal": null,
-            "low": null,
-            "medium": null,
-            "high": "high",
-            "xhigh": "xhigh",
-            "max": "max"
-          },
-          "input": [
-            "text"
-          ],
-          "contextWindow": 1000000,
-          "maxTokens": 131072,
-          "cost": {
-            "input": 0.37,
-            "output": 1.25,
-            "cacheRead": 0.075,
             "cacheWrite": 0
           },
           "api": "openai-completions",
