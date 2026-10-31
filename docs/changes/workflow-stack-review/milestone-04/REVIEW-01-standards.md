@@ -177,3 +177,63 @@ e5b0cf6 feat: ISSUE-05: 新增 ADR 0024...
 - 硬性违规: 0 条.
 - 判断性发现: 13 条 (S-01..S-13).
 - 最严重: S-01 (TEMPLATES.md:88 "原型" 残留, BR-003 意图覆盖而字面未覆盖, 且落在本轮两轮审计的 grep 盲区; TECHNICAL 明言要改而未改, 已交叉提示 Spec 轴).
+
+---
+
+## 8. 增量复审 (任务 m04-delta-standards)
+
+- 目标提交: `7faa5e6` (主线顶端). 本节增量基准: 上轮报告提交 `95a856b` 之后合入主线的新提交, 重点 `5986c3e` (ISSUE-07 返工).
+- 现场: 工作树已 `git merge refactor-skill-around-verification --no-edit` (fast-forward, 无冲突), 现 HEAD `7faa5e6`. 上轮报告全文原样保留 (第 1-7 节), 本节只追加.
+- 增量提交 (`git log 95a856b..7faa5e6 --oneline`): `822cbbd` doc: milestone-06 反方核实与关闭; `a6670e3` doc: 更新路线图 milestone-06; `50dec07` doc: milestone-04 Spec 轴评审 (REVIEW-02, 另一轴, 只扫体例不判内容); `5986c3e` feat: ISSUE-07 返工六项; 4 个 merge (19a378d, 1166c12, 89334ca, 7faa5e6).
+
+### 8.1 上轮采纳项逐条核对
+
+| 项 | 结论 | 核对依据 |
+| --- | --- | --- |
+| S-01 TEMPLATES 原型改词 | **已解决** | 5986c3e 将 TEMPLATES.md:88 "findings/原型/决策文档" 改为 "findings/演示材料/决策文档"; `grep -rn 原型 workflow/ README.md --include=*.md` 零命中 (本审核者复跑确认, 非只采信 ISSUE-07 证据) |
+| S-04 去 BR-005 规则号 | **已解决** | SKILL.md:37 句末 "(BR-005)" 已删, 指针句其余措辞原样; `grep -n '(BR-' workflow/navigate/SKILL.md` 零命中 |
+| S-05 README demo 行归位 | **已解决** | demo 行移至 deliberate 之后 (现 :44, deliberate :43), 行内容未改; 工作流技能表 26 行经 `LC_ALL=C sort -c` 验证全序恢复 (demo: d-e-m 介于 deliberate d-e-l 与 diagnosing d-i 之间) |
+| S-07 测试 docstring | **部分解决** | 主诉 (a) 文件头缺 m04 用例清单: 已补 (test_roadmap_validation.py:4-5); 主诉 (b) TC-002/TC-003 裸编号两义: 未解决, 且文件头声称的消歧写法与实际不符, 见新发现 N-01 |
+| S-11 巡检覆盖表 | **已解决** | 覆盖表补 "demo/poc 类型展示 (TC-006)" 行且插入位置与脚本执行顺序一致, "7 个里程碑" 改 "8 个" 与夹具一致; 基线预存两行缺失 (验收类型展示/无 JS 报错) ISSUE-07 明文划出范围不补, 维持第 5 节 S-11 的沉积记录 |
+
+### 8.2 未采纳项确认 (S-02/S-03/S-06/S-08/S-09/S-10/S-12/S-13)
+
+`5986c3e` 实际触碰面: TEMPLATES.md:88 一词, SKILL.md poc 指针句句末, README 一行移动, tests/visual/README.md 覆盖表两处, test_roadmap_validation.py 模块 docstring 3 行, ISSUE-03/04 交付证据各追加 1 行, ISSUE-07 新文件. 逐项确认: S-02 (种类/完成标准顺序) 与 S-03 (poc 四处重复) 所在段落未被触碰; index.html 与 render_checks.py 在增量中零改动, S-06/S-10/S-12/S-13 现状未变; 测试用例体未动, S-08/S-09 现状未变. 未采纳项均无被顺手改动引出的新问题.
+
+### 8.3 增量新发现 (3 条, 均判断性)
+
+#### N-01 测试模块 docstring 声称的消歧写法与文件内实际写法不符 — 判断性
+
+- 位置: `workflow/navigate/tests/test_roadmap_validation.py:4`.
+- Hunk: 5986c3e `@@ -1,5 +1,8 @@`.
+- 问题: 新增 docstring 写 "(带 m04 前缀消歧: TC-m04-002, TC-m04-003, TC-m04-005)", 但文件内实际写法是括注式 "TC-002 (m04 AC-002)" (:184/:193/:206), 前缀式 `TC-m04-` 在文件内零命中 (grep 确认). 文件头现在描述了一个不存在的机制; S-07 的裸编号两义仍未消 (旧 TC-002=非法枚举被拒 与新 TC-002=demo 可写入 仍同文两义). ISSUE-07 的 要交付 第 5 条与 交付证据 第 5 条同样写 "带 m04 前缀消歧", 声称与实现不符.
+- 规范/坏味道: 文档失真 (writing-for-llm 相关性/沉积), Mysterious Name 延续. 依据上下文: 已读测试文件全文与 ISSUE-07 全文.
+- 建议: 随下次提交把 docstring 第 4 行的括注改为与实际一致的 "(docstring 以 (m04 AC-xxx) 括注消歧)" 或把三条函数 docstring 真改成 TC-m04-NNN 前缀, 二选一, 一行级改动.
+
+#### N-02 ISSUE-07 引用 TECHNICAL 原文有一处错别字 — 判断性 (轻微)
+
+- 位置: `docs/changes/workflow-stack-review/milestone-04/issues/ISSUE-07-rework-review-findings.md:9`.
+- 问题: 引用写 "只改枚出行与原型一词", TECHNICAL.md:7 原文是 "枚举行". 引用失真 (同段其余引用准确).
+- 规范: 引用应与原文一致的一般准确性要求. 判断性.
+
+#### N-03 账本实质修正未按 decision-ledger "决策变化新建 ID" 处理 — 判断性
+
+- 位置: `docs/changes/workflow-stack-review/milestone-06/DECISIONS.md` D001/D005/D006/D008 的 "2026-10-31 反方核实修正/补全" 追加句 (提交 822cbbd).
+- 问题: `workflow/decision-ledger/SKILL.md` 变更决策节规定 "决策变化必须保留历史, 决策/事实变化新建 ID"; 本次 D005 的核对对象 (调用图 -> README 技能表+正文执行调用语句) 与 D001/D008 的条款补全属决策内容实质变化, 处理方式是原条目内追加修正句而非新建 ID. 缓解: 旧文本逐字保留, 追加句带日期与来源, 用户确认在案 (ACCEPTANCE.md 确认依据段), 可追溯目标实际达成; 事实侧 F010->F013 用了规则内的 已变更 (→ F013) 格式, 说明规则本身被知晓. 因历史保留目的未受损且用户已确认, 不作硬性.
+- 上下文依据: 已读 decision-ledger SKILL.md 变更决策节全文, 822cbbd 全部 diff, OPPOSITION-RESOLUTION.md 逐项处置表.
+
+### 8.4 增量体例检查 (查过且无发现)
+
+- 提交信息: `feat: ISSUE-07: ...` 符合 drive-execution:34; `doc: milestone-06 反方核实与关闭` / `doc: 更新路线图 milestone-06` 符合对应簿记格式; 822cbbd 与 a6670e3 文件归属与提交信息对应.
+- ISSUE-07 体例: 各节齐全, 允许/禁止范围与实际触碰面一致 (逐文件比对过), 证据补录只追加不改旧内容 (ISSUE-03/04 的补录行核实).
+- ROADMAP.json (a6670e3): milestone-06 关闭字段合法 (type/status/artifacts/close_summary), artifacts 4 项路径均在场.
+- ACCEPTANCE.md 修订 (822cbbd): 修订条目在确认依据段有账, AC-06-01/02/03/05/06/08 修订版与 D001/D005/D006/D008 追加句互相一致.
+- OPPOSITION.md / OPPOSITION-RESOLUTION.md: deliberate/decision-ledger 无反方产物成文体例 (grep 证), 自拟结构 (正方还原/主战场/反方反驳/逐项处置表) 清晰自洽, 无违规.
+- REVIEW-02-spec.md: 头部/基准点/commit 列表体例与本轴报告同构, 内容不属本轴判断.
+
+### 8.5 增量结论
+
+- 采纳项 5 条: 4 条已解决, 1 条部分解决 (S-07, 余项即 N-01).
+- 新增发现 3 条, 全部判断性, 无硬性违规.
+- 须返工项: 无硬性须返工项; N-01 为一行级文档失真, 建议随下次提交顺手修正, 是否立项由总指挥定.
+- 增量发现总数: 3 (N-01..N-03); 两轮累计: 硬性 0, 判断性 16.
