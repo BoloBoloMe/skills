@@ -11,6 +11,6 @@
 | 全部非 e2e 测试 | `uv run python -m pytest -m "not e2e"` | 会话启动时缺少 podman, 退出 3; 尚未运行用例, 未验证 | `PYTEST.log` |
 | 实施前同命令预跑 | `uv run python -m pytest -m "not e2e"` | 同样在 `tests/conftest.py:236` 缺 podman, 退出 3; 不把它编造成测试红态或变更后回归 | `PYTEST-BEFORE.log` |
 
-全量阻塞已通过出生宿主具体会话请求补跑, 原请求 `84feeb9f210a42209453c40fcf5c5a6f`, 目标版本补充信 `7bc09afa354941bb9358b753e856efae`. 是否具备可用环境与补跑结果仍待实际回复, 发信成功不等于已补跑. 不伪造 podman, 不修改 pytest.ini/testpaths 或测试来绕过启动错误.
+全量阻塞已通过出生宿主具体会话请求补跑, 原请求 `84feeb9f210a42209453c40fcf5c5a6f`, 目标版本补充信 `7bc09afa354941bb9358b753e856efae`. 宿主已在目标提交的独立副本实际运行: 778 passed, 7 failed, 4 skipped, 103 deselected, 46 subtests passed, 退出 1. 原始日志与基线限制见 `HOST-TESTS.md`, `HOST-PYTEST.log` 和 `HOST-BASELINE.log`; 不把旧版本同类失败当成目标通过, 已请求进一步核实. 容器自身缺 podman 的记录仍成立. 不伪造依赖, 不修改 pytest.ini/testpaths 或测试来绕过启动错误.
 
-本轮未改 roadmap.py 或网页程序, navigate 测试是额外的实际回归记录, 不能用其 30 条通过充抵 AC-07-06 所要求的全量非 e2e 结果. 独立文本复核在新会话进行, 完成前不宣称所有发现已闭环. 安装效果和实际 LLM 遵从率均未验证, milestone-07 保持进行中, milestone-08 未开始.
+本轮未改 roadmap.py 或网页程序, navigate 测试是额外的实际回归记录, 不能用其 30 条通过充抵 AC-07-06 所要求的全量非 e2e 结果. 独立文本复核已有 `REVIEW.md` / `REVIEW-CHECKS.log`, 源文件未发现实现问题, 两处报告证据说明正在补正; 不提前宣称所有发现已闭环. 安装效果和实际 LLM 遵从率均未验证, milestone-07 保持进行中, milestone-08 未开始.
