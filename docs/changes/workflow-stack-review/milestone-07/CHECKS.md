@@ -13,4 +13,4 @@
 
 全量阻塞已通过出生宿主具体会话请求补跑, 原请求 `84feeb9f210a42209453c40fcf5c5a6f`, 目标版本补充信 `7bc09afa354941bb9358b753e856efae`. 宿主已在目标提交的独立副本实际运行: 778 passed, 7 failed, 4 skipped, 103 deselected, 46 subtests passed, 退出 1. 原始日志与基线限制见 `HOST-TESTS.md`, `HOST-PYTEST.log` 和 `HOST-BASELINE.log`; 不把旧版本同类失败当成目标通过, 已请求进一步核实. 容器自身缺 podman 的记录仍成立. 不伪造依赖, 不修改 pytest.ini/testpaths 或测试来绕过启动错误.
 
-本轮未改 roadmap.py 或网页程序, navigate 测试是额外的实际回归记录, 不能用其 30 条通过充抵 AC-07-06 所要求的全量非 e2e 结果. 独立文本复核及补核已有 `REVIEW.md` / `REVIEW-CHECKS.log` (0dc2855, f26f36b, e83cac0), 源文件未发现实现问题. 指代解释与作者工具记录核查已补正; 协调方另以明确编辑标记校正请求方称谓, 不将代理的复核判断冒写为新的用户确认. 全量测试失败仍未闭环. 安装效果和实际 LLM 遵从率均未验证, milestone-07 保持进行中, milestone-08 未开始.
+本轮未改 roadmap.py 或网页程序, navigate 测试是额外的实际回归记录, 不能用其 30 条通过充抵 AC-07-06 所要求的全量非 e2e 结果. 独立文本复核及补核已有 `REVIEW.md` / `REVIEW-CHECKS.log` (0dc2855, f26f36b, e83cac0), 源文件未发现实现问题. 指代解释与作者工具记录核查已补正; 协调方另以明确编辑标记校正请求方称谓, 不将代理的复核判断冒写为新的用户确认. 用户随后明确未改相关程序就不用测, 最新范围不再要求为无关路径补 Podman 或全量测试闭环. 当前直接相关检查与收口事实见 `FINAL-CHECKS.log` / `CLOSURE.md`; 历史失败原样保留, 不伪称通过. 安装效果和实际 LLM 遵从率均未验证, milestone-08 未开始.
