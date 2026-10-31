@@ -100,3 +100,5 @@ push 交付动作 (3 次, 均 isError=False, 交付到本地桥宿主母体, 非
 审计范围限制: 只覆盖该日志冻结时刻前的工具调用; 不作记录外动作/其他会话/宿主侧直接操作/全机器状态的保证; score.py 只核对到脚本无写调用, 未沙箱实跑; 信件投递态与宿主 pytest 补跑结果不经此日志核实.
 
 [2026-10-31T15:56Z] 信箱身份补正: ensure-session 01a19294-fd3d-7645-b8db-136d7c4e5b75 → config /home/bolo/.agents/mailbox/sessions/01a19294-fd3d-7645-b8db-136d7c4e5b75/config.json, created=false; 后续 presence/send 均显式 MAILBOX_CONFIG 指向该 config.
+
+[2026-10-31T15:58Z] 提交前发现基准移动: 作者在 f26f36b 之前提交 379e909 (HOST-TESTS.md, HOST-PYTEST.log, HOST-BASELINE.log, CHECKS.md 更新). 只读其 HOST-TESTS.md: 宿主实跑 `uv run --no-project --with pytest python -m pytest -m "not e2e" -q` 于干净 worktree, 日志观察 7 failed, 778 passed, 4 skipped, 退出码 1; 作者归因环境缺口待证, 基线对照待宿主回信. 本复核未独立验证宿主运行, 仅将 REVIEW.md 阻塞缺口措辞从 "待宿主补跑" 更新为 "已实跑未通过/未闭环", 不改变判定. 补核提交前基准 = 379e909.

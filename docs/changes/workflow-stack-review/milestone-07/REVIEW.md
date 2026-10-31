@@ -35,7 +35,7 @@ milestone-07:
 
 ## 阻塞缺口
 
-- **AC-07-06 全量 `uv run python -m pytest -m "not e2e"` 未验证.** 本容器复跑两次均为会话启动即失败: `tests/conftest.py:236` `subprocess.run(["podman","volume","ls","-q"])` 抛 FileNotFoundError (容器无 podman), INTERNALERROR, exit=3, 0 条用例运行; 与作者 PYTEST-BEFORE.log/PYTEST.log 记录一致. 宿主补跑结果在我复核窗口内未回, 本报告不改其未验证状态, 不以文字核对或局部测试通过充抵. 补跑闭环前 milestone-07 不具备按 AC-07-06 关闭的条件. 这是环境阻塞, 不是本轮改动的失败证据.
+- **AC-07-06 全量 `uv run python -m pytest -m "not e2e"` 未通过, 失败处理未闭环.** 本容器复跑两次均为会话启动即失败: `tests/conftest.py:236` `subprocess.run(["podman","volume","ls","-q"])` 抛 FileNotFoundError (容器无 podman), INTERNALERROR, exit=3, 0 条用例运行; 与作者 PYTEST-BEFORE.log/PYTEST.log 记录一致. 补核窗口内作者后续记录 (提交 `379e909`, HOST-TESTS.md) 称宿主会话已独立实跑同一命令于干净 worktree: 日志观察 `7 failed, 778 passed, 4 skipped, 退出码 1`, 归因环境缺口, 基线对照尚待宿主回信闭环; 该宿主运行在容器外, 本复核未独立验证, 只作为后续线索记录. 无论按哪份记录, 全量测试都不满足通过条件, 不以文字核对或局部/子集通过充抵; 失败项的根因认定与处理方式 (环境缺口豁免或拆新工作) 须由用户裁决并更新权威标准, 不由本复核代判. 闭环前 milestone-07 不具备按 AC-07-06 关闭的条件. 容器侧失败是环境阻塞, 不构成对目标提交的失败证据.
 
 ## 发现
 
@@ -62,5 +62,5 @@ milestone-07:
 ## 实际范围声明
 
 - 已验证: 17 个目标文件全部读取并与基准逐块比对; 7 个 SKILL.md 的 check_skill.py 实跑; tests.md 逐字节比对; tdd/mocking/diagnosing-bugs/grill-me/评审语境 "轴"/IMPACT-REVIEW/闭环机制/双轴的全仓活跃检索 (排除 docs/changes, docs/adr, vendor); blast-radius 第 5 节对旧 benchmark 条目的覆盖逐条比对; F014 四处与 verify-change, to-spec, ACCEPTANCE-GUIDE, 两份 PUBLIC, ADR 未动的确认; navigate 子集测试实跑; writing-for-llm 叙述视角规范核实; 作者会话工具日志的写入/同步/全局配置动作审计 (出处见 `REVIEW-CHECKS.log`).
-- 未验证: 全量 `pytest -m "not e2e"` (容器缺 podman, 待宿主补跑, 保持未验证状态); 模型实际触发/遵从率, 安装效果 (按实施边界不在本轮范围); 作者日志冻结时刻之后的动作与其他会话/宿主侧操作.
+- 未验证: 全量 `pytest -m "not e2e"` (容器缺 podman 无法启动; 宿主实跑有 7 条失败且基线对照未闭环, 保持未通过/未闭环状态); 模型实际触发/遵从率, 安装效果 (按实施边界不在本轮范围); 作者日志冻结时刻之后的动作与其他会话/宿主侧操作 (含宿主 pytest 运行的现场真实性).
 - 本报告绑定目标提交 `c77f6af446d294c3d498c570feb88bd41fe79bb6`. 复核完成不等于 milestone-07 关闭: AC-07-06 全量测试缺口按标准须先闭环, 正式验收仍归 milestone-08.
