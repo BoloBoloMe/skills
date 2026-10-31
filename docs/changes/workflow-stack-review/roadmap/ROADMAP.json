@@ -133,7 +133,8 @@
         "milestone-09",
         "milestone-10",
         "milestone-11",
-        "milestone-12"
+        "milestone-12",
+        "milestone-13"
       ],
       "artifacts": [],
       "close_summary": null
@@ -197,14 +198,24 @@
       "type": "research",
       "question": "为后续可视化 skill 探查事实 (AFK, 委派子代理独立探索): 目标是能了解任意目标代码库的结构并转成网页展示给我看, 表现分层与模块关系, 像城市地图; 该 skill 供 to-spec 调用以支撑技术规格盘问, 也可由我手动调用查看某个代码库结构. 需要查清并写进产物: (1) 候选开源项目 (至少覆盖 CodeCharta, dependency-cruiser, madge, pydeps/importlab, d2/mermaid/graphviz, Gource 一类, 可补充新发现), 各自支持的语言与能否表达分层/模块关系; (2) 输出的产物形态 (静态网页? 需服务? 交互程度), 能否离线运行, 依赖与安装成本; (3) 维护状态与许可, 是否适合嵌进本仓库 skill; (4) 若现成工具都不合适, 用代码库自身技术栈 (AST/import 分析 + 图形渲染) 自建的最小方案代价; (5) 明确推荐与不推荐的理由, 以及不可行项和结论边界. 只做事实侦查与方案对比, 不实现工具, 不改任何 skill. 产物: docs/changes/workflow-stack-review/milestone-12/FINDINGS.md.",
       "blocked_by": [],
-      "status": "进行中",
+      "status": "已关闭",
+      "artifacts": [
+        "docs/changes/workflow-stack-review/milestone-12/FINDINGS.md"
+      ],
+      "close_summary": "已交付 docs/changes/workflow-stack-review/milestone-12/FINDINGS.md (349 行, 事实侦查, 未实现工具). 关键结论: (1) 城市观感只有 CodeCharta 能给, 分析端 ccsh 要 Node 22.19+ 与 Java 22+ (本仓库无 Java), 但官方 web.zip (3.5MB, vis-2.9.1) 解压即完整离线静态前端, 子代理实测用 40 行 python 手写 cc.json 后 3D 城市与分层依赖视图均正常, 自定义 layer 属性可绑建筑高度; 推荐这条路. (2) 该前端从 file:// 打开因 ES 模块 CORS 白屏, 必须起本地 http 服务; 备用路线 cytoscape.js 435KB 单文件内联后 file:// 可直开, 只能出二维分层图. (3) 不推荐: ccsh (Java22), Gource (要 OpenGL 硬件加速且画 git 历史), mermaid-cli (要 Chromium), graphviz 系 (容器无 dot), Sourcetrail/DependaCharta/SoftVis3D/importlab (已归档), git-truck (无依赖关系). (4) 分层是分析问题: 只有 CodeCharta dependencyparser 直接给层号/环/向上依赖, 其余工具只出图, 层号要自己算 (最长路径分层加环检测, 代码量很小). (5) 各语言抽依赖成本写在文档 5.4: python 低 (可用 grimp 规避路径解析坑), JS/TS 自写很高建议借 dependency-cruiser 的 json, 其他语言用 tree-sitter 抽 import 为中等. 边界: 文档第 7 节分开列出已查证/推断/未核实三类; 大库 (几千文件) 的可读性与帧率未实测, 首次调用需要现场确认; 文中提到的实测截图为子代理本地临时产物, 未随文档入库, 结论由文档文字描述与可复现步骤支撑."
+    },
+    "milestone-13": {
+      "title": "定代码库结构可视化 skill 的形态与入口",
+      "type": "deliberate",
+      "question": "按 milestone-12 结论裁决可视化 skill 的形态与入口, 本节点不写实现代码. 待裁决: (1) 首选路线是否就是 milestone-12 路线 A: 自建 python 分析器出 cc.json, 内置 CodeCharta vis-2.9.1 静态前端 (web.zip 解压 3.5MB), 由 skill 起本地 http 服务交付页面; 降级路线 (cytoscape.js 单文件二维分层图) 在什么条件下触发. (2) 入口形态: to-spec 在哪个环节调用, 传什么参数 (目标目录/扫描范围/排除规则); 手动调用怎么起; 交付给我的是页面 URL 还是本地文件. (3) 服务与生命周期: 是否常驻, 端口怎么选, 收工时怎么清理, 同时看多个库怎么办. (4) 产物落盘位置: cc.json 与页面放 docs/changes/<slug>/ 还是临时目录, 是否入库. (5) vendored 前端资产放哪个 skill 子目录, BSD-3 版权与许可声明怎么写, 升级时怎么替换. (6) 第一版语言范围: 只做 python, 还是加 JS/TS (借 dependency-cruiser 的 json, 代价是引进 Node); 遇到不支持的语言时输出什么. (7) 分层算法口径: 层号怎么定义, 环与向上依赖怎么标, 是否就用 milestone-12 5.2 的最长路径分层加环检测. (8) skill 名字与职责边界: 只负责出可视化, 不做架构评审或重构建议. 调用 deliberate skill 逐条盘问我, 产物根目录 docs/changes/workflow-stack-review/milestone-13/.",
+      "status": "待处理",
+      "blocked_by": [],
       "artifacts": [],
       "close_summary": null
     }
   },
   "unknown_seas": [
-    "可视化 skill 的形态与入口: 怎么被 to-spec 调用, 手动调用入口是什么, 产物落在哪个目录, 是否需要常驻服务",
-    "可视化实施要几个里程碑以及各自边界: 依赖 milestone-12 的研究结论才能确定是复用现成工具还是要自建, 也可能侦查后发现整体不可行"
+    "可视化实施拆成几个里程碑与各自边界: 依赖 milestone-13 的形态裁决 (是否内置 CodeCharta 前端, 第一版语言范围, 入口与服务形态, cc.json 是否入库) 才能定, 可能是一次 task, 也可能拆成原型加实施两步."
   ],
   "off_course": [
     {
