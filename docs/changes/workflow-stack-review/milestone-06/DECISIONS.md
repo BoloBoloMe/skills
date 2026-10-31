@@ -9,7 +9,7 @@
 ### D001 实验边界收敛到 blast-radius
 - 状态: 当前有效
 - 约束性: 必须遵守
-- 内容: benchmark-checklist 与 blast-radius 各自的 "一次性实验的边界" 收敛为一处: 完整边界唯一维护在 blast-radius (它本就是调查方法源头, benchmark 已声明 "沿用 blast-radius 的证据级别与授权边界", 单向依赖 benchmark→blast 已存在). benchmark-checklist 删除重复的调查方法/授权边界条目, 改为指针, 只保留满足既有分界句 "只规定测量实验条件, 不重写调查方法" 的测量特有条款. 已否决收进 verification-contract/SAFETY.md: 实验边界一半不是安全语义 (非正式 TC 标记, 内部函数证明边界, 新正式测试交回流程), 塞进安全底线唯一维护处会混淆职责; 已否决保持两处只对齐措辞: 重复仍在, 将来还会漂移. 两份 reference/PROVENANCE.md 相关行同步, 不改历史决策原文.
+- 内容: benchmark-checklist 与 blast-radius 各自的 "一次性实验的边界" 收敛为一处: 完整边界唯一维护在 blast-radius (它本就是调查方法源头, benchmark 已声明 "沿用 blast-radius 的证据级别与授权边界", 单向依赖 benchmark→blast 已存在). benchmark-checklist 删除重复的调查方法/授权边界条目, 改为指针, 只保留满足既有分界句 "只规定测量实验条件, 不重写调查方法" 的测量特有条款. 已否决收进 verification-contract/SAFETY.md: 实验边界一半不是安全语义 (非正式 TC 标记, 内部函数证明边界, 新正式测试交回流程), 塞进安全底线唯一维护处会混淆职责; 已否决保持两处只对齐措辞: 重复仍在, 将来还会漂移. 两份 reference/PROVENANCE.md 相关行同步, 不改历史决策原文. 2026-10-31 反方核实补全: benchmark 的指针必须写明任何一次性实验 (不限影响调查证明脚本) 都适用 blast-radius 边界节; 测量特有记录 (停止自启后台进程, 数据留存位置与停止结果) 保留在 benchmark.
 - 依赖事实: F001, F002
 - 预计影响: workflow/benchmark-checklist/SKILL.md, workflow/blast-radius/reference/PROVENANCE.md, workflow/benchmark-checklist/reference/PROVENANCE.md; 实施在 milestone-07
 
@@ -37,15 +37,15 @@
 ### D005 调用边不做自动校验, 维护规则进 README 给维护者
 - 状态: 当前有效
 - 约束性: 必须遵守
-- 内容: 不新增调用边校验测试. 理由: 自动从正文提取调用边已知脆弱 (引用/分工声明/重新派活按口径不是边, 自然语言分不清); 半自动 (人工清单+测试校验) 会使 milestone-07 变成编码任务, 按现行规则要先补 drive-execution 输入 (规格/EXECUTION/issues), 等于再造一个准备段; 调用边变化频率低且每次变更本就有非作者复核兜底. 维护规则落 README 调用关系口径行旁, 面向仓库维护者 (维护本仓库的 llm): 调用边变更时人工核对调用图与 skill 正文, 并经非作者复核. 规则不写入任何 skill 正文, software-engineering-consensus 不收 (它是词条库且要过收录门槛).
-- 依赖事实: F009
+- 内容: 不新增调用边校验测试. 理由: 自动从正文提取调用边已知脆弱 (引用/分工声明/重新派活按口径不是边, 自然语言分不清); 半自动 (人工清单+测试校验) 会使 milestone-07 变成编码任务, 按现行规则要先补 drive-execution 输入 (规格/EXECUTION/issues), 等于再造一个准备段; 调用边变化频率低且每次变更本就有非作者复核兜底. 维护规则落 README 调用关系口径行旁, 面向仓库维护者 (维护本仓库的 llm): 调用边变更时人工核对调用图与 skill 正文, 并经非作者复核. 规则不写入任何 skill 正文, software-engineering-consensus 不收 (它是词条库且要过收录门槛). 2026-10-31 反方核实修正: 仓库不存在受维护的调用图文件实体 (见 F014), 维护规则的核对对象改为 README 技能表与各 skill 正文中的执行调用语句, 不再引用不存在的图.
+- 依赖事实: F009, F014
 - 预计影响: README.md
 
 ### D006 删除 general/grill-me
 - 状态: 当前有效
 - 约束性: 必须遵守
-- 内容: 删除 general/grill-me/ 目录及 README 通用技能表对应行. 理由: 真实已安装 skills 本就没有 grill-me, 仓库留存是残留; 其功能 (domain-awareness + grilling 两调) 与 workflow/deliberate (同两调 + decision-ledger 落账 + opposing-viewpoint 反方) 重复, 无落盘的轻量场景由 grilling 直接覆盖; general 与 workflow 目录是分类不是分层, 反向调用本身不违规, 违规的是保留无效重复. 两份 PUBLIC 无引用, 历史决策文档 (docs/changes/上下文管理优化/DECISIONS.md) 按惯例不改.
-- 依赖事实: F010
+- 内容: 删除 general/grill-me/ 目录及 README 通用技能表对应行. 理由: 真实已安装 skills 本就没有 grill-me, 仓库留存是残留; 其功能 (domain-awareness + grilling 两调) 与 workflow/deliberate (同两调 + decision-ledger 落账 + opposing-viewpoint 反方) 重复, 无落盘的轻量场景由 grilling 直接覆盖; general 与 workflow 目录是分类不是分层, 反向调用本身不违规, 违规的是保留无效重复. 两份 PUBLIC 无引用, 历史决策文档 (docs/changes/上下文管理优化/DECISIONS.md) 按惯例不改. 2026-10-31 反方核实修正: F010 的安装状态有误, grill-me 实际存在于真实安装目录 (见 F013); 删除理由以功能重复与用户裁决为准, 用户确认维持删除, 安装副本由宿主下次运行 sync-to-pi.py 整目录镜像时自动裁掉, 本变更不运行同步.
+- 依赖事实: F010, F013
 - 预计影响: general/grill-me/ (删除), README.md
 
 ### D007 评审轴用词改为评审方向
@@ -58,8 +58,8 @@
 ### D008 旧行为影响复查迁入 code-review 作可选评审方向
 - 状态: 当前有效
 - 约束性: 必须遵守
-- 内容: 旧行为影响复查从 drive-execution 的独立节点迁入 code-review, 成为与 Standards/Spec 并列的可选评审方向 (方向名 旧行为影响). 是否运行该方向的判定方式与 D002 门槛一致: 整轮全部 issue 为非行为改动或纯核验且差异不触碰共享接口/数据格式/跨模块路径时免做, 其余照做. 落点: drive-execution 执行循环删除独立影响复查节点, 评审节点调用 code-review 时传入评审起点与产物根目录; IMPACT-REVIEW.md 仍写入产物根目录并逐轮追加不覆盖; 该方向审核者读上轮记录核对闭环; 发现进 code-review 汇总, 由调用方总指挥分流 (明确实现破坏拆返工 ISSUE, 产品取舍报缺口交用户). 保留: 该报告是调查报告不新增产品判据, 不作为 verify-change 的输入判据. 门槛判定的规则文本只落 code-review 一处, 不在 drive-execution 重复 (writing-for-llm 冗余禁令). 用户 2026-10-30 裁决; D002 的门槛由本条原样承接, D003 的读者定位由汇总-分流链路承接.
-- 依赖事实: F003, F005
+- 内容: 旧行为影响复查从 drive-execution 的独立节点迁入 code-review, 成为与 Standards/Spec 并列的可选评审方向 (方向名 旧行为影响). 是否运行该方向的判定方式与 D002 门槛一致: 整轮全部 issue 为非行为改动或纯核验且差异不触碰共享接口/数据格式/跨模块路径时免做, 其余照做. 落点: drive-execution 执行循环删除独立影响复查节点, 评审节点调用 code-review 时传入评审起点与产物根目录; IMPACT-REVIEW.md 仍写入产物根目录并逐轮追加不覆盖; 该方向审核者读上轮记录核对闭环; 发现进 code-review 汇总, 由调用方总指挥分流 (明确实现破坏拆返工 ISSUE, 产品取舍报缺口交用户). 保留: 该报告是调查报告不新增产品判据, 不作为 verify-change 的输入判据. 门槛判定的规则文本只落 code-review 一处, 不在 drive-execution 重复 (writing-for-llm 冗余禁令). 用户 2026-10-30 裁决; D002 的门槛由本条原样承接, D003 的读者定位由汇总-分流链路承接. 2026-10-31 反方核实补全: 该方向审核者必须未参与实现与修复; 报告证据构成照旧 (目标提交, 逐项发现与已排除项, 代码依据, 既有检查及本轮运行结果, 未证实路径写明缺口, 不以搜索命中充当安全证明, 不声称有限检查找到全部影响, 出处见 F015); 该方向独立 reviewer 运行, 汇总保留三方向边界, 旧报告只供该方向闭环与汇总分流, 不进入 Spec 方向判据; 返工合并并通过整体验证后对新集成提交按门槛重做该方向; 免做判定由总指挥在调用评审前做出, 免做理由在 EXECUTION.md 执行记录留一行并提交.
+- 依赖事实: F003, F005, F015
 - 预计影响: workflow/code-review/SKILL.md (新方向节), workflow/drive-execution/SKILL.md (删节点, 改评审句与顺序约束句); 实施在 milestone-07
 
 ## 事实
@@ -110,7 +110,7 @@
 - 内容: 口径: 调用图只画执行调用; 权威引用, 分工声明, 条件引用产物, 重新派活不算调用边. 仓库当前无任何调用边校验测试.
 
 ### F010 grill-me 的现状与重复关系
-- 状态: 当前有效
+- 状态: 已变更 (→ F013)
 - 来源: general/grill-me/SKILL.md, workflow/deliberate/SKILL.md, 真实安装 skills 目录清单, 本轮 grep
 - 内容: grill-me 全文一行: 调 domain-awareness 感知领域模型, 调 grilling 盘问; disable-model-invocation, 仅用户手动触发. deliberate 为同两调 + decision-ledger 落账 + 落盘后独立反方攻击. 真实已安装 skills 目录无 grill-me (有 grilling). 仓库引用仅 README 通用技能表一行与自身; 两份 PUBLIC 无引用; docs/changes/上下文管理优化/DECISIONS.md 有历史提及 (记录 "grill-me 不做任何委派"), 历史不改.
 
@@ -123,3 +123,18 @@
 - 状态: 当前有效
 - 来源: 本轮 grep 评审语境的 "轴"
 - 内容: "轴" 出现在 workflow/code-review/SKILL.md (约 16 处, 含 description 与节名), workflow/code-review/references/fowler-baseline.md 一处, workflow/verification-contract/SKILL.md 的 Standards 轴引用行, workflow/drive-execution/SKILL.md 的 双轴评审/每条轴/各轴 句, README.md 的 code-review 表行. 历史决策文档中的 "轴" 不改.
+
+### F013 grill-me 在真实安装目录的状态 (修正 F010)
+- 状态: 当前有效
+- 来源: ls 与 diff 核对 (2026-10-31, 反方报告证实)
+- 内容: /home/bolo/.agents/skills/grill-me/SKILL.md 存在, 属 root, 2026-10-27 03:43 随镜像播种, 与仓库 general/grill-me/SKILL.md 逐字节一致. sync-to-pi.py 的目标 skills 目录为整目录镜像 (先清空后拷入), 仓库删除后宿主下次运行同步会自动裁掉安装副本.
+
+### F014 仓库不存在受维护的调用图实体
+- 状态: 当前有效
+- 来源: 本轮与反方会话各按 调用图/调用关系/call graph/call edge 检索仓库活动文档
+- 内容: README 只有调用关系口径句与技能表 (表列 skill 不含边), 无受维护的调用图文件或生成入口. 调用边核对的实际对象是 README 技能表与各 skill 正文中的执行调用语句.
+
+### F015 旧行为影响复查的现行独立性与证据要求
+- 状态: 当前有效
+- 来源: workflow/drive-execution/SKILL.md 旧行为影响复查节点
+- 内容: 现行要求: 由未参与实现与修复的审核者执行; 报告写目标提交, 逐项发现, 已排除项与证据, 记录代码依据, 既有检查及本轮运行结果, 对未证实路径写明缺口, 不以搜索命中充当安全证明; 不声称有限检查找到了全部影响; 返工合并并通过整体验证后对新集成提交重新做影响复查. D008 迁移须逐项承接, 反方证实初版 AC 遗漏, 已补全.

@@ -35,16 +35,16 @@
 
 ## milestone-06 已确认标准
 
-确认依据: 2026-10-30 盘问定稿. 我对 Q1 (实验边界收敛) 回答 A; Q2 (影响复查) 在质疑必要性与报告读者后回答 A, 并修正: 报告读者是流程内 llm (总指挥), 不是人; Q3 (验收统一口径) 在澄清 ACCEPTANCE.md 定位与 verify-change 转正阀门后回答 A, 并要求落正文遵守 writing-for-llm 冗余枚举禁令; Q4 (不收验收词条) 回答 A; Q5 (不加自动校验) 回答 A, Q7 定维护规则落 README 且受众为维护本仓库的 llm; Q6 (删 grill-me) 回答 B. 我确认 AC-06-01, 02, 04-08; AC-06-03 在把口头 "指挥会话" 正名为 drive-execution 既有角色名 总指挥 后确认, 随后结束盘问. 2026-10-30 追加裁决: 我提出两项修正 (评审轴改评审方向; 影响复查迁入 code-review 作可选方向, 判定方式不变), 确认 D007/D008, AC-06-02/03 修订版与新增 AC-06-09, 并确认 Standards 方向维持现状 (F011).
+确认依据: 2026-10-30 盘问定稿. 我对 Q1 (实验边界收敛) 回答 A; Q2 (影响复查) 在质疑必要性与报告读者后回答 A, 并修正: 报告读者是流程内 llm (总指挥), 不是人; Q3 (验收统一口径) 在澄清 ACCEPTANCE.md 定位与 verify-change 转正阀门后回答 A, 并要求落正文遵守 writing-for-llm 冗余枚举禁令; Q4 (不收验收词条) 回答 A; Q5 (不加自动校验) 回答 A, Q7 定维护规则落 README 且受众为维护本仓库的 llm; Q6 (删 grill-me) 回答 B. 我确认 AC-06-01, 02, 04-08; AC-06-03 在把口头 "指挥会话" 正名为 drive-execution 既有角色名 总指挥 后确认, 随后结束盘问. 2026-10-30 追加裁决: 我提出两项修正 (评审轴改评审方向; 影响复查迁入 code-review 作可选方向, 判定方式不变), 确认 D007/D008, AC-06-02/03 修订版与新增 AC-06-09, 并确认 Standards 方向维持现状 (F011). 2026-10-31 独立反方 (codex/gpt-6-luna) 证实 F010 安装状态有误并指出 D008 承接缺口; 我逐项核实后裁决: D006 维持删除并修正理由 (F013), 补全条款并入 AC-06-01/02/03/05/06/08 修订版, 均已经我确认.
 
-- AC-06-01: `workflow/benchmark-checklist/SKILL.md` 删除与 blast-radius 重复的调查方法/授权边界条目, 改为指针; 保留的每一条都满足既有分界句 "只规定测量实验条件, 不重写调查方法". blast-radius 的一次性实验边界节成为唯一完整维护处. `workflow/benchmark-checklist/reference/PROVENANCE.md` 与 `workflow/blast-radius/reference/PROVENANCE.md` 相关行同步, 不改历史决策原文.
-- AC-06-02: `workflow/drive-execution/SKILL.md` 执行循环删除独立的 "旧行为影响复查" 节点; 评审节点调用 `code-review` 时传入评审起点与产物根目录. 顺序约束改为 各评审方向 (含按门槛纳入的旧行为影响方向) 未定案不核验. 是否运行旧行为影响方向的判定方式与原门槛一致: 整轮全部 issue 为非行为改动或纯核验, 且差异不触碰共享接口/数据格式/跨模块路径时免做, 免做理由随评审报告记录; IMPACT-REVIEW.md 只在实做轮产出.
-- AC-06-03: `workflow/code-review/SKILL.md` 新增可选评审方向 旧行为影响: 从调用方指定基准点核对差异, 追查可能受影响的既有入口/调用方与旧行为, 共享接口/数据格式/跨模块路径变更调 blast-radius 深查; IMPACT-REVIEW.md 写入调用方传入的产物根目录, 逐轮追加不覆盖, 该方向审核者读上轮记录核对闭环. 发现列入 code-review 汇总, 由调用方总指挥分流: 明确实现破坏拆返工 ISSUE, 产品取舍报缺口交用户. 不作为 verify-change 的输入判据; 保留 "调查报告, 不新增产品判据".
+- AC-06-01: `workflow/benchmark-checklist/SKILL.md` 删除与 blast-radius 重复的调查方法/授权边界条目, 改为指针; 保留的每一条都满足既有分界句 "只规定测量实验条件, 不重写调查方法". blast-radius 的一次性实验边界节成为唯一完整维护处. benchmark 的指针写明任何一次性实验 (不限影响调查证明脚本) 都适用该节; 测量特有记录 (停止自启后台进程, 数据留存位置与停止结果) 保留在 benchmark. `workflow/benchmark-checklist/reference/PROVENANCE.md` 与 `workflow/blast-radius/reference/PROVENANCE.md` 相关行同步, 不改历史决策原文.
+- AC-06-02: `workflow/drive-execution/SKILL.md` 执行循环删除独立的 "旧行为影响复查" 节点; 评审节点调用 `code-review` 时传入评审起点与产物根目录. 顺序约束改为 各评审方向 (含按门槛纳入的旧行为影响方向) 未定案不核验. 是否运行旧行为影响方向的判定方式与原门槛一致: 整轮全部 issue 为非行为改动或纯核验, 且差异不触碰共享接口/数据格式/跨模块路径时免做, 免做判定由总指挥在调用评审前做出并在 EXECUTION.md 执行记录留一行理由; IMPACT-REVIEW.md 只在实做轮产出. 返工合并并通过整体验证后, 对新集成提交按同一门槛重做旧行为影响方向.
+- AC-06-03: `workflow/code-review/SKILL.md` 新增可选评审方向 旧行为影响: 从调用方指定基准点核对差异, 追查可能受影响的既有入口/调用方与旧行为, 共享接口/数据格式/跨模块路径变更调 blast-radius 深查; IMPACT-REVIEW.md 写入调用方传入的产物根目录, 逐轮追加不覆盖, 该方向审核者读上轮记录核对闭环. 发现列入 code-review 汇总, 由调用方总指挥分流: 明确实现破坏拆返工 ISSUE, 产品取舍报缺口交用户. 不作为 verify-change 的输入判据; 保留 "调查报告, 不新增产品判据". 该方向审核者未参与实现与修复; 报告证据构成照旧 (目标提交, 逐项发现与已排除项, 代码依据, 既有检查及本轮运行结果, 未证实路径写明缺口, 不以搜索命中充当安全证明, 不声称有限检查找到全部影响); 该方向独立 reviewer 运行, 汇总保留三方向边界, 旧报告只供该方向闭环与汇总分流, 不进入 Spec 方向判据.
 - AC-06-04: `workflow/navigate/SKILL.md` 验收终点节以单句可判真假边界写明: 验收 = 交付物满足确认判据; 判据能在真实入口重复执行的, 派 verify-change 按已确认 PRODUCT.md 执行, 不能的由到达确认汇集他人已产出证据执行. 不出现按交付物类型枚举的表述. verify-change 不回指; 验收指南现有转正规则与口径一致, 不动.
-- AC-06-05: 不新增调用边校验测试. README 调用关系口径行旁补一句面向仓库维护者的规则: 调用边变更时人工核对调用图与 skill 正文, 并经非作者复核.
-- AC-06-06: 删除 `general/grill-me/` 目录及 README 通用技能表对应行; 两份 PUBLIC 与历史决策文档不动.
+- AC-06-05: 不新增调用边校验测试. README 调用关系口径行旁补一句面向仓库维护者的规则: 调用关系变化时人工核对 README 技能表与各 skill 正文中的执行调用语句, 并经非作者复核 (仓库无独立调用图实体, 见账本 F014).
+- AC-06-06: 删除 `general/grill-me/` 目录及 README 通用技能表对应行; 两份 PUBLIC 与历史决策文档不动. 安装副本 (/home/bolo/.agents/skills/grill-me/) 实际存在, 保留至宿主下次运行 sync-to-pi.py 时被整目录镜像自动裁掉; 本变更不运行同步, 不主动删除安装目录.
 - AC-06-07: 改动的 SKILL.md 均通过 `general/writing-for-llm/check_skill.py`; 由未参与修改的代理独立复核全部 AC-06 条目, 报告绑定目标提交 (沿 AC-02-07/AC-05-06 先例).
-- AC-06-08: 边界: 不修改真实已安装 skills, 不运行同步, 不宣称安装效果/遵从率已验证; 引用 blast-radius 边界节不算调用边, README 调用图只删 grill-me 行不新增条目.
+- AC-06-08: 边界: 不修改真实已安装 skills, 不运行同步, 不宣称安装效果/遵从率已验证; 引用 blast-radius 边界节不算调用边, README 技能表只删 grill-me 行不新增条目.
 - AC-06-09: 评审轴用词改评审方向: `workflow/code-review/SKILL.md` 全文 (含 description 与 "为何双轴" 节名), `workflow/code-review/references/fowler-baseline.md`, `workflow/verification-contract/SKILL.md` 的 code-review 引用行, `workflow/drive-execution/SKILL.md` 的 双轴评审/每条轴/各轴 句, README 的 code-review 表行, 全部不再出现评审语境的 "轴"; 历史决策文档不改.
 
 ## 正式验收边界
