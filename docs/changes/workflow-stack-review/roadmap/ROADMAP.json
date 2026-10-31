@@ -1,7 +1,7 @@
 {
   "schema_version": "0.0.1",
   "title": "workflow skill 栈审视与改造",
-  "destination": "workflow/ 这套 skill 栈完成三件已拍板的改造 (模型自动调用的术语 skill, prototype 改名 demo, PoC 成为 navigate 里程碑类型), 五处措辞与 SAFETY 指针违规已修, 三处流程接口待裁决项已定并落地, 执行哲学转向 (实现走最短交付路径, issue 内端到端验证闭环, 修复后再验证, 垂直切片拆分) 已裁决并随流程接口改动一并落地, 外加 present skill 的交付方式统一改造 (宿主与容器都默认起常驻 web 服务交付局域网地址, 不再交付内网地址或文件路径, 实际端口记录到系统临时目录的固定路径), 导航展示页的稳定性修复 (路线图更新后页面仍可访问, 不再靠每次重起服务和手工重建桥), docs/proposals/2026-10-31-host-port-mapping-self-check.md 的提案按 P1-P3 落地, 以及一个代码库结构可视化 skill 完成形态裁决与落地 (路线已由 milestone-12 查明: CodeCharta 离线前端加自建 python 分析器), 全部改动经 pytest 与 check_skill.py 通过, 并由我逐项验收后推送到宿主母体.",
+  "destination": "workflow/ 这套 skill 栈完成三件已拍板的改造 (模型自动调用的术语 skill, prototype 改名 demo, PoC 成为 navigate 里程碑类型), 五处措辞与 SAFETY 指针违规已修, 三处流程接口待裁决项已定并落地, 执行哲学转向 (实现走最短交付路径, issue 内端到端验证闭环, 修复后再验证, 垂直切片拆分) 已裁决并随流程接口改动一并落地, 外加 present skill 的交付方式统一改造 (宿主与容器都默认起常驻 web 服务交付局域网地址, 不再交付内网地址或文件路径, 实际端口记录到系统临时目录的固定路径), 导航展示页的稳定性修复 (路线图更新后页面仍可访问, 不再靠每次重起服务和手工重建桥), docs/proposals/2026-10-31-host-port-mapping-self-check.md 的提案按 P1-P3 落地, 43 个模型不可见 skill 补上 codex 的 agents/openai.yaml 使其在 codex 中同样不注入模型上下文, 以及一个代码库结构可视化 skill 完成形态裁决与落地 (路线已由 milestone-12 查明: CodeCharta 离线前端加自建 python 分析器), 全部改动经 pytest 与 check_skill.py 通过, 并由我逐项验收后推送到宿主母体.",
   "notes": [
     "侦查结论: 方向 A 主张保留主体, 纸面 5 对互指里的反向边全属文档读取, 产物引用与重新派活, 改措辞即可, 唯一真重复是 benchmark 与 blast-radius 各约 12 行的实验边界. 方向 B 主张把已长出的 6 层写成文, 诚实结论是收益为可判性而非 token, 且需真搬 v-c 的方法路由与验收证据语义. 方向 C 主张按需加载与入口选择, 但有 24 个 skill 刻意禁用模型调用, 该主轴被否决; 其载入链代理值仍留作参考: 小改动 5-7KB, bug 14-18KB, 独立验收 27-44KB.",
     "选定: 不整包接受任一方向. 采用清单式实施: 三件已拍板改造, 五处已批准的措辞修正, 一组打包裁决的流程接口. 分层成文, 方法路由上移, 入口地图, 抽共用底线四项经裁决排除, 见 off_course.",
@@ -156,7 +156,8 @@
         "milestone-15",
         "milestone-16",
         "milestone-17",
-        "milestone-18"
+        "milestone-18",
+        "milestone-19"
       ],
       "artifacts": [],
       "close_summary": null
@@ -279,6 +280,15 @@
       "title": "落地宿主端口映射的自查顺序提案",
       "type": "task",
       "question": "按 docs/proposals/2026-10-31-host-port-mapping-self-check.md 落地 P1-P3, 不改提案文档本身: (P1) 改写 workflow/use-sandbox-worktree/agent-prompts/ENV.md 容器纪律那句, 把查与问拆开, 缺值时先按 ~/docs/web-ports.md 的自查顺序查 (当前 env, 容器内全进程 environ, 技能文档配方), 仍未找到才经可用信箱向宿主索取, 信箱不可用才问我; (P2) 改 workflow/use-sandbox-worktree/scripts/env_docs.py 的 _web_ports, 补端口每次 create 都变不要写死, 三步自查顺序与那段扫 /proc/[0-9]*/environ 的命令, 交付 URL 形状取 SWT_HOST_LAN_IP 加 SWT_HOST_WEB_PORT, 并写明服务自报的 url/hostname/lan_ip 是容器视角不可直接交付, 与 present 的 REMOTE.md 对齐; 样例只给形状不给具体端口数字; (P3) 在 tests/test_env_docs.py 补断言, 生成的 web-ports.md 必须出现 /proc/[0-9]*/environ 与 SWT_HOST_LAN_IP 两个关键词, 防止后续重构删掉自查指引而不报错. 不要手改容器里 ~/docs/*.md (那是 env_docs.render_docs 的输出), 只改生成器. 按提案第 4 节验证: 只读生成的 web-ports.md 就能在容器内独立拼出局域网 URL, 无需发信或提问. 通过 uv run python -m pytest 相关用例, 涉及 check_skill.py 的文件另跑该检查. 禁止修改真实已安装 skills, 不运行会改安装目录的同步. 编码任务按 drive-execution skill 执行, 产物根目录 docs/changes/workflow-stack-review/milestone-18/.",
+      "status": "待处理",
+      "blocked_by": [],
+      "artifacts": [],
+      "close_summary": null
+    },
+    "milestone-19": {
+      "title": "给 skill 补 codex 的 agents/openai.yaml 元数据",
+      "type": "task",
+      "question": "让本仓库 skill 在 codex 里也保持模型不可见. 规则已确认: 只写达到目的的最小配置, 即对 frontmatter 带 disable-model-invocation: true 的 skill (当前 43 个, 分布在 workflow/ 与 general/) 新建 agents/openai.yaml, 内容仅 policy.allow_implicit_invocation: false (布尔值不加引号, 键不加引号); 其余 9 个模型可见的 skill 不建文件, 走 codex 默认的允许隐式调用. 不写 interface (display_name/short_description/default_prompt 都不写), 不写 icon/brand_color, 不写 dependencies. 依据是 codex-cli 0.162.1 自带 skill-creator 的 references/openai_yaml.md: allow_implicit_invocation 默认 true, 设 false 后 skill 不注入模型上下文, 只能用 dollar-skill-name 显式调用. 不改 SKILL.md 的 frontmatter (pi 侧仍靠它), 不动 sync-to-pi.py 与分发流程 (codex 也加载 ~/.agents/skills/), 不运行会改安装目录的同步, 不改真实已安装 skills. 另加一条守卫测试放在仓库 tests/ (如 tests/test_skills_codex_metadata.py): 遍历 workflow/ 与 general/ 下全部 SKILL.md, 带 disable-model-invocation: true 的必须有 agents/openai.yaml 且 policy.allow_implicit_invocation 为 false, 反之不得为 false; 只用标准库解析这两三行, 不引入 pyyaml, 防止后续新增 skill 漏配或元数据与 frontmatter 漂移. 验证: uv run python -m pytest tests, 以及抽查一个模型不可见与一个模型可见 skill 的 codex 元数据. 编码任务按 drive-execution skill 执行, 产物根目录 docs/changes/workflow-stack-review/milestone-19/.",
       "status": "待处理",
       "blocked_by": [],
       "artifacts": [],
