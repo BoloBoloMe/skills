@@ -131,7 +131,8 @@
         "docs/changes/workflow-stack-review/milestone-07/HOST-PARENT.log",
         "docs/changes/workflow-stack-review/milestone-07/HOST-ADMIN-RUN-1.log",
         "docs/changes/workflow-stack-review/milestone-07/HOST-ADMIN-RUN-2.log",
-        "docs/changes/workflow-stack-review/milestone-07/HOST-ADMIN-RUN-3.log"
+        "docs/changes/workflow-stack-review/milestone-07/HOST-ADMIN-RUN-3.log",
+        "docs/changes/workflow-stack-review/milestone-07/LOCAL-ENVIRONMENT.md"
       ],
       "close_summary": null
     },
