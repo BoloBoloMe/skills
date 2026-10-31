@@ -15,6 +15,7 @@ from __future__ import annotations
 import json
 import os
 import random
+import re
 import shutil
 import subprocess
 import sys
@@ -27,7 +28,7 @@ WEB_SERVER = ROOT / "workflow" / "navigate" / "scripts" / "web_server.py"
 BROWSE = ROOT / "general" / "access-web" / "browse"
 
 VIEW = {"width": 1440, "height": 900}
-TYPES = ["research", "deliberate", "prototype", "task"]
+TYPES = ["research", "deliberate", "demo", "poc", "task", "acceptance"]
 
 # 结果收集: (名称, 是否通过, 说明)
 RESULTS: list[tuple[str, bool, str]] = []
@@ -53,15 +54,16 @@ def write_roadmap(path: Path, milestones: dict, title: str) -> Path:
 
 
 def small_roadmap(path: Path) -> Path:
-    """7 个里程碑, 有分层与连线, 够画一张正常的图."""
+    """8 个里程碑, 有分层与连线, 够画一张正常的图 (含 demo 与 poc 各一枚)."""
     spec = [
         ("milestone-01", "research", "已关闭", []),
         ("milestone-02", "task", "进行中", ["milestone-01"]),
         ("milestone-03", "deliberate", "待处理", ["milestone-01"]),
-        ("milestone-04", "prototype", "待处理", ["milestone-02"]),
+        ("milestone-04", "demo", "待处理", ["milestone-02"]),
         ("milestone-05", "task", "待处理", ["milestone-03"]),
         ("milestone-06", "research", "待处理", ["milestone-02"]),
         ("milestone-07", "acceptance", "待处理", ["milestone-04", "milestone-05", "milestone-06"]),
+        ("milestone-08", "poc", "待处理", ["milestone-04"]),
     ]
     ms = {i: {"title": "巡检 %s" % i[-2:], "type": t, "question": "q", "status": s, "blocked_by": d}
           for i, t, s, d in spec}
@@ -187,6 +189,35 @@ def run(port: int, fixtures: dict) -> None:
         page.wait_for_timeout(200)
         closed = page.evaluate("() => document.getElementById('panel').classList.contains('hidden')")
         report("交互 (点选/关闭)", bool(opened and closed), "点星球开面板 %s, Esc 关闭 %s" % (opened, closed))
+
+        # TC-006: demo/poc 两种类型各有图例与画布标注, 元数据/配色/地貌两两不同
+        # (与既有各项共用同一次页面加载)
+        page.evaluate("""() => { window.__demoLbl = false; window.__pocLbl = false;
+          const P = CanvasRenderingContext2D.prototype, o = P.fillText;
+          P.fillText = function (t) { const s = String(t);
+            if (s.includes('演示')) window.__demoLbl = true;
+            if (s.includes('实验')) window.__pocLbl = true;
+            return o.apply(this, arguments); }; }""")
+        page.wait_for_timeout(350)
+        src = page.evaluate("() => fetch('/').then(r => r.text())")
+        demo_meta = re.search(r"demo:\s*\{ label: '([^']+)', color: '(#[0-9a-fA-F]+)'", src)
+        poc_meta = re.search(r"poc:\s*\{ label: '([^']+)', color: '(#[0-9a-fA-F]+)'", src)
+        demo_pal = re.search(r"demo:\s*\[('[^]]+)\]", src)
+        poc_pal = re.search(r"poc:\s*\[('[^]]+)\]", src)
+        demo_feat = re.search(r"demo:\s*\{ base: '(\w+)'", src)
+        poc_feat = re.search(r"poc:\s*\{ base: '(\w+)'", src)
+        flat_legend = " ".join(legend.split())
+        i_demo, i_poc = flat_legend.find("演示 demo"), flat_legend.find("实验 PoC")
+        ok_dp = all(["演示 demo" in flat_legend, i_poc > i_demo >= 0,
+                     page.evaluate("() => window.__demoLbl && window.__pocLbl"),
+                     demo_meta and poc_meta and demo_meta.group(2) != poc_meta.group(2),
+                     demo_pal and poc_pal and demo_pal.group(1) != poc_pal.group(1),
+                     demo_feat and poc_feat and demo_feat.group(1) != poc_feat.group(1)])
+        report("demo/poc 类型展示", ok_dp,
+               "图例两项(%s/%s), 画布标注(demo=%s poc=%s), 标签色(%s/%s), 配色与地貌均不同" % (
+                   "演示 demo" in flat_legend, "实验 PoC" in flat_legend,
+                   page.evaluate("() => window.__demoLbl"), page.evaluate("() => window.__pocLbl"),
+                   demo_meta.group(2) if demo_meta else "?", poc_meta.group(2) if poc_meta else "?"))
 
         # 天幕不随视角: 采样点避开地图内容 (星球/连线/未知海域的雾都在中上部)
         # 动效固定恒开: 即使系统省动画, 画面也应继续闪 (不再跟随 prefers-reduced-motion)
