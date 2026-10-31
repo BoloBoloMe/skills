@@ -8,7 +8,7 @@
 
 ## 目录
 
-调用关系口径: 调用图只画执行调用; 引用, 分工声明与重新派活不算调用边.
+调用关系口径: 调用图只画执行调用; 引用, 分工声明与重新派活不算调用边. 维护本仓库时, 调用关系变化须人工核对 README 技能表与各 skill 正文中的执行调用语句, 并经非作者复核.
 
 ### 通用技能
 
@@ -16,7 +16,6 @@
 | --- | --- |
 | [`access-web`](general/access-web/SKILL.md) | 网页搜索, 正文提取, 文件下载, 截图, 登录和 JS 交互. |
 | [`grilling`](general/grilling/SKILL.md) | 通过决策树分轮盘问, 逐步敲定设计决策. |
-| [`grill-me`](general/grill-me/SKILL.md) | 结合领域感知和盘问流程, 帮助澄清设计问题. |
 | [`handoff`](general/handoff/SKILL.md) | 将当前会话压缩成脱敏交接文档, 供后续 agent 接手. |
 | [`llm-select`](general/llm-select/SKILL.md) | 根据设备评分和任务画像, 为子代理选择模型与 thinking 档位. |
 | [`mailbox`](general/mailbox/SKILL.md) | 会话间收发信与信箱维护. |
@@ -37,7 +36,7 @@
 | [`benchmark-checklist`](workflow/benchmark-checklist/SKILL.md) | 报告或采信性能数字前的测量核查, 覆盖公平调优, 重复与统计, 错误计数, 收益上限, 结论边界与 PR 主数字. |
 | [`blast-radius`](workflow/blast-radius/SKILL.md) | 调查变更在 diff 之外的影响, 用真实代码证明关键安全事实并交接风险. |
 | [`codebase-design`](workflow/codebase-design/SKILL.md) | 用模块, 接口和接缝原则指导代码库设计与可测试性. |
-| [`code-review`](workflow/code-review/SKILL.md) | 沿规范和 spec 两条轴分别评审代码变更. |
+| [`code-review`](workflow/code-review/SKILL.md) | 按规范, spec 与按门槛纳入的旧行为影响分别评审代码变更. |
 | [`create-verification-skill`](workflow/create-verification-skill/SKILL.md) | 用已确认的产品说明为当前项目生成项目级验证配方, 含入口地图, 启动与清理规则. |
 | [`decision-ledger`](workflow/decision-ledger/SKILL.md) | 记录和维护 DECISIONS.md 中已确认的决策与事实. |
 | [`deliberate`](workflow/deliberate/SKILL.md) | 通过盘问关闭产品与技术决策, 并维护相关记录文件. |
@@ -53,7 +52,6 @@
 | [`maintain-verification-skill`](workflow/maintain-verification-skill/SKILL.md) | 按当前已确认的产品说明维护项目本地验证配方, 分类漂移并让新会话复跑证明. |
 | [`navigate`](workflow/navigate/SKILL.md) | 在目的地和路线不清时, 用 Roadmap 和 Milestone 组织探索. |
 | [`software-engineering-consensus`](workflow/software-engineering-consensus/SKILL.md) | 共享工程概念, 交付与验证边界, 以及本仓库工作流术语. |
-| [`tdd`](workflow/tdd/SKILL.md) | 修 bug 且能用低成本测试复现时, 用它取红态证据. |
 | [`to-execution`](workflow/to-execution/SKILL.md) | 把 Product/Technical Spec 拆成 Execution Spec 和可执行 issues. |
 | [`to-spec`](workflow/to-spec/SKILL.md) | 把已确认的产品和技术决策整理成两份权威 spec. |
 | [`use-sandbox-worktree`](workflow/use-sandbox-worktree/SKILL.md) | 管理 host worktree 与 sandbox 容器绑定对的生命周期. |

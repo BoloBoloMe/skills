@@ -36,7 +36,7 @@ disable-model-invocation: true
 
 **宽重构是垂直切片的例外**: 一次机械改动 (重命名列, 改共享符号类型) 的 blast radius 扩散到整个代码库, 没有切片能独立保持绿色. 遇到这类变更时读 [refactor-expand-contract.md](refactor-expand-contract.md), 按其中的扩展-收缩序列拆分.
 
-起草完成标准: 每个 AC 被至少一个拟议 issue 覆盖或明确说明无需执行任务; PRODUCT.md `业务规则` 节中标 (审计) 的断言必须进覆盖矩阵并有承接条目 (人工验证或 issue); TECHNICAL.md 非功能要求/安全策略中的验证性要求均有承接; TECHNICAL.md 模块接口的每条不变量/错误模式, 要么有 TC 承接, 要么在所属 issue 的 `验证入口` 节写明不用自动化测试的理由, 实际验证方式及通过标准; 每个切片能从真实入口独立验证且可独立交付; 每条 blocker 都是前置 issue 完成后本 issue 才能开始的真实依赖, 且 blocker 图无环; 宽重构已按 refactor-expand-contract.md 拆分或明确不适用.
+起草完成标准: 每个 AC 被至少一个拟议 issue 覆盖或明确说明无需执行任务; PRODUCT.md `业务规则` 节中标 (审计) 的断言必须进覆盖矩阵并有承接条目 (人工验证或 issue); TECHNICAL.md 非功能要求/安全策略中的验证性要求均有承接; TECHNICAL.md 模块接口的每条不变量/错误模式, 要么有 TC 承接, 要么在所属 issue 的 `验证入口` 节写明不用自动化测试的理由, 实际验证方式及通过标准; 每个切片能从真实入口独立验证, 可独立交付并能演示; 预重构 issue 与纯核验/非行为改动类 issue 不适用可演示判据, 以承接 AC/BR 或核验入口的方式证明价值; 每条 blocker 都是前置 issue 完成后本 issue 才能开始的真实依赖, 且 blocker 图无环; 宽重构已按 refactor-expand-contract.md 拆分或明确不适用.
 
 # 固化 Execution Spec 和 issues
 

@@ -1,6 +1,6 @@
 # workflow-stack-review 验收标准
 
-本文件当前覆盖 milestone-01, milestone-02, milestone-05, milestone-06 和 milestone-10 的已确认标准. 其他里程碑的详细标准后续经我确认后追加. 本文件记录标准, 不记录验收通过结论.
+本文件当前覆盖 milestone-01, milestone-02, milestone-05, milestone-06, milestone-07, milestone-10 和 milestone-11 的已确认标准. 其他里程碑的详细标准后续经我确认后追加. 本文件记录标准, 不记录验收通过结论.
 确认依据: 本轮对话中我对 Q5 回答 A, 在解释五项细节后对 Q6 回答 A; 在 Q16 对完整边界和本里程碑完成标准选择 A 并结束盘问 (2026-10-30). Q17=A 后补明确收录门槛的适用范围, 不改变已确认的里程碑完成标准. 下面的 AC-05 条目保持原样, 其原确认版本仍可由提交 57e93dce741f343ec45b567b8eec6ba6a1e684c9 追溯.
 
 ## milestone-01 已确认标准
@@ -46,6 +46,19 @@
 - AC-06-07: 改动的 SKILL.md 均通过 `general/writing-for-llm/check_skill.py`; 由未参与修改的代理独立复核全部 AC-06 条目, 报告绑定目标提交 (沿 AC-02-07/AC-05-06 先例).
 - AC-06-08: 边界: 不修改真实已安装 skills, 不运行同步, 不宣称安装效果/遵从率已验证; 引用 blast-radius 边界节不算调用边, README 技能表只删 grill-me 行不新增条目.
 - AC-06-09: 评审轴用词改评审方向: `workflow/code-review/SKILL.md` 全文 (含 description 与 "为何双轴" 节名), `workflow/code-review/references/fowler-baseline.md`, `workflow/verification-contract/SKILL.md` 的 code-review 引用行, `workflow/drive-execution/SKILL.md` 的 双轴评审/每条轴/各轴 句, README 的 code-review 表行, 全部不再出现评审语境的 "轴"; 历史决策文档不改.
+
+## milestone-07 已确认标准
+
+确认依据: 本会话先提出六项实施标准并明确沿用已确认的 AC-06-01 至 AC-06-09; 我调用 wtf 后, 代理用大白话重新说明目的与完成要求, 我回复"按这个做". 确认的是实施与检查标准, 不是提前验收成品. milestone-06 的改动按 AC-06 原项核对, 不复制标准; milestone-10 的实施增量按以下六项核对. 不改变两份决策账本的有效裁决.
+
+- AC-07-01: 删除 `workflow/tdd/`, 只迁 `tests.md` 到 `workflow/verification-contract/reference/tests.md`, 保留原意并修正必要链接; `mocking.md` 按决定丢弃. 活跃执行调用和文件链接不悬空, 历史证据与非调用的术语举例不改.
+- AC-07-02: 软件工程共识按 milestone-10 D003 的确认原文加入垂直切片词条; `to-execution` 就地补充现有完成标准的可演示要求, 保留预重构/纯核验/非行为改动的例外及既有宽重构规则, 不新增同义完成标准.
+- AC-07-03: `verification-contract` 落实最短实现路径, 可验证版本从真实入口端到端验证与修复后重跑, 闭环机制只维护一处; 行为变更强调端到端证据, 结构变更要求同条件同一检查的改前改后结果且改前应通过, mock 只补理由不复制边界清单. 不把实现顺序重新规定为先写自动化测试或红绿循环.
+- AC-07-04: 缺陷修复部分承接 milestone-11 已落地链条与手段优先级, 保留原有失败记录, 修复后同一检查通过和原始场景复跑要求; 补齐从 tdd 迁出的取证选择判断和两条红态细则, 以及受影响范围复验与独立复核记录. 不重复实施 milestone-11 的改名与阶段链.
+- AC-07-05: `drive-execution` 明确作者侧端到端记录在独立核验里只作对照, 不作任何必验项通过依据; 关键真实路径由独立核验者本轮实跑. 不改 `verify-change`, 不复制共用底线的闭环机制.
+- AC-07-06: 运行 `uv run python -m pytest -m "not e2e"` 与修改过的 SKILL.md 的仓库 `check_skill.py`, 留实际命令, 结果及版本. 由未参与修改的另一位代理逐项复核 AC-06 与 AC-07, 报告绑定目标提交, 所有发现处理闭环后才关闭本节点; 缺证据如实记未验证, 不以文字核对代替实际测试通过.
+
+实施边界: 只改本仓库, 不改真实已安装 skills/全局配置, 不运行同步; 不追溯 milestone-04/09, 不改旧 ADR 或历史证据, 不新增调用边校验代码. 不宣称静态检查证明了模型实际遵从率或安装效果, 不以本节点关闭代替 milestone-08 的逐项人工验收.
 
 ## milestone-10 已确认标准
 
