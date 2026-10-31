@@ -1,7 +1,7 @@
 ## 父级
 - `../EXECUTION.md`
 ## 执行
-- [ ] 已完成
+- [x] 已完成
 ## 要交付什么
 新增 `docs/adr/0024-demo-poc-milestone-types.md`, 按 `docs/adr` 既有体例 (标题一行加 1 到 3 句正文) 记下三条: `demo` 取代 `prototype` 作为演示类工作的名称; `poc` 是新增的里程碑类型; 旧名处置边界是旧 `prototype/` 开头分支与 `docs/changes` 下的 `prototypes/` 产物目录按历史证据原样保留, 不做读取兼容.
 
@@ -39,6 +39,14 @@ git status --short docs/adr/   # 通过标准: 只有一个新增文件, 无既�
 ```
 ## 交付证据
 执行后填写: 文件路径与正文摘录, 编号核对输出, `git status` 结果.
+
+- 新增文件: `docs/adr/0024-demo-poc-milestone-types.md`, 正文全文:
+  > 演示类工作的里程碑类型由 `prototype` 改名为 `demo`, 不保留旧名别名. `poc` 是新增的里程碑类型. 既有 `prototype/<slug>` 分支与 `docs/changes/<slug>/prototypes/` 产物目录按历史证据原样保留, 只作已完成变更的一手材料存在, 不提供读取兼容.
+- 验证入口 1 `ls docs/adr/ | tail -3`: 输出 `0022-per-issue-verification-contract.md`, `0023-verification-only-workflow.md`, `0024-demo-poc-milestone-types.md`, 最大编号 0024, 0023 仍在, 编号连续.
+- 验证入口 2 `sed -n '1,12p' docs/adr/0024-demo-poc-milestone-types.md`: 首行为标题 `# demo 取代 prototype 作为演示类里程碑名称, 新增 poc 里程碑类型`; 正文 3 句, 覆盖 demo 取代 prototype, poc 为新增类型, 旧分支与 `docs/changes` 下 `prototypes/` 目录按历史保留且不做读取兼容.
+- 验证入口 3 `grep -n 'prototype\|PoC\|poc' docs/adr/0024-demo-poc-milestone-types.md`: 命中标题行与正文行, `prototype` 只以被取代的旧名出现, `poc` 只以新增类型出现, 无 PoC 词条定义复制.
+- 验证入口 4 `git status --short docs/adr/`: 输出仅 `?? docs/adr/0024-demo-poc-milestone-types.md`, 只有一个新增文件, 无既有 ADR 改动.
+- 另改动: 仅本 issue 文件回填执行勾选与本交付证据节; 未跑 pytest/check_skill.py, 未跑 sync-to-pi.py, 未改 ~/.agents 下真实 skills.
 ## 停止条件
 需要改变任一 Spec, 决策, issue 边界或扩大范围时停止.
 ## 验收标准
