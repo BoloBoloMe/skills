@@ -1,6 +1,6 @@
 # workflow-stack-review 验收标准
 
-本文件当前覆盖 milestone-01, milestone-02, milestone-05 和 milestone-06 的已确认标准. 其他里程碑的详细标准后续经我确认后追加. 本文件记录标准, 不记录验收通过结论.
+本文件当前覆盖 milestone-01, milestone-02, milestone-05, milestone-06 和 milestone-10 的已确认标准. 其他里程碑的详细标准后续经我确认后追加. 本文件记录标准, 不记录验收通过结论.
 确认依据: 本轮对话中我对 Q5 回答 A, 在解释五项细节后对 Q6 回答 A; 在 Q16 对完整边界和本里程碑完成标准选择 A 并结束盘问 (2026-10-30). Q17=A 后补明确收录门槛的适用范围, 不改变已确认的里程碑完成标准. 下面的 AC-05 条目保持原样, 其原确认版本仍可由提交 57e93dce741f343ec45b567b8eec6ba6a1e684c9 追溯.
 
 ## milestone-01 已确认标准
@@ -47,6 +47,16 @@
 - AC-06-08: 边界: 不修改真实已安装 skills, 不运行同步, 不宣称安装效果/遵从率已验证; 引用 blast-radius 边界节不算调用边, README 技能表只删 grill-me 行不新增条目.
 - AC-06-09: 评审轴用词改评审方向: `workflow/code-review/SKILL.md` 全文 (含 description 与 "为何双轴" 节名), `workflow/code-review/references/fowler-baseline.md`, `workflow/verification-contract/SKILL.md` 的 code-review 引用行, `workflow/drive-execution/SKILL.md` 的 双轴评审/每条轴/各轴 句, README 的 code-review 表行, 全部不再出现评审语境的 "轴"; 历史决策文档不改.
 
+## milestone-10 已确认标准
+
+确认依据: 2026-10-31 盘问定稿, 我对 Q1-Q10 逐项选项作答并结束盘问; 随后独立反方 (glm-5.3-flash, 未参与盘问与落盘) 提交 13 项发现, 我逐条核实全部成立, 并对四处改法作答 (Q-A/Q-B/Q-C/Q-D 全部 A); 我又追加 fix-bugs 的三项细化 (修复方案审核尺度, 三角色分工, 验证没改坏) 与"能靠代码库自身技术栈做到的不用脚本"这条约束, 并确认 AC-10 五项. 决策见 milestone-10/DECISIONS.md 的 D001-D021 与 F001-F018, 反方报告见同目录 OPPOSITION.md.
+
+- AC-10-01: 本次执行哲学转向的落地口径全部落账, 每项写明落点文件与不变边界: 删除 tdd 并只迁 tests.md (mocking.md 有意丢弃且写明理由); 修 bug 链条对所有 bug 统一 (复现 → 定位原因 → 制定修复方案 → 执行修复 → 验证修好且没改坏) 并收编 tdd 的弃用判断与两条红态细则; 垂直切片词条文本; to-execution 就地改既有完成标准并补预重构与纯核验类例外; 闭环机制只维护在 verification-contract 共用底线; 行为变更端到端证据优先; 结构变更改证据口径; mock 只加理由句不复制清单; drive-execution 只写作者材料作对照不作通过依据; diagnosing-bugs 改名 fix-bugs 并修正自述; fix-bugs 补修复方案与验证没改坏两环, 三角色分工与手段优先级. 后续会话照账本即可实施, 不必回来问.
+- AC-10-02: 同一口径只维护一处: 闭环机制只在 verification-contract, mock 边界清单只在共用底线, to-execution 不新增同义完成标准条. 不追溯 milestone-04 与 milestone-09; 除账本列明的落点外不改 code-review, verify-change, to-spec, navigate 正文; "真实入口/端到端"在 F014 所列四处的现有表述不动.
+- AC-10-03: 未参与盘问和落盘的独立会话完成反方检查; 13 项发现逐项核实处理, 全部成立无驳回; 旧行为事实有出处 (F011-F018), 需要改决策的已新建 ID 并标旧条已替代, 需新增工作的已转为新里程碑.
+- AC-10-04: ADR 0025 落盘并写明取代 ADR 0022 的 TDD 表述, ADR 0023 中 tdd 重写动作及同段"退回新增功能默认写测试"半句; 两篇旧 ADR 与历史变更文档原文不改.
+- AC-10-05: 本轮只出决策, 不做实施, 不开始 milestone-07 与 milestone-11; 实施与验证分别归 milestone-07, milestone-11 与终点验收.
+
 ## 正式验收边界
 
-milestone-01, milestone-03 和 milestone-06 提供决策账本及独立反方处理材料, milestone-02 和 milestone-05 提供各自实施和独立复核材料. 正式终点验收仍由 milestone-08 汇集证据并交我逐项确认. 阶段性完成, 实施者自检和独立复核均不自动关闭 milestone-08.
+milestone-01, milestone-03, milestone-06 和 milestone-10 提供决策账本及独立反方处理材料, milestone-02 和 milestone-05 提供各自实施和独立复核材料. 正式终点验收仍由 milestone-08 汇集证据并交我逐项确认. 阶段性完成, 实施者自检和独立复核均不自动关闭 milestone-08.

@@ -131,7 +131,9 @@
         "milestone-06",
         "milestone-07",
         "milestone-09",
-        "milestone-10"
+        "milestone-10",
+        "milestone-11",
+        "milestone-12"
       ],
       "artifacts": [],
       "close_summary": null
@@ -165,13 +167,39 @@
       "title": "裁决执行哲学转向",
       "type": "deliberate",
       "question": "裁决执行哲学转向, 决策交 milestone-07 一并实施. 已确认的想法: 实现走最短交付路径, 尽快产出第一个可验证版本, 不规定实现过程 (不强制先写测试, 不规定红绿循环); 版本出来后对当前版本做端到端验证闭环, 尽早暴露问题; 发现问题修复后再次端到端验证, 既验证修复又暴露新问题, 循环到闭环; 拆任务时必须保证单个 issue 能完成端到端交付 (垂直切片); 不禁用 mock 但要谨慎, 不为速度 mock 实现细节攒脆弱测试; 判据重心从过程是否按规定走移到交付物经验证确实达到要求. 需逐项盘问定稿: (a) tdd skill 的去留与定位; (b) to-execution 拆分判据加入垂直切片及词条/模板相应改动; (c) drive-execution 实现步与执行循环如何改写, 作者自跑端到端与 verify-change 独立验收的边界; (d) mock 谨慎的措辞落点; (e) 与 verification-contract 现行类型要求 (如结构变更先建可重复行为检查) 的衔接与措辞. 边界: 不追溯 milestone-04/milestone-09, m4 按现行规则跑完由验收节点按现行标准收; 判定不改的项在关闭摘要记理由. 本里程碑只出决策, 实施并入 milestone-07. 细节明朗时按验收指南对齐 AC, 不提前预写.",
-      "status": "待处理",
+      "status": "已关闭",
       "blocked_by": [],
+      "artifacts": [
+        "docs/changes/workflow-stack-review/ACCEPTANCE.md",
+        "docs/changes/workflow-stack-review/milestone-10/DECISIONS.md",
+        "docs/changes/workflow-stack-review/milestone-10/OPPOSITION.md",
+        "docs/adr/0025-shortest-delivery-path-end-to-end-loop.md"
+      ],
+      "close_summary": "Q1-Q10 盘问定稿执行哲学转向: 最短交付路径, 可验证版本出来后从真实入口端到端验证闭环, 修复后重跑, 循环到闭环; 拆任务按垂直切片; 判据重心在交付物经真实运行达到要求. 删除 tdd, 只迁 tests.md (mocking.md 有意丢弃), 修 bug 链条对所有 bug 统一为 复现→定位原因→制定修复方案→执行修复→验证修好且没改坏, diagnosing-bugs 改名 fix-bugs 并补两环/三角色/手段优先级. 独立反方 13 项发现全部核实成立 (账本 D001-D010 中 D001/D002/D004/D007/D008/D009/D010 已按新 ID 替代, F001/F006 已更正为 F011/F012), 无一驳回. 可视化需求确认为本旅程新里程碑链: 新增 milestone-11 (fix-bugs 落地) 与 milestone-12 (可视化方案侦查), 均加入终点验收阻塞, 后续实施里程碑待 m12 结论后探明. AC-10 五项经我确认. 本轮只出决策与路线图, 未做任何 skill 实施, 不代表正式交付."
+    },
+    "milestone-11": {
+      "title": "落地 fix-bugs 改名与修 bug 统一链条",
+      "type": "task",
+      "question": "按 milestone-10 账本 D012/D015/D016/D019/D020/D021 实施, 不改决策内容: (1) workflow/diagnosing-bugs/ 改名 workflow/fix-bugs/ (目录, name, description), 修正自述 '不是必经步骤' 为'修 bug 统一链条见 verification-contract 缺陷修复节, 本 skill 是该链在难 bug 上的详细手法, 阶段 3/4 可省, 复现与验证不可省'; (2) 补两环: 制定修复方案 (根因确定后先写方案, 含改动点/影响范围/回滚考虑; 按 G1 六条决定是否先给我审, 一句话判据为 '纯修错, 不动对外行为, 不超边界, 不碰安全' 才自行修) 与 验证没改坏 (修复后由未参与修复的复核者独立审查受影响面; 手段自选: 核对差异, 追调用方, 必要时跑既有测试或真实入口, 涉及共享接口/数据格式/跨模块路径调 blast-radius; 写明检查了什么, 用了什么手段, 覆盖不到的写缺口; 不强制跑自动化测试); (3) 写入手段优先级: 能靠代码库自身技术栈与既有入口做到的不写脚本, 顺序为既有测试/既有开发命令/既有 CLI 入口 → 真实入口操作 → 必要时一次性临时脚本 (不提交, 跑完清理), 不在代码库新增专用脚本; (4) 写三角色分工: 调度方 + 诊断者 + 修复者 + 复核者, 简单位允许诊断与修复合并, 复核者不可省; (5) 同步活跃引用: workflow/verification-contract/SKILL.md 缺陷修复节的做法句改指 fix-bugs 链条并加手段优先级, README 技能表行改名与描述; 历史变更文档与既有验收证据不改; (6) 修改的 SKILL.md 通过 general/writing-for-llm/check_skill.py. 详细可观察验收标准最迟实施前确认并写入 ACCEPTANCE.md 的 AC-11. 不运行会改安装目录的同步, 不宣称安装效果已验证, 不追溯 milestone-04 与 milestone-09.",
+      "blocked_by": [],
+      "status": "待处理",
+      "artifacts": [],
+      "close_summary": null
+    },
+    "milestone-12": {
+      "title": "侦查代码库结构可视化的可用开源方案",
+      "type": "research",
+      "question": "为后续可视化 skill 探查事实 (AFK, 委派子代理独立探索): 目标是能了解任意目标代码库的结构并转成网页展示给我看, 表现分层与模块关系, 像城市地图; 该 skill 供 to-spec 调用以支撑技术规格盘问, 也可由我手动调用查看某个代码库结构. 需要查清并写进产物: (1) 候选开源项目 (至少覆盖 CodeCharta, dependency-cruiser, madge, pydeps/importlab, d2/mermaid/graphviz, Gource 一类, 可补充新发现), 各自支持的语言与能否表达分层/模块关系; (2) 输出的产物形态 (静态网页? 需服务? 交互程度), 能否离线运行, 依赖与安装成本; (3) 维护状态与许可, 是否适合嵌进本仓库 skill; (4) 若现成工具都不合适, 用代码库自身技术栈 (AST/import 分析 + 图形渲染) 自建的最小方案代价; (5) 明确推荐与不推荐的理由, 以及不可行项和结论边界. 只做事实侦查与方案对比, 不实现工具, 不改任何 skill. 产物: docs/changes/workflow-stack-review/milestone-12/FINDINGS.md.",
+      "blocked_by": [],
+      "status": "待处理",
       "artifacts": [],
       "close_summary": null
     }
   },
-  "unknown_seas": [],
+  "unknown_seas": [
+    "可视化 skill 的形态与入口: 怎么被 to-spec 调用, 手动调用入口是什么, 产物落在哪个目录, 是否需要常驻服务",
+    "可视化实施要几个里程碑以及各自边界: 依赖 milestone-12 的研究结论才能确定是复用现成工具还是要自建, 也可能侦查后发现整体不可行"
+  ],
   "off_course": [
     {
       "what": "把 workflow 栈写成文的分层规则, 含层数与归层裁决",
