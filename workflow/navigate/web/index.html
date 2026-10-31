@@ -188,7 +188,15 @@ body {
       <circle cx="10" cy="12" r="4" fill="#e8955c"/>
       <circle cx="17" cy="6" r="1.8" fill="#e8955c"/>
     </svg>
-    <span>原型 <small>prototype</small></span>
+    <span>演示 <small>demo</small></span>
+  </div>
+  <div class="lg">
+    <svg width="22" height="22" viewBox="0 0 22 22">
+      <circle cx="11" cy="11" r="4" fill="#63c9a3"/>
+      <circle cx="11" cy="11" r="7.4" fill="none" stroke="#63c9a3" stroke-width="1.1"/>
+      <circle cx="11" cy="11" r="10" fill="none" stroke="#63c9a3" stroke-width="0.8" stroke-dasharray="2.4 2.6"/>
+    </svg>
+    <span>实验 <small>PoC</small></span>
   </div>
   <div class="lg">
     <svg width="22" height="22" viewBox="0 0 22 22">
@@ -257,7 +265,8 @@ var DEST_R = 24;
 var TYPE_META = {
   research:   { label: '调研', color: '#6fc8e8' },
   deliberate: { label: '权衡', color: '#a48fd8' },
-  prototype:  { label: '原型', color: '#e8955c' },
+  demo:       { label: '演示', color: '#e8955c' },
+  poc:        { label: '实验', color: '#63c9a3' },
   task:       { label: '任务', color: '#d8c58a' },
   acceptance: { label: '验收', color: '#e8a4bc' }
 };
@@ -1198,7 +1207,8 @@ function drawEdges(t) {
 var PLANET_PALETTES = {
   research:   ['#dfeef8', '#b8d8ea', '#8fc0dc', '#6fa8c8', '#e8f4fa', '#a8cce2'],   // 冰封海洋
   deliberate: ['#8a76b8', '#6d5a9e', '#a48fd8', '#5a4a88', '#c0b0e0', '#7a68a8'],   // 紫气巨星
-  prototype:  ['#3a2a26', '#54382e', '#6e4634', '#8a5438', '#2a1e1c', '#462e28'],   // 熔岩岩石
+  demo:       ['#3a2a26', '#54382e', '#6e4634', '#8a5438', '#2a1e1c', '#462e28'],   // 熔岩岩石
+  poc:        ['#2e5a4a', '#3f7a60', '#579878', '#74b490', '#20443a', '#3a6e56'],   // 苔绿岩
   task:       ['#c8a878', '#b89868', '#a8885c', '#d4bc8c', '#9a7850', '#c0a070'],   // 沙漠岩
   acceptance: ['#b57892', '#975c78', '#dca6bd', '#78445f', '#f1cede', '#af738e'],   // 玫瑰晶岩
   destination:['#e8cf9a', '#d4b378', '#c8a060', '#f0e0b0', '#b89058', '#e0c088'],   // 金气巨星
@@ -1210,7 +1220,8 @@ var PLANET_GRAY = ['#8a8f9a', '#767c88', '#9aa0ac', '#687080', '#848a96'];
 var PLANET_FEATURES = {
   research:    { base: 'cap',     extras: ['storms', 'craters'] },
   deliberate:  { base: 'storms',  extras: ['cap', 'cracks'] },
-  prototype:   { base: 'cracks',  extras: ['craters', 'storms'] },
+  demo:        { base: 'cracks',  extras: ['craters', 'storms'] },
+  poc:         { base: 'craters', extras: ['storms', 'cap'] },
   task:        { base: 'craters', extras: ['cracks', 'storms'] },
   acceptance:  { base: 'cracks',  extras: ['cap', 'craters'] },
   moon:        { base: 'craters', extras: ['cap', 'cracks'] },
@@ -1636,7 +1647,7 @@ function drawStar(node, t, dt) {
       ctx.ellipse(0, 0, r * 2.0, r * 0.62, 0, 0, Math.PI * 2);
       ctx.stroke();
       ctx.restore();
-    } else if (node.m.type === 'prototype') {
+    } else if (node.m.type === 'demo') {
       // 卫星 (月球) 缓绕, 自带明暗
       var oa = t * 0.5 + dph;
       var ox = x + Math.cos(oa) * r * 2.1;
@@ -1650,6 +1661,19 @@ function drawStar(node, t, dt) {
       ctx.beginPath();
       ctx.arc(ox, oy, orr, 0, Math.PI * 2);
       ctx.fill();
+    } else if (node.m.type === 'poc') {
+      // 实验: 脉冲外环 + 固定外圈, 与 demo 的单卫星一眼分开
+      var pulse = 0.5 + 0.5 * Math.sin(t * 2.2 + dph);
+      ctx.strokeStyle = rgba(color, 0.28 + 0.3 * pulse);
+      ctx.lineWidth = 1.2;
+      ctx.beginPath();
+      ctx.arc(x, y, r * (1.5 + 0.32 * pulse), 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.strokeStyle = rgba(color, 0.18);
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.arc(x, y, r * 2.15, 0, Math.PI * 2);
+      ctx.stroke();
     }
   } else {
     // 已驶过: 3/4 航迹弧 + 弧端亮点

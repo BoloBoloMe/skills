@@ -1,7 +1,7 @@
 ## 父级
 - `../EXECUTION.md`
 ## 执行
-- [ ] 已完成
+- [x] 已完成
 ## 要交付什么
 地图页把 `demo` 与 `poc` 画成两种各自可辨的星球: 图例各有条目 (演示 demo / 实验 PoC), 类型元数据六键齐全, demo 沿用原卫星外观只换类型键, poc 用新的配色与地貌, 星球外观分派与配色表同步. 渲染巡检脚本的类型清单与夹具跟上, 并新增一条 demo/poc 展示用例.
 
@@ -72,16 +72,30 @@ grep -c 'TYPE_META.task' workflow/navigate/web/index.html     # 通过标准: �
 uv run python -m pytest workflow/navigate/tests      # 通过标准: 退出 0, 含 stdlib 与外部引用审计用例仍绿
 ```
 ## 交付证据
-执行后填写: render_checks 完整输出 (含 TC-006 行), 截图路径与人工核对结论, 未知类型回退观察结果, pytest 汇总行, 材料位置 `/tmp/m9-04-04/`.
+执行人 ex04, 分支 issue/04, 基点 181b3cd. 原始输出与截图在 `/tmp/m9-04-04/` (render_checks.txt, fixture.png, unknown.png, pixcheck2-4 脚本与输出).
+
+- 前置: `web_server.py stop` + `status` 得 `alive:false`; 夹具经 `roadmap.py` 造出 (demo/poc 各一枚, `query` 回读确认), 未知类型副本 unknown.json 把 type 改成已废弃的旧名 `prototype` (顶两个用途: 回退 + 旧名不再被识别).
+- render_checks (AC-006 自动化侧): 退出码 0, `10 项检查, 10 项通过, 0 项失败`. TC-006 行原文:
+  `PASS demo/poc 类型展示           图例两项(True/True), 画布标注(demo=True poc=True), 标签色(#e8955c/#63c9a3), 配色与地貌均不同`
+- 截图: `/tmp/m9-04-04/fixture.png` (demo+poc 同屏), `/tmp/m9-04-04/unknown.png` (未知类型页, 面板展开). 环境无缺 (playwright 由 general/access-web/browse 提供, chromium 在 `~/.cache/ms-playwright`), 未启用降级条款.
+- 人工核对结论 (本模型不支持直接看图, 以像素取样代替目视, 脚本与输出均在材料目录):
+  1. 图例两项文本正确: legend 文本平化后含 `演示 demo` 与 `实验 PoC`, 顺序与 TYPE_META 六键一致 (调研, 权衡, 演示, 实验, 任务, 验收).
+  2. 两类型一眼可分: demo 星球本体平均 RGB [90,70,68] (熔岩暖棕) 且外圈 26-40px 有 42 个灰色卫星像素/0 绿色像素; poc 本体 [109,140,128] (苔绿) 且外圈 22-38px 有 180 个绿色像素 (脉冲环)/2 灰色像素. 色相家族不同, 装饰形态不同.
+  3. 未知类型回退: unknown.json (type=prototype) 页面无 JS 报错; 该星球本体 [156,129,104] 走 task 沙色外观; 点开面板显示 `类型 prototype` (原文回显); 副标注只显 `待处理` 不带类型后缀; 页面整体正常渲染.
+- grep: index.html 中 demo/poc 覆盖图例/TYPE_META/配色/地貌/分派五处 (见验证入口第 5 步输出); `grep -rn prototype workflow/navigate/web/index.html workflow/navigate/tests/visual/` 在 index.html 零命中, render_checks.py 有 3 处命中但全是 JS 内建属性 `CanvasRenderingContext2D.prototype` (基点 181b3cd 就有, 非类型名残留, 属 BR-003 允许例外); `grep -c 'TYPE_META.task'` = 1.
+- pytest: `30 passed in 8.00s`, 退出码 0, 无 failed (基线 27 + ISSUE-01 新增 3).
+- 规格偏差 2 条 (不阻塞, 原文如实记录):
+  1. issue 写回退点两处 (约 1544 与 1903 行) 且 grep 期望 2; 实际 `TYPE_META[node.m.type] || TYPE_META.task` 只在 1544 行一处, 1903 行是 `TYPE_META[n2.m.type]` 配 `meta ? ... : ''` (未知类型不显类型后缀, 语义等价的回退但不含 `TYPE_META.task` 字样). 按禁止范围未动画布逻辑, 保持原样.
+  2. 验证入口的 prototype grep 通过标准写零命中, 但 render_checks.py 既有代码的 `CanvasRenderingContext2D.prototype` (JS 语言内建) 无法避开且不在本 issue 允许改动语义内; 已按上述判定为例外, 交 ISSUE-06 审计复核.
 ## 风险提示
 - 夹具改动会挪动布局, 既有 (707,447) 点击坐标与新里程碑的遮挡最容易踩; 发现点不中要调夹具或坐标, 不要调松断言.
 - 图例顺序与 `TYPE_META` 顺序必须一致, 否则容易被后续维护改乱.
 ## 停止条件
 需要改变任一 Spec, 决策, issue 边界或扩大范围时停止.
 ## 验收标准
-- [ ] 图例有"演示 demo"与"实验 PoC"两项, 且顺序与 `TYPE_META` 六键一致.
-- [ ] demo 星球是带卫星环绕的外观, poc 用另一套配色与地貌, 人类看一眼能分开.
-- [ ] `TYPE_META`, 配色表, 地貌表, 外观分派均覆盖 demo 与 poc; 未知类型回退 task 保留.
-- [ ] render_checks 类型清单与夹具已更新, TC-006 在且绿, 既有巡检项与 pytest 仍全绿.
+- [x] 图例有"演示 demo"与"实验 PoC"两项, 且顺序与 `TYPE_META` 六键一致.
+- [x] demo 星球是带卫星环绕的外观, poc 用另一套配色与地貌, 人类看一眼能分开.
+- [x] `TYPE_META`, 配色表, 地貌表, 外观分派均覆盖 demo 与 poc; 未知类型回退 task 保留.
+- [x] render_checks 类型清单与夹具已更新, TC-006 在且绿, 既有巡检项与 pytest 仍全绿.
 ## 被阻塞于
 - `ISSUE-01-milestone-type-enum.md` (验证入口第 1 步用 `roadmap.py` 造 demo/poc 夹具, 枚举不接受时造不出)
