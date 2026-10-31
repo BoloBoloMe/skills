@@ -109,7 +109,7 @@
     "milestone-07": {
       "title": "落地流程接口改动",
       "type": "task",
-      "question": "只按 milestone-06 与 milestone-10 判定要动的项实施; 判定不动的项在关闭摘要里记理由, 不默默跳过. milestone-10 裁决的执行哲学转向 (tdd/drive-execution/to-execution/verification-contract 相应改动) 随本节点一并落地, 不追溯已完成的 milestone-04/milestone-09. 详细验收标准最迟实施前确认. 若裁决包含编码工作, 先补齐 drive-execution 所需规格/EXECUTION/issues及验证契约, 不在缺输入时直接编码; 纯文档任务按非编码任务处理. 验证 uv run python -m pytest -m not e2e 全绿, 修改过 roadmap.py 或网页时另跑 navigate tests, 修改的 SKILL.md 跑 check_skill.py. 仓库禁止修改真实已安装 skills, 不运行会改安装目录的同步或宣称未测安装效果通过.",
+      "question": "只按 milestone-06 与 milestone-10 判定要动的项实施; 判定不动的项在关闭摘要里记理由, 不默默跳过. milestone-10 裁决的执行哲学转向 (tdd/drive-execution/to-execution/verification-contract 相应改动) 随本节点一并落地, 不追溯已完成的 milestone-04/milestone-09. 详细验收标准最迟实施前确认. 若裁决包含编码工作, 先补齐 drive-execution 所需规格/EXECUTION/issues及验证契约, 不在缺输入时直接编码; 纯文档任务按非编码任务处理. 验证按 ACCEPTANCE.md AC-07-06 的最新用户确认范围: 本轮只改 Markdown/skill 目录, 未改 Podman/容器运行/浏览器程序或相关测试, 不为无关路径补装 Podman 或跑全量测试, 不借宿主跑测试, 信箱间歇故障不归本节点调查或修复. 当前容器七个修改 SKILL.md 的格式检查与非作者逐项复核须通过, 已有 navigate 30 条通过记录作额外证据, 不伪称全量全绿. 仓库禁止修改真实已安装 skills, 不运行会改安装目录的同步或宣称未测安装效果通过.",
       "status": "进行中",
       "blocked_by": [
         "milestone-06",
@@ -132,7 +132,9 @@
         "docs/changes/workflow-stack-review/milestone-07/HOST-ADMIN-RUN-1.log",
         "docs/changes/workflow-stack-review/milestone-07/HOST-ADMIN-RUN-2.log",
         "docs/changes/workflow-stack-review/milestone-07/HOST-ADMIN-RUN-3.log",
-        "docs/changes/workflow-stack-review/milestone-07/LOCAL-ENVIRONMENT.md"
+        "docs/changes/workflow-stack-review/milestone-07/LOCAL-ENVIRONMENT.md",
+        "docs/changes/workflow-stack-review/milestone-07/FINAL-CHECKS.log",
+        "docs/changes/workflow-stack-review/milestone-07/CLOSURE.md"
       ],
       "close_summary": null
     },
