@@ -126,7 +126,11 @@
         "docs/changes/workflow-stack-review/milestone-07/REVIEW-CHECKS.log",
         "docs/changes/workflow-stack-review/milestone-07/HOST-TESTS.md",
         "docs/changes/workflow-stack-review/milestone-07/HOST-PYTEST.log",
-        "docs/changes/workflow-stack-review/milestone-07/HOST-BASELINE.log"
+        "docs/changes/workflow-stack-review/milestone-07/HOST-BASELINE.log",
+        "docs/changes/workflow-stack-review/milestone-07/HOST-PARENT.log",
+        "docs/changes/workflow-stack-review/milestone-07/HOST-ADMIN-RUN-1.log",
+        "docs/changes/workflow-stack-review/milestone-07/HOST-ADMIN-RUN-2.log",
+        "docs/changes/workflow-stack-review/milestone-07/HOST-ADMIN-RUN-3.log"
       ],
       "close_summary": null
     },
