@@ -123,7 +123,10 @@
         "docs/changes/workflow-stack-review/milestone-07/PYTEST.log",
         "docs/changes/workflow-stack-review/milestone-07/PYTEST-BEFORE.log",
         "docs/changes/workflow-stack-review/milestone-07/REVIEW.md",
-        "docs/changes/workflow-stack-review/milestone-07/REVIEW-CHECKS.log"
+        "docs/changes/workflow-stack-review/milestone-07/REVIEW-CHECKS.log",
+        "docs/changes/workflow-stack-review/milestone-07/HOST-TESTS.md",
+        "docs/changes/workflow-stack-review/milestone-07/HOST-PYTEST.log",
+        "docs/changes/workflow-stack-review/milestone-07/HOST-BASELINE.log"
       ],
       "close_summary": null
     },
