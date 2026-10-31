@@ -1,7 +1,7 @@
 ## 父级
 - `../EXECUTION.md`
 ## 执行
-- [ ] 已完成
+- [x] 已完成
 ## 要交付什么
 `workflow/navigate/SKILL.md` 的类型语汇按已确认口径重写: demo 条目接住"可以演示现成成品", poc 成为独立 AFK 类型且只写流程语 (交付定义用指针), research 收窄到工作目录之外的事实并补就地查与指派, task 承接"需实测但结论描述现状"的工作, deliberate 那处 `prototype` 换成演示, 完成标准与收口产物同步.
 
@@ -79,7 +79,16 @@ grep -n '可行/不可行\|可复查依据' workflow/navigate/SKILL.md
 grep -rn 'prototype' workflow/navigate/SKILL.md README.md workflow/demo/    # 通过标准: 零命中
 ```
 ## 交付证据
-执行后填写: 每条 grep 的输出与结论, 改后条目原文摘录 (poc 四部分, demo 两处, research 两段), check_skill 输出, 材料位置 `/tmp/m9-04-03/`.
+原始输出: `/tmp/m9-04-03/verify.log`.
+
+- 1 check_skill: `uv run python general/writing-for-llm/check_skill.py workflow/navigate/SKILL.md` → `workflow/navigate/SKILL.md: OK`, 退出码 0.
+- 2 AC-012/AC-022: `grep -n '无处可查\|须先做实验测出' workflow/navigate/SKILL.md` 零命中 (exit 1), research 只留外部事实一种; 正向 grep 命中 35 行: "藏在当前工作目录之外的事实…须先暴露. 工作目录内的事实就地查, 不单立里程碑; 查影响面用 `blast-radius`, 查领域用 `domain-awareness`; 需要单独立项才查得清的内部调查通常说明里程碑划错了." 含指派与 "划错了" 判断.
+- 3 AC-008/AC-009: `grep -n 'demo'` 命中 36/46/110 行. 条目 (36): "问题是 \"它应该是什么样子, 如何运行\", 或需要让人看清某个样子/行为/过程以便讨论时…拿已交付的成品或线上系统演示时不调用 skill, 直接跑成品, 同样归 demo…演示活动不新增产品交付承诺." 完成标准 (46): "演示已做, 我看过并能据此判断要讨论的事." 收口产物 (110): "拿已交付的成品或线上系统演示时产物可以为空, 关闭摘要记一行 \"演示了什么, 看的是哪个版本\""; `grep -n 'demos/'` 零命中, 无留档要求.
+- 4 AC-007/AC-011/AC-020/AC-021: `sed -n '/^- poc/,/^- task/p'` 输出 poc 条目单段, 仅 **何时创建/完成标准/收口产物/终止处置** 四部分, 无第五小节; 标注 `(AFK)` 且写 "实验由代理独立驱动, 不需要仓库主人在场"; 拆分判据与 "会话规模只作经验, 不作判据" "实质是交付产品代码的工作归 task" 并入何时创建; 指针句指向 `workflow/software-engineering-consensus/SKILL.md` 的 PoC 词条; 终止处置含 "未证实默认保持未完成; 只有仓库主人裁决终止时才把该里程碑记关闭, 关闭摘要写 \"未证实即终止, 不构成可行性结论\" 及原因, …从终点验收的依赖里移除, 不记成歧路." `grep -n 'off_course'` 命中 26/27/70/89/114 行, 全部在歧路/制图/重建语境, 不在 poc 条目内.
+- 5 AC-013/AC-016: `grep -n '压测\|性能基线\|描述现状'` 命中 39 行 task 条目指派; `grep -n 'prototype' workflow/navigate/SKILL.md` 零命中; `grep -n '无法靠演示提升保真度'` 命中 38 行 deliberate 条目.
+- 6 BR-005: `grep -n '可行/不可行\|可复查依据'` 仅命中 37 行 poc 条目指针句, 只点名不复述; 已与 consensus SKILL.md 的 PoC 词条 (14-19 行) 逐句比对, 无复述段落. 指针目标存在性: `grep -n '^## PoC' workflow/software-engineering-consensus/SKILL.md` 命中 14 行.
+- 7 全局残留: `grep -rn 'prototype' workflow/navigate/SKILL.md README.md workflow/demo/` 零命中 (exit 1); 中文 `grep -n '原型' workflow/navigate/SKILL.md` 零命中.
+- 完成标准节原文: "- demo: 演示已做, 我看过并能据此判断要讨论的事. / - poc: 结论与依据已写进本里程碑自己的产物." research, deliberate, task, acceptance 四行未动.
 ## 风险提示
 - AC-011 与 AC-021 的字面张力 (复查报告 N-1): 指针句覆盖"交付什么"的定义与"未证实"词义, "未证实默认保持未完成"等流程句落在终止处置小节. 这样两句都能字面成立, 且 AC-011 第三句"没有复述定义"仍成立. 若落笔时两者无法并存, 停下上报, 不自行改 Spec.
 - 报告 N-2 (D011 展开里"当前正在做的里程碑自己查证内部事实并写进它的产物"半句) 不在任何 AC 的断言里, 本 issue 不补, 以避免超出已确认口径.
