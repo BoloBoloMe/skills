@@ -1,0 +1,132 @@
+.......F.......                                                          [100%]
+=================================== FAILURES ===================================
+_______________________ test_neighbors_get_delete_patch ________________________
+
+tmp_path = PosixPath('/tmp/pytest-of-bolo/pytest-707/test_neighbors_get_delete_patc0')
+
+    def test_neighbors_get_delete_patch(tmp_path):
+        """TC-018 (AC-011): 邻居 GET 列出 (地址/名字/状态, 不回显密钥) /
+        DELETE 后不再向该邻居转发 / PATCH 改地址与名字; 均入 DB, 重启仍在."""
+        workdir = tmp_path / "nbops"
+        srv = Serve(workdir)
+        try:
+            poster = register_session(srv, "nb-admin")
+            spy = EchoNeighbor()
+            try:
+                spy_addr = f"127.0.0.1:{spy.port}"
+                code, resp = _admin(srv, "POST", "/admin/neighbors",
+                                    {"address": spy_addr, "shared_key": "k-spy"})
+                assert code == 200, resp
+                code, resp = _admin(srv, "POST", "/admin/neighbors",
+                                    {"address": "192.0.2.30:38417",
+                                     "shared_key": "k-dead", "name": "yoga"})
+                assert code == 200, resp
+    
+                # GET: 列出全部邻居 (地址/名字/状态), 密钥不回显
+                code, resp = _admin(srv, "GET", "/admin/neighbors")
+                assert code == 200, resp
+                entries = {e["address"]: e for e in resp["neighbors"]}
+                assert len(entries) == 2, resp
+                assert "shared_key" not in next(iter(entries.values())), \
+                    "邻居列表不得回显密钥"
+                assert entries["192.0.2.30:38417"]["name"] == "yoga"
+                assert all(e["status"] == "unknown" for e in entries.values())
+    
+                # DELETE: 该邻居不再被转发 (spy 只收到删除前那一封)
+                code, _ = post_letter(srv, "nb-admin", poster["signing_key"],
+                                      make_letter(letter_id="NB-1", to="remote-dev"))
+                assert code == 200
+                assert [r["letter"]["id"] for r in spy.received] == ["NB-1"]
+                code, resp = _admin(srv, "DELETE", "/admin/neighbors",
+                                    {"address": spy_addr})
+                assert code == 200, resp
+                code, _ = post_letter(srv, "nb-admin", poster["signing_key"],
+                                      make_letter(letter_id="NB-2", to="remote-dev"))
+                assert code == 200
+                assert [r["letter"]["id"] for r in spy.received] == ["NB-1"], \
+                    "删除后不应再向该邻居转发"
+                code, _ = _admin(srv, "DELETE", "/admin/neighbors",
+                                 {"address": spy_addr})
+                assert code == 404, "重复删除应 404"
+    
+                # PATCH: 换地址 + 改名; 死地址投过一封后状态变 unreachable
+                code, _ = post_letter(srv, "nb-admin", poster["signing_key"],
+                                      make_letter(letter_id="NB-3", to="remote-dev"))
+                assert code == 200
+                code, resp = _admin(srv, "PATCH", "/admin/neighbors",
+                                    {"address": "192.0.2.30:38417",
+                                     "new_address": "192.0.2.31:38417",
+                                     "name": "yoga2"})
+                assert code == 200, resp
+                code, resp = _admin(srv, "GET", "/admin/neighbors")
+                assert code == 200
+                assert resp["neighbors"] == [{"address": "192.0.2.31:38417",
+                                               "name": "yoga2",
+                                               "status": "unreachable"}], resp
+                code, _ = _admin(srv, "PATCH", "/admin/neighbors",
+                                 {"address": "192.0.2.99:38417", "name": "x"})
+                assert code == 404, "PATCH 未知邻居应 404"
+            finally:
+                spy.stop()
+        finally:
+            srv.stop()
+    
+        # DB 同步: 重启后 PATCH 结果仍在, DELETE 的不复活 (状态回到 unknown)
+>       srv2 = Serve(workdir)
+               ^^^^^^^^^^^^^^
+
+tests/test_mailbox_admin.py:263: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <conftest.Serve object at 0x71c311362450>
+workdir = PosixPath('/tmp/pytest-of-bolo/pytest-707/test_neighbors_get_delete_patc0/nbops')
+hold = '0.3', port = None, extra_env = None, extra_args = None
+
+    def __init__(self, workdir, hold="0.3", port=None,
+                 extra_env=None, extra_args=None):
+        workdir = Path(workdir)
+        workdir.mkdir(parents=True, exist_ok=True)
+        self.config_path = workdir / "config.json"
+        env = dict(os.environ)
+        env.update({
+            "MAILBOX_ADMIN_TOKEN": ADMIN_TOKEN,
+            "MAILBOX_STATE": str(workdir / "state.json"),
+            "MAILBOX_CONFIG": str(self.config_path),
+            "MAILBOX_HOLD_SECONDS": hold,
+            # 隔离真机邻居表: serve 缺省读 ~/.agents/mailbox/neighbors.json,
+            # 真跑过的机器上有真实邻居, 泄漏进来会破坏 "无邻居 404" 类用例 (2026-09-21)
+            "MAILBOX_NEIGHBORS": str(workdir / "neighbors.json"),
+        })
+        env.update(extra_env or {})
+        self.proc = subprocess.Popen(
+            [sys.executable, str(SCRIPT), "serve",
+             "--port", str(port or free_port()),
+             "--admin-port", str(free_port())] + list(extra_args or []),
+            env=env, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, text=True)
+        self.port = None
+        self.admin_port = None
+        deadline = time.time() + 15
+        while time.time() < deadline:
+            if self.proc.poll() is not None:
+                raise AssertionError(f"serve 提前退出, exit={self.proc.returncode}")
+            r, _, _ = select.select([self.proc.stderr], [], [],
+                                    max(0.0, deadline - time.time()))
+            if not r:
+                break
+            line = self.proc.stderr.readline()
+            m = re.search(r"mailbox on :(\d+)", line)
+            if m:
+                self.port = int(m.group(1))
+            a = re.search(r"admin on 127\.0\.0\.1:(\d+)", line)
+            if a:
+                self.admin_port = int(a.group(1))
+            if self.port is not None:
+                return
+        self.stop()
+>       raise AssertionError("serve 未在超时内报告端口")
+E       AssertionError: serve 未在超时内报告端口
+
+tests/conftest.py:111: AssertionError
+=========================== short test summary info ============================
+FAILED tests/test_mailbox_admin.py::test_neighbors_get_delete_patch - Asserti...
+1 failed, 14 passed in 33.28s
