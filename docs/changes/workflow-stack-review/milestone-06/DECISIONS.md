@@ -14,14 +14,14 @@
 - 预计影响: workflow/benchmark-checklist/SKILL.md, workflow/blast-radius/reference/PROVENANCE.md, workflow/benchmark-checklist/reference/PROVENANCE.md; 实施在 milestone-07
 
 ### D002 旧行为影响复查设门槛
-- 状态: 当前有效
+- 状态: 已替代 (→ D008)
 - 约束性: 必须遵守
 - 内容: drive-execution 的旧行为影响复查节点从每轮必做改为门槛触发. 免做条件: 整轮全部 issue 均为非行为改动或纯核验, 且评审起点到当前集成提交的差异不触碰共享接口/数据格式/跨模块路径. 免做时在 EXECUTION.md 执行记录留一行免做理由; 其余情况照做, IMPACT-REVIEW.md 只在实做轮产出. "节点顺序不可跳过" 措辞同步收窄为门槛命中时不可跳过. 门槛判定只用两个现成事实: issue 验证契约的类型声明与差异触碰面, 不引入 "受影响入口有无测试覆盖" 这类需再分析一轮才知的判据 (避免循环分析). 不整体删除节点: 每轮必做对纯文档/核验轮是空转, 但 issue 级验证契约罩不到声明外老行为的三个已知网眼 (未声明的老调用方无测试, 单 issue 检查全绿但集成组合坏, 新测试只锁新行为不锁旧行为), 影响复查是这三洞的专职网.
 - 依赖事实: F003, F004
 - 预计影响: workflow/drive-execution/SKILL.md; 约束 milestone-04 执行时的流程
 
 ### D003 IMPACT-REVIEW.md 读者定位为流程内 llm
-- 状态: 当前有效
+- 状态: 已替代 (→ D008)
 - 约束性: 必须遵守
 - 内容: IMPACT-REVIEW.md 是给流程内 llm 的工作文件, 不是给人的报告. 读者为 drive-execution 总指挥 (读后分流: 明确实现破坏拆返工 ISSUE, 此为现行机制非新增; 产品取舍报缺口交用户裁决) 与下一轮影响复查审核者 (核对上轮记录闭环, 这是 "保留每轮记录, 不覆盖旧轮次" 的用途). 明确不作为 code-review 或 verify-change 的输入判据: 它不是 spec, 混入 Spec 轴会污染判据来源; verify-change 全量验收不按风险裁剪, 调查报告混进验收材料有把已排除项当安全证明的漂移风险. 保留 "它是调查报告, 不新增产品判据". 用户可审计阅读, 但正文不承担给人看的定位. 术语用 drive-execution 既有角色名 总指挥/审核者, 用户口头 "指挥家/指挥会话" 正名为 总指挥, 不造新词.
 - 依赖事实: F005, F006
@@ -47,6 +47,20 @@
 - 内容: 删除 general/grill-me/ 目录及 README 通用技能表对应行. 理由: 真实已安装 skills 本就没有 grill-me, 仓库留存是残留; 其功能 (domain-awareness + grilling 两调) 与 workflow/deliberate (同两调 + decision-ledger 落账 + opposing-viewpoint 反方) 重复, 无落盘的轻量场景由 grilling 直接覆盖; general 与 workflow 目录是分类不是分层, 反向调用本身不违规, 违规的是保留无效重复. 两份 PUBLIC 无引用, 历史决策文档 (docs/changes/上下文管理优化/DECISIONS.md) 按惯例不改.
 - 依赖事实: F010
 - 预计影响: general/grill-me/ (删除), README.md
+
+### D007 评审轴用词改为评审方向
+- 状态: 当前有效
+- 约束性: 必须遵守
+- 内容: code-review 及其引用处不再用 "轴" 指称评审维度, 统一用 "评审方向". 覆盖: workflow/code-review/SKILL.md 全文 (description, 正文, "为何双轴" 节名), references/fowler-baseline.md 的 "Standards 轴", workflow/verification-contract/SKILL.md 的 Standards 轴引用行, workflow/drive-execution/SKILL.md 的 双轴评审/每条轴/各轴 句, README.md 的 code-review 表行. 历史决策文档与既有验收证据不改. 用户 2026-10-30 直接裁决.
+- 依赖事实: F012
+- 预计影响: 上述五个文件; 实施在 milestone-07
+
+### D008 旧行为影响复查迁入 code-review 作可选评审方向
+- 状态: 当前有效
+- 约束性: 必须遵守
+- 内容: 旧行为影响复查从 drive-execution 的独立节点迁入 code-review, 成为与 Standards/Spec 并列的可选评审方向 (方向名 旧行为影响). 是否运行该方向的判定方式与 D002 门槛一致: 整轮全部 issue 为非行为改动或纯核验且差异不触碰共享接口/数据格式/跨模块路径时免做, 其余照做. 落点: drive-execution 执行循环删除独立影响复查节点, 评审节点调用 code-review 时传入评审起点与产物根目录; IMPACT-REVIEW.md 仍写入产物根目录并逐轮追加不覆盖; 该方向审核者读上轮记录核对闭环; 发现进 code-review 汇总, 由调用方总指挥分流 (明确实现破坏拆返工 ISSUE, 产品取舍报缺口交用户). 保留: 该报告是调查报告不新增产品判据, 不作为 verify-change 的输入判据. 门槛判定的规则文本只落 code-review 一处, 不在 drive-execution 重复 (writing-for-llm 冗余禁令). 用户 2026-10-30 裁决; D002 的门槛由本条原样承接, D003 的读者定位由汇总-分流链路承接.
+- 依赖事实: F003, F005
+- 预计影响: workflow/code-review/SKILL.md (新方向节), workflow/drive-execution/SKILL.md (删节点, 改评审句与顺序约束句); 实施在 milestone-07
 
 ## 事实
 
@@ -99,3 +113,13 @@
 - 状态: 当前有效
 - 来源: general/grill-me/SKILL.md, workflow/deliberate/SKILL.md, 真实安装 skills 目录清单, 本轮 grep
 - 内容: grill-me 全文一行: 调 domain-awareness 感知领域模型, 调 grilling 盘问; disable-model-invocation, 仅用户手动触发. deliberate 为同两调 + decision-ledger 落账 + 落盘后独立反方攻击. 真实已安装 skills 目录无 grill-me (有 grilling). 仓库引用仅 README 通用技能表一行与自身; 两份 PUBLIC 无引用; docs/changes/上下文管理优化/DECISIONS.md 有历史提及 (记录 "grill-me 不做任何委派"), 历史不改.
+
+### F011 Standards 方向的现行双源机制
+- 状态: 当前有效
+- 来源: workflow/code-review/SKILL.md 步骤 3/4 与 references/fowler-baseline.md
+- 内容: Standards 方向同时使用两类来源: 仓库记录的编码规范文档 (CODING_STANDARDS.md/CONTRIBUTING.md/AGENTS.md/lint 配置/项目约定) 与始终携带的 Fowler 坏味道基线. 仓库规范优先, 认可基线所标写法时抑制该坏味道; 工具链已强制的检查跳过; 基线坏味道恒为判断性发现, 违反仓库规范可为硬性. 单 reviewer 单轮审出, 报告分两类. 实际审出集合为两者并集减抑制与工具链覆盖项; 不产出独立的并集规范文档. 用户 2026-10-30 确认维持现状, 不改字面并集形式.
+
+### F012 评审轴用词的分布
+- 状态: 当前有效
+- 来源: 本轮 grep 评审语境的 "轴"
+- 内容: "轴" 出现在 workflow/code-review/SKILL.md (约 16 处, 含 description 与节名), workflow/code-review/references/fowler-baseline.md 一处, workflow/verification-contract/SKILL.md 的 Standards 轴引用行, workflow/drive-execution/SKILL.md 的 双轴评审/每条轴/各轴 句, README.md 的 code-review 表行. 历史决策文档中的 "轴" 不改.
