@@ -51,7 +51,7 @@
 | [`lazy-dev`](workflow/lazy-dev/SKILL.md) | 用决策阶梯和实现阶梯收敛到最小且无未来负担的方案. |
 | [`maintain-verification-skill`](workflow/maintain-verification-skill/SKILL.md) | 按当前已确认的产品说明维护项目本地验证配方, 分类漂移并让新会话复跑证明. |
 | [`navigate`](workflow/navigate/SKILL.md) | 在目的地和路线不清时, 用 Roadmap 和 Milestone 组织探索. |
-| [`prototype`](workflow/prototype/SKILL.md) | 构建一次性原型, 验证逻辑状态模型或 UI 外观问题. |
+| [`demo`](workflow/demo/SKILL.md) | 制作演示材料, 让人看清指定样子, 行为或过程. |
 | [`software-engineering-consensus`](workflow/software-engineering-consensus/SKILL.md) | 共享工程概念, 交付与验证边界, 以及本仓库工作流术语. |
 | [`tdd`](workflow/tdd/SKILL.md) | 修 bug 且能用低成本测试复现时, 用它取红态证据. |
 | [`to-execution`](workflow/to-execution/SKILL.md) | 把 Product/Technical Spec 拆成 Execution Spec 和可执行 issues. |
