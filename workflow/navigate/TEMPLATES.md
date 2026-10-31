@@ -85,5 +85,5 @@ uv run python workflow/navigate/scripts/roadmap.py delete <file>
 ## 目录约定
 
 - 路线图文件: `docs/changes/<feature-slug>/roadmap/ROADMAP.json`.
-- 里程碑产物 (findings/原型/决策文档等) 仍是独立文件, 放 `docs/changes/<feature-slug>/<milestone-NN>/`, 链接记入该里程碑 `artifacts`.
+- 里程碑产物 (findings/演示材料/决策文档等) 仍是独立文件, 放 `docs/changes/<feature-slug>/<milestone-NN>/`, 链接记入该里程碑 `artifacts`.
 - 会话中调用 `to-execution` skill 时, 产物根目录指定为 AFK 编码任务所属里程碑的子目录 `docs/changes/<feature-slug>/<milestone-NN>/`.

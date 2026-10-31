@@ -89,6 +89,7 @@ grep -rn 'prototype' workflow/navigate/SKILL.md README.md workflow/demo/    # �
 - 6 BR-005: `grep -n '可行/不可行\|可复查依据'` 仅命中 37 行 poc 条目指针句, 只点名不复述; 已与 consensus SKILL.md 的 PoC 词条 (14-19 行) 逐句比对, 无复述段落. 指针目标存在性: `grep -n '^## PoC' workflow/software-engineering-consensus/SKILL.md` 命中 14 行.
 - 7 全局残留: `grep -rn 'prototype' workflow/navigate/SKILL.md README.md workflow/demo/` 零命中 (exit 1); 中文 `grep -n '原型' workflow/navigate/SKILL.md` 零命中.
 - 完成标准节原文: "- demo: 演示已做, 我看过并能据此判断要讨论的事. / - poc: 结论与依据已写进本里程碑自己的产物." research, deliberate, task, acceptance 四行未动.
+- 补录 (ISSUE-07): `grep -n '冒烟' workflow/navigate/SKILL.md` 零命中 (exit 1), 全文无冒烟类词汇, 实际输出见 `/tmp/m9-04-07/greps.log`.
 ## 风险提示
 - AC-011 与 AC-021 的字面张力 (复查报告 N-1): 指针句覆盖"交付什么"的定义与"未证实"词义, "未证实默认保持未完成"等流程句落在终止处置小节. 这样两句都能字面成立, 且 AC-011 第三句"没有复述定义"仍成立. 若落笔时两者无法并存, 停下上报, 不自行改 Spec.
 - 报告 N-2 (D011 展开里"当前正在做的里程碑自己查证内部事实并写进它的产物"半句) 不在任何 AC 的断言里, 本 issue 不补, 以避免超出已确认口径.
