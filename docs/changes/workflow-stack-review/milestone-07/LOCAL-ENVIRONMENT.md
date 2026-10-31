@@ -24,3 +24,8 @@
 已发送取消信 `74719246e71f46bb8182a7c3c8bafede`, 不再请求补 playwright 或扩大容器运行能力. 但随后实际探测 `/usr/bin/podman` 已出现, `dpkg-query` 为 `podman 4.3.1+ds1-8+deb12u1+b3 install ok installed`; FINAL-CHECKS.log 的 2026-10-31T17:10:13Z 记录也如实为 podman_present=true. 本会话未执行补装命令, 安装动作与范围尚待宿主回报, 不把取消投递成功当成已撤销.
 
 已以 `868ee14def224d5d9db2a22084fadb9e` 请求宿主立即停止进一步配置/权限放宽/产品测试, 回报本任务实际改装与最小安全还原方案; 不做 autoremove, 不删测试数据或既有依赖, 不重建容器. 源文件工作不再被 Podman 测试阻塞, 这里只处理本轮多余依赖请求的撤回收尾.
+
+## 最终核对
+
+宿主来信 `6c3c03905b3c4051b34e72e19c330f80` 报告已撤销包/映射/配置/临时环境, 当时旧浏览器文件尚缺. 本会话后续在当前容器实际核到旧缓存已恢复, 并于 2026-10-31T17:22:27Z 留 `ENVIRONMENT-RESTORE.log`: Podman 二进制、本任务新增配置/containers/m07 venv 与备份文件均不存在, 两份 uid 映射为原 node/bolo 范围. 既有 Playwright 1.62.0 的 chromium-1234/ffmpeg-1011 可执行文件和完整安装标记存在.
+新增 1248/1013 缓存保留未删, 不作全文件系统完全复原保证. 此处仅核对还原状态, 未运行产品/浏览器或相关测试, 未提权或修改宿主内核. 当前收口见 `CLOSURE.md`, 不再以 Podman 为本节点测试依赖.
