@@ -114,7 +114,17 @@
         "milestone-06",
         "milestone-10"
       ],
-      "artifacts": [],
+      "artifacts": [
+        "docs/changes/workflow-stack-review/ACCEPTANCE.md",
+        "docs/changes/workflow-stack-review/milestone-07/IMPLEMENTATION.md",
+        "docs/changes/workflow-stack-review/milestone-07/CHECKS.md",
+        "docs/changes/workflow-stack-review/milestone-07/CHECKS.log",
+        "docs/changes/workflow-stack-review/milestone-07/NAVIGATE-TESTS.log",
+        "docs/changes/workflow-stack-review/milestone-07/PYTEST.log",
+        "docs/changes/workflow-stack-review/milestone-07/PYTEST-BEFORE.log",
+        "docs/changes/workflow-stack-review/milestone-07/REVIEW.md",
+        "docs/changes/workflow-stack-review/milestone-07/REVIEW-CHECKS.log"
+      ],
       "close_summary": null
     },
     "milestone-08": {
