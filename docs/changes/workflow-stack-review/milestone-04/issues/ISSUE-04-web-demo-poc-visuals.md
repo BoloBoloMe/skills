@@ -87,6 +87,7 @@ uv run python -m pytest workflow/navigate/tests      # 通过标准: 退出 0, �
 - 规格偏差 2 条 (不阻塞, 原文如实记录):
   1. issue 写回退点两处 (约 1544 与 1903 行) 且 grep 期望 2; 实际 `TYPE_META[node.m.type] || TYPE_META.task` 只在 1544 行一处, 1903 行是 `TYPE_META[n2.m.type]` 配 `meta ? ... : ''` (未知类型不显类型后缀, 语义等价的回退但不含 `TYPE_META.task` 字样). 按禁止范围未动画布逻辑, 保持原样.
   2. 验证入口的 prototype grep 通过标准写零命中, 但 render_checks.py 既有代码的 `CanvasRenderingContext2D.prototype` (JS 语言内建) 无法避开且不在本 issue 允许改动语义内; 已按上述判定为例外, 交 ISSUE-06 审计复核.
+- 补录 (ISSUE-07): pytest 汇总行复跑 `uv run python -m pytest workflow/navigate/tests` → `30 passed in 8.05s`, 退出码 0, 无 failed (原始输出 `/tmp/m9-04-07/pytest.log`).
 ## 风险提示
 - 夹具改动会挪动布局, 既有 (707,447) 点击坐标与新里程碑的遮挡最容易踩; 发现点不中要调夹具或坐标, 不要调松断言.
 - 图例顺序与 `TYPE_META` 顺序必须一致, 否则容易被后续维护改乱.
