@@ -1,7 +1,7 @@
 ## 父级
 - `../EXECUTION.md`
 ## 执行
-- [ ] 已完成
+- [x] 已完成
 ## 要交付什么
 `roadmap.py` 的里程碑类型枚举换成 `research` / `deliberate` / `demo` / `poc` / `task` / `acceptance`, 顺序即报错里合法值清单的顺序; `prototype` 从此被拒, 不留别名. 模板里的枚举行同步. 新增三条枚举用例守住这三件事.
 
@@ -70,7 +70,17 @@ uv run python -m pytest workflow/navigate/tests
 ```
 TECHNICAL 不变量 "不含 demo/poc 的既有 ROADMAP.json 照常读取与校验通过" 由第 4 步的 CLI 往返承担, 不另加 pytest 用例: 既有 schema 测试已覆盖校验机制, 再写只会重复枚举字面量.
 ## 交付证据
-执行后填写: 每条命令的退出码与 stdout, `git diff workflow/navigate/scripts/roadmap.py`, 两次 md5, pytest 汇总行, 材料位置 `/tmp/m9-04-01/`.
+原始输出在 `/tmp/m9-04-01/`. 改前基线: `save type demo` 退出 1, 报错列 prototype 且无 demo (`baseline-2.txt`).
+
+- `git diff workflow/navigate/scripts/roadmap.py`: 仅 `TYPE_VALUES` 一行 (`diff-roadmap.txt`).
+- AC-002: `save /tmp/m9-04-01/r.json milestones.milestone-01.type demo` 退出 0 `success=true`; `query ...` 退出 0 得 `"demo"` (`ac002-*.txt`).
+- AC-003: 两次 `md5sum` 均 `024e4465564c3dbc869e227e1b544d4c`; `save ... type prototype` 退出 1, error `非法 type 值 "prototype"; 合法值: research, deliberate, demo, poc, task, acceptance` (`ac003-*.txt`).
+- AC-005: `save ... type poc` 退出 0; `query` 得 `"poc"` (`ac005-*.txt`).
+- AC-016 (TEMPLATES 枚举行): `TEMPLATES.md` type 行改为六值, 同步一处 (`git diff workflow/navigate/TEMPLATES.md`).
+- BR-001 (顺序即报错合法值清单): `TYPE_VALUES` 与报错 `合法值: research, deliberate, demo, poc, task, acceptance` 顺序一致 (报错文案由常量拼出).
+- 旧图不变量: `query docs/.../ROADMAP.json milestones.milestone-04.type` 退出 0 得 `"task"`; `/tmp` 副本 `save notes.0 "y"` 退出 0; 现网文件前后 md5 均 `a0fd4c7d02cbb7e9279e5ef1bd222caf` (`oldgraph-*.txt`, `roadmap-md5-*.txt`).
+- 完成定义停服务: 守护实例 pid 66416 从主仓库路径启动, `web_server.py stop` 守卫拒绝 (`pid does not contain this script`); 核实 cmdline 确为 `web_server.py __serve__ 39271` (占默认端口) 后 kill, `status` 复核 `alive:false` (`pytest-and-stop.txt`).
+- 回归: `uv run python -m pytest workflow/navigate/tests` 退出 0, `30 passed in 8.00s` (基线 27 + 新增 TC-002/TC-003/TC-005).
 ## 验收标准
 - [ ] `TYPE_VALUES` 恰为 research/deliberate/demo/poc/task/acceptance, 顺序与 BR-001 一致.
 - [ ] demo 与 poc 可写入并读回; prototype 被拒且文件逐字节不变, 报错列完整合法值.
