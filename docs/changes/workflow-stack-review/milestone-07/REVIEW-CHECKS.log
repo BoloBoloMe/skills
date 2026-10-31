@@ -1,0 +1,65 @@
+# milestone-07 独立复核检查记录 (workflow-stack-review-m07-review)
+
+复核者: 独立 pi 会话 01a19294-fd3d-7645-b8db-136d7c4e5b75, pi/cli-glm-5.3-flash/max, 未参与实施.
+目标提交: c77f6af446d294c3d498c570feb88bd41fe79bb6; 基准父提交: 6717c5e3f966821aa3fedcf0b8459e4fa2537b3a.
+检查时工作树 HEAD=c94c548a1d20c48ec56bb3e43eec0615b80680c5, git status 干净; `git diff --stat c77f6af HEAD` 仅 6 个证据文件 (milestone-07 下 5 个日志/CHECKS.md + roadmap/ROADMAP.json), 17 个目标文件自目标提交后未再变动, 故工作树上的实际检查对目标提交有效.
+
+---
+
+[2026-10-31T15:39:45Z] 命令: `for f in workflow/benchmark-checklist workflow/code-review workflow/drive-execution workflow/navigate workflow/software-engineering-consensus workflow/to-execution workflow/verification-contract; do uv run python general/writing-for-llm/check_skill.py $f/SKILL.md; done`
+目标: 7 个本轮修改的 SKILL.md 格式检查 (AC-06-07/AC-07-06).
+输出: 7 个全部 `OK`, 逐个 exit=0. Python 3.11.2.
+
+[2026-10-31T15:40:08Z] 命令: `uv run python -m pytest -m "not e2e"`
+目标: AC-07-06 全量非 e2e 测试.
+输出: INTERNALERROR, tests/conftest.py:236 pytest_sessionstart 内 `subprocess.run(["podman","volume","ls","-q"])` 抛 FileNotFoundError: No such file or directory: 'podman'. exit=3, 0 条用例运行. 容器无 podman (`which podman` 无结果). 与作者 PYTEST-BEFORE.log/PYTEST.log 记录一致. 记为未验证缺口, 不算通过.
+
+[2026-10-31T15:40:23Z-15:40:31Z] 命令: `uv run python -m pytest workflow/navigate/tests/`
+目标: 复跑作者所述 navigate 子集.
+输出: `30 passed in 7.98s`, exit=0. 独立复现作者 NAVIGATE-TESTS.log 结果.
+
+[同日] 命令: `cmp <(git show 6717c5e:workflow/tdd/tests.md) workflow/verification-contract/reference/tests.md` 与两侧 md5sum
+目标: tests.md 迁移逐字节保真 (AC-07-01).
+输出: BYTE-IDENTICAL; 两侧 md5 均 dbb6b61d991689c6cce7d2b1ba7ca7ea.
+
+[同日] 命令: `rg -n '\btdd\b|mocking\.md' --glob '!docs/changes/**' --glob '!docs/adr/**' --glob '!**/vendor/**' .`
+目标: tdd/mocking 活跃残留引用 (AC-07-01).
+输出: 仅 general/writing-for-llm/SKILL-MECHANICS.md:21 把 `tdd` 当命名举例 (非调用的术语举例, AC 允许不改). 无 mocking.md 引用, 无 workflow/tdd 路径引用.
+
+[同日] 命令: `rg -in '\btdd\b' tests/ agent-prompts/ pi/`
+目标: 历史测试注释确认.
+输出: tests/test_env_docs.py:3 与 tests/test_swt_list.py:11 的历史 issue docstring (TDD 切片), 与 milestone-10 F011 一致, 非活跃引用.
+
+[同日] 命令: `rg -n 'diagnosing-bugs|grill-me' --glob '!docs/changes/**' --glob '!docs/adr/**' --glob '!**/vendor/**' .`
+目标: 改名与删除后活跃引用归零 (AC-06-06, milestone-11 AC-11-08 承接不回退).
+输出: exit=1, 零命中.
+
+[同日] 命令: `rg -n '轴' workflow/code-review/SKILL.md workflow/code-review/references/fowler-baseline.md workflow/verification-contract/SKILL.md workflow/drive-execution/SKILL.md README.md` 及全仓 `rg -n '轴|双轴|Standards 轴|Spec 轴'` (排除 docs/changes, docs/adr, vendor)
+目标: AC-06-09 评审语境 "轴" 清零.
+输出: 指定五处零命中 (exit=1). 全仓剩余: workflow/follow-the-money/SKILL.md 三根轴 (资损校验轴, 非评审语境), workflow/use-sandbox-worktree 记录轴 (记录标注, 非评审语境), tests/test_swt_list.py:513 历史注释. 均不在 AC-06-09 范围.
+
+[同日] 命令: `rg -n 'IMPACT-REVIEW' --glob '!docs/changes/**' --glob '!docs/adr/**' --glob '!**/vendor/**' .`
+目标: 旧行为影响报告的维护点分布 (AC-06-02/03).
+输出: 仅 workflow/code-review/SKILL.md 三处 (52 行不进 Spec/verify-change 判据, 79/80 行输入与追加). drive-execution 不再提及, 门槛规则文本唯一落 code-review 步骤 4.
+
+[同日] 命令: `rg -n '闭环|最短' workflow/ --glob '!**/vendor/**'`
+目标: 闭环机制唯一维护处 (AC-07-03).
+输出: 实现闭环机制仅 workflow/verification-contract/SKILL.md:13 共用底线; code-review 的 "闭环" 指 IMPACT-REVIEW 记录闭环 (另一概念); lazy-dev 的 "最短" 为通用编码 skill, 非验证闭环复制. drive-execution 无闭环机制文本.
+
+[同日] 命令: 逐文件读取 + git diff 逐块人工比对
+目标: 全部 17 个改动文件及 blast-radius 第 5 节, fix-bugs/SKILL.md, navigate 验收终点节, F014 四处表述.
+输出: F014 四处 (software-engineering-consensus:12, to-execution:29/31, benchmark-checklist:100, drive-execution/reference/orchestration.md:64) 与基准版一致未动. benchmark 指针锚点 `#5-一次性实验的边界`/`#3-给每个事实标证据级别` 与 blast-radius 实际节名匹配. blast-radius 第 5 节逐条覆盖旧 benchmark 边界条目 (非正式 TC 标记/授权范围, 只动独立脚本与临时数据不改产品源码/测试/配置, 内部函数证明不顶替成品入口, 冻结目标停下报缺口, 新正式测试交回确认流程, 接缝由实现者决定). fix-bugs 链条五环与 v-c 缺陷修复节指针一致.
+
+[同日] 命令: `git diff --check 6717c5e c77f6af`
+目标: 空白错误.
+输出: exit=0, 无输出.
+
+[同日] 命令: `git diff --name-only 6717c5e c77f6af | wc -l` 与 `git show --stat` (e567e84, c94c548)
+目标: 确认 17 文件范围与目标后提交性质.
+输出: 17 个文件; e567e84 仅新增 5 个证据文档, c94c548 仅 roadmap/ROADMAP.json. 均非产品/技能文件.
+
+[同日] 命令: `ls /home/bolo/.agents/skills/ | grep -i 'grill\|^tdd$'`
+目标: 安装目录状态观察 (AC-06-06 边界).
+输出: 安装副本 grill-me 与 tdd 仍在, 与 AC-06-06 "保留至宿主下次运行 sync-to-pi.py 时裁掉" 及 "本变更不运行同步" 边界一致, 非违规.
+
+[同日] 信箱: presence 01a1909f-4a98-7258-a8e2-9531a20d1310 → 离线 (818.832s 前); send --force notify 信件 id d6b685d288a7463eb15e636c05cf4243, 已进本机队列.
