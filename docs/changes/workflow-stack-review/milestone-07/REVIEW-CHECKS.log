@@ -62,4 +62,41 @@
 目标: 安装目录状态观察 (AC-06-06 边界).
 输出: 安装副本 grill-me 与 tdd 仍在, 与 AC-06-06 "保留至宿主下次运行 sync-to-pi.py 时裁掉" 及 "本变更不运行同步" 边界一致, 非违规.
 
-[同日] 信箱: presence 01a1909f-4a98-7258-a8e2-9531a20d1310 → 离线 (818.832s 前); send --force notify 信件 id d6b685d288a7463eb15e636c05cf4243, 已进本机队列.
+[同日] 信箱: presence 01a1909f-4a98-7258-a8e2-9531a20d1310 → 离线 (818.832s 前); send --force notify 信件 id d6b685d288a7463eb15e636c05cf4243, 已进本机队列. (r1 阶段信箱操作以容器接线身份执行, 用户来信指正后, r2 起改用 ensure-session 取得的会话 config 并显式 MAILBOX_CONFIG, 停止无授权强投.)
+
+========================================================================
+# r2 补核 (任务 m07-review-followup, 用户来信 2026-10-31T15:49:06Z)
+
+[2026-10-31T15:52Z] 命令: `rg -n '叙述视角|我=|你=|视角' general/writing-for-llm/SKILL.md`
+目标: 核实叙述视角规定, 纠正 r1 疑点 3 的指代推断.
+输出: `## 叙述视角` (78 行): "始终站在我的第一视角写. 读取文档的 agent 是 \"你\", 触发和指挥 agent 的人是 \"我\". 写 \"我在使用 skill 时可能遇到的问题\", 不写 \"用户在使用 skill 时可能遇到的问题\". 讨论调用机制时保留固定术语 用户调用, 但不要把我写成第三人称." (80 行). 结论: skill 正文里 "我"=用户, code-review "报缺口交我裁决" 直接指用户, r1 的两跳链推断有误, 已在 REVIEW.md 排除项 1 纠正.
+
+[2026-10-31T15:50Z-15:56Z] 作者会话工具记录审计
+目标: AC-06-08 动态面, 审计作者实际 read/edit/write/bash/codemode 调用中的写入/同步/全局配置动作.
+日志: /home/bolo/.pi/agent/sessions/--home-bolo--/2026-10-31T06-22-00-857Z_01a1909f-4a98-7258-a8e2-9531a20d1310.jsonl (132 行起, 1.11MB, 审计期间会话活跃).
+方法: jq 抽取 type=toolCall 的 id/name/arguments; python 脚本 (/tmp/m07audit.py 等) 按 id 配对 toolResult (isError), 扫描 tools.write/tools.edit 的 path 参数与全部 bash 命令文本, 标记写/同步/配置类模式; 会话活跃, 冻结两次: 53 条工具调用 @2026-10-31T15:52:37Z (主审计), 60 条 @2026-10-31T15:56:06Z (扩扫 diff 仅新增信箱/读/cp 入仓/写证据文档类, 无新增越界写入).
+
+写入/文件操作动作全表 (id 取 toolCall.id 首段, 结果均 isError=False):
+- call_MTcbRRR... (#28) write → workflow/code-review/SKILL.md (整文件重写, 仓库内)
+- call_lZOJdZP... (#29) codemode tools.edit → ['workflow/drive-execution/SKILL.md','workflow/benchmark-checklist/SKILL.md','workflow/benchmark-checklist/reference/PROVENANCE.md','workflow/blast-radius/reference/PROVENANCE.md','workflow/code-review/references/fowler-baseline.md','workflow/software-engineering-consensus/SKILL.md','workflow/to-execution/SKILL.md'] (root='/home/bolo/Workspace/refactor-skill-around-verification', 全仓库内)
+- call_JYoYyIh... (#30) codemode bash: `mkdir -p workflow/verification-contract/reference && mv workflow/tdd/tests.md workflow/verification-contract/reference/tests.md && rm workflow/tdd/SKILL.md workflow/tdd/mocking.md general/grill-me/SKILL.md && rmdir workflow/tdd general/grill-me` (全仓库内, git status 证实)
+- call_HXPGaB8... (#31) codemode tools.edit → ['README.md','workflow/verification-contract/SKILL.md','docs/changes/workflow-stack-review/ACCEPTANCE.md'] (仓库内)
+- call_zFa8K6W... (#38) codemode tools.edit → workflow/navigate/SKILL.md, docs/changes/workflow-stack-review/milestone-07/IMPLEMENTATION.md (仓库内)
+- call_6RIpjBG... (#36) write → docs/changes/workflow-stack-review/milestone-07/IMPLEMENTATION.md (仓库内)
+- call_LuE5LFL... (#44) write → docs/changes/workflow-stack-review/milestone-07/CHECKS.md (仓库内)
+- call_Oo6xtn4... (#11) bash: `roadmap.py save docs/changes/workflow-stack-review/roadmap/ROADMAP.json milestones.milestone-07.status '进行中'`; call_UXXOMyd... (#51) 同脚本 save milestones.milestone-07.artifacts '[...]' (守门脚本字段更新, 仓库内, 结果含 {"path":"milestones.milestone-07.status","value":"进行中"})
+- call_ryZehJD... (#43) 重定向: > docs/.../milestone-07/PYTEST.log 与 CHECKS.log; call_0xltjw9x... (#40) > docs/.../CHECKS.log 与 /tmp/workflow-stack-review-m07/navigate-tests.log; call_ieWy93lu... (#24) mkdir -p /tmp/workflow-stack-review-m07 + > /tmp/.../pytest-before.log (仓库证据日志 + /tmp 临时目录)
+- r2 扩扫新增: call_GVaXvpX... (#54) `cp /tmp/workflow-stack-review-m07/pytest-c77f6af.log docs/changes/workflow-stack-review/milestone-07/...` (入仓); call_4ZfTiNw... (#59) write HOST-TESTS.md; call_nCx6Rqa... (#60) edit CHECKS.md (均仓库内)
+
+越仓写入仅两类: /tmp 临时日志 (call_ieWy93lu, call_0xltjw9x) 与本会话自身信箱 config (call_AFCADbYA... (#8) ensure-session 01a1909f-4a98-7258-a8e2-9531a20d1310, 按 pi.md 的信箱身份准备).
+
+同步/全局配置/安装目录: 危险模式全文检索 (命令与 codemode 代码合集 /tmp/m07audit-allcmd.txt): sync-to-pi=0, git checkout=0, git restore=0, git clean=0, chmod=0, chown=0, pip install=0, npm install=0, sed -i=0, settings.json=0; '.pi/agent/sessions' 唯一命中是 #50 信件正文引用审计路径 (文本非动作); '/home/bolo/.agents/skills' 命中均为只读 (call_crqPD2SP/call_BtYXHFv read domain-awareness/SKILL.md; call_ieWy93lu 在 llm-select 目录跑 score.py; 其余为 mailbox.py 脚本路径引用). score.py 附加核对: grep 'dump|write_text|open(.*w|subprocess|shutil|os.remove|unlink|rename' 零命中, 判为只读执行.
+
+push 交付动作 (3 次, 均 isError=False, 交付到本地桥宿主母体, 非本地写入):
+- call_ozmXc0c... (#39): git add 17 文件 && git commit 'doc: milestone-07 落地流程接口与执行哲学' && git push origin HEAD → '6717c5e..c77f6af HEAD -> refactor-skill-around-verification', To git://127.0.0.1:9418/skills-main-refactor-skill-around-verification
+- call_NZG9REH... (#45): 证据文档 commit 'doc: milestone-07 记录格式检查与测试环境缺口' && push → 'c77f6af..e567e84'
+- call_UXXOMyd... (#51): ROADMAP.json commit 'doc: 更新路线图 milestone-07' && push → '7520a18..2e10f87'
+
+审计范围限制: 只覆盖该日志冻结时刻前的工具调用; 不作记录外动作/其他会话/宿主侧直接操作/全机器状态的保证; score.py 只核对到脚本无写调用, 未沙箱实跑; 信件投递态与宿主 pytest 补跑结果不经此日志核实.
+
+[2026-10-31T15:56Z] 信箱身份补正: ensure-session 01a19294-fd3d-7645-b8db-136d7c4e5b75 → config /home/bolo/.agents/mailbox/sessions/01a19294-fd3d-7645-b8db-136d7c4e5b75/config.json, created=false; 后续 presence/send 均显式 MAILBOX_CONFIG 指向该 config.
