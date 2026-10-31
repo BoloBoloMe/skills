@@ -1,7 +1,7 @@
 """roadmap.py 守门校验测试 (ISSUE-02: TC-002, TC-003, TC-004, TC-104, TC-105).
 
 m04 新增枚举用例: TC-002 demo 可写入, TC-003 prototype 被拒且文件逐字节不变,
-TC-005 poc 可写入 (带 m04 前缀消歧: TC-m04-002, TC-m04-003, TC-m04-005).
+TC-005 poc 可写入; 各用例 docstring 以 "TC-xxx (m04 AC-xxx)" 括注消歧, 编号语义与本文件既有 TC-xxx 不同.
 
 接缝: subprocess 调 CLI + tmp_path (TECHNICAL.md 测试接缝).
 """
