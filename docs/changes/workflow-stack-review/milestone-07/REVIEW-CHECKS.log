@@ -62,10 +62,10 @@
 目标: 安装目录状态观察 (AC-06-06 边界).
 输出: 安装副本 grill-me 与 tdd 仍在, 与 AC-06-06 "保留至宿主下次运行 sync-to-pi.py 时裁掉" 及 "本变更不运行同步" 边界一致, 非违规.
 
-[同日] 信箱: presence 01a1909f-4a98-7258-a8e2-9531a20d1310 → 离线 (818.832s 前); send --force notify 信件 id d6b685d288a7463eb15e636c05cf4243, 已进本机队列. (r1 阶段信箱操作以容器接线身份执行, 用户来信指正后, r2 起改用 ensure-session 取得的会话 config 并显式 MAILBOX_CONFIG, 停止无授权强投.)
+[同日] 信箱: presence 01a1909f-4a98-7258-a8e2-9531a20d1310 → 离线 (818.832s 前); send --force notify 信件 id d6b685d288a7463eb15e636c05cf4243, 已进本机队列. (r1 阶段信箱操作以容器接线身份执行, 协调代理来信指正后, r2 起改用 ensure-session 取得的会话 config 并显式 MAILBOX_CONFIG, 停止无授权强投.)
 
 ========================================================================
-# r2 补核 (任务 m07-review-followup, 用户来信 2026-10-31T15:49:06Z)
+# r2 补核 (任务 m07-review-followup, 协调代理来信 2026-10-31T15:49:06Z)
 
 [2026-10-31T15:52Z] 命令: `rg -n '叙述视角|我=|你=|视角' general/writing-for-llm/SKILL.md`
 目标: 核实叙述视角规定, 纠正 r1 疑点 3 的指代推断.
@@ -102,3 +102,5 @@ push 交付动作 (3 次, 均 isError=False, 交付到本地桥宿主母体, 非
 [2026-10-31T15:56Z] 信箱身份补正: ensure-session 01a19294-fd3d-7645-b8db-136d7c4e5b75 → config /home/bolo/.agents/mailbox/sessions/01a19294-fd3d-7645-b8db-136d7c4e5b75/config.json, created=false; 后续 presence/send 均显式 MAILBOX_CONFIG 指向该 config.
 
 [2026-10-31T15:58Z] 提交前发现基准移动: 作者在 f26f36b 之前提交 379e909 (HOST-TESTS.md, HOST-PYTEST.log, HOST-BASELINE.log, CHECKS.md 更新). 只读其 HOST-TESTS.md: 宿主实跑 `uv run --no-project --with pytest python -m pytest -m "not e2e" -q` 于干净 worktree, 日志观察 7 failed, 778 passed, 4 skipped, 退出码 1; 作者归因环境缺口待证, 基线对照待宿主回信. 本复核未独立验证宿主运行, 仅将 REVIEW.md 阻塞缺口措辞从 "待宿主补跑" 更新为 "已实跑未通过/未闭环", 不改变判定. 补核提交前基准 = 379e909.
+
+[协调方编辑校正] 补核请求发件人为实施协调代理 01a1909f-4a98-7258-a8e2-9531a20d1310, 信件 57d61b6ff1ab43c6ab35cb96fde4f8d4, 不是用户的新指令. 协调方仅校正请求方称谓及两处误写的"用户已确认无需裁决", 明确它们是复核判断而非新增人工确认; 独立复核的检查结果, 版本范围, 时间与实际输出不变. 原版可由 f26f36b/e83cac0 追溯.
