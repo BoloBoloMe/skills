@@ -1,7 +1,7 @@
 ## 父级
 - `../EXECUTION.md`
 ## 执行
-- [ ] 已完成
+- [x] 已完成
 ## 要交付什么
 `workflow/prototype/` 整个目录改为 `workflow/demo/`, 三份正文按演示语义重写: frontmatter 与 description 换成演示用途, 适用范围句划清"演示成品不调用本 skill", 通用规则 1/5/6 按"不进产品, 可保留回看, 验证止于能演示"改写, 三子形态的路径/前缀/路由/分支只把 `prototype` 这个词换成 `demo`, 三处清理义务换成"由仓库主人点名删除", 正文不出现 PoC. README 技能表那一行同步.
 
@@ -85,6 +85,22 @@ git status --short                               # 通过标准: 只有重命名
 ```
 ## 交付证据
 执行后填写: 改前基线与改后对比 (文件清单, prototype 命中), 三处清理约定改后原文摘录, check_skill 输出, 全文无 PoC 的 grep 结果, 材料位置 `/tmp/m9-04-02/`.
+
+- 提交: 见本文件同分支 issue/02 的 `feat: ISSUE-02: ...` 提交 (单提交).
+- 改名: `git mv workflow/prototype workflow/demo`; `git status --short` 显示 `RM workflow/prototype/<file> -> workflow/demo/<file>` (rename 而非删+建), `workflow/demo/` 只有 SKILL.md/LOGIC.md/UI.md, 旧目录已不存在.
+- 改前基线: `/tmp/m9-04-02/before/files.txt` (三文件清单), `/tmp/m9-04-02/before/prototype-hits.txt` (9 行命中: SKILL.md:2, LOGIC.md:7, UI.md:17/22/23/31/58/84, README.md:54). 改后同一命令: 文件清单仅路径前缀变 (sed 替换后 diff 为空); `grep -rn prototype workflow/ README.md` 在本 issue 范围内零命中, 残留命中全部在 `workflow/navigate/` (ISSUE-01/03/04 范围, 按规格不动).
+- AC-001: `ls workflow/demo` → LOGIC.md SKILL.md UI.md; `sed -n 1,4p workflow/demo/SKILL.md` → `name: demo`, `disable-model-invocation: true`, description 写演示用途.
+- AC-004: `grep -n 'demo\.|/demo/<name>|demos/<demo-name>|demo/<feature-slug>|demo/' workflow/demo/LOGIC.md workflow/demo/UI.md` → LOGIC.md:7 `docs/changes/<feature-slug>/demos/<demo-name>/`; UI.md:17/23 `demo.` 前缀与 `demo/` 子目录; UI.md:31 同 C 落位; UI.md:58 `/demo/<name>`; UI.md:84 `demo/<feature-slug>` 分支. 判定顺序原文保留 (A 首选, 无邻近宿主才 B, 无前端项目降级 C), `?variant=` 机制与冲突加时间戳规则未改.
+- AC-010/BR-006 三处清理约定改后原文:
+  - SKILL.md:28 规则 1: “演示材料不进产品, 不承诺交付, 可以保留回看. … 代理不主动删除演示材料; 需要清理时由仓库主人点名删除对象.”
+  - LOGIC.md:62 第 5 步: “演示材料可保留回看, 代理不主动删除; 需要清理时由仓库主人点名删除对象.”
+  - UI.md:85 子形态 C: “演示文件保留在工作分支, 可保留回看, 代理不主动删除; 需要清理时由仓库主人点名删除对象.”
+  - `grep -rn '合并主干前由人类清理|用完即删|用完即焚' workflow/demo/` 零命中.
+- AC-016 (README): README.md:54 `| [\`demo\`](workflow/demo/SKILL.md) | 制作演示材料, 让人看清指定样子, 行为或过程. |`.
+- AC-018: `grep -rni poc workflow/demo/` 零命中; SKILL.md:13 “拿已交付的成品或线上系统演示时不调用本 skill: 直接跑成品即可, 没有材料要造, 也没有一次性文件要清.”
+- AC-019: 规则 1 (SKILL.md:28) 不进产品/不承诺交付/保留回看; 规则 5 (SKILL.md:33-36) 四项捕获: 演示了什么/想请仓库主人据此判断什么/材料位置/相关 issue 指针; 规则 6 (SKILL.md:37) “验证止于能演示, 其余由我驱动”. `grep -n '注定被丢弃|验证止于冒烟'` 零命中.
+- check_skill: `uv run python general/writing-for-llm/check_skill.py workflow/demo/SKILL.md` → `OK`, 退出码 0. LOGIC.md/UI.md 为无 frontmatter 的正文文件, 该机检不适用 (AC-017 例子表也只列 SKILL.md).
+- 原始输出: `/tmp/m9-04-02/` (before/after 各含 files.txt 与 prototype-hits.txt, after/checks.txt 为逐条 AC grep 汇总, after/check_skill.txt 为机检输出).
 ## 风险提示
 - 目录改名同一次提交内要连带 README 链接, 否则活跃文档指向不存在的路径.
 - UI.md 的"自动移除"是 git 行为陈述, 改时别顺手把它写成清理义务, 也别删掉这条事实.
