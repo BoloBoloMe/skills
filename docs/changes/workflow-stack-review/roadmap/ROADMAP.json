@@ -1,7 +1,7 @@
 {
   "schema_version": "0.0.1",
   "title": "workflow skill 栈审视与改造",
-  "destination": "workflow/ 这套 skill 栈完成三件已拍板的改造 (模型自动调用的术语 skill, prototype 改名 demo, PoC 成为 navigate 里程碑类型), 五处措辞与 SAFETY 指针违规已修, 三处流程接口待裁决项已定并落地, 全部改动经 pytest 与 check_skill.py 通过, 并由我逐项验收后推送到宿主母体.",
+  "destination": "workflow/ 这套 skill 栈完成三件已拍板的改造 (模型自动调用的术语 skill, prototype 改名 demo, PoC 成为 navigate 里程碑类型), 五处措辞与 SAFETY 指针违规已修, 三处流程接口待裁决项已定并落地, 执行哲学转向 (实现走最短交付路径, issue 内端到端验证闭环, 修复后再验证, 垂直切片拆分) 已裁决并随流程接口改动一并落地, 全部改动经 pytest 与 check_skill.py 通过, 并由我逐项验收后推送到宿主母体.",
   "notes": [
     "侦查结论: 方向 A 主张保留主体, 纸面 5 对互指里的反向边全属文档读取, 产物引用与重新派活, 改措辞即可, 唯一真重复是 benchmark 与 blast-radius 各约 12 行的实验边界. 方向 B 主张把已长出的 6 层写成文, 诚实结论是收益为可判性而非 token, 且需真搬 v-c 的方法路由与验收证据语义. 方向 C 主张按需加载与入口选择, 但有 24 个 skill 刻意禁用模型调用, 该主轴被否决; 其载入链代理值仍留作参考: 小改动 5-7KB, bug 14-18KB, 独立验收 27-44KB.",
     "选定: 不整包接受任一方向. 采用清单式实施: 三件已拍板改造, 五处已批准的措辞修正, 一组打包裁决的流程接口. 分层成文, 方法路由上移, 入口地图, 抽共用底线四项经裁决排除, 见 off_course.",
@@ -67,7 +67,7 @@
       "title": "demo 改名与 PoC 类型落地",
       "type": "task",
       "question": "按 milestone-03 决策将 workflow/prototype/ 改为 workflow/demo/ 并适配已确认 demo 范围, 不只机械改名: 既有 MVP/PoC 演示与新建样品的入口/完成规则按裁决处理. 原六文件约十六处仅为初始清单, 需覆盖 navigate/SKILL.md, roadmap.py 枚举/校验, TEMPLATES.md, 网页, visual/render_checks.py, README, 并核对 skill 自身 SKILL.md/LOGIC.md/UI.md 的 prototypes/ 目录, prototype. 文件前缀, /prototype/ 路由及 prototype/<slug> 分支约定; 是否更名或兼容按 milestone-03, 不默默遗留或自行删除真实成品/PoC 证据. 按决策新增 PoC 类型, 网页显示与完成标准, 删 research 创建条件的实验半句. 实施前确认详细验收标准, 验证 uv run python -m pytest workflow/navigate/tests 全绿且相关 SKILL.md 通过 check_skill.py; 不运行会修改真实已安装 skills 的同步, 不宣称安装效果已验证.",
-      "status": "待处理",
+      "status": "进行中",
       "blocked_by": [
         "milestone-03",
         "milestone-09"
@@ -95,7 +95,7 @@
       "title": "打包裁决三处流程接口",
       "type": "deliberate",
       "question": "决定: (a) benchmark 与 blast-radius 那 8 条实验边界是否收到一处, 收在谁家; (b) IMPACT-REVIEW.md 由谁消费 —— code-review 的 Spec 轴读, verify-change 列为操作线索, 还是承认只给人看并在 drive-execution 写清楚; (c) navigate 的 acceptance 与 verify-change 是否互相点名, 两边证据语义漂移怎么处理; (d) 是否加调用边清单校验测试防回归 (自动分类脆弱, 也可人工维护边清单); (e) general/grill-me 反向调 domain-awareness 怎么处置.",
-      "status": "待处理",
+      "status": "进行中",
       "blocked_by": [],
       "artifacts": [],
       "close_summary": null
@@ -103,10 +103,11 @@
     "milestone-07": {
       "title": "落地流程接口改动",
       "type": "task",
-      "question": "只按 milestone-06 判定要动的项实施; 判定不动的项在关闭摘要里记理由, 不默默跳过. 详细验收标准最迟实施前确认. 若裁决包含编码工作, 先补齐 drive-execution 所需规格/EXECUTION/issues及验证契约, 不在缺输入时直接编码; 纯文档任务按非编码任务处理. 验证 uv run python -m pytest -m not e2e 全绿, 修改过 roadmap.py 或网页时另跑 navigate tests, 修改的 SKILL.md 跑 check_skill.py. 仓库禁止修改真实已安装 skills, 不运行会改安装目录的同步或宣称未测安装效果通过.",
+      "question": "只按 milestone-06 与 milestone-10 判定要动的项实施; 判定不动的项在关闭摘要里记理由, 不默默跳过. milestone-10 裁决的执行哲学转向 (tdd/drive-execution/to-execution/verification-contract 相应改动) 随本节点一并落地, 不追溯已完成的 milestone-04/milestone-09. 详细验收标准最迟实施前确认. 若裁决包含编码工作, 先补齐 drive-execution 所需规格/EXECUTION/issues及验证契约, 不在缺输入时直接编码; 纯文档任务按非编码任务处理. 验证 uv run python -m pytest -m not e2e 全绿, 修改过 roadmap.py 或网页时另跑 navigate tests, 修改的 SKILL.md 跑 check_skill.py. 仓库禁止修改真实已安装 skills, 不运行会改安装目录的同步或宣称未测安装效果通过.",
       "status": "待处理",
       "blocked_by": [
-        "milestone-06"
+        "milestone-06",
+        "milestone-10"
       ],
       "artifacts": [],
       "close_summary": null
@@ -124,7 +125,8 @@
         "milestone-05",
         "milestone-06",
         "milestone-07",
-        "milestone-09"
+        "milestone-09",
+        "milestone-10"
       ],
       "artifacts": [],
       "close_summary": null
@@ -153,6 +155,15 @@
         "docs/changes/workflow-stack-review/milestone-04/issues/ISSUE-06-regression-and-audit.md"
       ],
       "close_summary": "milestone-04 的编码输入已备齐并经仓库主人确认: PRODUCT.md 22 条 AC (审阅版本 5aedcd4d, 已采纳), TECHNICAL.md check-tech 通过, EXECUTION.md 与六个垂直切片 issues 的覆盖矩阵为 AC-001..AC-022 逐条给出验证入口, 评审起点 962e299. 两轮独立检查的 9 项发现全部解决, 3 条低危按裁决落进 issue 边界. 未开始编码, 未改已安装 skills. 环境注意: pytest 前须停掉占用默认端口的 navigate 守护; check-ac 需 uv run --with gherkin-official."
+    },
+    "milestone-10": {
+      "title": "裁决执行哲学转向",
+      "type": "deliberate",
+      "question": "裁决执行哲学转向, 决策交 milestone-07 一并实施. 已确认的想法: 实现走最短交付路径, 尽快产出第一个可验证版本, 不规定实现过程 (不强制先写测试, 不规定红绿循环); 版本出来后对当前版本做端到端验证闭环, 尽早暴露问题; 发现问题修复后再次端到端验证, 既验证修复又暴露新问题, 循环到闭环; 拆任务时必须保证单个 issue 能完成端到端交付 (垂直切片); 不禁用 mock 但要谨慎, 不为速度 mock 实现细节攒脆弱测试; 判据重心从过程是否按规定走移到交付物经验证确实达到要求. 需逐项盘问定稿: (a) tdd skill 的去留与定位; (b) to-execution 拆分判据加入垂直切片及词条/模板相应改动; (c) drive-execution 实现步与执行循环如何改写, 作者自跑端到端与 verify-change 独立验收的边界; (d) mock 谨慎的措辞落点; (e) 与 verification-contract 现行类型要求 (如结构变更先建可重复行为检查) 的衔接与措辞. 边界: 不追溯 milestone-04/milestone-09, m4 按现行规则跑完由验收节点按现行标准收; 判定不改的项在关闭摘要记理由. 本里程碑只出决策, 实施并入 milestone-07. 细节明朗时按验收指南对齐 AC, 不提前预写.",
+      "status": "待处理",
+      "blocked_by": [],
+      "artifacts": [],
+      "close_summary": null
     }
   },
   "unknown_seas": [],
