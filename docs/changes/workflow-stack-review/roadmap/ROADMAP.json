@@ -94,11 +94,16 @@
     "milestone-06": {
       "title": "打包裁决三处流程接口",
       "type": "deliberate",
-      "question": "决定: (a) benchmark 与 blast-radius 那 8 条实验边界是否收到一处, 收在谁家; (b) IMPACT-REVIEW.md 由谁消费 —— code-review 的 Spec 轴读, verify-change 列为操作线索, 还是承认只给人看并在 drive-execution 写清楚; (c) navigate 的 acceptance 与 verify-change 是否互相点名, 两边证据语义漂移怎么处理; (d) 是否加调用边清单校验测试防回归 (自动分类脆弱, 也可人工维护边清单); (e) general/grill-me 反向调 domain-awareness 怎么处置.",
-      "status": "进行中",
+      "question": "决定: (a) benchmark 与 blast-radius 那 8 条实验边界是否收到一处, 收在谁家; (b) IMPACT-REVIEW.md 由谁消费 —— code-review 的 Spec 轴读, verify-change 列为操作线索, 还是承认只给人看并在 drive-execution 写清楚; (c) navigate 的 acceptance 与 verify-change 是否互相点名, 两边证据语义漂移怎么处理; (d) 是否加调用边清单校验测试防回归 (自动分类脆弱, 也可人工维护边清单); (e) general/grill-me 反向调 domain-awareness 怎么处置. (追加裁决见 milestone-06/DECISIONS.md D007/D008 与 ACCEPTANCE.md AC-06 修订版: 评审轴改评审方向; 旧行为影响复查迁入 code-review 作可选方向, 门槛不变.)",
+      "status": "已关闭",
       "blocked_by": [],
-      "artifacts": [],
-      "close_summary": null
+      "artifacts": [
+        "docs/changes/workflow-stack-review/ACCEPTANCE.md",
+        "docs/changes/workflow-stack-review/milestone-06/DECISIONS.md",
+        "docs/changes/workflow-stack-review/milestone-06/OPPOSITION.md",
+        "docs/changes/workflow-stack-review/milestone-06/OPPOSITION-RESOLUTION.md"
+      ],
+      "close_summary": "六项接口裁决完成 (D001-D008, F001-F015): 实验边界唯一维护在 blast-radius, benchmark 留指针与测量特有记录; 旧行为影响复查迁入 code-review 作可选方向, 门槛不变, 免做理由记 EXECUTION.md, 未参与实现与修复及证据构成逐项承接, 返工重跑保留, 旧报告不进 Spec/verify-change 判据; 验收统一口径 (交付物满足确认判据) 落 navigate 验收终点节, verify-change 不回指, 不收词条; 调用边不加自动校验, README 维护规则面向仓库维护者核对技能表与正文执行调用语句; 删 general/grill-me (用户维持删除, 理由修正 F013, 安装副本待宿主 sync 裁掉); 评审轴用词改评审方向; Standards 双源机制维持现状 (F011). 独立反方 (codex/gpt-6-luna) 11 项发现全部处置 (OPPOSITION-RESOLUTION.md), 证实 F010 安装状态错误并推动 D001/D005/D008 条款补全. AC-06-01..09 经我逐项确认 (含反方后修订). 实施并入 milestone-07. 不代表正式交付: milestone-08 未验收."
     },
     "milestone-07": {
       "title": "落地流程接口改动",
