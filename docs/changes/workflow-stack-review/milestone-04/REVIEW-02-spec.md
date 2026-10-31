@@ -88,3 +88,34 @@ e5b0cf6 feat: ISSUE-05: 新增 ADR 0024 记录 demo 改名与 poc 新增类型�
 ## 发现总数
 
 共 5 条: (a) 缺失/不完整实现 1 条 (A-1), (b) 范围蔓延 1 条 (B-1), (c) 实现方式与 issue 文本不符 1 条 (C-1, 实现本身正确), (d) 证据类 2 条 (D-1, D-2, 均为没有记录证据, 无检查未通过). 最严重: A-1, TEMPLATES.md:88 残留旧类型语汇 "原型", 是 TECHNICAL 点名的两处 TEMPLATES 改动中未落地的一处, 也是唯一需要改产品内容才能消除的发现.
+
+## 增量复审 (目标提交 7faa5e6)
+
+- 操作: 工作树自 2e0d393 (含本报告 50dec07) 执行 `git merge refactor-skill-around-verification --no-edit`, fast-forward 到 `7faa5e6`, 无冲突.
+- 增量 commit 列表 (`git log 50dec07..7faa5e6 --oneline`): 7faa5e6 (merge review/m04-spec), 89334ca (merge review/m04-standards), 1166c12 (merge review/m04), 19a378d (merge issue/07), 5986c3e (ISSUE-07 返工六项), 95a856b (Standards 轴评审报告), a6670e3, 822cbbd (milestone-06 簿记). 增量 diff `git diff 50dec07...7faa5e6` 涉及 14 个文件.
+
+### 原发现逐条复核
+
+- A-1 已解决: 5986c3e 把 TEMPLATES.md:88 的 "原型" 改为 "演示材料", 只动该词; 我复跑 `grep -rn '原型' workflow/ README.md --include=*.md --include=*.py --include=*.html` 零命中, 活跃内容中文残留清零. TECHNICAL "枚举行与原型一词" 两处现已全部落地.
+- D-1 补录到位: ISSUE-03 交付证据追加 "补录 (ISSUE-07): `grep -n '冒烟' workflow/navigate/SKILL.md` 零命中 (exit 1) ... 实际输出见 `/tmp/m9-04-07/greps.log`"; 该文件在场且含三项 grep 输出. 冒烟反向 grep 的事实我本已独立核实为零命中, 现在契约要求与记录证据对齐, 定性从 没有记录证据 转为已闭合.
+- D-2 补录到位: ISSUE-04 交付证据追加 "补录 (ISSUE-07): pytest 汇总行复跑 ... `30 passed in 8.05s` ... 原始输出 `/tmp/m9-04-07/pytest.log`"; 该文件在场, 末行 `30 passed in 8.05s`. 原始轮次的 pytest 原始输出不可追补, 补录以复跑方式闭合并如实标注为补录, 按没有记录证据的合理闭合处理.
+- B-1 状态不变: IMPACT-REVIEW.md 未被增量触碰, EXECUTION.md 允许范围清单未改 (ISSUE-07 禁止范围明文不改 EXECUTION.md). 仍属流程簿记与允许范围清单的口径差, 不需要实现改动.
+- C-1 状态不变: 增量对 index.html, roadmap.py, workflow/demo/ 零改动 (`git diff 2e0d393..7faa5e6` 对这三处为空), 回退点仍是一处, ISSUE-06 的笔误复核记录仍有效. 属 issue 文本笔误, 已有偏差记录, 不需要实现改动.
+
+### 增量 diff 四类复查 (重点 5986c3e)
+
+- (a) 缺失: 无. ISSUE-07 声明的六项 (原型改词, 去 BR-005 规则号, README demo 行归位, 巡检覆盖表补 TC-006, 测试 docstring 补 m04 用例, ISSUE-03/04 证据补录) 全部落地且逐项对应我报告的 A-1/D-1/D-2 与 Standards 轴发现; 允许范围与实际改动逐文件对上.
+- (b) 蔓延: 无. 返工改动全部落在 ISSUE-07 允许范围 (TEMPLATES.md 一个词, SKILL.md 只删 "(BR-005)", README 只移动 demo 行, tests/visual/README.md 只覆盖表两处, 测试文件只模块 docstring, 两份 issue 证据只追加); ISSUE-07 文件本身位于 m04 issues/ (EXECUTION 允许范围 "本目录的 EXECUTION.md 与 issues/"). 增量里的 ACCEPTANCE.md/milestone-06 DECISIONS/OPPOSITION 两文件/ROADMAP.json 均来自簿记提交 822cbbd/a6670e3, 不触碰 m04 规格文本; REVIEW-01-standards.md 是 Standards 轴报告, 非本轴对象.
+- (c) 实现方式有误: 无. 去规则号后 poc 指针句其余措辞与指向 `workflow/software-engineering-consensus/SKILL.md` 的完整路径原样保留; README demo 行内容未改仅移位; tests/visual/README.md 新增的 TC-006 行与脚本实际断言一致 (图例两项/画布标注/元数据配色地貌互不同), 帧率行 7→8 与夹具一致; 模块 docstring 补的三条用例描述与实际测试一致 (各测试 docstring 仍保留 ISSUE-01 要求的 "TC-002 (m04 AC-002)" 形式, 模块行的 TC-m04-002 只是消歧别名, 不冲突).
+- (d) 证据: 无新缺口. ISSUE-07 交付证据五份原始输出 (`/tmp/m9-04-07/` 下 greps.log, check_skill.log, pytest.log, render_checks.log, webserver-stop-status.log) 全部在场且内容与所记一致; 我复跑 `grep 原型/BR-005` 均零命中, README 43 行 deliberate 后 44 行 demo, check_skill OK.
+
+### 已确认 AC 断言未被返工破坏的核对
+
+- 图例 "实验 PoC" 与 "演示 demo": index.html 增量零改动, 图例块原样.
+- 枚举顺序: roadmap.py TYPE_VALUES 与 TEMPLATES.md 第 31 行枚举行增量零改动; TC-002/003/005 断言未动 (仅模块 docstring 追加).
+- demo/poc 条目四部分: navigate SKILL.md 增量只有 poc 条目末尾删 "(BR-005)" 一处, 何时创建/完成标准/收口产物/终止处置四部分与指针句完整; AC-011 三句断言仍成立.
+- 其余: demo 三文件, render_checks.py, web_server.py 增量零改动; 我在合并后复跑 `uv run python -m pytest workflow/navigate/tests` 得 30 passed, 未见破坏.
+
+### 增量发现总数
+
+0 条 (a/b/c/d 各 0). 无须返工项: A-1/D-1/D-2 已闭合, B-1/C-1 维持记录性结论即可.
