@@ -147,3 +147,46 @@
 - 待裁决缺口: 0 条.
 - 已排除: 11 条 (F1-F11).
 - 运行环境缺口: 1 条 (F11 对应 缺口 1: 39271 被宿主活展示占用, 30/30 干净复跑未取得; 失败已精确定位为端口断言, 与本轮差异面无关).
+
+---
+
+## 7. 增量复查 (第二次, 返工合入后)
+
+- 审核者: imp01 (同一影响复查身份, 任务标识 m04-delta-impact).
+- 目标提交: `7faa5e6` (主线顶端, Merge branch 'review/m04-spec'; 本分支 2e0d393 已先行合入主线, 本次 `git merge refactor-skill-around-verification --no-edit` 快进到 7faa5e6, 无冲突).
+- 增量范围: 评审起点 962e299 之后新出现的返工提交 `5986c3e` (feat: ISSUE-07: 落实双轴评审返工六项) 与两份评审报告文件 (REVIEW-01-standards.md, REVIEW-02-spec.md, 来自 95a856b / 50dec07, 均为纯新增报告文件, 不触碰实现). 上节 F1-F11 结论不重做.
+- 增量内其余提交归类: `822cbbd` (milestone-06 反方核实与关闭) 与 `a6670e3` (更新路线图 milestone-06) 为 milestone-06 材料与 drive-execution 路线图簿记, 归 非本轮改动 (与第 1.2 节同类), 不在本增量审计范围; 4 个 merge 提交 (1166c12, 19a378d, 89334ca, 7faa5e6) 无内容改动.
+- 实现面核实: `git diff 2e0d393..HEAD --stat -- workflow/demo workflow/navigate/scripts workflow/navigate/web workflow/navigate/tests/visual/render_checks.py workflow/navigate/tests/test_roadmap_cli.py` 为空 — 上轮实跑覆盖的全部实现代码在增量后零变化, F1-F5/F8-F11 的证据继续有效.
+
+### 增量逐项发现 (G1-G6, 全部对照 ISSUE-07 的允许范围与验证入口)
+
+- G1 TEMPLATES.md 目录约定行 `原型` 改 `演示材料` (ISSUE-07 第 1 项, TEMPLATES.md:88) — 已排除.
+  现象: 首轮改名漏掉的一处中文旧语汇. 代码依据: 该行是目录约定的措辞 (findings/原型/决策文档等), 路径与 artifacts 记法未动, 无功能调用方. 证据: `grep -rn '原型' workflow/ README.md --include=*.md` 零命中 (exit 1). 说明: 本报告第 3 节 F6 的清点命令只搜了英文词 prototype, 中文词 原型 在首轮清点的边界之外, 该残留由 Standards 轴评审发现并经本轮返工关闭, 现已复核为零; F6 关于路径与英文词的结论不变.
+- G2 navigate/SKILL.md poc 条目指针句去掉 `(BR-005)` 规则号 (ISSUE-07 第 2 项) — 已排除.
+  现象: 规则号随变更归档后不可解析, 与同句完整路径指针参照系不一. 代码依据: 该句是本轮新增文本, 无旧行为; 删除后同句指向 `workflow/software-engineering-consensus/SKILL.md` PoC 词条的完整指针仍在, 词条在场 (上轮已核). 证据: `grep -n 'BR-005' workflow/navigate/SKILL.md` 零命中; check_skill OK.
+- G3 README 工作流技能表 demo 行按字母序归位 (ISSUE-07 第 3 项) — 已排除.
+  现象: 行从 navigate 之后移到 deliberate 之后 (54 行 → 44 行), 补上被改名打破的表内字母序. 代码依据: 行内容逐字不变 (diff 删除行与新增行同文), 表是给人读的索引, 无按行序消费的调用方. 证据: `grep -n 'demo\|deliberate' README.md` 显示 43 deliberate, 44 demo.
+- G4 tests/visual/README.md 覆盖表补 TC-006 行并把 7 个里程碑 改 8 个 (ISSUE-07 第 4 项) — 已排除.
+  现象: 该文件不在首轮允许范围的逐文件清单里, 经 ISSUE-07 返工通道明确授权 (其允许范围列明 只覆盖表两处), 不构成越界. 代码依据: 纯文档, 修的是 ISSUE-04 夹具 7→8 造成的文档漂移, 与 render_checks.py 夹具实况 (8 个里程碑, 含 demo 与 poc 各一枚) 对齐. 证据: 上轮 render_checks 实跑 10/10, 覆盖表描述与实际检查项一致.
+- G5 test_roadmap_validation.py 模块 docstring 补 m04 三条用例说明 (ISSUE-07 第 5 项) — 已排除.
+  现象: 注释级改动. 代码依据: 只加 3 行 docstring, 既有用例与编号未动 (ISSUE-07 明令), 断言零变化; pytest 收集与运行已复跑证实 (见下). 装饰性观察: 模块 docstring 用 TC-m04-002/003/005 的前缀式写法, 函数级 docstring 仍是 TC-002 (m04 AC-002) 风格, 两种表述指向同一组用例, 不影响任何断言与追溯, 不构成返工项.
+- G6 ISSUE-03/ISSUE-04 交付证据各补录 1 行 (ISSUE-07 第 6 项) — 已排除.
+  现象: 证据补录. 代码依据: 两处均为带 补录 (ISSUE-07) 标记的单行追加, 旧内容零改动 (diff 只含 + 行).
+
+### 增量实际运行的检查与结果
+
+| 检查 | 结果 |
+| --- | --- |
+| `grep -rn '原型' workflow/ README.md --include=*.md` | 零命中 (exit 1), G1 关闭确认 |
+| `grep -n 'BR-005' workflow/navigate/SKILL.md` | 零命中, G2 关闭确认 |
+| README demo 行位置 | 43 deliberate / 44 demo, 字母序成立 |
+| check_skill `workflow/navigate/SKILL.md` | OK, 退出码 0 |
+| `web_server.py status` | alive:false (上轮占用 39271 的宿主展示服务已被其属主停用) |
+| `uv run python -m pytest workflow/navigate/tests` | **30 passed in 7.99s, 退出码 0** — 第 4 节 缺口 1 (30/30 干净复跑) 就此关闭 |
+| render_checks | 未重跑: 实现代码自上轮 10/10 实跑后零变化 (见本节 实现面核实), 证据继续有效 |
+
+### 增量判定汇总
+
+- 是否需要新的返工: 不需要. G1-G6 全部是措辞/文档/注释/证据级改动, 无一触碰既有入口, 调用方或行为面; 行为代码 (roadmap.py, index.html, render_checks.py, web_server.py, demo 三文件) 在增量中零改动.
+- 增量发现: 6 条, 已排除 6, 需返工 0, 待裁决 0.
+- 缺口变化: 缺口 1 关闭 (30/30 已由本审核者实测取得); 缺口 2 (未知类型实机观察) 与 缺口 3 (远端 prototype 分支清单) 维持原状; 无新增缺口.
