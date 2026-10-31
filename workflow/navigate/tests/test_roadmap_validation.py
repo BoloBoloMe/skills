@@ -166,3 +166,43 @@ def test_full_document_validation_rollback(tmp_path):
     assert code == 1
     assert obj["success"] is False
     assert f.read_bytes() == before
+
+
+def _task_fixture(tmp_path):
+    """milestone-01.type 为 task 的夹具 (m04 枚举用例共用)."""
+    f = tmp_path / "ROADMAP.json"
+    doc = legal_doc()
+    doc["milestones"]["milestone-01"]["type"] = "task"
+    write_doc(f, doc)
+    return f
+
+
+def test_demo_type_accepted(tmp_path):
+    """TC-002 (m04 AC-002): demo 成为合法类型, 写入后可读回."""
+    f = _task_fixture(tmp_path)
+    obj, code, _ = run_cli("save", f, "milestones.milestone-01.type", "demo")
+    assert code == 0 and obj["success"] is True
+    obj, code, _ = run_cli("query", f, "milestones.milestone-01.type")
+    assert code == 0 and obj["value"] == "demo"
+
+
+def test_prototype_type_rejected(tmp_path):
+    """TC-003 (m04 AC-003): prototype 被拒且不留别名, 文件逐字节不变,
+    错误列出全部合法值."""
+    f = _task_fixture(tmp_path)
+    before = f.read_bytes()
+    obj, code, _ = run_cli("save", f, "milestones.milestone-01.type", "prototype")
+    assert code == 1 and obj["success"] is False
+    assert "合法值: research, deliberate, demo, poc, task, acceptance" in obj["error"]
+    legal_part = obj["error"].split("合法值: ")[1]
+    assert "prototype" not in legal_part
+    assert f.read_bytes() == before
+
+
+def test_poc_type_accepted(tmp_path):
+    """TC-005 (m04 AC-005): poc 成为合法类型, 写入后可读回."""
+    f = _task_fixture(tmp_path)
+    obj, code, _ = run_cli("save", f, "milestones.milestone-01.type", "poc")
+    assert code == 0 and obj["success"] is True
+    obj, code, _ = run_cli("query", f, "milestones.milestone-01.type")
+    assert code == 0 and obj["value"] == "poc"
