@@ -110,7 +110,7 @@
       "title": "落地流程接口改动",
       "type": "task",
       "question": "只按 milestone-06 与 milestone-10 判定要动的项实施; 判定不动的项在关闭摘要里记理由, 不默默跳过. milestone-10 裁决的执行哲学转向 (tdd/drive-execution/to-execution/verification-contract 相应改动) 随本节点一并落地, 不追溯已完成的 milestone-04/milestone-09. 详细验收标准最迟实施前确认. 若裁决包含编码工作, 先补齐 drive-execution 所需规格/EXECUTION/issues及验证契约, 不在缺输入时直接编码; 纯文档任务按非编码任务处理. 验证按 ACCEPTANCE.md AC-07-06 的最新用户确认范围: 本轮只改 Markdown/skill 目录, 未改 Podman/容器运行/浏览器程序或相关测试, 不为无关路径补装 Podman 或跑全量测试, 不借宿主跑测试, 信箱间歇故障不归本节点调查或修复. 当前容器七个修改 SKILL.md 的格式检查与非作者逐项复核须通过, 已有 navigate 30 条通过记录作额外证据, 不伪称全量全绿. 仓库禁止修改真实已安装 skills, 不运行会改安装目录的同步或宣称未测安装效果通过.",
-      "status": "进行中",
+      "status": "已关闭",
       "blocked_by": [
         "milestone-06",
         "milestone-10"
@@ -134,9 +134,10 @@
         "docs/changes/workflow-stack-review/milestone-07/HOST-ADMIN-RUN-3.log",
         "docs/changes/workflow-stack-review/milestone-07/LOCAL-ENVIRONMENT.md",
         "docs/changes/workflow-stack-review/milestone-07/FINAL-CHECKS.log",
-        "docs/changes/workflow-stack-review/milestone-07/CLOSURE.md"
+        "docs/changes/workflow-stack-review/milestone-07/CLOSURE.md",
+        "docs/changes/workflow-stack-review/milestone-07/ENVIRONMENT-RESTORE.log"
       ],
-      "close_summary": null
+      "close_summary": "已按 milestone-06/milestone-10 当前有效裁决落地流程接口与执行哲学, 源提交 c77f6af. 用户最后明确未改 Podman 相关程序就不用测, 只在当前容器验证且信箱间歇问题不归本轮; AC-07-06 已据此修订, 历史全量失败保留而非报通过. 当前容器七个 SKILL 格式检查通过, 非作者对 AC-06/AC-07 源文件逐项复核无未处理实现发现, 已有 navigate 30 条额外通过记录. 不新增调用边校验/不改 Standards 双源及 verify-change/不迁 mocking.md/不复制闭环, 理由按既定职责和唯一维护决定, 不追溯 milestone-04/09. 多余补依赖操作已撤回并实际核对: Podman 二进制及新增配置/临时环境不存在, uid 映射已还原, 旧浏览器缓存已恢复; 新缓存保留未删. 收口报告与证据在 milestone-07/CLOSURE.md 及 artifacts. 未改真实已安装 skills, 未运行同步, 不声称模型效果或全量全绿. milestone-08 尚未人工验收, 不代表正式交付; 本轮停止, 不领取下个节点."
     },
     "milestone-08": {
       "title": "终点验收",
