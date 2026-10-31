@@ -42,11 +42,11 @@
 | [`decision-ledger`](workflow/decision-ledger/SKILL.md) | 记录和维护 DECISIONS.md 中已确认的决策与事实. |
 | [`deliberate`](workflow/deliberate/SKILL.md) | 通过盘问关闭产品与技术决策, 并维护相关记录文件. |
 | [`demo`](workflow/demo/SKILL.md) | 制作演示材料, 让人看清指定样子, 行为或过程. |
-| [`diagnosing-bugs`](workflow/diagnosing-bugs/SKILL.md) | 为硬 bug 和性能回归建立反馈循环并定位原因. |
 | [`domain-awareness`](workflow/domain-awareness/SKILL.md) | 只读发现当前仓库的领域语言, 边界和相关 ADR. |
 | [`domain-modeling`](workflow/domain-modeling/SKILL.md) | 维护领域语言和 ADR, 持续澄清模糊的领域概念. |
 | [`drive-execution`](workflow/drive-execution/SKILL.md) | 将大型任务分给执行者和审核者, 按 issue 的验证契约与 worktree 流程协作. |
 | [`explain-diff`](workflow/explain-diff/SKILL.md) | 生成包含背景, 主旨, 证据, 合并风险和测验的交互式 diff 讲解页. |
+| [`fix-bugs`](workflow/fix-bugs/SKILL.md) | 修 bug 的详细手法: 复现, 定根因, 出修复方案, 修复复验, 复核没改坏. |
 | [`follow-the-money`](workflow/follow-the-money/SKILL.md) | 沿价值流审查变更, 检查授权, 数量和执行造成的资损风险. |
 | [`improve-codebase-architecture`](workflow/improve-codebase-architecture/SKILL.md) | 发现架构摩擦, 并提出把浅模块深化的重构机会. |
 | [`lazy-dev`](workflow/lazy-dev/SKILL.md) | 用决策阶梯和实现阶梯收敛到最小且无未来负担的方案. |

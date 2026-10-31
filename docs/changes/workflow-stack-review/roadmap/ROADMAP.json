@@ -109,7 +109,7 @@
       "title": "落地流程接口改动",
       "type": "task",
       "question": "只按 milestone-06 与 milestone-10 判定要动的项实施; 判定不动的项在关闭摘要里记理由, 不默默跳过. milestone-10 裁决的执行哲学转向 (tdd/drive-execution/to-execution/verification-contract 相应改动) 随本节点一并落地, 不追溯已完成的 milestone-04/milestone-09. 详细验收标准最迟实施前确认. 若裁决包含编码工作, 先补齐 drive-execution 所需规格/EXECUTION/issues及验证契约, 不在缺输入时直接编码; 纯文档任务按非编码任务处理. 验证 uv run python -m pytest -m not e2e 全绿, 修改过 roadmap.py 或网页时另跑 navigate tests, 修改的 SKILL.md 跑 check_skill.py. 仓库禁止修改真实已安装 skills, 不运行会改安装目录的同步或宣称未测安装效果通过.",
-      "status": "待处理",
+      "status": "进行中",
       "blocked_by": [
         "milestone-06",
         "milestone-10"
@@ -182,16 +182,22 @@
       "type": "task",
       "question": "按 milestone-10 账本 D012/D015/D016/D019/D020/D021 实施, 不改决策内容: (1) workflow/diagnosing-bugs/ 改名 workflow/fix-bugs/ (目录, name, description), 修正自述 '不是必经步骤' 为'修 bug 统一链条见 verification-contract 缺陷修复节, 本 skill 是该链在难 bug 上的详细手法, 阶段 3/4 可省, 复现与验证不可省'; (2) 补两环: 制定修复方案 (根因确定后先写方案, 含改动点/影响范围/回滚考虑; 按 G1 六条决定是否先给我审, 一句话判据为 '纯修错, 不动对外行为, 不超边界, 不碰安全' 才自行修) 与 验证没改坏 (修复后由未参与修复的复核者独立审查受影响面; 手段自选: 核对差异, 追调用方, 必要时跑既有测试或真实入口, 涉及共享接口/数据格式/跨模块路径调 blast-radius; 写明检查了什么, 用了什么手段, 覆盖不到的写缺口; 不强制跑自动化测试); (3) 写入手段优先级: 能靠代码库自身技术栈与既有入口做到的不写脚本, 顺序为既有测试/既有开发命令/既有 CLI 入口 → 真实入口操作 → 必要时一次性临时脚本 (不提交, 跑完清理), 不在代码库新增专用脚本; (4) 写三角色分工: 调度方 + 诊断者 + 修复者 + 复核者, 简单位允许诊断与修复合并, 复核者不可省; (5) 同步活跃引用: workflow/verification-contract/SKILL.md 缺陷修复节的做法句改指 fix-bugs 链条并加手段优先级, README 技能表行改名与描述; 历史变更文档与既有验收证据不改; (6) 修改的 SKILL.md 通过 general/writing-for-llm/check_skill.py. 详细可观察验收标准最迟实施前确认并写入 ACCEPTANCE.md 的 AC-11. 不运行会改安装目录的同步, 不宣称安装效果已验证, 不追溯 milestone-04 与 milestone-09.",
       "blocked_by": [],
-      "status": "待处理",
-      "artifacts": [],
-      "close_summary": null
+      "status": "已关闭",
+      "artifacts": [
+        "docs/changes/workflow-stack-review/milestone-11/IMPLEMENTATION.md",
+        "workflow/fix-bugs/SKILL.md",
+        "workflow/verification-contract/SKILL.md",
+        "README.md",
+        "docs/changes/workflow-stack-review/ACCEPTANCE.md"
+      ],
+      "close_summary": "按 milestone-10 的 D012/D014/D018/D019/D020/D021 实施完毕: workflow/diagnosing-bugs 改名 workflow/fix-bugs (name/description 同步), 自述改成统一链条定位; 阶段链改为 8 段, 新增阶段 5 制定修复方案 (含方案三要素, G1 六条审核触发条件与一句话判据) 与阶段 7 验证没改坏 (未参与修复的复核者独立审查受影响面, 手段自选, 缺口必须写明); 正文新增 分工 与 取证手段优先级 两节 (调度方/诊断者/修复者/复核者, 复核不可省; 既有测试/开发命令/CLI → 真实入口 → 一次性临时脚本, 不新增专用脚本). 活跃引用同步: verification-contract 缺陷修复节做法句改指 fix-bugs 链条并含手段优先级, README 技能表行改名并移入字母序位置. 全仓库 diagnosing-bugs 活跃命中归零 (剩余仅在 docs/changes 历史证据与 docs/adr), 两个 SKILL.md 均通过 check_skill.py. 按我本次确认, 三角色/手段优先级/六条条件全部内联, 不新建 reference/. 环境缺口: 容器内无 podman, pytest 的 conftest 在会话启动即失败, 本轮未跑 pytest 也未据此宣称通过; 本节点未做独立复核, 交 milestone-08. milestone-07 由另一会话负责, 其若再动同一缺陷修复节需避免与本轮重复."
     },
     "milestone-12": {
       "title": "侦查代码库结构可视化的可用开源方案",
       "type": "research",
       "question": "为后续可视化 skill 探查事实 (AFK, 委派子代理独立探索): 目标是能了解任意目标代码库的结构并转成网页展示给我看, 表现分层与模块关系, 像城市地图; 该 skill 供 to-spec 调用以支撑技术规格盘问, 也可由我手动调用查看某个代码库结构. 需要查清并写进产物: (1) 候选开源项目 (至少覆盖 CodeCharta, dependency-cruiser, madge, pydeps/importlab, d2/mermaid/graphviz, Gource 一类, 可补充新发现), 各自支持的语言与能否表达分层/模块关系; (2) 输出的产物形态 (静态网页? 需服务? 交互程度), 能否离线运行, 依赖与安装成本; (3) 维护状态与许可, 是否适合嵌进本仓库 skill; (4) 若现成工具都不合适, 用代码库自身技术栈 (AST/import 分析 + 图形渲染) 自建的最小方案代价; (5) 明确推荐与不推荐的理由, 以及不可行项和结论边界. 只做事实侦查与方案对比, 不实现工具, 不改任何 skill. 产物: docs/changes/workflow-stack-review/milestone-12/FINDINGS.md.",
       "blocked_by": [],
-      "status": "待处理",
+      "status": "进行中",
       "artifacts": [],
       "close_summary": null
     }
