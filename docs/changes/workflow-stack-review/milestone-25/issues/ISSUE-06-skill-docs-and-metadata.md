@@ -4,6 +4,9 @@
 ## 执行
 - [ ] 已完成
 - [ ] 派工前复核并记录 (写在本行下方): HEAD 提交号; `PYTEST_XDIST_WORKER=gw0 uv run python -m pytest --collect-only -q` 条数; `workflow/codebase-map/` 当前存在哪些文件.
+- HEAD: `8abfee80d6a014d59a39a9d53e7b17ea15b91a89` (分支 issue/06, 与基点一致, 已含 ISSUE-01..05).
+- 收集条数: 930.
+- `ls workflow/codebase-map`: README.md, SKILL.md, agents, i18n, scripts, tests, tools (SKILL.md 与 m21 资产已存在, 见交付证据的差异说明).
 
 ## 要交付什么
 让这个 skill 可被一个全新的调用会话照文档用起来, 不用猜:
