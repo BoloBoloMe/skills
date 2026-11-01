@@ -3,7 +3,7 @@
 
 ## 执行
 - [x] 已完成
-- [ ] 派工前复核并记录 (写在本行下方): HEAD 提交号; `PYTEST_XDIST_WORKER=gw0 uv run python -m pytest --collect-only -q` 条数; `workflow/codebase-map/` 当前存在哪些文件.
+- [x] 派工前复核并记录 (写在本行下方): HEAD 提交号; `PYTEST_XDIST_WORKER=gw0 uv run python -m pytest --collect-only -q` 条数; `workflow/codebase-map/` 当前存在哪些文件.
   - HEAD: `2bc146d3cadb3f9fafb4cb3cf28e7823c8ae33b7`, 与派工基点 `2bc146d` 一致.
   - 收集条数: 865, 与 EXECUTION.md 评审起点基线一致 (原始记录 `/tmp/m26-01/collect-baseline.txt`).
   - `workflow/codebase-map/` 现存: `README.md`, `SKILL.md`, `agents/openai.yaml`, `i18n/` (三份词表), `tools/` (六个 py 加 `build-zh.sh`); 来自已合并的 milestone-21 (merge `f2ca80d`, 早于本 spec 全部提交). 与 EXECUTION.md 评审起点 "目录不存在, 全部从零新建" 及 m25 F007 冲突; `scripts/` 与 `tests/` 确不存在, 本 issue 落点无碰撞. 按停止条件停手上报, 未实施.
