@@ -269,7 +269,7 @@
       "title": "定代码库结构可视化 skill 的形态与入口",
       "type": "deliberate",
       "question": "按 milestone-12 结论裁决可视化 skill 的形态与入口, 本节点不写实现代码. 待裁决: (1) 首选路线是否就是 milestone-12 路线 A: 自建 python 分析器出 cc.json, 内置 CodeCharta vis-2.9.1 静态前端 (web.zip 解压 3.5MB), 由 skill 起本地 http 服务交付页面; 降级路线 (cytoscape.js 单文件二维分层图) 在什么条件下触发. (2) 入口形态: to-spec 在哪个环节调用, 传什么参数 (目标目录/扫描范围/排除规则); 手动调用怎么起; 交付给我的是页面 URL 还是本地文件. (3) 服务与生命周期: 是否常驻, 端口怎么选, 收工时怎么清理, 同时看多个库怎么办. (4) 产物落盘位置: cc.json 与页面放 docs/changes/<slug>/ 还是临时目录, 是否入库. (5) vendored 前端资产放哪个 skill 子目录, BSD-3 版权与许可声明怎么写, 升级时怎么替换. (6) 第一版语言范围: 只做 python, 还是加 JS/TS (借 dependency-cruiser 的 json, 代价是引进 Node); 遇到不支持的语言时输出什么. (7) 分层算法口径: 层号怎么定义, 环与向上依赖怎么标, 是否就用 milestone-12 5.2 的最长路径分层加环检测. (8) skill 名字与职责边界: 只负责出可视化, 不做架构评审或重构建议. 调用 deliberate skill 逐条盘问我, 产物根目录 docs/changes/workflow-stack-review/milestone-13/.",
-      "status": "待处理",
+      "status": "进行中",
       "blocked_by": [],
       "artifacts": [],
       "close_summary": null
@@ -327,10 +327,15 @@
       "title": "给 skill 补 codex 的 agents/openai.yaml 元数据",
       "type": "task",
       "question": "让本仓库 skill 在 codex 里也保持模型不可见, 并把这条维护规则写进 skill 机制文档. 元数据规则已确认: 只写达到目的的最小配置, 即对 frontmatter 带 disable-model-invocation: true 的 skill (当前 43 个, 分布在 workflow/ 与 general/) 新建 agents/openai.yaml, 内容仅 policy.allow_implicit_invocation: false (布尔值不加引号, 键不加引号); 其余 9 个模型可见的 skill 不建文件, 走 codex 默认的允许隐式调用. 不写 interface (display_name/short_description/default_prompt 都不写), 不写 icon/brand_color, 不写 dependencies. 依据是 codex-cli 0.162.1 自带 skill-creator 的 references/openai_yaml.md: allow_implicit_invocation 默认 true, 设 false 后 skill 不注入模型上下文, 只能用 dollar-skill-name 显式调用. 不改 SKILL.md 的 frontmatter (pi 侧仍靠它), 不动 sync-to-pi.py 与分发流程 (codex 也加载 ~/.agents/skills/), 不运行会改安装目录的同步, 不改真实已安装 skills. 另加一条守卫测试放在仓库 tests/ (如 tests/test_skills_codex_metadata.py): 遍历 workflow/ 与 general/ 下全部 SKILL.md, 带 disable-model-invocation: true 的必须有 agents/openai.yaml 且 policy.allow_implicit_invocation 为 false, 反之不得为 false; 只用标准库解析这两三行, 不引入 pyyaml, 防止后续新增 skill 漏配或元数据与 frontmatter 漂移. 最后在 general/writing-for-llm/SKILL-MECHANICS.md 补一节, 把维护 agents/openai.yaml 写成维护 skill 的必选项: 新增或改动 skill 的调用方式时同步维护该文件, 用户调用 skill 设 allow_implicit_invocation: false, 模型调用 skill 不建文件; 漏维护由上面那条测试抓住. 沿用文中既有的 用户调用/模型调用 一对词, 不新造术语, 措辞只讲该做什么, 不复述 openai.yaml 全字段. 验证: uv run python -m pytest tests, 抽查一个模型不可见与一个模型可见 skill 的 codex 元数据. 编码任务按 drive-execution skill 执行, 产物根目录 docs/changes/workflow-stack-review/milestone-19/.",
-      "status": "进行中",
+      "status": "已关闭",
       "blocked_by": [],
-      "artifacts": [],
-      "close_summary": null
+      "artifacts": [
+        "docs/changes/workflow-stack-review/milestone-19/IMPLEMENTATION.md",
+        "tests/test_skills_codex_metadata.py",
+        "general/writing-for-llm/SKILL-MECHANICS.md",
+        "workflow/fix-bugs/agents/openai.yaml"
+      ],
+      "close_summary": "已落地 codex 元数据 (commit 3f0daf2): 按 frontmatter 条件为全部 33 个 disable-model-invocation: true 的 skill 新建 agents/openai.yaml, 内容仅 policy.allow_implicit_invocation: false; 6 个模型调用 skill 不建文件; 新增纯标准库守卫测试 tests/test_skills_codex_metadata.py (含红测: 删 yaml 与给值加引号都会失败); SKILL-MECHANICS.md 补维护规则一节. 我复核: 工作区 33 个 yaml, 33 个带 disable 的 SKILL.md, 对应关系一致, 测试在 podman stub 下 1 passed. 计数差异: 里程碑问句写 43+9=52, 本仓库实际 39 个 SKILL.md (含 access-web/browse/.venv 下 3 个第三方 playwright skill, 实际自有 36 个, 33 带 disable), 差异来自规划时按已安装目录计数且安装目录仍含 prototype/diagnosing-bugs/tdd/grill-me 等旧副本; 实现按 frontmatter 判定不依赖计数. 守卫测试遍历 workflow/ 与 general/ 会顺带扫到 .venv 里的第三方 SKILL.md, 目前它们不带 disable 标志故不受影响. 未验证: 未在真实 codex-cli 端到端确认不注入模型上下文, 该结论仅引自官方文档; 未跑 sync-to-pi 同步. 验收仍归 milestone-08."
     },
     "milestone-20": {
       "title": "给 mailbox 信头时间加 MAILBOX_TZ 覆盖",
