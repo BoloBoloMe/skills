@@ -97,11 +97,18 @@ def _parse_content(raw):
 # Lock + atomic write (D007)
 # ---------------------------------------------------------------------------
 
+def _lock_dir():
+    """锁文件目录: env NAVIGATE_WEB_RUNTIME_DIR 优先 (测试隔离, 不再往真实
+    /tmp 堆积), 未设时用系统临时目录 (既有行为不变)."""
+    return Path(os.environ.get("NAVIGATE_WEB_RUNTIME_DIR")
+                or tempfile.gettempdir())
+
+
 def _lock_file_path(file_path):
-    """锁文件放系统临时目录, 按目标文件绝对路径哈希区分, 不弄脏路线图目录."""
+    """锁文件按目标文件绝对路径哈希区分, 不弄脏路线图目录."""
     digest = hashlib.sha256(
         str(file_path.resolve()).encode("utf-8")).hexdigest()[:16]
-    return Path(tempfile.gettempdir()) / f"navigate-roadmap-{os.getuid()}-{digest}.lock"
+    return _lock_dir() / f"navigate-roadmap-{os.getuid()}-{digest}.lock"
 
 
 def _atomic_write_json(file_path, data):
@@ -375,7 +382,12 @@ def run_save(file_str, path_str, content_str):
     if not path_str or any(s == "" for s in segments):
         return _err("save", "invalid_args", f"非法路径: {path_str!r}")
     value = _parse_content(content_str)
-    with open(_lock_file_path(file_path), "w") as lock_fd:
+    lock_path = _lock_file_path(file_path)
+    try:
+        lock_path.parent.mkdir(parents=True, exist_ok=True)
+    except Exception:
+        pass
+    with open(lock_path, "w") as lock_fd:
         fcntl.flock(lock_fd.fileno(), fcntl.LOCK_EX)
         try:
             doc = _load_document(file_path)

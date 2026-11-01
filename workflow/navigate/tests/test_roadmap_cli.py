@@ -109,3 +109,30 @@ def test_no_md_or_temp_residue(tmp_path):
 
     run_cli("delete", f)
     assert {p.name for p in tmp_path.iterdir()} == set()
+
+
+def test_lock_files_land_in_runtime_dir(tmp_path):
+    """R8 (milestone-17): save 的锁文件落在 NAVIGATE_WEB_RUNTIME_DIR, 不再堆真实 /tmp."""
+    import os
+
+    runtime = tmp_path / "runtime"
+    runtime.mkdir()
+    env = dict(os.environ, NAVIGATE_WEB_RUNTIME_DIR=str(runtime))
+    f = tmp_path / "ROADMAP.json"
+
+    proc = subprocess.run(
+        [sys.executable, str(SCRIPT), "save", str(f), "title", "测试"],
+        capture_output=True, text=True, env=env, timeout=30,
+    )
+    assert proc.returncode == 0, proc.stdout + proc.stderr
+
+    locks = list(runtime.glob("navigate-roadmap-*.lock"))
+    assert len(locks) == 1, [p.name for p in runtime.iterdir()]
+
+    # 同一目标文件重复 save 复用同一锁; 真实 /tmp 不新增本目标锁
+    proc = subprocess.run(
+        [sys.executable, str(SCRIPT), "save", str(f), "title", "测试二"],
+        capture_output=True, text=True, env=env, timeout=30,
+    )
+    assert proc.returncode == 0, proc.stdout + proc.stderr
+    assert list(runtime.glob("navigate-roadmap-*.lock")) == locks
