@@ -1,25 +1,15 @@
 ---
 name: present
-description: 把内容做成自包含 HTML 页面展示给我 (本地起浏览器, 远程交付网页地址).
+description: 把内容做成自包含 HTML 页面展示, 经常驻 web 服务交付已确认的局域网地址.
 disable-model-invocation: true
 ---
 
 展示只是输出形式, 不另起审批阶段, 也不改变调用方的工作流和确认规则.
 
-## 选择模式
-若 `SSH_TTY` 或 `SSH_CONNECTION` 任一存在, 或我明确说明是远程, 走远程分支; 我的明确说明优先. 远程先读 [`REMOTE.md`](REMOTE.md), 其余走本地流程.
-
-## 本地环境
-首次本地展示前, 确保 sibling `access-web` 已同步且浏览器依赖已安装:
-
-```bash
-cd <access-web>/browse && uv sync && uv run playwright install chromium
-```
-
-若 `access-web` 缺失或 `browser_agent` 导入失败, 走本地失败出口, 不自行安装或绕过.
+只有一条交付路径: 生成页面 -> 自检 -> 起或复用常驻展示服务 -> 交付已确认可用的局域网 URL. 运行在宿主还是容器都不改这条路径, 不用 SSH 环境变量选分支, 不在本机开浏览器, 也不把文件路径或 loopback 地址当展示结果.
 
 ## 输出目录
-优先使用调用上下文指定的位置, 不存在则创建; 否则用 `tempfile.mkdtemp(prefix="pi-present-")` 创建唯一目录. 将绝对路径记为 `output_dir`, 同一话题复用. 本地模式下它也是浏览器会话键, 换目录会换浏览器; 指定目录中的页面留存, 不代我清理. 完成标准: 页面写入指定目录, 或运行时新建的临时目录.
+优先使用调用上下文指定的位置, 不存在则创建; 否则用 `tempfile.mkdtemp(prefix="pi-present-")` 创建唯一目录. 将绝对路径记为 `output_dir`, 同一话题复用. 指定目录中的页面留存, 不代我清理. 完成标准: 页面写入指定目录, 或运行时新建的临时目录.
 
 ## 页面内容与样式
 先确定页面结构和讲述顺序, 让每部分有明确目标, 不平铺原始信息. 可参考解释 (背景->本质->细节), 对比 (共性->差异->取舍), 流程 (输入->步骤->输出->边界) 或状态 (状态->转移->不变量->示例); 不匹配时自行设计.
@@ -28,7 +18,7 @@ cd <access-web>/browse && uv sync && uv run playwright install chromium
 
 整体采用 Saul Steinberg 式概念插画: 简洁手绘线条, 极简构图, 用隐喻表达复杂思想; 低饱和自然色, 留白, 文学出版物般的气质. 中文用思源宋体, 英文用 Spectral. 避免赛博朋克, 霓虹渐变和机械感, 不用卡片或条框制造秩序. [`examples/less-is-more.html`](examples/less-is-more.html) 是风格参考, 不替代以下要求.
 
-将 `scripts/embed_mermaid.py` 与 `scripts/check_page.py` 相对本 skill 目录解析为绝对路径, 分别记为 `<embed>` 与 `<check>`. 二者只依赖标准库, 本地和远程通用.
+将 `scripts/embed_mermaid.py` 与 `scripts/check_page.py` 相对本 skill 目录解析为绝对路径, 分别记为 `<embed>` 与 `<check>`; 将 `scripts/web_server.py` 解析为 `<web-server>`. 三者只依赖标准库, 宿主和容器通用.
 
 每页必须满足:
 - 文件名语义明确且不重复, 以当天日期 `YYYY-MM-DD-` 开头, 不入版本控制; 新版本不覆盖旧文件.
@@ -40,22 +30,55 @@ cd <access-web>/browse && uv sync && uv run playwright install chromium
 - 图表只渲染一次. 禁止"把已渲染的图擦回源码再重画"这类补丁; 确需替换就先在可见状态渲染好, 一次性换入, 失败时保留原图.
 - 代码用 `<pre>`; 自定义代码样式须设置 `white-space: pre` 或 `pre-wrap`, 保存前确认换行保留.
 
-每页都提供 `window.__PRESENTATION_STATE__ = { version: 1, values: {} };`. `version` 固定为整数 `1`, `values` 是可 JSON 序列化的对象, 只存当前选择/筛选/视图状态, 不存事件历史; 无交互页也提供空对象.
+页面不再要求提供 `window.__PRESENTATION_STATE__` 之类的状态对象, 也不为其增加回传端点; 无交互页不写空对象. 已有的旧页面保留原样, 不回改.
 
-只在筛选, 缩放, 切换状态或比较视图能明显帮助理解时加入交互; 可做方案选择, 细节展开, 筛选, 缩放/平移, 不做复杂表单, 多步操作流, 拖拽编辑或应用级原型. 动效只表达状态变化或降低理解成本. 页面状态仅辅助反馈, 最终确认在 chat 完成.
+只在筛选, 缩放, 切换状态或比较视图能明显帮助理解时加入交互; 可做方案选择, 细节展开, 筛选, 缩放/平移, 不做复杂表单, 多步操作流, 拖拽编辑或应用级原型. 动效只表达状态变化或降低理解成本. 页面状态仅辅助理解, 反馈与最终确认都在 chat 完成.
 
 不写入密钥, Cookie, token, 认证头或无关仓库内容; 原始日志和业务数据只保留理解问题所需的最小片段. 外部输入按文本处理, 用 `textContent` 或安全 JSON 编码, 不拼成可执行 HTML/事件处理器/脚本. 关键结论和待确认事项也要在 chat 中说明.
 
-## 本地展示流程
-1. **生成页面**: 按上方内容与样式要求写入自包含 HTML, 文件放在 `output_dir` 内, 并将该绝对路径作为 `session_dir`. 页面含 Mermaid 时运行 `uv run python <embed> <html-file>` 内联渲染库. 然后运行 `uv run python <check> <html-file>` 自检, 以 stdout 单行 JSON 的 `success` 判断: false 时按 `findings` 修页面再重跑, 不交付; warning 逐条读过, 确认是有意为之. 完成标准: 自检 `success` 为 true, 页面可独立打开, 且具备所需结构, 状态对象和安全处理.
-2. **打开页面**: 将 `scripts/browser_session.py` 相对本 skill 目录解析为绝对路径, 记为 `<helper>`. `<helper>` 的所有命令都在 browse 环境运行; `<session-dir>` 和 `<html-file>` 使用绝对路径, HTML 文件位于 session 目录内:
+## 挂载到展示服务
+展示服务是用户级单例: 同一机器同一用户共用一个存活实例, 多页多目录复用它, 调用结束也不退出. 它没有认证和 TLS, 开放期间同网段主体可读取全部已挂载目录; 首次在某个环境使用前向我说明这一风险一次. 只挂愿意公开的展示目录, 不把仓库根目录, 家目录, 密钥或登录态目录整棵挂出.
 
-   ```bash
-   cd <access-web>/browse && uv run python <helper> open <session-dir> <html-file>
-   ```
+### 宿主
+```bash
+uv run python <web-server> start <port> <页面所在目录绝对路径> --bind 0.0.0.0 --lan-host <已确认局域网地址>
+```
 
-   以 stdout 单行 JSON 的 `success` 字段判断结果; 成功时 stderr 即使出现 `Task was destroyed...`/`TargetClosedError` 等退出提示, 也不表示失败. 完成标准: JSON 报告成功, 或执行失败出口.
-3. **交付**: 成功时在 chat 给出本地绝对路径链接, 用一句话说明内容并提出具体待反馈问题. 失败时给出本地绝对路径链接和内容摘要, 然后继续原工作流. 完成标准: 页面已展示或可从文件打开, chat 保留目的摘要和待反馈内容.
-4. **处理反馈**: 只有当页面有交互且 DOM 状态有助于处理我的回复时, 才运行 `uv run python <helper> state <session-dir>`. 合并页面状态和 chat, 冲突时以 chat 为准; 浏览器已关闭时不重启. 完成标准: 反馈已并入调用方原有流程, 最终决策按原有规则确认.
-5. **返工纪律**: 我说页面不对劲时, 先按我描述的现象复现 (必要时留现场或截图), 定位到具体哪一块再改; 不先用别的实现把现象盖过去. 复现不了就问清我看到的通道 (浏览器打开 / 抓文本 / 只看路径), 不同通道的修法不同. 修完重跑自检, 在 chat 说明原因而不只是结论. 完成标准: 原因已定位并说明, 自检 `success` 为 true.
-6. **检查浏览器存活**: 需要再次展示前运行 `uv run python <helper> status <session-dir>`; `alive: false` 时不主动启动浏览器, 后续 `open` 自愈并清理旧 metadata. 完成标准: 存活状态已确认, 或已由 `open` 自愈.
+- `--bind` 必填, 展示默认 `0.0.0.0`, 否则同网段看不到.
+- 端口在 `49152-65534` 内自选, 返回 `port_in_use` 就换端口重试, 最多 10 次; 10 次都失败就报启动失败, 不交付 URL.
+- 交付地址按顺序取: 本次调用明确指定的 `--lan-host`; 否则脚本读宿主已确认地址 `~/.agents/sandbox-worktree/lan-address`; 两者都没有时输出 `address_missing.code=no_confirmed_address` 加 `candidates`, 此时把候选地址列给我请我确认, 确认后再用 `--lan-host <我确认的地址>` 重跑. 我确认前不交付任何 URL.
+- `SSH_CONNECTION`, `SSH_TTY`, 主机名, `localhost` 与页面文件路径都不是交付地址.
+
+### 容器
+`/run/.containerenv` 存在即为容器场景, 固定监听 8800 并锁端口:
+```bash
+uv run python <web-server> start 8800 <页面所在目录绝对路径> --bind 0.0.0.0 --fixed-port
+```
+
+- 8800 被占用就报 `port_in_use`, 不换端口, 本次交付中止.
+- 交付地址取已确认的 `SWT_HOST_LAN_IP` 加容器 8800 的宿主映射端口 `SWT_HOST_WEB_PORT`, 由脚本给出; 容器分支不接受 `--lan-host` 覆盖. 服务自报的容器地址和容器 8800 端口本身都不是交付地址.
+- 两个变量缺任一, 输出 `address_missing.code=container_env_missing`. 缺值先按本机环境说明自查 (`env | grep SWT_HOST`, 容器识别, 8800 监听与 `server.json`); 仍缺就经可用信箱向创建本容器的宿主会话索取宿主局域网地址与 8800 的映射端口; 信箱不可用才请我提供. 拿到前不交付 URL, 不猜地址和端口.
+
+### 复用与增挂
+同一用户, bind 一致的存活实例会被幂等复用, 新目录自动挂上; 端口差异只告警, 交付 URL 仍用实例实际端口. bind 不一致返回 `bind_conflict`, 告诉我先 `stop` 再起新实例, 不静默复用. 多目录是扁平并集: 请求按挂载顺序取首个命中, 同名文件由先挂载者遮蔽, 顶层 listing 是各目录条目的并集. 容器里多页复用锁定实例, 后续用 `add-dir <dir>` 增挂, 不另起服务; 对已运行的非锁定实例再带 `--fixed-port` 不会补锁, 按 warning 告诉我, 需要时 `stop` 后按容器命令重启.
+
+## 自检与交付
+1. **生成页面**: 按上方要求写入自包含 HTML, 文件放在 `output_dir` 内. 页面含 Mermaid 时运行 `uv run python <embed> <html-file>` 内联渲染库. 完成标准: 页面可独立打开, 结构, 图表与安全处理都符合要求.
+2. **自检**: 运行 `uv run python <check> <html-file>`, 以 stdout 单行 JSON 的 `success` 判断. 为 false 时按 `findings` 修页面再重跑, 不交付; warning 逐条读过, 确认是有意为之. 完成标准: 自检 `success` 为 true.
+3. **挂载**: 按宿主或容器命令起或复用展示服务; 成败以 stdout 单行 JSON 的 `success` 字段为准.
+4. **交付**: 用输出里的 `url` 拼页面链接: 宿主是 `http://<已确认地址>:<实际监听端口>/<页面文件名>`, 容器是 `http://<SWT_HOST_LAN_IP>:<SWT_HOST_WEB_PORT>/<页面文件名>`, 文件名用实际生成的那个. 在 chat 给可点击 URL, 用一句话说明展示内容并提出具体待反馈问题. 不给页面文件路径, 不给 loopback 地址. 完成标准: 交付的是已确认可用的局域网 URL.
+
+## 服务生命周期
+- `status [--lan-host <addr>]`: 探活; 服务已死时按原挂载清单重建. 普通实例原端口被占会换 `49152-65534` 内的新端口, 锁定实例只试原端口, 被占就报错. 输出里的 `url` 就是当前交付地址, 端口变了以新 URL 为准, 旧 URL 不再交付; 同一次展示要传与 `start` 相同的 `--lan-host`.
+- `add-dir <dir>`: 增挂目录, 同目录幂等, 输出当前 `roots` 保序列表.
+- 调用结束, 会话断开, 收工都不停止服务, 也不设空闲自动退出; 不承诺跨系统重启或容器销毁后恢复.
+- `stop` 关闭该用户全部共用页面, 不是只关当前这一页; 执行前向我说明这一影响, 不在收工清理里执行.
+- 运行时文件在系统临时目录的 `pi-present-web-<uid>/`, 唯一端口真值是该目录下的 `server.json`, 其中 `port` 永远是实际监听端口, 不写宿主映射端口.
+
+## 失败出口
+- 自检失败: 报告 `findings` 的具体位置, 修好重跑; 交付结果里不出现 URL 和文件路径, 该目录不挂到展示服务上.
+- 起服务失败 (`port_in_use` 重试用尽, `bind_conflict`, 容器 8800 被占) 或 `address_missing` 未解决: 在 chat 报告错误码, 我这边看到的自查结论和缺的到底是什么, 需要我或宿主会话提供什么; 不猜地址和端口, 不用文件路径或 loopback 链接冒充交付.
+- 展示中途服务被杀: 先 `status` 重建, 用输出里的 `url` 重新交付; 重建失败按上一条报缺口.
+
+## 返工纪律
+我说页面不对劲时, 先按我描述的现象复现 (必要时留现场或截图), 定位到具体哪一块再改; 不先用别的实现把现象盖过去. 复现不了就问清我看到的通道 (局域网打开 / 抓文本 / 只看 URL), 不同通道的修法不同. 修完重跑自检, 在 chat 说明原因而不只是结论. 完成标准: 原因已定位并说明, 自检 `success` 为 true.
