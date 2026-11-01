@@ -2,7 +2,7 @@
 - `../EXECUTION.md`
 
 ## 执行
-- [ ] 已完成
+- [x] 已完成
 
 ## 要交付什么
 `general/present/scripts/web_server.py` 的地址解析收成一个入口并换掉全部输出调用点:
@@ -52,7 +52,46 @@
 - 通过标准 (整体): 每个场景的输出与 PRODUCT.md AC-001 逐句对得上, 交付结果里不出现 `127.0.0.1`, `localhost`, 页面文件路径, `SSH_CONNECTION` 第三字段, 容器自报地址或猜测端口.
 
 ## 交付证据
-执行后填写: 实际命令与退出码, 每个场景的脱敏输出, 改动与新增的用例名, 调整掉的既有断言及理由, 人工核验输出, 材料位置 `/tmp/m15-01/`; 真实容器映射端口与真实设备访问留 ISSUE-05, 在此如实记缺口.
+
+环境: 容器内 (本会话), `/run/.containerenv` 存在; `uv run python --version` = Python 3.11.2, `uv run python -m pytest --version` = pytest 9.1.1. 原始输出存 `/tmp/m15-01/`.
+
+### 测试命令与结果
+
+- 改前基线 `uv run python -m pytest general/present/tests --collect-only -q` -> `143 tests collected`; 其中 63 条属待删的 browser_session 用例.
+- 改前全量 `uv run python -m pytest general/present/tests -q` -> `5 failed, 137 passed, 1 skipped`. 5 条失败全在 `test_browser_session.py` (本地 browse 环境不可用, 输出 `access_web_unavailable` 而非 `browser_not_running`), 属改前既有失败, 与本次改动无关, 该文件在 ISSUE-03 删除.
+- ISSUE-01 完成后全量 `uv run python -m pytest general/present/tests -q` -> `5 failed, 151 passed, 5 skipped` (`--collect-only` 收 161 条), 失败集与改前完全相同 (`/tmp/m15-01/after-issue01-testrun.txt`). 5 skipped = 4 条宿主分支 CLI 用例 (容器内不可复现, 见缺口) + 1 条改前既有 skip.
+
+### 新增/改写用例
+
+新增 (`general/present/tests/test_web_server_cli.py`, 显式入参驱动同一解析函数):
+- `TestTC001DeliveryAddressResolution::test_tc001_explicit_lan_host_wins` (TC-001: 显式地址优先, URL 端口 = 监听端口)
+- `test_tc0101_confirmed_record_used_without_explicit` (TC-01-01)
+- `test_tc0102_missing_confirmed_address_reports_candidates` (TC-01-02: 缺口 + 候选, 注入 SSH_CONNECTION/SSH_TTY 后输出不含 SSH 地址)
+- `test_tc0103_container_uses_host_address_and_mapped_port` / `test_tc0103_container_ignores_explicit_lan_host` (TC-01-03)
+- `test_tc0104_container_missing_mapped_port_reports_gap` / `test_tc0104_container_missing_address_reports_gap` / `test_tc0104_container_invalid_mapped_port_is_not_guessed` (TC-01-04)
+- `test_tc0105_loopback_bind_is_not_a_delivery_address` (TC-01-05: localhost + loopback_bind, 无 lan_ip, 无 `ssh -L`)
+- `TestTC001CliArgumentContract`: `--lan-host` 缺值/未知参数 -> invalid_args; `start` 仍要求 `--bind`.
+
+新增 (`general/present/tests/test_web_server_lifecycle.py`, CLI 真实入口):
+- `TestTC001HostDeliveryAddress` 4 条: 显式地址优先于已确认记录; 只用已确认记录; 无已确认地址 -> `no_confirmed_address` + `candidates` 且服务照常监听 (ping pid 与记录一致); 注入 `SSH_CONNECTION`/`SSH_TTY` 不改变交付地址. 本容器中 4 条 skip, 见缺口.
+- `TestTC001ContainerDelivery` 3 条: 容器交付 `http://192.0.2.10:50021/` 且记录/`port` 仍是监听端口, 记录里无 50021; 缺 `SWT_HOST_WEB_PORT` -> `container_env_missing` 且服务照常监听; `--lan-host` 不覆盖 `SWT_HOST_LAN_IP`.
+
+改写掉的既有断言 (依据 TECHNICAL.md 模块接口 的 loopback 分支与 D011):
+- `TestTC005StartSuccess`: `assertIn("lan_ip", obj)` -> 断言 `url == http://localhost:<port>/`, `address_missing.code == loopback_bind`, 无 `lan_ip`, warning 含 loopback 且不含 `ssh -L`.
+- `TestTC006StartReuse`: `assertIn("ssh -L", warning)` -> 断言 warning 含 loopback 提示且不含 `ssh -L`.
+- `TestTC027HostFromSSHConnection` 整类删除 (旧断言 "URL/lan_ip 取 SSH_CONNECTION 第 3 字段" 与 D011 冲突), 由上述 `test_ssh_connection_does_not_change_delivery_address` 作回归防线.
+
+### 人工核验 (本容器)
+
+- loopback: `PI_PRESENT_WEB_RUNTIME_DIR=/tmp/m15-01/rt uv run python general/present/scripts/web_server.py start 50077 /tmp/m15-01/page --bind 127.0.0.1` -> exit 0, `url=http://localhost:50077/`, `address_missing.code=loopback_bind`, warning 含 "loopback"/不含 `ssh -L` (`/tmp/m15-01/manual-loopback.txt`).
+- 容器缺值: `start 50078 ... --bind 0.0.0.0` (env 无 SWT_HOST_*) -> exit 0, 无 `url`/`lan_ip`, `address_missing.code=container_env_missing`; 服务仍在监听: `/__control__/ping` 返回 200 `{"service":"pi-present-web","pid":184412}`, `server.json` pid 一致 (`/tmp/m15-01/manual-container-gap.txt`).
+- 容器注入值: `SWT_HOST_LAN_IP=192.0.2.10 SWT_HOST_WEB_PORT=50021 start 50079 ... --bind 0.0.0.0 --fixed-port` -> `url=http://192.0.2.10:50021/`, `lan_ip=192.0.2.10`, `port=50079`; `status` 同 env 给同一 URL; `server.json` 只有 `"port": 50079`, 不含 50021 (`/tmp/m15-01/manual-container-env.txt`).
+
+### 未验证缺口
+
+- 宿主分支 CLI 端到端 (无已确认地址缺口 / 已确认记录 / 显式地址 / SSH 不变) 在本容器无法跑: `/run/.containerenv` 恒存在, 只能由 4 条 skip 的用例在宿主执行, 本轮以同一解析函数的显式入参用例 (`test_web_server_cli.py`) 证明逻辑, 未见宿主 CLI 实跑.
+- "非默认 records-root 按无已确认地址处理" 的人工核验同样属宿主分支, 本容器未跑.
+- 真实容器映射端口 (SWT_HOST_WEB_PORT 实际值) 与真实设备局域网访问不在本 issue, 见 ISSUE-05; 本 issue 中的 192.0.2.10/50021 是显式注入的测试值, 不当作已确认地址.
 
 ## 风险提示
 - 本会话 `SWT_HOST_LAN_IP` 与 `SWT_HOST_WEB_PORT` 都不在环境里, 容器分支只能靠显式入参与临时环境变量证明解析逻辑; 真实映射端口访问属 ISSUE-05, 不得在此记通过.

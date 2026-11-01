@@ -1,11 +1,15 @@
 """present web server helper.
 
 CLI commands:
-  start  <port> <root> --bind <addr> [--fixed-port]
+  start  <port> <root> --bind <addr> [--fixed-port] [--lan-host <addr>]
                                      - Start / reuse daemonized web server
-  status                             - Check server alive status
+  status [--lan-host <addr>]         - Check server alive status, rebuild if dead
   stop                               - Stop server and remove runtime files
   add-dir <dir>                      - Mount a directory via control endpoint
+
+交付地址解析 (D011): 宿主 --lan-host > 已确认地址文件 > 候选 (待用户确认);
+容器固定用 SWT_HOST_LAN_IP + SWT_HOST_WEB_PORT. 解析不到不阻止服务启动,
+只出 address_missing 缺口; loopback bind 只给 localhost + loopback_bind 提示.
 
 stdout: single UTF-8 JSON object. Exit 0 success, exit 1 failure.
 
@@ -51,6 +55,20 @@ def _success(command, payload):
 
 
 # ---------------------------------------------------------------------------
+# Delivery address constants (D011)
+# ---------------------------------------------------------------------------
+
+# 容器识别标记: 存在即容器场景 (容器交付用 SWT_HOST_LAN_IP + SWT_HOST_WEB_PORT).
+CONTAINER_MARKER_PATH = "/run/.containerenv"
+
+# 隧道/虚拟接口前缀: 这些接口上的全局地址局域网够不着, 不作候选交付地址.
+TUNNEL_INTERFACE_PREFIXES = (
+    "tun", "tap", "wg", "ppp", "utun", "ts", "tailscale",
+    "docker", "veth", "br-", "virbr", "zt", "podman",
+)
+
+
+# ---------------------------------------------------------------------------
 # Platform guard
 # ---------------------------------------------------------------------------
 
@@ -88,20 +106,57 @@ def _lock_runtime(runtime_dir):
 # ---------------------------------------------------------------------------
 
 def _parse_start(argv):
-    """Parse start argv. Return (port, root, bind, fixed_port) or None if malformed."""
-    if len(argv) not in (4, 5):
-        return None
-    port, root, dash, bind = argv[:4]
+    """Parse start argv.
+
+    Return (port, root, bind, fixed_port, lan_host) or None if malformed.
+    --lan-host 是本次展示明确指定的局域网地址 (D011), 只属本次调用上下文.
+    """
+    positional = []
+    bind = None
     fixed_port = False
-    if len(argv) == 5:
-        if argv[4] != "--fixed-port":
+    lan_host = None
+    i = 0
+    while i < len(argv):
+        token = argv[i]
+        if token == "--bind":
+            if i + 1 >= len(argv) or not argv[i + 1]:
+                return None
+            bind = argv[i + 1]
+            i += 2
+        elif token == "--lan-host":
+            if i + 1 >= len(argv) or not argv[i + 1]:
+                return None
+            lan_host = argv[i + 1]
+            i += 2
+        elif token == "--fixed-port":
+            fixed_port = True
+            i += 1
+        elif token.startswith("--"):
             return None
-        fixed_port = True
-    if dash != "--bind":
+        else:
+            positional.append(token)
+            i += 1
+    if len(positional) != 2 or bind is None:
         return None
-    if not port or not root or not bind:
+    port, root = positional
+    if not port or not root:
         return None
-    return port, root, bind, fixed_port
+    return port, root, bind, fixed_port, lan_host
+
+
+def _parse_lan_host(argv):
+    """Parse optional --lan-host <addr>. Return (lan_host, ok)."""
+    lan_host = None
+    i = 0
+    while i < len(argv):
+        if argv[i] == "--lan-host":
+            if i + 1 >= len(argv) or not argv[i + 1]:
+                return None, False
+            lan_host = argv[i + 1]
+            i += 2
+        else:
+            return None, False
+    return lan_host, True
 
 
 # ---------------------------------------------------------------------------
@@ -127,62 +182,157 @@ def _validate_root(root_str, command="start"):
 # Host / URL helpers
 # ---------------------------------------------------------------------------
 
-def _default_route_iface():
-    """尝试从 /proc/net/route 读取默认路由接口 (Linux)."""
+def _in_container():
+    """容器识别 (D011): /run/.containerenv 存在即容器场景."""
+    return Path(CONTAINER_MARKER_PATH).exists()
+
+
+def _host_confirmed_address_path():
+    """宿主已确认局域网地址文件 (swt 默认 records_root 根级, 只读)."""
+    return Path.home() / ".agents" / "sandbox-worktree" / "lan-address"
+
+
+def _read_confirmed_lan_address(path=None):
+    """读已确认局域网地址; 无文件或空内容返回 None (无值, 不猜测)."""
+    target = Path(path) if path is not None else _host_confirmed_address_path()
     try:
-        with open("/proc/net/route", "r", encoding="utf-8") as f:
-            for line in f:
-                parts = line.split()
-                if len(parts) >= 8 and parts[1] == "00000000" and parts[7] != "00000000":
-                    return parts[0]
-    except Exception:
-        pass
-    return None
+        if not target.is_file():
+            return None
+        value = target.read_text(encoding="utf-8").strip()
+    except OSError:
+        return None
+    return value or None
 
 
-def _iface_ipv4(iface):
-    """尝试读取接口 IPv4 地址 (Linux ip 命令), 失败返回 None."""
+def _candidate_lan_addresses():
+    """枚举非隧道网卡的全局 IPv4 作候选地址 (D011, 仅候选不自动交付)."""
     try:
         out = subprocess.check_output(
-            ["ip", "-4", "-o", "addr", "show", iface],
+            ["ip", "-o", "-4", "addr", "show", "scope", "global"],
             text=True,
             stderr=subprocess.DEVNULL,
             timeout=2,
         )
-        for line in out.splitlines():
-            parts = line.split()
-            if "inet" in parts:
-                idx = parts.index("inet")
-                if idx + 1 < len(parts):
-                    return parts[idx + 1].split("/")[0]
     except Exception:
-        pass
-    return None
+        return []
+    candidates = []
+    for line in out.splitlines():
+        match = re.match(r"\d+: (\S+)\s+inet (\d+\.\d+\.\d+\.\d+)/", line)
+        if not match:
+            continue
+        iface, addr = match.group(1), match.group(2)
+        if iface.startswith(TUNNEL_INTERFACE_PREFIXES):
+            continue
+        if addr not in candidates:
+            candidates.append(addr)
+    return candidates
 
 
-def _detect_lan_host():
-    """D011 优先级: SSH_CONNECTION 第 3 字段 > 默认路由接口 IP > 主机名."""
-    ssh = os.environ.get("SSH_CONNECTION")
-    if ssh:
-        parts = ssh.split()
-        if len(parts) >= 4:
-            return parts[2]
-    iface = _default_route_iface()
-    if iface:
-        ip = _iface_ipv4(iface)
-        if ip:
-            return ip
-    try:
-        return socket.gethostname()
-    except Exception:
-        return "localhost"
+def _resolve_delivery_address(
+    listen_port,
+    lan_host=None,
+    env=None,
+    confirmed_path=None,
+    in_container=None,
+    candidates=None,
+):
+    """交付地址解析 (D011): 单一入口, 返回解析结果 dict.
+
+    解析成功: {url_host, url_port, lan_ip}. 解析不到: {address_missing, candidates}.
+    宿主顺序: --lan-host > 已确认地址文件 > 候选 (需调用会话请用户确认).
+    容器分支固定用 SWT_HOST_LAN_IP + SWT_HOST_WEB_PORT, 不被 --lan-host 覆盖.
+    明确不读 SSH_CONNECTION/SSH_TTY/主机名.
+    """
+    env = os.environ if env is None else env
+    is_container = _in_container() if in_container is None else in_container
+
+    if is_container:
+        host = (env.get("SWT_HOST_LAN_IP") or "").strip()
+        raw_port = (env.get("SWT_HOST_WEB_PORT") or "").strip()
+        mapped_port = None
+        if raw_port.isdigit():
+            value = int(raw_port)
+            if 1 <= value <= 65535:
+                mapped_port = value
+        missing = []
+        if not host:
+            missing.append("SWT_HOST_LAN_IP")
+        if mapped_port is None:
+            missing.append("SWT_HOST_WEB_PORT")
+        if missing:
+            return {
+                "address_missing": {
+                    "code": "container_env_missing",
+                    "message": (
+                        "container is missing "
+                        + " and ".join(missing)
+                        + "; ask the host session that created this container "
+                        "for the confirmed LAN address and the host port "
+                        "mapped to container port 8800, then retry"
+                    ),
+                }
+            }
+        return {"url_host": host, "url_port": mapped_port, "lan_ip": host}
+
+    explicit = (lan_host or "").strip()
+    if explicit:
+        return {"url_host": explicit, "url_port": listen_port, "lan_ip": explicit}
+
+    confirmed = _read_confirmed_lan_address(confirmed_path)
+    if confirmed:
+        return {
+            "url_host": confirmed,
+            "url_port": listen_port,
+            "lan_ip": confirmed,
+        }
+
+    found = _candidate_lan_addresses() if candidates is None else list(candidates)
+    return {
+        "address_missing": {
+            "code": "no_confirmed_address",
+            "message": (
+                "no confirmed LAN address for this host: pass --lan-host <addr> "
+                "with an address the user confirmed, or have the user confirm one "
+                "of the candidates, then retry; do not deliver a loopback, "
+                "hostname or file path instead"
+            ),
+        },
+        "candidates": found,
+    }
 
 
-def _url_host(bind):
-    """构造对外 URL 时使用的 host."""
+def _loopback_bind_warning(bind, port):
+    """loopback bind 的提示: 仅供隔离测试, 不是可交付的展示地址."""
+    return (
+        f"server bound to {bind}:{port} (loopback). This URL is for isolated "
+        "tests only; never deliver it as the presentation link. Rebind to "
+        "0.0.0.0 with a confirmed LAN address instead"
+    )
+
+
+def _apply_delivery(info, bind, listen_port, lan_host=None):
+    """把交付字段写进 info, 返回需要合并进 warning 的提示列表."""
+    warnings = []
     if bind in ("127.0.0.1", "::1"):
-        return "localhost"
-    return _detect_lan_host()
+        info["url"] = f"http://localhost:{listen_port}/"
+        info["address_missing"] = {
+            "code": "loopback_bind",
+            "message": (
+                "server bound to a loopback address; the localhost URL is for "
+                "isolated tests only and is not a deliverable LAN address"
+            ),
+        }
+        warnings.append(_loopback_bind_warning(bind, listen_port))
+        return warnings
+    resolved = _resolve_delivery_address(listen_port, lan_host)
+    if "address_missing" in resolved:
+        info["address_missing"] = resolved["address_missing"]
+        if "candidates" in resolved:
+            info["candidates"] = resolved["candidates"]
+        return warnings
+    info["url"] = f"http://{resolved['url_host']}:{resolved['url_port']}/"
+    info["lan_ip"] = resolved["lan_ip"]
+    return warnings
 
 
 def _ping_host(bind):
@@ -190,15 +340,6 @@ def _ping_host(bind):
     if bind in ("0.0.0.0", "::", "::0"):
         return "127.0.0.1"
     return bind
-
-
-def _loopback_forward_hint(bind, port):
-    """D011: bind 为 loopback 时生成 ssh -L 端口转发指引."""
-    return (
-        f"server bound to {bind}: URL reachable only on this host; "
-        f"to view from your local machine forward the port first: "
-        f"ssh -L {port}:127.0.0.1:{port} <user>@{socket.gethostname()}"
-    )
 
 
 # ---------------------------------------------------------------------------
@@ -756,7 +897,7 @@ def _serve(port, roots, bind, fixed_port=False):
 # Core commands
 # ---------------------------------------------------------------------------
 
-def run_start(port, root, bind, fixed_port=False):
+def run_start(port, root, bind, fixed_port=False, lan_host=None):
     """Start or reuse the daemonized web server."""
     err = _validate_root(root, command="start")
     if err is not None:
@@ -817,7 +958,14 @@ def run_start(port, root, bind, fixed_port=False):
                 )
             ex_port = int(existing["port"])
             ex_bind = existing["bind"]
-            warnings = []
+            info = {
+                "hostname": socket.gethostname(),
+                "port": ex_port,
+                "bind": ex_bind,
+                "roots": payload.get("roots", []),
+                "reused": True,
+            }
+            warnings = _apply_delivery(info, ex_bind, ex_port, lan_host)
             if fixed_port and not existing.get("fixed_port", False):
                 # UD-13: 锁定仅冷启动持久化; 复用不升级锁, 不一致须有声.
                 warnings.append(
@@ -829,17 +977,6 @@ def run_start(port, root, bind, fixed_port=False):
                     f"requested port {port_int} differs from existing instance "
                     f"port {ex_port}; ignoring requested port, serving on {ex_port}"
                 )
-            if ex_bind in ("127.0.0.1", "::1"):
-                warnings.append(_loopback_forward_hint(ex_bind, ex_port))
-            info = {
-                "url": f"http://{_url_host(ex_bind)}:{ex_port}/",
-                "hostname": socket.gethostname(),
-                "lan_ip": _detect_lan_host(),
-                "port": ex_port,
-                "bind": ex_bind,
-                "roots": payload.get("roots", []),
-                "reused": True,
-            }
             if warnings:
                 info["warning"] = "; ".join(warnings)
             return _success("start", info)
@@ -878,18 +1015,16 @@ def run_start(port, root, bind, fixed_port=False):
             _terminate_child(child)
             return _err("start", "internal_error", f"server started but server.json missing: {e}")
 
-        host = _detect_lan_host()
         info = {
-            "url": f"http://{_url_host(bind)}:{port_int}/",
             "hostname": socket.gethostname(),
-            "lan_ip": host,
             "port": port_int,
             "bind": bind,
             "roots": [root_resolved],
             "reused": False,
         }
-        if bind in ("127.0.0.1", "::1"):
-            info["warning"] = _loopback_forward_hint(bind, port_int)
+        warnings = _apply_delivery(info, bind, port_int, lan_host)
+        if warnings:
+            info["warning"] = "; ".join(warnings)
         return _success("start", info)
     finally:
         if lock_fd is not None:
@@ -897,15 +1032,26 @@ def run_start(port, root, bind, fixed_port=False):
             lock_fd.close()
 
 
-def _status_alive_payload(data, rebuilt):
-    """由 server.json 数据构造 status 成功载荷 (含运行时信息)."""
+def _status_alive_payload(data, rebuilt, lan_host=None):
+    """由 server.json 数据构造 status 成功载荷 (含运行时信息).
+
+    url/lan_ip 由同一次地址解析按记录的实际监听端口实时算出 (D011),
+    不额外持久化地址; 存活与重建两条路径共用本构造函数, 不留下一条给地址.
+    """
     result = {"alive": True, "rebuilt": rebuilt}
     for key in ("pid", "port", "bind", "roots", "started_at"):
         result[key] = data.get(key)
+    try:
+        listen_port = int(data.get("port"))
+    except Exception:
+        return _success("status", result)
+    warnings = _apply_delivery(result, data.get("bind"), listen_port, lan_host)
+    if warnings:
+        result["warning"] = "; ".join(warnings)
     return _success("status", result)
 
 
-def _rebuild_spawn(runtime_dir, bind, old_port, roots, fixed_port=False):
+def _rebuild_spawn(runtime_dir, bind, old_port, roots, fixed_port=False, lan_host=None):
     """按 roots 保序重 spawn 服务子进程.
 
     先试原端口; 被占 (预检或子进程绑定失败) 则 49152-65534 随机换端口
@@ -948,7 +1094,7 @@ def _rebuild_spawn(runtime_dir, bind, old_port, roots, fixed_port=False):
                     f"expected pid={child.pid}"
                 )
                 continue
-            return _status_alive_payload(new_data, rebuilt=True)
+            return _status_alive_payload(new_data, rebuilt=True, lan_host=lan_host)
         # 失败: 先读真实错误, 再强制回收子进程
         err = _read_startup_error(runtime_dir)
         _terminate_child(child)
@@ -975,7 +1121,7 @@ def _rebuild_spawn(runtime_dir, bind, old_port, roots, fixed_port=False):
     )
 
 
-def _rebuild_status(runtime_dir, json_path):
+def _rebuild_status(runtime_dir, json_path, lan_host=None):
     """D005 重建入口: 锁内重探活后按原 roots 保序重建.
 
     锁策略 (D023): 仅重建路径持锁 — 探活只读无共享可变状态, 存活路径
@@ -995,7 +1141,7 @@ def _rebuild_status(runtime_dir, json_path):
         alive, _ = _ping_control(data["bind"], data["port"], data.get("pid"), timeout=2)
         if alive:
             # 并发 start/重建已恢复实例, 无需重建
-            return _status_alive_payload(data, rebuilt=False)
+            return _status_alive_payload(data, rebuilt=False, lan_host=lan_host)
 
         roots = data.get("roots")
         bind = data.get("bind")
@@ -1020,6 +1166,7 @@ def _rebuild_status(runtime_dir, json_path):
         return _rebuild_spawn(
             runtime_dir, bind, old_port, [str(r) for r in roots],
             fixed_port=bool(data.get("fixed_port", False)),
+            lan_host=lan_host,
         )
     finally:
         if lock_fd is not None:
@@ -1027,7 +1174,7 @@ def _rebuild_status(runtime_dir, json_path):
             lock_fd.close()
 
 
-def run_status():
+def run_status(lan_host=None):
     """Check server alive status; 死则重建 (D005).
 
     无 server.json -> alive=false 不重建; ping 指纹匹配 -> alive=true;
@@ -1044,8 +1191,8 @@ def run_status():
 
     alive, _ = _ping_control(data["bind"], data["port"], data.get("pid"), timeout=2)
     if alive:
-        return _status_alive_payload(data, rebuilt=False)
-    return _rebuild_status(runtime_dir, json_path)
+        return _status_alive_payload(data, rebuilt=False, lan_host=lan_host)
+    return _rebuild_status(runtime_dir, json_path, lan_host=lan_host)
 
 
 def run_stop():
@@ -1228,13 +1375,22 @@ def main(argv=None):
                 obj = _err(
                     "start",
                     "invalid_args",
-                    "Usage: web_server.py start <port> <root> --bind <addr> [--fixed-port]",
+                    "Usage: web_server.py start <port> <root> --bind <addr> "
+                    "[--fixed-port] [--lan-host <addr>]",
                 )
             else:
-                port, root, bind, fixed_port = parsed
-                obj = run_start(port, root, bind, fixed_port)
+                port, root, bind, fixed_port, lan_host = parsed
+                obj = run_start(port, root, bind, fixed_port, lan_host)
         elif command == "status":
-            obj = run_status()
+            lan_host, ok = _parse_lan_host(argv[1:])
+            if not ok:
+                obj = _err(
+                    "status",
+                    "invalid_args",
+                    "Usage: web_server.py status [--lan-host <addr>]",
+                )
+            else:
+                obj = run_status(lan_host)
         elif command == "stop":
             obj = run_stop()
         elif command == "add-dir":

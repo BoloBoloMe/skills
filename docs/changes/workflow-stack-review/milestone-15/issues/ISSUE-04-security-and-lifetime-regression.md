@@ -2,7 +2,7 @@
 - `../EXECUTION.md`
 
 ## 执行
-- [ ] 已完成
+- [x] 已完成
 
 ## 要核验什么
 本轮改动后, 既有安全面与常驻性没有回退:
@@ -36,8 +36,42 @@
 - 条件回归: 本 issue 只读 `_Handler` 相关行为且不修改代码, `uv run python -m pytest workflow/to-spec/tests/test_ac_draft.py` 免跑; 若前序 issue 实际触碰了 `_Handler` 而升级了回归范围, 本 issue 一并跑该用例并在证据里写明.
 
 ## 完成证据
-执行后填写: 命令与退出码, 复跑的用例清单, 闲置存活与 stop 的观察结果 (含注入变量已无效的说明), 控制面/越界真实请求的状态码与脱敏输出, 同网段访问是否取得 (取到就写环境/URL/时间/对得上的日志行, 取不到写未验证), 验证前后 `pgrep` 与记录 mtime 对比, 挂载目录清单, 材料位置 `/tmp/m15-04/`.
 
+## 完成证据
+
+环境: 容器内 (本会话), Python 3.11.2 / pytest 9.1.1, 本机非 loopback IPv4 = `192.168.65.165` (eno1). 原始输出 `/tmp/m15-04/`.
+
+### 复跑的既有用例 (断言未改动)
+
+- `uv run python -m pytest general/present/tests/test_web_server_lifecycle.py -k "idle or stop or Stop" -v` -> `3 passed, 24 deselected`: `TestServerPersistsWithoutRequests::test_idle_server_stays_available_until_stop`, `TestTC012Stop::test_stop_terminates_and_removes_runtime_file`, `TestTC012Stop::test_stop_idempotent_when_json_removed_while_waiting_lock` (`/tmp/m15-04/lifetime-cases.txt`).
+  该闲置存活用例注入的 `PI_PRESENT_WEB_TTL_SECONDS=0.2` 已不被实现读取 (3dc49c6 删空闲自退), 它现在的作用是防旧自退行为复活; 本次未恢复自退语义, 也未新增 24 小时等待用例.
+- `uv run python -m pytest general/present/tests/test_web_server_content.py general/present/tests/test_web_server_control_plane.py -v` -> `16 passed`: 扁平并集/同名遮蔽/顶层 listing 并集 (TC-016/17/18), `../` 逃逸 404 (TC-019), 越界 symlink 404 (TC-020), 子目录 listing (TC-021), 可读子集 (R1), 非规范顶层路径 (R2), LAN 来源控制面 403 (TC-022 三条), loopback 未知控制路径 404 (U-010 两条), LAN 来源静态内容 200 (TC-023), bind 具体 IP 的本机控制流放行 (U-009) (`/tmp/m15-04/security-cases.txt`).
+- 无任何断言修改 (`git diff` 对这两个文件为空).
+
+### 真实 stop 与共享影响 (隔离实例)
+
+`PI_PRESENT_WEB_RUNTIME_DIR=/tmp/m15-04/rt` 起 `start 50090 /tmp/m15-04/a --bind 0.0.0.0 --fixed-port` + `add-dir /tmp/m15-04/b`, 两页 `2026-11-01-day1.html`/`2026-11-01-day2.html` 均 200; `stop` 后两页都是 `curl exit 7 connection refused` (`http=000`), 运行时记录 `server.json` 已删除 (`/tmp/m15-04/manual-security-lifetime.txt`).
+
+### 控制面与越界的真实请求 (同一隔离实例)
+
+- 源为同网段地址 (本机 LAN IP) 请求 `http://192.168.65.165:50090/__control__/ping` -> `403`; 期间 `roots` 仍为 `[a, b]` 未变 (add-dir 未被外部触发).
+- `curl --path-as-is http://127.0.0.1:50090/../secret.txt` (挂载目录外的真实文件 `/tmp/m15-04/secret.txt`, 内容 `TOP-SECRET`) -> `404`, 未返回该文件内容.
+- loopback `http://127.0.0.1:50090/__control__/ping` -> `200 {"service": "pi-present-web", "pid": 192954}`, 与 `server.json` 的 `pid=192954` 一致.
+
+### 挂载范围核对 (BR-017 实做)
+
+本次所有 `start`/`add-dir` 的挂载目录只有临时展示目录 `/tmp/m15-04/a`, `/tmp/m15-04/b` 与 `/tmp/m15-01..03/*` 下的临时页目录; 没有仓库根 (`/home/bolo/Workspace/...`), `~/.agents`, `~/.pi`, 密钥或登录态目录. 交付说明里给出的开放风险与本条核对见 ISSUE-03 文档 (首次使用说明同网段可读全部挂载目录, 只挂愿意公开的目录).
+
+### 隔离核验 (BR-015 审计)
+
+- 验证前后 `pgrep -af "scripts/web_server.py"` 的服务进程集合相同: 真实 present 实例 `pid 14757` (`~/.agents/skills/present/scripts/web_server.py __serve__ 8800 ...`) 与 navigate 实例 `pid 117626` 均在, 未被我停止或接管; 唯一差异是两次快照里我自己那条 `bash -c` 包装进程 (`/tmp/m15-04/pgrep-before.txt`, `/tmp/m15-04/pgrep-after.txt`).
+- 真实运行时目录记录 `pid` 仍是 `14757`; 该目录 `server.log` 行数在整套 present 测试前后都是 `41` 行, 说明我的测试没有经默认运行时目录打到真实实例 (期间 05:44:10 的一条 ping+add-dir 与 05:44:48 的页面 GET 来自另一个并发会话, 不是我这次验证产生).
+- `workflow/navigate/` 无改动: `git diff --stat -- workflow/navigate` 为空.
+
+### 未验证/缺口
+
+- AC-006 场景 1/2 的同网段**另一台设备**真实请求属 HITL, 本容器只能做本机经 LAN IP 的等价请求 (上面 403/404/200 三条), 真实用户设备访问统一在 ISSUE-05 取证或记未验证.
+- 空间/时间上无法证明"永远不退出": 只复跑既有 1 秒闲置用例, 未做 24 小时等待.
 ## 风险提示
 - `test_web_server_control_plane.py` 依赖本机有非 loopback IPv4, 探测不到时会跳过; 跳过必须写明, 不能记成通过.
 - 复跑时若误用默认运行时目录会打到真实实例, 所有命令前先确认 `PI_PRESENT_WEB_RUNTIME_DIR` 指向临时目录.

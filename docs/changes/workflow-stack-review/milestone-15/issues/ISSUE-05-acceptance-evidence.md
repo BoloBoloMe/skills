@@ -2,7 +2,7 @@
 - `../EXECUTION.md`
 
 ## 执行
-- [ ] 已完成
+- [x] 已完成
 
 ## 要核验什么
 汇总本轮的完成证据, 并如实划出未验证范围:
@@ -37,8 +37,54 @@
 - 隔离复核: 验证前后 `pgrep -af "scripts/web_server.py"` 的 pid 集合与真实实例记录 mtime 对比不变; `workflow/navigate/` 无改动.
 
 ## 完成证据
-执行后填写: 每条检查的命令, 版本, 退出码, 末行或摘要; 宿主与容器两条真实访问证据 (URL, 访问时间, 用户确认, 对得上的日志行, 环境标注) 或未验证声明; `git status --short` 与 `git diff --stat` 输出; 隔离复核结果; 材料位置 `/tmp/m15-05/`.
 
+## 完成证据
+
+环境: 容器内 (本会话, `/run/.containerenv` 存在), Python 3.11.2, pytest 9.1.1. 原始输出 `/tmp/m15-05/`.
+
+### 1. 自动化检查 (逐条: 命令 / 版本 / 退出码 / 结果)
+
+| 检查 | 命令 | 版本 | 退出码 | 结果 |
+| --- | --- | --- | --- | --- |
+| present 测试 | `uv run python -m pytest general/present/tests` | Python 3.11.2 / pytest 9.1.1 | 0 | `99 passed, 4 skipped` (0 failed) |
+| skill 格式 | `uv run python general/writing-for-llm/check_skill.py general/present/SKILL.md` | 同仓库脚本 (无独立版本号) | 0 | `general/present/SKILL.md: OK` |
+
+改前基线 (ISSUE-03 记录): `143 tests collected`, 全量 `5 failed, 137 passed, 1 skipped` (5 条失败全在已删除的 `test_browser_session.py`). 现状 `103 tests collected`, 全量全绿; 4 条 skip 全是"宿主分支 CLI 用例 (容器内 `/run/.containerenv` 恒存在, 不可复现)", 不是伪通过.
+
+条件回归: `_Handler` 类属性与静态内容服务行为未被改动 (`git diff a5a8ecf -- general/present/scripts/web_server.py | grep -E "^[+-].*(_Handler|_serve_static|_guard_control_namespace|_send_dir_listing)"` 无命中), 依据 TECHNICAL.md 接缝与依赖的跨 skill 依赖条, `uv run python -m pytest workflow/to-spec/tests/test_ac_draft.py` 免跑.
+
+### 2. 宿主环境真实局域网访问证据: 未验证 (缺口)
+
+本会话整体运行在容器内, 没有宿主 shell 与宿主网络视角, 不能在本会话执行宿主侧 `start` 并让用户设备打开页面. 需由宿主会话执行: 宿主侧用已确认局域网地址 `192.168.65.165` 加 49152-65534 内的实际监听端口起服务, 由用户在同一网段另一台设备打开 `http://192.168.65.165:<实际端口>/<页面文件名>`, 并留存 `server.log` 里与该次请求对得上的请求行 (时间, 路径, 来源地址). **本项记为未验证, 不用本机 curl 或源码推断顶替.**
+
+### 3. 容器环境真实局域网访问证据: 未验证 (缺口)
+
+容器自查 (按 BR-003 顺序, `/tmp/m15-05/container-selfcheck.txt`):
+
+- 容器识别: `/run/.containerenv` 存在.
+- `env | grep -E '^SWT_HOST'` -> 无任何 `SWT_HOST_*` 变量, 缺 `SWT_HOST_LAN_IP` 与 8800 对应的 `SWT_HOST_WEB_PORT`.
+- 容器内 8800 已被既有真实 present 实例占用: `LISTEN 0 5 0.0.0.0:8800 users:(("python3",pid=14757))`, 运行时记录 `pid=14757, port=8800, bind=0.0.0.0, fixed_port=true`; 该实例属安装版 skill, 本轮不停止不接管.
+- birth 生成的 `~/docs/web-ports.md` 只给已确认地址 `192.168.65.165`, 映射端口写明 "create 后才知, 从 env 读取".
+
+自查仍缺映射端口. 按本任务约定未向 birth 注入的信箱地址投信 (同容器会话共用信箱), 故未取得 `SWT_HOST_WEB_PORT`. 因此**容器侧真实局域网访问记为未验证**, 未用容器 8800 或猜测端口拼 URL. 待办: 由协调方转交用户/宿主会话提供 8800 的宿主映射端口, 再用 `http://192.168.65.165:<映射端口>/<页面文件名>` 由用户设备打开取证.
+
+### 4. 仓库边界 (BR-014 审计)
+
+- `git status --short` 为空 (全部改动已提交); `git diff a5a8ecf --stat` 只落允许范围: `README.md`, `general/present/**`, 本目录 `issues/ISSUE-01..05` 的交付证据节. 未触碰 `workflow/`, 仓库根 `tests/`, `pytest.ini`, 真实安装目录, 其它 worktree.
+- 未运行 `sync-to-pi.py` 或任何会改安装目录的同步 (本会话无该进程; `pgrep` 命中的只是我自己的 shell 命令行).
+- `~/.agents/skills/present` 未被改动: 目录与文件 mtime 仍为 2026-10-27/2026-10-30 (本轮之前), 内容仍是旧版 `SKILL.md` + `REMOTE.md`.
+- 本报告不声称安装效果或模型行为已验证.
+
+### 5. 隔离复核 (BR-015 审计)
+
+- 验证前后真实服务进程集合一致 (`/tmp/m15-04/pgrep-before.txt` vs `/tmp/m15-04/pgrep-after.txt`): 真实 present 实例 `pid 14757`, navigate 实例 `pid 117626` 均存活; 差异仅我自己的 `bash -c` 包装进程 pid.
+- 真实运行时记录 `pid` 仍为 `14757`; 其 `server.log` 行数在整套 present 测试前后同为 `41` 行, 说明测试未经默认运行时目录打到真实实例 (期间 05:44:10/05:44:48 的日志行来自另一个并发会话, 不是本次验证).
+- `workflow/navigate/` 无改动 (`git diff --stat -- workflow/navigate` 为空).
+
+### 6. 结论
+
+- 自动化检查项: 通过 (命令, 版本, 退出码, 结果见第 1 节).
+- 宿主与容器两种环境的真实局域网访问: 均未验证, 原因是本会话只有容器视角且缺宿主映射端口; 不用一种环境代替另一种, 也不用本机请求或源码推断顶替.
 ## 风险提示
 - 本会话缺 `SWT_HOST_WEB_PORT`, 容器证据可能拿不到; 只能记未验证, 不得用容器 8800 或猜测端口拼 URL 充当容器证据.
 - 宿主场景需要先判断当前会话是否就是宿主; 若本会话只在容器内运行, 宿主场景由宿主会话执行, 本 issue 记"由宿主会话提供/待提供", 不自行改写成通过.

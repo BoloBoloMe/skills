@@ -20,7 +20,7 @@
 | [`llm-select`](general/llm-select/SKILL.md) | 根据设备评分和任务画像, 为子代理选择模型与 thinking 档位. |
 | [`mailbox`](general/mailbox/SKILL.md) | 会话间收发信与信箱维护. |
 | [`opposing-viewpoint`](general/opposing-viewpoint/SKILL.md) | 从反方分析既有观点, 找出薄弱前提并提出替代主张. |
-| [`present`](general/present/SKILL.md) | 把内容生成自包含 HTML 页面并在本地或远程展示. |
+| [`present`](general/present/SKILL.md) | 把内容生成自包含 HTML 页面, 经常驻 web 服务交付已确认的局域网地址. |
 | [`receive-handoff`](general/receive-handoff/SKILL.md) | 读取交接文档, 汇报理解和建议, 不擅自开始后续任务. |
 | [`retro`](general/retro/SKILL.md) | 在独立会话中复盘一场或多场其他会话, 提出 agent 环境改进候选. |
 | [`teach`](general/teach/SKILL.md) | 建立长期学习工作区, 按记录状态持续教授技能或概念. |

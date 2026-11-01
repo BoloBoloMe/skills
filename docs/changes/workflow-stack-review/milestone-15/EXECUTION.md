@@ -101,3 +101,17 @@
 - 需要扩大允许范围或触碰禁止范围时停止 (尤其: 为跑测试去改 `test_web_server_content.py` / `test_web_server_control_plane.py` / `test_web_server_fixed_port.py`, 或为省事改 `check_page.py`).
 - Spec 与代码事实冲突或无法提供完成证据时停止.
 - 环境缺值时停止取证并记未验证: 本会话 `SWT_HOST_LAN_IP` 与 `SWT_HOST_WEB_PORT` 都不在环境变量里 (已确认地址 `192.168.65.165` 来自 birth 生成的 `~/docs/web-ports.md`); 映射端口只能经自查后向宿主会话索取, 不得用猜测端口或容器 8800 拼交付 URL.
+
+## 执行者报告: 推送缺口与一条越界引用 (待协调方处理)
+
+### 1. `m15-present` 分支推不进 origin
+
+- 命令: `git push origin m15-present` -> 被桥拒绝 `! [remote rejected] m15-present -> m15-present (deny updating a hidden ref)`.
+- 原因: 桥按对下沉 `receive.hideRefs`, 只放行本对母体分支 `refs/heads/refactor-skill-around-verification` (`workflow/use-sandbox-worktree/scripts/swt.py` 的 `receive.hideRefs` 配置), 其它分支名一律拒. 母体分支当前 `731a3b4` 与 `m15-present` 的基点 `a5a8ecf` 不是快进关系, 所以也不能靠改推目标绕过.
+- 现状: 5 个逻辑提交 (ISSUE-01..05) 只在容器内本地分支 `m15-present` 上, 尚未到宿主母体.
+- 可选出路 (需协调方决定, 执行者未擅自扩大范围): (a) 协调方在母体工作树内 `git merge --no-ff m15-present` 后快进推母体分支 (与 drive-execution 的"合并本轮"一致); (b) 宿主侧把 `refs/heads/m15-present` 加入桥允许范围后重推.
+
+### 2. 一处越界引用 (未修, 交协调方)
+
+- `workflow/use-sandbox-worktree/scripts/env_docs.py` 的 `_web_ports` 生成文案含 "(与 present 的 REMOTE.md 对齐)". 本节点删了 `general/present/REMOTE.md`, 该句变成悬空引用; 生成物 `~/docs/web-ports.md` 会继续提到一个不存在的文件.
+- 未修理由: `workflow/` 在本轮全局禁止范围内, 且 D011 明确"容器自查顺序沿用环境文档及 milestone-18 规则, 不改其生成器". 交由协调方按 milestone-18 或其后续节点处理.
