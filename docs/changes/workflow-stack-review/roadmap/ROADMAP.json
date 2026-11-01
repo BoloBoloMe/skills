@@ -280,7 +280,11 @@
       "question": "按我本轮新提出的要求 (present 默认交付局域网地址, 不再交付内网地址或文件路径; 宿主与容器一致, 总是起 web 服务呈现页面; web 服务启动后不自行关闭, 长期运行; 把自己的实际端口记录到系统临时目录的特定路径), 裁决 present 的新形态, 并与 milestone-13 可视化 skill 的交付形态保持一致. 待裁决: (1) 地址与绑定: 宿主上是否一律 bind 0.0.0.0 并用局域网 IP 拼 URL (默认路由接口 IP 与 SWT_HOST_LAN_IP 的优先关系), 容器内是否沿用固定 8800 映射加 SWT_HOST_LAN_IP, 局域网 IP 探不到时怎么办 (是否允许回落 loopback, 还是报错并让调用方向我索取). (2) 端口记录: 记录在系统临时目录的哪个固定路径 (沿用 <tmp>/pi-present-web-<uid>/server.json, 还是另加单文件如 port), 文件内容格式, 谁读 (present 自己/navigate/宿主会话), 与按 uid 分组的关系. (3) 本地模式去留: 现有 SKILL.md 的本地 Chromium 路径 (browser_session.py 与 open/state/status) 是彻底删除还是保留但不默认走; 页面 __PRESENTATION_STATE__ 回读通道随之怎么处理; 本地与远程分支是否合并成单一流程. (4) 生命周期: 明确 present 调用结束不停服务, 只有显式 stop 或容器销毁才终止; status 重建换端口时如何同步更新端口记录; 是否需要收工清理约定. (5) 与旧决策的关系: docs/changes/present-web-server/DECISIONS.md 的 D001/D003/D004/D006/D009 哪些被本节点取代, 新决策写进哪个账本 (本节点目录新建, 还是续写旧账本), 旧账本是否保留历史. (6) 暴露面: 局域网内无认证无 TLS 的开放是否照旧默认接受, 宿主场景是否也要一次性向我说明风险. (7) 多页与多目录: 同一实例 add-dir 复用的协调, 多个会话并发展示时端口记录与幂等复用的规则. 调用 deliberate skill 逐条盘问我, 产物根目录 docs/changes/workflow-stack-review/milestone-14/.",
       "status": "进行中",
       "blocked_by": [],
-      "artifacts": [],
+      "artifacts": [
+        "docs/changes/workflow-stack-review/milestone-14/DECISIONS.md",
+        "docs/changes/workflow-stack-review/milestone-14/REQUIREMENTS.md",
+        "docs/changes/workflow-stack-review/ACCEPTANCE.md"
+      ],
       "close_summary": null
     },
     "milestone-15": {
@@ -289,7 +293,7 @@
       "blocked_by": [
         "milestone-14"
       ],
-      "question": "按 milestone-14 的决策改写 general/present: SKILL.md 默认流程改为生成页面后起/复用常驻 web 服务并把局域网地址交付给我, 不再交付文件路径或 loopback 地址; REMOTE.md 的远程与容器分支并入同一条流程 (宿主与容器一致的地址与端口规则, 容器用已确认映射端口与 SWT_HOST_LAN_IP); scripts/web_server.py 按裁决落地 (绑定地址, 端口记录路径与格式, 不自停语义, status 重建后同步端口记录); 旧本地 Chromium 路径按裁决删除或降为非默认, 保留时不得抢默认流程. 同步更新 general/present/tests 里固化旧行为的用例并补新用例, 通过 uv run python -m pytest general/present/tests 与仓库 check_skill.py. 禁止修改真实已安装 skills, 不运行会改安装目录的同步. 编码任务按 drive-execution skill 执行, 产物根目录指定 docs/changes/workflow-stack-review/milestone-15/. 完成标准: 页面在宿主与容器两种场景都能经局域网地址打开, 端口记录与实际监听一致, present 调用结束后服务仍在, 测试与格式检查通过.",
+      "question": "按 milestone-14 的决策改写 general/present: SKILL.md 默认流程改为生成页面后起/复用常驻 web 服务并把局域网地址交付给我, 不再交付文件路径或 loopback 地址; REMOTE.md 的远程与容器分支并入同一条流程 (宿主与容器一致的地址与端口规则, 容器用已确认映射端口与 SWT_HOST_LAN_IP); scripts/web_server.py 按裁决落地 (绑定地址, 端口记录路径与格式, 不自停语义, status 重建后同步端口记录); 按已确认 Q1/Q2 删除 present 专用 browser_session.py 及本地 Chromium/状态回读流程, 取消每页状态对象的强制要求, 不保留备用分支. 同步更新 general/present/tests 里固化旧行为的用例并补新用例, 通过 uv run python -m pytest general/present/tests 与仓库 check_skill.py. 禁止修改真实已安装 skills, 不运行会改安装目录的同步. 编码任务按 drive-execution skill 执行, 产物根目录指定 docs/changes/workflow-stack-review/milestone-15/. 完成标准: 页面在宿主与容器两种场景都能经局域网地址打开, 端口记录与实际监听一致, present 调用结束后服务仍在, 测试与格式检查通过. 当前决策权威为 milestone-14/DECISIONS.md D001-D010, 详细标准为 ACCEPTANCE.md AC-15-01 至 AC-15-07. 实际端口唯一记录在 <系统临时目录>/pi-present-web-<uid>/server.json, 不与 navigate 共用实例/状态文件. 空闲退出代码已在 3dc49c6 删除, 不把已存在行为算新实现. 不直接复用旧 present-web-server 规格或执行输入; 缺当前 PRODUCT/TECHNICAL/EXECUTION/issues 时先按 drive-execution 规则准备, 不绕过输入缺口.",
       "status": "待处理",
       "artifacts": [],
       "close_summary": null
@@ -311,10 +315,18 @@
       "blocked_by": [
         "milestone-16"
       ],
-      "question": "按 milestone-16 的根因结论修复 navigate: 目标是路线图更新与服务重启后, 我手里的页面地址仍然可用, 不再需要每次重起服务和手工重建 socat 桥. 具体改动按根因定, 可能涉及 workflow/navigate/scripts/web_server.py (端口策略改为固定端口或端口落盘加桥自愈, 服务不在会话收工或测试中被误杀, 日志轮转与 fd/线程约束), workflow/navigate/web/index.html (轮询与错误提示: 服务不可用时页面说清原因而不是空白), 以及 tests. 必须留可自动化的回归验证: 例如边连续请求 /api/roadmap 边做 roadmap.py save 不中断; 服务被杀后按文档步骤能恢复且地址不变; 测试套件不再抢真实默认端口或误杀真实实例. 与 milestone-14 对常驻服务与端口记录的口径保持一致, 避免出现两套端口记录路径. 通过 uv run python -m pytest workflow/navigate/tests 与仓库 check_skill.py, 禁止修改真实已安装 skills, 不运行会改安装目录的同步. 编码任务按 drive-execution skill 执行, 产物根目录 docs/changes/workflow-stack-review/milestone-17/.",
-      "status": "进行中",
-      "artifacts": [],
-      "close_summary": null
+      "question": "按 milestone-16 的根因结论修复 navigate: 目标是路线图更新与服务重启后, 我手里的页面地址仍然可用, 不再需要每次重起服务和手工重建 socat 桥. 具体改动按根因定, 可能涉及 workflow/navigate/scripts/web_server.py (端口策略改为固定端口或端口落盘加桥自愈, 服务不在会话收工或测试中被误杀, 日志轮转与 fd/线程约束), workflow/navigate/web/index.html (轮询与错误提示: 服务不可用时页面说清原因而不是空白), 以及 tests. 必须留可自动化的回归验证: 例如边连续请求 /api/roadmap 边做 roadmap.py save 不中断; 服务被杀后按文档步骤能恢复且地址不变; 测试套件不再抢真实默认端口或误杀真实实例. 与 milestone-14 对常驻服务与端口记录的口径保持一致, 避免出现两套端口记录路径. 通过 uv run python -m pytest workflow/navigate/tests 与仓库 check_skill.py, 禁止修改真实已安装 skills, 不运行会改安装目录的同步. 编码任务按 drive-execution skill 执行, 产物根目录 docs/changes/workflow-stack-review/milestone-17/. milestone-14 已确认的兼容边界见 milestone-14/DECISIONS.md D004/D005/D006: present 与 navigate 是不同服务, 不共用实例或状态文件; 唯一记录指各自服务内不另建 port 等第二真值, 不是强迫两个服务使用同一路径. navigate 自身隔离路径由本节点决定, 不破坏按检出隔离. present 宿主重建可换口/新 URL 的规则不替代本节点已确认的 navigate 地址稳定目标.",
+      "status": "已关闭",
+      "artifacts": [
+        "docs/changes/workflow-stack-review/milestone-17/IMPLEMENTATION.md",
+        "workflow/navigate/scripts/display_serve.sh",
+        "workflow/navigate/scripts/web_server.py",
+        "workflow/navigate/scripts/roadmap.py",
+        "workflow/navigate/SKILL.md",
+        "workflow/navigate/tests/test_web_server_lifecycle.py",
+        "workflow/navigate/tests/test_web_server_soak.py"
+      ],
+      "close_summary": "已修复展示页稳定性 (commit 8308e89/456aea8/2298ddb/d58954e/179a56c, 合并 83b81e4). web_server start 加 env NAVIGATE_WEB_PORT 显式端口: 设了只试该端口, 存活实例复用, server.json 已丢的自家旧实例按 ping 指纹加本脚本路径收编, 陌生占用报 port_in_use 且不漂移; 未设仍走 39271 加随机回退. 新增 display_serve.sh (ensure/start/status/stop): 固定 /tmp/navigate-display-<uid> 加 39300, start 后校验端口否则报错, ensure 是复原一条命令, 桥零操作自愈; 显式不做常驻巡检守护以免再造无主单例. roadmap.py 锁文件目录改受 NAVIGATE_WEB_RUNTIME_DIR 隔离, server.log 运行中超 10MB 截断; SKILL.md 加展示服务节 (归属, 其他会话不碰, 收工不 stop) 并把制图 step 4 改为 display_serve.sh ensure; index.html network 错误文案指向复原入口; 测试脱离真实 39271 (TC-008/009 用 free_port, TC-010 保留并加固真实默认端口漂移回归), 新增 soak 与固定端口用例. 我复核: 主检出全量 workflow/navigate/tests 37 passed 2 subtests; check_skill.py 通过; 现役 39300 实例 (pid 117626) 用 status/ensure 均判为复用且页面 200, 未被停; 另用一次性端口 39321 与独立目录实测 kill -9 后 ensure 复原回同端口并 200. 未验证: 真实 39300 上的端到端复原与 8801 桥浏览器实测 (按硬约束未动现役服务, 以同构演练替代), index.html 新文案未起浏览器看渲染. 待用户/验收裁决: (1) ensure 对活着但端口错的实例自动 stop+start 是否接受, 已按此实现; (2) 展示服务纪律是否还要进其他完成定义或收工清单; (3) 现役手工 __serve__ 实例下次重启是否改用 display_serve.sh ensure. 与 milestone-14 的口径一致性未定, 本轮未动 general/present, 未新增第二套端口记录路径."
     },
     "milestone-18": {
       "title": "落地宿主端口映射的自查顺序提案",
