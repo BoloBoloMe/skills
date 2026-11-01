@@ -25,11 +25,12 @@
 | ISSUE-06 | `SKILL.md` 并入 v1 文档, README 行, 元数据核对 | `5c2311a` |
 | REWORK-01 | 评审 7 项: `podman_missing` 文案, 换端口失效文案, 真实旧地址, 恒真断言, 测试映射, m21 手册过期陈述, 死代码收窄 | `6856e15` |
 | REWORK-02 | 复审 6 项: A-1 用例 PATH 构造可移植性, docstring/映射/覆盖补强 | `8c4b738` |
+| REWORK-03 | 发起方裁决四条: serve 复用分支复查 `no_data_keys`, build 持锁窗口写文档, 交付消息第四类说明 (未解析扩展名), build 输出三句分母说明 | `6d4b44c` |
 
 ## 3 验证结果 (容器内可复跑部分)
 
-- `PYTEST_XDIST_WORKER=gw0 uv run python -m pytest workflow/codebase-map/tests` -> 79 passed, 退出码 0, 无 failed 无 skipped.
-- `PYTEST_XDIST_WORKER=gw0 uv run python -m pytest --collect-only -q` -> 944 条 (基线 865 + 79); 既有两树与根树条数与基点逐树一致.
+- `PYTEST_XDIST_WORKER=gw0 uv run python -m pytest workflow/codebase-map/tests` -> 85 passed, 退出码 0, 无 failed 无 skipped.
+- `PYTEST_XDIST_WORKER=gw0 uv run python -m pytest --collect-only -q` -> 950 条 (基线 865 + 85); 既有两树与根树条数与基点逐树一致.
 - `PYTEST_XDIST_WORKER=gw0 uv run python -m pytest tests/test_skills_codex_metadata.py` -> 1 passed.
 - `uv run python general/writing-for-llm/check_skill.py workflow/codebase-map/SKILL.md` -> OK.
 - 既有两树混跑核对 (影响复查实跑): `workflow/navigate/tests general/present/tests` -> 136 passed, 4 skipped (既有容器条件跳过).
@@ -45,8 +46,8 @@
 
 ## 5 缺口与待决
 
-1. **ISSUE-07 宿主取证未执行**: 真实库 build/门禁/分母, 真实初始化, 3D 与依赖视图渲染, 局域网设备真实打开, 长期常驻, 目标库 `git status` (BR-031), 宿主构造的错误分支. 需要用户指定一个真实 Java 库 (BR-026), 在宿主上执行.
-2. **评审待裁决四条** (未动, 需产品口径): E-1 `serve` 复用分支不再复查 `no_data_keys`; E-2 `build` 全程持锁 (超出 TECHNICAL 声明的锁覆盖范围, 期间 `serve`/`stop` 可能等 30s 后报 `internal_error`); E-3 交付消息缺"未解析扩展名"说明 (BR-025/D004); E-4 `build` 输出缺 AC-001 的三句"说明"句.
+1. **ISSUE-07 宿主取证不可得**: 发起方 2026-11-01 明确答复"java 项目不在这个容器环境里, 我给不了你, 在这个环境里做不了", 故宿主侧验证全部记未验证, 不补假. 原计划项:: 真实库 build/门禁/分母, 真实初始化, 3D 与依赖视图渲染, 局域网设备真实打开, 长期常驻, 目标库 `git status` (BR-031), 宿主构造的错误分支. 需要用户指定一个真实 Java 库 (BR-026), 在宿主上执行.
+2. **评审四条已由发起方裁决并落地** (`6d4b44c`): serve 复用分支复查 `no_data_keys`; build 持锁窗口只写文档不改实现; 交付消息加第 4 类说明 `unparsed_note` (未解析扩展名, 为此 `data_keys` 每项加 `stats` 子对象); build 输出加三句分母说明 (`stats.notes`). 与 TECHNICAL 字段清单的差异已在 REWORK-03 交付证据写明. 原四项描述保留如下备查: E-1 `serve` 复用分支不再复查 `no_data_keys`; E-2 `build` 全程持锁 (超出 TECHNICAL 声明的锁覆盖范围, 期间 `serve`/`stop` 可能等 30s 后报 `internal_error`); E-3 交付消息缺"未解析扩展名"说明 (BR-025/D004); E-4 `build` 输出缺 AC-001 的三句"说明"句.
 3. **返工复审疑点**: Q-1 宿主是否 `/usr/bin/podman` (已按最坏情况修好用例); Q-2 宿主是否允许非特权 user namespace (A-1 用例前置); Q-3 `last_url` 是否允许含已确认地址的 URL (现按返工单做法: 只写组装后的 URL, `--address` 值不入盘); Q-4 `previous_url` 可省略是否补进规格文档; Q-5 无 userns 环境是否允许该用例 skip.
 4. **D-2/D-5 证据补记未做**: BR-034 第三条人工核验 (全仓检索无其它 skill 调用 codebase-map) 与全量 pytest 原始记录, 属记录缺失而非检查未通过.
 5. **未推送**: 本地领先 origin 20 个提交, 等验收后再推.
