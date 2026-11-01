@@ -51,9 +51,27 @@ def test_human_failure_stderr_has_next_step_and_exit_1(tmp_path):
     assert proc.stderr.strip() != ""
 
 
-def test_serve_and_stop_not_registered_in_this_issue(tmp_path):
-    """BR-013 三子命令由各自 issue 注册: 本期无占位分支, serve/stop 走不到."""
-    for command in ("serve", "stop"):
-        proc = run_cli(command, env_extra={ENV_RUNTIME_DIR: str(tmp_path / "rt")})
-        assert proc.returncode != 0
-        assert "invalid choice" in proc.stderr
+def test_serve_and_stop_registered_since_issue_04(tmp_path):
+    """BR-013 三子命令注册推进: ISSUE-01 时 serve/stop 未注册 (invalid choice);
+    ISSUE-04 起两者进入 argparse 并走各自前置检查, 不再是 invalid choice.
+
+    两次调用都无副作用: stop 无状态记录 -> 幂等成功; serve 无数据 ->
+    no_data_keys 在起服务之前拦截, 不起空服务.
+    """
+    from codemap_service_helpers import free_port
+
+    runtime = tmp_path / "rt"
+    stop_proc = run_cli("stop", "--json", env_extra={ENV_RUNTIME_DIR: str(runtime)})
+    stop_obj = stdout_json(stop_proc)
+    assert stop_proc.returncode == 0
+    assert stop_obj["success"] is True
+    assert stop_obj["command"] == "stop" and stop_obj["stopped"] is False
+
+    serve_proc = run_cli(
+        "serve", "--json",
+        env_extra={ENV_RUNTIME_DIR: str(runtime), "CODEMAP_PORT": str(free_port())})
+    serve_obj = stdout_json(serve_proc)
+    assert serve_proc.returncode == 1
+    assert serve_obj["success"] is False
+    assert serve_obj["error"]["code"] == "no_data_keys"
+    assert "invalid choice" not in serve_proc.stderr
