@@ -1,6 +1,6 @@
 ---
 name: benchmark-checklist
-description: 性能数字的测量核查: 对照是否公平, 波动, 收益上限与结论边界.
+description: 性能数字的测量核查, 对照是否公平, 波动, 收益上限与结论边界.
 disable-model-invocation: true
 ---
 

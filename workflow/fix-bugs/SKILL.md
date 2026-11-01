@@ -1,6 +1,6 @@
 ---
 name: fix-bugs
-description: 难 bug 的修复链条: 复现, 定位根因, 出方案, 修复, 复验, 复核没改坏.
+description: 难 bug 的修复链条 (复现, 定位根因, 出方案, 修复, 复验, 复核没改坏).
 disable-model-invocation: true
 ---
 

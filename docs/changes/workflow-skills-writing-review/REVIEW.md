@@ -56,6 +56,8 @@
 
 **F-14 domain-awareness 的两处格式瑕疵.** `ADR-FORMAT.md` 用 `--` 当破折号 ("惰性创建 `docs/adr/` 目录--只在需要第一篇 ADR 时创建"), 与 F-01 同源, 读起来像漏字. `UBIQUITOUS_LANGUAGE_FORMAT.md` 的示例链接 `./contexts/ordering.md` 等 3 个断链是示例占位, 本身可接受, 但若被当真实指针使用会误判; 建议在示例块旁标明"示例路径, 非仓库真实文件". **已修**: `--` 改成冒号; 示例块后加"示例里的 `./contexts/*.md` 是示意路径, 不是本仓库真实文件".
 
+**F-23 三个 description 含未加引号的冒号加空格, 严格 YAML 解析失败.** `benchmark-checklist`, `fix-bugs`, `navigate` 的 description 写成"摘要: 展开"形式; 普通标量里的冒号加空格非法, 严格解析器报 `mapping values are not allowed in this context` (navigate 报 line 2 column 24). 原 `check_skill.py` 只拦模型调用 description 的冒号, 用户调用漏检. **已修**: 三处改成逗号或括号, 仓库内活跃 SKILL.md 全部通过 `yaml.safe_load`; `check_skill.py` 增加普通标量含冒号加空格或冒号结尾的拒绝, `SKILL-MECHANICS.md` 同步说明. `docs/changes/` 下 5 个历史证据夹具仍故意保留坏 frontmatter, 不在修的范围.
+
 ## 3 判断性发现
 
 **F-15 navigate 应按调用拆成"制图"与"航行".** 文件 125 行, 原文明确"制图和航行永不同会话进行", 是标准里最干净的调用切口: 两个分支互斥, 各自只需要自己那半 (制图 7 步约 40 行, 航行 7 步约 45 行, 加上未知海域/歧路/Milestone 定义 ~35 行). 拆开后每次加载少约一半, 代价是多一个名字和一次认知选择. 若要保留单文件, 至少把航行步骤移到披露文件.
@@ -84,7 +86,7 @@
 
 ## 5 返工进度
 
-1. 已完成 (纯文本, 不改行为): F-01 标点 (44 处破折号 + 5 对全角引号), F-02 产物根目录指针化, F-03 方法 skill 定义收敛与启动句统一, F-04 maintain 授权节改指 create, F-07 benchmark 权限边界收敛, F-09 GHERKIN 禁令收敛, F-14 ADR 破折号与示例路径标注. F-13 复审后改判为可接受, 不改.
+1. 已完成 (纯文本, 不改行为): F-01 标点 (44 处破折号 + 5 对全角引号), F-02 产物根目录指针化, F-03 方法 skill 定义收敛与启动句统一, F-04 maintain 授权节改指 create, F-07 benchmark 权限边界收敛, F-09 GHERKIN 禁令收敛, F-14 ADR 破折号与示例路径标注. F-13 复审后改判为可接受, 不改. F-23 frontmatter YAML 冒号问题已修, 并给 check_skill.py 加了同类拒绝.
 2. 已完成 (语义重排): F-05 类型映射收口, F-06 反模式改正向边界, F-10 标题结构统一, F-11 第 4 步完成标准, F-12 降级信号去重. F-08 并入 F-16.
 3. 待确认 (需先定裁决): F-15 (navigate 拆分), F-16 (披露 + F-08 合并), F-17 (证据分类单一真相源), F-18 (环境冲突元规则), F-19 / F-20 (指针与完成标准补强), F-21 (description 改措辞).
 
@@ -106,4 +108,6 @@ uv run python ~/.agents/skills/writing-for-llm/check_skill.py <每个 SKILL.md>
      保留: 6 个入口文件同一句 domain-awareness 加载步骤 (各自上下文的加载动作, 非定义重复)
 H1 统计
   -> 修后 25 个 SKILL.md 各 1 个目的名 H1; decision-ledger 模板代码块内的 1 处不计
+严格 YAML 扫描 (yaml.safe_load, 仓库所有 *.md 的 frontmatter)
+  -> 活跃 SKILL.md 0 失败; docs/changes 下 5 个历史证据夹具故意保留坏 frontmatter
 ```

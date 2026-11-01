@@ -35,5 +35,5 @@ skill 的名字本身就是一个 *引导词*: 它在我的 prompt 和其他 ski
 
 ## 脚本
 
-写好或改好 skill 后, 从当前 `writing-for-llm` skill 所在目录定位 `check_skill.py`, 运行 `uv run python <该脚本的绝对路径> <目标 SKILL.md 的绝对路径>`. 脚本不依赖当前工作目录, 同步到别处后仍按所在目录定位. 退出码为 0 才算通过; 否则按报错修改后重跑, 不用目检替代. 它检查 frontmatter 中 `name` 是否为小写 kebab-case 且与目录名一致, 模型调用 skill 的 `description` 是否含冒号, 并拒绝常见的 YAML 空值/布尔值/数值等非文本写法; 模型调用时省略 `disable-model-invocation`. 它只检查这些约束, 不代替完整的 YAML 校验. 这些硬约束不需要 LLM 推断. 它不决定调用方式, 也不判断触发措辞或内容质量.
+写好或改好 skill 后, 从当前 `writing-for-llm` skill 所在目录定位 `check_skill.py`, 运行 `uv run python <该脚本的绝对路径> <目标 SKILL.md 的绝对路径>`. 脚本不依赖当前工作目录, 同步到别处后仍按所在目录定位. 退出码为 0 才算通过; 否则按报错修改后重跑, 不用目检替代. 它检查 frontmatter 中 `name` 是否为小写 kebab-case 且与目录名一致, 模型调用 skill 的 `description` 是否含冒号, 普通标量是否含冒号加空格或冒号结尾 (两者都会让 YAML 解析失败), 并拒绝常见的 YAML 空值/布尔值/数值等非文本写法; 模型调用时省略 `disable-model-invocation`. 它只检查这些约束, 不代替完整的 YAML 校验. 这些硬约束不需要 LLM 推断. 它不决定调用方式, 也不判断触发措辞或内容质量.
 需要保存, 复用或含多步逻辑的自动化, 优先写 Python 脚本, 不用 Bash/shell 实现同等逻辑. 默认只用标准库; 必须用第三方库时, 先说明充分理由并取得我同意. 遵循项目声明的运行方式和版本约束, 不预设 `python`, `python3`, `py` 或解释器路径. 避免平台专用的 Python API, 命令和语法. 简短的一次性终端命令不算这里说的脚本.

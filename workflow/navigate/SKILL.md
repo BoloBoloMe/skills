@@ -1,6 +1,6 @@
 ---
 name: navigate
-description: 模糊目的地的领航流程: 对齐目的地, 绘制路线图, 逐个里程碑航行.
+description: 模糊目的地的领航流程, 对齐目的地, 绘制路线图, 逐个里程碑航行.
 disable-model-invocation: true
 ---
 

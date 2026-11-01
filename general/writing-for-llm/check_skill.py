@@ -30,6 +30,8 @@ def scalar(raw: str) -> str:
             raise ValueError("不支持的单引号标量")
         return match.group(1).replace("''", "'")
     value = re.split(r"\s+#", raw, maxsplit=1)[0].rstrip()
+    if ": " in value or value.endswith(":"):
+        raise ValueError("普通标量含冒号加空格或冒号结尾会破坏 YAML, 请改标点或用引号标明字符串")
     if PLAIN_NON_TEXT.fullmatch(value) or value.startswith(("|", ">", "{", "[", "*", "&", "!")):
         raise ValueError("不是可确认的单行文本, 请改写或用引号标明字符串")
     return value
