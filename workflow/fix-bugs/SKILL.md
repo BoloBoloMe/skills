@@ -1,6 +1,6 @@
 ---
 name: fix-bugs
-description: 难 bug 的修复链条 (复现, 定位根因, 出方案, 修复, 复验, 复核没改坏).
+description: 难 bug 的修复链条, 从可失败的复现到独立复核.
 disable-model-invocation: true
 ---
 
@@ -41,7 +41,7 @@ disable-model-invocation: true
 
 - **curl / HTTP 脚本**, 打向运行中的 dev server.
 - **CLI 调用**, 喂 fixture 输入, 把 stdout 与已知正确的快照 diff.
-- **无头浏览器脚本** (Playwright / Puppeteer), 驱动 UI 并断言 DOM/console/network.
+- **无头浏览器脚本**, 驱动 UI 并断言 DOM/console/network.
 - **重放捕获的 trace**: 把真实网络请求/payload/事件日志存盘, 隔离地重放经过代码路径.
 - **已有测试或针对性检查**, 通过能抓住故障的公开接口触发实际代码.
 - **一次性 harness**: 拉起能保留真实故障链路的最小子系统, 用一次调用触发症状.
@@ -84,7 +84,7 @@ disable-model-invocation: true
 跑循环, 看它随 bug 出现而变红. 确认:
 - [ ] 循环产出的是**我描述的**失败模式, 不是恰好相邻的另一个失败. 诊断错 bug = 修错 bug.
 - [ ] 失败多次运行可复现; 非确定性 bug 复现率达阶段 1 要求.
-- [ ] 已捕获确切症状 (错误信息, 错误输出, 耗时), 供后续阶段验证修复真的对症.
+- [ ] 已捕获确切症状, 供后续阶段验证修复真的对症.
 
 ### 最小化
 

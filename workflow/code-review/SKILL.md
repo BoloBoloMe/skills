@@ -20,7 +20,7 @@ disable-model-invocation: true
 
 ### 1. 确定基准点
 
-我说的任何可被 Git 解析的引用都可以作为基准点, 包括 commit SHA, 分支名, tag, `main`, `HEAD~5`. 调用方明确传入的基准点同样适用; 两者都没有时询问我, 不自行选择.
+我说的任何可被 Git 解析的引用都可以作为基准点. 调用方明确传入的基准点同样适用; 两者都没有时询问我, 不自行选择.
 一次性记录 diff 命令: `git diff <基准点>...HEAD` (三点语法, 以 merge-base 为比较基准). 同时记录 commit 列表: `git log <基准点>..HEAD --oneline`.
 继续之前, 确认基准点可解析 (`git rev-parse <基准点>`) 且 diff 不为空. 引用无效或 diff 为空时在本步骤失败, 不把失败推给后续 reviewer.
 

@@ -1,6 +1,6 @@
 ---
 name: access-web
-description: 网页访问, 支持搜索, 正文提取, 文件下载, 截图, 登录, 表单交互, JS 渲染页面..
+description: 获取网页内容, 下载文件, 或需要真实浏览器交互时调用.
 ---
 
 # access-web
