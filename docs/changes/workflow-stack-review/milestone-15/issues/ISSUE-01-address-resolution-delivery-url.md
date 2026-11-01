@@ -103,15 +103,15 @@
 需要新增地址来源或配置文件, 需要改变 PRODUCT/TECHNICAL/决策内容, 需要改 `_Handler`, 或需要先在容器里编造映射端口才能继续时停止.
 
 ## 验收标准
-- [ ] `--lan-host` 时交付 URL 用该地址, 端口为实际监听端口, 且落在 49152-65534.
-- [ ] 未传 `--lan-host` 且地址文件有已确认值时用记录里的地址.
-- [ ] 两者皆无时输出 `address_missing.code=no_confirmed_address` 与 `candidates`, 不给 `url`/`lan_ip`, 服务照常监听.
-- [ ] 注入 `SSH_CONNECTION` 或改变主机名不改变交付地址, 输出里不出现 SSH 第三字段, `127.0.0.1`, `localhost` 或页面文件路径.
-- [ ] 容器场景交付 `http://<SWT_HOST_LAN_IP>:<SWT_HOST_WEB_PORT>/...`, 不出现容器自报地址; 缺 `SWT_HOST_WEB_PORT` 时给 `container_env_missing` 且不含猜测端口.
-- [ ] `--bind 0.0.0.0` 正常监听, 交付 URL 用已确认地址加实际监听端口.
-- [ ] `status` 也接受 `--lan-host`, 并按同一解析入口给出 `url`/`address_missing`.
-- [ ] loopback bind 只给 `localhost` 加 `loopback_bind` 与 warning, 不当作展示交付.
-- [ ] `uv run python -m pytest general/present/tests` 退出码 0 且无 failed.
+- [x] `--lan-host` 时交付 URL 用该地址, 端口为实际监听端口, 且落在 49152-65534. (宿主 CLI 用例在容器内 skip, 由同一解析函数的显式入参用例与容器分支高端口实测承接)
+- [x] 未传 `--lan-host` 且地址文件有已确认值时用记录里的地址.
+- [x] 两者皆无时输出 `address_missing.code=no_confirmed_address` 与 `candidates`, 不给 `url`/`lan_ip`, 服务照常监听.
+- [x] 注入 `SSH_CONNECTION` 或改变主机名不改变交付地址, 输出里不出现 SSH 第三字段, `127.0.0.1`, `localhost` 或页面文件路径. (宿主 CLI 用例 skip, 显式入参用例覆盖)
+- [x] 容器场景交付 `http://<SWT_HOST_LAN_IP>:<SWT_HOST_WEB_PORT>/...`, 不出现容器自报地址; 缺 `SWT_HOST_WEB_PORT` 时给 `container_env_missing` 且不含猜测端口.
+- [ ] `--bind 0.0.0.0` 正常监听, 交付 URL 用已确认地址加实际监听端口. (未勾: 宿主分支 `--bind 0.0.0.0` + 已确认地址 + 实际监听端口这个组合在本容器无法实跑; 容器分支实测的是映射端口形态)
+- [x] `status` 也接受 `--lan-host`, 并按同一解析入口给出 `url`/`address_missing`.
+- [x] loopback bind 只给 `localhost` 加 `loopback_bind` 与 warning, 不当作展示交付.
+- [x] `uv run python -m pytest general/present/tests` 退出码 0 且无 failed.
 
 ## 被阻塞于
 - 无.
