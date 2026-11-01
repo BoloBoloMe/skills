@@ -2,7 +2,7 @@
 - `../EXECUTION.md`
 
 ## 执行
-- [ ] 已完成
+- [x] 已完成
 - [ ] 派工前复核并记录 (写在本行下方): HEAD 提交号; `PYTEST_XDIST_WORKER=gw0 uv run python -m pytest --collect-only -q` 条数; `workflow/codebase-map/` 当前存在哪些文件.
 - HEAD: `8abfee80d6a014d59a39a9d53e7b17ea15b91a89` (分支 issue/06, 与基点一致, 已含 ISSUE-01..05).
 - 收集条数: 930.
@@ -66,6 +66,17 @@
 - 通过标准 (整体): 三条命令全绿; 文档里出现的每个错误码与参数名都能在已实现代码里找到; 没有未实现的开关.
 
 ## 交付证据
+
+- `uv run python general/writing-for-llm/check_skill.py workflow/codebase-map/SKILL.md` -> `workflow/codebase-map/SKILL.md: OK`, 退出码 0.
+- `PYTEST_XDIST_WORKER=gw0 uv run python -m pytest tests/test_skills_codex_metadata.py` -> `1 passed`, 退出码 0.
+- `PYTEST_XDIST_WORKER=gw0 uv run python -m pytest workflow/codebase-map/tests` -> `75 passed`, 退出码 0, 无 failed 无 skipped (基线 65 + 本 issue 新增 10).
+- 收集基线核对: 派工前 930 -> 改后 940, 增量 10 = 本 issue 新增用例 10 条 (test_skill_docs.py: TC-009 主用例 1 加参数面 1, TC-06-01 5, TC-06-02 3), 逐条对上.
+- README diff: 技能表 codebase-map 一行改为 "代码库结构与依赖可视化: 分析+常驻服务 (build/serve/stop 三子命令), 只由用户手动调用.", 其余正文未动.
+- agents/openai.yaml: 已存在且逐字等于 `policy:\n  allow_implicit_invocation: false\n`, 核对未改 (任务书说新建, 实际已存在).
+- 错误码逐条核对 (文档出现 -> 代码位置): `container_not_supported`/`target_missing`/`podman_missing` -> codebase-map.py 前置检查; `image_unavailable`/`image_digest_mismatch`/`frontend_unavailable`/`frontend_hash_mismatch`/`gate_failed` -> codemap_analyze.py (_AnalyzeError); `no_data_keys`/`port_in_use`/`instance_running`/`state_mismatch`/`stop_failed`/`internal_error` -> codemap_service.py; `no_confirmed_address` -> codemap_common.py resolve_delivery_address (address_missing.code); 15 个全部在代码中, TC-06-01 用例里有白名单断言防漂移.
+- 参数名逐条核对: `build`/`serve`/`stop`/`--exclude`/`--json`/`--port`/`--address` -> codebase-map.py argparse; `delivery_notes`/`address_missing`/`candidates`/`last_port` -> codemap_service.py; `no_confirmed_address` -> codemap_common.py; `stats` -> codemap_analyze.py build --json 组装; `8090` -> codemap_common.DEFAULT_PORT; `serve-root`/`cache` -> codemap_common.RUNTIME_SUBDIRS 与 `cache/frontend/` (codemap_analyze.py); `~/.agents/codebase-map/` -> runtime_dir 默认; `~/.agents/sandbox-worktree/lan-address` -> confirmed_lan_address_path; `state.json`/`web.zip`/`.codebase-map/cc.json`/`.cc.json` -> 四个脚本各自出现; 默认排除集七项 -> codemap_common.DEFAULT_EXCLUDES; `tools/stage.py frontend` -> m21 tools/stage.py 子命令; `2.3.0`/`vis-2.9.1` -> codemap_common.IMAGE_TAG/FRONTEND_VERSION; `podman --version` -> podman_missing 的 hint 原文.
+- 与任务书原写的差异及理由: (1) SKILL.md 是并入而非新建: m21 汉化链入口与文件 (tools/, i18n/, README.md) 已存在且属已交付成果, 删除会破坏 ISSUE-06 基点前已合并的内容, 故 v1 三子命令写成主体, m21 部分压缩为保留一节; (2) agents/openai.yaml 与 README codebase-map 行已存在, 按核对处理而非新建; (3) 按本会话指令补入 "首次初始化会用官方英文 vis-2.9.1 整体替换 serve-root 前端, 汉化界面需初始化后用 tools/stage.py frontend 重新铺设" 的如实说明 (版本口径节).
+- 未做项: AC-009 第四场景 (界面文案官方英文原版, 页面版本显示 vis-2.9.1) 只能宿主真实渲染观察, 归 ISSUE-07; 容器无 podman 无出网, 未真跑 build/serve; 全量 pytest 容器内受 conftest podman 探测限制, 以 collect-only 核对基线 (与 EXECUTION 完成定义口径一致); 未触碰真实 `~/.agents/codebase-map/` 与 `~/.agents/sandbox-worktree/lan-address`.
 
 ## 风险提示
 - README 表格行与 `check_skill.py` 之外的仓库测试 (例如按 README 链接做的检查) 可能因为少一行或多一行报错; 改完先跑一次 `tests/test_skills_codex_metadata.py` 再加一次全树收集核对.
