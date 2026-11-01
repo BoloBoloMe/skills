@@ -12,8 +12,11 @@ build <目标目录> [--exclude <glob>]... [--json]:
     1. 不在沙箱容器内 (/run/.containerenv 不存在) -> container_not_supported
     2. 目标目录存在且是目录                       -> target_missing
     3. podman 在 PATH 上可用                      -> podman_missing
-  分析流水线 (初始化, 三次 podman run, 门禁, 统计, 产出) 属后续 issue;
-  就位之前前置检查全过也一律 internal_error 退出, 未写任何数据.
+  分析流水线 (ISSUE-02 接线, 编排 codemap_analyze.run_build): 首次初始化
+  (缺镜像拉镜像并校验单架构 digest, 缺官方前端下载 web.zip 并校验 sha256)
+  + 三步 ccsh 分析 (dependencyparser/unifiedparser/merge), merge 产物逐字节
+  写目标库 .codebase-map/cc.json; 门禁判定, 统计分母, 副本复制与 state.json
+  更新归 ISSUE-03, 本版 result 不含这些字段也不写假值.
 
 serve [--port <N>] [--json]:
   起或复用常驻服务; 判定分支与端口决策全部在 codemap_service.run_serve.
@@ -45,6 +48,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import codemap_common as cmc  # noqa: E402  (脚本同目录, 保证任意 cwd 可跑)
 import codemap_service as cms  # noqa: E402  (serve/stop 的编排目标, ISSUE-04 注册)
+import codemap_analyze as cma  # noqa: E402  (build 的初始化与分析流水线, ISSUE-02 接线)
 
 CONTAINER_MARKER = "/run/.containerenv"  # podman/oci 容器内存在的标记文件
 
@@ -92,11 +96,11 @@ def _precheck_podman():
 # ---------------------------------------------------------------------------
 
 
-def run_build(target, user_excludes) -> dict:
-    """build 骨架: 前置检查 -> (分析流水线属后续 issue).
+def run_build(target, user_excludes, runtime_base=None) -> dict:
+    """build: 前置检查 -> 初始化与分析流水线 (codemap_analyze.run_build).
 
-    user_excludes 在流水线接线时经 collect_excludes/excluded_regexes 消费
-    (ISSUE-02/03); 本骨架只收下不使用, 不做任何分析动作.
+    runtime_base 只供测试注入隔离运行时目录; CLI 路径不传, 走
+    CODEMAP_RUNTIME_DIR / 默认运行时目录.
     """
     failure = _precheck_container()
     if failure is None:
@@ -105,12 +109,7 @@ def run_build(target, user_excludes) -> dict:
         failure = _precheck_podman()
     if failure is not None:
         return failure
-    return cmc.error_result(
-        "build",
-        "internal_error",
-        "前置检查已全部通过, 但分析流水线尚未接入本骨架.",
-        "本版本还不能完成分析且未写任何数据; 流水线接线后重试.",
-    )
+    return cma.run_build(Path(target), user_excludes, runtime_base=runtime_base)
 
 
 # ---------------------------------------------------------------------------
