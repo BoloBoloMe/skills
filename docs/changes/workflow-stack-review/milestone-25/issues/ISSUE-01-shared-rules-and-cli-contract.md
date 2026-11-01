@@ -2,7 +2,7 @@
 - `../EXECUTION.md`
 
 ## 执行
-- [ ] 已完成
+- [x] 已完成
 - [ ] 派工前复核并记录 (写在本行下方): HEAD 提交号; `PYTEST_XDIST_WORKER=gw0 uv run python -m pytest --collect-only -q` 条数; `workflow/codebase-map/` 当前存在哪些文件.
   - HEAD: `2bc146d3cadb3f9fafb4cb3cf28e7823c8ae33b7`, 与派工基点 `2bc146d` 一致.
   - 收集条数: 865, 与 EXECUTION.md 评审起点基线一致 (原始记录 `/tmp/m26-01/collect-baseline.txt`).
@@ -60,6 +60,15 @@
 
 ## 交付证据
 
+- 验证环境: 容器内 (`/run/.containerenv` 在场, 无 podman), Python 一律 `uv run python`; 原始记录在 `/tmp/m26-01/` (含 collect-baseline/after.txt, pytest-new-tree.txt, cli-run-summary.txt, cli-evidence/, audit-br033-and-supplement.txt).
+- 完成定义 1: `PYTEST_XDIST_WORKER=gw0 uv run python -m pytest workflow/codebase-map/tests` -> 29 passed, 退出码 0, 无 failed 无 skipped (TC-007 实跑未跳过).
+- 完成定义 4 收集基线核对: `PYTEST_XDIST_WORKER=gw0 uv run python -m pytest --collect-only -q` 改前 865 条, 改后 894 条, 差值 29 = 本 issue 新增用例数 (TC-007 1; TC-01-01 8; TC-01-02 4; TC-01-03 5; TC-01-04 7, parametrize 逐常量; TC-01-05 1; TC-01-06 3).
+- TC-007 真实 CLI 证据 (摘要, 脱敏后目标路径为临时目录): `build <tmp>/target --json` -> stdout 恰一行 `{"success": false, "command": "build", "error": {"code": "container_not_supported", ...}}`, 退出码 1; 非 JSON 模式 stdout 多行摘要, stderr 含 `错误 container_not_supported: ...` 与 `下一步: 改在宿主机上执行本命令...`; 调用后目标目录无 `.codebase-map`, 隔离运行时目录 (CODEMAP_RUNTIME_DIR 指向临时路径) 连子目录都未创建, 即前置检查命中即停零产出.
+- BR-033 人工核验: `git ls-files 'workflow/codebase-map/*'` 无 requirements/pyproject/Pipfile 等依赖清单文件; scripts/ import 清单 (ast 解析不执行): `__future__/argparse/hashlib/json/os/pathlib/re/shutil/sys` 加同目录 `codemap_common` (TECHNICAL 接缝与依赖定义的内部接缝, 非第三方, 不 import 其它 skill 代码).
+- TC-01-05 口径说明: 静态守卫允许标准库加 TECHNICAL 内部接缝白名单 (codemap_common/codemap_analyze/codemap_service), 白名单名被实际 import 时必须已存在于 scripts/ 同目录, 其余非标准库导入判失败.
+- 补充 (本 issue 不触碰的完成定义 2/3 项, 顺带实测): m21 既有 SKILL.md/README/agents/openai.yaml/tools/i18n 一字未改 (git status 干净); `check_skill.py workflow/codebase-map/SKILL.md` -> OK 退出码 0; `pytest tests/test_skills_codex_metadata.py` -> 1 passed.
+- 未做项与原因: serve/stop 不注册不占位 (ISSUE-04/05); 分析流水线不实现, 前置检查全过后返回 `internal_error` 并明示未接线, 不写假成功 (禁止范围; 容器内到不了该分支); `target_missing`/`podman_missing` 的宿主构造归 ISSUE-07, 未用 stub; SKILL.md 重写与 README 行 (m21 已有同位置内容, 去留待产品裁决) 归 ISSUE-06.
+- spec 冲突记录: 派工时 `workflow/codebase-map/` 已含 m21 汉化流水线内容, 与 EXECUTION 评审起点及 m25 F007 不符, 已按停止条件上报; 派工方裁决按原边界继续, 事实修正由派工方另记决策 ID, 规格四文件一字未动; 复核三行见 `## 执行` 节.
 ## 风险提示
 - `pytest.ini` 的 testpaths 顺序承担 conftest 预载职责, 新树若引入 `conftest.py` 或 `from conftest import`, 会让别的树拿到错对象; 只用唯一定名 helper.
 - 键用 realpath 而非 `abspath`: 软链进同一目录必须得到同一键, 测试要覆盖.
