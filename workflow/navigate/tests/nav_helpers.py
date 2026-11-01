@@ -23,6 +23,7 @@ from pathlib import Path
 
 SCRIPT = Path(__file__).resolve().parents[1] / "scripts" / "web_server.py"
 ENV_RUNTIME_DIR = "NAVIGATE_WEB_RUNTIME_DIR"
+ENV_PORT = "NAVIGATE_WEB_PORT"
 ENV_TTL = "NAVIGATE_WEB_TTL_SECONDS"
 DEFAULT_PORT = 39271
 
@@ -68,12 +69,13 @@ class NavigateServer:
         self.runtime_dir = self.runtime_base / f"navigate-web-{os.getuid()}"
         self.pids = []
 
-    def run_cli(self, *argv, extra_env=None, timeout=30):
+    def run_cli(self, *argv, extra_env=None, timeout=30, script=None):
+        """跑 web_server.py 子命令; script 可换脚本路径 (R4 跨脚本路径用例)."""
         env = os.environ.copy()
         env[ENV_RUNTIME_DIR] = str(self.runtime_base)
         env.update(extra_env or {})
         proc = subprocess.run(
-            [sys.executable, str(SCRIPT), *argv],
+            [sys.executable, str(script or SCRIPT), *argv],
             capture_output=True,
             text=True,
             env=env,

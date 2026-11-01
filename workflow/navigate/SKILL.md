@@ -70,6 +70,13 @@ ROADMAP.json 的一切读写只经守门脚本 `workflow/navigate/scripts/roadma
 
 **旧格式重建**: 现场出现 `ROADMAP.md` 或 `MILESTONE-NN.md` (旧版路线图格式) 时, 用 read 工具读旧文件, 再经脚本把内容重建为 ROADMAP.json; 不提供迁移命令, 一次性重建即可. 旧格式的 "范围外" 区段重建为 `off_course`, "未决迷雾" 区段重建为 `unknown_seas`.
 
+## 展示服务
+
+展示页的常驻实例有固定身份: 运行时目录 `/tmp/navigate-display-<uid>`, 端口 39300, 网段经转发桥 (如 `8801 -> 127.0.0.1:39300`) 供浏览器长期轮询. 只经 `workflow/navigate/scripts/display_serve.sh` 管理: `ensure` 复原/拉起 (服务死了用它一条命令复原回固定端口, 桥零操作自愈), `status` 查看, `start`/`stop` 供复原与演练.
+- 展示目录与端口归展示实例专属: 其他会话不在该目录运行 `web_server.py start/stop`, 不占用 39300.
+- **收工不 stop 展示服务**: 它服务浏览器的长期轮询, 停了页面即断; 会话收工清单不含它, 复原交给 `ensure`.
+- 实验与测试用独立运行时目录 (`NAVIGATE_WEB_RUNTIME_DIR`) 与一次性端口 (`NAVIGATE_WEB_PORT` 或随机端口), 不碰展示目录与 39300.
+
 ## 调用模式
 
 - **制图**: 无 ROADMAP.json → 走 [制图 Roadmap](#制图-roadmap).
@@ -87,7 +94,7 @@ ROADMAP.json 的一切读写只经守门脚本 `workflow/navigate/scripts/roadma
    完成标准: 每个方向都有明确的研究结论, 且我已选定方向.
 3. **描绘边界. ** 在我选定的方向上, 找出所有待办事项和现在可采取的第一步. 若没发现任何未知海域, 则航路已清晰, 全程一次会话即可完成, 不需要地图: 停下来, 询问我希望如何继续; 继续时仍须在实施或产物定稿前确认验收标准, 并在正式交付前验收. 需要地图时, 即使验收细节尚待确定, 也已知必须有验收 Milestone.
    完成标准: 发现不需要地图; 或发现需要地图且至少一个工作 Milestone 可精确表述, 其余不确定项在 step 4 写入 `unknown_seas`.
-4. **绘制地图. ** 经守门脚本把地图写入 ROADMAP.json: 顶层 `title`, `destination` (写明我确认的完成边界), `notes` (含被选方向结论与未选方向排除理由), `milestones` (每个里程碑经 `save <file> milestones.<id> <JSON对象>` 整体创建, 含 `title`/`type`/`question`, 需要阻塞时再 `save <file> milestones.<id>.blocked_by <JSON数组>`), `unknown_seas`, `off_course`. 同时创建固定的验收 Milestone, 并在其他已知工作建好后设置它的 `blocked_by`; 尚未明确的工作以后探明时再补阻塞, 不能因尚有未知海域就提前验收. 前沿, 已关闭决策, 阻塞关系均不落盘, 由上述数据推导, 见 [产物结构](TEMPLATES.md). 写完后起展示服务: `uv run python workflow/navigate/scripts/web_server.py start` 拿到 stdout 的 `url`, 把 `url` 拼上 `?roadmap=<ROADMAP.json 的绝对路径>` 交付给我, 由我在浏览器查看地图.
+4. **绘制地图. ** 经守门脚本把地图写入 ROADMAP.json: 顶层 `title`, `destination` (写明我确认的完成边界), `notes` (含被选方向结论与未选方向排除理由), `milestones` (每个里程碑经 `save <file> milestones.<id> <JSON对象>` 整体创建, 含 `title`/`type`/`question`, 需要阻塞时再 `save <file> milestones.<id>.blocked_by <JSON数组>`), `unknown_seas`, `off_course`. 同时创建固定的验收 Milestone, 并在其他已知工作建好后设置它的 `blocked_by`; 尚未明确的工作以后探明时再补阻塞, 不能因尚有未知海域就提前验收. 前沿, 已关闭决策, 阻塞关系均不落盘, 由上述数据推导, 见 [产物结构](TEMPLATES.md). 写完后起展示服务: `bash workflow/navigate/scripts/display_serve.sh ensure` (幂等, 已在跑则直接复用), 从 stdout JSON 的 `url` 拼上 `?roadmap=<ROADMAP.json 的绝对路径>` 交付给我, 由我在浏览器查看地图. 展示实例的归属与收工纪律见 [展示服务](#展示服务).
    完成标准: ROADMAP.json 已由脚本写入且 `query` 校验可读; 浏览器 URL 已交付.
 5. **确认与修订. ** 等我在浏览器查看后表态. 有异议 → 经脚本修订对应字段 → 重新交付 URL 让我重看, 直到我确认. 我确认后才进入 step 6. 确认动作在落盘之后, 提交之前.
    完成标准: 我已明确确认地图.
