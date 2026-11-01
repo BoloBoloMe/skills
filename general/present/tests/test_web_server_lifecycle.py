@@ -19,6 +19,8 @@ from urllib.error import HTTPError, URLError
 
 
 SCRIPT_PATH = Path(__file__).resolve().parent.parent / "scripts" / "web_server.py"
+# 容器识标记: 与实现同一判据 (/run/.containerenv), 决定容器/宿主分支用例是否可跑
+IN_CONTAINER = Path("/run/.containerenv").exists()
 
 
 class WebServerLifecycleTestCase(unittest.TestCase):
@@ -62,8 +64,15 @@ class WebServerLifecycleTestCase(unittest.TestCase):
 
     def _run_subprocess(self, *argv):
         """以真实子进程跑 CLI, 返回 (json_dict, exit_code, completed_process)."""
+        return self._run_subprocess_env({}, (), *argv)
+
+    def _run_subprocess_env(self, env_over, drop_env, *argv):
+        """带环境覆盖/剔除跑 CLI (地址解析入参驱动: 环境变量即接缝)."""
         env = os.environ.copy()
         env["PI_PRESENT_WEB_RUNTIME_DIR"] = self._runtime_base
+        for key in drop_env:
+            env.pop(key, None)
+        env.update(env_over)
         proc = subprocess.run(
             [sys.executable, str(SCRIPT_PATH), *argv],
             capture_output=True,
@@ -74,6 +83,18 @@ class WebServerLifecycleTestCase(unittest.TestCase):
         lines = [l for l in proc.stdout.splitlines() if l.strip()]
         obj = json.loads(lines[-1]) if lines else None
         return obj, proc.returncode, proc
+
+    def _free_high_port(self, bind="0.0.0.0"):
+        """在 49152-65534 内取一个当前可用端口 (BR-001 调用方选口范围)."""
+        for _ in range(50):
+            port = random.randint(49152, 65534)
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                try:
+                    s.bind((bind, port))
+                except OSError:
+                    continue
+                return port
+        raise AssertionError("no free port found in 49152-65534")
 
     def _wait_for_url(self, url, timeout=10):
         """轮询 URL, 直到 200 或超时; 返回 (body, http_code)."""
@@ -115,7 +136,13 @@ class TestTC005StartSuccess(WebServerLifecycleTestCase):
         self.assertEqual(obj["command"], "start")
         self.assertIn("url", obj)
         self.assertIn("hostname", obj)
-        self.assertIn("lan_ip", obj)
+        # TC-01-05: loopback bind 只给 localhost + loopback_bind 警告, 不是交付地址
+        self.assertEqual(obj["url"], f"http://localhost:{port}/")
+        self.assertNotIn("lan_ip", obj)
+        self.assertEqual(obj["address_missing"]["code"], "loopback_bind")
+        warning = obj.get("warning") or ""
+        self.assertIn("loopback", warning)
+        self.assertNotIn("ssh -L", warning)
         self.assertEqual(obj["port"], port)
         self.assertEqual(obj["bind"], "127.0.0.1")
         self.assertEqual(obj["roots"], [str(root.resolve())])
@@ -180,8 +207,9 @@ class TestTC006StartReuse(WebServerLifecycleTestCase):
         self.assertIsNotNone(warning, "port mismatch warning required")
         self.assertIn(str(port2), warning)
         self.assertIn(str(port1), warning)
-        # D011: bind 为 loopback 时成功输出含 ssh -L 端口转发指引
-        self.assertIn("ssh -L", warning)
+        # loopback bind: 端口差异告警之外另给 loopback 不可交付提示 (无 ssh -L)
+        self.assertIn("loopback", warning)
+        self.assertNotIn("ssh -L", warning)
 
         # 复用是同一进程, 未重启
         sj2 = json.loads(self._server_json_path().read_text(encoding="utf-8"))
@@ -871,38 +899,171 @@ class TestTC026FilePermissions(WebServerLifecycleTestCase):
             )
 
 
-class TestTC027HostFromSSHConnection(WebServerLifecycleTestCase):
-    """TC-027: 注入 SSH_CONNECTION -> 成功 JSON 的 URL host 取第 3 字段 (D011).
+class DeliveryAddressCliTestCase(WebServerLifecycleTestCase):
+    """交付地址 CLI 级用例基类: 只经 CLI 真实入口取结果, 不 mock 模块."""
 
-    bind 选 0.0.0.0: _url_host 对 loopback 返回 localhost, 只有非 loopback
-    bind 才能在 URL 里观察到 SSH_CONNECTION 探测结果.
-    """
+    def _home_with_confirmed(self, address=None):
+        """临时 HOME; 给地址时写入宿主已确认地址文件 (只读接缝的文件替身)."""
+        home = Path(self._tmpdir.name) / "home"
+        (home / ".agents" / "sandbox-worktree").mkdir(parents=True, exist_ok=True)
+        if address is not None:
+            (home / ".agents" / "sandbox-worktree" / "lan-address").write_text(
+                address + "\n", encoding="utf-8"
+            )
+        return home
 
-    def test_url_host_uses_ssh_connection_server_ip(self):
-        cip, cport, sip, sport = "192.0.2.1", "51234", "192.0.2.55", "22"
-        os.environ["SSH_CONNECTION"] = f"{cip} {cport} {sip} {sport}"
-        self.addCleanup(os.environ.pop, "SSH_CONNECTION", None)
-
-        root = Path(self._tmpdir.name) / "root"
-        root.mkdir()
-        (root / "f.txt").write_text("host-probe", encoding="utf-8")
-        port = self._free_port("0.0.0.0")
-
-        obj, code, proc = self._run_subprocess(
-            "start", str(port), str(root), "--bind", "0.0.0.0"
+    def _start_ok(self, home, port, root, *extra, env_over=None, drop_env=()):
+        env = {"HOME": str(home)}
+        if env_over:
+            env.update(env_over)
+        obj, code, proc = self._run_subprocess_env(
+            env, drop_env, "start", str(port), str(root), "--bind", "0.0.0.0", *extra
         )
         self.assertEqual(code, 0, f"stdout={proc.stdout} stderr={proc.stderr}")
-        self.assertTrue(obj["success"])
-        self.assertEqual(obj["url"], f"http://{sip}:{port}/")
-        self.assertEqual(obj["lan_ip"], sip)
-        # 非 loopback bind 不应输出 ssh -L 转发指引
-        self.assertNotIn("ssh -L", obj.get("warning") or "")
-
+        self.assertTrue(obj["success"], obj)
         sj = json.loads(self._server_json_path().read_text(encoding="utf-8"))
         self._server_pids.append(sj["pid"])
+        return obj, sj
+
+
+class TestTC001HostDeliveryAddress(DeliveryAddressCliTestCase):
+    """TC-001: 宿主分支地址来源 (显式指定 > 已确认记录 > 缺口), 真实 CLI 入口.
+
+    容器内 /run/.containerenv 恒存在, 宿主分支无法经 CLI 复现, 故容器中跳过;
+    同一实现的显式入参驱动用例见 test_web_server_cli.py.
+    """
+
+    SKIP_REASON = "容器内 /run/.containerenv 恒存在, 宿主分支无法经 CLI 复现"
+
+    @unittest.skipIf(IN_CONTAINER, SKIP_REASON)
+    def test_explicit_lan_host_wins_over_confirmed_record(self):
+        home = self._home_with_confirmed("192.168.1.20")
+        root = Path(self._tmpdir.name) / "root"
+        root.mkdir()
+        port = self._free_high_port()
+        obj, sj = self._start_ok(home, port, root, "--lan-host", "192.168.1.31")
+        self.assertEqual(obj["url"], f"http://192.168.1.31:{port}/")
+        self.assertEqual(obj["lan_ip"], "192.168.1.31")
+        self.assertEqual(obj["port"], sj["port"])
+        self.assertTrue(49152 <= obj["port"] <= 65534)
+        self.assertNotIn("address_missing", obj)
+
+    @unittest.skipIf(IN_CONTAINER, SKIP_REASON)
+    def test_confirmed_record_used_when_no_explicit_address(self):
+        home = self._home_with_confirmed("192.168.1.20")
+        root = Path(self._tmpdir.name) / "root"
+        root.mkdir()
+        port = self._free_high_port()
+        obj, sj = self._start_ok(home, port, root)
+        self.assertEqual(obj["url"], f"http://192.168.1.20:{port}/")
+        self.assertEqual(obj["lan_ip"], "192.168.1.20")
+        self.assertEqual(obj["port"], sj["port"])
+
+    @unittest.skipIf(IN_CONTAINER, SKIP_REASON)
+    def test_no_confirmed_address_reports_gap_and_keeps_serving(self):
+        home = self._home_with_confirmed(None)
+        root = Path(self._tmpdir.name) / "root"
+        root.mkdir()
+        (root / "f.txt").write_text("gap-probe", encoding="utf-8")
+        port = self._free_high_port()
+        obj, sj = self._start_ok(home, port, root)
+        # 地址解析失败不是启动失败: 服务照常监听
+        self.assertNotIn("url", obj)
+        self.assertNotIn("lan_ip", obj)
+        self.assertEqual(obj["address_missing"]["code"], "no_confirmed_address")
+        self.assertIsInstance(obj["candidates"], list)
+        ping = self._ping_local("0.0.0.0", port)
+        self.assertEqual(ping["pid"], sj["pid"])
         body, status = self._wait_for_url(f"http://127.0.0.1:{port}/f.txt")
-        self.assertEqual(status, 200)
-        self.assertEqual(body, "host-probe")
+        self.assertEqual((body, status), ("gap-probe", 200))
+        # 交付结果里不出现 loopback/文件路径
+        text = json.dumps(obj, ensure_ascii=False)
+        self.assertNotIn("127.0.0.1", text)
+        self.assertNotIn("localhost", text)
+        self.assertNotIn(str(root), text)
+
+    @unittest.skipIf(IN_CONTAINER, SKIP_REASON)
+    def test_ssh_connection_does_not_change_delivery_address(self):
+        home = self._home_with_confirmed("192.168.1.20")
+        root = Path(self._tmpdir.name) / "root"
+        root.mkdir()
+        port = self._free_high_port()
+        ssh_env = {
+            "SSH_CONNECTION": "192.0.2.1 51234 10.0.0.9 22",
+            "SSH_TTY": "/dev/pts/9",
+        }
+        obj, _ = self._start_ok(home, port, root, env_over=ssh_env)
+        self.assertEqual(obj["url"], f"http://192.168.1.20:{port}/")
+        self.assertEqual(obj["lan_ip"], "192.168.1.20")
+        text = json.dumps(obj, ensure_ascii=False)
+        # 旧实现的地址来源 (SSH 第 3 字段) 不再出现
+        self.assertNotIn("10.0.0.9", text)
+        self.assertNotIn("192.0.2.1", text)
+
+
+class TestTC001ContainerDelivery(DeliveryAddressCliTestCase):
+    """TC-01-03/04: 容器分支交付宿主地址加映射端口, 记录仍写监听端口."""
+
+    CONTAINER_ENV = {"SWT_HOST_LAN_IP": "192.0.2.10", "SWT_HOST_WEB_PORT": "50021"}
+    SKIP_REASON = "只在容器内跑: 容器分支由 /run/.containerenv 决定"
+
+    @unittest.skipUnless(IN_CONTAINER, SKIP_REASON)
+    def test_container_url_uses_host_address_and_mapped_port(self):
+        home = self._home_with_confirmed(None)
+        root = Path(self._tmpdir.name) / "root"
+        root.mkdir()
+        (root / "day1.html").write_text("<html>day1</html>", encoding="utf-8")
+        port = self._free_high_port()
+        obj, sj = self._start_ok(home, port, root, env_over=self.CONTAINER_ENV)
+        self.assertEqual(obj["url"], "http://192.0.2.10:50021/")
+        self.assertEqual(obj["lan_ip"], "192.0.2.10")
+        # 记录/port 仍是监听端口, 不写宿主映射端口
+        self.assertEqual(obj["port"], port)
+        self.assertEqual(sj["port"], port)
+        record_text = self._server_json_path().read_text(encoding="utf-8")
+        self.assertNotIn("50021", record_text)
+        # 容器视角地址不进交付 URL
+        self.assertNotIn("127.0.0.1", obj["url"])
+        body, status = self._wait_for_url(f"http://127.0.0.1:{port}/day1.html")
+        self.assertEqual((body, status), ("<html>day1</html>", 200))
+
+    @unittest.skipUnless(IN_CONTAINER, SKIP_REASON)
+    def test_container_missing_mapped_port_reports_gap(self):
+        home = self._home_with_confirmed(None)
+        root = Path(self._tmpdir.name) / "root"
+        root.mkdir()
+        port = self._free_high_port()
+        obj, sj = self._start_ok(
+            home,
+            port,
+            root,
+            env_over={"SWT_HOST_LAN_IP": "192.0.2.10"},
+            drop_env=("SWT_HOST_WEB_PORT", "SWT_HOST_WEB_PORT_2"),
+        )
+        self.assertNotIn("url", obj)
+        self.assertEqual(obj["address_missing"]["code"], "container_env_missing")
+        # 不猜映射端口
+        self.assertNotIn("50021", json.dumps(obj, ensure_ascii=False))
+        # 服务照常监听
+        ping = self._ping_local("0.0.0.0", port)
+        self.assertEqual(ping["pid"], sj["pid"])
+
+    @unittest.skipUnless(IN_CONTAINER, SKIP_REASON)
+    def test_lan_host_is_not_used_in_container_branch(self):
+        home = self._home_with_confirmed("192.168.1.20")
+        root = Path(self._tmpdir.name) / "root"
+        root.mkdir()
+        port = self._free_high_port()
+        obj, _ = self._start_ok(
+            home,
+            port,
+            root,
+            "--lan-host",
+            "192.168.1.31",
+            env_over=self.CONTAINER_ENV,
+        )
+        # 容器固定用 SWT_HOST_LAN_IP, 不被 --lan-host 覆盖
+        self.assertEqual(obj["url"], "http://192.0.2.10:50021/")
 
 
 if __name__ == "__main__":
