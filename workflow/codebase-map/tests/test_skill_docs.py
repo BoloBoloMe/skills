@@ -16,7 +16,7 @@ README_MD = SKILL_DIR.parents[1] / "README.md"
 
 CALL_FORM = "python3 <skill 目录>/scripts/codebase-map.py"
 
-# TC-06-01 断言的 serve 输出三类说明与版本口径关键短语
+# TC-06-01 断言的 serve 输出交付说明与版本口径关键短语 (E-3 后为四类说明)
 DELIVERY_NOTES_PHRASES = (
     "层号/环/向上依赖在官方依赖视图里看",
     "依赖抽取完整性未量化",
@@ -144,15 +144,30 @@ def test_tc009_flags_and_defaults_documented():
 
 
 def test_tc0601_delivery_discipline():
-    """TC-06-01: 交付纪律与三类说明原样转述."""
+    """TC-06-01: 交付纪律与四类说明原样转述 (E-3 后第 4 类为 unparsed_note)."""
     text = skill_text()
     assert "每个数据键的完整 URL" in text
     assert "?file=<键>" in text, "缺完整 URL 形态"
     assert "不给 loopback 地址" in text
     for phrase in DELIVERY_NOTES_PHRASES:
-        assert phrase in text, f"缺三类说明之一: {phrase}"
+        assert phrase in text, f"缺交付说明之一: {phrase}"
     assert "原样转述" in text and "不改写" in text
     assert "不说分层完全可信" in text
+    # E-3 (REWORK-03): 交付纪律由三类改四类, 并说明 unparsed_note 是第 4 类
+    assert "四类说明" in text, "交付纪律应为四类说明"
+    assert "unparsed_note" in text and "第 4 类" in text
+    assert "没有未解析扩展名" in text and "缺少统计记录" in text and "重新 build 可补" in text
+
+
+def test_tc0601_build_lock_window_documented():
+    """E-2 (REWORK-03): build 全程持锁写进 SKILL.md, 文案与实现一致
+    (锁等待 30 秒; 分析期间 serve/stop 会等锁, 超时报 internal_error;
+    建议错开时间操作)."""
+    text = skill_text()
+    assert "全程持有运行时文件锁" in text
+    assert "`serve` 与 `stop` 会等锁" in text
+    assert "超过 30 秒" in text and "internal_error" in text
+    assert "错开时间" in text
 
 
 def test_tc0601_cleanup_entry_and_no_auto_delete():

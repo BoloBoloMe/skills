@@ -1,9 +1,10 @@
 """ISSUE-05 交付输出与地址解析用例: AC-008 三场景, keys 交集, delivery_notes,
-交付一致性.
+交付一致性; E-3 (REWORK-03) 第 4 类说明 unparsed_note 三形态.
 
 覆盖: TC-008 (AC-008 主用例), TC-05-01 (缺地址阻塞), TC-05-02 (确认后
 --address 重新交付), TC-05-03 (keys 交集口径), TC-05-04 (delivery_notes
-与换端口报告), TC-05-05 (交付一致性).
+与换端口报告), TC-05-05 (交付一致性), TC-05-06/07/08 (E-3: 有未解析
+扩展名 / 没有未解析扩展名 / 老数据缺 stats).
 
 隔离纪律: 地址来源 ~/.agents/sandbox-worktree/lan-address 用临时 HOME 替换
 (不新增配置源, m14 D011; EXECUTION 文件接缝口径), 运行时目录 CODEMAP_RUNTIME_DIR
@@ -57,13 +58,18 @@ def write_cc_copy(serve_root, key, file_count):
     (serve_root / key).write_text(json.dumps(payload), encoding="utf-8")
 
 
-def register_keys(srv, *keys):
-    """把 serve-root 里已有副本的键登记进 state.json 的 data_keys."""
-    srv.write_state(data_keys=[
-        {"key": key, "source_cc_json": f"/fake/.codebase-map/{key}",
-         "built_at": "2026-01-01T00:00:00+00:00", "bytes": 64}
-        for key in keys
-    ])
+def register_keys(srv, *keys, stats=None):
+    """把 serve-root 里已有副本的键登记进 state.json 的 data_keys;
+    stats 传 dict 时每个条目带同一份 stats (E-3 unparsed_note 的数据源,
+    模拟 build 写入的形态); 不传则条目缺 stats (老数据形态)."""
+    entries = []
+    for key in keys:
+        entry = {"key": key, "source_cc_json": f"/fake/.codebase-map/{key}",
+                 "built_at": "2026-01-01T00:00:00+00:00", "bytes": 64}
+        if stats is not None:
+            entry["stats"] = stats
+        entries.append(entry)
+    srv.write_state(data_keys=entries)
 
 
 def assert_lan_url(url, addr, port, suffix="/"):
@@ -104,9 +110,10 @@ def test_tc008_confirmed_address_delivers_lan_urls(srv, tmp_path):
         ensure_ascii=False)
     for banned in ("127.0.0.1", "localhost", "::1", str(srv.serve_root), ".cc.json/"):
         assert banned not in delivery_blob, f"交付 URL 群不应含 {banned}: {delivery_blob}"
-    # 交付说明三类齐全 (AC-006 交付侧)
+    # 交付说明四类齐全 (AC-006 交付侧; E-3 补第 4 类, 本用例登记的是老数据形态)
     notes = obj["delivery_notes"]
     assert notes["level_hint"] and notes["integrity_note"] and notes["denominator_note"]
+    assert "unparsed_note" in notes and notes["unparsed_note"]
 
 
 def test_tc_05_01_no_address_blocks_delivery_but_starts_service(srv, tmp_path):
@@ -209,7 +216,7 @@ def test_tc_05_04_delivery_notes_and_port_change_report(srv, tmp_path):
 
     first, _ = srv.serve()
     notes = first["delivery_notes"]
-    assert set(notes) == {"level_hint", "integrity_note", "denominator_note"}
+    assert set(notes) == {"level_hint", "integrity_note", "denominator_note", "unparsed_note"}
     assert "依赖视图" in notes["level_hint"]
     assert "未量化" in notes["integrity_note"] and "不能当作分层完全可信" in notes["integrity_note"]
     assert "可信" not in notes["level_hint"], "层号说明不得宣称分层可信"
@@ -217,6 +224,8 @@ def test_tc_05_04_delivery_notes_and_port_change_report(srv, tmp_path):
         f"分母文件数应等于副本依赖树文件数: {notes['denominator_note']}")
     assert "零声明文件不进依赖树" in notes["denominator_note"]
     assert "默认不扫" in notes["denominator_note"]
+    # E-3: prime 登记的条目不带 stats (老数据形态), 第 4 类写明重新 build 可补
+    assert "缺少统计记录" in notes["unparsed_note"] and "重新 build" in notes["unparsed_note"]
     assert "port_changed" not in first and "previous_url" not in first, (
         "不带 --port 的 serve 不得报换端口")
     assert srv.read_state()["last_url"] == first["url"], (
@@ -259,6 +268,66 @@ def test_port_change_reports_record_delivery_url_as_previous(srv, tmp_path):
     assert previous == first["url"], "旧地址应取留痕的交付 URL, 不是回环地址"
     assert "127.0.0.1" not in previous and "localhost" not in previous
     assert "旧地址已失效" in changed["note"]
+
+
+def test_tc_05_06_unparsed_note_lists_unsupported_extensions(srv, tmp_path):
+    """E-3 (REWORK-03): data_keys 条目带 stats 时, delivery_notes.unparsed_note
+    逐库列出没进依赖树的扩展名与数量; 人类可读形态同样铺开该字段
+    (CLI 非 --json 与 --json 共用同一份结果 dict)."""
+    use_temp_home(srv, tmp_path, confirmed=CONFIRMED_ADDR)
+    key_other = "other-lib-ef12ab34.cc.json"
+    srv.prime(key=KEY_DEMO)
+    write_cc_copy(srv.serve_root, KEY_DEMO, 4)
+    write_cc_copy(srv.serve_root, key_other, 3)
+    register_keys(
+        srv, KEY_DEMO, key_other,
+        stats={"files_in_tree": 4,
+               "unsupported_extensions": [{"ext": ".md", "count": 2}, {"ext": ".py", "count": 1}]})
+
+    obj, _ = srv.serve()
+    unparsed = obj["delivery_notes"]["unparsed_note"]
+    assert "未解析扩展名" in unparsed
+    assert f"{KEY_DEMO}: 没进依赖树的扩展名 .md x2, .py x1" in unparsed, (
+        f"逐库列出扩展名与数量: {unparsed!r}")
+    assert f"{key_other}: 没进依赖树的扩展名 .md x2, .py x1" in unparsed
+    # 人类可读形态同样铺开该字段
+    human = srv.cli("serve")
+    assert human.returncode == 0
+    assert "unparsed_note" in human.stdout, f"人类可读输出应含 unparsed_note: {human.stdout!r}"
+    assert ".md x2" in human.stdout
+
+
+def test_tc_05_07_unparsed_note_states_none_when_no_unsupported(srv, tmp_path):
+    """E-3: 某库没有未解析扩展名时, unparsed_note 写明"没有未解析扩展名"."""
+    use_temp_home(srv, tmp_path, confirmed=CONFIRMED_ADDR)
+    srv.prime(key=KEY_DEMO)
+    write_cc_copy(srv.serve_root, KEY_DEMO, 4)
+    register_keys(srv, KEY_DEMO, stats={"files_in_tree": 4, "unsupported_extensions": []})
+
+    obj, _ = srv.serve()
+    unparsed = obj["delivery_notes"]["unparsed_note"]
+    assert f"{KEY_DEMO}: 没有未解析扩展名" in unparsed, f"实际: {unparsed!r}"
+    assert "没进依赖树的扩展名" not in unparsed
+
+
+def test_tc_05_08_unparsed_note_missing_stats_legacy_data(srv, tmp_path):
+    """E-3: 老数据 (记录缺 stats) 的库, unparsed_note 写明缺少统计记录,
+    重新 build 可补; 与带 stats 的库逐库各自成立, 不互相顶替."""
+    use_temp_home(srv, tmp_path, confirmed=CONFIRMED_ADDR)
+    key_new = "new-lib-99aa88bb.cc.json"
+    srv.prime(key=KEY_DEMO)  # prime 登记的条目不带 stats (老数据形态)
+    write_cc_copy(srv.serve_root, KEY_DEMO, 4)
+    write_cc_copy(srv.serve_root, key_new, 2)
+    entries = srv.read_state()["data_keys"]
+    entries.append({"key": key_new, "source_cc_json": f"/fake/.codebase-map/{key_new}",
+                    "built_at": "2026-01-01T00:00:00+00:00", "bytes": 64,
+                    "stats": {"files_in_tree": 2, "unsupported_extensions": []}})
+    srv.write_state(data_keys=entries)
+
+    obj, _ = srv.serve()
+    unparsed = obj["delivery_notes"]["unparsed_note"]
+    assert f"{KEY_DEMO}: 该库缺少统计记录, 重新 build 可补" in unparsed, f"实际: {unparsed!r}"
+    assert f"{key_new}: 没有未解析扩展名" in unparsed
 
 
 def test_tc_05_05_delivery_consistency_three_way_port_and_keys(srv, tmp_path):

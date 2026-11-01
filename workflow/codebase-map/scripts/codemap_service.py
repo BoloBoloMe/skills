@@ -263,6 +263,9 @@ def _no_data_keys_error(base: Path, state) -> dict | None:
 
     两类文案 (m25 D020): 清单与磁盘都空 = 还没 build 过; 清单有条目但副本
     全缺 = 副本已删, 建议重新 build. 磁盘上有未登记文件只提示, 不自动收编.
+    E-1 (REWORK-03): 启动路径与存活复用分支都按本函数判定, 两条路径口径
+    一致 (BR-030 前置不只在启动时约束); 复用分支复查不通过时只报错返回,
+    不 stop 不重启, 存活实例原样保留.
     """
     serve_root = base / "serve-root"
     registered = {
@@ -575,6 +578,12 @@ def _serve_core(explicit_port=None, runtime_base=None, resolved=None) -> dict:
                 f"已有存活实例运行在端口 {recorded_port} (pid {pid}); 换端口前必须先 stop 现有实例.",
                 "先执行 stop, 再用 serve --port <N> 换端口; 或不带 --port 直接复用现有实例.",
             )
+        # E-1 (REWORK-03, BR-030/D020): 复用分支同样复查清单与磁盘副本的交集,
+        # 交集为空照样报 no_data_keys; 只报错返回, 不 stop 不重启, 存活实例
+        # 原样保留 (状态不改写, 进程不动).
+        blocked = _no_data_keys_error(base, state)
+        if blocked is not None:
+            return blocked
         return cmc.success_result(
             "serve",
             port=recorded_port,
@@ -623,11 +632,37 @@ def _delivery_keys(state, serve_root: Path, with_details: bool) -> tuple:
     return keys, missing, unregistered
 
 
-def _delivery_notes(serve_root: Path, keys) -> dict:
-    """三类交付说明 (m25 D006, BR-023/BR-024); 数字取自 serve-root 实际副本.
+def _unparsed_parts(keys, entries_by_key: dict) -> list:
+    """第 4 类说明逐库片段 (E-3, REWORK-03; BR-025, m25 D004).
+
+    数据取 state.json.data_keys 条目里的 stats.unsupported_extensions (build
+    锁内写入, 与 build --json 同源): 有未解析扩展名逐库列出扩展名与数量;
+    没有则写明"没有未解析扩展名"; 记录缺 stats (老数据) 写明重新 build 可补.
+    """
+    parts = []
+    for item in keys:
+        key = item["key"]
+        stats = (entries_by_key.get(key) or {}).get("stats")
+        unsupported = stats.get("unsupported_extensions") if isinstance(stats, dict) else None
+        if not isinstance(unsupported, list):
+            parts.append(f"{key}: 该库缺少统计记录, 重新 build 可补")
+            continue
+        detail = ", ".join(
+            f"{one.get('ext')} x{one.get('count')}" for one in unsupported
+            if isinstance(one, dict) and one.get("ext") is not None
+        )
+        parts.append(f"{key}: 没有未解析扩展名" if not detail
+                     else f"{key}: 没进依赖树的扩展名 {detail}")
+    return parts
+
+
+def _delivery_notes(serve_root: Path, keys, entries_by_key: dict) -> dict:
+    """四类交付说明 (m25 D006, BR-023/BR-024/BR-025); 数字取自 serve-root 实际副本.
 
     依赖树文件数用 codemap_analyze 的只读统计函数 (与 build stats 同口径,
     不写第二份); 懒加载且只调纯函数, 不触 podman 与网络 (BR-027).
+    unparsed_note 是第 4 类 (E-3, REWORK-03): 逐库列出没进依赖树的扩展名与
+    数量, 数据取 data_keys 条目的 stats (build 锁内写入, 与 build --json 同源).
     """
     import codemap_analyze as cma  # noqa: PLC0415  (延迟导入, 只用只读统计纯函数)
     counts = []
@@ -639,6 +674,7 @@ def _delivery_notes(serve_root: Path, keys) -> dict:
             counts.append(f"{item['key']}: 数据文件无法解析, 文件数缺报")
             continue
         counts.append(f"{item['key']}: {cma.files_in_tree_of(data)}")
+    unparsed = _unparsed_parts(keys, entries_by_key)
     return {
         "level_hint": "层号/环/向上依赖在官方依赖视图里看; 3D 城市图按官方默认指标.",
         "integrity_note": "依赖抽取完整性未量化, 不能当作分层完全可信.",
@@ -647,6 +683,7 @@ def _delivery_notes(serve_root: Path, keys) -> dict:
             + "; 零声明文件不进依赖树, 测试与 build 目录默认不扫, "
             "分析端自带忽略规则单列为工具默认过滤."
         ),
+        "unparsed_note": "未解析扩展名: " + ("; ".join(unparsed) if unparsed else "无"),
     }
 
 
@@ -665,6 +702,11 @@ def _apply_delivery(result: dict, resolved: dict, runtime_base=None) -> dict:
     serve_root = Path(result.get("serve_root") or (base / "serve-root"))
     has_address = "url_host" in resolved
     keys, missing, unregistered = _delivery_keys(state, serve_root, with_details=has_address)
+    entries_by_key = {
+        entry.get("key"): entry
+        for entry in (state or {}).get("data_keys") or []
+        if isinstance(entry, dict) and entry.get("key")
+    }
     notes = []
     if state_err is not None:
         notes.append(f"交付组装时状态记录无法读取, keys 可能不完整: {state_err}")
@@ -679,7 +721,7 @@ def _apply_delivery(result: dict, resolved: dict, runtime_base=None) -> dict:
             + ", ".join(unregistered)
         )
     result["keys"] = keys
-    result["delivery_notes"] = _delivery_notes(serve_root, keys)
+    result["delivery_notes"] = _delivery_notes(serve_root, keys, entries_by_key)
     if notes:
         result["notes"] = notes
     if has_address:

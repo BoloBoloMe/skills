@@ -16,7 +16,7 @@ python3 <skill 目录>/scripts/codebase-map.py <build|serve|stop> ...
 
 宿主有 uv 时 `uv run python <skill 目录>/scripts/codebase-map.py <build|serve|stop> ...` 等价. 三个子命令各管一件事, 三者不合并:
 
-- `build <目标目录> [--exclude <glob>]... [--json]`: 只分析并产出数据, 不起服务. 权威数据落在目标库的 `.codebase-map/cc.json` (m13 D010), 副本复制进服务根供页面读取. `--exclude` 以 glob 语义追加排除规则, 可多次; 默认已排除 `node_modules` `.git` `dist` `build` `target` `vendor` 与 `.codebase-map`.
+- `build <目标目录> [--exclude <glob>]... [--json]`: 只分析并产出数据, 不起服务. 权威数据落在目标库的 `.codebase-map/cc.json` (m13 D010), 副本复制进服务根供页面读取. `--exclude` 以 glob 语义追加排除规则, 可多次; 默认已排除 `node_modules` `.git` `dist` `build` `target` `vendor` 与 `.codebase-map`. `build --json` 的 `stats.notes` 固定带三句分母说明 (测试与 build 目录默认不扫, 零声明文件不进依赖树, 分析端自带忽略规则单列为工具默认过滤), 人类可读输出逐行打印 (AC-001, BR-024).
 - `serve [--port <N>] [--address <IP>] [--json]`: 起或复用常驻服务并交付局域网 URL 与交付说明. 服务单例, 端口默认沿用上次端口 (首次为 8090).
 - `stop [--json]`: 停整个服务, 没有"只停某一个库"的语义; 没有实例时幂等成功. 停机后旧 URL 立即失效, 服务根与缓存里的数据副本保留.
 
@@ -35,13 +35,18 @@ python3 <skill 目录>/scripts/codebase-map.py stop
 
 `build` 只在宿主机使用: 在沙箱容器内执行会被拒绝, 不降级.
 
+## build 持锁窗口
+
+`build` 全程持有运行时文件锁: 取锁后要经过初始化与三步分析, 一直到写完副本与登记 state.json 才释放. 分析一个库期间, 同时执行的 `serve` 与 `stop` 会等锁, 等待超过 30 秒就报 `internal_error` 失败退出. 建议错开时间操作: 等正在跑的 `build` 结束, 再执行 `serve` 或 `stop`.
+
 ## 交付纪律
 
 - 交付给用户的是局域网 URL: 基址 `http://<已确认地址>:<端口>/` 加每个数据键的完整 URL `http://<已确认地址>:<端口>/?file=<键>`, 全部取自 `serve` 的输出; 不给 loopback 地址, 不给文件路径, 不让用户自己拼 (m25 D002, BR-019).
-- 交付消息原样转述 `serve` 输出摘要里 `delivery_notes` 的三类说明, 不改写其中的数字与判断, 不说分层完全可信 (BR-023, BR-024, BR-037):
+- 交付消息原样转述 `serve` 输出摘要里 `delivery_notes` 的四类说明, 不改写其中的数字与判断, 不说分层完全可信 (BR-023, BR-024, BR-025, BR-037):
   1. 层号/环/向上依赖在官方依赖视图里看; 3D 城市图按官方默认指标 (m24 U003).
   2. 依赖抽取完整性未量化, 不能当作分层完全可信 (m24 U001).
   3. 分母口径: 依赖树里的文件数 (输出里逐键列出); 零声明文件不进依赖树, 测试与 build 目录默认不扫, 分析端自带忽略规则单列为工具默认过滤 (m23 F003).
+  4. 未解析扩展名 (`unparsed_note`, 第 4 类): 逐库列出没进依赖树的扩展名与数量; 某库没有未解析扩展名时写明"没有未解析扩展名"; 记录里缺统计记录 (老数据) 的库写明缺少统计记录, 重新 build 可补 (m25 D004, BR-025).
 
 ## 地址来源与缺值出口
 

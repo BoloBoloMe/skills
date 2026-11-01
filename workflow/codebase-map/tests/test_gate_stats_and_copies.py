@@ -1,5 +1,6 @@
 """ISSUE-03 用例: 门禁判定, 统计分母, 副本分发与 state.json 登记
-(TC-005, TC-006, TC-03-01..TC-03-05).
+(TC-005, TC-006, TC-03-01..TC-03-05); E-3/E-4 (REWORK-03) 的 data_keys.stats
+与 stats.notes 三句分母说明.
 
 接缝与口径 (m25 EXECUTION 验证策略):
 - 容器内 /run/.containerenv 在场, CLI 前置检查第一关就拒绝, 门禁/统计/副本
@@ -110,10 +111,10 @@ def load_state(runtime: Path) -> dict | None:
 
 
 def assert_stats_complete(stats: dict):
-    """stats 字段齐全: 分母, 五类 excluded, 零声明清单, 边计数."""
+    """stats 字段齐全: 分母, 五类 excluded, 零声明清单, 边计数, 三句说明 (E-4)."""
     assert set(stats) == {"scanned_files", "files_in_tree", "excluded",
                           "zero_declaration", "unsupported_extensions",
-                          "cyclic_edges", "upward_edges"}
+                          "cyclic_edges", "upward_edges", "notes"}
     assert set(stats["excluded"]) == {"tests", "build_dirs", "custom",
                                       "dot_codebase_map", "tool_defaults"}
 
@@ -166,6 +167,11 @@ def test_tc_005_build_delivers_original_copy_key_and_registration(monkeypatch, t
     assert entry["source_cc_json"] == str(original)
     assert entry["bytes"] == original.stat().st_size
     datetime.datetime.fromisoformat(entry["built_at"])  # UTC ISO8601
+    # E-3 (REWORK-03): 条目带 stats 子对象, 与 build --json 的 stats 同源,
+    # 至少含 files_in_tree 与 unsupported_extensions
+    assert entry["stats"]["files_in_tree"] == result["stats"]["files_in_tree"]
+    assert (entry["stats"]["unsupported_extensions"]
+            == result["stats"]["unsupported_extensions"])
 
     # gate/stats 字段齐备且门禁通过 (fixture: 边 3, 层号 3 种)
     assert result["gate"] == {"passed": True, "edges": 3, "level_kinds": 3}
@@ -406,3 +412,41 @@ def test_tc_03_05_unsupported_extensions_summary_is_isolated(monkeypatch, tmp_pa
         ".java 有文件进树, 属受支持扩展名, 不得汇总"
     assert not any(item["ext"] == ".cc.json" for item in stats["unsupported_extensions"]), \
         ".codebase-map 下的数据文件是排除类, 不进扩展名维度"
+
+
+# ---------------------------------------------------------------------------
+# E-4 (REWORK-03, AC-001): build 输出补三句分母说明
+# ---------------------------------------------------------------------------
+
+
+def test_e4_build_notes_three_denominator_sentences_in_both_forms(monkeypatch, tmp_path):
+    """E-4: build --json 的 stats.notes 固定三句分母说明, 措辞与 SKILL.md
+    分母口径及 serve 的 denominator_note 同源; 人类可读形态 (CLI 非 --json
+    用的同一编码函数 human_summary) 逐行打印这三句.
+
+    容器内 CLI 前置检查拦下真实 build (m25 D016 验证分工), 人类形态在本树
+    按内部接缝直接断言编码函数; 门禁失败路径的 stats.notes 齐全已由
+    assert_stats_complete 随 TC-006 两用例覆盖.
+    """
+    target = make_stats_tree(tmp_path, name="notes-lib")
+    fixture = make_gate_fixture(tmp_path)
+    result, _runtime, _s = build_with_fixture(monkeypatch, tmp_path, target, fixture)
+    assert result["success"] is True, result
+
+    # JSON 形态: stats.notes 字符串数组, 固定三句
+    notes = result["stats"]["notes"]
+    assert isinstance(notes, list) and len(notes) == 3
+    assert all(isinstance(note, str) and note for note in notes)
+    joined = "\n".join(notes)
+    assert "测试" in joined and "build 目录默认不扫" in joined, notes  # (a)
+    assert "零声明文件不进依赖树" in joined, notes  # (b)
+    assert "工具默认过滤" in joined, notes  # (c)
+    assert notes == list(cma.STATS_NOTES), "stats.notes 应与常量同源"
+
+    # 人类可读形态: 三句逐行打印 (每句一行, "说明: " 前缀)
+    text = cmc.human_summary(result)
+    for note in notes:
+        assert note in text, f"人类可读输出缺句: {note!r}"
+    note_lines = [line for line in text.splitlines() if line.startswith("说明: ")]
+    assert note_lines == [f"说明: {note}" for note in notes], (
+        f"三句应逐行打印: {note_lines!r}")
