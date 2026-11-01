@@ -48,7 +48,7 @@ mock env) 与纯函数归快层.
 | `general/mailbox/pi-extension/` / `tests/pi/mailbox/` (每会话取信/工具/场景夹具) | test_mailbox_listen_mark.py + test_mailbox_pi_identity.py + test_mailbox_audit.py | 快层, 含自动取信/关闭/同 id 多窗口, 同容器两 pi 的真实 HTTP 收信/新建/恢复 |
 | 展示链交付/双 URL (birth 输出侧) | test_swt_web_access.py + test_swt_novnc_access.py + test_swt_m08_*.py | 快层 |
 | `general/present/scripts/` | general/present/tests/ | 快层 |
-| `workflow/codebase-map/scripts/` 或 `workflow/codebase-map/tests/` (codebase-map v1 分析/服务脚本与用例) | workflow/codebase-map/tests/ | 快层 |
+| `workflow/codebase-map/scripts/`, `workflow/codebase-map/tests/`, `workflow/codebase-map/SKILL.md` 或 `workflow/codebase-map/README.md` (codebase-map v1 分析/服务脚本, 用例与 SKILL/README 文本契约) | workflow/codebase-map/tests/ | 快层 (该套件含一条 unshare mount ns 环境构造用例, 快层偏移备案) |
 
 红线 (D036): 断言真实外部状态, 不靠 mock 替代系统行为. 分层只动跑法与夹具组织,
 不降低证据等级; 快层用例的 fake 边界是被测系统之外的接缝 (如 podman 不存在于

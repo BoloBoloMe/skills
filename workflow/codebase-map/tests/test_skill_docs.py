@@ -31,10 +31,14 @@ DELIVERY_NOTES_PHRASES = (
 def collect_code_error_codes() -> set:
     """静态解析 scripts/*.py 里错误码产生位置, 收集错误码全集.
 
-    覆盖两种产生位: cmc.error_result(command, code, message, hint) 的第 2 个
-    位置参, 与 _AnalyzeError(code, message, hint) 的第 1 个位置参; 只收
-    字符串字面量. 动态传递处 (startup_error 回放, 异常透传) 的错误码均已在
-    别处以字面量出现, 不影响全集完整性 (主用例的关键码子集断言兼验证此点).
+    覆盖三种产生位: cmc.error_result(command, code, message, hint) 的第 2 个
+    位置参, _AnalyzeError(code, message, hint) 的第 1 个位置参, 与 dict 字面量
+    里 key 为 "code" 的字符串值 (REWORK-02 P-6: no_confirmed_address 这类不经
+    error_result 产生的码在 codemap_common.py 组装 address_missing 时以 dict
+    字面量出现, 不收的话将来把它写进文档表格会假红). 只收字符串字面量; dict
+    分支里值为变量/调用的条目 (回放位) 不收, 动态传递处 (startup_error 回放,
+    异常透传) 的错误码均已在别处以字面量出现, 不影响全集完整性 (主用例的
+    关键码子集断言兼验证此点).
     """
     import ast
 
@@ -42,6 +46,14 @@ def collect_code_error_codes() -> set:
     for script in sorted((SKILL_DIR / "scripts").glob("*.py")):
         tree = ast.parse(script.read_text(encoding="utf-8"))
         for node in ast.walk(tree):
+            if isinstance(node, ast.Dict):
+                # key 为 "code" 的字符串字面量值: 不经 error_result 的产生位
+                for key, value in zip(node.keys, node.values):
+                    if (isinstance(key, ast.Constant) and key.value == "code"
+                            and isinstance(value, ast.Constant)
+                            and isinstance(value.value, str)):
+                        codes.add(value.value)
+                continue
             if not isinstance(node, ast.Call):
                 continue
             func = node.func
@@ -62,7 +74,9 @@ def doc_error_codes(text: str) -> set:
     """从文档的失败出口清单表格提取错误码: 表格行首列里反引号包住的 token.
 
     只认表格第一列整格恰为一个 `snake_case` 反引号片段的行, 不捞正文里的
-    普通参数名/字段名; 分隔行与非错误码列跳过.
+    普通参数名/字段名; 分隔行与非错误码列跳过. 守卫范围口径 (REWORK-02
+    P-6): 只查失败出口清单表格首列, 不是全文 token 扫描, 正文里出现的
+    错误码样式 token 不在本守卫观察范围.
     """
     codes = set()
     for line in text.splitlines():
@@ -172,14 +186,20 @@ def test_tc0601_every_error_code_token_exists_in_code():
     """TC-06-01 附加: 文档失败出口清单里列出的错误码全部在代码错误码全集内.
 
     全集从 scripts/*.py 现场静态解析 (collect_code_error_codes), 不是手抄
-    副本; 文档侧从失败出口清单表格首列提取 (doc_error_codes).
+    副本; 文档侧从失败出口清单表格首列提取 (doc_error_codes). 范围口径
+    (REWORK-02 P-6): 本守卫只查表格首列, 不扫全文 token; collector 同时收
+    no_confirmed_address 这类非 error_result 产生的码 (dict "code" 字面量),
+    将来把它写进表格不会假红.
     """
     codes_in_code = collect_code_error_codes()
     assert codes_in_code, "ast 解析应从 scripts/*.py 收集到错误码全集"
     codes_in_doc = doc_error_codes(skill_text())
     assert codes_in_doc, "SKILL.md 失败出口清单应能提取到错误码"
     unknown = codes_in_doc - codes_in_code
-    assert not unknown, f"文档里的错误码不在代码错误码全集内: {unknown}"
+    assert not unknown, (
+        "失败出口表格首列出现代码错误码全集外的码 "
+        "(本守卫只查表格首列, 不扫全文 token, REWORK-02 P-6 口径): "
+        f"{unknown}")
     # 关键错误码必须出现 (子集断言, 同时兼验证解析器没退化)
     assert {
         "container_not_supported", "podman_missing", "no_data_keys",
