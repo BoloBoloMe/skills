@@ -36,6 +36,7 @@
 | [`benchmark-checklist`](workflow/benchmark-checklist/SKILL.md) | 报告或采信性能数字前的测量核查, 覆盖公平调优, 重复与统计, 错误计数, 收益上限, 结论边界与 PR 主数字. |
 | [`blast-radius`](workflow/blast-radius/SKILL.md) | 调查变更在 diff 之外的影响, 用真实代码证明关键安全事实并交接风险. |
 | [`codebase-design`](workflow/codebase-design/SKILL.md) | 用模块, 接口和接缝原则指导代码库设计与可测试性. |
+| [`codebase-map`](workflow/codebase-map/SKILL.md) | 把代码库结构与依赖分层可视化为可交互页面 (CodeCharta 汉化前端), 手动构建与查看. |
 | [`code-review`](workflow/code-review/SKILL.md) | 按规范, spec 与按门槛纳入的旧行为影响分别评审代码变更. |
 | [`create-verification-skill`](workflow/create-verification-skill/SKILL.md) | 用已确认的产品说明为当前项目生成项目级验证配方, 含入口地图, 启动与清理规则. |
 | [`decision-ledger`](workflow/decision-ledger/SKILL.md) | 记录和维护 DECISIONS.md 中已确认的决策与事实. |
