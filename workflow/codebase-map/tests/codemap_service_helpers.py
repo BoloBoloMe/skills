@@ -81,11 +81,15 @@ class CodemapSrv:
         self.daemon_pids = []  # 见过的本服务守护 pid, 收尾强杀兜底
         self.paused_pids = set()  # 被 SIGSTOP 的守护 pid, 收尾先 SIGCONT
         self.procs = []  # 测试自起的其它进程 (占端口的假前端等), 收尾回收
+        self.home = None  # 指向临时 HOME 时隔离 ~/.agents/sandbox-worktree (ISSUE-05)
 
     # ---- CLI ----
 
     def env(self):
-        return {ENV_RUNTIME_DIR: str(self.base), ENV_PORT: str(self.port)}
+        env = {ENV_RUNTIME_DIR: str(self.base), ENV_PORT: str(self.port)}
+        if self.home is not None:
+            env["HOME"] = str(self.home)
+        return env
 
     def cli(self, *argv, timeout=60):
         return run_cli(*argv, env_extra=self.env(), timeout=timeout)

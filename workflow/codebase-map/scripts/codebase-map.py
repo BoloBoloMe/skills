@@ -18,10 +18,17 @@ build <目标目录> [--exclude <glob>]... [--json]:
   写目标库 .codebase-map/cc.json; 门禁判定, 统计分母, 副本复制与 state.json
   更新归 ISSUE-03, 本版 result 不含这些字段也不写假值.
 
-serve [--port <N>] [--json]:
-  起或复用常驻服务; 判定分支与端口决策全部在 codemap_service.run_serve.
-  有存活实例时传不同 --port 返回 instance_running; 状态与探活对不上返回
-  state_mismatch; 目标端口被别的程序占用返回 port_in_use, 不静默顺延.
+serve [--port <N>] [--address <IP>] [--json]:
+  起或复用常驻服务并交付 URL; 判定分支与端口决策全部在
+  codemap_service.run_serve. 有存活实例时传不同 --port 返回
+  instance_running; 状态与探活对不上返回 state_mismatch; 目标端口被别的
+  程序占用返回 port_in_use, 不静默顺延.
+  --address 把用户确认过的局域网地址传入本次调用, 只影响本次 URL 组装与
+  交付文案, 不落盘 (ISSUE-05 接线, m25 D017); 未传时按顺序取已确认地址
+  记录文件, 再取候选枚举; 解析不出且未传时服务照常起, 输出
+  address_missing + candidates, 退出码仍为 0.
+  交付字段 (url/base_url/keys/delivery_notes/address_missing 等) 由
+  codemap_service 的交付输出层组装, 调用会话只原样转述 (BR-037).
   serve/stop 不做网络动作 (BR-027), 容器内不作 build 式拒绝.
 
 stop [--json]:
@@ -133,10 +140,13 @@ def _build_parser() -> argparse.ArgumentParser:
         "--json", dest="as_json", action="store_true",
         help="stdout 只输出一行 JSON.")
     p_serve = sub.add_parser(
-        "serve", help="起或复用常驻服务并托管 serve-root 下的数据 (交付字段见后续 issue).")
+        "serve", help="起或复用常驻服务并交付 URL 与交付说明.")
     p_serve.add_argument(
         "--port", type=int, default=None, metavar="N",
         help="指定本次端口: 无存活实例时生效; 有存活实例时返回 instance_running.")
+    p_serve.add_argument(
+        "--address", default=None, metavar="IP",
+        help="用户确认过的局域网地址, 只作用于本次调用, 不落盘 (m25 D017).")
     p_serve.add_argument(
         "--json", dest="as_json", action="store_true",
         help="stdout 只输出一行 JSON.")
@@ -170,7 +180,7 @@ def main(argv=None):
         if args.command == "build":
             result = run_build(args.target, args.exclude)
         elif args.command == "serve":
-            result = cms.run_serve(args.port)
+            result = cms.run_serve(args.port, args.address)
         elif args.command == "stop":
             result = cms.run_stop()
         else:  # pragma: no cover - subparsers required=True 挡住其余取值

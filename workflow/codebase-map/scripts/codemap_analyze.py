@@ -498,6 +498,17 @@ def evaluate_gate(merge_data: dict) -> dict:
     return gate
 
 
+def files_in_tree_of(merge_data: dict) -> int:
+    """只读统计: cc.json files 树里的 File 节点数, 与 build 统计的
+    stats.files_in_tree 同口径 (m25 D006 分母口径; NG-006 只读不改).
+
+    serve 交付层用它把 serve-root 里实际副本的依赖树文件数报进
+    delivery_notes.denominator_note; 只读副本, 不触 podman 与网络.
+    """
+    _, file_paths = _files_tree_index(merge_data)
+    return len(file_paths)
+
+
 # ---------------------------------------------------------------------------
 # 统计与分母归因 (BR-024/BR-025, m25 D019, m23 PROBE 6.4/F003)
 # ---------------------------------------------------------------------------

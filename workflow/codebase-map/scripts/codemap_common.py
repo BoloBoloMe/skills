@@ -16,6 +16,7 @@ import hashlib
 import json
 import os
 import re
+import subprocess
 from pathlib import Path
 
 # ---------------------------------------------------------------------------
@@ -95,6 +96,102 @@ def ensure_runtime_layout(base=None) -> Path:
 
 
 # ---------------------------------------------------------------------------
+# 已确认局域网地址与候选探测 (m25 D011/D017, m14 D011; BR-019/BR-020)
+# ---------------------------------------------------------------------------
+
+# 隧道/虚拟接口前缀: 这些接口上的全局地址局域网够不着, 不得作局域网入口交付
+# (与 swt.py 同一份前缀口径, m14 M14 发现 4)
+TUNNEL_INTERFACE_PREFIXES = (
+    "tun", "tap", "wg", "ppp", "utun", "ts", "tailscale",
+    "docker", "veth", "br-", "virbr", "zt", "podman",
+)
+
+# address_source 取值: 标明本次交付地址取自哪个来源 (m25 D017)
+ADDRESS_SOURCE_RECORD = "confirmed_record"  # 取自 swt 已确认地址记录文件
+ADDRESS_SOURCE_ARGUMENT = "explicit_argument"  # 取自本次 --address 实参
+
+def _default_records_root() -> Path:
+    """swt records_root 默认值: ~/.agents/sandbox-worktree (随运行时 HOME 解析,
+    测试用临时 HOME 隔离, 不新增配置源, m14 D011)."""
+    return Path.home() / ".agents" / "sandbox-worktree"
+
+
+def confirmed_lan_address_path(records_root=None) -> Path:
+    """swt 已确认局域网地址文件路径 (只读); 默认 records_root 按运行时 HOME 解析."""
+    root = Path(records_root) if records_root is not None else _default_records_root()
+    return root / "lan-address"
+
+
+def read_confirmed_lan_address(records_root=None) -> str | None:
+    """读已确认局域网地址; 无文件或内容为空返回 None (无值, 不猜测, m14 D011)."""
+    path = confirmed_lan_address_path(records_root)
+    try:
+        if not path.is_file():
+            return None
+        value = path.read_text(encoding="utf-8").strip()
+    except OSError:
+        return None
+    return value or None
+
+
+def candidate_lan_addresses() -> tuple:
+    """枚举非隧道网卡的全局 IPv4 字面量作候选地址 (只候选, 不自动交付, m25 D011).
+
+    口径与 swt.py 同源: `ip -o -4 addr show scope global`, 过滤隧道/虚拟接口
+    前缀, 保留枚举序并去重; 只取点分 IPv4, 天然不含回环/IPv6/主机名.
+    """
+    try:
+        proc = subprocess.run(
+            ["ip", "-o", "-4", "addr", "show", "scope", "global"],
+            capture_output=True, text=True, timeout=2, check=False,
+        )
+        output = proc.stdout
+    except (OSError, subprocess.SubprocessError):
+        return ()
+    candidates = []
+    for line in output.splitlines():
+        match = re.match(r"\d+: (\S+)\s+inet (\d+\.\d+\.\d+\.\d+)/", line)
+        if not match:
+            continue
+        iface, addr = match.group(1), match.group(2)
+        if iface.startswith(TUNNEL_INTERFACE_PREFIXES):
+            continue
+        if addr not in candidates:
+            candidates.append(addr)
+    return tuple(candidates)
+
+
+def resolve_delivery_address(explicit_address=None, records_root=None) -> dict:
+    """交付地址解析 (m25 D011/D017, m14 D011): 单一入口, 只读不落盘.
+
+    顺序: --address 实参 (本次显式传入的确认值) -> 已确认地址记录文件有值就用
+    -> 否则枚举非隧道全局 IPv4 作 candidates 并给
+    address_missing.code = no_confirmed_address.
+    解析成功: {"url_host": <addr>, "address_source": confirmed_record|explicit_argument}
+    解析失败: {"address_missing": {code, message}, "candidates": [...]}
+    明确不采 SSH_CONNECTION, 主机名, localhost, 服务自报地址 (m25 D011);
+    --address 只属于本次调用, 由调用方保证不写 state.json/配置文件/记录文件.
+    """
+    explicit = (explicit_address or "").strip()
+    if explicit:
+        return {"url_host": explicit, "address_source": ADDRESS_SOURCE_ARGUMENT}
+    confirmed = read_confirmed_lan_address(records_root)
+    if confirmed:
+        return {"url_host": confirmed, "address_source": ADDRESS_SOURCE_RECORD}
+    return {
+        "address_missing": {
+            "code": "no_confirmed_address",
+            "message": (
+                "缺已确认的局域网地址: 请用户确认一个候选地址, "
+                "然后用 serve --address <已确认地址> 重新交付; "
+                "不用回环地址, 主机名或文件路径顶替 (BR-019/BR-020)."
+            ),
+        },
+        "candidates": list(candidate_lan_addresses()),
+    }
+
+
+# ---------------------------------------------------------------------------
 # 排除集合与 glob -> ccsh 正则 (m25 D019, m13 D017; BR-015)
 # ---------------------------------------------------------------------------
 
@@ -159,9 +256,16 @@ def error_result(command: str, code: str, message: str, hint: str) -> dict:
 
 
 def human_summary(result: dict) -> str:
-    """结果 dict -> 多行人类可读摘要; 与 JSON 形态字段一致, 不另造第二份数据."""
+    """结果 dict -> 多行人类可读摘要; 与 JSON 形态字段一致, 不另造第二份数据.
+
+    地址缺口 (m25 D017, AC-008): serve 成功但缺已确认地址时, 交付被阻断而
+    服务已起, 首行改写 BLOCKED, 其余字段照常铺开, 不另造第二份数据.
+    """
     head = "成功" if result.get("success") else "失败"
-    lines = [f"codebase-map {result.get('command', '?')}: {head}"]
+    if result.get("success") and "address_missing" in result and "url" not in result:
+        lines = ["BLOCKED: 缺已确认局域网地址"]
+    else:
+        lines = [f"codebase-map {result.get('command', '?')}: {head}"]
     for key, value in result.items():
         if key in ("success", "command"):
             continue

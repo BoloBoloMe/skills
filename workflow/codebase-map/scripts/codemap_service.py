@@ -21,9 +21,15 @@ stop 等待 10 秒.
 状态与换端口 (m25 D018): stop 只把 pid 置空并写 stopped_at, 保留
 port/last_port/last_url, 于是"已知停机"与"旧实例死掉的残留"可区分, 换
 端口时报得出真实旧地址. last_url 由 serve 在每次成功启动时写为
-http://127.0.0.1:<port>/ -- ISSUE-04 不做地址解析与交付 URL 组装 (归
-ISSUE-05), 该字段先承担端口留痕; ISSUE-05 接入地址解析后由交付层改写为
-真实交付 URL. --address 的值按 D017 永不写入 state.json.
+http://127.0.0.1:<port>/: 它只承担端口留痕, 不落任何已解析地址
+(全局禁止: 不把 --address 或任何地址写进 state.json); 交付 URL 由
+ISSUE-05 的交付输出层 (_apply_delivery) 在响应里现场组装, 不落盘.
+--address 的值按 D017 永不写入 state.json.
+
+交付输出层 (ISSUE-05, m25 D002/D006/D017/D020): run_serve 在启动/复用
+成功的结果上追加 url/base_url/keys/delivery_notes/address_missing 等
+交付字段; 启动, 复用, 探活, 端口决策, 锁与 stop 语义一概不动 (ISSUE-04
+面不变), 本层只加输出字段, 地址解析纯函数在 codemap_common.
 """
 from __future__ import annotations
 
@@ -451,8 +457,11 @@ def _start_service(base: Path, target_port: int, old_state, note: str) -> dict:
 # ---------------------------------------------------------------------------
 
 
-def run_serve(explicit_port=None, runtime_base=None) -> dict:
-    """起或复用常驻服务. 不碰 stdout, 不退出进程; 返回结果 dict 交 CLI 层."""
+def _serve_core(explicit_port=None, runtime_base=None) -> dict:
+    """serve 启动/复用核心 (ISSUE-04 面, 原样保留): 判定分支与端口决策.
+
+    不碰 stdout, 不退出进程; 交付字段由 run_serve 的输出层追加.
+    """
     if explicit_port is not None and not (1 <= explicit_port <= 65535):
         return cmc.error_result(
             "serve", "internal_error",
@@ -538,6 +547,128 @@ def run_serve(explicit_port=None, runtime_base=None) -> dict:
         )
     finally:
         _release_lock(lock_fd)
+
+
+# ---------------------------------------------------------------------------
+# 交付输出层 (ISSUE-05): 地址解析 + keys 交集 + delivery_notes, 只加输出字段
+# ---------------------------------------------------------------------------
+
+
+def _delivery_keys(state, serve_root: Path, with_details: bool) -> tuple:
+    """keys = state.data_keys 与 serve-root 实际 .cc.json 的交集 (m25 D020, BR-030).
+
+    输出前逐个核文件存在; 记录有而磁盘缺的键不进 keys (作缺失清单返回);
+    磁盘有而清单没有的 (手工放入) 不收编, 只作未登记清单返回 (BR-036 不删).
+    with_details=False 时按 AC-008 地址缺口形态只给键名, 不给 built_at/bytes.
+    """
+    registered = [
+        entry for entry in (state or {}).get("data_keys") or []
+        if isinstance(entry, dict) and entry.get("key")
+    ]
+    disk = _disk_keys(serve_root)
+    keys, missing = [], []
+    for entry in registered:
+        key = entry["key"]
+        if key not in disk or not (serve_root / key).is_file():
+            missing.append(key)
+            continue
+        if with_details:
+            keys.append({
+                "key": key,
+                "built_at": entry.get("built_at"),
+                "bytes": entry.get("bytes"),
+            })
+        else:
+            keys.append({"key": key})
+    unregistered = sorted(disk - {entry["key"] for entry in registered})
+    return keys, missing, unregistered
+
+
+def _delivery_notes(serve_root: Path, keys) -> dict:
+    """三类交付说明 (m25 D006, BR-023/BR-024); 数字取自 serve-root 实际副本.
+
+    依赖树文件数用 codemap_analyze 的只读统计函数 (与 build stats 同口径,
+    不写第二份); 懒加载且只调纯函数, 不触 podman 与网络 (BR-027).
+    """
+    import codemap_analyze as cma  # noqa: PLC0415  (延迟导入, 只用只读统计纯函数)
+    counts = []
+    for item in keys:
+        path = serve_root / item["key"]
+        try:
+            data = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            counts.append(f"{item['key']}: 数据文件无法解析, 文件数缺报")
+            continue
+        counts.append(f"{item['key']}: {cma.files_in_tree_of(data)}")
+    return {
+        "level_hint": "层号/环/向上依赖在官方依赖视图里看; 3D 城市图按官方默认指标.",
+        "integrity_note": "依赖抽取完整性未量化, 不能当作分层完全可信.",
+        "denominator_note": (
+            "分母口径: 依赖树里的文件数 " + ("; ".join(counts) if counts else "无")
+            + "; 零声明文件不进依赖树, 测试与 build 目录默认不扫, "
+            "分析端自带忽略规则单列为工具默认过滤."
+        ),
+    }
+
+
+def _apply_delivery(result: dict, explicit_address, runtime_base=None) -> dict:
+    """在 serve 成功结果上追加交付输出 (m25 D002/D006/D017/D020, AC-008).
+
+    地址解析成功 (含 --address 传入的确认值): 给 url/base_url 与
+    keys[].url, address_source 标明来源. 解析失败且未传 --address: 不给
+    url/base_url, keys 只给键名, 给 address_missing + candidates; 服务照常
+    监听, 退出码仍为 0. 锁已释放后的状态重读按 TECHNICAL 关键流程
+    ("释放锁 -> 解析地址并输出") 执行; 地址与 URL 一律不落盘.
+    """
+    base = Path(runtime_base).resolve() if runtime_base is not None else cmc.runtime_dir()
+    state, state_err = _load_state(base)
+    serve_root = Path(result.get("serve_root") or (base / "serve-root"))
+    resolved = cmc.resolve_delivery_address(explicit_address)
+    has_address = "url_host" in resolved
+    keys, missing, unregistered = _delivery_keys(state, serve_root, with_details=has_address)
+    notes = []
+    if state_err is not None:
+        notes.append(f"交付组装时状态记录无法读取, keys 可能不完整: {state_err}")
+    if missing:
+        notes.append(
+            f"状态清单登记但磁盘缺失的键 {len(missing)} 个 (不进 keys, 不交付失效 URL): "
+            + ", ".join(missing)
+        )
+    if unregistered:
+        notes.append(
+            f"存在未登记的磁盘副本 {len(unregistered)} 个 (不自动收编): "
+            + ", ".join(unregistered)
+        )
+    result["keys"] = keys
+    result["delivery_notes"] = _delivery_notes(serve_root, keys)
+    if notes:
+        result["notes"] = notes
+    if has_address:
+        host = resolved["url_host"]
+        port = result.get("port")
+        base_url = f"http://{host}:{port}/"
+        result["url"] = base_url
+        result["base_url"] = base_url
+        result["address_source"] = resolved["address_source"]
+        for item in keys:
+            item["url"] = f"http://{host}:{port}/?file={item['key']}"
+    else:
+        result["address_missing"] = resolved["address_missing"]
+        result["candidates"] = resolved["candidates"]
+    return result
+
+
+def run_serve(explicit_port=None, explicit_address=None, runtime_base=None) -> dict:
+    """起或复用常驻服务并组装交付输出. 不碰 stdout, 不退出进程.
+
+    启动/复用/探活/端口决策全在 _serve_core (ISSUE-04 面, 不改); 成功结果
+    交 _apply_delivery 追加交付字段; 失败结果 (no_data_keys, port_in_use,
+    state_mismatch, instance_running 等) 原样返回, 不加交付字段.
+    """
+    result = _serve_core(explicit_port, runtime_base)
+    if result.get("success"):
+        _apply_delivery(result, explicit_address, runtime_base)
+    return result
 
 
 # ---------------------------------------------------------------------------
