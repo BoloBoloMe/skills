@@ -298,7 +298,7 @@
       "title": "定位地图页在路线图更新后失效的根因",
       "type": "research",
       "question": "复现并定位我报的现象: 每次更新路线图后, 路线图访问页容易打不开. 已知事实: 今天 15:15 后 navigate 展示服务进程 (pid 85094, 端口 39271) 消失, 而容器 8801 的 socat 桥仍指向 39271, 于是页面不通; 同时期有其他会话在同一 checkout 跑同一套脚本和测试, 且历史上曾有会话为了跑 pytest 把占用 39271 的守护进程当外来占用 kill 掉; 进程不是 OOM (cgroup oom_kill=0), 运行时文件还在 (说明不是 navigate 自己的 stop), server.log 最后一条是正常请求无异常. 需要实测检验的假设: (H1) 端口漂移与固定桥脱钩: start 复用失败或服务死后 status 重建会换到随机端口, 8801 的桥不会跟随, 于是变哑; (H2) 会话收工按完成定义 stop 或测试抢端口/误杀, 使服务被动消失; (H3) 前端轮询加 ThreadingHTTPServer 无界线程与每请求 open 日志, 长跑后 fd/线程泄漏导致服务失效; (H4) server.log 无上限增长 (现有 3.2MB 无轮转); (H5) 运行时文件被系统临时目录清理成幽灵实例, 或 /tmp 里大量 navigate-roadmap 锁文件累积带来副作用. 每个假设给出成立/不成立及证据, 并复现出门槛清楚的步骤 (例如: 连续请求页面同时在另一进程做 roadmap.py save, 重复 N 次; 或杀掉服务后看页面与桥的恢复路径). 只做分析与实验, 不改产品代码. 产出 docs/changes/workflow-stack-review/milestone-16/FINDINGS.md, 含现象, 复现步骤, 根因结论按假设逐条, 修复方案建议与影响面 (navigate 的 web_server.py, web/index.html, tests, 以及是否要固定端口或端口落盘加桥自愈), 供 milestone-17 实施.",
-      "status": "待处理",
+      "status": "进行中",
       "blocked_by": [],
       "artifacts": [],
       "close_summary": null
@@ -318,7 +318,7 @@
       "title": "落地宿主端口映射的自查顺序提案",
       "type": "task",
       "question": "按 docs/proposals/2026-10-31-host-port-mapping-self-check.md 落地 P1-P3, 不改提案文档本身: (P1) 改写 workflow/use-sandbox-worktree/agent-prompts/ENV.md 容器纪律那句, 把查与问拆开, 缺值时先按 ~/docs/web-ports.md 的自查顺序查 (当前 env, 容器内全进程 environ, 技能文档配方), 仍未找到才经可用信箱向宿主索取, 信箱不可用才问我; (P2) 改 workflow/use-sandbox-worktree/scripts/env_docs.py 的 _web_ports, 补端口每次 create 都变不要写死, 三步自查顺序与那段扫 /proc/[0-9]*/environ 的命令, 交付 URL 形状取 SWT_HOST_LAN_IP 加 SWT_HOST_WEB_PORT, 并写明服务自报的 url/hostname/lan_ip 是容器视角不可直接交付, 与 present 的 REMOTE.md 对齐; 样例只给形状不给具体端口数字; (P3) 在 tests/test_env_docs.py 补断言, 生成的 web-ports.md 必须出现 /proc/[0-9]*/environ 与 SWT_HOST_LAN_IP 两个关键词, 防止后续重构删掉自查指引而不报错. 不要手改容器里 ~/docs/*.md (那是 env_docs.render_docs 的输出), 只改生成器. 按提案第 4 节验证: 只读生成的 web-ports.md 就能在容器内独立拼出局域网 URL, 无需发信或提问. 通过 uv run python -m pytest 相关用例, 涉及 check_skill.py 的文件另跑该检查. 禁止修改真实已安装 skills, 不运行会改安装目录的同步. 编码任务按 drive-execution skill 执行, 产物根目录 docs/changes/workflow-stack-review/milestone-18/.",
-      "status": "待处理",
+      "status": "进行中",
       "blocked_by": [],
       "artifacts": [],
       "close_summary": null
@@ -327,7 +327,7 @@
       "title": "给 skill 补 codex 的 agents/openai.yaml 元数据",
       "type": "task",
       "question": "让本仓库 skill 在 codex 里也保持模型不可见, 并把这条维护规则写进 skill 机制文档. 元数据规则已确认: 只写达到目的的最小配置, 即对 frontmatter 带 disable-model-invocation: true 的 skill (当前 43 个, 分布在 workflow/ 与 general/) 新建 agents/openai.yaml, 内容仅 policy.allow_implicit_invocation: false (布尔值不加引号, 键不加引号); 其余 9 个模型可见的 skill 不建文件, 走 codex 默认的允许隐式调用. 不写 interface (display_name/short_description/default_prompt 都不写), 不写 icon/brand_color, 不写 dependencies. 依据是 codex-cli 0.162.1 自带 skill-creator 的 references/openai_yaml.md: allow_implicit_invocation 默认 true, 设 false 后 skill 不注入模型上下文, 只能用 dollar-skill-name 显式调用. 不改 SKILL.md 的 frontmatter (pi 侧仍靠它), 不动 sync-to-pi.py 与分发流程 (codex 也加载 ~/.agents/skills/), 不运行会改安装目录的同步, 不改真实已安装 skills. 另加一条守卫测试放在仓库 tests/ (如 tests/test_skills_codex_metadata.py): 遍历 workflow/ 与 general/ 下全部 SKILL.md, 带 disable-model-invocation: true 的必须有 agents/openai.yaml 且 policy.allow_implicit_invocation 为 false, 反之不得为 false; 只用标准库解析这两三行, 不引入 pyyaml, 防止后续新增 skill 漏配或元数据与 frontmatter 漂移. 最后在 general/writing-for-llm/SKILL-MECHANICS.md 补一节, 把维护 agents/openai.yaml 写成维护 skill 的必选项: 新增或改动 skill 的调用方式时同步维护该文件, 用户调用 skill 设 allow_implicit_invocation: false, 模型调用 skill 不建文件; 漏维护由上面那条测试抓住. 沿用文中既有的 用户调用/模型调用 一对词, 不新造术语, 措辞只讲该做什么, 不复述 openai.yaml 全字段. 验证: uv run python -m pytest tests, 抽查一个模型不可见与一个模型可见 skill 的 codex 元数据. 编码任务按 drive-execution skill 执行, 产物根目录 docs/changes/workflow-stack-review/milestone-19/.",
-      "status": "待处理",
+      "status": "进行中",
       "blocked_by": [],
       "artifacts": [],
       "close_summary": null
@@ -336,7 +336,7 @@
       "title": "给 mailbox 信头时间加 MAILBOX_TZ 覆盖",
       "type": "task",
       "question": "我确认的做法: 给 general/mailbox 的信头呈现加时区覆盖, 不硬编码 +08, 不改系统时区. 具体: (1) 读取环境变量 MAILBOX_TZ, 支持 IANA 名字 (如 Asia/Shanghai) 以及正负偏移写法 (如 +08:00, 便于没有 tzdata 的环境); 未设时保持现在的行为, 即 astimezone() 取系统本地时区, 不改变现有输出. (2) 只影响 print_letter 里的 发送时间 呈现 (scripts/mailbox.py 约 2369 行的 fromtimestamp + astimezone 那段); 事件日志 log_event 的 UTC 加 Z 保持不变 (跨机对齐用), 相对时间 (presence 的 age_text) 也不动. (3) 值非法时不让取信失败: 回退到系统本地时区并在 stderr 提示一次 (走现有 log_event 风格或一条提示), 呈现照常输出. (4) 实现只用标准库: zoneinfo 解析 IANA 名字, 偏移写法自己解析; 不新增依赖, 不写死任何具体时区. (5) 文档: general/mailbox/SKILL.md 第 32 行那句补上 MAILBOX_TZ 覆盖说明 (未设时按系统本地时区, 日志仍为 UTC), 措辞与该文风格一致. (6) 测试: 在仓库 tests/ 下 mailbox 用例处补覆盖, 至少证明 MAILBOX_TZ=Asia/Shanghai 时信头为 +08:00 且小时数与 UTC 差 8, 非法值回退系统时区且不报错, 未设时行为与改动前一致; 时区断言只比较偏移与差值, 不锁死具体日期, 避免跨时区机器上失败. 验证: uv run python -m pytest tests -k mailbox (或相关子集) 全绿; 手动以 MAILBOX_TZ=Asia/Shanghai 渲染一封信确认 +08:00. 编码任务按 drive-execution skill 执行, 产物根目录 docs/changes/workflow-stack-review/milestone-20/.",
-      "status": "待处理",
+      "status": "进行中",
       "blocked_by": [],
       "artifacts": [],
       "close_summary": null
@@ -345,7 +345,7 @@
       "title": "落地代码库结构可视化的汉化构建与交付",
       "type": "task",
       "question": "按 docs/changes/workflow-stack-review/milestone-13/PLAN.md 落地, 方案已与用户敲定, 不再改方案本身: (1) 全量词表: 模板 359 条 (通道 A), .ts 侧人工过滤后的 A 类文案约 500 条 (通道 B), 绑定与插值内字面量约 30 处 (通道 C); 先扩写术语表并统一高频单词型文案, 再分批翻译, 同一英文默认单一译法, 语境不同才按文件覆盖. (2) 构建脚本固化: clone 指定 vis tag -> 三通道替换 -> npm ci -> npm run build -> 自建渲染冒烟 (临时静态服务 + 无头 Chromium 截图 + 关键元素断言), 全程幂等可重放, 并输出未使用词条与未命中统计. (3) nginx 配置: 交付一份含 try_files $uri /index.html 的配置, 解决深链 404; 交付命令用官方 nginx 镜像挂载产物与该配置, 不构建自有镜像. (4) 操作手册: 写清两端容器命令 (分析端官方 codecharta-analysis 镜像挂载目标仓库与输出目录; 前端挂载产物与配置), 数据交付方式 (?file= 或浏览器选文件), 升级流程 (改 tag 重跑, 看未使用词条), 已知坑 (深链, patch-package 冲突, 上游测试会红因而不跑). 手册里的 skill 名字与入口命令先用占位, 待 milestone-13 定名后替换. (5) 验证: 构建耗时与产物大小记录, 冒烟截图留证, 抽查术语一致性, 界面无残留英文 (允许列出明确的暂不翻译项并说明原因). 边界: 不改上游源码提交, 不 fork 上游, 不构建自有镜像, 不跑上游单测 (用户已裁决), 不决定 skill 名字与 to-spec 调用入口 (留 milestone-13). 详细验收标准实施前确认.",
-      "status": "待处理",
+      "status": "进行中",
       "blocked_by": [],
       "artifacts": [],
       "close_summary": null
