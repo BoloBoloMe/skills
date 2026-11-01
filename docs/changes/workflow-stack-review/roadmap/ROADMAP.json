@@ -298,10 +298,12 @@
       "title": "定位地图页在路线图更新后失效的根因",
       "type": "research",
       "question": "复现并定位我报的现象: 每次更新路线图后, 路线图访问页容易打不开. 已知事实: 今天 15:15 后 navigate 展示服务进程 (pid 85094, 端口 39271) 消失, 而容器 8801 的 socat 桥仍指向 39271, 于是页面不通; 同时期有其他会话在同一 checkout 跑同一套脚本和测试, 且历史上曾有会话为了跑 pytest 把占用 39271 的守护进程当外来占用 kill 掉; 进程不是 OOM (cgroup oom_kill=0), 运行时文件还在 (说明不是 navigate 自己的 stop), server.log 最后一条是正常请求无异常. 需要实测检验的假设: (H1) 端口漂移与固定桥脱钩: start 复用失败或服务死后 status 重建会换到随机端口, 8801 的桥不会跟随, 于是变哑; (H2) 会话收工按完成定义 stop 或测试抢端口/误杀, 使服务被动消失; (H3) 前端轮询加 ThreadingHTTPServer 无界线程与每请求 open 日志, 长跑后 fd/线程泄漏导致服务失效; (H4) server.log 无上限增长 (现有 3.2MB 无轮转); (H5) 运行时文件被系统临时目录清理成幽灵实例, 或 /tmp 里大量 navigate-roadmap 锁文件累积带来副作用. 每个假设给出成立/不成立及证据, 并复现出门槛清楚的步骤 (例如: 连续请求页面同时在另一进程做 roadmap.py save, 重复 N 次; 或杀掉服务后看页面与桥的恢复路径). 只做分析与实验, 不改产品代码. 产出 docs/changes/workflow-stack-review/milestone-16/FINDINGS.md, 含现象, 复现步骤, 根因结论按假设逐条, 修复方案建议与影响面 (navigate 的 web_server.py, web/index.html, tests, 以及是否要固定端口或端口落盘加桥自愈), 供 milestone-17 实施.",
-      "status": "进行中",
+      "status": "已关闭",
       "blocked_by": [],
-      "artifacts": [],
-      "close_summary": null
+      "artifacts": [
+        "docs/changes/workflow-stack-review/milestone-16/FINDINGS.md"
+      ],
+      "close_summary": "已交付 milestone-16/FINDINGS.md (203 行, commit 047c79f, 合并 064aed1), 只分析未改产品代码, 实验全在 /tmp 一次性端口 39301-39303 与独立运行时目录, 未触碰现役 39300 服务与 8801 桥. 裁决: 页面打不开的直接原因恒为桥所指端口无服务; 主因 H2 成立 (展示实例是共享默认运行时目录里的无主单例, 同 checkout 任何会话按收工定义 stop 都合法杀它, 85094 死后 server.json 被清只能由 run_stop 或手动 rm 造成); 放大器 H1 成立 (默认端口被占时 start 静默漂到随机端口, 桥不知情, status 仍报 alive, 直连 200 但页面不通); H3 线程/fd 泄漏不成立 (5000 请求后全部回落); H4 部分成立 (仅启动时截断, 运行中约 4.7MB/天无限增长, 卫生问题); H5 幽灵实例不成立, 锁文件堆积成立 (581 个, 无功能危害). 新发现: 现役 39300 示例是手工 __serve__ 起的, start 的候选端口不含 39300, 现有手段无法复原回 39300, 临时缓解缺可重复复原一环. 建议交 milestone-17: start 加显式端口入口 (NAVIGATE_WEB_PORT env 或 CLI) 且陌生占用报 port_in_use 不漂移, 新增 display 编排脚本 (固定 39300 + 自愈巡检), nav_helpers 去掉与生产真实 39271 的互斥, 回归 R1-R8, 并把展示服务归属与收工不 stop 的约定写进文档. 未核实: 85094/106316 死亡瞬间的具体执行者, 桥创建者与时间, 真实 39271 上的漂移 (用等价端口复现)."
     },
     "milestone-17": {
       "title": "修复 navigate 展示页稳定性并加回归测试",
@@ -310,7 +312,7 @@
         "milestone-16"
       ],
       "question": "按 milestone-16 的根因结论修复 navigate: 目标是路线图更新与服务重启后, 我手里的页面地址仍然可用, 不再需要每次重起服务和手工重建 socat 桥. 具体改动按根因定, 可能涉及 workflow/navigate/scripts/web_server.py (端口策略改为固定端口或端口落盘加桥自愈, 服务不在会话收工或测试中被误杀, 日志轮转与 fd/线程约束), workflow/navigate/web/index.html (轮询与错误提示: 服务不可用时页面说清原因而不是空白), 以及 tests. 必须留可自动化的回归验证: 例如边连续请求 /api/roadmap 边做 roadmap.py save 不中断; 服务被杀后按文档步骤能恢复且地址不变; 测试套件不再抢真实默认端口或误杀真实实例. 与 milestone-14 对常驻服务与端口记录的口径保持一致, 避免出现两套端口记录路径. 通过 uv run python -m pytest workflow/navigate/tests 与仓库 check_skill.py, 禁止修改真实已安装 skills, 不运行会改安装目录的同步. 编码任务按 drive-execution skill 执行, 产物根目录 docs/changes/workflow-stack-review/milestone-17/.",
-      "status": "待处理",
+      "status": "进行中",
       "artifacts": [],
       "close_summary": null
     },
