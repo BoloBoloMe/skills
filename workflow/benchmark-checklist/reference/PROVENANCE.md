@@ -34,11 +34,11 @@ curl -sS -m 20 -w "%{http_code} %{size_download}\n" -o /tmp/iss13-upstream/LICEN
 
 | 源版位置 | 目标版位置 | 影响 | 处理决定 |
 | --- | --- | --- | --- |
-| frontmatter `description` 英文触发句 ("Use when you run a benchmark or report a speedup...", 上游第 3 行) | frontmatter `description` 单行中文摘要, 列出覆盖的核查项 (本地第 3 行); `disable-model-invocation: true` 上游第 4 行与本地第 4 行逐字相同 | 只改描述措辞; 调用方式没有改变 | 按 DECISIONS D022 把 description 写成一行人类摘要. 不记为调用模式改变: 上游原文第 4 行原本就是用户调用, 本地照抄该行 |
+| frontmatter `description` 英文触发句 ("Use when you run a benchmark or report a speedup...", 上游第 3 行) | frontmatter `description` 单行中文摘要, 写适用场景 (报告性能数字前) 与判据 (测量是否公平, 结论是否站得住), 不列举核查项 (本地第 3 行); `disable-model-invocation: true` 上游第 4 行与本地第 4 行逐字相同 | 只改描述措辞; 调用方式没有改变 | 按 DECISIONS D022 把 description 写成一行人类摘要. 不记为调用模式改变: 上游原文第 4 行原本就是用户调用, 本地照抄该行. 2026-11 复核: 原描述列举四项核查内容, 属冗余枚举, 改为场景加判据 |
 | 标题 `# Benchmark checklist` (上游第 7 行) | `# 性能测量核查` (本地第 7 行) | 标题中文化, 层级不变 | 保留, 属人工检查结论: 两侧都只有一个 H1, 没有 H2 层级变动 (机检 `check_skill.py` 不检查标题, 结论只来自人工核对) |
 | 引言段与 "one run is enough ... never a ballpark" 段 | 引言段保留四种判定; 粗估例外后移到 `## 粗估与选型` | 粗估例外的位置从开头移到选型节, 内容不减 | 保留: 例外条件 (单次仍查第 4/7 问, 选型永远不算粗估) 逐条保留 |
 | `## Before you run anything` 三条 | `## 测量前` | 三条保留, 另补脚本随机扰动/固定种子记录与分析器单跑不进报告 | 保留收紧 |
-| `## The questions` 1 到 7 | 拆成 `## 测量前`, `## 两侧按生产方式调优`, `## 重复与波动`, `## 错误计数与工作是否真的发生`, `## 收益上限与端到端`, `## 基线与脚本固定前` 六节, 问题编号只在第 4 与第 7 问引用 | 上游单节七个编号问题按测量阶段拆开 | 接受: 每个问题逐条保留, 无遗漏; 编号引用改为按节名加原编号 |
+| `## The questions` 1 到 7 | 拆成 `## 测量前`, `## 两侧按生产方式调优`, `## 重复与波动`, `## 错误计数与工作是否真的发生`, `## 收益上限与端到端`, `## 基线与脚本固定前` 六节, 问题编号只在第 4 与第 7 问引用 | 上游单节七个编号问题按测量阶段拆开 | 接受: 每个问题逐条保留, 无遗漏; 编号引用改为按节名加原编号. 2026-11 复核: 删掉本地自加的 "第 N 问在哪一节" 对照表, 因为各节正文从未标注编号, 表指向无处; 改为一行说明只按编号引用第 4 与第 7 问 |
 | 第 1 问的工具清单 (`top`, `pidstat`, `node --cpu-prof`, `py-spy`, `perf`, `strace -c`) | 只写"分析器或追踪器", 未逐项列工具名 | 具体工具提示减少 | 记录在案, 不改正文: 工具名属示例, 规则 (限制因素单独跑, 该次数字不进报告, 负载生成器先饱和也算限制因素) 全部保留 |
 | 第 3 问 "Compare bytes per second with disk and network bandwidth, operations per second times cost per operation with your cores..." | `## 收益上限与端到端` 的物理上限段: 每秒字节数对磁盘与网络带宽, 每秒操作数乘每操作成本对核心数, 省下的时间对被改动那一段自己的耗时 | 初版只保留占比算式 (占 10% 的段全删, 上限约 11%), 漏掉带宽与核心两组 | 已补齐: 与 TECHNICAL 已确认的"用带宽/核心时间/占比核对物理上限"一致, 见本 ISSUE 提交 |
 | 第 4 问 "If the script does not count errors, add the count" | `## 错误计数与工作是否真的发生`: 在授权的独立实验脚本里补计数与正确性校验; 冻结产品源码不改, 只能改源码才拿得到计数时报缺口 | 上游允许直接给脚本加计数, 本地以冻结源码与一次性实验边界收紧 | 保留收紧: 不改产品源码, 改为报缺口 |

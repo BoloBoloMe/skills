@@ -28,6 +28,7 @@ disable-model-invocation: true
 - 删除/清理 worktree 一律走 `git worktree remove/prune`.
 - 目标 worktree dirty (含 untracked) 时停止并询问我.
 - 我未指定 repo/worktree 时, 从当前路径向上识别标准 `<workspace>/<project>/`; 不确定则列信息并询问.
+完成标准: 每次 Git 操作前已有目标 worktree, 分支, HEAD, 状态的报告, 且没有命中的停止条款.
 
 ## 状态检查
 
@@ -49,6 +50,7 @@ uv run python scripts/status.py <任意路径>
    - 若目标分支已被其他 worktree checkout: 停止并告知已有路径.
    - 完成标准: `status.py` 在标准布局中列出新 worktree, 分支正确, 工作区干净.
 3. 若布局非标准: 先询问是否迁移到标准 `<workspace>/<project>/`; 标准目录尚不存在时可在批准后新建.
+   完成标准: 已按下方迁移流程完成, 或已停在我的答复上.
 
 ## 删除 worktree
 
@@ -70,6 +72,7 @@ uv run python scripts/status.py <任意路径>
 - 询问 `是否执行?`.
 
 迁移后执行 `git worktree repair` 修复登记路径, 再用 `git worktree list` 与 `uv run python scripts/status.py` 验证.
+完成标准: `status.py` 在新路径下列出全部 worktree, 分支与 HEAD 与迁移前一致, 旧路径不再出现; `git worktree list` 结果与之一致.
 
 ## 汇报格式
 

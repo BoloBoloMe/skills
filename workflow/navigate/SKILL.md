@@ -34,7 +34,7 @@ ROADMAP.json 的 `unknown_seas` 字段 (字符串数组) 存的就是这些模�
 
 - research (AFK): 委派子代理独立探索, 产出分析文件. **何时创建**: 决策在等一个藏在当前工作目录之外的事实 (文档, API, 知识库等), 须先暴露. 工作目录内的事实就地查, 不单立里程碑; 查影响面用 `blast-radius`, 查领域用 `domain-awareness`; 需要单独立项才查得清的内部调查通常说明里程碑划错了.
 - demo (HITL): 调用 `demo` skill 制作演示材料, 提升讨论保真度; 拿已交付的成品或线上系统演示时不调用 skill, 直接跑成品, 同样归 demo. **何时创建**: 问题是 "它应该是什么样子, 如何运行", 或需要让人看清某个样子/行为/过程以便讨论时. 可交互有反馈的演示材料隐含着很多文字说不清楚的隐性知识信息, 你应该积极使用演示材料, 提高设计的清晰度. 演示活动不新增产品交付承诺.
-- poc (AFK): 实验由代理独立驱动, 不需要仓库主人在场. **何时创建**: 问题是某个技术方案能否做成, 需要真实实验才能判定. 拆分判据与归属: 一个结论能一次收口就一个里程碑; 出现多个可分别收口的结论才拆成多个, 用依赖串起来, 每个里程碑各收口一个结论; 单个结论跨多个会话时保持进行中继续推进, 不拆里程碑, 会话规模只作经验, 不作判据; 实质是交付产品代码的工作归 task. **完成标准**: 结论与依据已写进本里程碑自己的产物. **收口产物**: poc 的产物是它自己里程碑里的结论与依据. **终止处置**: 未证实默认保持未完成; 只有仓库主人裁决终止时才把该里程碑记关闭, 关闭摘要写 "未证实即终止, 不构成可行性结论" 及原因, 并按裁决把它从终点验收的依赖里移除, 不记成歧路. "交付什么"的定义与 "未证实"的词义指向 `workflow/software-engineering-consensus/SKILL.md` 的 PoC 词条, 本条目不复述可行/不可行结论与可复查依据的定义.
+- poc (AFK): 实验由代理独立驱动, 不需要我在场. **何时创建**: 问题是某个技术方案能否做成, 需要真实实验才能判定. 拆分判据与归属: 一个结论能一次收口就一个里程碑; 出现多个可分别收口的结论才拆成多个, 用依赖串起来, 每个里程碑各收口一个结论; 单个结论跨多个会话时保持进行中继续推进, 不拆里程碑, 会话规模只作经验, 不作判据; 实质是交付产品代码的工作归 task. **完成标准**: 结论与依据已写进本里程碑自己的产物. **收口产物**: poc 的产物是它自己里程碑里的结论与依据. **终止处置**: 未证实默认保持未完成; 只有我裁决终止时才把该里程碑记关闭, 关闭摘要写 "未证实即终止, 不构成可行性结论" 及原因, 并按裁决把它从终点验收的依赖里移除, 不记成歧路. "交付什么"的定义与 "未证实"的词义指向 `software-engineering-consensus` skill 的 PoC 词条, 本条目不复述可行/不可行结论与可复查依据的定义.
 - deliberate (HITL): 调用 `deliberate` skill 盘问我, 固化决策. 调用时按 [产物结构](TEMPLATES.md) 指定产物根目录. **何时创建**: 需要决策, 且选项/取舍无法靠 research 暴露事实或无法靠演示提升保真度直接看清, 须逐条盘问我. 默认类型.
 - task (AFK/HITL): AFK 非编码任务直接处理; AFK 编码任务则调用 `drive-execution` skill 来处理; HITL 需要我在场协作才能完成的操作. **何时创建**: 目的地要求实际完成的工作, 包括决策前疏通讨论的手工活, 决策后的实施与验证; 需要实测才能得出结论, 但结论是描述现状的工作也归 task, 例如压测现有链路或采性能基线.
 - acceptance (HITL): 固定的终点前验收 Milestone, 先由代理汇集别人已产出的证据, 后与我现场逐项确认. **何时创建**: 制图时创建, 不与普通 task 混用.
@@ -58,21 +58,21 @@ Milestone 详情 (标题/状态/类型/阻塞于/问题/产物/关闭摘要) 只
 
 ## 读写纪律
 
-ROADMAP.json 的一切读写只经守门脚本 `workflow/navigate/scripts/roadmap.py`, 三个操作:
+ROADMAP.json 的一切读写只经守门脚本 `<skill 目录>/scripts/roadmap.py` (`<skill 目录>` 指本 SKILL.md 所在目录, 不依赖 cwd), 三个操作:
 
-- 读指定字段: `uv run python workflow/navigate/scripts/roadmap.py query <file> <path>`
-- 写指定字段: `uv run python workflow/navigate/scripts/roadmap.py save <file> <path> <content>`
-- 删除整个文件: `uv run python workflow/navigate/scripts/roadmap.py delete <file>`
+- 读指定字段: `uv run python <skill 目录>/scripts/roadmap.py query <file> <path>`
+- 写指定字段: `uv run python <skill 目录>/scripts/roadmap.py save <file> <path> <content>`
+- 删除整个文件: `uv run python <skill 目录>/scripts/roadmap.py delete <file>`
 
 `<file>` 指路线图文件 `docs/changes/<feature-slug>/roadmap/ROADMAP.json`. `<path>` 用点分隔, 数字段为数组下标, 下标等于数组长度即追加; 完整 path 语法与字段说明见 [产物结构](TEMPLATES.md). 脚本 stdout 输出单行 JSON, 退出码 0 成功 / 1 失败; 失败时读 `error` 字段修正后重试.
 
-**明文禁令**: llm 禁用 read/write/edit 工具直接触碰 ROADMAP.json — 不得读取, 创建, 修改或删除该文件; 内容一律经上面的脚本进出. 脚本是 JSON 正确性的守门员: 非法枚举值, 缺失必填字段, 坏引用, 越界下标都会被拦截并返回错误.
+守门脚本是 JSON 正确性的守门员: 非法枚举值, 缺失必填字段, 坏引用, 越界下标都会被拦截并返回错误, 所以 ROADMAP.json 的内容一律经上面的脚本进出.
 
 **旧格式重建**: 现场出现 `ROADMAP.md` 或 `MILESTONE-NN.md` (旧版路线图格式) 时, 用 read 工具读旧文件, 再经脚本把内容重建为 ROADMAP.json; 不提供迁移命令, 一次性重建即可. 旧格式的 "范围外" 区段重建为 `off_course`, "未决迷雾" 区段重建为 `unknown_seas`.
 
 ## 展示服务
 
-展示页的常驻实例有固定身份: 运行时目录 `/tmp/navigate-display-<uid>`, 端口 39300, 网段经转发桥 (如 `8801 -> 127.0.0.1:39300`) 供浏览器长期轮询. 只经 `workflow/navigate/scripts/display_serve.sh` 管理: `ensure` 复原/拉起 (服务死了用它一条命令复原回固定端口, 桥零操作自愈), `status` 查看, `start`/`stop` 供复原与演练.
+展示页的常驻实例有固定身份: 运行时目录 `/tmp/navigate-display-<uid>`, 端口 39300, 网段经转发桥 (如 `8801 -> 127.0.0.1:39300`) 供浏览器长期轮询. 只经 `scripts/display_serve.sh` 管理: `ensure` 复原/拉起 (服务死了用它一条命令复原回固定端口, 桥零操作自愈), `status` 查看, `start`/`stop` 供复原与演练.
 - 展示目录与端口归展示实例专属: 其他会话不在该目录运行 `web_server.py start/stop`, 不占用 39300.
 - **收工不 stop 展示服务**: 它服务浏览器的长期轮询, 停了页面即断; 会话收工清单不含它, 复原交给 `ensure`.
 - 实验与测试用独立运行时目录 (`NAVIGATE_WEB_RUNTIME_DIR`) 与一次性端口 (`NAVIGATE_WEB_PORT` 或随机端口), 不碰展示目录与 39300.
@@ -94,12 +94,12 @@ ROADMAP.json 的一切读写只经守门脚本 `workflow/navigate/scripts/roadma
    完成标准: 每个方向都有明确的研究结论, 且我已选定方向.
 3. **描绘边界. ** 在我选定的方向上, 找出所有待办事项和现在可采取的第一步. 若没发现任何未知海域, 则航路已清晰, 全程一次会话即可完成, 不需要地图: 停下来, 询问我希望如何继续; 继续时仍须在实施或产物定稿前确认验收标准, 并在正式交付前验收. 需要地图时, 即使验收细节尚待确定, 也已知必须有验收 Milestone.
    完成标准: 发现不需要地图; 或发现需要地图且至少一个工作 Milestone 可精确表述, 其余不确定项在 step 4 写入 `unknown_seas`.
-4. **绘制地图. ** 经守门脚本把地图写入 ROADMAP.json: 顶层 `title`, `destination` (写明我确认的完成边界), `notes` (含被选方向结论与未选方向排除理由), `milestones` (每个里程碑经 `save <file> milestones.<id> <JSON对象>` 整体创建, 含 `title`/`type`/`question`, 需要阻塞时再 `save <file> milestones.<id>.blocked_by <JSON数组>`), `unknown_seas`, `off_course`. 同时创建固定的验收 Milestone, 并在其他已知工作建好后设置它的 `blocked_by`; 尚未明确的工作以后探明时再补阻塞, 不能因尚有未知海域就提前验收. 前沿, 已关闭决策, 阻塞关系均不落盘, 由上述数据推导, 见 [产物结构](TEMPLATES.md). 写完后起展示服务: `bash workflow/navigate/scripts/display_serve.sh ensure` (幂等, 已在跑则直接复用), 从 stdout JSON 的 `url` 拼上 `?roadmap=<ROADMAP.json 的绝对路径>` 交付给我, 由我在浏览器查看地图. 展示实例的归属与收工纪律见 [展示服务](#展示服务).
+4. **绘制地图. ** 经守门脚本把地图写入 ROADMAP.json: 顶层 `title`, `destination` (写明我确认的完成边界), `notes` (含被选方向结论与未选方向排除理由), `milestones` (每个里程碑经 `save <file> milestones.<id> <JSON对象>` 整体创建, 含 `title`/`type`/`question`, 需要阻塞时再 `save <file> milestones.<id>.blocked_by <JSON数组>`), `unknown_seas`, `off_course`. 同时创建固定的验收 Milestone, 并在其他已知工作建好后设置它的 `blocked_by`; 尚未明确的工作以后探明时再补阻塞, 不能因尚有未知海域就提前验收. 前沿, 已关闭决策, 阻塞关系均不落盘, 由上述数据推导, 见 [产物结构](TEMPLATES.md). 写完后起展示服务: `bash <skill 目录>/scripts/display_serve.sh ensure` (幂等, 已在跑则直接复用), 从 stdout JSON 的 `url` 拼上 `?roadmap=<ROADMAP.json 的绝对路径>` 交付给我, 由我在浏览器查看地图. 展示实例的归属与收工纪律见 [展示服务](#展示服务).
    完成标准: ROADMAP.json 已由脚本写入且 `query` 校验可读; 浏览器 URL 已交付.
 5. **确认与修订. ** 等我在浏览器查看后表态. 有异议 → 经脚本修订对应字段 → 重新交付 URL 让我重看, 直到我确认. 我确认后才进入 step 6. 确认动作在落盘之后, 提交之前.
    完成标准: 我已明确确认地图.
 6. **提交. ** 仅在 step 5 我已确认且工作目录被 git 管理时执行. 禁止提交无关改动. 提交信息使用实际路径: `doc: 绘制地图 docs/changes/<feature-slug>/roadmap`.
-   完成标准: 已提交本次 ROADMAP.json; 或确认当前目录非 git 仓库/用户未确认/存在归属冲突而跳过提交, 且原因已告知我.
+   完成标准: 已提交本次 ROADMAP.json; 或确认当前目录非 git 仓库/我未确认/存在归属冲突而跳过提交, 且原因已告知我.
 7. **停止. ** 制图独占一个会话, 禁止在本会话开始解决 Milestone.
    完成标准: 路线图已交付, 本会话没有领取 Milestone.
 

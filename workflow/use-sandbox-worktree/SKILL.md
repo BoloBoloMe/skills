@@ -1,6 +1,6 @@
 ---
 name: use-sandbox-worktree
-description: 管理宿主 worktree 与 sandbox 容器绑定对的创建, 恢复, 网络, 接入和终结.
+description: 管理宿主 worktree 与 sandbox 容器绑定对的生命周期与接入.
 disable-model-invocation: true
 ---
 

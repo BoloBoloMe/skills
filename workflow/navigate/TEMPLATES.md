@@ -58,21 +58,21 @@ JSON 只存路线图与里程碑逻辑数据, 零展示信息 (不存坐标/颜�
 
 ```bash
 # 读: 目的地, 笔记数组, 全部里程碑
-uv run python workflow/navigate/scripts/roadmap.py query docs/changes/<feature-slug>/roadmap/ROADMAP.json destination
-uv run python workflow/navigate/scripts/roadmap.py query docs/changes/<feature-slug>/roadmap/ROADMAP.json notes
-uv run python workflow/navigate/scripts/roadmap.py query docs/changes/<feature-slug>/roadmap/ROADMAP.json milestones
+uv run python <skill 目录>/scripts/roadmap.py query docs/changes/<feature-slug>/roadmap/ROADMAP.json destination
+uv run python <skill 目录>/scripts/roadmap.py query docs/changes/<feature-slug>/roadmap/ROADMAP.json notes
+uv run python <skill 目录>/scripts/roadmap.py query docs/changes/<feature-slug>/roadmap/ROADMAP.json milestones
 
 # 写: 目的地, 追加一条笔记 (下标 == 当前长度), 新建里程碑, 改状态, 记产物, 写关闭摘要
-uv run python workflow/navigate/scripts/roadmap.py save <file> destination '"到达时: ..."'
-uv run python workflow/navigate/scripts/roadmap.py save <file> notes.0 '"方向 A 结论: ...; 排除方向 B 的理由: ..."'
-uv run python workflow/navigate/scripts/roadmap.py save <file> milestones.milestone-01 '{"title": "选定存储方案", "type": "deliberate", "question": "..."}'
-uv run python workflow/navigate/scripts/roadmap.py save <file> milestones.milestone-02.blocked_by '["milestone-01"]'
-uv run python workflow/navigate/scripts/roadmap.py save <file> milestones.milestone-01.status '"进行中"'
-uv run python workflow/navigate/scripts/roadmap.py save <file> milestones.milestone-01.artifacts '["docs/changes/<feature-slug>/milestone-01/findings.md"]'
-uv run python workflow/navigate/scripts/roadmap.py save <file> milestones.milestone-01.close_summary '"已选定方案 X: ..."'
+uv run python <skill 目录>/scripts/roadmap.py save <file> destination '"到达时: ..."'
+uv run python <skill 目录>/scripts/roadmap.py save <file> notes.0 '"方向 A 结论: ...; 排除方向 B 的理由: ..."'
+uv run python <skill 目录>/scripts/roadmap.py save <file> milestones.milestone-01 '{"title": "选定存储方案", "type": "deliberate", "question": "..."}'
+uv run python <skill 目录>/scripts/roadmap.py save <file> milestones.milestone-02.blocked_by '["milestone-01"]'
+uv run python <skill 目录>/scripts/roadmap.py save <file> milestones.milestone-01.status '"进行中"'
+uv run python <skill 目录>/scripts/roadmap.py save <file> milestones.milestone-01.artifacts '["docs/changes/<feature-slug>/milestone-01/findings.md"]'
+uv run python <skill 目录>/scripts/roadmap.py save <file> milestones.milestone-01.close_summary '"已选定方案 X: ..."'
 
 # 删: 整个文件
-uv run python workflow/navigate/scripts/roadmap.py delete <file>
+uv run python <skill 目录>/scripts/roadmap.py delete <file>
 ```
 
 `content` 先按 JSON 解析, 解析失败按裸字符串存. 文本含引号/数字/括号等易歧义内容时, 用 JSON 字符串形式 (外层再套单引号) 传.
