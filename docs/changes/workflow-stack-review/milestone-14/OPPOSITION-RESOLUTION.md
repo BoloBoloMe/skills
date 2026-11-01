@@ -35,4 +35,4 @@
 
 ## 补核
 
-本次修订将交原独立反方会话补核, 以另存 OPPOSITION-FOLLOWUP.md 的结果为准. 补核有未决项则 milestone-14 保持进行中.
+独立补核已交付 [OPPOSITION-FOLLOWUP.md](OPPOSITION-FOLLOWUP.md), 绑定 44d68c6, A-01 至 A-04/B-05 至 B-08/C-09 至 C-12 共 12 项处理全部闭环, 无新实质问题. 补核要求协调方再核实的路线图事项已经守门脚本 query 确认: milestone-15 指向当前有效 D001/D002/D004-D012 (D011 替代 D003), milestone-22 已存在且阻塞于 milestone-14, milestone-15 与终点验收都依赖 milestone-22. 因此本节点无剩余确认或记录缺口, 可关闭; 后续实施证据不充作本节点关闭的前置成果.
