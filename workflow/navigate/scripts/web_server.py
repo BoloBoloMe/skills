@@ -1,9 +1,17 @@
 """navigate 展示服务.
 
 CLI 子命令:
-  start   - 启动/复用守护化展示服务 (同 uid 单例, 幂等; 默认端口 39271, 被占自动回退)
+  start   - 启动/复用守护化展示服务 (同 uid 单例, 幂等)
   status  - 读运行时文件报告存活状态与实际端口
   stop    - 停止服务并清理运行时文件
+
+端口策略 (milestone-17):
+  - env NAVIGATE_WEB_PORT 未设 (默认): 候选 = 默认端口 39271 + 随机回退,
+    被占静默漂移, 兼容既有调用方.
+  - env NAVIGATE_WEB_PORT=<port> 设了: 只试该端口, 绝不漂移 --
+    本运行时目录已有存活实例则复用; 端口被自家旧实例占 (ping 指纹 +
+    本脚本路径匹配, server.json 可能已丢) 则收编复用; 被陌生进程占则报
+    port_in_use 失败. 固定端口 + 固定桥的部署 (展示服务) 用它锁定端口.
 
 stdout: 单行 UTF-8 JSON, {"success": true/false, ...}. 退出码 0 成功 / 1 失败.
 
@@ -41,6 +49,10 @@ SERVICE_NAME = "navigate-web"
 DEFAULT_PORT = 39271  # D010: 避开 mailbox 端口区间 (38416-38437)
 BIND = "0.0.0.0"  # D009: 网段可读为已接受取舍
 INDEX_PATH = Path(__file__).resolve().parent.parent / "web" / "index.html"
+ENV_PORT = "NAVIGATE_WEB_PORT"  # start 显式端口入口 (设了即锁定, 不漂移)
+
+# server.log 上限: 启动时与运行中每次写日志前检查, 超限即截断重开.
+_LOG_MAX_BYTES = 10 * 1024 * 1024
 
 # 默认端口被占时的回退候选次数 (随机 49152-65534, 对齐 present 重建先例)
 _PORT_FALLBACK_ATTEMPTS = 10
@@ -290,6 +302,36 @@ def _wait_pid_exit(pid, timeout=5.0):
     return not _pid_alive(pid)
 
 
+def _explicit_port():
+    """读取显式端口入口 env NAVIGATE_WEB_PORT. 返回 (port, error), 二者恰一非 None."""
+    raw = os.environ.get(ENV_PORT, "").strip()
+    if not raw:
+        return None, None
+    try:
+        port = int(raw)
+    except ValueError:
+        return None, f"{ENV_PORT}={raw!r} 不是整数"
+    if not (1 <= port <= 65535):
+        return None, f"{ENV_PORT}={raw} 超出 1-65535"
+    return port, None
+
+
+def _classify_port_occupant(port):
+    """端口被占时的归属判定. 返回 (kind, info):
+    ours - navigate-web 指纹且进程命令行含本脚本路径 (自家旧实例, 可收编);
+    navigate_foreign - navigate-web 指纹但脚本路径不同 (别的 checkout);
+    foreign - 其余进程.
+    """
+    alive, data = _ping(port)
+    if not alive:
+        return "foreign", None
+    pid = data.get("pid")
+    if isinstance(pid, int) and _ps_args_contains(
+            pid, str(Path(__file__).resolve())):
+        return "ours", data
+    return "navigate_foreign", data
+
+
 def _ps_args_contains(pid, needle):
     """`ps -o args= -p <pid>` 校验命令行含 needle (防 pid 复用误杀)."""
     try:
@@ -318,6 +360,9 @@ def _log(runtime_dir, message):
         log_path = runtime_dir / "server.log"
         ts = datetime.datetime.now(datetime.timezone.utc).isoformat()
         with _LOG_LOCK:
+            # 运行中滚动: 超限先截断再追加 (写失败被吞, 不影响服务).
+            if log_path.exists() and log_path.stat().st_size > _LOG_MAX_BYTES:
+                log_path.write_text("", encoding="utf-8")
             with open(log_path, "a", encoding="utf-8") as f:
                 f.write(f"{ts} {message}\n")
     except Exception:
@@ -446,7 +491,7 @@ def _serve(port):
 
     log_path = runtime_dir / "server.log"
     try:
-        if log_path.exists() and log_path.stat().st_size > 10 * 1024 * 1024:
+        if log_path.exists() and log_path.stat().st_size > _LOG_MAX_BYTES:
             log_path.write_text("", encoding="utf-8")
         log_path.touch(exist_ok=True)
         os.chmod(log_path, 0o600)
@@ -489,8 +534,39 @@ def _serve(port):
 # Core commands
 # ---------------------------------------------------------------------------
 
+def _adopt_running_instance(runtime_dir, port, info):
+    """收编端口上的自家旧实例 (server.json 已丢): 写回运行时文件并报复用."""
+    data = {
+        "pid": info["pid"],
+        "port": port,
+        "bind": BIND,
+        "started_at": None,  # 收编实例的原启动时间不可知
+    }
+    _atomic_write_json(runtime_dir / "server.json", data)
+    _log(runtime_dir, f"adopted running instance pid={info['pid']} port={port}")
+    return _success("start", {
+        "url": _instance_url(port),
+        "hostname": socket.gethostname(),
+        "lan_ip": _detect_lan_host(),
+        "port": port,
+        "bind": BIND,
+        "pid": info["pid"],
+        "reused": True,
+        "adopted": True,
+    })
+
+
 def run_start():
-    """启动或复用守护进程; 默认端口 39271 被占时自动探测可用端口."""
+    """启动或复用守护进程.
+
+    NAVIGATE_WEB_PORT 未设: 默认端口 39271 被占时自动探测可用端口 (漂移).
+    设了: 只试该端口; 存活实例复用, 自家旧实例 (指纹匹配但 server.json 丢)
+    收编, 陌生占用报 port_in_use 且不漂移.
+    """
+    explicit_port, port_err = _explicit_port()
+    if port_err is not None:
+        return _err("start", "invalid_port", port_err)
+
     runtime_dir = _runtime_dir()
     try:
         _ensure_runtime_dir(runtime_dir)
@@ -513,9 +589,12 @@ def run_start():
                 "reused": True,
             })
 
-        candidates = [DEFAULT_PORT] + [
-            random.randint(49152, 65534) for _ in range(_PORT_FALLBACK_ATTEMPTS)
-        ]
+        if explicit_port is not None:
+            candidates = [explicit_port]
+        else:
+            candidates = [DEFAULT_PORT] + [
+                random.randint(49152, 65534) for _ in range(_PORT_FALLBACK_ATTEMPTS)
+            ]
         startup_err_path = _startup_error_path(runtime_dir)
         last_error = "no candidate port could bind"
         for port in candidates:
@@ -550,11 +629,27 @@ def run_start():
                     "reused": False,
                 })
             # 启动失败: 先读子进程回报的真实错误, 再回收子进程.
-            # 端口探测与绑定之间有竞态: port_in_use 一律继续回退下一候选.
+            # 端口探测与绑定之间有竞态: 默认模式下 port_in_use 继续回退下一候选;
+            # 显式端口模式绝不漂移: 自家旧实例收编复用, 陌生占用直接报错.
             err = _read_startup_error(runtime_dir)
             _terminate_child(child)
             if err is not None:
                 if err.get("code") == "port_in_use":
+                    if explicit_port is not None:
+                        kind, info = _classify_port_occupant(explicit_port)
+                        if kind == "ours":
+                            return _adopt_running_instance(
+                                runtime_dir, explicit_port, info)
+                        if kind == "navigate_foreign":
+                            return _err("start", "port_in_use",
+                                        f"explicit port {explicit_port} is occupied "
+                                        f"by another navigate-web instance (pid "
+                                        f"{info.get('pid')}, different script path); "
+                                        f"refusing to drift because {ENV_PORT} is set")
+                        return _err("start", "port_in_use",
+                                    f"explicit port {explicit_port} is occupied by a "
+                                    f"foreign process; refusing to drift because "
+                                    f"{ENV_PORT} is set")
                     last_error = err.get("error", last_error)
                     continue
                 return _err("start", err.get("code", "internal_error"),
