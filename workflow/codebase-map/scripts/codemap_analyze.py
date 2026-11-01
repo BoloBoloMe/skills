@@ -1,10 +1,23 @@
 #!/usr/bin/env python3
 """codebase-map 分析与产出 (m25 TECHNICAL.md "分析与产出").
 
-本模块由 ISSUE-02 落地其中两段: 首次初始化与三步分析. 门禁判定, 统计分母,
-副本复制与 state.json 更新归 ISSUE-03, 这里不实现也不预造字段.
+ISSUE-02 落地首次初始化与三步分析; ISSUE-03 在此之上补齐门禁判定, 统计
+分母, 副本分发与 state.json 的 data_keys 写入, build 由此从"能出数据"变成
+"能判断该不该交付, 并把数据放到页面能取到的地方".
 
 责任:
+  门禁 (写副本之前判定, m25 D001 / m13 D029 / m24 U001):
+    - edges = len(lenses.dependency.edges.dependencies)
+    - level_kinds = 文件节点 (type=File) 上 level 的取值种数
+    - 通过条件 edges > 0 且 level_kinds >= 3; 不通过时仍把 merge 产物写进
+      目标库 .codebase-map/cc.json 供复查, 但不复制副本, 返回 gate_failed.
+  统计 (门禁失败也完整输出, BR-024/BR-025, 口径归因非功能要求):
+    - 宿主侧按与分析端同一份排除集扫盘, 把每份磁盘文件归入且只归入一个
+      口径桶; 分母不硬凑相等, 只要求差值逐类归因可对账 (m25 D019).
+  产出与副本 (m13 D010/D023, BR-010/BR-012, BR-036):
+    - 原件写 <target>/.codebase-map/cc.json; 门禁通过后复制副本到
+      serve-root/<key> (先写临时文件再 os.replace), 锁内更新
+      state.json.data_keys; 不删任何其它库的副本.
   首次初始化 (仅缺失时, m25 D009 / m13 D030):
     - 本地没有镜像就 `podman pull`, 然后校验 RepoDigests 含单架构清单
       digest (m25 D013/D016, 阻断项); 多架构清单 digest 只记录进
@@ -28,7 +41,8 @@
   image_digest_mismatch  RepoDigests 不含单架构清单 digest
   frontend_unavailable   web.zip 下载失败 (含无网络)
   frontend_hash_mismatch web.zip sha256 与常量不符 (含预置/残留坏产物)
-  internal_error         三步分析失败, merge 产物缺失, 运行时锁超时
+  gate_failed            门禁不通过 (依赖边为 0 或文件层号种数 < 3, m25 D001)
+  internal_error         三步分析失败, merge 产物缺失或不可解析, 运行时锁超时
 
 网络面 (BR-027): 只有初始化的 pull 与前端下载出网; serve/stop 不做网络
 动作. 进程接缝: podman 命令行, 测试用本地 stub 核对参数构造, stub 不构成
@@ -44,6 +58,7 @@ import datetime
 import hashlib
 import json
 import os
+import re
 import shutil
 import subprocess
 import time
@@ -401,6 +416,238 @@ def _reset_work_dir(work_dir: Path) -> None:
 # ---------------------------------------------------------------------------
 
 
+# ---------------------------------------------------------------------------
+# 门禁 (写副本之前判定; m25 D001, m13 D029, m24 U001)
+# ---------------------------------------------------------------------------
+
+
+def _dependency_lens(merge_data: dict) -> tuple:
+    """取 lenses.dependency 的 (nodes 映射, 边列表).
+
+    边列表形状按 TECHNICAL 定的 2.1 口径 `lenses.dependency.edges.dependencies`
+    读取; m23 实测的 2.0 形状里 edges 直接是数组 (PROBE 6.4 的统计脚本即按它
+    写), 两种都认, 只读不改 (NG-006). 其余结构一律视为空, 交给门禁判 0.
+    """
+    dep = (merge_data.get("lenses") or {}).get("dependency") or {}
+    nodes = dep.get("nodes") or {}
+    edges_raw = dep.get("edges")
+    if isinstance(edges_raw, dict):
+        edges = edges_raw.get("dependencies") or []
+    elif isinstance(edges_raw, list):
+        edges = edges_raw
+    else:
+        edges = []
+    return nodes, edges
+
+
+def _files_tree_index(merge_data: dict) -> tuple:
+    """遍历 files 树: 返回 ({节点id: type}, {文件相对路径}) .
+
+    路径 = 根节点名以下的各级 name 以 / 相接 (根名是库根的名字, m23 实测样例
+    与 tools/smoke.py 都形如 root/src/Main.java, 剥掉后才是库内相对路径).
+    只读 merge 产物, 不改任何字段 (NG-006).
+    """
+    id_types: dict = {}
+    file_paths: set = set()
+    for root in merge_data.get("files") or []:
+        # prefix = 库内相对路径 (不含根节点名); 根节点名非空时它不属于库内路径
+        stack = [(root, "")]
+        while stack:
+            node, prefix = stack.pop()
+            node_type = node.get("type")
+            if node.get("id") is not None:
+                id_types[node["id"]] = node_type
+            if node is not root:
+                name = node.get("name") or ""
+                rel = f"{prefix}/{name}" if prefix else name
+            else:
+                rel = ""
+            if node_type == "File" and rel:
+                file_paths.add(rel)
+            for child in node.get("children") or []:
+                stack.append((child, rel))
+    return id_types, file_paths
+
+
+def evaluate_gate(merge_data: dict) -> dict:
+    """门禁: edges = 依赖边数, level_kinds = 文件节点 level 取值种数.
+
+    通过条件 edges > 0 且 level_kinds >= 3 (m25 D001, m13 D029 保留项).
+    不通过时 gate.reason 写明缺什么并带实际数值; 同时命中两条时都写.
+    """
+    id_types, _ = _files_tree_index(merge_data)
+    dep_nodes, dep_edges = _dependency_lens(merge_data)
+    edges = len(dep_edges)
+    levels = {
+        attrs.get("level")
+        for node_id, attrs in dep_nodes.items()
+        if id_types.get(node_id) == "File" and attrs.get("level") is not None
+    }
+    level_kinds = len(levels)
+    reasons = []
+    if edges <= 0:
+        reasons.append(f"依赖边为 0 条 (门禁要求 > 0)")
+    if level_kinds < 3:
+        reasons.append(
+            f"文件层号只有 {level_kinds} 种, 少于 3 种 (门禁要求 >= 3): "
+            f"取值 {sorted(levels, key=lambda v: (v is None, v))}"
+        )
+    gate = {"passed": not reasons, "edges": edges, "level_kinds": level_kinds}
+    if reasons:
+        gate["reason"] = "; ".join(reasons)
+    return gate
+
+
+# ---------------------------------------------------------------------------
+# 统计与分母归因 (BR-024/BR-025, m25 D019, m23 PROBE 6.4/F003)
+# ---------------------------------------------------------------------------
+
+# 测试目录名: 与分析端 TestFileDetector 的目录规则一致 (m23 PROBE 6.4:
+# 目录 test/tests/__tests__/spec/specs). 名字规则 (Java 名以 Test/Tests 结尾)
+# 不在宿主侧复刻, 归 tool_defaults (分析端自带规则过滤).
+TEST_DIR_NAMES = frozenset({"test", "tests", "__tests__", "spec", "specs"})
+
+ZERO_DECL_REASON = "零声明"  # 解析了但无可分析声明, 整体不入依赖树 (m23 F003)
+
+
+def compute_stats(target, merge_data: dict, user_excludes=()) -> tuple:
+    """宿主侧统计与分母归因; 返回 (stats dict, 磁盘文件总数).
+
+    统计等式 (TC-03-04 固定): 每份磁盘文件按以下先后次序归入且只归入一项 --
+
+        磁盘文件总数 (target 下全部普通文件)
+          = files_in_tree               # 相对路径能在 cc.json files 树对上的文件
+          + excluded.dot_codebase_map   # 路径段 .codebase-map (本工具的数据目录,
+                                        #   含本次写出的原件; AC-001 二次执行不扫数据目录)
+          + excluded.build_dirs         # 默认结构性排除目录命中 (node_modules/.git/
+                                        #   dist/build/target/vendor; 与 ccsh -e 同一套
+                                        #   转义正则, 口径同源)
+          + excluded.custom             # 用户 --exclude glob 命中 (同一套 glob->正则转换,
+                                        #   m25 D019)
+          + excluded.tests              # 测试目录命中 (路径段属 TEST_DIR_NAMES;
+                                        #   BR-024 测试目录默认不扫)
+          + excluded.tool_defaults      # 宿主扫描到但被分析端自带规则过滤: 扩展名
+                                        #   不受支持 (明细单列 unsupported_extensions),
+                                        #   或文件名以 Test/Tests 结尾 (TestFileDetector
+                                        #   名字规则); 单列不与 custom 混 (m25 D019)
+          + len(zero_declaration)       # 扫描到, 扩展名受支持, 未命中上述规则,
+                                        #   但不在依赖树 (零声明, m23 F003)
+
+    归因四类口径 (BR-024): 测试目录/构建目录/自定义排除按类计数 (excluded.*),
+    零声明逐文件列清单 (zero_declaration), 工具默认过滤单列 tool_defaults.
+    归入次序保证不重不漏: 在依赖树里的文件优先按 files_in_tree 归因, 排除规则
+    命中的不再进扫描分母, 扫描分母里受支持扩展名才计入 scanned_files.
+
+    scanned_files 分母口径 = files_in_tree + len(zero_declaration)
+                            + tool_defaults 中扩展名受支持的部分,
+    即 tool_defaults - unsupported_extensions 各项计数之和.
+    """
+    target = Path(target)
+    _, in_tree_paths = _files_tree_index(merge_data)
+    dep_nodes, dep_edges = _dependency_lens(merge_data)
+    cyclic_edges = sum(1 for edge in dep_edges if edge.get("isCyclic"))
+    upward_edges = sum(1 for edge in dep_edges if edge.get("isPointingUpwards"))
+    supported_exts = {Path(p).suffix.lower() for p in in_tree_paths}
+
+    # 排除口径同一份数据 (cmc.collect_excludes), 与喂给 ccsh 的正则同源 (BR-015)
+    default_globs = tuple(g for g in cmc.DEFAULT_EXCLUDES if g != ".codebase-map")
+    user_globs = tuple(g for g in user_excludes or () )
+    default_regexes = [re.compile(cmc.glob_to_ccsh_regex(g)) for g in default_globs]
+    user_regexes = [re.compile(cmc.glob_to_ccsh_regex(g)) for g in user_globs]
+
+    excluded = {"tests": 0, "build_dirs": 0, "custom": 0, "dot_codebase_map": 0,
+                "tool_defaults": 0}
+    zero_declaration: list = []
+    unsupported: dict = {}
+    files_in_tree = 0
+    scanned_files = 0
+    disk_total = 0
+    for dirpath, _dirnames, filenames in os.walk(target, followlinks=False):
+        for filename in filenames:
+            disk_total += 1
+            rel = Path(dirpath, filename).relative_to(target).as_posix()
+            segments = rel.split("/")
+            # 归入次序 (不重不漏, 见函数头等式): 数据目录 -> 默认排除 -> 自定义
+            # 排除 -> 在依赖树 -> 测试目录 -> 扫描分母内的工具规则与零声明
+            if ".codebase-map" in segments:
+                excluded["dot_codebase_map"] += 1
+                continue
+            if any(rx.search(rel) for rx in default_regexes):
+                excluded["build_dirs"] += 1
+                continue
+            if any(rx.search(rel) for rx in user_regexes):
+                excluded["custom"] += 1
+                continue
+            if rel in in_tree_paths:
+                files_in_tree += 1
+                scanned_files += 1
+                continue
+            if any(seg in TEST_DIR_NAMES for seg in segments[:-1]):
+                excluded["tests"] += 1
+                continue
+            ext = Path(filename).suffix.lower()
+            if ext not in supported_exts:
+                excluded["tool_defaults"] += 1
+                unsupported[ext] = unsupported.get(ext, 0) + 1
+                continue
+            scanned_files += 1
+            stem = filename[: -len(ext)] if ext else filename
+            if stem.endswith("Test") or stem.endswith("Tests"):
+                excluded["tool_defaults"] += 1  # TestFileDetector 名字规则 (m23 PROBE 6.4)
+                continue
+            if rel not in in_tree_paths:
+                zero_declaration.append({"path": rel, "reason": ZERO_DECL_REASON})
+    zero_declaration.sort(key=lambda item: item["path"])
+    unsupported_extensions = [
+        {"ext": ext, "count": count}
+        for ext, count in sorted(unsupported.items(), key=lambda item: (-item[1], item[0]))
+    ]
+    stats = {
+        "scanned_files": scanned_files,
+        "files_in_tree": files_in_tree,
+        "excluded": excluded,
+        "zero_declaration": zero_declaration,
+        "unsupported_extensions": unsupported_extensions,
+        "cyclic_edges": cyclic_edges,
+        "upward_edges": upward_edges,
+    }
+    return stats, disk_total
+
+
+# ---------------------------------------------------------------------------
+# 副本分发与 state.json (BR-010/BR-012/BR-036, m13 D023, m25 D020)
+# ---------------------------------------------------------------------------
+
+
+def copy_to_serve_root(original: Path, serve_root: Path, key: str) -> Path:
+    """把原件复制为 serve-root/<key>: 先写临时文件再 os.replace.
+
+    副本与 index.html 同目录 (BR-012, 前端 <base href="./"> 约束); rename
+    保证页面不会读到半个文件. 不删任何其它库的副本 (BR-036).
+    """
+    serve_root.mkdir(parents=True, exist_ok=True)
+    dest = serve_root / key
+    tmp = serve_root / (key + ".tmp")
+    tmp.write_bytes(original.read_bytes())
+    os.replace(tmp, dest)
+    return dest
+
+
+def _update_data_keys(base: Path, entry: dict) -> None:
+    """锁内 upsert 本库的 data_keys 条目 (run_build 持锁期间调用).
+
+    复用 codemap_service 的 state 读写原语 (原子写, 0600), 不另写一份;
+    其它库的条目原样保留 (BR-036), 同键重跑覆盖同一条目 (m13 D020).
+    """
+    state, err = cms._load_state(base)
+    if err is not None or state is None:
+        state = cms._fresh_state(base)
+    keys = [item for item in (state.get("data_keys") or []) if item.get("key") != entry["key"]]
+    keys.append(entry)
+    state["data_keys"] = keys
+    cms._atomic_write_state(base, state)
+
+
 def write_cc_json(work_dir: Path, target: Path) -> Path:
     src = work_dir / CC_JSON_NAME
     if not src.is_file():
@@ -441,11 +688,10 @@ def _mtime_iso(path: Path):
 
 
 def run_build(target, user_excludes=(), runtime_base=None) -> dict:
-    """初始化 (缺失时) -> 三步分析 -> 逐字节写 <target>/.codebase-map/cc.json.
+    """初始化 (缺失时) -> 三步分析 -> 写原件 -> 门禁 -> 统计 -> 副本与 data_keys.
 
     不碰 stdout, 不退出进程; 返回结果 dict 交 CLI 层. 全程持有运行时文件锁
-    (TECHNICAL 关键流程). 本版不实现门禁与统计, 也不复制副本与更新
-    state.json (ISSUE-03), 所以 result 里没有 gate/stats/serve_copy_path.
+    (TECHNICAL 关键流程): 副本复制与 state.json.data_keys 更新都在同一锁内.
     """
     started = time.monotonic()
     target = Path(target).resolve()
@@ -493,20 +739,61 @@ def run_build(target, user_excludes=(), runtime_base=None) -> dict:
             log_path = _analysis_log_path(base, log_name)
             _run_analysis_step(base_args, cmd_builder(exclude_regexes), log_path, no, name)
             log_paths.append(str(log_path))
-        # -- 产出 --
+        # -- 产出: 逐字节写原件 -> 门禁 -> 统计 -> (通过时) 副本与 data_keys --
         dest = write_cc_json(work_dir, target)
+        try:
+            merge_data = json.loads(dest.read_text(encoding="utf-8"))
+        except ValueError as exc:
+            raise _AnalyzeError(
+                "internal_error",
+                f"merge 产物不是合法 JSON, 无法判定门禁与统计: {dest} ({exc})",
+                "查看第三步日志与 cache/work/cc.json 定位原因; 修复后重跑 build.",
+            )
+        gate = evaluate_gate(merge_data)
+        stats, _disk_total = compute_stats(target, merge_data, user_excludes)
         performed = bool(steps)
         initialization = {"performed": performed, "steps": steps}
         if performed:
             initialization["notice"] = INIT_NOTICE
+        duration_seconds = round(time.monotonic() - started, 3)
+        key = cmc.data_key(target)
+        if not gate["passed"]:
+            # m25 D001: 数据照写目标库供复查, 不复制进 serve-root, 退出码非 0;
+            # stats 与 initialization 照常完整输出, 不因失败省掉分母
+            result = cmc.error_result(
+                "build", "gate_failed",
+                f"{gate['reason']}. 原件已写出 {dest} 供复查, 副本未复制进 serve-root.",
+                "门禁不交付 (m13 D029): 在目标库补出依赖边与分层后重跑 build; "
+                "分母与零声明清单见 stats, 可先核查 ccsh 是否可信.",
+            )
+            result.update({
+                "target": str(target),
+                "key": key,
+                "cc_json_path": str(dest),
+                "gate": gate,
+                "stats": stats,
+                "initialization": initialization,
+                "duration_seconds": duration_seconds,
+            })
+            return result
+        serve_copy = copy_to_serve_root(dest, base / "serve-root", key)
+        _update_data_keys(base, {
+            "key": key,
+            "source_cc_json": str(dest),
+            "built_at": _utc_now_iso(),
+            "bytes": dest.stat().st_size,
+        })
         return cmc.success_result(
             "build",
             target=str(target),
-            key=cmc.data_key(target),
+            key=key,
             cc_json_path=str(dest),
+            serve_copy_path=str(serve_copy),
+            gate=gate,
+            stats=stats,
             analysis_logs=log_paths,
             initialization=initialization,
-            duration_seconds=round(time.monotonic() - started, 3),
+            duration_seconds=duration_seconds,
         )
     except _AnalyzeError as exc:
         return cmc.error_result("build", exc.code, exc.message, exc.hint)

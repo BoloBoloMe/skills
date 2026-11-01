@@ -79,16 +79,20 @@ def snapshot_files(target: Path) -> dict:
 
 
 def assert_full_build_fields(result: dict, target: Path):
-    """build 成功结果的任务书字段: 本 issue 只有 initialization/duration/cc_json_path/target/key."""
+    """build 成功结果的任务书字段: initialization/duration/cc_json_path/target/key
+    (ISSUE-02) 加 gate/stats/serve_copy_path (ISSUE-03 交付后必带)."""
     assert result["success"] is True
     assert result["command"] == "build"
     assert result["target"] == str(Path(target).resolve())
     assert result["key"] == cmc.data_key(target)
     assert result["cc_json_path"] == str(Path(target).resolve() / ".codebase-map" / "cc.json")
     assert isinstance(result["duration_seconds"], (int, float)) and result["duration_seconds"] >= 0
-    # ISSUE-03 的字段不得提前出现, 也不写假值
-    for forbidden in ("gate", "stats", "serve_copy_path"):
-        assert forbidden not in result, f"门禁/统计/副本字段 {forbidden} 归 ISSUE-03, 不应出现"
+    # ISSUE-03 交付后 gate/stats/serve_copy_path 必带且门禁通过 (stub 默认产物可过门禁)
+    assert result["gate"]["passed"] is True, f"stub 默认产物应过门禁: {result['gate']}"
+    assert result["gate"]["edges"] > 0 and result["gate"]["level_kinds"] >= 3
+    assert isinstance(result["stats"], dict)
+    assert result["serve_copy_path"].endswith(result["key"]), \
+        "副本路径应以数据键结尾 (serve-root/<key>)"
 
 
 # ---------------------------------------------------------------------------
@@ -174,13 +178,15 @@ def test_tc_02_02_three_ccsh_steps_params_regex_and_workdir(monkeypatch, tmp_pat
     assert {p.name for p in work.iterdir()} == {"deps.cc.json", "metrics.cc.json", "cc.json"}
 
     # 第二次运行覆盖: stub 的 run 序号前进, 产物内容被替换而不是追加
+    # (stub 默认 merge 产物为内置可过门禁 fixture, 每次注入 stub_run = run 序号)
     result2, runtime2, state2 = build_with_stub(
         monkeypatch, tmp_path, target, user_excludes=user_excludes, frontend_sha=frontend_sha)
     assert result2["success"] is True
     runs2 = stub_run_argv(state2)
     assert len(runs2) == 6
     first_cc = json.loads((work / "cc.json").read_text(encoding="utf-8"))
-    assert first_cc == {"stub": "cc.json", "run": 6}, "第二次 merge 产物应覆盖第一次 (run 序号 6)"
+    assert first_cc["stub_run"] == 6, "第二次 merge 产物应覆盖第一次 (run 序号 6)"
+    assert first_cc["meta"]["projectName"] == "stub-merge"
 
 
 # ---------------------------------------------------------------------------
