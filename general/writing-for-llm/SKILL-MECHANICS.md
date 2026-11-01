@@ -25,6 +25,10 @@ skill 的名字本身就是一个 *引导词*: 它在我的 prompt 和其他 ski
 
 拆分的 *调用* 切口 (*顺序* 切口在 `SKILL.md`): 当我有一个真会在 prompt 里用的独立触发词, 或其他 skill 必须抵达它时, 拆出一个 *模型调用* skill. 新的常驻 description 要我付 *上下文负载*, 独立可达必须值这个价.
 
+## codex 元数据
+
+上文两种调用方式只在 pi 侧生效; codex 侧靠每个 skill 目录下的 `agents/openai.yaml` 达成同样的效果. 维护 skill 时该文件是必选项: 新增 skill, 或改动既有 skill 的调用方式时, 同步维护它. *用户调用* skill 要建该文件, 只写 `policy.allow_implicit_invocation: false`, 让 codex 不把这个 skill 注入模型上下文, 只能显式点名; *模型调用* skill 不建文件, 走 codex 默认的允许隐式调用. 漏维护由 `tests/test_skills_codex_metadata.py` 守卫测试抓住.
+
 ## 路由 skill
 
 *用户调用* skill 多到我记不住时, 堆积的 *认知负载* 靠 **路由 skill** 化解: 一个 *用户调用* skill, 列出其他 skill 的名字和各自何时取用, 让我只记一个, 不必记许多个. 它说出名字, agent 就能抵达 — *用户调用* skill 对 agent 不可发现, 但被提名即可达.
