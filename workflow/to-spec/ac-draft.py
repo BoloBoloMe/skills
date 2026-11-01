@@ -4,6 +4,7 @@
 # ///
 """验收草稿的机械预览与原文转正, 复用 check-ac.py 的全部校验.
 
+workspace
 preview <PRODUCT 暂存稿> <验收草稿>
 promote <PRODUCT 暂存稿> <验收草稿> <PRODUCT.md> --review <审阅版本>
 stdout 为单个 JSON. 退出码 0 成功 / 1 机检失败 / 2 输入或文件操作失败.
@@ -238,6 +239,14 @@ th {{ background: #f0ede4; }}
 '''
 
 
+def workspace() -> dict:
+    """建本次专用临时工作区: 专用目录加 review 子目录, 路径由脚本决定, 调用方不自行拼."""
+    root = Path(tempfile.mkdtemp(prefix="to-spec-ac-"))
+    review = root / "review"
+    review.mkdir()
+    return {"success": True, "command": "workspace", "dir": str(root), "review": str(review)}
+
+
 def preview(base: Path, draft: Path) -> dict:
     base, draft = base.absolute(), draft.absolute()
     base_bytes, draft_bytes = _inputs(base, draft)
@@ -303,6 +312,7 @@ def promote(base: Path, draft: Path, output: Path, review: str) -> dict:
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     commands = parser.add_subparsers(dest="command", required=True)
+    commands.add_parser("workspace", help="建本次专用临时工作区, 输出 dir 与 review 路径")
     for name in ("preview", "promote"):
         command = commands.add_parser(name)
         command.add_argument("base", type=Path, help="PRODUCT 暂存稿, 提供目标/业务规则及其他正文")
@@ -312,7 +322,9 @@ def main() -> int:
             command.add_argument("--review", required=True, help="我明确确认的预览所返回的 review_id")
     args = parser.parse_args()
     try:
-        if args.command == "preview":
+        if args.command == "workspace":
+            result = workspace()
+        elif args.command == "preview":
             result = preview(args.base, args.draft)
         else:
             result = promote(args.base, args.draft, args.output, args.review)
