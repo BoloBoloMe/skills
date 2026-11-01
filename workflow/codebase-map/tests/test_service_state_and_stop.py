@@ -23,12 +23,15 @@ from codemap_service_helpers import (
     http_status,
     port_connectable,
     stdout_json,
+    use_temp_home,
 )
 
 
 @pytest.fixture
 def srv(tmp_path):
     controller = CodemapSrv(tmp_path)
+    # 空 HOME (无 lan-address): serve 恒走 address_missing 形态, 不受宿主记录影响
+    use_temp_home(controller, tmp_path)
     yield controller
     controller.cleanup()
 
