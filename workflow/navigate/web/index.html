@@ -630,7 +630,7 @@ function friendlyError(code, msg) {
     case 'not_json': return '目标路径不是 .json 文件, 展示服务拒绝提供.';
     case 'invalid_args': return '路径参数无效: ' + msg;
     case 'invalid_json': return '路线图文件内容不是合法 JSON.';
-    case 'network': return '无法连接展示服务, 可能是服务未启动或已退出.';
+    case 'network': return '无法连接展示服务, 可能是服务未启动或已退出. 可在仓库内运行 workflow/navigate/scripts/display_serve.sh ensure 复原; 若经转发桥访问, 再检查桥的转发目标端口.';
     default: return msg || '读取路线图失败.';
   }
 }
