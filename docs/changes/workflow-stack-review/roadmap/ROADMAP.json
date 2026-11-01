@@ -479,9 +479,16 @@
       "blocked_by": [
         "milestone-24"
       ],
-      "status": "进行中",
-      "artifacts": [],
-      "close_summary": null
+      "status": "已关闭",
+      "artifacts": [
+        "docs/changes/workflow-stack-review/milestone-25/DECISIONS.md",
+        "docs/changes/workflow-stack-review/milestone-25/PRODUCT.md",
+        "docs/changes/workflow-stack-review/milestone-25/TECHNICAL.md",
+        "docs/changes/workflow-stack-review/milestone-25/EXECUTION.md",
+        "docs/changes/workflow-stack-review/milestone-25/CHECKS.md",
+        "docs/changes/workflow-stack-review/milestone-25/issues"
+      ],
+      "close_summary": "codebase-map v1 的输入已齐: PRODUCT.md (48 场景 / 9 组 AC-001..AC-009, 用户采纳 v4, review_id 39f34602...), TECHNICAL.md, DECISIONS.md (D001-D020 / F001-F008), EXECUTION.md 与 ISSUE-01..07 (每项含验证契约/验证入口/交付证据/停止条件). 验收草稿四轮迭代全部过 check-ac 机检, 转正 promote success 且正式 check-ac/check-tech 通过; 两轮未参与编写的独立只读检查 (17 + 10 条发现) 逐条核实后全部返工闭环, 期间新增 D016-D020 (镜像 digest 口径/验证分工, serve --address, 端口留痕, 排除集同源, 判空口径). 评审起点已复跑核实 (收集基线 865 条, 三个权威文件哈希登记). 覆盖矩阵把 AC 与 BR 逐条落到 issue 或人工核验. 边界: 本节点只准备输入, 未实现任何代码, AC 全部待实现不声称通过; 宿主侧分析/渲染/局域网打开/长期常驻只能由宿主证据承接; 本容器无 podman 导致全量 pytest INTERNALERROR 属环境缺口. 产物提交 075665a/e5918a5/9465960 已推送到母体."
     },
     "milestone-26": {
       "title": "实施 codebase-map v1 分析服务与交付",
