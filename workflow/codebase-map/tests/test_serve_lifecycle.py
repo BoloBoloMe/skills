@@ -1,8 +1,10 @@
-"""ISSUE-04 serve 生命周期用例: 单例复用, 并发, 端口占用与换端口, 常驻性.
+"""ISSUE-04 serve 生命周期用例: 单例复用, 并发, 端口占用与换端口, 常驻性;
+E-1 (REWORK-03) 复用分支的 no_data_keys 复查.
 
 覆盖: TC-003 (AC-003 主用例), TC-04-01 (并发单例), TC-04-02 (端口被占),
 TC-04-03 (显式换端口), TC-04-04 (换端口后沿用), TC-04-05 (存活实例换端口
-报 instance_running), TC-04-11 (常驻性短时验证).
+报 instance_running), TC-04-11 (常驻性短时验证), E-1 (存活复用分支交集
+复查, 报错不动服务).
 
 隔离纪律: 每个用例独立运行时目录 (CODEMAP_RUNTIME_DIR -> tmp_path) 与独立
 高位端口 (free_port), 不占 8090; 收尾 fixture stop 加强杀, 不残留进程.
@@ -188,3 +190,32 @@ def test_tc_04_11_service_survives_real_wait_and_reuse(srv):
     second, _ = srv.serve()
     assert second["reused"] is True
     assert second["pid"] == first["pid"], "应复用同一实例而非新起"
+
+
+def test_e1_reuse_branch_rechecks_no_data_keys_and_keeps_service(srv):
+    """E-1 (REWORK-03): 服务存活复用分支也按清单与磁盘交集复查 no_data_keys.
+
+    先正常起服务, 删光 serve-root 的副本, 再 serve: 退出码非 0 且
+    error.code == no_data_keys (副本已删文案); 服务原进程不受影响
+    (GET / 仍 200, pid 不变, state.json 未被改写, 不 stop 不重启).
+    """
+    srv.prime()
+    first, _ = srv.serve()
+    assert first["reused"] is False
+    pid_before = first["pid"]
+    state_before = srv.read_state()
+    for copy in srv.serve_root.glob("*.cc.json"):
+        copy.unlink()
+
+    obj, proc = srv.serve(expect_success=False)
+    assert proc.returncode != 0, f"复用分支交集为空应报错: {obj}"
+    assert obj["success"] is False
+    assert obj["error"]["code"] == "no_data_keys"
+    assert "副本已删" in obj["error"]["message"], (
+        f"清单有条目副本全缺应用'副本已删'文案: {obj['error']['message']!r}")
+    assert "重新执行 build" in obj["error"]["hint"]
+    # 不改动正在运行的服务: 进程仍在, GET / 仍 200, 状态未改写
+    assert srv.daemon_pids_for_port() == [pid_before], "原守护进程应仍在"
+    status, _ = http_status(srv.port)
+    assert status == 200, "服务原进程应继续应答"
+    assert srv.read_state() == state_before, "报错路径不得改写 state.json"

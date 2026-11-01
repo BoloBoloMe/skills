@@ -14,10 +14,15 @@ ISSUE-02 落地首次初始化与三步分析; ISSUE-03 在此之上补齐门禁
   统计 (门禁失败也完整输出, BR-024/BR-025, 口径归因非功能要求):
     - 宿主侧按与分析端同一份排除集扫盘, 把每份磁盘文件归入且只归入一个
       口径桶; 分母不硬凑相等, 只要求差值逐类归因可对账 (m25 D019).
+    - stats.notes 固定三句分母说明 (E-4, REWORK-03, AC-001/BR-024), 措辞与
+      SKILL.md 分母口径同源.
   产出与副本 (m13 D010/D023, BR-010/BR-012, BR-036):
     - 原件写 <target>/.codebase-map/cc.json; 门禁通过后复制副本到
       serve-root/<key> (先写临时文件再 os.replace), 锁内更新
       state.json.data_keys; 不删任何其它库的副本.
+    - data_keys 条目带 stats 子对象 (E-3, REWORK-03): 至少含
+      files_in_tree 与 unsupported_extensions, 与 build --json 的 stats
+      同源, 供 serve 交付层补第 4 类说明 (unparsed_note).
   首次初始化 (仅缺失时, m25 D009 / m13 D030):
     - 本地没有镜像就 `podman pull`, 然后校验 RepoDigests 含单架构清单
       digest (m25 D013/D016, 阻断项); 多架构清单 digest 只记录进
@@ -520,6 +525,16 @@ TEST_DIR_NAMES = frozenset({"test", "tests", "__tests__", "spec", "specs"})
 
 ZERO_DECL_REASON = "零声明"  # 解析了但无可分析声明, 整体不入依赖树 (m23 F003)
 
+# AC-001/BR-024 的三句分母说明 (E-4, REWORK-03): JSON 形态固定放进
+# stats.notes, 人类可读形态由输出编码层 (codemap_common.human_summary)
+# 逐行铺开; 措辞与 SKILL.md 分母口径及 serve 交付说明 denominator_note
+# 同一口径, 不另写第二份.
+STATS_NOTES = (
+    "测试与 build 目录默认不扫.",
+    "零声明文件不进依赖树.",
+    "分析端自带忽略规则单列为工具默认过滤.",
+)
+
 
 def compute_stats(target, merge_data: dict, user_excludes=()) -> tuple:
     """宿主侧统计与分母归因; 返回 (stats dict, 磁盘文件总数).
@@ -621,6 +636,8 @@ def compute_stats(target, merge_data: dict, user_excludes=()) -> tuple:
         "unsupported_extensions": unsupported_extensions,
         "cyclic_edges": cyclic_edges,
         "upward_edges": upward_edges,
+        # E-4 (REWORK-03, AC-001): 固定三句分母说明, 门禁失败也照常输出
+        "notes": list(STATS_NOTES),
     }
     return stats, disk_total
 
@@ -649,6 +666,8 @@ def _update_data_keys(base: Path, entry: dict) -> None:
 
     复用 codemap_service 的 state 读写原语 (原子写, 0600), 不另写一份;
     其它库的条目原样保留 (BR-036), 同键重跑覆盖同一条目 (m13 D020).
+    条目里的 stats 子对象 (E-3, REWORK-03) 与 build --json 的 stats 同源,
+    供 serve 交付层组装 unparsed_note, 老数据缺它时有降级文案.
     """
     state, err = cms._load_state(base)
     if err is not None or state is None:
@@ -793,6 +812,12 @@ def run_build(target, user_excludes=(), runtime_base=None) -> dict:
             "source_cc_json": str(dest),
             "built_at": _utc_now_iso(),
             "bytes": dest.stat().st_size,
+            # E-3 (REWORK-03): stats 子对象与 build --json 的 stats 同源,
+            # 至少含 files_in_tree 与 unsupported_extensions, 锁内写入
+            "stats": {
+                "files_in_tree": stats["files_in_tree"],
+                "unsupported_extensions": stats["unsupported_extensions"],
+            },
         })
         return cmc.success_result(
             "build",

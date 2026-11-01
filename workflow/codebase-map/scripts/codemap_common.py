@@ -274,4 +274,11 @@ def human_summary(result: dict) -> str:
             lines.append(f"说明: {value.get('message', '')}")
             continue
         lines.append(f"{key}: {json.dumps(value, ensure_ascii=False)}")
+        # E-4 (REWORK-03, AC-001): build stats 里的三句分母说明在人类可读形态
+        # 逐行铺开, 数据仍取自同一个 stats dict (stats.notes), 不另造第二份;
+        # serve/stop 结果没有 stats 键, 本分支不触发 (E-4 裁决口径要求逐行,
+        # 逐行只能发生在本输出编码层, 超出返工单允许文件清单的一处已备案).
+        if key == "stats" and isinstance(value, dict):
+            for note in value.get("notes") or []:
+                lines.append(f"说明: {note}")
     return "\n".join(lines) + "\n"
