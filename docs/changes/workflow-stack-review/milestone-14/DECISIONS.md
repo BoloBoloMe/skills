@@ -1,6 +1,6 @@
 # present 统一局域网交付决策账本
 
-本账本是 milestone-15 的实施输入. 确认来源见 [盘问记录](REQUIREMENTS.md): 用户对 Q1-Q10 全选 A, 随后明确回复 "结束". 本轮不实施 present, 不代表 milestone-08 终点验收通过.
+本账本是 milestone-15 的实施输入. 确认来源见 [盘问记录](REQUIREMENTS.md): 用户对 Q1-Q10 全选 A, 随后明确回复 "结束"; 反方复核后对 Q11/Q12 也全选 A. 本轮不实施 present, 不代表 milestone-08 终点验收通过.
 
 ## 决策
 
@@ -21,7 +21,7 @@
 - 需要调整: milestone-15 不再由文档或相关检查要求旧状态对象; F004 表明当前 check_page.py 本就未强制此对象, 不凭本决策虚构必须修改的检查器代码.
 
 ### D003 局域网地址须来自已确认信息, 缺值不降级交付
-- 状态: 当前有效
+- 状态: 已替代 (→ D011, 原文保留)
 - 约束性: 必须遵守
 - 内容: present 统一流程默认监听 0.0.0.0. 容器交付地址使用已确认的 SWT_HOST_LAN_IP 和当前容器 8800 对应的宿主映射端口 SWT_HOST_WEB_PORT, 不能把服务自报的容器 IP/hostname/url 原样交付. 缺值先依当前环境说明自查, 仍缺则经可用信箱向创建容器的宿主会话索取, 信箱不可用才问用户; 不猜地址或宿主端口. 宿主优先使用明确配置的局域网 IP, 否则探测网卡地址; 未确认可用的探测结果先核实, 不直接作为已可用链接交付. 不再把 SSH_CONNECTION 的地址直接视为局域网地址; 不回落主机名/localhost/文件链接冒充交付. 地址或映射缺失时明确报告阻塞, 不制造成功结果. 理由: 统一交付的是用户设备能访问的局域网地址, 本机存在网卡或监听成功不证明设备可达. Q3=A, Q10=A.
 - 依赖事实: F002, F005
@@ -50,14 +50,14 @@
 - 内容: present 调用结束, 代理收工或会话断开都不停止服务; 不设空闲自动退出及其 TTL 环境变量语义. 主动关闭只走显式 stop, 系统重启/容器销毁也会终止服务, 不承诺跨这些生命周期恢复. status 只在运行时记录仍在且服务已死时按既有清单重建, 不新增系统服务或常驻监控器. stop 影响同 uid 共享实例的全部已挂载页面, 调用方须说明影响, 不在收工清理中执行. 理由: 用户明确要求长期运行, 并接受长期开放的后果; 不把常驻解释成跨系统重启持久化. Q5=A, Q6=A, Q7=A, Q10=A.
 - 依赖事实: F003, F007
 - 预计影响: general/present/SKILL.md, general/present/REMOTE.md, general/present/tests/test_web_server_lifecycle.py; 旧账本/规格的 TTL 叙述
-- 需要调整: 当前代码已在 3dc49c6 删除空闲退出, 本轮只核实并记录, 不把已存在行为算作新实现. milestone-15 保护该行为, 不恢复旧 TTL 测试. 系统临时目录被第三方清理造成记录丢失的旧限制仍保留, 不扩展成本次后台自愈项目.
+- 需要调整: 当前代码已在 3dc49c6 删除空闲退出, 本轮只核实并记录, 不把已存在行为算作新实现. milestone-15 保护该行为, 不恢复旧 TTL 自退断言. test_web_server_lifecycle.py 的闲置存活测试仍注入已废弃变量, 见 F012; 这是防止旧自退行为复活的保护, 不应只为消除变量名就删掉有效行为检查, 可保留并澄清变量已无效. 系统临时目录被第三方清理造成记录丢失的旧限制仍保留, 不扩展成本次后台自愈项目.
 
 ### D007 接受无认证无 TLS 的长期局域网开放
 - 状态: 当前有效
 - 约束性: 必须遵守
 - 内容: 宿主/容器都接受监听 0.0.0.0 的无认证无 TLS 展示服务; 同网段主体可读取全部已挂载目录, 不限当前页面, 旧内容会持续可读. 首次使用说明风险一次, 只挂愿意公开且供展示的目录, 不把仓库根目录或敏感目录整棵挂出, 不写密钥/登录态/无关内容. 保留管理接口仅本机可调用与目录越界防护, 不借开放内容放开管理接口. 不增加自动到期清理/认证/TLS. 理由: 用户明确接受长期开放, 以最少维护提供局域网直达展示, 用挂载内容范围守住暴露边界. Q6=A, Q10=A.
-- 依赖事实: F001, F008
-- 预计影响: general/present/SKILL.md, general/present/REMOTE.md, general/present/tests/test_web_server_control_plane.py, general/present/tests/test_web_server_content.py
+- 依赖事实: F001, F008, F013
+- 预计影响: general/present/SKILL.md, general/present/REMOTE.md, general/present/tests/test_web_server_control_plane.py, general/present/tests/test_web_server_content.py; 若改 _Handler, 还须核对 workflow/to-spec/tests/test_ac_draft.py 的跨 skill 依赖 (F011)
 - 需要调整: milestone-15 保留既有安全检查并验证未回退, 不因文件输出目录位于仓库内就整棵挂载仓库.
 
 ### D008 保留多目录扁平并集与显式 stop 的共享影响
@@ -84,6 +84,22 @@
 - 预计影响: docs/changes/workflow-stack-review/ACCEPTANCE.md, 本目录反方报告/处理记录, roadmap/ROADMAP.json 的 milestone-14/15/17 上下文与 artifacts
 - 需要调整: milestone-15 以已确认标准准备其执行输入, 若转入 PRODUCT.md 逐项对照既有标准, 不借转正擅改判据. milestone-13 仅把本账本作为交付规则参考, 不代替该节点未决产品选择.
 
+### D011 明确宿主地址来源, 完整承接并替代 D003
+- 状态: 当前有效
+- 约束性: 必须遵守
+- 内容: 本条完整替代 D003, 保留其已确认边界并补齐宿主地址来源. present 统一流程默认监听 0.0.0.0, start 的 --bind 必填接口不因此取消. 宿主本次调用明确指定的局域网地址优先; 否则复用宿主现有 records_root/lan-address 中已确认的地址, 不另造配置文件. 两者皆无时探测候选网卡地址, 请用户确认后使用, 不把候选/SSH_CONNECTION 第三字段/主机名/localhost 当成已确认可达地址交付. 容器仍使用已确认的 SWT_HOST_LAN_IP 和当前 8800 对应的宿主映射端口 SWT_HOST_WEB_PORT, 不原样交付服务自报的容器 IP/hostname/url. 容器缺值依当前环境说明先自查, 仍缺经可用信箱向创建容器的宿主会话索取, 信箱不可用才问用户, 不猜地址或映射. 地址/映射未确认时明确报告阻塞, 不用文件路径或 loopback 链接冒充交付. 已确认地址只解决地址来源, 不自动证明本次服务/端口能被用户设备访问, 实际访问证据按 AC-15 与 D012. 理由: 用户 Q11=A 选择与 swt 注入链同源的现有地址记录, 避免一台宿主维护两份不同的已确认地址; 原 Q3/Q10 约定的缺值出口与确认边界不变.
+- 依赖事实: F002, F005, F010, F014, F015
+- 预计影响: general/present/SKILL.md, general/present/REMOTE.md, general/present/scripts/web_server.py 的 _detect_lan_host/_url_host 与输出逻辑, general/present/tests/test_web_server_cli.py, general/present/tests/test_web_server_lifecycle.py 的 TC-027, general/present/tests/test_skill_contract.py
+- 需要调整: milestone-15 必须修改 TC-027 对 SSH_CONNECTION 第三字段直接作为 URL/lan_ip 的旧断言, 不再以旧测试为新要求. 容器自查顺序沿用环境文档及 milestone-18 规则, 不改其生成器. 宿主读取现有地址文件的定位/接入实现由 milestone-15 准备执行输入时核实, 不另加新配置源; 容器识别沿用现有 /run/.containerenv 的配方, 不能再因 SSH 环境变量缺失而误走宿主端口规则.
+
+### D012 明确两种环境分别提供实际访问证据
+- 状态: 当前有效
+- 约束性: 必须遵守
+- 内容: 用户 Q12=A 明确确认 AC-15-07 中的证据展开要求: 宿主与容器两种场景分别留下真实局域网访问证据, 缺哪个场景就记未验证, 不以源码推断或仅容器本机测试代替宿主场景. 本条补明确认来源, 不将 Q10 原始清单伪称为逐字包含这段细则, 不改变其他已确认标准. 验收标准仍唯一维护在 ACCEPTANCE.md, 本条不宣称实际访问已经完成. 理由: 服务能启动不等于用户设备能打开, 两种环境的地址/映射不同, 不能以一种环境替另一种.
+- 依赖事实: F015
+- 预计影响: ACCEPTANCE.md AC-15-07 的确认依据, milestone-15 的执行输入与证据计划, milestone-08 的终点证据汇集
+- 需要调整: milestone-15 准备验证入口时落到实际设备/确认动作, 缺环境应报告缺口, 不补写虚假通过; 本节点不自行补跑产品来制造后续实施证据.
+
 ## 事实
 
 ### F001 present 当前存在本地/远程两条流程
@@ -98,7 +114,7 @@
 
 ### F003 运行时单例/端口记录/锁端口能力已经存在
 - 状态: 当前有效
-- 来源: general/present/scripts/web_server.py 的 _runtime_dir/_serve/run_start/run_status/_rebuild_server; tests/test_web_server_fixed_port.py
+- 来源: general/present/scripts/web_server.py 的 _runtime_dir/_serve/run_start/run_status/_rebuild_spawn/_rebuild_status; tests/test_web_server_fixed_port.py
 - 内容: 运行时目录采用 <系统临时目录>/pi-present-web-<uid>, PI_PRESENT_WEB_RUNTIME_DIR 可覆盖基目录. _serve 写 server.json 的 pid/port/bind/roots/started_at/fixed_port. 文件与探活共同用于复用/重建, 容器可 --fixed-port. 此处为源码核对, 不是本轮运行验证.
 
 ### F004 check_page.py 未强制状态对象
@@ -130,3 +146,33 @@
 - 状态: 当前有效
 - 来源: 本轮用户 Q1-Q6 全 A, Q7-Q10 全 A, 最后回复 "结束"; REQUIREMENTS.md
 - 内容: 用户确认了规则与验收标准, 授权本节点落盘和独立反方检查. 未授权提前执行 milestone-15, 也未对其尚未实现的行为作验收通过确认. 本节点采用文档差异/链接/规则覆盖核对与独立反方验证, 不需要为未改的产品运行路径启动真实服务或跑整套 pytest.
+
+### F010 生命周期测试仍钉住旧 SSH 地址优先级
+- 状态: 当前有效
+- 来源: general/present/tests/test_web_server_lifecycle.py 的 TestTC027HostFromSSHConnection/test_url_host_uses_ssh_connection_server_ip (本轮核对行 874-899); OPPOSITION.md A-01
+- 内容: TC-027 注入 SSH_CONNECTION 并断言 url/lan_ip 直接取第三字段. 这是 D011 需要调整的实际旧测试, 初版 D003 预计影响未点名该文件, 本轮补记. 不在决策节点修改测试.
+
+### F011 to-spec 直接依赖 present handler, 状态对象并非必须清理
+- 状态: 当前有效
+- 来源: workflow/to-spec/tests/test_ac_draft.py 的 test_preview_and_original_are_reachable_through_present_handler (本轮核对行 360-409), workflow/to-spec/ac-draft.py 和 tests/test_ac_reading.py; OPPOSITION.md A-02/C-09
+- 内容: to-spec 测试直接 import present web_server.py 的 _Handler, 注入 roots/roots_lock/runtime_dir/bind 并用隔离 loopback HTTP 检查页面可访问. milestone-15 若触碰该类结构/目录服务行为, 相关用例应纳入直接相关回归, 不借此重构 to-spec. to-spec 自带状态对象不违背 D002 的取消强制要求, 不应为消除字符串而删除其合法交互/测试.
+
+### F012 旧 TTL 变量仍作为闲置存活测试输入
+- 状态: 当前有效
+- 来源: general/present/tests/test_web_server_lifecycle.py 的 test_idle_server_stays_available_until_stop (本轮核对行 777-797); OPPOSITION.md A-03; 3dc49c6
+- 内容: 测试设置 PI_PRESENT_WEB_TTL_SECONDS=0.2 后等待 1 秒并核对服务存活. 实现已不读取该变量, 因此这不是仍支持 TTL, 而是可用于防旧行为复活的输入. 原记录漏掉此位置属实; 不能据变量名命中就认定应删除有效的存活检查或要求恢复自退语义.
+
+### F013 本机管理接口的实际来源规则含具体 bind 地址分支
+- 状态: 当前有效
+- 来源: general/present/scripts/web_server.py 的 _guard_control_namespace/_is_loopback_client (本轮核对行 499-539), docs/changes/present-web-server/UNAUTHORIZED_DECISIONS.md U-009, 提交 aa9a693; OPPOSITION.md A-04
+- 内容: 实际守卫放行 loopback 来源或源 IP 等于服务绑定的具体本机地址, 其余拒绝, 允许具体 IP bind 时 CLI 从本机访问控制接口. 领域语言只写仅 loopback 落后于此规则, 应改为本机专用并指向 U-009. 本条记录旧规则而非新增安全放行, 不以只读核对声称重新完成安全实测.
+
+### F014 宿主已有已确认地址文件, 无需新造来源
+- 状态: 当前有效
+- 来源: workflow/use-sandbox-worktree/scripts/swt.py 的 confirmed_lan_address_path/read_confirmed_lan_address (本轮核对行 661-672), docs/changes/agent-env-followups/DECISIONS.md D010; OPPOSITION.md B-05
+- 内容: swt 已从 records_root/lan-address 读取已确认局域网地址, 容器 SWT_HOST_LAN_IP 源于这一宿主记录. 初版 D003 未明确接入何种宿主来源, 用户现已通过 Q11=A 选择复用, 决策见 D011.
+
+### F015 反方后的两项新增确认
+- 状态: 当前有效
+- 来源: 本轮用户回复原文 Q11: A / Q12: A; REQUIREMENTS.md 的反方后补充确认
+- 内容: 用户确认本次明确指定地址优先, 否则复用现有 lan-address, 不另建配置文件, 无值则探测候选并请用户确认; 同时明确确认宿主与容器分别提供真实局域网访问证据的标准展开. 这关闭 B-05/B-07 的确认缺口, 不代表实际行为已通过验收.

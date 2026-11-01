@@ -82,7 +82,7 @@
 
 ### D013 验收标准 (产品层收口)
 - 状态: 当前有效
-- 适用范围更新: 第 7 项的远程分支/文件路径失败出口由 [milestone-14 D001/D003](../workflow-stack-review/milestone-14/DECISIONS.md) 替代, 当前实施标准用 [AC-15](../workflow-stack-review/ACCEPTANCE.md#milestone-15-已确认标准); 第 1/2 项输出/重建的容器例外按 milestone-14 D004/D005 对齐. 其余旧行为要求未因本次统一交付而取消, 但本段不作为新改造已经通过的证据.
+- 适用范围更新: 第 7 项的远程分支/文件路径失败出口由 [milestone-14 D001/D003](../workflow-stack-review/milestone-14/DECISIONS.md) 替代, 当前实施标准用 [AC-15](../workflow-stack-review/ACCEPTANCE.md#milestone-15-已确认标准); 第 1/2 项输出/重建的容器例外按 milestone-14 D004/D005 对齐, URL 来源按 milestone-14 D011 (替代 D003) 对齐. 其余旧行为要求未因本次统一交付而取消, 但本段不作为新改造已经通过的证据.
 - 约束性: 必须遵守
 - 内容: 八条, 终版 (第 2 条为用户修订版, 覆盖初版"报错不换端口"):
   1. `start <port> <root> --bind <addr>` 三参缺一即报错不启动; 成功后守护进程化, ssh 断连服务存活; stdout 输出含入口 URL (主机名/局域网 IP), 端口, 挂载信息的 JSON.
@@ -132,6 +132,7 @@
 
 ### D020 控制面协议与防护
 - 状态: 当前有效
+- 适用说明: 来源判定已由同变更 UNAUTHORIZED_DECISIONS.md U-009 澄清为 loopback 或源 IP 等于具体 bind 地址; 下方仅 loopback 是历史简写, 不覆盖该已实现修订. 本次只记录既有行为, 见 [milestone-14 F013](../workflow-stack-review/milestone-14/DECISIONS.md), 不新增安全放行.
 - 约束性: 必须遵守
 - 内容: `add-dir` = CLI 进程经 `POST /__control__/add-dir` (JSON body `{"dir": ...}`) 调本机服务. `/__control__/*` 全簇仅 loopback 来源, 非 loopback 一律拒绝 (含 ping — ping 指纹含 pid, 不对网段暴露). 探活/就绪信号 = `GET /__control__/ping`, 响应含固定标识 `{"service": "pi-present-web", "pid": N}`, status/stop 先 ping 比对 server.json 的 pid, 防端口被无关服务占用时误判存活. `stop` 不走 HTTP: 读 pid 发 SIGTERM, 发前用 `ps -o args= -p <pid>` 校验命令行含本脚本路径, 不匹配则不杀并报错 (防 pid 复用误杀; `ps` 跨平台, 替代最初选的 `/proc/<pid>/cmdline` — macOS 无 /proc, 反方攻击发现的硬矛盾). `/__control__/*` 为保留命名空间, 优先于静态文件查找, 挂载目录下同路径文件被静默遮蔽.
 - 预计影响: `web_server.py` HTTP 服务簇, 命令核心 stop/status
