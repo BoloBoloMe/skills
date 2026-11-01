@@ -1,6 +1,6 @@
 ---
 name: drive-execution
-description: 编程任务的体量较大, 一个会话容纳不下时使用.
+description: 把一个会话装不下的编程任务拆给总指挥, 执行者与审核者协作完成.
 disable-model-invocation: true
 ---
 

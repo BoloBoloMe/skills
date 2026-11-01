@@ -4,7 +4,7 @@ description: 制作演示材料 — 让人看清指定样子, 行为或过程.
 disable-model-invocation: true
 ---
 
-本 skill 是可选手段: 不强制调用, 也不构成完成标准. 完成标准见 [verification-contract](../verification-contract/SKILL.md).
+本 skill 可选, 不构成完成标准; 完成标准见 [verification-contract](../verification-contract/SKILL.md).
 
 # 演示
 

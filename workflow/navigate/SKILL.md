@@ -1,6 +1,6 @@
 ---
 name: navigate
-description: 当目的地说不清或实现路线未知时, 领航至目的地, 先制图, 再航行.
+description: 模糊目的地的领航流程: 对齐目的地, 绘制路线图, 逐个里程碑航行.
 disable-model-invocation: true
 ---
 
@@ -72,10 +72,10 @@ ROADMAP.json 的一切读写只经守门脚本 `<skill 目录>/scripts/roadmap.p
 
 ## 展示服务
 
-展示页的常驻实例有固定身份: 运行时目录 `/tmp/navigate-display-<uid>`, 端口 39300, 网段经转发桥 (如 `8801 -> 127.0.0.1:39300`) 供浏览器长期轮询. 只经 `scripts/display_serve.sh` 管理: `ensure` 复原/拉起 (服务死了用它一条命令复原回固定端口, 桥零操作自愈), `status` 查看, `start`/`stop` 供复原与演练.
-- 展示目录与端口归展示实例专属: 其他会话不在该目录运行 `web_server.py start/stop`, 不占用 39300.
+展示页的常驻实例有固定身份: 运行时目录与端口由 `scripts/display_serve.sh` 写死, 网段经转发桥供浏览器长期轮询; 具体值用 `status` 查, 不在文档里复述. 只经该脚本管理: `ensure` 复原/拉起 (服务死了用它一条命令复原回固定地址, 桥零操作自愈), `status` 查看, `start`/`stop` 供复原与演练.
+- 展示目录与端口归展示实例专属: 其他会话不在该目录运行 `web_server.py start/stop`, 不占用展示端口.
 - **收工不 stop 展示服务**: 它服务浏览器的长期轮询, 停了页面即断; 会话收工清单不含它, 复原交给 `ensure`.
-- 实验与测试用独立运行时目录 (`NAVIGATE_WEB_RUNTIME_DIR`) 与一次性端口 (`NAVIGATE_WEB_PORT` 或随机端口), 不碰展示目录与 39300.
+- 实验与测试用独立运行时目录 (`NAVIGATE_WEB_RUNTIME_DIR`) 与一次性端口 (`NAVIGATE_WEB_PORT` 或随机端口), 不碰展示目录与端口.
 
 ## 调用模式
 

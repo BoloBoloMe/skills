@@ -1,10 +1,10 @@
 ---
 name: lazy-dev
-description: 设计与实现都追求极致精简时使用, 懒设计的决策阶梯与实现阶梯.
+description: 追求最小交付的决策阶梯与实现阶梯, 含降级信号与不能偷懒的边界.
 disable-model-invocation: true
 ---
 
-本 skill 是可选手段: 不强制调用, 也不构成完成标准. 完成标准见 [verification-contract](../verification-contract/SKILL.md).
+本 skill 可选, 不构成完成标准; 完成标准见 [verification-contract](../verification-contract/SKILL.md).
 
 # 懒品味
 
@@ -61,7 +61,6 @@ disable-model-invocation: true
 - 不做大爆炸迁移.
 - 不为单一实现设计接口. 不为单一产品设计工厂. 不为单一调用方设计框架.
 - 不把未知未来写成配置. 只有已经需要调整, 或物理世界需要校准时, 才保留旋钮.
-- 不引入队列, 缓存, 异步, 事件总线, 插件, DSL, codegen, multi-tenant 支架, 除非当前需求已经逼迫它们存在.
 - 不把错误藏进正常路径. 输入校验, 权限, 幂等, 事务, 回滚, 日志至少要在方案或代码中交代.
 - 不为测试方便污染业务接口. 先找接缝, 再决定是否抽接口.
 - 不用名字包装复杂性. `Manager`, `Service`, `Helper`, `Util` 必须说明具体职责, 否则内联.
