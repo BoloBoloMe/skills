@@ -2,8 +2,11 @@
 - `../EXECUTION.md`
 
 ## 执行
-- [ ] 已完成
-- [ ] 派工前复核并记录 (写在本行下方): HEAD 提交号; `PYTEST_XDIST_WORKER=gw0 uv run python -m pytest --collect-only -q` 条数; `workflow/codebase-map/` 当前存在哪些文件.
+- [x] 已完成
+- [x] 派工前复核并记录 (写在本行下方): HEAD 提交号; `PYTEST_XDIST_WORKER=gw0 uv run python -m pytest --collect-only -q` 条数; `workflow/codebase-map/` 当前存在哪些文件.
+- HEAD 提交号: `22e25e0ebee2bc1ff42ba703cbc133f0edbafafc` (分支 issue/03, 与派工基点一致).
+- 收集条数: 916 (EXECUTION 基线 865 + ISSUE-01/02/04 已增 51); 收工复跑 924, 增量 8 = 本 issue 新增用例数.
+- `ls workflow/codebase-map`: `README.md, SKILL.md, agents, i18n, scripts, tests, tools`.
 
 ## 要交付什么
 让 `build` 从"能出数据"变成"能判断该不该交付, 并把数据放到页面能取到的地方":
@@ -57,6 +60,29 @@
 
 ## 交付证据
 
+### 机检结果 (容器内, 2026-11-01)
+
+- `PYTEST_XDIST_WORKER=gw0 uv run python -m pytest workflow/codebase-map/tests`: 退出码 0, 59 passed, 无 failed, 无新增 skipped (原 51 条 + 本 issue 8 条). 原始输出 `/tmp/m26-03/pytest-codebase-map.txt`.
+- 收集基线核对: `--collect-only -q` 实测 924 条 = 865 (EXECUTION 基线) + 51 (ISSUE-01/02/04) + 8 (本 issue 新增: TC-005 一条, TC-006 两条, TC-03-01..TC-03-05 五条), 增量与新增用例数逐条对上.
+- `PYTEST_XDIST_WORKER=gw0 uv run python -m pytest tests/test_skills_codex_metadata.py`: 1 passed.
+- `uv run python general/writing-for-llm/check_skill.py workflow/codebase-map/SKILL.md`: OK, 退出码 0.
+- 全量 `uv run python -m pytest` 在容器内 69 failed/100 errors: EXECUTION 完成定义第 8 条写明的环境缺口 (`tests/` 树需宿主 podman), 不属本 issue 验证口径, 不伪记通过.
+
+### 逐项交付与用例对应
+
+- 门禁判定 (AC-006, m25 D001): `codemap_analyze.evaluate_gate`; `edges = len(lenses.dependency.edges.dependencies)`, `level_kinds` = files 树 type=File 节点在 dependency lens 上的 `level` 取值种数; 阈值 边>0 且 种数>=3 未动. TC-006 两条: 边为 0 时 `gate.reason` 含 "边为 0"/"0 条"; 层号只有 0 与 1 两种时含 "2 种, 少于 3 种"; 两次都原件照写, serve-root 无该库副本, state.json 未登记, stats 与 initialization 照常完整.
+- 统计 (AC-001 统计场景, BR-024/BR-025, m25 D019): `codemap_analyze.compute_stats`; 统计等式写在函数头 (每份磁盘文件按固定次序归入且只归入一项), 由 TC-03-04 固定: 3+1+2+1+1+2+1 = 11 = 磁盘文件总数; `tool_defaults`(2) 与 `custom`(1) 分列不相加; `scanned_files`=5 且等于 files_in_tree + 零声明 + 工具默认过滤里受支持扩展名部分 (README.md 的 .md 不计入); TC-03-05: `unsupported_extensions` 只汇总 .md, 零声明与排除命中不混入.
+- 副本分发 (AC-005, BR-010/BR-012/BR-036): `copy_to_serve_root` 先写 .tmp 再 `os.replace`, 副本与 index.html 同目录, 内容与原件逐字节一致 (TC-005); `data_keys` 在 run_build 持有的锁内 upsert, 复用 `codemap_service` 的 `_load_state`/`_atomic_write_state`, 不另写一份原子写; TC-03-01 同库重跑同键覆盖, `data_keys` 无重复条目, built_at/bytes 刷新; TC-03-02 同名不同路径两键互不覆盖; TC-03-03 build 第三库不动前两库副本与登记.
+- `build --json`: 成功含 `gate`/`stats`/`serve_copy_path`; 门禁失败时 `error.code=gate_failed` 且 `gate`/`stats`/`initialization`/`cc_json_path`/`key` 照常输出, 不因失败省掉分母与零声明清单 (TC-006).
+
+### 边界与偏差说明
+
+- stub 边界: 全部用例用 stub podman + fixture merge 产物, 只证明流程接线与归因逻辑, 不等于分析可用; 真实库门禁数值 (边 8820, 层号 8 种) 与真实分母由 ISSUE-07 宿主承接.
+- "退出码非 0": 容器内 CLI 首关 `container_not_supported`, 门禁不可从真实入口到达; run_build 返回 `success=false`, 退出码由 CLI `_emit` 的 success->0/1 映射承接 (TC-01-06 已固定该形状).
+- test_analyze_pipeline.py 两处必要调整 (ISSUE-02 预留的临时守卫, ISSUE-03 交付后必翻转): `assert_full_build_fields` 由 "gate/stats/serve_copy_path 不得出现" 改为 "必带且门禁通过"; TC-02-02 的 merge 产物内容断言改为 stub_run 序号 (stub merge 产物默认改为内置可过门禁的 fixture, 原 `{"stub","run"}` 形状表达不了 lenses). 其余 TC-02 用例逻辑未动.
+- 边列表形状兼容: TECHNICAL 定 2.1 形状 `edges.dependencies`; m23 PROBE 6.4 统计脚本实测 2.0 形状 edges 为纯数组; `_dependency_lens` 两种都读 (只读不改, NG-006), 真实形状由 ISSUE-07 核验.
+- codebase-map.py 模块 docstring 里 "门禁...归 ISSUE-03, 本版 result 不含这些字段" 一行已过时; 该文件不在本 issue 允许增量内, 未改, 留给 ISSUE-06 文档收口.
+- 未做项: serve/stop (ISSUE-04/05), 真实库门禁统计与分母 (ISSUE-07), SKILL.md 失败出口与清理入口措辞 (ISSUE-06).
 ## 风险提示
 - 统计等式若先在实现里拍一个, 再让测试将就, 会变成自证; 先按 TECHNICAL 口径写出各分量含义, 再用 fixture 核对, 差值必须能逐类解释.
 - `data_keys` 与副本复制都要在锁内, 否则并发 build 会写坏清单.

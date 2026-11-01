@@ -39,8 +39,13 @@ STUB_PODMAN_BODY = '''#!/usr/bin/env python3
   CODEMAP_STUB_RUN_FAIL       =1 时 run 以退出码 1 失败 (注入失败场景)
 
 podman run: 解析 -v <dir>:/out 挂载, 按 ccsh 子命令写入伪产物
-(deps.cc.json / metrics.cc.json / cc.json), 内容带 run 序号供覆盖断言.
+(deps.cc.json / metrics.cc.json / cc.json). merge 产物默认是内置最小
+可过门禁的 merge 产物 (边 3 > 0, 文件层号 0/1/2 共 3 种, 形状同 m23 实测:
+files 树 + lenses.dependency), 并注入 stub_run = run 序号供覆盖断言;
+环境变量 CODEMAP_STUB_CC_JSON 指向 fixture cc.json 时改为读它
+(ISSUE-03 门禁/统计用例注入退化产物), stub_run 照样注入.
 """
+import hashlib
 import json
 import os
 import pathlib
@@ -73,6 +78,49 @@ if argv[:1] == ["pull"]:
     sys.stdout.write("stub: pulled (simulated, no network)\\n")
     raise SystemExit(0)
 
+def _merge_product(run_no):
+    """merge 伪产物: fixture 优先, 否则内置最小可过门禁产物; 都注入 stub_run."""
+    fixture = os.environ.get("CODEMAP_STUB_CC_JSON")
+    if fixture:
+        data = json.loads(pathlib.Path(fixture).read_text(encoding="utf-8"))
+    else:
+        def ident(rel):
+            return hashlib.sha256(("root/" + rel).encode()).hexdigest()[:12]
+        files = ["src/Main.java", "src/Util.java", "src/Helper.java"]
+        kids = [{"id": ident(p), "name": p.rsplit("/", 1)[-1], "type": "File"}
+                for p in files]
+        data = {
+            "meta": {"projectName": "stub-merge", "apiVersion": "2.1"},
+            "files": [{"id": ident(""), "name": "root", "type": "Folder",
+                       "children": [{"id": ident("src"), "name": "src",
+                                     "type": "Folder", "children": kids}]}],
+            "lenses": {
+                "metrics": {"attributes": {}, "attributeTypes": {},
+                            "attributeDescriptors": {}},
+                "dependency": {
+                    "nodes": {ident("src/Main.java"): {"level": 0},
+                              ident("src/Util.java"): {"level": 1},
+                              ident("src/Helper.java"): {"level": 2}},
+                    "edges": {"dependencies": [
+                        {"fromId": ident("src/Main.java"),
+                         "toId": ident("src/Util.java"),
+                         "attributes": {"dependencies": 1}},
+                        {"fromId": ident("src/Util.java"),
+                         "toId": ident("src/Helper.java"),
+                         "attributes": {"dependencies": 2}, "isCyclic": True},
+                        {"fromId": ident("src/Helper.java"),
+                         "toId": ident("src/Main.java"),
+                         "attributes": {"dependencies": 1},
+                         "isPointingUpwards": True},
+                    ]},
+                    "attributeTypes": {}, "attributeDescriptors": {},
+                },
+            },
+        }
+    data["stub_run"] = run_no
+    return data
+
+
 if argv[:1] == ["run"]:
     out_dir = None
     for i, arg in enumerate(argv):
@@ -95,8 +143,11 @@ if argv[:1] == ["run"]:
         product = "cc.json"
     else:
         fail("unknown ccsh step: " + joined)
-    (out_dir / product).write_text(
-        json.dumps({"stub": product, "run": run_no}, ensure_ascii=False), encoding="utf-8")
+    if product == "cc.json":
+        payload = json.dumps(_merge_product(run_no), ensure_ascii=False)
+    else:
+        payload = json.dumps({"stub": product, "run": run_no}, ensure_ascii=False)
+    (out_dir / product).write_text(payload, encoding="utf-8")
     if os.environ.get("CODEMAP_STUB_RUN_FAIL") == "1":
         fail("injected run failure")
     raise SystemExit(0)
@@ -207,3 +258,67 @@ def preset_frontend_cache(
         serve_root.mkdir(parents=True, exist_ok=True)
         (serve_root / "index.html").write_bytes(b"<html>pseudo serve-root</html>")
     return pseudo_sha(zip_bytes)
+
+
+# ---------------------------------------------------------------------------
+# merge 产物 fixture (ISSUE-03 门禁/统计用例; 形状同 m23 实测)
+# ---------------------------------------------------------------------------
+
+
+def _fixture_id(rel: str) -> str:
+    return hashlib.sha256(("root/" + rel).encode("utf-8")).hexdigest()[:12]
+
+
+def make_merge_fixture(path, *, in_tree, levels, edges, root_name="root",
+                       project_name="stub-merge") -> Path:
+    """构造最小 merge 产物写入 path, 返回该路径.
+
+    in_tree: 在依赖树里的库内相对路径列表 (File 节点); levels: {相对路径: level}
+    (键必须在 in_tree 里, 未给的文件节点无 level); edges: [(from, to, isCyclic,
+    isPointingUpwards), ...]. 形状与内置 stub 默认产物一致: files 树 +
+    lenses.dependency.nodes 的 level 与 lenses.dependency.edges.dependencies
+    的 isCyclic/isPointingUpwards (m25 D001/TECHNICAL, m23 PROBE 6.4).
+    """
+    files_by_dir: dict = {}
+    dirs: set = set()
+    for rel in in_tree:
+        parent, name = rel.rsplit("/", 1) if "/" in rel else ("", rel)
+        files_by_dir.setdefault(parent, []).append(
+            {"id": _fixture_id(rel), "name": name, "type": "File"})
+        parts = parent.split("/") if parent else []
+        for i in range(len(parts)):
+            dirs.add("/".join(parts[:i + 1]))
+
+    def folder_node(dir_path: str) -> dict:
+        head, _, _tail = dir_path.rpartition("/")
+        sub_dirs = sorted((d for d in dirs if d.rpartition("/")[0] == dir_path and d != dir_path),
+                          key=lambda d: d.rpartition("/")[2] or d)
+        children = [folder_node(d) for d in sub_dirs]
+        children.extend(sorted(files_by_dir.get(dir_path, []), key=lambda n: n["name"]))
+        return {"id": _fixture_id(dir_path), "name": dir_path.rpartition("/")[2] or dir_path,
+                "type": "Folder", "children": children}
+
+    root_children = [folder_node(d) for d in sorted((d for d in dirs if "/" not in d))]
+    root_children.extend(sorted(files_by_dir.get("", []), key=lambda n: n["name"]))
+    data = {
+        "meta": {"projectName": project_name, "apiVersion": "2.1"},
+        "files": [{"id": _fixture_id(""), "name": root_name, "type": "Folder",
+                   "children": root_children}],
+        "lenses": {
+            "metrics": {"attributes": {}, "attributeTypes": {}, "attributeDescriptors": {}},
+            "dependency": {
+                "nodes": {_fixture_id(rel): {"level": level} for rel, level in levels.items()},
+                "edges": {"dependencies": [
+                    {"fromId": _fixture_id(src), "toId": _fixture_id(dst),
+                     "attributes": {"dependencies": 1},
+                     **({"isCyclic": True} if cyclic else {}),
+                     **({"isPointingUpwards": True} if upward else {})}
+                    for src, dst, cyclic, upward in edges
+                ]},
+                "attributeTypes": {}, "attributeDescriptors": {},
+            },
+        },
+    }
+    path = Path(path)
+    path.write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
+    return path
