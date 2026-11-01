@@ -142,6 +142,13 @@ class RenderDocsTest(unittest.TestCase):
         ):
             self.assertIn(token, web_ports)
 
+    def test_web_ports_contains_self_check_order(self):
+        web_ports = render_docs(make_facts())["web-ports.md"]
+        # 自查顺序不可被重构删掉: 必须能只读本文档就独立拼出局域网 URL.
+        self.assertIn("/proc/[0-9]*/environ", web_ports)
+        self.assertIn("SWT_HOST_LAN_IP", web_ports)
+        self.assertIn("先查后问", web_ports)
+
     def test_navigate_skill_no_container_section(self):
         text = (ROOT / "workflow/navigate/SKILL.md").read_text(encoding="utf-8")
         self.assertNotIn("容器内展示配方", text)

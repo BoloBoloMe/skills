@@ -53,8 +53,18 @@ def _web_ports(facts) -> str:
         f"- 已确认局域网地址: {lan_ip}",
         "- 宿主端口映射: 容器内 8800-8805 对应宿主环境变量 "
         "SWT_HOST_WEB_PORT, SWT_HOST_WEB_PORT_2.._6; create 后才知, "
-        "从 env 读取; 变量缺席时信箱可用就向宿主索取, "
-        "否则请我提供缺失的宿主地址/映射端口.",
+        "端口每次 create 都变, 不要写死.",
+        "- 自查顺序 (先查后问): 1) 当前 shell 的 `env`; "
+        "2) 缺了就扫容器内全进程, 这些变量在 create 时注入到当时进程, "
+        "常不继承给新 shell 或新 tab, 看不到不代表没配: "
+        "`for p in /proc/[0-9]*/environ; do tr '\\0' '\\n' < \"$p\" "
+        "2>/dev/null | grep -E '^SWT_HOST'; done | sort -u`; "
+        "3) 两步都没有才算缺失, 再走下方降级, "
+        "不要凭第 1 步失败就下'没配'的结论.",
+        "- 交付形状 (端口以自查结果为准): "
+        "`http://<SWT_HOST_LAN_IP>:<SWT_HOST_WEB_PORT>/<页面文件>`.",
+        "- 服务自报的 `url`/`hostname`/`lan_ip` 是容器视角, 不要直接交付; "
+        "宿主地址一律取 `SWT_HOST_LAN_IP` (与 present 的 REMOTE.md 对齐).",
         "",
         "## 架桥配方 (navigate 交付展示页)",
         "容器里交付地图页时, 8801 固定归 navigate (8800 固定归 present); "
