@@ -3,7 +3,11 @@
 
 ## 执行
 - [ ] 已完成
-- [ ] 派工前复核并记录 (写在本行下方): HEAD 提交号; `PYTEST_XDIST_WORKER=gw0 uv run python -m pytest --collect-only -q` 条数; `workflow/codebase-map/` 当前存在哪些文件.
+- [x] 派工前复核并记录 (写在本行下方): HEAD 提交号; `PYTEST_XDIST_WORKER=gw0 uv run python -m pytest --collect-only -q` 条数; `workflow/codebase-map/` 当前存在哪些文件.
+  - 复核时间: 2026-11-01T07:31:21+00:00 (容器 issue/04 工作树).
+  - HEAD: `7f6fd4e5528589082a6707a3f480e7c846a4569c` (与任务书基点一致, 含已合并的 ISSUE-01).
+  - 收集条数: 894 (m25 基线 865 + ISSUE-01 新树 29; 收尾复跑须为 894 + 本 issue 新增用例数).
+  - `ls workflow/codebase-map`: `README.md  SKILL.md  agents  i18n  scripts  tests  tools`; 其中 `scripts/` 有 `codebase-map.py  codemap_common.py`, `tests/` 有 `codemap_helpers.py  test_cli_output_shape.py  test_container_rejection.py  test_data_key.py  test_excludes_and_regex.py  test_runtime_dir.py  test_stdlib_only.py  test_version_constants.py`.
 
 ## 要交付什么
 让服务真的能起, 复用, 探活, 停, 并且状态可核实:
