@@ -14,8 +14,12 @@ success/command/error; 非 JSON 失败 stdout 是多行摘要, stderr 说清下�
 from __future__ import annotations
 
 import json
+import os
+import subprocess
+import sys
 
 from codemap_helpers import (
+    CLI_SCRIPT,
     ENV_RUNTIME_DIR,
     IN_CONTAINER,
     make_target,
@@ -55,6 +59,36 @@ def test_human_failure_stderr_has_next_step_and_exit_1(tmp_path):
     assert "codebase-map build" in proc.stdout
     assert "下一步" in proc.stderr, f"stderr 未说下一步动作: {proc.stderr!r}"
     assert proc.stderr.strip() != ""
+
+
+def test_podman_missing_message_names_no_podman(tmp_path):
+    """AC-007 场景大纲 (没有 podman): 真实 CLI 报错里必须出现"本机没有 podman",
+    error.code == podman_missing, 退出码 1, 下一步动作保留.
+
+    容器内 /run/.containerenv 在场时第一关前置检查是 container_not_supported,
+    podman_missing 到不了; 用 unshare -m -r + tmpfs 盖 /run 在子进程里藏掉
+    容器标记, 再用不含 podman 的 PATH, 让宿主分支前置链 (container ->
+    target -> podman) 在容器内也可到达 podman 关. 这是环境级构造 (不改产物,
+    不用替身数据冒充分析结果), 宿主上同样可跑 (unshare 的 mount ns 里挂
+    tmpfs 只影响子进程视图).
+    """
+    target = make_target(tmp_path)
+    env = os.environ.copy()
+    env["PATH"] = "/usr/bin:/bin"  # 不含 podman 的 PATH
+    env[ENV_RUNTIME_DIR] = str(tmp_path / "rt")
+    cmd = [
+        "unshare", "-m", "-r", "/bin/sh", "-c",
+        'mount -t tmpfs tmpfs /run && exec "$1" "$2" build "$3" --json',
+        "sh", sys.executable, str(CLI_SCRIPT), str(target),
+    ]
+    proc = subprocess.run(cmd, capture_output=True, text=True, env=env, timeout=60)
+    obj = stdout_json(proc)
+    assert proc.returncode == 1, f"应报错退出 1: rc={proc.returncode} stderr={proc.stderr!r}"
+    assert obj is not None and obj["success"] is False
+    assert obj["error"]["code"] == "podman_missing"
+    assert "本机没有 podman" in obj["error"]["message"], (
+        f"AC-007 要求的说法缺失: {obj['error']['message']!r}")
+    assert obj["error"]["hint"], "下一步动作 hint 应保留"
 
 
 def test_serve_and_stop_registered_since_issue_04(tmp_path):

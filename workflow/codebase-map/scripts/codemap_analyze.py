@@ -202,15 +202,15 @@ def _frontend_unpacked_path(cache_dir: Path) -> Path:
     return cache_dir / FRONTEND_REL / cmc.FRONTEND_VERSION / "unpacked"
 
 
-def verify_frontend_zip(zip_path, expected_sha256=None) -> str:
+def verify_frontend_zip(zip_path) -> str:
     """对在场的 web.zip 做 sha256 校验, 返回实际哈希; 不符即 frontend_hash_mismatch.
 
     校验对象是"当前在场的产物"而不只是刚下载的文件: 残留的旧版/损坏包不得
-    冒充当前版本 (m25 D009). expected 参数只供测试注入 (m25 EXECUTION 文件
-    接缝: "测试可放伪产物并预置 sha256 期望值"), 生产路径恒用 codemap_common
-    常量, 不提供任何旁路.
+    冒充当前版本 (m25 D009). 期望值恒用 codemap_common 的
+    FRONTEND_ZIP_SHA256 常量, 不在生产函数上开可覆盖期望值的旁路参数
+    (测试预置 sha256 期望值时 monkeypatch 该常量).
     """
-    expected = expected_sha256 or cmc.FRONTEND_ZIP_SHA256
+    expected = cmc.FRONTEND_ZIP_SHA256
     actual = sha256_file(zip_path)
     if actual != expected:
         raise _AnalyzeError(

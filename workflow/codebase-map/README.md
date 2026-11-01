@@ -1,9 +1,9 @@
 # codebase-map 操作手册
 
-代码库结构可视化 (CodeCharta) 的汉化构建与交付. 本文是唯一操作入口; 每节标注依据的决策编号 (m13 `docs/changes/workflow-stack-review/milestone-13/DECISIONS.md`, m24 `../milestone-24/DECISIONS.md`).
+代码库结构可视化 (CodeCharta) 的汉化构建与交付. v1 三子命令 (build/serve/stop) 的唯一操作入口是 `SKILL.md`; 本文只保留汉化构建链与布局铺设手册, 每节标注依据的决策编号 (m13 `docs/changes/workflow-stack-review/milestone-13/DECISIONS.md`, m24 `../milestone-24/DECISIONS.md`).
 
 - 性质: 纯手动工具, 不被任何 skill 调用 (D001); 只在宿主使用 (D003).
-- 本 skill 只含汉化构建链与布局铺设; 分析端调度与常驻服务 (build/serve/stop) 属 v1 实现 (milestone-26, D027/U004). v1 就位前用本文的临时命令.
+- 本 skill 的分析端调度与常驻服务 (build/serve/stop) 已由 v1 实现 (milestone-26, D027/U004), 用法见 `SKILL.md`; 本文只覆盖汉化构建链与布局铺设.
 - 版本钉死: 前端 `vis-2.9.1`, 分析端镜像 `docker.io/codecharta/codecharta-analysis:2.3.0` (U002; 版本核对以 manifest digest `sha256:6402a87f...` 为准, 不信 `ccsh --version`). 升级 = 人工改版本号重跑, 见第 6 节.
 
 ## 1 目录布局 (~/.agents/codebase-map/)
@@ -13,7 +13,7 @@
 | `cache/src/` | 上游可视化克隆 + node_modules (整体替换, 不叠加, D030) | build-zh.sh 维护 |
 | `cache/run-latest/` | 最近一次构建的报告与截图 (stat-A.json, ts/lit-apply-report.json, smoke.json, shot-*.png) | build-zh.sh 维护 |
 | `serve-root/` | 前端产物 (index.html 在顶层) + 数据副本 `<库名>-<8位路径哈希>.cc.json` (D023) | stage.py 铺设 |
-| `state.json`, `logs/` | 服务端口/pid/启动时间/数据键清单, 服务日志 (D024) | v1 服务 (milestone-26), 本片不创建 |
+| `state.json`, `logs/` | 服务端口/pid/启动时间/数据键清单, 服务日志 (D024) | v1 服务 (milestone-26) 创建与维护 |
 
 复原纪律 (D024): 删掉整个目录等于放弃实例; 复原 = 重跑 build-zh.sh (重建 cache) + stage.py (重建 serve-root), 无其他隐藏状态. cache 约 1GB (克隆 220M + node_modules 732M), 不入仓库 (D016).
 
@@ -44,10 +44,10 @@ python3 tools/stage.py data <库>/.codebase-map/cc.json # 数据副本 -> serve-
 - 键名 `<库名>-<8 位路径哈希>.cc.json`: 哈希 = sha256(库路径 realpath) 前 8 位; 同名不同库不互相覆盖, 重跑同一库覆盖同一键 (D023).
 - `?file=` 取的是页面同源相对路径, 前端 `<base href="./">` + CSP `self` 要求数据与 index.html 同目录, 所以副本必须落 serve-root (F014); 服务不给根外软链放行, 副本用复制不用软链 (F012/D023).
 - 交付 URL: `http://<宿主局域网 IP>:<端口>/?file=<键>` (D008). 也可在浏览器里手动选文件.
-- v1 服务就位前, 临时查看: `python3 -m http.server 8090 -d ~/.agents/codebase-map/serve-root` (临时手段, 单例/探活/stop 由 v1 负责, D021/D022).
+- ~~v1 服务就位前, 临时查看: `python3 -m http.server 8090 -d ~/.agents/codebase-map/serve-root`~~ **已作废, 勿用**: v1 服务已就位, 该命令会占住 8090, 之后 `serve` 会按 `port_in_use` 拒绝启动 (不换端口不接管); 页面查看一律用 v1 的 `serve` (D021/D022).
 - 上游是 hash 路由 (视图切换只改 `#` 后部分), 不需要也不做任何深链回退 (F011, D021 旧"nginx try_files"配方已作废).
 
-## 4 分析端命令 (v1 将封装; 此处为人工通道, 依据 m23 PROBE 实测)
+## 4 分析端命令 (v1 已封装为 `build` 子命令, 见 `SKILL.md`; 本节保留为人工通道, 依据 m23 PROBE 实测)
 
 ```
 podman pull docker.io/codecharta/codecharta-analysis:2.3.0

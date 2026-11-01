@@ -23,26 +23,59 @@ DELIVERY_NOTES_PHRASES = (
     "分母口径",
 )
 
-# 代码里的错误码全集 (codebase-map.py / codemap_analyze.py / codemap_service.py
-# 的 error_result 与 _AnalyzeError 调用逐个核对所得); SKILL.md 里出现的
-# 错误码样 token 必须都在其中
-KNOWN_ERROR_CODES = {
-    "container_not_supported",
-    "target_missing",
-    "podman_missing",
-    "image_unavailable",
-    "image_digest_mismatch",
-    "frontend_unavailable",
-    "frontend_hash_mismatch",
-    "gate_failed",
-    "no_data_keys",
-    "port_in_use",
-    "instance_running",
-    "state_mismatch",
-    "stop_failed",
-    "internal_error",
-    "no_confirmed_address",
-}
+# 代码里的错误码全集不再手抄: 用 collect_code_error_codes() 静态解析
+# scripts/*.py 的 error_result(...) 第 2 个位置参与 _AnalyzeError(...) 第 1
+# 个位置参现场收集 (m26 评审 D-1/E-1: 手抄清单会随代码漂移而不变红).
+
+
+def collect_code_error_codes() -> set:
+    """静态解析 scripts/*.py 里错误码产生位置, 收集错误码全集.
+
+    覆盖两种产生位: cmc.error_result(command, code, message, hint) 的第 2 个
+    位置参, 与 _AnalyzeError(code, message, hint) 的第 1 个位置参; 只收
+    字符串字面量. 动态传递处 (startup_error 回放, 异常透传) 的错误码均已在
+    别处以字面量出现, 不影响全集完整性 (主用例的关键码子集断言兼验证此点).
+    """
+    import ast
+
+    codes: set = set()
+    for script in sorted((SKILL_DIR / "scripts").glob("*.py")):
+        tree = ast.parse(script.read_text(encoding="utf-8"))
+        for node in ast.walk(tree):
+            if not isinstance(node, ast.Call):
+                continue
+            func = node.func
+            name = (
+                func.attr if isinstance(func, ast.Attribute)
+                else (func.id if isinstance(func, ast.Name) else None)
+            )
+            if name == "error_result" and len(node.args) >= 2 \
+                    and isinstance(node.args[1], ast.Constant):
+                codes.add(node.args[1].value)
+            elif name == "_AnalyzeError" and node.args \
+                    and isinstance(node.args[0], ast.Constant):
+                codes.add(node.args[0].value)
+    return codes
+
+
+def doc_error_codes(text: str) -> set:
+    """从文档的失败出口清单表格提取错误码: 表格行首列里反引号包住的 token.
+
+    只认表格第一列整格恰为一个 `snake_case` 反引号片段的行, 不捞正文里的
+    普通参数名/字段名; 分隔行与非错误码列跳过.
+    """
+    codes = set()
+    for line in text.splitlines():
+        stripped = line.strip()
+        if not (stripped.startswith("|") and stripped.endswith("|")):
+            continue
+        cells = [cell.strip() for cell in stripped[1:-1].split("|")]
+        if len(cells) < 2 or set(cells[0]) <= set("- :"):
+            continue  # 分隔行
+        match = re.fullmatch(r"`([a-z_]+)`", cells[0])
+        if match:
+            codes.add(match.group(1))
+    return codes
 
 
 def skill_text() -> str:
@@ -136,22 +169,35 @@ def test_tc0601_version_statements():
 
 
 def test_tc0601_every_error_code_token_exists_in_code():
-    """TC-06-01 附加: 文档错误码样 token 全部在代码错误码全集内."""
-    text = skill_text()
-    tokens = set(re.findall(r"[a-z]+(?:_[a-z]+)+", text))
-    unknown = tokens & {
-        "container_not_supported", "target_missing", "podman_missing",
-        "image_unavailable", "image_digest_mismatch", "frontend_unavailable",
-        "frontend_hash_mismatch", "gate_failed", "no_data_keys",
-        "port_in_use", "instance_running", "state_mismatch",
-        "stop_failed", "internal_error",
-    } - KNOWN_ERROR_CODES
-    assert not unknown, f"出现未知错误码样 token: {unknown}"
-    codes_in_doc = tokens & KNOWN_ERROR_CODES
+    """TC-06-01 附加: 文档失败出口清单里列出的错误码全部在代码错误码全集内.
+
+    全集从 scripts/*.py 现场静态解析 (collect_code_error_codes), 不是手抄
+    副本; 文档侧从失败出口清单表格首列提取 (doc_error_codes).
+    """
+    codes_in_code = collect_code_error_codes()
+    assert codes_in_code, "ast 解析应从 scripts/*.py 收集到错误码全集"
+    codes_in_doc = doc_error_codes(skill_text())
+    assert codes_in_doc, "SKILL.md 失败出口清单应能提取到错误码"
+    unknown = codes_in_doc - codes_in_code
+    assert not unknown, f"文档里的错误码不在代码错误码全集内: {unknown}"
+    # 关键错误码必须出现 (子集断言, 同时兼验证解析器没退化)
     assert {
         "container_not_supported", "podman_missing", "no_data_keys",
         "port_in_use", "instance_running", "state_mismatch",
     } <= codes_in_doc, "失败出口清单缺关键错误码"
+
+
+def test_error_code_guard_would_fail_on_fabricated_code():
+    """负向自测 (m26 评审 D-1): 证明错误码守卫真的会失败.
+
+    对一段含编造错误码的假清单文本调用与主用例同一套检查函数, 断言
+    unknown 非空 (守卫能抓到漂移), 且该编造码不在代码全集内.
+    """
+    fabricated = "| 错误码 | 下一步动作 |\n| --- | --- |\n| `no_such_error_code` | 编造的下一步. |\n"
+    codes_in_doc = doc_error_codes(fabricated)
+    assert codes_in_doc == {"no_such_error_code"}, "应从假文档提取到编造码"
+    unknown = codes_in_doc - collect_code_error_codes()
+    assert unknown, "守卫对编造错误码应报非空 (会失败), 而不是恒真"
 
 
 def test_tc0602_frontmatter_contract():

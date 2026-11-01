@@ -92,7 +92,7 @@ def _precheck_podman():
         return cmc.error_result(
             "build",
             "podman_missing",
-            "PATH 上找不到 podman, 无法运行官方分析镜像.",
+            "本机没有 podman, 无法运行官方分析镜像.",
             "先安装 podman 并确认 `podman --version` 可用, 再重试.",
         )
     return None

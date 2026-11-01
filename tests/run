@@ -32,6 +32,8 @@ RULES = [
     ("workflow/use-sandbox-worktree/scripts/image-prep.py", "tests/test_swt_m07.py"),
     ("workflow/use-sandbox-worktree/scripts/swt-display.py", "tests/test_swt_m09.py"),
     ("general/present/", "general/present/tests"),
+    ("workflow/codebase-map/scripts/", "workflow/codebase-map/tests"),
+    ("workflow/codebase-map/tests/", "workflow/codebase-map/tests"),
     ("tests/conftest.py", GLOBAL),
     ("pytest.ini", GLOBAL),
 ]

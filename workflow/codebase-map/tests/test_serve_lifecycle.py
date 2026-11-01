@@ -7,7 +7,8 @@ TC-04-03 (显式换端口), TC-04-04 (换端口后沿用), TC-04-05 (存活实�
 隔离纪律: 每个用例独立运行时目录 (CODEMAP_RUNTIME_DIR -> tmp_path) 与独立
 高位端口 (free_port), 不占 8090; 收尾 fixture stop 加强杀, 不残留进程.
 ISSUE-04 的 serve 不输出 url/base_url (归 ISSUE-05), "URL 一致"口径在本树
-以 state.json 的 last_url 一致断言.
+以 state.json 的 last_url 一致断言. srv fixture 默认用空 HOME 隔离地址来源
+(无 lan-address -> address_missing 形态), 需要 record 来源的用例单独覆盖.
 """
 from __future__ import annotations
 
@@ -22,12 +23,16 @@ from codemap_service_helpers import (
     http_status,
     port_connectable,
     stdout_json,
+    use_temp_home,
 )
 
 
 @pytest.fixture
 def srv(tmp_path):
     controller = CodemapSrv(tmp_path)
+    # 空 HOME (无 lan-address): serve 恒走 address_missing 形态, 不受宿主记录影响;
+    # 需要 confirmed_record 来源的用例再调 use_temp_home(srv, tmp_path, confirmed=...)
+    use_temp_home(controller, tmp_path)
     yield controller
     controller.cleanup()
 
@@ -107,11 +112,12 @@ def test_tc_04_02_occupied_target_port_errors_without_drift(srv):
 
 def test_tc_04_03_explicit_port_change_reports_old_url(srv):
     """TC-04-03: 起服务 -> stop -> serve --port <新端口>: 新端口 GET / 200,
-    port_changed=true, previous_url 等于停机前的 URL, 旧端口不再响应."""
+    port_changed=true; 缺已确认地址 (address_missing 形态) 时解析不出旧
+    地址, previous_url 省略, 但输出仍写明旧地址已失效; 旧端口不再响应."""
     srv.prime()
     first, _ = srv.serve()
-    url_before_stop = srv.read_state()["last_url"]
-    assert url_before_stop == f"http://127.0.0.1:{srv.port}/"
+    assert srv.read_state()["last_url"] == f"http://127.0.0.1:{srv.port}/", (
+        "缺地址时 last_url 保持回环留痕")
 
     stop_proc = srv.stop()
     stop_obj = stdout_json(stop_proc)
@@ -122,12 +128,15 @@ def test_tc_04_03_explicit_port_change_reports_old_url(srv):
     assert second["success"] is True
     assert second["port"] == new_port
     assert second["port_changed"] is True
-    assert second["previous_url"] == url_before_stop, "旧地址应取状态留痕, 不假定 8090"
+    assert "previous_url" not in second, (
+        "本次也解析不出地址时应省略 previous_url, 不用回环地址拼旧地址")
+    assert "旧地址已失效" in second["note"], "换端口输出必须写明旧地址已失效"
     status, _ = http_status(new_port)
     assert status == 200, "新端口应能打开"
     assert not port_connectable(srv.port), "旧端口不应再有监听"
     state = srv.read_state()
     assert state["port"] == new_port and state["last_port"] == new_port
+    assert state["last_url"] == f"http://127.0.0.1:{new_port}/", "缺地址时 last_url 保持回环留痕"
 
 
 def test_tc_04_04_serve_without_port_keeps_last_port(srv):

@@ -26,6 +26,26 @@ SERVICE_SCRIPT = SCRIPTS_DIR / "codemap_service.py"
 ENV_PORT = "CODEMAP_PORT"
 DAEMON_ARG = "_serve-daemon"
 
+# RFC 5737 TEST-NET-3 文档专用地址, 测试里当"已确认地址"用, 不可路由;
+# 不落真实局域网地址 (m25 D010)
+CONFIRMED_ADDR = "203.0.113.77"
+
+
+def use_temp_home(srv, tmp_path, confirmed=None):
+    """把服务的 HOME 指到临时目录, 按需放已确认地址文件 (测试手法, 非新配置源).
+
+    confirmed=None 时目录里没有 lan-address, serve 走 address_missing 形态;
+    用带 confirmed 的调用可造 confirmed_record 来源. 不碰真实的
+    ~/.agents/sandbox-worktree/lan-address.
+    """
+    home = tmp_path / "isolated-home"
+    (home / ".agents" / "sandbox-worktree").mkdir(parents=True, exist_ok=True)
+    if confirmed is not None:
+        path = home / ".agents" / "sandbox-worktree" / "lan-address"
+        path.write_text(confirmed + "\n", encoding="utf-8")
+    srv.home = home
+    return home
+
 
 def free_port() -> int:
     """拿一个当前空闲的高位临时端口 (不占 8090)."""

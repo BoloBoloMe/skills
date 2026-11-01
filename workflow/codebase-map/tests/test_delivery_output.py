@@ -20,10 +20,14 @@ import json
 
 import pytest
 
-from codemap_service_helpers import CodemapSrv, free_port, http_status
+from codemap_service_helpers import (
+    CONFIRMED_ADDR,
+    CodemapSrv,
+    free_port,
+    http_status,
+    use_temp_home,
+)
 
-# RFC 5737 TEST-NET-3 文档专用地址, 测试里当"已确认地址"用, 不可路由
-CONFIRMED_ADDR = "203.0.113.77"
 ARG_ADDR = "203.0.113.88"
 
 KEY_DEMO = "demo-lib-ab12cd34.cc.json"
@@ -36,15 +40,7 @@ def srv(tmp_path):
     controller.cleanup()
 
 
-def use_temp_home(srv, tmp_path, confirmed=None):
-    """把服务的 HOME 指到临时目录, 按需放已确认地址文件 (测试手法, 非新配置源)."""
-    home = tmp_path / "isolated-home"
-    (home / ".agents" / "sandbox-worktree").mkdir(parents=True, exist_ok=True)
-    if confirmed is not None:
-        path = home / ".agents" / "sandbox-worktree" / "lan-address"
-        path.write_text(confirmed + "\n", encoding="utf-8")
-    srv.home = home
-    return home
+# (use_temp_home 已上移 codemap_service_helpers, 各用例直接导入使用)
 
 
 def write_cc_copy(serve_root, key, file_count):
@@ -204,8 +200,9 @@ def test_tc_05_03_keys_is_intersection_with_hints(srv, tmp_path):
 
 def test_tc_05_04_delivery_notes_and_port_change_report(srv, tmp_path):
     """TC-05-04: delivery_notes 三类说明齐全且 denominator_note 里的文件数等于
-    最近一次 build 统计的依赖树文件数; 显式换端口时 port_changed == true 且
-    previous_url 等于停机前记录的 URL, 不带 --port 时两者不出现."""
+    最近一次 build 统计的依赖树文件数; 显式换端口时 port_changed == true,
+    previous_url 取停机前留痕的交付 URL (不含回环) 且输出写明旧地址已失效,
+    不带 --port 时两者不出现."""
     use_temp_home(srv, tmp_path, confirmed=CONFIRMED_ADDR)
     srv.prime()
     write_cc_copy(srv.serve_root, KEY_DEMO, 4)
@@ -222,20 +219,46 @@ def test_tc_05_04_delivery_notes_and_port_change_report(srv, tmp_path):
     assert "默认不扫" in notes["denominator_note"]
     assert "port_changed" not in first and "previous_url" not in first, (
         "不带 --port 的 serve 不得报换端口")
+    assert srv.read_state()["last_url"] == first["url"], (
+        "record 来源应把交付 URL 留痕进 last_url")
 
-    # 显式换端口: port_changed + previous_url 取停机前记录
+    # 显式换端口: port_changed + previous_url 取停机前留痕的交付 URL
     srv.stop()
     url_before_stop = srv.read_state()["last_url"]
+    assert "127.0.0.1" not in url_before_stop and "localhost" not in url_before_stop
     new_port = free_port()
     changed, _ = srv.serve("--port", str(new_port))
     assert changed["port_changed"] is True
-    assert changed["previous_url"] == url_before_stop, "旧地址应取状态留痕"
+    assert changed["previous_url"] == url_before_stop, "旧地址应取状态留痕的交付 URL"
+    assert "127.0.0.1" not in changed["previous_url"] and "localhost" not in changed["previous_url"]
+    assert "旧地址已失效" in changed["note"], "换端口输出必须写明旧地址已失效"
 
     # 不带 --port 沿用 last_port: 两者不出现
     srv.stop()
     again, _ = srv.serve()
     assert "port_changed" not in again and "previous_url" not in again
     assert again["port"] == new_port
+
+
+def test_port_change_reports_record_delivery_url_as_previous(srv, tmp_path):
+    """C-1 (record 来源): last_url 留痕写成交付 URL; 换端口时 previous_url
+    取该留痕, 不含 127.0.0.1/localhost (BR-019 不给回环地址), 输出写明旧地址
+    已失效 (m25 D018 真实旧地址)."""
+    use_temp_home(srv, tmp_path, confirmed=CONFIRMED_ADDR)
+    srv.prime()
+    first, _ = srv.serve()
+    state = srv.read_state()
+    assert state["last_url"] == first["url"], "record 来源应把交付 URL 留痕进 last_url"
+    assert "127.0.0.1" not in state["last_url"] and "localhost" not in state["last_url"]
+
+    srv.stop()
+    new_port = free_port()
+    changed, _ = srv.serve("--port", str(new_port))
+    assert changed["port_changed"] is True
+    previous = changed["previous_url"]
+    assert previous == first["url"], "旧地址应取留痕的交付 URL, 不是回环地址"
+    assert "127.0.0.1" not in previous and "localhost" not in previous
+    assert "旧地址已失效" in changed["note"]
 
 
 def test_tc_05_05_delivery_consistency_three_way_port_and_keys(srv, tmp_path):

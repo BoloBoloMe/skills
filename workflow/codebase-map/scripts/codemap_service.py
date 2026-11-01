@@ -5,7 +5,7 @@
 HTTP 静态服务 (前台守护循环 + 守护子进程启动), 显式停止.
 藏住: 锁协议, 探活三步判定, 子进程回收.
 
-对外函数只有 run_serve / run_stop / run_update_data_keys: 返回结果 dict,
+对外函数只有 run_serve / run_stop: 返回结果 dict,
 不碰 stdout 与 sys.exit, 由 codebase-map.py 的 CLI 适配层统一输出与定
 退出码. `_serve-daemon` 是内部隐藏入口 (守护子进程 re-exec 本脚本), 不写
 进 SKILL.md 用法, 不对外文档化.
@@ -20,11 +20,12 @@ stop 等待 10 秒.
 
 状态与换端口 (m25 D018): stop 只把 pid 置空并写 stopped_at, 保留
 port/last_port/last_url, 于是"已知停机"与"旧实例死掉的残留"可区分, 换
-端口时报得出真实旧地址. last_url 由 serve 在每次成功启动时写为
-http://127.0.0.1:<port>/: 它只承担端口留痕, 不落任何已解析地址
-(全局禁止: 不把 --address 或任何地址写进 state.json); 交付 URL 由
-ISSUE-05 的交付输出层 (_apply_delivery) 在响应里现场组装, 不落盘.
---address 的值按 D017 永不写入 state.json.
+端口时报得出真实旧地址. last_url 是留痕字段: 地址取自己确认记录文件
+(confirmed_record) 且交付 URL 组装成功时, serve 在启动时把该交付 URL 写入
+last_url (换端口时据此报真实旧地址); 地址来自本次 --address 或缺地址时写
+http://127.0.0.1:<port>/ 回环留痕. state.json 里只有 URL, 没有裸地址字段,
+--address 的值按 D017 永不写入 state.json, 也不回写任何记录文件. 交付
+URL/base_url/keys[].url 由交付输出层 (_apply_delivery) 在响应里现场组装.
 
 交付输出层 (ISSUE-05, m25 D002/D006/D017/D020): run_serve 在启动/复用
 成功的结果上追加 url/base_url/keys/delivery_notes/address_missing 等
@@ -46,6 +47,7 @@ import socket
 import subprocess
 import sys
 import time
+import urllib.parse
 from http import HTTPStatus
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -87,6 +89,17 @@ def _utc_now_iso() -> str:
 
 def _loopback_url(port: int) -> str:
     return f"http://127.0.0.1:{port}/"
+
+
+def _is_delivery_url(url) -> bool:
+    """url 是否交付 URL (host 非回环): 区分回环留痕与写进 last_url 的交付 URL."""
+    if not url:
+        return False
+    try:
+        hostname = urllib.parse.urlsplit(url).hostname
+    except ValueError:
+        return False
+    return hostname not in (None, "127.0.0.1", "localhost")
 
 
 def _preferred_port() -> int:
@@ -378,7 +391,7 @@ def _spawn_daemon(base: Path, port: int) -> subprocess.Popen:
 # ---------------------------------------------------------------------------
 
 
-def _start_service(base: Path, target_port: int, old_state, note: str) -> dict:
+def _start_service(base: Path, target_port: int, old_state, note: str, resolved=None) -> dict:
     """共同启动路径 (首次 / 已知停机 / 旧实例已死): 交集检查 -> 端口检查 -> 起守护 -> 写状态."""
     blocked = _no_data_keys_error(base, old_state)
     if blocked is not None:
@@ -425,10 +438,19 @@ def _start_service(base: Path, target_port: int, old_state, note: str) -> dict:
             f"查看日志 {base / LOG_REL} 后重试.",
         )
     state = dict(_fresh_state(base))
+    host = (resolved or {}).get("url_host")
+    from_record = (resolved or {}).get("address_source") == cmc.ADDRESS_SOURCE_RECORD
+    # last_url 留痕 (m25 D018, D017): record 来源写交付 URL (换端口报真实旧
+    # 地址的依据); --address 来源与缺地址时写回环留痕, 不落 --address 值
+    last_url = (
+        f"http://{host}:{target_port}/"
+        if host is not None and from_record
+        else _loopback_url(target_port)
+    )
     state.update({
         "port": target_port,
         "last_port": target_port,
-        "last_url": _loopback_url(target_port),
+        "last_url": last_url,
         "pid": proc.pid,
         "started_at": _utc_now_iso(),
         "stopped_at": None,
@@ -446,9 +468,23 @@ def _start_service(base: Path, target_port: int, old_state, note: str) -> dict:
         note=note,
     )
     if old_last_port is not None and target_port != old_last_port:
-        # 换端口 (m25 D018): 报旧地址已失效, 旧地址取留痕的 last_url, 不假定 8090
+        # 换端口 (m25 D018): 必须写明旧地址已失效; previous_url 优先取留痕的
+        # 交付 URL, 否则旧端口加本次解析地址拼出; 本次也解析不出地址时省略
+        # 该字段, 只保留失效文案. 不报回环地址 (BR-019).
         result["port_changed"] = True
-        result["previous_url"] = old.get("last_url") or _loopback_url(old_last_port)
+        old_url = old.get("last_url")
+        previous_url = None
+        if _is_delivery_url(old_url):
+            previous_url = old_url
+        elif host is not None:
+            previous_url = f"http://{host}:{old_last_port}/"
+        if previous_url is not None:
+            result["previous_url"] = previous_url
+            result["note"] = (
+                f"{note} 换端口: 旧地址已失效 (原 URL {previous_url}), 现按端口 {target_port} 提供."
+            )
+        else:
+            result["note"] = f"{note} 换端口: 旧地址已失效, 现按端口 {target_port} 提供."
     return result
 
 
@@ -457,10 +493,12 @@ def _start_service(base: Path, target_port: int, old_state, note: str) -> dict:
 # ---------------------------------------------------------------------------
 
 
-def _serve_core(explicit_port=None, runtime_base=None) -> dict:
+def _serve_core(explicit_port=None, runtime_base=None, resolved=None) -> dict:
     """serve 启动/复用核心 (ISSUE-04 面, 原样保留): 判定分支与端口决策.
 
-    不碰 stdout, 不退出进程; 交付字段由 run_serve 的输出层追加.
+    不碰 stdout, 不退出进程; 交付字段由 run_serve 的输出层追加. resolved 是
+    已解析的交付地址结果 (见 run_serve), 供启动路径写 last_url 留痕与拼
+    previous_url; 复用分支不改状态, 不用它.
     """
     if explicit_port is not None and not (1 <= explicit_port <= 65535):
         return cmc.error_result(
@@ -492,17 +530,18 @@ def _serve_core(explicit_port=None, runtime_base=None) -> dict:
         else:
             target = _preferred_port()
         if state is None:
-            return _start_service(base, target, None, "运行时目录还没有状态记录, 新起服务实例.")
+            return _start_service(base, target, None, "运行时目录还没有状态记录, 新起服务实例.", resolved=resolved)
         pid = state.get("pid")
         if pid is None:
             # 已知停机 (pid 置空 + stopped_at) 或从未起过: 直接按目标端口起
-            return _start_service(base, target, state, "状态记录显示服务未在运行, 按目标端口启动.")
+            return _start_service(base, target, state, "状态记录显示服务未在运行, 按目标端口启动.", resolved=resolved)
         if not _pid_alive(pid):
             # 旧实例已死: 目标端口空闲就重起并报告; 被别的程序占用则 port_in_use, 不静默顺延
             if _port_free(target):
                 return _start_service(
                     base, target, state,
                     "旧实例已死 (记录的 pid 不存在), 残留记录不算存活, 已按目标端口重新启动.",
+                    resolved=resolved,
                 )
             return cmc.error_result(
                 "serve", "port_in_use",
@@ -611,19 +650,18 @@ def _delivery_notes(serve_root: Path, keys) -> dict:
     }
 
 
-def _apply_delivery(result: dict, explicit_address, runtime_base=None) -> dict:
+def _apply_delivery(result: dict, resolved: dict, runtime_base=None) -> dict:
     """在 serve 成功结果上追加交付输出 (m25 D002/D006/D017/D020, AC-008).
 
-    地址解析成功 (含 --address 传入的确认值): 给 url/base_url 与
-    keys[].url, address_source 标明来源. 解析失败且未传 --address: 不给
-    url/base_url, keys 只给键名, 给 address_missing + candidates; 服务照常
-    监听, 退出码仍为 0. 锁已释放后的状态重读按 TECHNICAL 关键流程
-    ("释放锁 -> 解析地址并输出") 执行; 地址与 URL 一律不落盘.
+    resolved 是 run_serve 提前解析好的地址结果 (纯只读, 不持锁): 有
+    url_host 时给 url/base_url 与 keys[].url, address_source 标明来源;
+    无地址时只给键名, 给 address_missing + candidates; 服务照常监听,
+    退出码仍为 0. last_url 留痕的写入在启动路径 (锁内) 完成, 本层不写状态;
+    地址与 --address 的值一律不落盘.
     """
     base = Path(runtime_base).resolve() if runtime_base is not None else cmc.runtime_dir()
     state, state_err = _load_state(base)
     serve_root = Path(result.get("serve_root") or (base / "serve-root"))
-    resolved = cmc.resolve_delivery_address(explicit_address)
     has_address = "url_host" in resolved
     keys, missing, unregistered = _delivery_keys(state, serve_root, with_details=has_address)
     notes = []
@@ -661,13 +699,17 @@ def _apply_delivery(result: dict, explicit_address, runtime_base=None) -> dict:
 def run_serve(explicit_port=None, explicit_address=None, runtime_base=None) -> dict:
     """起或复用常驻服务并组装交付输出. 不碰 stdout, 不退出进程.
 
-    启动/复用/探活/端口决策全在 _serve_core (ISSUE-04 面, 不改); 成功结果
-    交 _apply_delivery 追加交付字段; 失败结果 (no_data_keys, port_in_use,
-    state_mismatch, instance_running 等) 原样返回, 不加交付字段.
+    地址解析 (resolve_delivery_address, 纯只读不落盘) 提前到判定分支之前,
+    供启动路径写 last_url 留痕与拼 previous_url (m25 D018); 解析本身不持锁,
+    状态写入仍在启动路径的锁内. 启动/复用/探活/端口决策全在 _serve_core
+    (ISSUE-04 面, 不改); 成功结果交 _apply_delivery 追加交付字段; 失败结果
+    (no_data_keys, port_in_use, state_mismatch, instance_running 等) 原样
+    返回, 不加交付字段.
     """
-    result = _serve_core(explicit_port, runtime_base)
+    resolved = cmc.resolve_delivery_address(explicit_address)
+    result = _serve_core(explicit_port, runtime_base, resolved=resolved)
     if result.get("success"):
-        _apply_delivery(result, explicit_address, runtime_base)
+        _apply_delivery(result, resolved, runtime_base)
     return result
 
 
@@ -750,47 +792,6 @@ def run_stop(runtime_base=None) -> dict:
         )
     finally:
         _release_lock(lock_fd, base=base, unlink=unlink_lock)
-
-
-# ---------------------------------------------------------------------------
-# build 侧接线 (ISSUE-02/03 消费): 锁内更新 data_keys
-# ---------------------------------------------------------------------------
-
-
-def run_update_data_keys(entries, runtime_base=None) -> dict:
-    """build 专用: 文件锁内更新 state.json 的 data_keys, 其余字段保留 (缺失时初始化骨架).
-
-    entries 形如 [{key, source_cc_json, built_at, bytes}]; TECHNICAL 要求
-    build 的副本复制与 data_keys 更新都在锁内完成, 副本复制由 build 自己做,
-    本函数只承接锁与状态落盘.
-    """
-    base = Path(runtime_base).resolve() if runtime_base is not None else cmc.runtime_dir()
-    cmc.ensure_runtime_layout(base)
-    lock_fd = _acquire_lock(base)
-    if lock_fd is None:
-        return cmc.error_result(
-            "build", "internal_error",
-            f"运行时目录锁等待超过 {LOCK_WAIT_SECONDS} 秒: {base / LOCK_FILENAME}",
-            "确认没有其它 codebase-map 调用长时间持锁后重试.",
-        )
-    try:
-        state, err = _load_state(base)
-        if err is not None:
-            return cmc.error_result(
-                "build", "internal_error", err,
-                "state.json 损坏无法判读; 按 SKILL.md 复原步骤处理.",
-            )
-        if state is None:
-            state = _fresh_state(base)
-        state["data_keys"] = list(entries)
-        _atomic_write_state(base, state)
-        return cmc.success_result(
-            "update-data-keys",
-            data_keys=state["data_keys"],
-            runtime_dir=str(base),
-        )
-    finally:
-        _release_lock(lock_fd)
 
 
 # ---------------------------------------------------------------------------
