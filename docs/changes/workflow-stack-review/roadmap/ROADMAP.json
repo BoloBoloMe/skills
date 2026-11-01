@@ -398,13 +398,25 @@
     "milestone-22": {
       "title": "准备 present 改造的当前规格与执行输入",
       "type": "task",
-      "status": "待处理",
+      "status": "已关闭",
       "question": "HITL 准备工作, 不实施 present. 当前 milestone-15 尚无自己的 PRODUCT/TECHNICAL/EXECUTION/issues, drive-execution 步骤 2 要求缺 EXECUTION 时停止并在独立会话执行 to-execution. 先依据 milestone-14/DECISIONS.md 当前有效 D001/D002/D004-D012 和 ACCEPTANCE.md 已确认 AC-15-01 至 AC-15-07, 按 to-spec 要求形成当前 PRODUCT.md/TECHNICAL.md, 标准逐项对照既有确认, 不重复盘问或自行改变. 再在独立会话用 to-execution 生成 EXECUTION.md 和可执行 issues, 每项有验证契约/验证入口/可复查完成证据要求, 预先核实评审起点. 产物根目录统一用 docs/changes/workflow-stack-review/milestone-15/. 输入须覆盖反方补记的 TC-027, _Handler 的 to-spec 条件依赖, 无 TTL 的闲置存活保护, 本机控制接口旧守卫, /run/.containerenv 容器识别配方, lan-address 来源与宿主/容器分别真实局域网访问的证据计划. 旧 present-web-server 规格/执行输入不能直接当当前权威. 完成标准: 必需输入可读且无未处理的标准/验证契约缺口, milestone-15 可正常按 drive-execution 派工; 所有产物路径记入本节点. 本节点不写实现/测试, 不改真实已安装 skills, 不运行同步. 新增或改变产品选择才再交用户, 不代理作答.",
       "blocked_by": [
         "milestone-14"
       ],
-      "artifacts": [],
-      "close_summary": null
+      "artifacts": [
+        "docs/changes/workflow-stack-review/milestone-15/PRODUCT.md",
+        "docs/changes/workflow-stack-review/milestone-15/TECHNICAL.md",
+        "docs/changes/workflow-stack-review/milestone-15/EXECUTION.md",
+        "docs/changes/workflow-stack-review/milestone-15/issues/ISSUE-01-address-resolution-delivery-url.md",
+        "docs/changes/workflow-stack-review/milestone-15/issues/ISSUE-02-port-record-and-rebuild-url.md",
+        "docs/changes/workflow-stack-review/milestone-15/issues/ISSUE-03-single-delivery-flow-docs.md",
+        "docs/changes/workflow-stack-review/milestone-15/issues/ISSUE-04-security-and-lifetime-regression.md",
+        "docs/changes/workflow-stack-review/milestone-15/issues/ISSUE-05-acceptance-evidence.md",
+        "docs/changes/workflow-stack-review/milestone-22/CHECKS.md",
+        "docs/changes/workflow-stack-review/milestone-22/SPEC-REVIEW.md",
+        "docs/changes/workflow-stack-review/milestone-22/SPEC-RECHECK.md"
+      ],
+      "close_summary": "按 milestone-14 当前有效 D001/D002/D004-D012 与 ACCEPTANCE AC-15-01..07 产出 milestone-15 的 PRODUCT.md/TECHNICAL.md/EXECUTION.md/issues ISSUE-01..05, 用户以 review_id eaf9d2bb96b4 采纳 41 场景/7 AC 的验收版本; 两份机检 (check-ac/check-tech) 通过, 拆分基线与仓库实测一致 (present 测试收 143 条, browser_session 相关 63 条). 独立规格检查 (gpt-6.1-sol) 报 7 阻断 + 4 建议, 逐项核实后修订: 容器 URL 端口与记录端口分开验证, status 增加 --lan-host 且显式地址不落盘, 越界改为规范化后逃出挂载根才 404, 自检失败只约束不挂载, 本机控制面改为 ping 端点, 检查项改成必须通过才算通过, 补回日期命名/不覆盖旧文件; 另补 8 个边界场景与审计边界. 独立补核 (glm-5.3-flash) 判 10 项闭环, 残留 B01 (TECHNICAL 模块接口的容器 URL 端口表述) 与 N2 (loopback_bind 归属) 由协调方改两句后 check-tech 复跑通过, 未做第三轮独立复核. 另按 D011 写明 --lan-host 只作用宿主分支, 容器固定用 SWT_HOST_LAN_IP 与 8800 映射端口, EXECUTION 原待裁决点改为已定口径. 缺值事实: 本会话环境无 SWT_HOST_*; 容器 8800 的宿主映射端口经信箱向宿主会话问得 41141, 仅用于本次预览交付. 本轮只准备输入, 未实现 present, 未跑 present pytest/格式检查, 未改真实已安装 skills, 未跑同步, 不声称 AC-15 已通过; milestone-15 与终点验收仍待执行."
     },
     "milestone-23": {
       "title": "宿主上跑分析端探针, 定 ccsh 分层是否可信",
