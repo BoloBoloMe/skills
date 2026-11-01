@@ -195,7 +195,9 @@
         "milestone-18",
         "milestone-19",
         "milestone-20",
-        "milestone-21"
+        "milestone-21",
+        "milestone-22",
+        "milestone-23"
       ],
       "artifacts": [],
       "close_summary": null
@@ -269,10 +271,16 @@
       "title": "定代码库结构可视化 skill 的形态与入口",
       "type": "deliberate",
       "question": "按 milestone-12 结论裁决可视化 skill 的形态与入口, 本节点不写实现代码. 待裁决: (1) 首选路线是否就是 milestone-12 路线 A: 自建 python 分析器出 cc.json, 内置 CodeCharta vis-2.9.1 静态前端 (web.zip 解压 3.5MB), 由 skill 起本地 http 服务交付页面; 降级路线 (cytoscape.js 单文件二维分层图) 在什么条件下触发. (2) 入口形态: to-spec 在哪个环节调用, 传什么参数 (目标目录/扫描范围/排除规则); 手动调用怎么起; 交付给我的是页面 URL 还是本地文件. (3) 服务与生命周期: 是否常驻, 端口怎么选, 收工时怎么清理, 同时看多个库怎么办. (4) 产物落盘位置: cc.json 与页面放 docs/changes/<slug>/ 还是临时目录, 是否入库. (5) vendored 前端资产放哪个 skill 子目录, BSD-3 版权与许可声明怎么写, 升级时怎么替换. (6) 第一版语言范围: 只做 python, 还是加 JS/TS (借 dependency-cruiser 的 json, 代价是引进 Node); 遇到不支持的语言时输出什么. (7) 分层算法口径: 层号怎么定义, 环与向上依赖怎么标, 是否就用 milestone-12 5.2 的最长路径分层加环检测. (8) skill 名字与职责边界: 只负责出可视化, 不做架构评审或重构建议. 调用 deliberate skill 逐条盘问我, 产物根目录 docs/changes/workflow-stack-review/milestone-13/.",
-      "status": "进行中",
+      "status": "已关闭",
       "blocked_by": [],
-      "artifacts": [],
-      "close_summary": null
+      "artifacts": [
+        "docs/changes/workflow-stack-review/milestone-13/DECISIONS.md",
+        "docs/changes/workflow-stack-review/milestone-13/OPPOSITION.md",
+        "docs/changes/workflow-stack-review/milestone-13/PLAN.md",
+        "docs/changes/workflow-stack-review/milestone-13/BUILD-PROBE.md",
+        "docs/adr/0026-codebase-map-host-resident-service.md"
+      ],
+      "close_summary": "codebase-map 形态与入口已定稿: 纯手动工具, 不被任何 skill 调用; 只宿主使用, 页面交局域网其他主机; 分析端用官方 codecharta-analysis:ana-2.3.0 镜像跑 podman, 前端钉 vis-2.9.1; 自建 python 常驻单例服务交付局域网 URL, 端口不静默漂移, 状态与缓存落 ~/.agents/codebase-map/, cc.json 落被分析库的 .codebase-map/ 并复制进 serve-root; 命令 build/serve/stop; 指标 level/rloc/violation 走 URL 参数. 反方复核 14 项发现逐项处理, 无整条驳回: 修正伪需求 'HTML5 history 深链回退' (上游实为 hash 路由, 源码与实测双证), 新增 D021-D030 与 F011-F015, 旧决策 D006/D007/D011/D012/D018/D019 已标替代并保留历史. 按用户裁决: v1 先用官方 web.zip 前端 (宿主零 Node), 汉化后置为第二片 (m21); 取消自动聚合, 大库靠前端过滤; 新增分析端探针前置 (m23). 同时改写 m21 question (旧 PLAN/nginx/docker 引用作废), 新建 m22 (present 改造输入准备, 另一会话已建, 本会话误覆盖后原样恢复) 与 m23 (分析端探针), 并把两者接入终点验收 blocked_by. 领域文档: 新增 ADR 0026 与词汇表两条. 未验证项: 宿主环境 (Node/浏览器/拉镜像), ccsh 真实分层质量, 大库观感."
     },
     "milestone-14": {
       "title": "裁决 present 统一走常驻 web 服务与局域网地址的形态",
@@ -283,7 +291,10 @@
       "artifacts": [
         "docs/changes/workflow-stack-review/milestone-14/DECISIONS.md",
         "docs/changes/workflow-stack-review/milestone-14/REQUIREMENTS.md",
-        "docs/changes/workflow-stack-review/ACCEPTANCE.md"
+        "docs/changes/workflow-stack-review/ACCEPTANCE.md",
+        "docs/changes/workflow-stack-review/milestone-14/OPPOSITION.md",
+        "docs/changes/workflow-stack-review/milestone-14/OPPOSITION-RESOLUTION.md",
+        "docs/changes/workflow-stack-review/milestone-14/CHECKS.md"
       ],
       "close_summary": null
     },
@@ -291,9 +302,10 @@
       "title": "落地 present 的常驻 web 服务与局域网交付",
       "type": "task",
       "blocked_by": [
-        "milestone-14"
+        "milestone-14",
+        "milestone-22"
       ],
-      "question": "按 milestone-14 的决策改写 general/present: SKILL.md 默认流程改为生成页面后起/复用常驻 web 服务并把局域网地址交付给我, 不再交付文件路径或 loopback 地址; REMOTE.md 的远程与容器分支并入同一条流程 (宿主与容器一致的地址与端口规则, 容器用已确认映射端口与 SWT_HOST_LAN_IP); scripts/web_server.py 按裁决落地 (绑定地址, 端口记录路径与格式, 不自停语义, status 重建后同步端口记录); 按已确认 Q1/Q2 删除 present 专用 browser_session.py 及本地 Chromium/状态回读流程, 取消每页状态对象的强制要求, 不保留备用分支. 同步更新 general/present/tests 里固化旧行为的用例并补新用例, 通过 uv run python -m pytest general/present/tests 与仓库 check_skill.py. 禁止修改真实已安装 skills, 不运行会改安装目录的同步. 编码任务按 drive-execution skill 执行, 产物根目录指定 docs/changes/workflow-stack-review/milestone-15/. 完成标准: 页面在宿主与容器两种场景都能经局域网地址打开, 端口记录与实际监听一致, present 调用结束后服务仍在, 测试与格式检查通过. 当前决策权威为 milestone-14/DECISIONS.md D001-D010, 详细标准为 ACCEPTANCE.md AC-15-01 至 AC-15-07. 实际端口唯一记录在 <系统临时目录>/pi-present-web-<uid>/server.json, 不与 navigate 共用实例/状态文件. 空闲退出代码已在 3dc49c6 删除, 不把已存在行为算新实现. 不直接复用旧 present-web-server 规格或执行输入; 缺当前 PRODUCT/TECHNICAL/EXECUTION/issues 时先按 drive-execution 规则准备, 不绕过输入缺口.",
+      "question": "按 milestone-14 的决策改写 general/present: SKILL.md 默认流程改为生成页面后起/复用常驻 web 服务并把局域网地址交付给我, 不再交付文件路径或 loopback 地址; REMOTE.md 的远程与容器分支并入同一条流程 (宿主与容器一致的地址与端口规则, 容器用已确认映射端口与 SWT_HOST_LAN_IP); scripts/web_server.py 按裁决落地 (绑定地址, 端口记录路径与格式, 不自停语义, status 重建后同步端口记录); 按已确认 Q1/Q2 删除 present 专用 browser_session.py 及本地 Chromium/状态回读流程, 取消每页状态对象的强制要求, 不保留备用分支. 同步更新 general/present/tests 里固化旧行为的用例并补新用例, 通过 uv run python -m pytest general/present/tests 与仓库 check_skill.py. 禁止修改真实已安装 skills, 不运行会改安装目录的同步. 编码任务按 drive-execution skill 执行, 产物根目录指定 docs/changes/workflow-stack-review/milestone-15/. 完成标准: 页面在宿主与容器两种场景都能经局域网地址打开, 端口记录与实际监听一致, present 调用结束后服务仍在, 测试与格式检查通过. 当前决策权威为 milestone-14/DECISIONS.md 当前有效 D001/D002/D004-D012 (D011 替代 D003), 详细标准为 ACCEPTANCE.md AC-15-01 至 AC-15-07. 实际端口唯一记录在 <系统临时目录>/pi-present-web-<uid>/server.json, 不与 navigate 共用实例/状态文件. 空闲退出代码已在 3dc49c6 删除, 不把已存在行为算新实现. 不直接复用旧 present-web-server 规格或执行输入; 缺当前 PRODUCT/TECHNICAL/EXECUTION/issues 时先按 drive-execution 规则准备, 不绕过输入缺口. 缺当前执行输入的准备工作已单列 milestone-22, 不在编码节点内绕过. 反方逐项处理与条件回归清单见 milestone-14/OPPOSITION-RESOLUTION.md, 宿主地址来源与两种环境真实访问证据已由 Q11/Q12 全 A 补明确认.",
       "status": "待处理",
       "artifacts": [],
       "close_summary": null
@@ -373,9 +385,29 @@
     "milestone-21": {
       "title": "落地代码库结构可视化的汉化构建与交付",
       "type": "task",
-      "question": "按 docs/changes/workflow-stack-review/milestone-13/PLAN.md 落地, 方案已与用户敲定, 不再改方案本身: (1) 全量词表: 模板 359 条 (通道 A), .ts 侧人工过滤后的 A 类文案约 500 条 (通道 B), 绑定与插值内字面量约 30 处 (通道 C); 先扩写术语表并统一高频单词型文案, 再分批翻译, 同一英文默认单一译法, 语境不同才按文件覆盖. (2) 构建脚本固化: clone 指定 vis tag -> 三通道替换 -> npm ci -> npm run build -> 自建渲染冒烟 (临时静态服务 + 无头 Chromium 截图 + 关键元素断言), 全程幂等可重放, 并输出未使用词条与未命中统计. (3) nginx 配置: 交付一份含 try_files $uri /index.html 的配置, 解决深链 404; 交付命令用官方 nginx 镜像挂载产物与该配置, 不构建自有镜像. (4) 操作手册: 写清两端容器命令 (分析端官方 codecharta-analysis 镜像挂载目标仓库与输出目录; 前端挂载产物与配置), 数据交付方式 (?file= 或浏览器选文件), 升级流程 (改 tag 重跑, 看未使用词条), 已知坑 (深链, patch-package 冲突, 上游测试会红因而不跑). 手册里的 skill 名字与入口命令先用占位, 待 milestone-13 定名后替换. (5) 验证: 构建耗时与产物大小记录, 冒烟截图留证, 抽查术语一致性, 界面无残留英文 (允许列出明确的暂不翻译项并说明原因). 边界: 不改上游源码提交, 不 fork 上游, 不构建自有镜像, 不跑上游单测 (用户已裁决), 不决定 skill 名字与 to-spec 调用入口 (留 milestone-13). 详细验收标准实施前确认.",
+      "question": "按 milestone-13 定稿的 DECISIONS.md (D013-D016, D021, D023, D024, D027, D030) 落地汉化构建链, 它是 v1 之后的技术切第二片, 不改变 v1 的任何外部行为. 原问题里 按 PLAN.md 落地 / nginx + try_files / docker / docs-changes 落盘 全部过期, 不得再引用 PLAN.md 的实施步骤. 要做的: (1) 全量词表 (模板 359 条通道 A, .ts 侧人工过滤后约 500 条通道 B, 绑定与插值内字面量约 30 处通道 C), 先统一术语表再批量翻译, 同一英文默认单一译法. (2) 构建脚本固化: 克隆指定 vis tag -> 三通道替换 -> npm ci -> npm run build -> 自建渲染冒烟 (临时静态服务 + 无头浏览器截图 + 关键元素断言), 幂等可重放, 输出未使用词条与未命中统计. (3) 产物与服务根布局按 D023/D024: 前端产物与数据副本都在宿主 ~/.agents/codebase-map/serve-root/ 下, 不引入 nginx, 不做深链回退 (上游是 hash 路由, F011). (4) 操作手册: 分析端与前端命令, ?file= 交付方式, 升级流程 (改 tag 重跑看未使用词条), 已知坑 (patch-package 冲突, 上游测试会红因而不跑), 过滤手段提示 (D025). (5) 验证: 构建耗时与产物大小, 冒烟截图留证, 术语一致性抽查, 界面残留英文需逐条说明原因. 边界: 不改上游源码提交, 不 fork, 不构建自有镜像, 不跑上游单测, 不碰分析端 (那是 milestone-23 与 v1 实现的事). 详细验收标准实施前确认.",
       "status": "进行中",
       "blocked_by": [],
+      "artifacts": [],
+      "close_summary": null
+    },
+    "milestone-22": {
+      "title": "准备 present 改造的当前规格与执行输入",
+      "type": "task",
+      "status": "待处理",
+      "question": "HITL 准备工作, 不实施 present. 当前 milestone-15 尚无自己的 PRODUCT/TECHNICAL/EXECUTION/issues, drive-execution 步骤 2 要求缺 EXECUTION 时停止并在独立会话执行 to-execution. 先依据 milestone-14/DECISIONS.md 当前有效 D001/D002/D004-D012 和 ACCEPTANCE.md 已确认 AC-15-01 至 AC-15-07, 按 to-spec 要求形成当前 PRODUCT.md/TECHNICAL.md, 标准逐项对照既有确认, 不重复盘问或自行改变. 再在独立会话用 to-execution 生成 EXECUTION.md 和可执行 issues, 每项有验证契约/验证入口/可复查完成证据要求, 预先核实评审起点. 产物根目录统一用 docs/changes/workflow-stack-review/milestone-15/. 输入须覆盖反方补记的 TC-027, _Handler 的 to-spec 条件依赖, 无 TTL 的闲置存活保护, 本机控制接口旧守卫, /run/.containerenv 容器识别配方, lan-address 来源与宿主/容器分别真实局域网访问的证据计划. 旧 present-web-server 规格/执行输入不能直接当当前权威. 完成标准: 必需输入可读且无未处理的标准/验证契约缺口, milestone-15 可正常按 drive-execution 派工; 所有产物路径记入本节点. 本节点不写实现/测试, 不改真实已安装 skills, 不运行同步. 新增或改变产品选择才再交用户, 不代理作答.",
+      "blocked_by": [
+        "milestone-14"
+      ],
+      "artifacts": [],
+      "close_summary": null
+    },
+    "milestone-23": {
+      "title": "宿主上跑分析端探针, 定 ccsh 分层是否可信",
+      "type": "research",
+      "question": "在宿主上先用你的真实 Java 库跑一次分析端探针 (milestone-13/DECISIONS.md D028, 依据 F013: ccsh 在本仓库零次执行). 要查清并写进产物: (1) podman 能否拉到 codecharta/codecharta-analysis:ana-2.3.0, 镜像 digest 是多少; (2) 挂载目标库与输出目录跑分析, 产出的 cc.json 里 依赖边数, 层号 level 的取值分布, 未解析文件比例, 环与向上依赖的数量; (3) 至少一屏截图证明现成 web.zip 前端能吃这份数据; (4) 宿主环境事实: podman 版本, 能否从 docker.io 拉镜像, 挂载写权限/SELinux 与用户命名空间限制, 宿主 Node 版本与有无无头浏览器 (为 D027 的切片判断). 产物: docs/changes/workflow-stack-review/milestone-23/PROBE.md. 判定口径 (D029): 层号取值少于 3 种, 或依赖边数为 0, 或未解析比例过半, 属退化, 停手交用户裁决 (退回自算层号或二维 cytoscape 方案), 不许硬着头皮上线. 边界: 只做探针与事实记录, 不写 skill, 不实现服务, 不改本仓库 skill 内容.",
+      "blocked_by": [],
+      "status": "待处理",
       "artifacts": [],
       "close_summary": null
     }
