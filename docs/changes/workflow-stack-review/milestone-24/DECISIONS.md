@@ -13,10 +13,10 @@
 - 后果: 交付时必须如实说明"依赖抽取完整性未量化", 不得宣称分层完全可信; 若日后要量化, 需另立研究(需上游新增输出或自建分析).
 
 ### U002 镜像引用改为官方纯数字 tag
-- 状态: 当前有效
+- 状态: 部分已替代 (tag 与"以 digest 为准"仍然有效; digest 字段口径由 `../milestone-25/DECISIONS.md` D016 细化并取代)
 - 约束性: 必须遵守
 - 内容: 分析端镜像固定为 `docker.io/codecharta/codecharta-analysis:2.3.0`, 版本核对以 manifest digest 为准 (`sha256:6402a87f...`), 不信 `ccsh --version` (镜像内自报 2.2.1, 原因未查明). 不使用 `ana-2.3.0`; 该写法实为 GitHub release 命名, 在 docker hub 不存在.
-- 后果: 替代 milestone-13 D002 的 tag 写法, 版本号 2.3.0 不变.
+- 后果: 替代 milestone-13 D002 的 tag 写法, 版本号 2.3.0 不变. 事后补充 (milestone-25 D016): "以 manifest digest 为准" 具体落到硬校验单架构清单 digest `sha256:286b0a54...`, 多架构清单 `sha256:6402a87f...` 只记录不阻断.
 
 ### U003 指标与展示"按官方的来"
 - 状态: 当前有效
