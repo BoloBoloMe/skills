@@ -657,7 +657,8 @@ def _apply_delivery(result: dict, resolved: dict, runtime_base=None) -> dict:
     url_host 时给 url/base_url 与 keys[].url, address_source 标明来源;
     无地址时只给键名, 给 address_missing + candidates; 服务照常监听,
     退出码仍为 0. last_url 留痕的写入在启动路径 (锁内) 完成, 本层不写状态;
-    地址与 --address 的值一律不落盘.
+    裸地址字段与 --address 的值不落盘 (按已确认记录来源组装的 last_url 是
+    交付 URL, 属记录重算结果).
     """
     base = Path(runtime_base).resolve() if runtime_base is not None else cmc.runtime_dir()
     state, state_err = _load_state(base)
