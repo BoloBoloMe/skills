@@ -1,0 +1,14 @@
+{
+ "driver": "cdp-websockets",
+ "base_url": "http://127.0.0.1:33959",
+ "fails": [],
+ "notes": [
+  "页签无 [领域] (领域页签随 domain lens 数据条件渲染, 冒烟样例无 domain lens, 预期行为)",
+  "canvas 扫描: [{\"w\": 200, \"h\": 200, \"opaque\": 0, \"dominant\": 0, \"nonDominant\": 0}, {\"w\": 1400, \"h\": 900, \"opaque\": 1260000, \"dominant\": 1025074, \"nonDominant\": 234926}]",
+  "页面文本样例: 'smoke-sample\\n指标\\n依赖\\n设置\\n+\\n-\\n140%\\nMain.java\\n8 complexity\\nMathUtil.java\\n8 complexity\\nDateUtil.java\\n8 complexity\\nConnection.java\\n8 complexity\\nApi.java\\n7 complexity\\nDao.java\\n6 complexity\\nRouter.java\\n5 complexity\\n资源管理器\\n已显示\\n7\\n已压平\\n0\\n已排除\\n0\\n名称\\nroot\\n100% / 7\\napp\\n43% / 3\\ndb\\n29% / 2\\nutil\\n29% / 2\\n检查器\\n指标映射\\nAREA\\n\\nrl'",
+  "依赖视图无 [层级] 段 (dependencyBar 仅在有 packages 数据时渲染层级段, 冒烟样例无 packages, 预期行为)",
+  "console error 0 条: []"
+ ],
+ "console_errors": [],
+ "page_errors": []
+}

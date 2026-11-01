@@ -1,0 +1,378 @@
+# CodeCharta .ts 文案白名单 (通道 B): 文件路径 <TAB> 英文整条字面量 <TAB> 中文
+# 只在指定文件里做"整条字面量精确相等"的替换, 不做子串/正则替换.
+# 模板字面量: 每个 ${...} 写成 ⟦n⟧ (按出现顺序), 译文必须恰好含每个 ⟦n⟧ 一次, 允许重排;
+# 真实换行写成 \n; 译文列写 (空) 表示替换为空串 (仅用于拼接句首尾段).
+# 术语: Area=面积 Height=高度 Color=颜色 Edges=边 Labels=标签 Scenario=场景 Folder=文件夹
+# Flatten=压平 Metric=指标 Dependencies=依赖 Inspector=检查器 Badge=徽标 Node=节点 Building=建筑
+# === dependencyMap ===
+codeCharta/features/dependencyMap/components/dependencyInspector/dependencyInspector.component.ts	Close in graph	在图中关闭
+codeCharta/features/dependencyMap/components/dependencyInspector/dependencyInspector.component.ts	Open in graph	在图中打开
+codeCharta/features/dependencyMap/components/dependencyInspector/dependencyInspector.component.ts	Unfold in graph	在图中展开
+codeCharta/features/dependencyMap/components/edgeStyleSegment/edgeStyleChoices.ts	Combined	合并
+codeCharta/features/dependencyMap/components/edgeStyleSegment/edgeStyleChoices.ts	By count	按数量
+codeCharta/features/dependencyMap/components/edgeStyleSegment/edgeStyleChoices.ts	One spot on each side for the edges leaving and one for those arriving	左右两侧各一个汇聚点, 分别接出边和入边
+codeCharta/features/dependencyMap/components/edgeStyleSegment/edgeStyleChoices.ts	A straight line from box to box	方块到方块的直线
+codeCharta/features/dependencyMap/components/edgeStyleSegment/edgeStyleChoices.ts	Dashed where an edge points upward without closing a cycle	向上且不成环的边显示为虚线
+codeCharta/features/dependencyMap/components/edgeStyleSegment/edgeStyleChoices.ts	Dashes and arrowhead tell how one declaration uses the other	虚线与箭头表示声明间的使用方式
+codeCharta/features/dependencyMap/components/edgeStyleSegment/edgeStyleChoices.ts	Each edge with its own spot on the box	每条边在方块上各占一个点
+codeCharta/features/dependencyMap/components/edgeStyleSegment/edgeStyleChoices.ts	Edge type	边类型
+codeCharta/features/dependencyMap/components/edgeStyleSegment/edgeStyleChoices.ts	Every edge a hairline, easiest to see through	每条边都是发丝线, 最容易看穿
+codeCharta/features/dependencyMap/components/edgeStyleSegment/edgeStyleChoices.ts	Every edge the same width	每条边等宽
+codeCharta/features/dependencyMap/components/edgeStyleSegment/edgeStyleChoices.ts	Grows with the dependencies, twice as pronounced	随依赖数量增粗, 粗细加倍
+codeCharta/features/dependencyMap/components/edgeStyleSegment/edgeStyleChoices.ts	Kind of use	使用方式
+codeCharta/features/dependencyMap/components/edgeStyleSegment/edgeStyleChoices.ts	Leave and enter each box square to its side	垂直于方块边缘出入
+codeCharta/features/dependencyMap/components/edgeStyleSegment/edgeStyleChoices.ts	Upward edges bow out to the right of the boxes, downward ones to the left	向上的边从方块右侧绕行, 向下的从左侧绕行
+codeCharta/features/dependencyMap/components/edgeStyleSegment/edgeStyleChoices.ts	Width grows with the dependencies an edge stands for	线的宽度随其代表的依赖数量增长
+codeCharta/features/dependencyMap/components/hierarchySegment/hierarchySegment.component.ts	Folders	文件夹
+codeCharta/features/dependencyMap/components/hierarchySegment/hierarchySegment.component.ts	Packages	包
+codeCharta/features/dependencyMap/components/hierarchySegment/hierarchySegment.component.ts	The files in the folders they lie in	文件按其所在文件夹归组
+codeCharta/features/dependencyMap/components/hierarchySegment/hierarchySegment.component.ts	The files in the packages their declarations declare	文件按其声明所属的包归组
+codeCharta/features/dependencyMap/inspector/inspectorBadges.ts	⟦0⟧ cyclic	⟦0⟧ 处成环
+codeCharta/features/dependencyMap/inspector/inspectorBadges.ts	⟦0⟧ upward	⟦0⟧ 条向上
+codeCharta/features/dependencyMap/inspector/inspectorBadges.ts	package ⟦0⟧	包 ⟦0⟧
+codeCharta/features/dependencyMap/inspector/inspectorBadges.ts	level ⟦0⟧	层级 ⟦0⟧
+codeCharta/features/dependencyMap/inspector/inspectorModel.ts	Stands for	代表
+codeCharta/features/dependencyMap/inspector/inspectorModel.ts	Used by	被引用于
+codeCharta/features/dependencyMap/inspector/inspectorModel.ts	level ⟦0⟧	层级 ⟦0⟧
+codeCharta/features/dependencyMap/inspector/inspectorModel.ts	package ⟦0⟧	包 ⟦0⟧
+codeCharta/features/dependencyMap/stores/dependencyInspector.store.ts	box ⟦0⟧	方块 ⟦0⟧
+codeCharta/features/dependencyMap/stores/dependencyInspector.store.ts	edge ⟦0⟧	边 ⟦0⟧
+# === domainBar ===
+codeCharta/features/domainBar/components/wordSizeRangeControl/wordSizeRangeControl.component.ts	Off — every word is kept fully inside the layout area; words that only fit overlapping the edge are shrunk or left out.	关 — 所有单词都完整放在版面内; 只有压着边缘才放得下的单词会被缩小或舍弃.
+codeCharta/features/domainBar/components/wordSizeRangeControl/wordSizeRangeControl.component.ts	Off — words that do not fit are left out, so Smallest Word is exact but fewer words than requested appear.	关 — 放不下的单词直接舍弃, 最小单词尺寸因此精确, 但实际显示的单词比请求的少.
+codeCharta/features/domainBar/components/wordSizeRangeControl/wordSizeRangeControl.component.ts	On — words may render partially outside the layout area instead of being dropped or shrunk, so more words fit at their true size.	开 — 单词可以部分画出版面之外, 不再被舍弃或缩小, 更多单词能按真实大小放下.
+codeCharta/features/domainBar/components/wordSizeRangeControl/wordSizeRangeControl.component.ts	On — words that do not fit are shrunk until they do, so the full word count is drawn. Tail words can render below Smallest Word.	开 — 放不下的单词会被缩小直到放下, 因此全部单词都会绘制. 排尾的单词可能小于最小单词尺寸.
+codeCharta/features/domainBar/components/wordSizingModeControl/wordSizingModeControl.component.ts	TF-IDF (relative importance) — not available: the loaded file has no TF-IDF scores	TF-IDF (相对重要性) — 不可用: 加载的文件没有 TF-IDF 分数
+codeCharta/features/domainBar/components/wordSizingModeControl/wordSizingModeControl.component.ts	TF-IDF (relative importance) — sizes words by how distinctive they are, not by raw count	TF-IDF (相对重要性) — 按单词的区分度而非出现次数决定大小
+codeCharta/features/domainBar/util/shapeMaskSvg.ts	An SVG carrying a <⟦0⟧> cannot be used as a shape.	携带 <⟦0⟧> 的 SVG 不能用作形状.
+codeCharta/features/domainBar/util/shapeMaskSvg.ts	An SVG that references another file cannot be used as a shape.	引用其他文件的 SVG 不能用作形状.
+codeCharta/features/domainBar/util/shapeMaskSvg.ts	That SVG states neither a size nor a viewBox, so it has no shape to fill.	该 SVG 未声明尺寸和 viewBox, 没有可填充的形状.
+codeCharta/features/domainBar/util/shapeMaskSvg.ts	That file is not an SVG.	该文件不是 SVG.
+# === domainWordOccurrences ===
+codeCharta/features/domainWordOccurrences/components/domainWordList/domainWordList.component.ts	No word contains "⟦0⟧".	没有单词包含 "⟦0⟧".
+codeCharta/features/domainWordOccurrences/components/domainWordList/domainWordList.component.ts	The focused folder carries no words.	聚焦的文件夹没有单词.
+codeCharta/features/domainWordOccurrences/components/domainWordList/domainWordList.component.ts	This project carries no words.	此项目没有单词.
+codeCharta/features/domainWordOccurrences/components/domainWordOccurrenceRow/domainWordOccurrenceRow.component.ts	⟦0⟧ of "⟦1⟧" · ⟦2⟧	"⟦1⟧" 的 ⟦0⟧ · ⟦2⟧
+codeCharta/features/domainWordOccurrences/components/domainWordRow/domainWordRow.component.ts	⟦0⟧ of all words · ⟦1⟧	⟦0⟧ / 全部单词 · ⟦1⟧
+# === fileExtensionBar ===
+codeCharta/features/fileExtensionBar/components/fileExtensionBarSegment/fileExtensionBarSegment.component.ts	No data available	暂无数据
+# === globalSettings ===
+codeCharta/features/globalSettings/components/globalConfigurationDialog/resetFiltersButton/resetFiltersButton.component.ts	The 1 flatten or exclude rule is	这 1 条压平/排除规则
+codeCharta/features/globalSettings/components/globalConfigurationDialog/resetFiltersButton/resetFiltersButton.component.ts	All ⟦0⟧ flatten and exclude rules are	⟦0⟧ 条压平/排除规则全部
+codeCharta/features/globalSettings/components/globalConfigurationDialog/resetFiltersButton/resetFiltersButton.component.ts	⟦0⟧ removed and every file comes back onto the map. Metrics, colors and the camera are left alone.	⟦0⟧被移除, 所有文件都会回到地图上. 指标, 颜色和视角保持不变.
+# === labelSettings ===
+codeCharta/features/labelSettings/components/labelSettingsPanel/labelSettingsPanel.component.ts	Display the labels of the ⟦0⟧ highest buildings	显示最高的 ⟦0⟧ 栋建筑的标签
+codeCharta/features/labelSettings/components/labelSettingsPanel/labelSettingsPanel.component.ts	⟦0⟧ per map	每张地图 ⟦0⟧ 个
+# === legend ===
+codeCharta/features/legend/components/legendPanel/legendFoldersRow.component.ts	folders: ⟦0⟧, tinted	文件夹: ⟦0⟧, 已着色
+# === mapTools ===
+codeCharta/features/mapTools/components/presentationModeButton/presentationModeButton.component.ts	Disable flashlight hover effect	关闭悬停手电筒效果
+codeCharta/features/mapTools/components/presentationModeButton/presentationModeButton.component.ts	Enable flashlight hover effect	开启悬停手电筒效果
+# === metricsBar ===
+codeCharta/features/metricsBar/components/colorSettingsPopover/metricColorRangeDiagram.component.ts	Quantile: ⟦0⟧	分位数: ⟦0⟧
+codeCharta/features/metricsBar/components/colorSettingsPopover/metricColorRangeDiagram.component.ts	Quantiles (% of ⟦0⟧)	分位数 (占 ⟦0⟧ 的 %)
+codeCharta/features/metricsBar/components/colorSettingsPopover/metricColorRangeDiagram.component.ts	Value: ⟦0⟧	数值: ⟦0⟧
+codeCharta/features/metricsBar/components/edgeSettingsPopover/edgeSettingsPopover.component.ts	Preview the edges of up to ⟦0⟧ buildings with the highest amount of incoming and outgoing edges	预览出入边最多的前 ⟦0⟧ 栋建筑的边
+codeCharta/features/metricsBar/components/folderStylePopover/folderStylePopover.component.ts	Tinted by value	按数值着色
+codeCharta/features/metricsBar/components/folderStylePopover/folderStylePopover.component.ts	Neutral	中性
+codeCharta/features/metricsBar/components/folderValuePopover/folderValuePopover.component.ts	Files keep their colour. Folders are tinted by this value; the cog sets neutral or the tint strength.	文件保持自身颜色. 文件夹按此数值着色; 齿轮图标设置中性色或着色强度.
+codeCharta/features/metricsBar/components/folderValuePopover/folderValuePopover.component.ts	Folders are one grey. Pick a value to tint them again.	文件夹现在是同一种灰色. 选择一个数值即可重新着色.
+codeCharta/features/metricsBar/components/foldersSegment/foldersSegment.component.ts	tinted ⟦0⟧ %	着色 ⟦0⟧ %
+codeCharta/features/metricsBar/components/labelsScenariosSegment/labelsScenariosSegment.component.ts	⟦0⟧ ⟦1⟧ available	⟦0⟧ 个⟦1⟧可用
+codeCharta/features/metricsBar/components/labelsScenariosSegment/labelsScenariosSegment.component.ts	scenario	场景
+codeCharta/features/metricsBar/components/labelsScenariosSegment/labelsScenariosSegment.component.ts	scenarios	场景
+codeCharta/features/metricsBar/components/layoutTab/layoutTab.component.ts	A band per folder level, each folder filled with a treemap of its contents.	每个文件夹层级一条带, 每个文件夹用矩形树图填满其内容.
+codeCharta/features/metricsBar/components/layoutTab/layoutTab.component.ts	Folders as rings around the centre, drawn flat without heights.	文件夹为中心周围的圆环, 平面绘制, 无高度.
+codeCharta/features/metricsBar/components/layoutTab/layoutTab.component.ts	Folders become streets, files line up along them.	文件夹变成街道, 文件沿街排列.
+codeCharta/features/metricsBar/components/layoutTab/layoutTab.component.ts	Folders nest inside each other and every bit of floor is used.	文件夹相互嵌套, 地面被完全利用.
+codeCharta/features/metricsBar/components/layoutTab/layoutTab.component.ts	Streets for the upper folders, treemaps near the files.	上层文件夹用街道, 靠近文件处用矩形树图.
+codeCharta/features/metricsBar/components/linkColorHeightButton/linkColorHeightButton.component.ts	Link Height and Color Metric	联动高度与颜色指标
+codeCharta/features/metricsBar/components/linkColorHeightButton/linkColorHeightButton.component.ts	Unlink Height and Color Metric	解除高度与颜色指标联动
+codeCharta/features/metricsBar/components/metricBarSelectPopover/metricBarSelectPopover.component.ts	Search metric	搜索指标
+# === navBar ===
+codeCharta/features/navBar/components/mapSelector/mapSelector.component.ts	No changes to apply	没有可应用的更改
+codeCharta/features/navBar/components/mapSelector/mapSelector.component.ts	Select at least one map	请至少选择一张地图
+codeCharta/features/navBar/components/mapSelector/mapSelector.component.ts	Select map	选择地图
+codeCharta/features/navBar/components/viewModeBar/viewModeBar.component.ts	Dependency modes	依赖视图模式
+codeCharta/features/navBar/components/viewModeBar/viewModeBar.component.ts	Domain modes	领域视图模式
+codeCharta/features/navBar/components/viewModeBar/viewModeBar.component.ts	Metric modes	指标视图模式
+codeCharta/features/navBar/components/viewSwitcher/viewSwitcher.component.ts	Show the 3D metrics map	显示 3D 指标地图
+codeCharta/features/navBar/components/viewSwitcher/viewSwitcher.component.ts	Show the dependency graph, arranged by level	显示按层级排布的依赖图
+codeCharta/features/navBar/components/viewSwitcher/viewSwitcher.component.ts	Show the domain-language word cloud	显示领域语言词云
+codeCharta/features/navBar/effects/redirectAwayFromDependencyView/redirectAwayFromDependencyView.effect.ts	This file has no dependency data — switched to the map view.	此文件没有依赖数据 — 已切换到地图视图.
+codeCharta/features/navBar/effects/redirectAwayFromDomainView/redirectAwayFromDomainView.effect.ts	This file has no domain-language data — switched to the map view.	此文件没有领域语言数据 — 已切换到地图视图.
+codeCharta/features/navBar/effects/redirectAwayFromDomainView/redirectAwayFromDomainView.effect.ts	Left compare mode — the domain view shows a single word cloud.	已退出对比模式 — 领域视图只显示单个词云.
+# === nodeContextMenu ===
+codeCharta/features/nodeContextMenu/components/nodeContextMenu/nodeContextMenu.component.ts	Select this node on the metrics map	在指标地图上选中此节点
+codeCharta/features/nodeContextMenu/components/nodeContextMenu/nodeContextMenu.component.ts	Show in Dependencies	在依赖视图中显示
+codeCharta/features/nodeContextMenu/components/nodeContextMenu/nodeContextMenu.component.ts	Show in Domain	在领域视图中显示
+codeCharta/features/nodeContextMenu/components/nodeContextMenu/nodeContextMenu.component.ts	Show in Metrics	在指标视图中显示
+codeCharta/features/nodeContextMenu/components/nodeContextMenu/nodeContextMenu.component.ts	Show the domain words below this node	显示此节点下的领域词
+codeCharta/features/nodeContextMenu/components/nodeContextMenu/nodeContextMenu.component.ts	Show this node in the dependency graph	在依赖图中显示此节点
+# === radialMap ===
+codeCharta/features/radialMap/components/radialMap/radialMap.component.ts	You are focused on "⟦0⟧", so there is no folder above it. Unfocus and go up one folder?	当前聚焦于 "⟦0⟧", 其上没有文件夹. 取消聚焦并返回上一级文件夹吗?
+# === scenarios ===
+codeCharta/features/scenarios/components/applyScenarioDialog/applyScenarioDialog.component.ts	Apply ⟦0⟧	应用 ⟦0⟧
+codeCharta/features/scenarios/components/saveScenarioDialog/saveScenarioDialog.component.ts	Save ⟦0⟧	保存 ⟦0⟧
+codeCharta/features/scenarios/components/saveScenarioDialog/saveScenarioDialog.component.ts	⟦0⟧ of ⟦1⟧ settings	⟦0⟧ / ⟦1⟧ 项设置
+codeCharta/features/scenarios/model/scenarioSettings.registry.ts	Area metric	面积指标
+codeCharta/features/scenarios/model/scenarioSettings.registry.ts	Color follows height metric	颜色跟随高度指标
+codeCharta/features/scenarios/model/scenarioSettings.registry.ts	Color metric	颜色指标
+codeCharta/features/scenarios/model/scenarioSettings.registry.ts	Color range	颜色范围
+codeCharta/features/scenarios/model/scenarioSettings.registry.ts	Edge colors	边颜色
+codeCharta/features/scenarios/model/scenarioSettings.registry.ts	Edge curve height	边曲线高度
+codeCharta/features/scenarios/model/scenarioSettings.registry.ts	Edge metric	边指标
+codeCharta/features/scenarios/model/scenarioSettings.registry.ts	Edge metric enabled	启用边指标
+codeCharta/features/scenarios/model/scenarioSettings.registry.ts	Edge previews	边预览
+codeCharta/features/scenarios/model/scenarioSettings.registry.ts	Excluded nodes	排除的节点
+codeCharta/features/scenarios/model/scenarioSettings.registry.ts	Flattened and excluded by metric	按指标压平与排除
+codeCharta/features/scenarios/model/scenarioSettings.registry.ts	Flattened nodes	压平的节点
+codeCharta/features/scenarios/model/scenarioSettings.registry.ts	Floor labels	楼层标签
+codeCharta/features/scenarios/model/scenarioSettings.registry.ts	Focused folder	聚焦的文件夹
+codeCharta/features/scenarios/model/scenarioSettings.registry.ts	Folder color overrides	文件夹颜色覆盖
+codeCharta/features/scenarios/model/scenarioSettings.registry.ts	Gradient mode	渐变模式
+codeCharta/features/scenarios/model/scenarioSettings.registry.ts	Group overlapping labels	合并重叠标签
+codeCharta/features/scenarios/model/scenarioSettings.registry.ts	Height metric	高度指标
+codeCharta/features/scenarios/model/scenarioSettings.registry.ts	Height scaling	高度缩放
+codeCharta/features/scenarios/model/scenarioSettings.registry.ts	Invert area	反转面积
+codeCharta/features/scenarios/model/scenarioSettings.registry.ts	Invert height	反转高度
+codeCharta/features/scenarios/model/scenarioSettings.registry.ts	Label mode	标签模式
+codeCharta/features/scenarios/model/scenarioSettings.registry.ts	Label size	标签大小
+codeCharta/features/scenarios/model/scenarioSettings.registry.ts	Labels by color metric	按颜色指标显示标签
+codeCharta/features/scenarios/model/scenarioSettings.registry.ts	Only nodes with edges	只显示有边的节点
+codeCharta/features/scenarios/model/scenarioSettings.registry.ts	Position and zoom	位置与缩放
+codeCharta/features/scenarios/model/scenarioSettings.registry.ts	Show incoming edges	显示入边
+codeCharta/features/scenarios/model/scenarioSettings.registry.ts	Show metric values	显示指标数值
+codeCharta/features/scenarios/model/scenarioSettings.registry.ts	Show node names	显示节点名称
+codeCharta/features/scenarios/model/scenarioSettings.registry.ts	Show outgoing edges	显示出边
+codeCharta/features/scenarios/model/scenarioSettings.registry.ts	Top labels	顶部标签
+codeCharta/features/scenarios/model/scenarioSettings.registry.ts	Top labels scope	顶部标签范围
+codeCharta/features/scenarios/services/scenarioViewModel.service.ts	Current Map	当前地图
+codeCharta/features/scenarios/services/scenarioViewModel.service.ts	Other Maps	其他地图
+codeCharta/features/scenarios/services/scenarios.service.ts	Code Smells	代码坏味道
+codeCharta/features/scenarios/services/scenarios.service.ts	Comment Lines	注释行
+codeCharta/features/scenarios/services/scenarios.service.ts	Logic Complexity	逻辑复杂度
+codeCharta/features/scenarios/services/scenarios.service.ts	Max Complexity per Function	每函数最大复杂度
+codeCharta/features/scenarios/services/scenarios.service.ts	Real Lines of Code	实代码行数
+codeCharta/features/scenarios/services/scenarios.service.ts	Visualize code size using real lines of code	用实代码行数展示代码规模
+codeCharta/features/scenarios/services/scenarios.service.ts	Visualize code smell density	展示代码坏味道密度
+codeCharta/features/scenarios/services/scenarios.service.ts	Visualize cognitive/logic complexity	展示认知/逻辑复杂度
+codeCharta/features/scenarios/services/scenarios.service.ts	Visualize comment density	展示注释密度
+codeCharta/features/scenarios/services/scenarios.service.ts	Visualize cyclomatic complexity	展示圈复杂度
+codeCharta/features/scenarios/services/scenarios.service.ts	Visualize maximum complexity per function	展示每函数最大复杂度
+codeCharta/features/scenarios/services/scenarios.service.ts	Visualize the number of authors per file	展示每文件的作者数量
+# === screenshot ===
+codeCharta/features/screenshot/components/screenshotButton/screenshotButton.component.ts	Firefox does not support copying to clipboard	Firefox 不支持复制到剪贴板
+codeCharta/features/screenshot/components/screenshotButton/screenshotButton.component.ts	Screenshot failed	截图失败
+codeCharta/features/screenshot/components/screenshotButton/screenshotButton.component.ts	Take a screenshot of the ⟦0⟧ with ⟦1⟧ (copy to clipboard) or ⟦2⟧ (save as file)	截取 ⟦0⟧: 按 ⟦1⟧ 复制到剪贴板, 或按 ⟦2⟧ 保存为文件
+codeCharta/features/screenshot/components/screenshotButton/screenshotButton.component.ts	Take a screenshot of the ⟦0⟧ with ⟦1⟧ (save as file) or ⟦2⟧ (copy to clipboard)	截取 ⟦0⟧: 按 ⟦1⟧ 保存为文件, 或按 ⟦2⟧ 复制到剪贴板
+codeCharta/features/screenshot/components/screenshotButton/screenshotButton.component.ts	There is no ⟦0⟧ to capture	没有可截取的 ⟦0⟧
+# === shared ===
+codeCharta/features/shared/components/barToolsTab/barToolsTab.component.ts	View tools	视图工具
+codeCharta/features/shared/components/columnResizeHandle/columnResizeHandle.directive.ts	Drag or use the arrow keys to resize, double-click to reset	拖动或用方向键调整宽度, 双击恢复默认
+codeCharta/features/shared/components/inlineColorPicker/inlineColorPicker.component.ts	Pick color	选取颜色
+codeCharta/features/shared/components/metricSelectPopover/metricSelectPopover.component.ts	Search metric	搜索指标
+codeCharta/features/shared/effects/addExcludedNodesIfNotResultsInEmptyMap/addExcludedNodesIfNotResultsInEmptyMap.effect.ts	Exclude Error	排除出错
+codeCharta/features/shared/effects/addExcludedNodesIfNotResultsInEmptyMap/addExcludedNodesIfNotResultsInEmptyMap.effect.ts	Excluding all buildings is not possible.	不能排除全部建筑.
+codeCharta/features/shared/services/loadingFileProgressSpinner.service.ts	Drawing the dependency graph	正在绘制依赖图
+codeCharta/features/shared/services/loadingFileProgressSpinner.service.ts	Drawing the map	正在绘制地图
+codeCharta/features/shared/services/loadingFileProgressSpinner.service.ts	Drawing the word cloud	正在绘制词云
+codeCharta/features/shared/services/loadingFileProgressSpinner.service.ts	Saving your session	正在保存会话
+# === sidebarExplorer ===
+codeCharta/features/sidebarExplorer/components/explorerHeader/explorerHeader.component.ts	⟦0⟧ visible	⟦0⟧ 个可见
+codeCharta/features/sidebarExplorer/components/explorerHeader/explorerHeader.component.ts	⟦0⟧ visible · ⟦1⟧ with no area in current metric	⟦0⟧ 个可见 · ⟦1⟧ 个在当前指标下无面积
+codeCharta/features/sidebarExplorer/components/metricDistribution/metricDistribution.component.ts	⟦0⟧–⟦1⟧: ⟦2⟧ files, ⟦3⟧ matched	⟦0⟧–⟦1⟧: ⟦2⟧ 个文件, ⟦3⟧ 个命中
+codeCharta/features/sidebarExplorer/components/metricRuleEditor/metricRuleEditor.component.ts	Add exclude rule	添加排除规则
+codeCharta/features/sidebarExplorer/components/metricRuleEditor/metricRuleEditor.component.ts	Add flatten rule	添加压平规则
+codeCharta/features/sidebarExplorer/components/metricRuleEditor/metricRuleEditor.component.ts	Exclude by metric	按指标排除
+codeCharta/features/sidebarExplorer/components/metricRuleEditor/metricRuleEditor.component.ts	Flatten by metric	按指标压平
+codeCharta/features/sidebarExplorer/components/rulesPopover/rulesPopover.component.ts	Clear 1 rule	清除这 1 条规则
+codeCharta/features/sidebarExplorer/components/rulesPopover/rulesPopover.component.ts	Exclusion Rules	排除规则
+codeCharta/features/sidebarExplorer/components/rulesPopover/rulesPopover.component.ts	Flattening Rules	压平规则
+codeCharta/features/sidebarExplorer/components/rulesPopover/rulesPopover.component.ts	drawn at full height again	恢复完整高度显示
+codeCharta/features/sidebarExplorer/components/rulesPopover/rulesPopover.component.ts	back on the map	回到地图上
+codeCharta/features/sidebarExplorer/components/rulesPopover/rulesPopover.component.ts	Clear all ⟦0⟧ rules	清除全部 ⟦0⟧ 规则
+codeCharta/features/sidebarExplorer/components/rulesPopover/rulesPopover.component.ts	Confirm clear ⟦0⟧ rules	确认清除 ⟦0⟧ 规则
+codeCharta/features/sidebarExplorer/components/rulesPopover/rulesPopover.component.ts	The 1 ⟦0⟧ rule is removed	这条 ⟦0⟧ 规则已移除
+codeCharta/features/sidebarExplorer/components/rulesPopover/rulesPopover.component.ts	All ⟦0⟧ ⟦1⟧ rules are removed	⟦1⟧ 规则已全部移除, 共 ⟦0⟧ 条
+codeCharta/features/sidebarExplorer/components/rulesPopover/rulesPopover.component.ts	every file they affect is ⟦0⟧	其影响的每个文件都会⟦0⟧
+codeCharta/features/sidebarExplorer/components/rulesPopover/rulesPopover.component.ts	1 file is ⟦0⟧	1 个文件会⟦0⟧
+codeCharta/features/sidebarExplorer/components/rulesPopover/rulesPopover.component.ts	⟦0⟧ files are ⟦1⟧	⟦0⟧ 个文件会⟦1⟧
+codeCharta/features/sidebarExplorer/components/rulesPopover/rulesPopover.component.ts	⟦0⟧ and ⟦1⟧.	⟦0⟧, 且⟦1⟧.
+codeCharta/features/sidebarExplorer/explorerModes.ts	Search files and folders	搜索文件与文件夹
+# === lenses ===
+codeCharta/lenses/explorerRow/store/explorerRow.projection.ts	No Node Area for Chosen Metric	所选指标无节点面积
+codeCharta/lenses/explorerRow/store/explorerRow.projection.ts	No domain words	没有领域词
+codeCharta/lenses/explorerRow/store/explorerRow.projection.ts	Not in the dependency graph	不在依赖图中
+# === load ===
+codeCharta/load/loadFiles.useCase.ts	Building the map	正在构建地图
+codeCharta/load/loadFiles.useCase.ts	File(s) could not be loaded from the given file URL parameter. Loaded sample files instead.	无法从 URL 参数加载文件. 已改为加载示例文件.
+codeCharta/load/loadFiles.useCase.ts	Previously loaded files and settings could not be restored. Loaded sample files instead.	无法恢复之前加载的文件与设置. 已改为加载示例文件.
+codeCharta/load/loadFiles.useCase.ts	Restoring your session	正在恢复会话
+codeCharta/load/loadFiles.useCase.ts	The previous state could not be fully restored after loading the page. The following properties were not restored.	刷新后无法完全恢复之前的状态. 以下属性未被恢复:
+# === model ===
+codeCharta/model/domain.model.ts	Area Size	面积大小
+codeCharta/model/domain.model.ts	Number of Files	文件数量
+codeCharta/model/domain.model.ts	Radial TreeMap	放射树图
+codeCharta/model/domain.model.ts	Squarified TreeMap	矩形树图
+codeCharta/model/wordCloud.model.ts	Custom SVG	自定义 SVG
+# === renderer/dependencyGraph ===
+codeCharta/renderer/dependencyGraph/util/boxMarks.ts	Cycles between files	跨文件成环
+codeCharta/renderer/dependencyGraph/util/boxMarks.ts	Cycles inside a file	文件内成环
+codeCharta/renderer/dependencyGraph/util/boxMarks.ts	Declaration in a cycle	环中的声明
+codeCharta/renderer/dependencyGraph/util/boxMarks.ts	Upward dependencies inside	内部向上依赖
+codeCharta/renderer/dependencyGraph/util/declarationKinds.ts	Class	类
+codeCharta/renderer/dependencyGraph/util/declarationKinds.ts	Value class	值类
+codeCharta/renderer/dependencyGraph/util/declarationKinds.ts	Interface	接口
+codeCharta/renderer/dependencyGraph/util/declarationKinds.ts	Enum	枚举
+codeCharta/renderer/dependencyGraph/util/declarationKinds.ts	Annotation	注解
+codeCharta/renderer/dependencyGraph/util/declarationKinds.ts	Function	函数
+codeCharta/renderer/dependencyGraph/util/declarationKinds.ts	Variable	变量
+codeCharta/renderer/dependencyGraph/util/declarationKinds.ts	Other	其他
+codeCharta/renderer/dependencyGraph/util/dependencyGraphBoxes.ts	level ⟦0⟧	层级 ⟦0⟧
+codeCharta/renderer/dependencyGraph/util/dependencyGraphOption.builder.ts	Dependency graph with ⟦0⟧ files and ⟦1⟧ edges shown, arranged in rows by level.	依赖图: 显示 ⟦0⟧ 个文件与 ⟦1⟧ 条边, 按层级分行排布.
+codeCharta/renderer/dependencyGraph/util/dependencyGraphStyle.ts	In a cycle	位于环中
+codeCharta/renderer/dependencyGraph/util/dependencyGraphStyle.ts	Points upward	指向上一层
+codeCharta/renderer/dependencyGraph/util/dependencyGraphStyle.ts	Points upward and closes a cycle	指向上层并构成环
+codeCharta/renderer/dependencyGraph/util/dependencyGraphTooltip.ts	In a cycle inside this file	在本文件内的环中
+codeCharta/renderer/dependencyGraph/util/dependencyGraphTooltip.ts	In a cycle with other files	与其他文件构成环
+codeCharta/renderer/dependencyGraph/util/dependencyGraphTooltip.ts	Level ⟦0⟧	层级 ⟦0⟧
+codeCharta/renderer/dependencyGraph/util/dependencyGraphTooltip.ts	Package ⟦0⟧	包 ⟦0⟧
+codeCharta/renderer/dependencyGraph/util/dependencyGraphTooltip.ts	drawn as ⟦0⟧ → ⟦1⟧	绘制为 ⟦0⟧ → ⟦1⟧
+codeCharta/renderer/dependencyGraph/util/dependencyGraphTooltip.ts	⟦0⟧ between files	⟦0⟧ 条跨文件
+codeCharta/renderer/dependencyGraph/util/dependencyGraphTooltip.ts	⟦0⟧ declaration edges · ⟦1⟧	⟦0⟧ 条声明边 · ⟦1⟧
+codeCharta/renderer/dependencyGraph/util/dependencyGraphTooltip.ts	⟦0⟧ inside	⟦0⟧ 条在内部
+codeCharta/renderer/dependencyGraph/util/dependencyGraphTooltip.ts	⟦0⟧ inside ⟦1⟧	⟦0⟧ 条在 ⟦1⟧ 内部
+codeCharta/renderer/dependencyGraph/util/lineStyle.ts	Inherits from	继承自
+codeCharta/renderer/dependencyGraph/util/lineStyle.ts	Reads a constant of	读取其常量
+codeCharta/renderer/dependencyGraph/util/lineStyle.ts	Takes as argument	将其作为参数
+# === renderer/radialMap + wordCloud ===
+codeCharta/renderer/radialMap/util/radialTooltip.ts	Click to go up one folder	点击返回上一级文件夹
+codeCharta/renderer/radialMap/util/radialTooltip.ts	Click to unfocus and go up one folder	点击取消聚焦并返回上一级
+codeCharta/renderer/wordCloud/components/wordCloud/wordCloudDescription.ts	Word cloud of ⟦0⟧ ⟦1⟧ for ⟦2⟧; largest: ⟦3⟧	⟦2⟧ 的词云 (⟦0⟧ 个⟦1⟧); 最大: ⟦3⟧
+codeCharta/renderer/wordCloud/components/wordCloud/wordCloudDescription.ts	domain term	领域词
+codeCharta/renderer/wordCloud/components/wordCloud/wordCloudDescription.ts	domain terms	领域词
+codeCharta/renderer/wordCloud/components/wordCloud/wordCloudDescription.ts	⟦0⟧ of ⟦1⟧ words fit — enlarge the window, reduce word spacing, or enable "Fit all words" or "Draw outside bounds"	⟦0⟧ / ⟦1⟧ 个单词已放下 — 请放大窗口, 调小单词间距, 或启用 "放下全部单词" 与 "画出边界绘制"
+codeCharta/renderer/wordCloud/util/wordCloudTooltip.ts	Frequency: ⟦0⟧	频次: ⟦0⟧
+codeCharta/renderer/wordCloud/util/wordCloudTooltip.ts	TF-IDF: ⟦0⟧	TF-IDF 值: ⟦0⟧
+# === stores/fileStore ===
+codeCharta/stores/fileStore/loaders/ccJson/services/loadFile.service.ts	File(s) are already loaded	文件已加载
+codeCharta/stores/fileStore/loaders/ccJson/services/loadFile.service.ts	File(s) could not be loaded	文件加载失败
+codeCharta/stores/fileStore/loaders/ccJson/services/loadFilesValidationToErrorDialog.ts	Something is wrong with the loaded file(s)	加载的文件有问题
+codeCharta/stores/fileStore/loaders/ccJson/util/fileValidator.ts	⟦0⟧ Found: ⟦1⟧	⟦0⟧ 涉及: ⟦1⟧
+codeCharta/stores/fileStore/loaders/ccJson/util/fileValidator.ts	⟦0⟧ Found duplicate of ⟦1⟧ with path: ⟦2⟧	⟦0⟧ 发现重复项 ⟦1⟧, 路径: ⟦2⟧
+codeCharta/stores/fileStore/loaders/ccJson/util/fileValidator.ts	⟦0⟧ Found duplicate id: ⟦1⟧	⟦0⟧ 发现重复 id: ⟦1⟧
+codeCharta/stores/fileStore/loaders/ccJson/util/fileValidator.ts	⟦0⟧ error: ⟦1⟧ ⟦2⟧	⟦0⟧ 错误: ⟦1⟧ ⟦2⟧
+codeCharta/stores/fileStore/loaders/ccJson/util/fixedFolderValidator.ts	⟦0⟧ Found: ⟦1⟧	⟦0⟧ 涉及: ⟦1⟧
+codeCharta/stores/fileStore/loaders/ccJson/util/fixedFolderValidator.ts	⟦0⟧ and ⟦1⟧	⟦0⟧ 和 ⟦1⟧
+# === util ===
+codeCharta/util/busy/loadPhase.ts	Reading ⟦0⟧	正在读取 ⟦0⟧
+codeCharta/util/busy/loadPhase.ts	Reading ⟦0⟧ (⟦1⟧ of ⟦2⟧)	正在读取 ⟦0⟧ (⟦1⟧ / ⟦2⟧)
+codeCharta/util/metric/metricTitles.ts	Lines of Code	代码行数
+codeCharta/util/metric/metricTitles.ts	Real Lines of Code	实代码行数
+codeCharta/util/metric/metricTitles.ts	Number of Code Lines with Comments	注释代码行数
+codeCharta/util/metric/metricTitles.ts	Cyclomatic Complexity	圈复杂度
+codeCharta/util/metric/metricTitles.ts	McCabe Complexity	McCabe 复杂度
+codeCharta/util/metric/metricTitles.ts	Average Number of Commits from this file	此文件的平均提交次数
+codeCharta/util/metric/metricTitles.ts	Number of Functions	函数数量
+codeCharta/util/metric/metricTitles.ts	Pairing Rate of selected building	所选建筑的配对率
+codeCharta/util/metric/metricTitles.ts	Number of Code Lines covered by tests	测试覆盖的代码行数
+codeCharta/util/metric/metricTitles.ts	Number of Smells Sonar has identified	Sonar 识别出的坏味道数量
+codeCharta/util/metric/metricTitles.ts	Average Number of Lines added or removed from this file	此文件的平均增删行数
+codeCharta/util/metric/metricTitles.ts	Number of Authors that have edited this file	编辑过此文件的作者数量
+codeCharta/util/metric/metricTitles.ts	Number of Statements	语句数量
+codeCharta/util/pipes/mapColorLabel.pipe.ts	⟦0⟧ to ⟦1⟧	⟦0⟧ 到 ⟦1⟧
+codeCharta/util/pipes/mapColorLabel.pipe.ts	Incoming Edge	入边
+codeCharta/util/pipes/mapColorLabel.pipe.ts	Outgoing Edge	出边
+codeCharta/util/pipes/mapColorLabel.pipe.ts	– (no matching buildings)	– (无匹配建筑)
+codeCharta/util/pipes/mapColorLabel.pipe.ts	–Δ negative delta	–Δ 负差异
+codeCharta/util/pipes/attributeDescriptorTooltip.pipe.ts	\nHigh Values: ⟦0⟧	\n高值: ⟦0⟧
+codeCharta/util/pipes/attributeDescriptorTooltip.pipe.ts	\nLow Values: ⟦0⟧	\n低值: ⟦0⟧
+codeCharta/util/radialFolderValues.ts	sum	总和
+codeCharta/util/radialFolderValues.ts	max	最大
+codeCharta/util/radialFolderValues.ts	min	最小
+codeCharta/util/radialFolderValues.ts	median	中位数
+codeCharta/util/radialFolderValues.ts	mean / file	逐文件均值
+codeCharta/util/radialFolderValues.ts	avg / area	按面积加权
+codeCharta/util/radialFolderValues.ts	sum of their files	各文件之和
+codeCharta/util/radialFolderValues.ts	their highest file	其中最大文件
+codeCharta/util/radialFolderValues.ts	their lowest file	其中最小文件
+codeCharta/util/radialFolderValues.ts	their middle file	其中位文件
+codeCharta/util/radialFolderValues.ts	mean per file	逐文件均值
+codeCharta/util/radialFolderValues.ts	area-weighted avg of their files	按面积加权的文件均值
+codeCharta/util/radialFolderValues.ts	All files added up. Big folders turn red.	全部文件求和. 大文件夹偏红.
+codeCharta/util/radialFolderValues.ts	Its highest file. Never hides a high value.	取其中最大文件. 不会掩盖高值.
+codeCharta/util/radialFolderValues.ts	Its lowest file. Never hides a low value, e.g. with inverted colors.	取其中最小文件. 不会掩盖低值, 例如颜色反转时.
+codeCharta/util/radialFolderValues.ts	Its middle file. Shows the typical file.	取其中位文件. 代表典型文件.
+codeCharta/util/radialFolderValues.ts	Sum divided by the number of files.	总和除以文件数.
+codeCharta/util/radialFolderValues.ts	Weighted by the area metric, so bigger slices count more.	按面积指标加权, 面积大的文件权重更高.
+# === views/domainView ===
+codeCharta/views/domainView/domainView.component.ts	No word is hidden	没有隐藏的词
+codeCharta/views/domainView/domainView.component.ts	⟦0⟧ hidden from the cloud and the word list	⟦0⟧ 个词已从词云和词表中隐藏
+codeCharta/views/domainView/explorer/domainExplorerModes.ts	Search words	搜索单词
+codeCharta/views/domainView/explorer/domainExplorerSelection.ts	No domain words	没有领域词
+# === fileValidationMessages (加载校验, 显示在错误对话框) ===
+codeCharta/stores/fileStore/loaders/ccJson/util/fileValidationMessages.ts	API Version Outdated: Update CodeCharta API Version to match cc.json.	API 版本过旧: 请更新 CodeCharta API 版本以匹配 cc.json.
+codeCharta/stores/fileStore/loaders/ccJson/util/fileValidationMessages.ts	API Version is empty or invalid.	API 版本为空或无效.
+codeCharta/stores/fileStore/loaders/ccJson/util/fileValidationMessages.ts	Coordinates of fixed folders must be within a range of 0 and 100.	固定文件夹的坐标必须在 0 到 100 之间.
+codeCharta/stores/fileStore/loaders/ccJson/util/fileValidationMessages.ts	Dependency edge dropped: an endpoint id does not resolve to a node.	依赖边已丢弃: 端点 id 无法解析到节点.
+codeCharta/stores/fileStore/loaders/ccJson/util/fileValidationMessages.ts	Domain lens word bank dropped: the node id does not resolve to a node.	领域透镜词库已丢弃: 节点 id 无法解析到节点.
+codeCharta/stores/fileStore/loaders/ccJson/util/fileValidationMessages.ts	Excluding all buildings is not possible.	不能排除全部建筑.
+codeCharta/stores/fileStore/loaders/ccJson/util/fileValidationMessages.ts	File already exists.	文件已存在.
+codeCharta/stores/fileStore/loaders/ccJson/util/fileValidationMessages.ts	File contains unsupported 'authors' attribute. This attribute will be ignored. Node containing the attribute: 	文件包含不支持的 'authors' 属性, 该属性将被忽略. 含该属性的节点: 
+codeCharta/stores/fileStore/loaders/ccJson/util/fileValidationMessages.ts	File has no checksum, and the browser can only compute one when CodeCharta is opened via https or localhost.	文件没有校验和; 只有通过 https 或 localhost 打开 CodeCharta 时浏览器才能计算校验和.
+codeCharta/stores/fileStore/loaders/ccJson/util/fileValidationMessages.ts	File is empty or invalid.	文件为空或格式无效.
+codeCharta/stores/fileStore/loaders/ccJson/util/fileValidationMessages.ts	Fixated folders may not be defined in API-Version < 1.2.	API 版本低于 1.2 时不能定义固定文件夹.
+codeCharta/stores/fileStore/loaders/ccJson/util/fileValidationMessages.ts	Folders may not overlap.	文件夹不能重叠.
+codeCharta/stores/fileStore/loaders/ccJson/util/fileValidationMessages.ts	If at least one direct sub-folder of root is marked as fixed, all direct sub-folders of root must be fixed.	根目录下只要有一个直接子文件夹被固定, 所有直接子文件夹都必须固定.
+codeCharta/stores/fileStore/loaders/ccJson/util/fileValidationMessages.ts	Minor API Version Outdated.	API 次版本过旧.
+codeCharta/stores/fileStore/loaders/ccJson/util/fileValidationMessages.ts	Node ids are not unique.	节点 id 不唯一.
+codeCharta/stores/fileStore/loaders/ccJson/util/fileValidationMessages.ts	Node names in combination with node types are not unique.	节点名与节点类型的组合不唯一.
+codeCharta/stores/fileStore/loaders/ccJson/util/fileValidationMessages.ts	The nodes array is empty. At least one node is required.	节点数组为空, 至少需要一个节点.
+# === 补扫: label/text 等属性上下文的单词型文案 (2026-11-01 全量扫描补齐) ===
+codeCharta/features/3dPrint/stores/export3DMapDialog.store.ts	Change and continue	更改并继续
+codeCharta/features/3dPrint/stores/export3DMapDialog.store.ts	Switch and continue	切换并继续
+codeCharta/features/3dPrint/stores/export3DMapDialog.store.ts	Stay here	留在此页
+codeCharta/features/3dPrint/stores/export3DMapDialog.store.ts	Map could not be exported	无法导出地图
+codeCharta/features/changelog/components/changelogDialog/changelogDialog.component.ts	Added	新增
+codeCharta/features/changelog/components/changelogDialog/changelogDialog.component.ts	Fixed	修复
+codeCharta/features/changelog/components/changelogDialog/changelogDialog.component.ts	Changed	变更
+codeCharta/features/changelog/components/changelogDialog/changelogDialog.component.ts	Removed	移除
+codeCharta/features/changelog/components/changelogDialog/changelogDialog.component.ts	Maintenance	维护
+codeCharta/features/dependencyMap/components/edgeStyleSegment/edgeStyleChoices.ts	Spread	散开
+codeCharta/features/dependencyMap/components/edgeStyleSegment/edgeStyleChoices.ts	Aside	绕行
+codeCharta/features/dependencyMap/components/edgeStyleSegment/edgeStyleChoices.ts	Curved	曲线
+codeCharta/features/dependencyMap/components/edgeStyleSegment/edgeStyleChoices.ts	Straight	直线
+codeCharta/features/dependencyMap/components/edgeStyleSegment/edgeStyleChoices.ts	Thin	纤细
+codeCharta/features/dependencyMap/components/edgeStyleSegment/edgeStyleChoices.ts	Uniform	等宽
+codeCharta/features/dependencyMap/components/edgeStyleSegment/edgeStyleChoices.ts	Strong	加粗
+codeCharta/features/globalSettings/components/globalConfigurationDialog/externalLinks/externalLinks.component.ts	Website	网站
+codeCharta/features/globalSettings/components/globalConfigurationDialog/externalLinks/externalLinks.component.ts	Documentation	文档
+codeCharta/features/navBar/components/viewSwitcher/viewSwitcher.component.ts	Metric	指标
+codeCharta/features/navBar/components/viewSwitcher/viewSwitcher.component.ts	Domain	领域
+codeCharta/features/navBar/components/viewSwitcher/viewSwitcher.component.ts	Dependencies	依赖
+codeCharta/features/scenarios/model/scenarioSettings.registry.ts	Colors	颜色
+codeCharta/features/scenarios/model/scenarioSettings.registry.ts	Margin	边距
+codeCharta/features/scenarios/services/scenarioViewModel.service.ts	Global	全局
+codeCharta/features/scenarios/services/scenarioViewModel.service.ts	Built-in	内置
+codeCharta/features/screenshot/components/screenshotButton/screenshotButton.component.ts	Screenshot	截图
+codeCharta/features/screenshot/components/screenshotButton/screenshotButton.component.ts	Copied!	已复制!
+codeCharta/features/screenshot/components/screenshotButton/screenshotButton.component.ts	Saved!	已保存!
+codeCharta/features/sidebarExplorer/components/metricRuleEditor/metricRuleEditor.component.ts	greater than	大于
+codeCharta/features/sidebarExplorer/components/metricRuleEditor/metricRuleEditor.component.ts	at least	至少
+codeCharta/features/sidebarExplorer/components/metricRuleEditor/metricRuleEditor.component.ts	less than	小于
+codeCharta/features/sidebarExplorer/components/metricRuleEditor/metricRuleEditor.component.ts	at most	至多
+codeCharta/features/sidebarExplorer/components/metricRuleEditor/metricRuleEditor.component.ts	equal to	等于
+codeCharta/features/sidebarExplorer/explorerModes.ts	Files	文件
+codeCharta/renderer/dependencyGraph/util/lineStyle.ts	Creates	创建
+codeCharta/renderer/dependencyGraph/util/lineStyle.ts	Implements	实现
+codeCharta/renderer/dependencyGraph/util/lineStyle.ts	Returns	返回
+codeCharta/renderer/dependencyGraph/util/lineStyle.ts	Uses	使用
+codeCharta/views/domainView/explorer/domainExplorerModes.ts	Words	单词
+codeCharta/views/domainView/explorer/domainExplorerModes.ts	payment, invoice	支付, 发票
+codeCharta/model/domain.model.ts	Name	名称
+codeCharta/features/domainWordOccurrences/util/sortWords.ts	Occurrences	出现次数
+codeCharta/features/domainWordOccurrences/util/sortWords.ts	Name	名称
+codeCharta/features/domainWordOccurrences/util/sortWords.ts	Relevance	相关度
+codeCharta/features/shared/components/unfocusTool/unfocusTool.component.ts	Unfocus	取消聚焦
+codeCharta/features/shared/components/unfocusTool/unfocusTool.component.ts	Leave the focus and show every folder	取消聚焦并显示所有文件夹

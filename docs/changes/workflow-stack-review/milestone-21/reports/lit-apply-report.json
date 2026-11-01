@@ -1,0 +1,346 @@
+{
+ "replaced": [
+  {
+   "file": "codeCharta/features/legend/components/legendPanel/legendColorRow.component.html",
+   "line": 3,
+   "en": "Color for ",
+   "zh": "颜色: "
+  },
+  {
+   "file": "codeCharta/features/metricsBar/components/metricsBar/metricsBar.component.html",
+   "line": 21,
+   "en": "Settings",
+   "zh": "设置"
+  },
+  {
+   "file": "codeCharta/features/globalSettings/components/globalConfigurationDialog/globalConfigurationDialog.component.html",
+   "line": 8,
+   "en": "Hide Flattened Buildings",
+   "zh": "隐藏被压平的建筑"
+  },
+  {
+   "file": "codeCharta/features/globalSettings/components/globalConfigurationDialog/globalConfigurationDialog.component.html",
+   "line": 14,
+   "en": "Reset camera when map layout changes",
+   "zh": "地图布局变化时重置视角"
+  },
+  {
+   "file": "codeCharta/features/globalSettings/components/globalConfigurationDialog/globalConfigurationDialog.component.html",
+   "line": 20,
+   "en": "White Background",
+   "zh": "白色背景"
+  },
+  {
+   "file": "codeCharta/features/globalSettings/components/globalConfigurationDialog/globalConfigurationDialog.component.html",
+   "line": 26,
+   "en": "Screenshot to clipboard",
+   "zh": "截图复制到剪贴板"
+  },
+  {
+   "file": "codeCharta/features/nodeContextMenu/components/nodeContextMenu/markFolderRow.component.html",
+   "line": 8,
+   "en": "Remove folder color",
+   "zh": "移除文件夹颜色"
+  },
+  {
+   "file": "codeCharta/features/nodeContextMenu/components/nodeContextMenu/markFolderRow.component.html",
+   "line": 8,
+   "en": "Colorize folder",
+   "zh": "给文件夹着色"
+  },
+  {
+   "file": "codeCharta/features/sidebarExplorer/components/rulesPopover/rulesPopover.component.html",
+   "line": 41,
+   "en": "Flatten by metric…",
+   "zh": "按指标压平…"
+  },
+  {
+   "file": "codeCharta/features/sidebarExplorer/components/rulesPopover/rulesPopover.component.html",
+   "line": 41,
+   "en": "Exclude by metric…",
+   "zh": "按指标排除…"
+  },
+  {
+   "file": "codeCharta/features/dependencyMap/components/dependencyEdgeLegend/dependencyEdgeLegend.component.html",
+   "line": 2,
+   "en": "Dependencies",
+   "zh": "依赖"
+  },
+  {
+   "file": "codeCharta/features/dependencyMap/components/dependencyEdgeLegend/dependencyEdgeLegend.component.html",
+   "line": 2,
+   "en": "Edges",
+   "zh": "边"
+  },
+  {
+   "file": "codeCharta/features/domainWordOccurrences/components/hiddenWordsPopover/hiddenWordsPopover.component.html",
+   "line": 33,
+   "en": "Show ",
+   "zh": "再次显示 "
+  },
+  {
+   "file": "codeCharta/features/domainWordOccurrences/components/hiddenWordsPopover/hiddenWordsPopover.component.html",
+   "line": 33,
+   "en": " again",
+   "zh": ""
+  },
+  {
+   "file": "codeCharta/features/domainWordOccurrences/components/hiddenWordsPopover/hiddenWordsPopover.component.html",
+   "line": 34,
+   "en": "Show ",
+   "zh": "再次显示 "
+  },
+  {
+   "file": "codeCharta/features/domainWordOccurrences/components/hiddenWordsPopover/hiddenWordsPopover.component.html",
+   "line": 34,
+   "en": " again",
+   "zh": ""
+  },
+  {
+   "file": "codeCharta/features/scenarios/components/scenarioListDialog/scenarioItem/scenarioItemBadges/scenarioItemBadges.component.html",
+   "line": 8,
+   "en": "Bound to ",
+   "zh": "绑定到 "
+  },
+  {
+   "file": "codeCharta/features/metricsBar/components/colorSettingsPopover/invertResetRow.component.html",
+   "line": 25,
+   "en": "Reset color values to default",
+   "zh": "重置颜色值为默认"
+  },
+  {
+   "file": "codeCharta/features/metricsBar/components/colorSettingsPopover/invertResetRow.component.html",
+   "line": 25,
+   "en": "Reset color values and gradient mode to default",
+   "zh": "重置颜色值与渐变模式为默认"
+  },
+  {
+   "file": "codeCharta/features/sidebarExplorer/components/ruleRow/ruleRow.component.html",
+   "line": 20,
+   "en": "Remove rule ",
+   "zh": "移除规则 "
+  },
+  {
+   "file": "codeCharta/features/dependencyMap/components/dependencyInspector/dependencyInspector.component.html",
+   "line": 95,
+   "en": "Copied!",
+   "zh": "已复制!"
+  },
+  {
+   "file": "codeCharta/features/dependencyMap/components/dependencyInspector/dependencyInspector.component.html",
+   "line": 95,
+   "en": "Copy path",
+   "zh": "复制路径"
+  },
+  {
+   "file": "codeCharta/features/dependencyMap/components/dependencyInspector/dependencyInspector.component.html",
+   "line": 96,
+   "en": "Copied!",
+   "zh": "已复制!"
+  },
+  {
+   "file": "codeCharta/features/dependencyMap/components/dependencyInspector/dependencyInspector.component.html",
+   "line": 96,
+   "en": "Copy path",
+   "zh": "复制路径"
+  },
+  {
+   "file": "codeCharta/features/nodeContextMenu/components/nodeContextMenu/nodeContextMenu.component.html",
+   "line": 45,
+   "en": "Unfocus Parent",
+   "zh": "取消聚焦上级"
+  },
+  {
+   "file": "codeCharta/features/nodeContextMenu/components/nodeContextMenu/nodeContextMenu.component.html",
+   "line": 45,
+   "en": "Unfocus",
+   "zh": "取消聚焦"
+  },
+  {
+   "file": "codeCharta/features/sidebarExplorer/components/explorerSortControl/explorerSortControl.component.html",
+   "line": 5,
+   "en": "Sort: ",
+   "zh": "排序: "
+  },
+  {
+   "file": "codeCharta/features/sidebarExplorer/components/explorerSortControl/explorerSortControl.component.html",
+   "line": 40,
+   "en": "Sort descending",
+   "zh": "降序"
+  },
+  {
+   "file": "codeCharta/features/sidebarExplorer/components/explorerSortControl/explorerSortControl.component.html",
+   "line": 40,
+   "en": "Sort ascending",
+   "zh": "升序"
+  },
+  {
+   "file": "codeCharta/features/metricsBar/components/colorSettingsPopover/colorBandRow.component.html",
+   "line": 4,
+   "en": "Recolor ",
+   "zh": "重新着色: "
+  },
+  {
+   "file": "codeCharta/features/sidebarInspector/components/inspectorHeader/inspectorHeader.component.html",
+   "line": 26,
+   "en": "Copied!",
+   "zh": "已复制!"
+  },
+  {
+   "file": "codeCharta/features/sidebarInspector/components/inspectorHeader/inspectorHeader.component.html",
+   "line": 26,
+   "en": "Copy path",
+   "zh": "复制路径"
+  },
+  {
+   "file": "codeCharta/features/navBar/components/mapSelector/mapSelector.component.html",
+   "line": 37,
+   "en": "Undo remove map",
+   "zh": "撤销移除地图"
+  },
+  {
+   "file": "codeCharta/features/navBar/components/mapSelector/mapSelector.component.html",
+   "line": 37,
+   "en": "Remove map",
+   "zh": "移除地图"
+  },
+  {
+   "file": "codeCharta/features/scenarios/components/applyScenarioDialog/applyScenarioDialog.component.html",
+   "line": 3,
+   "en": "Apply: ",
+   "zh": "应用: "
+  },
+  {
+   "file": "codeCharta/features/metricsBar/components/colorSettingsPopover/folderOverrideRow.component.html",
+   "line": 4,
+   "en": "Recolor ",
+   "zh": "重新着色: "
+  },
+  {
+   "file": "codeCharta/features/metricsBar/components/colorSettingsPopover/folderOverrideRow.component.html",
+   "line": 8,
+   "en": " files",
+   "zh": " 个文件"
+  },
+  {
+   "file": "codeCharta/features/metricsBar/components/colorSettingsPopover/folderOverrideRow.component.html",
+   "line": 9,
+   "en": "Unpin ",
+   "zh": "取消固定: "
+  },
+  {
+   "file": "codeCharta/views/domainView/domainView.component.html",
+   "line": 27,
+   "en": "Copied!",
+   "zh": "已复制!"
+  },
+  {
+   "file": "codeCharta/views/domainView/domainView.component.html",
+   "line": 27,
+   "en": "Copy path",
+   "zh": "复制路径"
+  },
+  {
+   "file": "codeCharta/views/domainView/domainView.component.html",
+   "line": 34,
+   "en": "No selection",
+   "zh": "未选中"
+  },
+  {
+   "file": "codeCharta/features/sidebarExplorer/components/metricDistribution/metricDistribution.component.html",
+   "line": 2,
+   "en": "Distribution of ",
+   "zh": "分布: "
+  },
+  {
+   "file": "codeCharta/features/dependencyMap/components/edgeTypesSegment/edgeTypesSegment.component.html",
+   "line": 34,
+   "en": "Colour of: ",
+   "zh": "颜色: "
+  },
+  {
+   "file": "codeCharta/features/shared/components/errorDialog/errorDialog.component.html",
+   "line": 12,
+   "en": "OK",
+   "zh": "确定"
+  },
+  {
+   "file": "codeCharta/features/sidebarExplorer/components/explorerSearchActions/explorerSearchActions.component.html",
+   "line": 6,
+   "en": "Flatten or exclude the search pattern",
+   "zh": "压平或排除搜索模式"
+  },
+  {
+   "file": "codeCharta/features/sidebarExplorer/components/explorerSearchActions/explorerSearchActions.component.html",
+   "line": 6,
+   "en": "Exclude the search pattern",
+   "zh": "排除搜索模式"
+  },
+  {
+   "file": "codeCharta/features/legend/components/legendDrawer/legendToggleButton.component.html",
+   "line": 7,
+   "en": "Hide panel",
+   "zh": "收起面板"
+  },
+  {
+   "file": "codeCharta/features/legend/components/legendDrawer/legendToggleButton.component.html",
+   "line": 7,
+   "en": "Show panel",
+   "zh": "展开面板"
+  }
+ ],
+ "missing": [],
+ "errors": [
+  "codeCharta/features/dependencyMap/components/dependencyInspector/dependencyInspector.component.html: 同一字面量命中 2 次, 请人工确认是否都该翻: 'Copied!'",
+  "codeCharta/features/dependencyMap/components/dependencyInspector/dependencyInspector.component.html: 同一字面量命中 2 次, 请人工确认是否都该翻: 'Copy path'",
+  "codeCharta/features/domainWordOccurrences/components/hiddenWordsPopover/hiddenWordsPopover.component.html: 同一字面量命中 2 次, 请人工确认是否都该翻: 'Show '",
+  "codeCharta/features/domainWordOccurrences/components/hiddenWordsPopover/hiddenWordsPopover.component.html: 同一字面量命中 2 次, 请人工确认是否都该翻: ' again'"
+ ],
+ "skipped_template": [],
+ "hits": {
+  "codeCharta/features/legend/components/legendPanel/legendColorRow.component.html :: Color for ": 1,
+  "codeCharta/features/metricsBar/components/metricsBar/metricsBar.component.html :: Settings": 1,
+  "codeCharta/features/globalSettings/components/globalConfigurationDialog/globalConfigurationDialog.component.html :: Hide Flattened Buildings": 1,
+  "codeCharta/features/globalSettings/components/globalConfigurationDialog/globalConfigurationDialog.component.html :: Reset camera when map layout changes": 1,
+  "codeCharta/features/globalSettings/components/globalConfigurationDialog/globalConfigurationDialog.component.html :: White Background": 1,
+  "codeCharta/features/globalSettings/components/globalConfigurationDialog/globalConfigurationDialog.component.html :: Screenshot to clipboard": 1,
+  "codeCharta/features/nodeContextMenu/components/nodeContextMenu/markFolderRow.component.html :: Remove folder color": 1,
+  "codeCharta/features/nodeContextMenu/components/nodeContextMenu/markFolderRow.component.html :: Colorize folder": 1,
+  "codeCharta/features/sidebarExplorer/components/rulesPopover/rulesPopover.component.html :: Flatten by metric…": 1,
+  "codeCharta/features/sidebarExplorer/components/rulesPopover/rulesPopover.component.html :: Exclude by metric…": 1,
+  "codeCharta/features/dependencyMap/components/dependencyEdgeLegend/dependencyEdgeLegend.component.html :: Dependencies": 1,
+  "codeCharta/features/dependencyMap/components/dependencyEdgeLegend/dependencyEdgeLegend.component.html :: Edges": 1,
+  "codeCharta/features/domainWordOccurrences/components/hiddenWordsPopover/hiddenWordsPopover.component.html :: Show ": 2,
+  "codeCharta/features/domainWordOccurrences/components/hiddenWordsPopover/hiddenWordsPopover.component.html ::  again": 2,
+  "codeCharta/features/scenarios/components/scenarioListDialog/scenarioItem/scenarioItemBadges/scenarioItemBadges.component.html :: Bound to ": 1,
+  "codeCharta/features/metricsBar/components/colorSettingsPopover/invertResetRow.component.html :: Reset color values to default": 1,
+  "codeCharta/features/metricsBar/components/colorSettingsPopover/invertResetRow.component.html :: Reset color values and gradient mode to default": 1,
+  "codeCharta/features/sidebarExplorer/components/ruleRow/ruleRow.component.html :: Remove rule ": 1,
+  "codeCharta/features/dependencyMap/components/dependencyInspector/dependencyInspector.component.html :: Copied!": 2,
+  "codeCharta/features/dependencyMap/components/dependencyInspector/dependencyInspector.component.html :: Copy path": 2,
+  "codeCharta/features/nodeContextMenu/components/nodeContextMenu/nodeContextMenu.component.html :: Unfocus Parent": 1,
+  "codeCharta/features/nodeContextMenu/components/nodeContextMenu/nodeContextMenu.component.html :: Unfocus": 1,
+  "codeCharta/features/sidebarExplorer/components/explorerSortControl/explorerSortControl.component.html :: Sort: ": 1,
+  "codeCharta/features/sidebarExplorer/components/explorerSortControl/explorerSortControl.component.html :: Sort descending": 1,
+  "codeCharta/features/sidebarExplorer/components/explorerSortControl/explorerSortControl.component.html :: Sort ascending": 1,
+  "codeCharta/features/metricsBar/components/colorSettingsPopover/colorBandRow.component.html :: Recolor ": 1,
+  "codeCharta/features/sidebarInspector/components/inspectorHeader/inspectorHeader.component.html :: Copied!": 1,
+  "codeCharta/features/sidebarInspector/components/inspectorHeader/inspectorHeader.component.html :: Copy path": 1,
+  "codeCharta/features/navBar/components/mapSelector/mapSelector.component.html :: Undo remove map": 1,
+  "codeCharta/features/navBar/components/mapSelector/mapSelector.component.html :: Remove map": 1,
+  "codeCharta/features/scenarios/components/applyScenarioDialog/applyScenarioDialog.component.html :: Apply: ": 1,
+  "codeCharta/features/metricsBar/components/colorSettingsPopover/folderOverrideRow.component.html :: Recolor ": 1,
+  "codeCharta/features/metricsBar/components/colorSettingsPopover/folderOverrideRow.component.html ::  files": 1,
+  "codeCharta/features/metricsBar/components/colorSettingsPopover/folderOverrideRow.component.html :: Unpin ": 1,
+  "codeCharta/views/domainView/domainView.component.html :: Copied!": 1,
+  "codeCharta/views/domainView/domainView.component.html :: Copy path": 1,
+  "codeCharta/views/domainView/domainView.component.html :: No selection": 1,
+  "codeCharta/features/sidebarExplorer/components/metricDistribution/metricDistribution.component.html :: Distribution of ": 1,
+  "codeCharta/features/dependencyMap/components/edgeTypesSegment/edgeTypesSegment.component.html :: Colour of: ": 1,
+  "codeCharta/features/shared/components/errorDialog/errorDialog.component.html :: OK": 1,
+  "codeCharta/features/sidebarExplorer/components/explorerSearchActions/explorerSearchActions.component.html :: Flatten or exclude the search pattern": 1,
+  "codeCharta/features/sidebarExplorer/components/explorerSearchActions/explorerSearchActions.component.html :: Exclude the search pattern": 1,
+  "codeCharta/features/legend/components/legendDrawer/legendToggleButton.component.html :: Hide panel": 1,
+  "codeCharta/features/legend/components/legendDrawer/legendToggleButton.component.html :: Show panel": 1
+ }
+}
