@@ -11,11 +11,11 @@
 
 本节点已核实并作为派工基线 (每个 issue 派工前必须复核这三项, 结果写进该 issue 的 `执行` 节):
 
-- HEAD: `075665abf5acdf76f4e69bc05d5b96759fae9ba3` (分支 `refactor-skill-around-verification`). 任务书写的 `731a3b423be82a3dde59bed5baa1878bbbf73084` 是它的父提交 (路线图更新), 本轮规格提交 `075665a` 在其之上, 派工一律以 `075665a` 为起点.
-- 收集基线: `PYTEST_XDIST_WORKER=gw0 uv run python -m pytest --collect-only -q` 实测 **865 条** (分类: `workflow/navigate/tests` 37, `general/present/tests` 103, `tests` 725). 任务书写的 905 条在本容器不可复现; 差值来源已定位: `workflow/to-spec/tests` 41 条 (需 `gherkin-official`, 不在 `testpaths` 里), 865+41=906 与 905 只差 1, 因此 905 极可能是把该树算进来了. 增强本树后复跑该命令, 逐条核对增量等于新增用例数.
+- HEAD (本节点收尾核实): `e5918a5` 之后为四份权威输入的提交 `075665abf5acdf76f4e69bc05d5b96759fae9ba3` 与本执行输入的提交; 派工一律以含本文件的提交为起点 (分支 `refactor-skill-around-verification`), 更早的 `731a3b423be82a3dde59bed5baa1878bbbf73084` 只是路线图提交. 派工时用 `git rev-parse HEAD` 复核, 不一致就停下问发起方.
+- 收集基线: `PYTEST_XDIST_WORKER=gw0 uv run python -m pytest --collect-only -q` 实测 **865 条**, 连跑两次稳定 (分类: `workflow/navigate/tests` 37, `general/present/tests` 103, `tests` 725). 任务书里的 905 条在本容器复现不出, 已作废; `workflow/to-spec/tests` 另有 41 条, 不在 `testpaths` 里, 默认全量不计. 增强本树后复跑该命令, 逐条核对增量等于新增用例数.
 - 被测 skill 目录不存在: 仓库内没有 `workflow/codebase-map/` (与 DECISIONS F007 一致), 全部从零新建; 现有资产只有文档决策与 m23 的外部证据.
-- 权威输入 review_id: `97520ca76be69817c1fccc12bf390376dba5a29b2f48ce129a0360b921d1c2b5` (发起方规格评审记录 id). 该值无法从当前三份文件复算 (评审后 DECISIONS 追加了 D017-D020 与 D016 的补记), 故同时登记本节点当前文件哈希作为可复算锚点: `PRODUCT.md` `103b42e481ec02f2605b3767784fff6e1f7e3faaff478a174d82f36e26324d69`, `TECHNICAL.md` `760af00f1e94fccad89545e4064b5252fc39677da5260b72eaf840645e2d7a2e`, `DECISIONS.md` `5b8d66716a2b3537e8031bc07b3c4c8a3f1a3a8689f131975051e7c4d5e4062c`.
-- 两份机检结果 (本节点复跑): `uv run --with gherkin-official python workflow/to-spec/check-ac.py docs/changes/workflow-stack-review/milestone-25/PRODUCT.md` -> `check-ac: 通过 - 48 个场景, 9 个 AC`, 退出码 0 (任务书写 45 场景, 实测 48, 以实测为准); `uv run python workflow/to-spec/check-tech.py docs/changes/workflow-stack-review/milestone-25/TECHNICAL.md` -> `check-tech: 通过 - 7 节`, 退出码 0. 注: `check-ac.py` 依赖 `gherkin-official`, 本容器 venv 未装, 必须带 `--with gherkin-official` 才能复跑.
+- 权威输入 review_id: 第一版 `97520ca76be69817c1fccc12bf390376dba5a29b2f48ce129a0360b921d1c2b5` (v3), 用户最终采纳转正的版本为 `39f34602d5adb1d94ea98acbd9621a55ec37c3a39cad65cc77155eb98c6264a8` (v4, 48 场景), 两者都由 `ac-draft.py promote` 校验通过. review_id 绑定的是当时的 PRODUCT 暂存稿与验收草稿字节, 无法从最终三份文件复算; 故另登记本节点文件哈希作为可复算锚点: `PRODUCT.md` `103b42e481ec02f2605b3767784fff6e1f7e3faaff478a174d82f36e26324d69`, `TECHNICAL.md` `760af00f1e94fccad89545e4064b5252fc39677da5260b72eaf840645e2d7a2e`, `DECISIONS.md` `5b8d66716a2b3537e8031bc07b3c4c8a3f1a3a8689f131975051e7c4d5e4062c`.
+- 两份机检结果 (本节点复跑): `uv run workflow/to-spec/check-ac.py docs/changes/workflow-stack-review/milestone-25/PRODUCT.md` -> `check-ac: 通过 - 48 个场景, 9 个 AC`, 退出码 0 (任务书写 45 场景, 实测 48, 以实测为准); `uv run python workflow/to-spec/check-tech.py docs/changes/workflow-stack-review/milestone-25/TECHNICAL.md` -> `check-tech: 通过 - 7 节`, 退出码 0. 注: `check-ac.py`/`ac-draft.py` 自带 PEP 723 依赖声明, `uv run` 会自动装 `gherkin-official`, 不需要手写 `--with` (已实测).
 
 ## 全局允许范围
 
