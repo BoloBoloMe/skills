@@ -108,8 +108,8 @@
 
 - 命令: `git push origin m15-present` -> 被桥拒绝 `! [remote rejected] m15-present -> m15-present (deny updating a hidden ref)`.
 - 原因: 桥按对下沉 `receive.hideRefs`, 只放行本对母体分支 `refs/heads/refactor-skill-around-verification` (`workflow/use-sandbox-worktree/scripts/swt.py` 的 `receive.hideRefs` 配置), 其它分支名一律拒. 母体分支当前 `731a3b4` 与 `m15-present` 的基点 `a5a8ecf` 不是快进关系, 所以也不能靠改推目标绕过.
-- 现状: 5 个逻辑提交 (ISSUE-01..05) 只在容器内本地分支 `m15-present` 上, 尚未到宿主母体.
-- 可选出路 (需协调方决定, 执行者未擅自扩大范围): (a) 协调方在母体工作树内 `git merge --no-ff m15-present` 后快进推母体分支 (与 drive-execution 的"合并本轮"一致); (b) 宿主侧把 `refs/heads/m15-present` 加入桥允许范围后重推.
+- 现状 (已解决): 协调方采用出路 (a), 在母体工作树合并并推送. 已落地: ISSUE-01..05 与执行者报告进入母体 `f6dc231`, `4e2abb5`/`4282928` 进入母体 `ddbac57`, `7e4da4e` 进入母体 `f72d7d3`. 执行者全程未 push, 未改母体分支.
+- 落选出路 (b): 宿主侧把 `refs/heads/m15-present` 加入桥允许范围后重推, 本轮未采用.
 
 ### 2. 一处越界引用 (未修, 交协调方)
 

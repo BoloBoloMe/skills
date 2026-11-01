@@ -112,12 +112,12 @@
 需要改变 PRODUCT/TECHNICAL/决策, 需要改 `check_page.py` 或 `web_server.py` 才能让文档自洽, 或发现除本 issue 列出的文件外还有 present 相关引用被测覆盖时停止 (先把引用面报上来, 不擅自扩大删除范围).
 
 ## 验收标准
-- [ ] `general/present/SKILL.md` 只有一条交付流程, 不出现按 SSH 变量选分支的规则, 不含 `__PRESENTATION_STATE__` 强制要求, 不给文件路径或 loopback 作交付.
-- [ ] 文档含 `--lan-host`, `address_missing`, 49152-65534 与 10 次上限, 容器锁定 8800, stop 影响全部共用页面, 首次开放风险说明, 文件名日期前缀与新版本另存规则.
-- [ ] `general/present/REMOTE.md` 已删除且无悬空引用.
-- [ ] `browser_session.py` 与两份配套测试已删除, `test_skill_contract.py` 改为单流程契约且通过.
-- [ ] `README.md` present 行描述统一局域网交付.
-- [ ] `uv run python -m pytest general/present/tests` 退出码 0, `check_skill.py` 输出 OK.
+- [x] `general/present/SKILL.md` 只有一条交付流程, 不出现按 SSH 变量选分支的规则, 不含 `__PRESENTATION_STATE__` 强制要求, 不给文件路径或 loopback 作交付.
+- [x] 文档含 `--lan-host`, `address_missing`, 49152-65534 与 10 次上限, 容器锁定 8800, stop 影响全部共用页面, 首次开放风险说明, 文件名日期前缀与新版本另存规则.
+- [x] `general/present/REMOTE.md` 已删除且无悬空引用.
+- [x] `browser_session.py` 与两份配套测试已删除, `test_skill_contract.py` 改为单流程契约且通过.
+- [x] `README.md` present 行描述统一局域网交付.
+- [x] `uv run python -m pytest general/present/tests` 退出码 0, `check_skill.py` 输出 OK.
 
 ## 被阻塞于
 - ISSUE-01, ISSUE-02.
