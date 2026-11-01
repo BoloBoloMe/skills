@@ -2,8 +2,11 @@
 - `../EXECUTION.md`
 
 ## 执行
-- [ ] 已完成
-- [ ] 派工前复核并记录 (写在本行下方): HEAD 提交号; `PYTEST_XDIST_WORKER=gw0 uv run python -m pytest --collect-only -q` 条数; `workflow/codebase-map/` 当前存在哪些文件.
+- [x] 已完成
+- [x] 派工前复核并记录 (写在本行下方): HEAD 提交号; `PYTEST_XDIST_WORKER=gw0 uv run python -m pytest --collect-only -q` 条数; `workflow/codebase-map/` 当前存在哪些文件.
+- HEAD: `3a45dcd59c137c22bf3631630b2dc10348b121c1` (issue/02, 已含 ISSUE-01 与 ISSUE-04).
+- 收集条数: 907 条 (`907 tests collected`), 非 EXECUTION.md 规划期的 865; 差额来自 ISSUE-01/ISSUE-04 已落地的用例. 本 issue 结束后复跑, 增量必须等于新增用例数.
+- `ls workflow/codebase-map`: `README.md SKILL.md agents i18n scripts tests tools`; 其中 `scripts/`: `codebase-map.py codemap_common.py codemap_service.py`; `tests/`: `codemap_helpers.py codemap_service_helpers.py test_cli_output_shape.py test_container_rejection.py test_data_key.py test_excludes_and_regex.py test_http_surface.py test_runtime_dir.py test_serve_lifecycle.py test_service_state_and_stop.py test_stdlib_only.py test_version_constants.py`.
 
 ## 要交付什么
 让 `build` 真的能把目标库分析成数据原件:
@@ -60,6 +63,41 @@
 
 ## 交付证据
 
+机检均在容器内复跑 (2026-11-01), 原始记录在 `/tmp/m26-02/` (本 issue 口径, 不用任务书原文的 /tmp/m25-02).
+
+### 完成定义容器内条目
+
+1. `PYTEST_XDIST_WORKER=gw0 uv run python -m pytest workflow/codebase-map/tests` -> `51 passed in 12.92s`, 退出码 0, 无 failed 无新增 skipped (既有 42 + 本 issue 新增 9). 原始: `/tmp/m26-02/pytest-tree-verbose.txt`.
+2. `PYTEST_XDIST_WORKER=gw0 uv run python -m pytest tests/test_skills_codex_metadata.py` -> `1 passed`.
+3. `uv run python general/writing-for-llm/check_skill.py workflow/codebase-map/SKILL.md` -> `OK`, 退出码 0.
+4. 收集基线核对: `PYTEST_XDIST_WORKER=gw0 uv run python -m pytest --collect-only -q` -> `916 tests collected`; 派工前基线 907 条, 增量 9 = 新增用例数 (TC-02-01..TC-02-09). 原始: `/tmp/m26-02/collect-count.txt`.
+
+### 逐项用例结果 (全部 PASSED, 逐条见 verbose 记录)
+
+- TC-02-01 (BR-017 观察点): stub podman 记录的三次 `podman run` 完整 argv 里都带 `--rm`, `--network=none`, `--userns=keep-id`; 源码挂 `<target>:/proj:ro`, 出目录挂 `<runtime>/cache/work:/out`; 不含 `--privileged`, 不含 docker socket 挂载, 不含 `-p`/`--publish`; 三步依次 dependencyparser/unifiedparser/merge. 完整 argv 样例: `/tmp/m26-02/demo-run.txt` (stub calls.jsonl 与三步日志各存一份 argv).
+- TC-02-02: 三步 ccsh 参数逐字核对; 第一步 `-e` 逐条出现且与 `collect_excludes`/`excluded_regexes` 同源 (用户 glob `gen*ated` 转义为 `gen\*ated`); 第二步 `unifiedparser /proj -nc -o /out/metrics.cc.json`; 第三步 `merge /out/metrics.cc.json /out/deps.cc.json -o /out/cc.json -nc` (metrics 在前); 中间产物落 `cache/work/` (deps/metrics/cc.json); 第二次运行产物内容前进 (stub run 序号 3 -> 6) 证明覆盖; 每步各自一份日志且含完整 argv.
+- TC-02-03: 镜像与前端产物齐备时 `initialization.performed == false`, 无 `notice`, `steps == []`, 无 pull 调用; `cache/cache.json` 字段齐全 (`image{tag, single_arch_digest, multi_arch_digest, verified_at}` / `frontend{version, zip_sha256, unpacked_at}` / `excluded_globs` / `written_at`), `frontend.version == "vis-2.9.1"`, `image.tag` 与两个 digest 等于给定常量.
+- TC-02-04: 同库连跑两次 `.codebase-map/cc.json` 路径不变键不变, 内容被第二次覆盖; 人为在 `cache/work/` 埋的历史文件被清空, 工作目录只剩三个当前产物, 无历史版本文件.
+- TC-02-05: stub 跑完整 build 后目标库全量文件名与内容哈希比对, 只多出 `.codebase-map/cc.json`, 其余文件未变; 原件与 merge 产物逐字节一致 (sha256 相同, 不解包改写).
+- TC-02-06: 纯函数 `check_image_digests`: 两者都含 -> (True, True); 只含多架构 -> (False, True) 且接线层返回 `image_digest_mismatch`, 不写目标库不进分析; 只含单架构 -> (True, False); 两者都含时通过且多架构值只进 `cache/cache.json`, build 输出不携带.
+- TC-02-07: 预置伪 web.zip (sha256 与真常量自然失配, 期望值不打补丁) -> `frontend_hash_mismatch` 阻断; 不写目标库, `serve-root` 无旧产物被复制, 不进分析三步.
+- TC-02-08 (风险提示的两版伪产物): cache.json 记旧版本 `vis-2.8.0` 时重新解包并整体同步 serve-root, 旧版专属文件消失不叠加, 其它库 `*.cc.json` 数据副本保留.
+- TC-02-09: 镜像缺失时先 `podman pull` 再复检, `performed == true`, `notice` 存在且写明拉镜像与取官方前端属首次初始化的慢操作, steps 记录 pull, 随后照常三步分析.
+
+### stub 边界声明
+
+**stub podman 用例只证明参数构造与流程接线, 不等于分析可用**: deps/metrics/cc.json 都是 stub 写的伪产物, 未跑过任何真实 ccsh. 真实 pull, 真实下载 web.zip, 真实三步分析与 digest inspect 由 ISSUE-07 在宿主承接, 本 issue 一律记未验证, 不用 stub 顶替.
+
+### 允许的越界调整记录
+
+ISSUE-01 的 `test_cli_output_shape.py` 两个 build 形状用例: 接线后宿主上"前置检查全过"会走真实分析流水线 (含网络初始化), 原设计落点 internal_error 已不存在. 按任务书允许的越界处理, 把宿主分支改为注入不含 podman 的 `PATH` 使其在 `podman_missing` 处快速失败 (仍是前置检查失败, 形状断言逐字未改), 容器内分支 (container_not_supported) 不变.
+
+### 未做/未验证项与原因
+
+- `initialization.performed == true` 的真实形态与真实首次初始化 (拉镜像 + 下载 web.zip): 容器无出网, 网络接缝不造替身, 归 ISSUE-07 宿主证据 (TC-02-09 只覆盖 pull 的流程接线与固定字段).
+- `podman_missing`/`image_unavailable`/`frontend_unavailable` 宿主构造场景: 同上归 ISSUE-07; 容器内 CLI 入口被 container_not_supported 拦在第一关, 无法从真实入口到达.
+- 真实库 build 与目标库 git status (BR-031 容器外部分): 无真实 podman 与用户指定库, 归 ISSUE-07.
+- 仓库内未留任何 `.cc.json`, `web.zip`, 前端解包产物与私有库路径 (`git ls-files` 检索命中 0, BR-035); 全部伪产物只存在于用例 tmp_path 与 `/tmp/m26-02/`.
 ## 风险提示
 - stub `podman` 只能证明参数构造与流程接线, 不能证明分析可用; 证据里若混写会被判为伪造通过.
 - 首次初始化要整体替换 `serve-root` 里的前端产物, 直接叠加会留下旧版本文件; 测试用两版伪产物覆盖这条.

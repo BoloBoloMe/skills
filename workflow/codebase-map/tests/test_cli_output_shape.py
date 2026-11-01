@@ -3,10 +3,13 @@
 
 进程接缝: 入口脚本带连字符不能当模块名, 一律 subprocess 调真实入口.
 
-环境感知 (m25 D016 验证分工): 容器内失败码是 container_not_supported; 宿主
-(有 podman) 前置检查全过后落 "流水线未接线" 的 internal_error. 两种环境都必须
-满足同一形状: --json stdout 恰一行含 success/command/error; 非 JSON 失败
-stdout 是多行摘要, stderr 说清下一步动作, 退出码 1.
+环境感知 (m25 D016 验证分工): 容器内失败码是 container_not_supported. ISSUE-02
+接线后, 宿主上前置检查全过的 build 会走真实分析流水线 (含网络初始化), 形状
+用例不应触发它, 故注入不含 podman 的 PATH 让宿主分支在 podman_missing 处快速
+失败 (仍是前置检查失败, 形状断言不变; ISSUE-02 接线的允许越界调整, 见交付
+证据). 两种环境都必须满足同一形状: --json stdout 恰一行含
+success/command/error; 非 JSON 失败 stdout 是多行摘要, stderr 说清下一步动作,
+退出码 1.
 """
 from __future__ import annotations
 
@@ -20,12 +23,15 @@ from codemap_helpers import (
     stdout_json,
 )
 
+# 宿主上注入不含 podman 的 PATH: 形状用例在 podman_missing 快速失败, 不触真实流水线
+NO_PODMAN_PATH = {"PATH": "/nonexistent"}
+
 
 def test_json_failure_stdout_exactly_one_line_with_stable_fields(tmp_path):
     """--json 时 stdout 恰好一行可解析 JSON, 字段含 success/command/error."""
     target = make_target(tmp_path)
     proc = run_cli("build", str(target), "--json",
-                   env_extra={ENV_RUNTIME_DIR: str(tmp_path / "rt")})
+                   env_extra={ENV_RUNTIME_DIR: str(tmp_path / "rt"), **NO_PODMAN_PATH})
     assert proc.returncode == 1
     lines = proc.stdout.splitlines()
     assert len(lines) == 1, f"--json 模式 stdout 必须恰一行: {proc.stdout!r}"
@@ -43,7 +49,7 @@ def test_human_failure_stderr_has_next_step_and_exit_1(tmp_path):
     """非 JSON 失败: stdout 多行人类摘要, stderr 说清下一步动作, 退出码 1."""
     target = make_target(tmp_path)
     proc = run_cli("build", str(target),
-                   env_extra={ENV_RUNTIME_DIR: str(tmp_path / "rt")})
+                   env_extra={ENV_RUNTIME_DIR: str(tmp_path / "rt"), **NO_PODMAN_PATH})
     assert proc.returncode == 1
     assert proc.stdout.count("\n") >= 2, "默认输出应为多行人类可读摘要"
     assert "codebase-map build" in proc.stdout
