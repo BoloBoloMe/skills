@@ -4,7 +4,7 @@ description: 模糊目的地的领航流程: 对齐目的地, 绘制路线图, �
 disable-model-invocation: true
 ---
 
-开始前, 调用 `domain-awareness` skill 感知领域模型.
+开始前, 调用 `domain-awareness` skill 感知当前工作目录的领域模型.
 
 ## 使命
 

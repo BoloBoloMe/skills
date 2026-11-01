@@ -4,9 +4,9 @@ description: 盘问我以敲定决策, 然后将决策落盘.
 disable-model-invocation: true
 ---
 
-本 skill 可选, 不构成完成标准; 完成标准见 [verification-contract](../verification-contract/SKILL.md).
+本 skill 是方法 skill; 完成标准见 [verification-contract](../verification-contract/SKILL.md).
 
-调用 `domain-awareness` skill 只读感知当前工作目录的领域模型, 调用 `grilling` skill 盘问我.
+开始前, 调用 `domain-awareness` skill 感知当前工作目录的领域模型, 调用 `grilling` skill 盘问我.
 
 1. **盘问.** 逐条敲定这次要决定的东西, 每问只问一个决定.
    完成标准: 本次待定的每个选项都有我的明确答复, 没有留给我事后确认的问题.

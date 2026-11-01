@@ -1,10 +1,10 @@
 ---
 name: demo
-description: 制作演示材料 — 让人看清指定样子, 行为或过程.
+description: 制作演示材料, 让人看清指定样子, 行为或过程.
 disable-model-invocation: true
 ---
 
-本 skill 可选, 不构成完成标准; 完成标准见 [verification-contract](../verification-contract/SKILL.md).
+本 skill 是方法 skill; 完成标准见 [verification-contract](../verification-contract/SKILL.md).
 
 # 演示
 
@@ -34,4 +34,4 @@ disable-model-invocation: true
    2. 想请我据此判断什么.
    3. 材料位置.
    4. 相关 issue 指针.
-6. **验证止于能演示, 其余由我驱动.** 能演示 = 能启动, 能交互, 该展现的能正常展现. 之后每多一步都是空转: 演示是否达意只有我驱动才暴露, 实现瑕疵会在我操作时顺路浮现 — 那些 case 我本来就要跑.
+6. **验证止于能演示, 其余由我驱动.** 能演示 = 能启动, 能交互, 该展现的能正常展现. 之后每多一步都是空转: 演示是否达意只有我驱动才暴露, 实现瑕疵会在我操作时顺路浮现: 那些 case 我本来就要跑.

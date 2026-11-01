@@ -25,7 +25,7 @@
 ## 删除与不可逆操作
 
 - Git worktree 删除走 `git worktree remove`, 清理走 prune; dirty (含 untracked) 时停下询问.
-- 禁止 `--force` 与 `-D` 硬删: 它们会绕过「有未提交改动就失败」这道保险.
+- 禁止 `--force` 与 `-D` 硬删: 它们会绕过 "有未提交改动就失败" 这道保险.
 - 删除 main worktree 等于删除整个仓库, 一律先确认.
 
 ## 脱敏

@@ -4,14 +4,14 @@ description: 追求最小交付的决策阶梯与实现阶梯, 含降级信号�
 disable-model-invocation: true
 ---
 
-本 skill 可选, 不构成完成标准; 完成标准见 [verification-contract](../verification-contract/SKILL.md).
+本 skill 是方法 skill; 完成标准见 [verification-contract](../verification-contract/SKILL.md).
 
 # 懒品味
 
 好的设计和好的代码, 不是写得够不够全面漂亮, 而在 *正确*, *最小*, *无未来负担*. 关键在找到用 *最少代码* 撬动 *最大收益* 的杠杆支点, 不为推测需求多写一行.
 最好的设计是未做的设计, 最好的代码是未被写下的代码.
 
-开始前, 调用 `domain-awareness` skill 只读感知当前工作目录的领域模型.
+开始前, 调用 `domain-awareness` skill 感知当前工作目录的领域模型.
 
 ## 流程
 

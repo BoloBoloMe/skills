@@ -4,11 +4,11 @@ description: 决策与事实账本 DECISIONS.md 的记录与维护.
 disable-model-invocation: true
 ---
 
-开始前, 调用 `domain-awareness` skill 只读感知当前工作目录的领域模型.
+开始前, 调用 `domain-awareness` skill 感知当前工作目录的领域模型.
 
 `DECISIONS.md` 是决策与事实账本, 它记录我确认过的决策和事实, 是后续会话的 *权威输入*. 账本是给 LLM 读的, 不是给我读的.
 
-输出: `<产物根目录>/DECISIONS.md`. 产物根目录默认 `docs/changes/<feature-slug>/`; 调用方可指定其他根目录.
+输出: `<产物根目录>/DECISIONS.md`. 产物根目录按 `software-engineering-consensus` skill 的 产物根目录 词条确定; 调用方可另行指定.
 
 ## 账本模板
 

@@ -22,7 +22,7 @@ disable-model-invocation: true
 `<产物根目录>/EXECUTION.md`
 `<产物根目录>/issues/ISSUE-<NN>-<slug>.md`, 从 `ISSUE-01` 连续编号.
 
-产物根目录约定为 `docs/changes/<feature-slug>/`; 我调用时另行指定则按指定, 除此之外不再确认. `<slug>` 用小写 kebab-case 短语概括该 issue 的交付内容, 如 `gatekeeper-read-write`.
+产物根目录按 `software-engineering-consensus` skill 的 产物根目录 词条确定; 我调用时另行指定则按指定, 除此之外不再确认. `<slug>` 用小写 kebab-case 短语概括该 issue 的交付内容, 如 `gatekeeper-read-write`.
 
 # 起草垂直切片
 
@@ -59,5 +59,5 @@ disable-model-invocation: true
 
 使用 [模板](TEMPLATES.md) 写 `EXECUTION.md` 与每个 issue; 模板给出节名与节序, 逐字照抄.
 
-只强制 issue 的 `验证契约`, `验证入口`, `交付证据` 三节; `允许范围` 与 `禁止范围` 在有增量或特有禁止项时写, 与全局相同则省略; 其余节按需保留, 没有内容就整节删掉, 不写「无」「不适用」占位.
+只强制 issue 的 `验证契约`, `验证入口`, `交付证据` 三节; `允许范围` 与 `禁止范围` 在有增量或特有禁止项时写, 与全局相同则省略; 其余节按需保留, 没有内容就整节删掉, 不写 "无" "不适用" 占位.
 只核验, 不修改成品的 issue 用模板里的纯核验版本: 只填核验栏目, 不套改动契约, 不新增实施分类.

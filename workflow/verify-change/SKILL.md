@@ -13,7 +13,7 @@ disable-model-invocation: true
 
    - 已确认的 `PRODUCT.md`. `验收标准` 节的 gherkin 块前须有确认标记 `<!-- confirmed-flow: vN -->`.
    - 目标项目与本次具体目标提交.
-   - 调用上下文确定的产物根目录. 默认 `docs/changes/<feature-slug>/`.
+   - 调用上下文确定的产物根目录; 默认值见 `software-engineering-consensus` skill 的 产物根目录 词条.
 
    缺 PRODUCT.md 就报告输入缺口并停止. 不从设计或计划反推产品判据. 作者的自我评价不能替代我确认的标准.
    将 PRODUCT.md 的全部验收场景抄成必验清单. 再加入 `业务规则` 节标 `(审计)` 的规则. 编号照原文, 一条不漏. 即使变更只碰一个入口, 也列全. 避免默认放过未碰功能或漏掉审计规则.

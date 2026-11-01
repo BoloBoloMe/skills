@@ -5,11 +5,11 @@ disable-model-invocation: true
 ---
 
 编写当前变更的两份 spec: `PRODUCT.md` 定义产品结果, `TECHNICAL.md` 定义技术设计. 它们是下游执行的权威输入, 缺一份就缺信源; 本 skill 转述已确认的决策与事实, 需要新决策时交回我裁决.
-产物根目录默认 `docs/changes/<feature-slug>/`, 调用方指定时从其指定. 两份文件均写在该目录下, 各类 ID 在 feature 内稳定且连续.
+产物根目录按 `software-engineering-consensus` skill 的 产物根目录 词条确定; 调用方指定时从其指定. 两份文件均写在该目录下, 各类 ID 在 feature 内稳定且连续.
 
 # 流程
 
-1. **补齐输入.** 调用 `domain-awareness` skill 只读感知领域模型, 调用 `codebase-design` skill 检查技术设计及术语. 对照 [模板](TEMPLATES.md) 两份 spec 逐项核对已确认的决策与事实; 仅靠转述填不出的内容, 或与设计原则不符的内容, 都是缺口. 有缺口或冲突时调用 `deliberate` skill 敲定并固化, 先产品后技术, 再以更新后的决策与事实继续.
+1. **补齐输入.** 调用 `domain-awareness` skill 感知当前工作目录的领域模型, 调用 `codebase-design` skill 检查技术设计及术语. 对照 [模板](TEMPLATES.md) 两份 spec 逐项核对已确认的决策与事实; 仅靠转述填不出的内容, 或与设计原则不符的内容, 都是缺口. 有缺口或冲突时调用 `deliberate` skill 敲定并固化, 先产品后技术, 再以更新后的决策与事实继续.
    完成标准: 两份 spec 的每项内容都有已确认的决策或事实支撑, 全部决策盘问已结束, 无待定项或未解决冲突.
 2. **确认验收用例.** 按 [验收标准确认](#验收标准确认) 委派子代理起草并打磨, 由主会话验收后展示给我.
    完成标准: 草稿已通过机检与主会话验收, 且我在 chat 明确采纳了展示的固定版本.
