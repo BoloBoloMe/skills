@@ -4,6 +4,8 @@ description: 决策与事实账本 DECISIONS.md 的记录与维护.
 disable-model-invocation: true
 ---
 
+# 决策账本
+
 开始前, 调用 `domain-awareness` skill 感知当前工作目录的领域模型.
 
 `DECISIONS.md` 是决策与事实账本, 它记录我确认过的决策和事实, 是后续会话的 *权威输入*. 账本是给 LLM 读的, 不是给我读的.

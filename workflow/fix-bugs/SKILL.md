@@ -4,6 +4,8 @@ description: 难 bug 的修复链条: 复现, 定位根因, 出方案, 修复, �
 disable-model-invocation: true
 ---
 
+# 修复 bug
+
 修 bug 的统一链条对所有 bug 一样, 不分大小: 复现 → 定位原因 → 制定修复方案 → 执行修复 → 验证修好且没改坏. 完成证据见 [verification-contract](../verification-contract/SKILL.md) 缺陷修复节: 红态真出现过, 修复后同一检查通过, 原始场景复跑.
 
 本 skill 是这条链在难 bug 上的详细手法: 阶段 3, 4 在循环足够锐利时可按需跳过, 其余阶段只有理由明确时才允许跳过; 复现与验证没改坏的复核不可省.

@@ -4,9 +4,9 @@ description: 价值转移系统变更的资损审查, 钱被错付或资产被�
 disable-model-invocation: true
 ---
 
-本 skill 是方法 skill; 完成标准见 [verification-contract](../verification-contract/SKILL.md).
-
 # 资损审查
+
+本 skill 是方法 skill; 完成标准见 [verification-contract](../verification-contract/SKILL.md).
 
 ## 边界
 

@@ -4,6 +4,8 @@ description: 盘问我以敲定决策, 然后将决策落盘.
 disable-model-invocation: true
 ---
 
+# 决策盘问
+
 本 skill 是方法 skill; 完成标准见 [verification-contract](../verification-contract/SKILL.md).
 
 开始前, 调用 `domain-awareness` skill 感知当前工作目录的领域模型, 调用 `grilling` skill 盘问我.

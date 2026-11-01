@@ -4,11 +4,11 @@ description: 模块, 接口, 接缝, 深模块 等设计词汇与可测试性原
 disable-model-invocation: true
 ---
 
+# 代码库设计
+
 本 skill 是方法 skill; 完成标准见 [verification-contract](../verification-contract/SKILL.md).
 
 开始前, 调用 `domain-awareness` skill 感知当前工作目录的领域模型.
-
-# 代码库设计
 
 设计 **深模块**: 大量行为隐藏在小接口背后, 位于清晰的接缝, 可通过该接口测试. 任何设计或重构代码的地方, 都使用这套语言和原则. 目标: 对调用者的杠杆, 对维护者的局部性, 对所有人的可测试性.
 

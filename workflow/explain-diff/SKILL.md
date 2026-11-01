@@ -4,6 +4,8 @@ description: 代码变更/diff/分支/PR 的交互式 HTML 解释流程.
 disable-model-invocation: true
 ---
 
+# 变更讲解
+
 为我指定的代码变更生成 HTML 讲解页, 帮我理解为什么改, 怎样改, 有什么证据, 合并后会影响什么. 围绕这次变更讲清因果关系, 而不是写 PR 正文或通用教程.
 
 ## 流程

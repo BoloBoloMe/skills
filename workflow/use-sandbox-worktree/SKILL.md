@@ -4,7 +4,7 @@ description: 管理宿主 worktree 与 sandbox 容器绑定对的生命周期与
 disable-model-invocation: true
 ---
 
-# use-sandbox-worktree
+# 宿主机与 sandbox 容器对管理
 
 管理一对资源: 宿主 Git worktree (下称母体) 与从它克隆的 sandbox 容器. 容器只经本对 Git 桥快进推送母体分支, 不接触真远端; 推送落地有秒级短延迟. 每个母体至多一个未终结容器, 已停止也占用此名额; 不同母体可并存. 旧部署按原形态处理, 不追溯迁移.
 你在宿主管理生命周期与接入, 开发交给容器内 pi. 母体仅供审阅/diff/不改跟踪文件的试跑: 跟踪文件变脏会拒绝容器 push, 未跟踪文件不阻塞.

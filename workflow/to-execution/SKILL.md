@@ -4,18 +4,20 @@ description: 将 Product/Technical Spec 拆成 LLM 可执行的 Execution Spec �
 disable-model-invocation: true
 ---
 
+# 拆分可执行 issue
+
 开始前, 调用 `domain-awareness` skill 感知当前工作目录的领域模型, 调用 `verification-contract` skill 确定每个 issue 的变更类型, 验证方式与证据.
 
-# 检查权威输入
+## 检查权威输入
 
 产物根目录下是否已有 `PRODUCT.md` 和 `TECHNICAL.md`? 缺任一份先调用 `to-spec` skill 生成, 再继续.
 权威输入定义全部意图, 代码事实只验证可行性和既有形状. 权威输入之间如有冲突, 或需要新增/改变决策内容时, 调用 `deliberate` skill 敲定并固化, 再继续.
 
-# 目标
+## 目标
 
 把变更拆成多个单会话可容纳的垂直切片 `ISSUES`, 再用 `EXECUTION.md` 记录任务全局视角. 每个 issue 在一个全新的上下文窗口中交付, 执行 agent 沿 `EXECUTION.md` 的任务图领取, 于是单个会话的上下文上限不再截断整个变更.
 
-# 输出
+## 输出
 
 本 skill 的产物统称为 Execution Spec, 只供 LLM 使用, 我不会阅读它们:
 
@@ -24,7 +26,7 @@ disable-model-invocation: true
 
 产物根目录按 `software-engineering-consensus` skill 的 产物根目录 词条确定; 我调用时另行指定则按指定, 除此之外不再确认. `<slug>` 用小写 kebab-case 短语概括该 issue 的交付内容, 如 `gatekeeper-read-write`.
 
-# 起草垂直切片
+## 起草垂直切片
 
 把工作拆成 **tracer bullet** issues. 只有端到端可独立验证的切片, 才能让全新上下文窗口中的执行 agent 无需折返追问. 垂直切片规则:
 
@@ -46,7 +48,7 @@ disable-model-invocation: true
 - 每条 blocker 都是前置 issue 完成后本 issue 才能开始的真实依赖, blocker 图无环.
 - 宽重构已按 refactor-expand-contract.md 拆分或明确不适用.
 
-# 固化 Execution Spec 和 issues
+## 固化 Execution Spec 和 issues
 
 拆分内容不送人工审核: 通过起草完成标准自检后直接固化, 产物根目录按约定落盘. 按 [模板](TEMPLATES.md) 生成拆分出的 issues, 再生成引用真实 issue 路径的 `EXECUTION.md`. 按依赖顺序编号. 确需编写自动化测试时才分配 TC (测试用例) 编号, 不因有 AC 就生成 TC. 已采用的 TC 编号全局唯一, 各 issue 自行编号, 无需集中分配: 覆盖某 AC 的主用例与 AC 同号 (`AC-005 -> TC-005`); 已确认且确需自动化的其他要求或同一 AC 的额外用例用 `TC-<issue 两位编号>-<两位序号>`, 如 ISSUE-02 的第一条额外用例为 `TC-02-01`. 不从编号规则反推要补用例. 信源与决策的引用路径按实际位置解析, 不假设它们位于产物根目录.
 存在相关 DECISIONS.md 时, 每个 issue 单向引用相关决策 ID, 见 issue 模板的 相关决策 节. 引用只从产物指向账本: DECISIONS.md 是权威信源, 产物是派生视图, 账本不记录产物引用. 不新增或改变决策内容. 无相关决策时 issue 写"无".

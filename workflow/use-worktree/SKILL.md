@@ -4,7 +4,7 @@ description: Git worktree 布局识别, 创建, 删除, 迁移, 安全检查流�
 disable-model-invocation: true
 ---
 
-# use-worktree
+# Git worktree 管理
 
 ## 标准布局
 

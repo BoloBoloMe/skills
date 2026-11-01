@@ -4,9 +4,9 @@ description: 制作演示材料, 让人看清指定样子, 行为或过程.
 disable-model-invocation: true
 ---
 
-本 skill 是方法 skill; 完成标准见 [verification-contract](../verification-contract/SKILL.md).
-
 # 演示
+
+本 skill 是方法 skill; 完成标准见 [verification-contract](../verification-contract/SKILL.md).
 
 演示材料是让人看清指定样子, 行为或过程的代码或页面.
 

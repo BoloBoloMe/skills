@@ -4,6 +4,8 @@ description: 只读感知当前工作目录的领域模型.
 disable-model-invocation: true
 ---
 
+# 领域感知
+
 判断任务处于哪个阶段:
 - 设计阶段: 优先遵循仓库内 `AGENTS.md` 的领域文档约定, 无约定时探索仓库内的 `docs/language/`, `docs/adr/`.
 - 执行阶段: 任务已经拆分成可执行切片, 跳过探测; 已有产物 (EXECUTION.md, issue) 记录的领域信息与本轮一致时直接复用, 不重复探测或复述.

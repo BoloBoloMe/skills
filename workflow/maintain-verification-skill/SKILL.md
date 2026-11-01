@@ -4,7 +4,7 @@ description: 按当前已确认 PRODUCT.md 维护项目本地验证配方, 分�
 disable-model-invocation: true
 ---
 
-# maintain-verification-skill
+# 验证配方维护
 
 项目本地验证配方是一份 skill. 它保存测试环境启动, 健康检查, 驱动, 取证与数据保留规则. 按功能组织入口, 让陌生 agent 不必重复探索.
 你让配方与当前事实一致, 不修产品. 开始前调用 `verification-contract` skill, 只遵守共用底线; 已确认的 PRODUCT.md 决定通过判据与维护范围. 配方不另立标准, 历史功能数量也不决定范围.

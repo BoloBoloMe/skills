@@ -4,6 +4,8 @@ description: 按规范, spec 与按门槛纳入的旧行为影响分别评审代
 disable-model-invocation: true
 ---
 
+# 代码评审
+
 开始前, 调用 `domain-awareness` skill 感知当前工作目录的领域模型.
 
 从我指定或调用方明确传入的基准点到 `HEAD` 之间的 diff, 按以下评审方向分别 review:
