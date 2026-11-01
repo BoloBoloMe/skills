@@ -346,10 +346,15 @@
       "title": "给 mailbox 信头时间加 MAILBOX_TZ 覆盖",
       "type": "task",
       "question": "我确认的做法: 给 general/mailbox 的信头呈现加时区覆盖, 不硬编码 +08, 不改系统时区. 具体: (1) 读取环境变量 MAILBOX_TZ, 支持 IANA 名字 (如 Asia/Shanghai) 以及正负偏移写法 (如 +08:00, 便于没有 tzdata 的环境); 未设时保持现在的行为, 即 astimezone() 取系统本地时区, 不改变现有输出. (2) 只影响 print_letter 里的 发送时间 呈现 (scripts/mailbox.py 约 2369 行的 fromtimestamp + astimezone 那段); 事件日志 log_event 的 UTC 加 Z 保持不变 (跨机对齐用), 相对时间 (presence 的 age_text) 也不动. (3) 值非法时不让取信失败: 回退到系统本地时区并在 stderr 提示一次 (走现有 log_event 风格或一条提示), 呈现照常输出. (4) 实现只用标准库: zoneinfo 解析 IANA 名字, 偏移写法自己解析; 不新增依赖, 不写死任何具体时区. (5) 文档: general/mailbox/SKILL.md 第 32 行那句补上 MAILBOX_TZ 覆盖说明 (未设时按系统本地时区, 日志仍为 UTC), 措辞与该文风格一致. (6) 测试: 在仓库 tests/ 下 mailbox 用例处补覆盖, 至少证明 MAILBOX_TZ=Asia/Shanghai 时信头为 +08:00 且小时数与 UTC 差 8, 非法值回退系统时区且不报错, 未设时行为与改动前一致; 时区断言只比较偏移与差值, 不锁死具体日期, 避免跨时区机器上失败. 验证: uv run python -m pytest tests -k mailbox (或相关子集) 全绿; 手动以 MAILBOX_TZ=Asia/Shanghai 渲染一封信确认 +08:00. 编码任务按 drive-execution skill 执行, 产物根目录 docs/changes/workflow-stack-review/milestone-20/.",
-      "status": "进行中",
+      "status": "已关闭",
       "blocked_by": [],
-      "artifacts": [],
-      "close_summary": null
+      "artifacts": [
+        "docs/changes/workflow-stack-review/milestone-20/IMPLEMENTATION.md",
+        "general/mailbox/scripts/mailbox.py",
+        "general/mailbox/SKILL.md",
+        "tests/test_mailbox_prompts.py"
+      ],
+      "close_summary": "已落地 MAILBOX_TZ 覆盖 (commit 0e11f3c): _parse_mailbox_tz 支持偏移写法 (+08:00/+0800/+08, 限 +-24h) 与 IANA 名 (zoneinfo), 未设或空走 astimezone() 系统本地时区, 非法值回退并在 stderr 提示一次; 只改 print_letter 的发送时间呈现, log_event 的 UTC 加 Z 与 presence 的 age_text 未动; 只用标准库; SKILL.md 收信规则那句补说明; tests/test_mailbox_prompts.py 新增 6 例. 我复核: tests/test_mailbox_prompts.py 24 passed; 实跑 MAILBOX_TZ=Asia/Shanghai 渲染得 +08:00 (UTC 09:10:05 对 17:10:05), 非法值 Mars/Olympus 打印一次提示且照常输出, 未设时与改动前一致. 子代理另跑 tests -k mailbox -m \"not e2e\" 得 1 failed/201 passed, 唯一失败 test_mailbox_listen_tool_schema_smoke 我在主检出基线复现同样失败 (node 报无法从 pi shim 解析 cmd-shim-target), 属容器环境问题而非本次改动. 未验证: 无 tzdata 环境的 IANA 用例未实走 (容器有 tzdata, 用例有 skipif), 未跑真实 serve+send 全链路. 容器内跑全量测试需临时 podman stub 过 conftest 卫生钩子, 是否改 conftest 待宿主裁决, 本轮不动; 验收归 milestone-08."
     },
     "milestone-21": {
       "title": "落地代码库结构可视化的汉化构建与交付",
