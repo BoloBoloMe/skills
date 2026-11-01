@@ -2,8 +2,11 @@
 - `../EXECUTION.md`
 
 ## 执行
-- [ ] 已完成
-- [ ] 派工前复核并记录 (写在本行下方): HEAD 提交号; `PYTEST_XDIST_WORKER=gw0 uv run python -m pytest --collect-only -q` 条数; `workflow/codebase-map/` 当前存在哪些文件.
+- [x] 已完成
+- [x] 派工前复核并记录 (写在本行下方): HEAD 提交号; `PYTEST_XDIST_WORKER=gw0 uv run python -m pytest --collect-only -q` 条数; `workflow/codebase-map/` 当前存在哪些文件.
+- HEAD = db3be1e (分支 issue/05).
+- collect-only 条数 = 924.
+- `workflow/codebase-map/` = README.md, SKILL.md, agents/, i18n/, scripts/, tests/, tools/; scripts/ 下有 codebase-map.py, codemap_analyze.py, codemap_common.py, codemap_service.py.
 
 ## 要交付什么
 让 `serve` 的输出成为唯一可交付的东西 (调用会话只转述, 不自己拼):
@@ -59,6 +62,12 @@
 - 通过标准 (整体): 上述每条成立; 缺地址时服务照常监听 (可用 `GET /` 验证) 且退出码 0.
 
 ## 交付证据
+
+- 自动化: `PYTEST_XDIST_WORKER=gw0 uv run python -m pytest workflow/codebase-map/tests` 退出码 0, 65 passed, 0 failed, 0 skipped (不新增 skipped); 收集条数 924 -> 930, 增量 6 = 新增用例 6 (TC-008, TC-05-01..TC-05-05); `tests/test_skills_codex_metadata.py` 1 passed; `check_skill.py workflow/codebase-map/SKILL.md` OK (SKILL.md 未改).
+- 用例结果: TC-008 已确认地址时 base_url 与每个 keys[].url 用该地址加实际端口拼成, `?file=<键>` 形状正确, 交付 URL 无回环/主机名/文件路径; TC-05-01 缺地址退出码 0, 服务已起 (GET / 200), 无 url/base_url, keys 每项只给键名, address_missing.code=no_confirmed_address, candidates 非空全 IPv4 字面量, 人类可读首行 BLOCKED; TC-05-02 `serve --address <候选>` 重交付且 address_source=explicit_argument, state.json 与 lan-address 均无该地址, 再不带 --address 仍阻塞; TC-05-03 keys 为交集, 缺失键与未登记副本都有提示, state.json 与磁盘原样 (不收编不删); TC-05-04 三类说明齐全且分母文件数等于副本依赖树文件数, 显式换端口 port_changed=true 且 previous_url 取停机前记录, 不带 --port 时两者不出现; TC-05-05 url 端口 = state.json.port = 实际监听端口, keys[].key 等于实际文件名, keys[].url 与 base_url 同源且同路径真实可开.
+- BR-027 服务侧人工核验 (无出网容器): 手工 serve 成功, keys 与三类说明齐全, GET / 与 GET /?file=<键> 均 200, stop 干净; 静态核对 codemap_service.py 无远程网络模块 import, 无 podman 调用 (仅注释提及), codemap_analyze 延迟导入只调只读统计纯函数 files_in_tree_of. 完整命令与两形态摘录 (地址脱敏为 <已确认地址>) 在 /tmp/m26-05/evidence.md.
+- 收尾: `pgrep -f _serve-daemon` 无残留, 相关端口无监听.
+- 未验证 (留宿主, 归 ISSUE-07): 局域网设备真实打开交付 URL (m25 D007/D012: 用户设备真实请求才算通过), 真实库 build 后的完整链路; 本 issue 未用替身顶替.
 
 ## 风险提示
 - 用临时 `HOME` 替换地址文件是测试手法, 不是新增配置源; 实现里若为了测试方便读环境变量覆盖地址路径, 就违反了 m14 D011, 会被判为越界.
