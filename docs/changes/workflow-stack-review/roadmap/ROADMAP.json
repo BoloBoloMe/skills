@@ -194,7 +194,8 @@
         "milestone-17",
         "milestone-18",
         "milestone-19",
-        "milestone-20"
+        "milestone-20",
+        "milestone-21"
       ],
       "artifacts": [],
       "close_summary": null
@@ -339,11 +340,18 @@
       "blocked_by": [],
       "artifacts": [],
       "close_summary": null
+    },
+    "milestone-21": {
+      "title": "落地代码库结构可视化的汉化构建与交付",
+      "type": "task",
+      "question": "按 docs/changes/workflow-stack-review/milestone-13/PLAN.md 落地, 方案已与用户敲定, 不再改方案本身: (1) 全量词表: 模板 359 条 (通道 A), .ts 侧人工过滤后的 A 类文案约 500 条 (通道 B), 绑定与插值内字面量约 30 处 (通道 C); 先扩写术语表并统一高频单词型文案, 再分批翻译, 同一英文默认单一译法, 语境不同才按文件覆盖. (2) 构建脚本固化: clone 指定 vis tag -> 三通道替换 -> npm ci -> npm run build -> 自建渲染冒烟 (临时静态服务 + 无头 Chromium 截图 + 关键元素断言), 全程幂等可重放, 并输出未使用词条与未命中统计. (3) nginx 配置: 交付一份含 try_files $uri /index.html 的配置, 解决深链 404; 交付命令用官方 nginx 镜像挂载产物与该配置, 不构建自有镜像. (4) 操作手册: 写清两端容器命令 (分析端官方 codecharta-analysis 镜像挂载目标仓库与输出目录; 前端挂载产物与配置), 数据交付方式 (?file= 或浏览器选文件), 升级流程 (改 tag 重跑, 看未使用词条), 已知坑 (深链, patch-package 冲突, 上游测试会红因而不跑). 手册里的 skill 名字与入口命令先用占位, 待 milestone-13 定名后替换. (5) 验证: 构建耗时与产物大小记录, 冒烟截图留证, 抽查术语一致性, 界面无残留英文 (允许列出明确的暂不翻译项并说明原因). 边界: 不改上游源码提交, 不 fork 上游, 不构建自有镜像, 不跑上游单测 (用户已裁决), 不决定 skill 名字与 to-spec 调用入口 (留 milestone-13). 详细验收标准实施前确认.",
+      "status": "待处理",
+      "blocked_by": [],
+      "artifacts": [],
+      "close_summary": null
     }
   },
-  "unknown_seas": [
-    "可视化实施拆成几个里程碑与各自边界: 依赖 milestone-13 的形态裁决 (是否内置 CodeCharta 前端, 第一版语言范围, 入口与服务形态, cc.json 是否入库) 才能定, 可能是一次 task, 也可能拆成原型加实施两步."
-  ],
+  "unknown_seas": [],
   "off_course": [
     {
       "what": "把 workflow 栈写成文的分层规则, 含层数与归层裁决",
