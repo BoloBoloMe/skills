@@ -1066,5 +1066,133 @@ class TestTC001ContainerDelivery(DeliveryAddressCliTestCase):
         self.assertEqual(obj["url"], "http://192.0.2.10:50021/")
 
 
+class TestTC003ReuseDeliveryPort(WebServerLifecycleTestCase):
+    """TC-003: 复用存活实例后交付 URL 端口为实例实际端口, 清单含两目录无重复."""
+
+    def test_reuse_keeps_instance_port_and_roots(self):
+        root1 = Path(self._tmpdir.name) / "root1"
+        root1.mkdir()
+        (root1 / "day1.html").write_text("v1", encoding="utf-8")
+        root2 = Path(self._tmpdir.name) / "root2"
+        root2.mkdir()
+        (root2 / "day2.html").write_text("v2", encoding="utf-8")
+        port1 = self._free_port("127.0.0.1")
+        first, code, proc = self._run_subprocess(
+            "start", str(port1), str(root1), "--bind", "127.0.0.1"
+        )
+        self.assertEqual(code, 0, f"stdout={proc.stdout} stderr={proc.stderr}")
+        sj = json.loads(self._server_json_path().read_text(encoding="utf-8"))
+        self._server_pids.append(sj["pid"])
+        self.assertEqual(first["url"], f"http://localhost:{port1}/")
+
+        port2 = self._free_port("127.0.0.1")
+        second, code, proc = self._run_subprocess(
+            "start", str(port2), str(root2), "--bind", "127.0.0.1"
+        )
+        self.assertEqual(code, 0, f"stdout={proc.stdout} stderr={proc.stderr}")
+        self.assertTrue(second["reused"])
+        self.assertEqual(second["port"], port1)
+        # 交付 URL 端口为实例实际端口, 不是本次请求端口
+        self.assertEqual(second["url"], f"http://localhost:{port1}/")
+        self.assertEqual(
+            second["roots"], [str(root1.resolve()), str(root2.resolve())]
+        )
+
+        # 同一目录重复增挂不产生重复项, 端口与 URL 不变
+        third, code, proc = self._run_subprocess(
+            "start", str(port2), str(root1), "--bind", "127.0.0.1"
+        )
+        self.assertEqual(code, 0, f"stdout={proc.stdout} stderr={proc.stderr}")
+        self.assertEqual(
+            third["roots"], [str(root1.resolve()), str(root2.resolve())]
+        )
+        self.assertEqual(third["url"], second["url"])
+        self.assertEqual(third["port"], port1)
+
+
+class TestTC004StatusRebuildDeliveryUrl(DeliveryAddressCliTestCase):
+    """TC-004/TC-02-02: 重建换端口后记录, status, 交付 URL, 真实监听四处一致."""
+
+    def test_rebuild_on_new_port_keeps_record_url_and_listener_in_sync(self):
+        root = Path(self._tmpdir.name) / "root"
+        root.mkdir()
+        (root / "f.txt").write_text("rebuild-probe", encoding="utf-8")
+        port = self._free_port("127.0.0.1")
+        start_obj, code, proc = self._run_subprocess(
+            "start", str(port), str(root), "--bind", "127.0.0.1"
+        )
+        self.assertEqual(code, 0, f"stdout={proc.stdout} stderr={proc.stderr}")
+        old_pid = json.loads(self._server_json_path().read_text(encoding="utf-8"))["pid"]
+        self._server_pids.append(old_pid)
+
+        os.kill(old_pid, signal.SIGKILL)
+        deadline = time.time() + 5
+        while time.time() < deadline:
+            try:
+                os.kill(old_pid, 0)
+            except ProcessLookupError:
+                break
+            time.sleep(0.05)
+        else:
+            self.fail(f"server process {old_pid} still alive after SIGKILL")
+
+        occupant = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        occupant.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        occupant.bind(("127.0.0.1", port))
+        occupant.listen(1)
+        try:
+            status_obj, code, proc = self._run_subprocess("status")
+            self.assertEqual(code, 0, f"stdout={proc.stdout} stderr={proc.stderr}")
+            self.assertTrue(status_obj["rebuilt"])
+            new_port = status_obj["port"]
+            self.assertNotEqual(new_port, port)
+            self.assertTrue(49152 <= new_port <= 65534)
+            self._server_pids.append(status_obj["pid"])
+
+            record = json.loads(self._server_json_path().read_text(encoding="utf-8"))
+            # 记录端口 == status.port == status.url 端口 == 实际监听
+            self.assertEqual(record["port"], new_port)
+            self.assertEqual(record["pid"], status_obj["pid"])
+            self.assertEqual(status_obj["url"], f"http://localhost:{new_port}/")
+            body, http_status = self._wait_for_url(f"http://127.0.0.1:{new_port}/f.txt")
+            self.assertEqual((body, http_status), ("rebuild-probe", 200))
+        finally:
+            occupant.close()
+
+    def test_status_accepts_lan_host_and_matches_start_url(self):
+        """TC-02-02: 同一次展示的 start 与 status 给同一交付地址.
+
+        容器内用注入的 SWT_HOST_LAN_IP/SWT_HOST_WEB_PORT 驱动容器分支,
+        宿主用 --lan-host 驱动宿主分支, 两者都只经 CLI 真实入口.
+        """
+        root = Path(self._tmpdir.name) / "root"
+        root.mkdir()
+        (root / "f.txt").write_text("same-url", encoding="utf-8")
+        port = self._free_high_port()
+        home = self._home_with_confirmed(None)
+        env = {"HOME": str(home)}
+        if IN_CONTAINER:
+            env.update({"SWT_HOST_LAN_IP": "192.0.2.10", "SWT_HOST_WEB_PORT": "50021"})
+            expected = "http://192.0.2.10:50021/"
+            extra = []
+        else:
+            expected = f"http://192.0.2.10:{port}/"
+            extra = ["--lan-host", "192.0.2.10"]
+        start_obj, code, proc = self._run_subprocess_env(
+            env, (), "start", str(port), str(root), "--bind", "0.0.0.0", *extra
+        )
+        self.assertEqual(code, 0, f"stdout={proc.stdout} stderr={proc.stderr}")
+        self.assertTrue(start_obj["success"], start_obj)
+        sj = json.loads(self._server_json_path().read_text(encoding="utf-8"))
+        self._server_pids.append(sj["pid"])
+        self.assertEqual(start_obj["url"], expected)
+
+        status_obj, code, proc = self._run_subprocess_env(env, (), "status", *extra)
+        self.assertEqual(code, 0, f"stdout={proc.stdout} stderr={proc.stderr}")
+        self.assertTrue(status_obj["success"], status_obj)
+        self.assertEqual(status_obj["url"], expected)
+        self.assertEqual(status_obj["port"], start_obj["port"])
+
+
 if __name__ == "__main__":
     unittest.main()
