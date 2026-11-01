@@ -310,9 +310,17 @@
         "milestone-22"
       ],
       "question": "按 milestone-14 的决策改写 general/present: SKILL.md 默认流程改为生成页面后起/复用常驻 web 服务并把局域网地址交付给我, 不再交付文件路径或 loopback 地址; REMOTE.md 的远程与容器分支并入同一条流程 (宿主与容器一致的地址与端口规则, 容器用已确认映射端口与 SWT_HOST_LAN_IP); scripts/web_server.py 按裁决落地 (绑定地址, 端口记录路径与格式, 不自停语义, status 重建后同步端口记录); 按已确认 Q1/Q2 删除 present 专用 browser_session.py 及本地 Chromium/状态回读流程, 取消每页状态对象的强制要求, 不保留备用分支. 同步更新 general/present/tests 里固化旧行为的用例并补新用例, 通过 uv run python -m pytest general/present/tests 与仓库 check_skill.py. 禁止修改真实已安装 skills, 不运行会改安装目录的同步. 编码任务按 drive-execution skill 执行, 产物根目录指定 docs/changes/workflow-stack-review/milestone-15/. 完成标准: 页面在宿主与容器两种场景都能经局域网地址打开, 端口记录与实际监听一致, present 调用结束后服务仍在, 测试与格式检查通过. 当前决策权威为 milestone-14/DECISIONS.md 当前有效 D001/D002/D004-D012 (D011 替代 D003), 详细标准为 ACCEPTANCE.md AC-15-01 至 AC-15-07. 实际端口唯一记录在 <系统临时目录>/pi-present-web-<uid>/server.json, 不与 navigate 共用实例/状态文件. 空闲退出代码已在 3dc49c6 删除, 不把已存在行为算新实现. 不直接复用旧 present-web-server 规格或执行输入; 缺当前 PRODUCT/TECHNICAL/EXECUTION/issues 时先按 drive-execution 规则准备, 不绕过输入缺口. 缺当前执行输入的准备工作已单列 milestone-22, 不在编码节点内绕过. 反方逐项处理与条件回归清单见 milestone-14/OPPOSITION-RESOLUTION.md, 宿主地址来源与两种环境真实访问证据已由 Q11/Q12 全 A 补明确认.",
-      "status": "进行中",
-      "artifacts": [],
-      "close_summary": null
+      "status": "已关闭",
+      "artifacts": [
+        "docs/changes/workflow-stack-review/milestone-15/PRODUCT.md",
+        "docs/changes/workflow-stack-review/milestone-15/TECHNICAL.md",
+        "docs/changes/workflow-stack-review/milestone-15/EXECUTION.md",
+        "docs/changes/workflow-stack-review/milestone-15/issues",
+        "general/present/SKILL.md",
+        "general/present/scripts/web_server.py",
+        "general/present/tests"
+      ],
+      "close_summary": "present 收成单一流程并按 m14 D001-D012 落地: 地址解析收成单入口 (宿主 --lan-host > 已确认 lan-address > 候选缺口; 容器 SWT_HOST_LAN_IP + 8800 对应宿主映射端口), 删除 REMOTE.md / browser_session.py 及两份测试, 取消 __PRESENTATION_STATE__ 强制, 端口记录/重建 URL 与常驻不自停语义按决策实现, env_docs 生成文案改指 m14 D011. 验证: pytest general/present/tests 99 passed / 4 skipped / 0 failed, check_skill.py OK; 真实 stop 后两页均不可访问, LAN 来源访问控制面 403, ../ 越界 404, 真实 8800 实例未被触碰. 容器侧用户设备证据已取得 (服务日志 05:58:52 来源 192.168.216.71 GET 页面 200 + favicon 404, 页面标记串与生成时间对上), 已注明来源地址属宿主/转发侧不能定设备真实 IP. 未验证缺口: (1) 宿主环境真实局域网访问 (需宿主会话起服务 + 用户设备打开), 按用户裁决留到 milestone-08 补; (2) ISSUE-01 宿主分支 CLI 端到端在容器内跑不了 (4 条 skip), 宿主分支 0.0.0.0 + 已确认地址 + 实际监听端口那条未勾; (3) ISSUE-02 容器字面 8800 被占的 port_in_use 未实测, 用等价高端口验证; (4) 未做 24 小时闲置存活等待. 代码合入母体 a9141d7 并推送."
     },
     "milestone-16": {
       "title": "定位地图页在路线图更新后失效的根因",
