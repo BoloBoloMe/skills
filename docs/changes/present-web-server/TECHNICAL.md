@@ -1,5 +1,7 @@
 # present-web-server Technical Spec
 
+后续适用范围: 本文保留原变更技术规格. SSH 分支, URL 来源/失败出口, TTL/TC-028, 状态对象与专用浏览器路径等受影响部分待 milestone-15 按 [milestone-14 决策](../workflow-stack-review/milestone-14/DECISIONS.md) 和 [AC-15](../workflow-stack-review/ACCEPTANCE.md#milestone-15-已确认标准) 对齐, 不直接复用旧用例总数/旧执行输入. 其中空闲退出代码已在 3dc49c6 删除, 不能按本文旧断言恢复.
+
 ## 技术目标
 
 - TG-001: `web_server.py` 以纯标准库实现 start/status/stop/add-dir 四命令, 单行 JSON 契约, exit 0/1. 覆盖: AC-001, AC-002, AC-003, AC-004.

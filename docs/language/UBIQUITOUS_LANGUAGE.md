@@ -5,7 +5,8 @@
 ## 语言
 
 **常驻展示服务**:
-present skill 在远程 (ssh) 场景下于主机上常驻的 web 服务器 (`web_server.py`), 向用户设备的浏览器交付展示内容. 同主机同用户 (uid) 单例, 多 ssh 会话共用.
+present skill 在宿主与容器中统一使用的常驻 web 展示服务, 向用户设备的浏览器交付已确认可用的局域网 URL. 同机器同用户 (uid) 单例, 多会话共用, 调用结束不关闭.
+定义依据: [milestone-14 D001/D004/D006](../changes/workflow-stack-review/milestone-14/DECISIONS.md); 规则已确认, 实施归 milestone-15, 不表示当前代码已全部符合.
 _避免_: web 服务器进程, 后台服务 (过泛, 未含单例与用途语义)
 
 **挂载目录 (root)**:
@@ -28,9 +29,9 @@ _避免_: 管理接口, 内部 API
 **常驻展示服务**上静态内容与目录 listing 的访问面, 绑定开放时对网段可见 (已接受取舍).
 _避免_: 公开面, 静态面
 
-**远程模式**:
-present skill 检测到 ssh 会话 (`SSH_TTY`/`SSH_CONNECTION` 或用户明示) 时的展示路径: 走**常驻展示服务**交付 URL, 完全替代本地 Chromium, 降级为纯展示 (无页面状态回读).
-_避免_: ssh 模式, headless 模式
+**远程模式** (历史概念, 已由 milestone-14 D001 取消分支):
+旧 present 根据 SSH 环境选择 web 展示而非本地 Chromium 的路径. 新规则统一使用**常驻展示服务**, 不再以此词划分两种交付方式.
+_避免_: 在新流程中使用 ssh 模式/headless 模式代指不同交付分支
 
 **sandbox-worktree**:
 git worktree + sandbox 容器的绑定对, use-sandbox-worktree skill 管理的生命周期单元: 诞生 (建工作树作**母体** + 拉起容器) → 存续 (用户 ssh 入容器驱动容器内 agent, 产物 push 到母体分支, **推送落地**回流 host) → 终结 (删容器; 母体存删用户自决).

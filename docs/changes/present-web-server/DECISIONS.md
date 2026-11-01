@@ -2,10 +2,14 @@
 
 变更标题: present skill 新增常驻 web 服务器脚本 (`general/present/scripts/web_server.py`), 远程 (ssh) 场景经 web 服务交付展示内容, 完全替代本地 Chromium 浏览器路径; `general/present/SKILL.md` 同步增加远程模式描述.
 
+## 当前适用范围
+
+后续统一交付规则见 [workflow-stack-review milestone-14 决策账本](../workflow-stack-review/milestone-14/DECISIONS.md). 用户已对该节点 Q1-Q10 全选 A 并结束盘问. 本账本保留原始内容作为历史, 下方整条被替代的条目更新状态, 部分被替代的条目附适用说明; 未变条款继续有效. 旧 PRODUCT/TECHNICAL/EXECUTION/issues 不是新改造的可直接复用输入, 受影响处须在 milestone-15 准备新输入时对齐. 这不代表 milestone-15 已实施或通过验收.
+
 ## 决策
 
 ### D001 绑定地址必填, ssh 场景默认 0.0.0.0, 明确无认证无 TLS
-- 状态: 当前有效
+- 状态: 已替代 (→ [milestone-14 D003/D007](../workflow-stack-review/milestone-14/DECISIONS.md))
 - 约束性: 必须遵守
 - 内容: `start` 的绑定地址 (`--bind`) 是必填参数, 无默认值. SKILL.md 指导 LLM 在 ssh 场景默认选 `0.0.0.0` 并直接向用户交付可点击 URL. 明确非目标: 无认证, 无 TLS, 不做跨机访问控制. 用户明确接受的取舍: 绑定开放时, 网段内任何主体可读全部已挂载目录. 理由: 使用场景是用户本人 ssh 上机后从自己设备的浏览器回看内容, 网段信任是该场景的前提; 认证/TLS 的成本对临时展示工具不成比例.
 - 预计影响: `general/present/scripts/web_server.py`, `general/present/SKILL.md`
@@ -17,13 +21,13 @@
 - 预计影响: `web_server.py` 运行时状态簇, 命令核心 start
 
 ### D003 远程模式完全替代浏览器路径, 远程降级为纯展示
-- 状态: 当前有效
+- 状态: 已替代 (→ [milestone-14 D001/D002](../workflow-stack-review/milestone-14/DECISIONS.md))
 - 约束性: 必须遵守
 - 内容: 检测到远程场景时, present skill 完全不起 Chromium, 生成 HTML 后挂载/复用 web 服务并直接交付 URL. 远程模式明确降级为纯展示: 无 `__PRESENTATION_STATE__` 回读通道, 页面交互反馈与最终确认全部在 chat 完成 (对齐既有原则 "最终确认必须在 chat 中完成"); web server 不加状态回传端点. 页面仍须写 `__PRESENTATION_STATE__` (本地模式与未来兼容需要). 理由: 远程无浏览器可控; 反方攻击指出"完全替代"会使 SKILL.md 现有的 state 回读反馈链断裂, 故显式降级而非静默缺失.
 - 预计影响: `general/present/SKILL.md` 远程模式段
 
 ### D004 远程检测: 环境变量优先, 用户明示可覆盖
-- 状态: 当前有效
+- 状态: 已替代 (→ [milestone-14 D001](../workflow-stack-review/milestone-14/DECISIONS.md))
 - 约束性: 必须遵守
 - 内容: `SSH_TTY` 或 `SSH_CONNECTION` 任一存在即判定远程 (agent 进程继承 ssh 环境); 用户明示可覆盖检测结果; 检测不到但用户提到远程时按远程处理. 已知限制 (接受, 不防): `su`/`sudo -i`/容器入口可能清洗这两个变量造成漏检, 兜底是用户明示; 漏检后果是走了本地浏览器路径而用户看不到, 可恢复.
 - 预计影响: `general/present/SKILL.md`
@@ -65,7 +69,7 @@
 - 预计影响: `web_server.py` 运行时状态簇
 
 ### D011 URL 交付与 host 探测优先级
-- 状态: 当前有效
+- 状态: 已替代 (→ [milestone-14 D003](../workflow-stack-review/milestone-14/DECISIONS.md))
 - 约束性: 必须遵守
 - 内容: start/复用成功时脚本输出主机名, 局域网 IP 及完整入口 URL, LLM 原样转述给用户. host 值探测优先级定死: `SSH_CONNECTION` 第 3 字段 (sshd 看到的本端地址, 即客户端实际连进来的地址, 可达性有构造保证) > 默认路由接口 IP > 主机名. 绑定 127.0.0.1 时输出 `ssh -L` 端口转发指引. 理由: 反方攻击指出默认路由法在多网卡/VPN/跳板机/NAT 拓扑下常给出客户端不可达的地址, 而可达答案就在 `SSH_CONNECTION` 里.
 - 预计影响: `web_server.py` 命令核心 start
@@ -78,6 +82,7 @@
 
 ### D013 验收标准 (产品层收口)
 - 状态: 当前有效
+- 适用范围更新: 第 7 项的远程分支/文件路径失败出口由 [milestone-14 D001/D003](../workflow-stack-review/milestone-14/DECISIONS.md) 替代, 当前实施标准用 [AC-15](../workflow-stack-review/ACCEPTANCE.md#milestone-15-已确认标准); 第 1/2 项输出/重建的容器例外按 milestone-14 D004/D005 对齐. 其余旧行为要求未因本次统一交付而取消, 但本段不作为新改造已经通过的证据.
 - 约束性: 必须遵守
 - 内容: 八条, 终版 (第 2 条为用户修订版, 覆盖初版"报错不换端口"):
   1. `start <port> <root> --bind <addr>` 三参缺一即报错不启动; 成功后守护进程化, ssh 断连服务存活; stdout 输出含入口 URL (主机名/局域网 IP), 端口, 挂载信息的 JSON.
@@ -91,7 +96,7 @@
 - 预计影响: `web_server.py`, `general/present/SKILL.md`, 测试用例集
 
 ### D014 空闲 TTL 24h 自退, 不设 remove-dir
-- 状态: 当前有效
+- 状态: 已替代 (→ [milestone-14 D006/D008](../workflow-stack-review/milestone-14/DECISIONS.md))
 - 约束性: 必须遵守
 - 内容: 服务进程 24h 无任何请求则自行退出 (每次请求刷新计时); 不提供 remove-dir 端点 (TTL 已兜底, YAGNI). TTL 值支持环境变量 `PI_PRESENT_WEB_TTL_SECONDS` 覆盖 (默认 86400, 即 24h), 供测试缩到秒级. 理由: 反方攻击发现 — 用户接受的取舍是"使用期间网段可读", 而常驻+挂载只增不减交付的是"走后永远可读"的永久暴露, TTL 直接终结该二阶后果.
 - 预计影响: `web_server.py` HTTP 服务簇
@@ -163,18 +168,21 @@
 
 ### D026 测试设计与用例集
 - 状态: 当前有效
+- 适用范围更新: TTL 环境变量注入与 TC-028 自退断言已由 [milestone-14 D006](../workflow-stack-review/milestone-14/DECISIONS.md) 取消; 原用例总数不是新版本要求. 其余隔离/真实 HTTP 检查要求保留, 新范围以 AC-15 为准.
 - 约束性: 必须遵守
 - 内容: `unittest.TestCase` (仓库惯例, pytest.ini 已含 `general/present/tests`, 零配置接入); 起真实服务子进程+真实 HTTP 请求, 不用 mock; 仅两个注入点例外: 运行时目录环境变量覆盖 (`PI_PRESENT_WEB_RUNTIME_DIR`, 测试用独立临时目录隔离, 不与真实实例互杀) 与 TTL 环境变量覆盖 (`PI_PRESENT_WEB_TTL_SECONDS`, D014); 平台模拟 (非 POSIX 报错用例) 属允许的环境边界 fake. 已确认用例 28 条自动化 + 1 条人工验证, 逐条见 TECHNICAL.md TC-001 至 TC-029 (账本不重复抄写, 权威清单在 TECHNICAL.md).
 - 预计影响: `general/present/tests/test_web_server*.py`, `general/present/tests/test_skill_contract.py`
 
 ### D027 代码允许/禁止范围
 - 状态: 当前有效
+- 适用范围更新: 本条是原变更的历史范围, 不禁止 [milestone-14 D001/D010](../workflow-stack-review/milestone-14/DECISIONS.md) 已确认的后续删除 browser_session.py 与配套检查. milestone-14 本身不实施这些删除; milestone-15 仍只改仓库, 不动真实已安装 skills/access-web, 不运行同步.
 - 约束性: 必须遵守
 - 内容: 允许: 新增 `general/present/scripts/web_server.py`, 新增 `general/present/tests/test_web_server*.py`, 修改 `general/present/SKILL.md`, 修改 `general/present/tests/test_skill_contract.py` (增补远程条款断言), 写 `docs/changes/present-web-server/` 产物, 写领域语言/ADR. 禁止: 改 `browser_session.py` 与 access-web, 引入第三方依赖, 动真实 agent skills 目录, 改其他 skill.
 - 预计影响: 全变更
 
 ### D028 已接受不防的限制清单
 - 状态: 当前有效
+- 适用范围更新: 第 2 项 SSH 变量清洗造成远程漏检在 [milestone-14 D001](../workflow-stack-review/milestone-14/DECISIONS.md) 统一流程后不再适用; 第 1 项运行时记录被第三方清理的限制保留, 不承诺本次修复.
 - 约束性: 必须遵守
 - 内容: 两项经评估接受为已知限制, 不投入防护: (1) 系统临时目录被第三方清理导致 server.json 丢失时, 存活服务变幽灵 (status 报未启动, 重建出第二实例, 老实例脱离 stop 管理) — 低概率, 无简单防法; (2) `su`/`sudo` 后 SSH_TTY/SSH_CONNECTION 被清洗造成远程漏检 — 兜底是用户明示覆盖 (D004). 两项均记入 TECHNICAL.md 风险与待验证事实.
 - 预计影响: TECHNICAL.md
