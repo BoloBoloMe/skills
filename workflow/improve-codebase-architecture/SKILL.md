@@ -10,7 +10,7 @@ disable-model-invocation: true
 
 1. 探索
 
-调用 `codebase-design` skill 获取领域模型与设计原则, 沿用既有领域命名和该 skill 的架构词汇.
+调用 `domain-awareness` skill 获取领域模型与仓库术语, 调用 `codebase-design` skill 取设计词汇与原则; 沿用既有领域命名与后者的架构词汇.
 只读探索本次审查范围, 关注理解一个概念时的跨文件跳转, 调用者承担的规则与顺序约束, 接缝泄漏, 以及测试难以覆盖真实协作等摩擦. 记录实际检查区域与未覆盖部分, 让结论的范围与证据一致.
 
 对每个疑似浅模块应用 `codebase-design` 的删除测试, 结合实际调用者说明结论. 评估候选的依赖与测试策略时, 读取该 skill 的 `DEEPENING.md`.

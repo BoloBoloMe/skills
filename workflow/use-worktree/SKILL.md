@@ -37,10 +37,12 @@ uv run python scripts/status.py <任意路径>
 ```
 
 脚本只读; 输出 `layout=standard|nonstandard`, 项目, main worktree, 每个 worktree 的分支/HEAD/dirty/stale 状态.
+完成标准: 已从输出取到布局, 项目, main worktree 与各 worktree 的分支, HEAD 和 dirty 状态.
 
 ## 新建 worktree
 
 1. 用 `uv run python scripts/status.py <目标路径>` 检查目标仓库布局.
+   完成标准: 目标仓库与布局已判为标准或非标准, 下一步归属明确.
 2. 若布局标准:
    - 确认来源分支, 目标分支; 未给出则询问.
    - 询问是否执行 `git fetch --all --prune`.
