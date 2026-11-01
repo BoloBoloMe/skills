@@ -2,8 +2,10 @@
 """codebase-map CLI 入口 (m25 TECHNICAL.md 模块划分).
 
 子命令 (m13 D009, BR-013): build / serve / stop 三子命令各管一件事, 不合并.
-本 issue 只注册 build 的骨架; serve 与 stop 由后续 issue 注册, 不建占位分支,
-不写会静默成功的空实现.
+build 由 ISSUE-02/03 接线; serve 与 stop 自 ISSUE-04 起注册, 编排
+`codemap_service` 模块; serve 的地址解析与交付字段 (url/base_url/keys/
+delivery_notes/address_missing 等) 归 ISSUE-05, 本版 serve 只保证端口,
+状态, 复用与监听.
 
 build <目标目录> [--exclude <glob>]... [--json]:
   前置检查 (顺序固定, 命中即停并报错退出, m13 D003 / BR-021 不降级):
@@ -13,13 +15,25 @@ build <目标目录> [--exclude <glob>]... [--json]:
   分析流水线 (初始化, 三次 podman run, 门禁, 统计, 产出) 属后续 issue;
   就位之前前置检查全过也一律 internal_error 退出, 未写任何数据.
 
+serve [--port <N>] [--json]:
+  起或复用常驻服务; 判定分支与端口决策全部在 codemap_service.run_serve.
+  有存活实例时传不同 --port 返回 instance_running; 状态与探活对不上返回
+  state_mismatch; 目标端口被别的程序占用返回 port_in_use, 不静默顺延.
+  serve/stop 不做网络动作 (BR-027), 容器内不作 build 式拒绝.
+
+stop [--json]:
+  停整个服务并归一化 state.json (pid 置空, 写 stopped_at, 保留
+  port/last_port/last_url, m25 D018); 没有实例时幂等成功. 输出
+  {success, command, stopped, pid?, port?}.
+
 输出形状 (两种形态字段一致, 共用同一份结果 dict):
   --json : stdout 恰好一行 JSON (success/command/error 或负载字段)
   默认   : stdout 多行人类可读摘要; 失败时 stderr 另写错误码与下一步动作
 退出码: 成功 0, 失败 1 (argparse 用法错误为 2).
 
 约束: 只 import python 标准库加同目录共享模块 (BR-033, m25 D012); 对
-codemap_common 的调用是 TECHNICAL "接缝与依赖" 定义的内部接缝.
+codemap_common / codemap_service 的调用是 TECHNICAL "接缝与依赖" 定义的
+内部接缝.
 """
 from __future__ import annotations
 
@@ -30,6 +44,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import codemap_common as cmc  # noqa: E402  (脚本同目录, 保证任意 cwd 可跑)
+import codemap_service as cms  # noqa: E402  (serve/stop 的编排目标, ISSUE-04 注册)
 
 CONTAINER_MARKER = "/run/.containerenv"  # podman/oci 容器内存在的标记文件
 
@@ -118,6 +133,19 @@ def _build_parser() -> argparse.ArgumentParser:
     p_build.add_argument(
         "--json", dest="as_json", action="store_true",
         help="stdout 只输出一行 JSON.")
+    p_serve = sub.add_parser(
+        "serve", help="起或复用常驻服务并托管 serve-root 下的数据 (交付字段见后续 issue).")
+    p_serve.add_argument(
+        "--port", type=int, default=None, metavar="N",
+        help="指定本次端口: 无存活实例时生效; 有存活实例时返回 instance_running.")
+    p_serve.add_argument(
+        "--json", dest="as_json", action="store_true",
+        help="stdout 只输出一行 JSON.")
+    p_stop = sub.add_parser(
+        "stop", help="停整个服务并归一化状态; 没有实例时幂等成功.")
+    p_stop.add_argument(
+        "--json", dest="as_json", action="store_true",
+        help="stdout 只输出一行 JSON.")
     return parser
 
 
@@ -142,6 +170,10 @@ def main(argv=None):
     try:
         if args.command == "build":
             result = run_build(args.target, args.exclude)
+        elif args.command == "serve":
+            result = cms.run_serve(args.port)
+        elif args.command == "stop":
+            result = cms.run_stop()
         else:  # pragma: no cover - subparsers required=True 挡住其余取值
             result = cmc.error_result(
                 args.command, "internal_error",
