@@ -2,11 +2,12 @@
 
 - 性质: 已与用户逐条敲定的方案记录, 供后续实施里程碑直接使用
 - 依据: milestone-12 侦查 (FINDINGS.md), 传统设计期可视化侦查 (RESEARCH-design-visualization.md), 构建期汉化实测 (milestone-13/BUILD-PROBE.md)
+- **本轮定稿见同目录 `DECISIONS.md` (D001-D020), 与本文件冲突时以账本为准.** 账本相对本文件改写的地方: 分析端跑在宿主的 podman 上 (非 docker); 交付不用 nginx, 改自建 python 常驻服务 (D006); 不被任何 skill 调用, to-spec 入口整项作废 (D001); cc.json 落被分析库的 `.codebase-map/` (D010); 运行状态与构建缓存放宿主 `~/.agents/codebase-map/` (D012).
 - 尚未定的部分单列在最后一节, 不影响实施主体
 
 ## 1 路线
 
-用 CodeCharta. 分析端与前端都跑在宿主的 docker 里, 上游源码不入本仓库.
+用 CodeCharta. 分析端与前端都跑在宿主的 podman 里, 上游源码不入本仓库.
 
 - 分析端: 官方镜像 `codecharta/codecharta-analysis`, 挂载目标仓库与输出目录, 产出 `.cc.json`.
 - 前端: 上游 Angular 前端 `MaibornWolff/codecharta`, 构建时汉化, 产物由官方 `nginx:alpine` 镜像挂载提供页面.
@@ -28,19 +29,13 @@
 
 实测耗时: clone 4.4s, `npm ci` 24s, build 10s, 端到端 22s (暖缓存) / 约 37s (冷缓存). 连跑三次 diff 逐字节一致.
 
-## 3 交付方式 (用户选定: 挂载)
+## 3 交付方式 (由 DECISIONS.md D006/D007/D008/D009 定稿, 本节的 nginx 配方不再采用)
 
-1. 构建产物落在固定目录.
-2. 页面:
-   ```
-   docker run --rm -p 8080:80 \
-     -v <产物目录>:/usr/share/nginx/html:ro \
-     -v <nginx.conf>:/etc/nginx/conf.d/default.conf:ro \
-     nginx:1.29-alpine
-   ```
-3. 数据: 输出目录只读挂进容器, 地址带 `?file=<文件名>`; 或在浏览器里手动选文件.
-4. `nginx.conf` 必须有 `try_files $uri /index.html`, 否则 `/dependency` `/metrics` 这类深链 404 (上游自己也有这坑).
-5. 改词表后只需重跑构建, 容器不必重启.
+1. 构建产物落在宿主 `~/.agents/codebase-map/cache/` 下.
+2. 页面由自建 python 常驻服务提供, 单例一个端口, 交付局域网 IP 拼成的 URL, 多库靠 `?file=`.
+3. 数据: `build` 在 `~/.agents/codebase-map/data/` 建软链指向目标库里的 `.codebase-map/cc.json`.
+4. 命令三段: `build` / `serve` / `stop`.
+5. 原 nginx 方案与 `try_files` 需求作废: 上游是 hash 路由 (F011), 服务端只会看到 `/`, 不存在路径深链 404; 保留自建服务的理由是常驻单例与状态记录.
 
 ## 4 测试策略 (用户选定)
 
@@ -70,18 +65,17 @@ Area=面积, Height=高度, Color=颜色, Edges=边, Labels=标签, Scenario=场
 
 改 tag 变量重跑构建, 看两处输出: `--check` 报的"未使用词条" (上游改了或删了那句), 以及统计报告里的"未命中"数量 (还没翻的). 风险点是 `patch-package` 的 `echarts-wordcloud` 补丁可能冲突, 会在 build 第一步失败.
 
-## 8 仍未定
+## 8 已定 (原"仍未定", 现由 DECISIONS.md 定稿)
 
-以下属于 milestone-13 的裁决范围, 不影响主体实施:
-
-1. skill 名字与放置位置 (`workflow/<name>/`).
-2. to-spec 何时调用它, 传什么参数; 手动入口的长相 (命令名, 端口约定).
-3. 产物落盘位置 (`docs/changes/<slug>/` 还是临时目录) 与是否入库.
-4. 第一版语言范围: 只 python, 还是加 Java (用户实际项目以 Java 为主, 需要先实测 jdeps 或 ccsh 的 Java 链路).
+1. skill 名字与放置位置: `workflow/codebase-map/` (D001).
+2. 调用方式: 只手动调用, 无 skill 调用它, 无 to-spec 入口 (D001, F007).
+3. 产物落盘: 目标库 `.codebase-map/cc.json` (D010); 运行状态与缓存 `~/.agents/codebase-map/` (D012).
+4. 第一版语言范围: Java (D004); 未解析语言显式标注, 不静默画空图.
+5. 其余口径 (单例/端口/命令/指标/排除/聚合): D007, D009, D017, D018, D019.
 
 ## 9 现成资产
 
 - `docs/changes/workflow-stack-review/milestone-13/tools/`: `build-zh.sh`, `localize.py`, `localize_ts.py`, `ts_strings.py`, `shot_click.py`.
 - `docs/changes/workflow-stack-review/milestone-13/i18n/`: `zh.txt` (模板 16 条样本), `zh-ts.txt` (8 条), `zh-lit.txt` (12 条).
 - `docs/changes/workflow-stack-review/milestone-13/BUILD-PROBE.md`: 构建期汉化实测报告 (含耗时表, 坑, 统计方法, 未验证项).
-- `/tmp/cc-build/`: 实测现场 (工作树, node_modules, 统计报告 JSON, 截图). 临时目录, 容器 rm 后消失; 需要长期保留的数据要先拷进仓库.
+- 实测现场已不在 `/tmp/cc-build/` (临时目录会随容器/宿主清理丢失): 长期保留部分移到宿主 `~/.agents/codebase-map/` (D012), 需要复现时按 `tools/build-zh.sh` 重跑.
