@@ -390,10 +390,22 @@
       "title": "落地代码库结构可视化的汉化构建与交付",
       "type": "task",
       "question": "按 milestone-13 定稿的 DECISIONS.md (D013-D016, D021, D023, D024, D027, D030) 落地汉化构建链, 它是 v1 之后的技术切第二片, 不改变 v1 的任何外部行为. 原问题里 按 PLAN.md 落地 / nginx + try_files / docker / docs-changes 落盘 全部过期, 不得再引用 PLAN.md 的实施步骤. 要做的: (1) 全量词表 (模板 359 条通道 A, .ts 侧人工过滤后约 500 条通道 B, 绑定与插值内字面量约 30 处通道 C), 先统一术语表再批量翻译, 同一英文默认单一译法. (2) 构建脚本固化: 克隆指定 vis tag -> 三通道替换 -> npm ci -> npm run build -> 自建渲染冒烟 (临时静态服务 + 无头浏览器截图 + 关键元素断言), 幂等可重放, 输出未使用词条与未命中统计. (3) 产物与服务根布局按 D023/D024: 前端产物与数据副本都在宿主 ~/.agents/codebase-map/serve-root/ 下, 不引入 nginx, 不做深链回退 (上游是 hash 路由, F011). (4) 操作手册: 分析端与前端命令, ?file= 交付方式, 升级流程 (改 tag 重跑看未使用词条), 已知坑 (patch-package 冲突, 上游测试会红因而不跑), 过滤手段提示 (D025). (5) 验证: 构建耗时与产物大小, 冒烟截图留证, 术语一致性抽查, 界面残留英文需逐条说明原因. 边界: 不改上游源码提交, 不 fork, 不构建自有镜像, 不跑上游单测, 不碰分析端 (那是 milestone-23 与 v1 实现的事). 详细验收标准实施前确认.",
-      "status": "进行中",
+      "status": "已关闭",
       "blocked_by": [],
-      "artifacts": [],
-      "close_summary": null
+      "artifacts": [
+        "workflow/codebase-map/SKILL.md",
+        "workflow/codebase-map/README.md",
+        "workflow/codebase-map/tools/build-zh.sh",
+        "workflow/codebase-map/tools/smoke.py",
+        "workflow/codebase-map/tools/stage.py",
+        "workflow/codebase-map/i18n/zh.txt",
+        "workflow/codebase-map/i18n/zh-ts.txt",
+        "workflow/codebase-map/i18n/zh-lit.txt",
+        "docs/changes/workflow-stack-review/milestone-21/REPORT.md",
+        "docs/changes/workflow-stack-review/milestone-21/shots",
+        "docs/changes/workflow-stack-review/milestone-21/reports"
+      ],
+      "close_summary": "汉化构建链已落地为 workflow/codebase-map/ (SKILL.md + codex 元数据 + 操作手册 + 6 个工具 + 三本词表). 全量词表 745 条 / 837 处替换 (A 355/B 346/C 44), 未使用 0, 未命中仅 4 种已逐条说明. 端到端实测: 克隆 vis-2.9.1 -> npm ci -> 三通道替换 -> npm run build 9.7s -> 渲染冒烟 PASS; 暖缓存 23s; 连跑两次产物 sha256 逐字节一致. 冒烟断言 7 项全过 (3D 出建筑, 页签与底栏中文, 依赖视图出方块, hash 路由 #/dependencies, pageerror/console error 均 0), 3 张截图留证. serve-root 按 D023/D024 铺设 (库名-路径哈希键). 界面残留英文按 8 类逐条给原因 (数据字段/状态驱动标题/品牌版本/术语/枚举同字面量/3D 模型刻字/throw 与 console/其它跳过物). 边界如实: 未做 v1 服务联调 (服务在 milestone-26), 宿主真实局域网访问未在本节点验证; 本容器 pytest 因 conftest 依赖 podman 会 INTERNALERROR, 相关检查改用 unittest 与 check_skill.py 通过. 分支已合入母体 f2ca80d 并推送."
     },
     "milestone-22": {
       "title": "准备 present 改造的当前规格与执行输入",
