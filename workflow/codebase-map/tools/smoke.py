@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """CodeCharta 汉化产物渲染冒烟 (D014): 临时静态服务 + 无头浏览器截图 + 关键元素断言.
 
-用法: python3 smoke.py --dist <dist/bundler/browser> --out <报告目录> [--base-url http://127.0.0.1:8090]
+用法: python3 smoke.py --dist <dist/bundler/browser> --out <报告目录>
 任一断言失败 exit 1 (冒烟失败即构建失败).
 
 断言:
