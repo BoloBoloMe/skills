@@ -1,0 +1,19 @@
+# CodeCharta 模板汉化词表: 左=英文原文(Key, 空白折叠, {{ }} 换成 {{0}}/{{1}}), 右=中文
+# 制表符 TAB 分隔; 译文里禁止出现包裹属性的引号; 占位符必须齐全但不限顺序.
+# 本轮只覆盖 5 个模板 (可行性验证).
+Change the map layout	更改地图布局
+Layout	布局
+Map layout	地图布局
+Maximum TreeMap Files	矩形树图最大文件数
+Folders with up to {{0}} files are drawn as a treemap.	最多 {{0}} 个文件的文件夹会按矩形树图绘制.
+Visible levels	可见层级
+Shows {{0}} folder levels around the centre.	在中心周围显示 {{0}} 层文件夹.
+Global Configuration	全局配置
+Settings	设置
+Download 3MF code file	下载 3MF 模型文件
+3D Print	3D 打印
+Explore	探索
+Compare	对比
+Color	颜色
+Area	面积
+Area Metric (highest value)	面积指标 (数值最大者)

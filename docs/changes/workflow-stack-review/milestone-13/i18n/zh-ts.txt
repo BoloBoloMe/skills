@@ -1,0 +1,10 @@
+# .ts 文案白名单: 文件路径 <TAB> 英文整条字面量 <TAB> 中文
+# 只在指定文件里做"整条字面量精确相等"的替换, 不做子串/正则替换.
+codeCharta/util/metric/metricTitles.ts	Lines of Code	代码行数
+codeCharta/util/metric/metricTitles.ts	Real Lines of Code	实代码行数
+codeCharta/util/metric/metricTitles.ts	Cyclomatic Complexity	圈复杂度
+codeCharta/util/metric/metricTitles.ts	Average Number of Commits from this file	此文件的平均提交次数
+codeCharta/features/dependencyMap/components/edgeStyleSegment/edgeStyleChoices.ts	Combined	合并
+codeCharta/features/dependencyMap/components/edgeStyleSegment/edgeStyleChoices.ts	By count	按数量
+codeCharta/features/dependencyMap/components/edgeStyleSegment/edgeStyleChoices.ts	One spot on each side for the edges leaving and one for those arriving	左右两侧各一个汇聚点, 分别接出边和入边
+codeCharta/stores/fileStore/loaders/ccJson/util/fileValidationMessages.ts	File is empty or invalid.	文件为空或格式无效.
