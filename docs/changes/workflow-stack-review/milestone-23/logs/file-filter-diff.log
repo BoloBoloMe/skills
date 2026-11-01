@@ -1,0 +1,17 @@
+磁盘: src/main 2850 | src/test 457 | 其他 5
+cc.json .java: 2846  cc.json 全部文件: 3014
+src/main 磁盘有而 cc.json 无: 4
+  - czsdk-accounting/src/main/java/com/changzhi/accounting/dao/accounting/mapper/ReconOverseasPayOrderTestMapper.java
+  - czsdk-accounting/src/main/java/com/changzhi/accounting/dao/clickhose/mapper/CkReconOverseasPayOrderTestMapper.java
+  - czsdk-paycenter/src/main/java/com/changzhi/coupon/package-info.java
+  - czsdk-paycenter/src/main/java/com/changzhi/coupon/service/condition/package-info.java
+其他位置 .java (非 src/main 非 src/test):
+  . czsdk-paycenter/target/generated-sources/annotations/com/changzhi/coupon/converter/CouponGroupConfigConverterImpl.java
+  . czsdk-paycenter/target/generated-sources/annotations/com/changzhi/coupon/converter/UserCouponInstanceConverterImpl.java
+  . czsdk-paycenter/target/generated-sources/annotations/com/changzhi/paycenter/converter/AppExchangeRateConverterImpl.java
+  . czsdk-paycenter/target/generated-sources/groovy-stubs/test/com/changzhi/coupon/test/CouponConsumeServiceTest.java
+  . czsdk-paycenter/target/generated-sources/groovy-stubs/test/com/changzhi/coupon/test/CouponServerApiTest.java
+未被gitignore: czsdk-accounting/src/main/java/com/changzhi/accounting/dao/accounting/mapper/ReconOverseasPayOrderTestMapper.java
+未被gitignore: czsdk-accounting/src/main/java/com/changzhi/accounting/dao/clickhose/mapper/CkReconOverseasPayOrderTestMapper.java
+未被gitignore: czsdk-paycenter/src/main/java/com/changzhi/coupon/package-info.java
+未被gitignore: czsdk-paycenter/src/main/java/com/changzhi/coupon/service/condition/package-info.java

@@ -1,0 +1,35 @@
+# 裁剪摘录: /tmp/m23-evidence/raw-logs/run-b-merged.log 的非进度条行.
+# 原因: 原始日志的进度条流内嵌全部被解析文件名枚举 (私有路径), 按父会话指示不入仓库; 原件哈希见 logs/evidence-hashes.log.
+# 除剔除进度条外无删改; 错误与结果行原样保留.
+---
+=== $ date Run B (合并指标) 开始 ===
+2026-11-01T12:32:50+08:00
+Extracting dependencies
+511 Files with the following extensions were ignored as they are currently not supported:
+[.xml, .yml, ., .ico, .json, .css, .webp, .png, .cer, .txt, .groovy, .md, .gif, .springjavaformatconfig, .mdc, .factories, .docx, .pdf, .csv, .text, .yaml, .p12, .pem]
+[main] INFO de.maibornwolff.codecharta.util.Logger - 14 files were excluded by .gitignore rules
+UnifiedParser completed in 6.31 seconds, building project...
+Created Project with 3637 leaves.
+[main] INFO de.maibornwolff.codecharta.util.Logger - 'Resolving dependencies' started
+[main] INFO de.maibornwolff.codecharta.util.Logger - 'Resolving dependencies' took 226ms
+[main] INFO de.maibornwolff.codecharta.util.Logger - 'Analyzing cycles' started
+[main] INFO de.maibornwolff.codecharta.util.Logger - Found 20 strongly connected components
+[main] INFO de.maibornwolff.codecharta.util.Logger - Found a total of 52 cycles
+[main] INFO de.maibornwolff.codecharta.util.Logger - 'Analyzing cycles' took 1167ms
+[main] INFO de.maibornwolff.codecharta.util.Logger - 'Leveling the folder tree' started
+[main] INFO de.maibornwolff.codecharta.util.Logger - 'Leveling the folder tree' took 203ms
+[main] INFO de.maibornwolff.codecharta.util.Logger - 'Leveling the namespace tree' started
+[main] INFO de.maibornwolff.codecharta.util.Logger - 'Leveling the namespace tree' took 651ms
+[main] ERROR de.maibornwolff.codecharta.util.Logger - The piped input is not a valid project: com.google.gson.stream.MalformedJsonException: Unterminated string at line 1 column 114642 path $.files[0].children[5].children[0].children[0].children[0].children[0].children[0].children[0].children[1].name
+See https://github.com/google/gson/blob/main/Troubleshooting.md#malformed-json
+[main] WARN de.maibornwolff.codecharta.util.Logger - Skipping piped project...
+Created Project with 3014 leaves.
+[main] INFO de.maibornwolff.codecharta.util.Logger - Created output file at /out/full.cc.json
+Run B exit=0
+=== $ date 结束 ===
+2026-11-01T12:33:02+08:00
+total 9824
+drwxrwxr-x   2 bolo bolo      80 Nov  1 12:33 .
+drwxrwxrwt 424 root root   10260 Nov  1 12:33 ..
+-rw-r--r--   1 bolo bolo 5027105 Nov  1 12:32 deps-only.cc.json
+-rw-r--r--   1 bolo bolo 5027105 Nov  1 12:33 full.cc.json

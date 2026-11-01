@@ -1,0 +1,48 @@
+=== repo exists? ===
+200
+=== repo meta ===
+{"user":"codecharta","name":"codecharta-analysis","namespace":"codecharta","repository_type":"image","status":1,"status_description":"active","description":"The CodeCharta Analysis project, in its own container. Comes with many tools to quickly get started.","is_private":false,"is_automated":false,"star_count":0,"pull_count":11972,"last_updated":"2026-10-28T12:50:11.39549Z","last_modified":"2024-10-16T13:48:34.145251Z","date_registered":"2022-09-29T08:50:37.735398Z","collaborator_count":0,"affiliation":null,"hub_user":"codecharta","has_starred":false,"full_description":"# CodeCharta analysis\n
+=== tags (first page) ===
+latest
+staging-a815a8d
+staging
+2.3.0
+staging-4835fa8
+staging-4b544b9
+staging-709bffb
+2.2.1
+staging-5c1e7cb
+staging-4e8dfb6
+staging-3dfe54e
+staging-15d5173
+2.2.0
+staging-65d3954
+staging-639faf1
+staging-d1f6151
+staging-36c30ad
+staging-2120f8a
+staging-2caeb0e
+staging-8345444
+staging-14dbfc3
+staging-43fe717
+staging-7135b53
+staging-ebb2bf2
+staging-6421581
+2.1.0
+staging-ec5a693
+staging-364a744
+staging-d2e96c7
+staging-f7e9b2e
+staging-d59dbc0
+2.0.2
+staging-7069c69
+staging-243067f
+staging-5a8274f
+2.0.1
+staging-bb2e75f
+staging-7133c28
+staging-b391021
+2.0.0
+=== codecharta namespace repos ===
+codecharta-visualization
+codecharta-analysis

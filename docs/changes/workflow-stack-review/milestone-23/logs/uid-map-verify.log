@@ -1,0 +1,21 @@
+=== A. 默认映射 (复现失败条件, 只跑 id/uid_map, 不重跑分析) ===
+uid=1000(ubuntu) gid=1000(ubuntu) groups=1000(ubuntu),4(adm),20(dialout),24(cdrom),25(floppy),27(sudo),29(audio),30(dip),44(video),46(plugdev)
+---uid_map---
+         0       1000          1
+         1     100000      65536
+---gid_map---
+         0       1000          1
+         1     100000      65536
+
+=== B. keep-id 映射 (成功条件) ===
+uid=1000(ubuntu) gid=1000(ubuntu) groups=1000(ubuntu),4(adm),20(dialout),24(cdrom),25(floppy),27(sudo),29(audio),30(dip),44(video),46(plugdev)
+---uid_map---
+         0          1       1000
+      1000          0          1
+      1001       1001      64536
+
+=== C. 宿主参照 ===
+1000
+bolo:100000:65536
+=== D. /tmp/m23-out 权限参照 ===
+drwxrwxr-x 2 bolo bolo 120 Nov  1 12:33 /tmp/m23-out

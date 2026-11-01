@@ -408,9 +408,21 @@
       "type": "research",
       "question": "在宿主上先用你的真实 Java 库跑一次分析端探针 (milestone-13/DECISIONS.md D028, 依据 F013: ccsh 在本仓库零次执行). 要查清并写进产物: (1) podman 能否拉到 codecharta/codecharta-analysis:ana-2.3.0, 镜像 digest 是多少; (2) 挂载目标库与输出目录跑分析, 产出的 cc.json 里 依赖边数, 层号 level 的取值分布, 未解析文件比例, 环与向上依赖的数量; (3) 至少一屏截图证明现成 web.zip 前端能吃这份数据; (4) 宿主环境事实: podman 版本, 能否从 docker.io 拉镜像, 挂载写权限/SELinux 与用户命名空间限制, 宿主 Node 版本与有无无头浏览器 (为 D027 的切片判断). 产物: docs/changes/workflow-stack-review/milestone-23/PROBE.md. 判定口径 (D029): 层号取值少于 3 种, 或依赖边数为 0, 或未解析比例过半, 属退化, 停手交用户裁决 (退回自算层号或二维 cytoscape 方案), 不许硬着头皮上线. 边界: 只做探针与事实记录, 不写 skill, 不实现服务, 不改本仓库 skill 内容.",
       "blocked_by": [],
-      "status": "待处理",
-      "artifacts": [],
-      "close_summary": null
+      "status": "已关闭",
+      "artifacts": [
+        "docs/changes/workflow-stack-review/milestone-23/PROBE.md",
+        "docs/changes/workflow-stack-review/milestone-23/REVIEW.md",
+        "docs/changes/workflow-stack-review/milestone-23/work/run-analysis.sh",
+        "docs/changes/workflow-stack-review/milestone-23/work/stats.py",
+        "docs/changes/workflow-stack-review/milestone-23/logs/stats-deps-only.log",
+        "docs/changes/workflow-stack-review/milestone-23/logs/uid-map-verify.log",
+        "docs/changes/workflow-stack-review/milestone-23/logs/file-filter-diff.log",
+        "docs/changes/workflow-stack-review/milestone-23/logs/unresolved-source-check.log",
+        "docs/changes/workflow-stack-review/milestone-23/logs/height-level-check.json",
+        "docs/changes/workflow-stack-review/milestone-23/work/shot-cz-sdk-master-map.png",
+        "docs/changes/workflow-stack-review/milestone-23/work/shot-cz-sdk-master-depview.png"
+      ],
+      "close_summary": "在宿主用用户真实 Java 库 cz_sdk-master (2f452a91, 只读挂载) 跑通官方 codecharta-analysis 分析链路: 出图 3014 文件, 依赖边 8820, 文件层号 0-7 共 8 种, 目录层号 7 种, 环边 10, 向上依赖边 191 (通知里 19 是笔误); 官方 vis-2.9.1 原版前端吃该数据并真实渲染 3D 与依赖视图, console 0 错误, 有截图为证. 目标库零改动 (HEAD 未变, 无 .codebase-map). 关键事实与缺口: 未解析名字比例无工具口径 (日志无告警只证明语法解析零失败, 源码取证确认无名字解析计数), 该门禁项记未验证, 上线判断交用户; 镜像 tag 应为纯数字 2.3.0, D002 的 ana-2.3.0 实为 GitHub release 名, 已按同版本纠正并在父会话公开说明后使用, 不伪记用户确认; ccsh --version 自报 2.2.1 与 tag 不一致原因未查明, 核对以 digest 为准; rootless 需 --userns=keep-id (uid_map 实证默认容器 1000 映到宿主 100999); 官方管道合并损坏, 改用 unifiedparser 出文件加 ccsh merge; level 在 dependency lens 不在 metrics lens, 显式请求 height=level 被前端改写为 complexity, D026 的 URL 绑定方案实测不可行, 需重裁; 零声明文件 (2 个全注释 TestMapper, 2 个 package-info) 与 target/generated-sources 5 个不进依赖树, 交付文案需说明分母. 父会话复核发现初稿把无告警当成未解析通过, 已退回修正并在 REVIEW.md 记录逐项核对. 上游前端资产与原始大日志在 /tmp 外置, 原始 cc.json 不入仓库. 未提交 git, 未改任何 skill/决策/产品代码, 未跑同步."
     }
   },
   "unknown_seas": [],

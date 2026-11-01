@@ -1,0 +1,30 @@
+=== $ date ===
+2026-11-01T12:30:39+08:00
+=== 复核 /home/bolo/Workspace/ChangZhi/cz_sdk/cz_sdk-master ===
+master
+commit=2f452a91cf3589dfbc693849beae5fcaeb927c01
+date=2026-10-30 20:12:02 +0800
+subject=doc: 新增 bug 报告
+dirty=0
+java=3312
+=== 模块结构 (顶层) ===
+AGENTS.md
+README.md
+cdn-resources
+czsdk-accounting
+czsdk-accounting-sdk
+czsdk-amount-util
+czsdk-cdn
+czsdk-common-business
+czsdk-common-util
+czsdk-dao
+czsdk-parent
+czsdk-paycenter
+czsdk-paycenter-sdks
+czsdk-task
+docs
+openspec
+=== pom 摘要 ===
+=== 大致规模 ===
+2850
+457

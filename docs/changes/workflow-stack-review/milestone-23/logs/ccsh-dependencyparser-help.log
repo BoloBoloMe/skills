@@ -1,0 +1,59 @@
+Usage: ccsh dependencyparser [-h] [--bypass-gitignore] [-ibf] [--include-tests]
+                             [--local-changes] [-nc] [--omit-graph-analysis]
+                             [--verbose] [-bf=<baseFile>] [--commit=<commit>]
+                             [--file-timeout=<fileTimeoutSeconds>]
+                             [--max-file-size=<maxFileSizeKb>]
+                             [-o=<outputFile>]
+                             [-e=<specifiedExcludePatterns>]...
+                             [-fe=<fileExtensionsToAnalyse>]... FILE or
+                             FOLDER...
+[experimental] generates cc.json with a file- and declaration-level dependency
+lens from source code
+      FILE or FOLDER...    file/project to parse. To merge the result with an
+                             existing project piped into STDIN, pass a '-' as
+                             an additional argument
+      -bf, --base-file=<baseFile>
+                           base cc.json file with checksums to skip unchanged
+                             files during analysis
+      --bypass-gitignore   bypass .gitignore files and use regex-based
+                             exclusion instead (default: false)
+      --commit=<commit>    analyze the codebase at a specific git commit
+                             (creates a temporary worktree)
+  -e, --exclude=<specifiedExcludePatterns>
+                           comma-separated list of regex patterns to exclude
+                             files/folders (when using powershell, the list
+                             either can't contain spaces or has to be in quotes)
+      -fe, --file-extensions=<fileExtensionsToAnalyse>
+                           comma-separated list of file-extensions to parse
+                             only those files (default: any)
+      --file-timeout=<fileTimeoutSeconds>
+                           give up on a file after this many seconds (default:
+                             no timeout). The parse itself is a blocking native
+                             call, so the timeout skips the file's result while
+                             the parse runs to completion in the background
+  -h, --help               displays this help and exits
+      -ibf, --include-build-folders
+                           include build folders (out, build, dist and target)
+                             and common resource folders (e.g. resources,
+                             node_modules or files/folders starting with '.')
+      --include-tests      analyse test files too (excluded by default, because
+                             a test depends on everything it exercises and
+                             nothing depends on it, which shifts every level
+                             and cycle)
+      --local-changes      only analyze files that differ from the remote
+                             tracking branch (uncommitted, staged, unstaged,
+                             untracked)
+      --max-file-size=<maxFileSizeKb>
+                           skip files of at least this size in KB (default: no
+                             limit)
+      -nc, --not-compressed
+                           save uncompressed output File
+  -o, --output-file=<outputFile>
+                           output File (or empty for stdout)
+      --omit-graph-analysis
+                           emit dependencies only, skipping cycle detection and
+                             levelization. Both are superlinear, so this is the
+                             escape hatch for a repository where they do not
+                             finish
+      --verbose            verbose mode
+Copyright(c) 2025, MaibornWolff GmbH

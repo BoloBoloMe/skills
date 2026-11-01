@@ -1,0 +1,26 @@
+# 裁剪摘录: /tmp/m23-evidence/raw-logs/run-b2-merge.log 的非进度条行.
+# 原因: 原始日志的进度条流内嵌全部被解析文件名枚举 (私有路径), 按父会话指示不入仓库; 原件哈希见 logs/evidence-hashes.log.
+# 除剔除进度条外无删改; 错误与结果行原样保留.
+---
+=== $ date unifiedparser 独立出指标 ===
+2026-11-01T12:33:21+08:00
+511 Files with the following extensions were ignored as they are currently not supported:
+[.xml, .yml, ., .ico, .json, .css, .webp, .png, .cer, .txt, .groovy, .md, .gif, .springjavaformatconfig, .mdc, .factories, .docx, .pdf, .csv, .text, .yaml, .p12, .pem]
+[main] INFO de.maibornwolff.codecharta.util.Logger - 14 files were excluded by .gitignore rules
+UnifiedParser completed in 3.17 seconds, building project...
+Created Project with 3637 leaves.
+[main] INFO de.maibornwolff.codecharta.util.Logger - Created output file at /out/metrics.cc.json
+exit=0
+=== $ date merge ===
+2026-11-01T12:33:24+08:00
+[main] INFO de.maibornwolff.codecharta.util.Logger - 3697 nodes were processed, 0 were added and 3697 were merged
+Created Project with 3637 leaves.
+[main] INFO de.maibornwolff.codecharta.util.Logger - Created output file at /data/merged.cc.json
+exit=0
+total 19892
+drwxrwxr-x   2 bolo bolo     120 Nov  1 12:33 .
+drwxrwxrwt 424 root root   10280 Nov  1 12:33 ..
+-rw-r--r--   1 bolo bolo 5027105 Nov  1 12:32 deps-only.cc.json
+-rw-r--r--   1 bolo bolo 5027105 Nov  1 12:33 full.cc.json
+-rw-r--r--   1 bolo bolo 7458943 Nov  1 12:33 merged.cc.json
+-rw-r--r--   1 bolo bolo 2846674 Nov  1 12:33 metrics.cc.json

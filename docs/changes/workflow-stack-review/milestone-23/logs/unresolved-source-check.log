@@ -1,0 +1,50 @@
+=== ProcessingPipeline.kt (告警与统计输出点) ===
+15:import de.maibornwolff.codecharta.util.Logger
+26:            Logger.warn {
+28:                    "supported source files were found, or every file was skipped; see the warnings above."
+38:            Logger.info { "Levelization disabled by --omit-graph-analysis" }
+54:        val levelizedRoots = Logger.timed("Leveling the folder tree") { levelize(toFileTree(aggregatedEdges, filePaths)) }
+72:        LevelizedNamespaceTree(Logger.timed("Leveling the namespace tree") { levelize(resolvedNodes.toGraphNodes()) })
+120:            Logger.info { "Cycle detection disabled by --omit-graph-analysis" }
+123:        return Logger.timed("Analyzing cycles") { DeclarationCycles.of(resolvedNodes, declaringFiles) }
+127:        Logger.timed("Resolving dependencies") { DependencyResolverService.resolveNodes(fileReports) }
+143:private fun <T> Logger.timed(description: String, block: () -> T): T {
+
+=== ExtractionPipeline.kt ===
+3:import de.maibornwolff.codecharta.analysers.analyserinterface.failures.FailedFile
+4:import de.maibornwolff.codecharta.analysers.analyserinterface.failures.FailureReport
+28:class Extraction(val reports: List<FileReport>, val failures: List<FailedFile>)
+47:            Logger.warn { "No supported source files found under ${input.path}" }
+53:        val failures = ConcurrentLinkedQueue<FailedFile>()
+55:        val reports = runBlocking { analyzeInParallel(sourceFiles, AnalysedProject(analysisRoot, analysedFiles), failures) }
+57:        val sortedFailures = failures.sortedBy { it.path }
+58:        FailureReport.warnAbout(sortedFailures)
+59:        return Extraction(reports, sortedFailures)
+65:        failures: ConcurrentLinkedQueue<FailedFile>
+69:            .map { sourceFile -> async { semaphore.withPermit { analyzeOne(sourceFile, project, failures) } } }
+74:    // A file that fails is left out of the result, and with it its node in the tree, so every failure is
+76:    private suspend fun analyzeOne(sourceFile: File, project: AnalysedProject, failures: ConcurrentLinkedQueue<FailedFile>): FileReport? {
+83:            // on it: the parse thread runs to completion in the background and this file is skipped.
+84:            failures.add(FailedFile(relativePathOf(sourceFile, analysisRoot), FileTimeoutException(fileTimeoutSeconds)))
+86:        } catch (failure: Exception) {
+87:            if (isUnusableParser(failure)) throw failure
+88:            Logger.debug(failure) { "Failed to analyze ${sourceFile.path}: ${failure.message}" }
+89:            failures.add(FailedFile(relativePathOf(sourceFile, analysisRoot), failure))
+102:    // Only a file of no supported language is no file to analyse; one that cannot be read fails like one that cannot be parsed
+
+=== 全树搜 unresolved 相关文件名 ===
+analysis/analysers/parsers/DependencyParser/src/main/kotlin/de/maibornwolff/codecharta/analysers/parsers/dependency/analysis/model/FileReport.kt
+analysis/analysers/parsers/DependencyParser/src/main/kotlin/de/maibornwolff/codecharta/analysers/parsers/dependency/progress/ProgressReporter.kt
+analysis/analysers/parsers/DependencyParser/src/main/kotlin/de/maibornwolff/codecharta/analysers/parsers/dependency/progress/ProgressReporterFactory.kt
+analysis/analysers/parsers/DependencyParser/src/main/kotlin/de/maibornwolff/codecharta/analysers/parsers/dependency/progress/ProgressTrackerReporter.kt
+analysis/analysers/parsers/DependencyParser/src/main/kotlin/de/maibornwolff/codecharta/analysers/parsers/dependency/progress/SilentProgressReporter.kt
+analysis/analysers/parsers/DependencyParser/src/test/kotlin/de/maibornwolff/codecharta/analysers/parsers/dependency/analysis/model/FileReportGenericModuleResolutionTest.kt
+analysis/analysers/parsers/DependencyParser/src/test/kotlin/de/maibornwolff/codecharta/analysers/parsers/dependency/analysis/model/FileReportGoTypeResolutionTest.kt
+analysis/analysers/parsers/DependencyParser/src/test/kotlin/de/maibornwolff/codecharta/analysers/parsers/dependency/analysis/model/FileReportMultiLanguageTypeResolutionTest.kt
+analysis/analysers/parsers/DependencyParser/src/test/kotlin/de/maibornwolff/codecharta/analysers/parsers/dependency/analysis/model/FileReportTest.kt
+=== DependencyResolverService.kt / FileReport.kt 中的计数或告警 ===
+--- processing/DependencyResolverService.kt
+--- analysis/model/FileReport.kt
+
+=== 失败报告 FailureReport 的告警范围 (确认只覆盖 parse/timeout) ===
+404: Not Found

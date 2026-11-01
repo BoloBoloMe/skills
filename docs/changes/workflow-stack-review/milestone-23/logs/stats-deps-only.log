@@ -1,0 +1,33 @@
+== meta ==
+projectName: 
+apiVersion: 2.1
+checksum: d0c3c98bde62f8c2e3c0ea312b1b0adf
+== 树 ==
+File 节点总数: 3014
+Folder 节点总数: 683
+== dependency lens ==
+dependency.nodes 条数: 3696
+level 取值 (文件): {0: 2414, 1: 394, 2: 105, 3: 71, 4: 20, 5: 6, 6: 2, 7: 2}
+level 取值 (目录): {0: 471, 1: 101, 2: 59, 3: 32, 4: 11, 5: 6, 6: 2}
+非文件非目录的 lens 节点: 0
+level 种数 (文件): 8  (目录): 7
+dependency lens 覆盖的 File 节点: 3014 / 3014
+未进 dependency lens 的 File 节点数: 0
+== 边 ==
+边总数 (dependency.edges): 8820
+isCyclic=true: 10
+isPointingUpwards=true: 191
+both: 4
+regular (无标志): 8623
+出现在边上的 File 节点: 2718 / 3014
+未出现在任何边上的 File 节点 (库内零依赖): 296 (9%)
+== metrics lens ==
+metrics.attributes 覆盖节点数: 3014
+指标名 -> 出现文件数 (前 12): {'outgoing_dependencies': 3014, 'incoming_dependencies': 3014}
+含 rloc 的节点: 0
+边权 dependencies 分布 (前 10): {1: 8519, 2: 219, 3: 36, 4: 11, 5: 7, 6: 5, 8: 3, 11: 3, 25: 2, 9: 2}
+== 逻辑层 ==
+leafEdges 总数: 17979
+leaves 声明数: 7547
+namespaces 数: 541
+namespace level 分布: {0: 329, 1: 89, 2: 58, 3: 31, 4: 13, 5: 11, 6: 3, 7: 4, 8: 1, 9: 2}

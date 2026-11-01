@@ -1,0 +1,46 @@
+=== $ date ===
+2026-11-01T12:07:53+08:00
+=== $ podman pull docker.io/codecharta/codecharta-analysis:ana-2.3.0 ===
+Trying to pull docker.io/codecharta/codecharta-analysis:ana-2.3.0...
+Error: unable to copy from source docker://codecharta/codecharta-analysis:ana-2.3.0: initializing source docker://codecharta/codecharta-analysis:ana-2.3.0: reading manifest ana-2.3.0 in docker.io/codecharta/codecharta-analysis: manifest unknown
+=== $ date ===
+2026-11-01T12:07:55+08:00
+=== inspect ===
+Error: no such object: "docker.io/codecharta/codecharta-analysis:ana-2.3.0"
+Error: no such object: "docker.io/codecharta/codecharta-analysis:ana-2.3.0"
+=== images ===
+=== $ date ===
+2026-11-01T12:30:47+08:00
+=== podman pull docker.io/codecharta/codecharta-analysis:2.3.0 ===
+Trying to pull docker.io/codecharta/codecharta-analysis:2.3.0...
+Getting image source signatures
+Copying blob sha256:875458ac895d0a1228849800accd88a087855d2810c69e05b9a595a276afbc35
+Copying blob sha256:4f61ec49044869934aa28f60a81615448649fe6d3b6a212c26c82a56f2a86530
+Copying blob sha256:b40150c1c2717d324cdb17278c8efdfa4dfcd2ffe083e976f0bcedf31115f081
+Copying blob sha256:4f4fb700ef54461cfa02571ae0db9a0dc1e0cdb5577484a6d75e68dc38e8acc1
+Copying blob sha256:45adff291d3643e74e9fdda406f1485f6dadc510e9a6fdbb62d81e05c9e1284c
+Copying blob sha256:c7a4759dd15d29272f395847c56f15f9a5c63ead247e971a5fb2c2ca6d2f1e4b
+Copying blob sha256:8c547d1caac8a01e0e414a54cfd4d57e98b581eaf7a29a29b3d46425f2159bf0
+Copying blob sha256:8ad5f4dd1c7a25c717db60a7ccd5a5512da7617787f67d11e076c73e4a2532ce
+Copying blob sha256:60cca8a7862f707aae8f3c9d3333bf37792e000308919be37a36913389845848
+Copying blob sha256:16e39aca945979c4cb62b046c27be4eb083e1141b2aa733fa8911611ce19427d
+Copying blob sha256:ae528d76efbee4f5c9833819a90c2bd5cb93515415a534198cc1f5449e429cd4
+Copying blob sha256:36470ced4e2b526bf0d030c31bb1508e8ad4d0d8bd6769cec90341e9622f9b16
+Copying blob sha256:4c0360fb80fb596a9c7229d9870455f850137150b4e7133939e3cd3280407aad
+Copying blob sha256:4f4fb700ef54461cfa02571ae0db9a0dc1e0cdb5577484a6d75e68dc38e8acc1
+Copying config sha256:b10fce5f615e44c65b24d5aadbb86b6cea635999536109029edcaaffb2743fae
+Writing manifest to image destination
+b10fce5f615e44c65b24d5aadbb86b6cea635999536109029edcaaffb2743fae
+=== $ date ===
+2026-11-01T12:31:47+08:00
+Id=b10fce5f615e44c65b24d5aadbb86b6cea635999536109029edcaaffb2743fae
+Digest=sha256:6402a87f6823c8123de6c8706ffc7b68ae75ce2c2c58aa8b3fcab59e97d1f7a4
+RepoTags=[docker.io/codecharta/codecharta-analysis:2.3.0]
+RepoDigests=[docker.io/codecharta/codecharta-analysis@sha256:286b0a54f947c412b7c290a57312ac2c4327352531e046ad4ab834c13b2ddc36 docker.io/codecharta/codecharta-analysis@sha256:6402a87f6823c8123de6c8706ffc7b68ae75ce2c2c58aa8b3fcab59e97d1f7a4]
+Arch=amd64 Os=linux
+Size=1268480310
+Created=2026-10-28 09:52:21.065961743 +0000 UTC
+User=ubuntu
+Cmd=[ccsh]
+Entrypoint=[]
+docker.io/codecharta/codecharta-analysis:2.3.0 b10fce5f615e 1.27 GB

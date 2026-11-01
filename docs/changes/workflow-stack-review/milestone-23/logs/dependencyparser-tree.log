@@ -1,0 +1,41 @@
+=== GitHub code search: DependencyParser paths @ ana-2.3.0 (tree API) ===
+total paths: 11036
+--- DependencyParser files ---
+analysis/analysers/parsers/DependencyParser/README.md
+analysis/analysers/parsers/DependencyParser/build.gradle.kts
+analysis/analysers/parsers/DependencyParser/docs/edge-flags.md
+analysis/analysers/parsers/DependencyParser/docs/name-resolution/README.md
+analysis/analysers/parsers/DependencyParser/docs/name-resolution/cpp.md
+analysis/analysers/parsers/DependencyParser/docs/name-resolution/csharp.md
+analysis/analysers/parsers/DependencyParser/docs/name-resolution/delphi.md
+analysis/analysers/parsers/DependencyParser/docs/name-resolution/go.md
+analysis/analysers/parsers/DependencyParser/docs/name-resolution/java.md
+analysis/analysers/parsers/DependencyParser/docs/name-resolution/kotlin.md
+analysis/analysers/parsers/DependencyParser/docs/name-resolution/php.md
+analysis/analysers/parsers/DependencyParser/docs/name-resolution/python.md
+analysis/analysers/parsers/DependencyParser/docs/name-resolution/rust.md
+analysis/analysers/parsers/DependencyParser/docs/name-resolution/sql.md
+analysis/analysers/parsers/DependencyParser/docs/name-resolution/typescript.md
+analysis/analysers/parsers/DependencyParser/src/main/kotlin/de/maibornwolff/codecharta/analysers/parsers/dependency/DependencyParser.kt
+analysis/analysers/parsers/DependencyParser/src/main/kotlin/de/maibornwolff/codecharta/analysers/parsers/dependency/Dialog.kt
+analysis/analysers/parsers/DependencyParser/src/main/kotlin/de/maibornwolff/codecharta/analysers/parsers/dependency/analysis/ExtractionPipeline.kt
+analysis/analysers/parsers/DependencyParser/src/main/kotlin/de/maibornwolff/codecharta/analysers/parsers/dependency/analysis/LanguageAnalyzerFactory.kt
+analysis/analysers/parsers/DependencyParser/src/main/kotlin/de/maibornwolff/codecharta/analysers/parsers/dependency/analysis/analyzers/BaseLanguageAnalyzer.kt
+analysis/analysers/parsers/DependencyParser/src/main/kotlin/de/maibornwolff/codecharta/analysers/parsers/dependency/analysis/analyzers/ImportAliases.kt
+analysis/analysers/parsers/DependencyParser/src/main/kotlin/de/maibornwolff/codecharta/analysers/parsers/dependency/analysis/analyzers/LanguageAnalyzer.kt
+analysis/analysers/parsers/DependencyParser/src/main/kotlin/de/maibornwolff/codecharta/analysers/parsers/dependency/analysis/analyzers/TseMappings.kt
+analysis/analysers/parsers/DependencyParser/src/main/kotlin/de/maibornwolff/codecharta/analysers/parsers/dependency/analysis/analyzers/angular/AngularTemplateAnalyzer.kt
+analysis/analysers/parsers/DependencyParser/src/main/kotlin/de/maibornwolff/codecharta/analysers/parsers/dependency/analysis/analyzers/common/AliasPathResolver.kt
+analysis/analysers/parsers/DependencyParser/src/main/kotlin/de/maibornwolff/codecharta/analysers/parsers/dependency/analysis/analyzers/common/ImportPathResolution.kt
+analysis/analysers/parsers/DependencyParser/src/main/kotlin/de/maibornwolff/codecharta/analysers/parsers/dependency/analysis/analyzers/common/bundler/BundlerAliasResolver.kt
+analysis/analysers/parsers/DependencyParser/src/main/kotlin/de/maibornwolff/codecharta/analysers/parsers/dependency/analysis/analyzers/common/bundler/BundlerConfigData.kt
+analysis/analysers/parsers/DependencyParser/src/main/kotlin/de/maibornwolff/codecharta/analysers/parsers/dependency/analysis/analyzers/common/bundler/BundlerConfigParser.kt
+analysis/analysers/parsers/DependencyParser/src/main/kotlin/de/maibornwolff/codecharta/analysers/parsers/dependency/analysis/analyzers/common/bundler/BundlerConfigResolver.kt
+analysis/analysers/parsers/DependencyParser/src/main/kotlin/de/maibornwolff/codecharta/analysers/parsers/dependency/analysis/analyzers/common/federation/FederationAliasResolver.kt
+analysis/analysers/parsers/DependencyParser/src/main/kotlin/de/maibornwolff/codecharta/analysers/parsers/dependency/analysis/analyzers/common/federation/FederationConfigData.kt
+analysis/analysers/parsers/DependencyParser/src/main/kotlin/de/maibornwolff/codecharta/analysers/parsers/dependency/analysis/analyzers/common/federation/FederationConfigParser.kt
+analysis/analysers/parsers/DependencyParser/src/main/kotlin/de/maibornwolff/codecharta/analysers/parsers/dependency/analysis/analyzers/common/federation/FederationConfigResolver.kt
+analysis/analysers/parsers/DependencyParser/src/main/kotlin/de/maibornwolff/codecharta/analysers/parsers/dependency/analysis/analyzers/common/model/Import.kt
+analysis/analysers/parsers/DependencyParser/src/main/kotlin/de/maibornwolff/codecharta/analysers/parsers/dependency/analysis/analyzers/common/tsconfig/PathAliasResolver.kt
+analysis/analysers/parsers/DependencyParser/src/main/kotlin/de/maibornwolff/codecharta/analysers/parsers/dependency/analysis/analyzers/common/tsconfig/TsConfigData.kt
+analysis/analysers/parsers/DependencyParser/src/main/kotlin/de/maibornwolff/codecharta/analysers/parsers/dependency/analysis/analyzers/common/tsconfig/TsConfigParser.kt

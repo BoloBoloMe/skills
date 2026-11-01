@@ -1,0 +1,6 @@
+树中不在 lens 的节点: [('Folder', 'root')]
+lens 总数 3696 树节点 3014+683=3697
+merged metrics 指标: {'complexity': 3637, 'logic_complexity': 3637, 'comment_lines': 3637, 'number_of_functions': 3637, 'message_chains': 3637, 'rloc': 3637, 'loc': 3637, 'long_method': 3637, 'long_parameter_list': 3637, 'excessive_comments': 3637, 'comment_ratio': 3637, 'max_parameters_per_function': 3637, 'min_parameters_per_function': 3637, 'mean_parameters_per_function': 3637, 'median_parameters_per_function': 3637, 'max_complexity_per_function': 3637, 'min_complexity_per_function': 3637, 'mean_complexity_per_function': 3637, 'median_complexity_per_function': 3637, 'max_rloc_per_function': 3637, 'min_rloc_per_function': 3637, 'mean_rloc_per_function': 3637, 'median_rloc_per_function': 3637, 'outgoing_dependencies': 3014, 'incoming_dependencies': 3014, 'number_of_stored_procedures': 23, 'number_of_triggers': 23, 'number_of_views': 23, 'number_of_tables': 23}
+merged apiVersion: 2.1
+merged 树根 children 数: 12
+merged dependency edges: 8820

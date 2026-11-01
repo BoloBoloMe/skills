@@ -1,0 +1,18 @@
+=== GitHub release ana-2.3.0 ===
+200
+name: Analysis release 2.3.0
+published: 2026-10-28T12:49:17Z
+assets:
+ - codecharta-analysis-2.3.0.tar 56918016 bytes  downloads: 3
+ - codecharta-analysis-2.3.0.zip 47247919 bytes  downloads: 6
+=== GitHub release vis-2.9.1 ===
+name: Visualization release 2.9.1
+published: 2026-10-23T07:57:33Z
+assets:
+ - codecharta-visualization-darwin-arm64.zip 388164077 bytes  downloads: 1
+ - codecharta-visualization-darwin-x64.zip 400268641 bytes  downloads: 0
+ - codecharta-visualization-linux-arm64.zip 127540948 bytes  downloads: 1
+ - codecharta-visualization-linux-x64.zip 126523544 bytes  downloads: 3
+ - codecharta-visualization-win32-arm64.zip 159955365 bytes  downloads: 0
+ - codecharta-visualization-win32-x64.zip 161799338 bytes  downloads: 23
+ - web.zip 3537671 bytes  downloads: 11

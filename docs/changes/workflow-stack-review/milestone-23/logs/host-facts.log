@@ -1,0 +1,42 @@
+=== date ===
+2026年 11月 01日 星期日 12:07:33 CST
+=== podman version ===
+podman version 5.7.0
+=== podman info (rootless/userns/SELinux 关键字段) ===
+amd64 Error: template: info:1:22: executing "info" at <.Host.Os>: can't evaluate field Os in type *define.HostInfo
+rootless=true rootlessUID=Error: template: info:1:56: executing "info" at <.Host.RootlessUID>: can't evaluate field RootlessUID in type *define.HostInfo
+security={false CAP_CHOWN,CAP_DAC_OVERRIDE,CAP_FOWNER,CAP_FSETID,CAP_KILL,CAP_NET_BIND_SERVICE,CAP_SETFCAP,CAP_SETGID,CAP_SETPCAP,CAP_SETUID,CAP_SYS_CHROOT true true /usr/share/containers/seccomp.json false}
+=== getenforce ===
+/bin/bash: 行 10: getenforce: 未找到命令
+=== /sys/fs/selinux ===
+ls: cannot access '/sys/fs/selinux': No such file or directory
+=== uid / subuid ===
+uid=1000(bolo) gid=1000(bolo) groups=1000(bolo),4(adm),24(cdrom),27(sudo),30(dip),46(plugdev),100(users),111(lpadmin),114(lxd)
+bolo:100000:65536
+bolo:100000:65536
+=== node ===
+/run/user/1000/fnm_multishells/1219987_1793505842384/bin/node
+v24.19.0
+ls: cannot access '/usr/local/bin/node': No such file or directory
+ls: cannot access '/usr/bin/node': No such file or directory
+ls: cannot access '/home/bolo/.local/share/mise': No such file or directory
+=== nvm/fnm/volta dirs ===
+ls: cannot access '/home/bolo/.nvm': No such file or directory
+ls: cannot access '/home/bolo/.local/share/nvm': No such file or directory
+=== browsers ===
+/usr/bin/google-chrome
+/usr/bin/firefox
+chromium-1234
+chromium_headless_shell-1234
+ffmpeg-1011
+=== podman machine/containers ===
+CONTAINER ID  IMAGE                                                                                                   COMMAND               CREATED       STATUS                PORTS                                                                                                                                                                                                 NAMES
+0257361e6bb6  docker.io/gitea/gitea:1                                                                                 /usr/bin/s6-svsca...  2 months ago  Up 3 days             0.0.0.0:2222->22/tcp, 0.0.0.0:3000->3000/tcp                                                                                                                                                          gitea
+59c06dc0cc1e  docker.io/guacamole/guacd:latest                                                                                              4 weeks ago   Up 4 weeks (healthy)  4822/tcp                                                                                                                                                                                              guacd
+0a1ff06a02d6  docker.io/library/postgres:16-alpine                                                                    postgres              4 weeks ago   Up 4 weeks            5432/tcp                                                                                                                                                                                              guac-db
+4da1aa9c0caf  localhost/guacamole-keyfix:latest                                                                       /opt/guacamole/bi...  3 weeks ago   Up 3 days             0.0.0.0:8080->8080/tcp                                                                                                                                                                                guac-web
+6a4487912425  docker.io/eceasy/cli-proxy-api@sha256:6d0db4a855c2ea5369dc66b1269b8dc7f75cc3ed9994dd6aa2a75226ddc66e1c  /bin/bash -c umas...  2 weeks ago   Up 2 weeks (healthy)  127.0.0.1:1455->1455/tcp, 127.0.0.1:8317->8317/tcp, 127.0.0.1:51121->51121/tcp, 127.0.0.1:54545->54545/tcp, 192.168.65.165:8317->8317/tcp                                                             cliproxyapi
+e84db955dfe6  localhost/sandbox-worktree/skills-main:2026.10.29-1                                                                           2 days ago    Up 2 days             0.0.0.0:45797->22/tcp, 0.0.0.0:34823->6080/tcp, 0.0.0.0:41141->8800/tcp, 0.0.0.0:34403->8801/tcp, 0.0.0.0:33671->8802/tcp, 0.0.0.0:36951->8803/tcp, 0.0.0.0:33529->8804/tcp, 0.0.0.0:36703->8805/tcp  swt-refactor-skill-around-verification
+ef6b8922d917  localhost/sandbox-worktree/cz_sdk-master:2026.10.30-1                                                                         41 hours ago  Up 41 hours           0.0.0.0:6080->6080/tcp, 0.0.0.0:44399->22/tcp, 0.0.0.0:37235->8800/tcp, 0.0.0.0:43783->8801/tcp, 0.0.0.0:35033->8802/tcp, 0.0.0.0:46073->8803/tcp, 0.0.0.0:34701->8804/tcp, 0.0.0.0:35365->8805/tcp   swt-fix-20261103-payment-center-bug-fix
+=== registries ===
+cat: /home/bolo/.config/containers/registries.conf: No such file or directory
