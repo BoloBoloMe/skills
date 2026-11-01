@@ -114,4 +114,5 @@
 ### 2. 一处越界引用 (未修, 交协调方)
 
 - `workflow/use-sandbox-worktree/scripts/env_docs.py` 的 `_web_ports` 生成文案含 "(与 present 的 REMOTE.md 对齐)". 本节点删了 `general/present/REMOTE.md`, 该句变成悬空引用; 生成物 `~/docs/web-ports.md` 会继续提到一个不存在的文件.
-- 未修理由: `workflow/` 在本轮全局禁止范围内, 且 D011 明确"容器自查顺序沿用环境文档及 milestone-18 规则, 不改其生成器". 交由协调方按 milestone-18 或其后续节点处理.
+- 未修理由 (初次报告时): `workflow/` 在本轮全局禁止范围内, 且 D011 明确"容器自查顺序沿用环境文档及 milestone-18 规则, 不改其生成器". 交由协调方按 milestone-18 或其后续节点处理.
+- 后续: 协调方来信授权只改这一处措辞, 已于提交 `4e2abb5` 改为 "与 present 的地址规则一致, 见 docs/changes/workflow-stack-review/milestone-14/DECISIONS.md 的 D011"; 生成器行为未改, 无测试断言该字符串. 该文件在容器内 `uv run python -m pytest tests/test_env_docs.py` 会因 `tests/conftest.py` 的 `pytest_sessionstart` 调 `podman volume ls` 而 INTERNALERROR (容器无 podman, 与本次改动无关, 改动前后一致), 故用 `uv run python -m unittest tests.test_env_docs` 跑同一文件, 11 passed.
