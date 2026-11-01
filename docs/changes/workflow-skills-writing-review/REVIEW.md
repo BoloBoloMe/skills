@@ -74,7 +74,7 @@
 
 **F-21 两个模型调用 skill 的 description 混入内容.** `verification-contract` 的 "写代码/拆 issue 前调用, 为变更挑选验证方式" 后半是内容; `software-engineering-consensus` 的 "判断交付物属于 MVP/PoC/demo/迭代, 或需本仓库权威输入与产物根目录约定时调用" 前半是内容. 标准要求模型调用 description 只写何时调用. 两者都是常驻负载, 值得剪. 改法示例: "写代码或拆 issue 前调用" / "交付物定性或引用本仓库约定时调用". **已修**: 两处按此措辞替换, 常驻上下文不再携带内容介绍与 MVP/PoC/demo/迭代 的枚举.
 
-**F-22 硬护栏类否定予以保留, 但有一处重复.** `verification-contract/SAFETY.md` 的"禁止 `--force` 与 `-D` 硬删"是标准允许的硬护栏, 建议保留 (可补正向: "只用 `remove`/`-d`, 让 Git 的脏检查挡路"). `navigate/TEMPLATES.md` 的"llm 禁用 read/write/edit 工具直接触碰 ROADMAP.json"与 `navigate/SKILL.md` 读写纪律的正向表述"一切读写只经守门脚本"重复, 后者已足够. **保留不改 (本轮)**: 硬护栏按标准留位; TEMPLATES 与读写纪律的重复表述未动, 待我另行裁决是否删.
+**F-22 硬护栏类否定予以保留, 但有一处重复.** `verification-contract/SAFETY.md` 的"禁止 `--force` 与 `-D` 硬删"是标准允许的硬护栏, 建议保留 (可补正向: "只用 `remove`/`-d`, 让 Git 的脏检查挡路"). `navigate/TEMPLATES.md` 的"llm 禁用 read/write/edit 工具直接触碰 ROADMAP.json"与 `navigate/SKILL.md` 读写纪律的正向表述"一切读写只经守门脚本"重复, 后者已足够. **已修 (我裁决)**: `SAFETY.md` 的硬护栏保留, 不另加正面句 (正面做法已由 Git 自己的脏检查承担); `navigate/TEMPLATES.md` 的"禁令与旧格式"整节删除, 该节两条分别是 `SKILL.md` 读写纪律里"一切读写只经守门脚本"与"旧格式重建"段的副本, 删后该规则只在 `SKILL.md` 一处.
 
 ## 4 保持的优点
 
@@ -88,7 +88,7 @@
 
 1. 已完成 (纯文本, 不改行为): F-01 标点 (44 处破折号 + 5 对全角引号), F-02 产物根目录指针化, F-03 方法 skill 定义收敛与启动句统一, F-04 maintain 授权节改指 create, F-07 benchmark 权限边界收敛, F-09 GHERKIN 禁令收敛, F-14 ADR 破折号与示例路径标注. F-13 复审后改判为可接受, 不改. F-23 frontmatter YAML 冒号问题已修, 并给 check_skill.py 加了同类拒绝.
 2. 已完成 (语义重排): F-05 类型映射收口, F-06 反模式改正向边界, F-10 标题结构统一, F-11 第 4 步完成标准, F-12 降级信号去重. F-08 并入 F-16.
-3. 已完成 (第 3 批, 我先逐项裁决后执行): F-15 按方案 B 披露制图与航行步骤; F-16 与 F-08 一起披露 verify-change 第 7, 8 步与 code-review 的 reviewer 任务简述; F-17 只对齐证据用词, 不新建真相源; F-18 三处补冲突裁定; F-19 与 F-20 补完成标准, 指针触发条件与不产出交付物声明; F-21 两个 description 改纯触发措辞. F-22 保留硬护栏, TEMPLATES 的重复表述待裁决.
+3. 已完成 (第 3 批, 我先逐项裁决后执行): F-15 按方案 B 披露制图与航行步骤; F-16 与 F-08 一起披露 verify-change 第 7, 8 步与 code-review 的 reviewer 任务简述; F-17 只对齐证据用词, 不新建真相源; F-18 三处补冲突裁定; F-19 与 F-20 补完成标准, 指针触发条件与不产出交付物声明; F-21 两个 description 改纯触发措辞. F-22 保留硬护栏并删掉 TEMPLATES 里的重复节.
 
 每批改完用 `writing-for-llm/check_skill.py` 复跑受影响文件; 涉及调用关系时按仓库 README 口径人工核对调用语句.
 

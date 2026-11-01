@@ -77,11 +77,6 @@ uv run python <skill 目录>/scripts/roadmap.py delete <file>
 
 `content` 先按 JSON 解析, 解析失败按裸字符串存. 文本含引号/数字/括号等易歧义内容时, 用 JSON 字符串形式 (外层再套单引号) 传.
 
-## 禁令与旧格式
-
-- llm 禁用 read/write/edit 工具直接触碰 ROADMAP.json; 一切读写经上述脚本.
-- 现场出现旧版 `ROADMAP.md` / `MILESTONE-NN.md` 时, 用 read 读旧文件后经脚本重建为 ROADMAP.json; 不提供迁移命令.
-
 ## 目录约定
 
 - 路线图文件: `docs/changes/<feature-slug>/roadmap/ROADMAP.json`.
