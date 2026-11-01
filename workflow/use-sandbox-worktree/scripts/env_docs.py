@@ -64,7 +64,8 @@ def _web_ports(facts) -> str:
         "- 交付形状 (端口以自查结果为准): "
         "`http://<SWT_HOST_LAN_IP>:<SWT_HOST_WEB_PORT>/<页面文件>`.",
         "- 服务自报的 `url`/`hostname`/`lan_ip` 是容器视角, 不要直接交付; "
-        "宿主地址一律取 `SWT_HOST_LAN_IP` (与 present 的 REMOTE.md 对齐).",
+        "宿主地址一律取 `SWT_HOST_LAN_IP` (与 present 的地址规则一致, 见 "
+        "docs/changes/workflow-stack-review/milestone-14/DECISIONS.md 的 D011).",
         "",
         "## 架桥配方 (navigate 交付展示页)",
         "容器里交付地图页时, 8801 固定归 navigate (8800 固定归 present); "
