@@ -57,21 +57,21 @@ disable-model-invocation: true
 
 ### 5. 运行各评审方向
 
-启动 **Standards** 和 **Spec** 两个 reviewer, 按步骤 4 的判定另启 **旧行为影响** reviewer. 各 reviewer 使用独立上下文. 若运行时不支持子 agent, 没有可用 reviewer, 或并行启动失败, 父会话可按同一输入契约先运行 Standards 再运行 Spec, 最终格式不变; 旧行为影响须由未参与实现与修复的独立审核者运行, 无人可派则报告缺口, 不由作者补位.
+启动 **Standards** 和 **Spec** 两个 reviewer, 按步骤 4 的判定另启 **旧行为影响** reviewer. 各 reviewer 使用独立上下文. 任务简述见 [reviewer 任务简述](references/reviewer-briefs.md), 派工时原样交给它, 并附上下列输入. 若运行时不支持子 agent, 没有可用 reviewer, 或并行启动失败, 父会话可按同一输入契约先运行 Standards 再运行 Spec, 最终格式不变; 旧行为影响须由未参与实现与修复的独立审核者运行, 无人可派则报告缺口, 不由作者补位.
 
 **Standards reviewer 输入** 包含:
 
 - 完整的 diff 命令和 commit 列表.
 - 步骤 3 中找到的规范来源文件列表.
 - `references/fowler-baseline.md` 全文. reviewer 没有其他途径获取这份基线.
-- 任务简述: `报告按相关文件/hunk 组织. (a) diff 中每个违反已记录规范的位置, 引用规范文件和规则; (b) 你发现的任何基线坏味道, 列出名称并引用 hunk. 区分硬性违规和判断性发现. 违反已记录规范可能是硬性的, 基线坏味道始终是判断性发现, 且仓库已记录规范覆盖基线. 跳过工具链已强制检查的内容. 每个发现必须已读取对应 hunk 所在完整函数/方法及必要调用方; 无上下文支撑的坏味道不得报告. 完整列出全部发现, 如有摘要只限制摘要篇幅.`
+- [Standards 任务简述](references/reviewer-briefs.md).
 
 **Spec reviewer 输入** 包含:
 
 - 完整的 diff 命令和 commit 列表.
 - spec 的路径或已获取的内容.
 - issue 中声明的验证契约, 验证入口与交付证据 (若有); 核对契约时读取 `verification-contract` skill.
-- 任务简述: `报告 (a) spec 要求但缺失或不完整的实现; (b) diff 中出现了但 spec 未要求的行为, 即范围蔓延; (c) 看似已实现但实现方式有误的需求; (d) issue 的交付证据未覆盖所声明的全部变更类型, 或与验证契约不符. 实现类发现引用 spec 原文, 并读取对应 hunk 所在完整函数/方法及必要调用方; 证据类发现引用 issue 的契约, 验证入口, 实际交付证据 (若有) 及 verification-contract 的对应规则, 区分没有记录证据与检查未通过. 没有 spec 或契约依据不得报告. 完整列出全部发现, 如有摘要只限制摘要篇幅.`
+- [Spec 任务简述](references/reviewer-briefs.md).
 
 如果 spec 缺失, 跳过 Spec reviewer 并在最终报告中注明.
 
@@ -79,7 +79,7 @@ disable-model-invocation: true
 
 - 完整的 diff 命令和 commit 列表, 评审起点与当前集成提交.
 - 产物根目录及其中已有的 `IMPACT-REVIEW.md` (首轮没有则注明), 供核对上轮记录是否闭环.
-- 任务简述: `从指定评审起点核对实际差异, 追查可能受影响的既有入口/调用方和旧行为. 共享接口, 数据格式或跨模块路径的变更调用 blast-radius skill 深查. 报告写目标提交, 逐项发现, 已排除项与证据, 包含代码依据, 既有检查及本轮运行结果; 未证实路径写明缺口, 不以搜索命中充当安全证明, 不声称有限检查找到了全部影响. 读上轮报告核对闭环, 将本轮完整记录追加到产物根目录的 IMPACT-REVIEW.md 并提交, 不覆盖旧轮次.`
+- [旧行为影响任务简述](references/reviewer-briefs.md).
 
 完成标准: Standards 输出已获得; Spec 输出已获得或已明确跳过; 旧行为影响已获得独立报告或有已记录的免做理由, 否则报缺口; 每个 reviewer 输入包含 diff 命令, commit 列表和本评审方向必需来源.
 

@@ -151,10 +151,14 @@ class RenderDocsTest(unittest.TestCase):
 
     def test_navigate_skill_no_container_section(self):
         text = (ROOT / "workflow/navigate/SKILL.md").read_text(encoding="utf-8")
+        mapping = (ROOT / "workflow/navigate/reference/MAPPING.md").read_text(
+            encoding="utf-8")
         self.assertNotIn("容器内展示配方", text)
-        self.assertIn("## 制图 Roadmap", text)
-        self.assertIn("4. **绘制地图.", text)
+        self.assertIn("reference/MAPPING.md", text)
         self.assertIn("web_server.py start", text)
+        self.assertIn("# 制图 Roadmap", mapping)
+        self.assertIn("4. **绘制地图.", mapping)
+        self.assertIn("display_serve.sh ensure", mapping)
 
     def test_generation_functions_are_pure(self):
         source = (SCRIPTS / "env_docs.py").read_text(encoding="utf-8")

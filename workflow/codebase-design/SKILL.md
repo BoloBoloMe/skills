@@ -6,7 +6,7 @@ disable-model-invocation: true
 
 # 代码库设计
 
-本 skill 是方法 skill; 完成标准见 [verification-contract](../verification-contract/SKILL.md).
+本 skill 是方法 skill; 完成标准见 [verification-contract](../verification-contract/SKILL.md). 它只提供词汇与判据, 不产出交付物, 也不作为流程步骤执行.
 
 开始前, 调用 `domain-awareness` skill 感知当前工作目录的领域模型.
 

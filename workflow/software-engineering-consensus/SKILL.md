@@ -1,6 +1,6 @@
 ---
 name: software-engineering-consensus
-description: 判断交付物属于 MVP/PoC/demo/迭代, 或需本仓库权威输入与产物根目录约定时调用.
+description: 交付物定性或引用本仓库约定时调用.
 ---
 
 # 软件工程共识

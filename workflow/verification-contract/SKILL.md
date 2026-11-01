@@ -1,6 +1,6 @@
 ---
 name: verification-contract
-description: 写代码/拆 issue 前调用, 为变更挑选验证方式
+description: 写代码或拆 issue 前调用
 ---
 
 # 验证契约
