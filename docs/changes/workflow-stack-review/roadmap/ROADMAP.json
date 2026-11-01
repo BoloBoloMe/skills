@@ -197,7 +197,10 @@
         "milestone-20",
         "milestone-21",
         "milestone-22",
-        "milestone-23"
+        "milestone-23",
+        "milestone-24",
+        "milestone-25",
+        "milestone-26"
       ],
       "artifacts": [],
       "close_summary": null
@@ -423,6 +426,41 @@
         "docs/changes/workflow-stack-review/milestone-23/work/shot-cz-sdk-master-depview.png"
       ],
       "close_summary": "在宿主用用户真实 Java 库 cz_sdk-master (2f452a91, 只读挂载) 跑通官方 codecharta-analysis 分析链路: 出图 3014 文件, 依赖边 8820, 文件层号 0-7 共 8 种, 目录层号 7 种, 环边 10, 向上依赖边 191 (通知里 19 是笔误); 官方 vis-2.9.1 原版前端吃该数据并真实渲染 3D 与依赖视图, console 0 错误, 有截图为证. 目标库零改动 (HEAD 未变, 无 .codebase-map). 关键事实与缺口: 未解析名字比例无工具口径 (日志无告警只证明语法解析零失败, 源码取证确认无名字解析计数), 该门禁项记未验证, 上线判断交用户; 镜像 tag 应为纯数字 2.3.0, D002 的 ana-2.3.0 实为 GitHub release 名, 已按同版本纠正并在父会话公开说明后使用, 不伪记用户确认; ccsh --version 自报 2.2.1 与 tag 不一致原因未查明, 核对以 digest 为准; rootless 需 --userns=keep-id (uid_map 实证默认容器 1000 映到宿主 100999); 官方管道合并损坏, 改用 unifiedparser 出文件加 ccsh merge; level 在 dependency lens 不在 metrics lens, 显式请求 height=level 被前端改写为 complexity, D026 的 URL 绑定方案实测不可行, 需重裁; 零声明文件 (2 个全注释 TestMapper, 2 个 package-info) 与 target/generated-sources 5 个不进依赖树, 交付文案需说明分母. 父会话复核发现初稿把无告警当成未解析通过, 已退回修正并在 REVIEW.md 记录逐项核对. 上游前端资产与原始大日志在 /tmp 外置, 原始 cc.json 不入仓库. 未提交 git, 未改任何 skill/决策/产品代码, 未跑同步."
+    },
+    "milestone-24": {
+      "title": "按用户裁决更正镜像 tag 与指标展示, 接受未解析门禁不可验证",
+      "type": "deliberate",
+      "question": "milestone-23 探针暴露三处与既有决策冲突, 用户在本会话直接裁决: (a) 接受 未解析名字比例 无法用工具口径验证, 以语法失败 0/边 8820/层号 8 种/环 10/向上 191 作为继续依据, 不再补证也不得写成已验证; (b) 镜像引用改为官方纯数字 docker.io/codecharta/codecharta-analysis:2.3.0, 版本核对以 digest 为准, 不用 ana-2.3.0; (c) 指标与展示按官方的来, 不把层号拷进 metrics, 不改官方默认 URL 与指标, 层号与违规改在官方依赖视图查看, 撤销 D026 的 height=level&area=rloc&color=violation 组合. 本节点负责把这些裁决与探针确认的实施事实 (keep-id, 官方 merge 替代管道, 零声明文件离开依赖树, level 字段位置, 宿主环境, 官方前端可用) 固化, 替代 milestone-13 对应旧条文, 旧文保留历史. 完成标准: DECISIONS.md 落盘, 与旧账本冲突处逐条指明替代关系, 不改动任何实现代码.",
+      "status": "已关闭",
+      "blocked_by": [],
+      "artifacts": [
+        "docs/changes/workflow-stack-review/milestone-24/DECISIONS.md",
+        "docs/changes/workflow-stack-review/milestone-23/PROBE.md",
+        "docs/changes/workflow-stack-review/milestone-23/REVIEW.md"
+      ],
+      "close_summary": "用户 2026-11-01 在本会话直接裁决三项并已固化进 milestone-24/DECISIONS.md: U001 接受 未解析名字比例 无法用工具口径验证, 以语法失败 0/边 8820/层号 8 种/环 10/向上 191 作为继续依据, 不再补证, 交付须如实说明该局限; U002 镜像引用改为官方纯数字 2.3.0, 版本核对以 digest 为准, 弃用 ana-2.3.0; U003 指标与展示按官方的来, 不把层号拷进 metrics, 不改官方默认指标与 URL, 层号与违规在官方依赖视图查看, 撤销 D026 的 height=level 组合. 同时记录探针确认的六条实施事实 (keep-id, 官方 merge 替代管道, 零声明文件离开依赖树, level 字段位置, 宿主环境, 官方前端可用). 按用户 你看着办 的决定补 v1 两节点: milestone-25 准备规格与执行输入 (阻塞 milestone-26), milestone-26 实施 v1, 两者并入终点验收阻塞. 未改任何实现代码或 skill 正文, 旧账本条文保留历史. milestone-08 仍未验收, 不代表正式交付."
+    },
+    "milestone-25": {
+      "title": "准备 codebase-map v1 的规格与执行输入",
+      "type": "task",
+      "question": "HITL 准备工作, 不是实施. 按 milestone-13 当前有效决策 (D001/D003/D004/D005/D009/D017/D020/D021/D022/D023/D024/D025/D027/D029/D030, 以 milestone-24 的 U001-U003 更正 D002/D026) 与探针事实 (milestone-24 F001-F006), 形成 v1 的 PRODUCT.md 与 TECHNICAL.md, 逐项与我确认可观察验收标准, 再在独立会话用 to-execution 生成 EXECUTION.md 与可执行 issues (每项含验证契约/验证入口/可复查完成证据), 产物根目录统一 docs/changes/workflow-stack-review/milestone-25/. v1 范围按 D027: 官方 web.zip 前端 + ccsh 分析 + 自建 python 常驻单例服务, 宿主独用, 局域网 URL 交付; 不含汉化 (归 milestone-21). 输入须覆盖: 单例与端口纪律, 状态文件探活, serve-root 布局与路径哈希键, build/serve/stop 三子命令, 默认排除规则, cc.json 落目标库 .codebase-map/, 容器调用方式含 keep-id 与无网络, 官方 merge 合并指标, 零声明文件与未解析局限的交付说明, 门禁检查 (D029 中可执行的部分). 不得把未确认项替用户作答, 不写实现代码, 不运行会改安装目录的同步. 完成标准: 必需输入真实可读且无未处理标准/验证契约缺口, milestone-26 可按 drive-execution 正常进入派工; 所有输入路径记入本节点产物.",
+      "blocked_by": [
+        "milestone-24"
+      ],
+      "status": "待处理",
+      "artifacts": [],
+      "close_summary": null
+    },
+    "milestone-26": {
+      "title": "实施 codebase-map v1 分析服务与交付",
+      "type": "task",
+      "question": "按 milestone-25 产出的当前权威输入实施 v1: workflow/codebase-map/ 下的 build/serve/stop 三子命令, podman 调官方 codecharta-analysis:2.3.0 (keep-id, 无网络, 源码只读) 产出依赖图并按官方 merge 合并指标, cc.json 落目标库 .codebase-map/ 并复制副本到 serve-root 供前端取用, 自建 python 常驻单例服务托管官方 vis-2.9.1 前端并交付局域网 URL, 状态文件记 port/pid/serve-root/数据键并做真实探活, 显式 stop. 严格按 milestone-24 的 U001-U003 与 F001-F006: 不把层号拷进 metrics, 不改官方默认指标与 URL; 交付文案说明层号在官方依赖视图看, 并说明依赖抽取完整性未量化与分母口径. skill 必须 disable-model-invocation: true 并补 agents/openai.yaml, 更新 README 入口. 编码任务按 drive-execution skill 执行, 产物根目录 docs/changes/workflow-stack-review/milestone-26/. 验证按 milestone-25 确认的验收标准与各 issue 验证契约, 通过相关 pytest 与仓库 check_skill.py; 禁止修改真实已安装 skills, 不运行会改安装目录的同步, 不宣称安装效果已验证.",
+      "blocked_by": [
+        "milestone-25"
+      ],
+      "status": "待处理",
+      "artifacts": [],
+      "close_summary": null
     }
   },
   "unknown_seas": [],
