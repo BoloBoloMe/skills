@@ -41,7 +41,7 @@ TECHNICAL.md/EXECUTION.md 可选, 缺少不阻塞. 从项目文档, 源码和实
 
 ## 写入授权
 
-定位与分类阶段默认只读. 改配方前按 [../verification-contract/SAFETY.md](../verification-contract/SAFETY.md) 的 **写入与授权** 节交我批准; 批准前不写配方或建辅助脚本. 本节只补维护特有条款:
+定位与分类阶段默认只读. 改配方前按 [verification-contract/SAFETY.md](../verification-contract/SAFETY.md) 的 **写入与授权** 节交我批准; 批准前不写配方或建辅助脚本. 本节只补维护特有条款:
 
 - 说明要改的配方文件, 改哪几节, 是否新增文件.
 - 复跑要创建的临时数据, 实例与端口也算本次写入范围.

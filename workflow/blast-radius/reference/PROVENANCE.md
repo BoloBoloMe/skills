@@ -45,7 +45,7 @@ curl -sS -m 20 -w "%{http_code} %{size_download}\n" -o /tmp/iss13-upstream/LICEN
 | Step 5 一句 "Write a script or test that runs the real code, run it, and paste what happened" | 第 4 节 (写可失败的证明脚本): 先断言库版本与运行环境, 用 `assert` 或显式非零退出, 脚本全文与输出都留 | 上游一句扩成可失败条件 | 保留收紧: 仍是同一条证明要求, 补的是"判断错会明确失败" |
 | Step 6 "run it as an `arena`" 与上游模型指派, Frame/Fan out/Cross-judge/Pick/Graft/Verify 产物流程 | 第 7 节 (大或宽变更用多模型同题调查) 与 `reference/multimodel.md`, 用 `use-herdr` 与 `llm-select` 承接 | 不搬上游产物流程与模型指派表; 合并规则本地写 (一致取最高证据级别, 分歧并存) | 按 D021 只借"不同模型同题加合并答案" |
 | 结尾 "Write it through `unslop`" | 第 8 节 (交接) 按 `reference/report-style-zh.md` 整理中文报告 | 上游英文文风清单不是等价替换 | 按 D021 改写成中文报告规则, 只保留诚实, 去冗, 分事实/推断/未证实 |
-| 上游无写入授权句 | 第 4 节 (写可失败的证明脚本): 只读调查直接做, 写仓库或跑有副作用的应用前按 verification-contract/SAFETY.md 写入与授权节获批 | 新增写入授权边界 | 本地新增, 不改变上游证明要求 |
+| 上游无写入授权句 | 第 4 节 (写可失败的证明脚本): 只读调查直接做, 写仓库或跑有副作用的应用前按第 5 节开头的 SAFETY 指针获批 (覆盖 写入与授权 与 原始数据 两节) | 新增写入授权边界 | 本地新增, 不改变上游证明要求 |
 | 上游无一次性实验边界 | 第 5 节 (一次性实验的边界): 完整边界唯一维护处, benchmark-checklist 的任何一次性实验均以指针抵达 | 统一非正式 TC, 授权, 冻结目标, 正式用例与清理边界, 测量特有记录仍在 benchmark-checklist | 本地新增边界保持原义, 不再维护两份调查方法或授权条款 |
 | 上游无角色句 | 引言: 自己调查并运行是使用者角色; 组织产品验收的会话不借调用本技能亲自验收, 须派实际验收子会话 | 新增角色边界 | 按 DECISIONS D025 |
 | 上游无单模型缺口处理 | 第 7 节 (大或宽变更用多模型同题调查): 只有一款模型可用时写明能力缺口, 已证明事实不改标未证实 | 新增缺口处理 | 本地新增, 不改证据级别强度 |
