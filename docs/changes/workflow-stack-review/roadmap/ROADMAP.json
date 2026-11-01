@@ -497,9 +497,21 @@
       "blocked_by": [
         "milestone-25"
       ],
-      "status": "进行中",
-      "artifacts": [],
-      "close_summary": null
+      "status": "已关闭",
+      "artifacts": [
+        "docs/changes/workflow-stack-review/milestone-26/RUN-REPORT.md",
+        "docs/changes/workflow-stack-review/milestone-26/IMPACT-REVIEW.md",
+        "docs/changes/workflow-stack-review/milestone-26/REVIEW-standards.md",
+        "docs/changes/workflow-stack-review/milestone-26/REVIEW-spec.md",
+        "docs/changes/workflow-stack-review/milestone-26/REVIEW-rework.md",
+        "docs/changes/workflow-stack-review/milestone-26/issues/REWORK-01.md",
+        "docs/changes/workflow-stack-review/milestone-26/issues/REWORK-02.md",
+        "docs/changes/workflow-stack-review/milestone-26/issues/REWORK-03.md",
+        "workflow/codebase-map/SKILL.md",
+        "workflow/codebase-map/scripts/",
+        "workflow/codebase-map/tests/"
+      ],
+      "close_summary": "codebase-map v1 在容器内实施完成: build/serve/stop 三子命令 + 共享规则模块, 85 个用例全绿, 收集 950, check_skill 与 codex 元数据守卫通过, 既有两树与 conftest 预载纪律未受影响. 流程: 影响复查 1 轮 0 返工; 双轴评审各 1 轮 (Standards 硬性违规 2/缺陷 1/判断性 23, Spec 缺失 2/蔓延 4/方式有误 1/证据不符 5), 返工 2 轮 (REWORK-01/02) 后复审确认修好; 发起方裁决四条口径已落地 (REWORK-03): serve 复用分支复查 no_data_keys, build 持锁窗口写文档, 交付消息加第 4 类未解析扩展名说明 (data_keys 加 stats 子对象), build 输出加三句分母说明. 与规格原文三处差异已记录: SKILL.md 并入 m21 既有文件而非新建, 上述 data_keys.stats 与 delivery_notes 第四类字段属对 TECHNICAL 字段清单的裁决扩展, m25 F007 与评审起点关于目录不存在的表述与仓库事实相反. 宿主侧验证不可得 (发起方明示环境内无 Java 项目且无 podman/出网), 真实 build/初始化/3D 渲染/局域网设备打开/长期常驻/全量 pytest/宿主错误分支全部记未验证, 未用 stub 或截图顶替; 未推送, 未做 verify-change 独立核验与终点验收, 不代表正式交付."
     }
   },
   "unknown_seas": [],
