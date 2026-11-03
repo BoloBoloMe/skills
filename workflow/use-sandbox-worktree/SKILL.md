@@ -58,7 +58,7 @@ uv run python scripts/swt.py resume --repo <主仓> --name <容器名>
 脚本需要恢复时先出 DECIDE, 我确认后才加 `--confirm`. 恢复只作用于目标对, 具体操作顺序交给脚本. 新模板只检查固定配置/凭据/网关, 不重装或换 Key. 旧形态配置冲突按 [ops.md](reference/ops.md) 处理; 宿主换网后的 pasta 失配按告警交我决定是否重建. 显示失败可降级到终端, 不擅自终结工作容器.
 完成标准: 目标 running, STATE 指向本对母体分支, 防火墙/Git 通道及适用的模板检查通过, Herdr machine 已核对, 显示状态明确; 随后执行交付.
 
-**网络维护 network**: 查询规则, 增删白名单/补理由或恢复未完成事务前, 先读 [network.md](reference/network.md).
+**网络维护 network**: 查询规则, 增删白名单/补理由或恢复未完成事务前, 先读 [network.md](reference/network.md). 项目级复用清单 `<records-root>/<slug>/network-allow.conf` 仅为约定, birth 不自动读取, 起容器时手动展开为 `--allow-entry`.
 完成标准: 已按 `NETWORK.stage/checks/pending` 报告本次结果; 回退后仍报告原操作失败, 未完成事务明确交还给我.
 
 **终结 terminate**:
