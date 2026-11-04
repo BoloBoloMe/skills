@@ -446,8 +446,8 @@ def expected_repo_config() -> dict[str, list[str]]:
 def expected_pair_config(branch: str) -> dict[str, list[str]]:
     """对级 (母体 config.worktree, 每对一份): 只放行本对母体分支, 写入恒 --add."""
     return {
-        "receive.hideRefs": ["refs/heads", f"!refs/heads/{branch}", "refs/tags", "refs/remotes"],
-        "uploadpack.hideRefs": ["refs/heads", f"!refs/heads/{branch}", "refs/tags", "refs/remotes"],
+        "receive.hideRefs": ["refs/heads", f"!refs/heads/{branch}", "refs/tags", "refs/remotes", "refs/replace"],
+        "uploadpack.hideRefs": ["refs/heads", f"!refs/heads/{branch}", "refs/tags", "refs/remotes", "refs/replace"],
     }
 
 
@@ -499,10 +499,16 @@ def pair_config_matches(repo: Path, mother: Path | None, branch: str | None) -> 
 def validate_config_before_resources(repo: Path, mother: Path | None, expected: dict[str, list[str]]) -> None:
     for key, wanted in expected.items():
         actual = config_layer_values(repo, mother, key)
-        if actual and not values_match(actual, wanted):
-            raise PreconditionError(
-                f"git config {key} 已有错误值, 不覆盖: 现有={actual!r}, 期望={wanted!r}"
-            )
+        if not actual or values_match(actual, wanted):
+            continue
+        # 旧版对级配置只缺 refs/replace. 仅接受完整旧集合, 由 configure_repo
+        # 在本对内补上这一项; 其他缺项/额外值仍拒绝覆盖.
+        legacy = [value for value in wanted if value != "refs/replace"]
+        if key in PAIR_CONFIG_KEYS and "refs/replace" in wanted and values_match(actual, legacy):
+            continue
+        raise PreconditionError(
+            f"git config {key} 已有错误值, 不覆盖: 现有={actual!r}, 期望={wanted!r}"
+        )
 
 
 def config_unset_all(repo: Path, mother: Path | None, key: str) -> None:
@@ -542,12 +548,14 @@ def configure_repo(repo: Path, mother: Path, branch: str) -> None:
     validate_config_before_resources(repo, mother, expected)
     try:
         for key, values in expected.items():
-            if snapshot.get(key):
-                continue
+            missing = Counter(values) - Counter(snapshot.get(key, []))
             for value in values:
+                if missing[value] <= 0:
+                    continue
                 result = config_add_value(repo, mother, key, value)
                 if result.returncode != 0:
                     raise PreconditionError(f"写入 git config {key} 失败: {result.stderr.strip()}")
+                missing[value] -= 1
         if not config_matches_multiset(repo, mother, expected):
             restore_config(repo, mother, snapshot)
             raise PreconditionError("git config 写入后校验失败, 已回滚快照")
@@ -2247,6 +2255,8 @@ def migrate_legacy_pairs(repo: Path, records_root: Path, *, skip_daemon_for: Pat
         values = git_values(repo, key)
         if not values:
             continue
+        if "refs/replace" not in values:
+            values = [*values, "refs/replace"]
         for branch in branches:
             mother, _dirty = find_mother(repo, branch)
             if mother is None or not mother.is_dir():
@@ -3242,6 +3252,9 @@ def birth(args: argparse.Namespace, repo: Path) -> int:
         if runtime_existing.get("containers"):
             template_call(agent_templates.target, runtime_existing, args.name)
         if runtime_existing.get("stage") == "born":
+            configure_repo(repo, Path(runtime_existing["mother_dir"]).resolve(), branch)
+            runtime_existing["config"] = {"swt-form": True}
+            atomic_write_json(runtime_file, runtime_existing)
             template_call(agent_templates.operate, runtime_existing, args.name, install=False, partial=True)
             reentry = birth_display_gate_reentry(args, repo, records_root, runtime_existing, runtime_file)
             if reentry is not None:
@@ -3410,6 +3423,10 @@ def birth(args: argparse.Namespace, repo: Path) -> int:
                              "base-path": str(daemon.base_path), "orphan": False}
             runtime["daemon"] = daemon_record
             runtime["stage"] = "daemon"
+            atomic_write_json(runtime_file, runtime)
+        else:
+            configure_repo(repo, mother_dir, branch)
+            runtime["config"] = {"swt-form": True}
             atomic_write_json(runtime_file, runtime)
         if not isinstance(daemon_record, dict) or not process_alive(daemon_record.get("pid")):
             raise PreconditionError("已有 PARTIAL runtime 但 daemon 不存活, 请人工恢复该新建对的 daemon")
@@ -4633,7 +4650,11 @@ def resume(args: argparse.Namespace, repo: Path) -> int:
                     file=sys.stderr,
                 )
     daemon_observed = daemon_state(mother_dir, repo, runtime)
-    daemon_ready = not resume_daemon_stale(daemon_observed, runtime) and git_bridge_ready(runtime)
+    daemon_ready = (
+        not resume_daemon_stale(daemon_observed, runtime)
+        and git_bridge_ready(runtime)
+        and pair_config_matches(repo, mother_dir, branch)
+    )
     network_ready, _network_output = resume_network_status(runtime, target)
     pair_remote = fixed_git_remote(mother_dir)
     git_ready = resume_git_ready(target, pair_remote) if (
@@ -4743,6 +4764,9 @@ def resume(args: argparse.Namespace, repo: Path) -> int:
             migrate_legacy_pairs(repo, records_root, skip_daemon_for=mother_dir)
         elif legacy_pair_branches(repo):
             raise PreconditionError("新模板 resume 不迁移主仓旧形态, 请另行决定")
+        configure_repo(repo, mother_dir, branch)
+        runtime["config"] = {"swt-form": True}
+        atomic_write_json(runtime_file, runtime)
         stop_git_bridge(runtime, records_root, identity)
         detail = inspect_container(target_name)
         state = detail.get("State") if isinstance(detail.get("State"), dict) else {}

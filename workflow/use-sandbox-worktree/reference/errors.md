@@ -15,3 +15,4 @@ swt 生态里原生报错的含义与处置. 脚本 stderr 透传原生报错原
 | 模型/业务共用环境变量需用户决定 | 不自动继承或丢弃云/Git 业务凭据, 用户决定本次 env.conf 清单后再重跑 |
 | `APPLY-CONFLICT` | 防火墙表内有其他容器规则, apply 拒覆盖; 走 swt 编排 (--merge) 不手调 |
 | `access denied or repository not exported` | daemon 拒服务该路径: 请求路径不是本 daemon 的母体目录, 或母体私有 git 目录缺 git-daemon-export-ok; 经桥的 remote 路径段必须是母体目录名, 别用旧版主仓名 |
+| `PARTIAL daemon 读面越权` | daemon 公布了本对目标分支以外的引用 (例如 `refs/replace`); 不删仓库引用或跳过检查, 按同一 birth 重入, 由工具只补齐本母体的隐藏规则; 仍失败就保留现场并报告 |

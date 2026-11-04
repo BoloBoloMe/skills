@@ -281,9 +281,8 @@ class TestTS002RepoResolution(SwtFixture):
 
 
 class TestTS003MotherAndConfig(SwtFixture):
-    def make_mother(self) -> tuple[str, Path]:
-        """建母体工作树 + 两层 swt-form 配置 (仓级 deny 三键 + 扩展开关; 对级 hideRefs
-        落母体 config.worktree)."""
+    def make_mother(self, *, legacy: bool = False) -> tuple[str, Path]:
+        """建母体工作树 + 两层 swt-form 配置; legacy 用于升级回归用例."""
         branch = "feature/mother"
         mother = self.root / "mother"
         subprocess.run(
@@ -302,13 +301,77 @@ class TestTS003MotherAndConfig(SwtFixture):
                 ["git", "-C", str(self.repo), "config", key, value],
                 check=True, capture_output=True, text=True,
             )
+        values = ["refs/heads", f"!refs/heads/{branch}", "refs/tags", "refs/remotes"]
+        if not legacy:
+            values.append("refs/replace")
         for key in ("receive.hideRefs", "uploadpack.hideRefs"):
-            for value in ("refs/heads", f"!refs/heads/{branch}", "refs/tags", "refs/remotes"):
+            for value in values:
                 subprocess.run(
                     ["git", "-C", str(mother), "config", "--worktree", "--add", key, value],
                     check=True, capture_output=True, text=True,
                 )
         return branch, mother
+
+    def test_replace_refs_are_hidden_and_not_writable_after_config_upgrade(self) -> None:
+        branch, mother = self.make_mother(legacy=True)
+        swt = self.load_swt()
+        old = subprocess.run(
+            ["git", "-C", str(mother), "rev-parse", "HEAD"],
+            capture_output=True, text=True, check=True,
+        ).stdout.strip()
+        subprocess.run(
+            ["git", "-C", str(self.repo), "commit", "--allow-empty", "-m", "replacement"],
+            capture_output=True, text=True, check=True,
+        )
+        replacement = subprocess.run(
+            ["git", "-C", str(self.repo), "rev-parse", "HEAD"],
+            capture_output=True, text=True, check=True,
+        ).stdout.strip()
+        subprocess.run(
+            ["git", "-C", str(self.repo), "replace", old, replacement],
+            capture_output=True, text=True, check=True,
+        )
+        swt.place_daemon_export_ok(mother)
+        daemon = swt.start_daemon(mother)
+        remote = f"git://127.0.0.1:{daemon.port}/{mother.name}"
+        clone = self.root / "replace-ref-clone"
+        try:
+            before = subprocess.run(
+                ["git", "ls-remote", remote], capture_output=True, text=True, check=True,
+            )
+            self.assertIn("refs/replace/", before.stdout)
+            subprocess.run(
+                ["git", "clone", remote, str(clone)], capture_output=True, text=True, check=True,
+            )
+            for key, value in (("user.name", "swt-m12"), ("user.email", "swt-m12@example.invalid")):
+                subprocess.run(
+                    ["git", "-C", str(clone), "config", key, value],
+                    capture_output=True, text=True, check=True,
+                )
+            (clone / "replace-ref-probe.txt").write_text("probe\n", encoding="utf-8")
+            subprocess.run(["git", "-C", str(clone), "add", "replace-ref-probe.txt"], check=True)
+            subprocess.run(
+                ["git", "-C", str(clone), "commit", "-m", "replace-ref probe"],
+                capture_output=True, text=True, check=True,
+            )
+
+            swt.configure_repo(self.repo, mother, branch)
+
+            after = subprocess.run(
+                ["git", "ls-remote", remote], capture_output=True, text=True, check=True,
+            )
+            refs = [line.split()[1] for line in after.stdout.splitlines() if len(line.split()) >= 2]
+            self.assertIn(f"refs/heads/{branch}", refs)
+            self.assertFalse(any(ref.startswith("refs/replace/") for ref in refs), refs)
+            self.assertTrue(swt.pair_config_matches(self.repo, mother, branch))
+            push = subprocess.run(
+                ["git", "-C", str(clone), "push", remote, f"HEAD:refs/replace/{'1' * 40}"],
+                capture_output=True, text=True, check=False,
+            )
+            self.assertNotEqual(0, push.returncode, push.stdout + push.stderr)
+        finally:
+            swt.stop_daemon_pids({daemon.process.pid})
+            daemon.process.wait(timeout=3)
 
     def test_mother_and_matching_config_are_reported(self) -> None:
         branch, mother = self.make_mother()
@@ -903,7 +966,7 @@ class TestTS201BirthChain(SwtBirthFixture):
                 capture_output=True, text=True, check=True,
             ).stdout.splitlines()
             self.assertEqual(
-                ["refs/heads", f"!refs/heads/{branch}", "refs/tags", "refs/remotes"], pair_values,
+                ["refs/heads", f"!refs/heads/{branch}", "refs/tags", "refs/remotes", "refs/replace"], pair_values,
             )
         pid = state["daemon"]["pid"]
         command_line = Path(f"/proc/{pid}/cmdline").read_bytes().decode(errors="replace").split("\0")
@@ -1208,6 +1271,39 @@ class TestTS206ConfigIdempotence(SwtBirthFixture):
     def test_rebirth_reuses_config_without_duplicate_values(self) -> None:
         first = self.birth_ready()
         name = first["containers"][0]["name"]
+        mother_dir = Path(first["mother"]["dir"])
+        old_values = ["refs/heads", f"!refs/heads/{first['mother']['branch']}", "refs/tags", "refs/remotes"]
+        for key in ("receive.hideRefs", "uploadpack.hideRefs"):
+            subprocess.run(
+                ["git", "-C", str(mother_dir), "config", "--worktree", "--unset-all", key],
+                check=True, capture_output=True, text=True,
+            )
+            for value in old_values:
+                subprocess.run(
+                    ["git", "-C", str(mother_dir), "config", "--worktree", "--add", key, value],
+                    check=True, capture_output=True, text=True,
+                )
+        old = subprocess.run(
+            ["git", "-C", str(mother_dir), "rev-parse", "HEAD"],
+            check=True, capture_output=True, text=True,
+        ).stdout.strip()
+        subprocess.run(
+            ["git", "-C", str(self.repo), "commit", "--allow-empty", "-m", "replace ref probe"],
+            check=True, capture_output=True, text=True,
+        )
+        replacement = subprocess.run(
+            ["git", "-C", str(self.repo), "rev-parse", "HEAD"],
+            check=True, capture_output=True, text=True,
+        ).stdout.strip()
+        subprocess.run(
+            ["git", "-C", str(self.repo), "replace", old, replacement],
+            check=True, capture_output=True, text=True,
+        )
+        clone_dir = "/home/bolo/Workspace/feature/m12"
+        leaked = self.ssh_run(first, f"git -C {clone_dir} ls-remote origin")
+        self.assertEqual(0, leaked.returncode, leaked.stderr)
+        self.assertIn("refs/replace/", leaked.stdout)
+
         second = self.run_swt(
             "birth", "--repo", str(self.repo), "--records-root", str(self.records), "--branch", "feature/m12",
             "--image", "localhost/swt-m03:latest", "--mode", "whitelist", "--allow-entry", "127.0.0.1", "隔离测试回环通道",
@@ -1223,8 +1319,11 @@ class TestTS206ConfigIdempotence(SwtBirthFixture):
                 ["git", "-C", str(mother_dir), "config", "--worktree", "--get-all", key],
                 capture_output=True, text=True, check=True,
             ).stdout.splitlines()
-            self.assertEqual(4, len(values))
+            self.assertEqual(5, len(values))
             self.assertEqual(len(values), len(set(values)))
+        repaired = self.ssh_run(state, f"git -C {clone_dir} ls-remote origin")
+        self.assertEqual(0, repaired.returncode, repaired.stderr)
+        self.assertNotIn("refs/replace/", repaired.stdout)
         self.assertEqual(first["daemon"]["pid"], state["daemon"]["pid"])
 
 
@@ -1942,7 +2041,7 @@ class TestMigrationIdempotent(SwtFixture):
         swt.migrate_legacy_pairs(self.repo, self.records)
         self.assertEqual([], swt.git_values(self.repo, "receive.hideRefs"))
         first = swt.worktree_config_values(mother, "receive.hideRefs")
-        self.assertEqual(4, len(first))
+        self.assertEqual(5, len(first))
         # 伪造中断态: 主仓值回写 (模拟 "已写 worktree, 主仓未清" 之间死亡), 重跑不翻倍
         for value in ("refs/heads", f"!refs/heads/{branch}", "refs/tags", "refs/remotes"):
             subprocess.run(
@@ -2003,7 +2102,7 @@ class TestLegacyMigrationViaResume(SwtBirthFixture):
         self.assertEqual([], self.config_values("receive.hideRefs"))
         self.assertEqual([], self.config_values("uploadpack.hideRefs"))
         self.assertEqual(
-            ["refs/heads", f"!refs/heads/{branch}", "refs/tags", "refs/remotes"],
+            ["refs/heads", f"!refs/heads/{branch}", "refs/tags", "refs/remotes", "refs/replace"],
             subprocess.run(
                 ["git", "-C", str(mother_dir), "config", "--worktree", "--get-all", "receive.hideRefs"],
                 capture_output=True, text=True, check=True,

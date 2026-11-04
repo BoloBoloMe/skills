@@ -13,6 +13,7 @@ use-sandbox-worktree 的容器回流端点 (原 gate) 改为主仓的 linked wor
 - 主仓成为 receive 端: config 常驻主仓, 只约束主仓作 receive 端, 用户日常 push 真远端无影响; 用户手动 push 进主仓会被 hideRefs 拒, 需文档明示.
 - 拒绝信息退回 git 原生英文 (无自定义钩子人话), skill 文档附译解表 (D006 降级).
 - HEAD 协议广告无法隐藏, 容器物理可读 main tip 对象 — 用户知情接受.
+- 对级 `receive.hideRefs` / `uploadpack.hideRefs` 同时隐藏 `refs/replace`, 不让替代提交引用扩大本对分支的读写范围.
 - **单活动母体不变量**: 主仓 config 是全局策略, 守护进程无认证, 无法表达每容器分支授权映射; 同一主仓同一时刻至多一个活动母体. 未来若要同仓不同母体并发, 须重开本决策 (恢复独立 receiver 或钩子).
 - `!` 否定例外语法依赖 git 版本, 部署时须按目标版本重验.
 
