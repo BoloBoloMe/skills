@@ -38,7 +38,6 @@
 | [`codebase-design`](workflow/codebase-design/SKILL.md) | 用模块, 接口和接缝原则指导代码库设计与可测试性. |
 | [`codebase-map`](workflow/codebase-map/SKILL.md) | 代码库结构与依赖可视化: 分析+常驻服务 (build/serve/stop 三子命令), 只由用户手动调用. |
 | [`code-review`](workflow/code-review/SKILL.md) | 按规范, spec 与按门槛纳入的旧行为影响分别评审代码变更. |
-| [`create-verification-skill`](workflow/create-verification-skill/SKILL.md) | 用已确认的产品说明为当前项目生成项目级验证配方, 含入口地图, 启动与清理规则. |
 | [`decision-ledger`](workflow/decision-ledger/SKILL.md) | 记录和维护 DECISIONS.md 中已确认的决策与事实. |
 | [`deliberate`](workflow/deliberate/SKILL.md) | 通过盘问关闭产品与技术决策, 并维护相关记录文件. |
 | [`demo`](workflow/demo/SKILL.md) | 制作演示材料, 让人看清指定样子, 行为或过程. |
@@ -50,7 +49,6 @@
 | [`follow-the-money`](workflow/follow-the-money/SKILL.md) | 沿价值流审查变更, 检查授权, 数量和执行造成的资损风险. |
 | [`improve-codebase-architecture`](workflow/improve-codebase-architecture/SKILL.md) | 发现架构摩擦, 并提出把浅模块深化的重构机会. |
 | [`lazy-dev`](workflow/lazy-dev/SKILL.md) | 用决策阶梯和实现阶梯收敛到最小且无未来负担的方案. |
-| [`maintain-verification-skill`](workflow/maintain-verification-skill/SKILL.md) | 按当前已确认的产品说明维护项目本地验证配方, 分类漂移并让新会话复跑证明. |
 | [`navigate`](workflow/navigate/SKILL.md) | 在目的地和路线不清时, 用 Roadmap 和 Milestone 组织探索. |
 | [`software-engineering-consensus`](workflow/software-engineering-consensus/SKILL.md) | 共享工程概念, 交付与验证边界, 以及本仓库工作流术语. |
 | [`to-execution`](workflow/to-execution/SKILL.md) | 把 Product/Technical Spec 拆成 Execution Spec 和可执行 issues. |
