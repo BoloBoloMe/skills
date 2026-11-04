@@ -40,6 +40,7 @@ disable-model-invocation: true
 ### 3. 确定规范来源
 
 读取仓库中记录编码规范的文档, 如 `CODING_STANDARDS.md`, `CONTRIBUTING.md`, `AGENTS.md`, lint/test 配置说明或项目文档中的开发约定.
+变更涉及测试, 手动验证代码或其夹具/运行配置时, Standards 方向还须读取 [测试编写规范](../verification-contract/reference/tests.md), 检查代码用途分类, 技术栈, 真实依赖, 断言与预期来源. 该评审不代替我对测试代码的人工抽查验收.
 除仓库文档外, Standards 评审方向始终携带 [Fowler 坏味道基线](references/fowler-baseline.md), 即使仓库无任何文档也适用. 两条规则约束:
 
 - **仓库优先**: 仓库记录的规范始终胜出; 如果仓库规范认可了基线本会标记的写法, 抑制该坏味道.
@@ -62,7 +63,7 @@ disable-model-invocation: true
 **Standards reviewer 输入** 包含:
 
 - 完整的 diff 命令和 commit 列表.
-- 步骤 3 中找到的规范来源文件列表.
+- 步骤 3 中找到的规范来源文件列表; 涉及测试/手动验证代码时附测试编写规范的实际路径.
 - `references/fowler-baseline.md` 全文. reviewer 没有其他途径获取这份基线.
 - [Standards 任务简述](references/reviewer-briefs.md).
 
