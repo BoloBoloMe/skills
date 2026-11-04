@@ -1,6 +1,6 @@
 # 测试规范与人工抽查流程验证记录
 
-以下初检/复检记录对应 `9781d7b`, 保留当时事实; 亲审后的调整与检查见 [撤回 drive-execution 新规](#撤回-drive-execution-新规).
+以下初检/复检记录对应 `9781d7b`, 保留当时事实; 后续调整见 [撤回 drive-execution 新规](#撤回-drive-execution-新规) 和 [统一测试代码验收分支](#统一测试代码验收分支).
 
 ## 版本与范围
 
@@ -75,3 +75,24 @@ ba9af5de05009f0221aa9a28c2b0a9aca715ecba25065fc342f3706d20a7da07  workflow/to-ex
 - 实际检查: `uv run python -` 通过 Git 读取 `9781d7b^` 的两文件并逐字节比较, 两项一致; 同时确认 verification-contract, navigate 与 to-execution 的相关规则相对 `9781d7b` 未改.
 - 格式与元数据: `uv run python general/writing-for-llm/check_skill.py <drive-execution/SKILL.md 的绝对路径>` 通过; `uv run python -m unittest discover -s tests -p test_skills_codex_metadata.py -v` 为 1 项通过; `git diff --check` 通过.
 - 本轮未委派复核, 未运行新场景, 未实跑完整开发/人工验收流程, 未同步安装版. 上述检查只证明撤回范围和文本一致, 不扩大为完整流程通过.
+
+## 统一测试代码验收分支
+
+按 REQUIREMENTS 第 4 项实施, 基线为 `0f679f1`. 分支与完成标准只维护在 verification-contract 的测试参考; 主 skill 与 navigate 引用该处. 手动验证代码的 CI 限制不改, drive-execution 不重新加入测试抽查规则.
+
+- 新建只读场景执行会话 `01a1a5b1-65e7-7063-a495-1f2019a7fa9d`, Herdr agent `acceptance-branches-1`, tab `w1:t2S`. 它未参与编写, 未继承作者过程, 只收到规则路径和假设场景. 实际模型为 `cli/deepseek-flash`, thinking `high`, kind `pi`; 按 review 画像选择, 不依赖外部知识, 稳定性评分依据偏弱, 由本会话逐项核对输出.
+- 实际输入见 [分支场景输入](PROBE-PROMPT.md#分支澄清后的场景输入), 完整输出见 [REVIEW-03.md](REVIEW-03.md). 首次在普通最终输出中回答, 后仅请求同一正文写入临时文件供归档, 未重跑或修改场景判断.
+- A/E: 无相关变更的范围和依据齐全时, 本项完成且无需选样/接受; navigate 引用已有记录, 但产品逐项未确认时整体仍不能关闭.
+- B/C/D: 只改夹具/运行配置仍属相关变更; 看过样本但未明确接受仍待验收; 基线未核实不能用空清单冒充无相关变更.
+- F: 手动验证代码接入独立 CI 仍按现有规则判违规. 未采纳报告关于定期运行只能依靠 CI 的扩展推断, 这不构成必须修改规则的理由; 我已明确保留原规定.
+- 本会话核对上述决定及三份规则全文, 未发现新增分支冲突. 未委派实现或修改权限, 场景执行者未改仓库; 完整结果已取回, 所建 tab 已关闭.
+
+机械检查通过: `git diff --check`; verification-contract/navigate 的 `check_skill.py`; codex 元数据 unittest 共 1 项. 通过 Git 读取基线后确认: tests.md 抽查节之前的全部编写规范逐字不变, drive-execution 两文件, to-execution 模板及 navigate 主文逐字不变. 本轮规则 SHA-256 如下:
+
+```text
+81f985e6b6b79677a196bd85ad28ef52b5d47bc6f29029aa2cdb5fbd8d1d1ed6  workflow/verification-contract/SKILL.md
+c344b58a62856f55960271e838dae6465722a678dbec984e0629baacc194f5cb  workflow/verification-contract/reference/tests.md
+19099f3fb87e598ac41c7c8a7eb3b7eeb719b578c7fef825f46791daf0bc320e  workflow/navigate/ACCEPTANCE-GUIDE.md
+```
+
+本轮比较范围内只有 Markdown 规则与证据变化, 无测试相关代码变更, 本项记录为 "无相关变更", 不虚构人工抽样或接受. 场景决定不是产品实跑结果; 未执行完整开发/人工验收流程, 未运行整套测试, 未同步或验证安装版.
