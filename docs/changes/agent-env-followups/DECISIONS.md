@@ -6,7 +6,7 @@
 
 ### D001 use-herdr 按 writing-for-llm 重构为分层结构
 - 状态: 当前有效
-- 约束性: 必须遵守
+- 约束性: 必须遵守 
 - 内容: 按 [`general/writing-for-llm/SKILL.md`](../../../general/writing-for-llm/SKILL.md) 完全重构 `general/use-herdr/SKILL.md`, 正文压到 60-80 行, 只保留: 分派三支 (自己操作 / 学习安装排查 / 官网), 环境检查, 学习当前 CLI, 驱动 agent 全流程 (默认策略, start, 提交, 等待与 stalled 处理, 读取), 以及一张指针表. 其余按需查阅的参考材料披露到三个新文件: `general/use-herdr/layout.md` (布局与原语, ID 语义, 调用方上下文, 发现命令, agent 生命周期状态), `general/use-herdr/pane.md` (兄弟窗格几何与焦点, `pane run`/`wait-output`/`read` 的 source 语义, alternate screen 兜底, 清理已完成会话), `general/use-herdr/rules.md` (安全与协调规则). `general/use-herdr/PI.md` 保留并瘦身, `general/use-herdr/machine.md` 不动. 理由: 现有正文 208 行, 大部分是按需参考材料, 把真正要执行的流程埋住, 导致关键操作落在注意力低洼区被漏读 (本会话实测漏读 `PI.md`, 见 F003/F014); writing-for-llm 的判据是每个分支都要用的内联, 只有部分分支触及的披露到指针后面, 分支即最干净的披露测试.
 - 依赖事实: F003, F014
 - 预计影响: `general/use-herdr/SKILL.md`; 新建 `general/use-herdr/layout.md`, `general/use-herdr/pane.md`, `general/use-herdr/rules.md`; `general/use-herdr/PI.md`
