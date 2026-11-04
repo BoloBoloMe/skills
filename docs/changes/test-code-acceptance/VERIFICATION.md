@@ -1,5 +1,7 @@
 # 测试规范与人工抽查流程验证记录
 
+以下初检/复检记录对应 `9781d7b`, 保留当时事实; 亲审后的调整与检查见 [撤回 drive-execution 新规](#撤回-drive-execution-新规).
+
 ## 版本与范围
 
 - 分支: `refactor-skill-around-verification`.
@@ -64,3 +66,12 @@ ba9af5de05009f0221aa9a28c2b0a9aca715ecba25065fc342f3706d20a7da07  workflow/to-ex
 ## 未覆盖范围
 
 未运行仓库 pytest/整套测试, 未启动外部服务或数据库, 未把 drive-execution/navigate 从实施到正式验收走完, 未同步并验证安装版. 文档链接/格式检查不能代替这些范围; 场景复核也不证明未来每个 LLM 会话一定遵守规则. 最终人工接受仍由用户决定.
+
+## 撤回 drive-execution 新规
+
+亲审后我确认: 测试抽查规则不在 `drive-execution` 中体现, 撤回其中本次新增规则. 已同步更新 REQUIREMENTS; 另外两项审查意见仍待我决定, 本轮不修改其规则.
+
+- 撤回范围: `workflow/drive-execution/SKILL.md` 的测试代码验收节点, `reference/orchestration.md` 的测试代码验收汇报项, 相应收尾限制和 AFK 授权新增句. 两文件均恢复为 `9781d7b^` 内容, 其余工作流文件不变.
+- 实际检查: `uv run python -` 通过 Git 读取 `9781d7b^` 的两文件并逐字节比较, 两项一致; 同时确认 verification-contract, navigate 与 to-execution 的相关规则相对 `9781d7b` 未改.
+- 格式与元数据: `uv run python general/writing-for-llm/check_skill.py <drive-execution/SKILL.md 的绝对路径>` 通过; `uv run python -m unittest discover -s tests -p test_skills_codex_metadata.py -v` 为 1 项通过; `git diff --check` 通过.
+- 本轮未委派复核, 未运行新场景, 未实跑完整开发/人工验收流程, 未同步安装版. 上述检查只证明撤回范围和文本一致, 不扩大为完整流程通过.
