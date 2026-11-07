@@ -1,6 +1,6 @@
 ---
 name: software-engineering-consensus
-description: 软件工程共识, 在处理任何这方面的任务之前, 必须调用.
+description: 任何软件工程任务开始前调用, 包括产品需求, MVP/PoC/demo, 技术方案, 任务拆分, 编码, 缺陷修复, 测试, 代码评审和交付验收.
 ---
 
 # 软件工程共识
