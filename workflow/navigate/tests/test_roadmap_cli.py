@@ -30,7 +30,8 @@ def make_legal_doc(path):
     assert code == 0 and obj["success"] is True, obj
     obj, code, _ = run_cli(
         "save", path, "milestones.milestone-01",
-        json.dumps({"title": "调研", "type": "research", "question": "怎么做?"},
+        json.dumps({"title": "调研", "type": "research", "question": "怎么做?",
+                    "inputs": [], "output_dir": "docs/changes/test/"},
                    ensure_ascii=False),
     )
     assert code == 0 and obj["success"] is True, obj

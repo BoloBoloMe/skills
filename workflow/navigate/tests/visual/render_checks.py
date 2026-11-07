@@ -17,6 +17,7 @@ import os
 import random
 import re
 import shutil
+import socket
 import subprocess
 import sys
 import tempfile
@@ -28,7 +29,13 @@ WEB_SERVER = ROOT / "workflow" / "navigate" / "scripts" / "web_server.py"
 BROWSE = ROOT / "general" / "access-web" / "browse"
 
 VIEW = {"width": 1440, "height": 900}
-TYPES = ["research", "deliberate", "demo", "poc", "task", "acceptance"]
+WORKFLOW_TYPES = [
+    ("spec", "规格"), ("verification-plan", "验证方案"),
+    ("execution-plan", "执行拆分"), ("implementation", "实施"),
+    ("verification", "独立验证"),
+]
+TYPES = ["research", "deliberate", "demo", "poc",
+         *[kind for kind, _ in WORKFLOW_TYPES], "task", "acceptance"]
 
 # 结果收集: (名称, 是否通过, 说明)
 RESULTS: list[tuple[str, bool, str]] = []
@@ -70,6 +77,21 @@ def small_roadmap(path: Path) -> Path:
     return write_roadmap(path, ms, "巡检小图")
 
 
+def workflow_roadmap(path: Path) -> Path:
+    """五个新类型共用目录, 加一个显式无输入/无目录的操作节点."""
+    ms = {}
+    for i, (kind, _) in enumerate([*WORKFLOW_TYPES, ("task", "操作")], 1):
+        ms["milestone-%02d" % i] = {
+            "title": "流程 %02d" % i, "type": kind, "question": "检查输入输出",
+            "status": "待处理", "blocked_by": [] if i == 1 else ["milestone-%02d" % (i - 1)],
+            "inputs": [{"content": '已确认决策 <img src=x onerror="window.__ioInjected=true">',
+                        "source": "docs/changes/visual/DECISIONS.md"}] if i <= 5 else [],
+            "output_dir": "docs/changes/visual/" if i <= 5 else None,
+            "artifacts": [], "close_summary": None,
+        }
+    return write_roadmap(path, ms, "流程输入输出巡检")
+
+
 def chain_roadmap(path: Path, n: int, kind: str = "task") -> Path:
     """一条链: 每层一个节点, 所以所有星球排成一行 (与终点同方位 = 同光照)."""
     ms, prev = {}, None
@@ -95,7 +117,10 @@ def random_roadmap(path: Path, n: int, seed: int = 11) -> Path:
 
 
 def start_server(runtime_dir: Path) -> int:
-    env = dict(os.environ, NAVIGATE_WEB_RUNTIME_DIR=str(runtime_dir))
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+        sock.bind(("127.0.0.1", 0))
+        port = sock.getsockname()[1]
+    env = dict(os.environ, NAVIGATE_WEB_RUNTIME_DIR=str(runtime_dir), NAVIGATE_WEB_PORT=str(port))
     out = subprocess.run([sys.executable, str(WEB_SERVER), "start"], env=env,
                          capture_output=True, text=True, timeout=60)
     body = json.loads(out.stdout.strip().splitlines()[-1])
@@ -185,6 +210,9 @@ def run(port: int, fixtures: dict) -> None:
         page.mouse.click(707, 447)
         page.wait_for_timeout(400)
         opened = page.evaluate("() => !document.getElementById('panel').classList.contains('hidden')")
+        legacy_panel = page.locator("#panelBody").inner_text()
+        report("旧图输入输出展示", opened and legacy_panel.count("未记录") >= 2,
+               "缺字段显示未记录, 不猜输入或目录")
         page.keyboard.press("Escape")
         page.wait_for_timeout(200)
         closed = page.evaluate("() => document.getElementById('panel').classList.contains('hidden')")
@@ -268,8 +296,51 @@ def run(port: int, fixtures: dict) -> None:
         report("星球光照朝向终点", ok_light,
                "左/右半亮度 " + ", ".join("%.0f/%.0f" % (h["left"], h["right"]) for h in halves))
 
+        # 五个新类型与里程碑输入/输出: 真实画布选点, 不直接调用页面内部函数
+        workflow = browser.new_page(viewport=VIEW)
+        workflow.on("pageerror", lambda e: errors.append(str(e)[:150]))
+        workflow.add_init_script(script="""(() => {
+          window.__workflowLabels = {};
+          const P = CanvasRenderingContext2D.prototype, original = P.fillText;
+          P.fillText = function (text, x, y) {
+            window.__workflowLabels[String(text)] = [x, y];
+            return original.apply(this, arguments);
+          };
+        })()""")
+        workflow.goto(url(port, fixtures["workflow"]))
+        workflow.wait_for_function("Object.keys(window.__workflowLabels).includes('流程 06')")
+        flat_legend = " ".join(workflow.locator("#legend").inner_text().split())
+        labels = workflow.evaluate("() => Object.keys(window.__workflowLabels)")
+        report("五个新里程碑类型展示", all(
+            label + " " + kind in flat_legend and "待处理 · " + label in labels
+            for kind, label in WORKFLOW_TYPES), "图例与画布标注均识别五种类型")
+        panels, output_rows = [], []
+        inputs_are_text = True
+        for i in (1, 2, 6):
+            pos = workflow.evaluate("label => window.__workflowLabels[label]", "流程 %02d" % i)
+            workflow.mouse.click(pos[0], pos[1] - 30)
+            workflow.wait_for_function("!document.getElementById('panel').classList.contains('hidden')")
+            panels.append(workflow.locator("#panelBody").inner_text())
+            output_rows.append(workflow.locator("#panelBody .row").filter(
+                has_text=re.compile("^输出目录")).inner_text())
+            inputs_are_text = inputs_are_text and workflow.locator("#panelBody img").count() == 0
+            workflow.keyboard.press("Escape")
+        report("输入与共享输出目录", all(
+            "输入内容" in panel and "已确认决策" in panel
+            and "docs/changes/visual/DECISIONS.md" in panel
+            for panel in panels[:2])
+               and output_rows[:2] == ["输出目录\ndocs/changes/visual/"] * 2, "两个里程碑各自显示输入与来源, 共用一个产物目录")
+        report("输入按纯文本展示", "<img src=x" in panels[0]
+               and inputs_are_text
+               and not workflow.evaluate("() => !!window.__ioInjected"), "来源内容不作为 HTML 执行")
+        rows = panels[2]
+        report("显式无输入无输出目录", "输入内容\n无" in rows and "无独立产物目录" in rows,
+               "空清单和 null 与旧图未记录相区分")
+        workflow.close()
+
         # 大规模: 贴图数与加载期卡顿
         scaled = browser.new_page(viewport=VIEW)
+        scaled.on("pageerror", lambda e: errors.append(str(e)[:150]))
         scaled.add_init_script(script=INIT_JS)
         scaled.goto(url(port, fixtures["big"]))
         scaled.wait_for_timeout(6000)
@@ -294,6 +365,7 @@ def main() -> int:
         fixtures = {
             "small": small_roadmap(tmp / "small.json"),
             "chain": chain_roadmap(tmp / "chain.json", 5),
+            "workflow": workflow_roadmap(tmp / "workflow.json"),
             "big": random_roadmap(tmp / "big.json", 1000),
         }
         runtime = tmp / "runtime"

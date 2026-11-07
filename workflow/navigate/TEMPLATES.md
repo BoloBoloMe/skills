@@ -28,13 +28,19 @@
 | --- | --- | --- | --- | --- |
 | `title` | string | 是 | 无 | 简述 |
 | `status` | string 枚举 | 否 | `待处理` | `待处理` / `进行中` / `已关闭` |
-| `type` | string 枚举 | 是 | 无 | `research` / `deliberate` / `demo` / `poc` / `task` / `acceptance` |
+| `type` | string 枚举 | 是 | 无 | `research` / `deliberate` / `demo` / `poc` / `spec` / `verification-plan` / `execution-plan` / `implementation` / `verification` / `task` / `acceptance` |
 | `blocked_by` | 里程碑 id 字符串数组 | 否 | `[]` | 引用的 id 必须已存在, 不允许环 (含自环) |
 | `question` | string | 是 | 无 | 本 Milestone 要解决的问题或完成的工作 (详述) |
+| `inputs` | 对象数组 | 新建必填 | 无 | 每项含非空 `content`, 可选非空 `source`; 无输入显式写 `[]` |
+| `output_dir` | string 或 null | 新建必填 | 无 | 传给下游 skill 的产物根目录; 无独立产物目录显式写 `null` |
 | `artifacts` | 字符串数组 | 否 | `[]` | 产物链接 |
 | `close_summary` | string 或 null | 否 | `null` | 关闭摘要 |
 
-新增里程碑必须整体创建: `save <file> milestones.<new-id> <JSON对象>`, 对象含必填 `title`/`type`/`question`; 脚本补齐默认 `status`/`blocked_by`/`artifacts`/`close_summary`. 不可分字段逐个创建 (会缺字段而被整文档校验拒绝).
+新增里程碑必须整体创建: `save <file> milestones.<new-id> <JSON对象>`, 对象含必填 `title`/`type`/`question`/`inputs`/`output_dir`; 脚本补齐默认 `status`/`blocked_by`/`artifacts`/`close_summary`. 不可分字段逐个创建 (会缺字段而被整文档校验拒绝).
+
+`inputs` 每项的 `content` 说明需要什么内容及用途, 不复制来源正文; `source` 指文件/章节/URL/完整提交号等可追溯来源, 无落盘材料时省略, 不将其冒充权威输入. 例如 `{"content": "产品判据", "source": "docs/changes/foo/PRODUCT.md#验收标准"}`. 输入对象只允许这两个字段. 制图时允许预期来源, 领取时核实存在, 确认状态和适用版本; 验证里程碑还须明确目标提交与方案修订号. `blocked_by` 只管等待关系, `inputs` 管实际输入, `artifacts` 只记实际产物.
+`output_dir` 是非空目录路径或 `null`, 需要落盘的下游 skill 不得带 `null` 开始. 项目内的 `inputs.source`, `output_dir` 和产物链接从目标项目根目录解析, 不是从 `roadmap/` 解析; 项目外材料使用明确路径或 URL. 产物内部相对引用仍按共识从产物根目录解析.
+旧图缺 `inputs`/`output_dir` 时仍可 query/save, 脚本不自动补默认值或猜目录. 领取前按实际材料补齐, 无法核实时报告缺口; 新建节点无论单独还是随整个 `milestones` 写入都必须显式提供这两个字段.
 
 ## 不落盘的派生量
 
@@ -65,10 +71,10 @@ uv run python <skill 目录>/scripts/roadmap.py query docs/changes/<feature-slug
 # 写: 目的地, 追加一条笔记 (下标 == 当前长度), 新建里程碑, 改状态, 记产物, 写关闭摘要
 uv run python <skill 目录>/scripts/roadmap.py save <file> destination '"到达时: ..."'
 uv run python <skill 目录>/scripts/roadmap.py save <file> notes.0 '"方向 A 结论: ...; 排除方向 B 的理由: ..."'
-uv run python <skill 目录>/scripts/roadmap.py save <file> milestones.milestone-01 '{"title": "选定存储方案", "type": "deliberate", "question": "..."}'
+uv run python <skill 目录>/scripts/roadmap.py save <file> milestones.milestone-01 '{"title": "选定存储方案", "type": "deliberate", "question": "...", "inputs": [], "output_dir": "docs/changes/<feature-slug>/"}'
 uv run python <skill 目录>/scripts/roadmap.py save <file> milestones.milestone-02.blocked_by '["milestone-01"]'
 uv run python <skill 目录>/scripts/roadmap.py save <file> milestones.milestone-01.status '"进行中"'
-uv run python <skill 目录>/scripts/roadmap.py save <file> milestones.milestone-01.artifacts '["docs/changes/<feature-slug>/milestone-01/findings.md"]'
+uv run python <skill 目录>/scripts/roadmap.py save <file> milestones.milestone-01.artifacts '["docs/changes/<feature-slug>/DECISIONS.md"]'
 uv run python <skill 目录>/scripts/roadmap.py save <file> milestones.milestone-01.close_summary '"已选定方案 X: ..."'
 
 # 删: 整个文件
@@ -80,5 +86,6 @@ uv run python <skill 目录>/scripts/roadmap.py delete <file>
 ## 目录约定
 
 - 路线图文件: `docs/changes/<feature-slug>/roadmap/ROADMAP.json`.
-- 里程碑产物 (findings/演示材料/决策文档等) 仍是独立文件, 放 `docs/changes/<feature-slug>/<milestone-NN>/`, 链接记入该里程碑 `artifacts`.
-- 会话中调用 `to-execution` skill 时, 产物根目录指定为 AFK 编码任务所属里程碑的子目录 `docs/changes/<feature-slug>/<milestone-NN>/`.
+- 同一交付单元的多个里程碑在 `output_dir` 填相同的产物根目录, 默认 `docs/changes/<feature-slug>/`; 多个交付单元可各用子目录, 不按里程碑编号强制分目录.
+- 调用下游 skill 时传入该里程碑的 `inputs` 与 `output_dir`, 直接复用实际来源. 独立验证的证据按验证规则放绑定目标提交的子目录, 环境要求放项目外时记录实际位置. 代码改动仍在目标仓库完成, `output_dir` 不代替代码工作目录.
+- `artifacts` 记录实际文件, 报告或提交链接; 无独立产物目录时 `output_dir` 写 `null`, 关闭摘要说明原因, 不为填字段强造文件.

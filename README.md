@@ -34,7 +34,7 @@
 | Skill | 所在环节 | 说明 |
 | --- | --- | --- |
 | [`software-engineering-consensus`](workflow/software-engineering-consensus/SKILL.md) | 全流程工程约束 | 共享工程概念, 交付与验证边界, 以及本仓库工作流术语. |
-| [`navigate`](workflow/navigate/SKILL.md) | 全流程领航 | 在目的地和路线不清时, 用 Roadmap 和 Milestone 组织探索. |
+| [`navigate`](workflow/navigate/SKILL.md) | 全流程领航 | 用 Roadmap 和分类 Milestone 组织探索, 规格, 执行与独立验证, 每步明确输入和产物目录. |
 | [`use-worktree`](workflow/use-worktree/SKILL.md) | 准备工作环境 | 识别, 创建, 删除和迁移 Git worktree, 并执行安全检查. |
 | [`use-sandbox-worktree`](workflow/use-sandbox-worktree/SKILL.md) | 准备工作环境 | 管理 host worktree 与 sandbox 容器绑定对的生命周期. |
 | [`domain-awareness`](workflow/domain-awareness/SKILL.md) | 领域信息准备 | 只读发现当前仓库的领域语言, 边界和相关 ADR. |
@@ -48,7 +48,7 @@
 | [`lazy-dev`](workflow/lazy-dev/SKILL.md) | 设计与实施方法 | 用决策阶梯和实现阶梯收敛到最小且无未来负担的方案, 可用于设计和实施. |
 | [`to-execution`](workflow/to-execution/SKILL.md) | 拆分执行切片 | 把 Product/Technical Spec 拆成 Execution Spec 和可执行 issues. |
 | [`verification-contract`](workflow/verification-contract/SKILL.md) | 实施验证契约 | 按改动类型说明如何验证, 什么结果算通过, 以及要留下哪些可复查证据. |
-| [`drive-execution`](workflow/drive-execution/SKILL.md) | 实施切片 | 将大型任务分给执行者和审核者, 按 issue 的验证契约与 worktree 流程协作. |
+| [`drive-execution`](workflow/drive-execution/SKILL.md) | 实施切片 | 分派实施, 合并, 开发验证与评审返工, 不组织成品独立验证或正式验收. |
 | [`code-review`](workflow/code-review/SKILL.md) | 实施后评审 | 按规范, spec 与按门槛纳入的旧行为影响分别评审代码变更. |
 | [`blast-radius`](workflow/blast-radius/SKILL.md) | 影响面风险核查 | 调查变更在 diff 之外的影响, 用真实代码证明关键安全事实并交接风险. |
 | [`follow-the-money`](workflow/follow-the-money/SKILL.md) | 资损风险核查 | 沿价值流审查变更, 检查授权, 数量和执行造成的资损风险. |

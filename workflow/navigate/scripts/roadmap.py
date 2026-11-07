@@ -32,10 +32,13 @@ TOP_LEVEL_FIELDS = [
 ]
 
 STATUS_VALUES = ["待处理", "进行中", "已关闭"]
-TYPE_VALUES = ["research", "deliberate", "demo", "poc", "task", "acceptance"]
+TYPE_VALUES = [
+    "research", "deliberate", "demo", "poc", "spec", "verification-plan",
+    "execution-plan", "implementation", "verification", "task", "acceptance",
+]
 
 # 新增里程碑用户必填字段 (BR-004); 其余成员字段由默认值补齐
-MILESTONE_REQUIRED = ["title", "type", "question"]
+MILESTONE_REQUIRED = ["title", "type", "question", "inputs", "output_dir"]
 
 
 # ---------------------------------------------------------------------------
@@ -208,7 +211,7 @@ def _fast_validate(doc, segments, value):
     if not isinstance(milestones, dict):
         milestones = {}
     if len(segments) == 2:
-        # save milestones.<new-id> <json> 新增里程碑: 必填 title/type/question
+        # 新增里程碑整体创建, 输入和输出目录也须显式提供
         if mid not in milestones:
             missing = [k for k in MILESTONE_REQUIRED
                        if not isinstance(value, dict) or k not in value]
@@ -258,13 +261,16 @@ def _apply_milestone_defaults(doc, segments):
         m.setdefault(key, default)
 
 
-def _validate_milestone(mid, m):
+def _validate_milestone(mid, m, require_io=True):
     """单里程碑 schema 校验, 返回错误信息列表."""
     if not isinstance(m, dict):
         return [f"里程碑 {mid} 必须为对象"]
     errors = []
-    missing = [k for k in ["title", "status", "type", "blocked_by", "question",
-                           "artifacts", "close_summary"] if k not in m]
+    required = ["title", "status", "type", "blocked_by", "question",
+                "artifacts", "close_summary"]
+    if require_io:
+        required.extend(["inputs", "output_dir"])
+    missing = [k for k in required if k not in m]
     if missing:
         errors.append(f"里程碑 {mid} 缺少字段: {', '.join(missing)}")
     for key in ("title", "question"):
@@ -282,6 +288,26 @@ def _validate_milestone(mid, m):
             not isinstance(m["blocked_by"], list)
             or not all(isinstance(r, str) for r in m["blocked_by"])):
         errors.append(f"里程碑 {mid} blocked_by 必须为里程碑 id 字符串数组")
+    if "inputs" in m:
+        if not isinstance(m["inputs"], list):
+            errors.append(f"里程碑 {mid} inputs 必须为对象数组")
+        else:
+            for index, item in enumerate(m["inputs"]):
+                prefix = f"里程碑 {mid} inputs.{index}"
+                if not isinstance(item, dict):
+                    errors.append(f"{prefix} 必须为对象")
+                    continue
+                if not isinstance(item.get("content"), str) or not item["content"].strip():
+                    errors.append(f"{prefix}.content 必须为非空字符串")
+                if "source" in item and (not isinstance(item["source"], str)
+                                         or not item["source"].strip()):
+                    errors.append(f"{prefix}.source 必须为非空字符串, 无来源时省略")
+                unknown = set(item) - {"content", "source"}
+                if unknown:
+                    errors.append(f"{prefix} 未知字段: {', '.join(sorted(unknown))}")
+    if "output_dir" in m and m["output_dir"] is not None and (
+            not isinstance(m["output_dir"], str) or not m["output_dir"].strip()):
+        errors.append(f"里程碑 {mid} output_dir 必须为非空字符串或 null")
     if "artifacts" in m and (
             not isinstance(m["artifacts"], list)
             or not all(isinstance(a, str) for a in m["artifacts"])):
@@ -322,7 +348,7 @@ def _find_cycle(milestones):
     return None
 
 
-def _validate_document(doc):
+def _validate_document(doc, legacy_milestones=()):
     """整文档完整 schema 校验 (D007 兜底闸门), 返回错误信息列表."""
     if not isinstance(doc, dict):
         return ["文档必须为 JSON 对象"]
@@ -358,7 +384,8 @@ def _validate_document(doc):
             errors.append("milestones 必须为对象")
         else:
             for mid, m in milestones.items():
-                errors.extend(_validate_milestone(mid, m))
+                errors.extend(_validate_milestone(
+                    mid, m, require_io=mid not in legacy_milestones))
             for mid, m in milestones.items():
                 if isinstance(m, dict) and isinstance(m.get("blocked_by"), list):
                     missing_ref = [r for r in m["blocked_by"]
@@ -391,10 +418,16 @@ def run_save(file_str, path_str, content_str):
         fcntl.flock(lock_fd.fileno(), fcntl.LOCK_EX)
         try:
             doc = _load_document(file_path)
+            # 旧图缺输入/输出字段仍可逐项补齐, 不自动猜测历史来源或目录.
+            existing = doc.get("milestones", {}) if isinstance(doc, dict) else {}
+            legacy_ids = {
+                mid for mid, m in existing.items()
+                if isinstance(m, dict) and ("inputs" not in m or "output_dir" not in m)
+            } if isinstance(existing, dict) else set()
             _fast_validate(doc, segments, value)
             _apply_write(doc, segments, value)
             _apply_milestone_defaults(doc, segments)
-            problems = _validate_document(doc)
+            problems = _validate_document(doc, legacy_milestones=legacy_ids)
             if problems:
                 raise _SaveError("validation_failed", "; ".join(problems))
             _atomic_write_json(file_path, doc)

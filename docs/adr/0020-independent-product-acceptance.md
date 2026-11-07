@@ -1,5 +1,7 @@
 # 最终产品验收由独立指挥会话按 PRODUCT.md 组织
 
+本文保留历史. 当前实施与独立验证的职责边界见 [drive-execution](../../workflow/drive-execution/SKILL.md) 与 [navigate](../../workflow/navigate/SKILL.md); 验证/验收的含义以软件工程共识为准.
+
 技术 Spec 已由既有 code-review 的 Spec 轴检查, 最终成品仍需要非作者按产品标准实跑, 因而决定独立建设 verify-change, 只验收 PRODUCT.md 的场景和审计 BR, 不重复验收技术 Spec 或代码库设计.
 
 drive-execution (原名 tdd-as-orchestra) 在评审无新须重构发现项后, 于停止并汇报前另开独立会话使用 verify-change; 验收指挥者不亲自验收, 先评估并行/共享资源/共同准备, 再按产品场景组委派未参与实现或修复的验收者, 不固定两人或逐 AC 开会话. 明确实现问题回原重构节点并重新经过实现/合并/评审, 其他权限或标准阻塞按既有停止条件处理; 代理检查不替代最终人工确认.

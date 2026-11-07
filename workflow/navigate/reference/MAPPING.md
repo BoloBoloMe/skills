@@ -10,7 +10,7 @@ navigate 的制图分支, 由 [SKILL.md 的调用模式](../SKILL.md#调用模�
    完成标准: 每个方向都有明确的研究结论, 且我已选定方向.
 3. **描绘边界.** 在我选定的方向上, 找出所有待办事项和现在可采取的第一步. 若没发现任何未知海域, 则航路已清晰, 全程一次会话即可完成, 不需要地图: 停下来, 询问我希望如何继续; 继续时仍须在实施或产物定稿前确认验收标准, 并在正式交付前验收. 需要地图时, 即使验收细节尚待确定, 也已知必须有验收 Milestone.
    完成标准: 发现不需要地图; 或发现需要地图且至少一个工作 Milestone 可精确表述, 其余不确定项在 step 4 写入 `unknown_seas`.
-4. **绘制地图.** 经守门脚本把地图写入 ROADMAP.json: 顶层 `title`, `destination` (写明我确认的完成边界), `notes` (含被选方向结论与未选方向排除理由), `milestones` (每个里程碑整体创建, 含 `title`/`type`/`question`, 需要阻塞时再补 `blocked_by`), `unknown_seas`, `off_course`; 字段取值见 [产物结构](../TEMPLATES.md). 同时创建固定的验收 Milestone, 并在其他已知工作建好后设置它的 `blocked_by`; 尚未明确的工作以后探明时再补阻塞, 不能因尚有未知海域就提前验收. 前沿, 已关闭决策, 阻塞关系均不落盘, 由上述数据推导, 见 [产物结构](../TEMPLATES.md). 写完后起展示服务: `bash <skill 目录>/scripts/display_serve.sh ensure` (幂等, 已在跑则直接复用), 从 stdout JSON 的 `url` 拼上 `?roadmap=<ROADMAP.json 的绝对路径>` 交付给我, 由我在浏览器查看地图. 展示实例的归属与收工纪律见 [展示服务](../SKILL.md#展示服务).
+4. **绘制地图.** 经守门脚本把地图写入 ROADMAP.json: 顶层 `title`, `destination` (写明我确认的完成边界), `notes` (含被选方向结论与未选方向排除理由), `milestones` (每个里程碑整体创建, 含 `title`/`type`/`question`/`inputs`/`output_dir`, 需要阻塞时再补 `blocked_by`), `unknown_seas`, `off_course`; 字段取值见 [产物结构](../TEMPLATES.md). 同一交付单元共用产物根目录, 已有合格产物直接作为输入, 不补做对应环节; 只画已明确的交付结果, 不强制画满规格到验收的整条链. 同时创建固定的验收 Milestone, 并在其他已知工作建好后设置它的 `blocked_by`; 尚未明确的工作以后探明时再补阻塞, 不能因尚有未知海域就提前验收. 前沿, 已关闭决策, 阻塞关系均不落盘, 由上述数据推导, 见 [产物结构](../TEMPLATES.md). 写完后起展示服务: `bash <skill 目录>/scripts/display_serve.sh ensure` (幂等, 已在跑则直接复用), 从 stdout JSON 的 `url` 拼上 `?roadmap=<ROADMAP.json 的绝对路径>` 交付给我, 由我在浏览器查看地图. 展示实例的归属与收工纪律见 [展示服务](../SKILL.md#展示服务).
    完成标准: ROADMAP.json 已由脚本写入且 `query` 校验可读; 浏览器 URL 已交付.
 5. **确认与修订.** 等我在浏览器查看后表态. 有异议 → 经脚本修订对应字段 → 重新交付 URL 让我重看, 直到我确认. 我确认后才进入 step 6. 确认动作在落盘之后, 提交之前.
    完成标准: 我已明确确认地图.

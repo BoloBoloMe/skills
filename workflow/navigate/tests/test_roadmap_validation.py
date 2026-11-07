@@ -43,6 +43,8 @@ def legal_doc():
                 "type": "research",
                 "blocked_by": [],
                 "question": "怎么做?",
+                "inputs": [],
+                "output_dir": "docs/changes/test/",
                 "artifacts": [],
                 "close_summary": None,
             },
@@ -72,13 +74,14 @@ def test_invalid_enum_rejected(tmp_path, field, value, legal):
     assert f.read_bytes() == before
 
 
-@pytest.mark.parametrize("missing", ["question", "title", "type"])
+@pytest.mark.parametrize("missing", ["question", "title", "type", "inputs", "output_dir"])
 def test_new_milestone_missing_required_field(tmp_path, missing):
     """TC-003: 新增里程碑缺必填被拒, 错误列缺失字段名, 文件不变 (AC-003)."""
     f = tmp_path / "ROADMAP.json"
     write_doc(f, legal_doc())
     before = f.read_bytes()
-    content = {"title": "新里程碑", "type": "task", "question": "做什么?"}
+    content = {"title": "新里程碑", "type": "task", "question": "做什么?",
+               "inputs": [], "output_dir": None}
     del content[missing]
     obj, code, _ = run_cli(
         "save", f, "milestones.milestone-02", json.dumps(content, ensure_ascii=False))
@@ -94,7 +97,8 @@ def test_acceptance_type_created_and_existing_task_converted(tmp_path):
     write_doc(f, legal_doc())
     obj, code, _ = run_cli(
         "save", f, "milestones.milestone-02",
-        json.dumps({"title": "验收", "type": "acceptance", "question": "逐项核对证据"},
+        json.dumps({"title": "验收", "type": "acceptance", "question": "逐项核对证据",
+                    "inputs": [], "output_dir": "docs/changes/test/"},
                    ensure_ascii=False))
     assert code == 0 and obj["success"] is True
     obj, code, _ = run_cli("query", f, "milestones.milestone-02.type")
@@ -115,7 +119,8 @@ def test_new_milestone_defaults_filled(tmp_path):
     write_doc(f, legal_doc())
     obj, code, _ = run_cli(
         "save", f, "milestones.milestone-02",
-        json.dumps({"title": "新里程碑", "type": "task", "question": "做什么?"},
+        json.dumps({"title": "新里程碑", "type": "task", "question": "做什么?",
+                    "inputs": [], "output_dir": None},
                    ensure_ascii=False))
     assert code == 0 and obj["success"] is True
     obj, _, _ = run_cli("query", f, "milestones.milestone-02.status")
@@ -136,6 +141,7 @@ def test_blocked_by_invalid_reference(tmp_path, blocked_by):
     doc["milestones"]["milestone-02"] = {
         "title": "实现", "status": "待处理", "type": "task",
         "blocked_by": ["milestone-01"], "question": "做什么?",
+        "inputs": [], "output_dir": None,
         "artifacts": [], "close_summary": None,
     }
     write_doc(f, doc)
@@ -196,7 +202,8 @@ def test_prototype_type_rejected(tmp_path):
     before = f.read_bytes()
     obj, code, _ = run_cli("save", f, "milestones.milestone-01.type", "prototype")
     assert code == 1 and obj["success"] is False
-    assert "合法值: research, deliberate, demo, poc, task, acceptance" in obj["error"]
+    assert ("合法值: research, deliberate, demo, poc, spec, verification-plan, "
+            "execution-plan, implementation, verification, task, acceptance") in obj["error"]
     legal_part = obj["error"].split("合法值: ")[1]
     assert "prototype" not in legal_part
     assert f.read_bytes() == before
@@ -209,3 +216,116 @@ def test_poc_type_accepted(tmp_path):
     assert code == 0 and obj["success"] is True
     obj, code, _ = run_cli("query", f, "milestones.milestone-01.type")
     assert code == 0 and obj["value"] == "poc"
+
+
+@pytest.mark.parametrize("kind", [
+    "spec", "verification-plan", "execution-plan", "implementation", "verification",
+])
+def test_workflow_types_roundtrip(tmp_path, kind):
+    """五个专门类型均可通过 CLI 创建, 并保存显式输入与共享产物目录."""
+    f = tmp_path / "ROADMAP.json"
+    write_doc(f, legal_doc())
+    inputs = [{"content": "产品判据", "source": "docs/changes/test/PRODUCT.md#验收标准"}]
+    content = {"title": "专门环节", "type": kind, "question": "交付什么?",
+               "inputs": inputs, "output_dir": "docs/changes/test/"}
+    obj, code, _ = run_cli("save", f, "milestones.milestone-02", json.dumps(content))
+    assert code == 0 and obj["success"] is True
+    obj, code, _ = run_cli("query", f, "milestones.milestone-02")
+    assert code == 0
+    assert obj["value"]["type"] == kind
+    assert obj["value"]["inputs"] == inputs
+    assert obj["value"]["output_dir"] == "docs/changes/test/"
+
+
+@pytest.mark.parametrize("field,value", [
+    ("inputs", "产品判据"),
+    ("inputs", ["PRODUCT.md"]),
+    ("inputs", [{}]),
+    ("inputs", [{"content": "  "}]),
+    ("inputs", [{"content": 7}]),
+    ("inputs", [{"content": "产品判据", "source": None}]),
+    ("inputs", [{"content": "产品判据", "source": ""}]),
+    ("inputs", [{"content": "产品判据", "source": 7}]),
+    ("inputs", [{"content": "产品判据", "path": "PRODUCT.md"}]),
+    ("output_dir", []),
+    ("output_dir", 7),
+    ("output_dir", ""),
+    ("output_dir", "  "),
+])
+def test_invalid_io_rejected_without_changing_file(tmp_path, field, value):
+    """坏输入对象和坏目录被整文档校验拒绝, 原文件逐字节不变."""
+    f = tmp_path / "ROADMAP.json"
+    write_doc(f, legal_doc())
+    before = f.read_bytes()
+    obj, code, _ = run_cli("save", f, f"milestones.milestone-01.{field}", json.dumps(value))
+    assert code == 1 and obj["success"] is False
+    assert field in obj["error"]
+    assert f.read_bytes() == before
+
+
+def test_inputs_can_be_appended_and_updated_by_path(tmp_path):
+    """输入清单沿既有 path 语法增改, 无来源的说明与 null 输出目录都可显式保存."""
+    f = tmp_path / "ROADMAP.json"
+    write_doc(f, legal_doc())
+    obj, code, _ = run_cli("save", f, "milestones.milestone-01.inputs.0",
+                          json.dumps({"content": "讨论所需背景"}))
+    assert code == 0 and obj["success"] is True
+    obj, code, _ = run_cli("save", f, "milestones.milestone-01.inputs.0.source", "notes.md")
+    assert code == 0 and obj["success"] is True
+    obj, code, _ = run_cli("query", f, "milestones.milestone-01.inputs")
+    assert code == 0 and obj["value"] == [{"content": "讨论所需背景", "source": "notes.md"}]
+    obj, code, _ = run_cli("save", f, "milestones.milestone-01.output_dir", "null")
+    assert code == 0 and obj["success"] is True
+    obj, code, _ = run_cli("query", f, "milestones.milestone-01.output_dir")
+    assert code == 0 and obj["value"] is None
+
+
+def test_bulk_creation_cannot_omit_io(tmp_path):
+    """整体替换 milestones 也不能绕过新节点的输入/输出必填检查."""
+    f = tmp_path / "ROADMAP.json"
+    doc = legal_doc()
+    write_doc(f, doc)
+    before = f.read_bytes()
+    node = dict(doc["milestones"]["milestone-01"])
+    del node["inputs"]
+    del node["output_dir"]
+    doc["milestones"]["milestone-02"] = node
+    obj, code, _ = run_cli("save", f, "milestones", json.dumps(doc["milestones"]))
+    assert code == 1 and obj["success"] is False
+    assert "inputs" in obj["error"] and "output_dir" in obj["error"]
+    assert f.read_bytes() == before
+
+
+@pytest.mark.parametrize("field", ["inputs", "output_dir"])
+def test_existing_io_cannot_be_erased_by_replacement(tmp_path, field):
+    """已经声明输入/输出的节点整体替换时, 也不能删除已必填字段."""
+    f = tmp_path / "ROADMAP.json"
+    doc = legal_doc()
+    write_doc(f, doc)
+    before = f.read_bytes()
+    node = dict(doc["milestones"]["milestone-01"])
+    del node[field]
+    obj, code, _ = run_cli("save", f, "milestones.milestone-01", json.dumps(node))
+    assert code == 1 and obj["success"] is False
+    assert field in obj["error"]
+    assert f.read_bytes() == before
+
+
+def test_legacy_io_can_be_completed_without_guessing_defaults(tmp_path):
+    """旧图可照常读写并逐项补输入/输出, 脚本不替历史节点猜来源和目录."""
+    f = tmp_path / "ROADMAP.json"
+    doc = legal_doc()
+    del doc["milestones"]["milestone-01"]["inputs"]
+    del doc["milestones"]["milestone-01"]["output_dir"]
+    write_doc(f, doc)
+    obj, code, _ = run_cli("save", f, "title", "旧图")
+    assert code == 0 and obj["success"] is True
+    obj, code, _ = run_cli("query", f, "milestones.milestone-01")
+    assert code == 0
+    assert "inputs" not in obj["value"] and "output_dir" not in obj["value"]
+    obj, code, _ = run_cli("save", f, "milestones.milestone-01.inputs", "[]")
+    assert code == 0 and obj["success"] is True
+    obj, code, _ = run_cli("save", f, "milestones.milestone-01.output_dir", "docs/changes/test/")
+    assert code == 0 and obj["success"] is True
+    obj, code, _ = run_cli("query", f, "milestones.milestone-01.output_dir")
+    assert code == 0 and obj["value"] == "docs/changes/test/"
