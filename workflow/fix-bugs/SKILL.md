@@ -23,7 +23,7 @@ description: 修复软件 bug 或排查错误行为时调用, 包括复现, 定�
 
 ## 取证手段
 
-取证手段的优先级与一次性脚本的边界见 [verification-contract](../verification-contract/SKILL.md) 缺陷修复节的 做法 与 取证选择, 本节不复述.
+取证手段的优先级与一次性脚本的边界见  skill `verification-contract` 缺陷修复节的 做法 与 取证选择, 本节不复述.
 
 ## 脱敏
 
