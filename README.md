@@ -44,7 +44,7 @@
 | [`decision-ledger`](workflow/decision-ledger/SKILL.md) | 决策记录 | 记录和维护 DECISIONS.md 中已确认的决策与事实. |
 | [`codebase-design`](workflow/codebase-design/SKILL.md) | 方案设计 | 用模块, 接口和接缝原则指导代码库设计与可测试性. |
 | [`to-spec`](workflow/to-spec/SKILL.md) | 规格整理 | 把已确认的产品和技术决策整理成两份权威 spec. |
-| [`verify-change`](workflow/verify-change/SKILL.md) | 规格整理后/独立验证成品 | 规格整理后设计并确认验证方案, 成品实施后按方案独立验证并整理证据. |
+| [`verify-change`](workflow/verify-change/SKILL.md) | 权威输入确认后/独立验证成品 | 依据已确认的权威输入设计并确认验证方案, 成品实施后按方案独立验证并整理证据. |
 | [`lazy-dev`](workflow/lazy-dev/SKILL.md) | 设计与实施方法 | 用决策阶梯和实现阶梯收敛到最小且无未来负担的方案, 可用于设计和实施. |
 | [`to-execution`](workflow/to-execution/SKILL.md) | 拆分执行切片 | 把 Product/Technical Spec 拆成 Execution Spec 和可执行 issues. |
 | [`verification-contract`](workflow/verification-contract/SKILL.md) | 实施验证契约 | 按改动类型说明如何验证, 什么结果算通过, 以及要留下哪些可复查证据. |
