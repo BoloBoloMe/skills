@@ -6,12 +6,13 @@ disable-model-invocation: true
 
 # 拆分可执行 issue
 
+本 skill 交付执行拆分, 不因 issues 已列出未来实施范围就启动编码; 是否继续实施以当前明确授权为准.
 开始前, 调用 `domain-awareness` skill 感知当前工作目录的领域模型, 调用 `verification-contract` skill 确定每个 issue 的变更类型, 验证方式与证据.
 
 ## 检查权威输入
 
 产物根目录下是否已有 `PRODUCT.md` 和 `TECHNICAL.md`? 缺任一份先调用 `to-spec` skill 生成, 再继续.
-权威输入定义全部意图, 代码事实只验证可行性和既有形状. 权威输入之间如有冲突, 或需要新增/改变决策内容时, 调用 `deliberate` skill 敲定并固化, 再继续.
+权威输入定义已确认意图, 代码事实验证可行性和既有形状. 按 [规格约束与停止条件](../to-spec/SKILL.md#规格约束与停止条件) 区分必须遵守的内容与可调整做法, 不将参考做法升级为执行硬要求. 必须遵守的内容冲突, 或需要新增/改变决策时, 调用 `deliberate` skill 敲定并固化, 再继续; 普通实现选择不构成输入缺口.
 
 ## 目标
 
@@ -30,11 +31,11 @@ disable-model-invocation: true
 
 把工作拆成 **tracer bullet** issues. 只有端到端可独立验证的切片, 才能让全新上下文窗口中的执行 agent 无需折返追问. 垂直切片规则:
 
-- 每个切片都必须能从真实入口独立验证, 并能在全新上下文窗口内独立交付, 无需查阅本 issue 之外的材料. 它走过哪些层不规定
+- 每个切片都必须能从真实入口独立验证, 并能在全新上下文窗口内独立交付, 必要输入与引用齐备, 不依赖未定的业务取舍. 它走过哪些层不规定
 - 完成的切片本身可以演示
 - 只有当前切片无法在保持边界和验证的前提下推进时, 才创建阻塞它的预重构 issue
 
-为每个 issue 写出 **blocking edges**: 哪些其他 issues 必须先完成, 这个 issue 才能开始. 没有 blockers 的 issue 可以立即开始.
+为每个 issue 写出 **blocking edges**: 哪些其他 issues 必须先完成, 这个 issue 才能开始, 写明缺少前置的什么结果会阻塞当前交付或验证. 没有 blockers 的 issue 可以立即开始. 仅修改同一文件不是 blocker; 文件重叠写进已有风险提示, 调度与合并时协调, 不混入产品/接口依赖.
 
 **宽重构是垂直切片的例外**: 一次机械改动 (重命名列, 改共享符号类型) 的 blast radius 扩散到整个代码库, 没有切片能独立保持绿色. 遇到这类变更时读 [refactor-expand-contract.md](refactor-expand-contract.md), 按其中的扩展-收缩序列拆分.
 
@@ -43,9 +44,9 @@ disable-model-invocation: true
 - 每个 AC 被至少一个拟议 issue 覆盖, 或明确说明无需执行任务.
 - PRODUCT.md `业务规则` 节中标 (审计) 的断言都进覆盖矩阵并有承接条目 (人工验证或 issue).
 - TECHNICAL.md 非功能要求与安全策略中的验证性要求均有承接.
-- TECHNICAL.md 模块接口的每条不变量与错误模式, 要么有 TC 承接, 要么在所属 issue 的 `验证入口` 写明不用自动化测试的理由, 实际验证方式及通过标准.
+- TECHNICAL.md 中必须遵守的接口不变量与错误模式, 要么有 TC 承接, 要么在所属 issue 的 `验证入口` 写明不用自动化测试的理由, 实际验证方式及通过标准. 实施验证项有对应 issue 承接, 不将可调整的内部做法写成验收标准.
 - 每个切片能从真实入口独立验证, 可独立交付并能演示. 预重构 issue 与纯核验/非行为改动类 issue 不适用可演示判据, 改用承接 AC/BR 或核验入口证明价值.
-- 每条 blocker 都是前置 issue 完成后本 issue 才能开始的真实依赖, blocker 图无环.
+- 每条 blocker 都指明必需的前置结果, 不以共享文件制造依赖, blocker 图无环.
 - 宽重构已按 refactor-expand-contract.md 拆分或明确不适用.
 
 ## 固化 Execution Spec 和 issues
