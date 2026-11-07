@@ -1,5 +1,7 @@
 # codebase-map: 宿主常驻自建服务 + 构建期汉化, 纯手动调用
 
+后续约定(已确认, 待实施): [ADR-0028](0028-artifact-mechanization-and-unified-presentation.md) 将 codebase-map 的展示托管和生命周期合入 present, 不再自建展示后端; 分析能力, 专用可视化和纯手动调用定位保留. 实施时须重核原 stop 语义, 不能让局部操作误停共用页面. 本次仅记录方案, 当前实现未迁移, 下方保留历史原文.
+
 背景: 我们要一个"把任意代码库画成可交互结构地图"的工具. [milestone-12 侦查](../changes/workflow-stack-review/milestone-12/FINDINGS.md) 得出结论: 城市观感只有 CodeCharta 能给, 但它的分析端要 Java 22 + Node 22.19, 与仓库"纯 python + uv"的栈冲突; 前端可以单独取用. [milestone-13 账本](../changes/workflow-stack-review/milestone-13/DECISIONS.md) 记了逐条裁决与依据.
 
 决策: 三条合并成一个形态.
