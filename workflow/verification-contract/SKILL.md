@@ -1,6 +1,7 @@
 ---
 name: verification-contract
-description: 写代码或拆 issue 前调用
+description: 按变更类型确定验证方式和完成证据.
+disable-model-invocation: true
 ---
 
 # 验证契约
