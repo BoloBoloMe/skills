@@ -1,0 +1,257 @@
+{
+  "schema_version": "0.0.1",
+  "title": "产物机械化全链路改造",
+  "destination": "按已确认的改造方案, 在本仓库完成结构化产物读写与全体消费者适配, 由 present 统一展示, 并完成真实整链验证. 以你依据已确认标准和证据逐项验收通过为到达; 不批量迁移历史产物, 不修改本仓库外的真实 agent skills.",
+  "notes": [
+    "已选方向 2: 先打通一条真实规格切片, 从已确认 Markdown 输入生成结构化规格, 固定待审版本, 经 present 独立查看, 由用户明确确认后转正同一版本; 再扩展其他消费者和展示迁移. 这是实施顺序, 不缩小最终全链路目标.",
+    "方向 1 未选为第一步, 但结构化产物仍需共用编号、引用、版本和状态管理. 各 skill 可按输入类型增加处理分支, Markdown 等非结构化输入仍直接读取; 报告和证据原件按职责保留原格式. 不预设一个包办所有领域逻辑的通用程序.",
+    "方向 3 未选为第一步, 但 present 统一展示、navigate 路线图迁移、codebase-map 展示托管和部署说明迁移仍属于最终范围. 侦查发现 present 当前扁平挂载可能遮蔽不同目录的同名文件; 保留本地产物根目录差异是实现时的检查项, 不单独升格为产品决策.",
+    "待审阅的固定版本只锁定本次供用户确认的内容, 不限制日常查看正式版本; 用户确认后必须转正同一版本, 依据 docs/changes/artifact-mechanization/DECISIONS.md D011.",
+    "用户表示展示资源可在必要时有限扩大, 但偏好尽量收窄. 不把此表述解释为默认公开整个仓库或 home; 如实现确需超出明确登记范围, 先核实实际范围再确认.",
+    "方案已有用户确认的需求、决定和 ADR 输入, 见 REQUEST.md、DECISIONS.md、PROPOSAL.md 和 docs/adr/0028-artifact-mechanization-and-unified-presentation.md. 产物根目录沿用 docs/changes/artifact-mechanization/."
+  ],
+  "milestones": {
+    "milestone-01": {
+      "title": "整理并确认产品与技术规格",
+      "type": "spec",
+      "question": "依据已确认的需求、方案、决定和架构约定, 产出权威的 PRODUCT.md 与 TECHNICAL.md, 写清全链路范围、边界、用户确认职责、结构化数据与报告原件的分工, 并由用户确认验收标准. 只整理已有决定; 发现冲突或新取舍时停下请用户裁决.",
+      "inputs": [
+        {
+          "content": "按发生顺序保存的原始需求及其选择语境",
+          "source": "docs/changes/artifact-mechanization/REQUEST.md"
+        },
+        {
+          "content": "当前有效的决定、事实及其约束性",
+          "source": "docs/changes/artifact-mechanization/DECISIONS.md"
+        },
+        {
+          "content": "用户已确认的完整改造方案及目标验收范围",
+          "source": "docs/changes/artifact-mechanization/PROPOSAL.md"
+        },
+        {
+          "content": "已确认的架构边界及待实施状态",
+          "source": "docs/adr/0028-artifact-mechanization-and-unified-presentation.md"
+        }
+      ],
+      "output_dir": "docs/changes/artifact-mechanization/",
+      "status": "待处理",
+      "blocked_by": [],
+      "artifacts": [],
+      "close_summary": null
+    },
+    "milestone-02": {
+      "title": "设计并确认整链验证方案",
+      "type": "verification-plan",
+      "question": "针对已确认的产品与技术规格, 设计可复跑的验证步骤和证据要求, 覆盖真实 Markdown 输入到结构化规格、固定版本查看与同版转正、各类消费者、报告登记、独立产物入口、路线图页面、服务迁移、宿主与容器部署及整链演练. 由用户确认固定修订版.",
+      "inputs": [
+        {
+          "content": "已确认的产品范围、验收标准及非目标",
+          "source": "docs/changes/artifact-mechanization/PRODUCT.md"
+        },
+        {
+          "content": "已确认的技术约束、组件和部署边界",
+          "source": "docs/changes/artifact-mechanization/TECHNICAL.md"
+        },
+        {
+          "content": "方案中列出的整链验证要求, 用于核对覆盖情况",
+          "source": "docs/changes/artifact-mechanization/PROPOSAL.md#11-验证与交付标准"
+        }
+      ],
+      "output_dir": "docs/changes/artifact-mechanization/",
+      "status": "待处理",
+      "blocked_by": [
+        "milestone-01"
+      ],
+      "artifacts": [],
+      "close_summary": null
+    },
+    "milestone-03": {
+      "title": "拆分为可执行的实施切片",
+      "type": "execution-plan",
+      "question": "依据已确认的 PRODUCT.md、TECHNICAL.md 和验证方案, 产出 EXECUTION.md 与 issues, 检查范围、覆盖、依赖和验证入口. 明确先完成所选的真实规格切片, 再扩展结构化消费者和统一展示迁移; 不开始实施.",
+      "inputs": [
+        {
+          "content": "已确认的产品与技术规格",
+          "source": "docs/changes/artifact-mechanization/PRODUCT.md, docs/changes/artifact-mechanization/TECHNICAL.md"
+        },
+        {
+          "content": "用户已确认的固定修订验证方案",
+          "source": "docs/changes/artifact-mechanization/"
+        },
+        {
+          "content": "已确认的决定、整链目标和非目标",
+          "source": "docs/changes/artifact-mechanization/DECISIONS.md, docs/changes/artifact-mechanization/PROPOSAL.md"
+        }
+      ],
+      "output_dir": "docs/changes/artifact-mechanization/",
+      "status": "待处理",
+      "blocked_by": [
+        "milestone-02"
+      ],
+      "artifacts": [],
+      "close_summary": null
+    },
+    "milestone-04": {
+      "title": "先打通真实规格生成与独立查看切片",
+      "type": "implementation",
+      "question": "按已确认的执行拆分, 用真实且已确认的 Markdown 输入, 实现结构化产品/技术规格生成、稳定标识与来源引用、固定待审版本、present 独立查看入口、chat 明确确认及同版本转正. 不用包装原文、临时 HTML 或可变草稿链接冒充真实结构化产物和固定版本; 留下开发验证与评审证据.",
+      "inputs": [
+        {
+          "content": "本切片使用的已确认需求、决定和方案来源, 领取时核实内容版本及确认状态",
+          "source": "docs/changes/artifact-mechanization/REQUEST.md, docs/changes/artifact-mechanization/DECISIONS.md, docs/changes/artifact-mechanization/PROPOSAL.md"
+        },
+        {
+          "content": "已确认的实现范围、数据职责和 present 展示要求",
+          "source": "docs/changes/artifact-mechanization/PRODUCT.md, docs/changes/artifact-mechanization/TECHNICAL.md"
+        },
+        {
+          "content": "包含本切片及其验证要求的已确认执行拆分",
+          "source": "docs/changes/artifact-mechanization/EXECUTION.md"
+        }
+      ],
+      "output_dir": "docs/changes/artifact-mechanization/",
+      "status": "待处理",
+      "blocked_by": [
+        "milestone-03"
+      ],
+      "artifacts": [],
+      "close_summary": null
+    },
+    "milestone-05": {
+      "title": "适配决策账本与其余结构化消费者",
+      "type": "implementation",
+      "question": "将决策账本、验证方案与结果、执行计划与 issues、实施记录、代码评审登记、独立验证及人工验收记录和路线图数据管理适配到已实现的结构化产物能力. 保留 Markdown 报告、代码和证据原件, 让现有 skill 能按输入类型读取; 不批量迁移历史资料, 不改变用户确认、评审返工、独立验证和验收权限.",
+      "inputs": [
+        {
+          "content": "已完成并评审通过的真实规格切片及其数据读写、版本和展示契约",
+          "source": "docs/changes/artifact-mechanization/"
+        },
+        {
+          "content": "已确认的消费者范围、报告保留规则、引用和状态约束",
+          "source": "docs/changes/artifact-mechanization/DECISIONS.md, docs/changes/artifact-mechanization/PROPOSAL.md"
+        },
+        {
+          "content": "包含各消费者迁移 issues 及验证契约的执行拆分",
+          "source": "docs/changes/artifact-mechanization/EXECUTION.md"
+        }
+      ],
+      "output_dir": "docs/changes/artifact-mechanization/",
+      "status": "待处理",
+      "blocked_by": [
+        "milestone-04"
+      ],
+      "artifacts": [],
+      "close_summary": null
+    },
+    "milestone-06": {
+      "title": "统一 present 展示并迁移现有展示服务",
+      "type": "implementation",
+      "question": "在 present 中扩展统一产物查看器和路线图全屏产物页, 迁入 navigate 展示界面, 将 codebase-map 的展示托管并入 present 但保留其分析与专用可视化, 删除重复展示服务并迁移恢复、容器端口、部署和停止说明. 保留产物根目录身份, 防止同名串读和路径越界; 切换前核对运行中的服务及已交付链接, 不静默破坏旧入口.",
+      "inputs": [
+        {
+          "content": "已完成的结构化产物类型、报告登记和独立查看入口",
+          "source": "docs/changes/artifact-mechanization/"
+        },
+        {
+          "content": "已确认的 present、navigate、codebase-map 合并范围及部署约束",
+          "source": "docs/changes/artifact-mechanization/TECHNICAL.md, docs/changes/artifact-mechanization/PROPOSAL.md#7-present的唯一展示后端"
+        },
+        {
+          "content": "需要迁移的现有页面、服务、端口和容器文档",
+          "source": "general/present/, workflow/navigate/, workflow/codebase-map/, workflow/use-sandbox-worktree/"
+        },
+        {
+          "content": "切换前即时核实的宿主/容器服务状态、旧链接及影响范围",
+          "source": "迁移前采集, 领取时确认实际位置"
+        }
+      ],
+      "output_dir": "docs/changes/artifact-mechanization/",
+      "status": "待处理",
+      "blocked_by": [
+        "milestone-05"
+      ],
+      "artifacts": [],
+      "close_summary": null
+    },
+    "milestone-07": {
+      "title": "独立验证最终版本并演练完整流程",
+      "type": "verification",
+      "question": "由未参与实施和修复的独立会话, 按用户确认的验证方案修订版, 对明确的最终集成提交执行验证. 真实演练从已确认 Markdown 输入到规格、验证、执行、实施/评审登记和独立验证证据, 检查系统能按用户实际决定记录验收结果; 不代用户作出或模拟接受决定. 同时检查无路线图独立查看、固定版本、资源隔离、报告登记、present 服务迁移和部署路径. 只产报告和证据, 不修产品.",
+      "inputs": [
+        {
+          "content": "用户确认的固定修订验证方案, 领取时核实来源仍适用并记录确切修订号",
+          "source": "docs/changes/artifact-mechanization/"
+        },
+        {
+          "content": "最终集成提交的完整 commit hash, 领取时从实施交付记录核实",
+          "source": "milestone-06 实际交付的集成提交"
+        },
+        {
+          "content": "已完成的开发验证、评审结论及相关原始证据",
+          "source": "docs/changes/artifact-mechanization/EXECUTION.md 及实际登记产物"
+        }
+      ],
+      "output_dir": "docs/changes/artifact-mechanization/",
+      "status": "待处理",
+      "blocked_by": [
+        "milestone-05",
+        "milestone-06"
+      ],
+      "artifacts": [],
+      "close_summary": null
+    },
+    "milestone-08": {
+      "title": "逐项验收并决定是否正式交付",
+      "type": "acceptance",
+      "question": "按已确认的验收标准逐项展示结果、最终版本和可复查证据, 单列完成适用的测试代码人工抽查, 记录用户对每项必验标准的明确决定并生成验收报告. 任一项目缺证据、失败、未验证或未获用户确认时不得关闭; 需要补工作时新增阻塞验收的工作里程碑. 仅在所有必验项由用户确认通过后关闭并正式交付.",
+      "inputs": [
+        {
+          "content": "用户确认的产品验收标准及适用版本",
+          "source": "docs/changes/artifact-mechanization/PRODUCT.md#验收标准"
+        },
+        {
+          "content": "绑定最终集成提交和确认方案修订号的独立验证报告及逐项证据",
+          "source": "docs/changes/artifact-mechanization/"
+        },
+        {
+          "content": "适用的测试代码人工抽查结果及其证据",
+          "source": "workflow/verification-contract/reference/tests.md#测试代码人工抽查验收"
+        }
+      ],
+      "output_dir": "docs/changes/artifact-mechanization/",
+      "status": "待处理",
+      "blocked_by": [
+        "milestone-01",
+        "milestone-02",
+        "milestone-03",
+        "milestone-04",
+        "milestone-05",
+        "milestone-06",
+        "milestone-07"
+      ],
+      "artifacts": [],
+      "close_summary": null
+    }
+  },
+  "unknown_seas": [
+    "首个真实规格切片完成后, 可能暴露目前无法具体命名的新增数据类型、共用操作或消费者. 只有确认其属于目标且能精确描述后, 才补成阻塞最终验收的工作; 不预切这片未知海域."
+  ],
+  "off_course": [
+    {
+      "what": "批量转换或删除历史产物",
+      "reason": "已确认只在旧任务需要继续时按实际需要整理, 不做专用批量迁移器."
+    },
+    {
+      "what": "修改本仓库外实际部署的 agent skills",
+      "reason": "本需求只改本仓库对应内容, 不直接改真实 agent skills."
+    },
+    {
+      "what": "将调研、PoC、评审报告及代码、日志、截图等原件全部改成结构化 JSON",
+      "reason": "已确认这些内容按职责保留 Markdown 或原始格式, 只登记流程需要的信息."
+    },
+    {
+      "what": "新增自动派工或自动推进的常驻工作流引擎",
+      "reason": "已确认机械化管理产物和流程状态, 不改变现有授权与人工裁决边界."
+    }
+  ]
+}
