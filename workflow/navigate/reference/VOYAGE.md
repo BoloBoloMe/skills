@@ -10,7 +10,7 @@ navigate 的航行分支, 由 [SKILL.md 的调用模式](../SKILL.md#调用模�
    完成标准: 已知当前目的地, 完成边界和前沿 (前沿 = 未关闭且 `blocked_by` 全部已关闭的里程碑, 由数据推导); 验收已在终点前.
 2. **选前沿认领.** 按顺序领取前沿的第一个 Milestone; 若前沿还有与它互相独立的 AFK Milestone, 一并领取: 独立即无阻塞关系, 不触碰同一文件, 这样的 AFK 工作串行排队纯属浪费, 并行是免费提速. 验收 Milestone 只有其他必要工作均完成, `unknown_seas` 已厘清且验收标准已确认时才能领取, 不能因阻塞列表暂时为空而提前领取. 每个领取的 Milestone 经脚本把 `status` 记为 `进行中`.
    完成标准: 领取的 Milestone 状态均已改为进行中; 每个未领取的前沿 Milestone 都能说出原因 (HITL, 不独立, 或验收尚未具备开始条件).
-3. **放大解决.** 按 Milestone 类型分流, 需要时经 `query` 读取被阻塞者的上下文或已关闭 Milestone 的产物. 本轮领取了多个 → 每个 AFK Milestone 委派一名子代理同时开工; HITL 逐个与我进行. 验收按 [证据与确认](../ACCEPTANCE-GUIDE.md#证据与确认) 先汇集别人已产出的证据, 后由我逐项确认, 未确认前保持进行中.
+3. **放大解决.** 按 Milestone 类型分流, 需要时经 `query` 读取被阻塞者的上下文或已关闭 Milestone 的产物. 本轮领取了多个 → 每个 AFK Milestone 委派一名子代理同时开工; HITL 逐个与我进行. 验收按 [验收终点](../SKILL.md#验收终点) 向我逐项展示已确认标准和对应证据, 并记录我的决定; 未获我逐项确认前保持进行中.
    完成标准见 [Milestone](../SKILL.md#milestone).
 4. **收口产物.** 按 [Milestone 节](../SKILL.md#milestone) 的收口产物归集本次产物, 链接写入 `milestones.<id>.artifacts`. 提交信息: 下游 skill 有规定则用其规定; 否则 `doc: <milestone-id> <产物简述>`.
    完成标准: 本 Milestone 产物已提交或已有可追溯链接; 无独立产物/非 git 仓库时已记录原因.

@@ -31,29 +31,31 @@
 
 ### 工作流技能
 
-| Skill | 说明 |
-| --- | --- |
-| [`benchmark-checklist`](workflow/benchmark-checklist/SKILL.md) | 报告或采信性能数字前的测量核查, 覆盖公平调优, 重复与统计, 错误计数, 收益上限, 结论边界与 PR 主数字. |
-| [`blast-radius`](workflow/blast-radius/SKILL.md) | 调查变更在 diff 之外的影响, 用真实代码证明关键安全事实并交接风险. |
-| [`codebase-design`](workflow/codebase-design/SKILL.md) | 用模块, 接口和接缝原则指导代码库设计与可测试性. |
-| [`codebase-map`](workflow/codebase-map/SKILL.md) | 代码库结构与依赖可视化: 分析+常驻服务 (build/serve/stop 三子命令), 只由用户手动调用. |
-| [`code-review`](workflow/code-review/SKILL.md) | 按规范, spec 与按门槛纳入的旧行为影响分别评审代码变更. |
-| [`decision-ledger`](workflow/decision-ledger/SKILL.md) | 记录和维护 DECISIONS.md 中已确认的决策与事实. |
-| [`deliberate`](workflow/deliberate/SKILL.md) | 通过盘问关闭产品与技术决策, 并维护相关记录文件. |
-| [`demo`](workflow/demo/SKILL.md) | 制作演示材料, 让人看清指定样子, 行为或过程. |
-| [`domain-awareness`](workflow/domain-awareness/SKILL.md) | 只读发现当前仓库的领域语言, 边界和相关 ADR. |
-| [`domain-modeling`](workflow/domain-modeling/SKILL.md) | 维护领域语言和 ADR, 持续澄清模糊的领域概念. |
-| [`drive-execution`](workflow/drive-execution/SKILL.md) | 将大型任务分给执行者和审核者, 按 issue 的验证契约与 worktree 流程协作. |
-| [`explain-diff`](workflow/explain-diff/SKILL.md) | 生成包含背景, 主旨, 证据, 合并风险和测验的交互式 diff 讲解页. |
-| [`fix-bugs`](workflow/fix-bugs/SKILL.md) | 修 bug 的详细手法: 复现, 定根因, 出修复方案, 修复复验, 复核没改坏. |
-| [`follow-the-money`](workflow/follow-the-money/SKILL.md) | 沿价值流审查变更, 检查授权, 数量和执行造成的资损风险. |
-| [`improve-codebase-architecture`](workflow/improve-codebase-architecture/SKILL.md) | 发现架构摩擦, 并提出把浅模块深化的重构机会. |
-| [`lazy-dev`](workflow/lazy-dev/SKILL.md) | 用决策阶梯和实现阶梯收敛到最小且无未来负担的方案. |
-| [`navigate`](workflow/navigate/SKILL.md) | 在目的地和路线不清时, 用 Roadmap 和 Milestone 组织探索. |
-| [`software-engineering-consensus`](workflow/software-engineering-consensus/SKILL.md) | 共享工程概念, 交付与验证边界, 以及本仓库工作流术语. |
-| [`to-execution`](workflow/to-execution/SKILL.md) | 把 Product/Technical Spec 拆成 Execution Spec 和可执行 issues. |
-| [`to-spec`](workflow/to-spec/SKILL.md) | 把已确认的产品和技术决策整理成两份权威 spec. |
-| [`use-sandbox-worktree`](workflow/use-sandbox-worktree/SKILL.md) | 管理 host worktree 与 sandbox 容器绑定对的生命周期. |
-| [`use-worktree`](workflow/use-worktree/SKILL.md) | 识别, 创建, 删除和迁移 Git worktree, 并执行安全检查. |
-| [`verification-contract`](workflow/verification-contract/SKILL.md) | 按 issue 的改动类型确定验证方式和交付证据; 唯一强制验证权威, 安全底线见同目录 `SAFETY.md`. |
-| [`verify-change`](workflow/verify-change/SKILL.md) | 独立产品验收, 只按被验项目已确认的产品标准逐项核对最终成品, 委派非作者实跑. |
+| Skill | 所在环节 | 说明 |
+| --- | --- | --- |
+| [`software-engineering-consensus`](workflow/software-engineering-consensus/SKILL.md) | 全流程工程约束 | 共享工程概念, 交付与验证边界, 以及本仓库工作流术语. |
+| [`navigate`](workflow/navigate/SKILL.md) | 全流程领航 | 在目的地和路线不清时, 用 Roadmap 和 Milestone 组织探索. |
+| [`use-worktree`](workflow/use-worktree/SKILL.md) | 准备工作环境 | 识别, 创建, 删除和迁移 Git worktree, 并执行安全检查. |
+| [`use-sandbox-worktree`](workflow/use-sandbox-worktree/SKILL.md) | 准备工作环境 | 管理 host worktree 与 sandbox 容器绑定对的生命周期. |
+| [`domain-awareness`](workflow/domain-awareness/SKILL.md) | 领域信息准备 | 只读发现当前仓库的领域语言, 边界和相关 ADR. |
+| [`deliberate`](workflow/deliberate/SKILL.md) | 需求与决策澄清 | 通过盘问关闭产品与技术决策, 并维护相关记录文件. |
+| [`demo`](workflow/demo/SKILL.md) | 需求与方案讨论 | 制作演示材料, 让人看清指定样子, 行为或过程. |
+| [`domain-modeling`](workflow/domain-modeling/SKILL.md) | 领域模型维护 | 维护领域语言和 ADR, 持续澄清模糊的领域概念. |
+| [`decision-ledger`](workflow/decision-ledger/SKILL.md) | 决策记录 | 记录和维护 DECISIONS.md 中已确认的决策与事实. |
+| [`codebase-design`](workflow/codebase-design/SKILL.md) | 方案设计 | 用模块, 接口和接缝原则指导代码库设计与可测试性. |
+| [`to-spec`](workflow/to-spec/SKILL.md) | 规格整理 | 把已确认的产品和技术决策整理成两份权威 spec. |
+| [`verify-change`](workflow/verify-change/SKILL.md) | 规格整理后/独立验证成品 | 规格整理后设计并确认验证方案, 成品实施后按方案独立验证并整理证据. |
+| [`lazy-dev`](workflow/lazy-dev/SKILL.md) | 设计与实施方法 | 用决策阶梯和实现阶梯收敛到最小且无未来负担的方案, 可用于设计和实施. |
+| [`to-execution`](workflow/to-execution/SKILL.md) | 拆分执行切片 | 把 Product/Technical Spec 拆成 Execution Spec 和可执行 issues. |
+| [`verification-contract`](workflow/verification-contract/SKILL.md) | 实施验证契约 | 按改动类型说明如何验证, 什么结果算通过, 以及要留下哪些可复查证据. |
+| [`drive-execution`](workflow/drive-execution/SKILL.md) | 实施切片 | 将大型任务分给执行者和审核者, 按 issue 的验证契约与 worktree 流程协作. |
+| [`code-review`](workflow/code-review/SKILL.md) | 实施后评审 | 按规范, spec 与按门槛纳入的旧行为影响分别评审代码变更. |
+| [`blast-radius`](workflow/blast-radius/SKILL.md) | 影响面风险核查 | 调查变更在 diff 之外的影响, 用真实代码证明关键安全事实并交接风险. |
+| [`follow-the-money`](workflow/follow-the-money/SKILL.md) | 资损风险核查 | 沿价值流审查变更, 检查授权, 数量和执行造成的资损风险. |
+| [`benchmark-checklist`](workflow/benchmark-checklist/SKILL.md) | 性能测量 | 报告或采信性能数字前的测量核查, 覆盖公平调优, 重复与统计, 错误计数, 收益上限, 结论边界与 PR 主数字. |
+| [`fix-bugs`](workflow/fix-bugs/SKILL.md) | 问题修复回路 | 修 bug 的详细手法: 复现, 定根因, 出修复方案, 修复复验, 复核没改坏. |
+| [`explain-diff`](workflow/explain-diff/SKILL.md) | 交付讲解 | 生成包含背景, 主旨, 证据, 合并风险和测验的交互式 diff 讲解页. |
+| [`improve-codebase-architecture`](workflow/improve-codebase-architecture/SKILL.md) | 架构改进探索 | 发现架构摩擦, 并提出把浅模块深化的重构机会. |
+| [`codebase-map`](workflow/codebase-map/SKILL.md) | 按需代码库可视化 | 代码库结构与依赖可视化: 分析+常驻服务 (build/serve/stop 三子命令), 只由用户手动调用. |
+
+正式验收由我依据验证证据决定; `verify-change` 的设计方式只产出待我确认的验证方案, 执行方式只负责独立验证并整理证据.
