@@ -46,7 +46,7 @@
 | [`to-spec`](workflow/to-spec/SKILL.md) | 规格整理 | 把已确认的产品和技术决策整理成两份权威 spec. |
 | [`verify-change`](workflow/verify-change/SKILL.md) | 权威输入确认后/独立验证成品 | 依据已确认的权威输入设计并确认验证方案, 成品实施后按方案独立验证并整理证据. |
 | [`lazy-dev`](workflow/lazy-dev/SKILL.md) | 设计与实施方法 | 用决策阶梯和实现阶梯收敛到最小且无未来负担的方案, 可用于设计和实施. |
-| [`to-execution`](workflow/to-execution/SKILL.md) | 拆分执行切片 | 把 Product/Technical Spec 拆成 Execution Spec 和可执行 issues. |
+| [`to-execution`](workflow/to-execution/SKILL.md) | 拆分执行切片 | 由子代理起草 Execution Spec 和可执行 issues, 主会话检查达标后固化. |
 | [`verification-contract`](workflow/verification-contract/SKILL.md) | 实施验证契约 | 按改动类型说明如何验证, 什么结果算通过, 以及要留下哪些可复查证据. |
 | [`drive-execution`](workflow/drive-execution/SKILL.md) | 实施切片 | 分派实施, 合并, 开发验证与评审返工, 不组织成品独立验证或正式验收. |
 | [`code-review`](workflow/code-review/SKILL.md) | 实施后评审 | 按规范, spec 与按门槛纳入的旧行为影响分别评审代码变更. |
