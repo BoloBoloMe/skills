@@ -1,0 +1,55 @@
+From 7519f40e6f5d218df9448e1ecd096a4e082c03e1 Mon Sep 17 00:00:00 2001
+From: sim <sim@local>
+Date: Thu, 29 Oct 2026 18:52:12 +0800
+Subject: [PATCH] =?UTF-8?q?feat:=20ISSUE-01:=20tests/run=20=E5=A2=9E?=
+ =?UTF-8?q?=E5=8A=A0=20--explain?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+---
+ tests/run | 9 +++++++++
+ 1 file changed, 9 insertions(+)
+
+diff --git a/tests/run b/tests/run
+index a1a7bcc..b9e966b 100755
+--- a/tests/run
++++ b/tests/run
+@@ -4,6 +4,7 @@
+ 用法:
+   tests/run              按 git 未提交改动面选跑受影响套件 (m12 串行, ~9min)
+   tests/run --fast       只跑受影响套件的快层 (秒级)
++  tests/run --explain    只打印会跑哪些套件与命令, 不运行 pytest
+   tests/run --all        全量串行回归 (里程碑关账口径)
+   tests/run <其他参数>   原样直通 pytest
+ 
+@@ -79,11 +80,17 @@ def select_suites(paths: list[str]) -> tuple[list[str], bool]:
+ 
+ def main() -> int:
+     args = sys.argv[1:]
++    explain = bool(args) and args[0] == "--explain"
++    if explain:
++        args = args[1:]
+     if args and args[0] not in {"--fast", "--all"}:
+         return subprocess.run(
+             ["uv", "run", "--with", "pytest", "python", "-m", "pytest", *args], cwd=ROOT,
+         ).returncode
+     if args and args[0] == "--all":
++        if explain:
++            print("[tests/run] $ uv run --with pytest python -m pytest -q")
++            return 0
+         return subprocess.run(
+             ["uv", "run", "--with", "pytest", "python", "-m", "pytest", "-q"], cwd=ROOT,
+         ).returncode
+@@ -114,6 +121,8 @@ def main() -> int:
+     cmd.append("-q")
+     print(f"[tests/run] 受影响套件: {' '.join(suites)}", flush=True)
+     print(f"[tests/run] $ {' '.join(cmd)}", flush=True)
++    if explain:
++        return 0
+     return subprocess.run(cmd, cwd=ROOT).returncode
+ 
+ 
+-- 
+2.53.0
+

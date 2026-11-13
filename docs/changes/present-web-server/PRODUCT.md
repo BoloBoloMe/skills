@@ -1,5 +1,7 @@
 # present-web-server Product Spec
 
+后续适用范围: 本文保留原变更规格, 不作为新改造的现行完整标准. 远程/本地分支, 失败交文件路径, 地址来源和空闲退出等受影响部分已由 [milestone-14 决策](../workflow-stack-review/milestone-14/DECISIONS.md) 及 [AC-15 已确认标准](../workflow-stack-review/ACCEPTANCE.md#milestone-15-已确认标准) 替代, 待 milestone-15 准备当前执行输入时逐项对齐; 不回写历史验收证据.
+
 ## 背景
 
 用户通过 ssh 远程登录主机开 agent 会话时, present skill 现有的本地 Chromium 浏览器展示路径不可用 — 浏览器起在远程主机上, 用户在自己的设备屏幕前看不到. 受益者: 以远程方式使用 agent 会话的用户本人. 需求来源: 用户直接提出. 现在处理的理由: 远程会话是该 skill 的高频真实使用形态, 缺失等于远程场景无展示能力.

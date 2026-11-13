@@ -24,8 +24,8 @@ disable-model-invocation: true
 - `GLOSSARY.md`: 本工作区的规范术语表. 格式见 [GLOSSARY-FORMAT.md](./GLOSSARY-FORMAT.md).
 - `./learning-records/*.md`: 学习记录, 捕捉我已经真正掌握的非显然洞见, 已有基础, 被纠正的误解, 或使命变化. 文件名为 `0001-<slug>.md`, 数字递增. 格式见 [LEARNING-RECORD-FORMAT.md](./LEARNING-RECORD-FORMAT.md).
 - `./lessons/*.html`: 课程文件. 一个 lesson 是一个自包含 HTML 产物, 只教一个边界很小且与使命相关的点. 这是本工作区的主要教学单位.
-- `./reference/*.html`: 速查资料. 它们是 lesson 压缩出的长期复习材料, 例如 cheat sheet, 流程图, 算法, 姿势, 例句, 概念地图.
-- `./assets/*`: lesson 和 reference 共享组件, 例如 CSS, quiz widget, simulator, diagram helper. 见 [Assets](#assets).
+- `./reference/*.html`: 速查资料. 它们是 lesson 压缩出的长期复习材料.
+- `./assets/*`: lesson 和 reference 共享组件. 见 [Assets](#assets).
 - `NOTES.md`: 草稿本. 记录我的学习偏好, 教学偏好, 临时观察, 下次要记得的上下文.
 
 ## 启动顺序
@@ -84,7 +84,7 @@ lesson 要求:
 
 ## Assets
 
-lesson 从 `./assets/` 中的可复用组件构建: 样式表, quiz widget, simulator, diagram helper 等. 复用是默认, 不是例外; 不要把将来会复制的代码内联到单个 lesson.
+lesson 从 `./assets/` 中的可复用组件构建. 复用是默认, 不是例外; 不要把将来会复制的代码内联到单个 lesson.
 
 每个工作区最先获得的组件通常是共享 stylesheet. 所有 lesson 链接它, 让整个课程像同一门课, 而不是一堆一次性页面. 工作区增长时, 组件库也应增长.
 
@@ -133,7 +133,7 @@ quiz 选项不要用格式泄露答案. 每个选项尽量字数相近, 字符�
 
 当我提出的问题明显需要实践智慧时, 默认先尝试回答, 但最终要把我引向一个 community.
 
-community 是我能在真实世界测试技能的地方, 线上或线下都可以. 例如论坛, subreddit, 本地课程, 兴趣小组, 专业社群.
+community 是我能在真实世界测试技能的地方, 线上或线下都可以.
 
 优先寻找高声誉 community. 如果我表达不想加入 community, 尊重它, 并在 `RESOURCES.md` 或 `NOTES.md` 记录这个偏好.
 

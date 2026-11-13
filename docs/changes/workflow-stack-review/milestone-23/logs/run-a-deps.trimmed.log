@@ -1,0 +1,26 @@
+# 裁剪摘录: /tmp/m23-evidence/raw-logs/run-a-deps.log 的非进度条行.
+# 原因: 原始日志的进度条流内嵌全部被解析文件名枚举 (私有路径), 按父会话指示不入仓库; 原件哈希见 logs/evidence-hashes.log.
+# 除剔除进度条外无删改; 错误与结果行原样保留.
+---
+=== $ date Run A2 (userns=keep-id, -nc) 开始 ===
+2026-11-01T12:32:33+08:00
+Extracting dependencies
+[main] INFO de.maibornwolff.codecharta.util.Logger - 'Resolving dependencies' started
+[main] INFO de.maibornwolff.codecharta.util.Logger - 'Resolving dependencies' took 218ms
+[main] INFO de.maibornwolff.codecharta.util.Logger - 'Analyzing cycles' started
+[main] INFO de.maibornwolff.codecharta.util.Logger - Found 20 strongly connected components
+[main] INFO de.maibornwolff.codecharta.util.Logger - Found a total of 52 cycles
+[main] INFO de.maibornwolff.codecharta.util.Logger - 'Analyzing cycles' took 1110ms
+[main] INFO de.maibornwolff.codecharta.util.Logger - 'Leveling the folder tree' started
+[main] INFO de.maibornwolff.codecharta.util.Logger - 'Leveling the folder tree' took 237ms
+[main] INFO de.maibornwolff.codecharta.util.Logger - 'Leveling the namespace tree' started
+[main] INFO de.maibornwolff.codecharta.util.Logger - 'Leveling the namespace tree' took 735ms
+Created Project with 3014 leaves.
+[main] INFO de.maibornwolff.codecharta.util.Logger - Created output file at /out/deps-only.cc.json
+Run A2 exit=0
+=== $ date 结束 ===
+2026-11-01T12:32:44+08:00
+total 4912
+drwxrwxr-x   2 bolo bolo      60 Nov  1 12:32 .
+drwxrwxrwt 424 root root   10240 Nov  1 12:32 ..
+-rw-r--r--   1 bolo bolo 5027105 Nov  1 12:32 deps-only.cc.json

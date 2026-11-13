@@ -151,5 +151,149 @@ class TestTC004NonPosix(WebServerCliTestCase):
         self.assertEqual(obj["code"], "not_supported")
 
 
+CONFIRMED_ADDRESS = "192.168.1.20"
+EXPLICIT_ADDRESS = "192.168.1.31"
+CANDIDATE_ADDRESS = "192.168.1.44"
+MAPPED_PORT = 50021
+LISTEN_PORT = 50000
+
+
+class WebServerAddressTestCase(WebServerCliTestCase):
+    """地址解析用例基类: 用显式入参驱动同一解析函数 (宿主/容器分支)."""
+
+    def _confirmed_file(self, content=CONFIRMED_ADDRESS):
+        path = Path(self._runtime_dir) / "lan-address"
+        path.write_text(content + "\n", encoding="utf-8")
+        return path
+
+    def _missing_file(self):
+        return Path(self._runtime_dir) / "no-such-lan-address"
+
+    def _resolve(self, **kwargs):
+        """宿主分支默认入参; 调用方按需覆盖 env/in_container/confirmed_path."""
+        kwargs.setdefault("env", {})
+        kwargs.setdefault("in_container", False)
+        kwargs.setdefault("confirmed_path", self._missing_file())
+        kwargs.setdefault("candidates", [])
+        return ws._resolve_delivery_address(LISTEN_PORT, **kwargs)
+
+
+class TestTC001DeliveryAddressResolution(WebServerAddressTestCase):
+    """TC-001/TC-01-01..05: 交付地址单一解析入口 (D011).
+
+    容器内 /run/.containerenv 恒存在, 宿主分支只能靠显式入参复现,
+    故此处直接驱动同一解析函数; CLI 级用例见 test_web_server_lifecycle.py.
+    """
+
+    def test_tc001_explicit_lan_host_wins(self):
+        result = self._resolve(
+            lan_host=EXPLICIT_ADDRESS, confirmed_path=self._confirmed_file()
+        )
+        self.assertEqual(result["url_host"], EXPLICIT_ADDRESS)
+        self.assertEqual(result["lan_ip"], EXPLICIT_ADDRESS)
+        # 宿主分支 URL 端口 = 实际监听端口
+        self.assertEqual(result["url_port"], LISTEN_PORT)
+
+    def test_tc0101_confirmed_record_used_without_explicit(self):
+        result = self._resolve(confirmed_path=self._confirmed_file())
+        self.assertEqual(result["url_host"], CONFIRMED_ADDRESS)
+        self.assertEqual(result["url_port"], LISTEN_PORT)
+        self.assertNotIn("address_missing", result)
+
+    def test_tc0102_missing_confirmed_address_reports_candidates(self):
+        result = self._resolve(
+            env={
+                "SSH_CONNECTION": "10.0.0.9 51234 10.0.0.9 22",
+                "SSH_TTY": "/dev/pts/1",
+            },
+            candidates=[CANDIDATE_ADDRESS],
+        )
+        self.assertNotIn("url_host", result)
+        self.assertNotIn("lan_ip", result)
+        self.assertEqual(result["address_missing"]["code"], "no_confirmed_address")
+        self.assertEqual(result["candidates"], [CANDIDATE_ADDRESS])
+        text = json.dumps(result, ensure_ascii=False)
+        # SSH 地址/主机名不作交付地址
+        self.assertNotIn("10.0.0.9", text)
+
+    def test_tc0103_container_uses_host_address_and_mapped_port(self):
+        result = self._resolve(
+            in_container=True,
+            env={
+                "SWT_HOST_LAN_IP": CONFIRMED_ADDRESS,
+                "SWT_HOST_WEB_PORT": str(MAPPED_PORT),
+            },
+        )
+        self.assertEqual(result["url_host"], CONFIRMED_ADDRESS)
+        self.assertEqual(result["lan_ip"], CONFIRMED_ADDRESS)
+        self.assertEqual(result["url_port"], MAPPED_PORT)
+
+    def test_tc0103_container_ignores_explicit_lan_host(self):
+        result = self._resolve(
+            lan_host=EXPLICIT_ADDRESS,
+            in_container=True,
+            env={
+                "SWT_HOST_LAN_IP": CONFIRMED_ADDRESS,
+                "SWT_HOST_WEB_PORT": str(MAPPED_PORT),
+            },
+        )
+        self.assertEqual(result["url_host"], CONFIRMED_ADDRESS)
+
+    def test_tc0104_container_missing_mapped_port_reports_gap(self):
+        result = self._resolve(
+            in_container=True, env={"SWT_HOST_LAN_IP": CONFIRMED_ADDRESS}
+        )
+        self.assertNotIn("url_host", result)
+        self.assertNotIn("url_port", result)
+        self.assertEqual(result["address_missing"]["code"], "container_env_missing")
+
+    def test_tc0104_container_missing_address_reports_gap(self):
+        result = self._resolve(
+            in_container=True, env={"SWT_HOST_WEB_PORT": str(MAPPED_PORT)}
+        )
+        self.assertNotIn("url_host", result)
+        self.assertEqual(result["address_missing"]["code"], "container_env_missing")
+
+    def test_tc0104_container_invalid_mapped_port_is_not_guessed(self):
+        result = self._resolve(
+            in_container=True,
+            env={"SWT_HOST_LAN_IP": CONFIRMED_ADDRESS, "SWT_HOST_WEB_PORT": "8800x"},
+        )
+        self.assertNotIn("url_port", result)
+        self.assertEqual(result["address_missing"]["code"], "container_env_missing")
+
+    def test_tc0105_loopback_bind_is_not_a_delivery_address(self):
+        info = {"port": LISTEN_PORT, "bind": "127.0.0.1"}
+        warnings = ws._apply_delivery(info, "127.0.0.1", LISTEN_PORT)
+        self.assertEqual(info["url"], f"http://localhost:{LISTEN_PORT}/")
+        self.assertEqual(info["address_missing"]["code"], "loopback_bind")
+        self.assertNotIn("lan_ip", info)
+        text = " ".join(warnings)
+        self.assertIn("loopback", text)
+        self.assertNotIn("ssh -L", text)
+
+
+class TestTC001CliArgumentContract(WebServerCliTestCase):
+    """start/status 的 --lan-host 参数契约与 stdout 单行 JSON 不变量."""
+
+    def test_status_rejects_unknown_argument(self):
+        obj, code, _ = self._run_subprocess("status", "--bogus")
+        self.assertEqual(code, 1)
+        self.assertFalse(obj["success"])
+        self.assertEqual(obj["code"], "invalid_args")
+
+    def test_status_lan_host_without_value_is_invalid(self):
+        obj, code, _ = self._run_subprocess("status", "--lan-host")
+        self.assertEqual(code, 1)
+        self.assertEqual(obj["code"], "invalid_args")
+
+    def test_start_requires_bind_even_with_lan_host(self):
+        obj, code, _ = self._run_subprocess(
+            "start", "8080", self._runtime_dir, "--lan-host", EXPLICIT_ADDRESS
+        )
+        self.assertEqual(code, 1)
+        self.assertEqual(obj["code"], "invalid_args")
+
+
 if __name__ == "__main__":
     unittest.main()

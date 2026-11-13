@@ -2,7 +2,7 @@
 
 以下风险项均已知情接受. 交付包齐发时连同声明给我.
 
-- **旧记录 auth.json 启动后经 stdin 注入**进容器: 是拷贝不是挂载, 物理上不可能写回 host, 不防读 — 容器内恶意依赖可读 token 并经白名单内 LLM 域名外传, 已接受. 不烤镜像层, 换 key 后下次 birth/resume 自动带新值 (ro 挂载形态已实测证伪: rootless uid_map 下 host bolo 文件在容器内呈现为 root 属主, ro+0600 挂载 = 容器 bolo 永不可读).
+- **旧记录 auth.json 启动后经 stdin 注入**进容器: 是拷贝不是挂载, 物理上不可能写回 host, 不防读; 容器内恶意依赖可读 token 并经白名单内 LLM 域名外传, 已接受. 不烤镜像层, 换 key 后下次 birth/resume 自动带新值 (ro 挂载形态已实测证伪: rootless uid_map 下 host bolo 文件在容器内呈现为 root 属主, ro+0600 挂载 = 容器 bolo 永不可读).
 - **Maven settings 快照**: host `~/.m2/settings.xml` 若存在, birth 把内容复制到记录目录内权限 0700 的私有目录, 文件本身 0644 (rootless 映射后供容器 bolo 读取), 只读挂进容器. 其中的仓库凭据会被容器内进程读取, 记录根也须保密; host 文件不改权限, 后续改动不会同步到现有容器.
 - **新模板客户端 Key**: 仅 client_api_key 经 stdin 写入新容器, 不复制管理/上游 Key 或主机 OAuth. 容器内 bolo/恶意依赖仍可读这份 Key, 600 不防同用户进程; 这是客户端凭据, 不是真正零凭据沙盒. 固定快照/启动入口控制初始配置, 不阻止用户后来自行改配置. resume 不自动换 Key/复制 OAuth. HTTP 网关未加密, 只用已确认的本机/可信内网入口.
 - **noVNC 局域网直连无认证**: x11vnc `-nopw`, 新容器的 6080 发布到宿主 `0.0.0.0` (宿主端口优先 6080, 被占时动态分配, 入口见 [delivery.md](delivery.md)). 无需 SSH 凭据, 同网段任何设备均可查看/控制桌面及已登录浏览器, HTTP/WebSocket 不加密. 仅用于可信内网, 不暴露公网, 屏幕上避开密钥与敏感内容. 旧回环发布容器不自动迁移.

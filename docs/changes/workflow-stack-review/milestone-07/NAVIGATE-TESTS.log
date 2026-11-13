@@ -1,0 +1,14 @@
+============================= test session starts ==============================
+platform linux -- Python 3.11.2, pytest-9.1.1, pluggy-1.7.0
+rootdir: /home/bolo/Workspace/refactor-skill-around-verification
+configfile: pytest.ini
+collected 30 items
+
+workflow/navigate/tests/test_roadmap_cli.py .....                        [ 16%]
+workflow/navigate/tests/test_roadmap_validation.py ...............       [ 66%]
+workflow/navigate/tests/test_stdlib_only_and_no_external_refs.py ..      [ 73%]
+workflow/navigate/tests/test_web_server_endpoints.py ....                [ 86%]
+workflow/navigate/tests/test_web_server_lifecycle.py ...                 [ 96%]
+workflow/navigate/tests/test_web_server_persistence.py .                 [100%]
+
+============================== 30 passed in 8.08s ==============================

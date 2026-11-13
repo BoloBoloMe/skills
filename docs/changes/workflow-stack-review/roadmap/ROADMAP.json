@@ -1,0 +1,544 @@
+{
+  "schema_version": "0.0.1",
+  "title": "workflow skill 栈审视与改造",
+  "destination": "workflow/ 这套 skill 栈完成三件已拍板的改造 (模型自动调用的术语 skill, prototype 改名 demo, PoC 成为 navigate 里程碑类型), 五处措辞与 SAFETY 指针违规已修, 三处流程接口待裁决项已定并落地, 执行哲学转向 (实现走最短交付路径, issue 内端到端验证闭环, 修复后再验证, 垂直切片拆分) 已裁决并随流程接口改动一并落地, 外加 present skill 的交付方式统一改造 (宿主与容器都默认起常驻 web 服务交付局域网地址, 不再交付内网地址或文件路径, 实际端口记录到系统临时目录的固定路径), 导航展示页的稳定性修复 (路线图更新后页面仍可访问, 不再靠每次重起服务和手工重建桥), docs/proposals/2026-10-31-host-port-mapping-self-check.md 的提案按 P1-P3 落地, 43 个模型不可见 skill 补上 codex 的 agents/openai.yaml 使其在 codex 中同样不注入模型上下文, mailbox 信头时间支持 MAILBOX_TZ 覆盖 (未设时仍按系统本地时区, 事件日志保持 UTC), 以及一个代码库结构可视化 skill 完成形态裁决与落地 (路线已由 milestone-12 查明: CodeCharta 离线前端加自建 python 分析器), 全部改动经 pytest 与 check_skill.py 通过, 并由我逐项验收后推送到宿主母体.",
+  "notes": [
+    "侦查结论: 方向 A 主张保留主体, 纸面 5 对互指里的反向边全属文档读取, 产物引用与重新派活, 改措辞即可, 唯一真重复是 benchmark 与 blast-radius 各约 12 行的实验边界. 方向 B 主张把已长出的 6 层写成文, 诚实结论是收益为可判性而非 token, 且需真搬 v-c 的方法路由与验收证据语义. 方向 C 主张按需加载与入口选择, 但有 24 个 skill 刻意禁用模型调用, 该主轴被否决; 其载入链代理值仍留作参考: 小改动 5-7KB, bug 14-18KB, 独立验收 27-44KB.",
+    "选定: 不整包接受任一方向. 采用清单式实施: 三件已拍板改造, 五处已批准的措辞修正, 一组打包裁决的流程接口. 分层成文, 方法路由上移, 入口地图, 抽共用底线四项经裁决排除, 见 off_course.",
+    "边判定口径 (已认可): 调用图只画执行调用 (实线); 权威引用, 分工声明, 条件引用产物, 重新派活都不算调用边. 按此口径原来看见的 4 条环消失, 指向 v-c 的虚线边一律不改.",
+    "无证据事项, 不作为验收项: token 节省幅度 (只有字节与行数代理), 术语 skill 的触发率与漏触发率, 相同正文是否重复读取的真实行为, 四个孤儿 skill 的实际使用频率. D015 已撤去另写正文复用规则的要求.",
+    "环境: 代码在 ~/Workspace/refactor-skill-around-verification, 分支同名, origin 经本地 git 桥到宿主母体, 只快进推, push 即交付. 仓库禁止修改真实已安装 skills, 不运行会改安装目录的同步; 原同步验证语句不能覆盖该禁令, 安装效果未验证. 改 roadmap.py 或 web/index.html 后必须跑 uv run python -m pytest workflow/navigate/tests, pytest.ini 的 testpaths 顺序不许动. 展示页用容器 8800 (已确认宿主映射).",
+    "只改本仓库内容, 禁止修改真实已安装 skills, 这是仓库 AGENTS.md 的硬要求.",
+    "本变更工程共识的权威决策位于 milestone-01/DECISIONS.md, 收录门槛适用范围按 D013. D014/D015 已替代 D009/D011: domain-awareness 直接删除旧词汇读取要求和恒定引用, 不改接新 skill; 不另写正文复用规则. 旧决策和原反方材料保留历史. AC-02-01 至 AC-02-08 经我确认后已实施, 源码提交 dcf06358c9a9ecff600228fa5eb300a65deec46e. Herdr 初次受阻后, 我明确要求直接启动子代理, 本轮已由内置独立代理完成复核, 证据提交 c7d5509c9519a6ac2a3df6848996cb5d30b6a928, 无待处理发现, milestone-02 已关闭. AC-02-08 仅在指定原作者会话可见记录和本次复核范围内通过, 不扩展为记录外或全机器保证; 未验证安装或模型效果, 终点人工验收仍由 milestone-08 承担. 宿主信箱查询失败不等于已通知, 完成通知状态须以实际投递结果为准.",
+    "本轮反方核实的后续影响已接入 milestone-02/03/04 问题: 配方参考文件的第三处泛用迭代, PoC 未证实长期阻塞和证据留存, 广义 demo 与旧一次性代码约定及内部路径/分支命名. 仅登记问题, 不替后续 HITL 裁决.",
+    "海域复核: 原触发/误加载体感项不在本次已确认完成边界和验收指标内, 作为后续效果评估列入 off_course. 工程共识与 domain-awareness 的职责及入口关系以 D001/D014 为准, 正文复用规则按 D015 撤去, 实际模型遵从率仍不声称已验证. 验收证据接口的精确决定已在 milestone-06, 不再把同一问题重复列成未知海域; 不承诺长期模型行为永不漂移.",
+    "编码执行的已知前置条件: 仓库 drive-execution/SKILL.md 步骤2要求 EXECUTION.md/可执行issues, 当前本变更尚无这些输入. 已新增 milestone-09 在 milestone-04 编码前由独立会话准备输入并与我确认相关标准, 不等到领取编码任务后才绕过缺口. 若 milestone-06 将新增编码工作, 再按其实际决定补齐相应输入, 不提前猜实现.",
+    "地图页反复失效已定位 (milestone-16 的证据, 2026-10-31): 不是随机崩溃, 是 verify-m04 的验证代理按它自己的干净环境要求主动杀掉默认端口 39271 上的展示服务. 两次死亡时刻与命令可对上: PI 会话 --home-bolo-Workspace-refactor-skill-around-verification.worktrees-verify-m04--/2026-10-31T05-18-32-987Z_01a19065... 在 15:15:10 执行 kill -TERM 85094, 在 16:59:06 执行 web_server.py stop 后于 16:59:21 检查并杀掉 pid 106316; navigate 的 server.log 最后一条请求分别是 15:15:10 与 16:59:20. 架构原因: navigate 的运行时目录只按 uid 命名 (navigate-web-1001), 主检出与各 worktree 共用同一个单例和同一个默认端口 39271, 于是任何会话要跑测试/验证就得先清空这个端口; 而容器 8801 的 socat 桥固定指向 39271, 服务一死桥就哑, 没有任何自愈. 临时缓解: 展示服务改用独立运行时目录 (NAVIGATE_WEB_RUNTIME_DIR=/tmp/navigate-display-1001) 与非默认端口 39300, 桥指向 39300, 验证代理的端口清理动作不再波及. 修复方向留给 milestone-17: 端口与运行时身份按检出隔离, 桥或地址随端口记录自愈, 让跑测试与常驻展示互不干扰."
+  ],
+  "milestones": {
+    "milestone-01": {
+      "title": "定工程共识 skill 的形态与概念边界",
+      "type": "deliberate",
+      "question": "确定 workflow/software-engineering-consensus 的名称/路径, 广泛软件工程自动触发, 正文内联, MVP/PoC/demo 的交付与验证责任及仅属于 MVP 的迭代含义, 旧词汇完整迁移后删除, domain-awareness 两处指针及 README/PUBLIC 入口安排. 明确活跃工作流泛用迭代措辞只改叫法不加流程, 不改历史或无关技术术语. 反方发现的收录范围已由 Q17=A 决定并在 D013 替代 D003 的旧规则适用表述: 我明确要求加入的概念按确认定义收录; 代理主动提议的新词先过旧门槛再审定. 完成标准见 ACCEPTANCE.md 的 AC-01-01 至 AC-01-04, 独立反方发现须逐项核实处理, 未闭环不关闭, 本轮不开始 milestone-02.",
+      "status": "已关闭",
+      "blocked_by": [],
+      "artifacts": [
+        "docs/changes/workflow-stack-review/ACCEPTANCE.md",
+        "docs/changes/workflow-stack-review/milestone-01/DECISIONS.md",
+        "docs/changes/workflow-stack-review/milestone-01/OPPOSITION.md",
+        "docs/changes/workflow-stack-review/milestone-01/OPPOSITION-RESOLUTION.md",
+        "docs/changes/workflow-stack-review/milestone-01/OPPOSITION-FOLLOWUP.md"
+      ],
+      "close_summary": "Q1-Q17 已确认 workflow/software-engineering-consensus 的形态/广泛触发/迁移删除/指针入口, MVP/PoC/demo 的交付验证边界及仅属 MVP 的迭代含义. 独立反方核实概念无强反方, 收录范围问题经 Q17=A 裁决, D013 替代 D003 的旧规则适用表述并保留历史; 补核提交 55e11b8e13bc0475e2b5a76cd289751a0ccdeee5 确认无新实质缺口, AC-01 关闭条件满足. 报告与逐项处理在本节点 artifacts, 新发现旧行为已记 F006-F008 并登记给 milestone-02/03/04. 另把编码前缺 EXECUTION/issues 的必要准备工作建为 milestone-09, 阻塞 milestone-04 和终点验收. 新 skill 尚未实施, 本轮不领取下个里程碑; milestone-08 未人工验收, 不代表正式交付."
+    },
+    "milestone-02": {
+      "title": "建工程共识 skill 并迁移/统一术语",
+      "type": "task",
+      "question": "按 milestone-01/DECISIONS.md 当前有效 D001/D002/D004-D008/D010/D013-D015 及反方处理记录, 新建 workflow/software-engineering-consensus/SKILL.md, 模型自动调用且 description 为 涉及软件工程时调用., 正文全部内联. 迁入 WORKFLOW_VOCABULARY.md 的两条定义/避免项和维护规则, 收录门槛适用范围按 D013 而非旧 D003; 补完整 MVP/PoC/demo/迭代词条及交付/验证边界, 不再新增 v0 到 vn 词条. 删除旧文件; domain-awareness 按 D014 直接删除旧词汇读取要求和恒定引用, 不改指向新 skill; 按 D015 不另写正文复用规则. README 工作流表增加入口, PUBLIC 不加入口, 不留第二份内容. 一并核对活跃工作流中泛指尝试/修正/复跑的迭代称谓, 已知含 maintain-verification-skill/SKILL.md 两处和 reference/drift-classification.md 一处; 不改技术义生成器遍历/算法/代码注释或历史证据, 不改安全和数据保留语义, 不给其他 skill 加迭代流程. 新/修改的 SKILL.md 通过仓库 check_skill.py, 入口与唯一维护位置可核对. ACCEPTANCE.md 的 AC-02-01 至 AC-02-08 均已经我明确确认: 两项修正后, 我对 wtf 重新列明的其余六项回复确认. 实施须完成三个 SKILL.md 的格式检查, 并由未参与修改的另一位代理独立复核, 未完成复核不能关闭本节点. 禁止修改真实已安装 skills 或运行会改安装目录的同步, 不以未测安装效果/模型触发率报通过.",
+      "status": "已关闭",
+      "blocked_by": [
+        "milestone-01"
+      ],
+      "artifacts": [
+        "docs/changes/workflow-stack-review/ACCEPTANCE.md",
+        "docs/changes/workflow-stack-review/milestone-01/DECISIONS.md",
+        "workflow/software-engineering-consensus/SKILL.md",
+        "docs/changes/workflow-stack-review/milestone-02/IMPLEMENTATION.md",
+        "docs/changes/workflow-stack-review/milestone-02/REVIEW-REQUEST.md",
+        "docs/changes/workflow-stack-review/milestone-02/REVIEW.md",
+        "docs/changes/workflow-stack-review/milestone-02/CHECKS.log",
+        "docs/changes/workflow-stack-review/milestone-02/AUTHOR-TOOLS.log"
+      ],
+      "close_summary": "已在 dcf06358c9a9ecff600228fa5eb300a65deec46e 新建工程共识 skill, 完整迁移两条旧定义及避免项/收录规则并删除旧文件, 写清 MVP/PoC/demo/迭代边界, README 登记入口, 三处泛用称谓改为失败尝试且保留数据义务. domain-awareness 按我新确认的 D014 直接删除旧词汇读取要求和恒定引用, 不加新指针; D015 撤去正文复用规则. 我确认 AC-02-01 至 AC-02-08 后完成实施, 三个 SKILL.md 作者及独立格式检查均通过. Herdr 首次受阻后, 按我本轮指示改用未参与修改的内置子代理独立复核, 报告/原始记录提交 c7d5509c9519a6ac2a3df6848996cb5d30b6a928, 无待处理发现; AC-02-08 仅覆盖指定原作者会话可见记录和本次复核, 不作全机器保证. 产物均在 artifacts, 未验证安装或模型效果, milestone-08 尚未人工验收, 不代表正式交付, 本轮不领取其他里程碑或提前推送."
+    },
+    "milestone-03": {
+      "title": "定 PoC 执行与 demo 兼容策略",
+      "type": "deliberate",
+      "question": "在 milestone-01 已确认概念边界下决定: (a) PoC 由谁承接, 是 demo 的一支/research/裸 task, 不把 PoC 当产品迭代; (b) AFK 还是 HITL; (c) 完成标准如何取得有条件边界的可行/不可行实测结论和可复查依据, 未证实按 Q12=A 保持未完成, 环境长期不可得或我主动放弃时如何处理必要工作/验收依赖和完成边界, 不能默认把范围内阻塞工作划成歧路; (d) research 的实验创建条件半句切给 PoC 后还剩什么; (e) roadmap.py 是否收 prototype 作 demo 别名还是改枚举, 旧数据/入口如何兼容; (f) demo 已是演示用途, 可展示现成 MVP/PoC 结果或新样品, 旧 prototype 一次性代码/冒烟/归档清理规则哪些保留或调整, 不能把现有成品自动当一次性代码; 若 PoC 同挂 demo, 证据可复查与原型清理如何协调. prototype 自身目录/前缀/路由/分支旧名称的兼容也须讲清. 细节明朗时对齐相关产物和后续实施的详细验收标准, 不重复已确认部分.",
+      "status": "已关闭",
+      "blocked_by": [],
+      "artifacts": [
+        "docs/changes/workflow-stack-review/milestone-03/DECISIONS.md",
+        "docs/changes/workflow-stack-review/milestone-03/OPPOSITION.md",
+        "docs/changes/workflow-stack-review/milestone-03/OPPOSITION-RESOLUTION.md"
+      ],
+      "close_summary": "Q1-Q19 盘问确认: demo 取代 prototype (skill 与类型一并改名, 三子形态路径只换词面, 定位改为可回看的演示材料, 范围收窄到只管造材料, 完成标准只要求我看过并能判断, 变体集进 demo 分支备查), poc 成为独立 AFK 类型 (不新建 skill, 词义用指针, 结论边界拆分, 终止只记关闭摘要), research 收窄为外部已存在事实 (内部实测类调查归 task), 网页 demo/poc 独立视觉, 记 ADR 0024. 独立反方 (glm-5.3-flash, 未参与盘问) 指出类型切分漏掉需实测非可行性一类及 D010 双判据等 5 项, 我逐项核实后裁决, 新增 D018 并改写 D014/D015/D016/D017/D019, 无驳回项. 全部决策尚未实施, 实施与可观察标准归 milestone-04."
+    },
+    "milestone-04": {
+      "title": "demo 改名与 PoC 类型落地",
+      "type": "task",
+      "question": "按 milestone-03 决策将 workflow/prototype/ 改为 workflow/demo/ 并适配已确认 demo 范围, 不只机械改名: 既有 MVP/PoC 演示与新建样品的入口/完成规则按裁决处理. 原六文件约十六处仅为初始清单, 需覆盖 navigate/SKILL.md, roadmap.py 枚举/校验, TEMPLATES.md, 网页, visual/render_checks.py, README, 并核对 skill 自身 SKILL.md/LOGIC.md/UI.md 的 prototypes/ 目录, prototype. 文件前缀, /prototype/ 路由及 prototype/<slug> 分支约定; 是否更名或兼容按 milestone-03, 不默默遗留或自行删除真实成品/PoC 证据. 按决策新增 PoC 类型, 网页显示与完成标准, 删 research 创建条件的实验半句. 实施前确认详细验收标准, 验证 uv run python -m pytest workflow/navigate/tests 全绿且相关 SKILL.md 通过 check_skill.py; 不运行会修改真实已安装 skills 的同步, 不宣称安装效果已验证.",
+      "status": "已关闭",
+      "blocked_by": [
+        "milestone-03",
+        "milestone-09"
+      ],
+      "artifacts": [
+        "docs/changes/workflow-stack-review/milestone-04/PRODUCT.md",
+        "docs/changes/workflow-stack-review/milestone-04/TECHNICAL.md",
+        "docs/changes/workflow-stack-review/milestone-04/EXECUTION.md",
+        "docs/changes/workflow-stack-review/milestone-04/issues/ISSUE-01-milestone-type-enum.md",
+        "docs/changes/workflow-stack-review/milestone-04/issues/ISSUE-02-demo-skill-rename-rewrite.md",
+        "docs/changes/workflow-stack-review/milestone-04/issues/ISSUE-03-navigate-type-vocabulary.md",
+        "docs/changes/workflow-stack-review/milestone-04/issues/ISSUE-04-web-demo-poc-visuals.md",
+        "docs/changes/workflow-stack-review/milestone-04/issues/ISSUE-05-adr-naming-record.md",
+        "docs/changes/workflow-stack-review/milestone-04/issues/ISSUE-06-regression-and-audit.md",
+        "docs/changes/workflow-stack-review/milestone-04/issues/ISSUE-07-rework-review-findings.md",
+        "docs/changes/workflow-stack-review/milestone-04/issues/ISSUE-08-fix-ac010-cleanup-scope.md",
+        "docs/changes/workflow-stack-review/milestone-04/issues/ISSUE-09-fix-ac010-burn-after-use.md",
+        "docs/changes/workflow-stack-review/milestone-04/IMPACT-REVIEW.md",
+        "docs/changes/workflow-stack-review/milestone-04/REVIEW-01-standards.md",
+        "docs/changes/workflow-stack-review/milestone-04/REVIEW-02-spec.md",
+        "docs/changes/workflow-stack-review/milestone-04/VERIFY-01/REPORT.md",
+        "docs/changes/workflow-stack-review/milestone-04/VERIFY-02/REPORT.md",
+        "docs/changes/workflow-stack-review/milestone-04/VERIFY-03/REPORT.md",
+        "docs/changes/workflow-stack-review/milestone-04/VERIFY-04/REPORT.md",
+        "workflow/demo/SKILL.md",
+        "workflow/demo/LOGIC.md",
+        "workflow/demo/UI.md",
+        "workflow/navigate/SKILL.md",
+        "workflow/navigate/TEMPLATES.md",
+        "workflow/navigate/scripts/roadmap.py",
+        "workflow/navigate/web/index.html",
+        "workflow/navigate/tests/visual/render_checks.py",
+        "workflow/navigate/tests/test_roadmap_validation.py",
+        "README.md",
+        "docs/adr/0024-demo-poc-milestone-types.md"
+      ],
+      "close_summary": "demo/PoC 类型改造已落地: workflow/prototype 改名 workflow/demo 并按演示语义重写三文件, 变体分支与演示材料的保留/点名清理口径补齐; navigate 类型语汇 (demo/poc/research/task/deliberate/完成标准/收口产物) 重写; roadmap.py TYPE_VALUES 与 TEMPLATES 枚举行改为 research/deliberate/demo/poc/task/acceptance 且 prototype 被拒不留别名; 展示页 TYPE_META/图例/配色/地貌/外观分派加 demo 与 poc, 未知类型回退保留; render_checks 加 TC-006; README 与 ADR 0024 同步. 九个 issue (含三个评审/核验返工) 全部合并, 目标提交 6606016. 过程: 影响复查 11 项全部已排除, 0 返工; 双轴评审 1 硬性提示 (TEMPLATES 残留 原型) 已返工, 另 16 条判断性发现多数不采纳并留档; 独立核验四轮: 首轮因缺写入授权停在原地, 二轮 22 通过/1 失败 (AC-010)/3 未验证, 三轮 AC-015 与 BR-003 转通过, AC-010 仍失败于 用后即焚, 四轮 AC-010 转通过. 遗留: BR-004 (实现期无连续审计与安装前基线) 无法事后补证, 记为证据缺口交终点验收裁决; 未运行 sync-to-pi.py, 未验证安装效果与模型触发率. 环境: 期间与他会话共享主仓, milestone-07 只改 navigate/SKILL.md 单句, 与本节点范围无冲突; 核验用独立干净检出. 仓库主人 2026-10-31 裁决: BR-004 无实现期连续审计与安装前基线一事接受为已说明局限, 不再补证, 不重跑; 核验期间 /tmp/li0fh15u 越权删除事件不追查, 以既有记录为准."
+    },
+    "milestone-05": {
+      "title": "措辞与 SAFETY 指针修正",
+      "type": "task",
+      "question": "执行已批准的 5 处: (1) verify-change 第 5 步共用写入授权规则改为 SAFETY 写入与授权节指针, 保留批准前记未检查和派工单批准范围, 逐次记录, 超范围停下不替其扩权; (2) blast-radius 第 4 节授权句改为公共安全指针; (3) blast-radius 第 5 节首段与清理 bullet 改指针, 清理同时抵达 SAFETY 写入与授权及原始数据两节; (4) maintain-verification-skill 复跑完成标准改正面表述且不点名 verify-change, 保留只证明配方可执行的边界; (5) blast-radius 开头去掉依赖别处定义的验收指挥者称谓, 不擅自改变调用方既定分工. 同步更新 blast-radius/reference/PROVENANCE.md 的授权与角色两行, 不改历史决策原文. README 在 ## 目录 下第一张 skill 表之前补调用关系口径: 只画执行调用, 引用, 分工声明与重新派活不进图. 我已在本轮 Q5/Q6 确认以 ACCEPTANCE.md 的 AC-05-01 至 AC-05-07 验证: 逐项差异可核对, 三个修改的 SKILL.md 通过 check_skill.py, 非修改者独立复核. 不运行修改真实已安装 skills 的同步, 不宣称模型实际遵从率或安装目录同步效果已验证.",
+      "status": "已关闭",
+      "blocked_by": [],
+      "artifacts": [
+        "docs/changes/workflow-stack-review/ACCEPTANCE.md",
+        "docs/changes/workflow-stack-review/milestone-05/IMPLEMENTATION.md",
+        "docs/changes/workflow-stack-review/milestone-05/REPAIR.md",
+        "docs/changes/workflow-stack-review/milestone-05/REVIEW.md",
+        "docs/changes/workflow-stack-review/milestone-05/REVIEW-02.md",
+        "docs/changes/workflow-stack-review/milestone-05/REVIEW-03.md"
+      ],
+      "close_summary": "五处措辞/安全指针, README 调用关系说明及 PROVENANCE 两行已完成; 独立复核发现一处默认只读残留后在 6d0c4b25b4b8e84bd45c43549d442dd8cfb29395 修正. REVIEW-02 对新目标核对 AC-05-01 至 AC-05-06 并实跑三个 check_skill.py 均为 0; REVIEW-03 补核引擎实际入口和原始工具记录, 在指定会话/时段/可见操作范围内覆盖 AC-05-07. 原失败与补证报告均保留, 无未处理的本轮问题. 未同步已安装目录, 模型实际遵从率及安装效果未验证; milestone-08 尚未人工验收, 不代表正式交付."
+    },
+    "milestone-06": {
+      "title": "打包裁决三处流程接口",
+      "type": "deliberate",
+      "question": "决定: (a) benchmark 与 blast-radius 那 8 条实验边界是否收到一处, 收在谁家; (b) IMPACT-REVIEW.md 由谁消费 —— code-review 的 Spec 轴读, verify-change 列为操作线索, 还是承认只给人看并在 drive-execution 写清楚; (c) navigate 的 acceptance 与 verify-change 是否互相点名, 两边证据语义漂移怎么处理; (d) 是否加调用边清单校验测试防回归 (自动分类脆弱, 也可人工维护边清单); (e) general/grill-me 反向调 domain-awareness 怎么处置. (追加裁决见 milestone-06/DECISIONS.md D007/D008 与 ACCEPTANCE.md AC-06 修订版: 评审轴改评审方向; 旧行为影响复查迁入 code-review 作可选方向, 门槛不变.)",
+      "status": "已关闭",
+      "blocked_by": [],
+      "artifacts": [
+        "docs/changes/workflow-stack-review/ACCEPTANCE.md",
+        "docs/changes/workflow-stack-review/milestone-06/DECISIONS.md",
+        "docs/changes/workflow-stack-review/milestone-06/OPPOSITION.md",
+        "docs/changes/workflow-stack-review/milestone-06/OPPOSITION-RESOLUTION.md"
+      ],
+      "close_summary": "六项接口裁决完成 (D001-D008, F001-F015): 实验边界唯一维护在 blast-radius, benchmark 留指针与测量特有记录; 旧行为影响复查迁入 code-review 作可选方向, 门槛不变, 免做理由记 EXECUTION.md, 未参与实现与修复及证据构成逐项承接, 返工重跑保留, 旧报告不进 Spec/verify-change 判据; 验收统一口径 (交付物满足确认判据) 落 navigate 验收终点节, verify-change 不回指, 不收词条; 调用边不加自动校验, README 维护规则面向仓库维护者核对技能表与正文执行调用语句; 删 general/grill-me (用户维持删除, 理由修正 F013, 安装副本待宿主 sync 裁掉); 评审轴用词改评审方向; Standards 双源机制维持现状 (F011). 独立反方 (codex/gpt-6-luna) 11 项发现全部处置 (OPPOSITION-RESOLUTION.md), 证实 F010 安装状态错误并推动 D001/D005/D008 条款补全. AC-06-01..09 经我逐项确认 (含反方后修订). 实施并入 milestone-07. 不代表正式交付: milestone-08 未验收."
+    },
+    "milestone-07": {
+      "title": "落地流程接口改动",
+      "type": "task",
+      "question": "只按 milestone-06 与 milestone-10 判定要动的项实施; 判定不动的项在关闭摘要里记理由, 不默默跳过. milestone-10 裁决的执行哲学转向 (tdd/drive-execution/to-execution/verification-contract 相应改动) 随本节点一并落地, 不追溯已完成的 milestone-04/milestone-09. 详细验收标准最迟实施前确认. 若裁决包含编码工作, 先补齐 drive-execution 所需规格/EXECUTION/issues及验证契约, 不在缺输入时直接编码; 纯文档任务按非编码任务处理. 验证按 ACCEPTANCE.md AC-07-06 的最新用户确认范围: 本轮只改 Markdown/skill 目录, 未改 Podman/容器运行/浏览器程序或相关测试, 不为无关路径补装 Podman 或跑全量测试, 不借宿主跑测试, 信箱间歇故障不归本节点调查或修复. 当前容器七个修改 SKILL.md 的格式检查与非作者逐项复核须通过, 已有 navigate 30 条通过记录作额外证据, 不伪称全量全绿. 仓库禁止修改真实已安装 skills, 不运行会改安装目录的同步或宣称未测安装效果通过.",
+      "status": "已关闭",
+      "blocked_by": [
+        "milestone-06",
+        "milestone-10"
+      ],
+      "artifacts": [
+        "docs/changes/workflow-stack-review/ACCEPTANCE.md",
+        "docs/changes/workflow-stack-review/milestone-07/IMPLEMENTATION.md",
+        "docs/changes/workflow-stack-review/milestone-07/CHECKS.md",
+        "docs/changes/workflow-stack-review/milestone-07/CHECKS.log",
+        "docs/changes/workflow-stack-review/milestone-07/NAVIGATE-TESTS.log",
+        "docs/changes/workflow-stack-review/milestone-07/PYTEST.log",
+        "docs/changes/workflow-stack-review/milestone-07/PYTEST-BEFORE.log",
+        "docs/changes/workflow-stack-review/milestone-07/REVIEW.md",
+        "docs/changes/workflow-stack-review/milestone-07/REVIEW-CHECKS.log",
+        "docs/changes/workflow-stack-review/milestone-07/HOST-TESTS.md",
+        "docs/changes/workflow-stack-review/milestone-07/HOST-PYTEST.log",
+        "docs/changes/workflow-stack-review/milestone-07/HOST-BASELINE.log",
+        "docs/changes/workflow-stack-review/milestone-07/HOST-PARENT.log",
+        "docs/changes/workflow-stack-review/milestone-07/HOST-ADMIN-RUN-1.log",
+        "docs/changes/workflow-stack-review/milestone-07/HOST-ADMIN-RUN-2.log",
+        "docs/changes/workflow-stack-review/milestone-07/HOST-ADMIN-RUN-3.log",
+        "docs/changes/workflow-stack-review/milestone-07/LOCAL-ENVIRONMENT.md",
+        "docs/changes/workflow-stack-review/milestone-07/FINAL-CHECKS.log",
+        "docs/changes/workflow-stack-review/milestone-07/CLOSURE.md",
+        "docs/changes/workflow-stack-review/milestone-07/ENVIRONMENT-RESTORE.log"
+      ],
+      "close_summary": "已按 milestone-06/milestone-10 当前有效裁决落地流程接口与执行哲学, 源提交 c77f6af. 用户最后明确未改 Podman 相关程序就不用测, 只在当前容器验证且信箱间歇问题不归本轮; AC-07-06 已据此修订, 历史全量失败保留而非报通过. 当前容器七个 SKILL 格式检查通过, 非作者对 AC-06/AC-07 源文件逐项复核无未处理实现发现, 已有 navigate 30 条额外通过记录. 不新增调用边校验/不改 Standards 双源及 verify-change/不迁 mocking.md/不复制闭环, 理由按既定职责和唯一维护决定, 不追溯 milestone-04/09. 多余补依赖操作已撤回并实际核对: Podman 二进制及新增配置/临时环境不存在, uid 映射已还原, 旧浏览器缓存已恢复; 新缓存保留未删. 收口报告与证据在 milestone-07/CLOSURE.md 及 artifacts. 未改真实已安装 skills, 未运行同步, 不声称模型效果或全量全绿. milestone-08 尚未人工验收, 不代表正式交付; 本轮停止, 不领取下个节点."
+    },
+    "milestone-08": {
+      "title": "终点验收",
+      "type": "acceptance",
+      "question": "汇集别人已产出的证据, 与我逐项确认三件已拍板改造, 五处措辞修正, 流程接口改动全部落地且自检通过; 只在全部必验项有充分证据且我逐项确认后才关闭, 关闭后推送交付.",
+      "status": "待处理",
+      "blocked_by": [
+        "milestone-01",
+        "milestone-02",
+        "milestone-03",
+        "milestone-04",
+        "milestone-05",
+        "milestone-06",
+        "milestone-07",
+        "milestone-09",
+        "milestone-10",
+        "milestone-11",
+        "milestone-12",
+        "milestone-13",
+        "milestone-14",
+        "milestone-15",
+        "milestone-16",
+        "milestone-17",
+        "milestone-18",
+        "milestone-19",
+        "milestone-20",
+        "milestone-21",
+        "milestone-22",
+        "milestone-23",
+        "milestone-24",
+        "milestone-25",
+        "milestone-26"
+      ],
+      "artifacts": [],
+      "close_summary": null
+    },
+    "milestone-09": {
+      "title": "准备 demo/PoC 编码改造的规格与执行输入",
+      "type": "task",
+      "question": "HITL 准备工作, 不是编码实施. milestone-04 是 AFK 编码任务, navigate 要求调用 drive-execution, 而仓库 drive-execution 步骤2在缺 EXECUTION.md/可执行issues 时必须停下并另会话用 to-execution. 当前本变更缺这些输入, 先基于 milestone-01 当前有效概念决策及 milestone-03 的具体策略, 与我确认 milestone-04 的详细可观察验收标准; 按 to-spec/to-execution 各自输入要求准备所需 PRODUCT.md/TECHNICAL.md 和 EXECUTION.md/issues, 需要我确认的标准不由代理替答. 为 to-execution 指定 AFK 编码任务的产物根 docs/changes/workflow-stack-review/milestone-04/, 在独立会话拆分, issue 含验证契约/入口和可复查完成定义, 并为 drive-execution 准备可核实评审起点. 只准备已批准改造的直接执行输入, 不新增功能或开始实现. 完成标准: 必需输入真实可读且无未确认标准/缺失验证契约, milestone-04 能按 drive-execution 正常进入派工; 所有输入路径记入本节点产物. 如仍有产品取舍则回我确认, 不临时绕开缺口.",
+      "status": "已关闭",
+      "blocked_by": [
+        "milestone-01",
+        "milestone-03"
+      ],
+      "artifacts": [
+        "docs/changes/workflow-stack-review/milestone-09/IMPLEMENTATION.md",
+        "docs/changes/workflow-stack-review/milestone-09/SPEC-CHECK.md",
+        "docs/changes/workflow-stack-review/milestone-09/SPEC-CHECK-02.md",
+        "docs/changes/workflow-stack-review/milestone-04/PRODUCT.md",
+        "docs/changes/workflow-stack-review/milestone-04/TECHNICAL.md",
+        "docs/changes/workflow-stack-review/milestone-04/EXECUTION.md",
+        "docs/changes/workflow-stack-review/milestone-04/issues/ISSUE-01-milestone-type-enum.md",
+        "docs/changes/workflow-stack-review/milestone-04/issues/ISSUE-02-demo-skill-rename-rewrite.md",
+        "docs/changes/workflow-stack-review/milestone-04/issues/ISSUE-03-navigate-type-vocabulary.md",
+        "docs/changes/workflow-stack-review/milestone-04/issues/ISSUE-04-web-demo-poc-visuals.md",
+        "docs/changes/workflow-stack-review/milestone-04/issues/ISSUE-05-adr-naming-record.md",
+        "docs/changes/workflow-stack-review/milestone-04/issues/ISSUE-06-regression-and-audit.md"
+      ],
+      "close_summary": "milestone-04 的编码输入已备齐并经仓库主人确认: PRODUCT.md 22 条 AC (审阅版本 5aedcd4d, 已采纳), TECHNICAL.md check-tech 通过, EXECUTION.md 与六个垂直切片 issues 的覆盖矩阵为 AC-001..AC-022 逐条给出验证入口, 评审起点 962e299. 两轮独立检查的 9 项发现全部解决, 3 条低危按裁决落进 issue 边界. 未开始编码, 未改已安装 skills. 环境注意: pytest 前须停掉占用默认端口的 navigate 守护; check-ac 需 uv run --with gherkin-official."
+    },
+    "milestone-10": {
+      "title": "裁决执行哲学转向",
+      "type": "deliberate",
+      "question": "裁决执行哲学转向, 决策交 milestone-07 一并实施. 已确认的想法: 实现走最短交付路径, 尽快产出第一个可验证版本, 不规定实现过程 (不强制先写测试, 不规定红绿循环); 版本出来后对当前版本做端到端验证闭环, 尽早暴露问题; 发现问题修复后再次端到端验证, 既验证修复又暴露新问题, 循环到闭环; 拆任务时必须保证单个 issue 能完成端到端交付 (垂直切片); 不禁用 mock 但要谨慎, 不为速度 mock 实现细节攒脆弱测试; 判据重心从过程是否按规定走移到交付物经验证确实达到要求. 需逐项盘问定稿: (a) tdd skill 的去留与定位; (b) to-execution 拆分判据加入垂直切片及词条/模板相应改动; (c) drive-execution 实现步与执行循环如何改写, 作者自跑端到端与 verify-change 独立验收的边界; (d) mock 谨慎的措辞落点; (e) 与 verification-contract 现行类型要求 (如结构变更先建可重复行为检查) 的衔接与措辞. 边界: 不追溯 milestone-04/milestone-09, m4 按现行规则跑完由验收节点按现行标准收; 判定不改的项在关闭摘要记理由. 本里程碑只出决策, 实施并入 milestone-07. 细节明朗时按验收指南对齐 AC, 不提前预写.",
+      "status": "已关闭",
+      "blocked_by": [],
+      "artifacts": [
+        "docs/changes/workflow-stack-review/ACCEPTANCE.md",
+        "docs/changes/workflow-stack-review/milestone-10/DECISIONS.md",
+        "docs/changes/workflow-stack-review/milestone-10/OPPOSITION.md",
+        "docs/adr/0025-shortest-delivery-path-end-to-end-loop.md"
+      ],
+      "close_summary": "Q1-Q10 盘问定稿执行哲学转向: 最短交付路径, 可验证版本出来后从真实入口端到端验证闭环, 修复后重跑, 循环到闭环; 拆任务按垂直切片; 判据重心在交付物经真实运行达到要求. 删除 tdd, 只迁 tests.md (mocking.md 有意丢弃), 修 bug 链条对所有 bug 统一为 复现→定位原因→制定修复方案→执行修复→验证修好且没改坏, diagnosing-bugs 改名 fix-bugs 并补两环/三角色/手段优先级. 独立反方 13 项发现全部核实成立 (账本 D001-D010 中 D001/D002/D004/D007/D008/D009/D010 已按新 ID 替代, F001/F006 已更正为 F011/F012), 无一驳回. 可视化需求确认为本旅程新里程碑链: 新增 milestone-11 (fix-bugs 落地) 与 milestone-12 (可视化方案侦查), 均加入终点验收阻塞, 后续实施里程碑待 m12 结论后探明. AC-10 五项经我确认. 本轮只出决策与路线图, 未做任何 skill 实施, 不代表正式交付."
+    },
+    "milestone-11": {
+      "title": "落地 fix-bugs 改名与修 bug 统一链条",
+      "type": "task",
+      "question": "按 milestone-10 账本 D012/D015/D016/D019/D020/D021 实施, 不改决策内容: (1) workflow/diagnosing-bugs/ 改名 workflow/fix-bugs/ (目录, name, description), 修正自述 '不是必经步骤' 为'修 bug 统一链条见 verification-contract 缺陷修复节, 本 skill 是该链在难 bug 上的详细手法, 阶段 3/4 可省, 复现与验证不可省'; (2) 补两环: 制定修复方案 (根因确定后先写方案, 含改动点/影响范围/回滚考虑; 按 G1 六条决定是否先给我审, 一句话判据为 '纯修错, 不动对外行为, 不超边界, 不碰安全' 才自行修) 与 验证没改坏 (修复后由未参与修复的复核者独立审查受影响面; 手段自选: 核对差异, 追调用方, 必要时跑既有测试或真实入口, 涉及共享接口/数据格式/跨模块路径调 blast-radius; 写明检查了什么, 用了什么手段, 覆盖不到的写缺口; 不强制跑自动化测试); (3) 写入手段优先级: 能靠代码库自身技术栈与既有入口做到的不写脚本, 顺序为既有测试/既有开发命令/既有 CLI 入口 → 真实入口操作 → 必要时一次性临时脚本 (不提交, 跑完清理), 不在代码库新增专用脚本; (4) 写三角色分工: 调度方 + 诊断者 + 修复者 + 复核者, 简单位允许诊断与修复合并, 复核者不可省; (5) 同步活跃引用: workflow/verification-contract/SKILL.md 缺陷修复节的做法句改指 fix-bugs 链条并加手段优先级, README 技能表行改名与描述; 历史变更文档与既有验收证据不改; (6) 修改的 SKILL.md 通过 general/writing-for-llm/check_skill.py. 详细可观察验收标准最迟实施前确认并写入 ACCEPTANCE.md 的 AC-11. 不运行会改安装目录的同步, 不宣称安装效果已验证, 不追溯 milestone-04 与 milestone-09.",
+      "blocked_by": [],
+      "status": "已关闭",
+      "artifacts": [
+        "docs/changes/workflow-stack-review/milestone-11/IMPLEMENTATION.md",
+        "workflow/fix-bugs/SKILL.md",
+        "workflow/verification-contract/SKILL.md",
+        "README.md",
+        "docs/changes/workflow-stack-review/ACCEPTANCE.md"
+      ],
+      "close_summary": "按 milestone-10 的 D012/D014/D018/D019/D020/D021 实施完毕: workflow/diagnosing-bugs 改名 workflow/fix-bugs (name/description 同步), 自述改成统一链条定位; 阶段链改为 8 段, 新增阶段 5 制定修复方案 (含方案三要素, G1 六条审核触发条件与一句话判据) 与阶段 7 验证没改坏 (未参与修复的复核者独立审查受影响面, 手段自选, 缺口必须写明); 正文新增 分工 与 取证手段优先级 两节 (调度方/诊断者/修复者/复核者, 复核不可省; 既有测试/开发命令/CLI → 真实入口 → 一次性临时脚本, 不新增专用脚本). 活跃引用同步: verification-contract 缺陷修复节做法句改指 fix-bugs 链条并含手段优先级, README 技能表行改名并移入字母序位置. 全仓库 diagnosing-bugs 活跃命中归零 (剩余仅在 docs/changes 历史证据与 docs/adr), 两个 SKILL.md 均通过 check_skill.py. 按我本次确认, 三角色/手段优先级/六条条件全部内联, 不新建 reference/. 环境缺口: 容器内无 podman, pytest 的 conftest 在会话启动即失败, 本轮未跑 pytest 也未据此宣称通过; 本节点未做独立复核, 交 milestone-08. milestone-07 由另一会话负责, 其若再动同一缺陷修复节需避免与本轮重复."
+    },
+    "milestone-12": {
+      "title": "侦查代码库结构可视化的可用开源方案",
+      "type": "research",
+      "question": "为后续可视化 skill 探查事实 (AFK, 委派子代理独立探索): 目标是能了解任意目标代码库的结构并转成网页展示给我看, 表现分层与模块关系, 像城市地图; 该 skill 供 to-spec 调用以支撑技术规格盘问, 也可由我手动调用查看某个代码库结构. 需要查清并写进产物: (1) 候选开源项目 (至少覆盖 CodeCharta, dependency-cruiser, madge, pydeps/importlab, d2/mermaid/graphviz, Gource 一类, 可补充新发现), 各自支持的语言与能否表达分层/模块关系; (2) 输出的产物形态 (静态网页? 需服务? 交互程度), 能否离线运行, 依赖与安装成本; (3) 维护状态与许可, 是否适合嵌进本仓库 skill; (4) 若现成工具都不合适, 用代码库自身技术栈 (AST/import 分析 + 图形渲染) 自建的最小方案代价; (5) 明确推荐与不推荐的理由, 以及不可行项和结论边界. 只做事实侦查与方案对比, 不实现工具, 不改任何 skill. 产物: docs/changes/workflow-stack-review/milestone-12/FINDINGS.md.",
+      "blocked_by": [],
+      "status": "已关闭",
+      "artifacts": [
+        "docs/changes/workflow-stack-review/milestone-12/FINDINGS.md"
+      ],
+      "close_summary": "已交付 docs/changes/workflow-stack-review/milestone-12/FINDINGS.md (349 行, 事实侦查, 未实现工具). 关键结论: (1) 城市观感只有 CodeCharta 能给, 分析端 ccsh 要 Node 22.19+ 与 Java 22+ (本仓库无 Java), 但官方 web.zip (3.5MB, vis-2.9.1) 解压即完整离线静态前端, 子代理实测用 40 行 python 手写 cc.json 后 3D 城市与分层依赖视图均正常, 自定义 layer 属性可绑建筑高度; 推荐这条路. (2) 该前端从 file:// 打开因 ES 模块 CORS 白屏, 必须起本地 http 服务; 备用路线 cytoscape.js 435KB 单文件内联后 file:// 可直开, 只能出二维分层图. (3) 不推荐: ccsh (Java22), Gource (要 OpenGL 硬件加速且画 git 历史), mermaid-cli (要 Chromium), graphviz 系 (容器无 dot), Sourcetrail/DependaCharta/SoftVis3D/importlab (已归档), git-truck (无依赖关系). (4) 分层是分析问题: 只有 CodeCharta dependencyparser 直接给层号/环/向上依赖, 其余工具只出图, 层号要自己算 (最长路径分层加环检测, 代码量很小). (5) 各语言抽依赖成本写在文档 5.4: python 低 (可用 grimp 规避路径解析坑), JS/TS 自写很高建议借 dependency-cruiser 的 json, 其他语言用 tree-sitter 抽 import 为中等. 边界: 文档第 7 节分开列出已查证/推断/未核实三类; 大库 (几千文件) 的可读性与帧率未实测, 首次调用需要现场确认; 文中提到的实测截图为子代理本地临时产物, 未随文档入库, 结论由文档文字描述与可复现步骤支撑."
+    },
+    "milestone-13": {
+      "title": "定代码库结构可视化 skill 的形态与入口",
+      "type": "deliberate",
+      "question": "按 milestone-12 结论裁决可视化 skill 的形态与入口, 本节点不写实现代码. 待裁决: (1) 首选路线是否就是 milestone-12 路线 A: 自建 python 分析器出 cc.json, 内置 CodeCharta vis-2.9.1 静态前端 (web.zip 解压 3.5MB), 由 skill 起本地 http 服务交付页面; 降级路线 (cytoscape.js 单文件二维分层图) 在什么条件下触发. (2) 入口形态: to-spec 在哪个环节调用, 传什么参数 (目标目录/扫描范围/排除规则); 手动调用怎么起; 交付给我的是页面 URL 还是本地文件. (3) 服务与生命周期: 是否常驻, 端口怎么选, 收工时怎么清理, 同时看多个库怎么办. (4) 产物落盘位置: cc.json 与页面放 docs/changes/<slug>/ 还是临时目录, 是否入库. (5) vendored 前端资产放哪个 skill 子目录, BSD-3 版权与许可声明怎么写, 升级时怎么替换. (6) 第一版语言范围: 只做 python, 还是加 JS/TS (借 dependency-cruiser 的 json, 代价是引进 Node); 遇到不支持的语言时输出什么. (7) 分层算法口径: 层号怎么定义, 环与向上依赖怎么标, 是否就用 milestone-12 5.2 的最长路径分层加环检测. (8) skill 名字与职责边界: 只负责出可视化, 不做架构评审或重构建议. 调用 deliberate skill 逐条盘问我, 产物根目录 docs/changes/workflow-stack-review/milestone-13/.",
+      "status": "已关闭",
+      "blocked_by": [],
+      "artifacts": [
+        "docs/changes/workflow-stack-review/milestone-13/DECISIONS.md",
+        "docs/changes/workflow-stack-review/milestone-13/OPPOSITION.md",
+        "docs/changes/workflow-stack-review/milestone-13/PLAN.md",
+        "docs/changes/workflow-stack-review/milestone-13/BUILD-PROBE.md",
+        "docs/adr/0026-codebase-map-host-resident-service.md"
+      ],
+      "close_summary": "codebase-map 形态与入口已定稿: 纯手动工具, 不被任何 skill 调用; 只宿主使用, 页面交局域网其他主机; 分析端用官方 codecharta-analysis:ana-2.3.0 镜像跑 podman, 前端钉 vis-2.9.1; 自建 python 常驻单例服务交付局域网 URL, 端口不静默漂移, 状态与缓存落 ~/.agents/codebase-map/, cc.json 落被分析库的 .codebase-map/ 并复制进 serve-root; 命令 build/serve/stop; 指标 level/rloc/violation 走 URL 参数. 反方复核 14 项发现逐项处理, 无整条驳回: 修正伪需求 'HTML5 history 深链回退' (上游实为 hash 路由, 源码与实测双证), 新增 D021-D030 与 F011-F015, 旧决策 D006/D007/D011/D012/D018/D019 已标替代并保留历史. 按用户裁决: v1 先用官方 web.zip 前端 (宿主零 Node), 汉化后置为第二片 (m21); 取消自动聚合, 大库靠前端过滤; 新增分析端探针前置 (m23). 同时改写 m21 question (旧 PLAN/nginx/docker 引用作废), 新建 m22 (present 改造输入准备, 另一会话已建, 本会话误覆盖后原样恢复) 与 m23 (分析端探针), 并把两者接入终点验收 blocked_by. 领域文档: 新增 ADR 0026 与词汇表两条. 未验证项: 宿主环境 (Node/浏览器/拉镜像), ccsh 真实分层质量, 大库观感."
+    },
+    "milestone-14": {
+      "title": "裁决 present 统一走常驻 web 服务与局域网地址的形态",
+      "type": "deliberate",
+      "question": "按我本轮新提出的要求 (present 默认交付局域网地址, 不再交付内网地址或文件路径; 宿主与容器一致, 总是起 web 服务呈现页面; web 服务启动后不自行关闭, 长期运行; 把自己的实际端口记录到系统临时目录的特定路径), 裁决 present 的新形态, 并与 milestone-13 可视化 skill 的交付形态保持一致. 待裁决: (1) 地址与绑定: 宿主上是否一律 bind 0.0.0.0 并用局域网 IP 拼 URL (默认路由接口 IP 与 SWT_HOST_LAN_IP 的优先关系), 容器内是否沿用固定 8800 映射加 SWT_HOST_LAN_IP, 局域网 IP 探不到时怎么办 (是否允许回落 loopback, 还是报错并让调用方向我索取). (2) 端口记录: 记录在系统临时目录的哪个固定路径 (沿用 <tmp>/pi-present-web-<uid>/server.json, 还是另加单文件如 port), 文件内容格式, 谁读 (present 自己/navigate/宿主会话), 与按 uid 分组的关系. (3) 本地模式去留: 现有 SKILL.md 的本地 Chromium 路径 (browser_session.py 与 open/state/status) 是彻底删除还是保留但不默认走; 页面 __PRESENTATION_STATE__ 回读通道随之怎么处理; 本地与远程分支是否合并成单一流程. (4) 生命周期: 明确 present 调用结束不停服务, 只有显式 stop 或容器销毁才终止; status 重建换端口时如何同步更新端口记录; 是否需要收工清理约定. (5) 与旧决策的关系: docs/changes/present-web-server/DECISIONS.md 的 D001/D003/D004/D006/D009 哪些被本节点取代, 新决策写进哪个账本 (本节点目录新建, 还是续写旧账本), 旧账本是否保留历史. (6) 暴露面: 局域网内无认证无 TLS 的开放是否照旧默认接受, 宿主场景是否也要一次性向我说明风险. (7) 多页与多目录: 同一实例 add-dir 复用的协调, 多个会话并发展示时端口记录与幂等复用的规则. 调用 deliberate skill 逐条盘问我, 产物根目录 docs/changes/workflow-stack-review/milestone-14/.",
+      "status": "已关闭",
+      "blocked_by": [],
+      "artifacts": [
+        "docs/changes/workflow-stack-review/milestone-14/DECISIONS.md",
+        "docs/changes/workflow-stack-review/milestone-14/REQUIREMENTS.md",
+        "docs/changes/workflow-stack-review/ACCEPTANCE.md",
+        "docs/changes/workflow-stack-review/milestone-14/OPPOSITION.md",
+        "docs/changes/workflow-stack-review/milestone-14/OPPOSITION-RESOLUTION.md",
+        "docs/changes/workflow-stack-review/milestone-14/CHECKS.md",
+        "docs/changes/workflow-stack-review/milestone-14/OPPOSITION-FOLLOWUP.md"
+      ],
+      "close_summary": "Q1-Q10 全 A 并结束盘问, 反方后 Q11/Q12 全 A 补明确认. 当前有效 D001/D002/D004-D012, D011 完整替代 D003 并明确宿主本次指定地址优先/否则复用 lan-address/无值请用户确认候选; D012 明确宿主和容器分别真实局域网访问证据. 已确认统一 web 局域网交付, 删除 present 专用 Chromium/回读路径, 取消强制状态对象, 用户级单例/唯一 server.json, 宿主换口与容器锁 8800 的区别, 不自退/共享 stop, 长期无认证无 TLS 开放与旧多目录语义. 旧账本/规格和领域文档已同步追溯. 独立反方 OPPOSITION.md (1dba5a2) 的 12 项发现经核实处理, OPPOSITION-FOLLOWUP.md (44d68c6) 确认全部闭环无新实质问题; 报告要求的路线图 D011/D012 引用与 milestone-22 依赖已经守门脚本核实. 产物/检查与报告见 artifacts. 缺当前规格/执行输入已单列 milestone-22, 先准备再执行 milestone-15, 本轮不领取后续节点. 只改仓库文档/路线图, 未改 present 实现/测试或真实已安装 skills, 未跑产品或同步, 不声称 AC-15 已运行通过. milestone-08 尚未逐项人工验收, 不代表整张路线图正式交付."
+    },
+    "milestone-15": {
+      "title": "落地 present 的常驻 web 服务与局域网交付",
+      "type": "task",
+      "blocked_by": [
+        "milestone-14",
+        "milestone-22"
+      ],
+      "question": "按 milestone-14 的决策改写 general/present: SKILL.md 默认流程改为生成页面后起/复用常驻 web 服务并把局域网地址交付给我, 不再交付文件路径或 loopback 地址; REMOTE.md 的远程与容器分支并入同一条流程 (宿主与容器一致的地址与端口规则, 容器用已确认映射端口与 SWT_HOST_LAN_IP); scripts/web_server.py 按裁决落地 (绑定地址, 端口记录路径与格式, 不自停语义, status 重建后同步端口记录); 按已确认 Q1/Q2 删除 present 专用 browser_session.py 及本地 Chromium/状态回读流程, 取消每页状态对象的强制要求, 不保留备用分支. 同步更新 general/present/tests 里固化旧行为的用例并补新用例, 通过 uv run python -m pytest general/present/tests 与仓库 check_skill.py. 禁止修改真实已安装 skills, 不运行会改安装目录的同步. 编码任务按 drive-execution skill 执行, 产物根目录指定 docs/changes/workflow-stack-review/milestone-15/. 完成标准: 页面在宿主与容器两种场景都能经局域网地址打开, 端口记录与实际监听一致, present 调用结束后服务仍在, 测试与格式检查通过. 当前决策权威为 milestone-14/DECISIONS.md 当前有效 D001/D002/D004-D012 (D011 替代 D003), 详细标准为 ACCEPTANCE.md AC-15-01 至 AC-15-07. 实际端口唯一记录在 <系统临时目录>/pi-present-web-<uid>/server.json, 不与 navigate 共用实例/状态文件. 空闲退出代码已在 3dc49c6 删除, 不把已存在行为算新实现. 不直接复用旧 present-web-server 规格或执行输入; 缺当前 PRODUCT/TECHNICAL/EXECUTION/issues 时先按 drive-execution 规则准备, 不绕过输入缺口. 缺当前执行输入的准备工作已单列 milestone-22, 不在编码节点内绕过. 反方逐项处理与条件回归清单见 milestone-14/OPPOSITION-RESOLUTION.md, 宿主地址来源与两种环境真实访问证据已由 Q11/Q12 全 A 补明确认.",
+      "status": "已关闭",
+      "artifacts": [
+        "docs/changes/workflow-stack-review/milestone-15/PRODUCT.md",
+        "docs/changes/workflow-stack-review/milestone-15/TECHNICAL.md",
+        "docs/changes/workflow-stack-review/milestone-15/EXECUTION.md",
+        "docs/changes/workflow-stack-review/milestone-15/issues",
+        "general/present/SKILL.md",
+        "general/present/scripts/web_server.py",
+        "general/present/tests"
+      ],
+      "close_summary": "present 收成单一流程并按 m14 D001-D012 落地: 地址解析收成单入口 (宿主 --lan-host > 已确认 lan-address > 候选缺口; 容器 SWT_HOST_LAN_IP + 8800 对应宿主映射端口), 删除 REMOTE.md / browser_session.py 及两份测试, 取消 __PRESENTATION_STATE__ 强制, 端口记录/重建 URL 与常驻不自停语义按决策实现, env_docs 生成文案改指 m14 D011. 验证: pytest general/present/tests 99 passed / 4 skipped / 0 failed, check_skill.py OK; 真实 stop 后两页均不可访问, LAN 来源访问控制面 403, ../ 越界 404, 真实 8800 实例未被触碰. 容器侧用户设备证据已取得 (服务日志 05:58:52 来源 192.168.216.71 GET 页面 200 + favicon 404, 页面标记串与生成时间对上), 已注明来源地址属宿主/转发侧不能定设备真实 IP. 未验证缺口: (1) 宿主环境真实局域网访问 (需宿主会话起服务 + 用户设备打开), 按用户裁决留到 milestone-08 补; (2) ISSUE-01 宿主分支 CLI 端到端在容器内跑不了 (4 条 skip), 宿主分支 0.0.0.0 + 已确认地址 + 实际监听端口那条未勾; (3) ISSUE-02 容器字面 8800 被占的 port_in_use 未实测, 用等价高端口验证; (4) 未做 24 小时闲置存活等待. 代码合入母体 a9141d7 并推送."
+    },
+    "milestone-16": {
+      "title": "定位地图页在路线图更新后失效的根因",
+      "type": "research",
+      "question": "复现并定位我报的现象: 每次更新路线图后, 路线图访问页容易打不开. 已知事实: 今天 15:15 后 navigate 展示服务进程 (pid 85094, 端口 39271) 消失, 而容器 8801 的 socat 桥仍指向 39271, 于是页面不通; 同时期有其他会话在同一 checkout 跑同一套脚本和测试, 且历史上曾有会话为了跑 pytest 把占用 39271 的守护进程当外来占用 kill 掉; 进程不是 OOM (cgroup oom_kill=0), 运行时文件还在 (说明不是 navigate 自己的 stop), server.log 最后一条是正常请求无异常. 需要实测检验的假设: (H1) 端口漂移与固定桥脱钩: start 复用失败或服务死后 status 重建会换到随机端口, 8801 的桥不会跟随, 于是变哑; (H2) 会话收工按完成定义 stop 或测试抢端口/误杀, 使服务被动消失; (H3) 前端轮询加 ThreadingHTTPServer 无界线程与每请求 open 日志, 长跑后 fd/线程泄漏导致服务失效; (H4) server.log 无上限增长 (现有 3.2MB 无轮转); (H5) 运行时文件被系统临时目录清理成幽灵实例, 或 /tmp 里大量 navigate-roadmap 锁文件累积带来副作用. 每个假设给出成立/不成立及证据, 并复现出门槛清楚的步骤 (例如: 连续请求页面同时在另一进程做 roadmap.py save, 重复 N 次; 或杀掉服务后看页面与桥的恢复路径). 只做分析与实验, 不改产品代码. 产出 docs/changes/workflow-stack-review/milestone-16/FINDINGS.md, 含现象, 复现步骤, 根因结论按假设逐条, 修复方案建议与影响面 (navigate 的 web_server.py, web/index.html, tests, 以及是否要固定端口或端口落盘加桥自愈), 供 milestone-17 实施.",
+      "status": "已关闭",
+      "blocked_by": [],
+      "artifacts": [
+        "docs/changes/workflow-stack-review/milestone-16/FINDINGS.md"
+      ],
+      "close_summary": "已交付 milestone-16/FINDINGS.md (203 行, commit 047c79f, 合并 064aed1), 只分析未改产品代码, 实验全在 /tmp 一次性端口 39301-39303 与独立运行时目录, 未触碰现役 39300 服务与 8801 桥. 裁决: 页面打不开的直接原因恒为桥所指端口无服务; 主因 H2 成立 (展示实例是共享默认运行时目录里的无主单例, 同 checkout 任何会话按收工定义 stop 都合法杀它, 85094 死后 server.json 被清只能由 run_stop 或手动 rm 造成); 放大器 H1 成立 (默认端口被占时 start 静默漂到随机端口, 桥不知情, status 仍报 alive, 直连 200 但页面不通); H3 线程/fd 泄漏不成立 (5000 请求后全部回落); H4 部分成立 (仅启动时截断, 运行中约 4.7MB/天无限增长, 卫生问题); H5 幽灵实例不成立, 锁文件堆积成立 (581 个, 无功能危害). 新发现: 现役 39300 示例是手工 __serve__ 起的, start 的候选端口不含 39300, 现有手段无法复原回 39300, 临时缓解缺可重复复原一环. 建议交 milestone-17: start 加显式端口入口 (NAVIGATE_WEB_PORT env 或 CLI) 且陌生占用报 port_in_use 不漂移, 新增 display 编排脚本 (固定 39300 + 自愈巡检), nav_helpers 去掉与生产真实 39271 的互斥, 回归 R1-R8, 并把展示服务归属与收工不 stop 的约定写进文档. 未核实: 85094/106316 死亡瞬间的具体执行者, 桥创建者与时间, 真实 39271 上的漂移 (用等价端口复现)."
+    },
+    "milestone-17": {
+      "title": "修复 navigate 展示页稳定性并加回归测试",
+      "type": "task",
+      "blocked_by": [
+        "milestone-16"
+      ],
+      "question": "按 milestone-16 的根因结论修复 navigate: 目标是路线图更新与服务重启后, 我手里的页面地址仍然可用, 不再需要每次重起服务和手工重建 socat 桥. 具体改动按根因定, 可能涉及 workflow/navigate/scripts/web_server.py (端口策略改为固定端口或端口落盘加桥自愈, 服务不在会话收工或测试中被误杀, 日志轮转与 fd/线程约束), workflow/navigate/web/index.html (轮询与错误提示: 服务不可用时页面说清原因而不是空白), 以及 tests. 必须留可自动化的回归验证: 例如边连续请求 /api/roadmap 边做 roadmap.py save 不中断; 服务被杀后按文档步骤能恢复且地址不变; 测试套件不再抢真实默认端口或误杀真实实例. 与 milestone-14 对常驻服务与端口记录的口径保持一致, 避免出现两套端口记录路径. 通过 uv run python -m pytest workflow/navigate/tests 与仓库 check_skill.py, 禁止修改真实已安装 skills, 不运行会改安装目录的同步. 编码任务按 drive-execution skill 执行, 产物根目录 docs/changes/workflow-stack-review/milestone-17/. milestone-14 已确认的兼容边界见 milestone-14/DECISIONS.md D004/D005/D006: present 与 navigate 是不同服务, 不共用实例或状态文件; 唯一记录指各自服务内不另建 port 等第二真值, 不是强迫两个服务使用同一路径. navigate 自身隔离路径由本节点决定, 不破坏按检出隔离. present 宿主重建可换口/新 URL 的规则不替代本节点已确认的 navigate 地址稳定目标.",
+      "status": "已关闭",
+      "artifacts": [
+        "docs/changes/workflow-stack-review/milestone-17/IMPLEMENTATION.md",
+        "workflow/navigate/scripts/display_serve.sh",
+        "workflow/navigate/scripts/web_server.py",
+        "workflow/navigate/scripts/roadmap.py",
+        "workflow/navigate/SKILL.md",
+        "workflow/navigate/tests/test_web_server_lifecycle.py",
+        "workflow/navigate/tests/test_web_server_soak.py"
+      ],
+      "close_summary": "已修复展示页稳定性 (commit 8308e89/456aea8/2298ddb/d58954e/179a56c, 合并 83b81e4). web_server start 加 env NAVIGATE_WEB_PORT 显式端口: 设了只试该端口, 存活实例复用, server.json 已丢的自家旧实例按 ping 指纹加本脚本路径收编, 陌生占用报 port_in_use 且不漂移; 未设仍走 39271 加随机回退. 新增 display_serve.sh (ensure/start/status/stop): 固定 /tmp/navigate-display-<uid> 加 39300, start 后校验端口否则报错, ensure 是复原一条命令, 桥零操作自愈; 显式不做常驻巡检守护以免再造无主单例. roadmap.py 锁文件目录改受 NAVIGATE_WEB_RUNTIME_DIR 隔离, server.log 运行中超 10MB 截断; SKILL.md 加展示服务节 (归属, 其他会话不碰, 收工不 stop) 并把制图 step 4 改为 display_serve.sh ensure; index.html network 错误文案指向复原入口; 测试脱离真实 39271 (TC-008/009 用 free_port, TC-010 保留并加固真实默认端口漂移回归), 新增 soak 与固定端口用例. 我复核: 主检出全量 workflow/navigate/tests 37 passed 2 subtests; check_skill.py 通过; 现役 39300 实例 (pid 117626) 用 status/ensure 均判为复用且页面 200, 未被停; 另用一次性端口 39321 与独立目录实测 kill -9 后 ensure 复原回同端口并 200. 未验证: 真实 39300 上的端到端复原与 8801 桥浏览器实测 (按硬约束未动现役服务, 以同构演练替代), index.html 新文案未起浏览器看渲染. 待用户/验收裁决: (1) ensure 对活着但端口错的实例自动 stop+start 是否接受, 已按此实现; (2) 展示服务纪律是否还要进其他完成定义或收工清单; (3) 现役手工 __serve__ 实例下次重启是否改用 display_serve.sh ensure. 与 milestone-14 的口径一致性未定, 本轮未动 general/present, 未新增第二套端口记录路径."
+    },
+    "milestone-18": {
+      "title": "落地宿主端口映射的自查顺序提案",
+      "type": "task",
+      "question": "按 docs/proposals/2026-10-31-host-port-mapping-self-check.md 落地 P1-P3, 不改提案文档本身: (P1) 改写 workflow/use-sandbox-worktree/agent-prompts/ENV.md 容器纪律那句, 把查与问拆开, 缺值时先按 ~/docs/web-ports.md 的自查顺序查 (当前 env, 容器内全进程 environ, 技能文档配方), 仍未找到才经可用信箱向宿主索取, 信箱不可用才问我; (P2) 改 workflow/use-sandbox-worktree/scripts/env_docs.py 的 _web_ports, 补端口每次 create 都变不要写死, 三步自查顺序与那段扫 /proc/[0-9]*/environ 的命令, 交付 URL 形状取 SWT_HOST_LAN_IP 加 SWT_HOST_WEB_PORT, 并写明服务自报的 url/hostname/lan_ip 是容器视角不可直接交付, 与 present 的 REMOTE.md 对齐; 样例只给形状不给具体端口数字; (P3) 在 tests/test_env_docs.py 补断言, 生成的 web-ports.md 必须出现 /proc/[0-9]*/environ 与 SWT_HOST_LAN_IP 两个关键词, 防止后续重构删掉自查指引而不报错. 不要手改容器里 ~/docs/*.md (那是 env_docs.render_docs 的输出), 只改生成器. 按提案第 4 节验证: 只读生成的 web-ports.md 就能在容器内独立拼出局域网 URL, 无需发信或提问. 通过 uv run python -m pytest 相关用例, 涉及 check_skill.py 的文件另跑该检查. 禁止修改真实已安装 skills, 不运行会改安装目录的同步. 编码任务按 drive-execution skill 执行, 产物根目录 docs/changes/workflow-stack-review/milestone-18/.",
+      "status": "已关闭",
+      "blocked_by": [],
+      "artifacts": [
+        "docs/changes/workflow-stack-review/milestone-18/IMPLEMENTATION.md",
+        "workflow/use-sandbox-worktree/agent-prompts/ENV.md",
+        "workflow/use-sandbox-worktree/scripts/env_docs.py",
+        "tests/test_env_docs.py"
+      ],
+      "close_summary": "已按提案 P1-P3 落地 (commit 95928e5, 合并 6cf61d7): ENV.md 容器纪律把查与问拆开并给出三步自查后降级次序; env_docs.py 的 _web_ports 补端口每次 create 都变不要写死, 扫 /proc/[0-9]*/environ 的命令, 交付形状 http://<SWT_HOST_LAN_IP>:<SWT_HOST_WEB_PORT>/<页面文件>, 服务自报 url/hostname/lan_ip 属容器视角不可直接交付, 架桥配方未动; tests/test_env_docs.py 新增 test_web_ports_contains_self_check_order 断言自查关键词. 我复核: tests/test_env_docs.py 11 passed + 8 subtests, 连 test_swt_stage_env/test_swt_herdr 共 34 passed. 子代理实测只读生成的 web-ports.md 就能在本 shell 无 SWT_HOST 变量时经 /proc 扫出 SWT_HOST_LAN_IP=192.168.65.165 与 SWT_HOST_WEB_PORT=41141 并拼出 URL. 未验证: 该 URL 页面可达性 (容器内 curl 返回 000, 疑宿主侧无监听), 真容器 birth 端到端 (无 podman/镜像), 提案 5 分钟计时未严格做; 测试需 podman stub 过 conftest 卫生钩子, 属容器环境缺口. 未跑同步, 不改已安装 skills; 验收归 milestone-08."
+    },
+    "milestone-19": {
+      "title": "给 skill 补 codex 的 agents/openai.yaml 元数据",
+      "type": "task",
+      "question": "让本仓库 skill 在 codex 里也保持模型不可见, 并把这条维护规则写进 skill 机制文档. 元数据规则已确认: 只写达到目的的最小配置, 即对 frontmatter 带 disable-model-invocation: true 的 skill (当前 43 个, 分布在 workflow/ 与 general/) 新建 agents/openai.yaml, 内容仅 policy.allow_implicit_invocation: false (布尔值不加引号, 键不加引号); 其余 9 个模型可见的 skill 不建文件, 走 codex 默认的允许隐式调用. 不写 interface (display_name/short_description/default_prompt 都不写), 不写 icon/brand_color, 不写 dependencies. 依据是 codex-cli 0.162.1 自带 skill-creator 的 references/openai_yaml.md: allow_implicit_invocation 默认 true, 设 false 后 skill 不注入模型上下文, 只能用 dollar-skill-name 显式调用. 不改 SKILL.md 的 frontmatter (pi 侧仍靠它), 不动 sync-to-pi.py 与分发流程 (codex 也加载 ~/.agents/skills/), 不运行会改安装目录的同步, 不改真实已安装 skills. 另加一条守卫测试放在仓库 tests/ (如 tests/test_skills_codex_metadata.py): 遍历 workflow/ 与 general/ 下全部 SKILL.md, 带 disable-model-invocation: true 的必须有 agents/openai.yaml 且 policy.allow_implicit_invocation 为 false, 反之不得为 false; 只用标准库解析这两三行, 不引入 pyyaml, 防止后续新增 skill 漏配或元数据与 frontmatter 漂移. 最后在 general/writing-for-llm/SKILL-MECHANICS.md 补一节, 把维护 agents/openai.yaml 写成维护 skill 的必选项: 新增或改动 skill 的调用方式时同步维护该文件, 用户调用 skill 设 allow_implicit_invocation: false, 模型调用 skill 不建文件; 漏维护由上面那条测试抓住. 沿用文中既有的 用户调用/模型调用 一对词, 不新造术语, 措辞只讲该做什么, 不复述 openai.yaml 全字段. 验证: uv run python -m pytest tests, 抽查一个模型不可见与一个模型可见 skill 的 codex 元数据. 编码任务按 drive-execution skill 执行, 产物根目录 docs/changes/workflow-stack-review/milestone-19/.",
+      "status": "已关闭",
+      "blocked_by": [],
+      "artifacts": [
+        "docs/changes/workflow-stack-review/milestone-19/IMPLEMENTATION.md",
+        "tests/test_skills_codex_metadata.py",
+        "general/writing-for-llm/SKILL-MECHANICS.md",
+        "workflow/fix-bugs/agents/openai.yaml"
+      ],
+      "close_summary": "已落地 codex 元数据 (commit 3f0daf2): 按 frontmatter 条件为全部 33 个 disable-model-invocation: true 的 skill 新建 agents/openai.yaml, 内容仅 policy.allow_implicit_invocation: false; 6 个模型调用 skill 不建文件; 新增纯标准库守卫测试 tests/test_skills_codex_metadata.py (含红测: 删 yaml 与给值加引号都会失败); SKILL-MECHANICS.md 补维护规则一节. 我复核: 工作区 33 个 yaml, 33 个带 disable 的 SKILL.md, 对应关系一致, 测试在 podman stub 下 1 passed. 计数差异: 里程碑问句写 43+9=52, 本仓库实际 39 个 SKILL.md (含 access-web/browse/.venv 下 3 个第三方 playwright skill, 实际自有 36 个, 33 带 disable), 差异来自规划时按已安装目录计数且安装目录仍含 prototype/diagnosing-bugs/tdd/grill-me 等旧副本; 实现按 frontmatter 判定不依赖计数. 守卫测试遍历 workflow/ 与 general/ 会顺带扫到 .venv 里的第三方 SKILL.md, 目前它们不带 disable 标志故不受影响. 未验证: 未在真实 codex-cli 端到端确认不注入模型上下文, 该结论仅引自官方文档; 未跑 sync-to-pi 同步. 验收仍归 milestone-08."
+    },
+    "milestone-20": {
+      "title": "给 mailbox 信头时间加 MAILBOX_TZ 覆盖",
+      "type": "task",
+      "question": "我确认的做法: 给 general/mailbox 的信头呈现加时区覆盖, 不硬编码 +08, 不改系统时区. 具体: (1) 读取环境变量 MAILBOX_TZ, 支持 IANA 名字 (如 Asia/Shanghai) 以及正负偏移写法 (如 +08:00, 便于没有 tzdata 的环境); 未设时保持现在的行为, 即 astimezone() 取系统本地时区, 不改变现有输出. (2) 只影响 print_letter 里的 发送时间 呈现 (scripts/mailbox.py 约 2369 行的 fromtimestamp + astimezone 那段); 事件日志 log_event 的 UTC 加 Z 保持不变 (跨机对齐用), 相对时间 (presence 的 age_text) 也不动. (3) 值非法时不让取信失败: 回退到系统本地时区并在 stderr 提示一次 (走现有 log_event 风格或一条提示), 呈现照常输出. (4) 实现只用标准库: zoneinfo 解析 IANA 名字, 偏移写法自己解析; 不新增依赖, 不写死任何具体时区. (5) 文档: general/mailbox/SKILL.md 第 32 行那句补上 MAILBOX_TZ 覆盖说明 (未设时按系统本地时区, 日志仍为 UTC), 措辞与该文风格一致. (6) 测试: 在仓库 tests/ 下 mailbox 用例处补覆盖, 至少证明 MAILBOX_TZ=Asia/Shanghai 时信头为 +08:00 且小时数与 UTC 差 8, 非法值回退系统时区且不报错, 未设时行为与改动前一致; 时区断言只比较偏移与差值, 不锁死具体日期, 避免跨时区机器上失败. 验证: uv run python -m pytest tests -k mailbox (或相关子集) 全绿; 手动以 MAILBOX_TZ=Asia/Shanghai 渲染一封信确认 +08:00. 编码任务按 drive-execution skill 执行, 产物根目录 docs/changes/workflow-stack-review/milestone-20/.",
+      "status": "已关闭",
+      "blocked_by": [],
+      "artifacts": [
+        "docs/changes/workflow-stack-review/milestone-20/IMPLEMENTATION.md",
+        "general/mailbox/scripts/mailbox.py",
+        "general/mailbox/SKILL.md",
+        "tests/test_mailbox_prompts.py"
+      ],
+      "close_summary": "已落地 MAILBOX_TZ 覆盖 (commit 0e11f3c): _parse_mailbox_tz 支持偏移写法 (+08:00/+0800/+08, 限 +-24h) 与 IANA 名 (zoneinfo), 未设或空走 astimezone() 系统本地时区, 非法值回退并在 stderr 提示一次; 只改 print_letter 的发送时间呈现, log_event 的 UTC 加 Z 与 presence 的 age_text 未动; 只用标准库; SKILL.md 收信规则那句补说明; tests/test_mailbox_prompts.py 新增 6 例. 我复核: tests/test_mailbox_prompts.py 24 passed; 实跑 MAILBOX_TZ=Asia/Shanghai 渲染得 +08:00 (UTC 09:10:05 对 17:10:05), 非法值 Mars/Olympus 打印一次提示且照常输出, 未设时与改动前一致. 子代理另跑 tests -k mailbox -m \"not e2e\" 得 1 failed/201 passed, 唯一失败 test_mailbox_listen_tool_schema_smoke 我在主检出基线复现同样失败 (node 报无法从 pi shim 解析 cmd-shim-target), 属容器环境问题而非本次改动. 未验证: 无 tzdata 环境的 IANA 用例未实走 (容器有 tzdata, 用例有 skipif), 未跑真实 serve+send 全链路. 容器内跑全量测试需临时 podman stub 过 conftest 卫生钩子, 是否改 conftest 待宿主裁决, 本轮不动; 验收归 milestone-08."
+    },
+    "milestone-21": {
+      "title": "落地代码库结构可视化的汉化构建与交付",
+      "type": "task",
+      "question": "按 milestone-13 定稿的 DECISIONS.md (D013-D016, D021, D023, D024, D027, D030) 落地汉化构建链, 它是 v1 之后的技术切第二片, 不改变 v1 的任何外部行为. 原问题里 按 PLAN.md 落地 / nginx + try_files / docker / docs-changes 落盘 全部过期, 不得再引用 PLAN.md 的实施步骤. 要做的: (1) 全量词表 (模板 359 条通道 A, .ts 侧人工过滤后约 500 条通道 B, 绑定与插值内字面量约 30 处通道 C), 先统一术语表再批量翻译, 同一英文默认单一译法. (2) 构建脚本固化: 克隆指定 vis tag -> 三通道替换 -> npm ci -> npm run build -> 自建渲染冒烟 (临时静态服务 + 无头浏览器截图 + 关键元素断言), 幂等可重放, 输出未使用词条与未命中统计. (3) 产物与服务根布局按 D023/D024: 前端产物与数据副本都在宿主 ~/.agents/codebase-map/serve-root/ 下, 不引入 nginx, 不做深链回退 (上游是 hash 路由, F011). (4) 操作手册: 分析端与前端命令, ?file= 交付方式, 升级流程 (改 tag 重跑看未使用词条), 已知坑 (patch-package 冲突, 上游测试会红因而不跑), 过滤手段提示 (D025). (5) 验证: 构建耗时与产物大小, 冒烟截图留证, 术语一致性抽查, 界面残留英文需逐条说明原因. 边界: 不改上游源码提交, 不 fork, 不构建自有镜像, 不跑上游单测, 不碰分析端 (那是 milestone-23 与 v1 实现的事). 详细验收标准实施前确认.",
+      "status": "已关闭",
+      "blocked_by": [],
+      "artifacts": [
+        "workflow/codebase-map/SKILL.md",
+        "workflow/codebase-map/README.md",
+        "workflow/codebase-map/tools/build-zh.sh",
+        "workflow/codebase-map/tools/smoke.py",
+        "workflow/codebase-map/tools/stage.py",
+        "workflow/codebase-map/i18n/zh.txt",
+        "workflow/codebase-map/i18n/zh-ts.txt",
+        "workflow/codebase-map/i18n/zh-lit.txt",
+        "docs/changes/workflow-stack-review/milestone-21/REPORT.md",
+        "docs/changes/workflow-stack-review/milestone-21/shots",
+        "docs/changes/workflow-stack-review/milestone-21/reports"
+      ],
+      "close_summary": "汉化构建链已落地为 workflow/codebase-map/ (SKILL.md + codex 元数据 + 操作手册 + 6 个工具 + 三本词表). 全量词表 745 条 / 837 处替换 (A 355/B 346/C 44), 未使用 0, 未命中仅 4 种已逐条说明. 端到端实测: 克隆 vis-2.9.1 -> npm ci -> 三通道替换 -> npm run build 9.7s -> 渲染冒烟 PASS; 暖缓存 23s; 连跑两次产物 sha256 逐字节一致. 冒烟断言 7 项全过 (3D 出建筑, 页签与底栏中文, 依赖视图出方块, hash 路由 #/dependencies, pageerror/console error 均 0), 3 张截图留证. serve-root 按 D023/D024 铺设 (库名-路径哈希键). 界面残留英文按 8 类逐条给原因 (数据字段/状态驱动标题/品牌版本/术语/枚举同字面量/3D 模型刻字/throw 与 console/其它跳过物). 边界如实: 未做 v1 服务联调 (服务在 milestone-26), 宿主真实局域网访问未在本节点验证; 本容器 pytest 因 conftest 依赖 podman 会 INTERNALERROR, 相关检查改用 unittest 与 check_skill.py 通过. 分支已合入母体 f2ca80d 并推送."
+    },
+    "milestone-22": {
+      "title": "准备 present 改造的当前规格与执行输入",
+      "type": "task",
+      "status": "已关闭",
+      "question": "HITL 准备工作, 不实施 present. 当前 milestone-15 尚无自己的 PRODUCT/TECHNICAL/EXECUTION/issues, drive-execution 步骤 2 要求缺 EXECUTION 时停止并在独立会话执行 to-execution. 先依据 milestone-14/DECISIONS.md 当前有效 D001/D002/D004-D012 和 ACCEPTANCE.md 已确认 AC-15-01 至 AC-15-07, 按 to-spec 要求形成当前 PRODUCT.md/TECHNICAL.md, 标准逐项对照既有确认, 不重复盘问或自行改变. 再在独立会话用 to-execution 生成 EXECUTION.md 和可执行 issues, 每项有验证契约/验证入口/可复查完成证据要求, 预先核实评审起点. 产物根目录统一用 docs/changes/workflow-stack-review/milestone-15/. 输入须覆盖反方补记的 TC-027, _Handler 的 to-spec 条件依赖, 无 TTL 的闲置存活保护, 本机控制接口旧守卫, /run/.containerenv 容器识别配方, lan-address 来源与宿主/容器分别真实局域网访问的证据计划. 旧 present-web-server 规格/执行输入不能直接当当前权威. 完成标准: 必需输入可读且无未处理的标准/验证契约缺口, milestone-15 可正常按 drive-execution 派工; 所有产物路径记入本节点. 本节点不写实现/测试, 不改真实已安装 skills, 不运行同步. 新增或改变产品选择才再交用户, 不代理作答.",
+      "blocked_by": [
+        "milestone-14"
+      ],
+      "artifacts": [
+        "docs/changes/workflow-stack-review/milestone-15/PRODUCT.md",
+        "docs/changes/workflow-stack-review/milestone-15/TECHNICAL.md",
+        "docs/changes/workflow-stack-review/milestone-15/EXECUTION.md",
+        "docs/changes/workflow-stack-review/milestone-15/issues/ISSUE-01-address-resolution-delivery-url.md",
+        "docs/changes/workflow-stack-review/milestone-15/issues/ISSUE-02-port-record-and-rebuild-url.md",
+        "docs/changes/workflow-stack-review/milestone-15/issues/ISSUE-03-single-delivery-flow-docs.md",
+        "docs/changes/workflow-stack-review/milestone-15/issues/ISSUE-04-security-and-lifetime-regression.md",
+        "docs/changes/workflow-stack-review/milestone-15/issues/ISSUE-05-acceptance-evidence.md",
+        "docs/changes/workflow-stack-review/milestone-22/CHECKS.md",
+        "docs/changes/workflow-stack-review/milestone-22/SPEC-REVIEW.md",
+        "docs/changes/workflow-stack-review/milestone-22/SPEC-RECHECK.md"
+      ],
+      "close_summary": "按 milestone-14 当前有效 D001/D002/D004-D012 与 ACCEPTANCE AC-15-01..07 产出 milestone-15 的 PRODUCT.md/TECHNICAL.md/EXECUTION.md/issues ISSUE-01..05, 用户以 review_id eaf9d2bb96b4 采纳 41 场景/7 AC 的验收版本; 两份机检 (check-ac/check-tech) 通过, 拆分基线与仓库实测一致 (present 测试收 143 条, browser_session 相关 63 条). 独立规格检查 (gpt-6.1-sol) 报 7 阻断 + 4 建议, 逐项核实后修订: 容器 URL 端口与记录端口分开验证, status 增加 --lan-host 且显式地址不落盘, 越界改为规范化后逃出挂载根才 404, 自检失败只约束不挂载, 本机控制面改为 ping 端点, 检查项改成必须通过才算通过, 补回日期命名/不覆盖旧文件; 另补 8 个边界场景与审计边界. 独立补核 (glm-5.3-flash) 判 10 项闭环, 残留 B01 (TECHNICAL 模块接口的容器 URL 端口表述) 与 N2 (loopback_bind 归属) 由协调方改两句后 check-tech 复跑通过, 未做第三轮独立复核. 另按 D011 写明 --lan-host 只作用宿主分支, 容器固定用 SWT_HOST_LAN_IP 与 8800 映射端口, EXECUTION 原待裁决点改为已定口径. 缺值事实: 本会话环境无 SWT_HOST_*; 容器 8800 的宿主映射端口经信箱向宿主会话问得 41141, 仅用于本次预览交付. 本轮只准备输入, 未实现 present, 未跑 present pytest/格式检查, 未改真实已安装 skills, 未跑同步, 不声称 AC-15 已通过; milestone-15 与终点验收仍待执行."
+    },
+    "milestone-23": {
+      "title": "宿主上跑分析端探针, 定 ccsh 分层是否可信",
+      "type": "research",
+      "question": "在宿主上先用你的真实 Java 库跑一次分析端探针 (milestone-13/DECISIONS.md D028, 依据 F013: ccsh 在本仓库零次执行). 要查清并写进产物: (1) podman 能否拉到 codecharta/codecharta-analysis:ana-2.3.0, 镜像 digest 是多少; (2) 挂载目标库与输出目录跑分析, 产出的 cc.json 里 依赖边数, 层号 level 的取值分布, 未解析文件比例, 环与向上依赖的数量; (3) 至少一屏截图证明现成 web.zip 前端能吃这份数据; (4) 宿主环境事实: podman 版本, 能否从 docker.io 拉镜像, 挂载写权限/SELinux 与用户命名空间限制, 宿主 Node 版本与有无无头浏览器 (为 D027 的切片判断). 产物: docs/changes/workflow-stack-review/milestone-23/PROBE.md. 判定口径 (D029): 层号取值少于 3 种, 或依赖边数为 0, 或未解析比例过半, 属退化, 停手交用户裁决 (退回自算层号或二维 cytoscape 方案), 不许硬着头皮上线. 边界: 只做探针与事实记录, 不写 skill, 不实现服务, 不改本仓库 skill 内容.",
+      "blocked_by": [],
+      "status": "已关闭",
+      "artifacts": [
+        "docs/changes/workflow-stack-review/milestone-23/PROBE.md",
+        "docs/changes/workflow-stack-review/milestone-23/REVIEW.md",
+        "docs/changes/workflow-stack-review/milestone-23/work/run-analysis.sh",
+        "docs/changes/workflow-stack-review/milestone-23/work/stats.py",
+        "docs/changes/workflow-stack-review/milestone-23/logs/stats-deps-only.log",
+        "docs/changes/workflow-stack-review/milestone-23/logs/uid-map-verify.log",
+        "docs/changes/workflow-stack-review/milestone-23/logs/file-filter-diff.log",
+        "docs/changes/workflow-stack-review/milestone-23/logs/unresolved-source-check.log",
+        "docs/changes/workflow-stack-review/milestone-23/logs/height-level-check.json",
+        "docs/changes/workflow-stack-review/milestone-23/work/shot-cz-sdk-master-map.png",
+        "docs/changes/workflow-stack-review/milestone-23/work/shot-cz-sdk-master-depview.png"
+      ],
+      "close_summary": "在宿主用用户真实 Java 库 cz_sdk-master (2f452a91, 只读挂载) 跑通官方 codecharta-analysis 分析链路: 出图 3014 文件, 依赖边 8820, 文件层号 0-7 共 8 种, 目录层号 7 种, 环边 10, 向上依赖边 191 (通知里 19 是笔误); 官方 vis-2.9.1 原版前端吃该数据并真实渲染 3D 与依赖视图, console 0 错误, 有截图为证. 目标库零改动 (HEAD 未变, 无 .codebase-map). 关键事实与缺口: 未解析名字比例无工具口径 (日志无告警只证明语法解析零失败, 源码取证确认无名字解析计数), 该门禁项记未验证, 上线判断交用户; 镜像 tag 应为纯数字 2.3.0, D002 的 ana-2.3.0 实为 GitHub release 名, 已按同版本纠正并在父会话公开说明后使用, 不伪记用户确认; ccsh --version 自报 2.2.1 与 tag 不一致原因未查明, 核对以 digest 为准; rootless 需 --userns=keep-id (uid_map 实证默认容器 1000 映到宿主 100999); 官方管道合并损坏, 改用 unifiedparser 出文件加 ccsh merge; level 在 dependency lens 不在 metrics lens, 显式请求 height=level 被前端改写为 complexity, D026 的 URL 绑定方案实测不可行, 需重裁; 零声明文件 (2 个全注释 TestMapper, 2 个 package-info) 与 target/generated-sources 5 个不进依赖树, 交付文案需说明分母. 父会话复核发现初稿把无告警当成未解析通过, 已退回修正并在 REVIEW.md 记录逐项核对. 上游前端资产与原始大日志在 /tmp 外置, 原始 cc.json 不入仓库. 未提交 git, 未改任何 skill/决策/产品代码, 未跑同步."
+    },
+    "milestone-24": {
+      "title": "按用户裁决更正镜像 tag 与指标展示, 接受未解析门禁不可验证",
+      "type": "deliberate",
+      "question": "milestone-23 探针暴露三处与既有决策冲突, 用户在本会话直接裁决: (a) 接受 未解析名字比例 无法用工具口径验证, 以语法失败 0/边 8820/层号 8 种/环 10/向上 191 作为继续依据, 不再补证也不得写成已验证; (b) 镜像引用改为官方纯数字 docker.io/codecharta/codecharta-analysis:2.3.0, 版本核对以 digest 为准, 不用 ana-2.3.0; (c) 指标与展示按官方的来, 不把层号拷进 metrics, 不改官方默认 URL 与指标, 层号与违规改在官方依赖视图查看, 撤销 D026 的 height=level&area=rloc&color=violation 组合. 本节点负责把这些裁决与探针确认的实施事实 (keep-id, 官方 merge 替代管道, 零声明文件离开依赖树, level 字段位置, 宿主环境, 官方前端可用) 固化, 替代 milestone-13 对应旧条文, 旧文保留历史. 完成标准: DECISIONS.md 落盘, 与旧账本冲突处逐条指明替代关系, 不改动任何实现代码.",
+      "status": "已关闭",
+      "blocked_by": [],
+      "artifacts": [
+        "docs/changes/workflow-stack-review/milestone-24/DECISIONS.md",
+        "docs/changes/workflow-stack-review/milestone-23/PROBE.md",
+        "docs/changes/workflow-stack-review/milestone-23/REVIEW.md"
+      ],
+      "close_summary": "用户 2026-11-01 在本会话直接裁决三项并已固化进 milestone-24/DECISIONS.md: U001 接受 未解析名字比例 无法用工具口径验证, 以语法失败 0/边 8820/层号 8 种/环 10/向上 191 作为继续依据, 不再补证, 交付须如实说明该局限; U002 镜像引用改为官方纯数字 2.3.0, 版本核对以 digest 为准, 弃用 ana-2.3.0; U003 指标与展示按官方的来, 不把层号拷进 metrics, 不改官方默认指标与 URL, 层号与违规在官方依赖视图查看, 撤销 D026 的 height=level 组合. 同时记录探针确认的六条实施事实 (keep-id, 官方 merge 替代管道, 零声明文件离开依赖树, level 字段位置, 宿主环境, 官方前端可用). 按用户 你看着办 的决定补 v1 两节点: milestone-25 准备规格与执行输入 (阻塞 milestone-26), milestone-26 实施 v1, 两者并入终点验收阻塞. 未改任何实现代码或 skill 正文, 旧账本条文保留历史. milestone-08 仍未验收, 不代表正式交付."
+    },
+    "milestone-25": {
+      "title": "准备 codebase-map v1 的规格与执行输入",
+      "type": "task",
+      "question": "HITL 准备工作, 不是实施. 按 milestone-13 当前有效决策 (D001/D003/D004/D005/D009/D017/D020/D021/D022/D023/D024/D025/D027/D029/D030, 以 milestone-24 的 U001-U003 更正 D002/D026) 与探针事实 (milestone-24 F001-F006), 形成 v1 的 PRODUCT.md 与 TECHNICAL.md, 逐项与我确认可观察验收标准, 再在独立会话用 to-execution 生成 EXECUTION.md 与可执行 issues (每项含验证契约/验证入口/可复查完成证据), 产物根目录统一 docs/changes/workflow-stack-review/milestone-25/. v1 范围按 D027: 官方 web.zip 前端 + ccsh 分析 + 自建 python 常驻单例服务, 宿主独用, 局域网 URL 交付; 不含汉化 (归 milestone-21). 输入须覆盖: 单例与端口纪律, 状态文件探活, serve-root 布局与路径哈希键, build/serve/stop 三子命令, 默认排除规则, cc.json 落目标库 .codebase-map/, 容器调用方式含 keep-id 与无网络, 官方 merge 合并指标, 零声明文件与未解析局限的交付说明, 门禁检查 (D029 中可执行的部分). 不得把未确认项替用户作答, 不写实现代码, 不运行会改安装目录的同步. 完成标准: 必需输入真实可读且无未处理标准/验证契约缺口, milestone-26 可按 drive-execution 正常进入派工; 所有输入路径记入本节点产物.",
+      "blocked_by": [
+        "milestone-24"
+      ],
+      "status": "已关闭",
+      "artifacts": [
+        "docs/changes/workflow-stack-review/milestone-25/DECISIONS.md",
+        "docs/changes/workflow-stack-review/milestone-25/PRODUCT.md",
+        "docs/changes/workflow-stack-review/milestone-25/TECHNICAL.md",
+        "docs/changes/workflow-stack-review/milestone-25/EXECUTION.md",
+        "docs/changes/workflow-stack-review/milestone-25/CHECKS.md",
+        "docs/changes/workflow-stack-review/milestone-25/issues"
+      ],
+      "close_summary": "codebase-map v1 的输入已齐: PRODUCT.md (48 场景 / 9 组 AC-001..AC-009, 用户采纳 v4, review_id 39f34602...), TECHNICAL.md, DECISIONS.md (D001-D020 / F001-F008), EXECUTION.md 与 ISSUE-01..07 (每项含验证契约/验证入口/交付证据/停止条件). 验收草稿四轮迭代全部过 check-ac 机检, 转正 promote success 且正式 check-ac/check-tech 通过; 两轮未参与编写的独立只读检查 (17 + 10 条发现) 逐条核实后全部返工闭环, 期间新增 D016-D020 (镜像 digest 口径/验证分工, serve --address, 端口留痕, 排除集同源, 判空口径). 评审起点已复跑核实 (收集基线 865 条, 三个权威文件哈希登记). 覆盖矩阵把 AC 与 BR 逐条落到 issue 或人工核验. 边界: 本节点只准备输入, 未实现任何代码, AC 全部待实现不声称通过; 宿主侧分析/渲染/局域网打开/长期常驻只能由宿主证据承接; 本容器无 podman 导致全量 pytest INTERNALERROR 属环境缺口. 产物提交 075665a/e5918a5/9465960 已推送到母体."
+    },
+    "milestone-26": {
+      "title": "实施 codebase-map v1 分析服务与交付",
+      "type": "task",
+      "question": "按 milestone-25 产出的当前权威输入实施 v1: workflow/codebase-map/ 下的 build/serve/stop 三子命令, podman 调官方 codecharta-analysis:2.3.0 (keep-id, 无网络, 源码只读) 产出依赖图并按官方 merge 合并指标, cc.json 落目标库 .codebase-map/ 并复制副本到 serve-root 供前端取用, 自建 python 常驻单例服务托管官方 vis-2.9.1 前端并交付局域网 URL, 状态文件记 port/pid/serve-root/数据键并做真实探活, 显式 stop. 严格按 milestone-24 的 U001-U003 与 F001-F006: 不把层号拷进 metrics, 不改官方默认指标与 URL; 交付文案说明层号在官方依赖视图看, 并说明依赖抽取完整性未量化与分母口径. skill 必须 disable-model-invocation: true 并补 agents/openai.yaml, 更新 README 入口. 编码任务按 drive-execution skill 执行, 产物根目录 docs/changes/workflow-stack-review/milestone-26/. 验证按 milestone-25 确认的验收标准与各 issue 验证契约, 通过相关 pytest 与仓库 check_skill.py; 禁止修改真实已安装 skills, 不运行会改安装目录的同步, 不宣称安装效果已验证.",
+      "blocked_by": [
+        "milestone-25"
+      ],
+      "status": "已关闭",
+      "artifacts": [
+        "docs/changes/workflow-stack-review/milestone-26/RUN-REPORT.md",
+        "docs/changes/workflow-stack-review/milestone-26/IMPACT-REVIEW.md",
+        "docs/changes/workflow-stack-review/milestone-26/REVIEW-standards.md",
+        "docs/changes/workflow-stack-review/milestone-26/REVIEW-spec.md",
+        "docs/changes/workflow-stack-review/milestone-26/REVIEW-rework.md",
+        "docs/changes/workflow-stack-review/milestone-26/issues/REWORK-01.md",
+        "docs/changes/workflow-stack-review/milestone-26/issues/REWORK-02.md",
+        "docs/changes/workflow-stack-review/milestone-26/issues/REWORK-03.md",
+        "workflow/codebase-map/SKILL.md",
+        "workflow/codebase-map/scripts/",
+        "workflow/codebase-map/tests/"
+      ],
+      "close_summary": "codebase-map v1 在容器内实施完成: build/serve/stop 三子命令 + 共享规则模块, 85 个用例全绿, 收集 950, check_skill 与 codex 元数据守卫通过, 既有两树与 conftest 预载纪律未受影响. 流程: 影响复查 1 轮 0 返工; 双轴评审各 1 轮 (Standards 硬性违规 2/缺陷 1/判断性 23, Spec 缺失 2/蔓延 4/方式有误 1/证据不符 5), 返工 2 轮 (REWORK-01/02) 后复审确认修好; 发起方裁决四条口径已落地 (REWORK-03): serve 复用分支复查 no_data_keys, build 持锁窗口写文档, 交付消息加第 4 类未解析扩展名说明 (data_keys 加 stats 子对象), build 输出加三句分母说明. 与规格原文三处差异已记录: SKILL.md 并入 m21 既有文件而非新建, 上述 data_keys.stats 与 delivery_notes 第四类字段属对 TECHNICAL 字段清单的裁决扩展, m25 F007 与评审起点关于目录不存在的表述与仓库事实相反. 宿主侧验证不可得 (发起方明示环境内无 Java 项目且无 podman/出网), 真实 build/初始化/3D 渲染/局域网设备打开/长期常驻/全量 pytest/宿主错误分支全部记未验证, 未用 stub 或截图顶替; 未推送, 未做 verify-change 独立核验与终点验收, 不代表正式交付."
+    }
+  },
+  "unknown_seas": [],
+  "off_course": [
+    {
+      "what": "把 workflow 栈写成文的分层规则, 含层数与归层裁决",
+      "reason": "用户 2026-10-30 裁决: 不需要"
+    },
+    {
+      "what": "把 verification-contract 的方法路由上移到 to-execution",
+      "reason": "用户裁决: 不搬. 保留 v-c 提名方法 skill, 现场便利优先于纸面纯净"
+    },
+    {
+      "what": "新增模型可见的入口地图 skill",
+      "reason": "用户拒绝: 模型不该知道 skill 存在, 手动点名与 skill 正文指名已足够"
+    },
+    {
+      "what": "抽共用底线文件并让方法 skill 改指它, 顺带修只为底线加载全文那三处",
+      "reason": "用户明确不做: 边判定口径定下后环已不成问题, 只剩三处减载, 不值得"
+    },
+    {
+      "what": "工程共识 skill 上线后的实际触发率/漏触发率/重读遵从率测量",
+      "reason": "原 notes 已明确这些无实测证据且不作为验收项. 本次完成边界是已批准的 skill 形态和内容改造, 不扩大为上线效果评估, 也不声称已有通过证据."
+    },
+    {
+      "what": "措辞和接口修改上线后减少误加载/职责混用/长期证据语义漂移的效果测量",
+      "reason": "当前无相应实测通道, 目的地只要求清单改造和接口裁决落地, 不包含长期效果证明. 具体证据语义接口决定仍在 milestone-06, 不因排除长期测量而跳过该节点."
+    }
+  ]
+}

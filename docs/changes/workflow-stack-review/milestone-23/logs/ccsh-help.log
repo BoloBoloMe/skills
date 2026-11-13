@@ -1,0 +1,37 @@
+Usage: ccsh [-hiv] [COMMAND]
+Command Line Interface for CodeCharta analysis
+  -h, --help          displays this help and exit
+  -i, --interactive   starts interactive analyser
+  -v, --version       prints version info and exits
+Commands:
+  check                 validates cc.json files
+  inspect               prints the structure of cc.json files
+  convert               converts cc.json files to the latest 2.0 {meta, files,
+                          lenses} format
+  gate                  [experimental] checks a project against the metric and
+                          cycle rules in its .codecharta.yml
+  analyse               maps a codebase with every applicable parser and its
+                          git or svn history
+  merge                 merges multiple cc.json files
+  edgefilter            aggregates edgeAttributes as nodeAttributes into a new
+                          cc.json file
+  modify                changes the structure of cc.json files
+  csvimport             generates cc.json from csv with header
+  sonarimport           generates cc.json from metric data from SonarQube
+  sourcemonitorimport   generates cc.json from sourcemonitor csv
+  svnlogparser          generates cc.json from svn log file
+  gitlogparser          generates cc.json from git-log files
+  install               [deprecated]: does nothing
+  csvexport             generates csv file with header
+  coverageimport        generates cc.json from coverage reports
+  codemaatimport        generates cc.json from codemaat coupling csv
+  tokeiimporter         generates cc.json from tokei json
+  dependachartaimport   [deprecated: use dependencyparser] generates cc.json
+                          from DependaCharta .dc.json files
+  rawtextparser         generates cc.json from projects or source code files
+  unifiedparser         generates cc.json from projects or source code files
+  domainlanguageparser  generates cc.json with a domain-language word-frequency
+                          lens from source code
+  dependencyparser      [experimental] generates cc.json with a file- and
+                          declaration-level dependency lens from source code
+Copyright(c) 2025, MaibornWolff GmbH

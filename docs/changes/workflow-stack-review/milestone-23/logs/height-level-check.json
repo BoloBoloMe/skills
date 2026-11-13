@@ -1,0 +1,24 @@
+{
+ "url_height_level_requested": "http://127.0.0.1:18923/?file=cz-sdk-master.cc.json&height=complexity&area=rloc&color=complexity&edge=dependencies#/",
+ "selects": [
+  {
+   "label": "Comparisongreater thanat least",
+   "selected": "greater than",
+   "hasLevel": false,
+   "optionCount": 6
+  },
+  {
+   "label": "Comparisongreater thanat least",
+   "selected": "greater than",
+   "hasLevel": false,
+   "optionCount": 6
+  }
+ ],
+ "level_visible_check": {
+  "levelMentioned": false,
+  "sample": []
+ },
+ "url_default_load": "http://127.0.0.1:18923/?file=cz-sdk-master.cc.json&area=rloc&height=complexity&color=complexity#/",
+ "console_errors": [],
+ "console_count": 4
+}

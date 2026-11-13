@@ -4,9 +4,11 @@
 
 ## 调用方式
 
+提示词要调用另一个 skill 时, 统一写成调用 `skill-name` skill, 将真实 skill 名称放进反引号; Markdown 链接只表示材料引用, 不表示调用.
+
 两种选择, 各付一种负载:
 
-- **模型调用** skill 的 `description` 常驻上下文. agent 能据描述自动触发它, 其他 skill 也能调用它 (固定格式: "调用 `另一个 skill 的名字` skill"); *模型调用* 天然*包含* *用户可达*, 我也能随时点名. description 要写成触发器: 只写 agent 什么时候该调用它, 不介绍 skill 是什么. 它是 skill 的顶层 *上下文指针*, 被迫始终加载 — 用常驻 *上下文负载* 换可发现性, 所以必须激进剪枝. 内容全是 *参考材料* 的 *模型调用* skill 还有个附带用途: 安置共享 *参考材料*, 其他 skill 调用它即可共用, 多处需要的东西只存一份. 机制: 省略 `disable-model-invocation`, 写面向 LLM 的 description, 带上触发 *分支* (`SKILL.md` 的 *指针* 写法规则全部适用). description 的可计算格式约束由下方脚本校验.
+- **模型调用** skill 的 `description` 常驻上下文. agent 能据描述自动触发它, 其他 skill 也能调用它 (固定格式: "调用 `另一个 skill 的名字` skill"); *模型调用* 天然*包含* *用户可达*, 我也能随时点名. description 要写成触发器: 只写 agent 什么时候该调用它, 不介绍 skill 是什么. 它是 skill 的顶层 *上下文指针*, 被迫始终加载 — 用常驻 *上下文负载* 换可发现性, 所以必须激进剪枝. 内容全是 *参考材料* 的 *模型调用* skill 还有个附带用途: 安置共享 *参考材料*, 其他 skill 调用它即可共用, 多处需要的东西只存一份. 机制: 省略 `disable-model-invocation`, 写面向 LLM 的 description, 带上触发 *分支* (`SKILL.md` 的 *指针* 写法规则全部适用). description 的可计算格式约束由下方脚本校验. description 是 *冗余枚举* 的高发处: 把触发 *分支* 写成 `场景 (场景1/场景2/场景3)` 时, 常驻的括号清单每轮付费, 还把自动触发缩小到列出来的场景. 措辞指到 *分支* 本身, 不列举它长什么样.
 
 - **用户调用** skill 的 description 不进上下文. agent 不知道它存在, 直到我亲自提名, 或另一个 skill 写 "调用 `x` skill" — agent 根据名字到 skill 目录下找到它. 零 *上下文负载*, 但消耗 *认知负载*: 得有人记得它存在, 并说得出名字. 机制: 设 `disable-model-invocation: true`; `description` 转为面向人类: 一行摘要, 剥掉触发词.
 
@@ -25,11 +27,15 @@ skill 的名字本身就是一个 *引导词*: 它在我的 prompt 和其他 ski
 
 拆分的 *调用* 切口 (*顺序* 切口在 `SKILL.md`): 当我有一个真会在 prompt 里用的独立触发词, 或其他 skill 必须抵达它时, 拆出一个 *模型调用* skill. 新的常驻 description 要我付 *上下文负载*, 独立可达必须值这个价.
 
+## codex 元数据
+
+上文两种调用方式只在 pi 侧生效; codex 侧靠每个 skill 目录下的 `agents/openai.yaml` 达成同样的效果. 维护 skill 时该文件是必选项: 新增 skill, 或改动既有 skill 的调用方式时, 同步维护它. *用户调用* skill 要建该文件, 只写 `policy.allow_implicit_invocation: false`, 让 codex 不把这个 skill 注入模型上下文, 只能显式点名; *模型调用* skill 不建文件, 走 codex 默认的允许隐式调用. 漏维护由 `tests/test_skills_codex_metadata.py` 守卫测试抓住.
+
 ## 路由 skill
 
 *用户调用* skill 多到我记不住时, 堆积的 *认知负载* 靠 **路由 skill** 化解: 一个 *用户调用* skill, 列出其他 skill 的名字和各自何时取用, 让我只记一个, 不必记许多个. 它说出名字, agent 就能抵达 — *用户调用* skill 对 agent 不可发现, 但被提名即可达.
 
 ## 脚本
 
-写好或改好 skill 后, 从当前 `writing-for-llm` skill 所在目录定位 `check_skill.py`, 运行 `uv run python <该脚本的绝对路径> <目标 SKILL.md 的绝对路径>`. 脚本不依赖当前工作目录, 同步到别处后仍按所在目录定位. 退出码为 0 才算通过; 否则按报错修改后重跑, 不用目检替代. 它检查 frontmatter 中 `name` 是否为小写 kebab-case 且与目录名一致, 模型调用 skill 的 `description` 是否含冒号, 并拒绝常见的 YAML 空值/布尔值/数值等非文本写法; 模型调用时省略 `disable-model-invocation`. 它只检查这些约束, 不代替完整的 YAML 校验. 这些硬约束不需要 LLM 推断. 它不决定调用方式, 也不判断触发措辞或内容质量.
+写好或改好 skill 后, 从当前 `writing-for-llm` skill 所在目录定位 `check_skill.py`, 运行 `uv run python <该脚本的绝对路径> <目标 SKILL.md 的绝对路径>`. 脚本不依赖当前工作目录, 同步到别处后仍按所在目录定位. 退出码为 0 才算通过; 否则按报错修改后重跑, 不用目检替代. 它检查 frontmatter 中 `name` 是否为小写 kebab-case 且与目录名一致, 模型调用 skill 的 `description` 是否含冒号, 普通标量是否含冒号加空格或冒号结尾 (两者都会让 YAML 解析失败), 并拒绝常见的 YAML 空值/布尔值/数值等非文本写法; 模型调用时省略 `disable-model-invocation`. 它只检查这些约束, 不代替完整的 YAML 校验. 这些硬约束不需要 LLM 推断. 它不决定调用方式, 也不判断触发措辞或内容质量.
 需要保存, 复用或含多步逻辑的自动化, 优先写 Python 脚本, 不用 Bash/shell 实现同等逻辑. 默认只用标准库; 必须用第三方库时, 先说明充分理由并取得我同意. 遵循项目声明的运行方式和版本约束, 不预设 `python`, `python3`, `py` 或解释器路径. 避免平台专用的 Python API, 命令和语法. 简短的一次性终端命令不算这里说的脚本.

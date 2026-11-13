@@ -32,6 +32,15 @@ RULES = [
     ("workflow/use-sandbox-worktree/scripts/image-prep.py", "tests/test_swt_m07.py"),
     ("workflow/use-sandbox-worktree/scripts/swt-display.py", "tests/test_swt_m09.py"),
     ("general/present/", "general/present/tests"),
+    # codebase-map 套件含一条 unshare mount ns 环境构造用例 (藏 /run/.containerenv
+    # 以到达宿主 podman 前置链): 快层里自建 mount namespace 属分层偏移, 备案
+    # (REWORK-02 P-2/P-3), 已同步在 tests/README.md 映射行注明.
+    ("workflow/codebase-map/scripts/", "workflow/codebase-map/tests"),
+    ("workflow/codebase-map/tests/", "workflow/codebase-map/tests"),
+    # REWORK-02 P-5: SKILL.md 与 README.md 被 test_skill_docs.py 的文本契约
+    # 用例约束, 改这两个文件也要选中该套件.
+    ("workflow/codebase-map/SKILL.md", "workflow/codebase-map/tests"),
+    ("workflow/codebase-map/README.md", "workflow/codebase-map/tests"),
     ("tests/conftest.py", GLOBAL),
     ("pytest.ini", GLOBAL),
 ]

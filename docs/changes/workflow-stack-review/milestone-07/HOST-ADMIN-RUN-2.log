@@ -1,0 +1,183 @@
+.............FF                                                          [100%]
+=================================== FAILURES ===================================
+_______________ test_neighbor_upsert_takes_over_occupied_address _______________
+
+tmp_path = PosixPath('/tmp/pytest-of-bolo/pytest-706/test_neighbor_upsert_takes_ove0')
+
+    def test_neighbor_upsert_takes_over_occupied_address(tmp_path):
+        """评审修复 1: 同名 upsert 迁到已被另一邻居占用的地址时消除重复 —
+        旧占用者让位, 本条目接管地址, 全表地址唯一 (DB 不静默吞行)."""
+        workdir = tmp_path / "takeover"
+        srv = Serve(workdir)
+        try:
+            for addr, key, name in (("192.0.2.1:38417", "k-a", "yoga"),
+                                    ("192.0.2.2:38417", "k-b", "office")):
+                code, _ = _admin(srv, "POST", "/admin/neighbors",
+                                 {"address": addr, "shared_key": key, "name": name})
+                assert code == 200
+    
+            # yoga 换址到 office 占用的地址: office 让位, 只剩一条且归 yoga
+            code, resp = _admin(srv, "POST", "/admin/neighbors",
+                                {"address": "192.0.2.2:38417",
+                                 "shared_key": "k-a2", "name": "yoga"})
+            assert code == 200, resp
+            code, resp = _admin(srv, "GET", "/admin/neighbors")
+            assert code == 200
+            assert [(e["address"], e["name"]) for e in resp["neighbors"]] == \
+                [("192.0.2.2:38417", "yoga")], \
+                f"撞地址应消除重复而非双条目: {resp}"
+        finally:
+            srv.stop()
+    
+        # DB 无静默吞行: 重启后仍只有一条, 归 yoga
+>       srv2 = Serve(workdir)
+               ^^^^^^^^^^^^^^
+
+tests/test_mailbox_admin.py:498: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <conftest.Serve object at 0x7d65fdd379d0>
+workdir = PosixPath('/tmp/pytest-of-bolo/pytest-706/test_neighbor_upsert_takes_ove0/takeover')
+hold = '0.3', port = None, extra_env = None, extra_args = None
+
+    def __init__(self, workdir, hold="0.3", port=None,
+                 extra_env=None, extra_args=None):
+        workdir = Path(workdir)
+        workdir.mkdir(parents=True, exist_ok=True)
+        self.config_path = workdir / "config.json"
+        env = dict(os.environ)
+        env.update({
+            "MAILBOX_ADMIN_TOKEN": ADMIN_TOKEN,
+            "MAILBOX_STATE": str(workdir / "state.json"),
+            "MAILBOX_CONFIG": str(self.config_path),
+            "MAILBOX_HOLD_SECONDS": hold,
+            # 隔离真机邻居表: serve 缺省读 ~/.agents/mailbox/neighbors.json,
+            # 真跑过的机器上有真实邻居, 泄漏进来会破坏 "无邻居 404" 类用例 (2026-09-21)
+            "MAILBOX_NEIGHBORS": str(workdir / "neighbors.json"),
+        })
+        env.update(extra_env or {})
+        self.proc = subprocess.Popen(
+            [sys.executable, str(SCRIPT), "serve",
+             "--port", str(port or free_port()),
+             "--admin-port", str(free_port())] + list(extra_args or []),
+            env=env, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, text=True)
+        self.port = None
+        self.admin_port = None
+        deadline = time.time() + 15
+        while time.time() < deadline:
+            if self.proc.poll() is not None:
+                raise AssertionError(f"serve 提前退出, exit={self.proc.returncode}")
+            r, _, _ = select.select([self.proc.stderr], [], [],
+                                    max(0.0, deadline - time.time()))
+            if not r:
+                break
+            line = self.proc.stderr.readline()
+            m = re.search(r"mailbox on :(\d+)", line)
+            if m:
+                self.port = int(m.group(1))
+            a = re.search(r"admin on 127\.0\.0\.1:(\d+)", line)
+            if a:
+                self.admin_port = int(a.group(1))
+            if self.port is not None:
+                return
+        self.stop()
+>       raise AssertionError("serve 未在超时内报告端口")
+E       AssertionError: serve 未在超时内报告端口
+
+tests/conftest.py:111: AssertionError
+___________________ test_pending_budget_exhaustion_semantics ___________________
+
+serves = <function serves.<locals>._serve at 0x7d65fdd3f530>
+
+    def test_pending_budget_exhaustion_semantics(serves):
+        """评审修复 2: 洪泛预算耗尽入暂存时尚未做过转发尝试 — 不写 reachable
+        (状态保持 unknown), 失败尝试计数记 0; 真尝试失败仍计 1."""
+        # 预算归零: 所有目标邻居都走预算耗尽分支 (不做任何转发尝试)
+        srv = serves(extra_env={"MAILBOX_FLOOD_BUDGET_SECONDS": "0",
+                                "MAILBOX_RETRY_SECONDS": "30"})
+        poster = register_session(srv, "budget-1")
+        dead = f"127.0.0.1:{free_port()}"
+        code, _ = _admin(srv, "POST", "/admin/neighbors",
+                         {"address": dead, "shared_key": "k-dead"})
+        assert code == 200
+    
+        code, resp = post_letter(srv, "budget-1", poster["signing_key"],
+                                 make_letter(letter_id="BUD-1", to="remote-dev"))
+        assert code == 200
+        assert resp["payload"]["route"] == "staged_pending"
+    
+        code, resp = _admin(srv, "GET", "/admin/pending")
+        entries = [e for e in resp["pending"] if e["id"] == "BUD-1"]
+        assert len(entries) == 1, resp
+        assert entries[0]["retries"] == 0, "预算耗尽未尝试, 不计失败尝试"
+        assert entries[0]["last_error"] == "洪泛预算耗尽"
+    
+        code, resp = _admin(srv, "GET", "/admin/neighbors")
+        entry = [e for e in resp["neighbors"] if e["address"] == dead][0]
+        assert entry["status"] == "unknown", "未做转发尝试不得改写状态"
+    
+        # 对照: 连接被拒的死邻居是真尝试失败 → 计数 1, 状态 unreachable
+>       srv2 = serves(extra_env={"MAILBOX_RETRY_SECONDS": "30"})
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_mailbox_admin.py:536: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/conftest.py:128: in _serve
+    srv = Serve(tmp_path / name, hold=hold, port=port, extra_env=extra_env)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <conftest.Serve object at 0x7d65fdbc64e0>
+workdir = PosixPath('/tmp/pytest-of-bolo/pytest-706/test_pending_budget_exhaustion0/s')
+hold = '0.3', port = None, extra_env = {'MAILBOX_RETRY_SECONDS': '30'}
+extra_args = None
+
+    def __init__(self, workdir, hold="0.3", port=None,
+                 extra_env=None, extra_args=None):
+        workdir = Path(workdir)
+        workdir.mkdir(parents=True, exist_ok=True)
+        self.config_path = workdir / "config.json"
+        env = dict(os.environ)
+        env.update({
+            "MAILBOX_ADMIN_TOKEN": ADMIN_TOKEN,
+            "MAILBOX_STATE": str(workdir / "state.json"),
+            "MAILBOX_CONFIG": str(self.config_path),
+            "MAILBOX_HOLD_SECONDS": hold,
+            # 隔离真机邻居表: serve 缺省读 ~/.agents/mailbox/neighbors.json,
+            # 真跑过的机器上有真实邻居, 泄漏进来会破坏 "无邻居 404" 类用例 (2026-09-21)
+            "MAILBOX_NEIGHBORS": str(workdir / "neighbors.json"),
+        })
+        env.update(extra_env or {})
+        self.proc = subprocess.Popen(
+            [sys.executable, str(SCRIPT), "serve",
+             "--port", str(port or free_port()),
+             "--admin-port", str(free_port())] + list(extra_args or []),
+            env=env, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, text=True)
+        self.port = None
+        self.admin_port = None
+        deadline = time.time() + 15
+        while time.time() < deadline:
+            if self.proc.poll() is not None:
+                raise AssertionError(f"serve 提前退出, exit={self.proc.returncode}")
+            r, _, _ = select.select([self.proc.stderr], [], [],
+                                    max(0.0, deadline - time.time()))
+            if not r:
+                break
+            line = self.proc.stderr.readline()
+            m = re.search(r"mailbox on :(\d+)", line)
+            if m:
+                self.port = int(m.group(1))
+            a = re.search(r"admin on 127\.0\.0\.1:(\d+)", line)
+            if a:
+                self.admin_port = int(a.group(1))
+            if self.port is not None:
+                return
+        self.stop()
+>       raise AssertionError("serve 未在超时内报告端口")
+E       AssertionError: serve 未在超时内报告端口
+
+tests/conftest.py:111: AssertionError
+=========================== short test summary info ============================
+FAILED tests/test_mailbox_admin.py::test_neighbor_upsert_takes_over_occupied_address
+FAILED tests/test_mailbox_admin.py::test_pending_budget_exhaustion_semantics
+2 failed, 13 passed in 47.84s

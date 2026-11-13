@@ -1,0 +1,27 @@
+{
+ "url": "http://127.0.0.1:18923/?file=cz-sdk-master.cc.json",
+ "canvas_scan": [
+  {
+   "kind": "webgl",
+   "w": 200,
+   "h": 200,
+   "blue": 0,
+   "red": 0,
+   "orange": 0,
+   "opaque": 0,
+   "total": 40000
+  },
+  {
+   "kind": "webgl",
+   "w": 1920,
+   "h": 1080,
+   "blue": 0,
+   "red": 0,
+   "orange": 84,
+   "opaque": 2073600,
+   "total": 2073600
+  }
+ ],
+ "console_errors": [],
+ "console_warning_count": 4
+}

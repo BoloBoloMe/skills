@@ -1,0 +1,54 @@
+{
+ "url": "http://127.0.0.1:18923/?file=cz-sdk-master.cc.json",
+ "http_status": 200,
+ "page_state": {
+  "title": "CodeCharta",
+  "canvases": 2,
+  "canvasSize": [
+   200,
+   200
+  ],
+  "bodyTextSample": "cz-sdk-master\nMetric\nDependencies\nSettings\n+\n-\n140%\nelement-plus-chunks-legacy-C-qevp7v.js\n6681 complexity\n+4 more\nelement-plus-chunks-legacy-C-qevp7v.js\n6681 complexity\n+4 more\nelement-plus-chunks-C4gSW5Rw.js\n6077 complexity\nelement-plus-chunks-C4gSW5Rw.js\n6077 complexity\nadyen-legacy-CgG-f7PA.js\n5",
+  "fileList": "?file=cz-sdk-master.cc.json&area=rloc&height=complexity&color=complexity&edge=dependencies"
+ },
+ "console_count": 4,
+ "console_errors": [],
+ "console_warnings": [
+  {
+   "type": "warning",
+   "text": "[.WebGL-0x41400153c00]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels"
+  },
+  {
+   "type": "warning",
+   "text": "[.WebGL-0x41400154800]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels"
+  },
+  {
+   "type": "warning",
+   "text": "[.WebGL-0x41400153c00]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels"
+  },
+  {
+   "type": "warning",
+   "text": "[.WebGL-0x41400153c00]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels (this message will no longer repeat)"
+  }
+ ],
+ "console_all": [
+  {
+   "type": "warning",
+   "text": "[.WebGL-0x41400153c00]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels"
+  },
+  {
+   "type": "warning",
+   "text": "[.WebGL-0x41400154800]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels"
+  },
+  {
+   "type": "warning",
+   "text": "[.WebGL-0x41400153c00]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels"
+  },
+  {
+   "type": "warning",
+   "text": "[.WebGL-0x41400153c00]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels (this message will no longer repeat)"
+  }
+ ],
+ "page_errors": [],
+ "request_failures": []
+}

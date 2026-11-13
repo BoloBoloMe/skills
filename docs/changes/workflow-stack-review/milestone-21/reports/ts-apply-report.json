@@ -1,0 +1,2518 @@
+{
+ "replaced": [
+  {
+   "file": "codeCharta/features/navBar/components/viewModeBar/viewModeBar.component.ts",
+   "line": 9,
+   "en": "Metric modes",
+   "zh": "指标视图模式"
+  },
+  {
+   "file": "codeCharta/features/navBar/components/viewModeBar/viewModeBar.component.ts",
+   "line": 10,
+   "en": "Domain modes",
+   "zh": "领域视图模式"
+  },
+  {
+   "file": "codeCharta/features/navBar/components/viewModeBar/viewModeBar.component.ts",
+   "line": 11,
+   "en": "Dependency modes",
+   "zh": "依赖视图模式"
+  },
+  {
+   "file": "codeCharta/features/domainWordOccurrences/components/domainWordRow/domainWordRow.component.ts",
+   "line": 33,
+   "en": "⟦0⟧ of all words · ⟦1⟧",
+   "zh": "⟦0⟧ / 全部单词 · ⟦1⟧"
+  },
+  {
+   "file": "codeCharta/features/sidebarExplorer/components/metricDistribution/metricDistribution.component.ts",
+   "line": 26,
+   "en": "⟦0⟧–⟦1⟧: ⟦2⟧ files, ⟦3⟧ matched",
+   "zh": "⟦0⟧–⟦1⟧: ⟦2⟧ 个文件, ⟦3⟧ 个命中"
+  },
+  {
+   "file": "codeCharta/features/domainWordOccurrences/util/sortWords.ts",
+   "line": 5,
+   "en": "Occurrences",
+   "zh": "出现次数"
+  },
+  {
+   "file": "codeCharta/features/domainWordOccurrences/util/sortWords.ts",
+   "line": 6,
+   "en": "Name",
+   "zh": "名称"
+  },
+  {
+   "file": "codeCharta/features/domainWordOccurrences/util/sortWords.ts",
+   "line": 7,
+   "en": "Relevance",
+   "zh": "相关度"
+  },
+  {
+   "file": "codeCharta/features/sidebarExplorer/components/metricRuleEditor/metricRuleEditor.component.ts",
+   "line": 18,
+   "en": "greater than",
+   "zh": "大于"
+  },
+  {
+   "file": "codeCharta/features/sidebarExplorer/components/metricRuleEditor/metricRuleEditor.component.ts",
+   "line": 19,
+   "en": "at least",
+   "zh": "至少"
+  },
+  {
+   "file": "codeCharta/features/sidebarExplorer/components/metricRuleEditor/metricRuleEditor.component.ts",
+   "line": 20,
+   "en": "less than",
+   "zh": "小于"
+  },
+  {
+   "file": "codeCharta/features/sidebarExplorer/components/metricRuleEditor/metricRuleEditor.component.ts",
+   "line": 21,
+   "en": "at most",
+   "zh": "至多"
+  },
+  {
+   "file": "codeCharta/features/sidebarExplorer/components/metricRuleEditor/metricRuleEditor.component.ts",
+   "line": 22,
+   "en": "equal to",
+   "zh": "等于"
+  },
+  {
+   "file": "codeCharta/features/sidebarExplorer/components/metricRuleEditor/metricRuleEditor.component.ts",
+   "line": 65,
+   "en": "Flatten by metric",
+   "zh": "按指标压平"
+  },
+  {
+   "file": "codeCharta/features/sidebarExplorer/components/metricRuleEditor/metricRuleEditor.component.ts",
+   "line": 65,
+   "en": "Exclude by metric",
+   "zh": "按指标排除"
+  },
+  {
+   "file": "codeCharta/features/sidebarExplorer/components/metricRuleEditor/metricRuleEditor.component.ts",
+   "line": 66,
+   "en": "Add flatten rule",
+   "zh": "添加压平规则"
+  },
+  {
+   "file": "codeCharta/features/sidebarExplorer/components/metricRuleEditor/metricRuleEditor.component.ts",
+   "line": 66,
+   "en": "Add exclude rule",
+   "zh": "添加排除规则"
+  },
+  {
+   "file": "codeCharta/stores/fileStore/loaders/ccJson/services/loadFile.service.ts",
+   "line": 12,
+   "en": "File(s) could not be loaded",
+   "zh": "文件加载失败"
+  },
+  {
+   "file": "codeCharta/stores/fileStore/loaders/ccJson/services/loadFile.service.ts",
+   "line": 13,
+   "en": "File(s) are already loaded",
+   "zh": "文件已加载"
+  },
+  {
+   "file": "codeCharta/load/loadFiles.useCase.ts",
+   "line": 31,
+   "en": "File(s) could not be loaded from the given file URL parameter. Loaded sample files instead.",
+   "zh": "无法从 URL 参数加载文件. 已改为加载示例文件."
+  },
+  {
+   "file": "codeCharta/load/loadFiles.useCase.ts",
+   "line": 32,
+   "en": "Previously loaded files and settings could not be restored. Loaded sample files instead.",
+   "zh": "无法恢复之前加载的文件与设置. 已改为加载示例文件."
+  },
+  {
+   "file": "codeCharta/load/loadFiles.useCase.ts",
+   "line": 34,
+   "en": "The previous state could not be fully restored after loading the page. The following properties were not restored.",
+   "zh": "刷新后无法完全恢复之前的状态. 以下属性未被恢复:"
+  },
+  {
+   "file": "codeCharta/load/loadFiles.useCase.ts",
+   "line": 36,
+   "en": "Restoring your session",
+   "zh": "正在恢复会话"
+  },
+  {
+   "file": "codeCharta/load/loadFiles.useCase.ts",
+   "line": 37,
+   "en": "Building the map",
+   "zh": "正在构建地图"
+  },
+  {
+   "file": "codeCharta/features/globalSettings/components/globalConfigurationDialog/resetFiltersButton/resetFiltersButton.component.ts",
+   "line": 20,
+   "en": "The 1 flatten or exclude rule is",
+   "zh": "这 1 条压平/排除规则"
+  },
+  {
+   "file": "codeCharta/features/globalSettings/components/globalConfigurationDialog/resetFiltersButton/resetFiltersButton.component.ts",
+   "line": 20,
+   "en": "All ⟦0⟧ flatten and exclude rules are",
+   "zh": "⟦0⟧ 条压平/排除规则全部"
+  },
+  {
+   "file": "codeCharta/features/globalSettings/components/globalConfigurationDialog/resetFiltersButton/resetFiltersButton.component.ts",
+   "line": 21,
+   "en": "⟦0⟧ removed and every file comes back onto the map. Metrics, colors and the camera are left alone.",
+   "zh": "⟦0⟧被移除, 所有文件都会回到地图上. 指标, 颜色和视角保持不变."
+  },
+  {
+   "file": "codeCharta/renderer/wordCloud/components/wordCloud/wordCloudDescription.ts",
+   "line": 12,
+   "en": "domain term",
+   "zh": "领域词"
+  },
+  {
+   "file": "codeCharta/renderer/wordCloud/components/wordCloud/wordCloudDescription.ts",
+   "line": 12,
+   "en": "domain terms",
+   "zh": "领域词"
+  },
+  {
+   "file": "codeCharta/renderer/wordCloud/components/wordCloud/wordCloudDescription.ts",
+   "line": 13,
+   "en": "Word cloud of ⟦0⟧ ⟦1⟧ for ⟦2⟧; largest: ⟦3⟧",
+   "zh": "⟦2⟧ 的词云 (⟦0⟧ 个⟦1⟧); 最大: ⟦3⟧"
+  },
+  {
+   "file": "codeCharta/renderer/wordCloud/components/wordCloud/wordCloudDescription.ts",
+   "line": 20,
+   "en": "⟦0⟧ of ⟦1⟧ words fit — enlarge the window, reduce word spacing, or enable \"Fit all words\" or \"Draw outside bounds\"",
+   "zh": "⟦0⟧ / ⟦1⟧ 个单词已放下 — 请放大窗口, 调小单词间距, 或启用 \"放下全部单词\" 与 \"画出边界绘制\""
+  },
+  {
+   "file": "codeCharta/lenses/explorerRow/store/explorerRow.projection.ts",
+   "line": 5,
+   "en": "No Node Area for Chosen Metric",
+   "zh": "所选指标无节点面积"
+  },
+  {
+   "file": "codeCharta/lenses/explorerRow/store/explorerRow.projection.ts",
+   "line": 6,
+   "en": "No domain words",
+   "zh": "没有领域词"
+  },
+  {
+   "file": "codeCharta/lenses/explorerRow/store/explorerRow.projection.ts",
+   "line": 7,
+   "en": "Not in the dependency graph",
+   "zh": "不在依赖图中"
+  },
+  {
+   "file": "codeCharta/renderer/dependencyGraph/util/lineStyle.ts",
+   "line": 29,
+   "en": "Inherits from",
+   "zh": "继承自"
+  },
+  {
+   "file": "codeCharta/renderer/dependencyGraph/util/lineStyle.ts",
+   "line": 30,
+   "en": "Implements",
+   "zh": "实现"
+  },
+  {
+   "file": "codeCharta/renderer/dependencyGraph/util/lineStyle.ts",
+   "line": 31,
+   "en": "Creates",
+   "zh": "创建"
+  },
+  {
+   "file": "codeCharta/renderer/dependencyGraph/util/lineStyle.ts",
+   "line": 32,
+   "en": "Takes as argument",
+   "zh": "将其作为参数"
+  },
+  {
+   "file": "codeCharta/renderer/dependencyGraph/util/lineStyle.ts",
+   "line": 33,
+   "en": "Returns",
+   "zh": "返回"
+  },
+  {
+   "file": "codeCharta/renderer/dependencyGraph/util/lineStyle.ts",
+   "line": 34,
+   "en": "Reads a constant of",
+   "zh": "读取其常量"
+  },
+  {
+   "file": "codeCharta/renderer/dependencyGraph/util/lineStyle.ts",
+   "line": 35,
+   "en": "Uses",
+   "zh": "使用"
+  },
+  {
+   "file": "codeCharta/features/scenarios/model/scenarioSettings.registry.ts",
+   "line": 101,
+   "en": "Area metric",
+   "zh": "面积指标"
+  },
+  {
+   "file": "codeCharta/features/scenarios/model/scenarioSettings.registry.ts",
+   "line": 109,
+   "en": "Margin",
+   "zh": "边距"
+  },
+  {
+   "file": "codeCharta/features/scenarios/model/scenarioSettings.registry.ts",
+   "line": 115,
+   "en": "Invert area",
+   "zh": "反转面积"
+  },
+  {
+   "file": "codeCharta/features/scenarios/model/scenarioSettings.registry.ts",
+   "line": 121,
+   "en": "Floor labels",
+   "zh": "楼层标签"
+  },
+  {
+   "file": "codeCharta/features/scenarios/model/scenarioSettings.registry.ts",
+   "line": 127,
+   "en": "Height metric",
+   "zh": "高度指标"
+  },
+  {
+   "file": "codeCharta/features/scenarios/model/scenarioSettings.registry.ts",
+   "line": 135,
+   "en": "Height scaling",
+   "zh": "高度缩放"
+  },
+  {
+   "file": "codeCharta/features/scenarios/model/scenarioSettings.registry.ts",
+   "line": 141,
+   "en": "Invert height",
+   "zh": "反转高度"
+  },
+  {
+   "file": "codeCharta/features/scenarios/model/scenarioSettings.registry.ts",
+   "line": 147,
+   "en": "Color metric",
+   "zh": "颜色指标"
+  },
+  {
+   "file": "codeCharta/features/scenarios/model/scenarioSettings.registry.ts",
+   "line": 155,
+   "en": "Color follows height metric",
+   "zh": "颜色跟随高度指标"
+  },
+  {
+   "file": "codeCharta/features/scenarios/model/scenarioSettings.registry.ts",
+   "line": 162,
+   "en": "Color range",
+   "zh": "颜色范围"
+  },
+  {
+   "file": "codeCharta/features/scenarios/model/scenarioSettings.registry.ts",
+   "line": 168,
+   "en": "Gradient mode",
+   "zh": "渐变模式"
+  },
+  {
+   "file": "codeCharta/features/scenarios/model/scenarioSettings.registry.ts",
+   "line": 174,
+   "en": "Colors",
+   "zh": "颜色"
+  },
+  {
+   "file": "codeCharta/features/scenarios/model/scenarioSettings.registry.ts",
+   "line": 180,
+   "en": "Folder color overrides",
+   "zh": "文件夹颜色覆盖"
+  },
+  {
+   "file": "codeCharta/features/scenarios/model/scenarioSettings.registry.ts",
+   "line": 186,
+   "en": "Edge metric",
+   "zh": "边指标"
+  },
+  {
+   "file": "codeCharta/features/scenarios/model/scenarioSettings.registry.ts",
+   "line": 194,
+   "en": "Edge metric enabled",
+   "zh": "启用边指标"
+  },
+  {
+   "file": "codeCharta/features/scenarios/model/scenarioSettings.registry.ts",
+   "line": 200,
+   "en": "Edge previews",
+   "zh": "边预览"
+  },
+  {
+   "file": "codeCharta/features/scenarios/model/scenarioSettings.registry.ts",
+   "line": 206,
+   "en": "Edge curve height",
+   "zh": "边曲线高度"
+  },
+  {
+   "file": "codeCharta/features/scenarios/model/scenarioSettings.registry.ts",
+   "line": 212,
+   "en": "Show outgoing edges",
+   "zh": "显示出边"
+  },
+  {
+   "file": "codeCharta/features/scenarios/model/scenarioSettings.registry.ts",
+   "line": 218,
+   "en": "Show incoming edges",
+   "zh": "显示入边"
+  },
+  {
+   "file": "codeCharta/features/scenarios/model/scenarioSettings.registry.ts",
+   "line": 224,
+   "en": "Only nodes with edges",
+   "zh": "只显示有边的节点"
+  },
+  {
+   "file": "codeCharta/features/scenarios/model/scenarioSettings.registry.ts",
+   "line": 230,
+   "en": "Edge colors",
+   "zh": "边颜色"
+  },
+  {
+   "file": "codeCharta/features/scenarios/model/scenarioSettings.registry.ts",
+   "line": 239,
+   "en": "Top labels",
+   "zh": "顶部标签"
+  },
+  {
+   "file": "codeCharta/features/scenarios/model/scenarioSettings.registry.ts",
+   "line": 245,
+   "en": "Top labels scope",
+   "zh": "顶部标签范围"
+  },
+  {
+   "file": "codeCharta/features/scenarios/model/scenarioSettings.registry.ts",
+   "line": 251,
+   "en": "Label size",
+   "zh": "标签大小"
+  },
+  {
+   "file": "codeCharta/features/scenarios/model/scenarioSettings.registry.ts",
+   "line": 257,
+   "en": "Label mode",
+   "zh": "标签模式"
+  },
+  {
+   "file": "codeCharta/features/scenarios/model/scenarioSettings.registry.ts",
+   "line": 263,
+   "en": "Show node names",
+   "zh": "显示节点名称"
+  },
+  {
+   "file": "codeCharta/features/scenarios/model/scenarioSettings.registry.ts",
+   "line": 269,
+   "en": "Show metric values",
+   "zh": "显示指标数值"
+  },
+  {
+   "file": "codeCharta/features/scenarios/model/scenarioSettings.registry.ts",
+   "line": 275,
+   "en": "Group overlapping labels",
+   "zh": "合并重叠标签"
+  },
+  {
+   "file": "codeCharta/features/scenarios/model/scenarioSettings.registry.ts",
+   "line": 281,
+   "en": "Labels by color metric",
+   "zh": "按颜色指标显示标签"
+  },
+  {
+   "file": "codeCharta/features/scenarios/model/scenarioSettings.registry.ts",
+   "line": 287,
+   "en": "Position and zoom",
+   "zh": "位置与缩放"
+  },
+  {
+   "file": "codeCharta/features/scenarios/model/scenarioSettings.registry.ts",
+   "line": 292,
+   "en": "Excluded nodes",
+   "zh": "排除的节点"
+  },
+  {
+   "file": "codeCharta/features/scenarios/model/scenarioSettings.registry.ts",
+   "line": 298,
+   "en": "Flattened nodes",
+   "zh": "压平的节点"
+  },
+  {
+   "file": "codeCharta/features/scenarios/model/scenarioSettings.registry.ts",
+   "line": 304,
+   "en": "Flattened and excluded by metric",
+   "zh": "按指标压平与排除"
+  },
+  {
+   "file": "codeCharta/features/scenarios/model/scenarioSettings.registry.ts",
+   "line": 310,
+   "en": "Focused folder",
+   "zh": "聚焦的文件夹"
+  },
+  {
+   "file": "codeCharta/renderer/dependencyGraph/util/dependencyGraphTooltip.ts",
+   "line": 65,
+   "en": "In a cycle with other files",
+   "zh": "与其他文件构成环"
+  },
+  {
+   "file": "codeCharta/renderer/dependencyGraph/util/dependencyGraphTooltip.ts",
+   "line": 66,
+   "en": "In a cycle inside this file",
+   "zh": "在本文件内的环中"
+  },
+  {
+   "file": "codeCharta/renderer/dependencyGraph/util/dependencyGraphTooltip.ts",
+   "line": 38,
+   "en": "Package ⟦0⟧",
+   "zh": "包 ⟦0⟧"
+  },
+  {
+   "file": "codeCharta/renderer/dependencyGraph/util/dependencyGraphTooltip.ts",
+   "line": 41,
+   "en": "Level ⟦0⟧",
+   "zh": "层级 ⟦0⟧"
+  },
+  {
+   "file": "codeCharta/renderer/dependencyGraph/util/dependencyGraphTooltip.ts",
+   "line": 54,
+   "en": "⟦0⟧ between files",
+   "zh": "⟦0⟧ 条跨文件"
+  },
+  {
+   "file": "codeCharta/renderer/dependencyGraph/util/dependencyGraphTooltip.ts",
+   "line": 55,
+   "en": "⟦0⟧ inside ⟦1⟧",
+   "zh": "⟦0⟧ 条在 ⟦1⟧ 内部"
+  },
+  {
+   "file": "codeCharta/renderer/dependencyGraph/util/dependencyGraphTooltip.ts",
+   "line": 60,
+   "en": "⟦0⟧ inside",
+   "zh": "⟦0⟧ 条在内部"
+  },
+  {
+   "file": "codeCharta/renderer/dependencyGraph/util/dependencyGraphTooltip.ts",
+   "line": 83,
+   "en": "⟦0⟧ declaration edges · ⟦1⟧",
+   "zh": "⟦0⟧ 条声明边 · ⟦1⟧"
+  },
+  {
+   "file": "codeCharta/renderer/dependencyGraph/util/dependencyGraphTooltip.ts",
+   "line": 91,
+   "en": "drawn as ⟦0⟧ → ⟦1⟧",
+   "zh": "绘制为 ⟦0⟧ → ⟦1⟧"
+  },
+  {
+   "file": "codeCharta/features/labelSettings/components/labelSettingsPanel/labelSettingsPanel.component.ts",
+   "line": 59,
+   "en": "Display the labels of the ⟦0⟧ highest buildings",
+   "zh": "显示最高的 ⟦0⟧ 栋建筑的标签"
+  },
+  {
+   "file": "codeCharta/features/labelSettings/components/labelSettingsPanel/labelSettingsPanel.component.ts",
+   "line": 60,
+   "en": "⟦0⟧ per map",
+   "zh": "每张地图 ⟦0⟧ 个"
+  },
+  {
+   "file": "codeCharta/model/domain.model.ts",
+   "line": 11,
+   "en": "Squarified TreeMap",
+   "zh": "矩形树图"
+  },
+  {
+   "file": "codeCharta/model/domain.model.ts",
+   "line": 15,
+   "en": "Radial TreeMap",
+   "zh": "放射树图"
+  },
+  {
+   "file": "codeCharta/model/domain.model.ts",
+   "line": 80,
+   "en": "Name",
+   "zh": "名称"
+  },
+  {
+   "file": "codeCharta/model/domain.model.ts",
+   "line": 81,
+   "en": "Number of Files",
+   "zh": "文件数量"
+  },
+  {
+   "file": "codeCharta/model/domain.model.ts",
+   "line": 82,
+   "en": "Area Size",
+   "zh": "面积大小"
+  },
+  {
+   "file": "codeCharta/util/pipes/attributeDescriptorTooltip.pipe.ts",
+   "line": 17,
+   "en": "\\nHigh Values: ⟦0⟧",
+   "zh": "\\n高值: ⟦0⟧"
+  },
+  {
+   "file": "codeCharta/util/pipes/attributeDescriptorTooltip.pipe.ts",
+   "line": 18,
+   "en": "\\nLow Values: ⟦0⟧",
+   "zh": "\\n低值: ⟦0⟧"
+  },
+  {
+   "file": "codeCharta/stores/fileStore/loaders/ccJson/util/fileValidator.ts",
+   "line": 51,
+   "en": "⟦0⟧ Found: ⟦1⟧",
+   "zh": "⟦0⟧ 涉及: ⟦1⟧"
+  },
+  {
+   "file": "codeCharta/stores/fileStore/loaders/ccJson/util/fileValidator.ts",
+   "line": 140,
+   "en": "⟦0⟧ Found duplicate id: ⟦1⟧",
+   "zh": "⟦0⟧ 发现重复 id: ⟦1⟧"
+  },
+  {
+   "file": "codeCharta/stores/fileStore/loaders/ccJson/util/fileValidator.ts",
+   "line": 166,
+   "en": "⟦0⟧ Found duplicate of ⟦1⟧ with path: ⟦2⟧",
+   "zh": "⟦0⟧ 发现重复项 ⟦1⟧, 路径: ⟦2⟧"
+  },
+  {
+   "file": "codeCharta/stores/fileStore/loaders/ccJson/util/fileValidator.ts",
+   "line": 222,
+   "en": "⟦0⟧ error: ⟦1⟧ ⟦2⟧",
+   "zh": "⟦0⟧ 错误: ⟦1⟧ ⟦2⟧"
+  },
+  {
+   "file": "codeCharta/stores/fileStore/loaders/ccJson/util/fileValidator.ts",
+   "line": 241,
+   "en": "⟦0⟧ Found duplicate of ⟦1⟧ with path: ⟦2⟧",
+   "zh": "⟦0⟧ 发现重复项 ⟦1⟧, 路径: ⟦2⟧"
+  },
+  {
+   "file": "codeCharta/features/sidebarExplorer/components/explorerHeader/explorerHeader.component.ts",
+   "line": 35,
+   "en": "⟦0⟧ visible · ⟦1⟧ with no area in current metric",
+   "zh": "⟦0⟧ 个可见 · ⟦1⟧ 个在当前指标下无面积"
+  },
+  {
+   "file": "codeCharta/features/sidebarExplorer/components/explorerHeader/explorerHeader.component.ts",
+   "line": 35,
+   "en": "⟦0⟧ visible",
+   "zh": "⟦0⟧ 个可见"
+  },
+  {
+   "file": "codeCharta/views/domainView/explorer/domainExplorerSelection.ts",
+   "line": 14,
+   "en": "No domain words",
+   "zh": "没有领域词"
+  },
+  {
+   "file": "codeCharta/features/shared/components/metricSelectPopover/metricSelectPopover.component.ts",
+   "line": 19,
+   "en": "Search metric",
+   "zh": "搜索指标"
+  },
+  {
+   "file": "codeCharta/features/metricsBar/components/layoutTab/layoutTab.component.ts",
+   "line": 15,
+   "en": "Folders nest inside each other and every bit of floor is used.",
+   "zh": "文件夹相互嵌套, 地面被完全利用."
+  },
+  {
+   "file": "codeCharta/features/metricsBar/components/layoutTab/layoutTab.component.ts",
+   "line": 16,
+   "en": "Folders become streets, files line up along them.",
+   "zh": "文件夹变成街道, 文件沿街排列."
+  },
+  {
+   "file": "codeCharta/features/metricsBar/components/layoutTab/layoutTab.component.ts",
+   "line": 17,
+   "en": "Streets for the upper folders, treemaps near the files.",
+   "zh": "上层文件夹用街道, 靠近文件处用矩形树图."
+  },
+  {
+   "file": "codeCharta/features/metricsBar/components/layoutTab/layoutTab.component.ts",
+   "line": 18,
+   "en": "Folders as rings around the centre, drawn flat without heights.",
+   "zh": "文件夹为中心周围的圆环, 平面绘制, 无高度."
+  },
+  {
+   "file": "codeCharta/features/metricsBar/components/layoutTab/layoutTab.component.ts",
+   "line": 19,
+   "en": "A band per folder level, each folder filled with a treemap of its contents.",
+   "zh": "每个文件夹层级一条带, 每个文件夹用矩形树图填满其内容."
+  },
+  {
+   "file": "codeCharta/features/metricsBar/components/folderValuePopover/folderValuePopover.component.ts",
+   "line": 26,
+   "en": "Folders are one grey. Pick a value to tint them again.",
+   "zh": "文件夹现在是同一种灰色. 选择一个数值即可重新着色."
+  },
+  {
+   "file": "codeCharta/features/metricsBar/components/folderValuePopover/folderValuePopover.component.ts",
+   "line": 27,
+   "en": "Files keep their colour. Folders are tinted by this value; the cog sets neutral or the tint strength.",
+   "zh": "文件保持自身颜色. 文件夹按此数值着色; 齿轮图标设置中性色或着色强度."
+  },
+  {
+   "file": "codeCharta/features/dependencyMap/components/edgeStyleSegment/edgeStyleChoices.ts",
+   "line": 10,
+   "en": "Combined",
+   "zh": "合并"
+  },
+  {
+   "file": "codeCharta/features/dependencyMap/components/edgeStyleSegment/edgeStyleChoices.ts",
+   "line": 10,
+   "en": "One spot on each side for the edges leaving and one for those arriving",
+   "zh": "左右两侧各一个汇聚点, 分别接出边和入边"
+  },
+  {
+   "file": "codeCharta/features/dependencyMap/components/edgeStyleSegment/edgeStyleChoices.ts",
+   "line": 11,
+   "en": "Spread",
+   "zh": "散开"
+  },
+  {
+   "file": "codeCharta/features/dependencyMap/components/edgeStyleSegment/edgeStyleChoices.ts",
+   "line": 11,
+   "en": "Each edge with its own spot on the box",
+   "zh": "每条边在方块上各占一个点"
+  },
+  {
+   "file": "codeCharta/features/dependencyMap/components/edgeStyleSegment/edgeStyleChoices.ts",
+   "line": 12,
+   "en": "Aside",
+   "zh": "绕行"
+  },
+  {
+   "file": "codeCharta/features/dependencyMap/components/edgeStyleSegment/edgeStyleChoices.ts",
+   "line": 12,
+   "en": "Upward edges bow out to the right of the boxes, downward ones to the left",
+   "zh": "向上的边从方块右侧绕行, 向下的从左侧绕行"
+  },
+  {
+   "file": "codeCharta/features/dependencyMap/components/edgeStyleSegment/edgeStyleChoices.ts",
+   "line": 16,
+   "en": "Curved",
+   "zh": "曲线"
+  },
+  {
+   "file": "codeCharta/features/dependencyMap/components/edgeStyleSegment/edgeStyleChoices.ts",
+   "line": 16,
+   "en": "Leave and enter each box square to its side",
+   "zh": "垂直于方块边缘出入"
+  },
+  {
+   "file": "codeCharta/features/dependencyMap/components/edgeStyleSegment/edgeStyleChoices.ts",
+   "line": 17,
+   "en": "Straight",
+   "zh": "直线"
+  },
+  {
+   "file": "codeCharta/features/dependencyMap/components/edgeStyleSegment/edgeStyleChoices.ts",
+   "line": 17,
+   "en": "A straight line from box to box",
+   "zh": "方块到方块的直线"
+  },
+  {
+   "file": "codeCharta/features/dependencyMap/components/edgeStyleSegment/edgeStyleChoices.ts",
+   "line": 21,
+   "en": "By count",
+   "zh": "按数量"
+  },
+  {
+   "file": "codeCharta/features/dependencyMap/components/edgeStyleSegment/edgeStyleChoices.ts",
+   "line": 21,
+   "en": "Width grows with the dependencies an edge stands for",
+   "zh": "线的宽度随其代表的依赖数量增长"
+  },
+  {
+   "file": "codeCharta/features/dependencyMap/components/edgeStyleSegment/edgeStyleChoices.ts",
+   "line": 22,
+   "en": "Thin",
+   "zh": "纤细"
+  },
+  {
+   "file": "codeCharta/features/dependencyMap/components/edgeStyleSegment/edgeStyleChoices.ts",
+   "line": 22,
+   "en": "Every edge a hairline, easiest to see through",
+   "zh": "每条边都是发丝线, 最容易看穿"
+  },
+  {
+   "file": "codeCharta/features/dependencyMap/components/edgeStyleSegment/edgeStyleChoices.ts",
+   "line": 23,
+   "en": "Uniform",
+   "zh": "等宽"
+  },
+  {
+   "file": "codeCharta/features/dependencyMap/components/edgeStyleSegment/edgeStyleChoices.ts",
+   "line": 23,
+   "en": "Every edge the same width",
+   "zh": "每条边等宽"
+  },
+  {
+   "file": "codeCharta/features/dependencyMap/components/edgeStyleSegment/edgeStyleChoices.ts",
+   "line": 24,
+   "en": "Strong",
+   "zh": "加粗"
+  },
+  {
+   "file": "codeCharta/features/dependencyMap/components/edgeStyleSegment/edgeStyleChoices.ts",
+   "line": 24,
+   "en": "Grows with the dependencies, twice as pronounced",
+   "zh": "随依赖数量增粗, 粗细加倍"
+  },
+  {
+   "file": "codeCharta/features/dependencyMap/components/edgeStyleSegment/edgeStyleChoices.ts",
+   "line": 28,
+   "en": "Edge type",
+   "zh": "边类型"
+  },
+  {
+   "file": "codeCharta/features/dependencyMap/components/edgeStyleSegment/edgeStyleChoices.ts",
+   "line": 28,
+   "en": "Dashed where an edge points upward without closing a cycle",
+   "zh": "向上且不成环的边显示为虚线"
+  },
+  {
+   "file": "codeCharta/features/dependencyMap/components/edgeStyleSegment/edgeStyleChoices.ts",
+   "line": 29,
+   "en": "Kind of use",
+   "zh": "使用方式"
+  },
+  {
+   "file": "codeCharta/features/dependencyMap/components/edgeStyleSegment/edgeStyleChoices.ts",
+   "line": 29,
+   "en": "Dashes and arrowhead tell how one declaration uses the other",
+   "zh": "虚线与箭头表示声明间的使用方式"
+  },
+  {
+   "file": "codeCharta/features/shared/components/columnResizeHandle/columnResizeHandle.directive.ts",
+   "line": 20,
+   "en": "Drag or use the arrow keys to resize, double-click to reset",
+   "zh": "拖动或用方向键调整宽度, 双击恢复默认"
+  },
+  {
+   "file": "codeCharta/util/metric/metricTitles.ts",
+   "line": 6,
+   "en": "Lines of Code",
+   "zh": "代码行数"
+  },
+  {
+   "file": "codeCharta/util/metric/metricTitles.ts",
+   "line": 7,
+   "en": "Real Lines of Code",
+   "zh": "实代码行数"
+  },
+  {
+   "file": "codeCharta/util/metric/metricTitles.ts",
+   "line": 8,
+   "en": "Number of Code Lines with Comments",
+   "zh": "注释代码行数"
+  },
+  {
+   "file": "codeCharta/util/metric/metricTitles.ts",
+   "line": 9,
+   "en": "Cyclomatic Complexity",
+   "zh": "圈复杂度"
+  },
+  {
+   "file": "codeCharta/util/metric/metricTitles.ts",
+   "line": 10,
+   "en": "Cyclomatic Complexity",
+   "zh": "圈复杂度"
+  },
+  {
+   "file": "codeCharta/util/metric/metricTitles.ts",
+   "line": 11,
+   "en": "McCabe Complexity",
+   "zh": "McCabe 复杂度"
+  },
+  {
+   "file": "codeCharta/util/metric/metricTitles.ts",
+   "line": 12,
+   "en": "Average Number of Commits from this file",
+   "zh": "此文件的平均提交次数"
+  },
+  {
+   "file": "codeCharta/util/metric/metricTitles.ts",
+   "line": 13,
+   "en": "Number of Functions",
+   "zh": "函数数量"
+  },
+  {
+   "file": "codeCharta/util/metric/metricTitles.ts",
+   "line": 14,
+   "en": "Pairing Rate of selected building",
+   "zh": "所选建筑的配对率"
+  },
+  {
+   "file": "codeCharta/util/metric/metricTitles.ts",
+   "line": 16,
+   "en": "Number of Code Lines covered by tests",
+   "zh": "测试覆盖的代码行数"
+  },
+  {
+   "file": "codeCharta/util/metric/metricTitles.ts",
+   "line": 17,
+   "en": "Number of Smells Sonar has identified",
+   "zh": "Sonar 识别出的坏味道数量"
+  },
+  {
+   "file": "codeCharta/util/metric/metricTitles.ts",
+   "line": 18,
+   "en": "Average Number of Lines added or removed from this file",
+   "zh": "此文件的平均增删行数"
+  },
+  {
+   "file": "codeCharta/util/metric/metricTitles.ts",
+   "line": 19,
+   "en": "Number of Authors that have edited this file",
+   "zh": "编辑过此文件的作者数量"
+  },
+  {
+   "file": "codeCharta/util/metric/metricTitles.ts",
+   "line": 20,
+   "en": "Number of Statements",
+   "zh": "语句数量"
+  },
+  {
+   "file": "codeCharta/views/domainView/explorer/domainExplorerModes.ts",
+   "line": 5,
+   "en": "Words",
+   "zh": "单词"
+  },
+  {
+   "file": "codeCharta/views/domainView/explorer/domainExplorerModes.ts",
+   "line": 7,
+   "en": "payment, invoice",
+   "zh": "支付, 发票"
+  },
+  {
+   "file": "codeCharta/views/domainView/explorer/domainExplorerModes.ts",
+   "line": 8,
+   "en": "Search words",
+   "zh": "搜索单词"
+  },
+  {
+   "file": "codeCharta/features/mapTools/components/presentationModeButton/presentationModeButton.component.ts",
+   "line": 20,
+   "en": "Disable flashlight hover effect",
+   "zh": "关闭悬停手电筒效果"
+  },
+  {
+   "file": "codeCharta/features/mapTools/components/presentationModeButton/presentationModeButton.component.ts",
+   "line": 20,
+   "en": "Enable flashlight hover effect",
+   "zh": "开启悬停手电筒效果"
+  },
+  {
+   "file": "codeCharta/features/metricsBar/components/edgeSettingsPopover/edgeSettingsPopover.component.ts",
+   "line": 42,
+   "en": "Preview the edges of up to ⟦0⟧ buildings with the highest amount of incoming and outgoing edges",
+   "zh": "预览出入边最多的前 ⟦0⟧ 栋建筑的边"
+  },
+  {
+   "file": "codeCharta/renderer/dependencyGraph/util/boxMarks.ts",
+   "line": 116,
+   "en": "Cycles between files",
+   "zh": "跨文件成环"
+  },
+  {
+   "file": "codeCharta/renderer/dependencyGraph/util/boxMarks.ts",
+   "line": 117,
+   "en": "Cycles inside a file",
+   "zh": "文件内成环"
+  },
+  {
+   "file": "codeCharta/renderer/dependencyGraph/util/boxMarks.ts",
+   "line": 118,
+   "en": "Declaration in a cycle",
+   "zh": "环中的声明"
+  },
+  {
+   "file": "codeCharta/renderer/dependencyGraph/util/boxMarks.ts",
+   "line": 119,
+   "en": "Upward dependencies inside",
+   "zh": "内部向上依赖"
+  },
+  {
+   "file": "codeCharta/util/radialFolderValues.ts",
+   "line": 18,
+   "en": "sum",
+   "zh": "总和"
+  },
+  {
+   "file": "codeCharta/util/radialFolderValues.ts",
+   "line": 19,
+   "en": "All files added up. Big folders turn red.",
+   "zh": "全部文件求和. 大文件夹偏红."
+  },
+  {
+   "file": "codeCharta/util/radialFolderValues.ts",
+   "line": 20,
+   "en": "sum of their files",
+   "zh": "各文件之和"
+  },
+  {
+   "file": "codeCharta/util/radialFolderValues.ts",
+   "line": 24,
+   "en": "max",
+   "zh": "最大"
+  },
+  {
+   "file": "codeCharta/util/radialFolderValues.ts",
+   "line": 25,
+   "en": "Its highest file. Never hides a high value.",
+   "zh": "取其中最大文件. 不会掩盖高值."
+  },
+  {
+   "file": "codeCharta/util/radialFolderValues.ts",
+   "line": 26,
+   "en": "their highest file",
+   "zh": "其中最大文件"
+  },
+  {
+   "file": "codeCharta/util/radialFolderValues.ts",
+   "line": 30,
+   "en": "min",
+   "zh": "最小"
+  },
+  {
+   "file": "codeCharta/util/radialFolderValues.ts",
+   "line": 31,
+   "en": "Its lowest file. Never hides a low value, e.g. with inverted colors.",
+   "zh": "取其中最小文件. 不会掩盖低值, 例如颜色反转时."
+  },
+  {
+   "file": "codeCharta/util/radialFolderValues.ts",
+   "line": 32,
+   "en": "their lowest file",
+   "zh": "其中最小文件"
+  },
+  {
+   "file": "codeCharta/util/radialFolderValues.ts",
+   "line": 36,
+   "en": "median",
+   "zh": "中位数"
+  },
+  {
+   "file": "codeCharta/util/radialFolderValues.ts",
+   "line": 37,
+   "en": "Its middle file. Shows the typical file.",
+   "zh": "取其中位文件. 代表典型文件."
+  },
+  {
+   "file": "codeCharta/util/radialFolderValues.ts",
+   "line": 38,
+   "en": "their middle file",
+   "zh": "其中位文件"
+  },
+  {
+   "file": "codeCharta/util/radialFolderValues.ts",
+   "line": 42,
+   "en": "mean / file",
+   "zh": "逐文件均值"
+  },
+  {
+   "file": "codeCharta/util/radialFolderValues.ts",
+   "line": 43,
+   "en": "Sum divided by the number of files.",
+   "zh": "总和除以文件数."
+  },
+  {
+   "file": "codeCharta/util/radialFolderValues.ts",
+   "line": 44,
+   "en": "mean per file",
+   "zh": "逐文件均值"
+  },
+  {
+   "file": "codeCharta/util/radialFolderValues.ts",
+   "line": 48,
+   "en": "avg / area",
+   "zh": "按面积加权"
+  },
+  {
+   "file": "codeCharta/util/radialFolderValues.ts",
+   "line": 49,
+   "en": "Weighted by the area metric, so bigger slices count more.",
+   "zh": "按面积指标加权, 面积大的文件权重更高."
+  },
+  {
+   "file": "codeCharta/util/radialFolderValues.ts",
+   "line": 50,
+   "en": "area-weighted avg of their files",
+   "zh": "按面积加权的文件均值"
+  },
+  {
+   "file": "codeCharta/stores/fileStore/loaders/ccJson/util/fileValidationMessages.ts",
+   "line": 2,
+   "en": "File is empty or invalid.",
+   "zh": "文件为空或格式无效."
+  },
+  {
+   "file": "codeCharta/stores/fileStore/loaders/ccJson/util/fileValidationMessages.ts",
+   "line": 3,
+   "en": "File has no checksum, and the browser can only compute one when CodeCharta is opened via https or localhost.",
+   "zh": "文件没有校验和; 只有通过 https 或 localhost 打开 CodeCharta 时浏览器才能计算校验和."
+  },
+  {
+   "file": "codeCharta/stores/fileStore/loaders/ccJson/util/fileValidationMessages.ts",
+   "line": 4,
+   "en": "API Version is empty or invalid.",
+   "zh": "API 版本为空或无效."
+  },
+  {
+   "file": "codeCharta/stores/fileStore/loaders/ccJson/util/fileValidationMessages.ts",
+   "line": 5,
+   "en": "API Version Outdated: Update CodeCharta API Version to match cc.json.",
+   "zh": "API 版本过旧: 请更新 CodeCharta API 版本以匹配 cc.json."
+  },
+  {
+   "file": "codeCharta/stores/fileStore/loaders/ccJson/util/fileValidationMessages.ts",
+   "line": 6,
+   "en": "Minor API Version Outdated.",
+   "zh": "API 次版本过旧."
+  },
+  {
+   "file": "codeCharta/stores/fileStore/loaders/ccJson/util/fileValidationMessages.ts",
+   "line": 7,
+   "en": "Node names in combination with node types are not unique.",
+   "zh": "节点名与节点类型的组合不唯一."
+  },
+  {
+   "file": "codeCharta/stores/fileStore/loaders/ccJson/util/fileValidationMessages.ts",
+   "line": 8,
+   "en": "Node ids are not unique.",
+   "zh": "节点 id 不唯一."
+  },
+  {
+   "file": "codeCharta/stores/fileStore/loaders/ccJson/util/fileValidationMessages.ts",
+   "line": 9,
+   "en": "Dependency edge dropped: an endpoint id does not resolve to a node.",
+   "zh": "依赖边已丢弃: 端点 id 无法解析到节点."
+  },
+  {
+   "file": "codeCharta/stores/fileStore/loaders/ccJson/util/fileValidationMessages.ts",
+   "line": 10,
+   "en": "Domain lens word bank dropped: the node id does not resolve to a node.",
+   "zh": "领域透镜词库已丢弃: 节点 id 无法解析到节点."
+  },
+  {
+   "file": "codeCharta/stores/fileStore/loaders/ccJson/util/fileValidationMessages.ts",
+   "line": 11,
+   "en": "The nodes array is empty. At least one node is required.",
+   "zh": "节点数组为空, 至少需要一个节点."
+  },
+  {
+   "file": "codeCharta/stores/fileStore/loaders/ccJson/util/fileValidationMessages.ts",
+   "line": 12,
+   "en": "If at least one direct sub-folder of root is marked as fixed, all direct sub-folders of root must be fixed.",
+   "zh": "根目录下只要有一个直接子文件夹被固定, 所有直接子文件夹都必须固定."
+  },
+  {
+   "file": "codeCharta/stores/fileStore/loaders/ccJson/util/fileValidationMessages.ts",
+   "line": 13,
+   "en": "Coordinates of fixed folders must be within a range of 0 and 100.",
+   "zh": "固定文件夹的坐标必须在 0 到 100 之间."
+  },
+  {
+   "file": "codeCharta/stores/fileStore/loaders/ccJson/util/fileValidationMessages.ts",
+   "line": 14,
+   "en": "Folders may not overlap.",
+   "zh": "文件夹不能重叠."
+  },
+  {
+   "file": "codeCharta/stores/fileStore/loaders/ccJson/util/fileValidationMessages.ts",
+   "line": 15,
+   "en": "Fixated folders may not be defined in API-Version < 1.2.",
+   "zh": "API 版本低于 1.2 时不能定义固定文件夹."
+  },
+  {
+   "file": "codeCharta/stores/fileStore/loaders/ccJson/util/fileValidationMessages.ts",
+   "line": 16,
+   "en": "File already exists.",
+   "zh": "文件已存在."
+  },
+  {
+   "file": "codeCharta/stores/fileStore/loaders/ccJson/util/fileValidationMessages.ts",
+   "line": 17,
+   "en": "Excluding all buildings is not possible.",
+   "zh": "不能排除全部建筑."
+  },
+  {
+   "file": "codeCharta/stores/fileStore/loaders/ccJson/util/fileValidationMessages.ts",
+   "line": 19,
+   "en": "File contains unsupported 'authors' attribute. This attribute will be ignored. Node containing the attribute: ",
+   "zh": "文件包含不支持的 'authors' 属性, 该属性将被忽略. 含该属性的节点: "
+  },
+  {
+   "file": "codeCharta/renderer/dependencyGraph/util/dependencyGraphOption.builder.ts",
+   "line": 215,
+   "en": "Dependency graph with ⟦0⟧ files and ⟦1⟧ edges shown, arranged in rows by level.",
+   "zh": "依赖图: 显示 ⟦0⟧ 个文件与 ⟦1⟧ 条边, 按层级分行排布."
+  },
+  {
+   "file": "codeCharta/features/changelog/components/changelogDialog/changelogDialog.component.ts",
+   "line": 7,
+   "en": "Added",
+   "zh": "新增"
+  },
+  {
+   "file": "codeCharta/features/changelog/components/changelogDialog/changelogDialog.component.ts",
+   "line": 8,
+   "en": "Fixed",
+   "zh": "修复"
+  },
+  {
+   "file": "codeCharta/features/changelog/components/changelogDialog/changelogDialog.component.ts",
+   "line": 9,
+   "en": "Changed",
+   "zh": "变更"
+  },
+  {
+   "file": "codeCharta/features/changelog/components/changelogDialog/changelogDialog.component.ts",
+   "line": 10,
+   "en": "Removed",
+   "zh": "移除"
+  },
+  {
+   "file": "codeCharta/features/changelog/components/changelogDialog/changelogDialog.component.ts",
+   "line": 11,
+   "en": "Maintenance",
+   "zh": "维护"
+  },
+  {
+   "file": "codeCharta/util/pipes/mapColorLabel.pipe.ts",
+   "line": 11,
+   "en": "– (no matching buildings)",
+   "zh": "– (无匹配建筑)"
+  },
+  {
+   "file": "codeCharta/util/pipes/mapColorLabel.pipe.ts",
+   "line": 51,
+   "en": "–Δ negative delta",
+   "zh": "–Δ 负差异"
+  },
+  {
+   "file": "codeCharta/util/pipes/mapColorLabel.pipe.ts",
+   "line": 55,
+   "en": "Outgoing Edge",
+   "zh": "出边"
+  },
+  {
+   "file": "codeCharta/util/pipes/mapColorLabel.pipe.ts",
+   "line": 57,
+   "en": "Incoming Edge",
+   "zh": "入边"
+  },
+  {
+   "file": "codeCharta/util/pipes/mapColorLabel.pipe.ts",
+   "line": 26,
+   "en": "⟦0⟧ to ⟦1⟧",
+   "zh": "⟦0⟧ 到 ⟦1⟧"
+  },
+  {
+   "file": "codeCharta/util/pipes/mapColorLabel.pipe.ts",
+   "line": 28,
+   "en": "⟦0⟧ to ⟦1⟧",
+   "zh": "⟦0⟧ 到 ⟦1⟧"
+  },
+  {
+   "file": "codeCharta/util/pipes/mapColorLabel.pipe.ts",
+   "line": 37,
+   "en": "⟦0⟧ to ⟦1⟧",
+   "zh": "⟦0⟧ 到 ⟦1⟧"
+  },
+  {
+   "file": "codeCharta/util/pipes/mapColorLabel.pipe.ts",
+   "line": 39,
+   "en": "⟦0⟧ to ⟦1⟧",
+   "zh": "⟦0⟧ 到 ⟦1⟧"
+  },
+  {
+   "file": "codeCharta/util/pipes/mapColorLabel.pipe.ts",
+   "line": 46,
+   "en": "⟦0⟧ to ⟦1⟧",
+   "zh": "⟦0⟧ 到 ⟦1⟧"
+  },
+  {
+   "file": "codeCharta/features/metricsBar/components/colorSettingsPopover/metricColorRangeDiagram.component.ts",
+   "line": 311,
+   "en": "Quantiles (% of ⟦0⟧)",
+   "zh": "分位数 (占 ⟦0⟧ 的 %)"
+  },
+  {
+   "file": "codeCharta/features/metricsBar/components/colorSettingsPopover/metricColorRangeDiagram.component.ts",
+   "line": 507,
+   "en": "Quantile: ⟦0⟧",
+   "zh": "分位数: ⟦0⟧"
+  },
+  {
+   "file": "codeCharta/features/metricsBar/components/colorSettingsPopover/metricColorRangeDiagram.component.ts",
+   "line": 511,
+   "en": "Value: ⟦0⟧",
+   "zh": "数值: ⟦0⟧"
+  },
+  {
+   "file": "codeCharta/features/scenarios/services/scenarioViewModel.service.ts",
+   "line": 8,
+   "en": "Current Map",
+   "zh": "当前地图"
+  },
+  {
+   "file": "codeCharta/features/scenarios/services/scenarioViewModel.service.ts",
+   "line": 9,
+   "en": "Global",
+   "zh": "全局"
+  },
+  {
+   "file": "codeCharta/features/scenarios/services/scenarioViewModel.service.ts",
+   "line": 10,
+   "en": "Built-in",
+   "zh": "内置"
+  },
+  {
+   "file": "codeCharta/features/scenarios/services/scenarioViewModel.service.ts",
+   "line": 11,
+   "en": "Other Maps",
+   "zh": "其他地图"
+  },
+  {
+   "file": "codeCharta/features/shared/effects/addExcludedNodesIfNotResultsInEmptyMap/addExcludedNodesIfNotResultsInEmptyMap.effect.ts",
+   "line": 27,
+   "en": "Exclude Error",
+   "zh": "排除出错"
+  },
+  {
+   "file": "codeCharta/features/shared/effects/addExcludedNodesIfNotResultsInEmptyMap/addExcludedNodesIfNotResultsInEmptyMap.effect.ts",
+   "line": 28,
+   "en": "Excluding all buildings is not possible.",
+   "zh": "不能排除全部建筑."
+  },
+  {
+   "file": "codeCharta/features/sidebarExplorer/explorerModes.ts",
+   "line": 11,
+   "en": "Files",
+   "zh": "文件"
+  },
+  {
+   "file": "codeCharta/features/sidebarExplorer/explorerModes.ts",
+   "line": 14,
+   "en": "Search files and folders",
+   "zh": "搜索文件与文件夹"
+  },
+  {
+   "file": "codeCharta/features/metricsBar/components/metricBarSelectPopover/metricBarSelectPopover.component.ts",
+   "line": 22,
+   "en": "Search metric",
+   "zh": "搜索指标"
+  },
+  {
+   "file": "codeCharta/features/metricsBar/components/foldersSegment/foldersSegment.component.ts",
+   "line": 40,
+   "en": "tinted ⟦0⟧ %",
+   "zh": "着色 ⟦0⟧ %"
+  },
+  {
+   "file": "codeCharta/features/sidebarExplorer/components/rulesPopover/rulesPopover.component.ts",
+   "line": 29,
+   "en": "Flattening Rules",
+   "zh": "压平规则"
+  },
+  {
+   "file": "codeCharta/features/sidebarExplorer/components/rulesPopover/rulesPopover.component.ts",
+   "line": 29,
+   "en": "Exclusion Rules",
+   "zh": "排除规则"
+  },
+  {
+   "file": "codeCharta/features/sidebarExplorer/components/rulesPopover/rulesPopover.component.ts",
+   "line": 37,
+   "en": "Clear 1 rule",
+   "zh": "清除这 1 条规则"
+  },
+  {
+   "file": "codeCharta/features/sidebarExplorer/components/rulesPopover/rulesPopover.component.ts",
+   "line": 55,
+   "en": "drawn at full height again",
+   "zh": "恢复完整高度显示"
+  },
+  {
+   "file": "codeCharta/features/sidebarExplorer/components/rulesPopover/rulesPopover.component.ts",
+   "line": 55,
+   "en": "back on the map",
+   "zh": "回到地图上"
+  },
+  {
+   "file": "codeCharta/features/sidebarExplorer/components/rulesPopover/rulesPopover.component.ts",
+   "line": 37,
+   "en": "Clear all ⟦0⟧ rules",
+   "zh": "清除全部 ⟦0⟧ 规则"
+  },
+  {
+   "file": "codeCharta/features/sidebarExplorer/components/rulesPopover/rulesPopover.component.ts",
+   "line": 42,
+   "en": "Confirm clear ⟦0⟧ rules",
+   "zh": "确认清除 ⟦0⟧ 规则"
+  },
+  {
+   "file": "codeCharta/features/sidebarExplorer/components/rulesPopover/rulesPopover.component.ts",
+   "line": 44,
+   "en": "⟦0⟧ and ⟦1⟧.",
+   "zh": "⟦0⟧, 且⟦1⟧."
+  },
+  {
+   "file": "codeCharta/features/sidebarExplorer/components/rulesPopover/rulesPopover.component.ts",
+   "line": 49,
+   "en": "The 1 ⟦0⟧ rule is removed",
+   "zh": "这条 ⟦0⟧ 规则已移除"
+  },
+  {
+   "file": "codeCharta/features/sidebarExplorer/components/rulesPopover/rulesPopover.component.ts",
+   "line": 49,
+   "en": "All ⟦0⟧ ⟦1⟧ rules are removed",
+   "zh": "⟦1⟧ 规则已全部移除, 共 ⟦0⟧ 条"
+  },
+  {
+   "file": "codeCharta/features/sidebarExplorer/components/rulesPopover/rulesPopover.component.ts",
+   "line": 57,
+   "en": "every file they affect is ⟦0⟧",
+   "zh": "其影响的每个文件都会⟦0⟧"
+  },
+  {
+   "file": "codeCharta/features/sidebarExplorer/components/rulesPopover/rulesPopover.component.ts",
+   "line": 59,
+   "en": "1 file is ⟦0⟧",
+   "zh": "1 个文件会⟦0⟧"
+  },
+  {
+   "file": "codeCharta/features/sidebarExplorer/components/rulesPopover/rulesPopover.component.ts",
+   "line": 59,
+   "en": "⟦0⟧ files are ⟦1⟧",
+   "zh": "⟦0⟧ 个文件会⟦1⟧"
+  },
+  {
+   "file": "codeCharta/features/nodeContextMenu/components/nodeContextMenu/nodeContextMenu.component.ts",
+   "line": 16,
+   "en": "Show in Metrics",
+   "zh": "在指标视图中显示"
+  },
+  {
+   "file": "codeCharta/features/nodeContextMenu/components/nodeContextMenu/nodeContextMenu.component.ts",
+   "line": 16,
+   "en": "Select this node on the metrics map",
+   "zh": "在指标地图上选中此节点"
+  },
+  {
+   "file": "codeCharta/features/nodeContextMenu/components/nodeContextMenu/nodeContextMenu.component.ts",
+   "line": 17,
+   "en": "Show in Domain",
+   "zh": "在领域视图中显示"
+  },
+  {
+   "file": "codeCharta/features/nodeContextMenu/components/nodeContextMenu/nodeContextMenu.component.ts",
+   "line": 17,
+   "en": "Show the domain words below this node",
+   "zh": "显示此节点下的领域词"
+  },
+  {
+   "file": "codeCharta/features/nodeContextMenu/components/nodeContextMenu/nodeContextMenu.component.ts",
+   "line": 19,
+   "en": "Show in Dependencies",
+   "zh": "在依赖视图中显示"
+  },
+  {
+   "file": "codeCharta/features/nodeContextMenu/components/nodeContextMenu/nodeContextMenu.component.ts",
+   "line": 21,
+   "en": "Show this node in the dependency graph",
+   "zh": "在依赖图中显示此节点"
+  },
+  {
+   "file": "codeCharta/features/domainBar/components/wordSizeRangeControl/wordSizeRangeControl.component.ts",
+   "line": 25,
+   "en": "On — words that do not fit are shrunk until they do, so the full word count is drawn. Tail words can render below Smallest Word.",
+   "zh": "开 — 放不下的单词会被缩小直到放下, 因此全部单词都会绘制. 排尾的单词可能小于最小单词尺寸."
+  },
+  {
+   "file": "codeCharta/features/domainBar/components/wordSizeRangeControl/wordSizeRangeControl.component.ts",
+   "line": 26,
+   "en": "Off — words that do not fit are left out, so Smallest Word is exact but fewer words than requested appear.",
+   "zh": "关 — 放不下的单词直接舍弃, 最小单词尺寸因此精确, 但实际显示的单词比请求的少."
+  },
+  {
+   "file": "codeCharta/features/domainBar/components/wordSizeRangeControl/wordSizeRangeControl.component.ts",
+   "line": 31,
+   "en": "On — words may render partially outside the layout area instead of being dropped or shrunk, so more words fit at their true size.",
+   "zh": "开 — 单词可以部分画出版面之外, 不再被舍弃或缩小, 更多单词能按真实大小放下."
+  },
+  {
+   "file": "codeCharta/features/domainBar/components/wordSizeRangeControl/wordSizeRangeControl.component.ts",
+   "line": 32,
+   "en": "Off — every word is kept fully inside the layout area; words that only fit overlapping the edge are shrunk or left out.",
+   "zh": "关 — 所有单词都完整放在版面内; 只有压着边缘才放得下的单词会被缩小或舍弃."
+  },
+  {
+   "file": "codeCharta/features/fileExtensionBar/components/fileExtensionBarSegment/fileExtensionBarSegment.component.ts",
+   "line": 122,
+   "en": "No data available",
+   "zh": "暂无数据"
+  },
+  {
+   "file": "codeCharta/features/legend/components/legendPanel/legendFoldersRow.component.ts",
+   "line": 19,
+   "en": "folders: ⟦0⟧, tinted",
+   "zh": "文件夹: ⟦0⟧, 已着色"
+  },
+  {
+   "file": "codeCharta/stores/fileStore/loaders/ccJson/services/loadFilesValidationToErrorDialog.ts",
+   "line": 6,
+   "en": "Something is wrong with the loaded file(s)",
+   "zh": "加载的文件有问题"
+  },
+  {
+   "file": "codeCharta/features/navBar/effects/redirectAwayFromDomainView/redirectAwayFromDomainView.effect.ts",
+   "line": 15,
+   "en": "This file has no domain-language data — switched to the map view.",
+   "zh": "此文件没有领域语言数据 — 已切换到地图视图."
+  },
+  {
+   "file": "codeCharta/features/navBar/effects/redirectAwayFromDomainView/redirectAwayFromDomainView.effect.ts",
+   "line": 16,
+   "en": "Left compare mode — the domain view shows a single word cloud.",
+   "zh": "已退出对比模式 — 领域视图只显示单个词云."
+  },
+  {
+   "file": "codeCharta/features/dependencyMap/components/dependencyInspector/dependencyInspector.component.ts",
+   "line": 21,
+   "en": "Open in graph",
+   "zh": "在图中打开"
+  },
+  {
+   "file": "codeCharta/features/dependencyMap/components/dependencyInspector/dependencyInspector.component.ts",
+   "line": 22,
+   "en": "Close in graph",
+   "zh": "在图中关闭"
+  },
+  {
+   "file": "codeCharta/features/dependencyMap/components/dependencyInspector/dependencyInspector.component.ts",
+   "line": 23,
+   "en": "Unfold in graph",
+   "zh": "在图中展开"
+  },
+  {
+   "file": "codeCharta/renderer/dependencyGraph/util/declarationKinds.ts",
+   "line": 16,
+   "en": "Class",
+   "zh": "类"
+  },
+  {
+   "file": "codeCharta/renderer/dependencyGraph/util/declarationKinds.ts",
+   "line": 17,
+   "en": "Value class",
+   "zh": "值类"
+  },
+  {
+   "file": "codeCharta/renderer/dependencyGraph/util/declarationKinds.ts",
+   "line": 18,
+   "en": "Interface",
+   "zh": "接口"
+  },
+  {
+   "file": "codeCharta/renderer/dependencyGraph/util/declarationKinds.ts",
+   "line": 19,
+   "en": "Enum",
+   "zh": "枚举"
+  },
+  {
+   "file": "codeCharta/renderer/dependencyGraph/util/declarationKinds.ts",
+   "line": 20,
+   "en": "Annotation",
+   "zh": "注解"
+  },
+  {
+   "file": "codeCharta/renderer/dependencyGraph/util/declarationKinds.ts",
+   "line": 21,
+   "en": "Function",
+   "zh": "函数"
+  },
+  {
+   "file": "codeCharta/renderer/dependencyGraph/util/declarationKinds.ts",
+   "line": 22,
+   "en": "Variable",
+   "zh": "变量"
+  },
+  {
+   "file": "codeCharta/renderer/dependencyGraph/util/declarationKinds.ts",
+   "line": 23,
+   "en": "Other",
+   "zh": "其他"
+  },
+  {
+   "file": "codeCharta/renderer/dependencyGraph/util/dependencyGraphBoxes.ts",
+   "line": 148,
+   "en": "level ⟦0⟧",
+   "zh": "层级 ⟦0⟧"
+  },
+  {
+   "file": "codeCharta/features/dependencyMap/inspector/inspectorBadges.ts",
+   "line": 23,
+   "en": "package ⟦0⟧",
+   "zh": "包 ⟦0⟧"
+  },
+  {
+   "file": "codeCharta/features/dependencyMap/inspector/inspectorBadges.ts",
+   "line": 32,
+   "en": "package ⟦0⟧",
+   "zh": "包 ⟦0⟧"
+  },
+  {
+   "file": "codeCharta/features/dependencyMap/inspector/inspectorBadges.ts",
+   "line": 33,
+   "en": "level ⟦0⟧",
+   "zh": "层级 ⟦0⟧"
+  },
+  {
+   "file": "codeCharta/features/dependencyMap/inspector/inspectorBadges.ts",
+   "line": 44,
+   "en": "⟦0⟧ cyclic",
+   "zh": "⟦0⟧ 处成环"
+  },
+  {
+   "file": "codeCharta/features/dependencyMap/inspector/inspectorBadges.ts",
+   "line": 45,
+   "en": "⟦0⟧ upward",
+   "zh": "⟦0⟧ 条向上"
+  },
+  {
+   "file": "codeCharta/features/dependencyMap/stores/dependencyInspector.store.ts",
+   "line": 112,
+   "en": "edge ⟦0⟧",
+   "zh": "边 ⟦0⟧"
+  },
+  {
+   "file": "codeCharta/features/dependencyMap/stores/dependencyInspector.store.ts",
+   "line": 112,
+   "en": "box ⟦0⟧",
+   "zh": "方块 ⟦0⟧"
+  },
+  {
+   "file": "codeCharta/features/navBar/effects/redirectAwayFromDependencyView/redirectAwayFromDependencyView.effect.ts",
+   "line": 11,
+   "en": "This file has no dependency data — switched to the map view.",
+   "zh": "此文件没有依赖数据 — 已切换到地图视图."
+  },
+  {
+   "file": "codeCharta/features/domainBar/util/shapeMaskSvg.ts",
+   "line": 17,
+   "en": "That file is not an SVG.",
+   "zh": "该文件不是 SVG."
+  },
+  {
+   "file": "codeCharta/features/domainBar/util/shapeMaskSvg.ts",
+   "line": 25,
+   "en": "An SVG that references another file cannot be used as a shape.",
+   "zh": "引用其他文件的 SVG 不能用作形状."
+  },
+  {
+   "file": "codeCharta/features/domainBar/util/shapeMaskSvg.ts",
+   "line": 30,
+   "en": "That SVG states neither a size nor a viewBox, so it has no shape to fill.",
+   "zh": "该 SVG 未声明尺寸和 viewBox, 没有可填充的形状."
+  },
+  {
+   "file": "codeCharta/features/domainBar/util/shapeMaskSvg.ts",
+   "line": 22,
+   "en": "An SVG carrying a <⟦0⟧> cannot be used as a shape.",
+   "zh": "携带 <⟦0⟧> 的 SVG 不能用作形状."
+  },
+  {
+   "file": "codeCharta/features/navBar/components/mapSelector/mapSelector.component.ts",
+   "line": 35,
+   "en": "Select map",
+   "zh": "选择地图"
+  },
+  {
+   "file": "codeCharta/features/navBar/components/mapSelector/mapSelector.component.ts",
+   "line": 45,
+   "en": "Select at least one map",
+   "zh": "请至少选择一张地图"
+  },
+  {
+   "file": "codeCharta/features/navBar/components/mapSelector/mapSelector.component.ts",
+   "line": 50,
+   "en": "No changes to apply",
+   "zh": "没有可应用的更改"
+  },
+  {
+   "file": "codeCharta/features/metricsBar/components/labelsScenariosSegment/labelsScenariosSegment.component.ts",
+   "line": 40,
+   "en": "scenario",
+   "zh": "场景"
+  },
+  {
+   "file": "codeCharta/features/metricsBar/components/labelsScenariosSegment/labelsScenariosSegment.component.ts",
+   "line": 40,
+   "en": "scenarios",
+   "zh": "场景"
+  },
+  {
+   "file": "codeCharta/features/metricsBar/components/labelsScenariosSegment/labelsScenariosSegment.component.ts",
+   "line": 40,
+   "en": "⟦0⟧ ⟦1⟧ available",
+   "zh": "⟦0⟧ 个⟦1⟧可用"
+  },
+  {
+   "file": "codeCharta/features/shared/components/unfocusTool/unfocusTool.component.ts",
+   "line": 7,
+   "en": "Unfocus",
+   "zh": "取消聚焦"
+  },
+  {
+   "file": "codeCharta/features/shared/components/unfocusTool/unfocusTool.component.ts",
+   "line": 9,
+   "en": "Leave the focus and show every folder",
+   "zh": "取消聚焦并显示所有文件夹"
+  },
+  {
+   "file": "codeCharta/features/domainWordOccurrences/components/domainWordOccurrenceRow/domainWordOccurrenceRow.component.ts",
+   "line": 34,
+   "en": "⟦0⟧ of \"⟦1⟧\" · ⟦2⟧",
+   "zh": "\"⟦1⟧\" 的 ⟦0⟧ · ⟦2⟧"
+  },
+  {
+   "file": "codeCharta/renderer/wordCloud/util/wordCloudTooltip.ts",
+   "line": 8,
+   "en": "Frequency: ⟦0⟧",
+   "zh": "频次: ⟦0⟧"
+  },
+  {
+   "file": "codeCharta/renderer/wordCloud/util/wordCloudTooltip.ts",
+   "line": 10,
+   "en": "TF-IDF: ⟦0⟧",
+   "zh": "TF-IDF 值: ⟦0⟧"
+  },
+  {
+   "file": "codeCharta/features/3dPrint/stores/export3DMapDialog.store.ts",
+   "line": 50,
+   "en": "Switch and continue",
+   "zh": "切换并继续"
+  },
+  {
+   "file": "codeCharta/features/3dPrint/stores/export3DMapDialog.store.ts",
+   "line": 52,
+   "en": "Switch and continue",
+   "zh": "切换并继续"
+  },
+  {
+   "file": "codeCharta/features/3dPrint/stores/export3DMapDialog.store.ts",
+   "line": 57,
+   "en": "Stay here",
+   "zh": "留在此页"
+  },
+  {
+   "file": "codeCharta/features/3dPrint/stores/export3DMapDialog.store.ts",
+   "line": 77,
+   "en": "Map could not be exported",
+   "zh": "无法导出地图"
+  },
+  {
+   "file": "codeCharta/features/3dPrint/stores/export3DMapDialog.store.ts",
+   "line": 81,
+   "en": "Change and continue",
+   "zh": "更改并继续"
+  },
+  {
+   "file": "codeCharta/features/3dPrint/stores/export3DMapDialog.store.ts",
+   "line": 83,
+   "en": "Change and continue",
+   "zh": "更改并继续"
+  },
+  {
+   "file": "codeCharta/features/shared/components/barToolsTab/barToolsTab.component.ts",
+   "line": 10,
+   "en": "View tools",
+   "zh": "视图工具"
+  },
+  {
+   "file": "codeCharta/features/shared/components/inlineColorPicker/inlineColorPicker.component.ts",
+   "line": 34,
+   "en": "Pick color",
+   "zh": "选取颜色"
+  },
+  {
+   "file": "codeCharta/renderer/radialMap/util/radialTooltip.ts",
+   "line": 11,
+   "en": "Click to go up one folder",
+   "zh": "点击返回上一级文件夹"
+  },
+  {
+   "file": "codeCharta/renderer/radialMap/util/radialTooltip.ts",
+   "line": 12,
+   "en": "Click to unfocus and go up one folder",
+   "zh": "点击取消聚焦并返回上一级"
+  },
+  {
+   "file": "codeCharta/features/globalSettings/components/globalConfigurationDialog/externalLinks/externalLinks.component.ts",
+   "line": 13,
+   "en": "Website",
+   "zh": "网站"
+  },
+  {
+   "file": "codeCharta/features/globalSettings/components/globalConfigurationDialog/externalLinks/externalLinks.component.ts",
+   "line": 17,
+   "en": "Documentation",
+   "zh": "文档"
+  },
+  {
+   "file": "codeCharta/views/domainView/domainView.component.ts",
+   "line": 133,
+   "en": "No word is hidden",
+   "zh": "没有隐藏的词"
+  },
+  {
+   "file": "codeCharta/views/domainView/domainView.component.ts",
+   "line": 133,
+   "en": "⟦0⟧ hidden from the cloud and the word list",
+   "zh": "⟦0⟧ 个词已从词云和词表中隐藏"
+  },
+  {
+   "file": "codeCharta/features/navBar/components/viewSwitcher/viewSwitcher.component.ts",
+   "line": 22,
+   "en": "Metric",
+   "zh": "指标"
+  },
+  {
+   "file": "codeCharta/features/navBar/components/viewSwitcher/viewSwitcher.component.ts",
+   "line": 22,
+   "en": "Show the 3D metrics map",
+   "zh": "显示 3D 指标地图"
+  },
+  {
+   "file": "codeCharta/features/navBar/components/viewSwitcher/viewSwitcher.component.ts",
+   "line": 23,
+   "en": "Domain",
+   "zh": "领域"
+  },
+  {
+   "file": "codeCharta/features/navBar/components/viewSwitcher/viewSwitcher.component.ts",
+   "line": 23,
+   "en": "Show the domain-language word cloud",
+   "zh": "显示领域语言词云"
+  },
+  {
+   "file": "codeCharta/features/navBar/components/viewSwitcher/viewSwitcher.component.ts",
+   "line": 24,
+   "en": "Dependencies",
+   "zh": "依赖"
+  },
+  {
+   "file": "codeCharta/features/navBar/components/viewSwitcher/viewSwitcher.component.ts",
+   "line": 24,
+   "en": "Show the dependency graph, arranged by level",
+   "zh": "显示按层级排布的依赖图"
+  },
+  {
+   "file": "codeCharta/stores/fileStore/loaders/ccJson/util/fixedFolderValidator.ts",
+   "line": 36,
+   "en": "⟦0⟧ Found: ⟦1⟧",
+   "zh": "⟦0⟧ 涉及: ⟦1⟧"
+  },
+  {
+   "file": "codeCharta/stores/fileStore/loaders/ccJson/util/fixedFolderValidator.ts",
+   "line": 50,
+   "en": "⟦0⟧ Found: ⟦1⟧",
+   "zh": "⟦0⟧ 涉及: ⟦1⟧"
+  },
+  {
+   "file": "codeCharta/stores/fileStore/loaders/ccJson/util/fixedFolderValidator.ts",
+   "line": 53,
+   "en": "⟦0⟧ Found: ⟦1⟧",
+   "zh": "⟦0⟧ 涉及: ⟦1⟧"
+  },
+  {
+   "file": "codeCharta/stores/fileStore/loaders/ccJson/util/fixedFolderValidator.ts",
+   "line": 56,
+   "en": "⟦0⟧ Found: ⟦1⟧",
+   "zh": "⟦0⟧ 涉及: ⟦1⟧"
+  },
+  {
+   "file": "codeCharta/stores/fileStore/loaders/ccJson/util/fixedFolderValidator.ts",
+   "line": 72,
+   "en": "⟦0⟧ and ⟦1⟧",
+   "zh": "⟦0⟧ 和 ⟦1⟧"
+  },
+  {
+   "file": "codeCharta/stores/fileStore/loaders/ccJson/util/fixedFolderValidator.ts",
+   "line": 74,
+   "en": "⟦0⟧ and ⟦1⟧",
+   "zh": "⟦0⟧ 和 ⟦1⟧"
+  },
+  {
+   "file": "codeCharta/util/busy/loadPhase.ts",
+   "line": 17,
+   "en": "Reading ⟦0⟧",
+   "zh": "正在读取 ⟦0⟧"
+  },
+  {
+   "file": "codeCharta/util/busy/loadPhase.ts",
+   "line": 17,
+   "en": "Reading ⟦0⟧ (⟦1⟧ of ⟦2⟧)",
+   "zh": "正在读取 ⟦0⟧ (⟦1⟧ / ⟦2⟧)"
+  },
+  {
+   "file": "codeCharta/features/domainWordOccurrences/components/domainWordList/domainWordList.component.ts",
+   "line": 52,
+   "en": "The focused folder carries no words.",
+   "zh": "聚焦的文件夹没有单词."
+  },
+  {
+   "file": "codeCharta/features/domainWordOccurrences/components/domainWordList/domainWordList.component.ts",
+   "line": 52,
+   "en": "This project carries no words.",
+   "zh": "此项目没有单词."
+  },
+  {
+   "file": "codeCharta/features/domainWordOccurrences/components/domainWordList/domainWordList.component.ts",
+   "line": 54,
+   "en": "No word contains \"⟦0⟧\".",
+   "zh": "没有单词包含 \"⟦0⟧\"."
+  },
+  {
+   "file": "codeCharta/features/dependencyMap/components/hierarchySegment/hierarchySegment.component.ts",
+   "line": 10,
+   "en": "Folders",
+   "zh": "文件夹"
+  },
+  {
+   "file": "codeCharta/features/dependencyMap/components/hierarchySegment/hierarchySegment.component.ts",
+   "line": 10,
+   "en": "The files in the folders they lie in",
+   "zh": "文件按其所在文件夹归组"
+  },
+  {
+   "file": "codeCharta/features/dependencyMap/components/hierarchySegment/hierarchySegment.component.ts",
+   "line": 11,
+   "en": "Packages",
+   "zh": "包"
+  },
+  {
+   "file": "codeCharta/features/dependencyMap/components/hierarchySegment/hierarchySegment.component.ts",
+   "line": 11,
+   "en": "The files in the packages their declarations declare",
+   "zh": "文件按其声明所属的包归组"
+  },
+  {
+   "file": "codeCharta/features/metricsBar/components/linkColorHeightButton/linkColorHeightButton.component.ts",
+   "line": 19,
+   "en": "Unlink Height and Color Metric",
+   "zh": "解除高度与颜色指标联动"
+  },
+  {
+   "file": "codeCharta/features/metricsBar/components/linkColorHeightButton/linkColorHeightButton.component.ts",
+   "line": 19,
+   "en": "Link Height and Color Metric",
+   "zh": "联动高度与颜色指标"
+  },
+  {
+   "file": "codeCharta/features/screenshot/components/screenshotButton/screenshotButton.component.ts",
+   "line": 16,
+   "en": "Screenshot",
+   "zh": "截图"
+  },
+  {
+   "file": "codeCharta/features/screenshot/components/screenshotButton/screenshotButton.component.ts",
+   "line": 18,
+   "en": "Copied!",
+   "zh": "已复制!"
+  },
+  {
+   "file": "codeCharta/features/screenshot/components/screenshotButton/screenshotButton.component.ts",
+   "line": 19,
+   "en": "Saved!",
+   "zh": "已保存!"
+  },
+  {
+   "file": "codeCharta/features/screenshot/components/screenshotButton/screenshotButton.component.ts",
+   "line": 20,
+   "en": "Screenshot failed",
+   "zh": "截图失败"
+  },
+  {
+   "file": "codeCharta/features/screenshot/components/screenshotButton/screenshotButton.component.ts",
+   "line": 56,
+   "en": "Firefox does not support copying to clipboard",
+   "zh": "Firefox 不支持复制到剪贴板"
+  },
+  {
+   "file": "codeCharta/features/screenshot/components/screenshotButton/screenshotButton.component.ts",
+   "line": 51,
+   "en": "There is no ⟦0⟧ to capture",
+   "zh": "没有可截取的 ⟦0⟧"
+  },
+  {
+   "file": "codeCharta/features/screenshot/components/screenshotButton/screenshotButton.component.ts",
+   "line": 55,
+   "en": "Take a screenshot of the ⟦0⟧ with ⟦1⟧ (copy to clipboard) or ⟦2⟧ (save as file)",
+   "zh": "截取 ⟦0⟧: 按 ⟦1⟧ 复制到剪贴板, 或按 ⟦2⟧ 保存为文件"
+  },
+  {
+   "file": "codeCharta/features/screenshot/components/screenshotButton/screenshotButton.component.ts",
+   "line": 58,
+   "en": "Take a screenshot of the ⟦0⟧ with ⟦1⟧ (save as file) or ⟦2⟧ (copy to clipboard)",
+   "zh": "截取 ⟦0⟧: 按 ⟦1⟧ 保存为文件, 或按 ⟦2⟧ 复制到剪贴板"
+  },
+  {
+   "file": "codeCharta/features/scenarios/components/saveScenarioDialog/saveScenarioDialog.component.ts",
+   "line": 32,
+   "en": "⟦0⟧ of ⟦1⟧ settings",
+   "zh": "⟦0⟧ / ⟦1⟧ 项设置"
+  },
+  {
+   "file": "codeCharta/features/scenarios/components/saveScenarioDialog/saveScenarioDialog.component.ts",
+   "line": 33,
+   "en": "Save ⟦0⟧",
+   "zh": "保存 ⟦0⟧"
+  },
+  {
+   "file": "codeCharta/features/scenarios/components/applyScenarioDialog/applyScenarioDialog.component.ts",
+   "line": 48,
+   "en": "Apply ⟦0⟧",
+   "zh": "应用 ⟦0⟧"
+  },
+  {
+   "file": "codeCharta/model/wordCloud.model.ts",
+   "line": 29,
+   "en": "Custom SVG",
+   "zh": "自定义 SVG"
+  },
+  {
+   "file": "codeCharta/features/dependencyMap/inspector/inspectorModel.ts",
+   "line": 62,
+   "en": "Used by",
+   "zh": "被引用于"
+  },
+  {
+   "file": "codeCharta/features/dependencyMap/inspector/inspectorModel.ts",
+   "line": 63,
+   "en": "Stands for",
+   "zh": "代表"
+  },
+  {
+   "file": "codeCharta/features/dependencyMap/inspector/inspectorModel.ts",
+   "line": 157,
+   "en": "package ⟦0⟧",
+   "zh": "包 ⟦0⟧"
+  },
+  {
+   "file": "codeCharta/features/dependencyMap/inspector/inspectorModel.ts",
+   "line": 286,
+   "en": "level ⟦0⟧",
+   "zh": "层级 ⟦0⟧"
+  },
+  {
+   "file": "codeCharta/renderer/dependencyGraph/util/dependencyGraphStyle.ts",
+   "line": 28,
+   "en": "In a cycle",
+   "zh": "位于环中"
+  },
+  {
+   "file": "codeCharta/renderer/dependencyGraph/util/dependencyGraphStyle.ts",
+   "line": 29,
+   "en": "Points upward",
+   "zh": "指向上一层"
+  },
+  {
+   "file": "codeCharta/renderer/dependencyGraph/util/dependencyGraphStyle.ts",
+   "line": 30,
+   "en": "Points upward and closes a cycle",
+   "zh": "指向上层并构成环"
+  },
+  {
+   "file": "codeCharta/features/shared/services/loadingFileProgressSpinner.service.ts",
+   "line": 13,
+   "en": "Drawing the map",
+   "zh": "正在绘制地图"
+  },
+  {
+   "file": "codeCharta/features/shared/services/loadingFileProgressSpinner.service.ts",
+   "line": 14,
+   "en": "Drawing the word cloud",
+   "zh": "正在绘制词云"
+  },
+  {
+   "file": "codeCharta/features/shared/services/loadingFileProgressSpinner.service.ts",
+   "line": 15,
+   "en": "Drawing the dependency graph",
+   "zh": "正在绘制依赖图"
+  },
+  {
+   "file": "codeCharta/features/shared/services/loadingFileProgressSpinner.service.ts",
+   "line": 17,
+   "en": "Saving your session",
+   "zh": "正在保存会话"
+  },
+  {
+   "file": "codeCharta/features/scenarios/services/scenarios.service.ts",
+   "line": 51,
+   "en": "Real Lines of Code",
+   "zh": "实代码行数"
+  },
+  {
+   "file": "codeCharta/features/scenarios/services/scenarios.service.ts",
+   "line": 52,
+   "en": "Visualize code size using real lines of code",
+   "zh": "用实代码行数展示代码规模"
+  },
+  {
+   "file": "codeCharta/features/scenarios/services/scenarios.service.ts",
+   "line": 59,
+   "en": "Visualize cyclomatic complexity",
+   "zh": "展示圈复杂度"
+  },
+  {
+   "file": "codeCharta/features/scenarios/services/scenarios.service.ts",
+   "line": 65,
+   "en": "Comment Lines",
+   "zh": "注释行"
+  },
+  {
+   "file": "codeCharta/features/scenarios/services/scenarios.service.ts",
+   "line": 66,
+   "en": "Visualize comment density",
+   "zh": "展示注释密度"
+  },
+  {
+   "file": "codeCharta/features/scenarios/services/scenarios.service.ts",
+   "line": 72,
+   "en": "Code Smells",
+   "zh": "代码坏味道"
+  },
+  {
+   "file": "codeCharta/features/scenarios/services/scenarios.service.ts",
+   "line": 73,
+   "en": "Visualize code smell density",
+   "zh": "展示代码坏味道密度"
+  },
+  {
+   "file": "codeCharta/features/scenarios/services/scenarios.service.ts",
+   "line": 79,
+   "en": "Logic Complexity",
+   "zh": "逻辑复杂度"
+  },
+  {
+   "file": "codeCharta/features/scenarios/services/scenarios.service.ts",
+   "line": 80,
+   "en": "Visualize cognitive/logic complexity",
+   "zh": "展示认知/逻辑复杂度"
+  },
+  {
+   "file": "codeCharta/features/scenarios/services/scenarios.service.ts",
+   "line": 86,
+   "en": "Max Complexity per Function",
+   "zh": "每函数最大复杂度"
+  },
+  {
+   "file": "codeCharta/features/scenarios/services/scenarios.service.ts",
+   "line": 87,
+   "en": "Visualize maximum complexity per function",
+   "zh": "展示每函数最大复杂度"
+  },
+  {
+   "file": "codeCharta/features/scenarios/services/scenarios.service.ts",
+   "line": 94,
+   "en": "Visualize the number of authors per file",
+   "zh": "展示每文件的作者数量"
+  },
+  {
+   "file": "codeCharta/features/metricsBar/components/folderStylePopover/folderStylePopover.component.ts",
+   "line": 24,
+   "en": "Tinted by value",
+   "zh": "按数值着色"
+  },
+  {
+   "file": "codeCharta/features/metricsBar/components/folderStylePopover/folderStylePopover.component.ts",
+   "line": 25,
+   "en": "Neutral",
+   "zh": "中性"
+  },
+  {
+   "file": "codeCharta/features/radialMap/components/radialMap/radialMap.component.ts",
+   "line": 78,
+   "en": "You are focused on \"⟦0⟧\", so there is no folder above it. Unfocus and go up one folder?",
+   "zh": "当前聚焦于 \"⟦0⟧\", 其上没有文件夹. 取消聚焦并返回上一级文件夹吗?"
+  },
+  {
+   "file": "codeCharta/features/domainBar/components/wordSizingModeControl/wordSizingModeControl.component.ts",
+   "line": 22,
+   "en": "TF-IDF (relative importance) — sizes words by how distinctive they are, not by raw count",
+   "zh": "TF-IDF (相对重要性) — 按单词的区分度而非出现次数决定大小"
+  },
+  {
+   "file": "codeCharta/features/domainBar/components/wordSizingModeControl/wordSizingModeControl.component.ts",
+   "line": 23,
+   "en": "TF-IDF (relative importance) — not available: the loaded file has no TF-IDF scores",
+   "zh": "TF-IDF (相对重要性) — 不可用: 加载的文件没有 TF-IDF 分数"
+  }
+ ],
+ "missing": [],
+ "errors": [
+  "codeCharta/features/dependencyMap/inspector/inspectorBadges.ts: 同一字面量命中 2 次, 请人工确认是否都该翻: 'package ⟦0⟧'",
+  "codeCharta/stores/fileStore/loaders/ccJson/util/fileValidator.ts: 同一字面量命中 2 次, 请人工确认是否都该翻: '⟦0⟧ Found duplicate of ⟦1⟧ with path: ⟦2⟧'",
+  "codeCharta/stores/fileStore/loaders/ccJson/util/fixedFolderValidator.ts: 同一字面量命中 4 次, 请人工确认是否都该翻: '⟦0⟧ Found: ⟦1⟧'",
+  "codeCharta/stores/fileStore/loaders/ccJson/util/fixedFolderValidator.ts: 同一字面量命中 2 次, 请人工确认是否都该翻: '⟦0⟧ and ⟦1⟧'",
+  "codeCharta/util/metric/metricTitles.ts: 同一字面量命中 2 次, 请人工确认是否都该翻: 'Cyclomatic Complexity'",
+  "codeCharta/util/pipes/mapColorLabel.pipe.ts: 同一字面量命中 5 次, 请人工确认是否都该翻: '⟦0⟧ to ⟦1⟧'",
+  "codeCharta/features/3dPrint/stores/export3DMapDialog.store.ts: 同一字面量命中 2 次, 请人工确认是否都该翻: 'Change and continue'",
+  "codeCharta/features/3dPrint/stores/export3DMapDialog.store.ts: 同一字面量命中 2 次, 请人工确认是否都该翻: 'Switch and continue'"
+ ],
+ "skipped_template": [],
+ "hits": {
+  "codeCharta/features/navBar/components/viewModeBar/viewModeBar.component.ts :: Metric modes": 1,
+  "codeCharta/features/navBar/components/viewModeBar/viewModeBar.component.ts :: Domain modes": 1,
+  "codeCharta/features/navBar/components/viewModeBar/viewModeBar.component.ts :: Dependency modes": 1,
+  "codeCharta/features/domainWordOccurrences/components/domainWordRow/domainWordRow.component.ts :: ⟦0⟧ of all words · ⟦1⟧": 1,
+  "codeCharta/features/sidebarExplorer/components/metricDistribution/metricDistribution.component.ts :: ⟦0⟧–⟦1⟧: ⟦2⟧ files, ⟦3⟧ matched": 1,
+  "codeCharta/features/domainWordOccurrences/util/sortWords.ts :: Occurrences": 1,
+  "codeCharta/features/domainWordOccurrences/util/sortWords.ts :: Name": 1,
+  "codeCharta/features/domainWordOccurrences/util/sortWords.ts :: Relevance": 1,
+  "codeCharta/features/sidebarExplorer/components/metricRuleEditor/metricRuleEditor.component.ts :: greater than": 1,
+  "codeCharta/features/sidebarExplorer/components/metricRuleEditor/metricRuleEditor.component.ts :: at least": 1,
+  "codeCharta/features/sidebarExplorer/components/metricRuleEditor/metricRuleEditor.component.ts :: less than": 1,
+  "codeCharta/features/sidebarExplorer/components/metricRuleEditor/metricRuleEditor.component.ts :: at most": 1,
+  "codeCharta/features/sidebarExplorer/components/metricRuleEditor/metricRuleEditor.component.ts :: equal to": 1,
+  "codeCharta/features/sidebarExplorer/components/metricRuleEditor/metricRuleEditor.component.ts :: Flatten by metric": 1,
+  "codeCharta/features/sidebarExplorer/components/metricRuleEditor/metricRuleEditor.component.ts :: Exclude by metric": 1,
+  "codeCharta/features/sidebarExplorer/components/metricRuleEditor/metricRuleEditor.component.ts :: Add flatten rule": 1,
+  "codeCharta/features/sidebarExplorer/components/metricRuleEditor/metricRuleEditor.component.ts :: Add exclude rule": 1,
+  "codeCharta/stores/fileStore/loaders/ccJson/services/loadFile.service.ts :: File(s) could not be loaded": 1,
+  "codeCharta/stores/fileStore/loaders/ccJson/services/loadFile.service.ts :: File(s) are already loaded": 1,
+  "codeCharta/load/loadFiles.useCase.ts :: File(s) could not be loaded from the given file URL parameter. Loaded sample files instead.": 1,
+  "codeCharta/load/loadFiles.useCase.ts :: Previously loaded files and settings could not be restored. Loaded sample files instead.": 1,
+  "codeCharta/load/loadFiles.useCase.ts :: The previous state could not be fully restored after loading the page. The following properties were not restored.": 1,
+  "codeCharta/load/loadFiles.useCase.ts :: Restoring your session": 1,
+  "codeCharta/load/loadFiles.useCase.ts :: Building the map": 1,
+  "codeCharta/features/globalSettings/components/globalConfigurationDialog/resetFiltersButton/resetFiltersButton.component.ts :: The 1 flatten or exclude rule is": 1,
+  "codeCharta/features/globalSettings/components/globalConfigurationDialog/resetFiltersButton/resetFiltersButton.component.ts :: All ⟦0⟧ flatten and exclude rules are": 1,
+  "codeCharta/features/globalSettings/components/globalConfigurationDialog/resetFiltersButton/resetFiltersButton.component.ts :: ⟦0⟧ removed and every file comes back onto the map. Metrics, colors and the camera are left alone.": 1,
+  "codeCharta/renderer/wordCloud/components/wordCloud/wordCloudDescription.ts :: domain term": 1,
+  "codeCharta/renderer/wordCloud/components/wordCloud/wordCloudDescription.ts :: domain terms": 1,
+  "codeCharta/renderer/wordCloud/components/wordCloud/wordCloudDescription.ts :: Word cloud of ⟦0⟧ ⟦1⟧ for ⟦2⟧; largest: ⟦3⟧": 1,
+  "codeCharta/renderer/wordCloud/components/wordCloud/wordCloudDescription.ts :: ⟦0⟧ of ⟦1⟧ words fit — enlarge the window, reduce word spacing, or enable \"Fit all words\" or \"Draw outside bounds\"": 1,
+  "codeCharta/lenses/explorerRow/store/explorerRow.projection.ts :: No Node Area for Chosen Metric": 1,
+  "codeCharta/lenses/explorerRow/store/explorerRow.projection.ts :: No domain words": 1,
+  "codeCharta/lenses/explorerRow/store/explorerRow.projection.ts :: Not in the dependency graph": 1,
+  "codeCharta/renderer/dependencyGraph/util/lineStyle.ts :: Inherits from": 1,
+  "codeCharta/renderer/dependencyGraph/util/lineStyle.ts :: Implements": 1,
+  "codeCharta/renderer/dependencyGraph/util/lineStyle.ts :: Creates": 1,
+  "codeCharta/renderer/dependencyGraph/util/lineStyle.ts :: Takes as argument": 1,
+  "codeCharta/renderer/dependencyGraph/util/lineStyle.ts :: Returns": 1,
+  "codeCharta/renderer/dependencyGraph/util/lineStyle.ts :: Reads a constant of": 1,
+  "codeCharta/renderer/dependencyGraph/util/lineStyle.ts :: Uses": 1,
+  "codeCharta/features/scenarios/model/scenarioSettings.registry.ts :: Area metric": 1,
+  "codeCharta/features/scenarios/model/scenarioSettings.registry.ts :: Margin": 1,
+  "codeCharta/features/scenarios/model/scenarioSettings.registry.ts :: Invert area": 1,
+  "codeCharta/features/scenarios/model/scenarioSettings.registry.ts :: Floor labels": 1,
+  "codeCharta/features/scenarios/model/scenarioSettings.registry.ts :: Height metric": 1,
+  "codeCharta/features/scenarios/model/scenarioSettings.registry.ts :: Height scaling": 1,
+  "codeCharta/features/scenarios/model/scenarioSettings.registry.ts :: Invert height": 1,
+  "codeCharta/features/scenarios/model/scenarioSettings.registry.ts :: Color metric": 1,
+  "codeCharta/features/scenarios/model/scenarioSettings.registry.ts :: Color follows height metric": 1,
+  "codeCharta/features/scenarios/model/scenarioSettings.registry.ts :: Color range": 1,
+  "codeCharta/features/scenarios/model/scenarioSettings.registry.ts :: Gradient mode": 1,
+  "codeCharta/features/scenarios/model/scenarioSettings.registry.ts :: Colors": 1,
+  "codeCharta/features/scenarios/model/scenarioSettings.registry.ts :: Folder color overrides": 1,
+  "codeCharta/features/scenarios/model/scenarioSettings.registry.ts :: Edge metric": 1,
+  "codeCharta/features/scenarios/model/scenarioSettings.registry.ts :: Edge metric enabled": 1,
+  "codeCharta/features/scenarios/model/scenarioSettings.registry.ts :: Edge previews": 1,
+  "codeCharta/features/scenarios/model/scenarioSettings.registry.ts :: Edge curve height": 1,
+  "codeCharta/features/scenarios/model/scenarioSettings.registry.ts :: Show outgoing edges": 1,
+  "codeCharta/features/scenarios/model/scenarioSettings.registry.ts :: Show incoming edges": 1,
+  "codeCharta/features/scenarios/model/scenarioSettings.registry.ts :: Only nodes with edges": 1,
+  "codeCharta/features/scenarios/model/scenarioSettings.registry.ts :: Edge colors": 1,
+  "codeCharta/features/scenarios/model/scenarioSettings.registry.ts :: Top labels": 1,
+  "codeCharta/features/scenarios/model/scenarioSettings.registry.ts :: Top labels scope": 1,
+  "codeCharta/features/scenarios/model/scenarioSettings.registry.ts :: Label size": 1,
+  "codeCharta/features/scenarios/model/scenarioSettings.registry.ts :: Label mode": 1,
+  "codeCharta/features/scenarios/model/scenarioSettings.registry.ts :: Show node names": 1,
+  "codeCharta/features/scenarios/model/scenarioSettings.registry.ts :: Show metric values": 1,
+  "codeCharta/features/scenarios/model/scenarioSettings.registry.ts :: Group overlapping labels": 1,
+  "codeCharta/features/scenarios/model/scenarioSettings.registry.ts :: Labels by color metric": 1,
+  "codeCharta/features/scenarios/model/scenarioSettings.registry.ts :: Position and zoom": 1,
+  "codeCharta/features/scenarios/model/scenarioSettings.registry.ts :: Excluded nodes": 1,
+  "codeCharta/features/scenarios/model/scenarioSettings.registry.ts :: Flattened nodes": 1,
+  "codeCharta/features/scenarios/model/scenarioSettings.registry.ts :: Flattened and excluded by metric": 1,
+  "codeCharta/features/scenarios/model/scenarioSettings.registry.ts :: Focused folder": 1,
+  "codeCharta/renderer/dependencyGraph/util/dependencyGraphTooltip.ts :: In a cycle with other files": 1,
+  "codeCharta/renderer/dependencyGraph/util/dependencyGraphTooltip.ts :: In a cycle inside this file": 1,
+  "codeCharta/renderer/dependencyGraph/util/dependencyGraphTooltip.ts :: Package ⟦0⟧": 1,
+  "codeCharta/renderer/dependencyGraph/util/dependencyGraphTooltip.ts :: Level ⟦0⟧": 1,
+  "codeCharta/renderer/dependencyGraph/util/dependencyGraphTooltip.ts :: ⟦0⟧ between files": 1,
+  "codeCharta/renderer/dependencyGraph/util/dependencyGraphTooltip.ts :: ⟦0⟧ inside ⟦1⟧": 1,
+  "codeCharta/renderer/dependencyGraph/util/dependencyGraphTooltip.ts :: ⟦0⟧ inside": 1,
+  "codeCharta/renderer/dependencyGraph/util/dependencyGraphTooltip.ts :: ⟦0⟧ declaration edges · ⟦1⟧": 1,
+  "codeCharta/renderer/dependencyGraph/util/dependencyGraphTooltip.ts :: drawn as ⟦0⟧ → ⟦1⟧": 1,
+  "codeCharta/features/labelSettings/components/labelSettingsPanel/labelSettingsPanel.component.ts :: Display the labels of the ⟦0⟧ highest buildings": 1,
+  "codeCharta/features/labelSettings/components/labelSettingsPanel/labelSettingsPanel.component.ts :: ⟦0⟧ per map": 1,
+  "codeCharta/model/domain.model.ts :: Squarified TreeMap": 1,
+  "codeCharta/model/domain.model.ts :: Radial TreeMap": 1,
+  "codeCharta/model/domain.model.ts :: Name": 1,
+  "codeCharta/model/domain.model.ts :: Number of Files": 1,
+  "codeCharta/model/domain.model.ts :: Area Size": 1,
+  "codeCharta/util/pipes/attributeDescriptorTooltip.pipe.ts :: \\nHigh Values: ⟦0⟧": 1,
+  "codeCharta/util/pipes/attributeDescriptorTooltip.pipe.ts :: \\nLow Values: ⟦0⟧": 1,
+  "codeCharta/stores/fileStore/loaders/ccJson/util/fileValidator.ts :: ⟦0⟧ Found: ⟦1⟧": 1,
+  "codeCharta/stores/fileStore/loaders/ccJson/util/fileValidator.ts :: ⟦0⟧ Found duplicate id: ⟦1⟧": 1,
+  "codeCharta/stores/fileStore/loaders/ccJson/util/fileValidator.ts :: ⟦0⟧ Found duplicate of ⟦1⟧ with path: ⟦2⟧": 2,
+  "codeCharta/stores/fileStore/loaders/ccJson/util/fileValidator.ts :: ⟦0⟧ error: ⟦1⟧ ⟦2⟧": 1,
+  "codeCharta/features/sidebarExplorer/components/explorerHeader/explorerHeader.component.ts :: ⟦0⟧ visible · ⟦1⟧ with no area in current metric": 1,
+  "codeCharta/features/sidebarExplorer/components/explorerHeader/explorerHeader.component.ts :: ⟦0⟧ visible": 1,
+  "codeCharta/views/domainView/explorer/domainExplorerSelection.ts :: No domain words": 1,
+  "codeCharta/features/shared/components/metricSelectPopover/metricSelectPopover.component.ts :: Search metric": 1,
+  "codeCharta/features/metricsBar/components/layoutTab/layoutTab.component.ts :: Folders nest inside each other and every bit of floor is used.": 1,
+  "codeCharta/features/metricsBar/components/layoutTab/layoutTab.component.ts :: Folders become streets, files line up along them.": 1,
+  "codeCharta/features/metricsBar/components/layoutTab/layoutTab.component.ts :: Streets for the upper folders, treemaps near the files.": 1,
+  "codeCharta/features/metricsBar/components/layoutTab/layoutTab.component.ts :: Folders as rings around the centre, drawn flat without heights.": 1,
+  "codeCharta/features/metricsBar/components/layoutTab/layoutTab.component.ts :: A band per folder level, each folder filled with a treemap of its contents.": 1,
+  "codeCharta/features/metricsBar/components/folderValuePopover/folderValuePopover.component.ts :: Folders are one grey. Pick a value to tint them again.": 1,
+  "codeCharta/features/metricsBar/components/folderValuePopover/folderValuePopover.component.ts :: Files keep their colour. Folders are tinted by this value; the cog sets neutral or the tint strength.": 1,
+  "codeCharta/features/dependencyMap/components/edgeStyleSegment/edgeStyleChoices.ts :: Combined": 1,
+  "codeCharta/features/dependencyMap/components/edgeStyleSegment/edgeStyleChoices.ts :: One spot on each side for the edges leaving and one for those arriving": 1,
+  "codeCharta/features/dependencyMap/components/edgeStyleSegment/edgeStyleChoices.ts :: Spread": 1,
+  "codeCharta/features/dependencyMap/components/edgeStyleSegment/edgeStyleChoices.ts :: Each edge with its own spot on the box": 1,
+  "codeCharta/features/dependencyMap/components/edgeStyleSegment/edgeStyleChoices.ts :: Aside": 1,
+  "codeCharta/features/dependencyMap/components/edgeStyleSegment/edgeStyleChoices.ts :: Upward edges bow out to the right of the boxes, downward ones to the left": 1,
+  "codeCharta/features/dependencyMap/components/edgeStyleSegment/edgeStyleChoices.ts :: Curved": 1,
+  "codeCharta/features/dependencyMap/components/edgeStyleSegment/edgeStyleChoices.ts :: Leave and enter each box square to its side": 1,
+  "codeCharta/features/dependencyMap/components/edgeStyleSegment/edgeStyleChoices.ts :: Straight": 1,
+  "codeCharta/features/dependencyMap/components/edgeStyleSegment/edgeStyleChoices.ts :: A straight line from box to box": 1,
+  "codeCharta/features/dependencyMap/components/edgeStyleSegment/edgeStyleChoices.ts :: By count": 1,
+  "codeCharta/features/dependencyMap/components/edgeStyleSegment/edgeStyleChoices.ts :: Width grows with the dependencies an edge stands for": 1,
+  "codeCharta/features/dependencyMap/components/edgeStyleSegment/edgeStyleChoices.ts :: Thin": 1,
+  "codeCharta/features/dependencyMap/components/edgeStyleSegment/edgeStyleChoices.ts :: Every edge a hairline, easiest to see through": 1,
+  "codeCharta/features/dependencyMap/components/edgeStyleSegment/edgeStyleChoices.ts :: Uniform": 1,
+  "codeCharta/features/dependencyMap/components/edgeStyleSegment/edgeStyleChoices.ts :: Every edge the same width": 1,
+  "codeCharta/features/dependencyMap/components/edgeStyleSegment/edgeStyleChoices.ts :: Strong": 1,
+  "codeCharta/features/dependencyMap/components/edgeStyleSegment/edgeStyleChoices.ts :: Grows with the dependencies, twice as pronounced": 1,
+  "codeCharta/features/dependencyMap/components/edgeStyleSegment/edgeStyleChoices.ts :: Edge type": 1,
+  "codeCharta/features/dependencyMap/components/edgeStyleSegment/edgeStyleChoices.ts :: Dashed where an edge points upward without closing a cycle": 1,
+  "codeCharta/features/dependencyMap/components/edgeStyleSegment/edgeStyleChoices.ts :: Kind of use": 1,
+  "codeCharta/features/dependencyMap/components/edgeStyleSegment/edgeStyleChoices.ts :: Dashes and arrowhead tell how one declaration uses the other": 1,
+  "codeCharta/features/shared/components/columnResizeHandle/columnResizeHandle.directive.ts :: Drag or use the arrow keys to resize, double-click to reset": 1,
+  "codeCharta/util/metric/metricTitles.ts :: Lines of Code": 1,
+  "codeCharta/util/metric/metricTitles.ts :: Real Lines of Code": 1,
+  "codeCharta/util/metric/metricTitles.ts :: Number of Code Lines with Comments": 1,
+  "codeCharta/util/metric/metricTitles.ts :: Cyclomatic Complexity": 2,
+  "codeCharta/util/metric/metricTitles.ts :: McCabe Complexity": 1,
+  "codeCharta/util/metric/metricTitles.ts :: Average Number of Commits from this file": 1,
+  "codeCharta/util/metric/metricTitles.ts :: Number of Functions": 1,
+  "codeCharta/util/metric/metricTitles.ts :: Pairing Rate of selected building": 1,
+  "codeCharta/util/metric/metricTitles.ts :: Number of Code Lines covered by tests": 1,
+  "codeCharta/util/metric/metricTitles.ts :: Number of Smells Sonar has identified": 1,
+  "codeCharta/util/metric/metricTitles.ts :: Average Number of Lines added or removed from this file": 1,
+  "codeCharta/util/metric/metricTitles.ts :: Number of Authors that have edited this file": 1,
+  "codeCharta/util/metric/metricTitles.ts :: Number of Statements": 1,
+  "codeCharta/views/domainView/explorer/domainExplorerModes.ts :: Words": 1,
+  "codeCharta/views/domainView/explorer/domainExplorerModes.ts :: payment, invoice": 1,
+  "codeCharta/views/domainView/explorer/domainExplorerModes.ts :: Search words": 1,
+  "codeCharta/features/mapTools/components/presentationModeButton/presentationModeButton.component.ts :: Disable flashlight hover effect": 1,
+  "codeCharta/features/mapTools/components/presentationModeButton/presentationModeButton.component.ts :: Enable flashlight hover effect": 1,
+  "codeCharta/features/metricsBar/components/edgeSettingsPopover/edgeSettingsPopover.component.ts :: Preview the edges of up to ⟦0⟧ buildings with the highest amount of incoming and outgoing edges": 1,
+  "codeCharta/renderer/dependencyGraph/util/boxMarks.ts :: Cycles between files": 1,
+  "codeCharta/renderer/dependencyGraph/util/boxMarks.ts :: Cycles inside a file": 1,
+  "codeCharta/renderer/dependencyGraph/util/boxMarks.ts :: Declaration in a cycle": 1,
+  "codeCharta/renderer/dependencyGraph/util/boxMarks.ts :: Upward dependencies inside": 1,
+  "codeCharta/util/radialFolderValues.ts :: sum": 1,
+  "codeCharta/util/radialFolderValues.ts :: All files added up. Big folders turn red.": 1,
+  "codeCharta/util/radialFolderValues.ts :: sum of their files": 1,
+  "codeCharta/util/radialFolderValues.ts :: max": 1,
+  "codeCharta/util/radialFolderValues.ts :: Its highest file. Never hides a high value.": 1,
+  "codeCharta/util/radialFolderValues.ts :: their highest file": 1,
+  "codeCharta/util/radialFolderValues.ts :: min": 1,
+  "codeCharta/util/radialFolderValues.ts :: Its lowest file. Never hides a low value, e.g. with inverted colors.": 1,
+  "codeCharta/util/radialFolderValues.ts :: their lowest file": 1,
+  "codeCharta/util/radialFolderValues.ts :: median": 1,
+  "codeCharta/util/radialFolderValues.ts :: Its middle file. Shows the typical file.": 1,
+  "codeCharta/util/radialFolderValues.ts :: their middle file": 1,
+  "codeCharta/util/radialFolderValues.ts :: mean / file": 1,
+  "codeCharta/util/radialFolderValues.ts :: Sum divided by the number of files.": 1,
+  "codeCharta/util/radialFolderValues.ts :: mean per file": 1,
+  "codeCharta/util/radialFolderValues.ts :: avg / area": 1,
+  "codeCharta/util/radialFolderValues.ts :: Weighted by the area metric, so bigger slices count more.": 1,
+  "codeCharta/util/radialFolderValues.ts :: area-weighted avg of their files": 1,
+  "codeCharta/stores/fileStore/loaders/ccJson/util/fileValidationMessages.ts :: File is empty or invalid.": 1,
+  "codeCharta/stores/fileStore/loaders/ccJson/util/fileValidationMessages.ts :: File has no checksum, and the browser can only compute one when CodeCharta is opened via https or localhost.": 1,
+  "codeCharta/stores/fileStore/loaders/ccJson/util/fileValidationMessages.ts :: API Version is empty or invalid.": 1,
+  "codeCharta/stores/fileStore/loaders/ccJson/util/fileValidationMessages.ts :: API Version Outdated: Update CodeCharta API Version to match cc.json.": 1,
+  "codeCharta/stores/fileStore/loaders/ccJson/util/fileValidationMessages.ts :: Minor API Version Outdated.": 1,
+  "codeCharta/stores/fileStore/loaders/ccJson/util/fileValidationMessages.ts :: Node names in combination with node types are not unique.": 1,
+  "codeCharta/stores/fileStore/loaders/ccJson/util/fileValidationMessages.ts :: Node ids are not unique.": 1,
+  "codeCharta/stores/fileStore/loaders/ccJson/util/fileValidationMessages.ts :: Dependency edge dropped: an endpoint id does not resolve to a node.": 1,
+  "codeCharta/stores/fileStore/loaders/ccJson/util/fileValidationMessages.ts :: Domain lens word bank dropped: the node id does not resolve to a node.": 1,
+  "codeCharta/stores/fileStore/loaders/ccJson/util/fileValidationMessages.ts :: The nodes array is empty. At least one node is required.": 1,
+  "codeCharta/stores/fileStore/loaders/ccJson/util/fileValidationMessages.ts :: If at least one direct sub-folder of root is marked as fixed, all direct sub-folders of root must be fixed.": 1,
+  "codeCharta/stores/fileStore/loaders/ccJson/util/fileValidationMessages.ts :: Coordinates of fixed folders must be within a range of 0 and 100.": 1,
+  "codeCharta/stores/fileStore/loaders/ccJson/util/fileValidationMessages.ts :: Folders may not overlap.": 1,
+  "codeCharta/stores/fileStore/loaders/ccJson/util/fileValidationMessages.ts :: Fixated folders may not be defined in API-Version < 1.2.": 1,
+  "codeCharta/stores/fileStore/loaders/ccJson/util/fileValidationMessages.ts :: File already exists.": 1,
+  "codeCharta/stores/fileStore/loaders/ccJson/util/fileValidationMessages.ts :: Excluding all buildings is not possible.": 1,
+  "codeCharta/stores/fileStore/loaders/ccJson/util/fileValidationMessages.ts :: File contains unsupported 'authors' attribute. This attribute will be ignored. Node containing the attribute: ": 1,
+  "codeCharta/renderer/dependencyGraph/util/dependencyGraphOption.builder.ts :: Dependency graph with ⟦0⟧ files and ⟦1⟧ edges shown, arranged in rows by level.": 1,
+  "codeCharta/features/changelog/components/changelogDialog/changelogDialog.component.ts :: Added": 1,
+  "codeCharta/features/changelog/components/changelogDialog/changelogDialog.component.ts :: Fixed": 1,
+  "codeCharta/features/changelog/components/changelogDialog/changelogDialog.component.ts :: Changed": 1,
+  "codeCharta/features/changelog/components/changelogDialog/changelogDialog.component.ts :: Removed": 1,
+  "codeCharta/features/changelog/components/changelogDialog/changelogDialog.component.ts :: Maintenance": 1,
+  "codeCharta/util/pipes/mapColorLabel.pipe.ts :: – (no matching buildings)": 1,
+  "codeCharta/util/pipes/mapColorLabel.pipe.ts :: –Δ negative delta": 1,
+  "codeCharta/util/pipes/mapColorLabel.pipe.ts :: Outgoing Edge": 1,
+  "codeCharta/util/pipes/mapColorLabel.pipe.ts :: Incoming Edge": 1,
+  "codeCharta/util/pipes/mapColorLabel.pipe.ts :: ⟦0⟧ to ⟦1⟧": 5,
+  "codeCharta/features/metricsBar/components/colorSettingsPopover/metricColorRangeDiagram.component.ts :: Quantiles (% of ⟦0⟧)": 1,
+  "codeCharta/features/metricsBar/components/colorSettingsPopover/metricColorRangeDiagram.component.ts :: Quantile: ⟦0⟧": 1,
+  "codeCharta/features/metricsBar/components/colorSettingsPopover/metricColorRangeDiagram.component.ts :: Value: ⟦0⟧": 1,
+  "codeCharta/features/scenarios/services/scenarioViewModel.service.ts :: Current Map": 1,
+  "codeCharta/features/scenarios/services/scenarioViewModel.service.ts :: Global": 1,
+  "codeCharta/features/scenarios/services/scenarioViewModel.service.ts :: Built-in": 1,
+  "codeCharta/features/scenarios/services/scenarioViewModel.service.ts :: Other Maps": 1,
+  "codeCharta/features/shared/effects/addExcludedNodesIfNotResultsInEmptyMap/addExcludedNodesIfNotResultsInEmptyMap.effect.ts :: Exclude Error": 1,
+  "codeCharta/features/shared/effects/addExcludedNodesIfNotResultsInEmptyMap/addExcludedNodesIfNotResultsInEmptyMap.effect.ts :: Excluding all buildings is not possible.": 1,
+  "codeCharta/features/sidebarExplorer/explorerModes.ts :: Files": 1,
+  "codeCharta/features/sidebarExplorer/explorerModes.ts :: Search files and folders": 1,
+  "codeCharta/features/metricsBar/components/metricBarSelectPopover/metricBarSelectPopover.component.ts :: Search metric": 1,
+  "codeCharta/features/metricsBar/components/foldersSegment/foldersSegment.component.ts :: tinted ⟦0⟧ %": 1,
+  "codeCharta/features/sidebarExplorer/components/rulesPopover/rulesPopover.component.ts :: Flattening Rules": 1,
+  "codeCharta/features/sidebarExplorer/components/rulesPopover/rulesPopover.component.ts :: Exclusion Rules": 1,
+  "codeCharta/features/sidebarExplorer/components/rulesPopover/rulesPopover.component.ts :: Clear 1 rule": 1,
+  "codeCharta/features/sidebarExplorer/components/rulesPopover/rulesPopover.component.ts :: drawn at full height again": 1,
+  "codeCharta/features/sidebarExplorer/components/rulesPopover/rulesPopover.component.ts :: back on the map": 1,
+  "codeCharta/features/sidebarExplorer/components/rulesPopover/rulesPopover.component.ts :: Clear all ⟦0⟧ rules": 1,
+  "codeCharta/features/sidebarExplorer/components/rulesPopover/rulesPopover.component.ts :: Confirm clear ⟦0⟧ rules": 1,
+  "codeCharta/features/sidebarExplorer/components/rulesPopover/rulesPopover.component.ts :: ⟦0⟧ and ⟦1⟧.": 1,
+  "codeCharta/features/sidebarExplorer/components/rulesPopover/rulesPopover.component.ts :: The 1 ⟦0⟧ rule is removed": 1,
+  "codeCharta/features/sidebarExplorer/components/rulesPopover/rulesPopover.component.ts :: All ⟦0⟧ ⟦1⟧ rules are removed": 1,
+  "codeCharta/features/sidebarExplorer/components/rulesPopover/rulesPopover.component.ts :: every file they affect is ⟦0⟧": 1,
+  "codeCharta/features/sidebarExplorer/components/rulesPopover/rulesPopover.component.ts :: 1 file is ⟦0⟧": 1,
+  "codeCharta/features/sidebarExplorer/components/rulesPopover/rulesPopover.component.ts :: ⟦0⟧ files are ⟦1⟧": 1,
+  "codeCharta/features/nodeContextMenu/components/nodeContextMenu/nodeContextMenu.component.ts :: Show in Metrics": 1,
+  "codeCharta/features/nodeContextMenu/components/nodeContextMenu/nodeContextMenu.component.ts :: Select this node on the metrics map": 1,
+  "codeCharta/features/nodeContextMenu/components/nodeContextMenu/nodeContextMenu.component.ts :: Show in Domain": 1,
+  "codeCharta/features/nodeContextMenu/components/nodeContextMenu/nodeContextMenu.component.ts :: Show the domain words below this node": 1,
+  "codeCharta/features/nodeContextMenu/components/nodeContextMenu/nodeContextMenu.component.ts :: Show in Dependencies": 1,
+  "codeCharta/features/nodeContextMenu/components/nodeContextMenu/nodeContextMenu.component.ts :: Show this node in the dependency graph": 1,
+  "codeCharta/features/domainBar/components/wordSizeRangeControl/wordSizeRangeControl.component.ts :: On — words that do not fit are shrunk until they do, so the full word count is drawn. Tail words can render below Smallest Word.": 1,
+  "codeCharta/features/domainBar/components/wordSizeRangeControl/wordSizeRangeControl.component.ts :: Off — words that do not fit are left out, so Smallest Word is exact but fewer words than requested appear.": 1,
+  "codeCharta/features/domainBar/components/wordSizeRangeControl/wordSizeRangeControl.component.ts :: On — words may render partially outside the layout area instead of being dropped or shrunk, so more words fit at their true size.": 1,
+  "codeCharta/features/domainBar/components/wordSizeRangeControl/wordSizeRangeControl.component.ts :: Off — every word is kept fully inside the layout area; words that only fit overlapping the edge are shrunk or left out.": 1,
+  "codeCharta/features/fileExtensionBar/components/fileExtensionBarSegment/fileExtensionBarSegment.component.ts :: No data available": 1,
+  "codeCharta/features/legend/components/legendPanel/legendFoldersRow.component.ts :: folders: ⟦0⟧, tinted": 1,
+  "codeCharta/stores/fileStore/loaders/ccJson/services/loadFilesValidationToErrorDialog.ts :: Something is wrong with the loaded file(s)": 1,
+  "codeCharta/features/navBar/effects/redirectAwayFromDomainView/redirectAwayFromDomainView.effect.ts :: This file has no domain-language data — switched to the map view.": 1,
+  "codeCharta/features/navBar/effects/redirectAwayFromDomainView/redirectAwayFromDomainView.effect.ts :: Left compare mode — the domain view shows a single word cloud.": 1,
+  "codeCharta/features/dependencyMap/components/dependencyInspector/dependencyInspector.component.ts :: Open in graph": 1,
+  "codeCharta/features/dependencyMap/components/dependencyInspector/dependencyInspector.component.ts :: Close in graph": 1,
+  "codeCharta/features/dependencyMap/components/dependencyInspector/dependencyInspector.component.ts :: Unfold in graph": 1,
+  "codeCharta/renderer/dependencyGraph/util/declarationKinds.ts :: Class": 1,
+  "codeCharta/renderer/dependencyGraph/util/declarationKinds.ts :: Value class": 1,
+  "codeCharta/renderer/dependencyGraph/util/declarationKinds.ts :: Interface": 1,
+  "codeCharta/renderer/dependencyGraph/util/declarationKinds.ts :: Enum": 1,
+  "codeCharta/renderer/dependencyGraph/util/declarationKinds.ts :: Annotation": 1,
+  "codeCharta/renderer/dependencyGraph/util/declarationKinds.ts :: Function": 1,
+  "codeCharta/renderer/dependencyGraph/util/declarationKinds.ts :: Variable": 1,
+  "codeCharta/renderer/dependencyGraph/util/declarationKinds.ts :: Other": 1,
+  "codeCharta/renderer/dependencyGraph/util/dependencyGraphBoxes.ts :: level ⟦0⟧": 1,
+  "codeCharta/features/dependencyMap/inspector/inspectorBadges.ts :: package ⟦0⟧": 2,
+  "codeCharta/features/dependencyMap/inspector/inspectorBadges.ts :: level ⟦0⟧": 1,
+  "codeCharta/features/dependencyMap/inspector/inspectorBadges.ts :: ⟦0⟧ cyclic": 1,
+  "codeCharta/features/dependencyMap/inspector/inspectorBadges.ts :: ⟦0⟧ upward": 1,
+  "codeCharta/features/dependencyMap/stores/dependencyInspector.store.ts :: edge ⟦0⟧": 1,
+  "codeCharta/features/dependencyMap/stores/dependencyInspector.store.ts :: box ⟦0⟧": 1,
+  "codeCharta/features/navBar/effects/redirectAwayFromDependencyView/redirectAwayFromDependencyView.effect.ts :: This file has no dependency data — switched to the map view.": 1,
+  "codeCharta/features/domainBar/util/shapeMaskSvg.ts :: That file is not an SVG.": 1,
+  "codeCharta/features/domainBar/util/shapeMaskSvg.ts :: An SVG that references another file cannot be used as a shape.": 1,
+  "codeCharta/features/domainBar/util/shapeMaskSvg.ts :: That SVG states neither a size nor a viewBox, so it has no shape to fill.": 1,
+  "codeCharta/features/domainBar/util/shapeMaskSvg.ts :: An SVG carrying a <⟦0⟧> cannot be used as a shape.": 1,
+  "codeCharta/features/navBar/components/mapSelector/mapSelector.component.ts :: Select map": 1,
+  "codeCharta/features/navBar/components/mapSelector/mapSelector.component.ts :: Select at least one map": 1,
+  "codeCharta/features/navBar/components/mapSelector/mapSelector.component.ts :: No changes to apply": 1,
+  "codeCharta/features/metricsBar/components/labelsScenariosSegment/labelsScenariosSegment.component.ts :: scenario": 1,
+  "codeCharta/features/metricsBar/components/labelsScenariosSegment/labelsScenariosSegment.component.ts :: scenarios": 1,
+  "codeCharta/features/metricsBar/components/labelsScenariosSegment/labelsScenariosSegment.component.ts :: ⟦0⟧ ⟦1⟧ available": 1,
+  "codeCharta/features/shared/components/unfocusTool/unfocusTool.component.ts :: Unfocus": 1,
+  "codeCharta/features/shared/components/unfocusTool/unfocusTool.component.ts :: Leave the focus and show every folder": 1,
+  "codeCharta/features/domainWordOccurrences/components/domainWordOccurrenceRow/domainWordOccurrenceRow.component.ts :: ⟦0⟧ of \"⟦1⟧\" · ⟦2⟧": 1,
+  "codeCharta/renderer/wordCloud/util/wordCloudTooltip.ts :: Frequency: ⟦0⟧": 1,
+  "codeCharta/renderer/wordCloud/util/wordCloudTooltip.ts :: TF-IDF: ⟦0⟧": 1,
+  "codeCharta/features/3dPrint/stores/export3DMapDialog.store.ts :: Switch and continue": 2,
+  "codeCharta/features/3dPrint/stores/export3DMapDialog.store.ts :: Stay here": 1,
+  "codeCharta/features/3dPrint/stores/export3DMapDialog.store.ts :: Map could not be exported": 1,
+  "codeCharta/features/3dPrint/stores/export3DMapDialog.store.ts :: Change and continue": 2,
+  "codeCharta/features/shared/components/barToolsTab/barToolsTab.component.ts :: View tools": 1,
+  "codeCharta/features/shared/components/inlineColorPicker/inlineColorPicker.component.ts :: Pick color": 1,
+  "codeCharta/renderer/radialMap/util/radialTooltip.ts :: Click to go up one folder": 1,
+  "codeCharta/renderer/radialMap/util/radialTooltip.ts :: Click to unfocus and go up one folder": 1,
+  "codeCharta/features/globalSettings/components/globalConfigurationDialog/externalLinks/externalLinks.component.ts :: Website": 1,
+  "codeCharta/features/globalSettings/components/globalConfigurationDialog/externalLinks/externalLinks.component.ts :: Documentation": 1,
+  "codeCharta/views/domainView/domainView.component.ts :: No word is hidden": 1,
+  "codeCharta/views/domainView/domainView.component.ts :: ⟦0⟧ hidden from the cloud and the word list": 1,
+  "codeCharta/features/navBar/components/viewSwitcher/viewSwitcher.component.ts :: Metric": 1,
+  "codeCharta/features/navBar/components/viewSwitcher/viewSwitcher.component.ts :: Show the 3D metrics map": 1,
+  "codeCharta/features/navBar/components/viewSwitcher/viewSwitcher.component.ts :: Domain": 1,
+  "codeCharta/features/navBar/components/viewSwitcher/viewSwitcher.component.ts :: Show the domain-language word cloud": 1,
+  "codeCharta/features/navBar/components/viewSwitcher/viewSwitcher.component.ts :: Dependencies": 1,
+  "codeCharta/features/navBar/components/viewSwitcher/viewSwitcher.component.ts :: Show the dependency graph, arranged by level": 1,
+  "codeCharta/stores/fileStore/loaders/ccJson/util/fixedFolderValidator.ts :: ⟦0⟧ Found: ⟦1⟧": 4,
+  "codeCharta/stores/fileStore/loaders/ccJson/util/fixedFolderValidator.ts :: ⟦0⟧ and ⟦1⟧": 2,
+  "codeCharta/util/busy/loadPhase.ts :: Reading ⟦0⟧": 1,
+  "codeCharta/util/busy/loadPhase.ts :: Reading ⟦0⟧ (⟦1⟧ of ⟦2⟧)": 1,
+  "codeCharta/features/domainWordOccurrences/components/domainWordList/domainWordList.component.ts :: The focused folder carries no words.": 1,
+  "codeCharta/features/domainWordOccurrences/components/domainWordList/domainWordList.component.ts :: This project carries no words.": 1,
+  "codeCharta/features/domainWordOccurrences/components/domainWordList/domainWordList.component.ts :: No word contains \"⟦0⟧\".": 1,
+  "codeCharta/features/dependencyMap/components/hierarchySegment/hierarchySegment.component.ts :: Folders": 1,
+  "codeCharta/features/dependencyMap/components/hierarchySegment/hierarchySegment.component.ts :: The files in the folders they lie in": 1,
+  "codeCharta/features/dependencyMap/components/hierarchySegment/hierarchySegment.component.ts :: Packages": 1,
+  "codeCharta/features/dependencyMap/components/hierarchySegment/hierarchySegment.component.ts :: The files in the packages their declarations declare": 1,
+  "codeCharta/features/metricsBar/components/linkColorHeightButton/linkColorHeightButton.component.ts :: Unlink Height and Color Metric": 1,
+  "codeCharta/features/metricsBar/components/linkColorHeightButton/linkColorHeightButton.component.ts :: Link Height and Color Metric": 1,
+  "codeCharta/features/screenshot/components/screenshotButton/screenshotButton.component.ts :: Screenshot": 1,
+  "codeCharta/features/screenshot/components/screenshotButton/screenshotButton.component.ts :: Copied!": 1,
+  "codeCharta/features/screenshot/components/screenshotButton/screenshotButton.component.ts :: Saved!": 1,
+  "codeCharta/features/screenshot/components/screenshotButton/screenshotButton.component.ts :: Screenshot failed": 1,
+  "codeCharta/features/screenshot/components/screenshotButton/screenshotButton.component.ts :: Firefox does not support copying to clipboard": 1,
+  "codeCharta/features/screenshot/components/screenshotButton/screenshotButton.component.ts :: There is no ⟦0⟧ to capture": 1,
+  "codeCharta/features/screenshot/components/screenshotButton/screenshotButton.component.ts :: Take a screenshot of the ⟦0⟧ with ⟦1⟧ (copy to clipboard) or ⟦2⟧ (save as file)": 1,
+  "codeCharta/features/screenshot/components/screenshotButton/screenshotButton.component.ts :: Take a screenshot of the ⟦0⟧ with ⟦1⟧ (save as file) or ⟦2⟧ (copy to clipboard)": 1,
+  "codeCharta/features/scenarios/components/saveScenarioDialog/saveScenarioDialog.component.ts :: ⟦0⟧ of ⟦1⟧ settings": 1,
+  "codeCharta/features/scenarios/components/saveScenarioDialog/saveScenarioDialog.component.ts :: Save ⟦0⟧": 1,
+  "codeCharta/features/scenarios/components/applyScenarioDialog/applyScenarioDialog.component.ts :: Apply ⟦0⟧": 1,
+  "codeCharta/model/wordCloud.model.ts :: Custom SVG": 1,
+  "codeCharta/features/dependencyMap/inspector/inspectorModel.ts :: Used by": 1,
+  "codeCharta/features/dependencyMap/inspector/inspectorModel.ts :: Stands for": 1,
+  "codeCharta/features/dependencyMap/inspector/inspectorModel.ts :: package ⟦0⟧": 1,
+  "codeCharta/features/dependencyMap/inspector/inspectorModel.ts :: level ⟦0⟧": 1,
+  "codeCharta/renderer/dependencyGraph/util/dependencyGraphStyle.ts :: In a cycle": 1,
+  "codeCharta/renderer/dependencyGraph/util/dependencyGraphStyle.ts :: Points upward": 1,
+  "codeCharta/renderer/dependencyGraph/util/dependencyGraphStyle.ts :: Points upward and closes a cycle": 1,
+  "codeCharta/features/shared/services/loadingFileProgressSpinner.service.ts :: Drawing the map": 1,
+  "codeCharta/features/shared/services/loadingFileProgressSpinner.service.ts :: Drawing the word cloud": 1,
+  "codeCharta/features/shared/services/loadingFileProgressSpinner.service.ts :: Drawing the dependency graph": 1,
+  "codeCharta/features/shared/services/loadingFileProgressSpinner.service.ts :: Saving your session": 1,
+  "codeCharta/features/scenarios/services/scenarios.service.ts :: Real Lines of Code": 1,
+  "codeCharta/features/scenarios/services/scenarios.service.ts :: Visualize code size using real lines of code": 1,
+  "codeCharta/features/scenarios/services/scenarios.service.ts :: Visualize cyclomatic complexity": 1,
+  "codeCharta/features/scenarios/services/scenarios.service.ts :: Comment Lines": 1,
+  "codeCharta/features/scenarios/services/scenarios.service.ts :: Visualize comment density": 1,
+  "codeCharta/features/scenarios/services/scenarios.service.ts :: Code Smells": 1,
+  "codeCharta/features/scenarios/services/scenarios.service.ts :: Visualize code smell density": 1,
+  "codeCharta/features/scenarios/services/scenarios.service.ts :: Logic Complexity": 1,
+  "codeCharta/features/scenarios/services/scenarios.service.ts :: Visualize cognitive/logic complexity": 1,
+  "codeCharta/features/scenarios/services/scenarios.service.ts :: Max Complexity per Function": 1,
+  "codeCharta/features/scenarios/services/scenarios.service.ts :: Visualize maximum complexity per function": 1,
+  "codeCharta/features/scenarios/services/scenarios.service.ts :: Visualize the number of authors per file": 1,
+  "codeCharta/features/metricsBar/components/folderStylePopover/folderStylePopover.component.ts :: Tinted by value": 1,
+  "codeCharta/features/metricsBar/components/folderStylePopover/folderStylePopover.component.ts :: Neutral": 1,
+  "codeCharta/features/radialMap/components/radialMap/radialMap.component.ts :: You are focused on \"⟦0⟧\", so there is no folder above it. Unfocus and go up one folder?": 1,
+  "codeCharta/features/domainBar/components/wordSizingModeControl/wordSizingModeControl.component.ts :: TF-IDF (relative importance) — sizes words by how distinctive they are, not by raw count": 1,
+  "codeCharta/features/domainBar/components/wordSizingModeControl/wordSizingModeControl.component.ts :: TF-IDF (relative importance) — not available: the loaded file has no TF-IDF scores": 1
+ }
+}

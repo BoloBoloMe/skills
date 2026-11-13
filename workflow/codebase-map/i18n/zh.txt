@@ -1,0 +1,360 @@
+# CodeCharta 模板汉化词表 (通道 A): 左=英文原文(Key, 空白折叠, {{ }} 换成 {{0}}/{{1}}), 右=中文
+# 制表符 TAB 分隔; 译文里禁止出现包裹属性的引号; 占位符必须齐全但不限顺序.
+# 依据 milestone-13 PLAN 术语表: Area=面积 Height=高度 Color=颜色 Edges=边 Labels=标签
+# Scenario=场景 Folder=文件夹 Flatten=压平 Metric=指标 Dependencies=依赖
+# 高频单词型文案先统一定义, 同一英文默认单一译法, 语境不同才按文件覆盖.
+close	关闭
+Height	高度
+Close	关闭
+Color	颜色
+Global Configuration	全局配置
+Cancel	取消
+Show	显示
+Exclude	排除
+Close inspector	关闭检查器
+Badges	徽标
+None	无
+Top Labels	顶部标签
+Label Size	标签大小
+Folder style	文件夹样式
+Reset filters	重置筛选
+Flattened	已压平
+Flatten	压平
+Reset	重置
+Scenarios	场景
+Import scenarios	导入场景
+Area	面积
+Edge Metric (highest value)	边指标 (数值最大者)
+Unfocus	取消聚焦
+Inspector	检查器
+Show in graph	在图中显示
+Edges shown	显示的边
+Explore	探索
+Settings	设置
+Preview	预览
+Scale	缩放
+Second row center text	第二行居中文本
+URL for QR code	二维码链接
+Bottom left logo (SVG)	左下角徽标 (SVG)
+Word Sizing	单词大小
+Shape	形状
+Words	单词
+Map layout	地图布局
+Maximum TreeMap Files	矩形树图最大文件数
+Folders with up to {{0}} files are drawn as a treemap.	最多 {{0}} 个文件的文件夹会按矩形树图绘制.
+Visible levels	可见层级
+Shows {{0}} folder levels around the centre.	在中心周围显示 {{0}} 层文件夹.
+Folder value	文件夹数值
+Margin	边距
+Folders	文件夹
+Tint strength	着色强度
+Invert colors	反转颜色
+Starting CodeCharta	正在启动 CodeCharta
+{{0}} does not occur in any file.	没有任何文件包含 {{0}}.
+Pinned	已固定
+Unpin this word	取消固定该词
+Hidden Words	已隐藏的词
+Right-click a word in the cloud to drop it from the cloud and the word list.	右键点击词云中的词, 可将其从词云和词表中移除.
+Show all words again	重新显示全部词
+Made with	用
+by	制作 ·
+Reset global settings to their defaults	将全局配置恢复为默认值
+Reset global settings	重置全局配置
+Confirm reset map to default	确认重置地图为默认状态
+Reset uploaded maps, selected metrics and settings to their defaults	将已上传的地图, 所选指标和配置恢复为默认值
+Reset map	重置地图
+Reset map to default	重置地图为默认状态
+Remove every flatten and exclude rule, leaving the rest of the map as it is	移除全部压平和排除规则, 地图其余部分保持不变
+Confirm reset filters	确认重置筛选
+Release Notes	发布说明
+What's new in CodeCharta?	CodeCharta 有什么新变化?
+View full changelog	查看完整更新日志
+Got it	知道了
+Show Changelog	显示更新日志
+Enter a pattern to enable {{0}}	输入模式以启用 {{0}}
+Flatten by metric&hellip;	按指标压平&hellip;
+Exclude by metric&hellip;	按指标排除&hellip;
+Load a map to filter it by a metric	加载地图后才能按指标筛选
+Condition	条件
+Metric	指标
+Comparison	比较
+Threshold	阈值
+and	和
+Upper threshold	上阈值
+of {{0}} files	/ 共 {{0}} 个文件
+Re-applies whenever the loaded files or metrics change.	加载的文件或指标变化时会自动重新应用.
+Expand explorer	展开资源管理器
+No rules	无规则
+Explorer mode	资源管理器模式
+Leave the focus and show the whole project	取消聚焦并显示整个项目
+Focus mode	聚焦模式
+Show whole project	显示整个项目
+Explorer	资源管理器
+Collapse explorer	收起资源管理器
+Shown	已显示
+Excluded	已排除
+Clear search	清空搜索
+Toggle all	全选/全不选
+On	开
+Off	关
+Save Scenario	保存场景
+Scenario Name	场景名称
+Enter scenario name	输入场景名称
+A name is required.	必须填写名称.
+Description (optional)	描述 (可选)
+Describe what this scenario captures	描述这个场景保存的内容
+Bind to current maps	绑定到当前地图
+Extended settings	扩展设置
+Uncheck what this scenario should not carry.	取消勾选场景不需要携带的设置.
+Search scenarios...	搜索场景...
+Search scenarios	搜索场景
+No scenarios found.	未找到场景.
+Import Results	导入结果
+Already existing:	已存在的:
+Invalid scenario files:	无效的场景文件:
+Could not read (bad format):	无法读取 (格式错误):
+OK	确定
+Some metrics in this scenario are not available	场景中的部分指标当前不可用
+Built-in	内置
+Export scenario	导出场景
+Delete scenario	删除场景
+Delete Scenario	删除场景
+Are you sure you want to delete "{{0}}"?	确定要删除 "{{0}}" 吗?
+Delete	删除
+Apply: {{0}}	应用: {{0}}
+Select which settings to apply:	选择要应用的设置:
+Some metrics are not available in the current map and will not be applied:	部分指标在当前地图中不可用, 将不会应用:
+{{0}} (node metric)	{{0}} (节点指标)
+{{0}} (edge metric)	{{0}} (边指标)
+Apply everything this scenario holds, the camera included	应用场景包含的全部设置, 包括视角
+Apply all	全部应用
+LEGEND	图例
+Color scale	颜色标尺
+Delta colors	差异颜色
+Edge	边
+Edge style	边样式
+Edges drawn	绘制的边
+Line shape	线条形状
+Start and end at the middle of the side	起止点在边的中点
+Line thickness	线条粗细
+Width factor	宽度系数
+Line width factor	线宽系数
+Line style shows	线型含义
+Reset the edge style, the line shape, the line thickness and what the line style shows to their defaults	将边样式, 线条形状, 线条粗细和线型含义恢复为默认值
+Reset edge style	重置边样式
+Edge metric	边指标
+The dependency view shows a single map. Leave compare mode to see its dependencies.	依赖视图当前显示单张地图. 退出对比模式才能查看其依赖.
+Nothing in the focused folder carries dependency levels.	聚焦的文件夹内没有任何带依赖层级的内容.
+Every file that carries dependency levels is excluded. Include some again from the Excluded list in the explorer.	所有带依赖层级的文件都被排除了. 请在资源管理器的已排除列表中恢复一部分.
+No file in view carries dependency levels.	视图中没有文件带依赖层级.
+and {{0}} more	以及另外 {{0}} 条
+inside {{0}} }	内部 {{0}} }
+from {{0}} to {{1}} }	从 {{0}} 到 {{1}} }
+Hierarchy	层级
+Files nested in their	按所在容器分组的文件
+Reset layout	重置布局
+Put every dragged box back in its place	把所有拖动过的方块放回原位
+Show whole graph	显示整张图
+Show every badge again	重新显示全部徽标
+Reset badges	重置徽标
+An upward edge that closes a cycle is drawn in the colour of the upward edges, solid. Its own colour shows once the line style shows the kind of use.	同时构成环的向上依赖边用向上边的颜色实线绘制. 线型含义设为使用方式时才显示它自己的颜色.
+Respect on hover	悬停时遵循勾选
+The box under the pointer shows only its edges of the ticked types. }	指针下的方块只显示勾选类型的边. }
+The box under the pointer shows all of its edges, also those of types not ticked. }	指针下的方块显示其全部边, 包括未勾选类型的边. }
+Show the edges in cycles and those pointing upward again, no plain dependencies, and every edge on hover	重新显示环上的边和向上的边, 不显示普通依赖, 悬停时显示全部边
+Reset edges shown	重置显示的边
+Reset the edge colours to their defaults	将边颜色恢复为默认值
+Reset colours	重置颜色
+Kind of use	使用方式
+An edge standing for several dependencies stays a plain line.	代表多条依赖的边仍显示为普通线条.
+Declarations	声明
+Switch reference and comparison file	交换基准文件与对比文件
+Apply	应用
+Compare	对比
+Download 3MF code file	下载 3MF 模型文件
+3D Print	3D 打印
+View	视图
+CodeCharta website	CodeCharta 网站
+Load cc.json files	加载 cc.json 文件
+(formerly mcc)	(旧名 mcc)
+Search metrics	搜索指标
+No metrics found	未找到指标
+Dismiss notification	关闭通知
+No	否
+Yes	是
+Click to recolor	点击重新着色
+All	全部
+Invert	反选
+3D Print CodeCharta Map	3D 打印 CodeCharta 地图
+Width: {{0}}cm (max. {{1}})	宽度: {{0}}cm (最大 {{1}})
+Depth: {{0}}cm (max. {{1}})	深度: {{0}}cm (最大 {{1}})
+Height: {{0}}cm (max. {{1}})	高度: {{0}}cm (最大 {{1}})
+Show second row text	显示第二行文本
+Bottom center label text	底部中央标签文本
+QR-Code	二维码
+Show QR-Code	显示二维码
+Printer preset	打印机预设
+{{0}} ({{1}}×{{2}}×{{3}}cm, {{4}} colors)	{{0}} ({{1}}×{{2}}×{{3}}cm, {{4}} 色)
+Download 3MF Button	下载 3MF 按钮
+Download 3MF	下载 3MF
+Download STL Button	下载 STL 按钮
+Download minimal STL	下载精简 STL
+Remove Logo	移除徽标
+Remove	移除
+Rotate Logo	旋转徽标
+Rotate	旋转
+Flip Logo	翻转徽标
+Flip	翻转
+Logo color	徽标颜色
+Show whole cloud	显示整个词云
+Top labels scope	顶部标签范围
+Pick the top labels across all maps combined or separately for each map	顶部标签取全部地图合并计算, 还是每张地图单独计算
+All maps	所有地图
+Per map	每张地图
+Scale floating label font size	缩放浮动标签字号
+Label mode	标签模式
+Show node names	显示节点名称
+Show metric values	显示指标数值
+Group overlapping labels	合并重叠标签
+By Color Metric	按颜色指标
+positive color label	正值颜色标签
+neutral color label	中性颜色标签
+negative color label	负值颜色标签
+Reset label settings to their defaults	将标签设置恢复为默认值
+Reset label settings	重置标签设置
+Remove folder color	移除文件夹颜色
+Pick custom folder color	自定义文件夹颜色
+Copy path to clipboard	复制路径到剪贴板
+Show in Explorer	在资源管理器中显示
+Focus	聚焦
+Keep Highlight	保留高亮
+Remove Highlight	取消高亮
+Flatten &amp; decolor	压平并去色
+Compare each value against the whole map	每个值与整张地图比较
+map	整图
+Compare each value against the min/max range of all files	每个值与所有文件的最小/最大范围比较
+range	范围
+(in/out)	(入/出)
+· inverted	· 已反转
+Metrics	指标
+No metrics available	无可用指标
+Metric Mapping	指标映射
+Empty metrics ({{0}})	空指标 ({{0}})
+Number of added files	新增文件数
+Number of removed files	移除文件数
+Number of files with metric changes	指标有变化的文件数
+Flashlight	手电筒
+Center map zoom	居中缩放
+Center map zoom in percent	居中缩放百分比
+Use current zoom	使用当前缩放
+Center map	地图居中
+Right-click to set the zoom level it centers at	右键设置居中时的缩放级别
+The graphics card stopped rendering the map, usually because it ran out of memory. Reload the page, and try a smaller map or a smaller browser window.	显卡停止渲染地图, 通常是显存不足. 请刷新页面, 并尝试更小的地图或更小的浏览器窗口.
+Word Sizing Settings	单词大小设置
+Reset the word sizing settings to their defaults	将单词大小设置恢复为默认值
+Reset word sizing	重置单词大小
+Rotation Settings	旋转设置
+Min Rotation	最小旋转
+Min Rotation in degrees	最小旋转角度 (度)
+Max Rotation	最大旋转
+Max Rotation in degrees	最大旋转角度 (度)
+Words are rotated in multiples of this angle	单词按此角度的倍数旋转
+Rotation Step	旋转步长
+Rotation Step in degrees	旋转步长 (度)
+Reset the rotation settings to their defaults	将旋转设置恢复为默认值
+Reset rotation	重置旋转
+Which word metric drives a word's rendered size	用哪个词指标决定单词的渲染大小
+Frequency	频次
+Frequency — sizes words by how often they occur	频次 — 按单词出现的频繁程度决定大小
+TF-IDF is unavailable: the loaded file has no TF-IDF scores.	TF-IDF 不可用: 加载的文件没有 TF-IDF 分数.
+Shape Settings	形状设置
+The outline the words are laid out in	词云排布所依据的轮廓
+SVG file	SVG 文件
+{{0}} — words fill the opaque areas of the shape.	{{0}} — 单词会填充形状的不透明区域.
+The cloud stays round until you upload a shape, and an uploaded one is forgotten on reload.	上传形状之前词云保持圆形; 刷新页面后上传的形状不会被保留.
+Reset the shape to its default	将形状恢复为默认值
+Reset shape	重置形状
+The least important word in the cloud renders at this size	词云中最不重要的单词以该尺寸渲染
+Smallest Word	最小单词
+Smallest Word in pixels	最小单词尺寸 (像素)
+The most important word in the cloud renders at this size	词云中最重要的单词以该尺寸渲染
+Largest Word	最大单词
+Largest Word in pixels	最大单词尺寸 (像素)
+Fit All Words	放下全部单词
+Draw Outside Bounds	画出边界绘制
+Spacing between words in pixels — larger means fewer, more spread-out words	单词间距 (像素) — 间距越大, 单词越少越分散
+Word Spacing	单词间距
+Word Spacing in pixels	单词间距 (像素)
+{{0}} words	{{0}} 个单词
+Rotation	旋转
+How many of the most important words are drawn	绘制多少个最重要的单词
+Edges	边
+Area Metric (highest value)	面积指标 (数值最大者)
+Change the map layout	更改地图布局
+Layout	布局
+Folders by	文件夹按
+of {{0}}	取自 {{0}}
+Amount of space between buildings in percent	建筑间距 (百分比)
+Enable Floor Labels	启用楼层标签
+Invert Area	反转面积
+Reset area metric settings to their defaults	将面积指标设置恢复为默认值
+Reset area metric settings	重置面积指标设置
+Labels	标签
+Label Settings	标签设置
+Save current state as scenario	将当前状态保存为场景
+Open saved scenarios	打开已保存的场景
+Reset folder value, style and tint strength to their defaults	将文件夹数值, 样式和着色强度恢复为默认值
+Reset folder colors	重置文件夹颜色
+Height scaling	高度缩放
+Invert Height	反转高度
+Reset height metric settings to their defaults	将高度指标设置恢复为默认值
+Reset height metric settings	重置高度指标设置
+Bands	色带
+Distribution	分布
+{{0}} × quantile %	{{0}} × 分位数 %
+Color by	颜色按
+Reset slider thresholds to default	将滑块阈值恢复为默认
+Reset thresholds	重置阈值
+Folder Overrides	文件夹覆盖
+{{0}} pinned	已固定 {{0}} 个
+These folders&#8217; floors are tinted with the pinned color.	这些文件夹的楼层已用固定的颜色着色.
+Gradient Mode	渐变模式
+Gradient mode	渐变模式
+Absolute	绝对
+Focused	聚焦
+Weighted	加权
+Relative	相对
+Reset colors	重置颜色
+Lower color range value input	颜色范围下限输入框
+Lower color range value	颜色范围下限
+Upper color range value	颜色范围上限
+Upper color range value input	颜色范围上限输入框
+Pin a folder color…	固定文件夹颜色…
+Search folders…	搜索文件夹…
+Search folders	搜索文件夹
+No folders found	未找到文件夹
+Color Metric (highest value)	颜色指标 (数值最大者)
+Disable edge metric	停用边指标
+Edge preview amount	边预览数量
+Adjust the curve height	调整曲线高度
+Edge height	边高度
+Outgoing edge color	出边颜色
+Outgoing Edge	出边
+Incoming edge color	入边颜色
+Incoming Edge	入边
+Only show nodes with edges	只显示有边的节点
+Reset edge metric settings to their defaults	将边指标设置恢复为默认值
+Reset edge metric settings	重置边指标设置
+Height Metric (highest value)	高度指标 (数值最大者)
+Zoom level	缩放级别
+Copy word to clipboard	复制单词到剪贴板
+Search word	搜索单词
+Hide word	隐藏单词
+This layout shows a single map. Switch to another map layout to compare two maps.	此布局只显示一张地图. 切换到其他地图布局可对比两张地图.
+There are no files with an area to show.	没有可显示面积的文件.
+Unfocus to go up?	取消聚焦以返回上一级?
+Distribution metric	分布指标
+Boxes of the dependency graph	依赖图的方块
+No domain words for {{0}}. Select a folder or another file in the explorer.	{{0}} 没有领域词. 请在资源管理器中选择文件夹或其他文件.
+Show whole map	显示整张地图
+Hidden	已隐藏

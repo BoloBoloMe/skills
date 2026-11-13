@@ -72,7 +72,7 @@ uv run --with trafilatura --with readability-lxml --with markdownify python scra
 ## 体积上限与安全
 
 - `MAX_RESPONSE_BYTES = 20MiB`: browse/search 响应体上限, 超限截断, warning `response truncated at {N} bytes`; gzip/deflate 解压后同限.
-- `MAX_DOWNLOAD_BYTES = 200MiB`: download 流式写盘, 超限中止, 返回 `{"status": 0, "error": "download exceeded max size ...", "url": ...}`. 显式路径先写同目录 `<basename>.<随机>.part` 临时文件, 成功后 `os.replace` 原子替换; 任何失败 (HTTP 错误/超限/解压失败/网络错误) 只删 `.part`, 既有目标文件内容保留.
+- `MAX_DOWNLOAD_BYTES = 200MiB`: download 流式写盘, 超限中止, 返回 `{"status": 0, "error": "download exceeded max size ...", "url": ...}`. 显式路径先写同目录 `<basename>.<随机>.part` 临时文件, 成功后 `os.replace` 原子替换; 任何失败只删 `.part`, 既有目标文件内容保留.
 - 压缩响应体 (gzip/deflate) 解压失败时不写盘, 返回 `{"status": 0, "error": "<编码> decompression failed", "url": ...}` (含响应体 < 2 字节无法解码的情况).
 - 重定向最多 10 跳, 超限返回 `{"status": 0, "error": "redirect limit exceeded (10)"}`. 跨域重定向剥离 `authorization`, `cookie`, `proxy-authorization`, `x-api-key`.
 - SSRF 防护: 默认拦截解析到私网/环回/链路本地地址的 host; 经 `http_proxy`/`https_proxy` 等代理的请求跳过对端地址 (getpeername) 检查: 对端是用户自选代理, 目标 host 已过 `validate_url` 的 DNS 校验; `no_proxy` 命中而直连的 host 仍做检查. 可信环境 (测试/内网抓取) 可设 `SCRAPE_ALLOW_PRIVATE_HOSTS=1` 关闭.

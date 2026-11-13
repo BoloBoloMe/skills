@@ -35,7 +35,9 @@ env:
   MAILBOX_BEACON_PORT (信标绑定端口, 缺省 38437) / MAILBOX_BEACON_DEST
   (信标目的 host:port, 缺省 255.255.255.255:38437, 测试回环单播注入用) /
   MAILBOX_BEACON_INTERVAL (信标周期秒, 缺省 5) / MAILBOX_ADVERTISE_ADDR
-  (信标宣告的信箱地址, 缺省自动探测本机 IP, 测试注入用)
+  (信标宣告的信箱地址, 缺省自动探测本机 IP, 测试注入用) /
+  MAILBOX_TZ (信头 发送时间 的呈现时区, IANA 名如 Asia/Shanghai 或偏移如
+  +08:00; 未设按系统本地时区, 事件日志仍为 UTC, 非法值回退并提示一次)
 """
 from __future__ import annotations
 
@@ -56,6 +58,7 @@ import sys
 import threading
 import time
 import urllib.error
+import zoneinfo
 import urllib.request
 import uuid
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -2359,6 +2362,44 @@ def ack_letter(url, sid, skey, letter_id, lease_token, outcome="handled"):
                       "outcome": outcome}, timeout=30)
 
 
+MAILBOX_TZ_OFFSET_RE = re.compile(r"^([+-])(\d{1,2}):?(\d{2})?$")
+_MAILBOX_TZ_STATE = {"raw": object(), "tz": None}  # 值未变时复用解析结果
+
+
+def _parse_mailbox_tz(raw):
+    """解析 MAILBOX_TZ: 偏移写法 (如 +08:00, 便于无 tzdata 环境) 或 IANA 名;
+    非法返回 None (回退系统本地时区). 只用标准库, 不写死任何具体时区."""
+    m = MAILBOX_TZ_OFFSET_RE.match(raw)
+    if m:
+        sign = -1 if m.group(1) == "-" else 1
+        hours, minutes = int(m.group(2)), int(m.group(3) or 0)
+        delta = sign * datetime.timedelta(hours=hours, minutes=minutes)
+        if not (datetime.timedelta(hours=-24) < delta
+                < datetime.timedelta(hours=24)):
+            return None
+        return datetime.timezone(delta)
+    try:
+        return zoneinfo.ZoneInfo(raw)
+    except (ValueError, KeyError, OSError):
+        return None
+
+
+def resolve_mailbox_tz():
+    """MAILBOX_TZ 覆盖信头 发送时间 的呈现时区; 未设/空取系统本地时区.
+    非法值不失败: 回退系统本地时区并向 stderr 提示一次 (同值只提示一次)."""
+    raw = os.environ.get("MAILBOX_TZ", "")
+    state = _MAILBOX_TZ_STATE
+    if state["raw"] == raw:
+        return state["tz"]
+    tz = _parse_mailbox_tz(raw)
+    if tz is None and raw:
+        print(f"MAILBOX_TZ 值无效, 信头时间回退系统本地时区: {raw}",
+              file=sys.stderr, flush=True)
+    state["raw"] = raw
+    state["tz"] = tz
+    return tz
+
+
 def print_letter(letter):
     """呈现实际处理类型与续取方式, 保留原信协议字段不变."""
     raw_type = letter.get("type", "")
@@ -2367,8 +2408,9 @@ def print_letter(letter):
     type_note = " (exec 已降级)" if downgraded else ""
     try:
         sent_at = datetime.datetime.fromtimestamp(
-            letter["ts"], datetime.timezone.utc).astimezone().isoformat(
-                sep=" ", timespec="seconds")
+            letter["ts"], datetime.timezone.utc).astimezone(
+                resolve_mailbox_tz()).isoformat(
+                    sep=" ", timespec="seconds")
         sent_at = f"{sent_at[:19]} {sent_at[19:]}"
     except (KeyError, TypeError, ValueError, OverflowError, OSError):
         sent_at = "未知"  # 时间不可用也不影响正文呈现

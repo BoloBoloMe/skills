@@ -1,0 +1,47 @@
+# CodeCharta 模板绑定/插值内字面量白名单 (通道 C): 文件路径 <TAB> 英文整条字面量 <TAB> 中文
+# 这些字面量位于 [title]="..." 或 {{ ... }} 里, 静态文本扫描无法覆盖, 用 localize_ts.py --allow-any
+# 按 (文件, 整条字面量) 精确替换; 译文列写 (空) 表示替换为空串 (仅用于拼接句尾段).
+codeCharta/features/dependencyMap/components/dependencyEdgeLegend/dependencyEdgeLegend.component.html	Dependencies	依赖
+codeCharta/features/dependencyMap/components/dependencyEdgeLegend/dependencyEdgeLegend.component.html	Edges	边
+codeCharta/features/dependencyMap/components/dependencyInspector/dependencyInspector.component.html	Copied!	已复制!
+codeCharta/features/dependencyMap/components/dependencyInspector/dependencyInspector.component.html	Copy path	复制路径
+codeCharta/features/dependencyMap/components/edgeTypesSegment/edgeTypesSegment.component.html	Colour of: 	颜色: 
+codeCharta/features/domainWordOccurrences/components/hiddenWordsPopover/hiddenWordsPopover.component.html	Show 	再次显示 
+codeCharta/features/domainWordOccurrences/components/hiddenWordsPopover/hiddenWordsPopover.component.html	 again	(空)
+codeCharta/features/globalSettings/components/globalConfigurationDialog/globalConfigurationDialog.component.html	Hide Flattened Buildings	隐藏被压平的建筑
+codeCharta/features/globalSettings/components/globalConfigurationDialog/globalConfigurationDialog.component.html	Reset camera when map layout changes	地图布局变化时重置视角
+codeCharta/features/globalSettings/components/globalConfigurationDialog/globalConfigurationDialog.component.html	White Background	白色背景
+codeCharta/features/globalSettings/components/globalConfigurationDialog/globalConfigurationDialog.component.html	Screenshot to clipboard	截图复制到剪贴板
+codeCharta/features/legend/components/legendDrawer/legendToggleButton.component.html	Hide panel	收起面板
+codeCharta/features/legend/components/legendDrawer/legendToggleButton.component.html	Show panel	展开面板
+codeCharta/features/legend/components/legendPanel/legendColorRow.component.html	Color for 	颜色: 
+codeCharta/features/metricsBar/components/colorSettingsPopover/colorBandRow.component.html	Recolor 	重新着色: 
+codeCharta/features/metricsBar/components/colorSettingsPopover/folderOverrideRow.component.html	 files	 个文件
+codeCharta/features/metricsBar/components/colorSettingsPopover/folderOverrideRow.component.html	Recolor 	重新着色: 
+codeCharta/features/metricsBar/components/colorSettingsPopover/folderOverrideRow.component.html	Unpin 	取消固定: 
+codeCharta/features/metricsBar/components/colorSettingsPopover/invertResetRow.component.html	Reset color values to default	重置颜色值为默认
+codeCharta/features/metricsBar/components/colorSettingsPopover/invertResetRow.component.html	Reset color values and gradient mode to default	重置颜色值与渐变模式为默认
+codeCharta/features/navBar/components/mapSelector/mapSelector.component.html	Undo remove map	撤销移除地图
+codeCharta/features/navBar/components/mapSelector/mapSelector.component.html	Remove map	移除地图
+codeCharta/features/nodeContextMenu/components/nodeContextMenu/markFolderRow.component.html	Remove folder color	移除文件夹颜色
+codeCharta/features/nodeContextMenu/components/nodeContextMenu/markFolderRow.component.html	Colorize folder	给文件夹着色
+codeCharta/features/nodeContextMenu/components/nodeContextMenu/nodeContextMenu.component.html	Unfocus	取消聚焦
+codeCharta/features/nodeContextMenu/components/nodeContextMenu/nodeContextMenu.component.html	Unfocus Parent	取消聚焦上级
+codeCharta/features/scenarios/components/applyScenarioDialog/applyScenarioDialog.component.html	Apply: 	应用: 
+codeCharta/features/scenarios/components/scenarioListDialog/scenarioItem/scenarioItemBadges/scenarioItemBadges.component.html	Bound to 	绑定到 
+codeCharta/features/shared/components/errorDialog/errorDialog.component.html	OK	确定
+codeCharta/features/sidebarExplorer/components/explorerSearchActions/explorerSearchActions.component.html	Flatten or exclude the search pattern	压平或排除搜索模式
+codeCharta/features/sidebarExplorer/components/explorerSearchActions/explorerSearchActions.component.html	Exclude the search pattern	排除搜索模式
+codeCharta/features/sidebarExplorer/components/explorerSortControl/explorerSortControl.component.html	Sort descending	降序
+codeCharta/features/sidebarExplorer/components/explorerSortControl/explorerSortControl.component.html	Sort ascending	升序
+codeCharta/features/sidebarExplorer/components/explorerSortControl/explorerSortControl.component.html	Sort: 	排序: 
+codeCharta/features/sidebarExplorer/components/metricDistribution/metricDistribution.component.html	Distribution of 	分布: 
+codeCharta/features/sidebarExplorer/components/ruleRow/ruleRow.component.html	Remove rule 	移除规则 
+codeCharta/features/sidebarExplorer/components/rulesPopover/rulesPopover.component.html	Flatten by metric…	按指标压平…
+codeCharta/features/sidebarExplorer/components/rulesPopover/rulesPopover.component.html	Exclude by metric…	按指标排除…
+codeCharta/features/sidebarInspector/components/inspectorHeader/inspectorHeader.component.html	Copied!	已复制!
+codeCharta/features/sidebarInspector/components/inspectorHeader/inspectorHeader.component.html	Copy path	复制路径
+codeCharta/views/domainView/domainView.component.html	Copied!	已复制!
+codeCharta/views/domainView/domainView.component.html	Copy path	复制路径
+codeCharta/views/domainView/domainView.component.html	No selection	未选中
+codeCharta/features/metricsBar/components/metricsBar/metricsBar.component.html	Settings	设置

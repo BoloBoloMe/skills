@@ -1,0 +1,80 @@
+package de.maibornwolff.codecharta.analysers.parsers.dependency
+
+import de.maibornwolff.codecharta.analysers.analyserinterface.AnalyserDialogInterface
+import de.maibornwolff.codecharta.analysers.analyserinterface.AnalyserInterface
+import de.maibornwolff.codecharta.analysers.analyserinterface.CommonAnalyserParameters
+import de.maibornwolff.codecharta.analysers.analyserinterface.failures.FailableRun
+import de.maibornwolff.codecharta.analysers.analyserinterface.failures.FailureReport
+import de.maibornwolff.codecharta.analysers.analyserinterface.failures.RunExitCode
+import de.maibornwolff.codecharta.analysers.analyserinterface.scan.SourceFileScanner
+import de.maibornwolff.codecharta.analysers.parsers.dependency.analysis.ExtractionPipeline
+import de.maibornwolff.codecharta.analysers.parsers.dependency.analysis.LanguageAnalyzerFactory
+import de.maibornwolff.codecharta.analysers.parsers.dependency.analysis.analyzers.LanguageAnalyzer
+import de.maibornwolff.codecharta.analysers.parsers.dependency.analysis.model.FileInfo
+import de.maibornwolff.codecharta.analysers.parsers.dependency.analysis.model.FileReport
+import de.maibornwolff.codecharta.analysers.parsers.dependency.input.SupportedLanguage
+import de.maibornwolff.codecharta.analysers.parsers.dependency.output.DependencyProjectGenerator
+import de.maibornwolff.codecharta.analysers.parsers.dependency.output.dependencyAttributeDescriptors
+import de.maibornwolff.codecharta.analysers.parsers.dependency.processing.ProcessingPipeline
+import de.maibornwolff.codecharta.analysers.parsers.dependency.progress.ProgressReporterFactory
+import de.maibornwolff.codecharta.model.AttributeDescriptor
+import de.maibornwolff.codecharta.model.AttributeGenerator
+import de.maibornwolff.codecharta.model.PathFactory
+import de.maibornwolff.codecharta.model.Project
+import de.maibornwolff.codecharta.serialization.ProjectDeserializer
+import de.maibornwolff.codecharta.serialization.ProjectSerializer
+import de.maibornwolff.codecharta.util.CodeChartaConstants
+import de.maibornwolff.codecharta.util.InputHelper
+import de.maibornwolff.codecharta.util.Logger
+import de.maibornwolff.treesitter.excavationsite.api.isUnusableParser
+import picocli.CommandLine
+import java.io.File
+import java.io.InputStream
+import java.io.PrintStream
+
+@CommandLine.Command(
+    name = DependencyParser.NAME,
+    description = [DependencyParser.DESCRIPTION],
+    footer = [CodeChartaConstants.GENERIC_FOOTER]
+)
+class DependencyParser(
+    private val input: InputStream = System.`in`,
+    private val output: PrintStream = System.out,
+    private val createAnalyzer: (FileInfo) -> LanguageAnalyzer = LanguageAnalyzerFactory::createAnalyzer,
+    private val runExitCode: RunExitCode = RunExitCode()
+) : CommonAnalyserParameters(),
+    AnalyserInterface,
+    AttributeGenerator,
+    FailableRun by runExitCode {
+    @CommandLine.Option(
+        names = ["--include-tests"],
+        description = [
+            "analyse test files too (excluded by default, because a test depends on everything it " +
+                "exercises and nothing depends on it, which shifts every level and cycle)"
+        ]
+    )
+    private var includeTests = false
+
+    @CommandLine.Option(
+        names = ["--max-file-size"],
+        description = ["skip files of at least this size in KB (default: no limit)"]
+    )
+    private var maxFileSizeKb: Int = SourceFileScanner.NO_FILE_SIZE_LIMIT
+
+    @CommandLine.Option(
+        names = ["--file-timeout"],
+        description = [
+            "give up on a file after this many seconds (default: no timeout). The parse itself is a " +
+                "blocking native call, so the timeout skips the file's result while the parse runs to " +
+                "completion in the background"
+        ]
+    )
+    private var fileTimeoutSeconds: Int = ExtractionPipeline.NO_FILE_TIMEOUT
+
+    @CommandLine.Option(
+        names = ["--omit-graph-analysis"],
+        description = [
+            "emit dependencies only, skipping cycle detection and levelization. Both are superlinear, " +
+                "so this is the escape hatch for a repository where they do not finish"
+        ]
+    )

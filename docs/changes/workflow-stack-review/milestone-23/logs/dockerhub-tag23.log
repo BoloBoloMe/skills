@@ -1,0 +1,72 @@
+=== full_description (前 2000 字符) ===
+# CodeCharta analysis
+
+[![Quality Gate Status For Analysis](https://sonarcloud.io/api/project_badges/measure?project=maibornwolff-gmbh_codecharta_analysis&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=maibornwolff-gmbh_codecharta_analysis)
+
+> CodeCharta by [MaibornWolff](https://www.maibornwolff.de)
+
+## CodeCharta analysis tools
+
+CodeCharta analysis tools generally follow the pipes and filters architecture principle.
+
+### Importer
+
+Components that import data from an external source, e.g. SonarQube, and generate visualization data.
+
+| Source             | Project                                               |
+| ------------------ | ----------------------------------------------------- |
+| CodeMaat CSV       | [CodeMaatImporter](https://github.com/MaibornWolff/codecharta/blob/main/analysis/import/CodeMaatImporter/README.md) |
+| generic CSV        | [CSVImporter](https://github.com/MaibornWolff/codecharta/blob/main/analysis/import/CSVImporter/README.md)           |
+| SVN log            | [SVNLogParser](https://github.com/MaibornWolff/codecharta/blob/main/analysis/import/SVNLogParser/README.md)         |
+| Git log            | [GitLogParser](https://github.com/MaibornWolff/codecharta/blob/main/analysis/import/GitLogParser/README.md)         |
+| SonarQube          | [SonarImporter](https://github.com/MaibornWolff/codecharta/blob/main/analysis/import/SonarImporter/README.md)       |
+| Source Code        | [SourceCodeParser](https://github.com/MaibornWolff/codecharta/blob/main/analysis/import/SourceCodeParser/README.md) |
+| SourceMonitor CSV  | [SourceMonitorImporter](https://github.com/MaibornWolff/codecharta/blob/main/analysis/import/CSVImporter/README.md) |
+| Source Code / Text | [RawTextParser](https://github.com/MaibornWolff/codecharta/blob/main/analysis/parser/RawTextParser/README.md)       |
+| Tokei              | [TokeiImporter](https://github.com/MaibornWolff/codecharta/blob/main/analysis/import/TokeiImporter/README.md)       |
+
+### Filter
+
+Com
+
+=== 2.3.0 tag 元数据 ===
+{
+    "creator": 10369935,
+    "id": 1370809174,
+    "images": [
+        {
+            "architecture": "amd64",
+            "features": "",
+            "variant": null,
+            "digest": "sha256:6402a87f6823c8123de6c8706ffc7b68ae75ce2c2c58aa8b3fcab59e97d1f7a4",
+            "os": "linux",
+            "os_features": "",
+            "os_version": null,
+            "size": 532445458,
+            "status": "active",
+            "last_pulled": "2026-10-31T02:57:35.271925348Z",
+            "last_pushed": "2026-10-28T09:52:50.77563246Z"
+        },
+        {
+            "architecture": "unknown",
+            "features": "",
+            "variant": null,
+            "digest": "sha256:06c52d615f50f1be9664ce7568831861fc900d0767f7cd584ee1336efa2db99c",
+            "os": "unknown",
+            "os_features": "",
+            "os_version": null,
+            "size": 1431,
+            "status": "active",
+            "last_pulled": "2026-10-30T14:21:03.267056021Z",
+            "last_pushed": "2026-10-28T09:52:51.34595168Z"
+        }
+    ],
+    "last_updated": "2026-10-28T12:49:23.034901Z",
+    "last_updater": 10369935,
+    "last_updater_username": "codecharta",
+    "name": "2.3.0",
+    "repository": 18176454,
+    "full_size": 532445458,
+    "v2": true,
+    "tag_status": "active",
+    "tag_last_pulled": "2026-10-31T02:57:35.271925348Z",

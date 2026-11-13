@@ -1,0 +1,892 @@
+{
+ "files_total": 184,
+ "files_with_text": 123,
+ "segments": {
+  "text": 231,
+  "attr:title": 65,
+  "attr:tooltip": 14,
+  "attr:label": 43,
+  "attr:aria-label": 44,
+  "attr:placeholder": 11,
+  "attr:ariaLabel": 28,
+  "attr:alt": 1
+ },
+ "segments_total": 437,
+ "with_interpolation": 23,
+ "applied": 430,
+ "dict_size": 355,
+ "dict_unused": [],
+ "dict_duplicates": [],
+ "keys_used": [
+  "(formerly mcc)",
+  "(in/out)",
+  "3D Print",
+  "3D Print CodeCharta Map",
+  "A name is required.",
+  "Absolute",
+  "Adjust the curve height",
+  "All",
+  "All maps",
+  "Already existing:",
+  "Amount of space between buildings in percent",
+  "An edge standing for several dependencies stays a plain line.",
+  "An upward edge that closes a cycle is drawn in the colour of the upward edges, solid. Its own colour shows once the line style shows the kind of use.",
+  "Apply",
+  "Apply all",
+  "Apply everything this scenario holds, the camera included",
+  "Apply: {{0}}",
+  "Are you sure you want to delete \"{{0}}\"?",
+  "Area",
+  "Area Metric (highest value)",
+  "Badges",
+  "Bands",
+  "Bind to current maps",
+  "Bottom center label text",
+  "Bottom left logo (SVG)",
+  "Boxes of the dependency graph",
+  "Built-in",
+  "By Color Metric",
+  "Cancel",
+  "Center map",
+  "Center map zoom",
+  "Center map zoom in percent",
+  "Change the map layout",
+  "Clear search",
+  "Click to recolor",
+  "Close",
+  "Close inspector",
+  "CodeCharta website",
+  "Collapse explorer",
+  "Color",
+  "Color Metric (highest value)",
+  "Color by",
+  "Color scale",
+  "Compare",
+  "Compare each value against the min/max range of all files",
+  "Compare each value against the whole map",
+  "Comparison",
+  "Condition",
+  "Confirm reset filters",
+  "Confirm reset map to default",
+  "Copy path to clipboard",
+  "Copy word to clipboard",
+  "Could not read (bad format):",
+  "Declarations",
+  "Delete",
+  "Delete Scenario",
+  "Delete scenario",
+  "Delta colors",
+  "Depth: {{0}}cm (max. {{1}})",
+  "Describe what this scenario captures",
+  "Description (optional)",
+  "Disable edge metric",
+  "Dismiss notification",
+  "Distribution",
+  "Distribution metric",
+  "Download 3MF",
+  "Download 3MF Button",
+  "Download 3MF code file",
+  "Download STL Button",
+  "Download minimal STL",
+  "Draw Outside Bounds",
+  "Edge",
+  "Edge Metric (highest value)",
+  "Edge height",
+  "Edge metric",
+  "Edge preview amount",
+  "Edge style",
+  "Edges",
+  "Edges drawn",
+  "Edges shown",
+  "Empty metrics ({{0}})",
+  "Enable Floor Labels",
+  "Enter a pattern to enable {{0}}",
+  "Enter scenario name",
+  "Every file that carries dependency levels is excluded. Include some again from the Excluded list in the explorer.",
+  "Exclude",
+  "Exclude by metric&hellip;",
+  "Excluded",
+  "Expand explorer",
+  "Explore",
+  "Explorer",
+  "Explorer mode",
+  "Export scenario",
+  "Extended settings",
+  "Files nested in their",
+  "Fit All Words",
+  "Flashlight",
+  "Flatten",
+  "Flatten &amp; decolor",
+  "Flatten by metric&hellip;",
+  "Flattened",
+  "Flip",
+  "Flip Logo",
+  "Focus",
+  "Focus mode",
+  "Focused",
+  "Folder Overrides",
+  "Folder style",
+  "Folder value",
+  "Folders",
+  "Folders by",
+  "Folders with up to {{0}} files are drawn as a treemap.",
+  "Frequency",
+  "Frequency — sizes words by how often they occur",
+  "Global Configuration",
+  "Got it",
+  "Gradient Mode",
+  "Gradient mode",
+  "Group overlapping labels",
+  "Height",
+  "Height Metric (highest value)",
+  "Height scaling",
+  "Height: {{0}}cm (max. {{1}})",
+  "Hidden",
+  "Hidden Words",
+  "Hide word",
+  "Hierarchy",
+  "How many of the most important words are drawn",
+  "Import Results",
+  "Import scenarios",
+  "Incoming Edge",
+  "Incoming edge color",
+  "Inspector",
+  "Invalid scenario files:",
+  "Invert",
+  "Invert Area",
+  "Invert Height",
+  "Invert colors",
+  "Keep Highlight",
+  "Kind of use",
+  "LEGEND",
+  "Label Settings",
+  "Label Size",
+  "Label mode",
+  "Labels",
+  "Largest Word",
+  "Largest Word in pixels",
+  "Layout",
+  "Leave the focus and show the whole project",
+  "Line shape",
+  "Line style shows",
+  "Line thickness",
+  "Line width factor",
+  "Load a map to filter it by a metric",
+  "Load cc.json files",
+  "Logo color",
+  "Lower color range value",
+  "Lower color range value input",
+  "Made with",
+  "Map layout",
+  "Margin",
+  "Max Rotation",
+  "Max Rotation in degrees",
+  "Maximum TreeMap Files",
+  "Metric",
+  "Metric Mapping",
+  "Metrics",
+  "Min Rotation",
+  "Min Rotation in degrees",
+  "No",
+  "No domain words for {{0}}. Select a folder or another file in the explorer.",
+  "No file in view carries dependency levels.",
+  "No folders found",
+  "No metrics available",
+  "No metrics found",
+  "No rules",
+  "No scenarios found.",
+  "None",
+  "Nothing in the focused folder carries dependency levels.",
+  "Number of added files",
+  "Number of files with metric changes",
+  "Number of removed files",
+  "OK",
+  "Off",
+  "On",
+  "Only show nodes with edges",
+  "Open saved scenarios",
+  "Outgoing Edge",
+  "Outgoing edge color",
+  "Per map",
+  "Pick custom folder color",
+  "Pick the top labels across all maps combined or separately for each map",
+  "Pin a folder color…",
+  "Pinned",
+  "Preview",
+  "Printer preset",
+  "Put every dragged box back in its place",
+  "QR-Code",
+  "Re-applies whenever the loaded files or metrics change.",
+  "Relative",
+  "Release Notes",
+  "Remove",
+  "Remove Highlight",
+  "Remove Logo",
+  "Remove every flatten and exclude rule, leaving the rest of the map as it is",
+  "Remove folder color",
+  "Reset",
+  "Reset area metric settings",
+  "Reset area metric settings to their defaults",
+  "Reset badges",
+  "Reset colors",
+  "Reset colours",
+  "Reset edge metric settings",
+  "Reset edge metric settings to their defaults",
+  "Reset edge style",
+  "Reset edges shown",
+  "Reset filters",
+  "Reset folder colors",
+  "Reset folder value, style and tint strength to their defaults",
+  "Reset global settings",
+  "Reset global settings to their defaults",
+  "Reset height metric settings",
+  "Reset height metric settings to their defaults",
+  "Reset label settings",
+  "Reset label settings to their defaults",
+  "Reset layout",
+  "Reset map",
+  "Reset map to default",
+  "Reset rotation",
+  "Reset shape",
+  "Reset slider thresholds to default",
+  "Reset the edge colours to their defaults",
+  "Reset the edge style, the line shape, the line thickness and what the line style shows to their defaults",
+  "Reset the rotation settings to their defaults",
+  "Reset the shape to its default",
+  "Reset the word sizing settings to their defaults",
+  "Reset thresholds",
+  "Reset uploaded maps, selected metrics and settings to their defaults",
+  "Reset word sizing",
+  "Respect on hover",
+  "Right-click a word in the cloud to drop it from the cloud and the word list.",
+  "Right-click to set the zoom level it centers at",
+  "Rotate",
+  "Rotate Logo",
+  "Rotation",
+  "Rotation Settings",
+  "Rotation Step",
+  "Rotation Step in degrees",
+  "SVG file",
+  "Save Scenario",
+  "Save current state as scenario",
+  "Scale",
+  "Scale floating label font size",
+  "Scenario Name",
+  "Scenarios",
+  "Search folders",
+  "Search folders…",
+  "Search metrics",
+  "Search scenarios",
+  "Search scenarios...",
+  "Search word",
+  "Second row center text",
+  "Select which settings to apply:",
+  "Settings",
+  "Shape",
+  "Shape Settings",
+  "Show",
+  "Show Changelog",
+  "Show QR-Code",
+  "Show all words again",
+  "Show every badge again",
+  "Show in Explorer",
+  "Show in graph",
+  "Show metric values",
+  "Show node names",
+  "Show second row text",
+  "Show the edges in cycles and those pointing upward again, no plain dependencies, and every edge on hover",
+  "Show whole cloud",
+  "Show whole graph",
+  "Show whole map",
+  "Show whole project",
+  "Shown",
+  "Shows {{0}} folder levels around the centre.",
+  "Smallest Word",
+  "Smallest Word in pixels",
+  "Some metrics are not available in the current map and will not be applied:",
+  "Some metrics in this scenario are not available",
+  "Spacing between words in pixels — larger means fewer, more spread-out words",
+  "Start and end at the middle of the side",
+  "Starting CodeCharta",
+  "Switch reference and comparison file",
+  "TF-IDF is unavailable: the loaded file has no TF-IDF scores.",
+  "The box under the pointer shows all of its edges, also those of types not ticked. }",
+  "The box under the pointer shows only its edges of the ticked types. }",
+  "The cloud stays round until you upload a shape, and an uploaded one is forgotten on reload.",
+  "The dependency view shows a single map. Leave compare mode to see its dependencies.",
+  "The graphics card stopped rendering the map, usually because it ran out of memory. Reload the page, and try a smaller map or a smaller browser window.",
+  "The least important word in the cloud renders at this size",
+  "The most important word in the cloud renders at this size",
+  "The outline the words are laid out in",
+  "There are no files with an area to show.",
+  "These folders&#8217; floors are tinted with the pinned color.",
+  "This layout shows a single map. Switch to another map layout to compare two maps.",
+  "Threshold",
+  "Tint strength",
+  "Toggle all",
+  "Top Labels",
+  "Top labels scope",
+  "URL for QR code",
+  "Uncheck what this scenario should not carry.",
+  "Unfocus",
+  "Unfocus to go up?",
+  "Unpin this word",
+  "Upper color range value",
+  "Upper color range value input",
+  "Upper threshold",
+  "Use current zoom",
+  "View",
+  "View full changelog",
+  "Visible levels",
+  "Weighted",
+  "What's new in CodeCharta?",
+  "Which word metric drives a word's rendered size",
+  "Width factor",
+  "Width: {{0}}cm (max. {{1}})",
+  "Word Sizing",
+  "Word Sizing Settings",
+  "Word Spacing",
+  "Word Spacing in pixels",
+  "Words",
+  "Words are rotated in multiples of this angle",
+  "Yes",
+  "Zoom level",
+  "and",
+  "and {{0}} more",
+  "by",
+  "close",
+  "from {{0}} to {{1}} }",
+  "inside {{0}} }",
+  "map",
+  "negative color label",
+  "neutral color label",
+  "of {{0}}",
+  "of {{0}} files",
+  "positive color label",
+  "range",
+  "{{0}} (edge metric)",
+  "{{0}} (node metric)",
+  "{{0}} ({{1}}×{{2}}×{{3}}cm, {{4}} colors)",
+  "{{0}} does not occur in any file.",
+  "{{0}} pinned",
+  "{{0}} words",
+  "{{0}} × quantile %",
+  "{{0}} — words fill the opaque areas of the shape.",
+  "· inverted"
+ ],
+ "untranslated": [
+  [
+   "CodeCharta",
+   3
+  ],
+  [
+   "&nbsp;",
+   2
+  ],
+  [
+   "MaibornWolff",
+   1
+  ],
+  [
+   "TF-IDF",
+   1
+  ]
+ ],
+ "untranslated_unique": 4,
+ "untranslated_total": 7,
+ "per_file": {
+  "index.html": {
+   "segments": 2,
+   "translated": 1
+  },
+  "codeCharta/features/domainWordOccurrences/components/domainWordOccurrenceTree/domainWordOccurrenceTree.component.html": {
+   "segments": 1,
+   "translated": 1
+  },
+  "codeCharta/features/domainWordOccurrences/components/domainWordList/domainWordList.component.html": {
+   "segments": 2,
+   "translated": 2
+  },
+  "codeCharta/features/domainWordOccurrences/components/hiddenWordsPopover/hiddenWordsPopover.component.html": {
+   "segments": 4,
+   "translated": 4
+  },
+  "codeCharta/features/bottomBar/components/attribution/attribution.component.html": {
+   "segments": 3,
+   "translated": 2
+  },
+  "codeCharta/features/globalSettings/components/globalConfigurationButton/globalConfigurationButton.component.html": {
+   "segments": 2,
+   "translated": 2
+  },
+  "codeCharta/features/globalSettings/components/globalConfigurationDialog/globalConfigurationDialog.component.html": {
+   "segments": 5,
+   "translated": 5
+  },
+  "codeCharta/features/globalSettings/components/globalConfigurationDialog/confirmResetMapDialog/confirmResetMapDialog.component.html": {
+   "segments": 1,
+   "translated": 1
+  },
+  "codeCharta/features/globalSettings/components/globalConfigurationDialog/resetMapButton/resetMapButton.component.html": {
+   "segments": 3,
+   "translated": 3
+  },
+  "codeCharta/features/globalSettings/components/globalConfigurationDialog/resetFiltersButton/resetFiltersButton.component.html": {
+   "segments": 4,
+   "translated": 4
+  },
+  "codeCharta/features/changelog/components/changelogDialog/changelogDialog.component.html": {
+   "segments": 5,
+   "translated": 5
+  },
+  "codeCharta/features/changelog/components/changelogButton/changelogButton.component.html": {
+   "segments": 1,
+   "translated": 1
+  },
+  "codeCharta/features/sidebarExplorer/components/explorerTreeLevel/explorerTreeLevel.component.html": {
+   "segments": 1,
+   "translated": 1
+  },
+  "codeCharta/features/sidebarExplorer/components/explorerSearchActions/explorerSearchActions.component.html": {
+   "segments": 5,
+   "translated": 5
+  },
+  "codeCharta/features/sidebarExplorer/components/metricRuleEditor/metricRuleEditor.component.html": {
+   "segments": 11,
+   "translated": 11
+  },
+  "codeCharta/features/sidebarExplorer/components/sidebarExplorer/sidebarExplorer.component.html": {
+   "segments": 1,
+   "translated": 1
+  },
+  "codeCharta/features/sidebarExplorer/components/rulesPopover/rulesPopover.component.html": {
+   "segments": 2,
+   "translated": 2
+  },
+  "codeCharta/features/sidebarExplorer/components/explorerModeToggle/explorerModeToggle.component.html": {
+   "segments": 1,
+   "translated": 1
+  },
+  "codeCharta/features/sidebarExplorer/components/explorerFocusBanner/explorerFocusBanner.component.html": {
+   "segments": 3,
+   "translated": 3
+  },
+  "codeCharta/features/sidebarExplorer/components/explorerHeader/explorerHeader.component.html": {
+   "segments": 5,
+   "translated": 5
+  },
+  "codeCharta/features/sidebarExplorer/components/explorerSearchBar/explorerSearchBar.component.html": {
+   "segments": 1,
+   "translated": 1
+  },
+  "codeCharta/features/scenarios/components/scenarioSettingsPicker/scenarioSettingsPicker.component.html": {
+   "segments": 4,
+   "translated": 4
+  },
+  "codeCharta/features/scenarios/components/saveScenarioDialog/saveScenarioDialog.component.html": {
+   "segments": 11,
+   "translated": 11
+  },
+  "codeCharta/features/scenarios/components/scenarioListDialog/scenarioListDialog.component.html": {
+   "segments": 7,
+   "translated": 7
+  },
+  "codeCharta/features/scenarios/components/scenarioListDialog/importFeedbackDialog/importFeedbackDialog.component.html": {
+   "segments": 6,
+   "translated": 6
+  },
+  "codeCharta/features/scenarios/components/scenarioListDialog/scenarioItem/scenarioItem.component.html": {
+   "segments": 1,
+   "translated": 1
+  },
+  "codeCharta/features/scenarios/components/scenarioListDialog/scenarioItem/scenarioItemBadges/scenarioItemBadges.component.html": {
+   "segments": 1,
+   "translated": 1
+  },
+  "codeCharta/features/scenarios/components/scenarioListDialog/scenarioItem/scenarioItemActions/scenarioItemActions.component.html": {
+   "segments": 2,
+   "translated": 2
+  },
+  "codeCharta/features/scenarios/components/scenarioListDialog/deleteConfirmDialog/deleteConfirmDialog.component.html": {
+   "segments": 5,
+   "translated": 5
+  },
+  "codeCharta/features/scenarios/components/applyScenarioDialog/applyScenarioDialog.component.html": {
+   "segments": 9,
+   "translated": 9
+  },
+  "codeCharta/features/legend/components/legendDrawer/legendToggleButton.component.html": {
+   "segments": 1,
+   "translated": 1
+  },
+  "codeCharta/features/legend/components/legendPanel/legendColorScaleSection.component.html": {
+   "segments": 1,
+   "translated": 1
+  },
+  "codeCharta/features/legend/components/legendPanel/legendDeltaColorsSection.component.html": {
+   "segments": 1,
+   "translated": 1
+  },
+  "codeCharta/features/legend/components/legendPanel/legendMetricsSection.component.html": {
+   "segments": 4,
+   "translated": 4
+  },
+  "codeCharta/features/dependencyMap/components/edgeStyleSegment/edgeStyleSegment.component.html": {
+   "segments": 4,
+   "translated": 4
+  },
+  "codeCharta/features/dependencyMap/components/edgeLineSettings/edgeLineSettings.component.html": {
+   "segments": 6,
+   "translated": 6
+  },
+  "codeCharta/features/dependencyMap/components/edgeMetricSegment/edgeMetricSegment.component.html": {
+   "segments": 2,
+   "translated": 2
+  },
+  "codeCharta/features/dependencyMap/components/dependencyMap/dependencyMap.component.html": {
+   "segments": 5,
+   "translated": 5
+  },
+  "codeCharta/features/dependencyMap/components/dependencyInspector/dependencyInspector.component.html": {
+   "segments": 8,
+   "translated": 8
+  },
+  "codeCharta/features/dependencyMap/components/hierarchySegment/hierarchySegment.component.html": {
+   "segments": 2,
+   "translated": 2
+  },
+  "codeCharta/features/dependencyMap/components/graphViewTools/graphViewTools.component.html": {
+   "segments": 3,
+   "translated": 3
+  },
+  "codeCharta/features/dependencyMap/components/boxBadgesSegment/boxBadgesSegment.component.html": {
+   "segments": 5,
+   "translated": 5
+  },
+  "codeCharta/features/dependencyMap/components/edgeTypesSegment/edgeTypesSegment.component.html": {
+   "segments": 11,
+   "translated": 11
+  },
+  "codeCharta/features/dependencyMap/components/dependencyEdgeLegend/dependencyEdgeLegend.component.html": {
+   "segments": 4,
+   "translated": 4
+  },
+  "codeCharta/features/navBar/components/deltaSelector/deltaSelector.component.html": {
+   "segments": 1,
+   "translated": 1
+  },
+  "codeCharta/features/navBar/components/mapSelector/mapSelector.component.html": {
+   "segments": 1,
+   "translated": 1
+  },
+  "codeCharta/features/navBar/components/modeToggle/modeToggle.component.html": {
+   "segments": 2,
+   "translated": 2
+  },
+  "codeCharta/features/navBar/components/viewModeBar/viewModeBar.component.html": {
+   "segments": 1,
+   "translated": 1
+  },
+  "codeCharta/features/navBar/components/print3DButton/print3DButton.component.html": {
+   "segments": 2,
+   "translated": 2
+  },
+  "codeCharta/features/navBar/components/viewSwitcher/viewSwitcher.component.html": {
+   "segments": 1,
+   "translated": 1
+  },
+  "codeCharta/features/navBar/components/settingsButton/settingsButton.component.html": {
+   "segments": 2,
+   "translated": 2
+  },
+  "codeCharta/features/navBar/components/navBarLogo/navBarLogo.component.html": {
+   "segments": 2,
+   "translated": 1
+  },
+  "codeCharta/features/navBar/components/navBarFolderButton/navBarFolderButton.component.html": {
+   "segments": 1,
+   "translated": 1
+  },
+  "codeCharta/features/shared/components/metricSelectPopover/metricSelectOption.component.html": {
+   "segments": 1,
+   "translated": 1
+  },
+  "codeCharta/features/shared/components/metricSelectPopover/metricSelectPopover.component.html": {
+   "segments": 2,
+   "translated": 2
+  },
+  "codeCharta/features/shared/components/axisCard/axisCardHeader.component.html": {
+   "segments": 1,
+   "translated": 1
+  },
+  "codeCharta/features/shared/components/toast/toast.component.html": {
+   "segments": 1,
+   "translated": 1
+  },
+  "codeCharta/features/shared/components/confirmDialog/confirmDialog.component.html": {
+   "segments": 3,
+   "translated": 3
+  },
+  "codeCharta/features/shared/components/inlineColorPicker/inlineColorPicker.component.html": {
+   "segments": 1,
+   "translated": 1
+  },
+  "codeCharta/features/shared/components/selectionShortcuts/selectionShortcuts.component.html": {
+   "segments": 3,
+   "translated": 3
+  },
+  "codeCharta/features/shared/components/errorDialog/errorDialog.component.html": {
+   "segments": 1,
+   "translated": 1
+  },
+  "codeCharta/features/3dPrint/components/export3DMapDialog/export3DMapDialog.component.html": {
+   "segments": 4,
+   "translated": 4
+  },
+  "codeCharta/features/3dPrint/components/export3DMapDialog/scaleSlider/scaleSlider.component.html": {
+   "segments": 5,
+   "translated": 5
+  },
+  "codeCharta/features/3dPrint/components/export3DMapDialog/secondRowTextInput/secondRowTextInput.component.html": {
+   "segments": 3,
+   "translated": 3
+  },
+  "codeCharta/features/3dPrint/components/export3DMapDialog/frontTextInput/frontTextInput.component.html": {
+   "segments": 2,
+   "translated": 1
+  },
+  "codeCharta/features/3dPrint/components/export3DMapDialog/qrCodeSettings/qrCodeSettings.component.html": {
+   "segments": 4,
+   "translated": 4
+  },
+  "codeCharta/features/3dPrint/components/export3DMapDialog/printerPresetSelection/printerPresetSelection.component.html": {
+   "segments": 2,
+   "translated": 2
+  },
+  "codeCharta/features/3dPrint/components/export3DMapDialog/exportActions/exportActions.component.html": {
+   "segments": 4,
+   "translated": 4
+  },
+  "codeCharta/features/3dPrint/components/export3DMapDialog/logoUpload/logoUpload.component.html": {
+   "segments": 10,
+   "translated": 10
+  },
+  "codeCharta/features/domainToolbox/components/domainToolbox/domainToolbox.component.html": {
+   "segments": 1,
+   "translated": 1
+  },
+  "codeCharta/features/labelSettings/components/labelSettingsPanel/labelSettingsPanel.component.html": {
+   "segments": 23,
+   "translated": 23
+  },
+  "codeCharta/features/nodeContextMenu/components/nodeContextMenu/markFolderRow.component.html": {
+   "segments": 2,
+   "translated": 2
+  },
+  "codeCharta/features/nodeContextMenu/components/nodeContextMenu/nodeContextMenu.component.html": {
+   "segments": 8,
+   "translated": 8
+  },
+  "codeCharta/features/sidebarInspector/components/inspectorComparisonToggle/inspectorComparisonToggle.component.html": {
+   "segments": 4,
+   "translated": 4
+  },
+  "codeCharta/features/sidebarInspector/components/inspectorMappingBlock/inspectorMappingBlock.component.html": {
+   "segments": 2,
+   "translated": 2
+  },
+  "codeCharta/features/sidebarInspector/components/inspectorMetricsList/inspectorMetricsList.component.html": {
+   "segments": 2,
+   "translated": 2
+  },
+  "codeCharta/features/sidebarInspector/components/inspectorHeader/inspectorHeader.component.html": {
+   "segments": 2,
+   "translated": 2
+  },
+  "codeCharta/features/sidebarInspector/components/inspectorMetricMapping/inspectorMetricMapping.component.html": {
+   "segments": 1,
+   "translated": 1
+  },
+  "codeCharta/features/sidebarInspector/components/inspectorEmptyMetrics/inspectorEmptyMetrics.component.html": {
+   "segments": 1,
+   "translated": 1
+  },
+  "codeCharta/features/sidebarInspector/components/inspectorNodeBadges/inspectorNodeBadges.component.html": {
+   "segments": 3,
+   "translated": 3
+  },
+  "codeCharta/features/mapTools/components/presentationModeButton/presentationModeButton.component.html": {
+   "segments": 1,
+   "translated": 1
+  },
+  "codeCharta/features/mapTools/components/centerMapZoomMenu/centerMapZoomMenu.component.html": {
+   "segments": 4,
+   "translated": 4
+  },
+  "codeCharta/features/mapTools/components/centerMapButton/centerMapButton.component.html": {
+   "segments": 2,
+   "translated": 2
+  },
+  "codeCharta/features/codeMap/codeMap.component.html": {
+   "segments": 1,
+   "translated": 1
+  },
+  "codeCharta/features/domainBar/components/wordSizingSettingsPopover/wordSizingSettingsPopover.component.html": {
+   "segments": 3,
+   "translated": 3
+  },
+  "codeCharta/features/domainBar/components/rotationSettingsPopover/rotationSettingsPopover.component.html": {
+   "segments": 10,
+   "translated": 10
+  },
+  "codeCharta/features/domainBar/components/wordSizingModeControl/wordSizingModeControl.component.html": {
+   "segments": 6,
+   "translated": 5
+  },
+  "codeCharta/features/domainBar/components/shapeSettingsPopover/shapeSettingsPopover.component.html": {
+   "segments": 8,
+   "translated": 8
+  },
+  "codeCharta/features/domainBar/components/wordSizeRangeControl/wordSizeRangeControl.component.html": {
+   "segments": 8,
+   "translated": 8
+  },
+  "codeCharta/features/domainBar/components/wordSpacingControl/wordSpacingControl.component.html": {
+   "segments": 3,
+   "translated": 3
+  },
+  "codeCharta/features/domainBar/components/domainBar/domainBar.component.html": {
+   "segments": 4,
+   "translated": 4
+  },
+  "codeCharta/features/domainBar/components/wordCountControl/wordCountControl.component.html": {
+   "segments": 3,
+   "translated": 3
+  },
+  "codeCharta/features/metricsBar/components/edgeSegment/edgeSegment.component.html": {
+   "segments": 3,
+   "translated": 2
+  },
+  "codeCharta/features/metricsBar/components/metricMetaValue/metricMetaValue.component.html": {
+   "segments": 1,
+   "translated": 0
+  },
+  "codeCharta/features/metricsBar/components/areaSegment/areaSegment.component.html": {
+   "segments": 2,
+   "translated": 2
+  },
+  "codeCharta/features/metricsBar/components/layoutTab/layoutTab.component.html": {
+   "segments": 10,
+   "translated": 10
+  },
+  "codeCharta/features/metricsBar/components/folderValuePopover/folderValuePopover.component.html": {
+   "segments": 4,
+   "translated": 4
+  },
+  "codeCharta/features/metricsBar/components/areaSettingsPopover/areaSettingsPopover.component.html": {
+   "segments": 7,
+   "translated": 7
+  },
+  "codeCharta/features/metricsBar/components/labelsScenariosSegment/labelsScenariosSegment.component.html": {
+   "segments": 5,
+   "translated": 5
+  },
+  "codeCharta/features/metricsBar/components/folderStylePopover/folderStylePopover.component.html": {
+   "segments": 8,
+   "translated": 8
+  },
+  "codeCharta/features/metricsBar/components/heightSettingsPopover/heightSettingsPopover.component.html": {
+   "segments": 6,
+   "translated": 6
+  },
+  "codeCharta/features/metricsBar/components/colorSettingsPopover/colorBandsSection.component.html": {
+   "segments": 1,
+   "translated": 1
+  },
+  "codeCharta/features/metricsBar/components/colorSettingsPopover/colorRangeSection.component.html": {
+   "segments": 2,
+   "translated": 2
+  },
+  "codeCharta/features/metricsBar/components/colorSettingsPopover/colorSettingsHeader.component.html": {
+   "segments": 3,
+   "translated": 3
+  },
+  "codeCharta/features/metricsBar/components/colorSettingsPopover/folderOverrides.component.html": {
+   "segments": 3,
+   "translated": 3
+  },
+  "codeCharta/features/metricsBar/components/colorSettingsPopover/gradientModePicker.component.html": {
+   "segments": 6,
+   "translated": 6
+  },
+  "codeCharta/features/metricsBar/components/colorSettingsPopover/invertResetRow.component.html": {
+   "segments": 3,
+   "translated": 3
+  },
+  "codeCharta/features/metricsBar/components/colorSettingsPopover/metricColorRangeSlider.component.html": {
+   "segments": 4,
+   "translated": 4
+  },
+  "codeCharta/features/metricsBar/components/colorSettingsPopover/pinFolderSearch.component.html": {
+   "segments": 4,
+   "translated": 4
+  },
+  "codeCharta/features/metricsBar/components/metricsBar/metricsBar.component.html": {
+   "segments": 1,
+   "translated": 1
+  },
+  "codeCharta/features/metricsBar/components/foldersSegment/foldersSegment.component.html": {
+   "segments": 1,
+   "translated": 1
+  },
+  "codeCharta/features/metricsBar/components/colorSegment/colorSegment.component.html": {
+   "segments": 2,
+   "translated": 2
+  },
+  "codeCharta/features/metricsBar/components/edgeSettingsPopover/edgeMetricToggle.component.html": {
+   "segments": 1,
+   "translated": 1
+  },
+  "codeCharta/features/metricsBar/components/edgeSettingsPopover/edgeSettingsPopover.component.html": {
+   "segments": 14,
+   "translated": 14
+  },
+  "codeCharta/features/metricsBar/components/heightSegment/heightSegment.component.html": {
+   "segments": 2,
+   "translated": 2
+  },
+  "codeCharta/features/viewCube/zoomSlider/zoomSlider.component.html": {
+   "segments": 1,
+   "translated": 1
+  },
+  "codeCharta/features/domainWordMenu/components/domainWordMenu/domainWordMenu.component.html": {
+   "segments": 3,
+   "translated": 3
+  },
+  "codeCharta/features/radialMap/components/radialMap/radialMap.component.html": {
+   "segments": 4,
+   "translated": 4
+  },
+  "codeCharta/features/fileExtensionBar/components/fileExtensionBarSegment/fileExtensionBarSegment.component.html": {
+   "segments": 3,
+   "translated": 3
+  },
+  "codeCharta/features/fileExtensionBar/components/fileExtensionBar/fileExtensionBar.component.html": {
+   "segments": 1,
+   "translated": 1
+  },
+  "codeCharta/renderer/dependencyGraph/components/dependencyGraphBoxList/dependencyGraphBoxList.component.html": {
+   "segments": 1,
+   "translated": 1
+  },
+  "codeCharta/renderer/wordCloud/components/wordCloud/wordCloud.component.html": {
+   "segments": 2,
+   "translated": 2
+  },
+  "codeCharta/views/domainView/domainView.component.html": {
+   "segments": 1,
+   "translated": 1
+  }
+ },
+ "errors": []
+}

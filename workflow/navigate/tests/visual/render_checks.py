@@ -15,7 +15,9 @@ from __future__ import annotations
 import json
 import os
 import random
+import re
 import shutil
+import socket
 import subprocess
 import sys
 import tempfile
@@ -27,7 +29,13 @@ WEB_SERVER = ROOT / "workflow" / "navigate" / "scripts" / "web_server.py"
 BROWSE = ROOT / "general" / "access-web" / "browse"
 
 VIEW = {"width": 1440, "height": 900}
-TYPES = ["research", "deliberate", "prototype", "task"]
+WORKFLOW_TYPES = [
+    ("spec", "规格"), ("verification-plan", "验证方案"),
+    ("execution-plan", "执行拆分"), ("implementation", "实施"),
+    ("verification", "独立验证"),
+]
+TYPES = ["research", "deliberate", "demo", "poc",
+         *[kind for kind, _ in WORKFLOW_TYPES], "task", "acceptance"]
 
 # 结果收集: (名称, 是否通过, 说明)
 RESULTS: list[tuple[str, bool, str]] = []
@@ -53,19 +61,35 @@ def write_roadmap(path: Path, milestones: dict, title: str) -> Path:
 
 
 def small_roadmap(path: Path) -> Path:
-    """7 个里程碑, 有分层与连线, 够画一张正常的图."""
+    """8 个里程碑, 有分层与连线, 够画一张正常的图 (含 demo 与 poc 各一枚)."""
     spec = [
         ("milestone-01", "research", "已关闭", []),
         ("milestone-02", "task", "进行中", ["milestone-01"]),
         ("milestone-03", "deliberate", "待处理", ["milestone-01"]),
-        ("milestone-04", "prototype", "待处理", ["milestone-02"]),
+        ("milestone-04", "demo", "待处理", ["milestone-02"]),
         ("milestone-05", "task", "待处理", ["milestone-03"]),
         ("milestone-06", "research", "待处理", ["milestone-02"]),
         ("milestone-07", "acceptance", "待处理", ["milestone-04", "milestone-05", "milestone-06"]),
+        ("milestone-08", "poc", "待处理", ["milestone-04"]),
     ]
     ms = {i: {"title": "巡检 %s" % i[-2:], "type": t, "question": "q", "status": s, "blocked_by": d}
           for i, t, s, d in spec}
     return write_roadmap(path, ms, "巡检小图")
+
+
+def workflow_roadmap(path: Path) -> Path:
+    """五个新类型共用目录, 加一个显式无输入/无目录的操作节点."""
+    ms = {}
+    for i, (kind, _) in enumerate([*WORKFLOW_TYPES, ("task", "操作")], 1):
+        ms["milestone-%02d" % i] = {
+            "title": "流程 %02d" % i, "type": kind, "question": "检查输入输出",
+            "status": "待处理", "blocked_by": [] if i == 1 else ["milestone-%02d" % (i - 1)],
+            "inputs": [{"content": '已确认决策 <img src=x onerror="window.__ioInjected=true">',
+                        "source": "docs/changes/visual/DECISIONS.md"}] if i <= 5 else [],
+            "output_dir": "docs/changes/visual/" if i <= 5 else None,
+            "artifacts": [], "close_summary": None,
+        }
+    return write_roadmap(path, ms, "流程输入输出巡检")
 
 
 def chain_roadmap(path: Path, n: int, kind: str = "task") -> Path:
@@ -93,7 +117,10 @@ def random_roadmap(path: Path, n: int, seed: int = 11) -> Path:
 
 
 def start_server(runtime_dir: Path) -> int:
-    env = dict(os.environ, NAVIGATE_WEB_RUNTIME_DIR=str(runtime_dir))
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+        sock.bind(("127.0.0.1", 0))
+        port = sock.getsockname()[1]
+    env = dict(os.environ, NAVIGATE_WEB_RUNTIME_DIR=str(runtime_dir), NAVIGATE_WEB_PORT=str(port))
     out = subprocess.run([sys.executable, str(WEB_SERVER), "start"], env=env,
                          capture_output=True, text=True, timeout=60)
     body = json.loads(out.stdout.strip().splitlines()[-1])
@@ -183,10 +210,42 @@ def run(port: int, fixtures: dict) -> None:
         page.mouse.click(707, 447)
         page.wait_for_timeout(400)
         opened = page.evaluate("() => !document.getElementById('panel').classList.contains('hidden')")
+        legacy_panel = page.locator("#panelBody").inner_text()
+        report("旧图输入输出展示", opened and legacy_panel.count("未记录") >= 2,
+               "缺字段显示未记录, 不猜输入或目录")
         page.keyboard.press("Escape")
         page.wait_for_timeout(200)
         closed = page.evaluate("() => document.getElementById('panel').classList.contains('hidden')")
         report("交互 (点选/关闭)", bool(opened and closed), "点星球开面板 %s, Esc 关闭 %s" % (opened, closed))
+
+        # TC-006: demo/poc 两种类型各有图例与画布标注, 元数据/配色/地貌两两不同
+        # (与既有各项共用同一次页面加载)
+        page.evaluate("""() => { window.__demoLbl = false; window.__pocLbl = false;
+          const P = CanvasRenderingContext2D.prototype, o = P.fillText;
+          P.fillText = function (t) { const s = String(t);
+            if (s.includes('演示')) window.__demoLbl = true;
+            if (s.includes('实验')) window.__pocLbl = true;
+            return o.apply(this, arguments); }; }""")
+        page.wait_for_timeout(350)
+        src = page.evaluate("() => fetch('/').then(r => r.text())")
+        demo_meta = re.search(r"demo:\s*\{ label: '([^']+)', color: '(#[0-9a-fA-F]+)'", src)
+        poc_meta = re.search(r"poc:\s*\{ label: '([^']+)', color: '(#[0-9a-fA-F]+)'", src)
+        demo_pal = re.search(r"demo:\s*\[('[^]]+)\]", src)
+        poc_pal = re.search(r"poc:\s*\[('[^]]+)\]", src)
+        demo_feat = re.search(r"demo:\s*\{ base: '(\w+)'", src)
+        poc_feat = re.search(r"poc:\s*\{ base: '(\w+)'", src)
+        flat_legend = " ".join(legend.split())
+        i_demo, i_poc = flat_legend.find("演示 demo"), flat_legend.find("实验 PoC")
+        ok_dp = all(["演示 demo" in flat_legend, i_poc > i_demo >= 0,
+                     page.evaluate("() => window.__demoLbl && window.__pocLbl"),
+                     demo_meta and poc_meta and demo_meta.group(2) != poc_meta.group(2),
+                     demo_pal and poc_pal and demo_pal.group(1) != poc_pal.group(1),
+                     demo_feat and poc_feat and demo_feat.group(1) != poc_feat.group(1)])
+        report("demo/poc 类型展示", ok_dp,
+               "图例两项(%s/%s), 画布标注(demo=%s poc=%s), 标签色(%s/%s), 配色与地貌均不同" % (
+                   "演示 demo" in flat_legend, "实验 PoC" in flat_legend,
+                   page.evaluate("() => window.__demoLbl"), page.evaluate("() => window.__pocLbl"),
+                   demo_meta.group(2) if demo_meta else "?", poc_meta.group(2) if poc_meta else "?"))
 
         # 天幕不随视角: 采样点避开地图内容 (星球/连线/未知海域的雾都在中上部)
         # 动效固定恒开: 即使系统省动画, 画面也应继续闪 (不再跟随 prefers-reduced-motion)
@@ -237,8 +296,51 @@ def run(port: int, fixtures: dict) -> None:
         report("星球光照朝向终点", ok_light,
                "左/右半亮度 " + ", ".join("%.0f/%.0f" % (h["left"], h["right"]) for h in halves))
 
+        # 五个新类型与里程碑输入/输出: 真实画布选点, 不直接调用页面内部函数
+        workflow = browser.new_page(viewport=VIEW)
+        workflow.on("pageerror", lambda e: errors.append(str(e)[:150]))
+        workflow.add_init_script(script="""(() => {
+          window.__workflowLabels = {};
+          const P = CanvasRenderingContext2D.prototype, original = P.fillText;
+          P.fillText = function (text, x, y) {
+            window.__workflowLabels[String(text)] = [x, y];
+            return original.apply(this, arguments);
+          };
+        })()""")
+        workflow.goto(url(port, fixtures["workflow"]))
+        workflow.wait_for_function("Object.keys(window.__workflowLabels).includes('流程 06')")
+        flat_legend = " ".join(workflow.locator("#legend").inner_text().split())
+        labels = workflow.evaluate("() => Object.keys(window.__workflowLabels)")
+        report("五个新里程碑类型展示", all(
+            label + " " + kind in flat_legend and "待处理 · " + label in labels
+            for kind, label in WORKFLOW_TYPES), "图例与画布标注均识别五种类型")
+        panels, output_rows = [], []
+        inputs_are_text = True
+        for i in (1, 2, 6):
+            pos = workflow.evaluate("label => window.__workflowLabels[label]", "流程 %02d" % i)
+            workflow.mouse.click(pos[0], pos[1] - 30)
+            workflow.wait_for_function("!document.getElementById('panel').classList.contains('hidden')")
+            panels.append(workflow.locator("#panelBody").inner_text())
+            output_rows.append(workflow.locator("#panelBody .row").filter(
+                has_text=re.compile("^输出目录")).inner_text())
+            inputs_are_text = inputs_are_text and workflow.locator("#panelBody img").count() == 0
+            workflow.keyboard.press("Escape")
+        report("输入与共享输出目录", all(
+            "输入内容" in panel and "已确认决策" in panel
+            and "docs/changes/visual/DECISIONS.md" in panel
+            for panel in panels[:2])
+               and output_rows[:2] == ["输出目录\ndocs/changes/visual/"] * 2, "两个里程碑各自显示输入与来源, 共用一个产物目录")
+        report("输入按纯文本展示", "<img src=x" in panels[0]
+               and inputs_are_text
+               and not workflow.evaluate("() => !!window.__ioInjected"), "来源内容不作为 HTML 执行")
+        rows = panels[2]
+        report("显式无输入无输出目录", "输入内容\n无" in rows and "无独立产物目录" in rows,
+               "空清单和 null 与旧图未记录相区分")
+        workflow.close()
+
         # 大规模: 贴图数与加载期卡顿
         scaled = browser.new_page(viewport=VIEW)
+        scaled.on("pageerror", lambda e: errors.append(str(e)[:150]))
         scaled.add_init_script(script=INIT_JS)
         scaled.goto(url(port, fixtures["big"]))
         scaled.wait_for_timeout(6000)
@@ -263,6 +365,7 @@ def main() -> int:
         fixtures = {
             "small": small_roadmap(tmp / "small.json"),
             "chain": chain_roadmap(tmp / "chain.json", 5),
+            "workflow": workflow_roadmap(tmp / "workflow.json"),
             "big": random_roadmap(tmp / "big.json", 1000),
         }
         runtime = tmp / "runtime"

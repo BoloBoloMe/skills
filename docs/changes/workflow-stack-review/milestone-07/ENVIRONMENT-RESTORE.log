@@ -1,0 +1,20 @@
+本记录仅核对环境还原, 不运行产品或相关测试.
+time=2026-10-31T17:22:27Z
+/etc/subuid: restored ['node:100000:65536', 'bolo:165536:65536']
+/etc/subgid: restored ['node:100000:65536', 'bolo:165536:65536']
+absent=/usr/bin/podman
+absent=/home/bolo/.config/containers/storage.conf
+absent=/home/bolo/.local/share/containers
+absent=/home/bolo/venvs/m07
+absent=/etc/subuid.bak
+absent=/etc/subgid.bak
+restored_executable=/home/bolo/.cache/ms-playwright/chromium-1234/chrome-linux64/chrome bytes=290614600
+restored_executable=/home/bolo/.cache/ms-playwright/ffmpeg-1011/ffmpeg-linux bytes=5101056
+installation_marker=/home/bolo/.cache/ms-playwright/chromium-1234/INSTALLATION_COMPLETE
+installation_marker=/home/bolo/.cache/ms-playwright/ffmpeg-1011/INSTALLATION_COMPLETE
+new_cache_retained=chromium-1248 exists=True
+new_cache_retained=chromium_headless_shell-1248 exists=True
+new_cache_retained=ffmpeg-1013 exists=True
+restore_checks_exit=0
+original_playwright= 1.62.0
+exit_code=0

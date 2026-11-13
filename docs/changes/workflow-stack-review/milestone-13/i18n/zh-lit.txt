@@ -1,0 +1,14 @@
+# 模板里"绑定表达式内"的用户文案: 文件路径 <TAB> 英文整条字面量 <TAB> 中文
+# 这些字面量位于 [title]="..." 或 {{ ... }} 里, 静态文本扫描无法覆盖, 只能按整条字面量精确替换.
+codeCharta/features/globalSettings/components/globalConfigurationDialog/globalConfigurationDialog.component.html	Hide Flattened Buildings	隐藏被压平的建筑
+codeCharta/features/globalSettings/components/globalConfigurationDialog/globalConfigurationDialog.component.html	Reset camera when map layout changes	地图布局变化时重置视角
+codeCharta/features/globalSettings/components/globalConfigurationDialog/globalConfigurationDialog.component.html	White Background	白色背景
+codeCharta/features/globalSettings/components/globalConfigurationDialog/globalConfigurationDialog.component.html	Screenshot to clipboard	截图复制到剪贴板
+codeCharta/features/dependencyMap/components/dependencyInspector/dependencyInspector.component.html	inside	内部
+codeCharta/features/dependencyMap/components/dependencyInspector/dependencyInspector.component.html	across	跨模块
+codeCharta/features/shared/components/errorDialog/errorDialog.component.html	OK	确定
+codeCharta/features/sidebarExplorer/components/explorerSortControl/explorerSortControl.component.html	Sort descending	降序
+codeCharta/features/sidebarExplorer/components/explorerSortControl/explorerSortControl.component.html	Sort ascending	升序
+codeCharta/features/nodeContextMenu/components/nodeContextMenu/nodeContextMenu.component.html	Unfocus Parent	取消聚焦上级
+codeCharta/features/sidebarInspector/components/inspectorNodeBadges/inspectorNodeBadges.component.html	file	个文件
+codeCharta/features/sidebarInspector/components/inspectorNodeBadges/inspectorNodeBadges.component.html	files	个文件

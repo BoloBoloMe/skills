@@ -48,6 +48,7 @@ body {
   position: fixed; top: 14px; right: 16px; z-index: 5;
   background: var(--panel); border: 1px solid var(--panel-border); border-radius: 10px;
   padding: 10px 12px; font-size: 12px; backdrop-filter: blur(6px);
+  max-height: calc(100vh - 48px); overflow-y: auto;
 }
 #legend .lg-title { color: var(--text-dim); font-size: 11px; margin-bottom: 6px; }
 #legend .lg { display: flex; align-items: center; gap: 8px; margin: 4px 0; }
@@ -188,14 +189,57 @@ body {
       <circle cx="10" cy="12" r="4" fill="#e8955c"/>
       <circle cx="17" cy="6" r="1.8" fill="#e8955c"/>
     </svg>
-    <span>原型 <small>prototype</small></span>
+    <span>演示 <small>demo</small></span>
+  </div>
+  <div class="lg">
+    <svg width="22" height="22" viewBox="0 0 22 22">
+      <circle cx="11" cy="11" r="4" fill="#63c9a3"/>
+      <circle cx="11" cy="11" r="7.4" fill="none" stroke="#63c9a3" stroke-width="1.1"/>
+      <circle cx="11" cy="11" r="10" fill="none" stroke="#63c9a3" stroke-width="0.8" stroke-dasharray="2.4 2.6"/>
+    </svg>
+    <span>实验 <small>PoC</small></span>
+  </div>
+  <div class="lg">
+    <svg width="22" height="22" viewBox="0 0 22 22">
+      <circle cx="11" cy="11" r="4" fill="#87ade8"/>
+      <circle cx="11" cy="11" r="8" fill="none" stroke="#87ade8" stroke-width="1.1"/>
+    </svg>
+    <span>规格 <small>spec</small></span>
+  </div>
+  <div class="lg">
+    <svg width="22" height="22" viewBox="0 0 22 22">
+      <circle cx="11" cy="11" r="4" fill="#a1c98a"/>
+      <circle cx="11" cy="11" r="8" fill="none" stroke="#a1c98a" stroke-width="1.1"/>
+    </svg>
+    <span>验证方案 <small>verification-plan</small></span>
+  </div>
+  <div class="lg">
+    <svg width="22" height="22" viewBox="0 0 22 22">
+      <circle cx="11" cy="11" r="4" fill="#c7a5e8"/>
+      <circle cx="11" cy="11" r="8" fill="none" stroke="#c7a5e8" stroke-width="1.1"/>
+    </svg>
+    <span>执行拆分 <small>execution-plan</small></span>
+  </div>
+  <div class="lg">
+    <svg width="22" height="22" viewBox="0 0 22 22">
+      <circle cx="11" cy="11" r="4" fill="#dbad72"/>
+      <circle cx="11" cy="11" r="8" fill="none" stroke="#dbad72" stroke-width="1.1"/>
+    </svg>
+    <span>实施 <small>implementation</small></span>
+  </div>
+  <div class="lg">
+    <svg width="22" height="22" viewBox="0 0 22 22">
+      <circle cx="11" cy="11" r="4" fill="#75d2c3"/>
+      <circle cx="11" cy="11" r="8" fill="none" stroke="#75d2c3" stroke-width="1.1"/>
+    </svg>
+    <span>独立验证 <small>verification</small></span>
   </div>
   <div class="lg">
     <svg width="22" height="22" viewBox="0 0 22 22">
       <circle cx="11" cy="11" r="4" fill="#d8c58a"/>
       <path d="M5 5l2.5 2.5M17 5l-2.5 2.5M5 17l2.5-2.5M17 17l-2.5-2.5" stroke="#d8c58a" stroke-width="1.1"/>
     </svg>
-    <span>任务 <small>task</small></span>
+    <span>操作 <small>task</small></span>
   </div>
   <div class="lg">
     <svg width="22" height="22" viewBox="0 0 22 22">
@@ -257,8 +301,14 @@ var DEST_R = 24;
 var TYPE_META = {
   research:   { label: '调研', color: '#6fc8e8' },
   deliberate: { label: '权衡', color: '#a48fd8' },
-  prototype:  { label: '原型', color: '#e8955c' },
-  task:       { label: '任务', color: '#d8c58a' },
+  demo:       { label: '演示', color: '#e8955c' },
+  poc:        { label: '实验', color: '#63c9a3' },
+  'spec': { label: '规格', color: '#87ade8' },
+  'verification-plan': { label: '验证方案', color: '#a1c98a' },
+  'execution-plan': { label: '执行拆分', color: '#c7a5e8' },
+  'implementation': { label: '实施', color: '#dbad72' },
+  'verification': { label: '独立验证', color: '#75d2c3' },
+  task:       { label: '操作', color: '#d8c58a' },
   acceptance: { label: '验收', color: '#e8a4bc' }
 };
 var STATUS_COLORS = { '待处理': '#8a97b8', '进行中': '#d4b36a', '已关闭': '#79b896' };
@@ -621,7 +671,7 @@ function friendlyError(code, msg) {
     case 'not_json': return '目标路径不是 .json 文件, 展示服务拒绝提供.';
     case 'invalid_args': return '路径参数无效: ' + msg;
     case 'invalid_json': return '路线图文件内容不是合法 JSON.';
-    case 'network': return '无法连接展示服务, 可能是服务未启动或已退出.';
+    case 'network': return '无法连接展示服务, 可能是服务未启动或已退出. 可在仓库内运行 workflow/navigate/scripts/display_serve.sh ensure 复原; 若经转发桥访问, 再检查桥的转发目标端口.';
     default: return msg || '读取路线图失败.';
   }
 }
@@ -947,6 +997,29 @@ function renderPanel() {
 
   body.append(kvRow('问题', [tn(m.question || '(未填写)')]));
 
+  if (!Array.isArray(m.inputs)) {
+    body.append(kvRow('输入内容', [tn('未记录')]));
+  } else if (!m.inputs.length) {
+    body.append(kvRow('输入内容', [tn('无')]));
+  } else {
+    var inputs = document.createElement('ul');
+    m.inputs.forEach(function (item) {
+      var li = document.createElement('li');
+      li.append(tn(item && item.content || '(未填写)'));
+      var source = document.createElement('div');
+      source.className = 'artifact';
+      source.textContent = '来源: ' + (item && item.source || '未提供');
+      li.append(source);
+      inputs.append(li);
+    });
+    body.append(kvRow('输入内容', [inputs]));
+  }
+  var output = document.createElement('span');
+  output.className = 'artifact';
+  output.textContent = m.output_dir === undefined ? '未记录'
+    : m.output_dir === null ? '无独立产物目录' : String(m.output_dir);
+  body.append(kvRow('输出目录', [output]));
+
   var deps = Array.isArray(m.blocked_by) ? m.blocked_by : [];
   if (!deps.length) {
     body.append(kvRow('阻塞于', [tn('无')]));
@@ -1198,7 +1271,13 @@ function drawEdges(t) {
 var PLANET_PALETTES = {
   research:   ['#dfeef8', '#b8d8ea', '#8fc0dc', '#6fa8c8', '#e8f4fa', '#a8cce2'],   // 冰封海洋
   deliberate: ['#8a76b8', '#6d5a9e', '#a48fd8', '#5a4a88', '#c0b0e0', '#7a68a8'],   // 紫气巨星
-  prototype:  ['#3a2a26', '#54382e', '#6e4634', '#8a5438', '#2a1e1c', '#462e28'],   // 熔岩岩石
+  demo:       ['#3a2a26', '#54382e', '#6e4634', '#8a5438', '#2a1e1c', '#462e28'],   // 熔岩岩石
+  poc:        ['#2e5a4a', '#3f7a60', '#579878', '#74b490', '#20443a', '#3a6e56'],   // 苔绿岩
+  spec:       ['#637faa', '#7899cc', '#9bb8de', '#4b648f', '#c0d0ec', '#5874a0'],
+  'verification-plan': ['#69834f', '#89a66a', '#b8d299', '#536d3e', '#cfdfb4', '#7c995c'],
+  'execution-plan': ['#9775b8', '#b595d0', '#d5bce8', '#755491', '#e8d5f2', '#a181c1'],
+  implementation: ['#a47948', '#bf915a', '#dbad72', '#805b35', '#e8c99c', '#b18a58'],
+  verification: ['#438f86', '#61b5a7', '#91d3c4', '#326e69', '#b8e4d9', '#529e95'],
   task:       ['#c8a878', '#b89868', '#a8885c', '#d4bc8c', '#9a7850', '#c0a070'],   // 沙漠岩
   acceptance: ['#b57892', '#975c78', '#dca6bd', '#78445f', '#f1cede', '#af738e'],   // 玫瑰晶岩
   destination:['#e8cf9a', '#d4b378', '#c8a060', '#f0e0b0', '#b89058', '#e0c088'],   // 金气巨星
@@ -1210,7 +1289,13 @@ var PLANET_GRAY = ['#8a8f9a', '#767c88', '#9aa0ac', '#687080', '#848a96'];
 var PLANET_FEATURES = {
   research:    { base: 'cap',     extras: ['storms', 'craters'] },
   deliberate:  { base: 'storms',  extras: ['cap', 'cracks'] },
-  prototype:   { base: 'cracks',  extras: ['craters', 'storms'] },
+  demo:        { base: 'cracks',  extras: ['craters', 'storms'] },
+  poc:         { base: 'craters', extras: ['storms', 'cap'] },
+  spec:        { base: 'cap', extras: ['cracks', 'storms'] },
+  'verification-plan': { base: 'storms', extras: ['cap', 'craters'] },
+  'execution-plan': { base: 'cracks', extras: ['storms', 'cap'] },
+  implementation: { base: 'craters', extras: ['cracks', 'cap'] },
+  verification: { base: 'cap', extras: ['storms', 'craters'] },
   task:        { base: 'craters', extras: ['cracks', 'storms'] },
   acceptance:  { base: 'cracks',  extras: ['cap', 'craters'] },
   moon:        { base: 'craters', extras: ['cap', 'cracks'] },
@@ -1486,6 +1571,8 @@ function planetFor(node, closed, tier) {
   var type = node.m.type || 'task';
   // 最小档只有十几像素, 看不出哪颗的专属花纹, 所以整类共用一张 (否则上千个里程碑要烘上千张)
   var shared = tier <= 24;
+  // 已关闭的小星球均为灰色, 类型细节不可辨, 共用一份灰色贴图以免新增类型撑大缓存.
+  if (shared && closed) type = 'task';
   var key = (shared ? 'shared:' + type : node.id) + ':' + (closed ? 'gray' : 'live') + ':' + tier;
   var p = state.planets.get(key);
   if (!p) {
@@ -1636,7 +1723,7 @@ function drawStar(node, t, dt) {
       ctx.ellipse(0, 0, r * 2.0, r * 0.62, 0, 0, Math.PI * 2);
       ctx.stroke();
       ctx.restore();
-    } else if (node.m.type === 'prototype') {
+    } else if (node.m.type === 'demo') {
       // 卫星 (月球) 缓绕, 自带明暗
       var oa = t * 0.5 + dph;
       var ox = x + Math.cos(oa) * r * 2.1;
@@ -1650,6 +1737,19 @@ function drawStar(node, t, dt) {
       ctx.beginPath();
       ctx.arc(ox, oy, orr, 0, Math.PI * 2);
       ctx.fill();
+    } else if (node.m.type === 'poc') {
+      // 实验: 脉冲外环 + 固定外圈, 与 demo 的单卫星一眼分开
+      var pulse = 0.5 + 0.5 * Math.sin(t * 2.2 + dph);
+      ctx.strokeStyle = rgba(color, 0.28 + 0.3 * pulse);
+      ctx.lineWidth = 1.2;
+      ctx.beginPath();
+      ctx.arc(x, y, r * (1.5 + 0.32 * pulse), 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.strokeStyle = rgba(color, 0.18);
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.arc(x, y, r * 2.15, 0, Math.PI * 2);
+      ctx.stroke();
     }
   } else {
     // 已驶过: 3/4 航迹弧 + 弧端亮点

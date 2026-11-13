@@ -1,0 +1,5 @@
+cc.json 文件总数: 3014
+含 /src/test/ 的: 0
+含 /target/ 的: 0
+扩展名分布: {'java': 2846, 'js': 122, 'html': 22, 'sql': 21, 'py': 3}
+根下顶层目录: ['cdn-resources', 'czsdk-accounting', 'czsdk-accounting-sdk', 'czsdk-amount-util', 'czsdk-cdn', 'czsdk-common-business', 'czsdk-common-util', 'czsdk-dao', 'czsdk-paycenter', 'czsdk-paycenter-sdks', 'czsdk-task', 'docs']

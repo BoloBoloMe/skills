@@ -10,6 +10,7 @@ import importlib.util
 import json
 import os
 from pathlib import Path
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -193,6 +194,24 @@ class AcDraftTests(unittest.TestCase):
         run = self.check()
         self.assertEqual(0, run.returncode, run.stderr)
         self.assertIn("2 个场景, 1 个 AC", run.stdout)
+
+    def test_workspace_creates_review_subdir_in_dedicated_dir(self):
+        first = self.cli(HELPER, "workspace")
+        self.assertEqual(0, first.returncode, first.stdout + first.stderr)
+        one = json.loads(first.stdout)
+        self.addCleanup(shutil.rmtree, Path(one["dir"]), True)
+        self.assertTrue(one["success"])
+        self.assertEqual("workspace", one["command"])
+        root = Path(one["dir"])
+        self.assertTrue(root.name.startswith("to-spec-ac-"))
+        self.assertEqual(root, Path(one["review"]).parent)
+        self.assertEqual([], list(Path(one["review"]).iterdir()))
+
+        second = self.cli(HELPER, "workspace")
+        self.assertEqual(0, second.returncode, second.stdout + second.stderr)
+        two = json.loads(second.stdout)
+        self.addCleanup(shutil.rmtree, Path(two["dir"]), True)
+        self.assertNotEqual(one["dir"], two["dir"])
 
     def test_preview_is_safe_exact_text_and_never_overwrites(self):
         draft = DRAFT.replace("已确认的原文", "</pre><script>alert('x')</script> & 中文")

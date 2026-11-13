@@ -1,0 +1,19 @@
+=== 单文件 A: TestMapper ===
+[main] WARN de.maibornwolff.codecharta.util.Logger - No .gitignore found at root level, excluding common build folders as fallback...
+Extracting dependencies
+   0% [>                                                                                                    ] 0/1 Files, ETA: N/A 100% [====================================================================================================>] 1/1 Files, ETA: 00:00:00 100% [====================================================================================================>] 1/1 Files, ETA: 00:00:00
+[main] INFO de.maibornwolff.codecharta.util.Logger - 'Resolving dependencies' started
+[main] INFO de.maibornwolff.codecharta.util.Logger - 'Resolving dependencies' took 2ms
+[main] WARN de.maibornwolff.codecharta.util.Logger - No analyzable declarations were found, so the dependency lens stays empty. This usually means no supported source files were found, or every file was skipped; see the warnings above.
+
+Created Project with 1 leaves.
+
+=== 单文件 B: package-info ===
+[main] WARN de.maibornwolff.codecharta.util.Logger - No .gitignore found at root level, excluding common build folders as fallback...
+Extracting dependencies
+   0% [>                                                                                                    ] 0/1 Files, ETA: N/A 100% [====================================================================================================>] 1/1 Files, ETA: 00:00:00 100% [====================================================================================================>] 1/1 Files, ETA: 00:00:00
+[main] INFO de.maibornwolff.codecharta.util.Logger - 'Resolving dependencies' started
+[main] INFO de.maibornwolff.codecharta.util.Logger - 'Resolving dependencies' took 3ms
+[main] WARN de.maibornwolff.codecharta.util.Logger - No analyzable declarations were found, so the dependency lens stays empty. This usually means no supported source files were found, or every file was skipped; see the warnings above.
+
+Created Project with 1 leaves.
