@@ -6,8 +6,6 @@ disable-model-invocation: true
 
 # 架构深化审查
 
-本 skill 是方法 skill; 完成标准见 [verification-contract](../verification-contract/SKILL.md).
-
 发现架构摩擦, 提出将浅模块重构为深模块的深化机会. 目标是改善项目的可测试性和代码可理解性. 本流程仅交付报告, 不直接修改代码.
 
 1. 探索
