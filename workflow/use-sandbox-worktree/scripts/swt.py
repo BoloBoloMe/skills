@@ -497,6 +497,22 @@ def config_layer_values(repo: Path, mother: Path | None, key: str) -> list[str]:
     return git_values(repo, key)
 
 
+def clear_read_hiding(repo: Path, mother: Path | None) -> None:
+    """读面不再隐藏 refs: 清掉主仓级与母体 worktree 遗留的 uploadpack.hideRefs.
+
+    旧形态和旧迁移会把该键写在这两层; 只删读面隐藏, 不碰写面 receive.hideRefs.
+    缺键不算失败 (git config --unset-all 退出码 5)."""
+    commands: list[list[str]] = []
+    if git_values(repo, "uploadpack.hideRefs"):
+        commands.append(["git", "-C", str(repo), "config", "--unset-all", "uploadpack.hideRefs"])
+    if mother is not None and worktree_config_values(mother, "uploadpack.hideRefs"):
+        commands.append(["git", "-C", str(mother), "config", "--worktree", "--unset-all", "uploadpack.hideRefs"])
+    for command in commands:
+        result = run(command)
+        if result.returncode != 0:
+            raise SwtError(3, "PARTIAL", f"清理遗留 uploadpack.hideRefs 失败: {result.stderr.strip()}")
+
+
 def config_fingerprint(repo: Path, mother: Path | None) -> str:
     payload = {
         "repo": {key: git_values(repo, key) for key in REPO_CONFIG_KEYS},
@@ -515,12 +531,15 @@ def config_matches_multiset(repo: Path, mother: Path | None, expected: dict[str,
 
 
 def pair_config_matches(repo: Path, mother: Path | None, branch: str | None) -> bool:
-    """swt-form 对级判定: 仓级四键 + 本对 config.worktree 写面限制全部就位."""
+    """swt-form 对级判定: 仓级四键 + 本对 config.worktree 写面限制全部就位,
+    且两层都没有遗留的读面隐藏."""
     if branch is None:
         return False
     if not config_matches_multiset(repo, None, expected_repo_config()):
         return False
     if mother is None:
+        return False
+    if git_values(repo, "uploadpack.hideRefs") or worktree_config_values(mother, "uploadpack.hideRefs"):
         return False
     return config_matches_multiset(repo, mother, expected_pair_config(branch))
 
@@ -570,6 +589,7 @@ def configure_repo(repo: Path, mother: Path, branch: str) -> None:
     snapshot = {key: config_layer_values(repo, mother, key) for key in expected}
     validate_config_before_resources(repo, mother, expected)
     try:
+        clear_read_hiding(repo, mother)
         for key, values in expected.items():
             if snapshot.get(key):
                 continue
@@ -2295,6 +2315,11 @@ def migrate_legacy_pairs(repo: Path, records_root: Path, *, skip_daemon_for: Pat
             result = config_add_value(repo, mother, "receive.hideRefs", value)
             if result.returncode != 0:
                 raise SwtError(3, "PARTIAL", f"迁移写入 {mother.name} config.worktree receive.hideRefs 失败: {result.stderr.strip()}")
+        # 旧迁移曾把 uploadpack.hideRefs 也写进 worktree; 读面不再隐藏, 一并清掉
+        if worktree_config_values(mother, "uploadpack.hideRefs"):
+            result = run(["git", "-C", str(mother), "config", "--worktree", "--unset-all", "uploadpack.hideRefs"])
+            if result.returncode != 0:
+                raise SwtError(3, "PARTIAL", f"迁移清理 {mother.name} config.worktree uploadpack.hideRefs 失败: {result.stderr.strip()}")
     for key in LEGACY_MAIN_HIDE_KEYS:
         if not legacy[key]:
             continue
@@ -4776,6 +4801,8 @@ def resume(args: argparse.Namespace, repo: Path) -> int:
             migrate_legacy_pairs(repo, records_root, skip_daemon_for=mother_dir)
         elif legacy_pair_branches(repo):
             raise PreconditionError("新模板 resume 不迁移主仓旧形态, 请另行决定")
+        # 读面不再隐藏: 旧形态或旧迁移遗留的 uploadpack.hideRefs 每次 resume 自愈清掉
+        clear_read_hiding(repo, mother_dir)
         stop_git_bridge(runtime, records_root, identity)
         detail = inspect_container(target_name)
         state = detail.get("State") if isinstance(detail.get("State"), dict) else {}

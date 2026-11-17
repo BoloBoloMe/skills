@@ -51,7 +51,7 @@ exit "$original_rc"
 ## 救场 (无通用修复原语)
 
 swt 无 config/daemon 修复子命令. exit 3 的 PARTIAL 文案给出该半状态的唯一人工恢复路径; 更深的救场由你敲原生命令: `git config --get-all` / `git -C <母体> config --worktree --get-all` / `pgrep -af 'git[ -]daemon'` / `net-firewall.py show` / `podman ps -a`, 诊断后手工收敛. 已知救场场景:
-- **主仓 config 残留旧形态 hideRefs** (并行母体改造前的旧部署形态) → 不要手工改. 仅旧记录的 resume 沿原有自愈路径迁移配置并重摆该对 daemon (receive.hideRefs 搬入母体, uploadpack.hideRefs 直接丢弃); 新模板 birth/resume 遇旧形态残留会报告并停止, 不能靠重跑新模板迁移旧对, 须先向我报告并决定怎么处理.
+- **主仓 config 或母体 worktree 残留 uploadpack.hideRefs** (旧形态 / 旧迁移写进母体) → 不要手工改. 迁移把 receive.hideRefs 搬入母体, uploadpack 丢弃; 新形态对齐在 resume 时自愈清掉, 因此 status 可先显示 `swt-form: false`, 跑一次 resume 即收敛. 新模板 birth/resume 遇主仓级旧形态残留仍会报告并停止, 须先向我报告并决定怎么处理.
 - **母体 config.worktree 值错误** (birth 报 `git config ... 已有错误值` **exit 2**) → 人工修正该母体的 config.worktree (只许改正 `!refs/heads/<本对分支>` 的例外值), 或 `git -C <母体> config --worktree --unset-all <key>` 清空后重跑 birth. **禁止手工往母体 config.worktree 写任何值**: 开了 `extensions.worktreeConfig` 后, host 侧在某工作树内跑的普通 git 命令会读该工作树的 config.worktree, receive.hideRefs 只影响 serve 写面无害, 但手写其他值会被所有在该工作树内运行的 git 命令读到.
 - **孤儿 daemon** (runtime 记录已失但进程在) → 按母体目录精准收: `pkill -f 'git daemon.*<母体目录路径>'` (勿按 base-path 全杀, 会误伤其他对/他仓).
 - 显示栈降级/失联: `podman exec <容器名> swt-vnc start` 手动重拉; 深度诊断跑 `swt display-check --name <容器名>` (PPM 证据落 evidence 目录).

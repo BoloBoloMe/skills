@@ -355,6 +355,24 @@ class TestTS003MotherAndConfig(SwtFixture):
         self.assertFalse(self.state(result)["config"]["swt-form"])
         self.assertIn(branch, json.dumps(self.state(result)["mothers"]))
 
+    def test_obsolete_read_hiding_is_not_swt_form_and_resume_self_heal_clears_it(self) -> None:
+        """旧迁移写进母体 worktree 的 uploadpack.hideRefs 不算 swt-form; resume 自愈清掉."""
+        branch, mother = self.make_mother()
+        swt = self.load_swt()
+        self.write_runtime(swt, {"mother": {"branch": branch, "dir": str(mother.resolve())}})
+        subprocess.run(
+            ["git", "-C", str(mother), "config", "--worktree", "--add", "uploadpack.hideRefs", "refs/heads"],
+            check=True, capture_output=True, text=True,
+        )
+        result = self.run_swt("status", "--repo", str(self.repo), "--records-root", str(self.records))
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertFalse(self.state(result)["config"]["swt-form"])
+        swt.clear_read_hiding(self.repo, mother)
+        self.assertEqual([], swt.worktree_config_values(mother, "uploadpack.hideRefs"))
+        status_after = self.run_swt("status", "--repo", str(self.repo), "--records-root", str(self.records))
+        self.assertEqual(0, status_after.returncode, status_after.stderr)
+        self.assertTrue(self.state(status_after)["config"]["swt-form"])
+
 
 class TestTS004Containers(SwtFixture):
     def create_container(self, name: str, repo: Path) -> None:
@@ -1942,6 +1960,15 @@ class TestMigrationIdempotent(SwtFixture):
                     ["git", "-C", str(self.repo), "config", "--add", key, value],
                     check=True, capture_output=True, text=True,
                 )
+        # 旧迁移曾把 uploadpack 写进 worktree: 重跑时也要清掉, 且不影响 receive 幂等
+        subprocess.run(
+            ["git", "-C", str(self.repo), "config", "extensions.worktreeConfig", "true"],
+            check=True, capture_output=True, text=True,
+        )
+        subprocess.run(
+            ["git", "-C", str(mother), "config", "--worktree", "--add", "uploadpack.hideRefs", "refs/heads"],
+            check=True, capture_output=True, text=True,
+        )
         swt.migrate_legacy_pairs(self.repo, self.records)
         self.assertEqual([], swt.git_values(self.repo, "receive.hideRefs"))
         self.assertEqual([], swt.git_values(self.repo, "uploadpack.hideRefs"))
@@ -1975,6 +2002,11 @@ class TestLegacyMigrationViaResume(SwtBirthFixture):
         subprocess.run(["kill", str(daemon_pid)], capture_output=True, text=True, check=False)
         subprocess.run(
             ["git", "-C", str(mother_dir), "config", "--worktree", "--unset-all", "receive.hideRefs"],
+            check=True, capture_output=True, text=True,
+        )
+        # 旧迁移残留: worktree 里还挂着读面隐藏, resume 自愈应一并清掉
+        subprocess.run(
+            ["git", "-C", str(mother_dir), "config", "--worktree", "--add", "uploadpack.hideRefs", "refs/heads"],
             check=True, capture_output=True, text=True,
         )
         for key in ("receive.hideRefs", "uploadpack.hideRefs"):

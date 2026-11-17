@@ -38,6 +38,7 @@ status 只读. 从 `STATE.mothers[]` 定位目标母体/分支/容器, 顶层兼
 - retired: 只能 terminate, 不恢复.
 - birth 初始化未完成: 重跑同一次 birth, 不用 resume 补安装.
 - 健康运行: 复用现有入口, 不另建/恢复.
+- 运行中容器 `config.swt-form` 为 false: 先按 [ops.md](reference/ops.md) 查原因; 若是残留 `uploadpack.hideRefs` (读面仍隐藏), resume 自愈清掉; 其他错误值报告我, 不擅自覆盖.
 - 容器停止, daemon/Git 桥/网络规则异常: resume.
 - 无记录且无遗留资源, 或记录为 idle: birth. 有容器却缺记录时先报告, 不当空现场.
 
