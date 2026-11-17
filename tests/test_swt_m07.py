@@ -267,6 +267,8 @@ class TestGenerate(unittest.TestCase):
         self.assertIn("EXPOSE 22 8800 8801 8802 8803 8804 8805 6080", text)
         self.assertIn('ENTRYPOINT ["/usr/local/bin/swt-entrypoint"]', text)
         self.assertIn("uv sync", text)
+        # 固定快捷入口: codex-d = 免审批/免沙箱的 codex, 仍走模板凭据与检查
+        self.assertIn("launch.py codex-d", text)
         # F012 + M08 UD-03: ssh 非交互 shell 的 PATH 与 XDG_RUNTIME_DIR 烘配在
         # sshd_config SetEnv 单行 (sshd 重设会话 PATH, 镜像 ENV 不生效)
         self.assertIn(

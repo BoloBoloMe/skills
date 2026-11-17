@@ -296,6 +296,8 @@ RUN printf '2\\n' > /etc/swt-agent-template-contract \\
         printf '#!/bin/sh\\nexec /usr/local/bin/uv run --no-project --offline python /opt/swt-agent-config/launch.py %s "$@"\\n' "$cli" > "/usr/local/bin/$cli"; \\
         chmod 755 "/usr/local/bin/$cli"; \\
     done \\
+    && printf '#!/bin/sh\\nexec /usr/local/bin/uv run --no-project --offline python /opt/swt-agent-config/launch.py codex-d "$@"\\n' > /usr/local/bin/codex-d \\
+    && chmod 755 /usr/local/bin/codex-d \\
     && chown -R bolo:bolo /home/bolo/.codex /home/bolo/.kimi-code
 
 # F012: ssh 非交互 shell 的 PATH 须含 ~/.local/bin (herdr remote 把 binary

@@ -27,7 +27,7 @@ Codex 固定原生模型目录须含官方基础指令, 不从主机配置或 bi
 ## 凭据与验收边界
 
 凭据来源由所选模板的 `credential` 指定, 只读取 JSON 的 `client_api_key` 字段. 源必须为当前账户所有的普通文件且权限 600, 拒绝符号链接; 不复制整个文件, management_key/上游 Key/OAuth 不进容器. 云/Git 等与模型共用的业务环境变量冲突须由我决定, 不自动继承或丢弃; env.conf 继承规则见 [maintenance.md](maintenance.md).
-Key 仅经 stdin 注入容器 `.config/swt-agent/client-key.json`, 属主 bolo, 文件 600/目录 700; 不进镜像/argv/create -e/SSH environment/普通日志. pi/codex/kimi 固定启动入口读取该文件并设入子进程环境, 无须 source shell 文件. 客户端配置只保存变量引用, 不写 Key 原文:
+Key 仅经 stdin 注入容器 `.config/swt-agent/client-key.json`, 属主 bolo, 文件 600/目录 700; 不进镜像/argv/create -e/SSH environment/普通日志. pi/codex/kimi 固定启动入口读取该文件并设入子进程环境, 无须 source shell 文件; `codex-d` 是 codex 的免审批/免沙箱固定入口 (`--dangerously-bypass-approvals-and-sandbox`), 仍走同一入口/Key/模板检查, 不另存凭据. 入口 wrapper 烘在 base 镜像, 改动需重建 base 并对新容器生效, 现有容器不变. 客户端配置只保存变量引用, 不写 Key 原文:
 
 | 客户端 | 配置引用 |
 | --- | --- |

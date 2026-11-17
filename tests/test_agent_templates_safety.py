@@ -228,15 +228,22 @@ class InstallerTests(TemporaryCase):
     def test_real_entrypoint_for_each_client_uses_env_not_argv(self):
         self.installed()
         common.safe_write(self.home / common.READY_PATH, common.pretty({"contract": common.CONTRACT, "snapshot-digest": self.value["snapshot-digest"]}), mode=0o644)
-        for cli in ("pi", "codex", "kimi"):
+        for entry, cli, defaults in (
+            ("pi", "pi", []),
+            ("codex", "codex", []),
+            ("kimi", "kimi", []),
+            ("codex-d", "codex", ["--dangerously-bypass-approvals-and-sandbox"]),
+        ):
             observed = {}
             def fake_exec(binary, argv, env):
                 observed.update(binary=binary, argv=argv, env=env)
             with mock.patch.object(launch, "HOME", self.home), mock.patch.object(launch.os, "execve", fake_exec):
-                launch.main([cli, "--no-session"])
+                launch.main([entry, "--no-session"])
             self.assertEqual(observed["env"][common.KEY_ENV], KEY)
             self.assertNotIn(KEY, " ".join(observed["argv"]))
             self.assertIn(cli, observed["binary"])
+            # codex-d 的固定参数在用户参数前, 不靠 shell 拼接
+            self.assertEqual([*defaults, "--no-session"], observed["argv"][1:])
 
     def test_client_parsers_invoked_no_generation_and_no_secret_diagnostics(self):
         self.installed()
