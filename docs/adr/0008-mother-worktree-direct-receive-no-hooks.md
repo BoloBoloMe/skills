@@ -17,3 +17,7 @@ use-sandbox-worktree 的容器回流端点 (原 gate) 改为主仓的 linked wor
 - `!` 否定例外语法依赖 git 版本, 部署时须按目标版本重验.
 
 详见 [DECISIONS.md](../changes/use-sandbox-worktree/DECISIONS.md) D007/D008/D010 与 [拓扑实测 findings](../changes/use-sandbox-worktree/milestone-02-worktree-topology-findings.md).
+
+## 更新
+
+2026-11-17: 读面不再配 `uploadpack.hideRefs`, 容器可读母体仓全部分支/标签/remote 引用 (用户确认可见 refs 无问题); 写面仍按本 ADR 的 `receive.hideRefs` + deny 规则收敛. 旧形态留在主仓 config 的 `uploadpack.hideRefs` 由迁移直接丢弃. 上句 "读面同配 uploadpack.hideRefs" 已过时.

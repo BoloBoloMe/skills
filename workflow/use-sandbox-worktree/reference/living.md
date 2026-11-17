@@ -9,4 +9,4 @@
 - **显示栈**: VNC 来自 display 镜像, 含 Xvfb/x11vnc/websockify/noVNC/chromium; 新容器的 6080 发布到宿主 0.0.0.0, 优先宿主 6080, 被占时动态分配, 与 web 口一样局域网直连且无认证. 交付本机/局域网 URL, 不需端口转发; 旧回环发布容器不自动迁移, 需经确认后重建. birth 跑全量显示检查, 失败出 DECIDE (继续只开终端/重验/终结); resume 只做秒级检查, 显示失败降级但不阻断终端. 手动拉起用 `podman exec <容器名> swt-vnc start|stop|status`; 深度诊断 `uv run python scripts/swt.py display-check [--name <容器>]` (退出 0 全过, 1 检查未过, 2 传输失败, 不走 DECIDE/STATE). 旧镜像没有 swt-vnc 时标 absent, 不算失败. 浏览器登录态留在容器 /tmp, stop/start 保留, rm 消失.
 - **登录窗口**: 在本机有桌面时 headed 浏览器优先宿主 wayland 直通, 失败回退 `DISPLAY=:99` noVNC; 在远程设备需用 waypipe 拉窗时, 容器侧与设备侧的做法见 [pull-window.md](pull-window.md). headed 启动脚本不存在时只用 noVNC/终端, 报告缺席原因. 宿主直通的挂载/权限与风险由 [ops.md](ops.md) 的本机直通段和 [risks.md](risks.md) 说明.
 - **旧容器 Kimi 登录**: 新模板使用固定客户端 Key, 不需 `/login`. 旧容器需独立登录 Kimi OAuth, 不能复制 host 凭据共用: refresh token 轮换后先刷新者生效, 另一端会 invalid grant; 旧 resume 不加新模板.
-- **多对**: 不同母体各自配 daemon/容器, 容器只见本对分支. 历史残留的多容器同推一个母体时, 后推若因分叉被拒, 在容器内 fetch/解冲突/重推; 快进推送由 git 串行化.
+- **多对**: 不同母体各自配 daemon/容器, 容器可读主仓全部分支/标签, 但只能写本对分支. 历史残留的多容器同推一个母体时, 后推若因分叉被拒, 在容器内 fetch/解冲突/重推; 快进推送由 git 串行化.
