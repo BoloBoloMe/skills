@@ -19,14 +19,27 @@ def launch_env(home: Path, env: dict[str, str]) -> dict[str, str]:
     return client_env(env, key, home=home)
 
 
+# 入口名 -> (真实客户端, 固定默认参数). codex-d 是免审批/免沙箱的固定快捷入口,
+# 仍走同一模板凭据与检查, 不另存 Key, 也不经 shell 拼接参数.
+ENTRIES = {
+    "pi": ("pi", ()),
+    "codex": ("codex", ()),
+    "kimi": ("kimi", ()),
+    "codex-d": ("codex", ("--dangerously-bypass-approvals-and-sandbox",)),
+}
+
+
 def main(argv=None) -> int:
     args = list(sys.argv[1:] if argv is None else argv)
     try:
-        if not args or args[0] not in ("pi", "codex", "kimi"):
+        entry = args[0] if args else ""
+        if entry not in ENTRIES:
             raise TemplateError("未知 agent 入口")
-        cli, *rest = args
+        cli, defaults = ENTRIES[entry]
+        user = args[1:]
+        rest = [*defaults, *user]
         binary = str(REAL_BIN_DIR / cli)
-        if rest in (["--version"], ["--help"]):
+        if user in (["--version"], ["--help"]):
             # 纯元数据入口用于无凭据的镜像版本探测, 不允许夹带任务.
             from .common import filtered_env
             env, _ = filtered_env(dict(os.environ))

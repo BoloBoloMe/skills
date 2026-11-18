@@ -10,8 +10,9 @@
 status 只读盘点全部母体对 (config/daemon/容器/镜像/网络), 永不创建或修改 runtime 状态.
 
 并行母体 (2026-09-13 改造): 管理单元 = (主仓, 母体分支) 对, 多对并存互不干扰.
-hideRefs 按对下沉到各母体 config.worktree (主仓 config 只留跨母体共享的 deny 三键
-+ extensions.worktreeConfig); 每对一个 git daemon (服务母体目录); identity 按对派生.
+写面限制 receive.hideRefs 按对下沉到各母体 config.worktree (主仓 config 只留跨母体
+共享的 deny 三键 + extensions.worktreeConfig); 读面不隐藏 refs (容器可读母体仓
+全部分支/标签/remote 引用); 每对一个 git daemon (服务母体目录); identity 按对派生.
 """
 from __future__ import annotations
 
@@ -57,10 +58,10 @@ REPO_CONFIG_KEYS = (
     "receive.denyDeletes",
     "extensions.worktreeConfig",
 )
-PAIR_CONFIG_KEYS = (
-    "receive.hideRefs",
-    "uploadpack.hideRefs",
-)
+PAIR_CONFIG_KEYS = ("receive.hideRefs",)
+# 旧形态 (并行母体改造前) 留在主仓 config 的 hideRefs 键: 迁移时 receive 值搬入母体
+# config.worktree, uploadpack 值直接丢弃 (新形态读面不隐藏 refs).
+LEGACY_MAIN_HIDE_KEYS = ("receive.hideRefs", "uploadpack.hideRefs")
 SLUG_SCRIPT = Path(__file__).resolve().parents[2] / "use-worktree" / "scripts" / "slug.py"
 _SLUG_CACHE: dict[Path, str] = {}
 MUTATING_COMMANDS = ("podman", "nft", "ssh", "uv", "pgrep")
@@ -179,39 +180,66 @@ def run(
 
 
 def validate_git_hide_refs_syntax() -> None:
+    """重验写面限制依赖的 git 能力: worktree 级多值配置 + receive.hideRefs 否定模式.
+
+    读面不再隐藏 refs, 写面只靠 receive.hideRefs 挡下非本对分支/标签, 所以行为重验
+    必须真的尝试推送, 不看 upload 广告."""
     with tempfile.TemporaryDirectory(prefix="swt-git-probe-") as temporary:
-        probe = Path(temporary) / "probe"
+        root = Path(temporary)
+        probe = root / "probe"
         initialized = run(["git", "init", "-q", "-b", "main", str(probe)])
         if initialized.returncode != 0:
-            raise SwtEnvError(f"git ! 语法重验初始化失败: {initialized.stderr.strip()}")
+            raise SwtEnvError(f"git hideRefs 语法重验初始化失败: {initialized.stderr.strip()}")
         for key, value in (("user.name", "swt-probe"), ("user.email", "swt-probe@example.invalid")):
             configured = run(["git", "-C", str(probe), "config", key, value])
             if configured.returncode != 0:
-                raise SwtEnvError(f"git ! 语法重验配置失败: {configured.stderr.strip()}")
+                raise SwtEnvError(f"git hideRefs 语法重验配置失败: {configured.stderr.strip()}")
         (probe / "probe.txt").write_text("probe\n", encoding="utf-8")
         for command in (
             ["git", "-C", str(probe), "add", "probe.txt"],
             ["git", "-C", str(probe), "commit", "-qm", "probe"],
-            ["git", "-C", str(probe), "config", "--add", "uploadpack.hideRefs", "refs/heads"],
-            ["git", "-C", str(probe), "config", "--add", "uploadpack.hideRefs", "!refs/heads/main"],
-            # 并行母体 (2026-09-13) 依赖 worktree 级配置: 探测扩展开关 + --worktree 读写
+            # 并行母体 (2026-09-13) 依赖 worktree 级配置: 探测扩展开关 + --worktree 多值读写
             ["git", "-C", str(probe), "config", "extensions.worktreeConfig", "true"],
             ["git", "-C", str(probe), "config", "--worktree", "--add", "receive.hideRefs", "refs/heads"],
+            ["git", "-C", str(probe), "config", "--worktree", "--add", "receive.hideRefs", "!refs/heads/main"],
+            # 探测要往非 bare 仓的当前分支推, 仅在探测仓放行 (不改生产配置)
+            ["git", "-C", str(probe), "config", "receive.denyCurrentBranch", "ignore"],
         ):
             result = run(command)
             if result.returncode != 0:
-                raise SwtEnvError(f"git ! 语法重验失败: {result.stderr.strip()}")
+                raise SwtEnvError(f"git hideRefs 语法重验失败: {result.stderr.strip()}")
         readback = run(["git", "-C", str(probe), "config", "--worktree", "--get-all", "receive.hideRefs"])
-        if readback.returncode != 0 or "refs/heads" not in readback.stdout.splitlines():
+        if readback.returncode != 0 or readback.stdout.splitlines() != ["refs/heads", "!refs/heads/main"]:
             raise SwtEnvError(
-                "git config --worktree 读写重验失败 (需支持 extensions.worktreeConfig): "
+                "git config --worktree 多值读写重验失败 (需支持 extensions.worktreeConfig): "
                 f"{readback.stderr.strip() or readback.stdout.strip()}"
             )
-        advertised = run(["git", "-C", str(probe), "ls-remote", "."])
-        if advertised.returncode != 0 or "refs/heads/main" not in advertised.stdout:
+        peer = root / "peer"
+        cloned = run(["git", "clone", "-q", str(probe), str(peer)])
+        if cloned.returncode != 0:
+            raise SwtEnvError(f"git hideRefs 行为重验克隆失败: {cloned.stderr.strip()}")
+        for key, value in (("user.name", "swt-probe"), ("user.email", "swt-probe@example.invalid")):
+            run(["git", "-C", str(peer), "config", key, value])
+        (peer / "peer.txt").write_text("peer\n", encoding="utf-8")
+        for command in (
+            ["git", "-C", str(peer), "add", "peer.txt"],
+            ["git", "-C", str(peer), "commit", "-qm", "peer"],
+        ):
+            result = run(command)
+            if result.returncode != 0:
+                raise SwtEnvError(f"git hideRefs 行为重验提交失败: {result.stderr.strip()}")
+        allowed = run(["git", "-C", str(peer), "push", "-q", "origin", "HEAD:refs/heads/main"])
+        if allowed.returncode != 0:
             raise SwtEnvError(
-                "git ! 否定 hideRefs 语法行为重验失败: "
-                f"{advertised.stderr.strip() or advertised.stdout.strip()}"
+                "git receive.hideRefs 放行分支重验失败 (本对分支应可写): "
+                f"{allowed.stderr.strip() or allowed.stdout.strip()}"
+            )
+        hidden = run(["git", "-C", str(peer), "push", "-q", "origin", "HEAD:refs/heads/swt-hidden"])
+        refs = run(["git", "-C", str(probe), "for-each-ref", "--format=%(refname)"])
+        if hidden.returncode == 0 or "refs/heads/swt-hidden" in refs.stdout.splitlines():
+            raise SwtEnvError(
+                "git receive.hideRefs 否定模式行为重验失败 (隐藏分支仍可写): "
+                f"{hidden.stderr.strip() or hidden.stdout.strip()}"
             )
 
 
@@ -444,10 +472,11 @@ def expected_repo_config() -> dict[str, list[str]]:
 
 
 def expected_pair_config(branch: str) -> dict[str, list[str]]:
-    """对级 (母体 config.worktree, 每对一份): 只放行本对母体分支, 写入恒 --add."""
+    """对级 (母体 config.worktree, 每对一份): 只限制写面, 只放行本对母体分支, 写入恒 --add.
+
+    读面不设限 (不配 uploadpack.hideRefs): 容器能看到母体仓全部分支/标签/remote 引用."""
     return {
         "receive.hideRefs": ["refs/heads", f"!refs/heads/{branch}", "refs/tags", "refs/remotes", "refs/replace"],
-        "uploadpack.hideRefs": ["refs/heads", f"!refs/heads/{branch}", "refs/tags", "refs/remotes", "refs/replace"],
     }
 
 
@@ -468,6 +497,22 @@ def config_layer_values(repo: Path, mother: Path | None, key: str) -> list[str]:
     return git_values(repo, key)
 
 
+def clear_read_hiding(repo: Path, mother: Path | None) -> None:
+    """读面不再隐藏 refs: 清掉主仓级与母体 worktree 遗留的 uploadpack.hideRefs.
+
+    旧形态和旧迁移会把该键写在这两层; 只删读面隐藏, 不碰写面 receive.hideRefs.
+    缺键不算失败 (git config --unset-all 退出码 5)."""
+    commands: list[list[str]] = []
+    if git_values(repo, "uploadpack.hideRefs"):
+        commands.append(["git", "-C", str(repo), "config", "--unset-all", "uploadpack.hideRefs"])
+    if mother is not None and worktree_config_values(mother, "uploadpack.hideRefs"):
+        commands.append(["git", "-C", str(mother), "config", "--worktree", "--unset-all", "uploadpack.hideRefs"])
+    for command in commands:
+        result = run(command)
+        if result.returncode != 0:
+            raise SwtError(3, "PARTIAL", f"清理遗留 uploadpack.hideRefs 失败: {result.stderr.strip()}")
+
+
 def config_fingerprint(repo: Path, mother: Path | None) -> str:
     payload = {
         "repo": {key: git_values(repo, key) for key in REPO_CONFIG_KEYS},
@@ -486,12 +531,15 @@ def config_matches_multiset(repo: Path, mother: Path | None, expected: dict[str,
 
 
 def pair_config_matches(repo: Path, mother: Path | None, branch: str | None) -> bool:
-    """swt-form 对级判定: 仓级四键 + 本对 config.worktree hideRefs 全部就位."""
+    """swt-form 对级判定: 仓级四键 + 本对 config.worktree 写面限制全部就位,
+    且两层都没有遗留的读面隐藏."""
     if branch is None:
         return False
     if not config_matches_multiset(repo, None, expected_repo_config()):
         return False
     if mother is None:
+        return False
+    if git_values(repo, "uploadpack.hideRefs") or worktree_config_values(mother, "uploadpack.hideRefs"):
         return False
     return config_matches_multiset(repo, mother, expected_pair_config(branch))
 
@@ -547,6 +595,7 @@ def configure_repo(repo: Path, mother: Path, branch: str) -> None:
     snapshot = {key: config_layer_values(repo, mother, key) for key in expected}
     validate_config_before_resources(repo, mother, expected)
     try:
+        clear_read_hiding(repo, mother)
         for key, values in expected.items():
             missing = Counter(values) - Counter(snapshot.get(key, []))
             for value in values:
@@ -906,7 +955,7 @@ def reserve_port(address: str) -> tuple[socket.socket, int]:
 
 
 def start_daemon(mother: Path) -> DaemonHandle:
-    """per-mother daemon: 服务目录 = 母体工作树 (对级 hideRefs 随 config.worktree 生效),
+    """per-mother daemon: 服务目录 = 母体工作树 (对级写面限制随 config.worktree 生效),
     base-path 仍 = 主仓父目录 (容器请求路径 = 母体目录名). 只听宿主回环 (P0-1)."""
     base_path = mother.parent.resolve()
     last_error = ""
@@ -1099,9 +1148,9 @@ def place_daemon_export_ok(mother: Path) -> None:
 
 
 def legacy_pair_branches(repo: Path) -> list[str]:
-    """旧形态放行分支: 主仓 config hideRefs 里的 !refs/heads/<分支> 例外."""
+    """旧形态放行分支: 主仓 config 旧 hideRefs 键里的 !refs/heads/<分支> 例外."""
     branches: list[str] = []
-    for key in PAIR_CONFIG_KEYS:
+    for key in LEGACY_MAIN_HIDE_KEYS:
         for value in git_values(repo, key):
             if value.startswith("!refs/heads/"):
                 branch = value.removeprefix("!refs/heads/")
@@ -1111,7 +1160,7 @@ def legacy_pair_branches(repo: Path) -> list[str]:
 
 
 def pair_is_legacy_form(repo: Path, mother: Path | None, branch: str | None) -> bool:
-    """旧形态判定: 主仓 config hideRefs 有本对分支例外, 而本对 config.worktree 为空."""
+    """旧形态判定: 主仓 config 旧 hideRefs 有本对分支例外, 而本对 config.worktree 为空."""
     if branch is None:
         return False
     if branch not in legacy_pair_branches(repo):
@@ -2237,44 +2286,53 @@ def update_legacy_container_remote(repo: Path, records_root: Path, branch: str, 
 
 
 def migrate_legacy_pairs(repo: Path, records_root: Path, *, skip_daemon_for: Path | None = None) -> None:
-    """一次性迁移 (并行母体改造, 幂等): 主仓 config 的 hideRefs 五键原样移入各对应
-    母体的 config.worktree, 并把服务主仓路径的旧形态 daemon 重摆为 per-mother 形态
+    """一次性迁移 (并行母体改造, 幂等): 主仓 config 的旧形态 hideRefs 收敛到 per-mother
+    形态, 并把服务主仓路径的旧形态 daemon 重摆为 per-mother 形态
     (停旧 → 移配置 → 落 export-ok → 起新 → 重建桥 → 容器 remote set-url).
-    主仓级无 hideRefs 时无事发生. skip_daemon_for: 该母体的 daemon 由调用方
-    (resume 标准恢复流程) 统一重拉, 迁移只做配置搬家与 export-ok, 不动其 runtime.
-    步序保证授权域不空窗: 先停旧 daemon (配置搬走后继续跑会全分支裸露), 再动配置."""
+    写面 receive.hideRefs 值移入各对应母体的 config.worktree; 读面 uploadpack.hideRefs
+    直接丢弃 (新形态不隐藏 refs). 主仓级无旧键时无事发生. skip_daemon_for: 该母体的
+    daemon 由调用方 (resume 标准恢复流程) 统一重拉, 迁移只做配置搬家与 export-ok,
+    不动其 runtime. 步序保证授权域不空窗: 先停旧 daemon (配置搬走后继续跑会全分支
+    裸露), 再动配置."""
     branches = legacy_pair_branches(repo)
     if not branches:
         return
     enable_worktree_config(repo)
     # 1. 停掉服务主仓路径的旧形态 daemon (其他对的 per-mother daemon 不在匹配面, 不误伤)
     stop_daemon_pids(set(daemon_pids_for_serve_path(repo.resolve())))
-    # 2. 五键值原样移入各对应母体 config.worktree, 再清掉主仓级
+    # 2. receive.hideRefs 移入各对应母体 config.worktree; 主仓级旧键随后全部清掉
+    legacy = {key: git_values(repo, key) for key in LEGACY_MAIN_HIDE_KEYS}
     warned: set[str] = set()
-    for key in PAIR_CONFIG_KEYS:
-        values = git_values(repo, key)
-        if not values:
+    for branch in branches:
+        mother, _dirty = find_mother(repo, branch)
+        if mother is None or not mother.is_dir():
+            if branch not in warned:
+                warned.add(branch)
+                print(
+                    f"[SWT] 迁移警告: 分支 {branch} 无母体工作树, 其主仓级放行值随迁移丢弃",
+                    file=sys.stderr,
+                )
             continue
+        # 半迁移态可能只剩 uploadpack 旧值; 缺 receive 时按当前规则补写, 不留写面空窗
+        values = legacy["receive.hideRefs"] or expected_pair_config(branch)["receive.hideRefs"]
         if "refs/replace" not in values:
             values = [*values, "refs/replace"]
-        for branch in branches:
-            mother, _dirty = find_mother(repo, branch)
-            if mother is None or not mother.is_dir():
-                if branch not in warned:
-                    warned.add(branch)
-                    print(
-                        f"[SWT] 迁移警告: 分支 {branch} 无母体工作树, 其主仓级放行值随迁移丢弃",
-                        file=sys.stderr,
-                    )
-                continue
-            # 先清本对 config.worktree 该键的中断残留再写: 上次迁移若死在
-            # "已写 worktree, 主仓未清" 之间, 重跑会原值再写一遍导致翻倍;
-            # 以主仓现值为唯一事实源, 清后重写即真幂等
-            config_unset_all(repo, mother, key)
-            for value in values:
-                result = config_add_value(repo, mother, key, value)
-                if result.returncode != 0:
-                    raise SwtError(3, "PARTIAL", f"迁移写入 {mother.name} config.worktree {key} 失败: {result.stderr.strip()}")
+        # 先清本对 config.worktree 该键的中断残留再写: 上次迁移若死在
+        # "已写 worktree, 主仓未清" 之间, 重跑会原值再写一遍导致翻倍;
+        # 以主仓现值 (或当前规则) 为唯一事实源, 清后重写即真幂等
+        config_unset_all(repo, mother, "receive.hideRefs")
+        for value in values:
+            result = config_add_value(repo, mother, "receive.hideRefs", value)
+            if result.returncode != 0:
+                raise SwtError(3, "PARTIAL", f"迁移写入 {mother.name} config.worktree receive.hideRefs 失败: {result.stderr.strip()}")
+        # 旧迁移曾把 uploadpack.hideRefs 也写进 worktree; 读面不再隐藏, 一并清掉
+        if worktree_config_values(mother, "uploadpack.hideRefs"):
+            result = run(["git", "-C", str(mother), "config", "--worktree", "--unset-all", "uploadpack.hideRefs"])
+            if result.returncode != 0:
+                raise SwtError(3, "PARTIAL", f"迁移清理 {mother.name} config.worktree uploadpack.hideRefs 失败: {result.stderr.strip()}")
+    for key in LEGACY_MAIN_HIDE_KEYS:
+        if not legacy[key]:
+            continue
         result = run(["git", "-C", str(repo), "config", "--unset-all", key])
         if result.returncode != 0:
             raise SwtError(3, "PARTIAL", f"清理主仓 config {key} 失败: {result.stderr.strip()}")
@@ -4758,12 +4816,13 @@ def resume(args: argparse.Namespace, repo: Path) -> int:
     )
     try:
         killed = collect_resume_daemons(repo, mother_dir, branch, runtime)
-        # 并行母体迁移自愈 (幂等): 主仓级 hideRefs 残留 → 迁入各母体 config.worktree
-        # 并重摆 per-mother daemon; 本对 daemon 由下方标准恢复流程重拉, 迁移跳过本对.
+        # 并行母体迁移自愈 (幂等): 主仓级 hideRefs 残留 → receive 迁入母体 config.worktree,
+        # uploadpack 丢弃; 并重摆 per-mother daemon; 本对 daemon 由下方标准恢复流程重拉.
         if not template_meta:
             migrate_legacy_pairs(repo, records_root, skip_daemon_for=mother_dir)
         elif legacy_pair_branches(repo):
             raise PreconditionError("新模板 resume 不迁移主仓旧形态, 请另行决定")
+        # 补齐本对写面保护, 同时清掉旧形态或旧迁移遗留的读面隐藏.
         configure_repo(repo, mother_dir, branch)
         runtime["config"] = {"swt-form": True}
         atomic_write_json(runtime_file, runtime)

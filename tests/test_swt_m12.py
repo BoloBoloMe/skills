@@ -304,15 +304,14 @@ class TestTS003MotherAndConfig(SwtFixture):
         values = ["refs/heads", f"!refs/heads/{branch}", "refs/tags", "refs/remotes"]
         if not legacy:
             values.append("refs/replace")
-        for key in ("receive.hideRefs", "uploadpack.hideRefs"):
-            for value in values:
-                subprocess.run(
-                    ["git", "-C", str(mother), "config", "--worktree", "--add", key, value],
-                    check=True, capture_output=True, text=True,
-                )
+        for value in values:
+            subprocess.run(
+                ["git", "-C", str(mother), "config", "--worktree", "--add", "receive.hideRefs", value],
+                check=True, capture_output=True, text=True,
+            )
         return branch, mother
 
-    def test_replace_refs_are_hidden_and_not_writable_after_config_upgrade(self) -> None:
+    def test_replace_refs_are_readable_but_not_writable_after_config_upgrade(self) -> None:
         branch, mother = self.make_mother(legacy=True)
         swt = self.load_swt()
         old = subprocess.run(
@@ -362,7 +361,7 @@ class TestTS003MotherAndConfig(SwtFixture):
             )
             refs = [line.split()[1] for line in after.stdout.splitlines() if len(line.split()) >= 2]
             self.assertIn(f"refs/heads/{branch}", refs)
-            self.assertFalse(any(ref.startswith("refs/replace/") for ref in refs), refs)
+            self.assertTrue(any(ref.startswith("refs/replace/") for ref in refs), refs)
             self.assertTrue(swt.pair_config_matches(self.repo, mother, branch))
             push = subprocess.run(
                 ["git", "-C", str(clone), "push", remote, f"HEAD:refs/replace/{'1' * 40}"],
@@ -418,6 +417,24 @@ class TestTS003MotherAndConfig(SwtFixture):
         self.assertEqual(0, result.returncode, result.stderr)
         self.assertFalse(self.state(result)["config"]["swt-form"])
         self.assertIn(branch, json.dumps(self.state(result)["mothers"]))
+
+    def test_obsolete_read_hiding_is_not_swt_form_and_resume_self_heal_clears_it(self) -> None:
+        """旧迁移写进母体 worktree 的 uploadpack.hideRefs 不算 swt-form; resume 自愈清掉."""
+        branch, mother = self.make_mother()
+        swt = self.load_swt()
+        self.write_runtime(swt, {"mother": {"branch": branch, "dir": str(mother.resolve())}})
+        subprocess.run(
+            ["git", "-C", str(mother), "config", "--worktree", "--add", "uploadpack.hideRefs", "refs/heads"],
+            check=True, capture_output=True, text=True,
+        )
+        result = self.run_swt("status", "--repo", str(self.repo), "--records-root", str(self.records))
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertFalse(self.state(result)["config"]["swt-form"])
+        swt.clear_read_hiding(self.repo, mother)
+        self.assertEqual([], swt.worktree_config_values(mother, "uploadpack.hideRefs"))
+        status_after = self.run_swt("status", "--repo", str(self.repo), "--records-root", str(self.records))
+        self.assertEqual(0, status_after.returncode, status_after.stderr)
+        self.assertTrue(self.state(status_after)["config"]["swt-form"])
 
 
 class TestTS004Containers(SwtFixture):
@@ -956,18 +973,26 @@ class TestTS201BirthChain(SwtBirthFixture):
         self.assertEqual(["true"], config["receive.denyNonFastForwards"])
         self.assertEqual(["true"], config["receive.denyDeletes"])
         self.assertEqual(["true"], config["extensions.worktreeConfig"])
-        # 对级 hideRefs 落母体 config.worktree (并行母体改造), 主仓级无 hideRefs
+        # 对级写面限制落母体 config.worktree (并行母体改造); 读面不设限, 两侧均无 uploadpack
         self.assertEqual([], self.config_values("receive.hideRefs"))
         self.assertEqual([], self.config_values("uploadpack.hideRefs"))
         mother_dir = Path(state["mother"]["dir"])
-        for key in ("receive.hideRefs", "uploadpack.hideRefs"):
-            pair_values = subprocess.run(
-                ["git", "-C", str(mother_dir), "config", "--worktree", "--get-all", key],
-                capture_output=True, text=True, check=True,
-            ).stdout.splitlines()
-            self.assertEqual(
-                ["refs/heads", f"!refs/heads/{branch}", "refs/tags", "refs/remotes", "refs/replace"], pair_values,
-            )
+        pair_values = subprocess.run(
+            ["git", "-C", str(mother_dir), "config", "--worktree", "--get-all", "receive.hideRefs"],
+            capture_output=True, text=True, check=True,
+        ).stdout.splitlines()
+        self.assertEqual(
+            ["refs/heads", f"!refs/heads/{branch}", "refs/tags", "refs/remotes", "refs/replace"], pair_values,
+        )
+        self.assertEqual("", subprocess.run(
+            ["git", "-C", str(mother_dir), "config", "--worktree", "--get-all", "uploadpack.hideRefs"],
+            capture_output=True, text=True, check=False,
+        ).stdout)
+        # 读面开放: 容器能看到主仓其他分支 (写面隔离仍由 receive.hideRefs 负责)
+        visible = self.ssh_run(state, f"git -C /home/bolo/Workspace/{branch} ls-remote origin")
+        self.assertEqual(0, visible.returncode, visible.stderr)
+        self.assertIn("refs/heads/main", visible.stdout)
+        self.assertIn(f"refs/heads/{branch}", visible.stdout)
         pid = state["daemon"]["pid"]
         command_line = Path(f"/proc/{pid}/cmdline").read_bytes().decode(errors="replace").split("\0")
         self.assertNotIn("--export-all", command_line)
@@ -1276,7 +1301,7 @@ class TestTS206ConfigIdempotence(SwtBirthFixture):
         for key in ("receive.hideRefs", "uploadpack.hideRefs"):
             subprocess.run(
                 ["git", "-C", str(mother_dir), "config", "--worktree", "--unset-all", key],
-                check=True, capture_output=True, text=True,
+                check=key == "receive.hideRefs", capture_output=True, text=True,
             )
             for value in old_values:
                 subprocess.run(
@@ -1314,16 +1339,16 @@ class TestTS206ConfigIdempotence(SwtBirthFixture):
         # D003: 同名重入不算新容器, 活跃容器仍唯一
         self.assertEqual(1, len([item for item in state["containers"] if not item["retired"]]))
         mother_dir = Path(state["mother"]["dir"])
-        for key in ("receive.hideRefs", "uploadpack.hideRefs"):
-            values = subprocess.run(
-                ["git", "-C", str(mother_dir), "config", "--worktree", "--get-all", key],
-                capture_output=True, text=True, check=True,
-            ).stdout.splitlines()
-            self.assertEqual(5, len(values))
-            self.assertEqual(len(values), len(set(values)))
+        values = subprocess.run(
+            ["git", "-C", str(mother_dir), "config", "--worktree", "--get-all", "receive.hideRefs"],
+            capture_output=True, text=True, check=True,
+        ).stdout.splitlines()
+        self.assertEqual(5, len(values))
+        self.assertEqual(len(values), len(set(values)))
+        self.assertEqual([], self.load_swt().worktree_config_values(mother_dir, "uploadpack.hideRefs"))
         repaired = self.ssh_run(state, f"git -C {clone_dir} ls-remote origin")
         self.assertEqual(0, repaired.returncode, repaired.stderr)
-        self.assertNotIn("refs/replace/", repaired.stdout)
+        self.assertIn("refs/replace/", repaired.stdout)
         self.assertEqual(first["daemon"]["pid"], state["daemon"]["pid"])
 
 
@@ -1568,7 +1593,7 @@ class TestReviewP4ConfigPartial(SwtBirthFixture):
         wrapper.write_text(
             "#!/bin/sh\n"
             "if [ \"$1\" = -C ] && [ \"$3\" = config ] && [ \"$4\" = --worktree ] && "
-            "[ \"$5\" = --add ] && [ \"$6\" = uploadpack.hideRefs ] && [ \"$7\" = refs/tags ]; then\n"
+            "[ \"$5\" = --add ] && [ \"$6\" = receive.hideRefs ] && [ \"$7\" = refs/tags ]; then\n"
             "  echo injected-config-failure >&2\n"
             "  exit 1\n"
             "fi\n"
@@ -1934,8 +1959,8 @@ class TestTS301Terminate(SwtBirthFixture):
 
 
 class TestMultiPairIsolation(SwtBirthFixture):
-    """并行母体 E2E 验收 (改造方案 5 节): 两对并存互不可见对方分支 + 各自推送落地
-    + 收对不伤邻对."""
+    """并行母体 E2E 验收 (改造方案 5 节): 两对并存可共读分支 + 写面互不可写
+    + 各自推送落地 + 收对不伤邻对."""
 
     def birth_pair(self, branch: str, name: str) -> dict:
         result = self.run_swt(
@@ -1954,15 +1979,12 @@ class TestMultiPairIsolation(SwtBirthFixture):
         second = self.birth_pair("feature/next", name_b)
         clone_a = "/home/bolo/Workspace/feature/m12"
         clone_b = "/home/bolo/Workspace/feature/next"
-        # 读面隔离: 各自 ls-remote 只见本对分支
-        refs_a = self.ssh_run_for(first, clone_a, f"git -C {clone_a} ls-remote origin")
-        self.assertEqual(0, refs_a.returncode, refs_a.stderr)
-        self.assertIn("refs/heads/feature/m12", refs_a.stdout)
-        self.assertNotIn("feature/next", refs_a.stdout)
-        refs_b = self.ssh_run_for(second, clone_b, f"git -C {clone_b} ls-remote origin")
-        self.assertEqual(0, refs_b.returncode, refs_b.stderr)
-        self.assertIn("refs/heads/feature/next", refs_b.stdout)
-        self.assertNotIn("feature/m12", refs_b.stdout)
+        # 读面不设限: 两对都能看到主仓全部分支 (写面隔离见下方 cross push)
+        for state, clone in ((first, clone_a), (second, clone_b)):
+            refs = self.ssh_run_for(state, clone, f"git -C {clone} ls-remote origin")
+            self.assertEqual(0, refs.returncode, refs.stderr)
+            self.assertIn("refs/heads/feature/m12", refs.stdout)
+            self.assertIn("refs/heads/feature/next", refs.stdout)
         # 写面隔离: A 推 B 的分支被拒, 推本分支落地
         cross = self.ssh_run_for(
             first, clone_a,
@@ -2038,10 +2060,21 @@ class TestMigrationIdempotent(SwtFixture):
                     ["git", "-C", str(self.repo), "config", "--add", key, value],
                     check=True, capture_output=True, text=True,
                 )
+        # 旧迁移曾把 uploadpack 写进 worktree: 重跑时也要清掉, 且不影响 receive 幂等
+        subprocess.run(
+            ["git", "-C", str(self.repo), "config", "extensions.worktreeConfig", "true"],
+            check=True, capture_output=True, text=True,
+        )
+        subprocess.run(
+            ["git", "-C", str(mother), "config", "--worktree", "--add", "uploadpack.hideRefs", "refs/heads"],
+            check=True, capture_output=True, text=True,
+        )
         swt.migrate_legacy_pairs(self.repo, self.records)
         self.assertEqual([], swt.git_values(self.repo, "receive.hideRefs"))
+        self.assertEqual([], swt.git_values(self.repo, "uploadpack.hideRefs"))
         first = swt.worktree_config_values(mother, "receive.hideRefs")
         self.assertEqual(5, len(first))
+        self.assertEqual([], swt.worktree_config_values(mother, "uploadpack.hideRefs"))
         # 伪造中断态: 主仓值回写 (模拟 "已写 worktree, 主仓未清" 之间死亡), 重跑不翻倍
         for value in ("refs/heads", f"!refs/heads/{branch}", "refs/tags", "refs/remotes"):
             subprocess.run(
@@ -2052,6 +2085,7 @@ class TestMigrationIdempotent(SwtFixture):
         second = swt.worktree_config_values(mother, "receive.hideRefs")
         self.assertEqual(first, second)
         self.assertEqual([], swt.git_values(self.repo, "receive.hideRefs"))
+        self.assertEqual([], swt.git_values(self.repo, "uploadpack.hideRefs"))
 
 
 class TestLegacyMigrationViaResume(SwtBirthFixture):
@@ -2070,8 +2104,9 @@ class TestLegacyMigrationViaResume(SwtBirthFixture):
             ["git", "-C", str(mother_dir), "config", "--worktree", "--unset-all", "receive.hideRefs"],
             check=True, capture_output=True, text=True,
         )
+        # 旧迁移残留: worktree 里还挂着读面隐藏, resume 自愈应一并清掉
         subprocess.run(
-            ["git", "-C", str(mother_dir), "config", "--worktree", "--unset-all", "uploadpack.hideRefs"],
+            ["git", "-C", str(mother_dir), "config", "--worktree", "--add", "uploadpack.hideRefs", "refs/heads"],
             check=True, capture_output=True, text=True,
         )
         for key in ("receive.hideRefs", "uploadpack.hideRefs"):
@@ -2098,7 +2133,7 @@ class TestLegacyMigrationViaResume(SwtBirthFixture):
             "resume", "--repo", str(self.repo), "--records-root", str(self.records), "--confirm",
         )
         self.assertEqual(0, completed.returncode, completed.stderr)
-        # 收敛断言: 主仓级 hideRefs 清空; 对级落母体 config.worktree; remote 指母体目录名
+        # 收敛断言: 主仓级旧键清空 (uploadpack 丢弃); 写面限制落母体 config.worktree
         self.assertEqual([], self.config_values("receive.hideRefs"))
         self.assertEqual([], self.config_values("uploadpack.hideRefs"))
         self.assertEqual(
@@ -2108,6 +2143,10 @@ class TestLegacyMigrationViaResume(SwtBirthFixture):
                 capture_output=True, text=True, check=True,
             ).stdout.splitlines(),
         )
+        self.assertEqual("", subprocess.run(
+            ["git", "-C", str(mother_dir), "config", "--worktree", "--get-all", "uploadpack.hideRefs"],
+            capture_output=True, text=True, check=False,
+        ).stdout)
         state = self.state(completed)
         url = self.ssh_run(
             state, f"git -C /home/bolo/Workspace/{branch} remote get-url origin"
