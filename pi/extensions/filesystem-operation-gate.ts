@@ -5,6 +5,7 @@ import { realpath } from "node:fs/promises";
 import { homedir, tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { budgetInputPrompt, selectWithFullText, shortenTail, type PromptUi } from "./lib/prompt-budget";
 
 /**
  * filesystem-operation-gate: 仅在工具明确写入 ctx.cwd 外时要求用户确认.
@@ -167,11 +168,7 @@ function getToolPath(input: unknown): string | undefined {
 async function confirmOrBlock(
   ctx: {
     hasUI: boolean;
-    ui: {
-      confirm(title: string, message: string): Promise<boolean>;
-      select(title: string, options: string[]): Promise<string | undefined>;
-      input(title: string, placeholder?: string): Promise<string | undefined>;
-    };
+    ui: PromptUi;
   },
   options: { title: string; subject: string; reason: string; blockReason: string; rememberDirectory?: string },
 ) {
@@ -179,10 +176,11 @@ async function confirmOrBlock(
     return { block: true, reason: `${options.blockReason}. 无 UI 可确认.` };
   }
 
-  const prompt = `${options.title}\n\n${options.subject}\n\n${options.reason}`;
+  // 紧凑排版: 弹窗正文行数有限, subject 每行自带字段名, 不再插入空行
+  const prompt = `${options.title}\n${options.subject}\n${options.reason}`;
 
   const withUserReason = async (): Promise<{ block: true; reason: string }> => {
-    const detail = await ctx.ui.input(prompt, "输入返回给 AI 的拦截理由 (留空则普通拒绝)");
+    const detail = await ctx.ui.input(budgetInputPrompt(prompt), "输入返回给 AI 的拦截理由 (留空则普通拒绝)");
     const reason = detail?.trim()
       ? `${options.blockReason}\n并给你发来回复: ${detail.trim()}`
       : options.blockReason;
@@ -190,17 +188,19 @@ async function confirmOrBlock(
   };
 
   if (!options.rememberDirectory) {
-    const choice = await ctx.ui.select(prompt, ["允许", "拒绝", "拒绝并说明理由"]);
+    const choice = await selectWithFullText(ctx.ui, options.title, prompt, ["允许", "拒绝", "拒绝并说明理由"]);
     if (choice === "允许") return undefined;
     if (choice === "拒绝并说明理由") return withUserReason();
     return { block: true, reason: options.blockReason };
   }
 
-  const choice = await ctx.ui.select(
+  const choice = await selectWithFullText(
+    ctx.ui,
+    options.title,
     prompt,
     [
       "允许一次",
-      `允许并不再询问此目录: ${options.rememberDirectory}`,
+      `允许并不再询问此目录: ${shortenTail(options.rememberDirectory)}`,
       "拒绝",
       "拒绝并说明理由",
     ],

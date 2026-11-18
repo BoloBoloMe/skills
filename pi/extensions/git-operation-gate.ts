@@ -1,5 +1,6 @@
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { isToolCallEventType } from "@earendil-works/pi-coding-agent";
+import { budgetInputPrompt, selectWithFullText } from "./lib/prompt-budget";
 
 /**
  * git-operation-gate: 拦截智能体发起的危险 Git 操作, 向用户确认后才放行.
@@ -144,23 +145,18 @@ export default function (pi: ExtensionAPI) {
     // 若所有命中的规则已在本会话放行, 跳过弹窗
     if (levelHits.every((g) => allowlist.has(g.name))) return;
 
-    // 构建弹窗内容
-    const reasons = levelHits
-      .map((g) => `· ${g.name}: ${g.reason}`)
-      .join("\n");
+    // 构建弹窗内容: 正文过长时由 selectWithFullText 限行, 并额外提供全文入口
+    // 紧凑排版: 弹窗正文行数有限, 等级已写在标题里, 理由合并到一行
+    const reasons = levelHits.map((g) => `${g.name}: ${g.reason}`).join("; ");
 
-    const title = [
+    const prompt = [
       `[${LEVEL_LABEL[maxLevel]}] 拦截到危险 Git 操作`,
-      ``,
-      `等级: ${maxLevel === "danger" ? "危险" : "警告"}`,
-      `理由:`,
-      reasons,
-      ``,
+      `理由: ${reasons}`,
       `命令:`,
       cmd,
     ].join("\n");
 
-    const choice = await ctx.ui.select(title, [
+    const choice = await selectWithFullText(ctx.ui, "拦截到危险 Git 操作", prompt, [
       "拒绝",
       "拒绝并说明理由",
       "允许本次",
@@ -168,7 +164,7 @@ export default function (pi: ExtensionAPI) {
     ]);
 
     if (choice === "拒绝并说明理由") {
-      const detail = await ctx.ui.input(title, "输入返回给 AI 的拦截理由 (留空则普通拒绝)");
+      const detail = await ctx.ui.input(budgetInputPrompt(prompt), "输入返回给 AI 的拦截理由 (留空则普通拒绝)");
       const reason = detail?.trim()
         ? `用户拒绝执行\n并给你发来回复: ${detail.trim()}`
         : "用户拒绝执行";
