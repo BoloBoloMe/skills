@@ -1,0 +1,72 @@
+{
+  "baseline": "cli/glm-5.3-flash",
+  "models": {
+    "cli/glm-5.3-flash": {
+      "coding": 1,
+      "knowledge": 1,
+      "longctx": 1,
+      "multimodal": null,
+      "stability": 1,
+      "speed": 1,
+      "updatedAt": "2026-10-13",
+      "note": "优秀, 便宜, 中速. 适合复杂任务",
+      "evidence": {
+        "multimodal": "pi text-only"
+      }
+    },
+    "cli/gpt-6.1-sol": {
+      "coding": 1.13,
+      "knowledge": 1.24,
+      "longctx": 1,
+      "multimodal": 1.5,
+      "stability": 1,
+      "speed": 0.70,
+      "updatedAt": "2026-10-13",
+      "note": "拔尖, 昂贵, 极慢. 适合定方向做决策, 不适合做具体任务",
+      "evidence": {
+        "coding": "DeepSWE 71.9/63.4 benchlm",
+        "knowledge": "AA Index 52/42",
+        "longctx": "弱: 无 AA-LCR",
+        "multimodal": "弱: 无 MMMU",
+        "stability": "弱: 无数据",
+        "speed": "AA 65.2/67"
+      }
+    },
+    "cli/gpt-6-luna": {
+      "coding": 0.7,
+      "knowledge": 0.9,
+      "longctx": 1.04,
+      "multimodal": 1,
+      "stability": 1,
+      "speed": 0.80,
+      "updatedAt": "2026-10-13",
+      "note": "平庸, 极廉价, 慢速. 适合做简单任务",
+      "evidence": {
+        "coding": "弱: 榜单冲突 DeepSWE 1.05 / TB4 0.38",
+        "knowledge": "AA 38/42",
+        "longctx": "AA-LCR 83.3/80",
+        "multimodal": "弱: 无 MMMU",
+        "stability": "弱: 无数据",
+        "speed": "AA 134.6/67"
+      }
+    },
+    "cli/deepseek-flash": {
+      "coding": 1.12,
+      "knowledge": 0.93,
+      "longctx": 1.05,
+      "multimodal": 1.5,
+      "stability": 1.2,
+      "speed": 2.95,
+      "updatedAt": "2026-10-13",
+      "note": "优秀, 便宜, 极速. 适合复杂任务",
+      "evidence": {
+        "coding": "DeepSWE 74.2/63.4, TB2.1 90.6/84.3 几何均; 对照列未明示 Flash",
+        "knowledge": "AA 39/42",
+        "longctx": "AA-LCR 84/80",
+        "multimodal": "MMMU-Pro 76.99 AA / 56.5 官方",
+        "stability": "弱: 用户反馈最稳",
+        "speed": "AA 197.6/67"
+      }
+    }
+  }
+}

@@ -12,6 +12,31 @@ class PiModelsConfigTests(unittest.TestCase):
     def setUp(self):
         self.providers = json.loads((ROOT / "pi/models.json").read_text())["providers"]
 
+    def test_gpt_62_specs_match_sandbox_and_selection_catalog(self):
+        sandbox = json.loads((ROOT / "workflow/use-sandbox-worktree/agent-templates/cliproxyapi/models.json").read_text())
+        catalog = json.loads((ROOT / "general/llm-select/model-catalog.json").read_text())["models"]
+        host_models = {m["id"]: m for m in self.providers["cli"]["models"]}
+        sandbox_models = {m["id"]: m for m in sandbox["models"]}
+        expected = {
+            "gpt-6.2-astra": {"input": 8, "output": 40, "cacheRead": 0.4, "cacheWrite": 10},
+            "gpt-6.2-sol": {"input": 2, "output": 10, "cacheRead": 0.1, "cacheWrite": 2.5},
+        }
+        levels = {"off": None, "minimal": None, "low": "low", "medium": "medium",
+                  "high": "high", "xhigh": "xhigh", "max": "max"}
+        for mid, cost in expected.items():
+            with self.subTest(model=mid):
+                for model in (host_models[mid], sandbox_models[mid]):
+                    self.assertEqual(model["api"], "openai-responses")
+                    self.assertTrue(model["reasoning"])
+                    self.assertEqual(model["input"], ["text", "image"])
+                    self.assertEqual(model["contextWindow"], 872000)
+                    self.assertEqual(model["maxTokens"], 128000)
+                    self.assertEqual(model["cost"], cost)
+                    self.assertEqual(model["thinkingLevelMap"], levels)
+                self.assertEqual(catalog[f"cli/{mid}"]["cost"], cost)
+                self.assertEqual(catalog[f"cli/{mid}"]["thinking"],
+                                 ["low", "medium", "high", "xhigh", "max"])
+
     def test_cliproxyapi_uses_dedicated_environment_variable(self):
         # 不用 assertEqual 打印原值, 防止回归时把明文 Key 带进测试日志.
         self.assertTrue(

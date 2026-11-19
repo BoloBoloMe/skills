@@ -1,0 +1,32 @@
+{
+  "contract": 2,
+  "digest": "dc23ccfa17431aa4dff71b848de5a265504007d2618b8eceaa439fe96ddb87a7",
+  "models-version": "2026-11-18.1",
+  "name": "cliproxyapi",
+  "valid": true,
+  "version": "2026-11-18.1"
+}
+旧候选评分输出逐字节一致
+46907442eecd294efbc87eef9bfcd2f510ca38221948fa8c585bd45a6f18751b  /tmp/llm-model-update-scores-before.txt
+46907442eecd294efbc87eef9bfcd2f510ca38221948fa8c585bd45a6f18751b  /tmp/llm-model-update-scores-after.txt
+7ddb16917ffaeb63bd7a7e2b67414b64986c1a42f292a67a7d0c058e19eebd0a  general/llm-select/llm-scores.json
+7ddb16917ffaeb63bd7a7e2b67414b64986c1a42f292a67a7d0c058e19eebd0a  /home/bolo/.agents/llm-select/llm-scores.json
+cli/glm-5.3-flash
+  各维: coding 1 | knowledge 1 | longctx 1 | multimodal N/A | stability 1 | price 1 | speed 1
+  画像总分: coding 1.000 / research 1.000 / review 1.000 / vision — / long-doc 1.000 / cheap-batch 1.000 / general 1.000
+  各维与基准基本持平; 备注: 优秀, 便宜, 中速. 适合复杂任务
+  thinking 支持: high/xhigh/max
+cli/gpt-6.2-sol [未评分]
+  各维: coding N/A | knowledge N/A | longctx N/A | multimodal N/A | stability N/A | price 0.0297 | speed N/A
+  画像总分: coding 0.030 / research 0.030 / review 0.030 / vision — / long-doc 0.030 / cheap-batch 0.030 / general 0.030
+  未评分: 缺失的能力维显示 N/A, 画像总分不能用于比较.
+  thinking 支持: low/medium/high/xhigh/max
+cli/gpt-6.2-astra [未评分]
+  各维: coding N/A | knowledge N/A | longctx N/A | multimodal N/A | stability N/A | price 0.00742 | speed N/A
+  画像总分: coding 0.007 / research 0.007 / review 0.007 / vision — / long-doc 0.007 / cheap-batch 0.007 / general 0.007
+  未评分: 缺失的能力维显示 N/A, 画像总分不能用于比较.
+  thinking 支持: low/medium/high/xhigh/max
+
+存在未评分模型: 可读 bootstrap.md 重跑调研补评.
+Python 3.14.7
+194c5754749a53b2e4cd040f2d2cda701ca9b191

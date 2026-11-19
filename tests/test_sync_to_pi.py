@@ -4,6 +4,7 @@ import io
 import json
 import os
 import shutil
+import subprocess
 import tempfile
 import unittest
 from pathlib import Path
@@ -33,6 +34,28 @@ class ModelEnvironmentTests(unittest.TestCase):
             for path in root.iterdir():
                 self.assertNotIn(key, path.read_text(), "同步不能把环境变量中的 Key 写入文件")
             self.assertNotIn(key, output.getvalue())
+
+
+class ModelDataDistributionTests(unittest.TestCase):
+    def test_synced_llm_select_runs_with_its_own_data(self):
+        source = SCRIPT_PATH.parent / "general/llm-select"
+        with tempfile.TemporaryDirectory() as tmp:
+            target = Path(tmp) / "skills/llm-select"
+            plan = [sync_to_pi.PlanItem(source, target, "general/llm-select", True)]
+            # 使用真实同步入口, 目标仅为本次临时目录.
+            with contextlib.redirect_stdout(io.StringIO()):
+                sync_to_pi.execute_plan(plan)
+            result = subprocess.run(
+                ["uv", "run", "--no-project", "--offline", "python", str(target / "score.py"),
+                 "--scope", "cli/glm-5.3-flash cli/gpt-6.2-astra cli/gpt-6.2-sol"],
+                cwd=tmp, capture_output=True, text=True, check=False,
+            )
+            self.assertEqual(0, result.returncode, result.stderr)
+            self.assertIn("cli/glm-5.3-flash", result.stdout)
+            self.assertIn("cli/gpt-6.2-astra [未评分]", result.stdout)
+            self.assertIn("cli/gpt-6.2-sol [未评分]", result.stdout)
+            self.assertIn("price 0.00742", result.stdout)
+            self.assertIn("price 0.0297", result.stdout)
 
 
 class ClearSkillsTests(unittest.TestCase):

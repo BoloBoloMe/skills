@@ -1,0 +1,44 @@
+======================================================================
+FAIL: test_verified_birth_reentry_uses_frozen_snapshot_not_latest_template (test_agent_templates_safety.LifecycleTests.test_verified_birth_reentry_uses_frozen_snapshot_not_latest_template)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/bolo/Workspace/skills/skills-main/tests/test_agent_templates_safety.py", line 521, in test_verified_birth_reentry_uses_frozen_snapshot_not_latest_template
+    self.assertEqual(self.swt.birth(self.args(), self.repo), 0)
+                     ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/bolo/Workspace/skills/skills-main/workflow/use-sandbox-worktree/scripts/swt.py", line 3312, in birth
+    configure_repo(repo, Path(runtime_existing["mother_dir"]).resolve(), branch)
+    ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/bolo/.local/share/uv/python/cpython-3.14.7-linux-x86_64-gnu/lib/python3.14/unittest/mock.py", line 1176, in __call__
+    return self._mock_call(*args, **kwargs)
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "/home/bolo/.local/share/uv/python/cpython-3.14.7-linux-x86_64-gnu/lib/python3.14/unittest/mock.py", line 1180, in _mock_call
+    return self._execute_mock_call(*args, **kwargs)
+           ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "/home/bolo/.local/share/uv/python/cpython-3.14.7-linux-x86_64-gnu/lib/python3.14/unittest/mock.py", line 1241, in _execute_mock_call
+    raise effect
+AssertionError: resource mutation before gate: configure_repo
+
+======================================================================
+FAIL: test_new_and_old_ready_resume_are_separate (test_agent_templates_safety.ResumeTests.test_new_and_old_ready_resume_are_separate) (legacy=False)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/bolo/Workspace/skills/skills-main/tests/test_agent_templates_safety.py", line 603, in test_new_and_old_ready_resume_are_separate
+    self.assertEqual(self.swt.resume(self.args, Path(state["repo"])), 0)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 1 != 0
+
+======================================================================
+FAIL: test_new_and_old_ready_resume_are_separate (test_agent_templates_safety.ResumeTests.test_new_and_old_ready_resume_are_separate) (legacy=True)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/bolo/Workspace/skills/skills-main/tests/test_agent_templates_safety.py", line 603, in test_new_and_old_ready_resume_are_separate
+    self.assertEqual(self.swt.resume(self.args, Path(state["repo"])), 0)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 1 != 0
+
+----------------------------------------------------------------------
+Ran 37 tests in 2.114s
+
+FAILED (failures=3, skipped=2)
+DECIDE d-20261118-070611-017225-001 resume 检测到可恢复对象, 将收 stale daemon/迁移旧形态配置/start 容器/重拉 daemon/nft --merge/SSH 与 git fetch 校验 选项: --confirm
+DECIDE d-20261118-070611-017225-001 resume 检测到可恢复对象, 将收 stale daemon/迁移旧形态配置/start 容器/重拉 daemon/nft --merge/SSH 与 git fetch 校验 选项: --confirm

@@ -2,7 +2,11 @@
 
 评分表用数字比较模型能力和成本, `note` 则把比较结果写成选型结论. 每个能力分都要有调研依据, 否则后续无法校对; `price` 由 `score.py` 从目录价格派生, 不手填.
 
-两份数据各设备一份, 放在 `~/.agents/llm-select/`: `llm-scores.json` (评分) 和 `model-catalog.json` (模型目录). 建表时先取得候选模型的目录信息 (成本与 thinking 档), 才能判断价格和适用任务.
+两份数据在本仓库的 `general/llm-select/` 维护: [llm-scores.json](llm-scores.json) (评分卡) 和 [model-catalog.json](model-catalog.json) (价格与模型目录). `score.py` 默认读取脚本同目录的数据, 不依赖当前工作目录或设备上的旧 `~/.agents/llm-select/`. 临时使用其他数据可传 `--scores`/`--catalog`, 不自动回退旧路径.
+
+数据随整个 skill 由仓库同步到 `~/.agents/skills/llm-select/`, 沙箱通过已有 skills 只读挂载读取同一份副本, 无需另建评分数据挂载. 修改回到仓库进行, 不在同步后的真实 agent skill 目录维护. 建表时先取得候选模型的目录信息 (成本与 thinking 档), 才能判断价格和适用任务.
+
+当前评分卡迁自设备原有数据, 保留基准 `cli/glm-5.3-flash`, 分数, 更新时间, note 和 evidence; 不表示本次重新验证了旧结论. GPT-6.2 Astra/Sol 仅补价格与档位, 未经调研不写能力分.
 
 ## 评分语义
 
@@ -15,9 +19,11 @@
 ## 模型目录 (model-catalog.json)
 
 平台无关 schema: `models` 对象, 键为 provider/model 全限定名, 值为:
-- `cost`: 单位成本对象, 含 `input`/`output` (价格维派生必需), 可含 `cacheRead`/`cacheWrite`.
+- `cost`: 单位成本对象, 单位为 USD/1M tokens, 含 `input`/`output` (价格维派生必需), 可含 `cacheRead`/`cacheWrite`. 使用一致计费档的基础单价; 长上下文/缓存时长/批处理等额外计费规则另作说明, 价格分不代表实际账单.
 - `reasoning`: 是否推理模型.
 - `thinking`: 支持的 thinking 档列表 (最浅到最深), 供选型时挑档.
+
+目录可在顶层 `sources`/`pricingNote` 保留来源和计费边界, 条目可用 `updatedAt` 记录核对日期. 这些说明不参与算分; 声明的档位仍须由当前平台核实是否可用.
 
 基准模型必须存在于目录且单位成本有效 (cost 有 input/output 且不全为零), 否则 score.py 报 `bad-baseline` 且修表治不了 — 先修目录.
 

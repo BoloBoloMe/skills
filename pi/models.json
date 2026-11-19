@@ -50,6 +50,58 @@
       "authHeader": true,
       "models": [
         {
+          "id": "gpt-6.2-astra",
+          "reasoning": true,
+          "thinkingLevelMap": {
+            "off": null,
+            "minimal": null,
+            "low": "low",
+            "medium": "medium",
+            "high": "high",
+            "xhigh": "xhigh",
+            "max": "max"
+          },
+          "input": ["text", "image"],
+          "contextWindow": 872000,
+          "maxTokens": 128000,
+          "cost": {
+            "input": 8,
+            "output": 40,
+            "cacheRead": 0.4,
+            "cacheWrite": 10
+          },
+          "api": "openai-responses",
+          "compat": {
+            "supportsToolSearch": true
+          }
+        },
+        {
+          "id": "gpt-6.2-sol",
+          "reasoning": true,
+          "thinkingLevelMap": {
+            "off": null,
+            "minimal": null,
+            "low": "low",
+            "medium": "medium",
+            "high": "high",
+            "xhigh": "xhigh",
+            "max": "max"
+          },
+          "input": ["text", "image"],
+          "contextWindow": 872000,
+          "maxTokens": 128000,
+          "cost": {
+            "input": 2,
+            "output": 10,
+            "cacheRead": 0.1,
+            "cacheWrite": 2.5
+          },
+          "api": "openai-responses",
+          "compat": {
+            "supportsToolSearch": true
+          }
+        },
+        {
           "id": "gpt-6-astra",
           "reasoning": true,
           "thinkingLevelMap": {

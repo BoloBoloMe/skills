@@ -1,5 +1,6 @@
 import importlib.util
 import json
+import os
 import subprocess
 import tempfile
 import unittest
@@ -246,7 +247,26 @@ class MainFailReasonTests(unittest.TestCase):
 
 
 class SmokeTests(unittest.TestCase):
-    """端到端冒烟: 用独立 fixture 跑, 不依赖本机数据, 输出含 baseline 且成功."""
+    """CLI 冒烟: 覆盖显式夹具和随 skill 分发的数据, 不依赖本机私有评分目录."""
+
+    def test_default_data_works_outside_repo_without_device_tables(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            # 隔离 HOME 和 cwd, 旧数据故意无效, 确认默认只用随 skill 分发的数据.
+            old = Path(tmp) / ".agents/llm-select"
+            old.mkdir(parents=True)
+            for name in ("llm-scores.json", "model-catalog.json"):
+                (old / name).write_text("invalid legacy data", encoding="utf-8")
+            result = subprocess.run(
+                ["uv", "run", "--no-project", "--offline", "python", str(SCRIPT_PATH),
+                 "--scope", "cli/glm-5.3-flash cli/gpt-6.2-astra cli/gpt-6.2-sol"],
+                cwd=tmp, env={**os.environ, "HOME": tmp},
+                capture_output=True, text=True, check=False,
+            )
+            self.assertEqual(0, result.returncode, result.stderr)
+            self.assertIn("cli/glm-5.3-flash", result.stdout)
+            self.assertIn("cli/gpt-6.2-astra [未评分]", result.stdout)
+            self.assertIn("cli/gpt-6.2-sol [未评分]", result.stdout)
+            self.assertIn("thinking 支持: low/medium/high/xhigh/max", result.stdout)
 
     def test_end_to_end_output_contains_baseline(self):
         with tempfile.TemporaryDirectory() as tmp:

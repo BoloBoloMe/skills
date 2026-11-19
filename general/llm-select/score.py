@@ -2,8 +2,8 @@
 """llm-select/score.py — 选型表渲染, 算分唯一真相源 (仅标准库, 平台无关).
 
 平台无关: 不读任何 agent 平台的配置 (pi 的 settings.json/auth.json/models-store.json 等).
-只依赖两份自有数据 (每台设备一份, 默认在 ~/.agents/llm-select/, 可用 --scores/--catalog 覆盖):
-  评分表      llm-scores.json    baseline + 各模型七维比率分 (bootstrap.md 建立)
+只依赖本 skill 目录随仓库维护的两份数据 (可用 --scores/--catalog 覆盖):
+  评分表      llm-scores.json    baseline + 各模型六维能力比率分 (bootstrap.md 建立)
   模型目录    model-catalog.json 每个候选模型的 cost/reasoning/thinking 支持档
 候选范围 (scope) 由调用方决定: 缺省 = 评分表 models 的键; --scope 指定完整候选集 (glob, 空格/逗号分隔),
   替换缺省范围; 候选内评分表外的模型标 [未评分]. 用于把本平台可用列表 (如 pi 的 enabledModels) 直接作候选.
@@ -35,7 +35,7 @@ PROFILES = {
 }
 REQUIRED = {"vision": "multimodal"}  # 画像 → 必需维度 (N/A 则该画像无总分)
 
-DEFAULT_DATA_DIR = Path.home() / ".agents" / "llm-select"
+DEFAULT_DATA_DIR = Path(__file__).resolve().parent
 PRICE_CAP = 100.0  # 免费模型 (单位成本=0) 相对基准的价格封顶分
 
 
@@ -288,9 +288,9 @@ def render(rows: list) -> str:
 def main() -> None:
     parser = argparse.ArgumentParser(description="渲染 llm-select 选型表")
     parser.add_argument("--scores", type=Path, default=DEFAULT_DATA_DIR / "llm-scores.json",
-                        help="评分表路径 (默认 ~/.agents/llm-select/llm-scores.json)")
+                        help="评分表路径 (默认脚本同目录的 llm-scores.json)")
     parser.add_argument("--catalog", type=Path, default=DEFAULT_DATA_DIR / "model-catalog.json",
-                        help="模型目录路径 (默认 ~/.agents/llm-select/model-catalog.json)")
+                        help="模型目录路径 (默认脚本同目录的 model-catalog.json)")
     parser.add_argument("--scope", type=str, default=None,
                         help="候选范围: 完整候选集 (glob, 空格/逗号分隔), 替换缺省. 缺省用评分表 models 键.")
     args = parser.parse_args()

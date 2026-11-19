@@ -6,6 +6,10 @@
 
 `pi/models.json` 的密钥只引用环境变量: CLIProxyAPI 用 `CLIPROXYAPI_KEY`, ai-work 用 `CHANG_ZHI_AI_WORK`. 启动前设置, 不将明文写回配置; 安全设置方法与容器注入区别见 [pi/README.md](pi/README.md).
 
+## 模型评分与价格
+
+评分卡维护在 [`general/llm-select/llm-scores.json`](general/llm-select/llm-scores.json), 价格与 thinking 档维护在 [`general/llm-select/model-catalog.json`](general/llm-select/model-catalog.json). 数据随 skill 同步, 不再默认读取设备上的 `~/.agents/llm-select/`. 运行 `uv run python general/llm-select/score.py` 查看现有评分; 新候选用 `--scope` 传完整名称, 尚未调研的模型保持未评分. 数据口径与维护规则见 [bootstrap.md](general/llm-select/bootstrap.md).
+
 ## 目录
 
 调用关系口径: 调用图只画执行调用; 引用, 分工声明与重新派活不算调用边. 维护本仓库时, 调用关系变化须人工核对 README 技能表与各 skill 正文中的执行调用语句, 并经非作者复核.
@@ -17,7 +21,7 @@
 | [`access-web`](general/access-web/SKILL.md) | 网页搜索, 正文提取, 文件下载, 截图, 登录和 JS 交互. |
 | [`grilling`](general/grilling/SKILL.md) | 通过决策树分轮盘问, 逐步敲定设计决策. |
 | [`handoff`](general/handoff/SKILL.md) | 将当前会话压缩成脱敏交接文档, 供后续 agent 接手. |
-| [`llm-select`](general/llm-select/SKILL.md) | 根据设备评分和任务画像, 为子代理选择模型与 thinking 档位. |
+| [`llm-select`](general/llm-select/SKILL.md) | 根据仓库维护的评分卡/价格表和任务画像, 为子代理选择模型与 thinking 档位. |
 | [`mailbox`](general/mailbox/SKILL.md) | 会话间收发信与信箱维护. |
 | [`opposing-viewpoint`](general/opposing-viewpoint/SKILL.md) | 从反方分析既有观点, 找出薄弱前提并提出替代主张. |
 | [`present`](general/present/SKILL.md) | 把内容生成自包含 HTML 页面, 经常驻 web 服务交付已确认的局域网地址. |

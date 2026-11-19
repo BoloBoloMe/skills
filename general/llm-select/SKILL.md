@@ -4,6 +4,8 @@ description: 按任务能力与成本为子代理选择模型和 thinking 档位
 disable-model-invocation: true
 ---
 
+评分卡 [llm-scores.json](llm-scores.json) 和价格表 [model-catalog.json](model-catalog.json) 随本 skill 在仓库维护. `score.py` 默认读脚本同目录数据, 同步 skill 时一并分发; 数据维护方式见 [bootstrap.md](bootstrap.md).
+
 ## 步骤
 
 1. **定候选与底线**: 按任务必需能力和失败代价确定质量底线, 从当前 agent 的工具或配置核实可调用的完整 `provider/model` 名称. 评分表不是可用名单, 无法核实的候选标为待核实. 完成标准: 已列出候选及可用性状态, 任务必须满足的能力要求已写明.

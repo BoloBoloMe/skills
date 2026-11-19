@@ -1,14 +1,71 @@
 {
   "schema": 1,
-  "version": "2026-10-20.2",
+  "version": "2026-11-18.1",
   "sources": [
     "/home/bolo/Workspace/cliproxyapi/models.pi.example.json (2026-10-13 静态参考, 不作为运行期来源)",
     "https://raw.githubusercontent.com/openai/codex/main/codex-rs/models-manager/models.json (GPT context_window=272000, max_context_window=872000)",
     "/home/bolo/docs/cliproxyapi.md (路由/规格/已验证能力边界)",
     "https://raw.githubusercontent.com/openai/codex/rust-v0.162.1/codex-rs/models-manager/models.json (版本固定, 只取 2 个 Responses 模型的必要字段/原生基础指令; 禁 WebSocket/Responses Lite/自动升级)",
-    "2026-10-20 网关 GET /v1/models 实测 15 条: 模板只保留 4 个文本/推理模型, 图像模型与 codex-auto-review 不列入客户端目录"
+    "2026-10-20 网关 GET /v1/models 实测 15 条: 当时模板保留 4 个文本/推理模型, 图像模型与 codex-auto-review 不列入客户端目录",
+    "https://developers.openai.com/api/docs/models/gpt-6.2-astra.md (2026-11-18: Standard 短上下文 input/output/cacheRead/cacheWrite=8/40/0.4/10 USD/1M tokens)",
+    "https://developers.openai.com/api/docs/models/gpt-6.2-sol.md (2026-11-18: Standard 短上下文 input/output/cacheRead/cacheWrite=2/10/0.1/2.5 USD/1M tokens)",
+    "https://raw.githubusercontent.com/openai/codex/main/codex-rs/models-manager/models.json (2026-11-18, SHA256=d50b6749506d97e5f334dbabcb666eb1689f423cf3e88cfabdcf3c536b873068: 新模型 low/medium/high/xhigh/max, max_context_window=872000)",
+    "2026-11-18 新增 GPT-6.2 Astra/Sol, 共 6 个模型. 官方总窗口 1050000, 最大输入 922000; 客户端沿用 872000 配置上限, 输出 128000. 超 272K 输入时官方 input/cache 2 倍, output 1.5 倍; 此处只记短上下文基础价, 不是完整账单估算",
+    "GPT-6.2 Codex 条目适配固定 0.162.1 字段, base_instructions 复用原有 GPT-6 基础指令首段; 不导入上游要求 0.166.0 的 code_mode_only/多代理/ultra/实验工具, 保持禁 WebSocket/Responses Lite/自动升级. 新模型真实网关调用及旧客户端端到端兼容性尚未验证"
   ],
   "models": [
+    {
+      "id": "gpt-6.2-astra",
+      "reasoning": true,
+      "thinkingLevelMap": {
+        "off": null,
+        "minimal": null,
+        "low": "low",
+        "medium": "medium",
+        "high": "high",
+        "xhigh": "xhigh",
+        "max": "max"
+      },
+      "input": ["text", "image"],
+      "contextWindow": 872000,
+      "maxTokens": 128000,
+      "cost": {
+        "input": 8,
+        "output": 40,
+        "cacheRead": 0.4,
+        "cacheWrite": 10
+      },
+      "api": "openai-responses",
+      "compat": {
+        "supportsToolSearch": true
+      }
+    },
+    {
+      "id": "gpt-6.2-sol",
+      "reasoning": true,
+      "thinkingLevelMap": {
+        "off": null,
+        "minimal": null,
+        "low": "low",
+        "medium": "medium",
+        "high": "high",
+        "xhigh": "xhigh",
+        "max": "max"
+      },
+      "input": ["text", "image"],
+      "contextWindow": 872000,
+      "maxTokens": 128000,
+      "cost": {
+        "input": 2,
+        "output": 10,
+        "cacheRead": 0.1,
+        "cacheWrite": 2.5
+      },
+      "api": "openai-responses",
+      "compat": {
+        "supportsToolSearch": true
+      }
+    },
     {
       "id": "deepseek-flash",
       "name": "DeepSeek Flash",
@@ -142,6 +199,70 @@
   "codex_catalog": {
     "version": "0.162.1",
     "models": [
+      {
+        "slug": "gpt-6.2-astra",
+        "display_name": "GPT-6.2-Astra",
+        "description": "Our most capable model for complex coding and professional work.",
+        "default_reasoning_level": "low",
+        "supported_reasoning_levels": [
+          {"effort": "low", "description": "Fast responses with lighter reasoning"},
+          {"effort": "medium", "description": "Balances speed and reasoning depth for everyday tasks"},
+          {"effort": "high", "description": "Greater reasoning depth for complex problems"},
+          {"effort": "xhigh", "description": "Extra high reasoning depth for complex problems"},
+          {"effort": "max", "description": "Maximum reasoning depth for the hardest problems"}
+        ],
+        "shell_type": "shell_command",
+        "visibility": "list",
+        "supported_in_api": true,
+        "priority": 2,
+        "availability_nux": null,
+        "support_verbosity": true,
+        "default_verbosity": "low",
+        "apply_patch_tool_type": "freeform",
+        "truncation_policy": {"mode": "tokens", "limit": 10000},
+        "input_modalities": ["text", "image"],
+        "supports_reasoning_summary_parameter": true,
+        "supports_reasoning_summaries": true,
+        "base_instructions": "You are Codex, an agent based on GPT-6. You and the user share one workspace, and your job is to collaborate with them until their intended goal is completely handled.",
+        "upgrade": null,
+        "experimental_supported_tools": [],
+        "context_window": 872000,
+        "max_context_window": 872000,
+        "prefer_websockets": false,
+        "use_responses_lite": false
+      },
+      {
+        "slug": "gpt-6.2-sol",
+        "display_name": "GPT-6.2-Sol",
+        "description": "Fast, go-to model for coding and everyday work.",
+        "default_reasoning_level": "low",
+        "supported_reasoning_levels": [
+          {"effort": "low", "description": "Fast responses with lighter reasoning"},
+          {"effort": "medium", "description": "Balances speed and reasoning depth for everyday tasks"},
+          {"effort": "high", "description": "Greater reasoning depth for complex problems"},
+          {"effort": "xhigh", "description": "Extra high reasoning depth for complex problems"},
+          {"effort": "max", "description": "Maximum reasoning depth for the hardest problems"}
+        ],
+        "shell_type": "shell_command",
+        "visibility": "list",
+        "supported_in_api": true,
+        "priority": 1,
+        "availability_nux": null,
+        "support_verbosity": true,
+        "default_verbosity": "low",
+        "apply_patch_tool_type": "freeform",
+        "truncation_policy": {"mode": "tokens", "limit": 10000},
+        "input_modalities": ["text", "image"],
+        "supports_reasoning_summary_parameter": true,
+        "supports_reasoning_summaries": true,
+        "base_instructions": "You are Codex, an agent based on GPT-6. You and the user share one workspace, and your job is to collaborate with them until their intended goal is completely handled.",
+        "upgrade": null,
+        "experimental_supported_tools": [],
+        "context_window": 872000,
+        "max_context_window": 872000,
+        "prefer_websockets": false,
+        "use_responses_lite": false
+      },
       {
         "slug": "gpt-6-luna",
         "display_name": "GPT-6-Luna",

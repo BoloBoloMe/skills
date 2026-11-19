@@ -74,7 +74,8 @@ class DataTests(TemporaryCase):
     def test_deterministic_and_native_catalog_consumed(self):
         self.assertEqual(template.snapshot(self.bundle), template.snapshot(copy.deepcopy(self.bundle)))
         files = self.value["files"]
-        expected_models = {"deepseek-flash", "glm-5.3-flash", "gpt-6-luna", "gpt-6.1-sol"}
+        expected_models = {"deepseek-flash", "glm-5.3-flash", "gpt-6-luna", "gpt-6.1-sol",
+                           "gpt-6.2-astra", "gpt-6.2-sol"}
         pi = json.loads(files[".pi/agent/models.json"])
         self.assertEqual({m["id"] for m in pi["providers"]["cli"]["models"]}, expected_models)
         pi_settings = json.loads(files[".pi/agent/settings.overlay.json"])
@@ -83,13 +84,15 @@ class DataTests(TemporaryCase):
         self.assertEqual(codex["model"], "gpt-6-luna")
         self.assertEqual(codex["model_catalog_json"], "/home/bolo/.codex/models.json")
         catalog = json.loads(files[".codex/models.json"])
-        self.assertEqual({m["slug"] for m in catalog["models"]}, {"gpt-6-luna", "gpt-6.1-sol"})
+        self.assertEqual({m["slug"] for m in catalog["models"]},
+                         {"gpt-6-luna", "gpt-6.1-sol", "gpt-6.2-astra", "gpt-6.2-sol"})
         self.assertTrue(all(m["upgrade"] is None and not m["prefer_websockets"] for m in catalog["models"]))
         kimi = tomllib.loads(files[".kimi-code/config.toml"])
         self.assertEqual(kimi["default_model"], "cliproxy-chat/deepseek-flash")
         self.assertEqual(set(kimi["models"]), {
             "cliproxy-chat/deepseek-flash", "cliproxy-chat/glm-5.3-flash",
             "cliproxy-responses/gpt-6-luna", "cliproxy-responses/gpt-6.1-sol",
+            "cliproxy-responses/gpt-6.2-astra", "cliproxy-responses/gpt-6.2-sol",
         })
         self.assertEqual({p["base_url"] for p in kimi["providers"].values()}, {self.bundle["template"]["base_url"]})
         self.assertNotIn(KEY, json.dumps(self.value))
@@ -117,13 +120,14 @@ class DataTests(TemporaryCase):
                     template.validate(data["template"], data["catalog"])
 
     def test_new_birth_same_name_gets_new_snapshot_not_old_one(self):
+        self.bundle["template"]["version"] = "test-v1"
         first = template.creation(self.root / "snapshot.json", self.bundle, "testbox", "sha256:fake")
         changed = copy.deepcopy(self.bundle)
         changed["template"]["version"] = "next"
         second = template.creation(self.root / "snapshot.json", changed, "testbox", "sha256:fake")
         self.assertNotEqual(first["snapshot"], second["snapshot"])
         self.assertNotEqual(first["creation-token"], second["creation-token"])
-        self.assertEqual(template.read_snapshot(Path(first["snapshot"]))["template"]["version"], "2026-10-20.2")
+        self.assertEqual(template.read_snapshot(Path(first["snapshot"]))["template"]["version"], "test-v1")
 
     def test_shared_business_credentials_require_decision(self):
         with self.assertRaises(common.TemplateError) as error:
