@@ -6,8 +6,6 @@ disable-model-invocation: true
 
 # 资损审查
 
-本 skill 是方法 skill; 完成标准见 [verification-contract](../verification-contract/SKILL.md).
-
 ## 边界
 
 本 skill 只回答一个问题: 这次变更会不会造成资损. 资损有两种载体: 钱被错付, 资产被误发, 对损失同罪. 能否编译运行, 测试覆盖, 风格, 可维护性, 可观测性, 发布策略, 都由工作流其他环节负责.
