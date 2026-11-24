@@ -6,7 +6,7 @@
 
 数据随整个 skill 由仓库同步到 `~/.agents/skills/llm-select/`, 沙箱通过已有 skills 只读挂载读取同一份副本, 无需另建评分数据挂载. 修改回到仓库进行, 不在同步后的真实 agent skill 目录维护. 建表时先取得候选模型的目录信息 (成本与 thinking 档), 才能判断价格和适用任务.
 
-当前评分卡迁自设备原有数据, 保留基准 `cli/glm-5.3-flash`, 分数, 更新时间, note 和 evidence; 不表示本次重新验证了旧结论. GPT-6.2 Astra/Sol 仅补价格与档位, 未经调研不写能力分.
+评分卡原样迁自设备数据 (2026-11-18); 2026-11-24 全表按 Artificial Analysis Intelligence Index v5.0.1 重锚, 基准仍为 `cli/glm-5.3-flash`, 六维依据统一取自 AA 模型页 (Max 档; coding 用 Terminal-Bench 4.0, 长上下文用 AA-LCR, 速度用每任务时间). gpt-6.2-astra/gpt-6.2-sol 已按 AA 数据评分; glm-5.4 无公开基准数据, 保持未评分.
 
 ## 评分语义
 

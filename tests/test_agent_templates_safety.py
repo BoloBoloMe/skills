@@ -74,7 +74,7 @@ class DataTests(TemporaryCase):
     def test_deterministic_and_native_catalog_consumed(self):
         self.assertEqual(template.snapshot(self.bundle), template.snapshot(copy.deepcopy(self.bundle)))
         files = self.value["files"]
-        expected_models = {"deepseek-flash", "glm-5.3-flash", "gpt-6-luna", "gpt-6.1-sol",
+        expected_models = {"deepseek-flash", "glm-5.3-flash", "glm-5.4", "gpt-6-luna",
                            "gpt-6.2-astra", "gpt-6.2-sol"}
         pi = json.loads(files[".pi/agent/models.json"])
         self.assertEqual({m["id"] for m in pi["providers"]["cli"]["models"]}, expected_models)
@@ -85,18 +85,29 @@ class DataTests(TemporaryCase):
         self.assertEqual(codex["model_catalog_json"], "/home/bolo/.codex/models.json")
         catalog = json.loads(files[".codex/models.json"])
         self.assertEqual({m["slug"] for m in catalog["models"]},
-                         {"gpt-6-luna", "gpt-6.1-sol", "gpt-6.2-astra", "gpt-6.2-sol"})
+                         {"gpt-6-luna", "gpt-6.2-astra", "gpt-6.2-sol"})
         self.assertTrue(all(m["upgrade"] is None and not m["prefer_websockets"] for m in catalog["models"]))
         kimi = tomllib.loads(files[".kimi-code/config.toml"])
         self.assertEqual(kimi["default_model"], "cliproxy-chat/deepseek-flash")
         self.assertEqual(set(kimi["models"]), {
             "cliproxy-chat/deepseek-flash", "cliproxy-chat/glm-5.3-flash",
-            "cliproxy-responses/gpt-6-luna", "cliproxy-responses/gpt-6.1-sol",
+            "cliproxy-chat/glm-5.4",
+            "cliproxy-responses/gpt-6-luna",
             "cliproxy-responses/gpt-6.2-astra", "cliproxy-responses/gpt-6.2-sol",
         })
         self.assertEqual({p["base_url"] for p in kimi["providers"].values()}, {self.bundle["template"]["base_url"]})
         self.assertNotIn(KEY, json.dumps(self.value))
         self.assertNotIn(MANAGEMENT, json.dumps(self.value))
+
+    def test_cost_optional_but_complete_when_present(self):
+        # 价格未公布的模型 (如 glm-5.4) 可省略 cost; 出现时必须完整合法.
+        data = copy.deepcopy(self.bundle)
+        for model in data["catalog"]["models"]:
+            model.pop("cost", None)
+        template.validate(data["template"], data["catalog"])
+        data["catalog"]["models"][0]["cost"] = {"input": 8, "output": 40}
+        with self.assertRaises(common.TemplateError):
+            template.validate(data["template"], data["catalog"])
 
     def test_reject_invalid_data_and_executable_fields(self):
         mutations = [

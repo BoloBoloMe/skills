@@ -8,64 +8,86 @@
       "multimodal": null,
       "stability": 1,
       "speed": 1,
-      "updatedAt": "2026-10-13",
-      "note": "优秀, 便宜, 中速. 适合复杂任务",
+      "updatedAt": "2026-11-24",
+      "note": "便宜, 稳定可用; AA 口径下每任务耗时长 (输出啰嗦). 适合预算优先, 不赶时间的复杂任务",
       "evidence": {
-        "multimodal": "pi text-only"
+        "coding": "基准锚: AA TB4.0 32.8 (v5.0.1, Max)",
+        "knowledge": "基准锚: AA II 27.8",
+        "longctx": "基准锚: AA-LCR 0.80",
+        "multimodal": "pi/网关声明纯文本输入; AA/官方称支持图像, 未实测",
+        "speed": "基准锚: AA 每任务 36.5 min, 输出 61 tok/s"
       }
     },
-    "cli/gpt-6.1-sol": {
-      "coding": 1.13,
-      "knowledge": 1.24,
-      "longctx": 1,
+    "cli/gpt-6.2-sol": {
+      "coding": 1.83,
+      "knowledge": 2.06,
+      "longctx": 1.04,
+      "multimodal": 1.0,
+      "stability": 1,
+      "speed": 3.61,
+      "updatedAt": "2026-11-24",
+      "note": "能力接近 astra, 价格约其 1/4, 每任务快. 适合做日常复杂任务的主力",
+      "evidence": {
+        "coding": "AA TB4.0 60.1/32.8",
+        "knowledge": "AA II 57.3/27.8",
+        "longctx": "AA-LCR 0.833/0.80",
+        "multimodal": "弱: 官方支持图像输入, AA 未评测其 MMMU-Pro",
+        "stability": "弱: 无数据",
+        "speed": "AA 每任务 10.1/36.5 min"
+      }
+    },
+    "cli/gpt-6.2-astra": {
+      "coding": 1.95,
+      "knowledge": 2.24,
+      "longctx": 1.04,
       "multimodal": 1.5,
       "stability": 1,
-      "speed": 0.70,
-      "updatedAt": "2026-10-13",
-      "note": "拔尖, 昂贵, 极慢. 适合定方向做决策, 不适合做具体任务",
+      "speed": 2.61,
+      "updatedAt": "2026-11-24",
+      "note": "全表最强, 极昂贵. 适合定方向做决策和难任务, 不适合批量",
       "evidence": {
-        "coding": "DeepSWE 71.9/63.4 benchlm",
-        "knowledge": "AA Index 52/42",
-        "longctx": "弱: 无 AA-LCR",
-        "multimodal": "弱: 无 MMMU",
+        "coding": "AA TB4.0 64.1/32.8",
+        "knowledge": "AA II 62.1/27.8",
+        "longctx": "AA-LCR 0.833/0.80",
+        "multimodal": "AA MMMU-Pro 89%",
         "stability": "弱: 无数据",
-        "speed": "AA 65.2/67"
+        "speed": "AA 每任务 14.0/36.5 min"
       }
     },
     "cli/gpt-6-luna": {
-      "coding": 0.7,
-      "knowledge": 0.9,
+      "coding": 0.38,
+      "knowledge": 1.0,
       "longctx": 1.04,
-      "multimodal": 1,
+      "multimodal": 1.0,
       "stability": 1,
-      "speed": 0.80,
-      "updatedAt": "2026-10-13",
-      "note": "平庸, 极廉价, 慢速. 适合做简单任务",
+      "speed": 3.35,
+      "updatedAt": "2026-11-24",
+      "note": "编码弱, 知识与基准持平, 每任务快, 极廉价. 适合轻量文本与批量简单任务",
       "evidence": {
-        "coding": "弱: 榜单冲突 DeepSWE 1.05 / TB4 0.38",
-        "knowledge": "AA 38/42",
-        "longctx": "AA-LCR 83.3/80",
-        "multimodal": "弱: 无 MMMU",
+        "coding": "弱: AA TB4.0 12.6/32.8",
+        "knowledge": "AA II 27.9/27.8",
+        "longctx": "AA-LCR 0.833/0.80",
+        "multimodal": "AA MMMU-Pro 76%",
         "stability": "弱: 无数据",
-        "speed": "AA 134.6/67"
+        "speed": "AA 每任务 10.9/36.5 min"
       }
     },
     "cli/deepseek-flash": {
-      "coding": 1.12,
-      "knowledge": 0.93,
+      "coding": 1.03,
+      "knowledge": null,
       "longctx": 1.05,
       "multimodal": 1.5,
       "stability": 1.2,
-      "speed": 2.95,
-      "updatedAt": "2026-10-13",
-      "note": "优秀, 便宜, 极速. 适合复杂任务",
+      "speed": 3.67,
+      "updatedAt": "2026-11-24",
+      "note": "编码与基准持平, 输出最快, 多模态强; 现价高于基准约 2.2 倍, 智力指数缺失. 适合高吞吐长输出任务",
       "evidence": {
-        "coding": "DeepSWE 74.2/63.4, TB2.1 90.6/84.3 几何均; 对照列未明示 Flash",
-        "knowledge": "AA 39/42",
-        "longctx": "AA-LCR 84/80",
-        "multimodal": "MMMU-Pro 76.99 AA / 56.5 官方",
+        "coding": "AA TB4.0 33.8/32.8 (1017 快照)",
+        "knowledge": "AA II 未完成评测, N/A",
+        "longctx": "AA-LCR 0.84/0.80",
+        "multimodal": "AA MMMU-Pro 80%",
         "stability": "弱: 用户反馈最稳",
-        "speed": "AA 197.6/67"
+        "speed": "弱: AA 输出 224/61 tok/s; 每任务时间口径缺失"
       }
     }
   }

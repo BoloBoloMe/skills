@@ -47,15 +47,16 @@ class ModelDataDistributionTests(unittest.TestCase):
                 sync_to_pi.execute_plan(plan)
             result = subprocess.run(
                 ["uv", "run", "--no-project", "--offline", "python", str(target / "score.py"),
-                 "--scope", "cli/glm-5.3-flash cli/gpt-6.2-astra cli/gpt-6.2-sol"],
+                 "--scope", "cli/glm-5.3-flash cli/gpt-6.2-astra cli/gpt-6.2-sol cli/glm-5.4"],
                 cwd=tmp, capture_output=True, text=True, check=False,
             )
             self.assertEqual(0, result.returncode, result.stderr)
             self.assertIn("cli/glm-5.3-flash", result.stdout)
-            self.assertIn("cli/gpt-6.2-astra [未评分]", result.stdout)
-            self.assertIn("cli/gpt-6.2-sol [未评分]", result.stdout)
-            self.assertIn("price 0.00742", result.stdout)
-            self.assertIn("price 0.0297", result.stdout)
+            self.assertIn("cli/glm-5.4 [未评分]", result.stdout)
+            self.assertNotIn("cli/gpt-6.2-astra [未评分]", result.stdout)
+            self.assertNotIn("cli/gpt-6.2-sol [未评分]", result.stdout)
+            self.assertIn("price 0.0148", result.stdout)
+            self.assertIn("price 0.0594", result.stdout)
 
 
 class ClearSkillsTests(unittest.TestCase):

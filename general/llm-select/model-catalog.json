@@ -1,11 +1,15 @@
 {
   "sources": [
     "2026-11-18 从 ~/.agents/llm-select/model-catalog.json 原样迁入旧目录条目, 旧价格/档位未重新调研",
+    "2026-11-24 按网关 GET /v1/models 实测 20 条对齐: 新增 glm-5.4; 移除网关已下线的 glm-5.3/glm-5.3-flashx; 按用户口径 (OpenAI 只用 luna/sol/astra 三系各自最新代) 移除 gpt-6-astra/gpt-6-sol/gpt-6.1-sol/gpt-5.6-sol/gpt-5.6-terra/gpt-5.6-luna; 图像模型与 codex-auto-review 一直不列入",
+    "GLM-5.3-Flash 价格/thinking 按 z.ai 现价与网关声明更新: input 0.15/output 0.50/cacheRead 0.03, thinking [low,high,max] (https://docs.z.ai/guides/overview/pricing, 2026-11-24)",
+    "deepseek-flash (DeepSeek V4.1 Flash, 1017 快照) 按 DeepSeek 官方 peak 价更新: input 0.30/output 1.20/cacheRead 0.006, off-peak 半价 (https://api-docs.deepseek.com/quick_start/pricing, 2026-11-24)",
+    "GLM-5.4: 1M 上下文/128K 输出/图像视频文件输入 (https://docs.z.ai/guides/llm/glm-5.4, https://docs.bigmodel.cn/cn/guide/models/glm-5.4); Model API 未上线, z.ai/bigmodel 定价页均未公布单价, 不填 cost, 价格维 N/A; 上游为 ai-work.changzhi.top 聚合站, 实际计费未验证",
     "https://developers.openai.com/api/docs/models/gpt-6.2-astra.md",
     "https://developers.openai.com/api/docs/models/gpt-6.2-sol.md",
     "https://raw.githubusercontent.com/openai/codex/main/codex-rs/models-manager/models.json (2026-11-18, SHA256=d50b6749506d97e5f334dbabcb666eb1689f423cf3e88cfabdcf3c536b873068: 新模型 low/medium/high/xhigh/max; 不含自动委派档 ultra)"
   ],
-  "pricingNote": "cost 单位为 USD/1M tokens. GPT-6.2 使用 Standard 短上下文基础价, cacheWrite 为 30 分钟保留. 超 272K 输入时 input/cache 2 倍, output 1.5 倍; Batch/Fast/Ultrafast/12 小时缓存另计. score.py 的价格分只比较基础 input/output, 不代表实际账单或已验证网关费率.",
+  "pricingNote": "cost 单位为 USD/1M tokens. GPT 系用 Standard 短上下文基础价, cacheWrite 为 30 分钟保留, 超 272K 输入时 input/cache 2 倍, output 1.5 倍; Batch/Fast/Ultrafast/12 小时缓存另计. DeepSeek 用官方 peak 档, off-peak 半价. GLM 用 z.ai 国际站现价. glm-5.4 单价未公布, 价格维 N/A. score.py 的价格分只比较基础 input/output, 不代表实际账单或已验证网关费率.",
   "models": {
     "cli/gpt-6.2-astra": {
       "cost": { "input": 8, "output": 40, "cacheRead": 0.4, "cacheWrite": 10 },
@@ -19,60 +23,27 @@
       "thinking": ["low", "medium", "high", "xhigh", "max"],
       "updatedAt": "2026-11-18"
     },
-    "cli/gpt-6-astra": {
-      "cost": { "input": 10, "output": 50, "cacheRead": 1, "cacheWrite": 12.5 },
-      "reasoning": true,
-      "thinking": ["off", "minimal", "low", "medium", "high", "xhigh"]
-    },
-    "cli/gpt-5.6-sol": {
-      "cost": { "input": 4, "output": 20, "cacheRead": 0.4, "cacheWrite": 5 },
-      "reasoning": true,
-      "thinking": ["off", "minimal", "low", "medium", "high", "xhigh"]
-    },
-    "cli/gpt-5.6-terra": {
-      "cost": { "input": 2, "output": 12, "cacheRead": 0.2, "cacheWrite": 2.5 },
-      "reasoning": true,
-      "thinking": ["off", "minimal", "low", "medium", "high", "xhigh"]
-    },
-    "cli/gpt-5.6-luna": {
-      "cost": { "input": 0.2, "output": 1.2, "cacheRead": 0.02, "cacheWrite": 0.25 },
-      "reasoning": true,
-      "thinking": ["off", "minimal", "low", "medium", "high", "xhigh"]
-    },
-    "cli/gpt-6.1-sol": {
-      "cost": { "input": 2, "output": 10, "cacheRead": 0.1, "cacheWrite": 2.5 },
-      "reasoning": true,
-      "thinking": ["low", "medium", "high", "xhigh", "max"]
-    },
-    "cli/gpt-6-sol": {
-      "cost": { "input": 2, "output": 10, "cacheRead": 0.2, "cacheWrite": 2.5 },
-      "reasoning": true,
-      "thinking": ["off", "low", "medium", "high", "xhigh", "max"]
-    },
     "cli/gpt-6-luna": {
       "cost": { "input": 0.1, "output": 0.5, "cacheRead": 0.01, "cacheWrite": 0.125 },
       "reasoning": true,
       "thinking": ["off", "low", "medium", "high", "xhigh", "max"]
     },
     "cli/deepseek-flash": {
-      "cost": { "input": 0.14, "output": 0.28, "cacheRead": 0.0028, "cacheWrite": 0 },
+      "cost": { "input": 0.3, "output": 1.2, "cacheRead": 0.006, "cacheWrite": 0 },
       "reasoning": true,
-      "thinking": ["high", "max"]
+      "thinking": ["high", "max"],
+      "updatedAt": "2026-11-24"
     },
     "cli/glm-5.3-flash": {
-      "cost": { "input": 0.075, "output": 0.25, "cacheRead": 0.015, "cacheWrite": 0 },
+      "cost": { "input": 0.15, "output": 0.5, "cacheRead": 0.03, "cacheWrite": 0 },
       "reasoning": true,
-      "thinking": ["high", "xhigh", "max"]
+      "thinking": ["low", "high", "max"],
+      "updatedAt": "2026-11-24"
     },
-    "cli/glm-5.3": {
-      "cost": { "input": 1.4, "output": 4.4, "cacheRead": 0.26, "cacheWrite": 0 },
+    "cli/glm-5.4": {
       "reasoning": true,
-      "thinking": ["high", "xhigh", "max"]
-    },
-    "cli/glm-5.3-flashx": {
-      "cost": { "input": 0.37, "output": 1.25, "cacheRead": 0.075, "cacheWrite": 0 },
-      "reasoning": true,
-      "thinking": ["high", "xhigh", "max"]
+      "thinking": ["low", "high", "max"],
+      "updatedAt": "2026-11-24"
     }
   }
 }

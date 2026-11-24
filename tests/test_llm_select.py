@@ -258,15 +258,17 @@ class SmokeTests(unittest.TestCase):
                 (old / name).write_text("invalid legacy data", encoding="utf-8")
             result = subprocess.run(
                 ["uv", "run", "--no-project", "--offline", "python", str(SCRIPT_PATH),
-                 "--scope", "cli/glm-5.3-flash cli/gpt-6.2-astra cli/gpt-6.2-sol"],
+                 "--scope", "cli/glm-5.3-flash cli/gpt-6.2-astra cli/gpt-6.2-sol cli/glm-5.4"],
                 cwd=tmp, env={**os.environ, "HOME": tmp},
                 capture_output=True, text=True, check=False,
             )
             self.assertEqual(0, result.returncode, result.stderr)
             self.assertIn("cli/glm-5.3-flash", result.stdout)
-            self.assertIn("cli/gpt-6.2-astra [未评分]", result.stdout)
-            self.assertIn("cli/gpt-6.2-sol [未评分]", result.stdout)
+            self.assertIn("cli/glm-5.4 [未评分]", result.stdout)
+            self.assertNotIn("cli/gpt-6.2-astra [未评分]", result.stdout)
+            self.assertNotIn("cli/gpt-6.2-sol [未评分]", result.stdout)
             self.assertIn("thinking 支持: low/medium/high/xhigh/max", result.stdout)
+            self.assertIn("thinking 支持: low/high/max", result.stdout)
 
     def test_end_to_end_output_contains_baseline(self):
         with tempfile.TemporaryDirectory() as tmp:

@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "name": "cliproxyapi",
-  "version": "2026-11-18.1",
+  "version": "2026-11-24.1",
   "kind": "openai-gateway",
   "contract": 2,
   "base_url": "http://host.containers.internal:8317/v1",

@@ -97,7 +97,7 @@ def _validate(template, catalog) -> None:
         raise TemplateError("模型清单来源须为字符串列表")
     by_id = {}
     for model in catalog["models"]:
-        fields(model, {"id", "reasoning", "input", "contextWindow", "maxTokens", "cost", "api"}, PI_MODEL_KEYS)
+        fields(model, {"id", "reasoning", "input", "contextWindow", "maxTokens", "api"}, PI_MODEL_KEYS)
         mid = model["id"]
         if not isinstance(mid, str) or not re.fullmatch(r"[a-zA-Z0-9][a-zA-Z0-9_.:/-]{0,150}", mid) or mid in by_id:
             raise TemplateError("模型 ID 非法或重复")
@@ -110,9 +110,11 @@ def _validate(template, catalog) -> None:
             raise TemplateError("输出限制超过总窗口")
         if not isinstance(model["input"], list) or not model["input"] or set(model["input"]) - {"text", "image"}:
             raise TemplateError("模型输入类型非法")
-        fields(model["cost"], {"input", "output", "cacheRead", "cacheWrite"})
-        if not all(type(v) in (int, float) and math.isfinite(v) and v >= 0 for v in model["cost"].values()):
-            raise TemplateError("模型价格非法")
+        # cost 可选: 价格未公布的模型可省略整块; 出现时必须完整且非负有限.
+        if "cost" in model:
+            fields(model["cost"], {"input", "output", "cacheRead", "cacheWrite"})
+            if not all(type(v) in (int, float) and math.isfinite(v) and v >= 0 for v in model["cost"].values()):
+                raise TemplateError("模型价格非法")
         levels = model.get("thinkingLevelMap", {})
         if not isinstance(levels, dict) or set(levels) - set(THINKING) or any(v is not None and v not in (*THINKING, "none") for v in levels.values()):
             raise TemplateError("思考等级映射非法")
