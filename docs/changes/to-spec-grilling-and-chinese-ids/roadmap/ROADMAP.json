@@ -11,7 +11,9 @@
     "环境: 主力模型 gpt-6.2-sol/astra 今晚全部凭据冷却, 子代理暂用 cli/glm-5.3-flash; 领取里程碑前重新选型. to-spec 自带测试在 workflow/to-spec/tests/ (不在 pytest.ini testpaths 内, 需显式 uv run pytest workflow/to-spec/tests). 仓库根有未跟踪文件 pi-session-*.html, 不属本变更, 不提交.",
     "milestone-01 关闭 (2026-11-25): 编号汉化已落地, 标签与历史引用未动. 副作用: docs/changes 下已关闭变更的 PRODUCT.md 仍是旧写法 (如 '- G-001:'), 不再通过新 check-ac.py; 它们是时点快照, 不修复, 但 milestone-02 拿它们做盘问样张时只作演示材料, 不要指望机检通过.",
     "环境缺口 (2026-11-25 实测, 不属本变更): 本容器 venv 未播种 gherkin-official, to-spec 测试须 uv run --with gherkin-official; 根 tests/conftest.py 的 pytest_sessionstart 依赖 podman (容器内无), 根 tests 只能 --noconftest 单文件跑; general/present/tests/test_skill_contract.py::test_no_state_object_requirement 为既有失败.",
-    "环境缺口的裁定 (2026-11-25 用户经宿主会话转达, 需当权威输入时再确认): gherkin-official 装进镜像, 重建时带上, 本容器继续用 uv run --with gherkin-official; podman 不装, 根 tests/ 不在沙盒跑, 确需跑根下单文件用绕开 conftest 的写法; general/present/tests/test_skill_contract.py 那条既有失败不修, 不并进本变更. 更正一条: tests/README.md 给的 --confcutdir=/tmp 在 pytest 9.1.1 下不再绕开 tests/conftest.py (实测仍崩在 podman), 容器内实测可用的是 uv run pytest --noconftest <file> (tests/test_skills_codex_metadata.py 1 passed); README 那处漂移属已关闭变更, 本次不改, 后续验证方案按 --noconftest 写."
+    "环境缺口的裁定 (2026-11-25 用户经宿主会话转达, 需当权威输入时再确认): gherkin-official 装进镜像, 重建时带上, 本容器继续用 uv run --with gherkin-official; podman 不装, 根 tests/ 不在沙盒跑, 确需跑根下单文件用绕开 conftest 的写法; general/present/tests/test_skill_contract.py 那条既有失败不修, 不并进本变更. 更正一条: tests/README.md 给的 --confcutdir=/tmp 在 pytest 9.1.1 下不再绕开 tests/conftest.py (实测仍崩在 podman), 容器内实测可用的是 uv run pytest --noconftest <file> (tests/test_skills_codex_metadata.py 1 passed); README 那处漂移属已关闭变更, 本次不改, 后续验证方案按 --noconftest 写.",
+    "批报裁定 (2026-11-25, milestone-02 演示讨论中用户明确): 直译批报不再请用户过目确认 - 批报条目仍全量写入盘问结论记录 (标 直译自规则N 原文), 但不展示不等确认. 问数算式随批确认清零重算: 甲 粗21/中52/细78, 乙 粗45/中21/细32~47, 乙粗档被中档支配. 兜底移交子代理对账: (a) 记录行标直译的, 子代理核原文是否真支撑该情况, 不支撑 = 需用户决策, 走补问/重开 (m03 敲定回路); (b) 反向覆盖检查 (按规则原文重推情况清单与记录比对) 能否成立为 m03 待敲定项. 失去直译部分现场否决与查漏, 用户知情接受. 样张已有风险实例: 乙规则4 换端口那条直译里藏着新决策 (状态记录加字段), 不看批报后只能靠对账抓出. m03 输入.",
+    "档位裁定 (2026-11-25, milestone-02 演示判断): 用户选定中档, 两份材料统一, 不按材料分档. 裁定后中档问法 = 每种非直译情况 1 问 刺激→结果一句话, 直译情况批报落盘不问 (见批报裁定条), 前提与阈值出处留落笔时按类构造; 问数代理口径: 甲 52 问, 乙 21 问. m03 的验收段问法与粒度以中档为准. 记录字段压力点 4 已随批报裁定成立; 压力点 1 (大纲参数)/2 (审计证据单列)/3 (决策出处锚点格式) 拟移交 m03 (记录格式归 m03 管), 待用户确认后随 m02 关闭落实."
   ],
   "milestones": {
     "milestone-01": {
@@ -49,7 +51,7 @@
         },
         {
           "content": "覆盖树推演数字 (问数估算规则, 可批报与须细问的比例), 子代理对账所需字段清单",
-          "source": "/tmp/navigate-scout/A-coverage-tree.md"
+          "source": "docs/changes/to-spec-grilling-and-chinese-ids/coverage-tree-input.md (原 /tmp/navigate-scout/A-coverage-tree.md 已随容器重置丢失, 按 notes 重建)"
         },
         {
           "content": "大体量样例 PRODUCT.md (目标/业务规则/场景)",
@@ -61,10 +63,14 @@
         }
       ],
       "output_dir": "docs/changes/to-spec-grilling-and-chinese-ids/",
-      "status": "待处理",
+      "status": "已关闭",
       "blocked_by": [],
-      "artifacts": [],
-      "close_summary": null
+      "artifacts": [
+        "docs/changes/to-spec-grilling-and-chinese-ids/demos/coverage-tree-samples/index.html",
+        "docs/changes/to-spec-grilling-and-chinese-ids/coverage-tree-input.md",
+        "docs/changes/to-spec-grilling-and-chinese-ids/roadmap/ROADMAP.json#notes (批报裁定/档位裁定条目)"
+      ],
+      "close_summary": "演示: 覆盖树盘问样张 (demo/UI 子形态 C, 单文件交互页). 材料甲 verification-skills 与乙 codebase-map 各取 3 个条目 (规则1/规则5/目标8 与 规则4/规则22/规则33-35), 粗/中/细三档各问一遍真问题, 附问数算式, 盘问结论记录八字段草案 + 2 行实填 + 对账演练 (记录行→落笔场景→子代理逐项核) 与 4 个字段压力点. 看的版本: demos/coverage-tree-samples/index.html, 随讨论多轮修订 (条目编号改中文口径, 批报落盘化, 补批报为何存在说明). 用户判断: (1) 档位选定中档, 两材料统一不按材料分档; (2) 批报不请用户过目, 直译情况全量落盘备查 (标 直译自规则N), 兜底 = 子代理核对直译标注有原文支撑 + 反向覆盖检查, 均列 m03 敲定; (3) 字段压力点 4 随批报裁定成立, 1/2/3 移交 m03. 问数代理口径随裁定重算: 中档甲 52 问/乙 21 问. 输入缺口: /tmp 侦查 A 原件丢失, 按 notes 重建为 coverage-tree-input.md 并回填本里程碑与 m03 的 input 来源. 材料位置: demos/coverage-tree-samples/index.html (展示服务长期可看). 下游: m03 验收段问法粒度以中档为准, 记录格式压力点在其第(3)项敲定, 批报兜底两规则归其第(5)项; 判定已记 ROADMAP notes 批报裁定/档位裁定两条."
     },
     "milestone-03": {
       "title": "盘问敲定 to-spec 新流程的设计决策",
@@ -89,7 +95,11 @@
         },
         {
           "content": "侦查报告 A 的冲突点清单 (落盘对象, 事实调查边界, 攻击时机, 收敛语义)",
-          "source": "/tmp/navigate-scout/A-coverage-tree.md"
+          "source": "docs/changes/to-spec-grilling-and-chinese-ids/coverage-tree-input.md (原 /tmp/navigate-scout/A-coverage-tree.md 已随容器重置丢失, 按 notes 重建, 含冲突点清单)"
+        },
+        {
+          "content": "样张演示裁定 (2026-11-25): 验收段统一中档 (非直译逐条一句, 直译落盘不问); 批报不请用户过目只落盘备查, 兜底两规则 (直译标注核原文支撑, 反向覆盖检查); 记录字段压力点 1/2/3 待敲定",
+          "source": "docs/changes/to-spec-grilling-and-chinese-ids/roadmap/ROADMAP.json#notes"
         }
       ],
       "output_dir": "docs/changes/to-spec-grilling-and-chinese-ids/",

@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>覆盖树盘问样张 - 粗细校准 (milestone-02 演示)</title>
+<!--
+  问题陈述: 展示 "验收标准段的覆盖树盘问" 在粗/中/细三档下各长什么样 (用两份现成大 PRODUCT.md 反推),
+  让用户据此选定验收段的盘问档位, 并核对 "盘问结论记录" 八字段草案是否够子代理逐场景对账。
+  假设声明: 盘问发生在落笔之前, 本样张用已写成的 spec 反推 "当初若用新流程会怎么问";
+  场景数是覆盖树情况数的代理口径; "你 (拟答)" 是示例, 展示作答负担, 不规定答法。
+  demo skill: UI 子形态 C (无现成前端项目), 单文件自包含, file:// 直开, 无依赖。
+-->
+<style>
+:root{
+  --paper:#faf9f7; --ink:#1c1b1a; --dim:#6e6a64; --line:#e3e0da;
+  --coarse:#5b6472; --mid:#9a6b16; --fine:#1d5bbf;
+  --qbg:#ffffff; --abg:#f4f1ea; --batchbg:#eef3ee;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);color:var(--ink);
+  font:15px/1.75 -apple-system,"PingFang SC","Noto Sans CJK SC","Microsoft YaHei",sans-serif;
+  padding-bottom:96px}
+.wrap{max-width:860px;margin:0 auto;padding:28px 20px 0}
+header h1{font-size:21px;margin:0 0 4px}
+header .sub{color:var(--dim);font-size:13px}
+.statement{border-left:3px solid var(--dim);background:#fff;padding:10px 14px;margin:14px 0;font-size:13.5px;color:#3d3a36}
+.statement b{color:var(--ink)}
+.howto{border-left:3px solid var(--fine);background:#fff;padding:10px 14px;margin:14px 0;font-size:13.5px;color:#3d3a36}
+.howto ul{margin:4px 0 2px;padding-left:20px}
+.howto li{margin:5px 0}
+h2{font-size:16px;margin:26px 0 8px;border-bottom:1px solid var(--line);padding-bottom:4px}
+.legend{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0}
+.legend .chip{border:1px solid var(--line);background:#fff;border-radius:4px;padding:2px 10px;font-size:12.5px}
+.legend .chip i{font-style:normal;font-weight:700;margin-right:6px}
+.legend .c0 i{color:var(--coarse)} .legend .c1 i{color:var(--mid)} .legend .c2 i{color:var(--fine)}
+/* counts table */
+table{border-collapse:collapse;width:100%;font-size:13px;background:#fff}
+th,td{border:1px solid var(--line);padding:5px 9px;text-align:left;vertical-align:top}
+th{background:#f2efe9;font-weight:600}
+td.num{white-space:nowrap;font-weight:700}
+.formula{color:var(--dim);font-size:12px}
+.anchor{color:var(--fine);font-size:12px}
+/* roots */
+details.root{background:#fff;border:1px solid var(--line);border-radius:6px;margin:10px 0}
+details.root>summary{cursor:pointer;padding:10px 14px;list-style:none;display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+details.root>summary::-webkit-details-marker{display:none}
+details.root>summary .rt{font-weight:700;font-size:14.5px}
+details.root>summary .tag{color:var(--dim);font-size:12px}
+details.root>summary .lv{margin-left:auto;font-size:12px;font-weight:700}
+details.root[open]>summary{border-bottom:1px dashed var(--line)}
+.lv0{color:var(--coarse)} .lv1{color:var(--mid)} .lv2{color:var(--fine)}
+.cc{margin-left:auto;font-size:12px;color:var(--dim);font-weight:600;white-space:nowrap}
+.cc+.lv{margin-left:8px}
+.rootbody{padding:6px 14px 12px}
+.turn{margin:8px 0;padding:8px 12px;border-radius:5px;font-size:14px}
+.turn.q{background:var(--qbg);border:1px solid var(--line);border-left:3px solid var(--fine)}
+.turn.a{background:var(--abg);border:1px dashed var(--line)}
+.turn.batch{background:#f6f5f1;border:1px dashed #d8d4ca}
+.turn.meta{background:none;color:var(--dim);font-size:12.5px;padding:2px 2px;border:none}
+.turn .who{font-weight:700;margin-right:8px;font-size:12.5px}
+.turn.q .who{color:var(--fine)} .turn.a .who{color:#7a6a4f} .turn.batch .who{color:#8a8578}
+.turn.a em{color:#7a6a4f;font-style:normal;font-size:12.5px}
+.turn.batch ul{margin:4px 0 2px;padding-left:20px}
+.turn.batch li{margin:2px 0}
+.turn.batch .hint{color:#5a705d;font-size:12px}
+.only{display:none}
+body[data-lv="0"] .only.l0{display:block}
+body[data-lv="1"] .only.l1{display:block}
+body[data-lv="2"] .only.l2{display:block}
+/* record section */
+.fields td:first-child{white-space:nowrap;font-weight:600;width:110px}
+.rec-row{background:#fff;border:1px solid var(--line);border-radius:6px;margin:10px 0;overflow:hidden}
+.rec-row .rh{background:#f2efe9;padding:6px 12px;font-size:13px;font-weight:700}
+.rec-row table{border:none}
+.rec-row td{border:none;border-bottom:1px dashed var(--line)}
+.recon{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin:10px 0}
+.recon>div{background:#fff;border:1px solid var(--line);border-radius:6px;padding:8px 12px;font-size:13px}
+.recon h4{margin:2px 0 6px;font-size:13px}
+.recon .r1 h4{color:#7a6a4f}.recon .r2 h4{color:var(--fine)}.recon .r3 h4{color:#3f6b45}
+.stress{background:#fff;border:1px solid var(--line);border-radius:6px;margin:8px 0;padding:8px 14px;font-size:13.5px}
+.stress b{color:#8a3b12}
+.ask{background:#fff8e6;border:1px solid #e6d9a8;border-radius:6px;padding:12px 16px;margin:18px 0 8px;font-size:14px}
+.ask ol{margin:6px 0 2px;padding-left:22px}
+.ask li{margin:4px 0}
+/* bottom bar */
+.bar{position:fixed;bottom:14px;left:50%;transform:translateX(-50%);display:flex;gap:8px;align-items:center;
+  background:#1c1b1a;color:#f5f3ef;border-radius:999px;padding:8px 14px;box-shadow:0 4px 16px rgba(0,0,0,.25);font-size:13px;user-select:none}
+.bar button{background:#3a3835;color:#f5f3ef;border:none;border-radius:999px;padding:4px 12px;cursor:pointer;font-size:13px}
+.bar button:hover{background:#57534e}
+.bar .lvlabel{min-width:30px;text-align:center;font-weight:700}
+.bar .matlabel{min-width:96px;text-align:center}
+.bar .cnt{color:#c9c4bb;font-size:12px}
+kbd{background:#3a3835;border-radius:3px;padding:0 5px;font-size:11px}
+@media (max-width:700px){.recon{grid-template-columns:1fr}}
+</style>
+</head>
+<body data-lv="0" data-mat="jia">
+<div class="wrap">
+<header>
+  <h1>覆盖树盘问样张 - 粗细校准</h1>
+  <div class="sub">milestone-02 演示材料 · to-spec-grilling-and-chinese-ids · 2026-11-25</div>
+  <div class="statement">
+    <b>要看清什么:</b> 验收标准段以覆盖树为骨架盘问时, "问多细" 各长什么样, 粗细三档用两份现成大 PRODUCT.md 各反推一遍,
+    供选定档位; 同时核对盘问结论记录八字段草案是否够子代理逐场景对账。
+    <b>假设:</b> 盘问发生在落笔前, 样张用已写成的 spec 反推; 场景数是情况数的代理口径;
+    "你 (拟答)" 是示例, 展示作答负担, 不规定答法。材料甲/乙是已关闭变更的时点快照, 只作演示材料。
+    <b>编号口径:</b> 条目按汉化后的编号规则称 目标N/规则N/非目标N; 拉丁标签 (@BR-001 等) 是落笔时机器生成的对账钩子, 盘问阶段不存在; 旧快照编号只在 "旧快照锚" 标注里作历史引用。
+  </div>
+  <div class="legend">
+    <span class="chip c0"><i>粗</i>挂条目层: 每条目 1 问 "覆盖哪几类情况", 直译随问批报</span>
+    <span class="chip c1"><i>中</i>挂情况层: 每情况 1 问只定 "刺激→结果" 一句话, 直译按条目分批</span>
+    <span class="chip c2"><i>细</i>挂情况层: 每情况全字段 (前提/刺激/结果/阈值出处/排除项), 失败边界带追问</span>
+  </div>
+</header>
+
+<h2>问数算式 (验收标准段, 不含背景/目标/规则段盘问)</h2>
+<div id="counts"></div>
+
+<h2>样张 (同一批条目, 三档各问一遍)</h2>
+<div class="howto">
+  <b>怎么读这部分:</b>
+  <ul>
+    <li><b>样张</b> = 样品。拿两份已写成的旧 spec, 反推 "当初若用新流程盘问, 验收标准段会怎么问", 演给你看问多细各长什么样。</li>
+    <li>每张折叠卡片 = 一个条目 (一条目标或一条规则)。卡片里是盘问对话, 三种角色: <b>问</b> = 盘问的 LLM 提出的问题; <b>你 (拟答)</b> = 假想中你的回答, 只是示例, 用来看每问要你打多少字; <b>批报落盘</b> = 判定能从已确认规则原文直接抄出来的情况。<b>已裁定 (2026-11-25): 批报不请你过目</b>, LLM 直接记入结论记录 (标 "直译自规则N"), 真实盘问里你不会看到它; 样张里的批报块只是标出哪些情况不问你。</li>
+    <li>底部悬浮条切粗/中/细 (←/→ 键), "换材料" 切甲/乙 (M 键)。切档不是换条目: 同一批卡片, 换成对应档对它们的问法; 卡片右上角标着当前档和本卡本档的 "问 N · 批报 N" 计数。切档不会把展开的卡片收起。</li>
+    <li>卡片里问句带编号 (问 1, 问 2...)。注意: 中档每张卡开头是批报落盘块, 问句跟在后面; 乙材料非直译情况少 (21/48), 中档落盘占大头, 问句少是材料特点, 不是页面缺漏。</li>
+    <li><b>批报为何存在:</b> 直译情况没有要你拍板的成分, 问你就是浪费; 但机检只查格式不查内容, 直译情况必须留痕 — 全量写进结论记录并标出处, 落笔后子代理对账兜底: 核对 "直译自规则N" 的标注是否真有原文支撑 (不支撑 = 其实需要你决策, 走补问或重开)。裁定 "不看" 的代价 (你知情接受): 直译部分失去现场否决与查漏, 查漏改由子代理反向覆盖检查兑底 (m03 敲定)。</li>
+    <li>粗 = 每条目只问 1 句 "打算覆盖哪几类情况"; 中 = 每种情况问 1 句 "什么刺激导致什么结果"; 细 = 每种情况问全 (前提/刺激/结果/阈值出处), 失败和边界还要追问。三档问数均已按裁定重算, 见算式表。</li>
+  </ul>
+</div>
+<div class="legend" style="margin-bottom:2px">
+  <span class="chip" style="cursor:pointer" onclick="setMat('jia')" id="mtab-jia"><b>材料甲</b> verification-skills (8G/11BR/100 场景)</span>
+  <span class="chip" style="cursor:pointer" onclick="setMat('yi')" id="mtab-yi"><b>材料乙</b> codebase-map (6G/37BR/48 场景)</span>
+</div>
+<div id="roots"></div>
+
+<h2>盘问结论记录 - 八字段草案</h2>
+<p style="font-size:13.5px;color:#3d3a36">子代理对账靠它: 落笔后, 独立子代理拿记录逐场景核对落笔是否忠实。字段: 根条目 / 情况类型 / 前提 / 刺激 / 可观察结果 / 阈值与出处 / 排除项 / 决策出处。</p>
+<table class="fields">
+  <tr><td>根条目</td><td>这条情况挂在哪个 G/BR 下; 甲乙两材料的条目数分别是 19/43</td></tr>
+  <tr><td>情况类型</td><td>normal / failure / edge / 审计核对 / 大纲参数 (压力点 1)</td></tr>
+  <tr><td>前提</td><td>场景 "假定" 的素材; 细档逐条问, 中档留落笔构造, 粗档不问</td></tr>
+  <tr><td>刺激</td><td>场景 "当" 的素材, 主要触发动作</td></tr>
+  <tr><td>可观察结果</td><td>场景 "那么/而且" 的素材; 审计核对时填核对单结论</td></tr>
+  <tr><td>阈值与出处</td><td>数字门槛, 判定口径及出处 (条目原文 / 盘问现场 / 事实侦查)</td></tr>
+  <tr><td>排除项</td><td>明确不进场景的内容 (如技术安全约束不因此绕过); 对账单备注用</td></tr>
+  <tr><td>决策出处</td><td>用户拍板的记录: 现场轮次锚点 / 决策账本条目号 / "直译自 BR-xxx"</td></tr>
+</table>
+
+<div class="rec-row">
+  <div class="rh">填写示例 1 (材料甲 规则5 超范围, 细档产出)</div>
+  <table>
+    <tr><td>根条目</td><td>规则5 (写入测试资源须先批准范围)</td></tr>
+    <tr><td>情况类型</td><td>failure</td></tr>
+    <tr><td>前提</td><td>已批临时账号 tmp-verify-01 一条备注及删除清理; 未批修改共享配置</td></tr>
+    <tr><td>刺激</td><td>验收者改为修改共享配置以构造场景</td></tr>
+    <tr><td>可观察结果</td><td>停止并请求用户批准; 未批准的写入没有发生</td></tr>
+    <tr><td>阈值与出处</td><td>"范围 = 资源/对象/操作/清理" 四元组, 数量变化也算扩范围; 出处 规则5 第一句 + 盘问轮 3 拍板</td></tr>
+    <tr><td>排除项</td><td>只读操作不触发批准</td></tr>
+    <tr><td>决策出处</td><td>现场轮 3 (消息锚点); 无账本条目</td></tr>
+  </table>
+</div>
+<div class="rec-row">
+  <div class="rh">填写示例 2 (材料乙 规则4 换端口, 细档产出, 含新决策)</div>
+  <table>
+    <tr><td>根条目</td><td>规则4 (端口默认值与换端口)</td></tr>
+    <tr><td>情况类型</td><td>edge</td></tr>
+    <tr><td>前提</td><td>曾在 8090 跑过并已 stop; 状态记录里留有当时交付的旧 URL</td></tr>
+    <tr><td>刺激</td><td>用户执行 serve --port 8091</td></tr>
+    <tr><td>可观察结果</td><td>8091 基址与每个数据键 URL 可打开; 旧 8090 不再响应; 输出报告旧地址已失效</td></tr>
+    <tr><td>阈值与出处</td><td>旧地址取状态记录留存的旧 URL, 不默认 8090; 出处 规则4 原文 "避免静默退回旧端口让书签失联"</td></tr>
+    <tr><td>排除项</td><td>状态文件被删时回 8090 (原文 "没有才用 8090"), 归另一情况</td></tr>
+    <tr><td>决策出处</td><td>现场轮 2 拍板新决策: 状态记录增加 "交付过的 URL" 字段 (否则旧 URL 无处取)</td></tr>
+  </table>
+</div>
+
+<h3 style="font-size:14.5px;margin:20px 0 6px">对账演练 (记录行 → 落笔场景 → 子代理逐项核什么)</h3>
+<div class="recon">
+  <div class="r1"><h4>记录行 (示例 1)</h4>规则5 failure: 刺激 = 改共享配置; 结果 = 停止+请求批准+写入不发生; 阈值 = 四元组; 排除 = 只读不触发; 出处 = 现场。</div>
+  <div class="r2"><h4>落笔场景 (新格式示意, 文字取自旧快照 AC-011-2)</h4>@AC-011 @failure @G-004 @BR-005<br>场景: 扩大写入范围需用户重新批准<br>假定 已批备注未批共享配置; 当 改为修改共享配置以构造场景; 那么 停止并请求用户批准; 而且 未批准的写入没有发生。</div>
+  <div class="r3"><h4>子代理逐项核</h4>刺激 ↔ "当" 逐字对齐; 结果两件 ↔ "那么/而且"; 阈值 (四元组) 场景装不下 → 对账单备注 "由记录补"; 排除项不进场景 → 备注核对; 决策出处 → 对账单可回溯到轮次。机检 (check-ac.py) 只查格式与标签↔条目编号对账 (@BR-005 ↔ 规则5), 内容忠实全靠这一步。记录行标 "直译自规则N" 的, 子代理另核原文是否真支撑 (不支撑 = 需补问, m03 敲定回路)。</div>
+</div>
+<div class="recon">
+  <div class="r1"><h4>记录行 (示例 2)</h4>规则4 edge: 结果含 "旧地址取状态记录旧 URL"; 决策出处 = 轮 2 新决策 (状态记录加字段)。</div>
+  <div class="r2"><h4>落笔场景 (新格式示意, 文字取自旧快照 AC-003 组)</h4>@AC-003 @edge @G-003 @BR-004<br>场景: 实例已停机时用显式端口换端口并报告旧地址失效<br>那么 8091 上的基址与每个数据键的完整 URL 都能打开; 而且 原 8090 不再响应, 旧地址的值取自状态记录里留存的旧 URL, 不默认是 8090; 而且 输出明确报告旧地址已失效。</div>
+  <div class="r3"><h4>子代理逐项核</h4>"旧 URL 不默认 8090" 这句如果没记录, 对账时答不出 "谁定的"; 决策出处字段在此直接兜住。反向也成立: 场景里冒出记录里没有的判定 → 判不忠实, 走修正回路 (回路形态是 milestone-03 的题)。</div>
+</div>
+
+<h3 style="font-size:14.5px;margin:20px 0 6px">字段压力点 (够不够, 供你裁决)</h3>
+<div class="stress"><b>1 大纲场景:</b> 甲有 8 个场景大纲, 一条情况带参数表 (旧快照 AC-003-1, 按材料类型 4 行例子)。刺激字段装不下 4 组参数。候选: 刺激存 "参数表引用+列名", 对账按行展开; 或一行参数一行记录 (记录数翻倍)。</div>
+<div class="stress"><b>2 审计核对:</b> 甲乙各 3 条审计规则无场景, 承接靠静态材料核对。情况类型需加 "审计核对" 枚举, 可观察结果填核对单结论; 但对账要引用证据材料路径 (依赖清单/锁文件对照), 现有字段只能挤进 "可观察结果" - 证据材料要不要单列?</div>
+<div class="stress"><b>3 决策出处的锚点格式:</b> 只记 "现场+轮次" 够回溯吗? 轮次锚点用消息引用, 时间戳, 还是盘问会话内自增序号? 锚点格式不定, 分段续问时对账会断链。</div>
+<div class="stress"><b>4 批报条目 (正面确认):</b> 直译情况的决策出处记 "直译自规则N 原文", 子代理按原文核对即可 - 现有字段装得下, 无需新字段。裁定 "不看" 后, 这个出处标注是对账核对直译的唯一线索, 更必要。</div>
+
+<div class="ask">
+  <b>判断结果 (2026-11-25):</b>
+  <ol>
+    <li><b>档位: 选定中档</b>, 两份材料统一, 不按材料分档。裁定后中档问法 = 每种非直译情况 1 问 "刺激→结果一句话" (直译落盘不问), 问数代理口径: 甲 52 / 乙 21。</li>
+    <li><b>批报:</b> 不请用户过目, 全量落盘备查 (已裁定, 见阅读说明)。</li>
+    <li><b>记录字段八字段:</b> 压力点 4 已随批报裁定成立; 压力点 1 (大纲参数), 2 (审计证据单列), 3 (决策出处锚点格式) 拟移交 milestone-03 敲定 (记录格式归 m03 管)。</li>
+  </ol>
+  判断结果记录于 ROADMAP notes 与 milestone-02 关闭摘要; 档位与批报裁定作为 milestone-03 (盘问敲定设计决策) 的权威输入。
+</div>
+
+<footer style="color:var(--dim);font-size:12px;margin:22px 0 10px">
+  demo 材料, 不进产品, 可保留回看 · 位置 docs/changes/to-spec-grilling-and-chinese-ids/demos/coverage-tree-samples/index.html ·
+  上游: ROADMAP.json#notes (侦查 A 结论重建于 coverage-tree-input.md) · 下游: milestone-03 deliberate
+</footer>
+</div>
+
+<div class="bar">
+  <button onclick="step(-1)" title="左方向键">&larr;</button>
+  <span class="lvlabel" id="lvname">粗</span>
+  <button onclick="step(1)" title="右方向键">&rarr;</button>
+  <span style="opacity:.4">|</span>
+  <button onclick="cycleMat()" title="M 键">换材料</button>
+  <span class="matlabel" id="matname">材料甲</span>
+  <span class="cnt" id="cnt"></span>
+  <span style="opacity:.4">|</span>
+  <span style="font-size:11px;color:#9a958c"><kbd>&larr;</kbd><kbd>&rarr;</kbd> 换档 <kbd>M</kbd> 换材料</span>
+</div>
+
+<script>
+const LV = [
+  {k:'粗', c:'lv0'},
+  {k:'中', c:'lv1'},
+  {k:'细', c:'lv2'},
+];
+const MAT = {
+  jia: {
+    name:'材料甲 · verification-skills',
+    counts:[
+      ['条目 (目标+规则)', '19 (目标8 + 规则11, 审计 3)', ''],
+      ['情况 (场景块)', '100 (48 normal / 31 failure / 21 edge)', '非直译代理 = failure+edge = 52'],
+      ['粗', '21', '19 条目 + 2 溢出; 每条目 1 问类别, 直译落盘不问'],
+      ['中', '52', '52 非直译逐条一句; 直译 48 条落盘不计问'],
+      ['细', '78', '52 非直译全字段 + 26 追问 (×0.5); 直译落盘不问', 'A 锚点 ~130 为裁定前口径 (含批确认)'],
+    ],
+    roots:[
+      {id:'j1', t:'规则1 判据来源', tag:'旧快照锚 BR-001/AC-001 组: 4 情况 = 直译 2 / 非直译 2',
+        coarse:[
+          {t:'meta', s:'条目层 1 问 (共 11 条规则, 其余同型)'},
+          {t:'q', s:'规则1 "已确认 PRODUCT.md 是产品验收判据来源" 打算覆盖哪几类情况? 建议: (a) 正常: 判据只取 PRODUCT.md 的场景与审计规则; (b) 缺 PRODUCT.md; (c) 技术材料与计划勾选想改判。'},
+          {t:'batch', s:'批报落盘 (2 条直译, 随问自记, 不展示)', items:['有 PRODUCT.md 时判据只取场景与审计规则, 技术材料只作操作线索 (规则1 原文直译)','计划勾选状态不改判产品失败 (非目标2/规则4 直译)']},
+          {t:'a', s:'认可三类。(b) 补一种: PRODUCT.md 在但没确认标记, 算缺吗?'},
+          {t:'q', s:'收进 (b): "未确认视同缺"。粗档到此收类别, 细节落笔时按类构造。'},
+          {t:'a', s:'行。'},
+        ],
+        mid:[
+          {t:'meta', s:'情况层逐条一句; 直译落盘不计问'},
+          {t:'batch', s:'批报落盘 (规则1 直译 2 条, 不展示)', items:['有 PRODUCT.md → 判据只取场景与审计规则, 技术材料只作线索','计划全勾但场景复现失败 → 记失败, 不因勾选改判'], hint:'判定内容为原文直译, 记入结论记录标出处'},
+          {t:'q', s:'缺 PRODUCT.md → 一句话: "报输入缺口并停止派工"。诊断要列缺哪些输入吗?'},
+          {t:'a', s:'要列: 缺 PRODUCT.md 本身, 顺带点明技术材料不转判据。'},
+          {t:'q', s:'未确认的 PRODUCT.md → 同样报缺口停止, 与 "缺" 同型?'},
+          {t:'a', s:'同型, 合一条情况, 前提里写明两种形态。'},
+        ],
+        fine:[
+          {t:'meta', s:'情况层全字段; 失败/边界带追问'},
+          {t:'batch', s:'批报落盘 (1 条直译, 不展示)', items:['有 PRODUCT.md → 判据只取场景与审计规则, 技术材料只作线索 (规则1 原文)']},
+          {t:'q', s:'情况 "缺 PRODUCT.md": 前提 = 只有 TECHNICAL.md 与 EXECUTION.md; 连两份也没有的算同一条情况还是分开?'},
+          {t:'a', s:'同一条, 场景按 "有两份没 PRODUCT.md" 写。'},
+          {t:'q', s:'追问 (触发条件): "缺" 的检查时点, 派工前还是验收中发现?'},
+          {t:'a', s:'派工前, 一票停。'},
+          {t:'q', s:'情况 "未确认": 阈值 = 什么算 "已确认"? 出处只有 confirmed-flow 标记行, 还是另有确认记录?'},
+          {t:'a', s:'以标记行为准。'},
+          {t:'q', s:'情况 "技术材料越界": 前提 = PRODUCT.md 未要求内部代码划分调整而 TECHNICAL.md 写明必须完成; 结果 = 不进通过条件 + 交回评审; 排除项 = TECHNICAL 的技术安全约束不因此绕过; 出处 = 规则1 + 规则7。'},
+          {t:'a', s:'排除项那条要, 不然会把技术约束一并扔了。'},
+        ]},
+      {id:'j2', t:'规则5 写入授权', tag:'旧快照锚 BR-005/AC-011 组: 3 情况 = 直译 2 / 非直译 1; 阈值字段的重灾区',
+        coarse:[
+          {t:'meta', s:'条目层 1 问'},
+          {t:'q', s:'规则5 "写入测试资源须先明确并批准范围" 打算覆盖哪几类? 建议: (a) 批准范围内照写; (b) 超范围重新批准; (c) 清理残留独立报告。'},
+          {t:'batch', s:'批报落盘 (2 条直译, 随问自记, 不展示)', items:['批准范围内可复查执行, 不重复批准 (原文 "同范围可复查")','清理失败或残留不计整项通过 (原文末句)']},
+          {t:'a', s:'认可。(c) 再加一类: 残留不冒充产品失败。'},
+          {t:'q', s:'收进 (c)。粗档记为 4 类。'},
+        ],
+        mid:[
+          {t:'batch', s:'批报落盘 (2 条直译, 不展示)', items:['范围内照写不重批','清理残留不计整项通过']},
+          {t:'q', s:'超范围 → 改共享配置构造场景 → 停下请求批准, 写入不发生。够吗?'},
+          {t:'a', s:'够。'},
+          {t:'q', s:'残留不冒充失败 → 产品效果已观察, 清理后账号仍在 → 残留单列未完成, 产品观察保留。这样切对吗?'},
+          {t:'a', s:'对, 两件事分开记。'},
+        ],
+        fine:[
+          {t:'q', s:'范围内: 前提 = 批准记录写明账号 tmp-verify-01 + 一条备注 + 删除清理。阈值: "同范围" 的边界, 加第二条备注算同范围吗?'},
+          {t:'a', s:'不算, 数量属于范围, 加要重批。'},
+          {t:'q', s:'追问 (出处): 批准记录是会话消息还是落盘文件? 记录里怎么锚?'},
+          {t:'a', s:'会话消息, 记录里留消息锚点。'},
+          {t:'q', s:'超范围: 前提 = 已批备注未批共享配置; 刺激 = 改为改配置; 结果 = 停止 + 请求批准 + 未批准写入不发生; 排除项 = 只读操作不触发; 出处 = 规则5 第一句。'},
+          {t:'a', s:'排除项加上。'},
+          {t:'q', s:'清理残留: 结果形态 = 产品观察与未完成项分两栏还是同栏标注?'},
+          {t:'a', s:'分两栏, 同栏容易又混掉。'},
+        ]},
+      {id:'j3', t:'目标8 性能判定', tag:'旧快照锚 G-008/AC-026 组: 5 情况 = 直译 2 / 非直译 3; 数字阈值与大纲参数的样板',
+        coarse:[
+          {t:'meta', s:'条目层 1 问 (G 类条目, 8 个目标同型)'},
+          {t:'q', s:'目标8 性能判定打算覆盖哪几类? 建议: (a) 对比流程 (≥5 次交替, 中位数 + 极差); (b) 判定规则 (差距 vs 波动, 接近用检验); (c) 单边调优; (d) 无法调优。(a)(b) 含原文阈值直译。'},
+          {t:'batch', s:'批报落盘 (2 条直译, 随问自记, 不展示)', items:['每边至少 5 次交替, 报中位数与极差 (原文数字直译)','单边未调优: 先调优重测, 首轮不选赢家']},
+          {t:'a', s:'(b) 别拆: 差距小于波动与接近用检验合成一类 "判定规则"。其余认可。'},
+          {t:'q', s:'收作 (a) 流程 / (b) 判定规则 / (c) 调优 / (d) 无法调优, 4 类。'},
+        ],
+        mid:[
+          {t:'batch', s:'批报落盘 (2 条直译, 不展示)', items:['≥5 次交替报中位数与极差','单边未调优先调优重测']},
+          {t:'q', s:'差距小于波动 → 中位数差 2ms < 两组波动 12/8ms → 判无可测差异, 不写快慢。对吗?'},
+          {t:'a', s:'对。'},
+          {t:'q', s:'接近不清 → 用测量工具统计或秩和检验, 不凭中位数排名。够吗?'},
+          {t:'a', s:'够, 结果带显著性信息。'},
+          {t:'q', s:'无法调优 → 结论无法下结论, 写明缺口, 不选赢家。'},
+          {t:'a', s:'对。'},
+        ],
+        fine:[
+          {t:'q', s:'对比流程: 前提 = 两侧生产等价配置备好; 阈值 = "至少 5 次" 出处是目标8 原文还是侦查结论? "为什么 5" 进 spec 吗?'},
+          {t:'a', s:'原文; 理由不进 spec。'},
+          {t:'q', s:'差距小于波动: 阈值精确定义, 比极差还是极差一半? 波动用什么数? 出处哪条?'},
+          {t:'a', s:'比极差; 波动也用极差, 全文统一; 出处 目标8 原文 "无可测差异" + 规则8 实验约束。'},
+          {t:'q', s:'追问: 交替顺序有要求吗 (A/BAB 还是任意)?'},
+          {t:'a', s:'任意, spec 不钉顺序。'},
+          {t:'q', s:'无法调优: 前提 = 另一侧缺配置权限; 排除项 = 不借 benchmark 名义要源码写权限; 出处 = 规则8 (实验约束) + 盘问现场拍板。'},
+          {t:'a', s:'对。'},
+          {t:'meta', s:'旁注: 旧快照相邻的 AC-027-2 是场景大纲 (测量方式 3 行参数), 记录字段压力点 1 的活例子'},
+        ]},
+    ],
+  },
+  yi: {
+    name:'材料乙 · codebase-map',
+    counts:[
+      ['条目 (目标+规则)', '43 (目标6 + 规则37, 审计 3)', ''],
+      ['情况 (场景块)', '48 (27 normal / 12 failure / 9 edge)', '非直译代理 = failure+edge = 21'],
+      ['粗', '45', '43 条目 + 2 溢出; 裁定后被中档支配 (更贵更浅)'],
+      ['中', '21', '21 非直译逐条一句; 直译 27 条落盘不计问', '裁定后乙最省档'],
+      ['细', '32~47', '21 非直译全字段 + 11~26 追问; 直译落盘不问', 'A 锚点 70~128 为裁定前口径'],
+    ],
+    roots:[
+      {id:'y1', t:'规则4 端口默认与换端口', tag:'旧快照锚 BR-004/AC-003 组: 换端口 3 情况 = 直译 3 / 非直译 1; 边界密集',
+        coarse:[
+          {t:'meta', s:'条目层 1 问 (乙 43 条目, 粗档成本主要在这)'},
+          {t:'q', s:'规则4 "端口默认取上回用过的, 没有才用 8090; --port 可指定; 有存活实例须先 stop" 打算覆盖哪几类? 建议: (a) 显式换端口; (b) 存活实例拒换; (c) 沿用上回端口; (d) 旧地址失效报告。'},
+          {t:'batch', s:'批报落盘 (4 条直译, 随问自记, 不展示)', items:['停机后 serve --port 8091 换端口成功','存活实例时 --port 报 instance_running','换过后不带 --port 沿用新端口','换端口输出旧地址已失效']},
+          {t:'a', s:'四类认。(d) 里 "旧地址的值从哪来" 是当场定的吗? 还是落笔再说?'},
+          {t:'q', s:'粗档记类不定值: 记 "旧地址来源待情况层定"。'},
+        ],
+        mid:[
+          {t:'batch', s:'批报落盘 (4 条直译, 不展示)', items:['停机后显式换端口成功','存活实例拒换','沿用新端口','报告旧地址失效']},
+          {t:'q', s:'旧地址失效 → serve --port 8091: 新端口可用 + 旧 8090 不再响应 + 输出已失效。旧地址的值一句话里没定。'},
+          {t:'a', s:'从状态记录留存的旧 URL 取, 不默认 8090。'},
+        ],
+        fine:[
+          {t:'meta', s:'裁定注: 这条在 "批报不看" 下本会当直译落盘; 下面拟答暴露出它藏着新决策 (状态记录加字段), 只能靠子代理核对直译标注抓出 — 裁定的风险实例, m03 需定兑底规则'},
+          {t:'q', s:'换端口: 前提 = 曾在 8090 跑过并 stop, 状态记录留有旧 URL; 刺激 = serve --port 8091; 结果 = 8091 基址与每个数据键 URL 可开 + 旧 8090 不再响应 + 输出已失效; 阈值 = 旧地址取状态记录旧 URL 而非默认 8090, 出处 = 规则4 原文 "避免静默退回"。'},
+          {t:'a', s:'直译成立, 但 "留存旧 URL" 是新决策: 状态记录要加字段。这条记决策出处。'},
+          {t:'q', s:'沿用: 前提 = 曾 --port 8091 起过并 stop; 结果 = 起在 8091 不退回 8090。排除项: 状态文件被删呢?'},
+          {t:'a', s:'状态没了才回 8090, 即原文 "没有才用 8090"。'},
+          {t:'q', s:'追问: 沿用时输出要提示 "端口沿用上回的 8091" 吗?'},
+          {t:'a', s:'要, 一行。'},
+        ]},
+      {id:'y2', t:'规则22 交付门禁', tag:'旧快照锚 BR-022/AC-006 组: 2 failure 情况; 数字门槛边界值样板',
+        coarse:[
+          {t:'q', s:'规则22 "依赖边 0 或层号 < 3 拒交付" 打算覆盖哪几类? 建议: (a) 边 = 0 拒; (b) 层号不足拒; 共同结果: cc.json 仍写出, 服务根无副本。'},
+          {t:'batch', s:'批报落盘 (2 条直译, 随问自记, 不展示)', items:['边 = 0: 非 0 退出 + 给分母与零声明清单 + cc.json 留存','层号不足: 同上, 说明 "2 种, 少于 3"']},
+          {t:'a', s:'认。加 (c): 门禁过了但图退化的提醒, 归这条吗?'},
+          {t:'q', s:'不归, 那是规则23 的说明义务。粗档记 2 类。'},
+        ],
+        mid:[
+          {t:'batch', s:'批报落盘 (2 条直译, 不展示)', items:['边 = 0 拒交付','层号不足拒交付, 给分母']},
+          {t:'q', s:'层号恰好 3 种 → 放行。这个边界值单独立情况吗?'},
+          {t:'a', s:'单独一条, 门禁边界值钉死。'},
+        ],
+        fine:[
+          {t:'q', s:'边 = 0: 前提 = 一组互不引用的独立文件; 结果 = 非 0 退出 + 分母 + 清单 + cc.json 留存 + 服务根无副本。阈值: "边 0" 按分析端报告原值还是重算? 出处 = 规则22。'},
+          {t:'a', s:'报告原值, 不重算。'},
+          {t:'q', s:'层号边界: 前提 = 恰好 2 种; 结果 = 拒, 说明 "2 种, 少于 3"。"为什么是 3" 进 spec 吗?'},
+          {t:'a', s:'不进, 只钉门槛值。'},
+          {t:'q', s:'追问: 层号算不出 (有环) 是并进边 = 0 还是单独立?'},
+          {t:'a', s:'单独立, 另一条情况。'},
+        ]},
+      {id:'y3', t:'规则33/34/35 审计规则 (3 条合问)', tag:'旧快照锚 BR-033/034/035; 无场景, 静态核对类; 粗档最省的形态',
+        coarse:[
+          {t:'meta', s:'审计规则无场景, 3 条合问'},
+          {t:'q', s:'规则33/34/35 都是静态可核对 (不加依赖 / 手动调用 / 仓库不留产物), 打算覆盖哪几类? 建议: 一类 "静态材料核对", 每条规则一张核对单, 不落场景。'},
+          {t:'batch', s:'批报落盘 (3 张核对单标题, 随问自记, 不展示)', items:['规则33: 依赖清单 + 锁文件与上一提交逐项一致','规则34: frontmatter 两字段在位','规则35: 仓库无 cc.json / 前端产物 / 私有路径']},
+          {t:'a', s:'合问认可, 但三张单分开记, 各自独立过/挂。'},
+        ],
+        mid:[
+          {t:'batch', s:'批报落盘 (3 张核对单, 不展示)', items:['规则33 依赖清单一致','规则34 两字段在位','规则35 仓库 grep 无产物']},
+          {t:'meta', s:'裁定注: "grep 范围 = 整仓库" 这类口径决策不再经批报浮出, 只在细档被问到; 中档下归落盘, 靠直译标注核对兑底'},
+        ],
+        fine:[
+          {t:'q', s:'规则34: 前提 = skill 文件就位; 刺激 = 核对 frontmatter 与 openai.yaml; 结果 = 两字段都在位。阈值: "任何 skill 都不调用它" 的核对口径, grep 调用语句还是人工扫描述? 出处 = 规则34 原文。'},
+          {t:'a', s:'grep + 人工扫, 口径写进记录。'},
+          {t:'q', s:'规则35: 排除项: docs 里的示例路径算 "私有库路径" 吗?'},
+          {t:'a', s:'算, 文档示例也要清, 别只查代码。'},
+        ]},
+    ],
+  },
+};
+const LVN=['粗','中','细'], KEY=['coarse','mid','fine'];
+const openCards = new Set(['j1']);
+document.addEventListener('toggle', e => {
+  const d = e.target;
+  if (d.matches && d.matches('details.root')) {
+    const id = d.id.slice(5);
+    if (d.open) openCards.add(id); else openCards.delete(id);
+  }
+}, true);
+let lv=0, mat='jia';
+function renderCounts(){
+  const m=MAT[mat];
+  let h='<table><tr><th>口径</th><th>值</th><th>算式 / 说明</th></tr>';
+  for(const row of m.counts){
+    h+=`<tr><td>${row[0]}</td><td class="num">${row[1]}</td><td><span class="formula">${row[2]||''}</span> ${row[3]?`<span class="anchor">${row[3]}</span>`:''}</td></tr>`;
+  }
+  h+='</table><p class="formula" style="margin:6px 0 0">口径声明: 情况数以现有场景块为代理, 非直译占比以 failure+edge 为代理; 问数是估算标尺不是精度承诺, 已按 "批报不看" 裁定 (2026-11-25) 重算: 批确认不再计问。锚点来自侦查报告 A (原件已失, 结论存路线图 notes, 重建于 coverage-tree-input.md)。</p>';
+  document.getElementById('counts').innerHTML=h;
+  document.getElementById('cnt').textContent=`本材料全量估算: ${m.counts[2][1]} / ${m.counts[3][1]} / ${m.counts[4][1]} 问 (粗/中/细)`;
+}
+function renderRoots(){
+  const m=MAT[mat];
+  if(!m.roots.some(r=>openCards.has(r.id))) openCards.add(m.roots[0].id);
+  let h='';
+  for(const r of m.roots){
+    const cur=r[KEY[lv]];
+    let qn=0,bn=0;
+    for(const u of cur){ if(u.t==='q')qn++; else if(u.t==='batch')bn++; }
+    h+=`<details class="root" id="root-${r.id}" ${openCards.has(r.id)?'open':''}><summary><span class="rt">${r.t}</span><span class="tag">${r.tag}</span><span class="cc">问 ${qn} · 批报 ${bn}</span><span class="lv ${LV[lv].c}" id="lvof-${r.id}"></span></summary><div class="rootbody">`;
+    KEY.forEach((k,i)=>{
+      h+=`<div class="only l${i}">`;
+      let q=0;
+      for(const u of r[k]){
+        if(u.t==='q'){ q++; h+=`<div class="turn q"><span class="who">问 ${q}</span>${u.s}</div>`; }
+        else if(u.t==='a') h+=`<div class="turn a"><span class="who">你</span><em>(拟答)</em> ${u.s}</div>`;
+        else if(u.t==='batch'){
+          h+=`<div class="turn batch"><span class="who">批报落盘</span>${u.s}<ul>${u.items.map(x=>`<li>${x}</li>`).join('')}</ul>${u.hint?`<div class="hint">${u.hint}</div>`:''}</div>`;
+        }
+        else h+=`<div class="turn meta">${u.s}</div>`;
+      }
+      h+='</div>';
+    });
+    h+='</div></details>';
+  }
+  document.getElementById('roots').innerHTML=h;
+  syncBadges();
+}
+function syncBadges(){
+  document.querySelectorAll('.lv').forEach(e=>e.textContent='当前档: '+LVN[lv]);
+  document.getElementById('lvname').textContent=LVN[lv];
+  document.getElementById('matname').textContent=MAT[mat].name.split(' · ')[0];
+  document.body.dataset.lv=lv;
+  ['jia','yi'].forEach(k=>{
+    const el=document.getElementById('mtab-'+k);
+    el.style.outline = k===mat ? '2px solid #1c1b1a' : 'none';
+  });
+}
+function step(d){ lv=(lv+d+3)%3; renderRoots(); }
+function setMat(k){ if(mat===k)return; mat=k; renderCounts(); renderRoots(); }
+function cycleMat(){ setMat(mat==='jia'?'yi':'jia'); }
+document.addEventListener('keydown',e=>{
+  if(e.target.tagName==='INPUT'||e.target.tagName==='TEXTAREA')return;
+  if(e.key==='ArrowLeft'){step(-1);e.preventDefault();}
+  else if(e.key==='ArrowRight'){step(1);e.preventDefault();}
+  else if(e.key==='m'||e.key==='M'){cycleMat();}
+});
+renderCounts(); renderRoots();
+</script>
+</body>
+</html>
