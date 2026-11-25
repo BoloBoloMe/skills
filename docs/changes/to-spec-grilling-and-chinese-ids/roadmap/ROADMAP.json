@@ -8,7 +8,9 @@
     "方向侦查 (子代理 3 名, cli/glm-5.3-flash:high; 报告原件 /tmp/navigate-scout/{A-coverage-tree,B-rule-first-sample-ask,C-renumbering-scope}.md, 临时目录, 结论已录本笔记与各里程碑 question): A 覆盖树盘问: 100 场景级约 130 问, 48 场景级 70-128 问; 约一半 (失败/边界的触发条件, 边界取值) 是落笔时才构造的, 须逐题问, 另一半是已确认规则的直译可批报; 现有 check-ac.py 7 项全是格式与编号校验, 无一查内容忠实, 故须定盘问结论记录格式供子代理逐场景对账; 最易失控于问题爆炸与结论记录不全. B 规则先行场景抽问: 约 80 问更省力, 但实测靠标签/文本重合判 '直译' 不可靠, 被跳过的正常场景仍含规则原文没有的新内容, 机检又不查反向覆盖, 等于 LLM 替我定; 与 '宁多勿漏, 挑战极限' 方向级不一致, 调参救不回, 我已否决. C 编号汉化: 条文模板约 25 处, 脚本 2 个共 5 个位置, 测试 2 文件约 20 处文本替换; 仓库根 tests/ 与 navigate 测试零改动; 关键改法 = 标签留拉丁三位, 正文汉字无前导零, 脚本加归一化函数对账; 不连标签位数一起改.",
     "我选定方向: 验收标准段用 '覆盖树为骨架, 粗细由样张校准' (A 与折中), 汉化按 C 的口径; 里程碑 id 不改.",
     "已知事实 (C 报告): navigate/ACCEPTANCE-GUIDE.md:8 '由它在落盘前逐批与我确认验收标准, 直接以该节的 AC 和场景为依据' 与新流程直接冲突, 必改; navigate/SKILL.md:41 spec 定义 '把已确认的产品与技术决策整理' 与 :55 完成标准 '验收标准已由我确认' 需随新流程微调措辞; deliberate 四步与新流程的冲突点: 落盘对象不含 spec, 落笔后被抓到不忠实无步骤承接, 事实调查与产品判断的边界需划清.",
-    "环境: 主力模型 gpt-6.2-sol/astra 今晚全部凭据冷却, 子代理暂用 cli/glm-5.3-flash; 领取里程碑前重新选型. to-spec 自带测试在 workflow/to-spec/tests/ (不在 pytest.ini testpaths 内, 需显式 uv run pytest workflow/to-spec/tests). 仓库根有未跟踪文件 pi-session-*.html, 不属本变更, 不提交."
+    "环境: 主力模型 gpt-6.2-sol/astra 今晚全部凭据冷却, 子代理暂用 cli/glm-5.3-flash; 领取里程碑前重新选型. to-spec 自带测试在 workflow/to-spec/tests/ (不在 pytest.ini testpaths 内, 需显式 uv run pytest workflow/to-spec/tests). 仓库根有未跟踪文件 pi-session-*.html, 不属本变更, 不提交.",
+    "milestone-01 关闭 (2026-11-25): 编号汉化已落地, 标签与历史引用未动. 副作用: docs/changes 下已关闭变更的 PRODUCT.md 仍是旧写法 (如 '- G-001:'), 不再通过新 check-ac.py; 它们是时点快照, 不修复, 但 milestone-02 拿它们做盘问样张时只作演示材料, 不要指望机检通过.",
+    "环境缺口 (2026-11-25 实测, 不属本变更): 本容器 venv 未播种 gherkin-official, to-spec 测试须 uv run --with gherkin-official; 根 tests/conftest.py 的 pytest_sessionstart 依赖 podman (容器内无), 根 tests 只能 --noconftest 单文件跑; general/present/tests/test_skill_contract.py::test_no_state_object_requirement 为既有失败."
   ],
   "milestones": {
     "milestone-01": {
@@ -26,10 +28,14 @@
         }
       ],
       "output_dir": "docs/changes/to-spec-grilling-and-chinese-ids/",
-      "status": "进行中",
+      "status": "已关闭",
       "blocked_by": [],
-      "artifacts": [],
-      "close_summary": null
+      "artifacts": [
+        "docs/changes/to-spec-grilling-and-chinese-ids/renumbering-scope.md",
+        "docs/changes/to-spec-grilling-and-chinese-ids/REVIEW-milestone-01.md",
+        "commit f20a58e3ab95baf5e80d59aa7ac62da530b2feea (feat: milestone-01 编号汉化)"
+      ],
+      "close_summary": "编号汉化落地: 正文条目改 决策1/事实1/目标1/非目标1/规则1/验收1/用例1, 标签保留 @AC-001/@G-001/@BR-001, ISSUE-01 前缀与里程碑 id 不动, 历史引用 (D003/D005/D007/D008/D011/D012) 原样保留. 改 9 个文件: decision-ledger/SKILL.md, to-spec/{TEMPLATES.md,GHERKIN.md,check-ac.py,ac-draft.py}, to-spec/tests 两文件, to-execution/{SKILL.md,TEMPLATES.md}. 机检新增 ENTRY_RE 认 '- 目标1:'/'- 规则1:' 与 tag_entry_key 归一化 (@G-001 -> 目标1), ac-draft.py 复用同一函数. 开发验证: to-spec 测试 42 passed + 37 subtests (需 --with gherkin-official, venv 未播种该包属既有缺口); tests/test_skills_codex_metadata.py 1 passed (需 --noconftest, 根 conftest 依赖未安装的 podman); check_skill.py 对两个改过的 SKILL.md 均 OK; 自造样例实跑 check-ac.py: 新写法通过, @G-002 与旧写法正文均报编号对账 exit=1, 重复编号 exit=2. 兄弟树实跑 245 passed 1 failed (general/present/tests/test_skill_contract.py::test_no_state_object_requirement), 该失败与本次改动无关, 属既有失败. 独立评审 (未参与实现的 pi 子会话, glm-5.3-flash:high, 报告 REVIEW-milestone-01.md) 结论通过, 2 项轻微发现: F1 机检不拒绝正文前导零 (建议留到 milestone-04 的机检边界处理), F2 条目写错节只在引用对账时间接失败 (与改前一致). 两项均不阻塞 downstream."
     },
     "milestone-02": {
       "title": "做验收盘问样张并校准粗细",
