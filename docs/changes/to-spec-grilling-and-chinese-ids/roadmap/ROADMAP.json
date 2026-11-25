@@ -1,0 +1,266 @@
+{
+  "schema_version": "0.0.1",
+  "title": "to-spec 盘问即写稿 + 工作流编号汉化",
+  "destination": "到达时: workflow/to-spec 不再让我审预写草稿, 而是用一场连续, 可分段续问的 deliberate 盘问, 按我的决定和查到的事实确定 PRODUCT.md 与 TECHNICAL.md 怎么写, 问完才落笔; 验收标准段以覆盖树为骨架问 '覆盖哪些情况, 每种情况的主要刺激和可观察结果', 粗细经样张校准, 落笔的 Gherkin 我不碰, 由机检和子代理对账保证忠实; 两份 spec 格式, 机检, HTML 预览与转正脚本保留; skill 内无问题数上限. 同时 workflow/ 与 general/ 的编号规则全部改成中文词+数字 (决策1/事实1/验收1/规则1/目标1/非目标1/用例1), Gherkin 标签与 issue 文件名保留拉丁写法, 历史文件与历史引用不动. 全部改动只落本仓库, 机检, pytest, check_skill.py 通过, 经我验收.",
+  "notes": [
+    "目的地经我确认 (2026-11-25): 两项同批改造. (1) to-spec 改为 '盘问即写稿': 一场连续的 deliberate 盘问 (可分段续问), 范围 = PRODUCT.md 与 TECHNICAL.md 需要覆盖的全部内容, 依据我的决定和查到的事实确定两份 spec 怎么写, 问完才落笔; 我不审预写的草稿. 验收标准段问覆盖层面的事 (打算覆盖哪些情况, 每种情况的主要刺激和可观察结果), 用人话问; 落笔后的 Gherkin 我完全不碰, 忠实性由机检加子代理对账保证. 两份格式/机检/HTML 预览 (照常生成交付, 可选看)/转正脚本全保留. 不写问题数上限 (120 只是我精力的参考, 严禁写进 skill); 盘问只闭环一次, 两份同时确认. (2) 编号汉化: workflow/ 与 general/ 下 skill 的编号规则 D001/F001/AC-001/BR-001/G-001/NG-001/TC-001 改 决策1/事实1/验收1/规则1/目标1/非目标1/用例1; Gherkin 标签保留 @AC-001 这类拉丁写法; issue 文件名保留 ISSUE-01 前缀; 里程碑 id milestone-01 与目录名不算英文缩写编号, 不改; 历史文件与指向历史条目的引用 (注释/docstring 里的 D011 等) 不改; 破坏性变更, 无兼容. 同一张路线图, 汉化先做. 终点: 改动只落本仓库, 不碰已安装 skill; 机检, pytest, check_skill.py 通过; 我验收; 不试跑.",
+    "领域感知: 本仓库 AGENTS.md 唯一硬约定 = 只改本仓库, 禁止修改真实已安装 skills; 领域语言在 docs/language/UBIQUITOUS_LANGUAGE.md (其中 D0xx 全是历史引用, 不改); 相关 ADR 0020 (产品验收只验 PRODUCT 场景与审计规则) 与 0025 (最短交付路径); 无任何账本把 '我读预览后采纳' 定成必须遵守的决策.",
+    "方向侦查 (子代理 3 名, cli/glm-5.3-flash:high; 报告原件 /tmp/navigate-scout/{A-coverage-tree,B-rule-first-sample-ask,C-renumbering-scope}.md, 临时目录, 结论已录本笔记与各里程碑 question): A 覆盖树盘问: 100 场景级约 130 问, 48 场景级 70-128 问; 约一半 (失败/边界的触发条件, 边界取值) 是落笔时才构造的, 须逐题问, 另一半是已确认规则的直译可批报; 现有 check-ac.py 7 项全是格式与编号校验, 无一查内容忠实, 故须定盘问结论记录格式供子代理逐场景对账; 最易失控于问题爆炸与结论记录不全. B 规则先行场景抽问: 约 80 问更省力, 但实测靠标签/文本重合判 '直译' 不可靠, 被跳过的正常场景仍含规则原文没有的新内容, 机检又不查反向覆盖, 等于 LLM 替我定; 与 '宁多勿漏, 挑战极限' 方向级不一致, 调参救不回, 我已否决. C 编号汉化: 条文模板约 25 处, 脚本 2 个共 5 个位置, 测试 2 文件约 20 处文本替换; 仓库根 tests/ 与 navigate 测试零改动; 关键改法 = 标签留拉丁三位, 正文汉字无前导零, 脚本加归一化函数对账; 不连标签位数一起改.",
+    "我选定方向: 验收标准段用 '覆盖树为骨架, 粗细由样张校准' (A 与折中), 汉化按 C 的口径; 里程碑 id 不改.",
+    "已知事实 (C 报告): navigate/ACCEPTANCE-GUIDE.md:8 '由它在落盘前逐批与我确认验收标准, 直接以该节的 AC 和场景为依据' 与新流程直接冲突, 必改; navigate/SKILL.md:41 spec 定义 '把已确认的产品与技术决策整理' 与 :55 完成标准 '验收标准已由我确认' 需随新流程微调措辞; deliberate 四步与新流程的冲突点: 落盘对象不含 spec, 落笔后被抓到不忠实无步骤承接, 事实调查与产品判断的边界需划清.",
+    "环境: 主力模型 gpt-6.2-sol/astra 今晚全部凭据冷却, 子代理暂用 cli/glm-5.3-flash; 领取里程碑前重新选型. to-spec 自带测试在 workflow/to-spec/tests/ (不在 pytest.ini testpaths 内, 需显式 uv run pytest workflow/to-spec/tests). 仓库根有未跟踪文件 pi-session-*.html, 不属本变更, 不提交."
+  ],
+  "milestones": {
+    "milestone-01": {
+      "title": "落地编号汉化 (规则, 模板, 脚本, 测试)",
+      "type": "implementation",
+      "question": "把 workflow/ 与 general/ 下 skill 的编号规则从 D001/F001/AC-001/BR-001/G-001/NG-001/TC-001 改为 决策1/事实1/验收1/规则1/目标1/非目标1/用例1. 改动面以侦查报告 C 为准: (a) 条文与模板: workflow/decision-ledger/SKILL.md (D001/F001 模板, '决策 D001 起, 事实 F001 起'), workflow/to-spec/TEMPLATES.md (G/NG/BR 条目与两处决策引用行), workflow/to-spec/GHERKIN.md (补 '标签 @G-001 对应正文条目 目标1' 的映射说明, 标签表不改), workflow/to-execution/SKILL.md 与 TEMPLATES.md (TC 编号规则, AC/BR/G/NG/D 引用示例). (b) 脚本: workflow/to-spec/check-ac.py 的 ENTRY_RE 改成认 '- 目标1:' '- 规则1:', 新增归一化函数 (拉丁三位标签键 <-> 汉字无前导零正文键), validate_product 对账段与报错文案跟着改; workflow/to-spec/ac-draft.py 阅读卡片的条目取用同样归一化. (c) 测试: workflow/to-spec/tests/test_ac_draft.py 与 test_ac_reading.py 约 20 处样例文本替换. 不改: Gherkin 标签 (@AC-001/@G-001/@BR-001 保留拉丁三位), issue 文件名前缀 ISSUE-01, 里程碑 id milestone-01, 历史文件 (docs/changes/ 已关闭变更, docs/adr), 指向历史条目的注释与 docstring 引用. 完成时跑 uv run pytest workflow/to-spec/tests 与 tests/test_skills_codex_metadata.py, 对改过的 SKILL.md 跑 general/writing-for-llm/check_skill.py, 并用含 '- 目标1:' 加 '@G-001' 的最小样例实跑 check-ac.py 验证对账与报错.",
+      "inputs": [
+        {
+          "content": "汉化范围与例外的裁决 (标签留拉丁, 文件名留前缀, 里程碑 id 不改, 历史不动, 改规则不改历史引用)",
+          "source": "docs/changes/to-spec-grilling-and-chinese-ids/roadmap/ROADMAP.json#notes"
+        },
+        {
+          "content": "逐位置的改动清单 (文件:行号, 现有写法, 建议写法), 归一化映射规则, 最易漏改位置",
+          "source": "/tmp/navigate-scout/C-renumbering-scope.md"
+        }
+      ],
+      "output_dir": "docs/changes/to-spec-grilling-and-chinese-ids/",
+      "status": "待处理",
+      "blocked_by": [],
+      "artifacts": [],
+      "close_summary": null
+    },
+    "milestone-02": {
+      "title": "做验收盘问样张并校准粗细",
+      "type": "demo",
+      "question": "用仓库现成的大体量 PRODUCT.md 做几档粗细的 '覆盖树盘问样张', 让我看清 '问多细' 各长什么样, 从中选定验收标准段的盘问粒度. 材料: docs/changes/verification-skills/PRODUCT.md (8 目标, 11 规则含 3 审计, 100 场景), docs/changes/workflow-stack-review/milestone-25/PRODUCT.md (6 目标, 37 规则, 48 场景). 每份材料至少做粗 (每条目标/规则只报打算覆盖哪几类情况, 直译的几条合并批报) 与细 (每种情况问主要刺激, 可观察结果, 阈值与出处) 两档; 每档给出该材料下的估算问数与算式. 产出按 demo skill 的规则放在产物根目录的 demos/ 下; 同时落一份 '盘问结论记录' 的字段草案 (根条目, 情况类型, 前提, 刺激, 可观察结果, 阈值与出处, 排除项, 决策出处), 因为子代理对账靠它. 我想据此判断: 哪一档在我精力可承受范围内且尽量往深问; 记录字段是否够子代理逐场景对账.",
+      "inputs": [
+        {
+          "content": "选定方向: 覆盖树为骨架, 粗细由样张校准",
+          "source": "docs/changes/to-spec-grilling-and-chinese-ids/roadmap/ROADMAP.json#notes"
+        },
+        {
+          "content": "覆盖树推演数字 (问数估算规则, 可批报与须细问的比例), 子代理对账所需字段清单",
+          "source": "/tmp/navigate-scout/A-coverage-tree.md"
+        },
+        {
+          "content": "大体量样例 PRODUCT.md (目标/业务规则/场景)",
+          "source": "docs/changes/verification-skills/PRODUCT.md"
+        },
+        {
+          "content": "规则密集型样例 PRODUCT.md",
+          "source": "docs/changes/workflow-stack-review/milestone-25/PRODUCT.md"
+        }
+      ],
+      "output_dir": "docs/changes/to-spec-grilling-and-chinese-ids/",
+      "status": "待处理",
+      "blocked_by": [],
+      "artifacts": [],
+      "close_summary": null
+    },
+    "milestone-03": {
+      "title": "盘问敲定 to-spec 新流程的设计决策",
+      "type": "deliberate",
+      "question": "用 grilling 逐条敲定 to-spec '盘问即写稿' 的设计决策, 范围与边界: (1) 盘问范围树怎么由两份模板展开 (背景, 目标, 非目标, 业务规则, 验收覆盖, 模块划分, 模块接口, 接缝与依赖, 安全, 非功能, 关键流程), 产品段与技术段的衔接; (2) 验收段的问法与粒度 (以里程碑 02 选定的档为准), 直译批报与 LLM 拿主意的判定口径; (3) 盘问结论记录的落盘位置与格式 (供分段续问与子代理对账), 续问时如何恢复前沿与已否决分支; (4) 盘问中产生的新决定如何进决策账本, deliberate 四步 (盘问/落盘/反方攻击/核实收敛) 哪些适用, 反方攻击与落笔后忠实性核对的先后; (5) 落笔后忠实性的保证: 机检加独立子代理按结论记录逐场景对账, 发现不忠实走哪条修正回路, 什么情况算重开盘问; (6) 现有 '确认标记/版本冻结/转正脚本 review_id' 在新流程里的去留 (HTML 预览照常生成但可选看); (7) 哪些题必须我亲答, 哪些事实由 LLM 先查再交我确认; (8) 防失控的具体手段 (同一机制挂多条规则时不重复追问, 结论记录防不全). 不设问题数上限, 不把内部实现选择盘问完.",
+      "inputs": [
+        {
+          "content": "目的地与完成边界",
+          "source": "docs/changes/to-spec-grilling-and-chinese-ids/roadmap/ROADMAP.json#destination"
+        },
+        {
+          "content": "现有 to-spec 流程与达标标准",
+          "source": "workflow/to-spec/SKILL.md"
+        },
+        {
+          "content": "现有 deliberate 四步",
+          "source": "workflow/deliberate/SKILL.md"
+        },
+        {
+          "content": "样张与我选定的粒度档, 结论记录字段草案",
+          "source": "docs/changes/to-spec-grilling-and-chinese-ids/demos/"
+        },
+        {
+          "content": "侦查报告 A 的冲突点清单 (落盘对象, 事实调查边界, 攻击时机, 收敛语义)",
+          "source": "/tmp/navigate-scout/A-coverage-tree.md"
+        }
+      ],
+      "output_dir": "docs/changes/to-spec-grilling-and-chinese-ids/",
+      "status": "待处理",
+      "blocked_by": [],
+      "artifacts": [],
+      "close_summary": null
+    },
+    "milestone-04": {
+      "title": "整理 to-spec 改造的规格与验证方案",
+      "type": "spec",
+      "question": "按里程碑 03 敲定的决策, 调用 to-spec (现有版本) 交付本变更的 PRODUCT.md 与 TECHNICAL.md: 产品侧写清 to-spec 新流程的可观察结果 (一场连续盘问产生两份 spec, 验收段按选定粒度问覆盖, 我不读 Gherkin, 不出现数字上限, 可分段续问, 闭环即确认), 技术侧写清 SKILL.md/GHERKIN.md/TEMPLATES.md/脚本的改动边界与对 navigate, deliberate 的最小连带措辞. 两份规格的验收标准按 to-spec 现行确认方式经我确认; 下游 issue 实施范围不等于即时编码授权.",
+      "inputs": [
+        {
+          "content": "里程碑 03 敲定的设计决策",
+          "source": "docs/changes/to-spec-grilling-and-chinese-ids/DECISIONS.md"
+        },
+        {
+          "content": "汉化后的编号规则与模板写法",
+          "source": "workflow/to-spec/TEMPLATES.md"
+        },
+        {
+          "content": "现有 to-spec 与 deliberate 全文",
+          "source": "workflow/to-spec/SKILL.md"
+        }
+      ],
+      "output_dir": "docs/changes/to-spec-grilling-and-chinese-ids/",
+      "status": "待处理",
+      "blocked_by": [
+        "milestone-03"
+      ],
+      "artifacts": [],
+      "close_summary": null
+    },
+    "milestone-05": {
+      "title": "设计 to-spec 改造的验证方案",
+      "type": "verification-plan",
+      "question": "调用 verify-change 的设计方式, 为里程碑 06 的实施产出验证方案: 按改动类型 (skill 文本, 脚本, 测试, 连带措辞) 写清验证入口, 待确认事实与通过标准; 特别覆盖: to-spec/tests 与 pytest.ini 全量通过, 改过的 SKILL.md 过 check_skill.py, navigate/ACCEPTANCE-GUIDE.md 与 deliberate 不再与新流程矛盾, 全仓 grep 无残留的旧编号规则 (只允许标签说明与历史引用). 固定修订号并经我确认.",
+      "inputs": [
+        {
+          "content": "本变更的 PRODUCT.md 与 TECHNICAL.md",
+          "source": "docs/changes/to-spec-grilling-and-chinese-ids/PRODUCT.md"
+        },
+        {
+          "content": "本变更的技术设计",
+          "source": "docs/changes/to-spec-grilling-and-chinese-ids/TECHNICAL.md"
+        },
+        {
+          "content": "验证契约",
+          "source": "workflow/verification-contract/SKILL.md"
+        }
+      ],
+      "output_dir": "docs/changes/to-spec-grilling-and-chinese-ids/",
+      "status": "待处理",
+      "blocked_by": [
+        "milestone-04"
+      ],
+      "artifacts": [],
+      "close_summary": null
+    },
+    "milestone-06": {
+      "title": "拆分 to-spec 改造的执行切片",
+      "type": "execution-plan",
+      "question": "调用 to-execution, 把里程碑 04 的两份规格与里程碑 05 的验证方案拆成可独立执行与验证的 issues (覆盖 SKILL.md 重写, GHERKIN.md/TEMPLATES.md 调整, 脚本与测试改动, navigate/deliberate 连带措辞), 生成 EXECUTION.md 与 issues; 不开始实施.",
+      "inputs": [
+        {
+          "content": "两份权威规格",
+          "source": "docs/changes/to-spec-grilling-and-chinese-ids/PRODUCT.md"
+        },
+        {
+          "content": "已确认的验证方案",
+          "source": "docs/changes/to-spec-grilling-and-chinese-ids/VERIFICATION-PLAN.md"
+        }
+      ],
+      "output_dir": "docs/changes/to-spec-grilling-and-chinese-ids/",
+      "status": "待处理",
+      "blocked_by": [
+        "milestone-05"
+      ],
+      "artifacts": [],
+      "close_summary": null
+    },
+    "milestone-07": {
+      "title": "实施 to-spec 盘问即写稿改造",
+      "type": "implementation",
+      "question": "调用 drive-execution, 按里程碑 06 的 issues 实施 to-spec 新流程: 重写 workflow/to-spec/SKILL.md 为 '盘问即写稿' 流程 (连续盘问, 可分段续问, 验收段覆盖树问法, 结论记录落盘, 落笔后机检加子代理对账, 闭环即确认, HTML 预览照常生成), 调整 GHERKIN.md/TEMPLATES.md 与脚本, 做 navigate 与 deliberate 的最小连带措辞修正, 补测试; 完成集成提交, 开发验证证据与代码评审. 不含成品独立验证.",
+      "inputs": [
+        {
+          "content": "执行拆分与 issues",
+          "source": "docs/changes/to-spec-grilling-and-chinese-ids/EXECUTION.md"
+        },
+        {
+          "content": "汉化后的 to-spec 脚本与测试基线",
+          "source": "workflow/to-spec/"
+        }
+      ],
+      "output_dir": "docs/changes/to-spec-grilling-and-chinese-ids/",
+      "status": "待处理",
+      "blocked_by": [
+        "milestone-06"
+      ],
+      "artifacts": [],
+      "close_summary": null
+    },
+    "milestone-08": {
+      "title": "独立验证 to-spec 改造",
+      "type": "verification",
+      "question": "按 navigate 的独立验证与返工规则, 另起未参与实现与修复的独立会话, 调用 verify-change 的执行方式, 按里程碑 05 已确认的验证方案对明确的目标提交独立验证: skill 文本符合新流程且无数字上限, 脚本机检与测试通过, 连带措辞无矛盾, 无旧编号规则残留. 只产结果和证据, 发现项按规则分流.",
+      "inputs": [
+        {
+          "content": "已确认的验证方案及其修订号",
+          "source": "docs/changes/to-spec-grilling-and-chinese-ids/VERIFICATION-PLAN.md"
+        },
+        {
+          "content": "实施集成提交号",
+          "source": "docs/changes/to-spec-grilling-and-chinese-ids/EXECUTION.md"
+        }
+      ],
+      "output_dir": "docs/changes/to-spec-grilling-and-chinese-ids/",
+      "status": "待处理",
+      "blocked_by": [
+        "milestone-07"
+      ],
+      "artifacts": [],
+      "close_summary": null
+    },
+    "milestone-09": {
+      "title": "终点验收",
+      "type": "acceptance",
+      "question": "按已确认标准与证据同我逐项确认是否接受交付: 编号汉化落地, to-spec 盘问即写稿流程落地, 机检与测试通过, 连带措辞一致, 全部改动只落本仓库.",
+      "inputs": [
+        {
+          "content": "本变更的 PRODUCT.md 验收标准",
+          "source": "docs/changes/to-spec-grilling-and-chinese-ids/PRODUCT.md"
+        },
+        {
+          "content": "独立验证报告",
+          "source": "docs/changes/to-spec-grilling-and-chinese-ids/"
+        }
+      ],
+      "output_dir": null,
+      "status": "待处理",
+      "blocked_by": [
+        "milestone-01",
+        "milestone-08"
+      ],
+      "artifacts": [],
+      "close_summary": null
+    }
+  },
+  "unknown_seas": [
+    "真实使用后的粒度校准: 样张只能近似真实的盘问体验, 首次在真实需求上跑新流程后, 粒度档, 批报比例与结论记录字段大概率要调; 现在说不准会暴露哪些问题, 本次终点不含试跑, 试跑另起旅程.",
+    "盘问规模很大时的会话组织: 一个需求盘问跨多次会话时, 除了结论记录还需保存什么 (已否决分支, 盲区扫描进度, 我的疲劳信号) 才能无损续问, 要等里程碑 03 的记录格式定下来后才看得清."
+  ],
+  "off_course": [
+    {
+      "what": "规则先行, 场景抽问 (方向 B)",
+      "reason": "被跳过的场景等于 LLM 替我定, 机检不查反向覆盖兜不住; 与我 '宁多勿漏, 尽量挑战极限' 的要求方向级不一致, 已否决."
+    },
+    {
+      "what": "改写历史文件与历史引用里的旧编号 (docs/changes/ 已关闭变更, docs/adr, 注释里指向历史账本的 D0xx)",
+      "reason": "已关闭变更是时点快照, 改写等于伪造历史; 历史引用改了会指向不存在的条目."
+    },
+    {
+      "what": "改 Gherkin 标签写法 (@AC-001 改中文或英文全词或改位数), 改 issue 文件名前缀, 改里程碑 id milestone-01",
+      "reason": "标签受 Gherkin 语法限制不能写中文, 且只是机器对账钩子, 我不读; 文件名与里程碑 id 是机器标识符, 改动成本大而无行为收益."
+    },
+    {
+      "what": "在 skill 里写问题数量上限",
+      "reason": "我明确不要数字上限; 深度靠 '哪些必须问, 哪些可合并' 的规则, 加我随时可喊停与分段续问来控制."
+    },
+    {
+      "what": "拿真实需求试跑新流程并据此调参",
+      "reason": "我选定终点不含试跑; 试跑需要我先同步到 pi, 作为后续独立旅程."
+    },
+    {
+      "what": "同步到 pi 与修改已安装 skill",
+      "reason": "仓库 AGENTS.md 硬约定: 本仓库只改仓库内容, 禁止修改真实 agent skills; 同步由我自行执行."
+    }
+  ]
+}
