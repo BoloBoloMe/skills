@@ -10,7 +10,8 @@
     "已知事实 (C 报告): navigate/ACCEPTANCE-GUIDE.md:8 '由它在落盘前逐批与我确认验收标准, 直接以该节的 AC 和场景为依据' 与新流程直接冲突, 必改; navigate/SKILL.md:41 spec 定义 '把已确认的产品与技术决策整理' 与 :55 完成标准 '验收标准已由我确认' 需随新流程微调措辞; deliberate 四步与新流程的冲突点: 落盘对象不含 spec, 落笔后被抓到不忠实无步骤承接, 事实调查与产品判断的边界需划清.",
     "环境: 主力模型 gpt-6.2-sol/astra 今晚全部凭据冷却, 子代理暂用 cli/glm-5.3-flash; 领取里程碑前重新选型. to-spec 自带测试在 workflow/to-spec/tests/ (不在 pytest.ini testpaths 内, 需显式 uv run pytest workflow/to-spec/tests). 仓库根有未跟踪文件 pi-session-*.html, 不属本变更, 不提交.",
     "milestone-01 关闭 (2026-11-25): 编号汉化已落地, 标签与历史引用未动. 副作用: docs/changes 下已关闭变更的 PRODUCT.md 仍是旧写法 (如 '- G-001:'), 不再通过新 check-ac.py; 它们是时点快照, 不修复, 但 milestone-02 拿它们做盘问样张时只作演示材料, 不要指望机检通过.",
-    "环境缺口 (2026-11-25 实测, 不属本变更): 本容器 venv 未播种 gherkin-official, to-spec 测试须 uv run --with gherkin-official; 根 tests/conftest.py 的 pytest_sessionstart 依赖 podman (容器内无), 根 tests 只能 --noconftest 单文件跑; general/present/tests/test_skill_contract.py::test_no_state_object_requirement 为既有失败."
+    "环境缺口 (2026-11-25 实测, 不属本变更): 本容器 venv 未播种 gherkin-official, to-spec 测试须 uv run --with gherkin-official; 根 tests/conftest.py 的 pytest_sessionstart 依赖 podman (容器内无), 根 tests 只能 --noconftest 单文件跑; general/present/tests/test_skill_contract.py::test_no_state_object_requirement 为既有失败.",
+    "环境缺口的裁定 (2026-11-25 用户经宿主会话转达, 需当权威输入时再确认): gherkin-official 装进镜像, 重建时带上, 本容器继续用 uv run --with gherkin-official; podman 不装, 根 tests/ 不在沙盒跑, 确需跑根下单文件用绕开 conftest 的写法; general/present/tests/test_skill_contract.py 那条既有失败不修, 不并进本变更. 更正一条: tests/README.md 给的 --confcutdir=/tmp 在 pytest 9.1.1 下不再绕开 tests/conftest.py (实测仍崩在 podman), 容器内实测可用的是 uv run pytest --noconftest <file> (tests/test_skills_codex_metadata.py 1 passed); README 那处漂移属已关闭变更, 本次不改, 后续验证方案按 --noconftest 写."
   ],
   "milestones": {
     "milestone-01": {
