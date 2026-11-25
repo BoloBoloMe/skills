@@ -24,6 +24,8 @@
    向下继承, 破坏每场景恰好一个 @AC 的语义, 一律判为违规.
 6. 编号对账: 目标/业务规则编号不得重复; 场景引用的 @G-NNN/@BR-NNN 必须在
    PRODUCT.md 对应节真实存在; @BR 不得指向标 (审计) 的审计式断言.
+   正文条目写作 目标1/规则1 (汉字 + 无前导零数字), 标签写作 @G-001/@BR-001,
+   两边去掉前导零后按数字对账.
 """
 
 from __future__ import annotations
@@ -53,8 +55,11 @@ BACKGROUND_KEYWORDS = ("背景",)
 SCENARIO_KEYWORDS = ("场景", "场景大纲")
 STEP_KEYWORDS = ("假定", "当", "那么", "而且", "但是")
 
-# 编号对账 (校验 6): 从 PRODUCT.md 正文节提取 G/BR 条目
-ENTRY_RE = re.compile(r"^\s*[-*]\s*(G|BR)-(\d{3})\s*[:：]")
+# 编号对账 (校验 6): 从 PRODUCT.md 正文节提取 目标/规则 条目.
+# 正文条目写作 汉字 + 无前导零数字 (`目标1` / `规则2`), Gherkin 标签仍用
+# 拉丁三位 (`@G-001` / `@BR-001`), 靠 tag_entry_key 去掉前导零后对账.
+ENTRY_RE = re.compile(r"^\s*[-*]\s*(目标|规则)(\d+)\s*[:：]")
+TAG_ENTRY_KINDS = (("@G-", "目标"), ("@BR-", "规则"))
 AUDIT_MARKS = ("(审计)", "（审计）")
 
 
@@ -96,6 +101,14 @@ def section_bounds(markdown: str, section: str, *, required: bool = True) -> tup
     return headings[index][2], end
 
 
+def tag_entry_key(tag_name: str) -> str:
+    """归一化对账键: `@G-001` -> `目标1`, `@BR-002` -> `规则2`."""
+    for prefix, kind in TAG_ENTRY_KINDS:
+        if tag_name.startswith(prefix):
+            return f"{kind}{int(tag_name[len(prefix):])}"
+    raise ValueError(f"不是覆盖标签: {tag_name}")
+
+
 def extract_entry_texts(markdown: str, section: str) -> dict[str, str]:
     """校验与预览共用条目原文 (含续行), 避免审计判定或编号定位分歧.
 
@@ -109,7 +122,7 @@ def extract_entry_texts(markdown: str, section: str) -> dict[str, str]:
     for line in markdown[bounds[0]:bounds[1]].splitlines(keepends=True):
         match = ENTRY_RE.match(line)
         if match:
-            current = f"{match[1]}-{match[2]}"
+            current = f"{match[1]}{int(match[2])}"
             if current in entries:
                 raise InputError(f"`{section}` 节的 {current} 重复, 无法确定唯一条目")
             entries[current] = []
@@ -350,20 +363,20 @@ def validate_product(markdown: str, *, require_marker: bool = True) -> tuple[int
     g_entries = extract_entries(markdown, "目标")
     br_entries = extract_entries(markdown, "业务规则")
     for name, where, sc_where in cover_refs:
-        key = name.lstrip("@")
+        key = tag_entry_key(name)
         if name.startswith("@G-"):
             if key not in g_entries:
                 v.add(
                     "编号对账",
                     f"{where} ({sc_where})",
-                    f"{name} 在 `## 目标` 节不存在 (对账来源: 该节的 `- G-NNN:` 列表项)",
+                    f"{name} 在 `## 目标` 节不存在 (对账来源: 该节的 `- 目标N:` 列表项)",
                 )
         elif name.startswith("@BR-"):
             if key not in br_entries:
                 v.add(
                     "编号对账",
                     f"{where} ({sc_where})",
-                    f"{name} 在 `## 业务规则` 节不存在 (对账来源: 该节的 `- BR-NNN:` 列表项)",
+                    f"{name} 在 `## 业务规则` 节不存在 (对账来源: 该节的 `- 规则N:` 列表项)",
                 )
             elif br_entries[key]:
                 v.add(

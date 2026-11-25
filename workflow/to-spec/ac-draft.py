@@ -131,8 +131,8 @@ def _reading_view(markdown: str, draft: str) -> str:
     if len(cases) != expected:
         raise checker.ValidationError("Gherkin 数据未完整展开, 停止生成预览")
 
-    entries = {"G": checker.extract_entry_texts(markdown, "目标"),
-               "BR": checker.extract_entry_texts(markdown, "业务规则")}
+    entries = {"目标": checker.extract_entry_texts(markdown, "目标"),
+               "规则": checker.extract_entry_texts(markdown, "业务规则")}
     output = [f'<h2>{html.escape(feature["name"])}</h2>',
               f'<p>{len(scenarios)} 个场景, 展开为 {len(cases)} 张阅读卡片. 同一验收编号的分支和数据不另编编号.</p>']
     if document["comments"]:
@@ -164,8 +164,8 @@ def _reading_view(markdown: str, draft: str) -> str:
         output.append('</ol><aside class="references"><h4>对应目标与业务规则 (原文)</h4>')
         for tag in tags:
             if tag.startswith(("@G-", "@BR-")):
-                key = tag[1:]
-                text = entries[key.split("-")[0]][key]
+                kind = "目标" if tag.startswith("@G-") else "规则"
+                text = entries[kind][checker.tag_entry_key(tag)]
                 output.append(f'<p class="reference-text">{html.escape(text)}</p>')
         output.append('</aside></article>')
     return "".join(output)

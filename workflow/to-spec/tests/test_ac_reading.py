@@ -110,8 +110,8 @@ class ReadingPreviewTests(unittest.TestCase):
         self.assertEqual(["已有情况", "已有情况", "做这件事", "应该看到"],
                          parsed.texts("step-label"))
         self.assertEqual([
-            "- G-001: 读者能看到已确认的内容.",
-            "- BR-001: 内容以当前版本为准.",
+            "- 目标1: 读者能看到已确认的内容.",
+            "- 规则1: 内容以当前版本为准.",
         ], parsed.texts("reference-text"))
         self.assertNotIn("不新增第三方依赖", "".join(parsed.texts("acceptance-card")))
         self.assertEqual(["AC-001"], [node["attrs"]["data-ac"]
@@ -182,13 +182,13 @@ class ReadingPreviewTests(unittest.TestCase):
                          parsed.texts("step-text", card=parsed.select("acceptance-card")[1]["attrs"]["id"]))
 
     def test_multiline_rule_is_shown_with_its_original_continuation(self):
-        entry = "- BR-001: 内容以当前版本为准.\n  不得展示上一版正文.\n  - 链接也必须指向当前版."
-        parsed = self.preview(base=BASE.replace("- BR-001: 内容以当前版本为准.", entry))
+        entry = "- 规则1: 内容以当前版本为准.\n  不得展示上一版正文.\n  - 链接也必须指向当前版."
+        parsed = self.preview(base=BASE.replace("- 规则1: 内容以当前版本为准.", entry))
         self.assertIn(entry, parsed.texts("reference-text"))
 
     def test_multiline_audit_rule_cannot_be_referenced_by_a_scenario(self):
-        base = BASE.replace("- BR-001: 内容以当前版本为准.",
-                            "- BR-001: 内容以当前版本为准.\n  (审计)")
+        base = BASE.replace("- 规则1: 内容以当前版本为准.",
+                            "- 规则1: 内容以当前版本为准.\n  (审计)")
         self.base.write_bytes(base.encode())
         for label, validate in (
             ("草稿校验", lambda: self.helper.checker.validate_draft(base, DRAFT)),
@@ -210,7 +210,7 @@ class ReadingPreviewTests(unittest.TestCase):
         self.assertIn(dangerous, parsed.texts("step-text"))
         self.assertIn(dangerous, parsed.texts("example-value"))
         self.assertIn(dangerous, parsed.texts("example-header"))
-        self.assertIn("- BR-001: " + dangerous, parsed.texts("reference-text"))
+        self.assertIn("- 规则1: " + dangerous, parsed.texts("reference-text"))
         scripts = [node for node in parsed.nodes if node["tag"] == "script"]
         self.assertEqual(1, len(scripts))  # 仅保留 present 所需的固定状态脚本.
         self.assertIn("__PRESENTATION_STATE__", scripts[0]["text"])
@@ -258,8 +258,8 @@ class ReadingPreviewTests(unittest.TestCase):
                 self.assertFalse(list(self.root.glob("*.html")))
 
     def test_duplicate_rule_ids_refuse_ambiguous_rule_text(self):
-        self.base.write_bytes(BASE.replace("- BR-001: 内容以当前版本为准.",
-                                           "- BR-001: 内容以当前版本为准.\n- BR-001: 相反的另一条规则.").encode())
+        self.base.write_bytes(BASE.replace("- 规则1: 内容以当前版本为准.",
+                                           "- 规则1: 内容以当前版本为准.\n- 规则1: 相反的另一条规则.").encode())
         with self.assertRaises(self.helper.checker.InputError):
             self.helper.checker.validate_draft(self.base.read_text(encoding="utf-8"), DRAFT)
         with self.assertRaises(self.helper.checker.InputError):
@@ -301,8 +301,8 @@ class ReadingPreviewTests(unittest.TestCase):
     def test_documented_example_is_valid_and_expands_to_three_cards(self):
         reference = Path(self.helper.__file__).with_name("GHERKIN.md").read_text(encoding="utf-8")
         draft = self.helper.checker.FENCE_RE.search(reference)[0] + "\n"
-        base = BASE.replace("- BR-002: 不新增第三方依赖. (审计)",
-                            "- BR-002: 同一订单的累计补发次数不超过 3 次.")
+        base = BASE.replace("- 规则2: 不新增第三方依赖. (审计)",
+                            "- 规则2: 同一订单的累计补发次数不超过 3 次.")
         parsed = self.preview(draft, base)
         self.assertEqual(3, len(parsed.select("acceptance-card")))
         self.assertEqual(["AC-001", "AC-002", "AC-002"],

@@ -21,12 +21,12 @@
           "source": "docs/changes/to-spec-grilling-and-chinese-ids/roadmap/ROADMAP.json#notes"
         },
         {
-          "content": "逐位置的改动清单 (文件:行号, 现有写法, 建议写法), 归一化映射规则, 最易漏改位置",
-          "source": "/tmp/navigate-scout/C-renumbering-scope.md"
+          "content": "逐位置的改动清单 (文件:行号), 折算规则与不改名单; 原 /tmp/navigate-scout/C-renumbering-scope.md 已随容器重置丢失, 本清单由当前工作树 grep 重建",
+          "source": "docs/changes/to-spec-grilling-and-chinese-ids/renumbering-scope.md"
         }
       ],
       "output_dir": "docs/changes/to-spec-grilling-and-chinese-ids/",
-      "status": "待处理",
+      "status": "进行中",
       "blocked_by": [],
       "artifacts": [],
       "close_summary": null
@@ -87,7 +87,9 @@
       ],
       "output_dir": "docs/changes/to-spec-grilling-and-chinese-ids/",
       "status": "待处理",
-      "blocked_by": [],
+      "blocked_by": [
+        "milestone-02"
+      ],
       "artifacts": [],
       "close_summary": null
     },
