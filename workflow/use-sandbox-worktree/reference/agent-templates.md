@@ -9,6 +9,7 @@ uv run python scripts/agent-template.py list
 uv run python scripts/agent-template.py show <名称>
 uv run python scripts/agent-template.py validate <名称>
 uv run python scripts/agent-template.py render <名称> --output <隔离目录>/snapshot.json
+uv run python scripts/agent-template.py preflight <名称> --image <镜像ref>
 ```
 
 birth 未传 `--agent-template` 就出 DECIDE, 即使只有一个候选也由我选. 收据绑定全部候选的名称/版本/内容摘要, 确认前任一模板变化都会废票; 网络/主机名/LAN/镜像仍各按其审批处理.
@@ -28,6 +29,21 @@ Codex 固定原生模型目录须含官方基础指令, 不从主机配置或 bi
 
 `2026-11-24.1` 版本: 新增 `glm-5.4` (openai-completions, 1M 窗口/128K 输出/图像输入, thinking `low/high/max`), 按用户口径只保留 OpenAI luna/sol/astra 三系最新代加 DeepSeek/GLM, 移除网关已下线型号与旧代 GPT (`gpt-6.1-sol` 等). glm-5.4 的 Model API 单价未公布, 模板目录允许模型省略 `cost` (校验改为可选, 出现时必须完整), Pi/Kimi 照常渲染该模型, 只缺价格统计; Codex 目录不受影响. glm-5.4 真实网关调用与三客户端端到端兼容尚未实测.
 
+### 镜像预检 (创建前)
+
+宿主侧 `validate` 只能证明快照符合宿主解析器; 真正写进容器的是镜像自带的 `/opt/swt-agent-config`. 两边不同步就是错配. 因此新 birth 在读取主机 Key, 建母体/daemon/容器之前先跑一次镜像预检:
+
+- 按本次 `--image` (自动匹配或显式指定都一样) 用宿主已有镜像起临时容器: `podman run --rm --pull=never --network=none --http-proxy=false --user root -i`. 不拉取镜像 (`--pull=never`), 也不让 Podman 把宿主代理变量传进容器 (`--http-proxy=false`); 无挂载, 无 `-e`, 快照只经 stdin 传入, 不装客户端配置也不读主机凭据.
+- 镜像按本地不可变 ID 引用: 一次 `podman image inspect` 同时读 `.Digest` 与 `.Id` (分两次读可能对到被重指前后的两个镜像), 预检与随后正式 `podman create` 用同一个 ID; tag 之后被重指不会造成"预检过的"与"实际建的"不是同一镜像.
+- 旧创建记录没有固定 ID 时按顺序解析: 已核对确属本创建记录的容器实际 `Image` (先过 guard 的容器 ID/标签/创建令牌/快照摘要; `ImageDigest` 与记录不符就停; `ImageDigest` 缺失时还要按镜像 ID 单次读或用 `仓库@digest` 交叉核对到同一 ID, 否则不采用) → `仓库@digest` → 记录 digest 本身是本地镜像 ID → 原 tag 单次读 (仅当读出的 digest 与记录完全吻合). 都不可解析就停 (PreconditionError), **不回退未经核对的 tag**; 只有解析成功才把 pin 写回 runtime 记录, 未核对不落盘. 注意真实 podman: `podman image inspect sha256:<存储 digest>` 会报 `image not known`, 要写 `仓库@sha256:<digest>` 才解析得到; 容器侧 `Image` 是 64 位裸 ID, `ImageDigest` 才带 `sha256:`. 旧版 `image_digest` 在 `.Digest` 缺失时会把 `.Id` 存成裸 64 位, 这种记录值按历史 ID 兼容: 已核对容器的 `Image` ID 等于它即可确认, 与 manifest digest 比较时两边归一化, `仓库@digest` 用带前缀形态; 不改写记录里的原始 digest/标签.
+- 已有容器按容器实际 `Image` ID (裸 ID 归一化后) 与固定 ID 比对, 不靠 tag 仍存在/仍指向同一镜像. 固定快照重入时, 只要正式容器还没建, 就先用**固定快照**补一次镜像内预检; 已建容器的重入不跑预检, 不影响旧容器 resume.
+- 新镜像有 `runtime.py validate` 只读动作, 直接用镜像内真实解析器校验快照. 镜像里根目录 `runtime.py` 只是 import wrapper (95 字节), 动作列表在内层 `agent_config/runtime.py`, 所以能力探针不能只读根文件: 镜像构建时写入 `/opt/swt-agent-config/agent-tool-actions` 标记 (内容 = 容器内工具支持的动作), 预检先读标记; 老镜像没有标记时才扫工具目录下的 `*.py` 实现文件找 `"validate"`. 标记与实现都不明确就按无法识别处理 (fail closed), 不从错误文案猜版本; 确认是旧入口才回落到它支持的 `state` 只读动作 (同样是只校验, 不写文件, 用一次性临时 binding). 新入口真实校验失败绝不回落 `state`, 避免把真实拒收误当成版本兼容问题.
+- 失败文案固定包含 `镜像内模板解析器不接受本次模板快照` 与目标镜像 ID, 只说怎么申请兼容镜像 (**按 [image-prep.md](image-prep.md) 审批构建/发布含兼容解析器的新 base/display/项目镜像后用 `--image` 重跑**) 和白名单内的脱敏原因; 不透传镜像应答正文或模板内容. 旧镜像要求模型 `cost` 这类字段差异就属于此类.
+- 不填假价格, 不手改快照, 不改旧容器/共享镜像. 固定快照重入与旧容器 resume 不走预检 (它们用已固定的快照/已装配置).
+- 实际影响: 预检不过就意味着当前镜像不能配当前模板. 这不是可以用 `--force` 绕过的检查, 只能先拿到兼容镜像.
+
+同理, 初始化阶段 `state` 失败时也保留白名单内的脱敏原因 (例如 `模板字段缺失/未知...`), 不再笼统报 `状态不符`.
+
 ## 固定快照与重入
 
 全部 DECIDE 答完后, 工具为本次创建保存固定快照与随机令牌, 创建记录/容器标签绑定模板契约和快照摘要. installer 核对完整容器 ID/仓库/母体/名称/令牌/摘要后才向该目标写配置, 不靠同名判定身份. 快照留在 `runtime/<identity>/agent-templates/<容器>/<令牌>/snapshot.json`.
@@ -39,7 +55,7 @@ Codex 固定原生模型目录须含官方基础指令, 不从主机配置或 bi
 ## 凭据与验收边界
 
 凭据来源由所选模板的 `credential` 指定, 只读取 JSON 的 `client_api_key` 字段. 源必须为当前账户所有的普通文件且权限 600, 拒绝符号链接; 不复制整个文件, management_key/上游 Key/OAuth 不进容器. 云/Git 等与模型共用的业务环境变量冲突须由我决定, 不自动继承或丢弃; env.conf 继承规则见 [maintenance.md](maintenance.md).
-Key 仅经 stdin 注入容器 `.config/swt-agent/client-key.json`, 属主 bolo, 文件 600/目录 700; 不进镜像/argv/create -e/SSH environment/普通日志. pi/codex/kimi 固定启动入口读取该文件并设入子进程环境, 无须 source shell 文件; `codex-d` 是 codex 的免审批/免沙箱固定入口 (`--dangerously-bypass-approvals-and-sandbox`), 仍走同一入口/Key/模板检查, 不另存凭据. 入口 wrapper 烘在 base 镜像, 改动需重建 base 并对新容器生效, 现有容器不变. 客户端配置只保存变量引用, 不写 Key 原文:
+Key 仅经 stdin 注入容器 `.config/swt-agent/client-key.json`, 属主 bolo, 文件 600/目录 700; 模板预检只传模板快照 (渲染后的客户端配置, 不含任何 Key), 不读凭据文件; `credential` 也只从模板声明的 JSON 里读 `client_api_key` 一个字段, 其他字段 (management_key/上游 Key) 与 OAuth 都不进快照/容器; 不进镜像/argv/create -e/SSH environment/普通日志. pi/codex/kimi 固定启动入口读取该文件并设入子进程环境, 无须 source shell 文件; `codex-d` 是 codex 的免审批/免沙箱固定入口 (`--dangerously-bypass-approvals-and-sandbox`), 仍走同一入口/Key/模板检查, 不另存凭据. 入口 wrapper 烘在 base 镜像, 改动需重建 base 并对新容器生效, 现有容器不变. 客户端配置只保存变量引用, 不写 Key 原文:
 
 | 客户端 | 配置引用 |
 | --- | --- |
@@ -65,6 +81,9 @@ uv run --no-project python -m unittest discover -s tests -p 'test_agent_template
 
 # 单独批准真实容器验收后, 显式指定已经存在的本地镜像. 不拉取/构建镜像.
 SWT_AGENT_PARSER_IMAGE='<已批准的本地镜像ref>' uv run --no-project python -m unittest discover -s tests -p 'test_agent_templates_codex_validation.py' -v
+
+# 检出核对 (精确目标 ref / 重入不删既有检出) 与预检边界: 真实本地 Git + 假 podman.
+uv run --no-project python -m unittest discover -s tests -p 'test_swt_clone_verify.py' -v
 ```
 
 普通测试用临时目录/假 Key/模拟 Podman/本机模拟网关. 真实容器验收须单独审批, 用独立仓库/记录根/镜像命名空间和唯一名称的一次性容器; 不跑历史 m12 birth/OAuth 夹具/全量 pytest/sync-to-pi, 不拿业务容器/母体试验.

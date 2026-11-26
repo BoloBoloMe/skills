@@ -68,6 +68,13 @@ mock env) 与纯函数归快层.
 - 镜像 `localhost/swt-m03:latest` 须带 agent-template 契约 2
   (label `run.sandbox-worktree.agent-template-contract=2`); 只需镜像, 不需要真
   模板/真 Key/真网关.
+- 镜像内解析器还要能接受当前仓库的模板快照: birth 现在会在读主机凭据/建母体/
+  建容器前, 按选定镜像跑一次只读预检 (`podman run --rm --pull=never
+  --network=none`, 见 `workflow/use-sandbox-worktree/reference/agent-templates.md`).
+  镜像 `2026.10.30-1` 这一代解析器要求模型带 `cost`, 会拒收当前模板
+  (glm-5.4 省略 `cost`), 真 birth 会在预检处 exit 2 并提示申请兼容镜像. 跑
+  m12 真容器层前先按 image-prep 审批重建 base/display/项目镜像, 或用已发布的
+  兼容镜像 ref.
 - 夹具 `SwtFixture.setUp` 自动拉起 `FakeAgentTemplate`
   (`tests/fixtures/agent_template_harness.py`): 临时模板根 + 假模板 (名
   `fixture-gateway`) + 假 Key (600 临时文件) + 本机模拟网关 (随机空闲端口,
@@ -117,3 +124,12 @@ E2E-ISSUE-02 后 m12 真 birth 要走容器内客户端检查 (pi/codex/kimi, �
   birth 重入在 stage=born 时提前返回 `已就绪 (固定模板未重装)`, 不再调
   `mark_newer_available`, 故 STATE.image.newer-available 恒 false; 且模板创建
   已把镜像 digest 固定, "重入换镜像" 被拒. 未改产品代码, 留待裁决.
+
+## 已知基线失败 (未修, 保留记录)
+
+`tests/test_agent_templates_safety.py` 有 3 条在本轮镜像预检/检出核对修复之前就红的快层用例, 未修也未绕开:
+
+- `LifecycleTests.test_verified_birth_reentry_uses_frozen_snapshot_not_latest_template`: 用例把 `configure_repo` 当"资源变更前必须失败"的桩, 但 born 重入确实会调 `configure_repo` 收敛配置.
+- `ResumeTests.test_new_and_old_ready_resume_are_separate` (legacy=True/False): 用例期望 resume 返回 0, 当前 resume 先出 DECIDE 返回 1.
+
+两处是产品行为与陈旧用例的冲突, 需单独裁决, 不在缺陷修复范围.

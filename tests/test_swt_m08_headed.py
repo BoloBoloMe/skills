@@ -293,7 +293,7 @@ class TestCreateHeadedMount(M08Case):
         repo = self.root / "repo"
         repo.mkdir(exist_ok=True)
         runtime = {"schema": m.SCHEMA, "containers": [], "stage": "daemon"}
-        image = {"ref": "localhost/test:latest", "digest": "sha256:fake"}
+        image = {"ref": "localhost/test:latest", "digest": "sha256:fake", "pin": "sha256:9999999999999999999999999999999999999999999999999999999999999999"}
         args = argparse.Namespace(name="swt-demo", hostname="swt-demo")
         fake = _FakeRun("swt-demo")
         original_run, original_wayland = m.run, m.host_wayland_socket

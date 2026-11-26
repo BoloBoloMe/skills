@@ -170,7 +170,7 @@ class TestCreateCommandMount(unittest.TestCase):
         runtime_file = records_root / "runtime" / "testid.json"
         repo = self.root / "repo"
         repo.mkdir(exist_ok=True)
-        image = {"ref": "localhost/test:latest", "digest": "sha256:fake"}
+        image = {"ref": "localhost/test:latest", "digest": "sha256:fake", "pin": "sha256:9999999999999999999999999999999999999999999999999999999999999999"}
         args = argparse.Namespace(name="swt-demo", hostname="swt-demo")
         runtime = {"schema": self.m.SCHEMA, "containers": [], "stage": "daemon"}
         fake = _FakePodman("swt-demo")
@@ -244,7 +244,7 @@ class TestOptionalMavenSettingsMount(unittest.TestCase):
             with contextlib.redirect_stderr(io.StringIO()) as err:
                 self.m.create_and_start_container(
                     argparse.Namespace(name="swt-demo", hostname="swt-demo"),
-                    self.root, {"ref": "localhost/test:latest", "digest": "sha256:fake"},
+                    self.root, {"ref": "localhost/test:latest", "digest": "sha256:fake", "pin": "sha256:9999999999999999999999999999999999999999999999999999999999999999"},
                     "feat-x", {"schema": self.m.SCHEMA, "containers": [], "stage": "daemon"},
                     records / "runtime" / "testid.json", {}, records, "testid")
         finally:

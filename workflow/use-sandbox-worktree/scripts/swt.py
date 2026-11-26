@@ -44,7 +44,8 @@ if _SCRIPT_DIR not in sys.path:
     sys.path.insert(0, _SCRIPT_DIR)
 from agent_config import template as agent_templates
 from agent_config.common import (TemplateError, filtered_env, CONTAINER_LABEL,
-                                 TOKEN_LABEL, DIGEST_LABEL, CONTRACT)
+                                 TOKEN_LABEL, DIGEST_LABEL, CONTRACT, IMAGE_ID_RE,
+                                 normalize_image_id)
 from env_docs import BIRTH_MARKER, DOC_FILES, render_docs, render_generation_section
 import network_update as network_maintenance
 import herdr_machine
@@ -2014,22 +2015,145 @@ def print_delivery_lines(
     print()
 
 
-def image_digest(ref: str) -> str:
-    result = run(["podman", "inspect", ref, "--format", "{{.Digest}}"])
+def image_repo(ref: str) -> str:
+    """ref 的仓库部分 (去 tag/digest); 不把 host:port 里的冒号当 tag."""
+    if "@" in ref:
+        return ref.split("@", 1)[0]
+    head, sep, tail = ref.rpartition(":")
+    return head if sep and "/" not in tail else ref
+
+
+def image_identity(ref: str) -> dict[str, str]:
+    """一次 inspect 同时取 .Digest 与 .Id: 两次读取之间 tag 被重指会对到不同镜像."""
+    result = run(["podman", "inspect", ref, "--format", "{{.Digest}}@@{{.Id}}"])
     if result.returncode != 0:
         raise PreconditionError(f"镜像不存在或不可 inspect: {ref}: {result.stderr.strip()}")
-    digest = result.stdout.strip()
-    if digest and digest != "<no value>":
-        return digest
-    result = run(["podman", "inspect", ref, "--format", "{{.Id}}"])
-    if result.returncode != 0 or not result.stdout.strip():
-        raise PreconditionError(f"镜像没有可用 digest: {ref}")
-    return result.stdout.strip()
+    digest_value, _, raw_id = result.stdout.strip().partition("@@")
+    digest_value, image_id = digest_value.strip(), normalize_image_id(raw_id.strip())
+    if not image_id:
+        raise PreconditionError(f"镜像没有可用本地 ID: {ref}")
+    return {"digest": digest_value if digest_value and digest_value != "<no value>" else image_id,
+            "pin": image_id}
+
+
+def image_digest(ref: str) -> str:
+    return image_identity(ref)["digest"]
+
+
+def verified_container_image(
+    runtime: dict[str, Any] | None, record: dict[str, Any] | None, name: str
+) -> tuple[str, str] | None:
+    """已核对属于本创建记录的容器实际 (Image ID, ImageDigest).
+
+    guard 核对容器 ID/标签/创建令牌/快照摘要后才取 Image, 同名但不同源的容器不用;
+    读不到或不合法返回 None. ImageDigest 可能为空, 由调用方再交叉核对.
+    """
+    if isinstance(record, dict) and record.get("name") == name and isinstance(runtime, dict):
+        result = run(["podman", "inspect", name])
+        if result.returncode == 0:
+            try:
+                detail = json.loads(result.stdout)[0]
+                agent_templates.guard(detail, runtime, record)
+                image_id = normalize_image_id(detail.get("Image"))
+                if image_id:
+                    recorded = detail.get("ImageDigest")
+                    return image_id, recorded if isinstance(recorded, str) else ""
+            except (TemplateError, ValueError, IndexError, TypeError, AttributeError):
+                return None
+    return None
+
+
+def image_matches_record(recorded: Any, identity: dict[str, str]) -> bool:
+    """记录里的 image-digest 可能是 manifest digest, 也可能是旧版 .Digest 缺失时回退的裸 .Id.
+
+    两边归一化后, 与当前镜像的 manifest digest 或本地 ID 任一相同就算同一镜像;
+    不修改记录里的原始值.
+    """
+    value = normalize_image_id(recorded if isinstance(recorded, str) else "")
+    return bool(value) and value in {identity["digest"], identity["pin"]}
+
+
+def image_matches_digest(image_id: str, digest: str, image: dict[str, Any]) -> bool:
+    """核对本地镜像 ID 就是记录的 digest: 按 ID 单次读, 或 repo@digest 解析到同一 ID.
+
+    ImageDigest 缺失时不许只凭同一个容器名持久化 pin.
+    """
+    try:
+        if image_identity(image_id)["digest"] == digest:
+            return True
+    except PreconditionError:
+        return False
+    ref = image.get("ref") if isinstance(image.get("ref"), str) else ""
+    if ref:
+        result = run(["podman", "image", "inspect", f"{image_repo(ref)}@{digest}", "--format", "{{.Id}}"])
+        if result.returncode == 0 and normalize_image_id(result.stdout.strip()) == image_id:
+            return True
+    return False
+
+
+def resolve_image_pin(
+    image: dict[str, Any], *, binding: tuple[str, str] | None = None
+) -> str:
+    """返回不可变本地镜像 ID.
+
+    顺序: 记录里的 pin → 已核对绑定的容器实际 Image (用 ImageDigest 核对记录, 缺失则
+    交叉核对) → repo@digest → 记录 digest 本身是本地 ID → 原 tag 单次读 (仅当 digest
+    完全吻合). 都不完全匹配就停, 不回退到可能已被重指的 tag.
+    """
+    pin = image.get("pin")
+    if isinstance(pin, str) and re.fullmatch(IMAGE_ID_RE, pin):
+        return pin
+    recorded = image.get("digest")
+    # 旧版 image_digest 在 .Digest 缺失时回退保存裸 .Id; 只在本处归一化比较, 不改记录原值.
+    digest = normalize_image_id(recorded if isinstance(recorded, str) else "")
+    if not digest:
+        raise PreconditionError("创建记录没有固定镜像 ID/digest, 不能用可变 tag 创建或启动; 请人工核对镜像后重新 birth")
+    if binding is not None:
+        image_id, container_digest = binding
+        if container_digest == digest:
+            return image_id
+        if container_digest:
+            # 记录值是裸历史 ID 时, 容器 Image ID 等于它就是同一镜像 (manifest digest 与 ID 不同命名空间).
+            if image_id == digest:
+                return image_id
+            raise PreconditionError(
+                f"记录镜像 digest {digest} 与容器实际 ImageDigest {container_digest} 不符, 不接管该容器")
+        # ImageDigest 缺失: 只凭同名容器名不落 pin, 必须另证该 Image 就是记录 digest.
+        if image_matches_digest(image_id, digest, image):
+            return image_id
+    ref = image.get("ref") if isinstance(image.get("ref"), str) else ""
+    candidates = [f"{image_repo(ref)}@{digest}"] if ref else []
+    candidates.append(digest)
+    for candidate in candidates:
+        result = run(["podman", "image", "inspect", candidate, "--format", "{{.Id}}"])
+        resolved = normalize_image_id(result.stdout.strip())
+        if result.returncode == 0 and resolved:
+            return resolved
+    if ref:
+        # 最后才碰 tag, 且只在单次读取的 digest 与记录完全吻合时采用.
+        try:
+            identity = image_identity(ref)
+        except PreconditionError:
+            identity = None
+        if identity is not None and identity["digest"] == digest:
+            return identity["pin"]
+    raise PreconditionError(
+        f"记录的镜像 digest {digest} 在本地不可解析, 不用可变 tag 代替; "
+        "重新准备镜像后重跑 birth, 或按 terminate 保护流程处理该记录")
+
+
+def image_reference(image: dict[str, Any]) -> str:
+    """预检/创建用的镜像引用: 只接受固定本地 ID, 没有就停 (birth 先补 pin)."""
+    pin = image.get("pin")
+    if isinstance(pin, str) and re.fullmatch(IMAGE_ID_RE, pin):
+        return pin
+    raise PreconditionError("创建前缺固定镜像 ID, 拒绝用可变 tag 预检或建容器")
 
 
 def prepare_image(args: argparse.Namespace, repo: Path, records_root: Path) -> dict[str, Any]:
     if args.image:
-        return {"ref": args.image, "digest": image_digest(args.image), "verdict": "EXPLICIT", "newer-available": False}
+        return {"ref": args.image, **image_identity(args.image),
+                "verdict": "EXPLICIT", "newer-available": False}
     requirements = Path(args.requirements).expanduser() if args.requirements else (
         records_root / resolve_project_slug(repo) / "requirements.md"
     )
@@ -2048,7 +2172,10 @@ def prepare_image(args: argparse.Namespace, repo: Path, records_root: Path) -> d
             fields[key] = value
     verdict = fields.get("verdict")
     if verdict == "REUSE" and fields.get("image") and fields.get("digest"):
-        return {"ref": fields["image"], "digest": fields["digest"], "verdict": verdict, "newer-available": False}
+        identity = image_identity(fields["image"])
+        if identity["digest"] != fields["digest"]:
+            raise PreconditionError("匹配结果与当前镜像 digest 不一致 (tag 可能刚被重指), 重跑 image-prep match 后再 birth")
+        return {"ref": fields["image"], **identity, "verdict": verdict, "newer-available": False}
     if verdict == "BUILD-NEW":
         return {"ref": None, "digest": None, "verdict": verdict, "newer-available": False, "reason": fields.get("reason", "requirements 不匹配")}
     raise PreconditionError(f"image-prep match 输出无法识别: {result.stdout.strip()!r}")
@@ -2064,7 +2191,9 @@ def mark_newer_available(image: dict[str, Any], runtime: dict[str, Any] | None) 
         if not isinstance(record, dict) or record.get("state") != "running":
             continue
         running_digest = record.get("image-digest")
-        if isinstance(running_digest, str) and running_digest and running_digest != digest:
+        # 旧记录可能是裸历史 ID: 两边归一化后再比, 不把同一镜像误报成更新候选.
+        if (isinstance(running_digest, str) and running_digest
+                and normalize_image_id(running_digest) != normalize_image_id(digest)):
             result["newer-available"] = True
             break
     return result
@@ -2847,6 +2976,13 @@ def container_exists(name: str) -> bool:
 def create_and_start_container(args: argparse.Namespace, repo: Path, image: dict[str, Any], branch: str, runtime: dict[str, Any], runtime_file: Path, env: dict[str, str], records_root: Path, identity: str, headed_script: Path | None = None) -> dict[str, Any]:
     name = args.name or container_default_name(branch)
     existing = run(["podman", "inspect", name])
+    # 固定镜像 ID: 创建与既有容器核对都用它, 不按 tag 判定, 也不允许退回可变 tag.
+    # 同名容器只有在 guard 核对确属本创建记录后才用它的 Image 参与解析.
+    existing_record = None
+    if existing.returncode == 0 and isinstance(runtime.get("containers"), list):
+        existing_record = next((item for item in runtime["containers"]
+                                if isinstance(item, dict) and item.get("name") == name), None)
+    image_ref = resolve_image_pin(image, binding=verified_container_image(runtime, existing_record, name))
     if existing.returncode == 0:
         records = runtime.get("containers", [])
         record = next((item for item in records if isinstance(item, dict) and item.get("name") == name), None)
@@ -2874,9 +3010,13 @@ def create_and_start_container(args: argparse.Namespace, repo: Path, image: dict
             raise PreconditionError(f"容器名已存在: {name}, 但不属于当前 runtime")
         if runtime.get("agent-template"):
             try:
-                agent_templates.guard(json.loads(existing.stdout)[0], runtime, record)
+                detail = json.loads(existing.stdout)[0]
+                agent_templates.guard(detail, runtime, record)
             except (TemplateError, ValueError, IndexError, TypeError, AttributeError) as exc:
                 raise PreconditionError("模板创建绑定不符, 不启动/改写已有容器") from exc
+            # 真实镜像绑定: 比容器的 Image ID (容器侧给裸 ID), 不依赖 tag 仍存在.
+            if normalize_image_id(detail.get("Image")) != image_ref:
+                raise PreconditionError("同名容器实际镜像与本次创建记录不同, 不启动/不改写")
         refreshed = refresh_container(name, record, runtime, runtime_file)
         refreshed["headed-script"] = record.get("headed-script")
         return refreshed
@@ -2956,7 +3096,7 @@ def create_and_start_container(args: argparse.Namespace, repo: Path, image: dict
     command.extend(["-p", "22"])
     for web_port in WEB_CONTAINER_PORTS:
         command.extend(["-p", str(web_port)])
-    command.append(str(image["ref"]))
+    command.append(image_ref)
     created = run(command)
     if created.returncode != 0:
         raise SwtError(3, "PARTIAL", f"容器 create 失败: {created.stderr.strip()}")
@@ -3044,25 +3184,150 @@ def inject_git_identity(key: Path, port: int) -> None:
               file=sys.stderr)
 
 
-def assert_container_clone(container: dict[str, Any], key: Path, branch: str, remote: str) -> None:
-    port = int(container["port"])
-    clone_dir = f"/home/bolo/Workspace/{branch}"
-    command = (
-        f"rm -rf {shlex.quote(clone_dir)} && "
-        f"git clone -b {shlex.quote(branch)} {shlex.quote(remote)} {shlex.quote(clone_dir)}"
+CLONE_DIR_ROOT = "/home/bolo/Workspace"
+
+
+def host_branch_head(mother: Path, branch: str) -> str:
+    """宿主母体分支提交. show-ref 只读 ref 文件, 不经 refs/replace 解析对象."""
+    result = run(["git", "-C", str(mother), "show-ref", "--verify", "--hash", f"refs/heads/{branch}"])
+    head = result.stdout.strip()
+    if result.returncode != 0 or not re.fullmatch(r"[0-9a-f]{40,64}", head):
+        raise SwtError(3, "PARTIAL", f"读取宿主分支 refs/heads/{branch} 提交失败: {result.stderr.strip()}")
+    return head
+
+
+def clone_probe_command(clone_dir: str, branch: str) -> str:
+    """一次 ssh 取齐检出事实, 每项同时报退出码.
+
+    输出格式: `@@<tag>-rc <code>` 与 `@@<tag> <值>`. 退出码与输出分开取,
+    不经管道掩盖 (坏 index/桥不可达时 git status/ls-remote 会非零).
+    """
+    directory = shlex.quote(clone_dir)
+    ref = shlex.quote(f"refs/heads/{branch}")
+    steps = (
+        ("inside", f"git -C {directory} rev-parse --is-inside-work-tree"),
+        ("toplevel", f"git -C {directory} rev-parse --show-toplevel"),
+        ("remote", f"git -C {directory} remote get-url origin"),
+        ("branch", f"git -C {directory} branch --show-current"),
+        ("head", f"git -C {directory} rev-parse --verify HEAD"),
+        ("local", f"git -C {directory} rev-parse --verify {ref}"),
+        ("remote-ref", f"git -C {directory} ls-remote origin {ref}"),
+        ("status", f"git -C {directory} status --porcelain --untracked-files=all"),
     )
-    result = ssh_command(key, port, command, timeout=30)
+    lines = [
+        "probe() { tag=$1; shift; out=$(\"$@\" 2>/dev/null); rc=$?;"
+        " printf '@@%s-rc %s\\n@@%s %s\\n' \"$tag\" \"$rc\" \"$tag\""
+        " \"$(printf '%s' \"$out\" | tr '\\n' '|')\"; }"
+    ]
+    lines.extend(f"probe {tag} {command}" for tag, command in steps)
+    return "; ".join(lines)
+
+
+def parse_clone_probe(output: str) -> tuple[dict[str, str], dict[str, str]]:
+    """返回 (值, 退出码). 同名记录取首个, 缺记视为不可读."""
+    probe: dict[str, str] = {}
+    codes: dict[str, str] = {}
+    for line in output.splitlines():
+        if not line.startswith("@@") or " " not in line:
+            continue
+        tag, _, value = line[2:].partition(" ")
+        if tag.endswith("-rc"):
+            codes.setdefault(tag[:-3], value.strip())
+        else:
+            probe.setdefault(tag, value.strip())
+    return probe, codes
+
+
+def clone_commit_relation(key: Path, port: int, clone_dir: str, host_head: str, local_head: str) -> str:
+    """容器分支与宿主分支的关系说明. --no-replace-objects 排除容器内可配替换引用."""
+    if not re.fullmatch(r"[0-9a-f]{40,64}", local_head):
+        return "容器检出提交不可读"
+    directory = shlex.quote(clone_dir)
+    ahead = ssh_command(
+        key, port,
+        f"git --no-replace-objects -C {directory} merge-base --is-ancestor {host_head} {local_head}",
+    )
+    if ahead.returncode == 0:
+        return "容器分支有未推送到宿主分支的提交"
+    behind = ssh_command(
+        key, port,
+        f"git --no-replace-objects -C {directory} merge-base --is-ancestor {local_head} {host_head}",
+    )
+    if behind.returncode == 0:
+        return "容器检出落后于宿主分支"
+    return "容器检出提交与宿主分支不同"
+
+
+def verify_container_clone(key: Path, port: int, branch: str, remote: str, head: str) -> None:
+    """精确核对目标 ref 与检出事实. 不合格只报告, 不删除/不重克隆既有检出."""
+    clone_dir = f"{CLONE_DIR_ROOT}/{branch}"
+    result = ssh_command(key, port, clone_probe_command(clone_dir, branch), timeout=30)
     if result.returncode != 0:
-        raise SwtError(3, "PARTIAL", f"容器 clone 失败: {result.stderr.strip()}")
-    current = ssh_command(key, port, f"git -C {shlex.quote(clone_dir)} branch --show-current")
-    if current.returncode != 0 or current.stdout.strip() != branch:
-        raise SwtError(3, "PARTIAL", f"容器检出分支错误: {current.stdout.strip()!r}")
-    refs = ssh_command(key, port, f"git -C {shlex.quote(clone_dir)} ls-remote origin")
-    if refs.returncode != 0:
-        raise SwtError(3, "PARTIAL", f"容器 ls-remote 失败: {refs.stderr.strip()}")
-    advertised = [line.split()[1] for line in refs.stdout.splitlines() if len(line.split()) >= 2 and line.split()[1] != "HEAD"]
-    if advertised != [f"refs/heads/{branch}"]:
-        raise SwtError(3, "PARTIAL", f"daemon 读面越权: {advertised!r}")
+        raise SwtError(3, "PARTIAL", f"容器检出核对失败, 原样保留: {result.stderr.strip()}")
+    probe, codes = parse_clone_probe(result.stdout)
+
+    def mismatch(reason: str) -> SwtError:
+        return SwtError(
+            3, "PARTIAL",
+            f"容器检出不符 ({reason}), 已原样保留未删除/未重克隆: {clone_dir}; "
+            "人工确认该检出后可删, 或按现有 runtime/容器状态恢复后重跑同一 birth",
+        )
+
+    def unreadable(tag: str, what: str) -> SwtError:
+        return mismatch(f"{what}不可读 (探针 {tag} 退出码 {codes.get(tag, '缺失')})")
+
+    if codes.get("inside") != "0" or probe.get("inside") != "true":
+        raise mismatch(f"不是预期路径的 Git 工作树 (探针 inside 退出码 {codes.get('inside', '缺失')})")
+    if codes.get("toplevel") != "0" or probe.get("toplevel") != clone_dir:
+        raise mismatch("不是预期路径的 Git 工作树")
+    if codes.get("remote") != "0":
+        raise unreadable("remote", "origin 配置")
+    if probe.get("remote") != remote:
+        raise mismatch("origin 不是本对固定 Git 桥")
+    if codes.get("branch") != "0":
+        raise unreadable("branch", "检出分支")
+    if probe.get("branch") != branch:
+        raise mismatch(f"检出分支不是 {branch}")
+    if codes.get("head") != "0" or codes.get("local") != "0":
+        raise unreadable("head" if codes.get("head") != "0" else "local", "检出提交")
+    if codes.get("remote-ref") != "0":
+        raise mismatch(f"桥不可达或拒绝查询 refs/heads/{branch} (探针退出码 {codes.get('remote-ref')})")
+    advertised = [item for item in probe.get("remote-ref", "").split("|") if item.strip()]
+    if len(advertised) != 1 or advertised[0].split()[1:] != [f"refs/heads/{branch}"]:
+        raise mismatch(f"桥未唯一公布 refs/heads/{branch}")
+    if advertised[0].split()[0] != head:
+        raise mismatch(f"桥公布的 refs/heads/{branch} 提交与宿主分支不同")
+    if codes.get("status") != "0":
+        raise unreadable("status", "工作区状态")
+    if probe.get("status"):
+        raise mismatch("工作树有未提交改动")
+    if probe.get("head") != head or probe.get("local") != head:
+        raise mismatch(clone_commit_relation(key, port, clone_dir, head, probe.get("local", "")))
+
+
+def assert_container_clone(container: dict[str, Any], key: Path, branch: str, remote: str, mother: Path) -> None:
+    """首个 clone 或中断后重入. 既有检出只在核对通过时复用, 未知/脏/提交不符一律保留并报错."""
+    port = int(container["port"])
+    clone_dir = f"{CLONE_DIR_ROOT}/{branch}"
+    head = host_branch_head(mother, branch)
+    presence = ssh_command(
+        key, port,
+        f"if [ -e {shlex.quote(clone_dir)} ]; then echo present; else echo absent; fi",
+    )
+    state = presence.stdout.strip()
+    if presence.returncode != 0:
+        raise SwtError(3, "PARTIAL", f"容器检出路径检查失败: {presence.stderr.strip()}")
+    if state == "absent":
+        cloned = ssh_command(
+            key, port,
+            f"git clone -b {shlex.quote(branch)} {shlex.quote(remote)} {shlex.quote(clone_dir)}",
+            timeout=30,
+        )
+        if cloned.returncode != 0:
+            raise SwtError(3, "PARTIAL", f"容器 clone 失败: {cloned.stderr.strip()}")
+    elif state != "present":
+        raise SwtError(3, "PARTIAL", f"容器检出路径状态不可读: {state!r}")
+    verify_container_clone(key, port, branch, remote, head)
 
 
 def birth_display_gate_reentry(
@@ -3349,7 +3614,7 @@ def birth(args: argparse.Namespace, repo: Path) -> int:
         raise PreconditionError(conflict)
     if fixed_meta:
         image = runtime_existing["image"]
-        if args.image and image_digest(args.image) != fixed_meta["image-digest"]:
+        if args.image and not image_matches_record(fixed_meta["image-digest"], image_identity(args.image)):
             raise PreconditionError("同一次创建的镜像已固定, 不允许重入换镜像")
     else:
         image = mark_newer_available(prepare_image(args, repo, records_root), runtime_existing)
@@ -3444,10 +3709,33 @@ def birth(args: argparse.Namespace, repo: Path) -> int:
     env_map, removed_env = template_call(filtered_env, load_inherited_env(records_root, resolve_project_slug(repo)))
     if removed_env:
         print("[SWT] 模板过滤模型/配置变量 (不显示值): " + ", ".join(removed_env), file=sys.stderr)
+    # 旧 runtime 记录只有 digest 没有 pin 时, 只用固定 digest 在本地解析不可变 ID;
+    # 解析不出就停, 不拿可能已被重指的 tag 去预检或创建. 放在全部 DECIDE 之后:
+    # 无镜像的 BUILD-NEW 必须先出 image-build 决策, 不能先解析不存在的 ref/digest.
+    if image.get("ref") and not (isinstance(image.get("pin"), str) and re.fullmatch(IMAGE_ID_RE, image["pin"])):
+        record = None
+        if isinstance(runtime_existing, dict):
+            record = next((item for item in runtime_existing.get("containers", [])
+                           if isinstance(item, dict) and item.get("name") == args.name), None)
+        binding = verified_container_image(runtime_existing, record, args.name)
+        image["pin"] = resolve_image_pin(image, binding=binding)
+        if runtime_existing is not None:
+            runtime_existing["image"] = image
+            atomic_write_json(runtime_file, runtime_existing)
     # 凭据/镜像兼容性失败时, 尚未创建母体/daemon/容器.
-    template_call(agent_templates.image_compatible, str(image["ref"]))
+    # 预检与正式创建共用同一本地不可变镜像 ID.
+    image_ref = image_reference(image)
+    template_call(agent_templates.image_compatible, image_ref)
+    if fixed_meta and not container_exists(args.name):
+        # 固定快照重入且正式容器还没建: 先用固定快照补一次镜像内预检.
+        # 已有容器的重入不再跑, 不影响旧容器 resume/重入.
+        template_call(agent_templates.preflight, image_ref, fixed)
     if not fixed_meta:
-        template_call(agent_templates.credential, agent_templates.snapshot(bundle))
+        # 镜像内真实解析器的只读预检: 在读取主机凭据/建母体/建容器前拦住不兼容镜像.
+        # 固定快照重入和旧容器 resume 不走这里.
+        candidates = template_call(agent_templates.snapshot, bundle)
+        template_call(agent_templates.preflight, image_ref, candidates)
+        template_call(agent_templates.credential, candidates)
         snapshot_path = records_root / "runtime" / identity / "agent-templates" / args.name / "snapshot.json"
         fixed_meta = template_call(agent_templates.creation, snapshot_path, bundle, args.name, str(image["digest"]))
         fixed_meta["hostname"] = args.hostname
@@ -3548,7 +3836,7 @@ def birth(args: argparse.Namespace, repo: Path) -> int:
         # 重入 (容器已在) 不重生成, 挂载维持旧容器既有状态.
         headed_script = None
         if not container_existed:
-            chromium_path = resolve_container_chromium_path(image["ref"])
+            chromium_path = resolve_container_chromium_path(image_ref)
             if chromium_path is not None:
                 headed_script = stage_headed_browser_script(records_root, identity, chromium_path)
         container = create_and_start_container(args, repo, image, branch, runtime, runtime_file, env_map, records_root, identity, headed_script=headed_script)
@@ -3605,7 +3893,7 @@ def birth(args: argparse.Namespace, repo: Path) -> int:
         ensure_herdr_machine(records_root, identity, runtime, runtime_file, container["record"])
         inject_git_identity(key, container["port"])
         if not container["record"].get("clone-ready"):
-            assert_container_clone(container, key, branch, remote)
+            assert_container_clone(container, key, branch, remote, mother_dir)
             container["record"]["clone-ready"] = True
             upsert_container_record(runtime, container["record"], runtime_file)
         initialize_agent_template(runtime, runtime_file, container["name"])

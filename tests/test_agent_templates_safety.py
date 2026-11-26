@@ -30,6 +30,7 @@ from agent_config import common, launch, runtime, template
 KEY = "fake-client-key-not-real-12345678"
 MANAGEMENT = "fake-management-must-not-copy-99"
 CID = "a" * 64
+IMAGE_ID = "sha256:" + "a" * 64
 
 
 def load_script(name, file):
@@ -62,7 +63,7 @@ class TemporaryCase(unittest.TestCase):
         record = {"name": "testbox", "branch": "topic", "podman-id": CID,
                   "image-digest": "sha256:fake", "retired": False, "agent-template": dict(meta)}
         state = {"repo": str(self.root / "repo"), "agent-template": meta, "containers": [record]}
-        detail = {"Id": CID, "Name": "/testbox", "State": {"Status": "running"},
+        detail = {"Id": CID, "Image": IMAGE_ID, "Name": "/testbox", "State": {"Status": "running"},
                   "Config": {"Labels": {common.CONTAINER_LABEL: str(common.CONTRACT),
                      common.TOKEN_LABEL: meta["creation-token"], common.DIGEST_LABEL: meta["snapshot-digest"],
                      "sandbox-worktree.repo": state["repo"], "sandbox-worktree.mother": "topic",
@@ -380,6 +381,32 @@ class HostBindingTests(TemporaryCase):
         self.assertNotIn(KEY, str(error.exception))
         self.assertNotIn(MANAGEMENT, str(error.exception))
 
+    def test_state_failure_keeps_allowlisted_reason_only(self):
+        # 旧镜像解析器拒收快照时 state 以非零退出; 原因在 stderr 的固定 JSON 里.
+        reason = "模板字段缺失/未知, 不允许安装命令或额外凭据"
+        for reported, expected in ((reason, reason), ("reflected " + KEY, "")):
+            with self.subTest(reported=reported):
+                state, detail = self.binding()
+
+                def captured(cmd, **kwargs):
+                    if cmd[:2] == ["podman", "inspect"]:
+                        return subprocess.CompletedProcess(cmd, 0, json.dumps([detail]), "")
+                    if cmd[-1] == "state":
+                        return subprocess.CompletedProcess(cmd, 2, KEY, json.dumps({"error": reported}))
+                    raise AssertionError("state 失败后不得继续 install/check")
+
+                with mock.patch.object(template, "captured", captured), \
+                        mock.patch.object(template, "credential", side_effect=AssertionError("must not read host key")):
+                    with self.assertRaises(common.TemplateError) as error:
+                        template.operate(state, "testbox", install=True)
+                message = str(error.exception)
+                self.assertIn("新容器初始化状态不符", message)
+                self.assertNotIn(KEY, message)
+                if expected:
+                    self.assertIn(expected, message)
+                else:
+                    self.assertNotIn("reflected", message)
+
 
 class GatewayTests(TemporaryCase):
     def setUp(self):
@@ -443,6 +470,287 @@ class GatewayTests(TemporaryCase):
         self.assertEqual(other_calls, [])
 
 
+class PreflightTests(TemporaryCase):
+    """birth 前置的镜像内只读模板预检: 固定镜像 ID, 无网络/挂载/凭据, 不安装, 不拉取."""
+
+    PIN = "sha256:" + "b" * 64
+
+    def fake(self, *, has_validate=True, capability_rc=None, validate_rc=0, validate_report="",
+             state_rc=0, state_report=""):
+        calls = []
+
+        def captured(cmd, **kwargs):
+            calls.append((cmd, kwargs))
+            if cmd[:3] == ["podman", "image", "inspect"]:
+                return subprocess.CompletedProcess(cmd, 0, self.PIN + "\n", "")
+            if "-c" in cmd:
+                rc = capability_rc if capability_rc is not None else (0 if has_validate else 1)
+                return subprocess.CompletedProcess(cmd, rc, "", "")
+            if cmd[-1] == "validate":
+                if validate_rc == 0:
+                    report = {"ok": True, "contract": common.CONTRACT,
+                              "snapshot-digest": self.value["snapshot-digest"]}
+                    return subprocess.CompletedProcess(cmd, 0, json.dumps(report), "")
+                return subprocess.CompletedProcess(cmd, validate_rc, "", validate_report)
+            if cmd[-1] == "state":
+                if state_rc == 0:
+                    return subprocess.CompletedProcess(cmd, 0, json.dumps({"installed": False}), "")
+                return subprocess.CompletedProcess(cmd, state_rc, "", state_report)
+            raise AssertionError("未预期的命令: " + " ".join(cmd))
+
+        return calls, mock.patch.object(template, "captured", captured)
+
+    def assert_offline_readonly(self, command):
+        self.assertEqual(command[:2], ["podman", "run"])
+        for flag in ("--rm", "--pull=never", "--network=none", "--http-proxy=false", "-i"):
+            self.assertIn(flag, command)
+        for flag in ("-v", "--volume", "-e", "--env", "--privileged", "--pull=always", "--pull=newer"):
+            self.assertNotIn(flag, command)
+        self.assertIn(self.PIN, command)
+
+    def runs(self, calls):
+        return [command for command, _ in calls if command[:2] == ["podman", "run"]]
+
+    def test_new_image_preflight_pins_local_id_and_blocks_proxy(self):
+        calls, boundary = self.fake()
+        with boundary:
+            pinned = template.preflight("localhost/new:1", self.value)
+        self.assertEqual(pinned, self.PIN)
+        commands = self.runs(calls)
+        self.assertEqual(["probe" if "-c" in command else command[-1] for command in commands],
+                         ["probe", "validate"])
+        for command in commands:
+            self.assert_offline_readonly(command)
+            self.assertNotIn("localhost/new:1", command)
+        payload = json.loads(calls[-1][1]["input"])
+        self.assertEqual(set(payload), {"snapshot"})
+        self.assertEqual(payload["snapshot"], self.value)
+        self.assertNotIn(KEY, calls[-1][1]["input"])
+        self.assertNotIn(MANAGEMENT, calls[-1][1]["input"])
+
+    def test_legacy_entry_is_identified_before_any_validate_call(self):
+        calls, boundary = self.fake(has_validate=False)
+        with boundary:
+            template.preflight("localhost/old:1", self.value)
+        actions = ["probe" if "-c" in command else command[-1] for command in self.runs(calls)]
+        self.assertEqual(actions, ["probe", "state"])
+        binding = json.loads(calls[-1][1]["input"])["binding"]
+        self.assertRegex(binding["creation-token"], r"^[0-9a-f]{32}$")
+        self.assertRegex(binding["container-id"], r"^[0-9a-f]{64}$")
+        self.assertNotIn(KEY, calls[-1][1]["input"])
+
+    def test_new_entry_real_rejection_never_falls_back_to_state(self):
+        reason = "模板字段缺失/未知, 不允许安装命令或额外凭据"
+        calls, boundary = self.fake(validate_rc=2, validate_report=json.dumps({"error": reason}))
+        with boundary:
+            with self.assertRaises(common.TemplateError) as error:
+                template.preflight("localhost/new:1", self.value)
+        message = str(error.exception)
+        self.assertIn(reason, message)
+        self.assertIn("image-prep", message)
+        self.assertIn("--image", message)
+        self.assertIn("不补假价格", message)
+        self.assertIn(self.PIN, message)
+        self.assertNotIn("state", [command[-1] for command in self.runs(calls)])
+
+    def test_new_entry_tool_guard_failure_is_not_a_version_fallback(self):
+        calls, boundary = self.fake(
+            validate_rc=2, validate_report=json.dumps({"error": template.LEGACY_TOOL_REASON}))
+        with boundary:
+            with self.assertRaises(common.TemplateError) as error:
+                template.preflight("localhost/new:1", self.value)
+        self.assertIn("自检失败", str(error.exception))
+        self.assertNotIn("state", [command[-1] for command in self.runs(calls)])
+
+    def test_unidentifiable_tool_version_fails_closed(self):
+        calls, boundary = self.fake(capability_rc=2)
+        with boundary:
+            with self.assertRaises(common.TemplateError) as error:
+                template.preflight("localhost/new:1", self.value)
+        self.assertIn("无法确认", str(error.exception))
+        self.assertEqual(len(self.runs(calls)), 1)
+
+    def test_legacy_state_must_report_not_installed(self):
+        # state 报 installed=true 时不能当预检通过.
+        calls = []
+
+        def captured(cmd, **kwargs):
+            calls.append(cmd)
+            if cmd[:3] == ["podman", "image", "inspect"]:
+                return subprocess.CompletedProcess(cmd, 0, self.PIN + "\n", "")
+            if "-c" in cmd:
+                return subprocess.CompletedProcess(cmd, 1, "", "")
+            return subprocess.CompletedProcess(cmd, 0, json.dumps({"installed": True}), "")
+
+        with mock.patch.object(template, "captured", captured):
+            with self.assertRaises(common.TemplateError) as error:
+                template.preflight("localhost/old:1", self.value)
+        self.assertIn("不是未安装", str(error.exception))
+
+    def test_legacy_parser_rejection_reports_how_to_get_compatible_image(self):
+        reason = "模板字段缺失/未知, 不允许安装命令或额外凭据"
+        calls, boundary = self.fake(has_validate=False, state_rc=2,
+                                    state_report=json.dumps({"error": reason}))
+        with boundary:
+            with self.assertRaises(common.TemplateError) as error:
+                template.preflight("localhost/old:1", self.value)
+        message = str(error.exception)
+        self.assertIn(reason, message)
+        self.assertIn("image-prep", message)
+        self.assertIn("--image", message)
+        self.assertIn("不补假价格", message)
+
+    def test_missing_or_wrong_preflight_report_is_rejected(self):
+        for stdout in ('{"ok":true}', json.dumps({"ok": True, "contract": common.CONTRACT,
+                                                  "snapshot-digest": "sha256:" + "c" * 64})):
+            with self.subTest(stdout=stdout):
+                calls = []
+
+                def captured(cmd, **kwargs):
+                    calls.append(cmd)
+                    if cmd[:3] == ["podman", "image", "inspect"]:
+                        return subprocess.CompletedProcess(cmd, 0, self.PIN + "\n", "")
+                    if "-c" in cmd:
+                        return subprocess.CompletedProcess(cmd, 0, "", "")
+                    return subprocess.CompletedProcess(cmd, 0, stdout, "")
+
+                with mock.patch.object(template, "captured", captured):
+                    with self.assertRaises(common.TemplateError):
+                        template.preflight("localhost/new:1", self.value)
+
+    def test_non_allowlisted_response_is_not_forwarded(self):
+        reflected = json.dumps({"error": KEY})
+        calls, boundary = self.fake(validate_rc=2, validate_report=reflected)
+        with boundary:
+            with self.assertRaises(common.TemplateError) as error:
+                template.preflight("localhost/new:1", self.value)
+        self.assertNotIn(KEY, str(error.exception))
+        self.assertNotIn(MANAGEMENT, str(error.exception))
+        self.assertIn("不接受本次模板快照", str(error.exception))
+
+    def test_image_must_exist_locally(self):
+        def captured(cmd, **kwargs):
+            return subprocess.CompletedProcess(cmd, 1, "", "no such image")
+
+        with mock.patch.object(template, "captured", captured):
+            with self.assertRaises(common.TemplateError) as error:
+                template.preflight("localhost/missing:1", self.value)
+        self.assertIn("不能预检", str(error.exception))
+
+    def test_cli_pin_image_normalizes_bare_local_id(self):
+        calls = []
+
+        def fake(command, **kwargs):
+            calls.append(command)
+            return subprocess.CompletedProcess(command, 0, "a" * 64 + "\n", "")
+
+        with mock.patch.object(template, "captured", fake):
+            self.assertEqual(template.pin_image("localhost/x:1"), "sha256:" + "a" * 64)
+            self.assertEqual(template.pin_image("sha256:" + "b" * 64), "sha256:" + "b" * 64)
+        self.assertEqual(len(calls), 1, "--image 已是完整 ID 时不再 inspect")
+
+    def test_in_image_validate_action_only_validates_snapshot(self):
+        report = runtime.validate_only({"snapshot": self.value})
+        self.assertEqual(report, {"ok": True, "contract": common.CONTRACT,
+                                  "snapshot-digest": self.value["snapshot-digest"]})
+        with self.assertRaises(common.TemplateError):
+            runtime.validate_only({"snapshot": {}})
+        with self.assertRaises(common.TemplateError):
+            runtime.validate_only({})
+        self.assertFalse((self.home / common.KEY_PATH).exists())
+        self.assertFalse((self.home / common.SNAPSHOT_PATH).exists())
+
+
+class CapabilityProbeTests(unittest.TestCase):
+    """能力探针: 真实镜像里 runtime.py 只是 import wrapper, 动作列表在内层包里."""
+
+    WRAPPER = "from agent_config.runtime import main\nraise SystemExit(main())\n"
+
+    def setUp(self):
+        temporary = tempfile.TemporaryDirectory(prefix="swt-probe-layout-")
+        self.addCleanup(temporary.cleanup)
+        self.root = Path(temporary.name) / "swt-agent-config"
+        self.root.mkdir()
+
+    def probe(self) -> int:
+        return subprocess.run([sys.executable, "-c", template.capability_probe_source(str(self.root))],
+                              capture_output=True, text=True).returncode
+
+    def inner(self, text: str) -> None:
+        (self.root / "agent_config").mkdir(exist_ok=True)
+        (self.root / "agent_config" / "runtime.py").write_text(text, encoding="utf-8")
+
+    def test_wrapper_only_layout_has_no_validate(self):
+        # 2026.10.30-1 的布局: 根目录 runtime.py 是 wrapper, 内层没有 validate.
+        (self.root / "runtime.py").write_text(self.WRAPPER, encoding="utf-8")
+        self.inner('ACTIONS = (["install"], ["check"], ["state"])\n')
+        self.assertEqual(1, self.probe())
+
+    def test_inner_implementation_with_validate_is_detected_without_marker(self):
+        (self.root / "runtime.py").write_text(self.WRAPPER, encoding="utf-8")
+        self.inner('ACTIONS = ["install", "check", "state", "validate"]\n')
+        self.assertEqual(0, self.probe())
+
+    def test_marker_is_authoritative_for_new_images(self):
+        (self.root / "runtime.py").write_text(self.WRAPPER, encoding="utf-8")
+        self.inner('ACTIONS = ["install", "check", "state", "validate"]\n')
+        (self.root / "agent-tool-actions").write_text("install\ncheck\nstate\n", encoding="utf-8")
+        # 标记说不支持就以标记为准, 不回退去扫源码.
+        self.assertEqual(1, self.probe())
+        (self.root / "agent-tool-actions").write_text("install check state validate\n", encoding="utf-8")
+        self.assertEqual(0, self.probe())
+
+    def test_missing_tool_directory_fails_closed(self):
+        code = subprocess.run(
+            [sys.executable, "-c", template.capability_probe_source(str(self.root / "absent"))],
+            capture_output=True, text=True).returncode
+        self.assertEqual(2, code)
+
+
+class RuntimeEntryTests(TemporaryCase):
+    """容器内工具 main() 入口: validate 只读预检动作 (不经 podman)."""
+
+    def call(self, action, payload, ready=True):
+        out, err = io.StringIO(), io.StringIO()
+        stdin = io.StringIO(json.dumps(payload))
+        with mock.patch.object(runtime, "tool_ready", return_value=ready), \
+                mock.patch.object(sys, "stdin", stdin), \
+                contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            code = runtime.main([action])
+        return code, out.getvalue(), err.getvalue()
+
+    def test_validate_entry_returns_fixed_report_and_writes_nothing(self):
+        code, out, err = self.call("validate", {"snapshot": self.value})
+        self.assertEqual(0, code, err)
+        self.assertEqual(json.loads(out), {"ok": True, "contract": common.CONTRACT,
+                                           "snapshot-digest": self.value["snapshot-digest"]})
+        self.assertEqual("", err)
+        self.assertFalse((self.home / common.KEY_PATH).exists())
+        self.assertFalse((self.home / common.SNAPSHOT_PATH).exists())
+        self.assertFalse((self.home / common.READY_PATH).exists())
+
+    def test_validate_entry_rejects_invalid_snapshot_with_fixed_reason(self):
+        for payload in ({"snapshot": {}}, {}):
+            with self.subTest(payload=payload):
+                code, out, err = self.call("validate", payload)
+                self.assertEqual(2, code)
+                self.assertEqual("", out)
+                self.assertIn("模板字段缺失/未知", json.loads(err)["error"])
+                self.assertFalse((self.home / common.SNAPSHOT_PATH).exists())
+
+    def test_unknown_action_is_rejected(self):
+        code, out, err = self.call("bogus", {"snapshot": self.value})
+        self.assertEqual(2, code)
+        self.assertEqual("", out)
+        self.assertEqual(json.loads(err)["error"], "初始化工具仅用于契约匹配的新容器")
+
+    def test_entry_requires_contract_and_root(self):
+        code, out, err = self.call("validate", {"snapshot": self.value}, ready=False)
+        self.assertEqual(2, code)
+        self.assertEqual("", out)
+        self.assertEqual(json.loads(err)["error"], "初始化工具仅用于契约匹配的新容器")
+
+
 class LifecycleTests(TemporaryCase):
     def setUp(self):
         super().setUp()
@@ -459,7 +767,8 @@ class LifecycleTests(TemporaryCase):
         basic = {"mother_path": self.mother, "resolve_pair_identity": "unit", "find_mother": (self.mother, False),
                  "daemon_pids_for_serve_path": [], "container_exists": False, "legacy_pair_branches": [],
                  "host_wayland_socket": None, "live_repo_containers": [], "resolve_project_slug": "unit",
-                 "prepare_image": {"ref": "fake:image", "digest": "sha256:fake", "verdict": "EXPLICIT"},
+                 "prepare_image": {"ref": "fake:image", "digest": "sha256:fake", "pin": IMAGE_ID,
+                                   "verdict": "EXPLICIT"},
                  "decision_fingerprint": {"repo": str(self.repo), "image-digest": "sha256:fake"},
                  "print_birth_state": None, "print_delivery_lines": None}
         for name, value in basic.items():
@@ -468,6 +777,7 @@ class LifecycleTests(TemporaryCase):
             self.resources[name] = self.stack.enter_context(mock.patch.object(self.swt, name, side_effect=AssertionError("resource mutation before gate: " + name)))
         self.stack.enter_context(mock.patch.object(template, "load", return_value=self.bundle))
         self.stack.enter_context(mock.patch.object(template, "choices", return_value=[template.summary(self.bundle)]))
+        self.preflight = self.stack.enter_context(mock.patch.object(template, "preflight"))
         self.image_gate = self.stack.enter_context(mock.patch.object(template, "image_compatible"))
 
     def args(self, *, selected=True):
@@ -519,6 +829,51 @@ class LifecycleTests(TemporaryCase):
         with self.assertRaises(self.swt.PreconditionError):
             self.swt.birth(self.args(), self.repo)
         self.assertTrue(all(not value.called for value in self.resources.values()))
+        self.preflight.assert_not_called()
+
+    def test_preflight_runs_before_credentials_and_resources(self):
+        order: list[str] = []
+
+        def preflight(ref, value):
+            order.append("preflight:" + ref)
+
+        def credential(value):
+            order.append("credential")
+            raise common.TemplateError("客户端 Key 缺失")
+
+        with mock.patch.object(template, "preflight", side_effect=preflight), \
+                mock.patch.object(template, "credential", side_effect=credential):
+            with self.assertRaises(self.swt.PreconditionError):
+                self.swt.birth(self.args(), self.repo)
+        # 镜像预检先于读主机凭据; 两者都先于母体/daemon/容器.
+        self.assertEqual(order, [f"preflight:{IMAGE_ID}", "credential"])
+        self.assertTrue(all(not value.called for value in self.resources.values()))
+
+    def test_preflight_and_create_share_pinned_image_id(self):
+        pinned = IMAGE_ID
+        image = {"ref": "fake:image", "digest": "sha256:fake", "pin": pinned,
+                 "verdict": "EXPLICIT", "newer-available": False}
+        seen = []
+        with mock.patch.object(self.swt, "prepare_image", return_value=image), \
+                mock.patch.object(template, "preflight",
+                                  side_effect=lambda ref, value: seen.append(ref)), \
+                mock.patch.object(template, "credential", side_effect=common.TemplateError("客户端 Key 缺失")):
+            with self.assertRaises(self.swt.PreconditionError):
+                self.swt.birth(self.args(), self.repo)
+        # 契标签检查与镜像预检都指向同一个不可变 ID, 不用可变 tag.
+        self.assertEqual(seen, [pinned])
+        self.image_gate.assert_called_once_with(pinned)
+
+    def test_preflight_failure_blocks_before_credentials_and_resources(self):
+        with mock.patch.object(template, "preflight",
+                               side_effect=common.TemplateError("镜像内模板解析器不接受本次模板快照")), \
+                mock.patch.object(template, "credential", side_effect=AssertionError("must not read host key")), \
+                mock.patch.object(template, "creation", side_effect=AssertionError("must not freeze snapshot")):
+            with self.assertRaises(self.swt.PreconditionError) as error:
+                self.swt.birth(self.args(), self.repo)
+        self.assertIn("不接受本次模板快照", str(error.exception))
+        self.assertTrue(all(not value.called for value in self.resources.values()))
+        self.assertFalse((self.records / "runtime/unit").exists())
 
     def test_verified_birth_reentry_uses_frozen_snapshot_not_latest_template(self):
         meta = template.creation(self.root / "snapshot.json", self.bundle, "testbox", "sha256:fake")
@@ -533,6 +888,117 @@ class LifecycleTests(TemporaryCase):
         self.assertFalse(operate.call_args.kwargs["install"])
         herdr.assert_called_once()
         self.assertEqual(herdr.call_args.args[-1]["name"], "testbox")
+        self.assertTrue(all(not value.called for value in self.resources.values()))
+
+    def test_verified_reentry_skips_preflight_and_host_key(self):
+        """固定快照重入不跑镜像预检, 也不重读主机 Key."""
+        meta = template.creation(self.root / "snapshot.json", self.bundle, "testbox", "sha256:fake")
+        meta.update(status="verified", hostname="testbox")
+        state = {"stage": "born", "repo": str(self.repo), "mother": {"dir": str(self.mother), "branch": "topic"},
+                 "mother_dir": str(self.mother), "image": {"ref": "fake:image", "digest": "sha256:fake"},
+                 "network": {"mode": "whitelist", "allow": [], "deny": []}, "agent-template": meta,
+                 "containers": [{"name": "testbox", "agent-template": dict(meta)}]}
+        self.swt.atomic_write_json(self.runtime_file, state)
+        with mock.patch.object(self.swt, "configure_repo"), \
+                mock.patch.object(template, "target"), \
+                mock.patch.object(template, "operate", return_value={"ok": True}) as operate, \
+                mock.patch.object(template, "credential", side_effect=AssertionError("host key read")), \
+                mock.patch.object(self.swt, "ensure_herdr_machine"):
+            self.assertEqual(self.swt.birth(self.args(), self.repo), 0)
+        self.assertFalse(operate.call_args.kwargs["install"])
+        self.preflight.assert_not_called()
+        self.assertTrue(all(not value.called for value in self.resources.values()))
+
+    def test_fixed_snapshot_reentry_preflights_only_before_container_exists(self):
+        for exists in (False, True):
+            with self.subTest(container_exists=exists):
+                meta = template.creation(self.root / "snapshot.json", self.bundle, "testbox", IMAGE_ID)
+                meta.update(status="pending", hostname="testbox")
+                state = {"stage": "daemon", "repo": str(self.repo), "mother": {"dir": str(self.mother), "branch": "topic"},
+                         "mother_dir": str(self.mother), "image": {"ref": "fake:image", "digest": IMAGE_ID, "pin": IMAGE_ID},
+                         "network": {"mode": "whitelist", "allow": [], "deny": []}, "agent-template": meta,
+                         "containers": []}
+                self.swt.atomic_write_json(self.runtime_file, state)
+                self.preflight.reset_mock()
+                with mock.patch.object(self.swt, "container_exists", return_value=exists), \
+                        mock.patch.object(self.swt, "image_identity", return_value={"digest": IMAGE_ID, "pin": IMAGE_ID}), \
+                        mock.patch.object(self.swt, "configure_repo", side_effect=AssertionError("stop here")):
+                    with self.assertRaises(AssertionError):
+                        self.swt.birth(self.args(), self.repo)
+                if exists:
+                    self.preflight.assert_not_called()
+                else:
+                    self.preflight.assert_called_once()
+                    self.assertEqual(self.preflight.call_args.args[1]["snapshot-digest"],
+                                     meta["snapshot-digest"])
+
+    def test_build_new_decides_before_resolving_missing_image(self):
+        image = {"ref": None, "digest": None, "verdict": "BUILD-NEW",
+                 "newer-available": False, "reason": "没有满足需求的镜像"}
+        args = self.args()
+        args.image = None
+        args.requirements = str(self.root / "requirements.md")
+        with mock.patch.object(self.swt, "prepare_image", return_value=image), \
+                mock.patch.object(self.swt, "resolve_image_pin",
+                                  side_effect=AssertionError("BUILD-NEW 不能先解析镜像")), \
+                mock.patch.object(template, "credential",
+                                  side_effect=AssertionError("不能读主机 Key")), \
+                mock.patch.object(template, "preflight",
+                                  side_effect=AssertionError("不能先跑镜像预检")):
+            with contextlib.redirect_stdout(io.StringIO()) as out:
+                code = self.swt.birth(args, self.repo)
+        self.assertEqual(1, code)
+        self.assertIn("image-build", out.getvalue())
+        receipts = [json.loads(path.read_text(encoding="utf-8"))
+                    for path in self.records.glob("runtime/unit/decisions/d-*.json")]
+        self.assertEqual([receipt["kind"] for receipt in receipts], ["image-build"])
+        self.assertTrue(all(not value.called for value in self.resources.values()))
+
+    def test_bare_historical_image_digest_does_not_block_reentry(self):
+        bare = "a" * 64
+        meta = template.creation(self.root / "snapshot.json", self.bundle, "testbox", bare)
+        meta.update(status="pending", hostname="testbox")
+        state = {"stage": "daemon", "repo": str(self.repo), "mother": {"dir": str(self.mother), "branch": "topic"},
+                 "mother_dir": str(self.mother), "image": {"ref": "fake:image", "digest": bare, "pin": IMAGE_ID},
+                 "network": {"mode": "whitelist", "allow": [], "deny": []}, "agent-template": meta,
+                 "containers": []}
+        self.swt.atomic_write_json(self.runtime_file, state)
+        identity = {"digest": "sha256:" + "e" * 64, "pin": IMAGE_ID}
+        with mock.patch.object(self.swt, "container_exists", return_value=True), \
+                mock.patch.object(self.swt, "image_identity", return_value=identity), \
+                mock.patch.object(self.swt, "configure_repo", side_effect=AssertionError("stop here")):
+            with self.assertRaises(AssertionError):
+                self.swt.birth(self.args(), self.repo)
+        stored = json.loads(self.runtime_file.read_text(encoding="utf-8"))
+        # 记录里的原始 digest 不被改写.
+        self.assertEqual(stored["image"]["digest"], bare)
+        self.assertEqual(stored["agent-template"]["image-digest"], bare)
+
+    def test_unverified_container_never_persists_image_pin(self):
+        # 同名容器不是本创建记录 (guard 不通过), 且 digest 本地解析不出 → 停, 记录不被改写.
+        digest = "sha256:" + "d" * 64
+        meta = template.creation(self.root / "snapshot.json", self.bundle, "testbox", IMAGE_ID)
+        meta.update(status="pending", hostname="testbox")
+        state = {"stage": "daemon", "repo": str(self.repo), "mother": {"dir": str(self.mother), "branch": "topic"},
+                 "mother_dir": str(self.mother), "image": {"ref": "localhost/x:1", "digest": digest},
+                 "network": {"mode": "whitelist", "allow": [], "deny": []}, "agent-template": meta,
+                 "containers": [{"name": "testbox", "branch": "topic", "podman-id": CID,
+                                 "image-digest": digest, "retired": False, "agent-template": dict(meta)}]}
+        self.swt.atomic_write_json(self.runtime_file, state)
+        foreign = {"Id": CID, "Image": "a" * 64, "ImageDigest": "",
+                   "Config": {"Labels": {"sandbox-worktree.name": "testbox"}}}
+
+        def fake_run(command, **kwargs):
+            if command[:2] == ["podman", "inspect"]:
+                return subprocess.CompletedProcess(command, 0, json.dumps([foreign]), "")
+            return subprocess.CompletedProcess(command, 1, "", "not found")
+
+        with mock.patch.object(self.swt, "run", fake_run), \
+                mock.patch.object(self.swt, "image_identity", return_value={"digest": IMAGE_ID, "pin": IMAGE_ID}):
+            with self.assertRaises(self.swt.PreconditionError):
+                self.swt.birth(self.args(), self.repo)
+        stored = json.loads(self.runtime_file.read_text(encoding="utf-8"))
+        self.assertNotIn("pin", stored["image"])
         self.assertTrue(all(not value.called for value in self.resources.values()))
 
     def test_initialization_failure_persists_failed_not_born(self):
@@ -563,13 +1029,385 @@ class CreateReentryTests(TemporaryCase):
                 with mock.patch.object(swt, "run", return_value=subprocess.CompletedProcess([], 0, json.dumps([detail]), "")), mock.patch.object(swt, "refresh_container", side_effect=refreshed) as refresh:
                     if old:
                         with self.assertRaises(swt.PreconditionError):
-                            swt.create_and_start_container(args, Path(state["repo"]), {"ref": "fake", "digest": "sha256:fake"}, "topic", state, file, {}, self.root, "unit")
+                            swt.create_and_start_container(args, Path(state["repo"]), {"ref": "fake", "digest": "sha256:fake", "pin": IMAGE_ID}, "topic", state, file, {}, self.root, "unit")
                         refresh.assert_not_called()
                         self.assertFalse(file.exists())
                     else:
-                        result = swt.create_and_start_container(args, Path(state["repo"]), {"ref": "fake", "digest": "sha256:fake"}, "topic", state, file, {}, self.root, "unit")
+                        result = swt.create_and_start_container(args, Path(state["repo"]), {"ref": "fake", "digest": "sha256:fake", "pin": IMAGE_ID}, "topic", state, file, {}, self.root, "unit")
                         self.assertEqual(result["record"]["podman-id"], CID)
                         self.assertEqual(json.loads(file.read_text())["containers"][0]["podman-id"], CID)
+
+
+class ImagePinTests(TemporaryCase):
+    """预检与正式创建只认本地不可变镜像 ID; 旧记录用固定 digest 解析, 解析不出就停."""
+
+    def setUp(self):
+        super().setUp()
+        self.swt = load_script("swt_image_pin_test", "swt.py")
+
+    def test_image_reference_refuses_mutable_tag(self):
+        self.assertEqual(self.swt.image_reference({"ref": "localhost/x:1", "pin": IMAGE_ID}), IMAGE_ID)
+        with self.assertRaises(self.swt.PreconditionError) as error:
+            self.swt.image_reference({"ref": "localhost/x:1"})
+        self.assertIn("拒绝用可变 tag", str(error.exception))
+
+    def test_old_record_resolves_pin_from_repo_digest_without_tag(self):
+        # 真实形态: 存储 digest 不是镜像 ID, 但 repo@digest 能解析.
+        calls = []
+
+        def fake_run(command, **kwargs):
+            calls.append(command)
+            if command[:3] == ["podman", "image", "inspect"]:
+                if command[3] == f"localhost/x@{IMAGE_ID}":
+                    return subprocess.CompletedProcess(command, 0, IMAGE_ID + "\n", "")
+                return subprocess.CompletedProcess(command, 1, "", "image not known")
+            raise AssertionError("不得用可变 tag:" + " ".join(command))
+
+        with mock.patch.object(self.swt, "run", fake_run):
+            self.assertEqual(
+                self.swt.resolve_image_pin({"ref": "localhost/x:1", "digest": IMAGE_ID}), IMAGE_ID)
+        self.assertIn(f"localhost/x@{IMAGE_ID}", [command[3] for command in calls])
+        self.assertNotIn("localhost/x:1", [command[3] for command in calls])
+
+    def record_and_runtime(self, *, labels_ok=True, image="a" * 64, digest=IMAGE_ID):
+        meta = {"name": "cliproxyapi", "container": "testbox", "creation-token": "a" * 32,
+                "snapshot-digest": "b" * 64, "image-digest": IMAGE_ID}
+        record = {"name": "testbox", "branch": "topic", "podman-id": CID,
+                  "image-digest": IMAGE_ID, "retired": False, "agent-template": dict(meta)}
+        labels = {common.CONTAINER_LABEL: str(common.CONTRACT), common.TOKEN_LABEL: "a" * 32,
+                  common.DIGEST_LABEL: "b" * 64, "sandbox-worktree.repo": str(self.root / "repo"),
+                  "sandbox-worktree.mother": "topic", "sandbox-worktree.name": "testbox"}
+        if not labels_ok:
+            labels[common.TOKEN_LABEL] = "c" * 32
+        detail = {"Id": CID, "Image": image, "ImageDigest": digest, "Name": "/testbox",
+                  "State": {"Status": "running"}, "Config": {"Labels": labels}}
+        runtime = {"repo": str(self.root / "repo"), "agent-template": meta, "containers": [record]}
+        return runtime, record, detail
+
+    def test_bound_container_image_requires_guard_and_matching_digest(self):
+        container_id = "sha256:" + "c" * 64
+        for digest, ok in ((IMAGE_ID, True), ("sha256:" + "d" * 64, False)):
+            with self.subTest(container_digest=digest):
+                runtime, record, detail = self.record_and_runtime(image=container_id, digest=digest)
+                calls = []
+
+                def fake_run(command, **kwargs):
+                    calls.append(command)
+                    return subprocess.CompletedProcess(command, 0, json.dumps([detail]), "")
+
+                image = {"ref": "localhost/x:1", "digest": IMAGE_ID}
+                with mock.patch.object(self.swt, "run", fake_run):
+                    binding = self.swt.verified_container_image(runtime, record, "testbox")
+                    self.assertIsNotNone(binding)
+                    if ok:
+                        self.assertEqual(self.swt.resolve_image_pin(image, binding=binding), container_id)
+                    else:
+                        with self.assertRaises(self.swt.PreconditionError) as error:
+                            self.swt.resolve_image_pin(image, binding=binding)
+                        self.assertIn("ImageDigest", str(error.exception))
+
+    def test_historical_bare_id_record_is_resolved_and_not_rewritten(self):
+        # 旧版 image_digest 在 .Digest 缺失时保存裸 .Id: 记录值是 64 位裸 ID.
+        bare = "a" * 64
+        image = {"ref": "localhost/x:1", "digest": bare}
+        calls = []
+
+        def fake_run(command, **kwargs):
+            calls.append(command)
+            if command[:3] == ["podman", "image", "inspect"]:
+                if command[3] == f"localhost/x@{IMAGE_ID}":
+                    return subprocess.CompletedProcess(command, 1, "", "image not known")
+                if command[3] == IMAGE_ID:
+                    return subprocess.CompletedProcess(command, 0, IMAGE_ID + "\n", "")
+                return subprocess.CompletedProcess(command, 1, "", "image not known")
+            raise AssertionError("未预期的命令: " + " ".join(command))
+
+        with mock.patch.object(self.swt, "run", fake_run):
+            self.assertEqual(self.swt.resolve_image_pin(image), IMAGE_ID)
+        # repo@digest 用带前缀形态; 未改动记录里的原始 digest.
+        self.assertIn(f"localhost/x@{IMAGE_ID}", [command[3] for command in calls])
+        self.assertEqual(image["digest"], bare)
+
+    def test_historical_bare_id_confirmed_by_bound_container_image(self):
+        bare = "a" * 64
+        manifest = "sha256:" + "e" * 64
+        runtime, record, detail = self.record_and_runtime(image=bare, digest=manifest)
+        image = {"ref": "localhost/x:1", "digest": bare}
+
+        def fake_run(command, **kwargs):
+            if command[:2] == ["podman", "inspect"]:
+                return subprocess.CompletedProcess(command, 0, json.dumps([detail]), "")
+            raise AssertionError("历史 ID 已被容器 Image 确认, 不该再解析: " + " ".join(command))
+
+        with mock.patch.object(self.swt, "run", fake_run):
+            binding = self.swt.verified_container_image(runtime, record, "testbox")
+            # 容器 ImageDigest 是 manifest digest, 与裸历史 ID 不同名空间; Image ID 相符即确认.
+            self.assertEqual(self.swt.resolve_image_pin(image, binding=binding), "sha256:" + bare)
+
+    def test_historical_bare_id_mismatching_container_still_rejected(self):
+        bare = "a" * 64
+        runtime, record, detail = self.record_and_runtime(image="b" * 64, digest="sha256:" + "e" * 64)
+        image = {"ref": "localhost/x:1", "digest": bare}
+
+        def fake_run(command, **kwargs):
+            if command[:2] == ["podman", "inspect"]:
+                return subprocess.CompletedProcess(command, 0, json.dumps([detail]), "")
+            return subprocess.CompletedProcess(command, 1, "", "not found")
+
+        with mock.patch.object(self.swt, "run", fake_run):
+            binding = self.swt.verified_container_image(runtime, record, "testbox")
+            with self.assertRaises(self.swt.PreconditionError) as error:
+                self.swt.resolve_image_pin(image, binding=binding)
+        self.assertIn("不接管该容器", str(error.exception))
+        self.assertNotIn("b" * 64, str(error.exception).split("ImageDigest")[0])
+
+    def test_historical_id_not_reported_as_newer_candidate(self):
+        runtime = {"containers": [{"state": "running", "image-digest": "a" * 64}]}
+        same = self.swt.mark_newer_available({"digest": IMAGE_ID}, runtime)
+        self.assertFalse(same["newer-available"])
+        other = self.swt.mark_newer_available({"digest": "sha256:" + "b" * 64}, runtime)
+        self.assertTrue(other["newer-available"])
+
+    def test_record_digest_matches_manifest_or_historical_id(self):
+        identity = {"digest": "sha256:" + "e" * 64, "pin": "sha256:" + "a" * 64}
+        self.assertTrue(self.swt.image_matches_record("sha256:" + "e" * 64, identity))
+        self.assertTrue(self.swt.image_matches_record("a" * 64, identity))
+        self.assertTrue(self.swt.image_matches_record("sha256:" + "a" * 64, identity))
+        self.assertFalse(self.swt.image_matches_record("b" * 64, identity))
+        self.assertFalse(self.swt.image_matches_record(None, identity))
+        self.assertFalse(self.swt.image_matches_record("garbage", identity))
+
+    def test_same_named_foreign_container_is_rejected_as_candidate(self):
+        runtime, record, detail = self.record_and_runtime(labels_ok=False)
+        calls = []
+
+        def fake_run(command, **kwargs):
+            calls.append(command)
+            if command[:2] == ["podman", "inspect"]:
+                return subprocess.CompletedProcess(command, 0, json.dumps([detail]), "")
+            if command[:3] == ["podman", "image", "inspect"]:
+                if command[3] == f"localhost/x@{IMAGE_ID}":
+                    return subprocess.CompletedProcess(command, 0, IMAGE_ID + "\n", "")
+                return subprocess.CompletedProcess(command, 1, "", "image not known")
+            raise AssertionError("未预期的命令: " + " ".join(command))
+
+        with mock.patch.object(self.swt, "run", fake_run):
+            self.assertIsNone(self.swt.verified_container_image(runtime, record, "testbox"))
+            resolved = self.swt.resolve_image_pin({"ref": "localhost/x:1", "digest": IMAGE_ID})
+        self.assertEqual(resolved, IMAGE_ID)
+        # 用了 repo@digest, 没有采用同名容器的 Image.
+        self.assertIn(f"localhost/x@{IMAGE_ID}", [command[3] for command in calls if command[:3] == ["podman", "image", "inspect"]])
+
+    def test_bound_container_without_imagedigest_needs_cross_check(self):
+        container_id = "sha256:" + "c" * 64
+        # a) 按 ID 读到的 digest 与记录吻合 → 可用.
+        runtime, record, detail = self.record_and_runtime(image=container_id, digest="")
+        image = {"ref": "localhost/x:1", "digest": IMAGE_ID}
+
+        def fake_run(command, **kwargs):
+            if command[:2] == ["podman", "inspect"] and "--format" in command:
+                # 按镜像 ID 单次读: digest 与记录吻合.
+                return subprocess.CompletedProcess(command, 0, IMAGE_ID + "@@" + container_id + "\n", "")
+            if command[:2] == ["podman", "inspect"]:
+                return subprocess.CompletedProcess(command, 0, json.dumps([detail]), "")
+            return subprocess.CompletedProcess(command, 1, "", "image not known")
+
+        with mock.patch.object(self.swt, "run", fake_run):
+            binding = self.swt.verified_container_image(runtime, record, "testbox")
+            self.assertEqual(self.swt.resolve_image_pin(image, binding=binding), container_id)
+
+        # b) 交叉核对都不成立 → 不采用容器 Image, 改走 repo@digest.
+        resolved_calls = []
+
+        def fake_run_b(command, **kwargs):
+            resolved_calls.append(command)
+            if command[:2] == ["podman", "inspect"]:
+                return subprocess.CompletedProcess(command, 0, json.dumps([detail]), "")
+            if command[:3] == ["podman", "image", "inspect"]:
+                if command[3] == f"localhost/x@{IMAGE_ID}":
+                    return subprocess.CompletedProcess(command, 0, IMAGE_ID + "\n", "")
+                return subprocess.CompletedProcess(command, 1, "", "image not known")
+            return subprocess.CompletedProcess(command, 1, "", "not found")
+
+        with mock.patch.object(self.swt, "run", fake_run_b):
+            binding = self.swt.verified_container_image(runtime, record, "testbox")
+            self.assertEqual(self.swt.resolve_image_pin(image, binding=binding), IMAGE_ID)
+        self.assertFalse(any(container_id in command for command in resolved_calls if command[:3] == ["podman", "image", "inspect"]))
+
+        # c) 交叉核对不成立且 digest 也解析不出 → 停 (不用未验证的容器 Image).
+        def fake_run_c(command, **kwargs):
+            if command[:2] == ["podman", "inspect"]:
+                return subprocess.CompletedProcess(command, 0, json.dumps([detail]), "")
+            return subprocess.CompletedProcess(command, 1, "", "not found")
+
+        with mock.patch.object(self.swt, "run", fake_run_c):
+            binding = self.swt.verified_container_image(runtime, record, "testbox")
+            with self.assertRaises(self.swt.PreconditionError):
+                self.swt.resolve_image_pin(image, binding=binding)
+
+    def test_tag_read_used_only_when_digest_matches_exactly(self):
+        for current in (IMAGE_ID, "sha256:" + "e" * 64):
+            with self.subTest(current_tag_digest=current):
+                def fake_run(command, **kwargs):
+                    if command[:3] == ["podman", "image", "inspect"]:
+                        return subprocess.CompletedProcess(command, 1, "", "image not known")
+                    if command[:2] == ["podman", "inspect"] and "--format" in command:
+                        return subprocess.CompletedProcess(command, 0, f"{current}@@{IMAGE_ID}\n", "")
+                    raise AssertionError("未预期的命令: " + " ".join(command))
+
+                image = {"ref": "localhost/x:1", "digest": IMAGE_ID}
+                with mock.patch.object(self.swt, "run", fake_run):
+                    if current == IMAGE_ID:
+                        self.assertEqual(self.swt.resolve_image_pin(image), IMAGE_ID)
+                    else:
+                        with self.assertRaises(self.swt.PreconditionError) as error:
+                            self.swt.resolve_image_pin(image)
+                        self.assertIn("不用可变 tag 代替", str(error.exception))
+
+    def test_old_record_with_unresolvable_digest_stops_instead_of_using_tag(self):
+        cases = ({"ref": "localhost/x:1", "digest": "sha256:" + "b" * 64}, {"ref": "localhost/x:1"})
+        for image in cases:
+            with self.subTest(image=image):
+                def fake_run(command, **kwargs):
+                    return subprocess.CompletedProcess(command, 1, "", "no such image")
+
+                with mock.patch.object(self.swt, "run", fake_run):
+                    with self.assertRaises(self.swt.PreconditionError) as error:
+                        self.swt.resolve_image_pin(image)
+                self.assertNotIn("localhost/x:1", str(error.exception))
+
+    def test_single_inspect_reads_digest_and_id_together(self):
+        calls = []
+
+        def fake_run(command, **kwargs):
+            calls.append(command)
+            return subprocess.CompletedProcess(command, 0, "sha256:digest@@" + IMAGE_ID + "\n", "")
+
+        tag = "localhost/x:1"
+        with mock.patch.object(self.swt, "run", fake_run):
+            image = self.swt.prepare_image(
+                self.swt.parse_args(["birth", "--repo", str(self.root), "--records-root",
+                                     str(self.root / "records"), "--image", tag]),
+                self.root, self.root / "records")
+        self.assertEqual(len(calls), 1, "同一次选择只读一次镜像, 避免 digest 与 ID 对到不同镜像")
+        self.assertEqual(image, {"ref": tag, "digest": "sha256:digest", "pin": IMAGE_ID,
+                                 "verdict": "EXPLICIT", "newer-available": False})
+
+    def test_reuse_match_digest_must_equal_current_read(self):
+        tag = "localhost/x:1"
+        for reported in ("sha256:digest", "sha256:" + "c" * 64):
+            with self.subTest(reported=reported):
+                def fake_run(command, **kwargs):
+                    if command[:3] == ["podman", "inspect", tag]:
+                        return subprocess.CompletedProcess(command, 0, "sha256:digest@@" + IMAGE_ID + "\n", "")
+                    if command[:2] == ["uv", "run"]:
+                        return subprocess.CompletedProcess(
+                            command, 0, f"verdict=REUSE\nimage={tag}\ndigest={reported}\n", "")
+                    raise AssertionError("未预期的命令: " + " ".join(command))
+
+                requirements = self.root / "requirements.md"
+                requirements.write_text("python3\n", encoding="utf-8")
+                args = self.swt.parse_args(["birth", "--repo", str(self.root), "--records-root",
+                                            str(self.root / "records"), "--requirements", str(requirements)])
+                with mock.patch.object(self.swt, "run", fake_run):
+                    if reported == "sha256:digest":
+                        image = self.swt.prepare_image(args, self.root, self.root / "records")
+                        self.assertEqual(image["pin"], IMAGE_ID)
+                    else:
+                        with self.assertRaises(self.swt.PreconditionError) as error:
+                            self.swt.prepare_image(args, self.root, self.root / "records")
+                        self.assertIn("重指", str(error.exception))
+
+    def test_create_uses_pinned_image_id_not_mutable_tag(self):
+        tag = "localhost/x:1"
+        commands = []
+        image = {"ref": tag, "digest": IMAGE_ID, "pin": IMAGE_ID, "verdict": "EXPLICIT"}
+
+        def fake_run(command, **kwargs):
+            commands.append(command)
+            if command[:2] == ["podman", "inspect"]:
+                return subprocess.CompletedProcess(command, 1, "", "no such container")
+            return subprocess.CompletedProcess(command, 0, "", "")
+
+        args = self.swt.parse_args(["birth", "--name", "testbox", "--hostname", "testbox"])
+        runtime = {"containers": [], "agent-template": None}
+        runtime_file = self.root / "records/runtime/unit.json"
+        with mock.patch.object(self.swt, "run", fake_run), \
+                mock.patch.object(self.swt, "host_port_free", return_value=False), \
+                mock.patch.object(self.swt, "host_wayland_socket", return_value=None), \
+                mock.patch.object(self.swt, "stage_agent_prompts", return_value=self.root / "prompts"), \
+                mock.patch.object(self.swt, "assert_skills_mountable", return_value=[]), \
+                mock.patch.object(self.swt, "assert_llm_select_mountable", return_value=False), \
+                mock.patch.object(self.swt, "stage_maven_settings", return_value=None), \
+                mock.patch.object(self.swt, "inspect_container", return_value={"Id": CID}), \
+                mock.patch.object(self.swt, "refresh_container", return_value={"name": "testbox", "record": {}}):
+            self.swt.create_and_start_container(
+                args, self.root / "repo", image, "topic", runtime, runtime_file, {}, self.root, "unit")
+        create = next(command for command in commands if command[:2] == ["podman", "create"])
+        self.assertEqual(create[-1], IMAGE_ID)
+        self.assertNotIn(tag, create)
+
+    def test_old_record_create_resolves_digest_instead_of_tag(self):
+        tag = "localhost/x:1"
+        commands = []
+        image = {"ref": tag, "digest": IMAGE_ID}
+
+        def fake_run(command, **kwargs):
+            commands.append(command)
+            if command[:3] == ["podman", "image", "inspect"]:
+                return subprocess.CompletedProcess(command, 0, IMAGE_ID + "\n", "")
+            if command[:2] == ["podman", "inspect"]:
+                return subprocess.CompletedProcess(command, 1, "", "no such container")
+            return subprocess.CompletedProcess(command, 0, "", "")
+
+        args = self.swt.parse_args(["birth", "--name", "testbox", "--hostname", "testbox"])
+        runtime = {"containers": [], "agent-template": None}
+        with mock.patch.object(self.swt, "run", fake_run), \
+                mock.patch.object(self.swt, "inspect_container", return_value={"Id": CID}), \
+                mock.patch.object(self.swt, "refresh_container", return_value={"name": "testbox", "record": {}}):
+            self.swt.create_and_start_container(
+                args, self.root / "repo", image, "topic", runtime,
+                self.root / "records/runtime/unit.json", {}, self.root, "unit")
+        create = next(command for command in commands if command[:2] == ["podman", "create"])
+        self.assertEqual(create[-1], IMAGE_ID)
+        self.assertNotIn(tag, create)
+        self.assertTrue(any(command[:3] == ["podman", "image", "inspect"] for command in commands))
+
+    def test_existing_container_image_binding_is_verified_not_by_tag(self):
+        image = {"ref": "localhost/x:1", "digest": IMAGE_ID, "pin": IMAGE_ID}
+        for container_image in ("a" * 64, "d" * 64):
+            with self.subTest(container_image=container_image):
+                detail = {"Id": CID, "Image": container_image, "Name": "/testbox",
+                          "State": {"Status": "running"},
+                          "Config": {"Labels": {common.CONTAINER_LABEL: str(common.CONTRACT),
+                             common.TOKEN_LABEL: "a" * 32, common.DIGEST_LABEL: "b" * 64,
+                             "sandbox-worktree.repo": str(self.root / "repo"),
+                             "sandbox-worktree.mother": "topic",
+                             "sandbox-worktree.name": "testbox"}}}
+                meta = {"name": "cliproxyapi", "container": "testbox", "creation-token": "a" * 32,
+                        "snapshot-digest": "b" * 64, "image-digest": IMAGE_ID}
+                record = {"name": "testbox", "branch": "topic", "podman-id": CID,
+                          "image-digest": IMAGE_ID, "retired": False, "agent-template": dict(meta)}
+                runtime = {"repo": str(self.root / "repo"), "agent-template": meta, "containers": [record]}
+
+                def fake_run(command, **kwargs):
+                    if command[:2] == ["podman", "inspect"]:
+                        return subprocess.CompletedProcess(command, 0, json.dumps([detail]), "")
+                    return subprocess.CompletedProcess(command, 0, "", "")
+
+                args = self.swt.parse_args(["birth", "--name", "testbox", "--hostname", "testbox"])
+                with mock.patch.object(self.swt, "run", fake_run), \
+                        mock.patch.object(self.swt, "refresh_container", return_value={"name": "testbox"}):
+                    if container_image == "a" * 64:
+                        self.swt.create_and_start_container(
+                            args, self.root / "repo", image, "topic", runtime,
+                            self.root / "records/runtime/unit.json", {}, self.root, "unit")
+                    else:
+                        with self.assertRaises(self.swt.PreconditionError) as error:
+                            self.swt.create_and_start_container(
+                                args, self.root / "repo", image, "topic", runtime,
+                                self.root / "records/runtime/unit.json", {}, self.root, "unit")
+                        self.assertIn("实际镜像与本次创建记录不同", str(error.exception))
 
 
 class ResumeTests(TemporaryCase):

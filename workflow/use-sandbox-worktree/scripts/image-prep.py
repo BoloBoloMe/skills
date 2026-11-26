@@ -30,7 +30,7 @@ from pathlib import Path
 _SCRIPT_DIR = str(Path(__file__).resolve().parent)
 if _SCRIPT_DIR not in sys.path:
     sys.path.insert(0, _SCRIPT_DIR)
-from agent_config.common import CONTRACT, CONTRACT_LABEL
+from agent_config.common import CONTRACT, CONTRACT_LABEL, TOOL_ACTIONS
 
 ROOT = Path(__file__).resolve().parents[2]
 SLUG_SCRIPT = ROOT / "use-worktree/scripts/slug.py"
@@ -403,6 +403,8 @@ def stage_context(context_dir: Path, skills_dir: Path, pi_agent_dir: Path) -> No
     shutil.copytree(scripts / "agent_config", tools_dir / "agent_config", ignore=IGNORE_SKILLS)
     shutil.copy2(scripts / "agent-runtime.py", tools_dir / "runtime.py")
     shutil.copy2(scripts / "agent-launch.py", tools_dir / "launch.py")
+    # 只读能力标记: 宿主预检按它判断镜像内工具支持哪些动作, 不必猜源码布局.
+    (tools_dir / "agent-tool-actions").write_text("\n".join(TOOL_ACTIONS) + "\n", encoding="utf-8")
 
 
 # ---------------------------------------------------------------- podman 接缝

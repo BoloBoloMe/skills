@@ -10,6 +10,18 @@ import tempfile
 from pathlib import Path
 
 CONTRACT = 2
+# 容器内工具支持的动作; 镜构建时写入 /opt/swt-agent-config/agent-tool-actions 供只读能力探针.
+TOOL_ACTIONS = ("install", "check", "state", "validate")
+IMAGE_ID_RE = r"sha256:[0-9a-f]{64}"
+
+
+def normalize_image_id(value) -> str:
+    """统一镜像 ID 形态: podman 容器 .Image 与部分 inspect 输出给 64 位裸 ID."""
+    if not isinstance(value, str) or not value:
+        return ""
+    if re.fullmatch(IMAGE_ID_RE, value):
+        return value
+    return "sha256:" + value if re.fullmatch(r"[0-9a-f]{64}", value) else ""
 CONTRACT_LABEL = "run.sandbox-worktree.agent-template-contract"
 CONTAINER_LABEL = "sandbox-worktree.agent-template-contract"
 TOKEN_LABEL = "sandbox-worktree.creation-token"

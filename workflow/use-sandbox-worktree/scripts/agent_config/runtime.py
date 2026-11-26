@@ -1,4 +1,8 @@
-"""仅在带契约的新容器内运行. stdin 是唯一凭据入口, 错误不含原文."""
+"""仅在带契约的新容器内运行. stdin 是唯一凭据入口, 错误不含原文.
+
+动作: install (写固定客户端配置/凭据) / check (只验收已装配置) / state (只报告
+是否已安装) / validate (只读模板预检, 不落任何文件).
+"""
 from __future__ import annotations
 
 import json
@@ -14,8 +18,8 @@ import urllib.request
 from pathlib import Path
 
 from . import pi
-from .common import (CONTRACT, HOME, KEY_PATH, READY_PATH, SNAPSHOT_PATH, TemplateError,
-                     client_env, pretty, private_json, safe_write, valid_key)
+from .common import (CONTRACT, HOME, KEY_PATH, READY_PATH, SNAPSHOT_PATH, TOOL_ACTIONS,
+                     TemplateError, client_env, pretty, private_json, safe_write, valid_key)
 from .template import read_json, validate_snapshot
 
 REAL_BIN_DIR = Path("/opt/swt-agent-bin")
@@ -188,15 +192,33 @@ def check_payload(payload: dict, home: Path, owner: tuple[int, int], *, clients=
             "checks": ["permissions", "config", "credentials", "clients", "gateway-models"]}
 
 
+def tool_ready() -> bool:
+    """容器内工具自检: 只在契约匹配的新容器内以 root 身份运行."""
+    try:
+        return os.geteuid() == 0 and Path("/etc/swt-agent-template-contract").read_text().strip() == str(CONTRACT)
+    except OSError:
+        return False
+
+
+def validate_only(payload) -> dict:
+    """只读预检: 只用镜像内解析器校验本次快照, 不读绑定/不写文件/不取凭据."""
+    raw = payload.get("snapshot") if isinstance(payload, dict) else None
+    value = validate_snapshot(raw if isinstance(raw, dict) else {})
+    return {"ok": True, "contract": CONTRACT, "snapshot-digest": value["snapshot-digest"]}
+
+
 def main(argv=None) -> int:
     args = sys.argv[1:] if argv is None else argv
     try:
-        if args not in (["install"], ["check"], ["state"]) or os.geteuid() != 0 or Path("/etc/swt-agent-template-contract").read_text().strip() != str(CONTRACT):
+        if len(args) != 1 or args[0] not in TOOL_ACTIONS or not tool_ready():
             raise TemplateError("初始化工具仅用于契约匹配的新容器")
         raw = sys.stdin.read(16 * 1024 * 1024 + 1)
         if len(raw) > 16 * 1024 * 1024:
             raise TemplateError("初始化输入过大")
         payload = json.loads(raw)
+        if args == ["validate"]:
+            print(json.dumps(validate_only(payload), separators=(",", ":")))
+            return 0
         user = pwd.getpwnam("bolo")
         owner = (user.pw_uid, user.pw_gid)
         binding = payload["binding"]

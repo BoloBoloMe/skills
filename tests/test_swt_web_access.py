@@ -126,7 +126,7 @@ class TestBirthPublishesWebPort(unittest.TestCase):
         repo = self.root / "repo"
         repo.mkdir(exist_ok=True)
         runtime = {"schema": m.SCHEMA, "containers": [], "stage": "daemon"}
-        image = {"ref": "localhost/test:latest", "digest": "sha256:fake"}
+        image = {"ref": "localhost/test:latest", "digest": "sha256:fake", "pin": "sha256:9999999999999999999999999999999999999999999999999999999999999999"}
         args = argparse.Namespace(name="swt-demo", hostname="swt-demo")
         fake = _FakeRun("swt-demo", web_mappings=web_mappings, vnc_mapping=vnc_mapping)
         original_run = m.run
@@ -216,13 +216,14 @@ class TestBirthPublishesWebPort(unittest.TestCase):
         self.assertEqual(record["vnc-port"], 49154)
         self.assertIsNone(record["vnc-lan-port"])
 
-    def test_create_command_ends_with_image_ref(self):
-        """回归: image ref 必须是 create 命令最后一个参数 (旧 bug: llm-select `-v`
-        落到 IMAGE 之后变成容器命令, 挂载失效)."""
+    def test_create_command_ends_with_pinned_image_id(self):
+        """回归: 镜像参数必须是 create 命令最后一个参数, 且用不可变本地 ID 而不是 tag
+        (旧 bug: llm-select `-v` 落到 IMAGE 之后变成容器命令, 挂载失效)."""
         fake = self._run_create()
         self.assertIsNotNone(fake.create_command)
-        self.assertEqual(fake.create_command[-1], "localhost/test:latest",
-                         f"create 命令末元素不是 image ref: {fake.create_command[-6:]}")
+        self.assertEqual(fake.create_command[-1], "sha256:" + "9" * 64,
+                         f"create 命令末元素不是固定镜像 ID: {fake.create_command[-6:]}")
+        self.assertNotIn("localhost/test:latest", fake.create_command)
 
 
 class _FakeStatusRun:

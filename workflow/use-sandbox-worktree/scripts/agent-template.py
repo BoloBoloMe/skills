@@ -1,5 +1,5 @@
 #!/usr/bin/env -S uv run python
-"""确定的模板入口: list/show/validate/render/install/check. 不调用镜像构建."""
+"""确定的模板入口: list/show/validate/render/preflight/install/check. 不调用镜像构建."""
 from __future__ import annotations
 
 import argparse
@@ -15,11 +15,13 @@ def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     sub = parser.add_subparsers(dest="command", required=True)
     sub.add_parser("list")
-    for action in ("show", "validate", "render"):
+    for action in ("show", "validate", "render", "preflight"):
         command = sub.add_parser(action)
         command.add_argument("template")
         if action == "render":
             command.add_argument("--output", type=Path, required=True)
+        if action == "preflight":
+            command.add_argument("--image", required=True)
     for action in ("install", "check"):
         command = sub.add_parser(action)
         command.add_argument("--runtime-file", type=Path, required=True)
@@ -28,7 +30,7 @@ def main(argv=None):
     try:
         if args.command == "list":
             print(pretty(templates.choices()), end="")
-        elif args.command in ("show", "validate", "render"):
+        elif args.command in ("show", "validate", "render", "preflight"):
             bundle = templates.load(args.template)
             if args.command == "show":
                 shown = {**bundle, "catalog": {**bundle["catalog"], "codex_catalog": {
@@ -40,6 +42,11 @@ def main(argv=None):
                 value = templates.freeze(args.output, bundle)
                 print(pretty({**templates.summary(bundle), "snapshot": str(args.output),
                               "snapshot-digest": value["snapshot-digest"]}), end="")
+            elif args.command == "preflight":
+                value = templates.snapshot(bundle)
+                pinned = templates.preflight(args.image, value)
+                print(pretty({**templates.summary(bundle), "snapshot-digest": value["snapshot-digest"],
+                              "image": args.image, "image-id": pinned, "preflight": True}), end="")
             else:
                 print(pretty({**templates.summary(bundle), "valid": True}), end="")
         else:

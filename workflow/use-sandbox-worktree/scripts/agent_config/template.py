@@ -13,8 +13,9 @@ from urllib.parse import urlsplit
 
 from . import codex, kimi, pi
 from .common import (CONTRACT, CONTRACT_LABEL, CONTAINER_LABEL, TOKEN_LABEL,
-                     DIGEST_LABEL, TOOL_DIR, TemplateError, canonical, digest,
-                     pretty, private_json, safe_write, valid_key)
+                     DIGEST_LABEL, TOOL_DIR, IMAGE_ID_RE, TemplateError, canonical,
+                     digest, normalize_image_id, pretty, private_json, safe_write,
+                     valid_key)
 
 TEMPLATES = Path(__file__).resolve().parents[2] / "agent-templates"
 # 测试可用环境变量覆盖模板根缺省值; 显式传 root= 的调用不受影响.
@@ -273,6 +274,166 @@ def captured(command: list[str], **kwargs) -> subprocess.CompletedProcess:
         raise TemplateError("初始化命令不可执行或超时, 原始输出已隐藏") from None
 
 
+# 容器内工具允许透传的脱敏原因: 只认固定人话, 其余一律换成通用说明.
+CHECK_REASONS = frozenset({
+    "pi 真实配置解析/凭据检查未通过", "codex 真实配置解析/凭据检查未通过",
+    "kimi 真实配置解析/凭据检查未通过", "客户端解析/凭据检查不能执行或超时",
+    "网关不可达/认证失败/模型清单非法, 不回退供应商", "网关没有模板声明的完整模型清单",
+    "网关发生重定向, 不转发客户端 Key", "客户端配置/凭据权限或属主错误",
+    "客户端模型配置与固定快照不同, 不自动覆盖", "目标存在 OAuth/其他认证数据, 不覆盖",
+})
+# 解析器 (validate_snapshot/validate) 的固定原因, 用于预检与 state 失败.
+PARSER_REASONS = frozenset({
+    "模板字段缺失/未知, 不允许安装命令或额外凭据", "模板字段类型/值非法",
+    "模板/快照 JSON 缺失或不可读取", "模板协议/初始化契约不兼容",
+    "模板名称/版本非法", "模板名称非法", "模板目录不得是符号链接",
+    "模板目录名与声明不同", "模板目录缺失",
+    "网关 URL 非法", "网关 URL 须为无凭据/查询/片段的 HTTP(S) 入口, 无尾斜线",
+    "只支持 JSON 文件中的 client_api_key 引用",
+    "provider 名称非法/两个 Kimi 协议名称重复", "须使用非内置 provider 名称",
+    "模型清单版本/格式非法", "模型清单来源须为字符串列表", "模型 ID 非法或重复",
+    "模型协议/推理声明非法", "模型窗口/输出限制须为正整数", "输出限制超过总窗口",
+    "模型输入类型非法", "模型价格非法", "思考等级映射非法", "未知 Pi 兼容选项",
+    "Pi 兼容选项值非法", "默认模型不在版本化清单中", "Pi 默认思考等级不受模型支持",
+    "Codex 默认模型须支持 Responses", "Codex 固定清单版本/格式非法",
+    "Codex 模型标识/描述/排序字段非法", "Codex 能力字段须为布尔值",
+    "Codex 工具输出截断字段非法", "Codex 固定清单含模板外模型/非 Responses 模型",
+    "Codex 窗口/输入规格与共享清单不符",
+    "Codex 固定清单不允许 WebSocket/Lite/自动升级/未验证工具",
+    "Codex 原生基础指令缺失/过大", "Codex 固定清单客户端字段非法",
+    "Codex 思考等级非法", "Codex 固定清单与 Responses 模型集不同",
+    "固定快照摘要/生成契约不一致, 拒绝更新或重新猜配置",
+})
+# 旧镜像没有 validate 动作; 不再用这句文案推断版本, 只用于说明工具自检失败.
+LEGACY_TOOL_REASON = "初始化工具仅用于契约匹配的新容器"
+PREFLIGHT_INCOMPATIBLE = (
+    "镜像内模板解析器不接受本次模板快照, 该镜像不能用于本次 birth; "
+    "按 image-prep 审批构建/发布含兼容解析器的新 base/display/项目镜像后, 用 --image <ref> 重跑; "
+    "不手改快照, 不补假价格, 不改旧容器"
+)
+
+
+def stderr_reason(result: subprocess.CompletedProcess, allowed: frozenset[str]) -> str:
+    """只取白名单内的固定脱敏原因; 逐行挑固定 JSON, 不透传原始输出/正文."""
+    for line in (result.stderr or "").splitlines():
+        line = line.strip()
+        if not line.startswith("{"):
+            continue
+        try:
+            payload = json.loads(line)
+        except ValueError:
+            continue
+        reason = payload.get("error") if isinstance(payload, dict) else None
+        if isinstance(reason, str) and reason in allowed:
+            return reason
+    return ""
+
+
+def pin_image(image: str) -> str:
+    """本地不可变引用: 已是完整镜像 ID 就原样用, 否则解析当前本地 ID (tag 会漂).
+
+    podman 的 .Id 可能给 64 位裸 ID, 统一补 sha256: 前缀.
+    """
+    pinned = normalize_image_id(image)
+    if pinned:
+        return pinned
+    result = captured(["podman", "image", "inspect", image, "--format", "{{.Id}}"])
+    pinned = normalize_image_id(result.stdout.strip())
+    if result.returncode != 0 or not pinned:
+        raise TemplateError(f"镜像不存在或不可 inspect, 不能预检: {image}")
+    return pinned
+
+
+# 能力探针: 先读镜构建写入的 agent-tool-actions 标记; 老镜像没有标记时扫工具实现文件
+# (镜像里 /opt/swt-agent-config/runtime.py 只是 import wrapper, 动作列表在内层包里).
+# 都不符合就当无法识别 (fail closed), 不从错误文案猜版本.
+PROBE_SOURCE = (
+    "import pathlib,sys;"
+    "root=pathlib.Path({root!r});"
+    "sys.exit(2) if not root.is_dir() else None;"
+    "marker=root/'agent-tool-actions';"
+    "has=('validate' in marker.read_text(encoding='utf-8').split()) if marker.is_file() "
+    "else any('\"validate\"' in path.read_text(encoding='utf-8', errors='ignore') "
+    "for path in sorted(root.rglob('*.py')));"
+    "sys.exit(0 if has else 1)"
+)
+
+
+def capability_probe_source(root: str = TOOL_DIR) -> str:
+    return PROBE_SOURCE.format(root=root)
+
+
+def tool_has_validate(pinned: str, run_tool) -> bool:
+    probe = run_tool(["-c", capability_probe_source()])
+    if probe.returncode == 0:
+        return True
+    if probe.returncode == 1:
+        return False
+    raise TemplateError(
+        f"无法确认镜像 {pinned} 内工具是否支持只读预检, 按不兼容处理; "
+        "核对镜像是否完整/可运行后重跑"
+    )
+
+
+def incompatible_image(pinned: str, detail: str = "") -> TemplateError:
+    return TemplateError(
+        PREFLIGHT_INCOMPATIBLE + f"; 目标镜像 {pinned}" + (f"; 原因: {detail}" if detail else ""))
+
+
+def preflight(image: str, value: dict) -> str:
+    """按选定镜像做只读模板预检: 用镜像内真实解析器校验本次快照; 返回校验用的镜像 ID.
+
+    临时容器 --rm, --pull=never (只用宿主已有镜像, 不拉取), --http-proxy=false
+    (Podman 默认会把代理变量传进容器), 无网络/无挂载/无 -e, 镜像按本地不可变 ID
+    引用, 快照只经 stdin 传入; 不读主机凭据, 不写容器内客户端配置.
+    旧镜像没有 validate 动作时 (先读镜像内工具源码确认) 退回同一工具的 state 只读动作.
+    """
+    if not isinstance(value, dict) or not isinstance(value.get("snapshot-digest"), str):
+        raise TemplateError("没有本次模板快照, 不能做镜像预检")
+    pinned = pin_image(image)
+    base = ["podman", "run", "--rm", "--pull=never", "--network=none", "--http-proxy=false",
+            "--user", "root", "-i", pinned,
+            "uv", "run", "--no-project", "--offline", "python"]
+
+    def run_tool(tail: list[str], payload: dict | None = None) -> subprocess.CompletedProcess:
+        options = {"input": canonical(payload)} if payload is not None else {}
+        try:
+            return captured([*base, *tail], **options)
+        except TemplateError as exc:
+            raise TemplateError(f"镜像预检不能执行 ({exc}), 尚未创建母体/容器, 也未读主机凭据") from None
+
+    if tool_has_validate(pinned, run_tool):
+        result = run_tool([TOOL_DIR + "/runtime.py", "validate"], {"snapshot": value})
+        if result.returncode == 0:
+            expected = {"ok": True, "contract": CONTRACT, "snapshot-digest": value["snapshot-digest"]}
+            try:
+                report = json.loads(result.stdout)
+            except ValueError:
+                raise incompatible_image(pinned, "预检没有返回固定脱敏报告") from None
+            if report != expected:
+                raise incompatible_image(pinned, "预检报告结构不符, 不转发原始输出")
+            return pinned
+        # 新入口真实校验失败不回落 state, 避免把真实拒收误当版本兼容性.
+        if stderr_reason(result, frozenset({LEGACY_TOOL_REASON})):
+            raise incompatible_image(pinned, "镜像内工具自检失败, 需 root 身份且契约文件与标签一致")
+        raise incompatible_image(pinned, stderr_reason(result, PARSER_REASONS))
+
+    # 已确认是旧入口: 只用它支持的 state 只读动作校验同一份快照.
+    legacy = run_tool([TOOL_DIR + "/runtime.py", "state"], {
+        "snapshot": value,
+        "binding": {"creation-token": secrets.token_hex(16), "container-id": secrets.token_hex(32)},
+    })
+    if legacy.returncode == 0:
+        try:
+            reported = json.loads(legacy.stdout)
+        except ValueError:
+            reported = None
+        if reported == {"installed": False}:
+            return pinned
+        raise incompatible_image(pinned, "旧镜像的只读状态不是未安装, 不能完成预检")
+    raise incompatible_image(pinned, stderr_reason(legacy, PARSER_REASONS))
+
+
 def image_compatible(ref: str) -> None:
     result = captured(["podman", "image", "inspect", ref, "--format", '{{index .Labels "' + CONTRACT_LABEL + '"}}'])
     if result.returncode != 0 or result.stdout.strip() != str(CONTRACT):
@@ -325,11 +486,15 @@ def operate(runtime: dict, name: str, *, install: bool) -> dict:
                "uv", "run", "--no-project", "--offline", "python", TOOL_DIR + "/runtime.py"]
     if install:
         state = captured([*command, "state"], input=canonical(payload))
+        if state.returncode != 0:
+            # 先看返回码: 失败时 stdout 为空, 原因在 stderr 的固定 JSON 里.
+            detail = stderr_reason(state, PARSER_REASONS | CHECK_REASONS)
+            raise TemplateError("新容器初始化状态不符, 不取主机凭据" + (": " + detail if detail else ""))
         try:
             installed = json.loads(state.stdout)
         except ValueError:
             raise TemplateError("新容器初始化状态无法解析, 不取主机凭据") from None
-        if state.returncode != 0 or installed not in ({"installed": True}, {"installed": False}):
+        if installed not in ({"installed": True}, {"installed": False}):
             raise TemplateError("新容器初始化状态不符, 不取主机凭据")
         if not installed["installed"]:
             payload["client_api_key"] = credential(value)
@@ -338,16 +503,8 @@ def operate(runtime: dict, name: str, *, install: bool) -> dict:
     # 子进程可能把 stdin/Key 反射到 stdout/stderr. 不透传, 只接收固定成功结构.
     if result.returncode != 0:
         # 只转述固定原因, 不透传子进程反射的 Key/路径/正文.
-        reasons = {"pi 真实配置解析/凭据检查未通过", "codex 真实配置解析/凭据检查未通过",
-                   "kimi 真实配置解析/凭据检查未通过", "客户端解析/凭据检查不能执行或超时",
-                   "网关不可达/认证失败/模型清单非法, 不回退供应商", "网关没有模板声明的完整模型清单",
-                   "网关发生重定向, 不转发客户端 Key", "客户端配置/凭据权限或属主错误",
-                   "客户端模型配置与固定快照不同, 不自动覆盖", "目标存在 OAuth/其他认证数据, 不覆盖"}
-        try:
-            reason = json.loads(result.stderr).get("error")
-        except (ValueError, AttributeError):
-            reason = None
-        detail = ": " + reason if isinstance(reason, str) and reason in reasons else ""
+        reason = stderr_reason(result, CHECK_REASONS)
+        detail = ": " + reason if reason else ""
         raise TemplateError("新容器模板安装/验收失败" + detail + "; 未交付, 同一 birth 重入或 terminate 该新容器")
     try:
         report = json.loads(result.stdout)

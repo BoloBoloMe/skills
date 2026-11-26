@@ -100,6 +100,28 @@ class TemplateTest(unittest.TestCase):
         self.assertNotIn("COPY pi-agent/models.json", text)
         self.assertIn("COPY agent-tools/ /opt/swt-agent-config/", text)
 
+    def test_staged_tools_carry_action_capability_marker(self):
+        """镜像构建上下文带 agent-tool-actions 标记, 与容器内工具支持的动作一致.
+
+        真实镜像里 /opt/swt-agent-config/runtime.py 只是 import wrapper (95 字节),
+        动作列表在内层 agent_config/runtime.py, 宿主预检不能只读 wrapper.
+        """
+        from agent_config.common import TOOL_ACTIONS
+        with tempfile.TemporaryDirectory(prefix="swt-stage-") as temporary:
+            root = Path(temporary)
+            (root / "skills").mkdir()
+            (root / "skills" / "SKILL.md").write_text("stage\n", encoding="utf-8")
+            (root / "pi-agent").mkdir()
+            self.image.stage_context(root / "ctx", root / "skills", root / "pi-agent")
+            ctx = root / "ctx" / "agent-tools"
+            marker = ctx / "agent-tool-actions"
+            self.assertTrue(marker.is_file(), "构建上下文缺能力标记")
+            self.assertEqual(marker.read_text(encoding="utf-8").split(), list(TOOL_ACTIONS))
+            self.assertIn("validate", marker.read_text(encoding="utf-8").split())
+            self.assertTrue((ctx / "runtime.py").is_file())
+            self.assertTrue((ctx / "agent_config" / "runtime.py").is_file())
+            self.assertLess((ctx / "runtime.py").stat().st_size, 200, "根 runtime.py 应是 wrapper")
+
     def test_swt_source_has_template_guard_and_old_auth_only_in_legacy_branch(self):
         source = (SCRIPTS / "swt.py").read_text(encoding="utf-8")
         birth = source[source.index("def birth("):source.index("def default_branch(")]
