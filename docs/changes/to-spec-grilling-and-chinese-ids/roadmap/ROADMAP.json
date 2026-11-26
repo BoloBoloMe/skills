@@ -19,7 +19,8 @@
     "milestone-04 确认方式变更 (2026-11-26): 用户明确不阅读草稿, 要求本会话以拟改盘问方式对齐, 因而 notes.12 的等待旧 review_id 采纳步骤不再适用. 产品承接已有确认来源, 技术各节经八项建议再次盘问并获用户统一确认; 新增 DECISIONS.md 决策19-29/事实9-10, 含不加逐节结论, 交接细目, 四块职责, 三份临时材料, v1标记, 分用反方与正式检查会话, 整组失败处理, 既有依赖/安全/无量化非功能指标. 正在独立攻击新增决定, 尚未转正/关闭. 未知海域原唯一项 真实使用后的粒度校准 已有同义 off_course 项且明确在本次目的地之外, 移除重复未知项, 不扩大本次试跑边界. 本次会话按用户要求确认规格, 不作为已实现新版的成品试跑证据.",
     "milestone-04 关闭 (2026-11-26): 两份权威规格已完成并提交 708a145c0c2c7986914e5355a969d832bc5a8f50. 用户明确改用本会话盘问确认, 不阅读草稿; 产品承接已确认要求, 技术八项建议获统一确认, 清单不另附逐节结论, 交接细目已定. DECISIONS新增决策19-30/事实9-10, 决策15正文保留并由30替代修文覆盖深度. 反方4项发现经主会话核实和原反方独立复核收敛, 无待裁决缺口. 产品通过草稿/正式机检, 38场景/30AC; 技术6节机检通过, 机械复制字节一致. 另一未参与盘问/反方/写稿的独立会话完成正式版本全条目对账, 反向覆盖与达标检查, 无阻塞, 报告绑定两份SHA256. 可选机械HTML已生成并验证可访问. 全部变更仅规格/账本/证据/路线图, 未实施技能或试跑成品; 领域模型无新增. 下一前沿 milestone-05 设计验证方案. 预览入口 http://192.168.65.165:37857/2026-11-26-acceptance-5400f3d57f88-aa15ba5a.html, 仅供选看, 不再等待旧草稿采纳; 用现有工具的--review仅作机械校验. 独立检查的3条备忘不影响下游, 不作返工. 总体旅程未验收, 不自动领取 milestone-05.",
     "milestone-05 进行中 (2026-11-26): 验证方案 v1 已写入 VERIFICATION-PLAN.md, 提交 afe9a23, 确认状态待确认, 未关闭. 只读已确认 PRODUCT/TECHNICAL 设计, 未查看候选实现或运行成品. 按原粒度覆盖 38 场景条目 (37 普通+1 大纲全部7例=44项) 与5审计规则, 产品表49行; 另有 to-spec测试/pytest.ini全量/改过SKILL格式检查3行, 合计52行必验. 自动核对原场景标题无漏项, 例子7行, 行数与来源位置检查及diff检查通过. 流程查候选条文, 机械场景实跑公开CLI, 不试跑真实需求; 并发项须真实时序证据, 未就绪记未验证. 全量pytest须具备podman的隔离环境从同目标完整提交运行, 容器绕过conftest的单文件结果不能替代, 既有失败不自动豁免或修复. 方案写明独立性, 隔离写入与数据保留范围及终点测试代码人工抽查, 须用户明确确认固定v1才改状态并关闭; 未领取milestone-06.",
-    "2026-11-26 用户明确扩围: 全程通过盘问对齐, verify-change 的验证方案确认也纳入改造, 已落 DECISIONS 决策31. 新增 milestone-10 deliberate 敲定新增规则, milestone-11 spec 补两份权威规格, 接入 milestone-05 与终点验收依赖. 既有 milestone-04 关闭记录与两份规格对原范围仍有效, 新增范围尚缺, 下游不得据旧材料领取. 现有验证方案v1未确认且只覆盖旧范围, 保留原件, 不再等待阅读整份草稿采纳; milestone-05 仍进行中但等待 milestone-11. 先盘问新增规则, 不重问旧判据, 本轮未修改技能实现. 分段/粒度/落笔检查等细则待用户回答, 不以本笔记代答."
+    "2026-11-26 用户明确扩围: 全程通过盘问对齐, verify-change 的验证方案确认也纳入改造, 已落 DECISIONS 决策31. 新增 milestone-10 deliberate 敲定新增规则, milestone-11 spec 补两份权威规格, 接入 milestone-05 与终点验收依赖. 既有 milestone-04 关闭记录与两份规格对原范围仍有效, 新增范围尚缺, 下游不得据旧材料领取. 现有验证方案v1未确认且只覆盖旧范围, 保留原件, 不再等待阅读整份草稿采纳; milestone-05 仍进行中但等待 milestone-11. 先盘问新增规则, 不重问旧判据, 本轮未修改技能实现. 分段/粒度/落笔检查等细则待用户回答, 不以本笔记代答.",
+    "milestone-10关闭 (2026-11-26): 用户Q1-Q6全A, 明确回复是结束规则设计盘问, 六项规则与三条保留边界已记决策32-38. 反方5项发现已逐项核实并作文字澄清, 原反方复核无遗留阻塞/新增必须裁决缺口, 记录见OPPOSING-milestone-10.md与REVIEW-milestone-10.md. 事实11/12记录现有通用输入/缺口回退与新建账本规则. 产物提交dd55e1731eba83da143bed25004b1ffcef27f9c7. 后续m06/m07/m08已同步verify-change新增范围, 原m04历史保留; 当前唯一前沿milestone-11, 尚未领取. 原验证方案v1未确认且仅覆盖旧范围, 本次规则结束确认不冒充新方案确认; 待补规格后回milestone-05按新方式盘问. 免问残余误判风险如实记录, 不声称用户单独接受过反方描述的弱证据风险, 不准降低验证契约. 本轮未改技能成品, 不试跑真实需求. 全旅程待后续实施/验证与用户终点验收."
   ],
   "milestones": {
     "milestone-01": {
@@ -193,16 +194,20 @@
       "close_summary": null
     },
     "milestone-06": {
-      "title": "拆分 to-spec 改造的执行切片",
+      "title": "拆分规格与验证方案盘问改造的执行切片",
       "type": "execution-plan",
-      "question": "调用 to-execution, 把里程碑 04 的两份规格与里程碑 05 的验证方案拆成可独立执行与验证的 issues (覆盖 SKILL.md 重写, GHERKIN.md/TEMPLATES.md 调整, 脚本与测试改动, navigate/deliberate 连带措辞), 生成 EXECUTION.md 与 issues; 不开始实施.",
+      "question": "调用 to-execution, 依据 milestone-11 扩围后的两份已确认规格及 milestone-05 已通过盘问确认的验证方案, 拆成可独立执行和验证的issues, 生成 EXECUTION.md 与 issues. 覆盖 to-spec 与 verify-change 的盘问确认, 两者反方/独立核对及修订/续问规则, verify-change 复验确认说明, 保留机械脚本与格式, navigate/README等必要连带说明. milestone-01编号汉化成果复用并纳入整体验证. 不开始实施, 不据扩围前v1方案拆分.",
       "inputs": [
         {
-          "content": "两份权威规格",
+          "content": "扩围后已确认的产品规格",
           "source": "docs/changes/to-spec-grilling-and-chinese-ids/PRODUCT.md"
         },
         {
-          "content": "已确认的验证方案",
+          "content": "扩围后已确认的技术规格",
+          "source": "docs/changes/to-spec-grilling-and-chinese-ids/TECHNICAL.md"
+        },
+        {
+          "content": "扩围后通过盘问闭环确认的验证方案及当前修订号",
           "source": "docs/changes/to-spec-grilling-and-chinese-ids/VERIFICATION-PLAN.md"
         }
       ],
@@ -215,17 +220,25 @@
       "close_summary": null
     },
     "milestone-07": {
-      "title": "实施 to-spec 盘问即写稿改造",
+      "title": "实施规格与验证方案的盘问对齐改造",
       "type": "implementation",
-      "question": "调用 drive-execution, 按里程碑 06 的 issues 实施 to-spec 新流程: 重写 workflow/to-spec/SKILL.md 为 '盘问即写稿' 流程 (连续盘问, 可分段续问, 验收段覆盖树问法, 结论记录落盘, 落笔后机检加子代理对账, 闭环即确认, HTML 预览照常生成), 调整 GHERKIN.md/TEMPLATES.md 与脚本, 做 navigate 与 deliberate 的最小连带措辞修正, 补测试; 完成集成提交, 开发验证证据与代码评审. 不含成品独立验证.",
+      "question": "调用 drive-execution, 按 milestone-06 的 issues 实施 to-spec 与 verify-change 全程通过盘问对齐, 保留两份规格格式/机检/机械转正/可选预览及验证方案逐项覆盖. 具体问法, 免问, 反方与独立核对, 闭环确认, 修订/版本与续问规则以扩围后的两份规格及已确认方案为准. 同步 verify-change 的复验说明与 navigate/README 等必要连带措辞, deliberate 独立流程保持原语义, 不新增盘问专用记录. 复用并回归 milestone-01 编号汉化成果, 按需补测试, 完成集成提交/开发验证/代码评审, 不包含成品独立验证.",
       "inputs": [
         {
-          "content": "执行拆分与 issues",
+          "content": "扩围后的执行拆分与 issues",
           "source": "docs/changes/to-spec-grilling-and-chinese-ids/EXECUTION.md"
         },
         {
-          "content": "汉化后的 to-spec 脚本与测试基线",
-          "source": "workflow/to-spec/"
+          "content": "扩围后已确认的产品与技术规格",
+          "source": "docs/changes/to-spec-grilling-and-chinese-ids/PRODUCT.md"
+        },
+        {
+          "content": "扩围后通过盘问确认的验证方案",
+          "source": "docs/changes/to-spec-grilling-and-chinese-ids/VERIFICATION-PLAN.md"
+        },
+        {
+          "content": "汉化后的脚本/测试基线与现有 verify-change 流程",
+          "source": "workflow/"
         }
       ],
       "output_dir": "docs/changes/to-spec-grilling-and-chinese-ids/",
@@ -237,9 +250,9 @@
       "close_summary": null
     },
     "milestone-08": {
-      "title": "独立验证 to-spec 改造",
+      "title": "独立验证全程盘问对齐改造",
       "type": "verification",
-      "question": "按 navigate 的独立验证与返工规则, 另起未参与实现与修复的独立会话, 调用 verify-change 的执行方式, 按里程碑 05 已确认的验证方案对明确的目标提交独立验证: skill 文本符合新流程且无数字上限, 脚本机检与测试通过, 连带措辞无矛盾, 无旧编号规则残留. 只产结果和证据, 发现项按规则分流.",
+      "question": "按 navigate 独立验证与返工规则, 新开未参与实施/修复的独立会话, 调用 verify-change 执行方式, 按 milestone-05 扩围后已通过盘问确认的方案对明确目标提交独立验证. 覆盖 to-spec 与 verify-change 的新增候选条文/调用说明, 保留机械脚本的真实CLI行为, 编号规范/例外, 测试与必要连带说明. 不试跑真实需求, 不把本次规则盘问视作已实现新版运行证据. 只产结果/原件, 失败与缺口按规则分流, 不代用户最终验收.",
       "inputs": [
         {
           "content": "已确认的验证方案及其修订号",
@@ -286,7 +299,7 @@
     "milestone-10": {
       "title": "盘问敲定 verify-change 方案确认改造",
       "type": "deliberate",
-      "status": "进行中",
+      "status": "已关闭",
       "question": "依用户已确认的决策31, 盘问敲定验证方案如何全程通过会话对齐: 与规格盘问的阶段关系, 用户须拍板与代理据已确认来源推导的边界, 问法与粒度, 闭环及方案确认依据, 版本/修订/续问, 成文后的忠实性与覆盖检查. 已确认产品判据不重问, 不以阅读预写稿采纳代替盘问. 只收敛新增规则, 不实施技能.",
       "blocked_by": [],
       "inputs": [
@@ -304,8 +317,13 @@
         }
       ],
       "output_dir": "docs/changes/to-spec-grilling-and-chinese-ids/",
-      "artifacts": [],
-      "close_summary": null
+      "artifacts": [
+        "docs/changes/to-spec-grilling-and-chinese-ids/DECISIONS.md",
+        "docs/changes/to-spec-grilling-and-chinese-ids/OPPOSING-milestone-10.md",
+        "docs/changes/to-spec-grilling-and-chinese-ids/REVIEW-milestone-10.md",
+        "commit dd55e1731eba83da143bed25004b1ffcef27f9c7 (milestone-10 盘问决定与反方收敛)"
+      ],
+      "close_summary": "六问用户均选A并明确确认结束, 决策32-38/事实11-12已落账, 用户扩围决策31继续有效. 验证方案按不同方法问, 直接推导免问/特殊情况另问; 写前独立反方+写后另一独立核对; 变更决定才补问, 纯转述修正独立复查且版本升号; 展示覆盖/跳过理由/资源条件后闭环即内容确认, 不读稿采纳; 方法可行但环境未齐可附条件确认; 现有账本格式+按需交接, 免问不留痕. 保留通用权威输入与成品验收边界. 独立Herdr反方opp-m10 (cli/glm-5.3-flash:high) 5项发现经主会话逐项核实, 对职责/来源/确认追溯/通用输入作文字澄清, 未采纳放宽实现读取或重问Q6建议, 原反方对受影响条目复核确认全部收敛, 无阻塞或新增必须裁决缺口, 会话已关闭. 账本编号/六问覆盖/ASCII标点/diff检查通过, 产物提交 dd55e1731eba83da143bed25004b1ffcef27f9c7. 无新增领域术语, 易逆流程调整不另建ADR. 未改技能成品或试跑. 本次结束确认不是未来验证方案确认, 原v1仍不可用; 下一前沿milestone-11补规格, 不自动领取."
     },
     "milestone-11": {
       "title": "补齐全程盘问对齐的两份规格",
@@ -316,16 +334,24 @@
       ],
       "inputs": [
         {
-          "content": "新增盘问收敛后的决定",
-          "source": "docs/changes/to-spec-grilling-and-chinese-ids/DECISIONS.md"
+          "content": "新增范围及六问答复, 闭环与输入/验收边界, 独立反方收敛后适用的决定",
+          "source": "docs/changes/to-spec-grilling-and-chinese-ids/DECISIONS.md#决策31-验证方案确认纳入全程盘问对齐"
         },
         {
-          "content": "原范围已确认产品内容",
+          "content": "原范围已确认产品内容, 仅新增范围待承接",
           "source": "docs/changes/to-spec-grilling-and-chinese-ids/PRODUCT.md"
         },
         {
-          "content": "原范围已确认技术内容",
+          "content": "原范围已确认技术内容, 新增验证方案流程与连带说明待承接",
           "source": "docs/changes/to-spec-grilling-and-chinese-ids/TECHNICAL.md"
+        },
+        {
+          "content": "现有方案设计/执行与复验边界, 用于核对保留约束",
+          "source": "workflow/verify-change/SKILL.md"
+        },
+        {
+          "content": "milestone-10独立反方发现与主会话收敛依据, 原反方复核已无阻塞",
+          "source": "docs/changes/to-spec-grilling-and-chinese-ids/REVIEW-milestone-10.md"
         }
       ],
       "output_dir": "docs/changes/to-spec-grilling-and-chinese-ids/",
