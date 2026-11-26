@@ -15,7 +15,9 @@
     "批报裁定 (2026-11-25, milestone-02 演示讨论中用户明确): 直译批报不再请用户过目确认 - 批报条目仍全量写入盘问结论记录 (标 直译自规则N 原文), 但不展示不等确认. 问数算式随批确认清零重算: 甲 粗21/中52/细78, 乙 粗45/中21/细32~47, 乙粗档被中档支配. 兜底移交子代理对账: (a) 记录行标直译的, 子代理核原文是否真支撑该情况, 不支撑 = 需用户决策, 走补问/重开 (m03 敲定回路); (b) 反向覆盖检查 (按规则原文重推情况清单与记录比对) 能否成立为 m03 待敲定项. 失去直译部分现场否决与查漏, 用户知情接受. 样张已有风险实例: 乙规则4 换端口那条直译里藏着新决策 (状态记录加字段), 不看批报后只能靠对账抓出. m03 输入.",
     "档位裁定 (2026-11-25, milestone-02 演示判断): 用户选定中档, 两份材料统一, 不按材料分档. 裁定后中档问法 = 每种非直译情况 1 问 刺激→结果一句话, 直译情况批报落盘不问 (见批报裁定条), 前提与阈值出处留落笔时按类构造; 问数代理口径: 甲 52 问, 乙 21 问. m03 的验收段问法与粒度以中档为准. 记录字段压力点 4 已随批报裁定成立; 压力点 1 (大纲参数)/2 (审计证据单列)/3 (决策出处锚点格式) 拟移交 m03 (记录格式归 m03 管), 待用户确认后随 m02 关闭落实.",
     "milestone-03 关闭 (2026-11-25): grilling 三轮问答 (14/5/2 题) + 收尾确认闭环, 账本 DECISIONS.md 落 决策1-18 (决策14-18 为反方收敛修订, 按替代链保留历史) 与事实1-8. 关键裁定: (1) to-spec 自组织盘问, 不整体调 deliberate, 编排 grilling+decision-ledger+opposing-viewpoint; (2) 反方攻击在账本落盘后落笔前, 攻账本决策; (3) 主会话落笔, 判定性内容须有账本/原文依据, 叙述组织可写不引入新判定; (4) 盘问内容只落账本, 免问不留痕 — 反方实证的静默漏检风险 (直译藏技术侧新决策, 场景结果有原文支撑会放行) 经我复核知情接受, 不恢复留痕锚, 批报记录文件不得复活; (5) 落笔后四道闸门 (机检/Gherkin+正文+技术判定全条目对账/反向覆盖/独立检查保留), 依据源钉死 = 账本条目+我的盘问答复, 禁以落笔产物自证; (6) 事实随决策搭车确认 (拍板即视为确认依据事实, 条目标 随决策N 确认), 技术段固定选择 (接口/接缝/兼容承诺) 入亲答清单; (7) 去 review_id 留确认标记, 修文走重转正不手改正式文件, 标记升版细则归 m4; (8) 交接文档按 handoff 现状 (同机 /tmp, 跨机落仓库), 跨容器丢失风险知情接受; (9) 闭环确认材料含逐节清单与跳过理由, 呈现给我. 反方报告 OPPOSING-milestone-03.md: 12 发现, 驳回 2 (OPP-07(i) 知情选择/OPP-12 未知海域承接), 采纳 10. 未知海域 盘问规模很大时的会话组织 已厘清 (账本+交接文档承载, 细目移交 m4), 从 unknown_seas 移除并追加 m4 输入.",
-    "milestone-04 进行中 (2026-11-26): 按节点指定的现行 to-spec 起草, 尚待用户采纳验收固定版, 未转正/未关闭. 工作区 /tmp/to-spec-ac-bm0y6xqn; 冻结产品暂存稿 review/to-spec-ac-bm0y6xqn-PRODUCT-base-v1.md, 验收草稿 review/to-spec-ac-bm0y6xqn-AC-v1.md, 预览 review/2026-11-26-acceptance-0d1ef20ac110-49e65236.html; review_id=0d1ef20ac110f181250bec1587fcdbcc6da4f717158766b72eb8389ecd147559. 子会话 cli/glm-5.3-flash:high 经 Herdr 起草, 主会话逐条对照账本核对并返修, 最终 34 场景/27 AC 机检通过, 页面自检与容器本机 HTTP 原文一致检查通过. 流程场景核查候选技能条文, 脚本场景实跑 CLI, 不要求真实需求试跑. 技术预备草稿 review/to-spec-ac-bm0y6xqn-TECHNICAL-v1.md 已写且 check-tech 通过, 尚未提交用户采纳; 可调整建议为确认标记维持现有 v1 流程格式, 不按修文次数升版, 续问交接含前沿/否决分支/逐题与逐节进度/盲区扫描/已明确的节奏信号, 不复活免问留痕; 这些建议不是新增已确认决策. 当前待确认网址 http://192.168.65.165:37857/2026-11-26-acceptance-0d1ef20ac110-49e65236.html. 用户采纳当前 review_id 后, 才进入现行流程的技术稿展示确认, 再机械转正与独立终检. 临时工作区须保留; 丢失或无明确采纳记录时重新展示确认. 已按决策1澄清目的地的自组织盘问措辞及本节点 deliberate 不改范围, 标题移除由 milestone-05 承接的验证方案."
+    "milestone-04 进行中 (2026-11-26): 按节点指定的现行 to-spec 起草, 尚待用户采纳验收固定版, 未转正/未关闭. 工作区 /tmp/to-spec-ac-bm0y6xqn; 冻结产品暂存稿 review/to-spec-ac-bm0y6xqn-PRODUCT-base-v1.md, 验收草稿 review/to-spec-ac-bm0y6xqn-AC-v1.md, 预览 review/2026-11-26-acceptance-0d1ef20ac110-49e65236.html; review_id=0d1ef20ac110f181250bec1587fcdbcc6da4f717158766b72eb8389ecd147559. 子会话 cli/glm-5.3-flash:high 经 Herdr 起草, 主会话逐条对照账本核对并返修, 最终 34 场景/27 AC 机检通过, 页面自检与容器本机 HTTP 原文一致检查通过. 流程场景核查候选技能条文, 脚本场景实跑 CLI, 不要求真实需求试跑. 技术预备草稿 review/to-spec-ac-bm0y6xqn-TECHNICAL-v1.md 已写且 check-tech 通过, 尚未提交用户采纳; 可调整建议为确认标记维持现有 v1 流程格式, 不按修文次数升版, 续问交接含前沿/否决分支/逐题与逐节进度/盲区扫描/已明确的节奏信号, 不复活免问留痕; 这些建议不是新增已确认决策. 当前待确认网址 http://192.168.65.165:37857/2026-11-26-acceptance-0d1ef20ac110-49e65236.html. 用户采纳当前 review_id 后, 才进入现行流程的技术稿展示确认, 再机械转正与独立终检. 临时工作区须保留; 丢失或无明确采纳记录时重新展示确认. 已按决策1澄清目的地的自组织盘问措辞及本节点 deliberate 不改范围, 标题移除由 milestone-05 承接的验证方案.",
+    "milestone-04 确认方式变更 (2026-11-26): 用户明确不阅读草稿, 要求本会话以拟改盘问方式对齐, 因而 notes.12 的等待旧 review_id 采纳步骤不再适用. 产品承接已有确认来源, 技术各节经八项建议再次盘问并获用户统一确认; 新增 DECISIONS.md 决策19-29/事实9-10, 含不加逐节结论, 交接细目, 四块职责, 三份临时材料, v1标记, 分用反方与正式检查会话, 整组失败处理, 既有依赖/安全/无量化非功能指标. 正在独立攻击新增决定, 尚未转正/关闭. 未知海域原唯一项 真实使用后的粒度校准 已有同义 off_course 项且明确在本次目的地之外, 移除重复未知项, 不扩大本次试跑边界. 本次会话按用户要求确认规格, 不作为已实现新版的成品试跑证据.",
+    "milestone-04 关闭 (2026-11-26): 两份权威规格已完成并提交 708a145c0c2c7986914e5355a969d832bc5a8f50. 用户明确改用本会话盘问确认, 不阅读草稿; 产品承接已确认要求, 技术八项建议获统一确认, 清单不另附逐节结论, 交接细目已定. DECISIONS新增决策19-30/事实9-10, 决策15正文保留并由30替代修文覆盖深度. 反方4项发现经主会话核实和原反方独立复核收敛, 无待裁决缺口. 产品通过草稿/正式机检, 38场景/30AC; 技术6节机检通过, 机械复制字节一致. 另一未参与盘问/反方/写稿的独立会话完成正式版本全条目对账, 反向覆盖与达标检查, 无阻塞, 报告绑定两份SHA256. 可选机械HTML已生成并验证可访问. 全部变更仅规格/账本/证据/路线图, 未实施技能或试跑成品; 领域模型无新增. 下一前沿 milestone-05 设计验证方案. 预览入口 http://192.168.65.165:37857/2026-11-26-acceptance-5400f3d57f88-aa15ba5a.html, 仅供选看, 不再等待旧草稿采纳; 用现有工具的--review仅作机械校验. 独立检查的3条备忘不影响下游, 不作返工. 总体旅程未验收, 不自动领取 milestone-05."
   ],
   "milestones": {
     "milestone-01": {
@@ -119,7 +121,7 @@
     "milestone-04": {
       "title": "整理 to-spec 改造的两份规格",
       "type": "spec",
-      "question": "按里程碑 03 敲定的决策, 调用 to-spec (现有版本) 交付本变更的 PRODUCT.md 与 TECHNICAL.md: 产品侧写清 to-spec 新流程的可观察结果 (一场连续盘问产生两份 spec, 验收段按选定粒度问覆盖, 我不读 Gherkin, 不出现数字上限, 可分段续问, 闭环即确认), 技术侧写清 SKILL.md/GHERKIN.md/TEMPLATES.md/脚本的改动边界与对 navigate 的最小连带措辞, deliberate 独立流程保持现状. 两份规格的验收标准按 to-spec 现行确认方式经我确认; 下游 issue 实施范围不等于即时编码授权.",
+      "question": "按里程碑 03 敲定的决策, 调用 to-spec (现有版本) 交付本变更的 PRODUCT.md 与 TECHNICAL.md: 产品侧写清 to-spec 新流程的可观察结果 (一场连续盘问产生两份 spec, 验收段按选定粒度问覆盖, 我不读 Gherkin, 不出现数字上限, 可分段续问, 闭环即确认), 技术侧写清 SKILL.md/GHERKIN.md/TEMPLATES.md/脚本的改动边界与对 navigate 的最小连带措辞, deliberate 独立流程保持现状. 用户在本会话明确改用拟改的盘问方式确认内容, 不阅读草稿; 已有产品要求承接, 技术各节再次盘问并统一确认, 来源见 DECISIONS.md 决策19-30; 复用现有格式和工具完成两份规格, 不再等待旧 review_id 的采纳; 下游 issue 实施范围不等于即时编码授权.",
       "inputs": [
         {
           "content": "里程碑 03 敲定的设计决策",
@@ -136,15 +138,27 @@
         {
           "content": "m3 关闭追加: 续问交接文档的内容细目 (前沿/已否决分支/盲区扫描进度/疲劳信号哪些进交接文档, 哪些不进) — 方向已由决策6/决策17 定 (账本+按需交接文档, handoff skill), 细目在 spec 中定; 免问不留痕不得在 spec 中复活 (用户两次拍板, 静默漏检风险知情接受)",
           "source": "docs/changes/to-spec-grilling-and-chinese-ids/roadmap/ROADMAP.json#notes (milestone-03 关闭条目) 与 docs/changes/to-spec-grilling-and-chinese-ids/DECISIONS.md 决策6/14/15/16/17/18"
+        },
+        {
+          "content": "本轮改用盘问确认的明确授权, 技术八项确认及反方收敛后的检查覆盖深度, 供两份规格定稿",
+          "source": "docs/changes/to-spec-grilling-and-chinese-ids/DECISIONS.md"
         }
       ],
       "output_dir": "docs/changes/to-spec-grilling-and-chinese-ids/",
-      "status": "进行中",
+      "status": "已关闭",
       "blocked_by": [
         "milestone-03"
       ],
-      "artifacts": [],
-      "close_summary": null
+      "artifacts": [
+        "docs/changes/to-spec-grilling-and-chinese-ids/PRODUCT.md",
+        "docs/changes/to-spec-grilling-and-chinese-ids/TECHNICAL.md",
+        "docs/changes/to-spec-grilling-and-chinese-ids/DECISIONS.md",
+        "docs/changes/to-spec-grilling-and-chinese-ids/OPPOSING-milestone-04.md",
+        "docs/changes/to-spec-grilling-and-chinese-ids/REVIEW-milestone-04.md",
+        "docs/changes/to-spec-grilling-and-chinese-ids/CHECKS-milestone-04.md",
+        "commit 708a145c0c2c7986914e5355a969d832bc5a8f50 (milestone-04 规格与独立检查证据)"
+      ],
+      "close_summary": "两份权威规格已完成并提交 708a145c0c2c7986914e5355a969d832bc5a8f50. 用户明确改用本会话盘问确认, 不阅读草稿; 产品承接已确认要求, 技术八项建议获统一确认, 清单不另附逐节结论, 交接细目已定. DECISIONS新增决策19-30/事实9-10, 决策15正文保留并由30替代修文覆盖深度. 反方4项发现经主会话核实和原反方独立复核收敛, 无待裁决缺口. 产品通过草稿/正式机检, 38场景/30AC; 技术6节机检通过, 机械复制字节一致. 另一未参与盘问/反方/写稿的独立会话完成正式版本全条目对账, 反向覆盖与达标检查, 无阻塞, 报告绑定两份SHA256. 可选机械HTML已生成并验证可访问. 全部变更仅规格/账本/证据/路线图, 未实施技能或试跑成品; 领域模型无新增. 下一前沿 milestone-05 设计验证方案."
     },
     "milestone-05": {
       "title": "设计 to-spec 改造的验证方案",
@@ -262,9 +276,7 @@
       "close_summary": null
     }
   },
-  "unknown_seas": [
-    "真实使用后的粒度校准: 样张只能近似真实的盘问体验, 首次在真实需求上跑新流程后, 粒度档, 批报比例与结论记录字段大概率要调; 现在说不准会暴露哪些问题, 本次终点不含试跑, 试跑另起旅程."
-  ],
+  "unknown_seas": [],
   "off_course": [
     {
       "what": "规则先行, 场景抽问 (方向 B)",
