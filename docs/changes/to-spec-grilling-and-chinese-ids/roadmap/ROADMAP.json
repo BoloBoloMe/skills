@@ -13,7 +13,8 @@
     "环境缺口 (2026-11-25 实测, 不属本变更): 本容器 venv 未播种 gherkin-official, to-spec 测试须 uv run --with gherkin-official; 根 tests/conftest.py 的 pytest_sessionstart 依赖 podman (容器内无), 根 tests 只能 --noconftest 单文件跑; general/present/tests/test_skill_contract.py::test_no_state_object_requirement 为既有失败.",
     "环境缺口的裁定 (2026-11-25 用户经宿主会话转达, 需当权威输入时再确认): gherkin-official 装进镜像, 重建时带上, 本容器继续用 uv run --with gherkin-official; podman 不装, 根 tests/ 不在沙盒跑, 确需跑根下单文件用绕开 conftest 的写法; general/present/tests/test_skill_contract.py 那条既有失败不修, 不并进本变更. 更正一条: tests/README.md 给的 --confcutdir=/tmp 在 pytest 9.1.1 下不再绕开 tests/conftest.py (实测仍崩在 podman), 容器内实测可用的是 uv run pytest --noconftest <file> (tests/test_skills_codex_metadata.py 1 passed); README 那处漂移属已关闭变更, 本次不改, 后续验证方案按 --noconftest 写.",
     "批报裁定 (2026-11-25, milestone-02 演示讨论中用户明确): 直译批报不再请用户过目确认 - 批报条目仍全量写入盘问结论记录 (标 直译自规则N 原文), 但不展示不等确认. 问数算式随批确认清零重算: 甲 粗21/中52/细78, 乙 粗45/中21/细32~47, 乙粗档被中档支配. 兜底移交子代理对账: (a) 记录行标直译的, 子代理核原文是否真支撑该情况, 不支撑 = 需用户决策, 走补问/重开 (m03 敲定回路); (b) 反向覆盖检查 (按规则原文重推情况清单与记录比对) 能否成立为 m03 待敲定项. 失去直译部分现场否决与查漏, 用户知情接受. 样张已有风险实例: 乙规则4 换端口那条直译里藏着新决策 (状态记录加字段), 不看批报后只能靠对账抓出. m03 输入.",
-    "档位裁定 (2026-11-25, milestone-02 演示判断): 用户选定中档, 两份材料统一, 不按材料分档. 裁定后中档问法 = 每种非直译情况 1 问 刺激→结果一句话, 直译情况批报落盘不问 (见批报裁定条), 前提与阈值出处留落笔时按类构造; 问数代理口径: 甲 52 问, 乙 21 问. m03 的验收段问法与粒度以中档为准. 记录字段压力点 4 已随批报裁定成立; 压力点 1 (大纲参数)/2 (审计证据单列)/3 (决策出处锚点格式) 拟移交 m03 (记录格式归 m03 管), 待用户确认后随 m02 关闭落实."
+    "档位裁定 (2026-11-25, milestone-02 演示判断): 用户选定中档, 两份材料统一, 不按材料分档. 裁定后中档问法 = 每种非直译情况 1 问 刺激→结果一句话, 直译情况批报落盘不问 (见批报裁定条), 前提与阈值出处留落笔时按类构造; 问数代理口径: 甲 52 问, 乙 21 问. m03 的验收段问法与粒度以中档为准. 记录字段压力点 4 已随批报裁定成立; 压力点 1 (大纲参数)/2 (审计证据单列)/3 (决策出处锚点格式) 拟移交 m03 (记录格式归 m03 管), 待用户确认后随 m02 关闭落实.",
+    "milestone-03 关闭 (2026-11-25): grilling 三轮问答 (14/5/2 题) + 收尾确认闭环, 账本 DECISIONS.md 落 决策1-18 (决策14-18 为反方收敛修订, 按替代链保留历史) 与事实1-8. 关键裁定: (1) to-spec 自组织盘问, 不整体调 deliberate, 编排 grilling+decision-ledger+opposing-viewpoint; (2) 反方攻击在账本落盘后落笔前, 攻账本决策; (3) 主会话落笔, 判定性内容须有账本/原文依据, 叙述组织可写不引入新判定; (4) 盘问内容只落账本, 免问不留痕 — 反方实证的静默漏检风险 (直译藏技术侧新决策, 场景结果有原文支撑会放行) 经我复核知情接受, 不恢复留痕锚, 批报记录文件不得复活; (5) 落笔后四道闸门 (机检/Gherkin+正文+技术判定全条目对账/反向覆盖/独立检查保留), 依据源钉死 = 账本条目+我的盘问答复, 禁以落笔产物自证; (6) 事实随决策搭车确认 (拍板即视为确认依据事实, 条目标 随决策N 确认), 技术段固定选择 (接口/接缝/兼容承诺) 入亲答清单; (7) 去 review_id 留确认标记, 修文走重转正不手改正式文件, 标记升版细则归 m4; (8) 交接文档按 handoff 现状 (同机 /tmp, 跨机落仓库), 跨容器丢失风险知情接受; (9) 闭环确认材料含逐节清单与跳过理由, 呈现给我. 反方报告 OPPOSING-milestone-03.md: 12 发现, 驳回 2 (OPP-07(i) 知情选择/OPP-12 未知海域承接), 采纳 10. 未知海域 盘问规模很大时的会话组织 已厘清 (账本+交接文档承载, 细目移交 m4), 从 unknown_seas 移除并追加 m4 输入."
   ],
   "milestones": {
     "milestone-01": {
@@ -103,12 +104,16 @@
         }
       ],
       "output_dir": "docs/changes/to-spec-grilling-and-chinese-ids/",
-      "status": "待处理",
+      "status": "已关闭",
       "blocked_by": [
         "milestone-02"
       ],
-      "artifacts": [],
-      "close_summary": null
+      "artifacts": [
+        "docs/changes/to-spec-grilling-and-chinese-ids/DECISIONS.md",
+        "docs/changes/to-spec-grilling-and-chinese-ids/OPPOSING-milestone-03.md",
+        "docs/changes/to-spec-grilling-and-chinese-ids/roadmap/ROADMAP.json#notes (milestone-03 关闭条目)"
+      ],
+      "close_summary": "盘问敲定 to-spec 盘问即写稿设计决策: grilling 三轮问答闭环, 全部 8 议题有用户明确答复, 决策树遍历+盲区扫描完成, 用户确认结束盘问. 账本 DECISIONS.md: 决策1-18 (决策14-18 为反方收敛修订, 替代 2/5/8/9/11, 历史保留), 事实1-8. 反方攻击: 独立 pi 子会话 opposing-m03 (glm-5.3-flash:high, 未参与盘问与落盘, 会话已收尾关闭), 报告 OPPOSING-milestone-03.md, 12 项发现经逐项核实: 驳回 2 (OPP-07(i) 用户 Q12=B 知情选择; OPP-12 补问回路为 Q10/Q11 批准兜底且量级无证据), 采纳 10; 用户裁决: 决策11 修订采纳建议 (技术段入亲答清单+事实随决策搭车确认), 6 项拟修订确认落账本, 决策5 免问留痕锚维持不留痕 (静默漏检风险知情接受), 交接文档落点维持 handoff 现状 (跨容器丢失风险知情接受). ADR 与领域语言文件经判定跳过 (理由见会话记录, 领域维护入口在决策17 保留). 未知海域 盘问规模很大时的会话组织 已厘清并移除, m4 输入追加续问交接文档细目. 关闭时无待裁决缺口."
     },
     "milestone-04": {
       "title": "整理 to-spec 改造的规格与验证方案",
@@ -126,6 +131,10 @@
         {
           "content": "现有 to-spec 与 deliberate 全文",
           "source": "workflow/to-spec/SKILL.md"
+        },
+        {
+          "content": "m3 关闭追加: 续问交接文档的内容细目 (前沿/已否决分支/盲区扫描进度/疲劳信号哪些进交接文档, 哪些不进) — 方向已由决策6/决策17 定 (账本+按需交接文档, handoff skill), 细目在 spec 中定; 免问不留痕不得在 spec 中复活 (用户两次拍板, 静默漏检风险知情接受)",
+          "source": "docs/changes/to-spec-grilling-and-chinese-ids/roadmap/ROADMAP.json#notes (milestone-03 关闭条目) 与 docs/changes/to-spec-grilling-and-chinese-ids/DECISIONS.md 决策6/14/15/16/17/18"
         }
       ],
       "output_dir": "docs/changes/to-spec-grilling-and-chinese-ids/",
@@ -253,8 +262,7 @@
     }
   },
   "unknown_seas": [
-    "真实使用后的粒度校准: 样张只能近似真实的盘问体验, 首次在真实需求上跑新流程后, 粒度档, 批报比例与结论记录字段大概率要调; 现在说不准会暴露哪些问题, 本次终点不含试跑, 试跑另起旅程.",
-    "盘问规模很大时的会话组织: 一个需求盘问跨多次会话时, 除了结论记录还需保存什么 (已否决分支, 盲区扫描进度, 我的疲劳信号) 才能无损续问, 要等里程碑 03 的记录格式定下来后才看得清."
+    "真实使用后的粒度校准: 样张只能近似真实的盘问体验, 首次在真实需求上跑新流程后, 粒度档, 批报比例与结论记录字段大概率要调; 现在说不准会暴露哪些问题, 本次终点不含试跑, 试跑另起旅程."
   ],
   "off_course": [
     {
