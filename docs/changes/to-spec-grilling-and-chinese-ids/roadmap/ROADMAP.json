@@ -22,7 +22,8 @@
     "2026-11-26 用户明确扩围: 全程通过盘问对齐, verify-change 的验证方案确认也纳入改造, 已落 DECISIONS 决策31. 新增 milestone-10 deliberate 敲定新增规则, milestone-11 spec 补两份权威规格, 接入 milestone-05 与终点验收依赖. 既有 milestone-04 关闭记录与两份规格对原范围仍有效, 新增范围尚缺, 下游不得据旧材料领取. 现有验证方案v1未确认且只覆盖旧范围, 保留原件, 不再等待阅读整份草稿采纳; milestone-05 仍进行中但等待 milestone-11. 先盘问新增规则, 不重问旧判据, 本轮未修改技能实现. 分段/粒度/落笔检查等细则待用户回答, 不以本笔记代答.",
     "milestone-10关闭 (2026-11-26): 用户Q1-Q6全A, 明确回复是结束规则设计盘问, 六项规则与三条保留边界已记决策32-38. 反方5项发现已逐项核实并作文字澄清, 原反方复核无遗留阻塞/新增必须裁决缺口, 记录见OPPOSING-milestone-10.md与REVIEW-milestone-10.md. 事实11/12记录现有通用输入/缺口回退与新建账本规则. 产物提交dd55e1731eba83da143bed25004b1ffcef27f9c7. 后续m06/m07/m08已同步verify-change新增范围, 原m04历史保留; 当前唯一前沿milestone-11, 尚未领取. 原验证方案v1未确认且仅覆盖旧范围, 本次规则结束确认不冒充新方案确认; 待补规格后回milestone-05按新方式盘问. 免问残余误判风险如实记录, 不声称用户单独接受过反方描述的弱证据风险, 不准降低验证契约. 本轮未改技能成品, 不试跑真实需求. 全旅程待后续实施/验证与用户终点验收.",
     "milestone-11进行中 (2026-11-26): 用户指出尚未盘问并认为方法合问举例过细, 经grilling澄清后明确确认按LLM验证方式归组, 讲怎么验/看什么/留何证据, 方法或适用条件实质不同才另问, 不逐条重过用例与检查小细节, 成文覆盖不减, 并回复是结束本轮规格盘问. 已落决策39, 保留决策31-38与其他旧正文, 两份规格已机械生成并机检通过: 59场景/41AC (展开65项) 加5审计, 技术6节. 产物提交6b63119a05c2e236724295fdf50e51d89cae6fc6, 主会话检查与SHA256见CHECKS-milestone-11.md. Herdr status/agent list报PermissionDenied: Operation not permitted, 信箱presence查询失败且status不可达, 未能委派起草/新反方/成文独立核对或发信通知宿主; 不将作者自查冒充独立结论. 先保留已成文规格, 本节点未关闭, 下游仍等待milestone-11. 原验证方案v1未改且未确认, 本轮确认不能冒充其确认; 未实施技能或试跑成品. 待恢复Herdr后对新增决定及两份规格独立核对, 解决发现再关闭; 可选机械HTML已生成但未发布, 不提供猜测URL. 本地产物和路线图提交后已尝试git push origin improve, 既有127.0.0.1 git桥连接报errno=Operation not permitted, 未推送到宿主, 成果当前仅在容器仓库; 恢复连接后仅快进推当前improve分支.",
-    "milestone-11本地关闭 (2026-11-26): 用户明确授权启动内置子代理且不用Herdr. 新建独立反方01a21892-12db-7c50-bd78-6d282f3103f1检查决策39与31-38衔接, 无强反方或新增必须裁决; 另一独立检查01a21892-7152-7c51-b3b9-460d21957fa7全量核对33有效决定/12事实/两份规格全部判定, 重跑机检59场景41AC/技术6节, 无阻塞. 两个报告分别为OPPOSING-milestone-11.md/REVIEW-milestone-11.md, 均已主会话核实且与正式稿SHA256一致, 提交734501076d33108545c12011e4243f568adadd71, 子会话已关闭. 此轮未改规格字节或技能成品, 不重问已确认决定. 反方实际发生于成文后如实记录; 本地规格检查已闭环, 回milestone-05以按方法归组的方式盘问新增范围验证方案, 不自动领取. 原方案v1未改/未确认. git push仍被既有127.0.0.1桥连接权限拒绝, 信箱查询失败, 尚未推送到宿主; 可选页面自检通过但服务启动权限拒绝且未查到宿主映射变量, 不给猜测URL. 主机交付尚未完成, 全旅程待后续实施/验证及用户终点验收."
+    "milestone-11本地关闭 (2026-11-26): 用户明确授权启动内置子代理且不用Herdr. 新建独立反方01a21892-12db-7c50-bd78-6d282f3103f1检查决策39与31-38衔接, 无强反方或新增必须裁决; 另一独立检查01a21892-7152-7c51-b3b9-460d21957fa7全量核对33有效决定/12事实/两份规格全部判定, 重跑机检59场景41AC/技术6节, 无阻塞. 两个报告分别为OPPOSING-milestone-11.md/REVIEW-milestone-11.md, 均已主会话核实且与正式稿SHA256一致, 提交734501076d33108545c12011e4243f568adadd71, 子会话已关闭. 此轮未改规格字节或技能成品, 不重问已确认决定. 反方实际发生于成文后如实记录; 本地规格检查已闭环, 回milestone-05以按方法归组的方式盘问新增范围验证方案, 不自动领取. 原方案v1未改/未确认. git push仍被既有127.0.0.1桥连接权限拒绝, 信箱查询失败, 尚未推送到宿主; 可选页面自检通过但服务启动权限拒绝且未查到宿主映射变量, 不给猜测URL. 主机交付尚未完成, 全旅程待后续实施/验证及用户终点验收.",
+    "milestone-05继续进行 (2026-11-26): 用户要求按拟改的新方式对齐, Q1采纳五类验证方法, Q2采纳仓库外合成材料/只覆盖新建实验文件及脱敏原件索引入仓推送, 后补亲自查看修改实际skill后再验; Q3采纳实施必要自测照常而最终独立验证等待审改完成通知, 按影响补集成自测/评审及改变要求先维护spec/方案, 最终明确是结束本轮方案盘问. 决策40-42已完整落账, v2已确认的是内容, 不是成品通过或未来用户已经改完. 写前独立反方01a218a5-e7a4-70c1-ba6a-2bafcd0347d5无新裁决缺口, 报告OPPOSING-milestone-05.md; 已关闭. v2成文65场景实例+5审计+3工程共73行, 来源覆盖/字段/旧正文保留/ASCII/diff检查通过, 未看候选实现/未执行成品验证. 当前方案SHA256 d4590090d5291af875a3efe1e0b2e6dd79297b0b2c2b07e71811e3a9ab4516b9. 写后独立检查新会话01a218aa-cc96-7081-9c0a-59bf86dbd8cc因usage limit报errored, 未产REVIEW-milestone-05.md, 已关闭; 方案头明确成文检查未完成不可领取下游, 本节点仍进行中, 需恢复子代理额度或用户指定其他模型继续全量独立核对. 产物提交3eca37c64fac08bdef36c94d3a3102f7306c6241. 新增milestone-12 HITL用户实际审改(待07), milestone-13集成及按影响补检查(待12), 08改为待13, 06/07输入说明与09依赖同步. 12/13均待处理, 本轮没有领取06或执行人工环节. v1原件与afe9a23字节一致保存在Git历史, 不再作执行依据. git桥查询仍报Operation not permitted, 信箱presence失败, 尚未向宿主推送/通知成功."
   ],
   "milestones": {
     "milestone-01": {
@@ -181,6 +182,10 @@
         {
           "content": "验证契约",
           "source": "workflow/verification-contract/SKILL.md"
+        },
+        {
+          "content": "本轮确认的五类方法, 隔离写入与证据保留范围, 最终独立验证等待用户亲自审改及补集成检查的时序",
+          "source": "docs/changes/to-spec-grilling-and-chinese-ids/DECISIONS.md#决策40-本变更采用五类验证方式并逐项保留证据"
         }
       ],
       "output_dir": "docs/changes/to-spec-grilling-and-chinese-ids/",
@@ -191,14 +196,18 @@
       ],
       "artifacts": [
         "docs/changes/to-spec-grilling-and-chinese-ids/VERIFICATION-PLAN.md",
-        "commit afe9a23 (milestone-05 验证方案 v1 待确认)"
+        "docs/changes/to-spec-grilling-and-chinese-ids/DECISIONS.md",
+        "docs/changes/to-spec-grilling-and-chinese-ids/CHECKS-milestone-05.md",
+        "docs/changes/to-spec-grilling-and-chinese-ids/OPPOSING-milestone-05.md",
+        "commit afe9a23 (原方案v1从未确认, 历史原件)",
+        "commit 3eca37c64fac08bdef36c94d3a3102f7306c6241 (本轮已盘问方案v2及独立检查缺口)"
       ],
       "close_summary": null
     },
     "milestone-06": {
       "title": "拆分规格与验证方案盘问改造的执行切片",
       "type": "execution-plan",
-      "question": "调用 to-execution, 依据 milestone-11 扩围后的两份已确认规格及 milestone-05 已通过盘问确认的验证方案, 拆成可独立执行和验证的issues, 生成 EXECUTION.md 与 issues. 覆盖 to-spec 与 verify-change 的盘问确认, 两者反方/独立核对及修订/续问规则, verify-change 复验确认说明, 保留机械脚本与格式, navigate/README等必要连带说明. milestone-01编号汉化成果复用并纳入整体验证. 不开始实施, 不据扩围前v1方案拆分.",
+      "question": "调用 to-execution, 依据 milestone-11 扩围后的两份已确认规格及 milestone-05 已通过盘问确认的验证方案, 拆成可独立执行和验证的issues, 生成 EXECUTION.md 与 issues. 覆盖 to-spec 与 verify-change 的盘问确认, 两者反方/独立核对及修订/续问规则, verify-change 复验确认说明, 保留机械脚本与格式, navigate/README等必要连带说明. milestone-01编号汉化成果复用并纳入整体验证. 不开始实施, 不据扩围前v1方案拆分. 执行拆分须承接决策42: 原实施含必要开发自测/评审, 然后等待milestone-12用户亲自审改和明确完成通知, milestone-13集成及按影响补检查后才进入最终独立验证; 不据本轮方案确认跳过未来人工环节.",
       "inputs": [
         {
           "content": "扩围后已确认的产品规格",
@@ -211,6 +220,10 @@
         {
           "content": "扩围后通过盘问闭环确认的验证方案及当前修订号",
           "source": "docs/changes/to-spec-grilling-and-chinese-ids/VERIFICATION-PLAN.md"
+        },
+        {
+          "content": "本次验证方法/资源范围及用户审改等待顺序",
+          "source": "docs/changes/to-spec-grilling-and-chinese-ids/DECISIONS.md#决策40-本变更采用五类验证方式并逐项保留证据"
         }
       ],
       "output_dir": "docs/changes/to-spec-grilling-and-chinese-ids/",
@@ -224,7 +237,7 @@
     "milestone-07": {
       "title": "实施规格与验证方案的盘问对齐改造",
       "type": "implementation",
-      "question": "调用 drive-execution, 按 milestone-06 的 issues 实施 to-spec 与 verify-change 全程通过盘问对齐, 保留两份规格格式/机检/机械转正/可选预览及验证方案逐项覆盖. 具体问法, 免问, 反方与独立核对, 闭环确认, 修订/版本与续问规则以扩围后的两份规格及已确认方案为准. 同步 verify-change 的复验说明与 navigate/README 等必要连带措辞, deliberate 独立流程保持原语义, 不新增盘问专用记录. 复用并回归 milestone-01 编号汉化成果, 按需补测试, 完成集成提交/开发验证/代码评审, 不包含成品独立验证.",
+      "question": "调用 drive-execution, 按 milestone-06 的 issues 实施 to-spec 与 verify-change 全程通过盘问对齐, 保留两份规格格式/机检/机械转正/可选预览及验证方案逐项覆盖. 具体问法, 免问, 反方与独立核对, 闭环确认, 修订/版本与续问规则以扩围后的两份规格及已确认方案为准. 同步 verify-change 的复验说明与 navigate/README 等必要连带措辞, deliberate 独立流程保持原语义, 不新增盘问专用记录. 复用并回归 milestone-01 编号汉化成果, 按需补测试, 完成集成提交/开发验证/代码评审, 不包含成品独立验证. 原实施必要自测照常, 完成后交milestone-12用户亲自查看/调整; 不越过人工等待点启动成品独立验证.",
       "inputs": [
         {
           "content": "扩围后的执行拆分与 issues",
@@ -254,21 +267,25 @@
     "milestone-08": {
       "title": "独立验证全程盘问对齐改造",
       "type": "verification",
-      "question": "按 navigate 独立验证与返工规则, 新开未参与实施/修复的独立会话, 调用 verify-change 执行方式, 按 milestone-05 扩围后已通过盘问确认的方案对明确目标提交独立验证. 覆盖 to-spec 与 verify-change 的新增候选条文/调用说明, 保留机械脚本的真实CLI行为, 编号规范/例外, 测试与必要连带说明. 不试跑真实需求, 不把本次规则盘问视作已实现新版运行证据. 只产结果/原件, 失败与缺口按规则分流, 不代用户最终验收.",
+      "question": "按 navigate 独立验证与返工规则, 新开未参与实施/修复的独立会话, 调用 verify-change 执行方式, 按 milestone-05 扩围后已通过盘问确认的方案对明确目标提交独立验证. 覆盖 to-spec 与 verify-change 的新增候选条文/调用说明, 保留机械脚本的真实CLI行为, 编号规范/例外, 测试与必要连带说明. 不试跑真实需求, 不把本次规则盘问视作已实现新版运行证据. 只产结果/原件, 失败与缺口按规则分流, 不代用户最终验收. 启动前须核实milestone-12用户真实审改完成通知与milestone-13审改后集成/自测/评审已完成, 以审改后指定提交为目标; 本轮方案盘问结束不构成该通知.",
       "inputs": [
         {
           "content": "已确认的验证方案及其修订号",
           "source": "docs/changes/to-spec-grilling-and-chinese-ids/VERIFICATION-PLAN.md"
         },
         {
-          "content": "实施集成提交号",
-          "source": "docs/changes/to-spec-grilling-and-chinese-ids/EXECUTION.md"
+          "content": "用户审改后固定的最终集成提交及仍适用的开发检查依据, 领取时核实",
+          "source": "docs/changes/to-spec-grilling-and-chinese-ids/roadmap/ROADMAP.json#milestones.milestone-13.artifacts"
+        },
+        {
+          "content": "用户实际审改完成通知与范围",
+          "source": "docs/changes/to-spec-grilling-and-chinese-ids/roadmap/ROADMAP.json#milestones.milestone-12.artifacts"
         }
       ],
       "output_dir": "docs/changes/to-spec-grilling-and-chinese-ids/",
       "status": "待处理",
       "blocked_by": [
-        "milestone-07"
+        "milestone-13"
       ],
       "artifacts": [],
       "close_summary": null
@@ -293,7 +310,9 @@
         "milestone-01",
         "milestone-08",
         "milestone-10",
-        "milestone-11"
+        "milestone-11",
+        "milestone-12",
+        "milestone-13"
       ],
       "artifacts": [],
       "close_summary": null
@@ -373,6 +392,54 @@
         "commit 734501076d33108545c12011e4243f568adadd71 (独立检查收敛)"
       ],
       "close_summary": "本轮规格盘问已由用户明确结束, 决策39补清按验证方式归组/不逐条重过用例/全量成文覆盖不减, 决策31-38与旧范围保留. 两份规格机械生成, 机检59场景/41AC (展开65项) 加5审计, 技术6节通过. 用户随后授权不用Herdr, 两名本轮新建且未参与原盘问/写稿的内置子代理分别完成新增决定反方和正式规格全量独立核对, 均无阻塞/无新增裁决缺口, 报告绑定正式稿SHA256, 主会话复核后已提交734501076d33108545c12011e4243f568adadd71. 反方实际在成文后, 如实记录, 不伪称写前; 未改技能成品/未试跑. 本地规格工作闭环, 原验证方案v1仍未确认, 后续回milestone-05独立盘问, 不在本轮自动领取. git桥仍报Operation not permitted且信箱不可达, 本地提交尚未推送落地; 可选HTML自检通过但服务启动受限, 不交付猜测URL. 不宣称宿主已收到/成品验收或全旅程正式交付."
+    },
+    "milestone-12": {
+      "title": "用户亲自查看和调整实际skill",
+      "type": "task",
+      "status": "待处理",
+      "blocked_by": [
+        "milestone-07"
+      ],
+      "question": "HITL. 将milestone-07已集成并完成必要自测/评审的实际skill文件及可核对提交交用户亲自查看和手动调整. 此节点只组织人工操作与记录用户实际答复, 不由代理代用户审改或宣布已完成. 用户明确通知改完后记录修改范围/当前版本与答复来源; 未改内容也需明确完成审阅, 沉默不关闭. 该通知仅关闭人工操作, 不代表成品验收或审改后检查已通过. 本轮milestone-05的结束确认不能冒充未来审改完成. 用户改动的代理集成及补检查由milestone-13承接.",
+      "inputs": [
+        {
+          "content": "待用户查看的真实skill与原集成提交, 领取时核实已实施版本",
+          "source": "docs/changes/to-spec-grilling-and-chinese-ids/EXECUTION.md"
+        },
+        {
+          "content": "用户明确要求最终独立验证前亲自审改及通知改完",
+          "source": "docs/changes/to-spec-grilling-and-chinese-ids/DECISIONS.md#决策42-最终独立验证等待用户亲自审改skill"
+        }
+      ],
+      "output_dir": "docs/changes/to-spec-grilling-and-chinese-ids/",
+      "artifacts": [],
+      "close_summary": null
+    },
+    "milestone-13": {
+      "title": "集成人工调整并补自测与评审",
+      "type": "implementation",
+      "status": "待处理",
+      "blocked_by": [
+        "milestone-12"
+      ],
+      "question": "AFK. 依据用户实际审改范围和明确改完通知, 沿用drive-execution与已确认执行拆分, 固定最终集成提交并按影响补开发自测/代码评审及必要返工, 保留未受影响证据适用性依据. 若改变产品判据或验证决定, 先回对应权威输入/方案维护并取得必要确认, 不为迎合改动降低标准. 没有人工差异时核实事实并复用原集成提交和仍适用的检查依据, 不为填节点强造改动. 不执行最终独立验证, 不把用户通知作为自测/评审通过的替代.",
+      "inputs": [
+        {
+          "content": "用户实际审改范围/完成通知和当前版本, 由前置人工操作记录提供",
+          "source": "docs/changes/to-spec-grilling-and-chinese-ids/roadmap/ROADMAP.json#milestones.milestone-12.artifacts"
+        },
+        {
+          "content": "已确认产品/技术规格及执行拆分",
+          "source": "docs/changes/to-spec-grilling-and-chinese-ids/EXECUTION.md"
+        },
+        {
+          "content": "已确认验证方案与审改后版本核对要求",
+          "source": "docs/changes/to-spec-grilling-and-chinese-ids/VERIFICATION-PLAN.md"
+        }
+      ],
+      "output_dir": "docs/changes/to-spec-grilling-and-chinese-ids/",
+      "artifacts": [],
+      "close_summary": null
     }
   },
   "unknown_seas": [],
