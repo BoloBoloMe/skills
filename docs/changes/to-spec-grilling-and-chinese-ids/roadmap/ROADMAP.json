@@ -415,7 +415,7 @@
     "milestone-12": {
       "title": "用户亲自查看和调整实际skill",
       "type": "task",
-      "status": "待处理",
+      "status": "已关闭",
       "blocked_by": [
         "milestone-07"
       ],
@@ -431,8 +431,12 @@
         }
       ],
       "output_dir": "docs/changes/to-spec-grilling-and-chinese-ids/",
-      "artifacts": [],
-      "close_summary": null
+      "artifacts": [
+        "commit db40ad7 (用户手改 to-spec/SKILL.md)",
+        "docs/changes/to-spec-grilling-and-chinese-ids/REVIEW-milestone-12.md",
+        "docs/changes/to-spec-grilling-and-chinese-ids/DECISIONS.md#决策43-milestone-12审改结论-采纳代审报告全部建议"
+      ],
+      "close_summary": "milestone-12 关闭 (2026-11-27): 用户亲自审改实际skill. 手改提交db40ad7 (to-spec/SKILL.md 3处删减). 其余未手改, 用户要求代理按writing-for-llm代审, 代理只审不改产出REVIEW-milestone-12.md (11份文档, 跨文件X1-X3, to-spec A1-A8, verify-change B1-B4, navigate C1-C4, ledger/exec D1-D6; 5个SKILL.md check_skill OK). 用户答复来源: 本会话chat \"1. 是 2. 我没有 3. 我希望你先帮我审一遍\" 及 \"我采纳你的建议, 就按你的建议来改\", 即审阅完成并采纳全部建议, 委托代理实施; R5选(a)/R9脚本化/R10放grilling, 已入账决策43. 审改基线版本db40ad7. 该通知只关闭人工操作, 不代表审改后检查通过或成品验收. 建议修改由milestone-13实施并按影响补自测/评审, 触及已确认规格/方案时先维护权威输入. 本轮无新增未知海域."
     },
     "milestone-13": {
       "title": "集成人工调整并补自测与评审",
@@ -454,6 +458,14 @@
         {
           "content": "已确认验证方案与审改后版本核对要求",
           "source": "docs/changes/to-spec-grilling-and-chinese-ids/VERIFICATION-PLAN.md"
+        },
+        {
+          "content": "代审报告及用户采纳的全部修改建议, 作为本节点实施范围",
+          "source": "docs/changes/to-spec-grilling-and-chinese-ids/REVIEW-milestone-12.md"
+        },
+        {
+          "content": "用户审改结论与R5/R9/R10口径",
+          "source": "docs/changes/to-spec-grilling-and-chinese-ids/DECISIONS.md#决策43-milestone-12审改结论-采纳代审报告全部建议"
         }
       ],
       "output_dir": "docs/changes/to-spec-grilling-and-chinese-ids/",
