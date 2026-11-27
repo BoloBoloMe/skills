@@ -59,9 +59,9 @@
 ### 填写结果 (2026-11-27)
 
 **提交**. 分支 `issue/01`, 评审起点 `775b5a2`.
-- `fd26618` `feat: ISSUE-01: 实施盘问确认与机械转正` — 7 文件 (下列全部).
-- `8ce78be` `feat: ISSUE-01: 补回 GHERKIN 机检项的固定标记原文` — GHERKIN.md 1 行.
-- `3229525` `docs: ISSUE-01: 填写交付证据与验收标准` — 只改本工单文件, 不改产品代码.
+- `fd26618` `feat: ISSUE-01: 实施盘问确认与机械转正`: 7 文件 (下列全部).
+- `8ce78be` `feat: ISSUE-01: 补回 GHERKIN 机检项的固定标记原文`: GHERKIN.md 1 行.
+- `3229525` `docs: ISSUE-01: 填写交付证据与验收标准`: 只改本工单文件, 不改产品代码.
 - 证据与结论绑定: 代码状态 `8ce78be`; 测试与格式检查在 `3229525` 上重跑 (`run5/logs/final-pytest.*` 39 passed + 39 subtests exit 0, `final-check-skill.*` OK exit 0), 因此结论对 `8ce78be` 与 `3229525` 均成立 (`run5/final-commit.txt` 记录 `git diff 8ce78be 3229525` 仅本工单). 本行之后若还有纯文档提交, 代码与证据结论同样不变; 分支顶端 SHA 见该证据文件. 按派工不推送, 不合并, 不 rebase.
 
 **改动路径**.
@@ -69,12 +69,12 @@
 
 **证据根与索引**. `/home/bolo/evidence/to-spec-grilling-and-chinese-ids/issue-01/`; 总索引 `INDEX.md`; 摘要清单 `manifest.sha256` (1109 行). 轮次: run1 (首次摸底, 发现 AC-024 例7 报错被前置检查抢先), run2 (修复后 CLI 矩阵), run3 (并发取证失败: 解释器路径取错, 子进程 125), run4 (fd26618 全项), **run5 (8ce78be 最终绑定轮, 全部结论依据)**. 旧轮全部保留.
 
-**候选条文逐条映射**. `run5/text-mapping.md`: 产品表 42 行 (AC-001..AC-024, AC-026..AC-030 每个 normal/failure/edge 各一行, 含 AC-024 七例) 逐行给 SKILL.md 行号与原句要点, 结论全部通过; 另含规则 1-15 承接表, 与 grilling/handoff/opposing-viewpoint/decision-ledger/domain-modeling/deliberate 的组合关系核对表, milestone-01 编号复用核对. 缺口与处理见该文件末节: 实施中发现 1 处真缺陷 (草稿标记检查被"只能含一个代码块"抢先, 已前置, run2 起 AC-024 例7 得到预期报错), 1 处随流程必须改的预览文案 (原"待确认/请在 chat 确认/审阅版本"会成为确认入口), 无遗留语义缺口.
+**候选条文逐条映射**. `run5/text-mapping.md`: 产品表 42 行 (AC-001..AC-024, AC-026..AC-030 每个 normal/failure/edge 各一行, 含 AC-024 七例) 逐行给 SKILL.md 行号与原句要点, 结论全部通过. 表内证据列的 `run4` 标记指该原件首次生成轮, 已核实与 run5 的对应关系: run5 与 run4 同名日志 252 个, 其中 181 个逐字节一致; 71 个仅差运行路径, 临时目录, 时间戳或预览页文件名 (均在 `run5/logs/` 下: 62 个 `.cmd`, 4 个 `trace-*.events.jsonl`, 5 个 stdout: pytest, scope-search, target-preview, target-workspace, trace-atomic), 全部退出码与错误输出 (`run5/logs/*.exit`, `run5/logs/*.stderr`) 以及 `run5/logs/target-ac-*`, `run5/logs/base-tech-*`, `run5/logs/target-tech-*` 结论性输出逐字节一致; 两轮预览页各为一次真实渲染, 文件名中的 uuid 不同. 表头对象提交 `fd26618` 与 run5 绑定提交 `8ce78be` 只差 GHERKIN.md 1 行, SKILL.md 行号不变. 因此表中 run4 引用与 run5 结论依据指向同一批结论, 对照原件 `/home/bolo/evidence/to-spec-grilling-and-chinese-ids/issue-06/run1/logs/run4-run5-compare.{cmd,stdout,exit}`. 另含规则 1-15 承接表, 与 grilling/handoff/opposing-viewpoint/decision-ledger/domain-modeling/deliberate 的组合关系核对表, milestone-01 编号复用核对. 缺口与处理见该文件末节: 实施中发现 1 处真缺陷 (草稿标记检查被"只能含一个代码块"抢先, 已前置, run2 起 AC-024 例7 得到预期报错), 1 处随流程必须改的预览文案 (原"待确认/请在 chat 确认/审阅版本"会成为确认入口), 无遗留语义缺口.
 
 **合成文件清单** (`run5/files/`).
 - `ac/`: `valid`, `missing-goal`, `audit-rule`, `duplicate-goal`, `keyword`, `multiple-ac`, `free-tag`, `marker` 八个用例目录, 各含 `PRODUCT.base.md` 与 `review/acceptance.md`; `ac/valid/review/2026-11-27-acceptance-*.html` 与实际使用的 `page-nodes.json`.
 - `promote/`: `removed-option`, `bad-input` 各含 `before.md` (改动前后原件) 与 `PRODUCT.md`.
-- `tech/`: `required.md`, `conditional.md`, 四个 `missing-N.md`, 七个 `typo-N.md`, `order.md`, 复制结果 `TECHNICAL.md`.
+- `tech/`: `required.md`, `conditional.md`, `missing-1.md` 至 `missing-4.md`, `typo-1.md` 至 `typo-7.md`, `order.md`, 复制结果 `TECHNICAL.md`.
 - `trace/`: `atomic`, `base`, `draft`, `output` 各含 `PRODUCT.base.md`, `acceptance.md`, `original-output.md`, `PRODUCT.md`; 三例并发改动另存 `input-before.bin`, `external-intended.bin`, `external-after.bin`.
 - 全部为合成内容 ("合成清单/合成记录"), 不含真实需求, 生产数据或用户数据.
 
@@ -84,7 +84,7 @@
 - preview: 0, JSON `success=true` 且含 `preview`/`draft`, 无 `review_id`; 页面 2 张展开卡片, 卡片步骤与草稿原文逐字一致, 有原文件链接, 无确认控件/`on*` 属性, 正文含"页面仅供选看, 不用于确认."; 两输入字节未变.
 - promote: 无 `--review` 时 0 成功; 带 `--review` 时 2 (`unrecognized arguments: --review`); 坏输入 1 且原正式稿字节不变.
 - check-tech: 必备节齐全 0; 条件节全保留 0; 四个必备节逐个缺失 1; 固定节名逐个写错 1; 节序颠倒 1; 与基线 (主仓库 `/home/bolo/Workspace/improve`, 同 775b5a2) 的相同输入 stdout/stderr/exit **逐字节一致** (`base-*` 与 `target-*` 对比在 `probe.py` 内断言, 见 `base-tech-matrix.*`).
-- 技术稿: `cp` / `cmp` / 正式 check-tech 均 0 (`target-tech-{copy,compare,formal}`).
+- 技术稿: `cp` / `cmp` / 正式 check-tech 均 0 (`run5/logs/target-tech-{copy,compare,formal}.*`).
 
 **原子替换/并发时序原件**. `run5/logs/trace-*.{cmd,events.jsonl,stdout,stderr,exit}` (环境无 strace/gdb/inotifywait, 用脚本自建的 ptrace 单步控制器, 只跟踪本命令创建的子进程, 不改脚本与内部函数; `uname -sm` 与工具清单见 `run5/environment.txt`).
 - `trace-atomic`: 读入两份输入 → 临时文件 fsync → `rename` 进入 (syscall 82) → 返回 0 → 退出 0, 恰一次 rename; 最终内容断言 = 暂存稿其余节原文 + v1 标记 + 草稿全文; 正式机检 0; 两输入字节未变; 无残留 `.tmp`.

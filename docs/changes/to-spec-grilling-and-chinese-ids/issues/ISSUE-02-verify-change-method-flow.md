@@ -61,7 +61,10 @@
 - `workflow/verify-change/REVERIFY.md`: 开头与步骤1 (会话规则, 新提交/新证据, 重核及修订分流), 步骤3 (按修复及方案变化的影响复验和核对旧证据).
 - `uv run python general/writing-for-llm/check_skill.py workflow/verify-change/SKILL.md`: `OK`, 退出码0, stderr 空; 命令与原始输出在 `run2/`. `git diff --check` 退出码0. 格式结果不作语义通过证据.
 - 作者矛盾自查: 去掉旧的逐版整份采纳, 将执行与 REVERIFY 指回同一修订分流; 不用行数或状态替代来源内容核对; 设计查证不越界读实现, 资源缺失只影响执行结果; 首轮新开会话, 复验服从已确认方案的新开要求, 否则仅恢复仍合格的非作者; 审计可按方案静态核对, 不强制运行. 内部证据链接及 verification-contract/SAFETY/tests, decision-ledger, handoff 边界已自查. 分支未改 navigate/README; 其旧确认用语及 `workflow/navigate/reference/VERIFICATION.md` 第9行的重确认表述留待调用方集成核对, 不声称跨切片一致.
-- 非作者核对已委派独立检查会话 (由调度方另派并回填). 本轮未取得非作者报告: INDEX 逐场景只提供来源和候选定位, 不作通过判断. 待查验收31-40全部场景, 验收41中 verify-change/REVERIFY 部分, 规则10及16-22, 技术与安全约束, 以及计划全表追溯及改动影响. 最终 73 行验证、整合复核及用户验收不属于本轮. 未试跑需求、未改测试、未开启 milestone-08, 未代用户裁决或验收.
+- 非作者核对 (m07-chk-02, 已归档, 本工单回填): 报告 `CHECKS-ISSUE-02.md` 与 `INDEX.md` 位于归档树 `../evidence/m07-1bc15f612c10aa6e68e33587a01cd2de1ede2fe4/issue-02/check1/` (仓库内路径 `docs/changes/to-spec-grilling-and-chinese-ids/evidence/m07-1bc15f612c10aa6e68e33587a01cd2de1ede2fe4/issue-02/check1/`). 结论: 21 个场景 (验收31-40 全部 normal/failure/edge, 验收41 的 verify-change/REVERIFY 部分) 的 43 条 `那么`/`而且` 预期全部有承接, 无已证实缺陷, 4 条非阻塞疑点, 总体无阻塞. 规则16-22, 技术规格的方案接口/独立检查/版本/输入/错误处理/安全约束, verification-contract 与 SAFETY 边界, 通用账本与 handoff 承接均核对通过; 计划表 70 产品行 + 3 工程行未被删减.
+- 绑定核对 (本轮实跑, 原件 `/home/bolo/evidence/to-spec-grilling-and-chinese-ids/issue-06/run1/logs/issue02-check1-binding.*`): 检查者为非作者会话 `01a21b49-1a7d-731e-97db-8d6ff3fac9f8`, 核对顶端 `34ae059`, 候选 `b260081`, 起止 `2026-11-27T04:37:11Z`/`2026-11-27T04:38:52Z`, 早于集成提交 `1bc15f6` (04:57:27Z); 报告 `originals/SKILL.md` 与 `REVERIFY.md` 的 sha256 前缀 `86676e53`/`d901c5aa` 与 `git show b260081:...` 逐字节一致; `git-status-before.txt` 与 `git-status-after.txt` 均 0 字节; `check_skill` 命令/输出/退出码齐备 (OK, 0).
+- 4 疑点逐项处理 (均非阻塞; 按 ISSUE-06 允许范围不改产品条文): Q1 AC-036 第3条禁令只写在盘问段 S:28 (S: 指候选 `workflow/verify-change/SKILL.md` 行号, 下同), 修订段 S:47 是正向表述; 两段合成后行为无歧义, 登记为可接受, 交父级集成与用户审改. Q2 规则10 的领域语言/ADR 维护由 to-spec 与既有技能承接, verify-change 旧文亦未提, 非本切片缺口. Q3 复验会话默认由"每轮新开"改为"方案要求时照办", 属通用默认放宽; 本变更方案前提3由"照办"满足, 登记为观察, 交父级集成裁决. Q4 "设计方式"无定义句, 属可读性观察, 非规格不符.
+- 未验证 (沿用报告第 10 节): 其他切片 49 产品行与 2 工程行, 候选 skill 实际运行表现, milestone-12/13 用户审改与集成, navigate/README 文字.
 
 ## 风险提示
 - verify-change 设计输入不要求 PRODUCT.md 和 TECHNICAL.md 必须同时存在. 若条文只支持两份规格, 会错误阻断合法的其他权威输入.
@@ -72,11 +75,11 @@
 同全局; 输入未确认,有冲突,缺少判据或方法依据时停止并报告具体缺口. 不在本 issue 自行选择新的验证方式或补产品标准. 资源缺失但方法已确认可行时写明条件, 相关执行结果仍记未验证.
 
 ## 验收标准
-- [ ] 验收31-验收40及验收41中 verify-change/REVERIFY 部分的全部 normal/failure/edge 场景均有条文位置和逐项核对证据.
-- [ ] 规则16-规则22,技术规格中的方案接口,独立检查,版本,输入,错误处理,安全与 handoff 约束均有明确承接.
-- [ ] 全部73行保留原有覆盖和验证要求, 不以分组盘问,文件状态或方案自身文字减少或自证.
-- [ ] 方法未知,依据不足,资源暂缺,纯修文和决定变化均按不同既定分支处理.
-- [ ] 所有本 issue 修改的 skill 格式检查留证; 未完成条件如实列为未验证.
+- [x] 验收31-验收40及验收41中 verify-change/REVERIFY 部分的全部 normal/failure/edge 场景均有条文位置和逐项核对证据. (`../evidence/m07-1bc15f612c10aa6e68e33587a01cd2de1ede2fe4/issue-02/check1/CHECKS-ISSUE-02.md` 第 2 节 C01-C21: 21 场景 43 条预期逐条给候选 S/R 位置与判断, 第 8 节无已证实缺陷)
+- [x] 规则16-规则22,技术规格中的方案接口,独立检查,版本,输入,错误处理,安全与 handoff 约束均有明确承接. (`CHECKS-ISSUE-02.md` 第 3 节 规则16-22 与 TECHNICAL 模块接口/关键流程5/接缝/安全逐项承接表, 第 4 节契约与安全底线边界)
+- [x] 全部73行保留原有覆盖和验证要求, 不以分组盘问,文件状态或方案自身文字减少或自证. (`CHECKS-ISSUE-02.md` 第 5 节: 计划表实计数 70 产品行 + 3 工程行; 候选未改 `VERIFICATION-PLAN.md` (`inputs.sha256` 绑定), 分组盘问未删行; 本切片逐行登记 V:104-124 共 21 行, 其余 49 产品行与 2 工程行的语义承接不在本切片, 报告未判其通过)
+- [x] 方法未知,依据不足,资源暂缺,纯修文和决定变化均按不同既定分支处理. (`CHECKS-ISSUE-02.md` C13-C15 附条件/方法未知/资源未齐; C09-C12 纯修文/决定变化/修订版本)
+- [x] 所有本 issue 修改的 skill 格式检查留证; 未完成条件如实列为未验证. (`CHECKS-ISSUE-02.md` 第 6 节: `workflow/verify-change/SKILL.md: OK`, 退出码 0, 原件 `check_skill.*`; 第 10 节未验证项)
 
 ## 被阻塞于
 - 无
