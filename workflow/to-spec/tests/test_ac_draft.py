@@ -280,6 +280,45 @@ class AcDraftTests(unittest.TestCase):
         self.assertIn("不存在", result["error"])
         self.assertEqual(old, self.output.read_bytes())
 
+    def test_promote_rejects_bad_format_and_bad_numbering_inputs_keeping_output(self):
+        """坏格式/坏编号输入: 非零退出, 已转正的正式稿字节不变, 不留临时文件."""
+        first = self.promote()
+        self.assertEqual(0, first.returncode, first.stdout + first.stderr)
+        confirmed = self.output.read_bytes()
+        self.assertEqual(0, self.cli(CHECK, self.output).returncode)
+        base, draft = BASE.encode("utf-8"), DRAFT.encode("utf-8")
+        duplicate_goal = base.replace(
+            "- 目标1: 读者能看到已确认的内容.".encode("utf-8"),
+            "- 目标1: 读者能看到已确认的内容.\n- 目标1: 另一条目标.".encode("utf-8"),
+        )
+        cases = {
+            "变体关键字": (base, draft.replace("假定".encode(), "假设".encode()), 1, "白名单"),
+            "同义关键字": (base, draft.replace("那么".encode(), "并且".encode()), 1, "白名单"),
+            "缺功能行": (base, draft.replace("功能: 测试变更\n".encode(), b""), 1, "解析"),
+            "功能级标签": (base, draft.replace("功能:".encode(), "@G-001\n功能:".encode()), 1, "tag-position"),
+            "草稿带标记": (base, MARKER.encode() + b"\n" + draft, 2, "草稿不携带确认标记"),
+            "围栏外正文": (base, draft + "## 决策引用\n改写正文\n".encode(), 2, "草稿只能包含"),
+            "未知目标": (base, draft.replace(b"@G-001", b"@G-999"), 1, "不存在"),
+            "未知规则": (base, draft.replace(b"@BR-001", b"@BR-999"), 1, "不存在"),
+            "审计规则": (base, draft.replace(b"@BR-001", b"@BR-002"), 1, "审计"),
+            "场景双AC": (base, draft.replace(b"@AC-001", b"@AC-001 @AC-002"), 1, "@AC"),
+            "重复目标": (duplicate_goal, draft, 2, "重复"),
+        }
+        for label, (new_base, new_draft, code, error) in cases.items():
+            with self.subTest(label=label):
+                self.base.write_bytes(new_base)
+                self.draft.write_bytes(new_draft)
+                run = self.promote()
+                self.assertNotEqual(0, run.returncode)
+                self.assertEqual(code, run.returncode, run.stdout + run.stderr)
+                result = json.loads(run.stdout)
+                self.assertFalse(result["success"])
+                self.assertIn(error, result["error"])
+                self.assertEqual(confirmed, self.output.read_bytes())
+                self.assertEqual([self.output], list(self.output.parent.iterdir()))
+                self.base.write_bytes(base)
+                self.draft.write_bytes(draft)
+
     def test_invalid_utf8_and_missing_file_are_input_errors(self):
         self.draft.write_bytes(b"\xff")
         self.assertEqual(2, self.check().returncode)
