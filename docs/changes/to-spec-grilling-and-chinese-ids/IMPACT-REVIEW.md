@@ -311,3 +311,69 @@ README.md                                | 条目与阶段说明
 - 不声称找到全部影响: 本轮结论基于 a13085a..de3b589 逐行 diff, 全仓文本检索与既有可运行入口的复跑; 语义层面的跨技能执行偏差仍未观察.
 - 提交状态: 按本轮授权, 本文件追加后随本轮提交 (第三轮收尾), 交付以 push 为准.
 - 清理: 本轮全部命令只读或跑在测试栈临时目录内, 无 /tmp 残留, 未改本文件以外的任何文件.
+
+---
+
+# IMPACT-REVIEW 第四轮 (终局核对, 目标提交 3e486d3)
+
+- 轮次: 第四轮 (终局核对), 追加于前三轮之后, 不覆盖旧轮次.
+- 评审起点不变: `9e8dd1df`; 目标提交: `3e486d37d5caea2b5bc937bbd2c77474b50b97fb` (`git rev-parse HEAD` 实取).
+- 本轮新差异 (相对上轮目标 de3b589): merge b9cb2db (issue/08, 即 1efb0f0 + 工单 cc1ef59) + 记录 27a39f2 (第三轮追加) 与 3e486d3 (集成记录). `git diff de3b589..3e486d3 --stat` 共 4 文件, 其中产品改动仅 1 句: `workflow/navigate/reference/VERIFICATION.md:9` 第 3 步分流条文替换为补问语义 (issue-08, 对照记录 `/home/bolo/evidence/to-spec-grilling-and-chinese-ids/issue-08/run1/alignment.md`); 其余为 EXECUTION.md 1 行, 本文件第三轮追加与工单, 不计产品.
+- 授权: 除追加本文件并提交外只读.
+- 方法: 本轮差异为单句纯条文, 无共享接口/数据格式/跨模块路径变更, 不触发 blast-radius 多模型深查; 重点为该文件的既有引用面 (navigate SKILL.md 与 verify-change/REVERIFY.md), 新句与 verify-change 修订段/AC-036/AC-041 的语义一致性, F1 闭环, 以及开放项在最终提交上的现状复测.
+
+## 19. 第四轮关键安全事实
+
+事实 S6: VERIFICATION.md:9 的单句替换无脚本化消费方, 无旧语义残留依赖. 旧句独特措辞 `判据或方案依据变化` 与 `重新确认方案` 全仓 (workflow/general/README/tests) grep 0 命中, 即无任何条文或脚本仍引用被删旧语义; 该文件是 markdown 引导条文, 无 py/sh 解析其内容 (`盘问专用` 等 py/sh 字面 0 命中, E17 同源维持). 新句与 `workflow/verify-change/SKILL.md:45-47` 修订段三分支一一对应: 转述错误直接修文不重问原决定 / 验证决定变化只补问受影响决定 / 新判据交回权威输入维护, 递增版本与不恢复逐版阅读采纳整份方案逐点对齐; 与 AC-036 @normal/@edge (PRODUCT.md:366-378) 及 AC-041 (PRODUCT.md:427-431) 语义同向, alignment.md 已逐条留证.
+- 级别 4 (grep 全仓 + 逐行走读).
+
+## 20. 本轮重点 1: VERIFICATION.md 替换句对既有入口/调用方的影响 (已排除)
+
+| 检查 | 结果 |
+| --- | --- |
+| navigate/SKILL.md 两处引用 (:45 何时创建, :59 完成标准) | 均为链接引用, 只指向 "独立验证与返工" 页与派工/分流职责, 不复述第 3 步旧句措辞, 无残留旧语义依赖; check_skill.py OK |
+| verify-change/REVERIFY.md 第 1 步 | 其 "有依据的转述错误直接修正并独立复查, 只补问新增或改变的验证决定, 不重新阅读采纳整份方案. 判据变化先回权威输入维护" 与新句语义完全一致 (同源措辞), 无冲突 |
+| 第 3 步其余内容与第 1 步 (R5 相关) | diff 仅目标句, 紧邻句未动 (alignment.md 复核), 第 1 步 "已确认的 VERIFICATION-PLAN" 措辞保持, R5 现状不变 |
+| 文件其余引用方 | `grep -rn "VERIFICATION.md" workflow README.md` 仅 navigate/SKILL.md:45/:59 与 VOYAGE.md:13 三处链接, 均不复述被替换句 |
+
+## 21. 本轮重点 2: F1 闭环
+
+- 原发现 F1: VERIFICATION.md:9 旧句 "判据或方案依据变化须先更新权威输入并重新确认方案" 与 AC-041 及 verify-change 补问语义方向相反 (第一轮记录, EXECUTION.md:26 载明待授权).
+- 本轮核实: 旧句已整体移除且全仓无残留 (第 19 节 grep 0); 新句经 alignment.md 对照 AC-041/AC-036 与 verify-change:45-47 无冲突; EXECUTION.md:33 载明 ISSUE-08 完成 F1 (用户 2026-11-27 授权该文件补进允许范围), 切片提交 1efb0f0, 集成 b9cb2db.
+- 结论: F1 闭环成立, 从开放清单移除, 处置为 "ISSUE-08 返工修复, 语义对齐留证".
+
+## 22. 终局: 最终集成提交 3e486d3 上的全部开放项清单及归属
+
+| 项 | 本轮复测 (实测) | 归属 |
+| --- | --- | --- |
+| R1 机械防串版缺失 | promote (ac-draft.py:285-303) grep `review\|版本` 0 命中, 仍无版本参数与比对 | 决策10 知情接受, 仅记录影响面 |
+| R2 已安装技能库未同步 | `cmp ~/.agents/skills/to-spec/ac-draft.py workflow/to-spec/ac-draft.py` DIFF | 部署事项, 交用户 (宿主 sync-to-pi.py) |
+| R5 下游 "已确认的 VERIFICATION-PLAN" 措辞错位 | to-execution:16/:35, drive-execution:26, VERIFICATION.md:5 共 4 处仍命中 | 跨文件措辞一致性, 交 milestone-12 用户审改 (N2 归属行) |
+| R9 POSIX `cp --`/`cmp --` | SKILL.md:47-48 仍命中 2 处 | 可移植性, 同上 |
+| R10 组合技能契约缺字段 | handoff/decision-ledger grep `盲区\|逐题` 0 命中 | 同上 |
+| G1 宿主同步链未验证 / G2 Windows / G3 新流程端到端 / G4 历史 drill 实跑 / G5 仓外调用方 / G6 R1 机械锚点 / G7 根 pytest.ini 不含 to-spec tests (实测 testpaths 仍 3 项) | 无新观察 | 维持开放 |
+| G8 全量 `uv run pytest` 未验证 (容器无 podman 隔离环境) | 本轮同样未跑全量; to-spec 子集复跑全绿 (第 23 节) | 交调用方环境 |
+| 归档快照误报 | post-impl-snapshot/COMPARE.md: manifest-diff 464 行全为路径前缀写法差异, 归一化后 231 文件 SHA256 逐一同值, 未触碰已安装技能 | 已澄清, 非缺陷, 留证 |
+| F1 | 已闭环 (第 21 节) | 移出开放清单 |
+
+终局结论: 最终集成提交上无新增破坏; 本轮 0 个新增问题. 全程累计最严重仍为 R1 (机械防串版缺失, 决策10 知情接受). 上述开放项全部有明确归属记录, 其中 F1 本轮闭环.
+
+## 23. 既有检查与本轮运行结果 (实测复跑)
+
+| 检查 | 命令 | 结果 |
+| --- | --- | --- |
+| to-spec 测试 | `uv run --with gherkin-official pytest -p no:cacheprovider -q workflow/to-spec/tests` | 40 passed + 50 subtests, exit 0 |
+| 技能文档检查 | `uv run python general/writing-for-llm/check_skill.py workflow/navigate/SKILL.md` | OK, exit 0 |
+| 产品路径空白 | `git diff --check 9e8dd1df...HEAD -- workflow general README.md` | 空, exit 0 |
+| 契约负断言 | `grep -rn "review_id\|--review" workflow general tests README.md pi agent-prompts` | 仅测试负断言 3 处 (`test_ac_draft.py:217,267-270`), E1 维持 |
+| 旧句残留 | `grep -rn "判据或方案依据变化\|重新确认方案" workflow general README.md tests` | 0 命中 |
+
+## 24. 第四轮结论与边界
+
+- 本轮发现总数: 0 个新增问题. 单句替换未破坏任何既有入口/调用方, 无旧语义残留依赖 (第 20 节).
+- F1 闭环成立, 移出开放清单并注明处置 (第 21 节).
+- 最终影响面一句话: 3e486d3 上开放项 R1/R2/R5/R9/R10/G1-G7/G8 与归档快照误报澄清全部维持且归属已记录, F1 已闭环, 四轮累计无未归属的行为破坏.
+- 未覆盖范围: G1-G8 全部保持 (宿主同步链, Windows, 新流程端到端试跑, 历史 drill 实跑, 仓外调用方, R1 机械锚点, 全量 pytest 隔离环境).
+- 不声称找到全部影响: 本轮结论基于 de3b589..3e486d3 逐行 diff, 全仓文本检索与既有可运行入口复跑; 语义层面的跨技能执行偏差仍未观察.
+- 提交状态: 按本轮授权, 本文件追加后随本轮提交, 交付以 push 为准.
+- 清理: 本轮全部命令只读或跑在测试栈临时目录内, 无 /tmp 残留, 未改本文件以外的任何文件.
