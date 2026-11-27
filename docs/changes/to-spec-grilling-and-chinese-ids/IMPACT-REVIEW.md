@@ -169,3 +169,79 @@ README.md                                | 条目与阶段说明
 - 不声称本报告找到全部影响: 以上基于三点 diff, 全仓文本检索与可运行入口的实跑; 语义层面的跨技能执行偏差 (G3) 未观察.
 - 提交状态: 按派工口径 "不提交 (你的报告文件除外, 也不自行提交)", 本文件只写入工作区, 未 commit, 未 push; 是否提交由调用方/集成会话决定.
 - 清理: /tmp 下运行产物已删, 探针脚本与日志已归档到证据目录; 未改产品文件.
+
+---
+
+# IMPACT-REVIEW 第二轮 (返工轮复核, 目标提交 a13085a)
+
+- 轮次: 第二轮 (重跑), 追加于首轮之后, 不覆盖上轮内容.
+- 评审起点不变: `9e8dd1df`; 目标提交: `a13085ab9e10eacbc726b90e0d8ccfb731447c0d` (`git rev-parse HEAD` 实取, 工作区干净).
+- 返工轮新差异: `783a528..a13085a` 中产品文件 4 个 (`workflow/to-spec/SKILL.md` 五步各补一行完成标准, `workflow/to-spec/check-ac.py` docstring 与一条报错文案 vN->v1, `workflow/to-spec/tests/test_ac_draft.py` 新增 11 例坏输入回归, `workflow/verify-change/SKILL.md` 三处 设计方式->设计验证方案), 其余为工单/执行记录文档, 不计产品.
+- 授权: 除追加本文件外只读. 过程命令与输出见各条引用, 本轮未新建证据目录外文件.
+- 方法: 按 blast-radius skill 第 2-6 节核对返工轮差异的调用方与旧行为; 返工轮无共享接口/数据格式/跨模块路径的行为变更 (见 S3), 不触发其第 7 节多模型同题调查; 上轮 R4 涉及 promote 保护路径属共享行为面, 本轮深查其自动化覆盖.
+
+## 7. 返工轮关键安全事实
+
+事实 S3: 返工轮对公开 CLI 行为零改动. `check-ac.py` 只动 docstring (第 11-15 行) 与一条报错文案字面量 (第 177 行, `vN` 占位改为 `CONFIRMATION_MARKER` 即 v1 字面量), `MARKER_RE` (第 45 行) 仍按 `v数字` 匹配, 检查顺序与退出码不变; `ac-draft.py` 与 `check-tech.py` 在 `783a528..a13085a` 无差异, `git diff 9e8dd1df...HEAD -- check-tech.py` 仍为 0 行. 两个 SKILL.md 的改动是纯条文 (新增完成标准行 / 三行术语逐字替换).
+- 依据: `git diff 783a528..a13085a -- workflow/to-spec/check-ac.py workflow/to-spec/ac-draft.py workflow/to-spec/check-tech.py` 逐行读过; issue-04 证据 `marker-*` 四种输入基线/目标退出码逐例一致; 本轮复跑测试与文档检查全绿 (第 10 节).
+- 级别 4. 安全作用: 返工轮不可能引入新的旧行为破坏, 剩余风险只在条文措辞与测试本身.
+
+## 8. 上轮闭环核对 (R1-R10, E1-E12, G1-G7)
+
+| 项 | EXECUTION.md 载明处置 | 本轮核实 | 结论 |
+| --- | --- | --- | --- |
+| R1 | 不返工, 决策10 知情接受, 仅记录 | 返工轮未触碰 `ac-draft.py`; promote 仍无版本参数 (`ac-draft.py:285-301`), 机械防串版仍缺失 | 记录闭环成立, 风险保持 (知情接受) |
+| R2 | 不返工, 部署事项交用户 | 实测 `~/.agents/skills/to-spec/{ac-draft.py,check-ac.py,SKILL.md}` 与仓库同名文件逐一 `cmp` DIFF (mtime 2025-11-14/10-27), "文档说新手上跑旧" 窗口仍在 | 记录闭环成立, 事项仍开放 |
+| R3 | 未列 (历史例外) | 返工轮未触碰历史证据目录; 产品路径 `review_id`/`--review` 复查仍只有测试负断言 3 处 (`test_ac_draft.py:217,267-270`), E1 维持 | 保持历史例外, 不变 |
+| R4 | 自动化部分已修 (ISSUE-04), 并发窗口保持一次性真实进程证据 | 新增 `test_promote_rejects_bad_format_and_bad_numbering_inputs_keeping_output` 11 例, 全部经真实 `promote` 进程与隔离临时目录; 其中 "重复目标" 等用例覆盖草稿机检后的候选校验失败路径 (`ac-draft.py:293-294` -> `check-ac.py:129`), 断言正式稿字节不变且输出目录无临时残留; 实跑 40 passed + 50 subtests exit 0. 两个并发窗口保护 (`ac-draft.py:278` 正式文件变化, `:297` 输入变化) 仍无自动化, tests 内三条保护文案 grep 0 命中 | 部分闭环成立: 自动化部分修对, 余项 (并发窗口) 按载明处置保留一次性证据, 非静默回退 |
+| R5 | 未列 | 返工 diff 不含 to-execution/drive-execution/navigate reference; 下游 "已确认的 VERIFICATION-PLAN" 措辞与确认语义的错位仍在 | 仍开放, 未返工 (归属见 N2) |
+| R6 | 未列 (文案统一顺带) | 报错文案进一步改为 v1 字面量, 退出码不变, 全仓无报错文本解析方 (E13) | 原风险面 (仅措辞) 不变, 无新破坏 |
+| R7 | 未列 (docstring 顺带) | `MARKER_RE` 行为未变, issue-04 marker 证据 v1/v2 等四例基线/目标同码; docstring 现明写 "机检按 `v数字` 匹配以兼容旧文件, 现行只写 v1" | 文档-实现不一致被显式记录为兼容承诺; 机检不拦 v2 的约定性质保持, 不变 |
+| R8 | 未列 | 预览文件名逻辑不在返工 diff | 保持 |
+| R9 | 未列 | `cp --`/`cmp --` 仍在 (`SKILL.md:47-48`) | 保持, Windows 缺口开放 |
+| R10 | 未列 | handoff/grilling/decision-ledger 均不在返工 diff | 保持 |
+| E1-E12 | - | 抽查维持: E1 (grep 复跑同上), E5 (check-tech 三点 diff 0 行), E8 (复跑全绿, 第 10 节), E2/E3 (`MARKER_RE` 未变, 双向兼容维持); 其余各项涉及的文件返工轮均未触碰, 按上轮结论沿用 | 维持 |
+| G1-G7 | - | 全部开放. G1 加强证据: 安装库实测仍旧 (R2 行); G7 复核: 根 `pytest.ini` testpaths 仍不含 `workflow/to-spec/tests` (实测); G2-G6 无新观察 | 维持 |
+
+## 9. 返工轮逐项发现
+
+### N1 [低] 术语残留: verify-change 改用 "设计验证方案" 后, 同一调用语义的引用处仍写 "设计方式"
+
+- 位置: `workflow/navigate/SKILL.md:71` 与根 `README.md:65` (两行均为本里程碑 diff 引入或改写, `git diff 9e8dd1df...HEAD` 逐行确认), 另 `workflow/verification-contract/SKILL.md:15` (基线已有, 非本 diff 引入). 同文件 `navigate/SKILL.md:42` 已用新词 "设计验证方案方式", 文件内不一致.
+- 依据: ISSUE-05 工单 "未覆盖" 节已如实列出这三处且说明范围外未擅扩; 但 `EXECUTION.md` 的未处理清单未点名, 归属未记.
+- 概率与代价: 纯条文, 无机检路径; 读者/执行者按旧词 "设计方式" 检索或理解时对不上 verify-change 现行方式名, 代价为误读或后续修文时漏改, 不破坏机检与 CLI.
+- 检查方法: `grep -rn "设计方式" workflow general README.md` (命中上述 3 行); `grep -rn "设计验证方案" ...` 对照.
+- 级别 4 (grep 全仓 + diff 逐行).
+
+### N2 [低] 记录缺口: EXECUTION.md 未逐条点名 R5/R9/R10 的处置归属
+
+- 位置: `docs/changes/to-spec-grilling-and-chinese-ids/EXECUTION.md` "未处理发现与归属" 只列 F1/R1/R2/R4-并发部分.
+- 影响: 上轮 R5/R9/R10 (措辞与跨平台类, 上轮建议 "另行安排") 的实际归属需读者跨文件推断; 不是行为破坏, 是闭环记录不完整, 与 N1 同源 (返工记录按工单粒度, 未按评审发现粒度收口).
+- 级别 2.
+
+## 10. 返工轮已排除项 (新查)
+
+| 编号 | 查了什么 | 排除依据 | 级别 |
+| --- | --- | --- | --- |
+| E13 | check-ac 报错文案变化是否有既有解析方 | grep 全仓 py/sh/tests `"确认流程标记\|必须位于 gherkin 代码块之前\|confirmed-flow: vN"` 仅命中 check-ac.py 自身与测试的子串断言 (`test_ac_draft.py:135` 断言的 "确认流程标记" 在新文案中仍含, 测试通过); issue-04 证据 `marker-*`: 缺标记/位置错/v1/v2 四种输入基线与目标退出码逐例一致 | 4 |
+| E14 | 新增 11 例测试是否触碰真实用户环境 | `test_ac_draft.py` setUp 用 `tempfile.TemporaryDirectory` (第 89 行), 文件头明写不操作真实 agent 目录或常驻服务; 新例全部经该隔离装置实跑通过, 不触 `~/.agents` 与真实产物 | 4 |
+| E15 | 五步完成标准行是否破坏既有引用/锚点 | 纯新增 5 行 (`SKILL.md:25,37,55,71,96`), 现有标题未改 (E4 锚点维持), 无命令变化; `check_skill.py workflow/to-spec/SKILL.md` OK exit 0 | 4 |
+| E16 | verify-change 三处术语替换是否改语义/断锚点 | diff 仅 3 行且逐字为 设计方式->设计验证方案 (ISSUE-05 证据 `term-normalized-diff`, 本轮复核); `[方案修订](#方案修订)` 锚点标题 (`SKILL.md:43`) 未动; `check_skill.py` OK exit 0 | 4 |
+
+## 11. 既有检查与本轮运行结果 (实测复跑)
+
+| 检查 | 命令 | 结果 |
+| --- | --- | --- |
+| to-spec 测试 | `uv run --with gherkin-official pytest -p no:cacheprovider -q workflow/to-spec/tests` | 40 passed + 50 subtests, exit 0 (上轮 39+39 基线 + 新 11 例) |
+| 技能文档检查 | `uv run python general/writing-for-llm/check_skill.py <to-spec/verify-change/navigate 三个 SKILL.md>` | 均 OK, exit 0 |
+| 产品路径空白 | `git diff --check 9e8dd1df...HEAD -- workflow general README.md` | 空, exit 0 |
+| 安装库一致性 | `cmp ~/.agents/skills/to-spec/<3 文件> workflow/to-spec/<同>` | 三文件均 DIFF (R2 窗口仍在) |
+
+## 12. 本轮记录与边界
+
+- 做了什么: 读返工轮完整 diff (产品 4 文件 + 工单/执行记录); 核对 EXECUTION.md 与 ISSUE-04/05/06 处置记载; 逐项回验上轮 R1-R10/E1-E12/G1-G7 的代码现状 (grep/diff/cmp/实跑); 深查报错文案消费者, 测试隔离性, 术语引用面与锚点; 复跑全部既有检查.
+- 未覆盖范围: 上轮 G1-G7 全部保持 (宿主同步链, Windows, 新流程端到端试跑, 历史 drill 实跑, 仓外调用方, R1 机械锚点, 全量 pytest 的 podman 隔离环境); 全量 `uv run pytest` 返工轮同样未验证 (G8, EXECUTION.md 载明容器无 podman 交调用方).
+- 不声称找到全部影响: 本轮结论基于 `783a528..a13085a` 与三点 diff 的逐行比对, 全仓文本检索和可运行入口实跑; 语义层面的跨技能执行偏差仍未观察.
+- 合并前建议: N1 的三处旧词宜与 R5 一并按措辞事项安排; R2 同步与 R4 并发窗口自动化保持上轮建议不变.
+- 提交状态: 按本轮授权, 本文件只追加到工作区, 未 commit, 未 push.
+- 清理: 本轮全部命令只读或跑在仓库自带测试栈的临时目录内, 无 /tmp 残留需清理, 未改产品文件.
