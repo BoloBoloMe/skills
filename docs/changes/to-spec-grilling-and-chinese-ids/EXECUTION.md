@@ -21,6 +21,10 @@
 - 全量 `uv run pytest` 未验证: 本容器未装 Podman (`podman: command not found`), 完成定义要求的隔离环境不具备, 交调用方处理.
 - 集成检查 (`integration/run1`): `uv run --with gherkin-official pytest workflow/to-spec/tests` 39 passed, exit 0; 完整差异内 3 个改动 `SKILL.md` (to-spec/verify-change/navigate) 逐个 `check_skill.py` 均 OK, exit 0; 规则12 范围审计无新违规, milestone-01 的 9 文件汉化未回退; 实施后安装目录摘要 231 文件与实施前逐一同值 (0 差异).
 - 证据归档: `evidence/m07-1bc15f612c10aa6e68e33587a01cd2de1ede2fe4/` (绑定集成提交 A `1bc15f6`), 1211 文件, 与仓库外证据根逐文件同值; 密钥样字符串扫描 0 命中.
+- milestone-07 返工轮集成 (合并提交 `68a5f09`, `ca9f7c3`, `c055e5e`): 三份返工工单按编号顺序 `--no-ff` 合并到 `improve`, 无冲突. 切片顶端: issue/04 `e6b7962`, issue/05 `42456c4`, issue/06 `676311a`.
+- 返工内容: ISSUE-04 按 H1 补 `workflow/to-spec/SKILL.md` 五个编号步骤的完成标准行 (贴合各步骤实际要求), 按 H4 统一 `check-ac.py` 报错文案的固定 v1 表述 (marker 仍固定 v1, 不改行为), 按 R4 新增坏输入转正回归 (真实公开 CLI 与真实隔离文件, 不 mock 内部协作者, 验坏格式/坏编号非零退出且正式稿字节不变); ISSUE-05 按 Q4 把 `workflow/verify-change/SKILL.md` 三处 "设计方式" 统一为标题用语 "设计验证方案" (第45, 51, 79 行, 语义不变); ISSUE-06 回填 F2/F3/F5/F6 记录类发现 (ISSUE-01 的 text-mapping 引用按实际改为 run5, ISSUE-02/03 交付证据补非作者核对结论并注明引用), 按 H2/H3 修正标点为半角.
+- 未处理发现与归属: F1 (`workflow/navigate/reference/VERIFICATION.md:9` 与 AC-041 方向相反) 等用户授权范围后处理; R1 属决策10 知情接受, 仅记录; R2 已安装技能同步属部署事项, 交用户; R4 并发窗口保持一次性真实进程证据, 未强行自动化.
+- 返工轮检查 (`integration/run2`, 跑于合并顶端 `c055e5e`): `uv run --with gherkin-official pytest workflow/to-spec/tests` 40 passed, exit 0; 评审起点 `9e8dd1d` 起的完整差异内产品改动 `SKILL.md` 共 3 个 (to-spec/verify-change/navigate), 逐个 `check_skill.py` 均 OK, exit 0; 第 4 个同名文件是归档证据里的候选条文快照 (目录名 `originals` 与 frontmatter `name` 不符), 非产品条文, 误报不修.
 
 ## 全局允许范围
 - `workflow/to-spec/` 中本次相关流程,模板,Gherkin 纪律,`check-ac.py`,`check-tech.py`,`ac-draft.py` 及 `workflow/to-spec/tests/`.
