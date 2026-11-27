@@ -14,6 +14,9 @@
 
 ## 执行记录
 - milestone-07 派工前登记: 仓库外专用证据根绝对路径 `/home/bolo/evidence/to-spec-grilling-and-chinese-ids` (决策41); 实施前安装目录只读摘要已取得并留存于该证据根. 实施按轮追加记录.
+- milestone-07 集成 (合并提交 `9eedb3a`, `f9bfe71`, `1dfc38a`): 三切片按编号顺序 `--no-ff` 合并到 `improve`, 无冲突, 文件不重叠. 切片顶端: issue/01 `1e64e6c` (代码 `fd26618`, `8ce78be`; 工单 `3229525`, `1e64e6c`), issue/02 `b260081`, `34ae059`, issue/03 `70ae157`.
+- 切片检查结果简列: ISSUE-01 run5 绑定最终提交复跑 39 passed + 39 subtests (exit 0), `check_skill.py workflow/to-spec/SKILL.md` OK/0, 42 场景条文对照无遗留缺口; ISSUE-02 非作者核对 21 场景 43 条预期无已证实缺陷 (4 条非阻塞疑点), `check_skill.py workflow/verify-change/SKILL.md` OK/0; ISSUE-03 局部核对 (验收25 两场景, 验收41 本 issue 部分, 规则11) 通过, `check_skill.py workflow/navigate/SKILL.md` OK/0.
+- 全量 `uv run pytest` 未验证: 本容器未装 Podman (`podman: command not found`), 完成定义要求的隔离环境不具备, 交调用方处理.
 
 ## 全局允许范围
 - `workflow/to-spec/` 中本次相关流程,模板,Gherkin 纪律,`check-ac.py`,`check-tech.py`,`ac-draft.py` 及 `workflow/to-spec/tests/`.
