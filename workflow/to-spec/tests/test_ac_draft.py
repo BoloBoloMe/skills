@@ -16,7 +16,6 @@ import sys
 import tempfile
 import threading
 import unittest
-from unittest.mock import patch
 from urllib.request import ProxyHandler, build_opener
 
 SKILL = Path(__file__).resolve().parents[1]
@@ -66,13 +65,6 @@ DRAFT = """```gherkin
 MARKER = "<!-- confirmed-flow: v1 -->"
 
 
-def load_helper():
-    spec = importlib.util.spec_from_file_location("to_spec_ac_draft_test", HELPER)
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    return module
-
-
 class PreText(html.parser.HTMLParser):
     def __init__(self):
         super().__init__(convert_charrefs=True)
@@ -119,8 +111,8 @@ class AcDraftTests(unittest.TestCase):
         self.assertEqual(0, run.returncode, run.stdout + run.stderr)
         return json.loads(run.stdout)
 
-    def promote(self, review_id):
-        return self.cli(HELPER, "promote", self.base, self.draft, self.output, "--review", review_id)
+    def promote(self):
+        return self.cli(HELPER, "promote", self.base, self.draft, self.output)
 
     def keep_old_output(self):
         self.output.parent.mkdir()
@@ -171,7 +163,10 @@ class AcDraftTests(unittest.TestCase):
         for draft in (DRAFT + "## 决策引用\n改写正文\n", "说明\n" + DRAFT, DRAFT + DRAFT, MARKER + "\n" + DRAFT, "", "```gherkin\n未闭合"):
             with self.subTest(draft=draft):
                 self.draft.write_text(draft, encoding="utf-8")
-                self.assertEqual(2, self.check().returncode)
+                run = self.check()
+                self.assertEqual(2, run.returncode)
+                if MARKER in draft:
+                    self.assertIn("草稿不携带确认标记", run.stderr)
 
     def test_missing_duplicate_or_fenced_acceptance_heading(self):
         for base in (BASE.replace("## 验收标准", "## 别的节"), BASE + "\n## 验收标准\n", BASE.replace("## 验收标准", "```markdown\n## 验收标准\n```"), BASE.replace("待确认, 此处暂不写入正式用例.", "```gherkin\n未闭合的旧代码块")):
@@ -219,7 +214,7 @@ class AcDraftTests(unittest.TestCase):
         first = self.preview()
         second = self.preview()
         self.assertTrue(first["success"])
-        self.assertEqual(first["review_id"], second["review_id"])
+        self.assertNotIn("review_id", first)
         self.assertNotEqual(first["preview"], second["preview"])
         page = Path(first["preview"]).read_text(encoding="utf-8")
         parser = PreText()
@@ -231,6 +226,8 @@ class AcDraftTests(unittest.TestCase):
         self.assertEqual(self.public, Path(first["preview"]).parent)
         self.assertEqual(str(self.draft), first["draft"])
         self.assertNotIn(str(self.base), page)
+        self.assertIn("页面仅供选看, 不用于确认.", page)
+        self.assertNotIn("审阅版本", page)
 
     def test_preview_refuses_invalid_draft(self):
         self.draft.write_text(DRAFT.replace("@G-001", "@G-999"), encoding="utf-8")
@@ -249,33 +246,39 @@ class AcDraftTests(unittest.TestCase):
                     self.draft.write_bytes(raw)
                     base = BASE.replace("\n", newline).encode("utf-8")
                     self.base.write_bytes(base)
-                    review = self.preview()
-                    run = self.promote(review["review_id"])
+                    run = self.promote()
                     self.assertEqual(0, run.returncode, run.stdout + run.stderr)
+                    self.assertEqual({"success": True, "command": "promote", "output": str(self.output)},
+                                     json.loads(run.stdout))
                     output = self.output.read_bytes()
                     self.assertIn(raw, output)
                     self.assertEqual(base.split("## 验收标准".encode())[0], output.split("## 验收标准".encode())[0])
                     self.assertEqual(base.split("## 决策引用".encode())[1], output.split("## 决策引用".encode())[1])
                     self.assertEqual(1, output.count(MARKER.encode()))
+                    self.assertIn(MARKER.encode() + newline.encode() + raw, output)
                     self.assertEqual(0, self.cli(CHECK, self.output).returncode)
                     self.assertEqual(base, self.base.read_bytes())
                     self.assertEqual(raw, self.draft.read_bytes())
 
-    def test_stale_review_rejects_changed_draft_or_product_context(self):
+    def test_promote_rejects_removed_review_option(self):
         old = self.keep_old_output()
-        review = self.preview()["review_id"]
-        self.draft.write_bytes(DRAFT.replace("1 条", "2 条").encode())
-        self.assertEqual(2, self.promote(review).returncode)
-        self.assertEqual(old, self.output.read_bytes())
-        self.draft.write_bytes(DRAFT.encode())
-        self.base.write_bytes(BASE.replace("保留这段中文背景", "背景已改变").encode())
-        self.assertEqual(2, self.promote(review).returncode)
+        help_run = self.cli(HELPER, "promote", "--help")
+        self.assertEqual(0, help_run.returncode)
+        self.assertNotIn("--review", help_run.stdout)
+        run = self.cli(HELPER, "promote", self.base, self.draft, self.output, "--review", "unused")
+        self.assertEqual(2, run.returncode)
+        self.assertIn("unrecognized arguments: --review", run.stderr)
         self.assertEqual(old, self.output.read_bytes())
 
-    def test_promote_requires_review_and_rejects_bad_hash(self):
-        self.assertEqual(2, self.cli(HELPER, "promote", self.base, self.draft, self.output).returncode)
-        self.assertEqual(2, self.promote("wrong").returncode)
-        self.assertFalse(self.output.exists())
+    def test_promote_rejects_invalid_draft_without_altering_existing_output(self):
+        old = self.keep_old_output()
+        self.draft.write_bytes(DRAFT.replace("@G-001", "@G-999").encode())
+        run = self.promote()
+        self.assertEqual(1, run.returncode, run.stderr)
+        result = json.loads(run.stdout)
+        self.assertFalse(result["success"])
+        self.assertIn("不存在", result["error"])
+        self.assertEqual(old, self.output.read_bytes())
 
     def test_invalid_utf8_and_missing_file_are_input_errors(self):
         self.draft.write_bytes(b"\xff")
@@ -286,90 +289,37 @@ class AcDraftTests(unittest.TestCase):
 
     def test_existing_ac_replaced_not_appended(self):
         self.base.write_text(BASE.replace("待确认, 此处暂不写入正式用例.", MARKER + "\n" + DRAFT.replace("AC-001", "AC-999")), encoding="utf-8")
-        review = self.preview()["review_id"]
-        self.assertEqual(0, self.promote(review).returncode)
+        self.assertEqual(0, self.promote().returncode)
         self.assertNotIn(b"AC-999", self.output.read_bytes())
         self.assertEqual(1, self.output.read_bytes().count(b"AC-001"))
 
     def test_gherkin_comment_heading_does_not_cut_section(self):
         self.draft.write_text(DRAFT.replace("@AC-001", "## 这是一条 Gherkin 注释, 不是 Markdown 节\n@AC-001"), encoding="utf-8")
-        review = self.preview()["review_id"]
-        self.assertEqual(0, self.promote(review).returncode)
+        self.assertEqual(0, self.promote().returncode)
         self.assertIn(self.draft.read_bytes(), self.output.read_bytes())
 
-    def test_replace_failure_preserves_old_output_and_cleans_temp_file(self):
-        helper = load_helper()
-        old = self.keep_old_output()
-        review = helper.preview(self.base, self.draft)["review_id"]
+    def test_promote_refuses_directory_target_without_leaving_temporary_file(self):
+        self.output.mkdir(parents=True)
         before = set(self.output.parent.iterdir())
-        with patch.object(helper.os, "replace", side_effect=OSError("replace failed")):
-            with self.assertRaises(OSError):
-                helper.promote(self.base, self.draft, self.output, review)
-        self.assertEqual(old, self.output.read_bytes())
+        run = self.promote()
+        self.assertEqual(2, run.returncode)
+        self.assertFalse(json.loads(run.stdout)["success"])
+        self.assertTrue(self.output.is_dir())
         self.assertEqual(before, set(self.output.parent.iterdir()))
 
-    def test_formal_recheck_failure_preserves_old_output(self):
-        helper = load_helper()
-        old = self.keep_old_output()
-        review = helper.preview(self.base, self.draft)["review_id"]
-        original = helper.checker.validate_product
-
-        def fail_formal(markdown, *, require_marker=True):
-            if require_marker:
-                raise helper.checker.ValidationError("正式复检失败")
-            return original(markdown, require_marker=require_marker)
-
-        with patch.object(helper.checker, "validate_product", side_effect=fail_formal):
-            with self.assertRaises(helper.checker.ValidationError):
-                helper.promote(self.base, self.draft, self.output, review)
-        self.assertEqual(old, self.output.read_bytes())
-
-    def test_change_during_validation_aborts_publication(self):
-        helper = load_helper()
-        old = self.keep_old_output()
-        review = helper.preview(self.base, self.draft)["review_id"]
-        original = helper.checker.validate_product
-
-        def change_after_formal(markdown, *, require_marker=True):
-            result = original(markdown, require_marker=require_marker)
-            if require_marker:
-                self.draft.write_bytes(DRAFT.replace("1 条", "2 条").encode())
-            return result
-
-        with patch.object(helper.checker, "validate_product", side_effect=change_after_formal):
-            with self.assertRaises(helper.checker.InputError):
-                helper.promote(self.base, self.draft, self.output, review)
-        self.assertEqual(old, self.output.read_bytes())
-
     def test_output_cannot_overwrite_input_or_follow_symlink(self):
-        helper = load_helper()
-        review = helper.preview(self.base, self.draft)["review_id"]
         for target in (self.base, self.draft):
             with self.subTest(target=target):
-                with self.assertRaises(helper.checker.InputError):
-                    helper.promote(self.base, self.draft, target, review)
+                run = self.cli(HELPER, "promote", self.base, self.draft, target)
+                self.assertEqual(2, run.returncode)
+                self.assertIn("必须与", json.loads(run.stdout)["error"])
         self.output.parent.mkdir()
         self.output.symlink_to(self.base)
-        with self.assertRaises(helper.checker.InputError):
-            helper.promote(self.base, self.draft, self.output, review)
+        run = self.promote()
+        self.assertEqual(2, run.returncode)
+        self.assertTrue(self.output.is_symlink())
         self.assertEqual(BASE.encode(), self.base.read_bytes())
-
-    def test_changed_output_is_not_overwritten_during_atomic_write(self):
-        helper = load_helper()
-        self.keep_old_output()
-        review = helper.preview(self.base, self.draft)["review_id"]
-        changed = b"another writer changed canonical content"
-        original = helper.os.fsync
-
-        def change_output(fd):
-            self.output.write_bytes(changed)
-            original(fd)
-
-        with patch.object(helper.os, "fsync", side_effect=change_output):
-            with self.assertRaises(helper.checker.InputError):
-                helper.promote(self.base, self.draft, self.output, review)
-        self.assertEqual(changed, self.output.read_bytes())
-        self.assertEqual([self.output], list(self.output.parent.iterdir()))
+        self.assertEqual(DRAFT.encode(), self.draft.read_bytes())
 
     def test_formal_marker_must_precede_gherkin_block(self):
         self.base.write_text(BASE.replace("待确认, 此处暂不写入正式用例.", DRAFT + MARKER), encoding="utf-8")
@@ -424,7 +374,7 @@ class AcDraftTests(unittest.TestCase):
     def test_preserves_existing_output_permissions(self):
         self.keep_old_output()
         self.output.chmod(0o640)
-        self.assertEqual(0, self.promote(self.preview()["review_id"]).returncode)
+        self.assertEqual(0, self.promote().returncode)
         self.assertEqual(0o640, self.output.stat().st_mode & 0o777)
 
 
