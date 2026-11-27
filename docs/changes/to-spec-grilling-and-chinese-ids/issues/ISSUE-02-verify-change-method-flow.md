@@ -55,6 +55,14 @@
 - 执行后填写提交号,变更路径,所有覆盖行的来源与条文位置,每个 AC 场景预期的逐项核对结果,同文件/跨引用矛盾检查,修订前后差异及适用旧结论的理由,skill 格式命令与结果.
 - 若出现缺口, 写清是规格依据缺失,方法未知还是执行资源暂缺及其影响. 不用未验证,部分检查或纯行数匹配写成全量通过.
 
+**本轮作者交付 (m07-imp-02):** 候选条文提交 `b260081db4461c58644a36189e1fd96f5b2a95c6`. 本证据节另作记录提交, 不改变候选条文. 最终分支提交及候选文件摘要见仓库外 `/home/bolo/evidence/to-spec-grilling-and-chinese-ids/issue-02/run2/INDEX.md`. `run1/` 保留首次格式检查, 不是最终条文依据.
+
+- `workflow/verify-change/SKILL.md`: 双入口与边界; 设计步骤1-4 (权威输入与契约, 按方法盘问与账本/续问, 范围确认与写前反方, 成文和写后独立核对); 方案修订; 执行步骤1-4 (实际内容与前置条件, 隔离与缺条件, 非作者派发, 结果分类).
+- `workflow/verify-change/REVERIFY.md`: 开头与步骤1 (会话规则, 新提交/新证据, 重核及修订分流), 步骤3 (按修复及方案变化的影响复验和核对旧证据).
+- `uv run python general/writing-for-llm/check_skill.py workflow/verify-change/SKILL.md`: `OK`, 退出码0, stderr 空; 命令与原始输出在 `run2/`. `git diff --check` 退出码0. 格式结果不作语义通过证据.
+- 作者矛盾自查: 去掉旧的逐版整份采纳, 将执行与 REVERIFY 指回同一修订分流; 不用行数或状态替代来源内容核对; 设计查证不越界读实现, 资源缺失只影响执行结果; 首轮新开会话, 复验服从已确认方案的新开要求, 否则仅恢复仍合格的非作者; 审计可按方案静态核对, 不强制运行. 内部证据链接及 verification-contract/SAFETY/tests, decision-ledger, handoff 边界已自查. 分支未改 navigate/README; 其旧确认用语及 `workflow/navigate/reference/VERIFICATION.md` 第9行的重确认表述留待调用方集成核对, 不声称跨切片一致.
+- 非作者核对已委派独立检查会话 (由调度方另派并回填). 本轮未取得非作者报告: INDEX 逐场景只提供来源和候选定位, 不作通过判断. 待查验收31-40全部场景, 验收41中 verify-change/REVERIFY 部分, 规则10及16-22, 技术与安全约束, 以及计划全表追溯及改动影响. 最终 73 行验证、整合复核及用户验收不属于本轮. 未试跑需求、未改测试、未开启 milestone-08, 未代用户裁决或验收.
+
 ## 风险提示
 - verify-change 设计输入不要求 PRODUCT.md 和 TECHNICAL.md 必须同时存在. 若条文只支持两份规格, 会错误阻断合法的其他权威输入.
 - 方案行数完整仍可能遗漏场景预期. 必须对照权威原文逐项语义核验.
