@@ -13,6 +13,7 @@
 - 差异与旧编号范围核对按验证方案使用基线 `182ff1846d0ed310b7f4ed308366d36f6e74b412` 到最终目标提交. 评审起点仍由 `drive-execution` 在派工前核实并填写.
 
 ## 执行记录
+- milestone-07 评审门槛判定: 旧行为影响方向实做. 依据: 三份 issue 验证契约均声明行为变更, 实际差异触碰公开 CLI 契约 (ac-draft.py 移除 --review 与 promote 契约改动), skill 流程条文及跨文件调用说明 (navigate/ACCEPTANCE-GUIDE/README), 属共享接口与跨模块路径. 首轮无 IMPACT-REVIEW.md, 由未参与实现的独立审核者新建. 评审起点 9e8dd1dfe92b3b446c88c2cb8fce33cb0c67a77a, 集成提交 1bc15f612c10aa6e68e33587a01cd2de1ede2fe4 (证据归档 7dea2143e00dcda8c9385a5881f36ba017648088).
 - milestone-07 派工前登记: 仓库外专用证据根绝对路径 `/home/bolo/evidence/to-spec-grilling-and-chinese-ids` (决策41); 实施前安装目录只读摘要已取得并留存于该证据根. 实施按轮追加记录.
 - milestone-07 集成 (合并提交 `9eedb3a`, `f9bfe71`, `1dfc38a`): 三切片按编号顺序 `--no-ff` 合并到 `improve`, 无冲突, 文件不重叠. 切片顶端: issue/01 `1e64e6c` (代码 `fd26618`, `8ce78be`; 工单 `3229525`, `1e64e6c`), issue/02 `b260081`, `34ae059`, issue/03 `70ae157`.
 - 切片检查结果简列: ISSUE-01 run5 绑定最终提交复跑 39 passed + 39 subtests (exit 0), `check_skill.py workflow/to-spec/SKILL.md` OK/0, 42 场景条文对照无遗留缺口; ISSUE-02 非作者核对 21 场景 43 条预期无已证实缺陷 (4 条非阻塞疑点), `check_skill.py workflow/verify-change/SKILL.md` OK/0; ISSUE-03 局部核对 (验收25 两场景, 验收41 本 issue 部分, 规则11) 通过, `check_skill.py workflow/navigate/SKILL.md` OK/0.
