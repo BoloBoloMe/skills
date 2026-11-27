@@ -245,3 +245,69 @@ README.md                                | 条目与阶段说明
 - 合并前建议: N1 的三处旧词宜与 R5 一并按措辞事项安排; R2 同步与 R4 并发窗口自动化保持上轮建议不变.
 - 提交状态: 按本轮授权, 本文件只追加到工作区, 未 commit, 未 push.
 - 清理: 本轮全部命令只读或跑在仓库自带测试栈的临时目录内, 无 /tmp 残留需清理, 未改产品文件.
+
+---
+
+# IMPACT-REVIEW 第三轮 (收尾重跑, 目标提交 de3b589)
+
+- 轮次: 第三轮 (收尾重跑), 追加于前两轮之后, 不覆盖旧轮次.
+- 评审起点不变: `9e8dd1df`; 目标提交: `de3b589ce0df1d5a94b609e5ba99507f445103d5` (`git rev-parse HEAD` 实取).
+- 本轮新差异 (相对上轮目标 a13085a): merge 5bc32d2 (issue/07, 即 8e776be) + 记录 de3b589. `git diff a13085a..de3b589 --stat` 共 6 文件, 其中产品改动仅 3 行 3 文件: `workflow/verify-change/SKILL.md:47` 段内补一句 `不新增盘问专用记录格式.`, `workflow/navigate/SKILL.md:71` 与根 `README.md:65` 术语 设计方式 -> 设计验证方案; 其余为 EXECUTION.md 记录 5 行, 本文件第二轮追加与工单 `issues/ISSUE-07-round3-n1-q1.md`, 不计产品. 证据: integration/run3/ 与 issue-07/run1/.
+- 授权: 除追加本文件并提交外只读. 未新建仓库外证据文件, 过程命令与结果见各条引用.
+- 方法: 本轮差异为纯条文, 无共享接口/数据格式/跨模块路径变更, 不触发 blast-radius 多模型深查; 重点为字面引用面, 补句与既有禁令的一致性, 上轮 N1/N2 闭环, 以及开放项在最终提交上的现状复测.
+
+## 13. 第三轮关键安全事实
+
+事实 S4: 三行新差异是纯条文, 无机检或 CLI 路径可触达. 全仓排除 docs/changes 后 `设计方式` 字面仅剩 `workflow/verification-contract/SKILL.md:15` (基线已有, 非本 diff 引入, ISSUE-07 工单明载范围外只记录); 无任何 py/sh 脚本或测试对 `设计方式`, `盘问专用` 或 verify-change 方式名做字面匹配 (`grep --include="*.py" --include="*.sh" 盘问专用` 0 命中; 方法名仅出现在 markdown 引导条文里). 两个改动 SKILL.md 的 `check_skill.py` 均 OK.
+- 级别 4. 安全作用: 补句与术语替换不可能破坏任何脚本化消费方.
+
+事实 S5: `verify-change/SKILL.md:47` 补句 `不新增盘问专用记录格式.` 与 `:28` 既有禁令 `不新增盘问专用文件, 章节或格式` 语义同向, 无冲突, 无重复执行歧义. 两处都是禁止性条文 (不做某事), 不存在被触发两次的动作; `:47` 是修订段对同一禁令的复述, 与 `workflow/to-spec/SKILL.md:22` 的同型表述 (`判定的持久记录只用现有决策/事实格式, 不增盘问专用文件/章节/格式`) 结构一致. 补句位置在 `用现有来源引用和检查产物保留变更及确认依据` 之后, 语义为沿用现有格式, 与该句正衔接.
+- 级别 3 (逐行走读比对, 无可实跑路径).
+
+## 14. 上轮 N1/N2 闭环核对
+
+| 项 | 本轮核实 | 结论 |
+| --- | --- | --- |
+| N1 (设计方式残留) | `workflow/navigate/SKILL.md:71` 与 `README.md:65` 已逐字替换为 设计验证方案 (本轮 diff 逐行读过); 残留仅 `verification-contract/SKILL.md:15` 一处, ISSUE-07 工单明载 `不动其他 设计方式 残留 (在范围外, 只记录不改)`, EXECUTION.md:28 也载明 ISSUE-07 完成 N1 | 闭环成立: 范围内两处已修, 范围外一处已显式记录归属 |
+| N2 (EXECUTION 未点名 R5/R9/R10 归属) | `EXECUTION.md:32` 新增: `R5/R9/R10 维持开放, 归属: 跨文件措辞一致性与可移植性类事项, 交 milestone-12 用户审改时定夺 (R5 与 F1 同涉 workflow/navigate/reference/VERIFICATION.md); F1 仍待用户授权范围` | 闭环成立: 归属行已在, 三项均有明确去处 |
+
+## 15. 开放项在最终提交 de3b589 上的现状复测
+
+| 项 | 复测命令/依据 | 结果 |
+| --- | --- | --- |
+| R1 | `sed -n 285,303p workflow/to-spec/ac-draft.py` 后 grep `review\|版本` 0 命中; promote 仍无版本参数与比对 | 仍开放 (决策10 知情接受, 仅记录) |
+| R2 | `cmp ~/.agents/skills/to-spec/{ac-draft.py,check-ac.py,SKILL.md} workflow/to-spec/<同>` 三文件均 DIFF | 仍开放 (部署事项, 交用户) |
+| R5 | `grep -n "已确认的 \`VERIFICATION-PLAN" workflow/to-execution/SKILL.md workflow/drive-execution/SKILL.md workflow/navigate/reference/VERIFICATION.md` 仍命中 4 处 (:16/:35/:26/:5) | 仍开放, 归属已记 (N2) |
+| R9 | `grep -n "cp --\|cmp --" workflow/to-spec/SKILL.md` 仍命中 `:47-48` | 仍开放, 归属已记 (N2) |
+| R10 | `grep -rn "盲区\|逐题" general/handoff/SKILL.md workflow/decision-ledger/SKILL.md` 0 命中 | 仍开放, 归属已记 (N2) |
+| F1 | `workflow/navigate/reference/VERIFICATION.md:9` 分流条文未变 (本轮 diff 未触碰该文件); EXECUTION.md:26 已载明与 AC-041 方向相反, 待用户授权范围 | 仍开放, 归属已记 |
+| G1-G7 | G1 经 R2 cmp 加强证据 (安装库仍旧); G7 复测根 `pytest.ini` testpaths 仍不含 `workflow/to-spec/tests`; G2-G6 无新观察 | 全部维持开放 |
+
+## 16. 第三轮已排除项 (新查)
+
+| 编号 | 查了什么 | 排除依据 | 级别 |
+| --- | --- | --- | --- |
+| E17 | 三行新差异是否有字面匹配/解析消费方 | 全仓 (排除 docs/changes) grep `设计方式` 仅 verification-contract:15; py/sh 中 `盘问专用` 0 命中; 无脚本解析方式名或禁令句 | 4 |
+| E18 | 补句是否与 :28 既有禁令冲突或造成重复执行歧义 | 两处均为禁止性条文, 语义同向无动作可重复触发; 与 to-spec/SKILL.md:22 同型表述结构一致 (S5) | 3 |
+| E19 | 术语替换是否改语义/断锚点 | diff 逐字为 设计方式 -> 设计验证方案, 与 `verify-change/SKILL.md:11/:18` 的方式名一致; navigate `SKILL.md#milestone` 锚点与本文件标题未动; check_skill.py OK | 4 |
+| E20 | merge 5bc32d2 与记录 de3b589 是否夹带范围外产品改动 | `git diff a13085a..de3b589 --stat` 仅 6 文件, 产品 3 行; `git diff 8e776be..de3b589` 仅 EXECUTION.md 5 行记录 | 4 |
+| E21 | verify-change/navigate README 三处改动是否影响既有引用 | 三处均为段内单行, 周边条文与标题未变; 全仓无引用这三行原文的检查脚本 (E17 同源) | 4 |
+
+## 17. 既有检查与本轮运行结果 (实测复跑)
+
+| 检查 | 命令 | 结果 |
+| --- | --- | --- |
+| to-spec 测试 | `uv run --with gherkin-official pytest -p no:cacheprovider -q workflow/to-spec/tests` | 40 passed + 50 subtests, exit 0 |
+| 技能文档检查 | `uv run python general/writing-for-llm/check_skill.py <to-spec/verify-change/navigate 三个 SKILL.md>` | 均 OK, exit 0 |
+| 产品路径空白 | `git diff --check 9e8dd1df...HEAD -- workflow general README.md` | 空, exit 0 |
+| 契约负断言 | `grep -rn "review_id\|--review" workflow general tests README.md pi agent-prompts` | 仅测试负断言 3 处 (`test_ac_draft.py:217,267-270`), E1 维持 |
+
+## 18. 第三轮结论与边界
+
+- 本轮发现总数: 0 个新增问题. 三行新差异无旧行为破坏; 上轮 N1/N2 均闭环 (第 14 节).
+- 最严重问题: 本轮无新增; 全程累计最严重仍为 R1 (机械防串版缺失), 已由决策10 知情接受, 仅记录影响面, 非本轮或返工引入.
+- 最终影响面 (de3b589): 开放项 R1/R2/R5/R9/R10/G1-G7/F1 在最终提交上全部仍开放且归属已记录于 EXECUTION.md; 三行收尾差异未改变任何既有结论, 全部既有检查复跑全绿.
+- 未覆盖范围: 上轮 G1-G7 全部保持 (宿主同步链, Windows, 新流程端到端试跑, 历史 drill 实跑, 仓外调用方, R1 机械锚点, 全量 pytest 的 podman 隔离环境); 全量 `uv run pytest` 本轮同样未验证 (G8).
+- 不声称找到全部影响: 本轮结论基于 a13085a..de3b589 逐行 diff, 全仓文本检索与既有可运行入口的复跑; 语义层面的跨技能执行偏差仍未观察.
+- 提交状态: 按本轮授权, 本文件追加后随本轮提交 (第三轮收尾), 交付以 push 为准.
+- 清理: 本轮全部命令只读或跑在测试栈临时目录内, 无 /tmp 残留, 未改本文件以外的任何文件.
