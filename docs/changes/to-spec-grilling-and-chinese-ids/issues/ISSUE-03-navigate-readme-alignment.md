@@ -48,6 +48,7 @@
 - 验收41: `PRODUCT.md:427-431`, `TECHNICAL.md:25-36,84`, `VERIFICATION-PLAN.md:124`, 对照以上三文件的方案定义与完成标准/方案确认/执行与复验/验收边界. 入口1-3逐项位置, 预期和判断见同一 run1 的 `local-check.md`; 局部核对通过, 不声明与 ISSUE-01/02 的旧条文一致.
 - `uv run python general/writing-for-llm/check_skill.py workflow/navigate/SKILL.md`: OK, 退出码0, 同一 run1 的 `check_skill.log` / `check_skill.exit` 为原件.
 - 待办交接: 全局交叉核对及 README 完整调用段与相邻说明的非作者复核, 按 `../EXECUTION.md:36,46,75` 在全部切片集成后执行, 结果回链 `../EXECUTION.md#执行记录`. 本 issue 未执行或等待, 不作为本 issue 合并前置. 未进行成品独立验证或用户验收.
+- 记录回填 (m07-rw-06) 核对: `../evidence/m07-1bc15f612c10aa6e68e33587a01cd2de1ede2fe4/issue-03/run1/` 原件齐备 (`INDEX`, `local-check.md`, `candidate.patch`, `check_skill.log`, `check_skill.exit`, `scope.log`, `environment.txt`); `candidate.patch` 与 `git show --format= 70ae157 -- workflow/navigate/SKILL.md workflow/navigate/ACCEPTANCE-GUIDE.md README.md` 逐字节一致 (`cmp` 0); `local-check.md` 6 行覆盖入口1 两场景, 入口2 三行, 入口3 规则11; 固定来源 sha256 与本 `../EXECUTION.md` 一致; 分支起点 `775b5a2` 是评审起点 `9e8dd1d` 的直接后继. 本轮核对原件 `/home/bolo/evidence/to-spec-grilling-and-chinese-ids/issue-06/run1/logs/issue03-run1-binding.*`. 非作者全局交叉核对与 README 复核不在本 issue, 交父级集成记录回链, 本工单不代填结论.
 
 ## 风险提示
 - navigate 统筹多个阶段. 将方案确认写成产品验收会错误放行流程.
@@ -57,11 +58,11 @@
 同全局; 若发现 navigate/README 与权威输入冲突, 不自行改变规格或路线图, 记录具体段落并交回既有规格/决定流程. 不新增权威输入未要求的强制审改或阶段条件.
 
 ## 验收标准
-- [ ] 验收25两个场景及验收41中本 issue 覆盖部分均有固定来源和候选条文位置.
-- [ ] 本 issue 修改的 navigate 和 README 通用语义符合已确认规格, 不含本次执行专属安排或新增普遍强制条件.
-- [ ] deliberate 的独立四步与其他调用入口保留, 无 to-spec 新流程反向覆盖.
-- [ ] 本 issue 的局部修改和依据核对留证, 并将全局交叉核对及 README 非作者复核明确交接给 `EXECUTION.md`; 不要求合并前取得全局结果.
-- [ ] 所有改动 skill 的格式检查留有可复查证据.
+- [x] 验收25两个场景及验收41中本 issue 覆盖部分均有固定来源和候选条文位置. (`../evidence/m07-1bc15f612c10aa6e68e33587a01cd2de1ede2fe4/issue-03/run1/local-check.md` 入口1 两行与入口2 三行, 每行给 `PRODUCT.md`/`TECHNICAL.md`/`VERIFICATION-PLAN.md` 行号与候选位置)
+- [x] 本 issue 修改的 navigate 和 README 通用语义符合已确认规格, 不含本次执行专属安排或新增普遍强制条件. (`local-check.md` 各行判断局部符合, 含入口2 验收边界一行; 固定来源 sha256 见 `scope.log`, 与本 EXECUTION.md 一致)
+- [x] deliberate 的独立四步与其他调用入口保留, 无 to-spec 新流程反向覆盖. (`local-check.md` 入口1 场景2: `workflow/deliberate/SKILL.md:9-18` 四步无差异, `workflow/to-execution/SKILL.md:15` 调用未改, README 保留独立入口; `scope.log` 产品差异仅 3 文件)
+- [x] 本 issue 的局部修改和依据核对留证, 并将全局交叉核对及 README 非作者复核明确交接给 `EXECUTION.md`; 不要求合并前取得全局结果. (`local-check.md` 待交接节, 本工单待办交接条, `EXECUTION.md` 完成定义; 全局结果交父级回链, 本工单不代填)
+- [x] 所有改动 skill 的格式检查留有可复查证据. (`../evidence/m07-1bc15f612c10aa6e68e33587a01cd2de1ede2fe4/issue-03/run1/check_skill.log` 为 `workflow/navigate/SKILL.md: OK`, `check_skill.exit` 为 0; 本轮复核原件 `/home/bolo/evidence/to-spec-grilling-and-chinese-ids/issue-06/run1/logs/issue03-run1-binding.*`)
 
 ## 被阻塞于
 - 无
