@@ -1,0 +1,8 @@
+# 证据归档核对
+
+- 产物根: `/home/bolo/evidence/to-spec-grilling-and-chinese-ids`
+- 归档: `docs/changes/to-spec-grilling-and-chinese-ids/evidence/m07-1bc15f612c10aa6e68e33587a01cd2de1ede2fe4/` (目录名绑定集成提交 A `1bc15f612c10aa6e68e33587a01cd2de1ede2fe4`)
+- 归档前 du -sb: 1640090 (1207 文件, 见 archive-before.txt)
+- 归档后 du -sb: 1640162 (1207 文件, 见 archive-after.txt); 差额 72 字节为目录项自身大小, 文件级比对见下
+- 最终核对 (源与归档各 1209 文件, 逐文件 sha256): 全部同值, diff 退出码 0
+- 说明: 归档后又在源根补写了核对文件 (archive-*.txt, archive-verify.txt), 已同步复制到归档, 故最终计数比首次计数多 2 个.

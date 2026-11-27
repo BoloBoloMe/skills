@@ -1,0 +1,18 @@
+workflow/to-spec/GHERKIN.md:65:`@G-NNN`/`@BR-NNN` 引用的编号必须在 PRODUCT.md 的 `目标`/`业务规则` 节真实存在, 且 `@BR-NNN` 只能引用领域规则条目, 不得指向标 `(审计)` 的审计式断言; 两条均由机检对账.
+workflow/to-spec/GHERKIN.md:115:6. 编号对账: 目标/业务规则编号不重复, 场景引用的 @G-NNN/@BR-NNN 在对应节真实存在, 且 @BR 不指向 (审计) 条目.
+workflow/to-spec/check-ac.py:25:6. 编号对账: 目标/业务规则编号不得重复; 场景引用的 @G-NNN/@BR-NNN 必须在
+workflow/use-sandbox-worktree/scripts/swt.py:780:    """D010/UD-03: 无已确认地址且未给 --lan-ip → lan-address 待决 (DECIDE + exit 1).
+workflow/use-sandbox-worktree/scripts/swt.py:2895:    # 主机名 (D047): birth 经 DECIDE 确认后必带; 不设则 podman 拿容器 ID 充数
+workflow/use-sandbox-worktree/scripts/swt.py:3203:    # 失败 → DECIDE (决策 3; 执行完成后的追加 DECIDE, D026 一次列全的例外)
+workflow/navigate/tests/test_roadmap_validation.py:4:TC-005 poc 可写入; 各用例 docstring 以 "TC-xxx (m04 AC-xxx)" 括注消歧, 编号语义与本文件既有 TC-xxx 不同.
+workflow/codebase-map/tests/test_data_key.py:1:"""TC-01-01: 数据键命名与清洗 (BR-011/BR-032, m25 D005; PRODUCT AC-005 键场景).
+workflow/codebase-map/i18n/zh.txt:269:TF-IDF is unavailable: the loaded file has no TF-IDF scores.	TF-IDF 不可用: 加载的文件没有 TF-IDF 分数.
+workflow/codebase-map/i18n/zh-ts.txt:45:codeCharta/features/domainBar/components/wordSizingModeControl/wordSizingModeControl.component.ts	TF-IDF (relative importance) — not available: the loaded file has no TF-IDF scores	TF-IDF (相对重要性) — 不可用: 加载的文件没有 TF-IDF 分数
+workflow/codebase-map/i18n/zh-ts.txt:46:codeCharta/features/domainBar/components/wordSizingModeControl/wordSizingModeControl.component.ts	TF-IDF (relative importance) — sizes words by how distinctive they are, not by raw count	TF-IDF (相对重要性) — 按单词的区分度而非出现次数决定大小
+workflow/codebase-map/i18n/zh-ts.txt:257:codeCharta/renderer/wordCloud/util/wordCloudTooltip.ts	TF-IDF: ⟦0⟧	TF-IDF 值: ⟦0⟧
+general/mailbox/scripts/mailbox.py:228:    name = 人读标识 (D011 B2, 可缺省): 同名再登记 upsert 覆盖地址不累积;
+general/mailbox/scripts/mailbox.py:360:            # 回执保留命名空间 (D013): 注册 mailbox@ 前缀会使正常信被取信侧
+general/present/scripts/web_server.py:686:        # 控制面优先; /__control__/ 全命名空间仅本机来源 (D020/U-009)
+general/present/scripts/web_server.py:710:            # /__control__/ 全命名空间仅本机来源 (D020/U-009)
+general/present/tests/test_web_server_control_plane.py:4:/__control__/* 全命名空间仅 loopback 来源放行; 静态内容面不受来源限制 (D001).
+general/present/tests/test_skill_contract.py:98:        """BR-001/BR-009/BR-017/BR-018: 端口纪律, 共享 stop, 风险说明与命名规则."""

@@ -1,0 +1,7 @@
+Traceback (most recent call last):
+  File "/home/bolo/evidence/to-spec-grilling-and-chinese-ids/issue-01/run3/trace.py", line 162, in <module>
+    run(case, interpreter)
+  File "/home/bolo/evidence/to-spec-grilling-and-chinese-ids/issue-01/run3/trace.py", line 145, in run
+    assert exit_code == 0 and output.read_bytes() == expected, (exit_code, output)
+                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: (125, PosixPath('/home/bolo/evidence/to-spec-grilling-and-chinese-ids/issue-01/run3/files/trace/atomic/PRODUCT.md'))

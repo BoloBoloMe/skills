@@ -1,0 +1,14 @@
+2026-11-27T04:30:38Z
+70ae15759eca9653dde010a49febd1729adb36d5
+M	docs/changes/to-spec-grilling-and-chinese-ids/EXECUTION.md
+M	README.md
+M	docs/changes/to-spec-grilling-and-chinese-ids/issues/ISSUE-03-navigate-readme-alignment.md
+M	workflow/navigate/ACCEPTANCE-GUIDE.md
+M	workflow/navigate/SKILL.md
+对照文件差异退出码: 0
+c8823e0edf27e86a05f81acf89e5fea6027db3524afd6c88512326cda3e239d5  docs/changes/to-spec-grilling-and-chinese-ids/PRODUCT.md
+e825dd5799fb6fa725216e140a3a1bb240b868753bf6c850ccfc615f39340f1e  docs/changes/to-spec-grilling-and-chinese-ids/TECHNICAL.md
+7c4c450f1bfdf630f133f20435b9000cd76ab76a06c5538b1fa4f9a15fc49583  docs/changes/to-spec-grilling-and-chinese-ids/VERIFICATION-PLAN.md
+提交的产品差异与证据原件一致: cmp 退出码0
+工作树状态:
+## issue/03

@@ -1,0 +1,3 @@
+workflow/navigate/SKILL.md
+workflow/to-spec/SKILL.md
+workflow/verify-change/SKILL.md

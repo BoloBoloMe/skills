@@ -1,0 +1,13 @@
+check-ac valid: 0 / 1 个场景, 1 个 AC
+check-ac missing-goal: 1 / 不存在
+check-ac audit-rule: 1 / 指向 (审计) 条目
+check-ac duplicate-goal: 2 / 目标1 重复
+check-ac keyword: 1 / 关键字白名单
+check-ac multiple-ac: 1 / @AC 标签数为 2
+Traceback (most recent call last):
+  File "/home/bolo/evidence/to-spec-grilling-and-chinese-ids/issue-01/run1/target.py", line 151, in <module>
+    main()
+  File "/home/bolo/evidence/to-spec-grilling-and-chinese-ids/issue-01/run1/target.py", line 108, in main
+    assert r.returncode == code and msg.encode() in r.stderr + r.stdout, (case, r)
+                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: ('free-tag', CompletedProcess(args=['uv', 'run', '--with', 'gherkin-official', 'python', PosixPath('/home/bolo/Workspace/improve.worktrees/ISSUE-01/workflow/to-spec/check-ac.py'), PosixPath('/home/bolo/evidence/to-spec-grilling-and-chinese-ids/issue-01/run1/files/ac/free-tag/PRODUCT.base.md'), '--draft', PosixPath('/home/bolo/evidence/to-spec-grilling-and-chinese-ids/issue-01/run1/files/ac/free-tag/review/acceptance.md')], returncode=1, stdout=b'', stderr=b"[\xe6\xa0\x87\xe7\xad\xbe\xe5\xb0\x81\xe9\x97\xad\xe9\x9b\x86] \xe8\xa1\x8c 36 (\xe5\x9c\xba\xe6\x99\xaf '\xe6\x9f\xa5\xe7\x9c\x8b <\xe6\x9d\xa1\xe6\x95\xb0> \xe6\x9d\xa1\xe5\x90\x88\xe6\x88\x90\xe8\xae\xb0\xe5\xbd\x95'): \xe9\x9d\x9e\xe6\xb3\x95\xe6\xa0\x87\xe7\xad\xbe @smoke (\xe5\xb0\x81\xe9\x97\xad\xe9\x9b\x86: @AC-NNN/@G-NNN/@BR-NNN/@normal/@failure/@edge)\n"))

@@ -1,0 +1,1 @@
+uv run --with gherkin-official python -c import\ sys\,\ importlib.metadata\ as\ m\;\ print\(sys.version\)\;\ print\(\{p:m.version\(p\)\ for\ p\ in\ \(\"gherkin-official\"\,\"pytest\"\)\}\) 

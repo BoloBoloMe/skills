@@ -1,0 +1,14 @@
+workflow/to-spec/TEMPLATES.md:3:盘问按两份模板全部适用节展开, 明确闭环且反方收敛后再按模板落笔. 规格忠实承接已确认内容, 不靠逐版审稿确认. 节名与节序是机检和下游引用约定, 逐字照抄, 条件节按说明省略. 正文按本 skill 的[达标标准与检查边界](SKILL.md#达标标准与检查边界)检查.
+workflow/to-spec/GHERKIN.md:116:7. 确认标记: 正式模式的 `验收标准` 节必须在 Gherkin 块前含固定标记 `<!-- confirmed-flow: v1 -->`, 缺失判为输入错误 (退出码 2). 草稿不得带标记; 转正脚本加固定 `<!-- confirmed-flow: v1 -->`. 它不证明用户已确认, 确认依据为 chat 中明确的盘问闭环.
+workflow/to-spec/check-ac.py:11:0. 确认标记: `验收标准` 节必须含 `<!-- confirmed-flow: vN -->` (由 to-spec
+workflow/to-spec/check-ac.py:41:CONFIRMATION_MARKER = "<!-- confirmed-flow: v1 -->"
+workflow/to-spec/check-ac.py:43:MARKER_RE = re.compile(r"<!--\s*confirmed-flow:\s*v\d+\s*-->")
+workflow/to-spec/check-ac.py:175:            "确认流程标记 `<!-- confirmed-flow: vN -->` 必须位于 gherkin 代码块之前"
+workflow/to-spec/SKILL.md:21:- **续问.** 同会话暂停后继续当前能问的问题, 不提前写规格; 本会话闭环不写交接. 需要换会话时先按下条入账, 再调用 `handoff`. 交接写当前可问问题, 已否决分支及理由, 逐题和逐节覆盖进度, 盲区扫描进度与待裁决项; 只记我明确提出的暂停或节奏要求, 不推测疲劳或心理状态. 已入账内容只引用, 不补免问清单或锚点. 同机用系统临时目录, 跨机按 `handoff` 落仓库并推送, 位置不明先问. 新会话读账本与交接恢复进度, 原件缺失就说明缺口, 不猜未定判定.
+workflow/to-spec/SKILL.md:23:- **闭环.** 向我展示两份模板每一节的已问/未碰状态, 未碰节附理由, 不要求逐节另附已定结论. 清单呈现和 `grilling` 盲区扫描完成, 所有待裁决项关闭后, 才问我是否明确结束. 沉默, 部分认可或要求继续都不算, 不得开始写稿. 明确结束即同时确认两份规格所需内容, 不要求我读预写稿, 成文后的 Gherkin 或逐版采纳.
+workflow/to-spec/SKILL.md:49:按顺序执行, 转正须退出 0 且 JSON `success` 为 true, 其余命令须退出 0. 转正脚本把验收原文字节嵌入临时产品副本, 在代码块前加固定 `<!-- confirmed-flow: v1 -->`, 正式机检通过才原子替换产品文件. 标记是流程格式, 不随修文升版, 不证明我看过文件. 转正发现本次输入或正式目标变化时停止替换, 保留现场, 核对当前输入与确认依据后处理. 技术稿机械复制, 不由模型重写. 两份正式稿不是同时替换的事务: 任一生成或检查失败, 会话及已有调用方状态记整组未完成, 保留现场, 补齐失败步骤并复查两份后才交付. 不向下游宣称规格齐备.
+workflow/to-spec/tests/test_ac_draft.py:65:MARKER = "<!-- confirmed-flow: v1 -->"
+workflow/to-spec/tests/test_ac_draft.py:217:        self.assertNotIn("review_id", first)
+workflow/to-spec/tests/test_ac_draft.py:267:        self.assertNotIn("--review", help_run.stdout)
+workflow/to-spec/tests/test_ac_draft.py:268:        run = self.cli(HELPER, "promote", self.base, self.draft, self.output, "--review", "unused")
+workflow/to-spec/tests/test_ac_draft.py:270:        self.assertIn("unrecognized arguments: --review", run.stderr)

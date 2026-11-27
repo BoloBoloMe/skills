@@ -1,0 +1,1 @@
+uv run python general/writing-for-llm/check_skill.py workflow/to-spec/SKILL.md 

@@ -1,0 +1,10 @@
+usage: ac-draft.py promote [-h] --review REVIEW base draft output
+
+positional arguments:
+  base             PRODUCT 暂存稿, 提供目标/业务规则及其他正文
+  draft            只含最终 Gherkin 块的验收正文草稿
+  output           正式 PRODUCT.md 路径
+
+options:
+  -h, --help       show this help message and exit
+  --review REVIEW  我明确确认的预览所返回的 review_id

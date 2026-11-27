@@ -1,0 +1,14 @@
+required: 0, 4 节, True
+conditional: 0, 7 节, True
+missing-1: 1, 缺少必备节 `## 模块划分`, True
+missing-2: 1, 缺少必备节 `## 模块接口`, True
+missing-3: 1, 缺少必备节 `## 接缝与依赖`, True
+missing-4: 1, 缺少必备节 `## 决策引用`, True
+typo-1: 1, 非法节名 '模块划分误', True
+typo-2: 1, 非法节名 '模块接口误', True
+typo-3: 1, 非法节名 '接缝与依赖误', True
+typo-4: 1, 非法节名 '安全策略误', True
+typo-5: 1, 非法节名 '非功能要求误', True
+typo-6: 1, 非法节名 '关键流程误', True
+typo-7: 1, 非法节名 '决策引用误', True
+order: 1, 节顺序与模板不一致, True

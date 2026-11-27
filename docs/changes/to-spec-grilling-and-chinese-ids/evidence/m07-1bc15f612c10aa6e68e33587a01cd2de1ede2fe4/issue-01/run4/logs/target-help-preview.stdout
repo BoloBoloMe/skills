@@ -1,0 +1,8 @@
+usage: ac-draft.py preview [-h] base draft
+
+positional arguments:
+  base        PRODUCT 暂存稿, 提供目标/业务规则及其他正文
+  draft       只含最终 Gherkin 块的验收正文草稿
+
+options:
+  -h, --help  show this help message and exit

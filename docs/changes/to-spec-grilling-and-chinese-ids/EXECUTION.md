@@ -17,6 +17,8 @@
 - milestone-07 集成 (合并提交 `9eedb3a`, `f9bfe71`, `1dfc38a`): 三切片按编号顺序 `--no-ff` 合并到 `improve`, 无冲突, 文件不重叠. 切片顶端: issue/01 `1e64e6c` (代码 `fd26618`, `8ce78be`; 工单 `3229525`, `1e64e6c`), issue/02 `b260081`, `34ae059`, issue/03 `70ae157`.
 - 切片检查结果简列: ISSUE-01 run5 绑定最终提交复跑 39 passed + 39 subtests (exit 0), `check_skill.py workflow/to-spec/SKILL.md` OK/0, 42 场景条文对照无遗留缺口; ISSUE-02 非作者核对 21 场景 43 条预期无已证实缺陷 (4 条非阻塞疑点), `check_skill.py workflow/verify-change/SKILL.md` OK/0; ISSUE-03 局部核对 (验收25 两场景, 验收41 本 issue 部分, 规则11) 通过, `check_skill.py workflow/navigate/SKILL.md` OK/0.
 - 全量 `uv run pytest` 未验证: 本容器未装 Podman (`podman: command not found`), 完成定义要求的隔离环境不具备, 交调用方处理.
+- 集成检查 (`integration/run1`): `uv run --with gherkin-official pytest workflow/to-spec/tests` 39 passed, exit 0; 完整差异内 3 个改动 `SKILL.md` (to-spec/verify-change/navigate) 逐个 `check_skill.py` 均 OK, exit 0; 规则12 范围审计无新违规, milestone-01 的 9 文件汉化未回退; 实施后安装目录摘要 231 文件与实施前逐一同值 (0 差异).
+- 证据归档: `evidence/m07-1bc15f612c10aa6e68e33587a01cd2de1ede2fe4/` (绑定集成提交 A `1bc15f6`), 1211 文件, 与仓库外证据根逐文件同值; 密钥样字符串扫描 0 命中.
 
 ## 全局允许范围
 - `workflow/to-spec/` 中本次相关流程,模板,Gherkin 纪律,`check-ac.py`,`check-tech.py`,`ac-draft.py` 及 `workflow/to-spec/tests/`.

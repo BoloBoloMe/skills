@@ -1,0 +1,4 @@
+Traceback (most recent call last):
+  File "/home/bolo/Workspace/improve.worktrees/ISSUE-01/workflow/to-spec/check-ac.py", line 38, in <module>
+    from gherkin import Parser
+ModuleNotFoundError: No module named 'gherkin'

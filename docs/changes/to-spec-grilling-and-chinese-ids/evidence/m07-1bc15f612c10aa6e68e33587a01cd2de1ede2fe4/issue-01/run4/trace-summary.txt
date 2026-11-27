@@ -1,0 +1,4 @@
+atomic: exit=0, rename=1, final CONTENT matches
+base: exit=2, rename=0, final CONTENT matches
+draft: exit=2, rename=0, final CONTENT matches
+output: exit=2, rename=0, final CONTENT matches

@@ -1,0 +1,17 @@
+{"ns": 6303003199854157, "event": "start", "pid": 116248, "controller": 116247}
+{"ns": 6303003264607556, "event": "read-return", "file": "output", "path": "/home/bolo/evidence/to-spec-grilling-and-chinese-ids/issue-01/run4/files/trace/atomic/PRODUCT.md", "bytes": 20}
+{"ns": 6303003264667738, "event": "close-return", "file": "output", "path": "/home/bolo/evidence/to-spec-grilling-and-chinese-ids/issue-01/run4/files/trace/atomic/PRODUCT.md"}
+{"ns": 6303003264759819, "event": "read-return", "file": "base", "path": "/home/bolo/evidence/to-spec-grilling-and-chinese-ids/issue-01/run4/files/trace/atomic/PRODUCT.base.md", "bytes": 484}
+{"ns": 6303003264794522, "event": "close-return", "file": "base", "path": "/home/bolo/evidence/to-spec-grilling-and-chinese-ids/issue-01/run4/files/trace/atomic/PRODUCT.base.md"}
+{"ns": 6303003264879386, "event": "read-return", "file": "draft", "path": "/home/bolo/evidence/to-spec-grilling-and-chinese-ids/issue-01/run4/files/trace/atomic/acceptance.md", "bytes": 312}
+{"ns": 6303003264909412, "event": "close-return", "file": "draft", "path": "/home/bolo/evidence/to-spec-grilling-and-chinese-ids/issue-01/run4/files/trace/atomic/acceptance.md"}
+{"ns": 6303003266413657, "event": "read-return", "file": "base", "path": "/home/bolo/evidence/to-spec-grilling-and-chinese-ids/issue-01/run4/files/trace/atomic/PRODUCT.base.md", "bytes": 484}
+{"ns": 6303003266450442, "event": "close-return", "file": "base", "path": "/home/bolo/evidence/to-spec-grilling-and-chinese-ids/issue-01/run4/files/trace/atomic/PRODUCT.base.md"}
+{"ns": 6303003266536487, "event": "read-return", "file": "draft", "path": "/home/bolo/evidence/to-spec-grilling-and-chinese-ids/issue-01/run4/files/trace/atomic/acceptance.md", "bytes": 312}
+{"ns": 6303003266566674, "event": "close-return", "file": "draft", "path": "/home/bolo/evidence/to-spec-grilling-and-chinese-ids/issue-01/run4/files/trace/atomic/acceptance.md"}
+{"ns": 6303003266897560, "event": "fsync-temp-entry", "path": "/home/bolo/evidence/to-spec-grilling-and-chinese-ids/issue-01/run4/files/trace/atomic/.PRODUCT.md-rby5uymu.tmp", "reads_before_stop": ["base", "draft", "output"]}
+{"ns": 6303003267760152, "event": "read-return", "file": "output", "path": "/home/bolo/evidence/to-spec-grilling-and-chinese-ids/issue-01/run4/files/trace/atomic/PRODUCT.md", "bytes": 20}
+{"ns": 6303003267791962, "event": "close-return", "file": "output", "path": "/home/bolo/evidence/to-spec-grilling-and-chinese-ids/issue-01/run4/files/trace/atomic/PRODUCT.md"}
+{"ns": 6303003267845668, "event": "rename-entry", "src": "/home/bolo/evidence/to-spec-grilling-and-chinese-ids/issue-01/run4/files/trace/atomic/.PRODUCT.md-rby5uymu.tmp", "dst": "/home/bolo/evidence/to-spec-grilling-and-chinese-ids/issue-01/run4/files/trace/atomic/PRODUCT.md", "syscall": 82}
+{"ns": 6303003267882170, "event": "rename-return", "result": 0}
+{"ns": 6303003272978157, "event": "exit", "code": 0}

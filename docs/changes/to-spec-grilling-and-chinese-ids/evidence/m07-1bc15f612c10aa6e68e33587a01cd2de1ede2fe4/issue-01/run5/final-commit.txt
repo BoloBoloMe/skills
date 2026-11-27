@@ -1,0 +1,17 @@
+final HEAD: 32295259f09e6c28018ff89f0accc3c16d48a87a
+3229525 docs: ISSUE-01: 填写交付证据与验收标准
+8ce78be feat: ISSUE-01: 补回 GHERKIN 机检项的固定标记原文
+fd26618 feat: ISSUE-01: 实施盘问确认与机械转正
+--- code-only diff since 8ce78be:
+M	docs/changes/to-spec-grilling-and-chinese-ids/issues/ISSUE-01-tospec-flow-and-cli.md
+--- worktree:
+## issue/01
+--- run5 bound HEAD (environment.txt):
+8ce78be15de1f3eed798404c8707fcab4b66a5e7
+775b5a24cc06bea1ea719d78079e1e832ae2459a
+
+--- doc commits after 3229525:
+1e64e6c docs: ISSUE-01: 记录最终提交与绑定复跑
+--- diff 3229525 HEAD:
+M	docs/changes/to-spec-grilling-and-chinese-ids/issues/ISSUE-01-tospec-flow-and-cli.md
+--- branch tip: 1e64e6c1c699f68d1655716f357c5970e2c996ca

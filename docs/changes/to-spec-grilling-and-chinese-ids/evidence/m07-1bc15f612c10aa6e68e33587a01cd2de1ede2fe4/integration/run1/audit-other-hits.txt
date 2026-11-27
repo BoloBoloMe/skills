@@ -1,0 +1,134 @@
+workflow/to-spec/tests/test_ac_reading.py:123:        self.assertEqual(["AC-001"], [node["attrs"]["data-ac"]
+workflow/to-spec/tests/test_ac_reading.py:136:            self.assertEqual("AC-001", card["attrs"]["data-ac"])
+workflow/to-spec/tests/test_ac_reading.py:185:        self.assertEqual(["AC-001", "AC-001"], [node["attrs"]["data-ac"]
+workflow/to-spec/tests/test_ac_reading.py:285:        self.assertEqual(["AC-001 / 阅读卡片 1"], parsed.texts("case-meta"))
+workflow/to-spec/tests/test_ac_reading.py:318:        self.assertEqual(["AC-001", "AC-002", "AC-002"],
+workflow/to-spec/tests/test_ac_draft.py:291:        self.base.write_text(BASE.replace("待确认, 此处暂不写入正式用例.", MARKER + "\n" + DRAFT.replace("AC-001", "AC-999")), encoding="utf-8")
+workflow/to-spec/tests/test_ac_draft.py:293:        self.assertNotIn(b"AC-999", self.output.read_bytes())
+workflow/to-spec/tests/test_ac_draft.py:294:        self.assertEqual(1, self.output.read_bytes().count(b"AC-001"))
+workflow/use-sandbox-worktree/pi-extension/index.ts:10: *           (固定概要 + 分区导航 + 按键提示, 只给人看, 不进 LLM 上下文, BR-007)
+workflow/use-sandbox-worktree/pi-extension/index.ts:111:/** 生命周期标注 (AC-001/AC-004: retired 标注 仅可终结). */
+workflow/use-sandbox-worktree/pi-extension/index.ts:118:/** 记录轴标注 (AC-005). */
+workflow/use-sandbox-worktree/pi-extension/index.ts:145: * 分支摘要 (M2/AC-001 交互面). 空清单产出空数组. */
+workflow/use-sandbox-worktree/pi-extension/index.ts:215:/** BR-010 唯一子进程: `uv run python <skillDir>/scripts/swt.py list`,
+workflow/use-sandbox-worktree/pi-extension/index.ts:270:// (BR-010); 长命令折行保留全文, CJK 按显示宽, 小终端逐级降级.
+workflow/use-sandbox-worktree/pi-extension/index.ts:998:/** 长行折行 (review spec-2/AC-002): 超宽行按显示宽拆为多行, 续行缩进
+workflow/use-sandbox-worktree/pi-extension/index.ts:1023: * 不进 LLM 上下文, BR-007). 固定概要 + 分区导航, 六区切换与滚动,
+workflow/navigate/scripts/roadmap.py:40:# 新增里程碑用户必填字段 (BR-004); 其余成员字段由默认值补齐
+workflow/navigate/scripts/roadmap.py:249:    blocked_by [], artifacts [], close_summary null (BR-004)."""
+workflow/codebase-map/scripts/codebase-map.py:31:  codemap_service 的交付输出层组装, 调用会话只原样转述 (BR-037).
+workflow/codebase-map/scripts/codebase-map.py:32:  serve/stop 不做网络动作 (BR-027), 容器内不作 build 式拒绝.
+workflow/codebase-map/scripts/codemap_common.py:36:# 官方前端静态包: 取官方现成产物, 不自建前端 (NG-001)
+workflow/codebase-map/scripts/codemap_common.py:187:                "不用回环地址, 主机名或文件路径顶替 (BR-019/BR-020)."
+workflow/codebase-map/scripts/codemap_common.py:213:    这里取同一份数据, 两处口径不得各写一套 (BR-015).
+workflow/codebase-map/scripts/codemap_common.py:277:        # E-4 (REWORK-03, AC-001): build stats 里的三句分母说明在人类可读形态
+workflow/codebase-map/tests/test_excludes_and_regex.py:17:    """默认排除集与 BR-015 逐字一致, 顺序稳定 (顺序进 ccsh 参数与统计归因)."""
+workflow/codebase-map/tests/test_excludes_and_regex.py:48:    在前用户项在后 -- 分析侧与扫描侧都从这里取同一份 (BR-015)."""
+workflow/codebase-map/scripts/codemap_service.py:13:网络面 (BR-027): serve/stop 不做任何出网动作, 不调 podman; 唯二的网络
+workflow/codebase-map/scripts/codemap_service.py:76:ENV_PORT = "CODEMAP_PORT"  # 首选端口覆盖, 只供隔离测试, 不构成换端口入口 (BR-004)
+workflow/codebase-map/scripts/codemap_service.py:267:    一致 (BR-030 前置不只在启动时约束); 复用分支复查不通过时只报错返回,
+workflow/codebase-map/scripts/codemap_service.py:476:        # 该字段, 只保留失效文案. 不报回环地址 (BR-019).
+workflow/codebase-map/scripts/codemap_service.py:609:    磁盘有而清单没有的 (手工放入) 不收编, 只作未登记清单返回 (BR-036 不删).
+workflow/codebase-map/scripts/codemap_service.py:610:    with_details=False 时按 AC-008 地址缺口形态只给键名, 不给 built_at/bytes.
+workflow/codebase-map/scripts/codemap_service.py:663:    不写第二份); 懒加载且只调纯函数, 不触 podman 与网络 (BR-027).
+workflow/codebase-map/tests/test_cli_output_shape.py:89:    """AC-007 场景大纲 (没有 podman): 真实 CLI 报错里必须出现"本机没有 podman",
+workflow/codebase-map/tests/test_cli_output_shape.py:132:        f"AC-007 要求的说法缺失: {obj['error']['message']!r}")
+workflow/codebase-map/tests/test_cli_output_shape.py:137:    """BR-013 三子命令注册推进: ISSUE-01 时 serve/stop 未注册 (invalid choice);
+workflow/codebase-map/tests/codemap_stub_helpers.py:7:tmp_path 并只通过 PATH 注入子进程环境, 不入仓库 (BR-031); 它只证明参数
+workflow/codebase-map/tests/test_data_key.py:26:    """AC-005: 'Demo App' -> 'Demo-App-<8 位十六进制>.cc.json', 空格换成 -."""
+workflow/codebase-map/tests/test_delivery_output.py:1:"""ISSUE-05 交付输出与地址解析用例: AC-008 三场景, keys 交集, delivery_notes,
+workflow/codebase-map/tests/test_delivery_output.py:15:BR-027 (serve/stop 不做网络动作) 按任务书走人工核验, 不写自动化用例.
+workflow/codebase-map/tests/test_delivery_output.py:76:    """URL 形状 (AC-002/BR-019): 局域网地址 + 实际端口, 无回环/主机名/路径."""
+workflow/codebase-map/tests/test_delivery_output.py:113:    # 交付说明四类齐全 (AC-006 交付侧; E-3 补第 4 类, 本用例登记的是老数据形态)
+workflow/codebase-map/tests/test_delivery_output.py:254:    取该留痕, 不含 127.0.0.1/localhost (BR-019 不给回环地址), 输出写明旧地址
+workflow/codebase-map/tests/test_analyze_pipeline.py:5:  记录完整 argv 供断言 (BR-017 的观察点), stub 产物不是"分析可用"证据, 真实
+workflow/codebase-map/scripts/codemap_analyze.py:14:  统计 (门禁失败也完整输出, BR-024/BR-025, 口径归因非功能要求):
+workflow/codebase-map/scripts/codemap_analyze.py:17:    - stats.notes 固定三句分母说明 (E-4, REWORK-03, AC-001/BR-024), 措辞与
+workflow/codebase-map/scripts/codemap_analyze.py:40:    端口 (BR-017). 中间产物留 cache/work/ 供复查, 下次运行先清空再覆盖.
+workflow/codebase-map/scripts/codemap_analyze.py:52:网络面 (BR-027): 只有初始化的 pull 与前端下载出网; serve/stop 不做网络
+workflow/codebase-map/scripts/codemap_analyze.py:344:    """固定隔离参数 (BR-017): --rm/--network=none/--userns=keep-id, 源码 :ro,
+workflow/codebase-map/scripts/codemap_analyze.py:420:# 产出: merge 产物逐字节写目标库 (BR-031: 除它之外不改目标库)
+workflow/codebase-map/scripts/codemap_analyze.py:434:    写), 两种都认, 只读不改 (NG-006). 其余结构一律视为空, 交给门禁判 0.
+workflow/codebase-map/scripts/codemap_analyze.py:453:    只读 merge 产物, 不改任何字段 (NG-006).
+workflow/codebase-map/scripts/codemap_analyze.py:528:# AC-001/BR-024 的三句分母说明 (E-4, REWORK-03): JSON 形态固定放进
+workflow/codebase-map/scripts/codemap_analyze.py:547:                                        #   含本次写出的原件; AC-001 二次执行不扫数据目录)
+workflow/codebase-map/scripts/codemap_analyze.py:554:                                        #   BR-024 测试目录默认不扫)
+workflow/codebase-map/scripts/codemap_analyze.py:562:    归因四类口径 (BR-024): 测试目录/构建目录/自定义排除按类计数 (excluded.*),
+workflow/codebase-map/scripts/codemap_analyze.py:578:    # 排除口径同一份数据 (cmc.collect_excludes), 与喂给 ccsh 的正则同源 (BR-015)
+workflow/codebase-map/scripts/codemap_analyze.py:639:        # E-4 (REWORK-03, AC-001): 固定三句分母说明, 门禁失败也照常输出
+workflow/codebase-map/scripts/codemap_analyze.py:653:    副本与 index.html 同目录 (BR-012, 前端 <base href="./"> 约束); rename
+workflow/codebase-map/scripts/codemap_analyze.py:654:    保证页面不会读到半个文件. 不删任何其它库的副本 (BR-036).
+workflow/codebase-map/tests/test_gate_stats_and_copies.py:146:    # 原件: 目标库 .codebase-map/cc.json (BR-010)
+workflow/codebase-map/tests/test_gate_stats_and_copies.py:151:    # 副本: serve-root/<key>, 与 index.html 同目录, 内容与原件一致 (BR-012)
+workflow/codebase-map/tests/test_gate_stats_and_copies.py:304:    assert key_a != key_b, "同名不同库靠路径哈希区分 (BR-011)"
+workflow/codebase-map/tests/test_gate_stats_and_copies.py:418:# E-4 (REWORK-03, AC-001): build 输出补三句分母说明
+general/mailbox/pi-extension/index.ts:27: * 纯连接器边界: 本文件不实现任何信箱协议 (BR-007), 一切能力经子进程
+general/mailbox/pi-extension/index.ts:440:				// agent 忙时 followUp 排队等当前处理完 (AC-002)
+general/present/tests/test_skill_contract.py:98:        """BR-001/BR-009/BR-017/BR-018: 端口纪律, 共享 stop, 风险说明与命名规则."""
+general/present/scripts/web_server.py:666:        保留 bind 具体 IP (AC-001) 时 CLI 就绪 ping/探活/add-dir 可用.
+workflow/use-sandbox-worktree/scripts/swt.py:740:    已确认值也须过 BR-006 过滤: 资格 = 出现在当前枚举的某个非隧道全局网卡上;
+workflow/use-sandbox-worktree/scripts/swt.py:742:    返回 (groups, 被跳过的已确认值) 由调用方打 reason 行 (BR-004)."""
+workflow/use-sandbox-worktree/scripts/swt.py:2539:MAILBOX_ENV_URL = "SWT_MAILBOX_URL"           # 容器契约 env 名不可改 (BR-005)
+workflow/use-sandbox-worktree/scripts/swt.py:2643:    """AC-008: 容器终结时经 revoke-session 子命令注销其信箱 session, 防同名
+workflow/use-sandbox-worktree/scripts/swt.py:2667:# env 名只新增不改名 (BR-005): 端口条目沿用容器契约 SWT_ 前缀;
+workflow/use-sandbox-worktree/scripts/swt.py:2691:    """ISSUE-08 (AC-027): 宿主端口映射 (ssh/web/vnc) 与显示直通状态烘进
+workflow/use-sandbox-worktree/scripts/swt.py:4289:    # ISSUE-08 (AC-008): 容器终结即注销其信箱 session, 防同名新容器错投旧信;
+workflow/use-sandbox-worktree/scripts/swt.py:5323:                # None, 由 list_access_entries 逐项打显式 reason 行 (BR-004,
+workflow/use-sandbox-worktree/scripts/swt.py:5337:                # 非 running (BR-003): 无可达入口, 入口不组装, 记录派生入口缺席
+workflow/use-sandbox-worktree/scripts/swt.py:5338:                # 由笼统 reason 行承担 (BR-004)
+workflow/use-sandbox-worktree/scripts/swt.py:5422:    reason 行, 不静默丢失 (F3/BR-004), 归因诚实: record_unusable=True
+workflow/use-sandbox-worktree/scripts/swt.py:5431:        # BR-004: ssh 面整体缺席不静默; noVNC 直连不依赖 22 端口.
+workflow/use-sandbox-worktree/scripts/swt.py:5445:        # BR-004 遗留补全: 显示状态未知 (记录缺 display 字段或值未识别) 不静默
+workflow/use-sandbox-worktree/scripts/swt.py:5486:        # 不回显地址字面量: AC-003 要求该地址不出现在任何组/字段中 (含 reason 行)
+workflow/use-sandbox-worktree/scripts/swt.py:5499:        # BR-004: host-display 状态未知 (记录缺字段/值未识别, 或记录缺失/损坏)
+workflow/use-sandbox-worktree/scripts/swt.py:5506:        # BR-004: 私钥路径是记录派生字段, 缺席不静默 (密码入口不受影响)
+general/present/tests/test_web_server_lifecycle.py:88:        """在 49152-65534 内取一个当前可用端口 (BR-001 调用方选口范围)."""
+general/mailbox/scripts/mailbox.py:14:state.json / server.db; 旧路径首次运行自动迁移并提示 (AC-024).
+general/mailbox/scripts/mailbox.py:78:PENDING_CAP = 100           # 滞留转发上限, 超限丢最老 (AC-013, env 可调)
+general/mailbox/scripts/mailbox.py:88:MAX_BODY_BYTES = 1024 * 1024  # 单信正文上限 1MB (BR-006/AC-021)
+general/mailbox/scripts/mailbox.py:110:# send CLI 按 route 打人话 (AC-008 措辞; 枚举见 TECHNICAL 投信应答节)
+general/mailbox/scripts/mailbox.py:297:        self.pending_cap = pending_cap      # 滞留上限 (AC-013), serve 可经 env 覆盖
+general/mailbox/scripts/mailbox.py:392:        """吊销 session (AC-008): 持久化 revoked 标记, 此后 poll/post 被拒.
+general/mailbox/scripts/mailbox.py:519:        MailboxError 并打 UTC 日志行 (AC-037 邻居换址行)."""
+general/mailbox/scripts/mailbox.py:660:        (from == to, AC-018 两设备前提, 自寄回执只噪自己的队列) / 回执信自身
+general/mailbox/scripts/mailbox.py:661:        (mailbox@ 保留身份, 回执不递归, AC-020) / 同 id 回执已生成或已收
+general/mailbox/scripts/mailbox.py:662:        (确定性 id 幂等, AC-019 多节点去重的本端半边)."""
+general/mailbox/scripts/mailbox.py:698:        注入失败回执 (确定性 id, AC-019), 回执信自身到期静默丢弃 (不递归).
+general/mailbox/scripts/mailbox.py:743:                      to=letter.to_session)  # AC-037 滞留/队列丢弃行
+general/mailbox/scripts/mailbox.py:758:        """邻居不可达 → 内存暂存 (NG-009: 不持久化, 重启即清), 记录最后错误
+general/mailbox/scripts/mailbox.py:768:        """滞留数量上限 (AC-013): 超限丢最老 (staged_at 最小者优先出列).
+general/mailbox/scripts/mailbox.py:774:                      to=oldest.letter.to_session, reason="cap")  # AC-037
+general/mailbox/scripts/mailbox.py:1032:    """邻居转发失败日志行 (AC-037): 事件名与字段一处收口 (_flood 与
+general/mailbox/scripts/mailbox.py:1092:    无舰队密钥 = 不参与自组网: 不发信标, hello 一律拒 (NG-009 零确认入群
+general/mailbox/scripts/mailbox.py:1093:    不做, AC-032)."""
+general/mailbox/scripts/mailbox.py:1106:    密钥 = 自成单节点舰队: 信标照发, 异钥握手仍拒 (NG-009 不变)."""
+general/mailbox/scripts/mailbox.py:1115:        os.chmod(path.parent, 0o700)  # BR-009: 父目录私有
+general/mailbox/scripts/mailbox.py:1129:          f" 分发仅经 ssh, BR-009)", file=sys.stderr)
+general/mailbox/scripts/mailbox.py:1313:                "舰队密钥验证失败: 对端无法证明持有 fleet key (AC-032)")
+general/mailbox/scripts/mailbox.py:1461:            # AC-016 正常用法), 无处投递, 静默放弃; 其他异常照常上抛,
+general/mailbox/scripts/mailbox.py:1512:        """AC-036: 本机会话队列深度. GET 查询参数 session/sig_ts/sig,
+general/mailbox/scripts/mailbox.py:1666:                "本机未配置舰队密钥, 拒绝入群 (NG-009/AC-032)"})
+general/mailbox/scripts/mailbox.py:1734:        # 单信正文 1MB 上限 (AC-021/BR-006): 超限拒收 413,
+general/mailbox/scripts/mailbox.py:1966:            # 密钥不出管理面 (BR-006 同口径): 创建时一次性下发, 列表永不回显
+general/mailbox/scripts/mailbox.py:2012:                      to=e.letter.to_session, reason="admin")  # AC-037
+general/mailbox/scripts/mailbox.py:2461:    """timeout (AC-016): 到时无信退出码 0 并报无信; 缺省无限等待.
+general/mailbox/scripts/mailbox.py:2479:    # AC-015: 首次连接失败立即明报再退避 (不静默); 明报行只打一次不刷屏
+general/mailbox/scripts/mailbox.py:2482:    fetched = 0  # --count 已取封数 (AC-016)
+general/mailbox/scripts/mailbox.py:2500:    # 故障自愈 (AC-003): 网络断/服务未就绪一律退避重试, 不 print 不 exit
+general/mailbox/scripts/mailbox.py:2502:        # AC-016: poll 超时按剩余时间收紧 — 服务端 hold 可长于 --timeout,
+general/mailbox/scripts/mailbox.py:2532:            # 再退避, 明报行只打一次不刷屏 (AC-015); 但 --timeout 收紧 poll
+general/mailbox/scripts/mailbox.py:2661:    # 回执分行 (AC-006): 目标 session 与信件 id 各占一行;
+general/mailbox/scripts/mailbox.py:2662:    # 空 to 时优先回打服务端实际解析出的目标 (AC-007)
+general/mailbox/scripts/mailbox.py:2666:    # 投递态按 route 打人话 (AC-008); 重复 id 幂等收下时回 note
+general/mailbox/scripts/mailbox.py:2677:# config CLI: 逐项修改配置; 非密钥走参数, 密钥走 stdin (BR-006)
+general/mailbox/scripts/mailbox.py:2697:                  "(BR-006), 请去掉值参数, 经 stdin 交互输入", file=sys.stderr)
+general/mailbox/scripts/mailbox.py:2716:# status CLI: 展示配置, 密钥只显前 8 位 (BR-006)
+general/mailbox/scripts/mailbox.py:2727:    """待取数 (AC-036): GET /mailbox/queued (session 签名);
+general/mailbox/scripts/mailbox.py:2781:    """status 重写 (AC-014/AC-017): 认 env 凭证 (env 优先, 配置文件兑底),
+general/mailbox/scripts/mailbox.py:2799:    # 无地址可探: 状态文件兑底 (AC-014 同机组件读文件先验活,
+general/mailbox/scripts/mailbox.py:3032:    分发 (NG-009: 零确认入群不做, 无舰队密钥一律拒)."""
+general/mailbox/scripts/mailbox.py:3050:    os.chmod(path, 0o600)  # 入位即 0600 (BR-009, 不信任 umask)
+general/mailbox/scripts/mailbox.py:3117:    beacon = None  # 自组网信标 (ISSUE-10): 无舰队密钥不参与组网 (NG-009)
+general/mailbox/scripts/mailbox.py:3185:    """旧路径自动迁移 (mailbox-standalone AC-024): 首次运行把历史位置的文件
+general/mailbox/scripts/mailbox.py:3215:        os.chmod(new, 0o600)  # 入位即 0600 (BR-002, 不信任源权限, 沿用老先例)
+general/mailbox/scripts/mailbox.py:3267:        "join-fleet", help="入群: 经 ssh 从老设备拉取舰队密钥 (AC-035)")

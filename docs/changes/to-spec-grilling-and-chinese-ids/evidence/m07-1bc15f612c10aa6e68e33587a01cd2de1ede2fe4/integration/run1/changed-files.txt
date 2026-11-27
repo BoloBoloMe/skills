@@ -1,0 +1,16 @@
+README.md
+docs/changes/to-spec-grilling-and-chinese-ids/EXECUTION.md
+docs/changes/to-spec-grilling-and-chinese-ids/issues/ISSUE-01-tospec-flow-and-cli.md
+docs/changes/to-spec-grilling-and-chinese-ids/issues/ISSUE-02-verify-change-method-flow.md
+docs/changes/to-spec-grilling-and-chinese-ids/issues/ISSUE-03-navigate-readme-alignment.md
+workflow/navigate/ACCEPTANCE-GUIDE.md
+workflow/navigate/SKILL.md
+workflow/to-spec/GHERKIN.md
+workflow/to-spec/SKILL.md
+workflow/to-spec/TEMPLATES.md
+workflow/to-spec/ac-draft.py
+workflow/to-spec/check-ac.py
+workflow/to-spec/tests/test_ac_draft.py
+workflow/to-spec/tests/test_ac_reading.py
+workflow/verify-change/REVERIFY.md
+workflow/verify-change/SKILL.md

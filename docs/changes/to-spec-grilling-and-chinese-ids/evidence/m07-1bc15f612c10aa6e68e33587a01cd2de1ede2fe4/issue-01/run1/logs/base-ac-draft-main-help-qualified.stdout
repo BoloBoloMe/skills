@@ -1,0 +1,12 @@
+usage: ac-draft.py [-h] {workspace,preview,promote} ...
+
+验收草稿的机械预览与原文转正, 复用 check-ac.py 的全部校验. workspace preview <PRODUCT 暂存稿> <验收草稿>
+promote <PRODUCT 暂存稿> <验收草稿> <PRODUCT.md> --review <审阅版本> stdout 为单个 JSON. 退出码
+0 成功 / 1 机检失败 / 2 输入或文件操作失败. 审阅版本只绑定输入字节, 不证明我已确认; 调用方负责等待 chat 中的明确采纳.
+
+positional arguments:
+  {workspace,preview,promote}
+    workspace           建本次专用临时工作区, 输出 dir 与 review 路径
+
+options:
+  -h, --help            show this help message and exit

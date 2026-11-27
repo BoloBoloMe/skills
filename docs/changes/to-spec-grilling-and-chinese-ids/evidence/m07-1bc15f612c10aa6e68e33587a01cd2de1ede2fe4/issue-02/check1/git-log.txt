@@ -1,0 +1,3 @@
+34ae059 feat: ISSUE-02: 记录候选条文与基础检查证据
+b260081 feat: ISSUE-02: 按验证方式盘问并核对方案
+775b5a2 doc: milestone-07 评审起点与证据根登记

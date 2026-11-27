@@ -1,0 +1,34 @@
+workflow/to-spec/TEMPLATES.md:3:盘问按两份模板全部适用节展开, 明确闭环且反方收敛后再按模板落笔. 规格忠实承接已确认内容, 不靠逐版审稿确认. 节名与节序是机检和下游引用约定, 逐字照抄, 条件节按说明省略. 正文按本 skill 的[达标标准与检查边界](SKILL.md#达标标准与检查边界)检查.
+workflow/to-spec/ac-draft.py:3:# dependencies = ["gherkin-official>=42.0.1"]
+workflow/to-spec/GHERKIN.md:67:正文条目的写法是汉字加无前导零数字, 与标签只差前导零: `@G-001` 对应正文条目 `目标1`, `@BR-002` 对应 `规则2`, 机检去掉前导零后按数字对账. 标签必须保持拉丁三位写法, 不跟着正文改成中文.
+workflow/to-spec/GHERKIN.md:116:7. 确认标记: 正式模式的 `验收标准` 节必须在 Gherkin 块前含 确认流程标记, 缺失判为输入错误 (退出码 2). 草稿不得带标记; 转正脚本加固定 `<!-- confirmed-flow: v1 -->`. 它不证明用户已确认, 确认依据为 chat 中明确的盘问闭环.
+workflow/to-spec/check-ac.py:3:# dependencies = ["gherkin-official>=42.0.1"]
+workflow/to-spec/check-ac.py:11:0. 确认标记: `验收标准` 节必须含 `<!-- confirmed-flow: vN -->` (由 to-spec
+workflow/to-spec/check-ac.py:13:1. 解析: gherkin-official parser 必须成功解析 gherkin 块.
+workflow/to-spec/check-ac.py:27:   正文条目写作 目标1/规则1 (汉字 + 无前导零数字), 标签写作 @G-001/@BR-001,
+workflow/to-spec/check-ac.py:41:CONFIRMATION_MARKER = "<!-- confirmed-flow: v1 -->"
+workflow/to-spec/check-ac.py:43:MARKER_RE = re.compile(r"<!--\s*confirmed-flow:\s*v\d+\s*-->")
+workflow/to-spec/check-ac.py:59:# 正文条目写作 汉字 + 无前导零数字 (`目标1` / `规则2`), Gherkin 标签仍用
+workflow/to-spec/check-ac.py:175:            "确认流程标记 `<!-- confirmed-flow: vN -->` 必须位于 gherkin 代码块之前"
+workflow/to-spec/SKILL.md:13:必须遵守的内容包括已确认的产品结果, 范围与验收, 业务与安全约束, 对外兼容承诺, 必要的跨切片接口约定, 以及我明确固定的技术选择. 按 `decision-ledger` 的 `必须遵守` / `可调整` 区分, 不自行降级约束. 内部做法只留理解方向必需的说明, 标 `可调整`, 由实施者在不改变约束的前提下选择并验证. 不因模板有栏目就强行裁决内部做法. 例如, "终止后到款不得恢复权益"是结果约束, 用哪种锁不是, 除非我明确固定它. 改变账本决策的内容, 状态或约束性时按账本规则确认.
+workflow/to-spec/SKILL.md:17:先调用 `domain-awareness` 感知领域和术语, 调用 `codebase-design` 核查技术方向. 核实权威输入与授权; 影响当前承诺的事实先调查, 关键前提尚未证实则调查或实验, 不拿猜测开问. 按两份[模板](TEMPLATES.md)的全部适用节展开范围树, 再调用 `grilling`. 按当前能问的问题分轮推进, 话题自然流动, 可随时跨产品/技术回补, 不按固定节序问. 本流程组合现有技能, 不整体调用 `deliberate`.
+workflow/to-spec/SKILL.md:20:- **验收情况.** 按覆盖树逐种过正常/失败/边界. 每种须问情况用一句话问主要刺激与可观察结果; 我的答复写成账本决策条目. 只有刺激和结果均能从账本或我答复中的已确认目标/规则直接推出, 且不新增前提, 阈值或行为, 才免问, 落笔时直接从该依据写成 Gherkin. 原文没有的判定不能自行填; 拿不准是否直译就问. 同一实质刺激与结果只问一次, 多个落笔场景各自成条, 引用同一决策. 已定判定直接引用账本, 不重问.
+workflow/to-spec/SKILL.md:21:- **续问.** 同会话暂停后继续当前能问的问题, 不提前写规格; 本会话闭环不写交接. 需要换会话时先按下条入账, 再调用 `handoff`. 交接写当前可问问题, 已否决分支及理由, 逐题和逐节覆盖进度, 盲区扫描进度与待裁决项; 只记我明确提出的暂停或节奏要求, 不推测疲劳或心理状态. 已入账内容只引用, 不补免问清单或锚点. 同机用系统临时目录, 跨机按 `handoff` 落仓库并推送, 位置不明先问. 新会话读账本与交接恢复进度, 原件缺失就说明缺口, 不猜未定判定.
+workflow/to-spec/SKILL.md:22:- **入账.** 调用 `decision-ledger`, 没有账本时按其模板建立 `DECISIONS.md`. 已确认判定和依据事实在闭环后或换会话前入账; 决策引用所依赖的事实号, 事实条目标明"随决策N确认". 无决策引用的纯背景事实不入账. 判定的持久记录只用现有决策/事实格式, 不增盘问专用文件/章节/格式, 免问不留痕. 领域术语或 ADR 需要维护时另按 `domain-modeling` 既有规则处理.
+workflow/to-spec/SKILL.md:23:- **闭环.** 向我展示两份模板每一节的已问/未碰状态, 未碰节附理由, 不要求逐节另附已定结论. 清单呈现和 `grilling` 盲区扫描完成, 所有待裁决项关闭后, 才问我是否明确结束. 沉默, 部分认可或要求继续都不算, 不得开始写稿. 明确结束即同时确认两份规格所需内容, 不要求我读预写稿, 成文后的 Gherkin 或逐版采纳.
+workflow/to-spec/SKILL.md:27:闭环且决策/事实入账后, 委派未参与盘问或落盘的独立会话调用 `opposing-viewpoint` 攻击账本决策. 给原始需求出处, 账本和必要代码入口. 主会话逐项核实, 驳回给依据; 新增或改变决策由我裁决并更新账本. 无未收敛发现后才由主会话先写产品, 后写技术. 组织措辞与前提可以, 不能构造未经确认的判定; 落笔发现缺依据时先补问该分支并入账再写. 审计式断言只写在产品业务规则节, 末尾标 `(审计)`, 不进 Gherkin. 把证据材料路径写进账本事实的来源字段, 决策引用事实号, 产品审计条目不携带证据路径.
+workflow/to-spec/SKILL.md:49:按顺序执行, 转正须退出 0 且 JSON `success` 为 true, 其余命令须退出 0. 转正脚本把验收原文字节嵌入临时产品副本, 在代码块前加固定 `<!-- confirmed-flow: v1 -->`, 正式机检通过才原子替换产品文件. 标记是流程格式, 不随修文升版, 不证明我看过文件. 转正发现本次输入或正式目标变化时停止替换, 保留现场, 核对当前输入与确认依据后处理. 技术稿机械复制, 不由模型重写. 两份正式稿不是同时替换的事务: 任一生成或检查失败, 会话及已有调用方状态记整组未完成, 保留现场, 补齐失败步骤并复查两份后才交付. 不向下游宣称规格齐备.
+workflow/to-spec/SKILL.md:61:- 缺判定/缺决策, 包括免问场景找不到原文依据: 只补问受影响分支, 入账后修文. 已定判定不重问, 整盘重来仅由我明确要求.
+workflow/to-spec/SKILL.md:84:调用 `present` 交付照原文生成的阅读卡片页面与草稿原文件链接, 仅供选看, 不等待确认. 只挂本次专用 `review` 目录, 不挂工作区整根, 不挂原始答复或无关材料. 不用模型改写页面; 预览生成失败按报错修正并重检受影响内容, 展示服务失败按 `present` 的失败出口交付文件.
+workflow/to-spec/tests/test_ac_draft.py:3:运行: uv run --with gherkin-official python -m unittest discover -s workflow/to-spec/tests -v
+workflow/to-spec/tests/test_ac_draft.py:65:MARKER = "<!-- confirmed-flow: v1 -->"
+workflow/to-spec/tests/test_ac_draft.py:217:        self.assertNotIn("review_id", first)
+workflow/to-spec/tests/test_ac_draft.py:267:        self.assertNotIn("--review", help_run.stdout)
+workflow/to-spec/tests/test_ac_draft.py:268:        run = self.cli(HELPER, "promote", self.base, self.draft, self.output, "--review", "unused")
+workflow/to-spec/tests/test_ac_draft.py:270:        self.assertIn("unrecognized arguments: --review", run.stderr)
+workflow/to-spec/tests/test_ac_draft.py:330:    @unittest.skipIf(os.name == "nt", "present web 服务依赖 POSIX")
+workflow/to-spec/tests/test_ac_draft.py:331:    def test_preview_and_original_are_reachable_through_present_handler(self):
+workflow/to-spec/tests/test_ac_draft.py:332:        # 只起本测试的 loopback HTTP 服务, 不读写真实 present 常驻实例.
+workflow/to-spec/tests/test_ac_draft.py:333:        web = SKILL.parents[1] / "general/present/scripts/web_server.py"
+workflow/to-spec/tests/test_ac_draft.py:334:        spec = importlib.util.spec_from_file_location("to_spec_present_probe", web)
+workflow/to-spec/tests/test_ac_reading.py:223:        self.assertEqual(1, len(scripts))  # 仅保留 present 所需的固定状态脚本.
