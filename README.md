@@ -38,7 +38,7 @@
 | Skill | 所在环节 | 说明 |
 | --- | --- | --- |
 | [`software-engineering-consensus`](workflow/software-engineering-consensus/SKILL.md) | 全流程工程约束 | 共享工程概念, 交付与验证边界, 以及本仓库工作流术语. |
-| [`navigate`](workflow/navigate/SKILL.md) | 全流程领航 | 用 Roadmap 和分类 Milestone 组织探索, 规格, 执行与独立验证, 每步明确输入和产物目录. |
+| [`navigate`](workflow/navigate/SKILL.md) | 全流程领航 | 用 Roadmap 和分类 Milestone 组织探索, 规格确认, 验证方案确认, 实施, 独立验证与终点验收, 每步明确输入和产物目录. |
 | [`use-worktree`](workflow/use-worktree/SKILL.md) | 准备工作环境 | 识别, 创建, 删除和迁移 Git worktree, 并执行安全检查. |
 | [`use-sandbox-worktree`](workflow/use-sandbox-worktree/SKILL.md) | 准备工作环境 | 管理 host worktree 与 sandbox 容器绑定对的生命周期. |
 | [`domain-awareness`](workflow/domain-awareness/SKILL.md) | 领域信息准备 | 只读发现当前仓库的领域语言, 边界和相关 ADR. |
@@ -47,8 +47,8 @@
 | [`domain-modeling`](workflow/domain-modeling/SKILL.md) | 领域模型维护 | 维护领域语言和 ADR, 持续澄清模糊的领域概念. |
 | [`decision-ledger`](workflow/decision-ledger/SKILL.md) | 决策记录 | 记录和维护 DECISIONS.md 中已确认的决策与事实. |
 | [`codebase-design`](workflow/codebase-design/SKILL.md) | 方案设计 | 用模块, 接口和接缝原则指导代码库设计与可测试性. |
-| [`to-spec`](workflow/to-spec/SKILL.md) | 规格整理 | 把已确认的产品和技术决策整理成两份权威 spec. |
-| [`verify-change`](workflow/verify-change/SKILL.md) | 权威输入确认后/独立验证成品 | 依据已确认的权威输入设计并确认验证方案, 成品实施后按方案独立验证并整理证据. |
+| [`to-spec`](workflow/to-spec/SKILL.md) | 规格盘问与交付 | 在规格流程内盘问, 用户明确结束后成文, 产品验收草稿机械转正, 技术稿机械复制, 检查通过后交付两份权威规格. |
+| [`verify-change`](workflow/verify-change/SKILL.md) | 验证方案设计/执行 | 依据已确认的权威输入按验证方法盘问, 用户明确结束后成文并独立检查; 成品实施后按方案独立验证并整理证据. |
 | [`lazy-dev`](workflow/lazy-dev/SKILL.md) | 设计与实施方法 | 用决策阶梯和实现阶梯收敛到最小且无未来负担的方案, 可用于设计和实施. |
 | [`to-execution`](workflow/to-execution/SKILL.md) | 拆分执行切片 | 由子代理起草 Execution Spec 和可执行 issues, 主会话检查达标后固化. |
 | [`verification-contract`](workflow/verification-contract/SKILL.md) | 实施验证契约 | 按改动类型说明如何验证, 什么结果算通过, 以及要留下哪些可复查证据. |
@@ -62,4 +62,6 @@
 | [`improve-codebase-architecture`](workflow/improve-codebase-architecture/SKILL.md) | 架构改进探索 | 发现架构摩擦, 并提出把浅模块深化的重构机会. |
 | [`codebase-map`](workflow/codebase-map/SKILL.md) | 按需代码库可视化 | 代码库结构与依赖可视化: 分析+常驻服务 (build/serve/stop 三子命令), 只由用户手动调用. |
 
-正式验收由我依据验证证据决定; `verify-change` 的设计方式只产出待我确认的验证方案, 执行方式只负责独立验证并整理证据.
+规格和验证方案分阶段确认. `to-spec` 的盘问在规格流程内完成, 不要求用户逐版审阅预写规格或成文 Gherkin; `deliberate` 仍可独立调用. 已有足够且已确认的权威输入后, 才调用 `verify-change` 的设计方式. 用户明确结束方案盘问即确认方案内容, 无需再通读并采纳整份成文方案.
+
+执行验证和复验前核实当前方案内容及引用来源仍适用. 如需更新, 只补问新增或改变的验证决定, 有依据的转述错误直接修正并独立复查. 内容修订递增方案版本并保留确认依据, 新一轮绑定目标提交及实际方案修订号. 规格确认, 方案确认, 代理检查与独立验证报告都不是验收; 正式验收由用户依据已确认判据和验证证据逐项决定.

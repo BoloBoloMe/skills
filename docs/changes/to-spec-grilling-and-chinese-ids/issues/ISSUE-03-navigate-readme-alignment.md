@@ -42,8 +42,12 @@
 5. 对本 issue 修改的每个 `SKILL.md` 执行 `uv run python general/writing-for-llm/check_skill.py <路径>`, 保存完整输出和退出码.
 
 ## 交付证据
-- 执行后填写实际改动路径,目标提交,验收25/41的来源与候选条文位置,deliberate 调用入口对照和 skill 格式检查结果.
-- 记录全局集成检查待办及 `EXECUTION.md` 回链位置. 实际全局结果在全部切片集成后补入父级执行记录, 不作为本 issue 合并前置.
+- 目标: `issue/03` 上包含本节与下列三份实现文件的 `feat: ISSUE-03: 对齐领航与 README 调用说明` 提交. 完整 SHA 见 `/home/bolo/evidence/to-spec-grilling-and-chinese-ids/issue-03/run1/INDEX`.
+- 实际改动: `workflow/navigate/SKILL.md:41-42,55-56,71,75` (规格与方案的定义/完成标准, 执行与复验, 验收终点); `workflow/navigate/ACCEPTANCE-GUIDE.md:3,8,12-16` (阅读入口, 验收标准与方案确认); `README.md:41,50-51,65-67` (技能表与阶段衔接).
+- 验收25场景1: `PRODUCT.md:262-266`, `VERIFICATION-PLAN.md:96`, 对照 navigate 的 `:41,55,73-79` 和验收指南的 `:5-10,18-27`. 场景2: `PRODUCT.md:268-272`, `VERIFICATION-PLAN.md:97`, 对照 `workflow/deliberate/SKILL.md:9-18` 四步, navigate `:40-41,52`, `workflow/to-execution/SKILL.md:15` 与 `README.md:45,65` 的独立入口. 四步及既有调用保留.
+- 验收41: `PRODUCT.md:427-431`, `TECHNICAL.md:25-36,84`, `VERIFICATION-PLAN.md:124`, 对照以上三文件的方案定义与完成标准/方案确认/执行与复验/验收边界. 入口1-3逐项位置, 预期和判断见同一 run1 的 `local-check.md`; 局部核对通过, 不声明与 ISSUE-01/02 的旧条文一致.
+- `uv run python general/writing-for-llm/check_skill.py workflow/navigate/SKILL.md`: OK, 退出码0, 同一 run1 的 `check_skill.log` / `check_skill.exit` 为原件.
+- 待办交接: 全局交叉核对及 README 完整调用段与相邻说明的非作者复核, 按 `../EXECUTION.md:36,46,75` 在全部切片集成后执行, 结果回链 `../EXECUTION.md#执行记录`. 本 issue 未执行或等待, 不作为本 issue 合并前置. 未进行成品独立验证或用户验收.
 
 ## 风险提示
 - navigate 统筹多个阶段. 将方案确认写成产品验收会错误放行流程.
