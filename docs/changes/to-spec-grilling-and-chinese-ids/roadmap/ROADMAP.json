@@ -268,12 +268,20 @@
         }
       ],
       "output_dir": "docs/changes/to-spec-grilling-and-chinese-ids/",
-      "status": "进行中",
+      "status": "已关闭",
       "blocked_by": [
         "milestone-06"
       ],
-      "artifacts": [],
-      "close_summary": null
+      "artifacts": [
+        "docs/changes/to-spec-grilling-and-chinese-ids/EXECUTION.md (执行记录/评审起点/门槛判定)",
+        "docs/changes/to-spec-grilling-and-chinese-ids/issues/ISSUE-01 至 ISSUE-08 (含返工工单, 交付证据已填)",
+        "docs/changes/to-spec-grilling-and-chinese-ids/IMPACT-REVIEW.md (旧行为影响四轮记录)",
+        "docs/changes/to-spec-grilling-and-chinese-ids/RUN-REPORT.md",
+        "docs/changes/to-spec-grilling-and-chinese-ids/evidence/m07-final-f4a45fbc62fbb099e79aca2ba45e11545f579b0c/ (证据归档, 绑定最终提交)",
+        "集成提交链: 9eedb3a/f9bfe71/1dfc38a/1bc15f6/7dea214/1874ede/68a5f09/ca9f7c3/c055e5e/a13085a/92e146e/5bc32d2/de3b589/cc1ef59/b9cb2db/3e486d3/f4a45fb/e60967a",
+        "评审证据: /home/bolo/evidence/to-spec-grilling-and-chinese-ids/integration/{run1-run4,review1,review2} 与 issue-01 至 issue-08 各 run 目录 (原件在仓库归档同步留存)"
+      ],
+      "close_summary": "milestone-07 实施完成并经四轮返工收敛: 8 个 issue 落地 to-spec 盘问即写稿流程 (一句话提问/免问边界/同判定去重/闭环确认/续问/反方与独立检查/分流修正), verify-change 方案盘问条文, navigate/ACCEPTANCE-GUIDE/README 连带说明; ac-draft.py 移除 review_id/--review 改机械转正 (preview/promote, 原子替换与三并发窗口经 ptrace 真实进程证据), check-ac/check-tech 行为保持. 集成链 9e8dd1df->f4a45fb 已推 origin/improve. 开发验证: to-spec 测试 40 passed+50 subtests 每轮复跑, 3 个变更 SKILL.md check_skill OK, 编号/历史审计 (182ff184->集成) 无新违规, 实施前后安装目录摘要一致. 评审: Standards 14/Spec 8/旧行为 10 项起, 返工 ISSUE-04-08 (H1/H4/R4自动化/Q4/记录回填/Q1/N1/F1) 全部收敛, 影响方向四轮终局 0 新增; F1 经用户授权修复闭环. 开放项已记归属: R1 决策10 知情接受, R2 sync-to-pi.py 交用户择时, R5/R9/R10 交 milestone-12 定夺, 全量 pytest 因容器无 Podman 记未验证, G 类证据缺口如实登记 (IMPACT-REVIEW.md 四轮). 证据归档 evidence/m07-final-f4a45fbc62fbb099e79aca2ba45e11545f579b0c/ 绑定最终提交, RUN-REPORT.md 见产物根. 本轮无新增未知海域. 停止点: milestone-12 用户亲自审改实际 skill, 不越过人工等待点启动 milestone-08."
     },
     "milestone-08": {
       "title": "独立验证全程盘问对齐改造",
