@@ -61,7 +61,8 @@
 **提交**. 分支 `issue/01`, 评审起点 `775b5a2`.
 - `fd26618` `feat: ISSUE-01: 实施盘问确认与机械转正` — 7 文件 (下列全部).
 - `8ce78be` `feat: ISSUE-01: 补回 GHERKIN 机检项的固定标记原文` — GHERKIN.md 1 行.
-- 后续一个 `docs: ISSUE-01 交付证据` 提交只改本工单文件, 不改产品代码. 按派工不推送, 不合并, 不 rebase.
+- `3229525` `docs: ISSUE-01: 填写交付证据与验收标准` — 只改本工单文件, 不改产品代码.
+- 证据与结论绑定: 代码状态 `8ce78be`; 测试与格式检查在 `3229525` 上重跑 (`run5/logs/final-pytest.*` 39 passed + 39 subtests exit 0, `final-check-skill.*` OK exit 0), 因此结论对 `8ce78be` 与 `3229525` 均成立 (`run5/final-commit.txt` 记录 `git diff 8ce78be 3229525` 仅本工单). 本行之后若还有纯文档提交, 代码与证据结论同样不变; 分支顶端 SHA 见该证据文件. 按派工不推送, 不合并, 不 rebase.
 
 **改动路径**.
 `workflow/to-spec/SKILL.md` (流程重写: 盘问确认/写前反方/机械落正式/写后独立检查/预览交付), `TEMPLATES.md` (盘问后落笔说明, 审计证据路径归属), `GHERKIN.md` (编号依据改为盘问确认, AC 不擅自拆分, 确认标记与预览定位), `ac-draft.py` (删 `review_id`/`--review`, preview 页面去掉确认入口与审阅版本), `check-ac.py` (标记文案, 草稿标记检查前置), `tests/test_ac_draft.py`, `tests/test_ac_reading.py` (迁移到公开 CLI, 删 mock 内部协作者用例). 未改 `workflow/grilling` 等既有能力 (仓库内无该目录), 未改 deliberate/decision-ledger/domain-modeling 及 `general/` 下被组合技能 (差异检查见下).
@@ -92,7 +93,7 @@
 - `trace-output`: 等三份文件读完, 在临时文件 fsync 入口暂停, 外部 `cp` 改写正式目标后恢复 → 退出 2, 报"正式文件在转正过程中已变化, 保留当前文件并停止", 无 rename, 保留并发写入内容.
 - 三窗口各自命中 (事件流里有暂停点前后纳秒时间戳, 外部 `cp` 的 argv 与退出码), 未互相代替.
 
-**测试**. `run5/logs/pytest.*` (`uv run --with gherkin-official pytest -p no:cacheprovider -v workflow/to-spec/tests`): **39 passed + 39 subtests, exit 0**; 收集清单 `run5/logs/pytest-collect.*`; 依赖 Python 3.11.2, gherkin-official 43.0.0, pytest 9.1.1 (`run5/logs/deps.*`). 相对改动前 42 passed + 37 subtests: 删 6 个用例, 新增 3 个. 删除的是 `test_stale_review_*`, `test_promote_requires_review_*` (依赖已移除的 review_id/--review 契约) 与 4 个用 `unittest.mock.patch` 替换内部协作者 (`os.replace`/`os.fsync`/`validate_product`) 的用例; 后者的保护目标改由真实外部进程时序 (`trace-*`) 与真实 CLI 用例承担. 新增 `test_promote_rejects_removed_review_option`, `test_promote_rejects_invalid_draft_without_altering_existing_output`, `test_promote_refuses_directory_target_without_leaving_temporary_file`; 预览测试全部改为经 CLI 进程运行, 断言"页面仅供选看"与无审阅版本.
+**测试**. 绑定最终提交的复跑见 `run5/logs/final-pytest.{cmd,stdout,stderr,exit}` (39 passed + 39 subtests, exit 0) 与 `run5/logs/final-check-skill.*` (OK, exit 0). 全项轮 `run5/logs/pytest.*` (`uv run --with gherkin-official pytest -p no:cacheprovider -v workflow/to-spec/tests`): **39 passed + 39 subtests, exit 0**; 收集清单 `run5/logs/pytest-collect.*`; 依赖 Python 3.11.2, gherkin-official 43.0.0, pytest 9.1.1 (`run5/logs/deps.*`). 相对改动前 42 passed + 37 subtests: 删 6 个用例, 新增 3 个. 删除的是 `test_stale_review_*`, `test_promote_requires_review_*` (依赖已移除的 review_id/--review 契约) 与 4 个用 `unittest.mock.patch` 替换内部协作者 (`os.replace`/`os.fsync`/`validate_product`) 的用例; 后者的保护目标改由真实外部进程时序 (`trace-*`) 与真实 CLI 用例承担. 新增 `test_promote_rejects_removed_review_option`, `test_promote_rejects_invalid_draft_without_altering_existing_output`, `test_promote_refuses_directory_target_without_leaving_temporary_file`; 预览测试全部改为经 CLI 进程运行, 断言"页面仅供选看"与无审阅版本.
 
 **skill 格式检查**. `run5/logs/check-skill.*`: `uv run python general/writing-for-llm/check_skill.py workflow/to-spec/SKILL.md` → `workflow/to-spec/SKILL.md: OK`, exit 0. 本分支只改这一个 SKILL.md; 全仓最终清单留给父级.
 
