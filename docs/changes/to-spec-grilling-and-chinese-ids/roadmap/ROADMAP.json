@@ -24,7 +24,8 @@
     "milestone-11进行中 (2026-11-26): 用户指出尚未盘问并认为方法合问举例过细, 经grilling澄清后明确确认按LLM验证方式归组, 讲怎么验/看什么/留何证据, 方法或适用条件实质不同才另问, 不逐条重过用例与检查小细节, 成文覆盖不减, 并回复是结束本轮规格盘问. 已落决策39, 保留决策31-38与其他旧正文, 两份规格已机械生成并机检通过: 59场景/41AC (展开65项) 加5审计, 技术6节. 产物提交6b63119a05c2e236724295fdf50e51d89cae6fc6, 主会话检查与SHA256见CHECKS-milestone-11.md. Herdr status/agent list报PermissionDenied: Operation not permitted, 信箱presence查询失败且status不可达, 未能委派起草/新反方/成文独立核对或发信通知宿主; 不将作者自查冒充独立结论. 先保留已成文规格, 本节点未关闭, 下游仍等待milestone-11. 原验证方案v1未改且未确认, 本轮确认不能冒充其确认; 未实施技能或试跑成品. 待恢复Herdr后对新增决定及两份规格独立核对, 解决发现再关闭; 可选机械HTML已生成但未发布, 不提供猜测URL. 本地产物和路线图提交后已尝试git push origin improve, 既有127.0.0.1 git桥连接报errno=Operation not permitted, 未推送到宿主, 成果当前仅在容器仓库; 恢复连接后仅快进推当前improve分支.",
     "milestone-11本地关闭 (2026-11-26): 用户明确授权启动内置子代理且不用Herdr. 新建独立反方01a21892-12db-7c50-bd78-6d282f3103f1检查决策39与31-38衔接, 无强反方或新增必须裁决; 另一独立检查01a21892-7152-7c51-b3b9-460d21957fa7全量核对33有效决定/12事实/两份规格全部判定, 重跑机检59场景41AC/技术6节, 无阻塞. 两个报告分别为OPPOSING-milestone-11.md/REVIEW-milestone-11.md, 均已主会话核实且与正式稿SHA256一致, 提交734501076d33108545c12011e4243f568adadd71, 子会话已关闭. 此轮未改规格字节或技能成品, 不重问已确认决定. 反方实际发生于成文后如实记录; 本地规格检查已闭环, 回milestone-05以按方法归组的方式盘问新增范围验证方案, 不自动领取. 原方案v1未改/未确认. git push仍被既有127.0.0.1桥连接权限拒绝, 信箱查询失败, 尚未推送到宿主; 可选页面自检通过但服务启动权限拒绝且未查到宿主映射变量, 不给猜测URL. 主机交付尚未完成, 全旅程待后续实施/验证及用户终点验收.",
     "milestone-05继续进行 (2026-11-26): 用户要求按拟改的新方式对齐, Q1采纳五类验证方法, Q2采纳仓库外合成材料/只覆盖新建实验文件及脱敏原件索引入仓推送, 后补亲自查看修改实际skill后再验; Q3采纳实施必要自测照常而最终独立验证等待审改完成通知, 按影响补集成自测/评审及改变要求先维护spec/方案, 最终明确是结束本轮方案盘问. 决策40-42已完整落账, v2已确认的是内容, 不是成品通过或未来用户已经改完. 写前独立反方01a218a5-e7a4-70c1-ba6a-2bafcd0347d5无新裁决缺口, 报告OPPOSING-milestone-05.md; 已关闭. v2成文65场景实例+5审计+3工程共73行, 来源覆盖/字段/旧正文保留/ASCII/diff检查通过, 未看候选实现/未执行成品验证. 当前方案SHA256 d4590090d5291af875a3efe1e0b2e6dd79297b0b2c2b07e71811e3a9ab4516b9. 写后独立检查新会话01a218aa-cc96-7081-9c0a-59bf86dbd8cc因usage limit报errored, 未产REVIEW-milestone-05.md, 已关闭; 方案头明确成文检查未完成不可领取下游, 本节点仍进行中, 需恢复子代理额度或用户指定其他模型继续全量独立核对. 产物提交3eca37c64fac08bdef36c94d3a3102f7306c6241. 新增milestone-12 HITL用户实际审改(待07), milestone-13集成及按影响补检查(待12), 08改为待13, 06/07输入说明与09依赖同步. 12/13均待处理, 本轮没有领取06或执行人工环节. v1原件与afe9a23字节一致保存在Git历史, 不再作执行依据. git桥查询仍报Operation not permitted, 信箱presence失败, 尚未向宿主推送/通知成功.",
-    "milestone-05本地关闭 (2026-11-27): 用户同意改用gpt-6-luna, 独立成文检查新会话01a21aaf-3b12-7a43-8515-90931397243e完成v2全量检查, 发现规则12技术格式check-tech.py输入/预期/原件未展开. 主会话依据既有TECHNICAL与Technical模板修正, 方案升v3, 五类方法及73项范围不变, 无新决策不重问. 原检查者复查受影响覆盖/格式子项/版本引用, 再核对最终状态元数据, 均无阻塞, 报告REVIEW-milestone-05.md保留初报与复查历史并绑定最终SHA256 7c4c450f1bfdf630f133f20435b9000cd76ab76a06c5538b1fa4f9a15fc49583. 规格字节未改, 最终覆盖/字段/ASCII/diff检查通过, 提交1359f84f9aad4c77e06b6912e885a754fc738b6e, 子会话已关闭. 本轮未看候选实现或执行成品验证, 不视作用户已完成未来审改. 仍按07原实施/必要自测评审 -> 12用户亲自审改并明确通知 -> 13集成及按影响补检查 -> 08独立验证 -> 09用户验收. 下一前沿06执行拆分, 本轮不领取. git桥查询和宿主信箱仍因连接权限不可用, 尚未推送落地/成功通知宿主, 不宣称全旅程正式交付."
+    "milestone-05本地关闭 (2026-11-27): 用户同意改用gpt-6-luna, 独立成文检查新会话01a21aaf-3b12-7a43-8515-90931397243e完成v2全量检查, 发现规则12技术格式check-tech.py输入/预期/原件未展开. 主会话依据既有TECHNICAL与Technical模板修正, 方案升v3, 五类方法及73项范围不变, 无新决策不重问. 原检查者复查受影响覆盖/格式子项/版本引用, 再核对最终状态元数据, 均无阻塞, 报告REVIEW-milestone-05.md保留初报与复查历史并绑定最终SHA256 7c4c450f1bfdf630f133f20435b9000cd76ab76a06c5538b1fa4f9a15fc49583. 规格字节未改, 最终覆盖/字段/ASCII/diff检查通过, 提交1359f84f9aad4c77e06b6912e885a754fc738b6e, 子会话已关闭. 本轮未看候选实现或执行成品验证, 不视作用户已完成未来审改. 仍按07原实施/必要自测评审 -> 12用户亲自审改并明确通知 -> 13集成及按影响补检查 -> 08独立验证 -> 09用户验收. 下一前沿06执行拆分, 本轮不领取. git桥查询和宿主信箱仍因连接权限不可用, 尚未推送落地/成功通知宿主, 不宣称全旅程正式交付.",
+    "milestone-06关闭 (2026-11-27): EXECUTION.md及3份实施issue已完成, 主会话检查与受影响复查收敛, 覆盖73项及技术要求. 3切片独立, 全范围/跨文件核对明确留集成后, 局部完成不等待未来证据; 本变更用户审改安排未扩为通用规则. 正式文件与通过草稿字节一致, SHA256及2项发现/复查见CHECKS-milestone-06.md. 产物提交4641d273ce3328b2d80dfc44096ebeefafa65994已快进push, 此前积压本地提交一并落地; 本轮Git桥/宿主信箱恢复连通, 不再沿用旧连接失败作为当前阻塞. Herdr起草会话exec-m6已完成并关闭. 未改权威输入或技能成品, 未跑产品验证或替用户验收. 下一前沿milestone-07, 不自动领取, 后续仍07必要自测评审->12用户真实审改通知->13补集成检查->08独立验证->09用户验收."
   ],
   "milestones": {
     "milestone-01": {
@@ -230,12 +231,19 @@
         }
       ],
       "output_dir": "docs/changes/to-spec-grilling-and-chinese-ids/",
-      "status": "待处理",
+      "status": "已关闭",
       "blocked_by": [
         "milestone-05"
       ],
-      "artifacts": [],
-      "close_summary": null
+      "artifacts": [
+        "docs/changes/to-spec-grilling-and-chinese-ids/EXECUTION.md",
+        "docs/changes/to-spec-grilling-and-chinese-ids/issues/ISSUE-01-tospec-flow-and-cli.md",
+        "docs/changes/to-spec-grilling-and-chinese-ids/issues/ISSUE-02-verify-change-method-flow.md",
+        "docs/changes/to-spec-grilling-and-chinese-ids/issues/ISSUE-03-navigate-readme-alignment.md",
+        "docs/changes/to-spec-grilling-and-chinese-ids/CHECKS-milestone-06.md",
+        "commit 4641d273ce3328b2d80dfc44096ebeefafa65994"
+      ],
+      "close_summary": "依据milestone-11两份已确认规格和milestone-05已确认方案v3, 经Herdr委派cli/gpt-6-luna/xhigh起草, 主会话全文检查并复查修订后交付EXECUTION.md和3份实施issue, 覆盖41个验收编号/65场景实例/5审计/3工程共73项及技术与安全要求. 3切片无产品阻塞边, 局部完成不等待合并后证据; 跨文件核对/README非作者复核/完整差异与编号审计/最终技能清单归集成检查, 安装目录摘要在首次修改前及集成后采集. 本变更审改等待只留执行安排, 未扩成通用技能规则. 引用/模板/编号/依赖/ASCII/固化字节检查通过, 无待裁决缺口, CHECKS-milestone-06.md绑定各产物SHA256. 起草会话已完成并关闭. 产物提交4641d273ce3328b2d80dfc44096ebeefafa65994已快进推送origin/improve, 也包含此前未落地的本地提交; Git桥及宿主信箱本轮已恢复连通. 三份权威输入与技能成品未改, 未执行产品CLI/pytest或成品验证, 未代用户审改/验收. 下一前沿milestone-07, 本轮不领取; 后续07->12->13->08->09时序保留."
     },
     "milestone-07": {
       "title": "实施规格与验证方案的盘问对齐改造",
