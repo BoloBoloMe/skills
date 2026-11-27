@@ -1,0 +1,11 @@
+# m07-imp-03 / ISSUE-03 / run1
+
+- 目标提交: `70ae15759eca9653dde010a49febd1729adb36d5` (`issue/03`, `feat: ISSUE-03: 对齐领航与 README 调用说明`), 未推送/合并.
+- 分支起点: `775b5a24cc06bea1ea719d78079e1e832ae2459a`. `EXECUTION.md` 记载其父提交 `9e8dd1dfe92b3b446c88c2cb8fce33cb0c67a77a` 为评审起点; 两者之间仅有 `EXECUTION.md` 的登记改动.
+- 工单回链: `docs/changes/to-spec-grilling-and-chinese-ids/issues/ISSUE-03-navigate-readme-alignment.md#交付证据` (同一目标提交).
+- 改动条文: `workflow/navigate/SKILL.md:41-42,55-56,71,75`, `workflow/navigate/ACCEPTANCE-GUIDE.md:3,8,12-16`, `README.md:41,50-51,65-67`.
+- `local-check.md`: 工单验证入口1-3, 验收25两场景/验收41本 issue 部分/规则11, 含候选位置/来源位置/预期/判断. 局部核对通过; deliberate 独立四步及其他入口保留.
+- `candidate.patch`: 三份产品条文的完整局部差异, 与目标提交对比已确认一致.
+- `check_skill.log` / `check_skill.exit`: `uv run python general/writing-for-llm/check_skill.py workflow/navigate/SKILL.md` 的完整合并输出和退出码, 实际 OK/0. `environment.txt` 记录运行时间 UTC, 目录, 分支起点和 uv/Python 版本.
+- `scope.log`: 目标提交, 范围, 固定来源 SHA256, 改前对照文件无差异, 提交差异与原件比对, 工作树状态. 无运行缓存或真实需求数据作为证据. 复跑应新建 run2 等, 保留本轮原件.
+- 交接: `docs/changes/to-spec-grilling-and-chinese-ids/EXECUTION.md:36,46,75` 待全切片集成后做跨文件核对与 README 非作者复核, 回链至该文件的执行记录. 全量工程检查/安装目录前后摘要亦归父级; 未做最终独立验证或用户验收. 不依赖或声称与 ISSUE-01/02 一致. 无代用户裁决.

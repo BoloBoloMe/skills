@@ -1,0 +1,8 @@
+分支: issue/05
+基点: 1874ede
+代码提交: dd40f98 feat: ISSUE-05: 统一 verify-change 设计验证方案术语
+文档提交: 42456c4 docs: ISSUE-05: 填写交付证据与验收标准
+顶端: 42456c4df242aa3c19087b0224c5dd1b98a114ab
+1874ede..HEAD 改动文件:
+10	2	docs/changes/to-spec-grilling-and-chinese-ids/issues/ISSUE-05-verifychange-terms-q4.md
+3	3	workflow/verify-change/SKILL.md

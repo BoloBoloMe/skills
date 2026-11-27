@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>验收用例草稿</title>
+<style>
+:root { color-scheme: light; background: #f8f6ef; color: #302e29; }
+body { max-width: 64rem; margin: 3rem auto; padding: 0 1.25rem 4rem;
+  font-family: "Noto Serif CJK SC", "Source Han Serif SC", Spectral, serif; line-height: 1.8; }
+h1, h2, h3 { font-weight: 500; line-height: 1.4; }
+h1, h2 { margin-top: 2.5rem; }
+h3 { margin-top: .5rem; }
+h4 { margin: .8rem 0; }
+a { color: #46645a; text-underline-offset: .2em; }
+nav ul { padding-left: 1.3rem; }
+pre, .step-text, .reference-text, .case-title, .example-name, .step-note, td, th {
+  white-space: pre-wrap; overflow-wrap: anywhere; }
+pre { font-size: .95rem; }
+pre, code { font-family: inherit; }
+code { overflow-wrap: anywhere; }
+small, .case-meta { color: #625f55; }
+.acceptance-card { background: #fffdf8; border: 1px solid #d8d3c6; border-radius: .6rem;
+  margin: 1.5rem 0; padding: 1.5rem; scroll-margin-top: 1rem; }
+.case-meta { font-size: .9rem; margin: 0; }
+.steps { list-style: none; padding: 0; }
+.steps > li { display: grid; grid-template-columns: 7rem minmax(0, 1fr); gap: 1rem;
+  padding: .8rem 0; border-top: 1px solid #e6e1d6; }
+.step-note { display: block; font-size: .85rem; }
+.step-body { min-width: 0; }
+.references { border-top: 1px solid #d8d3c6; margin-top: 1rem; }
+.reference-text { margin: .6rem 0; }
+.table-wrap { overflow-x: auto; margin: .8rem 0; }
+table { border-collapse: collapse; width: 100%; text-align: left; }
+td, th { border: 1px solid #d8d3c6; padding: .5rem .7rem; min-width: 4rem; }
+th { background: #f0ede4; }
+.docstring-content { border-left: 3px solid #d8d3c6; padding-left: 1rem; }
+@media (max-width: 40rem) {
+  body { margin-top: 1.5rem; }
+  .acceptance-card { padding: 1rem; }
+  .steps > li { grid-template-columns: 1fr; gap: .3rem; }
+}
+</style>
+</head>
+<body>
+<header><p>可选预览</p><h1>验收用例草稿</h1></header>
+<nav aria-label="目录"><ul><li><a href="#source">说明与原文件</a></li>
+<li><a href="#reading">阅读卡片</a></li><li><a href="#content">草稿原文</a></li></ul></nav>
+<section id="source"><h2>说明与原文件</h2>
+<p>这是同一份验收正文的阅读排版, 不是摘要. 共享前提已放入每张卡片, 例子按 Gherkin 规则逐组代入, 表格, 多行文本与引用规则就地显示, 原句不做改写.</p>
+<p>页面仅供选看, 不用于确认.</p>
+<p><a href="acceptance.md">打开草稿原文件</a>. 页面末尾也保留草稿全文, 便于对照.</p>
+</section>
+<section id="reading" aria-label="阅读卡片"><h2>合成清单</h2><p>1 个场景, 展开为 2 张阅读卡片. 同一验收编号的分支和数据不另编编号.</p><article class="acceptance-card" id="case-1" data-ac="AC-001"><p class="case-meta">AC-001 / 阅读卡片 1 / 正常情况</p><h3 class="case-title">查看 1 条合成记录</h3><section class="example-data"><h4>本组数据</h4><p class="example-name"></p><div class="table-wrap"><table><thead><tr><th class="example-header">条数</th></tr></thead><tbody><tr><td class="example-value">1</td></tr></tbody></table></div></section><ol class="steps"><li data-source-line="6"><div><strong class="step-label">已有情况</strong><small class="step-note">共享前提</small></div><div class="step-body"><span class="step-text">读者已打开清单</span></div></li><li data-source-line="10"><div><strong class="step-label">已有情况</strong></div><div class="step-body"><span class="step-text">清单有 1 条合成记录</span></div></li><li data-source-line="11"><div><strong class="step-label">做这件事</strong></div><div class="step-body"><span class="step-text">读者查看清单</span></div></li><li data-source-line="12"><div><strong class="step-label">应该看到</strong></div><div class="step-body"><span class="step-text">读者看到 1 条合成记录</span></div></li></ol><aside class="references"><h4>对应目标与业务规则 (原文)</h4><p class="reference-text">- 目标1: 读者能查阅清单.</p><p class="reference-text">- 规则2: 合成规则 2.</p></aside></article><article class="acceptance-card" id="case-2" data-ac="AC-001"><p class="case-meta">AC-001 / 阅读卡片 2 / 正常情况</p><h3 class="case-title">查看 2 条合成记录</h3><section class="example-data"><h4>本组数据</h4><p class="example-name"></p><div class="table-wrap"><table><thead><tr><th class="example-header">条数</th></tr></thead><tbody><tr><td class="example-value">2</td></tr></tbody></table></div></section><ol class="steps"><li data-source-line="6"><div><strong class="step-label">已有情况</strong><small class="step-note">共享前提</small></div><div class="step-body"><span class="step-text">读者已打开清单</span></div></li><li data-source-line="10"><div><strong class="step-label">已有情况</strong></div><div class="step-body"><span class="step-text">清单有 2 条合成记录</span></div></li><li data-source-line="11"><div><strong class="step-label">做这件事</strong></div><div class="step-body"><span class="step-text">读者查看清单</span></div></li><li data-source-line="12"><div><strong class="step-label">应该看到</strong></div><div class="step-body"><span class="step-text">读者看到 2 条合成记录</span></div></li></ol><aside class="references"><h4>对应目标与业务规则 (原文)</h4><p class="reference-text">- 目标1: 读者能查阅清单.</p><p class="reference-text">- 规则2: 合成规则 2.</p></aside></article></section>
+<section id="content"><h2>草稿原文</h2>
+<pre id="draft-content"><code>```gherkin
+# language: zh-CN
+功能: 合成清单
+
+背景:
+假定 读者已打开清单
+
+@AC-001 @normal @G-001 @BR-002
+场景大纲: 查看 &lt;条数&gt; 条合成记录
+假定 清单有 &lt;条数&gt; 条合成记录
+当 读者查看清单
+那么 读者看到 &lt;条数&gt; 条合成记录
+
+例子:
+| 条数 |
+| 1 |
+| 2 |
+```
+</code></pre>
+</section>
+<script>window.__PRESENTATION_STATE__ = { version: 1, values: {} };</script>
+</body>
+</html>

@@ -1,0 +1,798 @@
+diff --git a/workflow/decision-ledger/SKILL.md b/workflow/decision-ledger/SKILL.md
+index a8a47a4..8270fb7 100644
+--- a/workflow/decision-ledger/SKILL.md
++++ b/workflow/decision-ledger/SKILL.md
+@@ -24,2 +24,2 @@ disable-model-invocation: true
+-### D001 <标题>
+-- 状态: 当前有效 | 已替代 (→ D00X) | 已废弃
++### 决策1 <标题>
++- 状态: 当前有效 | 已替代 (→ 决策N) | 已废弃
+@@ -28 +28 @@ disable-model-invocation: true
+-- 依赖事实: <F-ID, 无则省略>
++- 依赖事实: <事实编号, 无则省略>
+@@ -35,2 +35,2 @@ disable-model-invocation: true
+-### F001 <标题>
+-- 状态: 当前有效 | 已变更 (→ F00X)
++### 事实1 <标题>
++- 状态: 当前有效 | 已变更 (→ 事实N)
+@@ -42 +42 @@ disable-model-invocation: true
+-- 决策 D001 起, 事实 F001 起, 各自连续编号, 分命名空间.
++- 决策编号从 决策1 起, 事实编号从 事实1 起, 各自连续编号, 分命名空间.
+@@ -44 +44 @@ disable-model-invocation: true
+-- 事实无约束性; 事实被推翻时新建 F-ID, 旧条目标已变更并附新 ID, 原样保留; 检索旧 F-ID 的全部引用, 依赖它的决策标待复核.
++- 事实无约束性; 事实被推翻时新建事实条目, 旧条目标已变更并附新编号, 原样保留; 检索旧编号的全部引用, 依赖它的决策标待复核.
+@@ -48 +48 @@ disable-model-invocation: true
+-决策变化必须保留历史, 决策/事实变化新建 ID, 旧条目原样保留; 改变决策内容/状态/约束性前, 必须得到我确认:
++决策变化必须保留历史, 决策/事实变化新建条目编号, 旧条目原样保留; 改变决策内容/状态/约束性前, 必须得到我确认:
+@@ -50 +50 @@ disable-model-invocation: true
+-1. 新建下一个连续 ID.
++1. 新建下一个连续编号.
+diff --git a/workflow/navigate/ACCEPTANCE-GUIDE.md b/workflow/navigate/ACCEPTANCE-GUIDE.md
+index 8bca902..953002a 100644
+--- a/workflow/navigate/ACCEPTANCE-GUIDE.md
++++ b/workflow/navigate/ACCEPTANCE-GUIDE.md
+@@ -3 +3 @@
+-只在确认详细验收标准或领取 `acceptance` Milestone 时读取相应部分. 路线图中的验收节点及其阻塞关系由 `SKILL.md` 管, 此处只管验收依据和关闭条件.
++在确认详细验收标准, 对齐验证方案确认边界或领取 `acceptance` Milestone 时读取相应部分. 路线图中的验收节点及其阻塞关系由 `SKILL.md` 管.
+@@ -8 +8 @@
+-- 调用 `to-spec` 时, 由它在落盘前逐批与我确认 `PRODUCT.md` 的 `验收标准`. 直接以该节的 AC 和场景为依据, 不重复确认相同内容.
++- 调用 `to-spec` 时, 我明确结束规格盘问即确认两份规格所需内容, 含产品验收判据. 验收草稿原文机械转正后, 直接引用正式 `PRODUCT.md` 的验收标准和场景. 不要求我逐版审阅预写草稿或成文 Gherkin.
+@@ -11,0 +12,6 @@
++## 验证方案确认
++
++先确认权威输入, 再设计验证方案. 我明确结束按验证方法组织的盘问即确认方案内容, 成文并独立检查无阻塞后交付, 不要求我通读并采纳整份方案. 执行和复验按 [阶段衔接](SKILL.md#milestone) 核实内容和来源; 更新时只补问新增或改变的验证决定, 有依据的转述错误直接修文并独立复查. 内容修订递增方案版本并保留确认依据.
++
++规格确认是确认判据及设计内容, 方案确认是确认怎么验证. 都不是产品验收, 反方和成文检查不能代我作决定.
++
+diff --git a/workflow/navigate/SKILL.md b/workflow/navigate/SKILL.md
+index 5c3fc2c..17ec417 100644
+--- a/workflow/navigate/SKILL.md
++++ b/workflow/navigate/SKILL.md
+@@ -41,2 +41,2 @@ ROADMAP.json 的 `unknown_seas` 字段 (字符串数组) 存的就是这些模
+-- spec (HITL): 调用 `to-spec` skill, 把已确认的产品与技术决策整理为权威规格. **何时创建**: 决策已有依据, 需要交付供下游使用的 `PRODUCT.md` 与 `TECHNICAL.md`. 新的产品取舍仍交 deliberate, 不由规格整理代答.
+-- verification-plan (HITL): 调用 `verify-change` skill 的设计验证方案方式. **何时创建**: 已有已确认且足以设计验证的权威输入, 需要在实施前确认验证步骤与证据要求.
++- spec (HITL): 调用 `to-spec` skill, 在规格流程内盘问并确认产品与技术内容, 再成文. **何时创建**: 需要交付供下游使用的 `PRODUCT.md` 与 `TECHNICAL.md`. 规格内的待决问题在本阶段向我补问, 不转交整个 `deliberate` 流程; 独立的 deliberate 里程碑照常可用.
++- verification-plan (HITL): 调用 `verify-change` skill 的设计验证方案方式, 按验证方法归组盘问, 由我明确结束盘问确认方案内容后再成文. **何时创建**: 已有当前有效且已确认, 足以设计验证的权威输入, 需要在实施前确认验证方法与证据要求. 规格确认不等于方案确认.
+@@ -55,2 +55,2 @@ ROADMAP.json 的 `unknown_seas` 字段 (字符串数组) 存的就是这些模
+-- spec: 两份权威规格已交付, 验收标准已由我确认, 必要检查通过且无待裁决缺口.
+-- verification-plan: 固定修订号的 `VERIFICATION-PLAN.md` 已由我明确确认, 来源仍适用.
++- spec: 我明确结束规格盘问, 同时确认两份规格所需内容, 无需逐版审阅预写草稿或成文 Gherkin. 产品验收草稿原文机械转正, 技术稿机械复制, 两份正式规格均通过机检和独立检查, 无阻塞才整组交付.
++- verification-plan: 我明确结束盘问, 成文后的 `VERIFICATION-PLAN.md` 经独立检查无阻塞, 当前内容可追溯来源, 方案版本, 盘问确认和独立复查. 不再要求我阅读并采纳整份成文方案.
+@@ -70,0 +71,2 @@ Milestone 详情只存在于 ROADMAP.json 的 `milestones` 下, 不再有独立
++执行验证与复验前核实当前方案内容及引用来源仍适用, 不只看编号或确认状态. 不再适用时先回到 `verify-change` 的设计方式更新方案: 只补问新增或改变的验证决定, 有依据的转述错误直接修正并由独立会话复查. 内容修订递增版本并保留确认依据, 新一轮验证绑定实际方案修订号和目标提交.
++
+@@ -73 +75 @@ Milestone 详情只存在于 ROADMAP.json 的 `milestones` 下, 不再有独立
+-验收是我依据已确认标准和对应证据决定是否接受交付. 验证报告和 Milestone 关闭都不能替代我的明确决定.
++验收是我依据已确认标准和对应证据决定是否接受交付. 规格确认, 验证方案确认, 代理检查, 验证报告和其他 Milestone 关闭都不能替代我的明确决定.
+diff --git a/workflow/to-execution/SKILL.md b/workflow/to-execution/SKILL.md
+index a0156c6..aa27472 100644
+--- a/workflow/to-execution/SKILL.md
++++ b/workflow/to-execution/SKILL.md
+@@ -59,2 +59,2 @@ disable-model-invocation: true
+-- 覆盖矩阵中每个 AC/BR 和实际采用的 TC 均能追溯到验证入口. 每个 AC 有 issue 承接或明确说明无需执行任务; 标 (审计) 的 BR, TECHNICAL.md 非功能要求与安全策略中的验证性要求均有 issue 或人工验证方式承接.
+-- TECHNICAL.md 中必须遵守的接口不变量与错误模式, 要么有 TC 承接, 要么在所属 issue 的 `验证入口` 写明不用自动化测试的理由, 实际验证方式及通过标准. 实施验证项有对应 issue 承接.
++- 覆盖矩阵中每个 验收(AC)/规则(BR) 条目和实际采用的 用例(TC) 均能追溯到验证入口. 每个 AC 有 issue 承接或明确说明无需执行任务; 标 (审计) 的 BR, TECHNICAL.md 非功能要求与安全策略中的验证性要求均有 issue 或人工验证方式承接.
++- TECHNICAL.md 中必须遵守的接口不变量与错误模式, 要么有用例承接, 要么在所属 issue 的 `验证入口` 写明不用自动化测试的理由, 实际验证方式及通过标准. 实施验证项有对应 issue 承接.
+@@ -75 +75 @@ disable-model-invocation: true
+-按 [模板](TEMPLATES.md) 起草拆分出的 issues, 再生成引用真实 issue 路径的 `EXECUTION.md`, 按依赖顺序编号. 确需编写自动化测试时才分配 TC (测试用例) 编号, 不因有 AC 就生成 TC. 已采用的 TC 编号全局唯一, 各 issue 自行编号, 无需集中分配: 覆盖某 AC 的主用例与 AC 同号 (`AC-005 -> TC-005`); 已确认且确需自动化的其他要求或同一 AC 的额外用例用 `TC-<issue 两位编号>-<两位序号>`, 如 ISSUE-02 的第一条额外用例为 `TC-02-01`. 不从编号规则反推要补用例. 信源与决策的引用路径按实际位置解析, 不假设它们位于产物根目录.
++按 [模板](TEMPLATES.md) 起草拆分出的 issues, 再生成引用真实 issue 路径的 `EXECUTION.md`, 按依赖顺序编号. 确需编写自动化测试时才分配用例编号, 不因有验收条目就生成用例. 已采用的用例编号全局唯一, 各 issue 自行编号, 无需集中分配: 覆盖某条验收的主用例与该条验收同号 (`验收5 -> 用例5`); 已确认且确需自动化的其他要求或同一验收的额外用例用 `用例<issue 编号>-<序号>`, issue 编号与序号都不带前导零, 如 ISSUE-02 的第一条额外用例为 `用例2-1`. 不从编号规则反推要补用例. 信源与决策的引用路径按实际位置解析, 不假设它们位于产物根目录.
+diff --git a/workflow/to-execution/TEMPLATES.md b/workflow/to-execution/TEMPLATES.md
+index 5de492a..c11951c 100644
+--- a/workflow/to-execution/TEMPLATES.md
++++ b/workflow/to-execution/TEMPLATES.md
+@@ -20 +20 @@
+-- 不可修改的模块, API, schema, 行为或 PRODUCT.md 非目标 (NG-NNN).
++- 不可修改的模块, API, schema, 行为或 PRODUCT.md 非目标 (非目标N).
+@@ -29 +29 @@
+-- ISSUE-01: `issues/ISSUE-01-<slug>.md`; 覆盖: AC-001; 依赖: 无. 有依赖时写明所需前置结果, 不以文件重叠充当依赖.
++- ISSUE-01: `issues/ISSUE-01-<slug>.md`; 覆盖: 验收1; 依赖: 无. 有依赖时写明所需前置结果, 不以文件重叠充当依赖.
+@@ -31,2 +31,2 @@
+-- AC-001 -> ISSUE-01 -> 验证入口 (采用测试时加 TC-001).
+-- BR-003 (审计) -> 人工验证: <验证方式及通过标准>. 或承接为 issue: BR-003 -> ISSUE-02 -> 验证入口.
++- 验收1 -> ISSUE-01 -> 验证入口 (采用测试时加 用例1).
++- 规则3 (审计) -> 人工验证: <验证方式及通过标准>. 或承接为 issue: 规则3 -> ISSUE-02 -> 验证入口.
+@@ -51 +51 @@
+-- Product: `<PRODUCT.md 实际路径>`, AC-001; 准备类 issue 无 AC 时写 G-001/NG-001/BR-001.
++- Product: `<PRODUCT.md 实际路径>`, 验收1; 准备类 issue 无验收条目时写 目标1/非目标1/规则1.
+@@ -54 +54 @@
+-- `<DECISIONS.md 实际路径>`: D001. 无则写"无".
++- `<DECISIONS.md 实际路径>`: 决策1. 无则写"无".
+@@ -93 +93 @@
+-- Product: `<PRODUCT.md 实际路径>`, AC-001 或 G-001/BR-001.
++- Product: `<PRODUCT.md 实际路径>`, 验收1 或 目标1/规则1.
+@@ -96 +96 @@
+-- `<DECISIONS.md 实际路径>`: D001. 无则写"无".
++- `<DECISIONS.md 实际路径>`: 决策1. 无则写"无".
+diff --git a/workflow/to-spec/GHERKIN.md b/workflow/to-spec/GHERKIN.md
+index 848032c..23c0152 100644
+--- a/workflow/to-spec/GHERKIN.md
++++ b/workflow/to-spec/GHERKIN.md
+@@ -67 +67,3 @@
+-1 AC = 1..N 场景: 同一 AC 下的状态分支场景共用同一 `@AC-NNN`; 场景大纲计为一个场景. 不在落盘时拆 AC: 拆分等于在用户确认之外做语义切分.
++正文条目的写法是汉字加无前导零数字, 与标签只差前导零: `@G-001` 对应正文条目 `目标1`, `@BR-002` 对应 `规则2`, 机检去掉前导零后按数字对账. 标签必须保持拉丁三位写法, 不跟着正文改成中文.
++
++1 AC = 1..N 场景: 同一 AC 下的状态分支场景共用同一 `@AC-NNN`; 场景大纲计为一个场景. 按盘问确认的判定组织场景. 不在落笔时擅自拆分验收判定; 发现缺判定按主流程补问.
+@@ -114 +116 @@ uv run <skill 目录>/check-ac.py <PRODUCT.md 路径>
+-7. 确认标记: 正式模式的 `验收标准` 节必须在 Gherkin 块前含 `<!-- confirmed-flow: vN -->`, 缺失判为输入错误 (退出码 2). 草稿模式仅豁免此项, 确认后由转正脚本添加标记.
++7. 确认标记: 正式模式的 `验收标准` 节必须在 Gherkin 块前含固定标记 `<!-- confirmed-flow: v1 -->`, 缺失判为输入错误 (退出码 2). 草稿不得带标记; 转正脚本加固定 `<!-- confirmed-flow: v1 -->`. 它不证明用户已确认, 确认依据为 chat 中明确的盘问闭环.
+@@ -116 +118 @@ uv run <skill 目录>/check-ac.py <PRODUCT.md 路径>
+-退出码: 0 通过 / 1 解析或规则校验失败 / 2 输入或文件错误. 失败时按报错修正后重跑, 机检结果不由目检替代. 已展示版本的任何修改都回到主会话检查, 重新预览并取得我的采纳; 不在正式文件上尝试修复.
++退出码: 0 通过 / 1 解析或规则校验失败 / 2 输入或文件错误. 失败时按报错修正后重跑, 机检结果不由目检替代. 按主流程修草稿并重走机检与机械转正, 不手改正式文件. 预览只供选看, 不用于确认.
+diff --git a/workflow/to-spec/SKILL.md b/workflow/to-spec/SKILL.md
+index 3a754b4..7c47dbe 100644
+--- a/workflow/to-spec/SKILL.md
++++ b/workflow/to-spec/SKILL.md
+@@ -3 +3 @@ name: to-spec
+-description: 把已确认的产品与技术决策整理为 PRODUCT.md 和 TECHNICAL.md 两份权威 spec.
++description: 通过盘问确认产品与技术判定, 编写并独立检查 PRODUCT.md 和 TECHNICAL.md.
+@@ -7 +7 @@ disable-model-invocation: true
+-# 编写产品与技术 spec
++# 编写产品与技术规格
+@@ -9,3 +9 @@ disable-model-invocation: true
+-编写当前变更的两份 spec: `PRODUCT.md` 定义产品结果, `TECHNICAL.md` 定义技术设计. 它们是下游执行的权威输入, 缺一份就缺信源; 本 skill 整理已确认的约束与事实, 区分参考做法, 需要新增或改变决策时交回我裁决.
+-开始时按当前明确任务说明本会话交付物和不做事项. 仅交方案时, 下游 issue 的实施范围不是即时编码授权; 已明确授权完整实施时按授权推进, 不新增逐步确认. 催收口或中断后的"继续"不单独构成阶段切换或版本采纳; 我收窄范围时同步更新仍在执行的协作任务.
+-产物根目录按 `software-engineering-consensus` skill 的 产物根目录 词条确定; 调用方指定时从其指定. 两份文件均写在该目录下, 各类 ID 在 feature 内稳定且连续.
++`PRODUCT.md` 定义产品结果, `TECHNICAL.md` 定义技术设计, 两份共同构成下游权威输入. 开始时说明本会话交付物与不做事项. 产物根目录按 `software-engineering-consensus` 的约定确定, 调用方指定时从其指定. 两份规格都写在该目录, 各类编号在本变更内稳定且连续. 规格交付不扩大实施授权; 催收口或中断后的"继续"不单独构成阶段切换或确认. 我收窄范围时同步更新仍在执行的协作任务.
+@@ -15,2 +13 @@ disable-model-invocation: true
+-调用 `decision-ledger` skill, 按其 `必须遵守` / `可调整` 约束性分类整理已确认内容. 必须遵守的内容包括已确认的产品结果, 范围与验收, 业务与安全约束, 对外兼容承诺, 必要的跨切片接口约定, 以及我明确固定的技术选择. 已确认约束不得自行降级. 调整可调整做法不必改写历史决策记录; 如需变更账本内容, 状态或约束性, 仍按账本规则确认.
+-内部做法只保留理解方向必需的说明, 标 `可调整`, 在不改变上述约束的前提下由实施者选择并验证. 未确定的内部做法不因模板有栏目就成为决策缺口, 参考做法不变成下游硬要求. 例如, "终止后到款不得恢复权益"是结果约束, 用哪种锁不是, 除非我明确固定它.
++必须遵守的内容包括已确认的产品结果, 范围与验收, 业务与安全约束, 对外兼容承诺, 必要的跨切片接口约定, 以及我明确固定的技术选择. 按 `decision-ledger` 的 `必须遵守` / `可调整` 区分, 不自行降级约束. 内部做法只留理解方向必需的说明, 标 `可调整`, 由实施者在不改变约束的前提下选择并验证. 不因模板有栏目就强行裁决内部做法. 例如, "终止后到款不得恢复权益"是结果约束, 用哪种锁不是, 除非我明确固定它. 改变账本决策的内容, 状态或约束性时按账本规则确认.
+@@ -18 +15 @@ disable-model-invocation: true
+-产物检查遵守本 skill 的[达标标准与检查边界](#达标标准与检查边界). 检查通过不等于我已采纳, 方案交付也不自动授予实施权限.
++## 1. 核实输入, 盘问并确认
+@@ -20 +17 @@ disable-model-invocation: true
+-## 达标标准与检查边界
++先调用 `domain-awareness` 感知领域和术语, 调用 `codebase-design` 核查技术方向. 核实权威输入与授权; 影响当前承诺的事实先调查, 关键前提尚未证实则调查或实验, 不拿猜测开问. 按两份[模板](TEMPLATES.md)的全部适用节展开范围树, 再调用 `grilling`. 按当前能问的问题分轮推进, 话题自然流动, 可随时跨产品/技术回补, 不按固定节序问. 本流程组合现有技能, 不整体调用 `deliberate`.
+@@ -22 +19,5 @@ disable-model-invocation: true
+-本节用于 `PRODUCT.md`, `TECHNICAL.md` 和验收草稿写出后的全部检查环节, 包括子代理自检, 主会话检查和最终独立检查. 达标指足以支撑下游设计验证方案和拆分执行. 按被检产物负责承接的要求及其引用核对:
++- **须亲答.** 产品判断 (目标取舍, 非目标, 业务规则, 覆盖情况增删, 阈值, 安全约束) 和我要固定的技术选择 (接口是否固定, 接缝与依赖, 兼容与迁移承诺) 必须由我亲答. 可查事实由你先查, 随所依赖的问题呈现; 我拍板即同时确认其依据事实.
++- **验收情况.** 按覆盖树逐种过正常/失败/边界. 每种须问情况用一句话问主要刺激与可观察结果; 我的答复写成账本决策条目. 只有刺激和结果均能从账本或我答复中的已确认目标/规则直接推出, 且不新增前提, 阈值或行为, 才免问, 落笔时直接从该依据写成 Gherkin. 原文没有的判定不能自行填; 拿不准是否直译就问. 同一实质刺激与结果只问一次, 多个落笔场景各自成条, 引用同一决策. 已定判定直接引用账本, 不重问.
++- **续问.** 同会话暂停后继续当前能问的问题, 不提前写规格; 本会话闭环不写交接. 需要换会话时先按下条入账, 再调用 `handoff`. 交接写当前可问问题, 已否决分支及理由, 逐题和逐节覆盖进度, 盲区扫描进度与待裁决项; 只记我明确提出的暂停或节奏要求, 不推测疲劳或心理状态. 已入账内容只引用, 不补免问清单或锚点. 同机用系统临时目录, 跨机按 `handoff` 落仓库并推送, 位置不明先问. 新会话读账本与交接恢复进度, 原件缺失就说明缺口, 不猜未定判定.
++- **入账.** 调用 `decision-ledger`, 没有账本时按其模板建立 `DECISIONS.md`. 已确认判定和依据事实在闭环后或换会话前入账; 决策引用所依赖的事实号, 事实条目标明"随决策N确认". 无决策引用的纯背景事实不入账. 判定的持久记录只用现有决策/事实格式, 不增盘问专用文件/章节/格式, 免问不留痕. 领域术语或 ADR 需要维护时另按 `domain-modeling` 既有规则处理.
++- **闭环.** 向我展示两份模板每一节的已问/未碰状态, 未碰节附理由, 不要求逐节另附已定结论. 清单呈现和 `grilling` 盲区扫描完成, 所有待裁决项关闭后, 才问我是否明确结束. 沉默, 部分认可或要求继续都不算, 不得开始写稿. 明确结束即同时确认两份规格所需内容, 不要求我读预写稿, 成文后的 Gherkin 或逐版采纳.
+@@ -24,5 +25 @@ disable-model-invocation: true
+-- 问题, 目标, 范围和非目标明确; 已确认的产品结果与必须遵守的约束有完整承接, 无遗漏, 矛盾或无依据新增, 可调整做法没有变成硬要求.
+-- 验收用例覆盖已确认的验收范围, 每条场景的前提, 输入与可观察结果明确; 审计断言有观察入口, 足以判断通过与否.
+-- 产品结果有技术设计承接, 必要的模块职责, 接口与依赖明确, 下游不必猜产品或契约决策.
+-- 技术方向与关键前提有事实依据. 尚未证实且决定目标, 范围或契约能否成立的关键前提先调查或实验; 普通实现选择留给实施. 实施验证项写清待确认事实, 验证入口与通过标准, 未实测的不写成已验证.
+-- 当前产物适用的现有机检通过, 下游解析与引用依赖的稳定 ID, 路径和固定节名满足约定.
++## 2. 写前反方与主会话落笔
+@@ -30,3 +27 @@ disable-model-invocation: true
+-只修复会影响后续工作的问题. 发现的问题若不影响后续理解, 决策, 执行或验证, 就不修复, 不退回, 不阻塞通过, 也不另列优化建议.
+-检查者首次完整核对上述适用项, 只报告会影响后续工作的阻塞项; 每项须指出问题位置, 所依据的要求或事实, 以及不修改会造成的具体后果. 仅仅发现错误, 偏离推荐写法或存在更好的写法, 不构成返工理由. 现有机检失败或引用失效会影响后续处理, 仍须解决.
+-需要新增或改变已确认决策时交我裁决. 返修后只复查受影响内容与引用, 新证据确需扩大范围时才扩大. 没有影响后续工作的未解决问题就立即进入本 skill 的既定下一步. 已通过内容仅在新证据表明会影响后续工作, 或我明确要求重新检查时重新打开.
++闭环且决策/事实入账后, 委派未参与盘问或落盘的独立会话调用 `opposing-viewpoint` 攻击账本决策. 给原始需求出处, 账本和必要代码入口. 主会话逐项核实, 驳回给依据; 新增或改变决策由我裁决并更新账本. 无未收敛发现后才由主会话先写产品, 后写技术. 组织措辞与前提可以, 不能构造未经确认的判定; 落笔发现缺依据时先补问该分支并入账再写. 审计式断言只写在产品业务规则节, 末尾标 `(审计)`, 不进 Gherkin. 把证据材料路径写进账本事实的来源字段, 决策引用事实号, 产品审计条目不携带证据路径.
+@@ -34 +29 @@ disable-model-invocation: true
+-## 流程
++先读 [GHERKIN.md](GHERKIN.md), 用 `uv run <skill 目录>/ac-draft.py workspace` 建专用工作区, 从 JSON 取 `dir` 与 `review` 路径. 下列 `<skill 目录>` 指当前 SKILL.md 所在目录, 不依赖工作目录. 保留三份临时原件:
+@@ -36,7 +31,3 @@ disable-model-invocation: true
+-1. **补齐输入.** 调用 `domain-awareness` skill 感知当前工作目录的领域模型, 调用 `codebase-design` skill 检查技术设计及术语. 按 [规格约束与停止条件](#规格约束与停止条件) 对照 [模板](TEMPLATES.md) 核对必须遵守的内容和事实依据. 只补影响当前承诺的缺口, 设计原则用于检查当前方向, 不要求穷尽替代实现. 需要裁决时调用 `deliberate` skill 敲定并固化, 先产品后技术, 再继续.
+-   完成标准: 必须提前裁决的决策已确认并落盘, 关键前提有事实依据, 无妨碍规格起草的输入缺口.
+-2. **确认验收用例.** 按 [验收标准确认](#验收标准确认) 委派子代理起草并打磨, 由主会话检查通过后展示给我.
+-   完成标准: 草稿已通过机检与主会话检查, 且我在 chat 明确采纳了展示的固定版本.
+-3. **确认代码库设计.** 按 [模板](TEMPLATES.md) 的 Technical 模板起草 `TECHNICAL.md` 草稿, 存入第 2 步工作区的 `review/` 目录, 文件名含专用目录名与版本号, 运行 `uv run <skill 目录>/check-tech.py <草稿路径>` 机检. 通过后按 [达标标准与检查边界](#达标标准与检查边界) 自查, 调用 `present` skill 经展示服务交付草稿原文件链接 (不另做 HTML 阅读版), 只挂载本次 `review/` 目录; 标 `可调整` 的内容一并展示, 意见按普通修改处理, 需要新增或改变已确认决策时调用 `deliberate` skill 敲定并固化. 展示后冻结该版, 修改时升版本号, 重新机检并重新展示; 修订既有 `TECHNICAL.md` 时整份重确认.
+-   完成标准: 草稿机检退出码为 0, 我在 chat 明确采纳展示的固定版本.
+-4. **转正并机检.** 我采纳后执行下列转正命令, 将验收草稿原文嵌入正式 `PRODUCT.md`; 将第 3 步已采纳的 `TECHNICAL.md` 草稿原文复制到 `<产物根目录>/TECHNICAL.md`, 重跑机检. `<skill 目录>` 按当前 `SKILL.md` 所在目录解析, 不依赖工作目录.
++- 产品正文暂存稿放 `dir` 内, 按 Product 模板写, 验收标准正文留空.
++- 独立验收草稿放 `review` 内, 只含完整 Gherkin 代码块及首尾空白, 不带节名或确认标记. 草稿名含专用目录名, 避免展示服务的同名遮蔽.
++- 技术草稿放 `dir` 内, 按 Technical 模板写, 不把不适用的条件节留在稿内.
+@@ -44,4 +35 @@ disable-model-invocation: true
+-   ```bash
+-   uv run <skill 目录>/ac-draft.py promote <PRODUCT暂存稿> <验收草稿> <产物根目录>/PRODUCT.md --review <review_id>
+-   uv run <skill 目录>/check-tech.py <产物根目录>/TECHNICAL.md
+-   ```
++## 3. 机检与机械落正式
+@@ -49,6 +37 @@ disable-model-invocation: true
+-   转正脚本核对审阅版本, 原样嵌入草稿, 添加确认标记并执行正式机检, 全部通过才原子替换正式文件. 失败时按报错修正; 输入变化须重新展示并确认, 两份正文都不由 LLM 复制或重写.
+-   完成标准: 转正 JSON 的 `success` 为 true, `check-tech.py` 退出码为 0; 可机检规则以脚本结果为准, 不用目检替代.
+-5. **独立检查并交付.** 两项机检通过后, 启动一名子代理, 阅读两份 spec 及相关决策账本, 只检查而不修改它们. 逐项核对已裁决的发现与决策是否落实到 `PRODUCT.md`/`TECHNICAL.md`, 找出遗漏, 无依据的新增和矛盾; 检查产品结果是否有技术设计承接, 每条验收场景与审计断言是否指得出可观察点. 此处核对落实与自洽, 决策落账本后的旧行为反查由 `deliberate` 完成.
+-   阻塞项中可按已有依据修正的转述错误或遗漏由主会话修正; 需要新增或改变决策时, 获我裁决后回到第 1 步. 涉及 `PRODUCT.md` 的修正回到第 2 步的暂存稿/草稿, 涉及 `TECHNICAL.md` 的修正回到第 3 步的草稿, 都不直接改正式文件; 已展示输入变化须重新展示并取得采纳. 修改后重跑相关机检并独立复查.
+-   没有阻塞项时, 告知我两份产物路径, 两项机检结果与独立检查结论, 不复述全文.
+-   完成标准: 独立检查已覆盖全部适用项并有明确结论, 影响后续工作的缺陷已修正并复检, 无阻塞项, 产物与检查结果已交付.
++用当前盘问范围和依据核实 chat 的明确闭环确认, 包括后来有变动的分支是否已获答复并入账. 没有可核实的依据就停在缺口, 不凭文件标记或预览放行, 不另建确认状态文件. 草稿机检过后转正产品, 复制技术稿, 检查字节一致, 再机检两份正式稿:
+@@ -56 +39,9 @@ disable-model-invocation: true
+-## 验收标准确认
++```bash
++uv run <skill 目录>/check-ac.py <产品暂存稿> --draft <验收草稿>
++uv run <skill 目录>/check-tech.py <技术草稿>
++uv run <skill 目录>/ac-draft.py promote <产品暂存稿> <验收草稿> <产物根目录>/PRODUCT.md
++cp -- <技术草稿> <产物根目录>/TECHNICAL.md
++cmp -- <技术草稿> <产物根目录>/TECHNICAL.md
++uv run <skill 目录>/check-ac.py <产物根目录>/PRODUCT.md
++uv run <skill 目录>/check-tech.py <产物根目录>/TECHNICAL.md
++```
+@@ -58 +49 @@ disable-model-invocation: true
+-无论输入是否有决策缺口, 正式采用前都走此流程. 草稿先经脚本与主会话检查, 我只审检查达标后的固定版本; 展示与转正都从原文件生成, 避免反复复述和转写消耗 token 或改变内容.
++按顺序执行, 转正须退出 0 且 JSON `success` 为 true, 其余命令须退出 0. 转正脚本把验收原文字节嵌入临时产品副本, 在代码块前加固定 `<!-- confirmed-flow: v1 -->`, 正式机检通过才原子替换产品文件. 标记是流程格式, 不随修文升版, 不证明我看过文件. 转正发现本次输入或正式目标变化时停止替换, 保留现场, 核对当前输入与确认依据后处理. 技术稿机械复制, 不由模型重写. 两份正式稿不是同时替换的事务: 任一生成或检查失败, 会话及已有调用方状态记整组未完成, 保留现场, 补齐失败步骤并复查两份后才交付. 不向下游宣称规格齐备.
+@@ -60 +51 @@ disable-model-invocation: true
+-1. **委派起草.** 起草前必读同目录 [GHERKIN.md](GHERKIN.md). 先用 `uv run <skill 目录>/ac-draft.py workspace` 建本次专用临时工作区, 从 stdout JSON 取 `dir` (专用目录) 与 `review` (放草稿和预览), 确认前保留目录. 按 Product 模板写 `dir/PRODUCT.base.md` 暂存稿, `验收标准` 正文留空. 草稿文件名包含专用目录名与版本号, 避免 web 服务的同名文件遮蔽. 启动一名子代理, 给它已确认来源, 暂存稿, GHERKIN.md, 本 skill 的[达标标准与检查边界](#达标标准与检查边界) 和草稿输出路径. 草稿只含一个完整的最终 Gherkin 代码块, 包括共享前提与全部场景, 不含节标题或确认标记. 子代理自行执行下列机检并修复, 只回报草稿路径, 机检结果与改动摘要, 不回贴全文.
++## 4. 写后独立检查与修正
+@@ -62,3 +53 @@ disable-model-invocation: true
+-   ```bash
+-   uv run <skill 目录>/check-ac.py <PRODUCT暂存稿> --draft <验收草稿>
+-   ```
++正式机检通过后, 另起未参与盘问/落笔的独立会话, 与写前反方分用会话. 只查不改两份正式稿, 不在草稿和正式稿上重复整份独立检查. 给检查会话账本, 必要答复出处, GHERKIN 纪律和下节达标标准. 原始答复只传与任务有关的必要材料, 按[共用脱敏要求](../verification-contract/SAFETY.md#脱敏)保留足够上下文; 脱敏后不足以判断则报告缺口, 交我处理, 不猜.
+@@ -66,5 +55 @@ disable-model-invocation: true
+-   草稿模式读取暂存稿的目标/业务规则, 只豁免确认标记, 其他校验与正式模式相同.
+-   完成标准: 子代理已将最终正文写入专用临时目录, 草稿机检退出码为 0.
+-2. **主会话检查.** 你读取草稿, 对照已确认来源核对决策依据, 覆盖与可观察结果; 用 [GHERKIN.md 的书写纪律](GHERKIN.md#3-书写纪律) 识别会影响理解, 执行或判断结果的内容问题. 格式规则交给脚本. 将阻塞项交回同一子代理修正并重新机检; 发现必须裁决的问题时调用 `deliberate` skill 敲定并固化, 更新暂存稿后继续.
+-   完成标准: 草稿机检仍通过, 每条用例有依据, 输入与可观察结果足以判断通过与否, 已确认范围内应覆盖内容无遗漏, 无影响判断的待定值或矛盾.
+-3. **冻结版本并展示.** 运行下列命令从暂存稿与草稿生成 HTML 阅读卡片及原文预览, 以 JSON 的 `success` 判断结果, 记录返回的 `review_id`, `draft` 与 `preview` 路径. 失败时按报错修正并回到主会话检查, 不由 LLM 另写阅读版替代.
++一次检查合并三项: **对账**逐项核实是否忠实, **反向覆盖**从账本和我的答复重推应覆盖情况再比对, **达标检查**按下节核查下游能否使用. 前两项的判定依据只用账本和我的答复, 不以待查的两份规格自证. 首次覆盖每个场景的刺激和结果, 全部目标/非目标/规则, 技术固定接口/接缝/约束; 叙述组织不逐句核. 每个发现给位置, 来源依据和具体后果.
+@@ -72,3 +57 @@ disable-model-invocation: true
+-   ```bash
+-   uv run <skill 目录>/ac-draft.py preview <PRODUCT暂存稿> <验收草稿>
+-   ```
++主会话先复核并分流:
+@@ -76,5 +59,3 @@ disable-model-invocation: true
+-   调用 `present` skill, 仅打开/交付返回的 HTML, 保持脚本生成内容不变, 同时交付草稿原文件链接. 只挂载本次 `review/` 目录, 不挂载整个系统临时目录. chat 中说明待确认的是哪一版, 请我采纳或指出修改项, 不复述全文.
+-   展示后冻结这版草稿与暂存稿; 修改时生成新版并重新检查, 预览与确认. `review_id` 同时绑定两份输入的原始字节, 任一变化都不能沿用旧版确认.
+-   完成标准: 预览生成成功, 已交付可读取的脚本预览及草稿原文件 (展示失败时按 present 的失败出口交付文件), chat 已明确待确认的 `review_id`.
+-4. **等待采纳.** 只有我在 chat 明确采纳当前完整版本, 才进入主流程第 3 步确认代码库设计, 并在第 4 步转正; 沉默, 仅部分认可或展示失败都不等于整版采纳. 我要求修改时回到子代理打磨, 不在正式文件上试改.
+-   完成标准: 我已明确采纳当前 `review_id` 对应版本, 两份输入自展示后未变.
++- 误报: 当场驳回并记录理由, 不交我裁决.
++- 有依据但转述错或漏写: 修产品暂存稿/验收草稿中受影响部分, 或修技术草稿, 重走相关机检和机械落正式, 技术复制后仍核实字节一致. 不手改正式稿, 不请我重审整版.
++- 缺判定/缺决策, 包括免问场景找不到原文依据: 只补问受影响分支, 入账后修文. 已定判定不重问, 整盘重来仅由我明确要求.
+@@ -82 +63 @@ disable-model-invocation: true
+-修订既有 PRODUCT.md 时保留稳定 ID, 用现有内容辅助核对差异, 仍提交完整草稿供我采纳. 确认前保留上次正式文件; 会话中断后如找不到原草稿或明确的版本采纳记录, 重新展示并确认. 除转正脚本添加的确认标记外, 不在正式文档写确认记录或另建确认状态文件; 标记和版本校验都不能证明我实际看过内容.
++每次修订仍适用机检和三项独立检查. 检查会话说明影响范围, 主会话复核; 独立复查受影响内容及引用, 沿用未变且未受影响部分的结论. 有新证据或不能确认旧结论仍适用时扩大, 必要时全量. 确保最终整份规格均有检查覆盖.
+@@ -84 +65,10 @@ disable-model-invocation: true
+-## 产物模板
++## 达标标准与检查边界
++
++达标指足以支撑下游验证设计和执行拆分. 适用于主会话写稿自查和正式独立检查:
++
++- 问题, 目标, 范围和非目标明确; 已确认约束完整, 无矛盾或无依据新增, 可调整做法未被写成硬要求.
++- 场景前提, 输入和可观察结果明确; 审计断言有观察入口; 产品结果有技术设计承接, 模块职责, 接口与依赖清楚, 下游不用猜契约.
++- 技术方向与关键前提有事实依据. 实施验证项写清待确认事实, 验证入口与通过标准, 未实测不写已验证.
++- 现有机检通过, 固定节名/节序及下游引用的编号/路径满足约定. 机检只查格式和编号, 不证明语义忠实.
++
++只报告会影响后续理解, 决策, 执行或验证的发现; 不因存在更好写法返工. 机检失败或引用失效仍须解决.
+@@ -86 +76,13 @@ disable-model-invocation: true
+-两份 spec 的节名与节序是下游引用的稳定约定, 逐字照抄. 模板见 [模板](TEMPLATES.md).
++## 5. 预览与整组交付
++
++无阻塞后, 从当前机检通过的暂存稿和验收草稿照常生成机械预览, JSON `success` 为 true 才用返回的 `preview` 和 `draft` 路径:
++
++```bash
++uv run <skill 目录>/ac-draft.py preview <产品暂存稿> <验收草稿>
++```
++
++调用 `present` 交付照原文生成的阅读卡片页面与草稿原文件链接, 仅供选看, 不等待确认. 只挂本次专用 `review` 目录, 不挂工作区整根, 不挂原始答复或无关材料. 不用模型改写页面; 预览生成失败按报错修正并重检受影响内容, 展示服务失败按 `present` 的失败出口交付文件.
++
++汇报两份正式规格路径, 机检结果与独立检查结论, 不复述全文. 只有两份均生成并通过检查才交付. 反方与检查不能替我拍板; 盘问结束和检查通过均不是成品验收, `navigate` 的终点验收仍由我按标准与证据逐项决定.
++
++## 产物模板
+@@ -88 +90 @@ disable-model-invocation: true
+-先按 Product 模板写临时 `PRODUCT.base.md`, 验收正文留空; 转正脚本保留其他章节, 只填入验收正文并添加确认标记. 再按 Technical 模板写 `TECHNICAL.md` 草稿, 经确认采纳后原样落为正式文件; 标注 `(条件保留)` 的节不满足条件时整节省略, 保留时标题去掉该标注.
++见 [TEMPLATES.md](TEMPLATES.md). 两份规格的固定节名和节序逐字遵循. 技术模板标 `(条件保留)` 的节不适用时整节省略, 保留时标题去掉标注.
+diff --git a/workflow/to-spec/TEMPLATES.md b/workflow/to-spec/TEMPLATES.md
+index fea9faf..4b0e8d9 100644
+--- a/workflow/to-spec/TEMPLATES.md
++++ b/workflow/to-spec/TEMPLATES.md
+@@ -3 +3 @@
+-配套 `SKILL.md` 的落盘步骤使用. 节名与节序是机检和下游引用约定, 逐字照抄, 条件节按说明省略. 正文按本 skill 的[达标标准与检查边界](SKILL.md#达标标准与检查边界)检查.
++盘问按两份模板全部适用节展开, 明确闭环且反方收敛后再按模板落笔. 规格忠实承接已确认内容, 不靠逐版审稿确认. 节名与节序是机检和下游引用约定, 逐字照抄, 条件节按说明省略. 正文按本 skill 的[达标标准与检查边界](SKILL.md#达标标准与检查边界)检查.
+@@ -16 +16 @@
+-写变更后的可观察差异, 作为完成判据, 用 G-NNN 编号. 例如:
++写变更后的可观察差异, 作为完成判据, 用 目标1 起的连续编号. 例如:
+@@ -18 +18 @@
+-- G-001: 客服可以在后台直接为用户补发优惠券, 无需再转交技术支持.
++- 目标1: 客服可以在后台直接为用户补发优惠券, 无需再转交技术支持.
+@@ -22 +22 @@
+-只列合理角色可能误以为包含在本次变更里的事项, 写明排除理由, 用 NG-NNN 编号. 例如:
++只列合理角色可能误以为包含在本次变更里的事项, 写明排除理由, 用 非目标1 起的连续编号. 例如:
+@@ -24 +24 @@
+-- NG-001: 不做批量补券, 一次只处理一单. (理由: 当前补券工单 95% 是单笔, 批量场景量太小.)
++- 非目标1: 不做批量补券, 一次只处理一单. (理由: 当前补券工单 95% 是单笔, 批量场景量太小.)
+@@ -28 +28 @@
+-以下两类共用 BR-NNN 连续编号, 无相应内容时不写该类条目:
++以下两类共用 规则1 起的连续编号, 无相应内容时不写该类条目:
+@@ -31 +31 @@
+-- 写不成刺激-响应行为的审计式断言, 末尾标 (审计), 由下游覆盖矩阵承接, 不进 Gherkin.
++- 写不成刺激-响应行为的审计式断言, 末尾标 (审计), 由下游覆盖矩阵承接, 不进 Gherkin. 证据路径放在账本事实的来源字段, 由决策引用事实号, 不写在条目正文.
+@@ -35,3 +35,3 @@
+-- BR-001: 补发优惠券的面额不得超过原订单的实付金额. (财务)
+-- BR-002: 同一订单的累计补发次数不超过 3 次. (运营/风控)
+-- BR-003: 本变更不新增第三方依赖. (审计)
++- 规则1: 补发优惠券的面额不得超过原订单的实付金额. (财务)
++- 规则2: 同一订单的累计补发次数不超过 3 次. (运营/风控)
++- 规则3: 本变更不新增第三方依赖. (审计)
+@@ -43 +43 @@
+-- <账本实际路径>: D001, D002. 多账本时每份一行, 无则写"无".
++- <账本实际路径>: 决策1, 决策2. 多账本时每份一行, 无则写"无".
+@@ -81 +81 @@
+-- <账本实际路径>: D001, D002. 多账本时每份一行, 无则写"无".
++- <账本实际路径>: 决策1, 决策2. 多账本时每份一行, 无则写"无".
+diff --git a/workflow/to-spec/ac-draft.py b/workflow/to-spec/ac-draft.py
+index 73a411c..4b29ddf 100644
+--- a/workflow/to-spec/ac-draft.py
++++ b/workflow/to-spec/ac-draft.py
+@@ -9 +9 @@ preview <PRODUCT 暂存稿> <验收草稿>
+-promote <PRODUCT 暂存稿> <验收草稿> <PRODUCT.md> --review <审阅版本>
++promote <PRODUCT 暂存稿> <验收草稿> <PRODUCT.md>
+@@ -11 +11 @@ stdout 为单个 JSON. 退出码 0 成功 / 1 机检失败 / 2 输入或文件
+-审阅版本只绑定输入字节, 不证明我已确认; 调用方负责等待 chat 中的明确采纳.
++预览仅供选看; 调用方负责核实用户已在 chat 中明确确认盘问闭环.
+@@ -18 +17,0 @@ from datetime import date
+-import hashlib
+@@ -38,5 +36,0 @@ _spec.loader.exec_module(checker)
+-def review_id(base: bytes, draft: bytes) -> str:
+-    """同时绑定产品上下文与用例, 防止同编号下的规则改动逃过版本检查."""
+-    return hashlib.sha256(len(base).to_bytes(8, "big") + base + draft).hexdigest()
+-
+-
+@@ -134,2 +128,2 @@ def _reading_view(markdown: str, draft: str) -> str:
+-    entries = {"G": checker.extract_entry_texts(markdown, "目标"),
+-               "BR": checker.extract_entry_texts(markdown, "业务规则")}
++    entries = {"目标": checker.extract_entry_texts(markdown, "目标"),
++               "规则": checker.extract_entry_texts(markdown, "业务规则")}
+@@ -167,2 +161,2 @@ def _reading_view(markdown: str, draft: str) -> str:
+-                key = tag[1:]
+-                text = entries[key.split("-")[0]][key]
++                kind = "目标" if tag.startswith("@G-") else "规则"
++                text = entries[kind][checker.tag_entry_key(tag)]
+@@ -174 +168 @@ def _reading_view(markdown: str, draft: str) -> str:
+-def _page(markdown: str, draft: str, name: str, review: str) -> str:
++def _page(markdown: str, draft: str, name: str) -> str:
+@@ -223,2 +217,2 @@ th {{ background: #f0ede4; }}
+-<header><p>待确认草稿</p><h1>验收用例草稿</h1></header>
+-<nav aria-label="目录"><ul><li><a href="#review">审阅说明与原文件</a></li>
++<header><p>可选预览</p><h1>验收用例草稿</h1></header>
++<nav aria-label="目录"><ul><li><a href="#source">说明与原文件</a></li>
+@@ -226 +220 @@ th {{ background: #f0ede4; }}
+-<section id="review"><h2>审阅说明与原文件</h2>
++<section id="source"><h2>说明与原文件</h2>
+@@ -228 +222 @@ th {{ background: #f0ede4; }}
+-<p>请在 chat 中确认采用这一版, 或指出需要修改的用例. 如果正文仍然难懂, 应修改原用例并重新展示, 不以另一份解释代替确认.</p>
++<p>页面仅供选看, 不用于确认.</p>
+@@ -230 +223,0 @@ th {{ background: #f0ede4; }}
+-<p><small>审阅版本: <code>{review}</code>. 产品上下文或草稿变化后需要重新展示和确认, 采纳后仍原样转正.</small></p>
+@@ -254,4 +247,3 @@ def preview(base: Path, draft: Path) -> dict:
+-    review = review_id(base_bytes, draft_bytes)
+-    # 唯一文件名, 新预览不会覆盖我正在看的旧版本; 原文件不另作 LLM 副本.
+-    output = draft.with_name(f"{date.today().isoformat()}-acceptance-{review[:12]}-{uuid4().hex[:8]}.html")
+-    page = _page(base_bytes.decode("utf-8"), draft_bytes.decode("utf-8"), draft.name, review)
++    # 唯一文件名, 新预览不覆盖旧页面; 原文件不另作 LLM 副本.
++    output = draft.with_name(f"{date.today().isoformat()}-acceptance-{uuid4().hex}.html")
++    page = _page(base_bytes.decode("utf-8"), draft_bytes.decode("utf-8"), draft.name)
+@@ -261 +253 @@ def preview(base: Path, draft: Path) -> dict:
+-            "preview": str(output), "review_id": review}
++            "preview": str(output)}
+@@ -293 +285 @@ def _atomic_write(path: Path, content: bytes, previous: bytes | None) -> None:
+-def promote(base: Path, draft: Path, output: Path, review: str) -> dict:
++def promote(base: Path, draft: Path, output: Path) -> dict:
+@@ -299,2 +290,0 @@ def promote(base: Path, draft: Path, output: Path, review: str) -> dict:
+-    if review_id(base_bytes, draft_bytes) != review:
+-        raise checker.InputError("审阅版本不匹配, 产品上下文或草稿已变化; 请重新展示并确认")
+@@ -307 +297 @@ def promote(base: Path, draft: Path, output: Path, review: str) -> dict:
+-        raise checker.InputError("输入在转正过程中已变化, 请重新展示并确认")
++        raise checker.InputError("输入在转正过程中已变化, 保留当前正式文件并停止")
+@@ -309 +299 @@ def promote(base: Path, draft: Path, output: Path, review: str) -> dict:
+-    return {"success": True, "command": "promote", "output": str(output), "review_id": review}
++    return {"success": True, "command": "promote", "output": str(output)}
+@@ -322 +311,0 @@ def main() -> int:
+-            command.add_argument("--review", required=True, help="我明确确认的预览所返回的 review_id")
+@@ -330 +319 @@ def main() -> int:
+-            result = promote(args.base, args.draft, args.output, args.review)
++            result = promote(args.base, args.draft, args.output)
+diff --git a/workflow/to-spec/check-ac.py b/workflow/to-spec/check-ac.py
+index d3f0cf4..9cfe9c7 100644
+--- a/workflow/to-spec/check-ac.py
++++ b/workflow/to-spec/check-ac.py
+@@ -12 +12 @@
+-   验收标准确认流程写入), 正式模式缺失判为输入错误; 标记本身不证明实际确认.
++   转正流程写入固定 v1), 正式模式缺失判为输入错误; 标记本身不证明实际确认.
+@@ -26,0 +27,2 @@
++   正文条目写作 目标1/规则1 (汉字 + 无前导零数字), 标签写作 @G-001/@BR-001,
++   两边去掉前导零后按数字对账.
+@@ -56,2 +58,5 @@ STEP_KEYWORDS = ("假定", "当", "那么", "而且", "但是")
+-# 编号对账 (校验 6): 从 PRODUCT.md 正文节提取 G/BR 条目
+-ENTRY_RE = re.compile(r"^\s*[-*]\s*(G|BR)-(\d{3})\s*[:：]")
++# 编号对账 (校验 6): 从 PRODUCT.md 正文节提取 目标/规则 条目.
++# 正文条目写作 汉字 + 无前导零数字 (`目标1` / `规则2`), Gherkin 标签仍用
++# 拉丁三位 (`@G-001` / `@BR-001`), 靠 tag_entry_key 去掉前导零后对账.
++ENTRY_RE = re.compile(r"^\s*[-*]\s*(目标|规则)(\d+)\s*[:：]")
++TAG_ENTRY_KINDS = (("@G-", "目标"), ("@BR-", "规则"))
+@@ -98,0 +104,8 @@ def section_bounds(markdown: str, section: str, *, required: bool = True) -> tup
++def tag_entry_key(tag_name: str) -> str:
++    """归一化对账键: `@G-001` -> `目标1`, `@BR-002` -> `规则2`."""
++    for prefix, kind in TAG_ENTRY_KINDS:
++        if tag_name.startswith(prefix):
++            return f"{kind}{int(tag_name[len(prefix):])}"
++    raise ValueError(f"不是覆盖标签: {tag_name}")
++
++
+@@ -112 +125 @@ def extract_entry_texts(markdown: str, section: str) -> dict[str, str]:
+-            current = f"{match[1]}-{match[2]}"
++            current = f"{match[1]}{int(match[2])}"
+@@ -158 +171 @@ def extract_gherkin_block(markdown: str, *, require_marker: bool = True) -> tupl
+-            "(由 to-spec 验收标准确认流程写入)"
++            "(由 to-spec 转正流程写入)"
+@@ -313,0 +327,2 @@ def with_draft(markdown: str, draft: str, *, confirmed: bool) -> str:
++    if MARKER_RE.search(draft):
++        raise InputError("草稿不携带确认标记, 由转正脚本在确认后添加")
+@@ -317,2 +331,0 @@ def with_draft(markdown: str, draft: str, *, confirmed: bool) -> str:
+-    if MARKER_RE.search(draft):
+-        raise InputError("草稿不携带确认标记, 由转正脚本在确认后添加")
+@@ -353 +366 @@ def validate_product(markdown: str, *, require_marker: bool = True) -> tuple[int
+-        key = name.lstrip("@")
++        key = tag_entry_key(name)
+@@ -359 +372 @@ def validate_product(markdown: str, *, require_marker: bool = True) -> tuple[int
+-                    f"{name} 在 `## 目标` 节不存在 (对账来源: 该节的 `- G-NNN:` 列表项)",
++                    f"{name} 在 `## 目标` 节不存在 (对账来源: 该节的 `- 目标N:` 列表项)",
+@@ -366 +379 @@ def validate_product(markdown: str, *, require_marker: bool = True) -> tuple[int
+-                    f"{name} 在 `## 业务规则` 节不存在 (对账来源: 该节的 `- BR-NNN:` 列表项)",
++                    f"{name} 在 `## 业务规则` 节不存在 (对账来源: 该节的 `- 规则N:` 列表项)",
+diff --git a/workflow/to-spec/tests/test_ac_draft.py b/workflow/to-spec/tests/test_ac_draft.py
+index 87a0b89..a9185a3 100644
+--- a/workflow/to-spec/tests/test_ac_draft.py
++++ b/workflow/to-spec/tests/test_ac_draft.py
+@@ -19 +18,0 @@ import unittest
+-from unittest.mock import patch
+@@ -33 +32 @@ BASE = """# 测试变更 Product Spec
+-- G-001: 读者能看到已确认的内容.
++- 目标1: 读者能看到已确认的内容.
+@@ -37 +36 @@ BASE = """# 测试变更 Product Spec
+-- NG-001: 不修改其他文档.
++- 非目标1: 不修改其他文档.
+@@ -41,2 +40,2 @@ BASE = """# 测试变更 Product Spec
+-- BR-001: 内容以当前版本为准.
+-- BR-002: 不新增第三方依赖. (审计)
++- 规则1: 内容以当前版本为准.
++- 规则2: 不新增第三方依赖. (审计)
+@@ -50 +49 @@ BASE = """# 测试变更 Product Spec
+-- DECISIONS.md: D001.
++- DECISIONS.md: 决策1.
+@@ -69,7 +67,0 @@ MARKER = "<!-- confirmed-flow: v1 -->"
+-def load_helper():
+-    spec = importlib.util.spec_from_file_location("to_spec_ac_draft_test", HELPER)
+-    module = importlib.util.module_from_spec(spec)
+-    spec.loader.exec_module(module)
+-    return module
+-
+-
+@@ -122,2 +114,2 @@ class AcDraftTests(unittest.TestCase):
+-    def promote(self, review_id):
+-        return self.cli(HELPER, "promote", self.base, self.draft, self.output, "--review", review_id)
++    def promote(self):
++        return self.cli(HELPER, "promote", self.base, self.draft, self.output)
+@@ -174 +166,4 @@ class AcDraftTests(unittest.TestCase):
+-                self.assertEqual(2, self.check().returncode)
++                run = self.check()
++                self.assertEqual(2, run.returncode)
++                if MARKER in draft:
++                    self.assertIn("草稿不携带确认标记", run.stderr)
+@@ -222 +217 @@ class AcDraftTests(unittest.TestCase):
+-        self.assertEqual(first["review_id"], second["review_id"])
++        self.assertNotIn("review_id", first)
+@@ -233,0 +229,2 @@ class AcDraftTests(unittest.TestCase):
++        self.assertIn("页面仅供选看, 不用于确认.", page)
++        self.assertNotIn("审阅版本", page)
+@@ -252,2 +249 @@ class AcDraftTests(unittest.TestCase):
+-                    review = self.preview()
+-                    run = self.promote(review["review_id"])
++                    run = self.promote()
+@@ -254,0 +251,2 @@ class AcDraftTests(unittest.TestCase):
++                    self.assertEqual({"success": True, "command": "promote", "output": str(self.output)},
++                                     json.loads(run.stdout))
+@@ -259,0 +258 @@ class AcDraftTests(unittest.TestCase):
++                    self.assertIn(MARKER.encode() + newline.encode() + raw, output)
+@@ -264 +263 @@ class AcDraftTests(unittest.TestCase):
+-    def test_stale_review_rejects_changed_draft_or_product_context(self):
++    def test_promote_rejects_removed_review_option(self):
+@@ -266,7 +265,6 @@ class AcDraftTests(unittest.TestCase):
+-        review = self.preview()["review_id"]
+-        self.draft.write_bytes(DRAFT.replace("1 条", "2 条").encode())
+-        self.assertEqual(2, self.promote(review).returncode)
+-        self.assertEqual(old, self.output.read_bytes())
+-        self.draft.write_bytes(DRAFT.encode())
+-        self.base.write_bytes(BASE.replace("保留这段中文背景", "背景已改变").encode())
+-        self.assertEqual(2, self.promote(review).returncode)
++        help_run = self.cli(HELPER, "promote", "--help")
++        self.assertEqual(0, help_run.returncode)
++        self.assertNotIn("--review", help_run.stdout)
++        run = self.cli(HELPER, "promote", self.base, self.draft, self.output, "--review", "unused")
++        self.assertEqual(2, run.returncode)
++        self.assertIn("unrecognized arguments: --review", run.stderr)
+@@ -275,4 +273,9 @@ class AcDraftTests(unittest.TestCase):
+-    def test_promote_requires_review_and_rejects_bad_hash(self):
+-        self.assertEqual(2, self.cli(HELPER, "promote", self.base, self.draft, self.output).returncode)
+-        self.assertEqual(2, self.promote("wrong").returncode)
+-        self.assertFalse(self.output.exists())
++    def test_promote_rejects_invalid_draft_without_altering_existing_output(self):
++        old = self.keep_old_output()
++        self.draft.write_bytes(DRAFT.replace("@G-001", "@G-999").encode())
++        run = self.promote()
++        self.assertEqual(1, run.returncode, run.stderr)
++        result = json.loads(run.stdout)
++        self.assertFalse(result["success"])
++        self.assertIn("不存在", result["error"])
++        self.assertEqual(old, self.output.read_bytes())
+@@ -289,2 +292 @@ class AcDraftTests(unittest.TestCase):
+-        review = self.preview()["review_id"]
+-        self.assertEqual(0, self.promote(review).returncode)
++        self.assertEqual(0, self.promote().returncode)
+@@ -296,2 +298 @@ class AcDraftTests(unittest.TestCase):
+-        review = self.preview()["review_id"]
+-        self.assertEqual(0, self.promote(review).returncode)
++        self.assertEqual(0, self.promote().returncode)
+@@ -300,4 +301,2 @@ class AcDraftTests(unittest.TestCase):
+-    def test_replace_failure_preserves_old_output_and_cleans_temp_file(self):
+-        helper = load_helper()
+-        old = self.keep_old_output()
+-        review = helper.preview(self.base, self.draft)["review_id"]
++    def test_promote_refuses_directory_target_without_leaving_temporary_file(self):
++        self.output.mkdir(parents=True)
+@@ -305,4 +304,4 @@ class AcDraftTests(unittest.TestCase):
+-        with patch.object(helper.os, "replace", side_effect=OSError("replace failed")):
+-            with self.assertRaises(OSError):
+-                helper.promote(self.base, self.draft, self.output, review)
+-        self.assertEqual(old, self.output.read_bytes())
++        run = self.promote()
++        self.assertEqual(2, run.returncode)
++        self.assertFalse(json.loads(run.stdout)["success"])
++        self.assertTrue(self.output.is_dir())
+@@ -311,33 +309,0 @@ class AcDraftTests(unittest.TestCase):
+-    def test_formal_recheck_failure_preserves_old_output(self):
+-        helper = load_helper()
+-        old = self.keep_old_output()
+-        review = helper.preview(self.base, self.draft)["review_id"]
+-        original = helper.checker.validate_product
+-
+-        def fail_formal(markdown, *, require_marker=True):
+-            if require_marker:
+-                raise helper.checker.ValidationError("正式复检失败")
+-            return original(markdown, require_marker=require_marker)
+-
+-        with patch.object(helper.checker, "validate_product", side_effect=fail_formal):
+-            with self.assertRaises(helper.checker.ValidationError):
+-                helper.promote(self.base, self.draft, self.output, review)
+-        self.assertEqual(old, self.output.read_bytes())
+-
+-    def test_change_during_validation_aborts_publication(self):
+-        helper = load_helper()
+-        old = self.keep_old_output()
+-        review = helper.preview(self.base, self.draft)["review_id"]
+-        original = helper.checker.validate_product
+-
+-        def change_after_formal(markdown, *, require_marker=True):
+-            result = original(markdown, require_marker=require_marker)
+-            if require_marker:
+-                self.draft.write_bytes(DRAFT.replace("1 条", "2 条").encode())
+-            return result
+-
+-        with patch.object(helper.checker, "validate_product", side_effect=change_after_formal):
+-            with self.assertRaises(helper.checker.InputError):
+-                helper.promote(self.base, self.draft, self.output, review)
+-        self.assertEqual(old, self.output.read_bytes())
+-
+@@ -345,2 +310,0 @@ class AcDraftTests(unittest.TestCase):
+-        helper = load_helper()
+-        review = helper.preview(self.base, self.draft)["review_id"]
+@@ -349,2 +313,3 @@ class AcDraftTests(unittest.TestCase):
+-                with self.assertRaises(helper.checker.InputError):
+-                    helper.promote(self.base, self.draft, target, review)
++                run = self.cli(HELPER, "promote", self.base, self.draft, target)
++                self.assertEqual(2, run.returncode)
++                self.assertIn("必须与", json.loads(run.stdout)["error"])
+@@ -353,2 +318,3 @@ class AcDraftTests(unittest.TestCase):
+-        with self.assertRaises(helper.checker.InputError):
+-            helper.promote(self.base, self.draft, self.output, review)
++        run = self.promote()
++        self.assertEqual(2, run.returncode)
++        self.assertTrue(self.output.is_symlink())
+@@ -356,17 +322 @@ class AcDraftTests(unittest.TestCase):
+-
+-    def test_changed_output_is_not_overwritten_during_atomic_write(self):
+-        helper = load_helper()
+-        self.keep_old_output()
+-        review = helper.preview(self.base, self.draft)["review_id"]
+-        changed = b"another writer changed canonical content"
+-        original = helper.os.fsync
+-
+-        def change_output(fd):
+-            self.output.write_bytes(changed)
+-            original(fd)
+-
+-        with patch.object(helper.os, "fsync", side_effect=change_output):
+-            with self.assertRaises(helper.checker.InputError):
+-                helper.promote(self.base, self.draft, self.output, review)
+-        self.assertEqual(changed, self.output.read_bytes())
+-        self.assertEqual([self.output], list(self.output.parent.iterdir()))
++        self.assertEqual(DRAFT.encode(), self.draft.read_bytes())
+@@ -427 +377 @@ class AcDraftTests(unittest.TestCase):
+-        self.assertEqual(0, self.promote(self.preview()["review_id"]).returncode)
++        self.assertEqual(0, self.promote().returncode)
+diff --git a/workflow/to-spec/tests/test_ac_reading.py b/workflow/to-spec/tests/test_ac_reading.py
+index 2599111..d4a4d4f 100644
+--- a/workflow/to-spec/tests/test_ac_reading.py
++++ b/workflow/to-spec/tests/test_ac_reading.py
+@@ -7,0 +8 @@ import json
++import re
+@@ -14 +15 @@ import unittest
+-from test_ac_draft import BASE, DRAFT, load_helper
++from test_ac_draft import BASE, CHECK, DRAFT, HELPER, MARKER
+@@ -92 +93,4 @@ class ReadingPreviewTests(unittest.TestCase):
+-        self.helper = load_helper()
++
++    def cli(self, script, *args):
++        return subprocess.run([sys.executable, str(script), *map(str, args)],
++                              cwd=self.root, capture_output=True, text=True, timeout=10)
+@@ -99 +103,3 @@ class ReadingPreviewTests(unittest.TestCase):
+-        result = self.helper.preview(self.base, self.draft)
++        run = self.cli(HELPER, "preview", self.base, self.draft)
++        self.assertEqual(0, run.returncode, run.stdout + run.stderr)
++        result = json.loads(run.stdout)
+@@ -113,2 +119,2 @@ class ReadingPreviewTests(unittest.TestCase):
+-            "- G-001: 读者能看到已确认的内容.",
+-            "- BR-001: 内容以当前版本为准.",
++            "- 目标1: 读者能看到已确认的内容.",
++            "- 规则1: 内容以当前版本为准.",
+@@ -185,2 +191,2 @@ class ReadingPreviewTests(unittest.TestCase):
+-        entry = "- BR-001: 内容以当前版本为准.\n  不得展示上一版正文.\n  - 链接也必须指向当前版."
+-        parsed = self.preview(base=BASE.replace("- BR-001: 内容以当前版本为准.", entry))
++        entry = "- 规则1: 内容以当前版本为准.\n  不得展示上一版正文.\n  - 链接也必须指向当前版."
++        parsed = self.preview(base=BASE.replace("- 规则1: 内容以当前版本为准.", entry))
+@@ -190,2 +196,2 @@ class ReadingPreviewTests(unittest.TestCase):
+-        base = BASE.replace("- BR-001: 内容以当前版本为准.",
+-                            "- BR-001: 内容以当前版本为准.\n  (审计)")
++        base = BASE.replace("- 规则1: 内容以当前版本为准.",
++                            "- 规则1: 内容以当前版本为准.\n  (审计)")
+@@ -193,5 +199,6 @@ class ReadingPreviewTests(unittest.TestCase):
+-        for label, validate in (
+-            ("草稿校验", lambda: self.helper.checker.validate_draft(base, DRAFT)),
+-            ("正式校验", lambda: self.helper.checker.validate_product(
+-                self.helper.checker.with_draft(base, DRAFT, confirmed=True))),
+-            ("阅读预览", lambda: self.helper.preview(self.base, self.draft)),
++        formal = self.root / "PRODUCT.md"
++        formal.write_bytes(base.replace("待确认, 此处暂不写入正式用例.", MARKER + "\n" + DRAFT).encode())
++        for script, args in (
++            (CHECK, (self.base, "--draft", self.draft)),
++            (CHECK, (formal,)),
++            (HELPER, ("preview", self.base, self.draft)),
+@@ -199,3 +206,4 @@ class ReadingPreviewTests(unittest.TestCase):
+-            with self.subTest(label=label):
+-                with self.assertRaisesRegex(self.helper.checker.ValidationError, "审计"):
+-                    validate()
++            with self.subTest(args=args):
++                run = self.cli(script, *args)
++                self.assertEqual(1, run.returncode)
++                self.assertIn("审计", run.stderr + run.stdout)
+@@ -213 +221 @@ class ReadingPreviewTests(unittest.TestCase):
+-        self.assertIn("- BR-001: " + dangerous, parsed.texts("reference-text"))
++        self.assertIn("- 规则1: " + dangerous, parsed.texts("reference-text"))
+@@ -256,2 +264,3 @@ class ReadingPreviewTests(unittest.TestCase):
+-                with self.assertRaises(self.helper.checker.ValidationError):
+-                    self.helper.preview(self.base, self.draft)
++                run = self.cli(HELPER, "preview", self.base, self.draft)
++                self.assertEqual(1, run.returncode)
++                self.assertFalse(json.loads(run.stdout)["success"])
+@@ -261,6 +270,8 @@ class ReadingPreviewTests(unittest.TestCase):
+-        self.base.write_bytes(BASE.replace("- BR-001: 内容以当前版本为准.",
+-                                           "- BR-001: 内容以当前版本为准.\n- BR-001: 相反的另一条规则.").encode())
+-        with self.assertRaises(self.helper.checker.InputError):
+-            self.helper.checker.validate_draft(self.base.read_text(encoding="utf-8"), DRAFT)
+-        with self.assertRaises(self.helper.checker.InputError):
+-            self.helper.preview(self.base, self.draft)
++        self.base.write_bytes(BASE.replace("- 规则1: 内容以当前版本为准.",
++                                           "- 规则1: 内容以当前版本为准.\n- 规则1: 相反的另一条规则.").encode())
++        for script, args in ((CHECK, (self.base, "--draft", self.draft)),
++                             (HELPER, ("preview", self.base, self.draft))):
++            with self.subTest(args=args):
++                run = self.cli(script, *args)
++                self.assertEqual(2, run.returncode)
++                self.assertIn("规则1 重复", run.stdout + run.stderr)
+@@ -294,2 +305 @@ class ReadingPreviewTests(unittest.TestCase):
+-        run = subprocess.run([sys.executable, str(self.helper.__file__), "preview", str(self.base), str(self.draft)],
+-                             cwd=self.root, capture_output=True, text=True, timeout=10)
++        run = self.cli(HELPER, "preview", self.base, self.draft)
+@@ -302,4 +312,4 @@ class ReadingPreviewTests(unittest.TestCase):
+-        reference = Path(self.helper.__file__).with_name("GHERKIN.md").read_text(encoding="utf-8")
+-        draft = self.helper.checker.FENCE_RE.search(reference)[0] + "\n"
+-        base = BASE.replace("- BR-002: 不新增第三方依赖. (审计)",
+-                            "- BR-002: 同一订单的累计补发次数不超过 3 次.")
++        reference = HELPER.with_name("GHERKIN.md").read_text(encoding="utf-8")
++        draft = re.search(r"^```gherkin\n.*?^```$", reference, re.M | re.S)[0] + "\n"
++        base = BASE.replace("- 规则2: 不新增第三方依赖. (审计)",
++                            "- 规则2: 同一订单的累计补发次数不超过 3 次.")
+@@ -311 +321 @@ class ReadingPreviewTests(unittest.TestCase):
+-    def test_preview_still_binds_exact_input_bytes_and_does_not_rewrite_them(self):
++    def test_preview_leaves_raw_input_bytes_unchanged(self):
+@@ -315,5 +325 @@ class ReadingPreviewTests(unittest.TestCase):
+-        result = self.helper.preview(self.base, self.draft)
+-        self.assertEqual(self.helper.review_id(base, raw), result["review_id"])
+-        output = self.root / "PRODUCT.md"
+-        self.helper.promote(self.base, self.draft, output, result["review_id"])
+-        self.assertIn(raw, output.read_bytes())
++        self.assertEqual(3, len(self.preview().select("acceptance-card")))
+diff --git a/workflow/verify-change/REVERIFY.md b/workflow/verify-change/REVERIFY.md
+index 6b2b89b..c923854 100644
+--- a/workflow/verify-change/REVERIFY.md
++++ b/workflow/verify-change/REVERIFY.md
+@@ -5 +5 @@
+-修复版本交付后, 按执行方式复验. 原指挥与验证者会话可由调用方安排恢复或新开; 恢复者须未参与修复. 原会话不可用时新开, 不因此阻塞.
++修复版本交付后, 按执行方式复验. 当前确认方案要求新开会话时照办; 否则原指挥与验证者会话可由调用方安排恢复或新开. 恢复者须仍符合非作者要求且未参与修复. 原会话不可用时新开, 不因此阻塞.
+@@ -7 +7 @@
+-1. **绑定新版本.** 只认修复后的新提交, 另开证据目录, 不覆盖旧证据. 重核已确认方案及其引用的权威输入; 输入或方案依据已变化时, 先回到设计方式更新并重新确认, 再开始复验. 完成标准: 报告写明新提交, 当前方案修订号与新证据目录; 或已报告方案缺口并停止.
++1. **绑定新版本.** 只认修复后的新提交, 另开证据目录, 不覆盖旧证据. 按 [执行方式](SKILL.md#执行验证方案) 重核当前方案内容与引用来源实际一致且仍适用, 不只看版本, 编号或确认状态. 需要更新方案时先按 [方案修订](SKILL.md#方案修订) 处理: 有依据的转述错误直接修正并独立复查, 只补问新增或改变的验证决定, 不重新阅读采纳整份方案. 判据变化先回权威输入维护; 修订须递增版本并能追溯确认和独立复查依据. 核实本轮前置条件后再复验. 完成标准: 报告写明新提交, 当前方案修订号与新证据目录; 或已报告方案缺口并停止.
+@@ -9 +9 @@
+-3. **按影响重验.** 列出修复影响的场景与审计项, 交验证者本轮实跑. 未受影响项按 [证据规则](reference/EVIDENCE.md) 核对旧观察; 不确定其适用性时重跑, 不默认沿用通过. 完成标准: 报告已列本轮受影响项观察与旧证据适用性.
++3. **按影响重验.** 列出修复或方案修订影响的必验项, 交验证者本轮按方案重新核验. 未受影响项按 [证据规则](reference/EVIDENCE.md) 核对旧观察; 不确定其适用性时重跑, 不默认沿用通过. 完成标准: 报告已列本轮受影响项观察与旧证据适用性.
+diff --git a/workflow/verify-change/SKILL.md b/workflow/verify-change/SKILL.md
+index 6455e8e..6a5a0b4 100644
+--- a/workflow/verify-change/SKILL.md
++++ b/workflow/verify-change/SKILL.md
+@@ -11 +11 @@ disable-model-invocation: true
+-- **设计验证方案**: 已有当前有效且已确认的权威输入, 还没有已确认的验证方案. 通常在判据确认后, 实施前调用. 不要求固定文件名或 spec 格式; 权威输入须能提供设计方案所需的判据与验证依据. 只读权威输入, 不看实现, 输出待我确认的方案.
++- **设计验证方案**: 已有当前有效且已确认的权威输入, 还没有适用的已确认方案, 或现有方案需要修订. 通常在判据确认后, 实施前调用. 不要求固定文件名或 spec 格式; 权威输入须能提供设计方案所需的判据与验证依据. 只读权威输入, 不看实现. 先与我盘问确认内容, 再成文并经独立核对交付方案.
+@@ -14 +14 @@ disable-model-invocation: true
+-方案不存在时不能直接执行验证. 已有方案但成品尚未实施时, 继续实施, 不提前执行. 权威输入不能提供所需判据与验证依据, 或目标提交缺失时, 报告输入缺口并停止. 验证方案确认不等于成品验收.
++方案不存在时不能直接执行验证. 方案已确认且仍适用但成品尚未实施时, 交实施流程, 不提前执行. 权威输入不能提供所需判据与验证依据, 或目标提交缺失时, 报告输入缺口并停止. 验证方案确认不等于成品验收.
+@@ -20,2 +20,3 @@ disable-model-invocation: true
+-1. **核对权威输入.** 确定产物根目录, 找出当前有效且已确认的权威输入. 不要求必须存在 `PRODUCT.md`, `TECHNICAL.md` 或某种固定格式的 spec. 输入必须能定位全部已确认的产品判据与审计要求; 对行为判据, 须能确定相关角色, 输入与预期结果, 并提供设计验证步骤所需的产品对外入口与观察依据; 对审计要求, 须能确定断言对象与可核对依据. 多份输入冲突, 未确认, 无法判断当前版本或不能提供所需信息时, 报告具体缺口并停止; 不从会话口头要求或实现反推判据. 同时调用 `verification-contract` skill, 确认本次变更适用的验证类型与共用底线.
+-   完成标准: 权威输入的有效性, 确认状态, 判据与审计要求均已核实; 或已报告具体缺口并停止.
++1. **核对权威输入.** 确定产物根目录, 找出当前有效且已确认的权威输入. 不要求固定文件名或同时具备 `PRODUCT.md` 和 `TECHNICAL.md`. 输入须能定位全部必验要求, 场景和例子: 行为须有相关角色, 输入, 预期结果, 产品对外入口和观察依据; 审计须有对象和可核对依据. 调用 `verification-contract` skill 确定适用的验证类型, 方法和证据要求, 不因此增加或改变产品判据. 规格先确认, 不把规格结束确认当作方案确认.
++   输入未确认, 当前版本不明, 欠缺或冲突时, 报告具体缺口, 停止提交完整方案, 交回权威输入维护或既有决策流程. 设计主动查证只读权威输入, 不从实现, 测试代码, 临时实验或未确认口头要求反推判据. 仅在此边界内按盘问规则查证事实.
++   完成标准: 输入有效且已确认, 适用的验证契约和全部必验项可定位; 或已报告缺口并停止.
+@@ -23 +24 @@ disable-model-invocation: true
+-2. **逐项设计可行步骤.** 按权威输入原有粒度建立覆盖表, 必须包含每项已确认的产品判据与审计要求. 一个判据包含多个独立场景时, 逐场景覆盖并包含全部例子. 每行引用来源位置及原有编号或标题; 没有编号时引用原文位置, 不拆改或重写判据.
++2. **按验证方式盘问.** 调用 `grilling` skill. 按 LLM 怎样验证某条或某类已确认要求归组, 用大白话说明用什么材料, 怎样验, 看什么结果, 留什么证据. 同一种方法不逐条重过用例, 不把检查内容差别或小操作拆成问题. 方法或适用条件有实质差别, 或特殊情况需要新选择, 就另问. 仅当安排能从已确认权威输入及本变更已有确认直接推出时免问; 你构造的新选择不算已有依据. 拿不准能否免问或是否同类就问我.
+@@ -25 +26 @@ disable-model-invocation: true
+-   对每项行为判据, 依据产品角色, 输入和预期结果, 描述如何通过产品对外入口执行并观察结果. 步骤与判据处于同一抽象层级, 写清谁在什么前提下进行什么交互, 应观察到什么; 不写按钮点击序列, 内部方法, 数据库查询, 测试桩或测试脚本. 权威技术或操作输入用来确认入口与观察方式可行, 不增加产品通过判据. 模块接口若不是产品对外入口, 不能代替产品入口.
++   行为验证从产品对外入口操作并观察, 使用契约要求的真实依赖, 不用内部接口或测试桩顶替. 权威技术或操作输入只确定入口, 观察方式和操作条件. 审计按断言对象安排静态核对或真实运行, 与行为验证分开. 方法已知可行但执行条件未齐, 可确认附条件方案并写明必备条件. 找不到合规方法, 或方法/入口/观察依据不足时, 报告具体缺口并停止提交完整方案, 交回权威输入维护或前置调查. 材料补齐并按原流程确认后再继续. 设计会话不自行读实现或做实验, 不把方法未知记作资源待备.
+@@ -27 +28,2 @@ disable-model-invocation: true
+-   对审计要求, 按断言对象设计静态核对或真实运行步骤, 与行为判据分开标记. 若权威输入不能明确行为验证的产品入口和观察方式, 或审计核对的对象与依据, 报告缺口并停止提交完整方案, 交回权威输入维护或既有决策流程; 不靠内部接口或临时实现补成可验证.
++   调用 `decision-ledger` skill, 按现有通用格式记录已确认决定及其依据事实; 无账本时按该 skill 的规则在指定产物根目录新建 `DECISIONS.md`. 同会话继续或闭环不写交接. 换会话前先入账, 再调用 `handoff` skill 交接; 新会话读账本和交接恢复当前可问问题, 否决分支及理由, 逐题和实际方案范围的覆盖进度, 盲区扫描进度, 待裁决项及我明确提出的节奏要求. 已入账内容只引用, 不推测我的状态. 不新增盘问专用文件, 章节或格式, 免问情况不留痕. 方案不是账本, 不替代未确认决定, 不另列免问记录.
++   完成标准: 需要我选择的方法和适用条件均已决定并入账, 可进入闭环; 若仍在续问或有缺口, 不成文.
+@@ -29,2 +31 @@ disable-model-invocation: true
+-   按第 1 步调用的 `verification-contract` skill, 逐项核对方法是否符合本变更适用的验证类型与共用底线. 验证契约只约束方法, 不新增产品判据. 找不到合规方法时, 报告方法或权威输入缺口并停止, 不降低契约要求.
+-   完成标准: 每项已确认的产品判据与审计要求都有可执行的验证步骤, 输入与预期观察明确, 覆盖表行数等于权威输入中的必验项数, 每项方法符合适用的验证契约; 或已列明阻塞缺口并停止.
++3. **确认范围并让独立反方检查决定.** 按权威输入对照全部必验项和例子, 完成盲区扫描, 向我呈现覆盖清单, 跳过理由和资源条件. 清单不是已问问题列表, 也不要求我逐行阅读成文步骤. 只有我在看到这些材料后明确结束盘问才确认相应方案内容; 沉默, 部分认可或要求继续均不算确认.
+@@ -32,2 +33,2 @@ disable-model-invocation: true
+-3. **落盘方案.** 在产物根目录写 `VERIFICATION-PLAN.md`, 至少包含 `方案版本: vN`, `确认状态: 待确认/已确认`, 来源引用, 覆盖表, 必要前提与资源限制. 覆盖表列出必验项的来源位置与已有编号或标题, 适用的验证类型, 产品入口或静态核查对象, 验证步骤, 预期观察, 所需证据和环境条件. 来源引用列明每份权威输入的路径与确认依据, 每项判据的原文位置及已有编号或标题, 以及用于确认入口和观察方式的技术或操作依据. 不为来源自造版本号或编号, 不复制整份输入. 定位信息可能在修订时保持不变, 因此执行时仍须核对被引用内容与方案是否一致.
+-   完成标准: `VERIFICATION-PLAN.md` 已写入约定产物根目录, 每条来源可定位, 方案修订号和待确认状态明确.
++   闭环并入账后, 由未参与相应盘问与落盘的独立会话调用 `opposing-viewpoint` skill, 对照权威输入攻击已入账决定. 另起反方和成文核对会话时沿用执行方式第 3 步的会话工具和选型规则, 不沿用成品执行派工材料. 主会话核实发现, 只有需要新增或改变验证决定时补问受影响分支, 入账, 核对更新后的范围并取得明确闭环. 反方或成文核对者都不替我拍板. 给两个会话的原始答复均限必要材料, 按 [安全底线的脱敏节](../verification-contract/SAFETY.md#脱敏) 处理, 保留可核对上下文; 脱敏后不足以判断就报缺口, 不猜.
++   完成标准: 我明确闭环, 决定及依据已入账, 独立反方的发现已收敛, 无待裁决项才落笔.
+@@ -35,2 +36,12 @@ disable-model-invocation: true
+-4. **请我确认固定版本.** 向我提供方案路径与修订号, 请我确认这份方案或指出修改项. 只有我明确确认该修订号对应的内容后, 才将状态改为已确认. 修改方案内容就递增修订号并重新展示, 不沿用先前确认.
+-   完成标准: 我已明确确认当前修订号, 方案状态为已确认; 或仍保持待确认并停止.
++4. **成文并独立核对.** 主会话在产物根目录写 `VERIFICATION-PLAN.md`, 至少保留 `方案版本: vN`, `确认状态: 待确认/已确认`, 来源引用与确认依据, 覆盖表, 必要前提和资源限制. 来源列每份权威输入的路径及确认依据, 以及确定入口与观察方式的技术或操作依据; 不自造来源编号或版本, 不复制整份输入.
++
++   覆盖表按权威输入原有粒度逐项覆盖全部必验要求, 独立场景和全部例子. 每行写来源位置和现有编号或标题, 验证类型, 产品入口或审计对象, 步骤, 预期观察, 证据和环境条件. 没有编号或标题就引用原文位置. 步骤与判据同一抽象层级, 写清谁在什么前提下执行什么交互并观察什么, 不写按钮点击序列, 内部方法, 数据库查询或测试脚本. 提问归组不减少覆盖行, 不拆改或重写判据.
++
++   另起与反方不同且未参与相应决定或写稿的独立会话, 只查不改. 从已确认权威输入及盘问决定与用户答复反查全部必验项与例子, 核对成文对原决定和判据的忠实性, 全量覆盖和可执行性. 方案是被查对象, 不能以其自身文字证明忠实或覆盖, 也不能用行数代替逐项核对. 检查结果给出来源和对应方案位置, 记录发现及其影响. 有发现按下述修订规则处理.
++   完成标准: 首次全量独立核对无阻塞, 当前内容可追溯到明确的盘问闭环和独立核对, 才以已确认状态交付. 不再请我逐行阅读或采纳整份成文方案.
++
++## 方案修订
++
++主会话先复核发现. 误报说明驳回理由; 有依据的转述错误由主会话直接修文, 不重问原决定. 缺少或改变验证决定, 包括原先免问但核不出依据时, 只按设计方式补问并入账受影响的决定, 核对更新后的范围并取得明确闭环, 不重问已定决定. 需要新增或改变产品判据时先交回原权威输入维护或既有决策确认流程, 不在方案里改判据.
++
++每次内容修订递增方案版本, 用现有来源引用和检查产物保留变更及确认依据. 仍由独立检查核对修订分类, 当前内容是否忠实于确认, 以及受影响内容与引用. 未变且未受影响部分说明适用理由后沿用旧结论; 有新证据要求或不能确定旧结论仍适用时扩大复查. 版本号, 确认状态或通知不证明内容已获确认. 当前版本可追溯确认及独立复查且无阻塞才交付, 不恢复逐版阅读和采纳整份方案.
+@@ -40,3 +51,3 @@ disable-model-invocation: true
+-1. **核对方案, 权威输入与成品.** 确认 `VERIFICATION-PLAN.md` 已确认, 方案引用的权威输入仍是当前有效且已确认的来源, 覆盖表行数等于这些输入中的必验项数, 当前引用内容与方案相符. 调用 `verification-contract` skill, 核对方案是否符合适用要求; 方案不符合时, 先回到设计方式更新并重新确认. 权威输入中的编号或标题只用于定位, 不是内容版本; 即使定位信息未变, 判据或预期结果发生变化也要先更新并重新确认方案. 技术或操作输入不要求整份文件版本, 只核对方案引用的入口与观察依据是否仍适用. 再确认目标项目, 指定提交和产物根目录. 目标提交须存在, 当前工作区须与它一致且没有未提交的产品文件或改动; 否则报告缺口并停止.
+-   验证开始后若权威输入中的判据新增或改变, 或方案引用的技术入口与观察约束发生变化, 本轮只覆盖原方案和原目标提交, 不把新内容悄悄并入. 等调用方指定包含新内容的已提交目标并确认更新后的方案, 再开始新一轮.
+-   完成标准: 方案修订号, 来源, 全部必验项, 目标项目和完整提交号均已核实; 或已报告缺口并停止.
++1. **核对方案, 权威输入与成品.** 核实 `VERIFICATION-PLAN.md` 当前内容可追溯到盘问闭环及独立核对, 引用来源仍是当前有效且已确认的输入. 逐项核对实际内容: 判据及预期取自权威输入, 入口及观察依据仍适用, 必验项与例子无缺, 方法与证据忠实于确认的决定. 不只核对文件名, 编号, 标题, 版本, 状态或行数. 调用 `verification-contract` skill 核对方法和证据仍合规. 方案或引用依据实际变化需要更新时, 先回设计方式按 [方案修订](#方案修订) 分流并核对更新后的内容, 只为新增或改变的验证决定补问; 不改产品判据, 不逐版重读采纳.
++   再确认目标项目, 指定提交和产物根目录. 目标提交须存在, 当前工作区须与它一致且没有未提交的产品文件或改动; 否则报告缺口并停止. 开始前核对方案规定的整轮前置条件, 如尚待用户明确通知完成其环节, 停下报告, 不从状态或版本推断已完成. 验证开始后判据或方法依据变动, 本轮仍只覆盖原方案与原目标提交, 不并入新内容. 下一轮使用明确目标提交与适用的方案修订号, 并重核调用方与方案规定的前置条件.
++   完成标准: 当前方案内容和修订号, 来源, 全部必验项, 目标项目和完整提交号均已核实; 或已报告缺口并停止.
+@@ -44 +55 @@ disable-model-invocation: true
+-2. **准备本轮执行.** 在产物根目录确定不覆盖旧材料的本轮证据目录, 名称带目标提交信息. 先读项目 README, 构建脚本和测试配置, 判断证据目录是否会进入构建, 测试发现或运行输入; 有影响时将证据放到仓库外. 根据方案里的前提和现场资源安排验证分组: 只在资源可隔离且并行有收益时分组, 不逐条用人, 共用准备只做一次并记录原件归属, 争用写入按序执行.
++2. **准备本轮执行.** 在产物根目录确定不覆盖旧材料的本轮证据目录, 名称带目标提交信息. 先读项目 README, 构建脚本和测试配置, 判断证据目录是否会进入构建, 测试发现或运行输入; 有影响时将证据放到仓库外. 按已确认方案和安全底线准备必要的隔离环境. 前置授权或本轮必备条件仍未满足时不强行执行, 标明缺口, 受影响项记未验证, 不调低标准或改用较弱证据. 根据方案里的前提和现场资源安排可执行项的验证分组: 只在资源可隔离且并行有收益时分组, 不逐条用人, 共用准备只做一次并记录原件归属, 争用写入按序执行.
+@@ -47 +58 @@ disable-model-invocation: true
+-   完成标准: 证据目录位置和影响已核实, 每个必验项有执行安排, 写入授权和数据保留条件已满足; 或已停在授权之前.
++   完成标准: 证据目录位置和影响已核实, 可执行项有安排, 相关写入授权和数据保留条件已满足; 缺条件的项已记录为未验证, 不越权执行.
+@@ -49 +60 @@ disable-model-invocation: true
+-3. **派发非作者验证者.** 首轮和复验都由未参与本次实现与修复的人独立操作. 每名验证者使用本轮新开的子会话, 并用可核对事实确认其未参与, 不只采信自述. 有可并行收益时按分组同时派出; 无可用非作者时报告受阻, 不回退自验.
++3. **派发非作者验证者.** 首轮和复验都由未参与本次实现与修复的人独立操作. 首轮使用本轮新开的子会话; 复验按 [复验规则](REVERIFY.md) 决定新开或恢复. 用可核对事实确认其未参与, 不只采信自述. 有可并行收益时按分组同时派出; 无可用非作者时报告受阻, 不回退自验.
+@@ -51,2 +62,2 @@ disable-model-invocation: true
+-   派工材料只给目标提交, `VERIFICATION-PLAN.md`, 权威输入路径, 证据目录和 [逐项核对规则](reference/SCENARIO-CHECK.md), [证据规则](reference/EVIDENCE.md). 不给实现对话, 作者设计理由或自证结论. 要求验证者调用 `verification-contract` skill 并遵守共用底线, 产品通过判据只取已确认的权威输入原文. 明确要求验证者按方案操作并留存原件; 项目有操作配方时, 指向当前项目中的实际文件和加载入口. 启动时调用 `use-herdr` skill 并读取其 `launch.md`, 选型时调用 `llm-select` skill. 所需方法 skill 由验证者在派工单所写入口点名调用.
+-   完成标准: 每个必验项都有非作者承接者和明确的操作入口, 未参与事实可复核; 或已报告无可用验证者并停止.
++   派工材料只给目标提交, `VERIFICATION-PLAN.md`, 权威输入路径, 证据目录和 [逐项核对规则](reference/SCENARIO-CHECK.md), [证据规则](reference/EVIDENCE.md). 不给实现对话, 作者设计理由或自证结论. 要求验证者调用 `verification-contract` skill 并遵守共用底线, 产品通过判据只取已确认的权威输入原文. 明确要求验证者按方案操作并留存原件; 项目有操作配方时, 指向当前项目中的实际文件和加载入口. 启动时使用已确认的会话工具; 没有另定工具时, 调用 `use-herdr` skill 并读取其 `launch.md`. 选型时调用 `llm-select` skill. 所需方法 skill 由验证者在派工单所写入口点名调用.
++   完成标准: 每个可执行项都有非作者承接者和明确的操作入口, 未参与事实可复核; 或已报告无可用验证者并停止.
+@@ -54 +65 @@ disable-model-invocation: true
+-4. **核对执行结果与原件.** 验证者按方案从产品对外入口操作, 不因现场实现与方案不符而自行降低要求或改走内部接口. 入口缺失或观察不到结果时, 受影响项记未验证并报告权威输入或操作缺口. 按 [逐项核对规则](reference/SCENARIO-CHECK.md) 判定结果, 再按 [证据规则](reference/EVIDENCE.md) 核对材料类型, 适用性和原件. 明确实现问题, 尚缺产品规则, 权限或环境缺口分开记录.
++4. **核对执行结果与原件.** 验证者按方案从产品对外入口验证行为, 并按已定方法核对审计项; 不因现场实现与方案不符而自行降低要求或改走内部接口. 因入口缺失或操作条件不满足而无法观察结果时, 受影响项记未验证并报告权威输入或操作缺口. 按 [逐项核对规则](reference/SCENARIO-CHECK.md) 判定结果, 再按 [证据规则](reference/EVIDENCE.md) 核对材料类型, 适用性和原件. 明确实现问题, 尚缺产品规则, 权限或环境缺口分开记录.
+@@ -68 +79 @@ disable-model-invocation: true
+-目标项目只读. 不改产品代码, 配置, 测试或项目级配方; 不提交, 不推送, 不开 PR, 不合并. 执行验证需要超出已批准范围的写入时停止并请求批准. 需要改产品标准, 正式用例或对外接口时, 交回既有决策与规格流程.
++执行与复验不修改目标项目, 方案需要变更时先回设计方式. 不改产品代码, 配置, 测试或项目级配方; 不提交, 不推送, 不开 PR, 不合并. 执行验证需要超出已批准范围的写入时停止并请求批准. 需要改产品标准, 正式用例或对外接口时, 交回既有决策与规格流程.

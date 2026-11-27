@@ -1,0 +1,6 @@
+1bc15f612c10aa6e68e33587a01cd2de1ede2fe4 doc: milestone-07 集成与执行记录
+1dfc38ae9187e60063fec785cbb8a0e05692c948 merge: issue/03
+f9bfe71eee6b6bb9dbb0061a9de4de9ddc5cab1c merge: issue/02
+9eedb3a56573603761967f3d1644f030a6936e85 merge: issue/01
+1e64e6c1c699f68d1655716f357c5970e2c996ca docs: ISSUE-01: 记录最终提交与绑定复跑
+32295259f09e6c28018ff89f0accc3c16d48a87a docs: ISSUE-01: 填写交付证据与验收标准

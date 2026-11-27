@@ -1,0 +1,8 @@
+# 既有检查: check_skill.py
+2026-11-27T05:05:08+00:00
+workflow/to-spec/SKILL.md: OK
+exit=0
+workflow/verify-change/SKILL.md: OK
+exit=0
+workflow/navigate/SKILL.md: OK
+exit=0

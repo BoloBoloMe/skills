@@ -1,0 +1,21 @@
+# check1 原件与候选提交 b260081 的对应
+86676e53652f3c1e1fdf3af1ef46c75d8f35c4eb47b37c0a55715e38c7f94f4c  docs/changes/to-spec-grilling-and-chinese-ids/evidence/m07-1bc15f612c10aa6e68e33587a01cd2de1ede2fe4/issue-02/check1/originals/SKILL.md
+d901c5aa5fd9ae57899c6548741484e2574b88565e75d95b2468347407ed7662  docs/changes/to-spec-grilling-and-chinese-ids/evidence/m07-1bc15f612c10aa6e68e33587a01cd2de1ede2fe4/issue-02/check1/originals/REVERIFY.md
+# git show b260081:
+86676e53652f3c1e1fdf3af1ef46c75d8f35c4eb47b37c0a55715e38c7f94f4c  -
+d901c5aa5fd9ae57899c6548741484e2574b88565e75d95b2468347407ed7662  -
+# candidate.sha256:
+86676e53652f3c1e1fdf3af1ef46c75d8f35c4eb47b37c0a55715e38c7f94f4c  workflow/verify-change/SKILL.md
+d901c5aa5fd9ae57899c6548741484e2574b88565e75d95b2468347407ed7662  workflow/verify-change/REVERIFY.md
+# 场景与预期计数:
+C_headings=21
+expectation_rows=43
+# 绑定信息:
+34ae05961d5d319b73849a7fd94d7963613eb918
+2026-11-27T04:37:11Z
+2026-11-27T04:38:52Z
+# git 状态原件字节数: 0 0
+# 格式检查:
+uv run python general/writing-for-llm/check_skill.py workflow/verify-change/SKILL.md
+workflow/verify-change/SKILL.md: OK
+exit=0

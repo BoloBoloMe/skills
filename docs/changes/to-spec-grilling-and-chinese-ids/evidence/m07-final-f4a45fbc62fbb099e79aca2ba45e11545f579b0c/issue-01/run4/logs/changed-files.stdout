@@ -1,0 +1,7 @@
+M	workflow/to-spec/GHERKIN.md
+M	workflow/to-spec/SKILL.md
+M	workflow/to-spec/TEMPLATES.md
+M	workflow/to-spec/ac-draft.py
+M	workflow/to-spec/check-ac.py
+M	workflow/to-spec/tests/test_ac_draft.py
+M	workflow/to-spec/tests/test_ac_reading.py

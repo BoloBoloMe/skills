@@ -1,0 +1,160 @@
+diff --git a/docs/changes/to-spec-grilling-and-chinese-ids/issues/ISSUE-04-tospec-rework-h1h4r4.md b/docs/changes/to-spec-grilling-and-chinese-ids/issues/ISSUE-04-tospec-rework-h1h4r4.md
+index 2dad6c2..14a73f4 100644
+--- a/docs/changes/to-spec-grilling-and-chinese-ids/issues/ISSUE-04-tospec-rework-h1h4r4.md
++++ b/docs/changes/to-spec-grilling-and-chinese-ids/issues/ISSUE-04-tospec-rework-h1h4r4.md
+@@ -2,7 +2,7 @@
+ - ../EXECUTION.md (返工轮; 评审发现 H1/H4/R4, 报告 /home/bolo/evidence/to-spec-grilling-and-chinese-ids/integration/review1/STANDARDS.md 与 docs/changes/to-spec-grilling-and-chinese-ids/IMPACT-REVIEW.md)
+ 
+ ## 执行
+-- [ ] 已完成
++- [x] 已完成
+ 
+ ## 要交付什么
+ (a) 恢复 workflow/to-spec/SKILL.md 五个编号步骤的完成标准行: 对照 general/writing-for-llm/SKILL.md 的步骤约定, 每个编号步骤以一句完成标准结尾, 内容与该步骤实际要求一致; (b) check-ac.py 报错文案中的 vN 表述与固定 v1 契约统一 (marker 固定 v1, 只统一文案不改行为); (c) 新增坏输入保护自动化回归: promote 坏格式/坏编号输入时非零退出且已有隔离正式稿字节不变, 用真实公开 CLI 与真实隔离文件, 不 mock 内部协作者 (承接 EXECUTION.md 验证策略用例22 的自动化部分; 并发窗口保持一次性真实进程证据, 不强行自动化).
+@@ -17,6 +17,17 @@
+ - 变更类型: 行为变更. uv run --with gherkin-official pytest workflow/to-spec/tests 全过; uv run python general/writing-for-llm/check_skill.py workflow/to-spec/SKILL.md 通过; 新增测试从公开 CLI 实跑留证 (输入/输出/退出码), 证据写 /home/bolo/evidence/to-spec-grilling-and-chinese-ids/issue-04/run1/.
+ 
+ ## 验收标准
+-- [ ] 五个编号步骤完成标准行齐备且语义与步骤一致.
+-- [ ] v1 文案统一, 与 PRODUCT/TECHNICAL 固定 v1 要求一致.
+-- [ ] 新增坏输入回归测试真实 CLI 不 mock, 通过且既有 39+39 基线不回退.
+\ No newline at end of file
++- [x] 五个编号步骤完成标准行齐备且语义与步骤一致. (`SKILL.md:25,37,55,71,96`; 五句各自的可核对观察对象见证据 `issue-04/run1/INDEX.md` 第 2 节)
++- [x] v1 文案统一, 与 PRODUCT/TECHNICAL 固定 v1 要求一致. (`check-ac.py` docstring 校验项0与标记位置报错改用 `CONFIRMATION_MARKER`; `MARKER_RE` 与接受范围未改, 基线/目标同输入退出码逐例一致: `issue-04/run1/logs/marker-*`)
++- [x] 新增坏输入回归测试真实 CLI 不 mock, 通过且既有 39+39 基线不回退. (新测试 `test_promote_rejects_bad_format_and_bad_numbering_inputs_keeping_output`, 11 例; 全量 `pytest workflow/to-spec/tests` 40 passed + 50 subtests, exit 0; 基点基线 39 passed + 39 subtests)
++
++## 填写结果 (2026-11-27)
++
++- 提交: `bbc038d` `feat: ISSUE-04: 补回 to-spec 五步完成标准, 统一固定 v1 文案, 新增坏输入转正回归` (代码/条文/测试); 本文件所在 docs 提交只补执行结果, 最终顶端 SHA 见证据 `issue-04/run1/logs/final-commit.txt`. 按派工不推送, 不合并.
++- 改动文件: `workflow/to-spec/SKILL.md` (五步完成标准), `workflow/to-spec/check-ac.py` (固定 v1 文案, 行为不变), `workflow/to-spec/tests/test_ac_draft.py` (新增坏输入回归), 本工单文件.
++- (a): 五步各补一句 `完成标准`, 内容从该步现行要求提炼 (闭环确认与入账 / 反方收敛与三份原件就位 / 退出码与整组失败处理 / 三项检查与发现分流 / 预览 JSON 与挂载范围), 未复用被删旧文. `check_skill.py` OK/0.
++- (b): 只统一文案; `MARKER_RE` 仍按 `v数字` 匹配以兼容旧文件, 该兼容事实在 docstring 明写; 缺标记/标记位置/v1/v2 四种输入基线目标退出码一致.
++- (c): 11 个坏格式/坏编号用例逐个经真实 `ac-draft.py promote` 进程运行, 断言非零退出, 既有正式稿字节不变, 报错命中规则名, 输出目录无残留临时文件; 并发三窗口按工单保持 issue-01 run5 的一次性进程证据, 未自动化.
++- 证据: `/home/bolo/evidence/to-spec-grilling-and-chinese-ids/issue-04/run1/` (`INDEX.md`, `manifest.sha256`, `probe04.json`, `logs/`, `files/`, `baseline/`, `change.patch`).
++- 未验证: 全量 `uv run pytest` (容器无 podman), 交父级集成检查.
++
+diff --git a/workflow/to-spec/SKILL.md b/workflow/to-spec/SKILL.md
+index 7c47dbe..4458bfe 100644
+--- a/workflow/to-spec/SKILL.md
++++ b/workflow/to-spec/SKILL.md
+@@ -22,6 +22,8 @@ disable-model-invocation: true
+ - **入账.** 调用 `decision-ledger`, 没有账本时按其模板建立 `DECISIONS.md`. 已确认判定和依据事实在闭环后或换会话前入账; 决策引用所依赖的事实号, 事实条目标明"随决策N确认". 无决策引用的纯背景事实不入账. 判定的持久记录只用现有决策/事实格式, 不增盘问专用文件/章节/格式, 免问不留痕. 领域术语或 ADR 需要维护时另按 `domain-modeling` 既有规则处理.
+ - **闭环.** 向我展示两份模板每一节的已问/未碰状态, 未碰节附理由, 不要求逐节另附已定结论. 清单呈现和 `grilling` 盲区扫描完成, 所有待裁决项关闭后, 才问我是否明确结束. 沉默, 部分认可或要求继续都不算, 不得开始写稿. 明确结束即同时确认两份规格所需内容, 不要求我读预写稿, 成文后的 Gherkin 或逐版采纳.
+ 
++完成标准: 两份模板每节的已问/未碰状态及理由, 盲区扫描结果和全部待裁决项都已呈现并关闭, 我在 chat 明确结束, 决定与依据事实已入账; 仍在续问或有待裁决项时停在盘问, 不写稿.
++
+ ## 2. 写前反方与主会话落笔
+ 
+ 闭环且决策/事实入账后, 委派未参与盘问或落盘的独立会话调用 `opposing-viewpoint` 攻击账本决策. 给原始需求出处, 账本和必要代码入口. 主会话逐项核实, 驳回给依据; 新增或改变决策由我裁决并更新账本. 无未收敛发现后才由主会话先写产品, 后写技术. 组织措辞与前提可以, 不能构造未经确认的判定; 落笔发现缺依据时先补问该分支并入账再写. 审计式断言只写在产品业务规则节, 末尾标 `(审计)`, 不进 Gherkin. 把证据材料路径写进账本事实的来源字段, 决策引用事实号, 产品审计条目不携带证据路径.
+@@ -32,6 +34,8 @@ disable-model-invocation: true
+ - 独立验收草稿放 `review` 内, 只含完整 Gherkin 代码块及首尾空白, 不带节名或确认标记. 草稿名含专用目录名, 避免展示服务的同名遮蔽.
+ - 技术草稿放 `dir` 内, 按 Technical 模板写, 不把不适用的条件节留在稿内.
+ 
++完成标准: 写前反方的发现已逐项核实收敛, 三份临时原件按上述位置与内容约束就位; 反方留有未决发现或落笔处缺依据时停在该处, 补问入账后才继续, 不进入机检.
++
+ ## 3. 机检与机械落正式
+ 
+ 用当前盘问范围和依据核实 chat 的明确闭环确认, 包括后来有变动的分支是否已获答复并入账. 没有可核实的依据就停在缺口, 不凭文件标记或预览放行, 不另建确认状态文件. 草稿机检过后转正产品, 复制技术稿, 检查字节一致, 再机检两份正式稿:
+@@ -48,6 +52,8 @@ uv run <skill 目录>/check-tech.py <产物根目录>/TECHNICAL.md
+ 
+ 按顺序执行, 转正须退出 0 且 JSON `success` 为 true, 其余命令须退出 0. 转正脚本把验收原文字节嵌入临时产品副本, 在代码块前加固定 `<!-- confirmed-flow: v1 -->`, 正式机检通过才原子替换产品文件. 标记是流程格式, 不随修文升版, 不证明我看过文件. 转正发现本次输入或正式目标变化时停止替换, 保留现场, 核对当前输入与确认依据后处理. 技术稿机械复制, 不由模型重写. 两份正式稿不是同时替换的事务: 任一生成或检查失败, 会话及已有调用方状态记整组未完成, 保留现场, 补齐失败步骤并复查两份后才交付. 不向下游宣称规格齐备.
+ 
++完成标准: chat 的闭环确认已核实到本次范围, 转正退出 0 且 JSON `success` 为 true, 技术稿 `cmp` 与两份正式稿机检均退出 0; 任一命令失败或发现输入/正式目标变化时按整组未完成保留现场处理.
++
+ ## 4. 写后独立检查与修正
+ 
+ 正式机检通过后, 另起未参与盘问/落笔的独立会话, 与写前反方分用会话. 只查不改两份正式稿, 不在草稿和正式稿上重复整份独立检查. 给检查会话账本, 必要答复出处, GHERKIN 纪律和下节达标标准. 原始答复只传与任务有关的必要材料, 按[共用脱敏要求](../verification-contract/SAFETY.md#脱敏)保留足够上下文; 脱敏后不足以判断则报告缺口, 交我处理, 不猜.
+@@ -62,6 +68,8 @@ uv run <skill 目录>/check-tech.py <产物根目录>/TECHNICAL.md
+ 
+ 每次修订仍适用机检和三项独立检查. 检查会话说明影响范围, 主会话复核; 独立复查受影响内容及引用, 沿用未变且未受影响部分的结论. 有新证据或不能确认旧结论仍适用时扩大, 必要时全量. 确保最终整份规格均有检查覆盖.
+ 
++完成标准: 对账, 反向覆盖, 达标检查三项都有结论, 每个发现已分流为驳回(记理由), 修文(重走机检与机械落正式)或补问入账, 最终整份规格都在检查覆盖内; 尚有未关闭的发现时不进入预览.
++
+ ## 达标标准与检查边界
+ 
+ 达标指足以支撑下游验证设计和执行拆分. 适用于主会话写稿自查和正式独立检查:
+@@ -85,6 +93,8 @@ uv run <skill 目录>/ac-draft.py preview <产品暂存稿> <验收草稿>
+ 
+ 汇报两份正式规格路径, 机检结果与独立检查结论, 不复述全文. 只有两份均生成并通过检查才交付. 反方与检查不能替我拍板; 盘问结束和检查通过均不是成品验收, `navigate` 的终点验收仍由我按标准与证据逐项决定.
+ 
++完成标准: 预览 JSON `success` 为 true 且只挂本次 `review` 目录, 两份正式规格路径, 机检结果与独立检查结论已汇报; 预览或展示失败时按失败出口只交文件, 不声称整组已交付或成品已验收.
++
+ ## 产物模板
+ 
+ 见 [TEMPLATES.md](TEMPLATES.md). 两份规格的固定节名和节序逐字遵循. 技术模板标 `(条件保留)` 的节不适用时整节省略, 保留时标题去掉标注.
+diff --git a/workflow/to-spec/check-ac.py b/workflow/to-spec/check-ac.py
+index 9cfe9c7..2645f73 100644
+--- a/workflow/to-spec/check-ac.py
++++ b/workflow/to-spec/check-ac.py
+@@ -8,8 +8,10 @@
+ 草稿模式以 PRODUCT 暂存稿提供目标/业务规则, 只豁免确认标记, 不修改文件.
+ 
+ 确认标记 + 六项格式校验, 规则与同目录 SKILL.md / GHERKIN.md 对齐:
+-0. 确认标记: `验收标准` 节必须含 `<!-- confirmed-flow: vN -->` (由 to-spec
+-   转正流程写入固定 v1), 正式模式缺失判为输入错误; 标记本身不证明实际确认.
++0. 确认标记: `验收标准` 节必须在 Gherkin 块前含固定标记
++   `<!-- confirmed-flow: v1 -->` (由 to-spec 转正流程写入, 不随修文升版),
++   正式模式缺失判为输入错误; 机检按 `v数字` 匹配以兼容旧文件, 现行只写 v1;
++   标记本身不证明实际确认.
+ 1. 解析: gherkin-official parser 必须成功解析 gherkin 块.
+ 2. 标签封闭集与 @AC 唯一性 (D003/D007): 只允许 @AC-NNN / @G-NNN /
+    @BR-NNN / @normal / @failure / @edge; 每场景 (含场景大纲) 恰好一个 @AC-NNN.
+@@ -172,7 +174,7 @@ def extract_gherkin_block(markdown: str, *, require_marker: bool = True) -> tupl
+         )
+     if marker is not None and marker.start() > m.start():
+         raise InputError(
+-            "确认流程标记 `<!-- confirmed-flow: vN -->` 必须位于 gherkin 代码块之前"
++            f"确认流程标记 `{CONFIRMATION_MARKER}` 必须位于 gherkin 代码块之前"
+         )
+     if FENCE_RE.search(section, m.end()):
+         raise InputError("`## 验收标准` 节应恰好一个 ```gherkin 块, 实际多于一个")
+diff --git a/workflow/to-spec/tests/test_ac_draft.py b/workflow/to-spec/tests/test_ac_draft.py
+index a9185a3..c35b9fe 100644
+--- a/workflow/to-spec/tests/test_ac_draft.py
++++ b/workflow/to-spec/tests/test_ac_draft.py
+@@ -280,6 +280,45 @@ class AcDraftTests(unittest.TestCase):
+         self.assertIn("不存在", result["error"])
+         self.assertEqual(old, self.output.read_bytes())
+ 
++    def test_promote_rejects_bad_format_and_bad_numbering_inputs_keeping_output(self):
++        """坏格式/坏编号输入: 非零退出, 已转正的正式稿字节不变, 不留临时文件."""
++        first = self.promote()
++        self.assertEqual(0, first.returncode, first.stdout + first.stderr)
++        confirmed = self.output.read_bytes()
++        self.assertEqual(0, self.cli(CHECK, self.output).returncode)
++        base, draft = BASE.encode("utf-8"), DRAFT.encode("utf-8")
++        duplicate_goal = base.replace(
++            "- 目标1: 读者能看到已确认的内容.".encode("utf-8"),
++            "- 目标1: 读者能看到已确认的内容.\n- 目标1: 另一条目标.".encode("utf-8"),
++        )
++        cases = {
++            "变体关键字": (base, draft.replace("假定".encode(), "假设".encode()), 1, "白名单"),
++            "同义关键字": (base, draft.replace("那么".encode(), "并且".encode()), 1, "白名单"),
++            "缺功能行": (base, draft.replace("功能: 测试变更\n".encode(), b""), 1, "解析"),
++            "功能级标签": (base, draft.replace("功能:".encode(), "@G-001\n功能:".encode()), 1, "tag-position"),
++            "草稿带标记": (base, MARKER.encode() + b"\n" + draft, 2, "草稿不携带确认标记"),
++            "围栏外正文": (base, draft + "## 决策引用\n改写正文\n".encode(), 2, "草稿只能包含"),
++            "未知目标": (base, draft.replace(b"@G-001", b"@G-999"), 1, "不存在"),
++            "未知规则": (base, draft.replace(b"@BR-001", b"@BR-999"), 1, "不存在"),
++            "审计规则": (base, draft.replace(b"@BR-001", b"@BR-002"), 1, "审计"),
++            "场景双AC": (base, draft.replace(b"@AC-001", b"@AC-001 @AC-002"), 1, "@AC"),
++            "重复目标": (duplicate_goal, draft, 2, "重复"),
++        }
++        for label, (new_base, new_draft, code, error) in cases.items():
++            with self.subTest(label=label):
++                self.base.write_bytes(new_base)
++                self.draft.write_bytes(new_draft)
++                run = self.promote()
++                self.assertNotEqual(0, run.returncode)
++                self.assertEqual(code, run.returncode, run.stdout + run.stderr)
++                result = json.loads(run.stdout)
++                self.assertFalse(result["success"])
++                self.assertIn(error, result["error"])
++                self.assertEqual(confirmed, self.output.read_bytes())
++                self.assertEqual([self.output], list(self.output.parent.iterdir()))
++                self.base.write_bytes(base)
++                self.draft.write_bytes(draft)
++
+     def test_invalid_utf8_and_missing_file_are_input_errors(self):
+         self.draft.write_bytes(b"\xff")
+         self.assertEqual(2, self.check().returncode)

@@ -1,0 +1,5 @@
+docs/changes/to-spec-grilling-and-chinese-ids/issues/ISSUE-01-tospec-flow-and-cli.md:62: U+2014 x1: - `fd26618` `feat: ISSUE-01: 实施盘问确认与机械转正` — 7 文件 (下列全部).
+docs/changes/to-spec-grilling-and-chinese-ids/issues/ISSUE-01-tospec-flow-and-cli.md:63: U+2014 x1: - `8ce78be` `feat: ISSUE-01: 补回 GHERKIN 机检项的固定标记原文` — GHERKIN.md 1 行.
+docs/changes/to-spec-grilling-and-chinese-ids/issues/ISSUE-01-tospec-flow-and-cli.md:64: U+2014 x1: - `3229525` `docs: ISSUE-01: 填写交付证据与验收标准` — 只改本工单文件, 不改产品代码.
+docs/changes/to-spec-grilling-and-chinese-ids/issues/ISSUE-02-verify-change-method-flow.md:64: U+3001 x3: - 非作者核对已委派独立检查会话 (由调度方另派并回填). 本轮未取得非作者报告: INDEX 逐场景只提供来源和候选定位, 不作通过判断. 待查验收31-40全部场景, 验收41中 verify-change/REVERIFY 部分, 规则10及16-22, 技术与安全约束, 以及计划全表追溯及改动影响. 最终 73 行验证、整合复核及用户验收不属于本轮. 未试跑需求、未改测试、未开启 milestone-08, 未代用户裁决或验收.
+TOTAL 6

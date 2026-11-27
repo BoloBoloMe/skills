@@ -1,0 +1,22 @@
+usage: check-ac.py [-h] [--draft DRAFT] product
+
+PRODUCT.md 验收标准机检脚本 (D011/D012). 用法: uv run check-ac.py <PRODUCT.md 路径>
+[--draft <验收用例草稿.md>] 草稿模式以 PRODUCT 暂存稿提供目标/业务规则, 只豁免确认标记, 不修改文件. 确认标记 +
+六项格式校验, 规则与同目录 SKILL.md / GHERKIN.md 对齐: 0. 确认标记: `验收标准` 节必须含 `<!-- confirmed-
+flow: vN -->` (由 to-spec 验收标准确认流程写入), 正式模式缺失判为输入错误; 标记本身不证明实际确认. 1. 解析:
+gherkin-official parser 必须成功解析 gherkin 块. 2. 标签封闭集与 @AC 唯一性 (D003/D007): 只允许
+@AC-NNN / @G-NNN / @BR-NNN / @normal / @failure / @edge; 每场景 (含场景大纲) 恰好一个 @AC-
+NNN. 3. 覆盖完整性 (D003): 每个出现过的 @AC-NNN 至少挂在一个场景上; 每场景至少一个 覆盖标签 (@G-NNN / @BR-
+NNN). 4. 关键字子集白名单 (D005/D008): 禁 规则: (Rule); 禁官方同义变体 (假如/假设/剧本/剧本大纲/并且/同时),
+节点与步骤关键字只允许唯一写法 (背景/场景/场景大纲, 假定/当/那么/而且/但是). 注意: parser 对非关键字行不报错而是吸收为
+description (实测行为), 因此 "描述非空" 视为存在非关键字行 (如 给定/则/英文关键字), 判为违规. 5. 标签位置:
+标签只允许出现在场景/场景大纲行; 功能级/例子块级标签会 向下继承, 破坏每场景恰好一个 @AC 的语义, 一律判为违规. 6. 编号对账:
+目标/业务规则编号不得重复; 场景引用的 @G-NNN/@BR-NNN 必须在 PRODUCT.md 对应节真实存在; @BR 不得指向标 (审计)
+的审计式断言. 正文条目写作 目标1/规则1 (汉字 + 无前导零数字), 标签写作 @G-001/@BR-001, 两边去掉前导零后按数字对账.
+
+positional arguments:
+  product        正式 PRODUCT 或提供目标/业务规则的暂存稿
+
+options:
+  -h, --help     show this help message and exit
+  --draft DRAFT  验收正文草稿, 仅豁免确认标记

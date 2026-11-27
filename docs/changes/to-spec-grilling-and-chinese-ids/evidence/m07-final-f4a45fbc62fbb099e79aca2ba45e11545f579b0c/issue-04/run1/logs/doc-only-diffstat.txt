@@ -1,0 +1,2 @@
+ .../issues/ISSUE-04-tospec-rework-h1h4r4.md           | 19 +++++++++++++++----
+ 1 file changed, 15 insertions(+), 4 deletions(-)

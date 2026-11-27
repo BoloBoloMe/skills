@@ -1,0 +1,140 @@
+diff --git a/docs/changes/to-spec-grilling-and-chinese-ids/EXECUTION.md b/docs/changes/to-spec-grilling-and-chinese-ids/EXECUTION.md
+index 4756b72..098d375 100644
+--- a/docs/changes/to-spec-grilling-and-chinese-ids/EXECUTION.md
++++ b/docs/changes/to-spec-grilling-and-chinese-ids/EXECUTION.md
+@@ -15,6 +15,7 @@
+ ## 执行记录
+ - milestone-07 评审门槛判定: 旧行为影响方向实做. 依据: 三份 issue 验证契约均声明行为变更, 实际差异触碰公开 CLI 契约 (ac-draft.py 移除 --review 与 promote 契约改动), skill 流程条文及跨文件调用说明 (navigate/ACCEPTANCE-GUIDE/README), 属共享接口与跨模块路径. 首轮无 IMPACT-REVIEW.md, 由未参与实现的独立审核者新建. 评审起点 9e8dd1dfe92b3b446c88c2cb8fce33cb0c67a77a, 集成提交 1bc15f612c10aa6e68e33587a01cd2de1ede2fe4 (证据归档 7dea2143e00dcda8c9385a5881f36ba017648088).
+ - milestone-07 派工前登记: 仓库外专用证据根绝对路径 `/home/bolo/evidence/to-spec-grilling-and-chinese-ids` (决策41); 实施前安装目录只读摘要已取得并留存于该证据根. 实施按轮追加记录.
++- milestone-07 实施前安装目录摘要补记 (m07-rw-06): 取得时间 `2026-11-27 04:15:45 UTC`, 命令 `find ~/.agents/skills -type f | sort | xargs sha256sum`, 调度方取得, 231 文件 (清单 231 行), 存于仓库外证据根 `pre-impl-snapshot/skills-manifest.sha256` (归档副本 `evidence/m07-1bc15f612c10aa6e68e33587a01cd2de1ede2fe4/pre-impl-snapshot/skills-manifest.sha256`). 该时点无单独时间戳文件, 以仓库外原件 mtime 与首条产品提交 (`70ae157` 04:30:38Z, `b260081` 04:31:55Z) 的先后作旁证, 该时段未独立观察.
+ - milestone-07 集成 (合并提交 `9eedb3a`, `f9bfe71`, `1dfc38a`): 三切片按编号顺序 `--no-ff` 合并到 `improve`, 无冲突, 文件不重叠. 切片顶端: issue/01 `1e64e6c` (代码 `fd26618`, `8ce78be`; 工单 `3229525`, `1e64e6c`), issue/02 `b260081`, `34ae059`, issue/03 `70ae157`.
+ - 切片检查结果简列: ISSUE-01 run5 绑定最终提交复跑 39 passed + 39 subtests (exit 0), `check_skill.py workflow/to-spec/SKILL.md` OK/0, 42 场景条文对照无遗留缺口; ISSUE-02 非作者核对 21 场景 43 条预期无已证实缺陷 (4 条非阻塞疑点), `check_skill.py workflow/verify-change/SKILL.md` OK/0; ISSUE-03 局部核对 (验收25 两场景, 验收41 本 issue 部分, 规则11) 通过, `check_skill.py workflow/navigate/SKILL.md` OK/0.
+ - 全量 `uv run pytest` 未验证: 本容器未装 Podman (`podman: command not found`), 完成定义要求的隔离环境不具备, 交调用方处理.
+diff --git a/docs/changes/to-spec-grilling-and-chinese-ids/issues/ISSUE-01-tospec-flow-and-cli.md b/docs/changes/to-spec-grilling-and-chinese-ids/issues/ISSUE-01-tospec-flow-and-cli.md
+index e687bd1..81bbde2 100644
+--- a/docs/changes/to-spec-grilling-and-chinese-ids/issues/ISSUE-01-tospec-flow-and-cli.md
++++ b/docs/changes/to-spec-grilling-and-chinese-ids/issues/ISSUE-01-tospec-flow-and-cli.md
+@@ -59,9 +59,9 @@
+ ### 填写结果 (2026-11-27)
+ 
+ **提交**. 分支 `issue/01`, 评审起点 `775b5a2`.
+-- `fd26618` `feat: ISSUE-01: 实施盘问确认与机械转正` — 7 文件 (下列全部).
+-- `8ce78be` `feat: ISSUE-01: 补回 GHERKIN 机检项的固定标记原文` — GHERKIN.md 1 行.
+-- `3229525` `docs: ISSUE-01: 填写交付证据与验收标准` — 只改本工单文件, 不改产品代码.
++- `fd26618` `feat: ISSUE-01: 实施盘问确认与机械转正`: 7 文件 (下列全部).
++- `8ce78be` `feat: ISSUE-01: 补回 GHERKIN 机检项的固定标记原文`: GHERKIN.md 1 行.
++- `3229525` `docs: ISSUE-01: 填写交付证据与验收标准`: 只改本工单文件, 不改产品代码.
+ - 证据与结论绑定: 代码状态 `8ce78be`; 测试与格式检查在 `3229525` 上重跑 (`run5/logs/final-pytest.*` 39 passed + 39 subtests exit 0, `final-check-skill.*` OK exit 0), 因此结论对 `8ce78be` 与 `3229525` 均成立 (`run5/final-commit.txt` 记录 `git diff 8ce78be 3229525` 仅本工单). 本行之后若还有纯文档提交, 代码与证据结论同样不变; 分支顶端 SHA 见该证据文件. 按派工不推送, 不合并, 不 rebase.
+ 
+ **改动路径**.
+@@ -69,12 +69,12 @@
+ 
+ **证据根与索引**. `/home/bolo/evidence/to-spec-grilling-and-chinese-ids/issue-01/`; 总索引 `INDEX.md`; 摘要清单 `manifest.sha256` (1109 行). 轮次: run1 (首次摸底, 发现 AC-024 例7 报错被前置检查抢先), run2 (修复后 CLI 矩阵), run3 (并发取证失败: 解释器路径取错, 子进程 125), run4 (fd26618 全项), **run5 (8ce78be 最终绑定轮, 全部结论依据)**. 旧轮全部保留.
+ 
+-**候选条文逐条映射**. `run5/text-mapping.md`: 产品表 42 行 (AC-001..AC-024, AC-026..AC-030 每个 normal/failure/edge 各一行, 含 AC-024 七例) 逐行给 SKILL.md 行号与原句要点, 结论全部通过; 另含规则 1-15 承接表, 与 grilling/handoff/opposing-viewpoint/decision-ledger/domain-modeling/deliberate 的组合关系核对表, milestone-01 编号复用核对. 缺口与处理见该文件末节: 实施中发现 1 处真缺陷 (草稿标记检查被"只能含一个代码块"抢先, 已前置, run2 起 AC-024 例7 得到预期报错), 1 处随流程必须改的预览文案 (原"待确认/请在 chat 确认/审阅版本"会成为确认入口), 无遗留语义缺口.
++**候选条文逐条映射**. `run5/text-mapping.md`: 产品表 42 行 (AC-001..AC-024, AC-026..AC-030 每个 normal/failure/edge 各一行, 含 AC-024 七例) 逐行给 SKILL.md 行号与原句要点, 结论全部通过. 表内证据列的 `run4` 标记指该原件首次生成轮, 已核实与 run5 的对应关系: run5 与 run4 同名日志 252 个, 其中 181 个逐字节一致; 71 个仅差运行路径, 临时目录, 时间戳或预览页文件名 (均在 `run5/logs/` 下: 62 个 `.cmd`, 4 个 `trace-*.events.jsonl`, 5 个 stdout: pytest, scope-search, target-preview, target-workspace, trace-atomic), 全部退出码与错误输出 (`run5/logs/*.exit`, `run5/logs/*.stderr`) 以及 `run5/logs/target-ac-*`, `run5/logs/base-tech-*`, `run5/logs/target-tech-*` 结论性输出逐字节一致; 两轮预览页各为一次真实渲染, 文件名中的 uuid 不同. 表头对象提交 `fd26618` 与 run5 绑定提交 `8ce78be` 只差 GHERKIN.md 1 行, SKILL.md 行号不变. 因此表中 run4 引用与 run5 结论依据指向同一批结论, 对照原件 `/home/bolo/evidence/to-spec-grilling-and-chinese-ids/issue-06/run1/logs/run4-run5-compare.{cmd,stdout,exit}`. 另含规则 1-15 承接表, 与 grilling/handoff/opposing-viewpoint/decision-ledger/domain-modeling/deliberate 的组合关系核对表, milestone-01 编号复用核对. 缺口与处理见该文件末节: 实施中发现 1 处真缺陷 (草稿标记检查被"只能含一个代码块"抢先, 已前置, run2 起 AC-024 例7 得到预期报错), 1 处随流程必须改的预览文案 (原"待确认/请在 chat 确认/审阅版本"会成为确认入口), 无遗留语义缺口.
+ 
+ **合成文件清单** (`run5/files/`).
+ - `ac/`: `valid`, `missing-goal`, `audit-rule`, `duplicate-goal`, `keyword`, `multiple-ac`, `free-tag`, `marker` 八个用例目录, 各含 `PRODUCT.base.md` 与 `review/acceptance.md`; `ac/valid/review/2026-11-27-acceptance-*.html` 与实际使用的 `page-nodes.json`.
+ - `promote/`: `removed-option`, `bad-input` 各含 `before.md` (改动前后原件) 与 `PRODUCT.md`.
+-- `tech/`: `required.md`, `conditional.md`, 四个 `missing-N.md`, 七个 `typo-N.md`, `order.md`, 复制结果 `TECHNICAL.md`.
++- `tech/`: `required.md`, `conditional.md`, `missing-1.md` 至 `missing-4.md`, `typo-1.md` 至 `typo-7.md`, `order.md`, 复制结果 `TECHNICAL.md`.
+ - `trace/`: `atomic`, `base`, `draft`, `output` 各含 `PRODUCT.base.md`, `acceptance.md`, `original-output.md`, `PRODUCT.md`; 三例并发改动另存 `input-before.bin`, `external-intended.bin`, `external-after.bin`.
+ - 全部为合成内容 ("合成清单/合成记录"), 不含真实需求, 生产数据或用户数据.
+ 
+@@ -84,7 +84,7 @@
+ - preview: 0, JSON `success=true` 且含 `preview`/`draft`, 无 `review_id`; 页面 2 张展开卡片, 卡片步骤与草稿原文逐字一致, 有原文件链接, 无确认控件/`on*` 属性, 正文含"页面仅供选看, 不用于确认."; 两输入字节未变.
+ - promote: 无 `--review` 时 0 成功; 带 `--review` 时 2 (`unrecognized arguments: --review`); 坏输入 1 且原正式稿字节不变.
+ - check-tech: 必备节齐全 0; 条件节全保留 0; 四个必备节逐个缺失 1; 固定节名逐个写错 1; 节序颠倒 1; 与基线 (主仓库 `/home/bolo/Workspace/improve`, 同 775b5a2) 的相同输入 stdout/stderr/exit **逐字节一致** (`base-*` 与 `target-*` 对比在 `probe.py` 内断言, 见 `base-tech-matrix.*`).
+-- 技术稿: `cp` / `cmp` / 正式 check-tech 均 0 (`target-tech-{copy,compare,formal}`).
++- 技术稿: `cp` / `cmp` / 正式 check-tech 均 0 (`run5/logs/target-tech-{copy,compare,formal}.*`).
+ 
+ **原子替换/并发时序原件**. `run5/logs/trace-*.{cmd,events.jsonl,stdout,stderr,exit}` (环境无 strace/gdb/inotifywait, 用脚本自建的 ptrace 单步控制器, 只跟踪本命令创建的子进程, 不改脚本与内部函数; `uname -sm` 与工具清单见 `run5/environment.txt`).
+ - `trace-atomic`: 读入两份输入 → 临时文件 fsync → `rename` 进入 (syscall 82) → 返回 0 → 退出 0, 恰一次 rename; 最终内容断言 = 暂存稿其余节原文 + v1 标记 + 草稿全文; 正式机检 0; 两输入字节未变; 无残留 `.tmp`.
+diff --git a/docs/changes/to-spec-grilling-and-chinese-ids/issues/ISSUE-02-verify-change-method-flow.md b/docs/changes/to-spec-grilling-and-chinese-ids/issues/ISSUE-02-verify-change-method-flow.md
+index faa26d2..2bb4215 100644
+--- a/docs/changes/to-spec-grilling-and-chinese-ids/issues/ISSUE-02-verify-change-method-flow.md
++++ b/docs/changes/to-spec-grilling-and-chinese-ids/issues/ISSUE-02-verify-change-method-flow.md
+@@ -61,7 +61,10 @@
+ - `workflow/verify-change/REVERIFY.md`: 开头与步骤1 (会话规则, 新提交/新证据, 重核及修订分流), 步骤3 (按修复及方案变化的影响复验和核对旧证据).
+ - `uv run python general/writing-for-llm/check_skill.py workflow/verify-change/SKILL.md`: `OK`, 退出码0, stderr 空; 命令与原始输出在 `run2/`. `git diff --check` 退出码0. 格式结果不作语义通过证据.
+ - 作者矛盾自查: 去掉旧的逐版整份采纳, 将执行与 REVERIFY 指回同一修订分流; 不用行数或状态替代来源内容核对; 设计查证不越界读实现, 资源缺失只影响执行结果; 首轮新开会话, 复验服从已确认方案的新开要求, 否则仅恢复仍合格的非作者; 审计可按方案静态核对, 不强制运行. 内部证据链接及 verification-contract/SAFETY/tests, decision-ledger, handoff 边界已自查. 分支未改 navigate/README; 其旧确认用语及 `workflow/navigate/reference/VERIFICATION.md` 第9行的重确认表述留待调用方集成核对, 不声称跨切片一致.
+-- 非作者核对已委派独立检查会话 (由调度方另派并回填). 本轮未取得非作者报告: INDEX 逐场景只提供来源和候选定位, 不作通过判断. 待查验收31-40全部场景, 验收41中 verify-change/REVERIFY 部分, 规则10及16-22, 技术与安全约束, 以及计划全表追溯及改动影响. 最终 73 行验证、整合复核及用户验收不属于本轮. 未试跑需求、未改测试、未开启 milestone-08, 未代用户裁决或验收.
++- 非作者核对 (m07-chk-02, 已归档, 本工单回填): 报告 `CHECKS-ISSUE-02.md` 与 `INDEX.md` 位于归档树 `../evidence/m07-1bc15f612c10aa6e68e33587a01cd2de1ede2fe4/issue-02/check1/` (仓库内路径 `docs/changes/to-spec-grilling-and-chinese-ids/evidence/m07-1bc15f612c10aa6e68e33587a01cd2de1ede2fe4/issue-02/check1/`). 结论: 21 个场景 (验收31-40 全部 normal/failure/edge, 验收41 的 verify-change/REVERIFY 部分) 的 43 条 `那么`/`而且` 预期全部有承接, 无已证实缺陷, 4 条非阻塞疑点, 总体无阻塞. 规则16-22, 技术规格的方案接口/独立检查/版本/输入/错误处理/安全约束, verification-contract 与 SAFETY 边界, 通用账本与 handoff 承接均核对通过; 计划表 70 产品行 + 3 工程行未被删减.
++- 绑定核对 (本轮实跑, 原件 `/home/bolo/evidence/to-spec-grilling-and-chinese-ids/issue-06/run1/logs/issue02-check1-binding.*`): 检查者为非作者会话 `01a21b49-1a7d-731e-97db-8d6ff3fac9f8`, 核对顶端 `34ae059`, 候选 `b260081`, 起止 `2026-11-27T04:37:11Z`/`2026-11-27T04:38:52Z`, 早于集成提交 `1bc15f6` (04:57:27Z); 报告 `originals/SKILL.md` 与 `REVERIFY.md` 的 sha256 前缀 `86676e53`/`d901c5aa` 与 `git show b260081:...` 逐字节一致; `git-status-before.txt` 与 `git-status-after.txt` 均 0 字节; `check_skill` 命令/输出/退出码齐备 (OK, 0).
++- 4 疑点逐项处理 (均非阻塞; 按 ISSUE-06 允许范围不改产品条文): Q1 AC-036 第3条禁令只写在盘问段 S:28 (S: 指候选 `workflow/verify-change/SKILL.md` 行号, 下同), 修订段 S:47 是正向表述; 两段合成后行为无歧义, 登记为可接受, 交父级集成与用户审改. Q2 规则10 的领域语言/ADR 维护由 to-spec 与既有技能承接, verify-change 旧文亦未提, 非本切片缺口. Q3 复验会话默认由"每轮新开"改为"方案要求时照办", 属通用默认放宽; 本变更方案前提3由"照办"满足, 登记为观察, 交父级集成裁决. Q4 "设计方式"无定义句, 属可读性观察, 非规格不符.
++- 未验证 (沿用报告第 10 节): 其他切片 49 产品行与 2 工程行, 候选 skill 实际运行表现, milestone-12/13 用户审改与集成, navigate/README 文字.
+ 
+ ## 风险提示
+ - verify-change 设计输入不要求 PRODUCT.md 和 TECHNICAL.md 必须同时存在. 若条文只支持两份规格, 会错误阻断合法的其他权威输入.
+@@ -72,11 +75,11 @@
+ 同全局; 输入未确认,有冲突,缺少判据或方法依据时停止并报告具体缺口. 不在本 issue 自行选择新的验证方式或补产品标准. 资源缺失但方法已确认可行时写明条件, 相关执行结果仍记未验证.
+ 
+ ## 验收标准
+-- [ ] 验收31-验收40及验收41中 verify-change/REVERIFY 部分的全部 normal/failure/edge 场景均有条文位置和逐项核对证据.
+-- [ ] 规则16-规则22,技术规格中的方案接口,独立检查,版本,输入,错误处理,安全与 handoff 约束均有明确承接.
+-- [ ] 全部73行保留原有覆盖和验证要求, 不以分组盘问,文件状态或方案自身文字减少或自证.
+-- [ ] 方法未知,依据不足,资源暂缺,纯修文和决定变化均按不同既定分支处理.
+-- [ ] 所有本 issue 修改的 skill 格式检查留证; 未完成条件如实列为未验证.
++- [x] 验收31-验收40及验收41中 verify-change/REVERIFY 部分的全部 normal/failure/edge 场景均有条文位置和逐项核对证据. (`../evidence/m07-1bc15f612c10aa6e68e33587a01cd2de1ede2fe4/issue-02/check1/CHECKS-ISSUE-02.md` 第 2 节 C01-C21: 21 场景 43 条预期逐条给候选 S/R 位置与判断, 第 8 节无已证实缺陷)
++- [x] 规则16-规则22,技术规格中的方案接口,独立检查,版本,输入,错误处理,安全与 handoff 约束均有明确承接. (`CHECKS-ISSUE-02.md` 第 3 节 规则16-22 与 TECHNICAL 模块接口/关键流程5/接缝/安全逐项承接表, 第 4 节契约与安全底线边界)
++- [x] 全部73行保留原有覆盖和验证要求, 不以分组盘问,文件状态或方案自身文字减少或自证. (`CHECKS-ISSUE-02.md` 第 5 节: 计划表实计数 70 产品行 + 3 工程行; 候选未改 `VERIFICATION-PLAN.md` (`inputs.sha256` 绑定), 分组盘问未删行; 本切片逐行登记 V:104-124 共 21 行, 其余 49 产品行与 2 工程行的语义承接不在本切片, 报告未判其通过)
++- [x] 方法未知,依据不足,资源暂缺,纯修文和决定变化均按不同既定分支处理. (`CHECKS-ISSUE-02.md` C13-C15 附条件/方法未知/资源未齐; C09-C12 纯修文/决定变化/修订版本)
++- [x] 所有本 issue 修改的 skill 格式检查留证; 未完成条件如实列为未验证. (`CHECKS-ISSUE-02.md` 第 6 节: `workflow/verify-change/SKILL.md: OK`, 退出码 0, 原件 `check_skill.*`; 第 10 节未验证项)
+ 
+ ## 被阻塞于
+ - 无
+diff --git a/docs/changes/to-spec-grilling-and-chinese-ids/issues/ISSUE-03-navigate-readme-alignment.md b/docs/changes/to-spec-grilling-and-chinese-ids/issues/ISSUE-03-navigate-readme-alignment.md
+index 7786b84..527169f 100644
+--- a/docs/changes/to-spec-grilling-and-chinese-ids/issues/ISSUE-03-navigate-readme-alignment.md
++++ b/docs/changes/to-spec-grilling-and-chinese-ids/issues/ISSUE-03-navigate-readme-alignment.md
+@@ -48,6 +48,7 @@
+ - 验收41: `PRODUCT.md:427-431`, `TECHNICAL.md:25-36,84`, `VERIFICATION-PLAN.md:124`, 对照以上三文件的方案定义与完成标准/方案确认/执行与复验/验收边界. 入口1-3逐项位置, 预期和判断见同一 run1 的 `local-check.md`; 局部核对通过, 不声明与 ISSUE-01/02 的旧条文一致.
+ - `uv run python general/writing-for-llm/check_skill.py workflow/navigate/SKILL.md`: OK, 退出码0, 同一 run1 的 `check_skill.log` / `check_skill.exit` 为原件.
+ - 待办交接: 全局交叉核对及 README 完整调用段与相邻说明的非作者复核, 按 `../EXECUTION.md:36,46,75` 在全部切片集成后执行, 结果回链 `../EXECUTION.md#执行记录`. 本 issue 未执行或等待, 不作为本 issue 合并前置. 未进行成品独立验证或用户验收.
++- 记录回填 (m07-rw-06) 核对: `../evidence/m07-1bc15f612c10aa6e68e33587a01cd2de1ede2fe4/issue-03/run1/` 原件齐备 (`INDEX`, `local-check.md`, `candidate.patch`, `check_skill.log`, `check_skill.exit`, `scope.log`, `environment.txt`); `candidate.patch` 与 `git show --format= 70ae157 -- workflow/navigate/SKILL.md workflow/navigate/ACCEPTANCE-GUIDE.md README.md` 逐字节一致 (`cmp` 0); `local-check.md` 6 行覆盖入口1 两场景, 入口2 三行, 入口3 规则11; 固定来源 sha256 与本 `../EXECUTION.md` 一致; 分支起点 `775b5a2` 是评审起点 `9e8dd1d` 的直接后继. 本轮核对原件 `/home/bolo/evidence/to-spec-grilling-and-chinese-ids/issue-06/run1/logs/issue03-run1-binding.*`. 非作者全局交叉核对与 README 复核不在本 issue, 交父级集成记录回链, 本工单不代填结论.
+ 
+ ## 风险提示
+ - navigate 统筹多个阶段. 将方案确认写成产品验收会错误放行流程.
+@@ -57,11 +58,11 @@
+ 同全局; 若发现 navigate/README 与权威输入冲突, 不自行改变规格或路线图, 记录具体段落并交回既有规格/决定流程. 不新增权威输入未要求的强制审改或阶段条件.
+ 
+ ## 验收标准
+-- [ ] 验收25两个场景及验收41中本 issue 覆盖部分均有固定来源和候选条文位置.
+-- [ ] 本 issue 修改的 navigate 和 README 通用语义符合已确认规格, 不含本次执行专属安排或新增普遍强制条件.
+-- [ ] deliberate 的独立四步与其他调用入口保留, 无 to-spec 新流程反向覆盖.
+-- [ ] 本 issue 的局部修改和依据核对留证, 并将全局交叉核对及 README 非作者复核明确交接给 `EXECUTION.md`; 不要求合并前取得全局结果.
+-- [ ] 所有改动 skill 的格式检查留有可复查证据.
++- [x] 验收25两个场景及验收41中本 issue 覆盖部分均有固定来源和候选条文位置. (`../evidence/m07-1bc15f612c10aa6e68e33587a01cd2de1ede2fe4/issue-03/run1/local-check.md` 入口1 两行与入口2 三行, 每行给 `PRODUCT.md`/`TECHNICAL.md`/`VERIFICATION-PLAN.md` 行号与候选位置)
++- [x] 本 issue 修改的 navigate 和 README 通用语义符合已确认规格, 不含本次执行专属安排或新增普遍强制条件. (`local-check.md` 各行判断局部符合, 含入口2 验收边界一行; 固定来源 sha256 见 `scope.log`, 与本 EXECUTION.md 一致)
++- [x] deliberate 的独立四步与其他调用入口保留, 无 to-spec 新流程反向覆盖. (`local-check.md` 入口1 场景2: `workflow/deliberate/SKILL.md:9-18` 四步无差异, `workflow/to-execution/SKILL.md:15` 调用未改, README 保留独立入口; `scope.log` 产品差异仅 3 文件)
++- [x] 本 issue 的局部修改和依据核对留证, 并将全局交叉核对及 README 非作者复核明确交接给 `EXECUTION.md`; 不要求合并前取得全局结果. (`local-check.md` 待交接节, 本工单待办交接条, `EXECUTION.md` 完成定义; 全局结果交父级回链, 本工单不代填)
++- [x] 所有改动 skill 的格式检查留有可复查证据. (`../evidence/m07-1bc15f612c10aa6e68e33587a01cd2de1ede2fe4/issue-03/run1/check_skill.log` 为 `workflow/navigate/SKILL.md: OK`, `check_skill.exit` 为 0; 本轮复核原件 `/home/bolo/evidence/to-spec-grilling-and-chinese-ids/issue-06/run1/logs/issue03-run1-binding.*`)
+ 
+ ## 被阻塞于
+ - 无
+diff --git a/docs/changes/to-spec-grilling-and-chinese-ids/issues/ISSUE-06-records-backfill.md b/docs/changes/to-spec-grilling-and-chinese-ids/issues/ISSUE-06-records-backfill.md
+index 7a15806..fa30098 100644
+--- a/docs/changes/to-spec-grilling-and-chinese-ids/issues/ISSUE-06-records-backfill.md
++++ b/docs/changes/to-spec-grilling-and-chinese-ids/issues/ISSUE-06-records-backfill.md
+@@ -2,7 +2,7 @@
+ - ../EXECUTION.md (返工轮; SPEC/STANDARDS 记录类发现 F2/F3/F5/F6, H2/H3)
+ 
+ ## 执行
+-- [ ] 已完成
++- [x] 已完成
+ 
+ ## 要交付什么
+ (a) ISSUE-01 工单 text-mapping 引用 run4 与声明的 run5 依据不一致, 以实际为准更正; (b) ISSUE-02 工单交付证据回填非作者核对结论: check1 报告 21 场景/43 预期/无阻塞/4 疑点, 已归档 docs/changes/to-spec-grilling-and-chinese-ids/evidence/m07-1bc15f612c10aa6e68e33587a01cd2de1ede2fe4/issue-02/check1/, 并勾选已有证据支撑的验收标准项 (注明引用); (c) ISSUE-03 工单同类核查后回填/勾选; (d) EXECUTION.md 执行记录补一行实施前摘要取得时间与命令: 2026-11-27 04:15:45 UTC, find ~/.agents/skills -type f | sort | xargs sha256sum (调度方取得, 231 文件); (e) 标点半角修正: ISSUE-01 约 62-64 行破折号, ISSUE-02 约 64 行顿号 (以 STANDARDS 报告 H2/H3 引用为准).
+@@ -17,4 +17,9 @@
+ - 变更类型: 记录修正. 全部引用路径真实存在 (逐一核对), 证据写 /home/bolo/evidence/to-spec-grilling-and-chinese-ids/issue-06/run1/.
+ 
+ ## 验收标准
+-- [ ] 回填与勾选均有归档证据支撑, 引用路径可访问.
+\ No newline at end of file
++- [x] 回填与勾选均有归档证据支撑, 引用路径可访问. (`/home/bolo/evidence/to-spec-grilling-and-chinese-ids/issue-06/run1/INDEX.md`; 回填引用 `../evidence/m07-1bc15f612c10aa6e68e33587a01cd2de1ede2fe4/{issue-02/check1,issue-03/run1}/`; 路径与标点核对见 `/home/bolo/evidence/to-spec-grilling-and-chinese-ids/issue-06/run1/logs/refs-{before,after}.*`, `/home/bolo/evidence/to-spec-grilling-and-chinese-ids/issue-06/run1/logs/punct-{before,after}.*`)
++
++## 执行结果 (m07-rw-06)
++- 改动: (a) ISSUE-01 run4/run5 引用更正; (b) ISSUE-02 回填非作者报告与 4 疑点, 勾选 5 项; (c) ISSUE-03 回填 run1 核对, 勾选 5 项; (d) EXECUTION.md 实施前摘要行; (e) 标点半角修正 (ISSUE-01 3 处 U+2014, ISSUE-02 3 处 U+3001). 未改产品文件与归档证据.
++- 证据: `/home/bolo/evidence/to-spec-grilling-and-chinese-ids/issue-06/run1/` (`INDEX.md`, `logs/run4-run5-compare.*`, `logs/issue02-check1-binding.*`, `logs/issue03-run1-binding.*`, `logs/punct-{before,after}.*`, `logs/refs-{before,after}.*`, `logs/diff-check.*`).
++- 未完成项: 无验收标准未勾; 非作者全局交叉核对与 README 复核仍属父级集成记录, 本工单未代填.

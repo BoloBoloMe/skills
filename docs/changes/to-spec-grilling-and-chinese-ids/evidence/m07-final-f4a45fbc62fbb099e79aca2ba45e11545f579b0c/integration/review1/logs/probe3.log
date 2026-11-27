@@ -1,0 +1,66 @@
+# probe3 (契约差异与跨版本兼容)
+2026-11-27T05:05:00+00:00
+== 环境 ==
+python 3.11.2
+repo HEAD 
+new helper /home/bolo/Workspace/improve/workflow/to-spec/ac-draft.py 1795755431.127614
+old helper /tmp/m07-rev-imp/old/ac-draft.py (取自 9e8dd1df)
+
+== A. 新 preview 输出字段 ==
+exit 0 keys ['command', 'draft', 'preview', 'success']
+PASS A1 preview 退出 0 | {"success": true, "command": "preview", "draft": "/tmp/m07-rev-imp/m07probe-xuo_8s4g/AC.md", "preview": "/tmp/m07-rev-imp/m07probe-xuo_8s4g/2026-11-27-acceptance-d77ea29e997044e0b656951bd381ffd9.html"}
+
+PASS A2 preview JSON 无 review_id
+PASS A3 preview 含 preview/draft
+PASS A4 页面无审阅版本, 有仅供选看
+
+== B. 旧 preview 仍返回 review_id (已安装旧版) ==
+exit 0 keys ['command', 'draft', 'preview', 'review_id', 'success']
+PASS B1 旧版 preview 有 review_id | ['command', 'draft', 'preview', 'review_id', 'success']
+
+== C. stale 保护: 预览后改草稿再转正 ==
+new exit 0 {"success": true, "command": "promote", "output": "/tmp/m07-rev-imp/m07probe-xuo_8s4g/NEW-PRODUCT.md"}
+PASS C1 新版不校验旧预览, 改动后转正成功 (设计已取消该保护)
+old exit 2 {"success": false, "error": "审阅版本不匹配, 产品上下文或草稿已变化; 请重新展示并确认"}
+PASS C2 旧版改草稿后拒绝转正 (旧保护存在)
+PASS C3 旧版拒绝时未写正式文件
+PASS C4 旧版字节复原后可转正 | {"success": true, "command": "promote", "output": "/tmp/m07-rev-imp/m07probe-xuo_8s4g/OLD-OK.md", "review_id": "3d481dde
+
+== D. --review 参数去处 ==
+exit 2 stderr ac-draft.py: error: unrecognized arguments: --review x
+PASS D1 新版带 --review 退出 2
+PASS D2 报 unrecognized arguments
+PASS D3 未写正式文件
+
+== E. 产物跨版本兼容 ==
+PASS E1 新版转正成功 | {"success": true, "command": "promote", "output": "/tmp/m07-rev-imp/m07probe-xuo_8s4g/PRODUCT.md"}
+
+PASS E2 新版产物含固定 v1 标记
+old check exit 0 
+PASS E3 旧 check-ac 仍接受新版产物
+PASS E4 新 check-ac 接受新版产物
+PASS E5 旧版可生成产物 | {"success": true, "command": "promote", "output": "/tmp/m07-rev-imp/m07probe-xuo_8s4g/OLD-PRODUCT.md", "review_id": "3d481dde0462fda6a00b488f041477b1dd29b539c61e5cdb08efcc0bbb60269b"}
+
+PASS E6 新 check-ac 接受旧版产物 (v1 标记兼容)
+
+== F. check-ac 错误文案变化 (缺标记) ==
+new: 2 [输入] `## 验收标准` 节缺少确认流程标记 `<!-- confirmed-flow: v1 -->` (由 to-spec 转正流程写入)
+old: 2 [输入] `## 验收标准` 节缺少确认流程标记 `<!-- confirmed-flow: v1 -->` (由 to-spec 验收标准确认流程写入)
+PASS F1 退出码同为 2
+PASS F2 文案确有变化
+
+== G. 草稿带标记时的报错先后变化 ==
+new exit 2 {"success": false, "error": "草稿不携带确认标记, 由转正脚本在确认后添加"}
+PASS G1 新版先报标记问题
+old exit 2 {"success": false, "error": "草稿只能包含一个完整的 gherkin 代码块及首尾空白"}
+PASS G2 旧版先报围栏外的多余内容
+PASS G3 退出码同为 2
+
+== H. 无 mock 后仓库内是否仍覆盖转正过程保护 ==
+FAIL H 输入改动中止 在仓库测试中被引用
+FAIL H 正式文件改动中止 在仓库测试中被引用
+FAIL H 正式复检失败路径 在仓库测试中被引用
+
+== 结果 ==
+failures: ['H 输入改动中止 在仓库测试中被引用', 'H 正式文件改动中止 在仓库测试中被引用', 'H 正式复检失败路径 在仓库测试中被引用']
+probe3 exit=1

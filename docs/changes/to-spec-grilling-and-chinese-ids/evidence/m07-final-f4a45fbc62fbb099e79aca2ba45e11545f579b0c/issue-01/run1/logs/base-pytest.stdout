@@ -1,0 +1,58 @@
+============================= test session starts ==============================
+platform linux -- Python 3.11.2, pytest-9.1.1, pluggy-1.7.0 -- /home/bolo/.cache/uv/builds-v0/.tmpGCNZ3q/bin/python
+rootdir: /home/bolo/Workspace/improve.worktrees/ISSUE-01
+configfile: pytest.ini
+collecting ... collected 42 items
+
+workflow/to-spec/tests/test_ac_draft.py::AcDraftTests::test_change_during_validation_aborts_publication PASSED [  2%]
+workflow/to-spec/tests/test_ac_draft.py::AcDraftTests::test_changed_output_is_not_overwritten_during_atomic_write PASSED [  4%]
+workflow/to-spec/tests/test_ac_draft.py::AcDraftTests::test_draft_cli_passes_without_marker_and_does_not_write PASSED [  7%]
+workflow/to-spec/tests/test_ac_draft.py::AcDraftTests::test_draft_rejects_extra_sections_prose_blocks_and_fake_marker 
+workflow/to-spec/tests/test_ac_draft.py::AcDraftTests::test_draft_rejects_extra_sections_prose_blocks_and_fake_marker PASSED [  9%]
+workflow/to-spec/tests/test_ac_draft.py::AcDraftTests::test_draft_reuses_all_existing_checks 
+workflow/to-spec/tests/test_ac_draft.py::AcDraftTests::test_draft_reuses_all_existing_checks PASSED [ 11%]
+workflow/to-spec/tests/test_ac_draft.py::AcDraftTests::test_existing_ac_replaced_not_appended PASSED [ 14%]
+workflow/to-spec/tests/test_ac_draft.py::AcDraftTests::test_formal_cli_preserves_legacy_confirmed_file_support PASSED [ 16%]
+workflow/to-spec/tests/test_ac_draft.py::AcDraftTests::test_formal_cli_still_requires_marker PASSED [ 19%]
+workflow/to-spec/tests/test_ac_draft.py::AcDraftTests::test_formal_marker_must_precede_gherkin_block PASSED [ 21%]
+workflow/to-spec/tests/test_ac_draft.py::AcDraftTests::test_formal_recheck_failure_preserves_old_output PASSED [ 23%]
+workflow/to-spec/tests/test_ac_draft.py::AcDraftTests::test_gherkin_comment_heading_does_not_cut_section PASSED [ 26%]
+workflow/to-spec/tests/test_ac_draft.py::AcDraftTests::test_invalid_utf8_and_missing_file_are_input_errors PASSED [ 28%]
+workflow/to-spec/tests/test_ac_draft.py::AcDraftTests::test_missing_duplicate_or_fenced_acceptance_heading 
+workflow/to-spec/tests/test_ac_draft.py::AcDraftTests::test_missing_duplicate_or_fenced_acceptance_heading PASSED [ 30%]
+workflow/to-spec/tests/test_ac_draft.py::AcDraftTests::test_multiscenario_outline_keeps_shared_ac PASSED [ 33%]
+workflow/to-spec/tests/test_ac_draft.py::AcDraftTests::test_output_cannot_overwrite_input_or_follow_symlink 
+workflow/to-spec/tests/test_ac_draft.py::AcDraftTests::test_output_cannot_overwrite_input_or_follow_symlink PASSED [ 35%]
+workflow/to-spec/tests/test_ac_draft.py::AcDraftTests::test_preserves_existing_output_permissions PASSED [ 38%]
+workflow/to-spec/tests/test_ac_draft.py::AcDraftTests::test_preview_and_original_are_reachable_through_present_handler PASSED [ 40%]
+workflow/to-spec/tests/test_ac_draft.py::AcDraftTests::test_preview_is_safe_exact_text_and_never_overwrites PASSED [ 42%]
+workflow/to-spec/tests/test_ac_draft.py::AcDraftTests::test_preview_refuses_invalid_draft PASSED [ 45%]
+workflow/to-spec/tests/test_ac_draft.py::AcDraftTests::test_promote_embeds_exact_bytes_and_preserves_surrounding_sections 
+workflow/to-spec/tests/test_ac_draft.py::AcDraftTests::test_promote_embeds_exact_bytes_and_preserves_surrounding_sections PASSED [ 47%]
+workflow/to-spec/tests/test_ac_draft.py::AcDraftTests::test_promote_requires_review_and_rejects_bad_hash PASSED [ 50%]
+workflow/to-spec/tests/test_ac_draft.py::AcDraftTests::test_replace_failure_preserves_old_output_and_cleans_temp_file PASSED [ 52%]
+workflow/to-spec/tests/test_ac_draft.py::AcDraftTests::test_stale_review_rejects_changed_draft_or_product_context PASSED [ 54%]
+workflow/to-spec/tests/test_ac_draft.py::AcDraftTests::test_workspace_creates_review_subdir_in_dedicated_dir PASSED [ 57%]
+workflow/to-spec/tests/test_ac_reading.py::ReadingPreviewTests::test_card_view_does_not_hide_constraints_in_collapsed_details PASSED [ 59%]
+workflow/to-spec/tests/test_ac_reading.py::ReadingPreviewTests::test_cli_reports_rendering_failure_without_publishing_html PASSED [ 61%]
+workflow/to-spec/tests/test_ac_reading.py::ReadingPreviewTests::test_comments_are_visible_verbatim_not_silently_discarded PASSED [ 64%]
+workflow/to-spec/tests/test_ac_reading.py::ReadingPreviewTests::test_conjunctions_after_actions_keep_action_labels PASSED [ 66%]
+workflow/to-spec/tests/test_ac_reading.py::ReadingPreviewTests::test_documented_example_is_valid_and_expands_to_three_cards PASSED [ 69%]
+workflow/to-spec/tests/test_ac_reading.py::ReadingPreviewTests::test_duplicate_rule_ids_refuse_ambiguous_rule_text PASSED [ 71%]
+workflow/to-spec/tests/test_ac_reading.py::ReadingPreviewTests::test_empty_examples_and_scenarios_refuse_incomplete_preview 
+workflow/to-spec/tests/test_ac_reading.py::ReadingPreviewTests::test_empty_examples_and_scenarios_refuse_incomplete_preview PASSED [ 73%]
+workflow/to-spec/tests/test_ac_reading.py::ReadingPreviewTests::test_escaped_table_cells_and_docstring_are_safe_and_decoded_once PASSED [ 76%]
+workflow/to-spec/tests/test_ac_reading.py::ReadingPreviewTests::test_every_example_row_gets_background_steps_and_all_columns PASSED [ 78%]
+workflow/to-spec/tests/test_ac_reading.py::ReadingPreviewTests::test_every_user_controlled_field_is_escaped PASSED [ 80%]
+workflow/to-spec/tests/test_ac_reading.py::ReadingPreviewTests::test_multiline_audit_rule_cannot_be_referenced_by_a_scenario 
+workflow/to-spec/tests/test_ac_reading.py::ReadingPreviewTests::test_multiline_audit_rule_cannot_be_referenced_by_a_scenario PASSED [ 83%]
+workflow/to-spec/tests/test_ac_reading.py::ReadingPreviewTests::test_multiline_rule_is_shown_with_its_original_continuation PASSED [ 85%]
+workflow/to-spec/tests/test_ac_reading.py::ReadingPreviewTests::test_multiple_scenarios_keep_shared_ac_and_correct_local_premises PASSED [ 88%]
+workflow/to-spec/tests/test_ac_reading.py::ReadingPreviewTests::test_plain_scenario_without_background_or_type_tag_still_renders PASSED [ 90%]
+workflow/to-spec/tests/test_ac_reading.py::ReadingPreviewTests::test_plain_steps_and_references_are_exact_source_text PASSED [ 92%]
+workflow/to-spec/tests/test_ac_reading.py::ReadingPreviewTests::test_preview_still_binds_exact_input_bytes_and_does_not_rewrite_them PASSED [ 95%]
+workflow/to-spec/tests/test_ac_reading.py::ReadingPreviewTests::test_step_tables_docstrings_and_media_types_are_not_dropped PASSED [ 97%]
+workflow/to-spec/tests/test_ac_reading.py::ReadingPreviewTests::test_two_arguments_on_one_step_keep_source_order 
+workflow/to-spec/tests/test_ac_reading.py::ReadingPreviewTests::test_two_arguments_on_one_step_keep_source_order PASSED [100%]
+
+==================== 42 passed, 37 subtests passed in 3.10s ====================

@@ -1,0 +1,14 @@
+2026-11-27T04:27:47+00:00
+/home/bolo/Workspace/improve.worktrees/ISSUE-01
+## issue/01
+775b5a24cc06bea1ea719d78079e1e832ae2459a
+775b5a24cc06bea1ea719d78079e1e832ae2459a
+/home/bolo/evidence/to-spec-grilling-and-chinese-ids/issue-01/run1
+Linux x86_64
+uv 0.13.1 (x86_64-unknown-linux-gnu)
+strace: 缺失
+gdb: 缺失
+gcc: 缺失
+cc: 缺失
+inotifywait: 缺失
+chromium: 缺失

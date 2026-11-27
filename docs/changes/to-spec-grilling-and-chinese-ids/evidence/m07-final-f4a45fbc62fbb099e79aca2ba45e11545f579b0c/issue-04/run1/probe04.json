@@ -1,0 +1,234 @@
+{
+  "python": "3.11.2",
+  "check_ac_target_sha256": "e4bef4b51bf337ef1ffe971b93f847864aff8999bc3b7d85718137167ed2ca37",
+  "check_ac_baseline_sha256": "58543ed805ab5a0ff35ee7cd7d9e21022b320830e86c65c2c8ec056cba3d019f",
+  "marker": [
+    {
+      "case": "missing-marker",
+      "input": "/home/bolo/evidence/to-spec-grilling-and-chinese-ids/issue-04/run1/files/marker/missing-marker/PRODUCT.md",
+      "input_sha256": "274bace85504f2ca5ba86d6df9d4c5d67aa3c458a3cdc787c5fec3409a7dbdb6",
+      "baseline": {
+        "exit": 2,
+        "stdout": "",
+        "stderr": "[输入] `## 验收标准` 节缺少确认流程标记 `<!-- confirmed-flow: v1 -->` (由 to-spec 转正流程写入)"
+      },
+      "target": {
+        "exit": 2,
+        "stdout": "",
+        "stderr": "[输入] `## 验收标准` 节缺少确认流程标记 `<!-- confirmed-flow: v1 -->` (由 to-spec 转正流程写入)"
+      }
+    },
+    {
+      "case": "marker-after-fence",
+      "input": "/home/bolo/evidence/to-spec-grilling-and-chinese-ids/issue-04/run1/files/marker/marker-after-fence/PRODUCT.md",
+      "input_sha256": "9a7e3523746b5f0255ac9e52da9b5c0a7e689649128c55172ee8a81d8edb7691",
+      "baseline": {
+        "exit": 2,
+        "stdout": "",
+        "stderr": "[输入] 确认流程标记 `<!-- confirmed-flow: vN -->` 必须位于 gherkin 代码块之前"
+      },
+      "target": {
+        "exit": 2,
+        "stdout": "",
+        "stderr": "[输入] 确认流程标记 `<!-- confirmed-flow: v1 -->` 必须位于 gherkin 代码块之前"
+      }
+    },
+    {
+      "case": "v2-marker-accepted",
+      "input": "/home/bolo/evidence/to-spec-grilling-and-chinese-ids/issue-04/run1/files/marker/v2-marker-accepted/PRODUCT.md",
+      "input_sha256": "01b41f686163bd564671260e651557cf5753d0852dc1b1e2bd40c1486e47cf1b",
+      "baseline": {
+        "exit": 0,
+        "stdout": "check-ac: 通过 - 1 个场景, 1 个 AC",
+        "stderr": ""
+      },
+      "target": {
+        "exit": 0,
+        "stdout": "check-ac: 通过 - 1 个场景, 1 个 AC",
+        "stderr": ""
+      }
+    },
+    {
+      "case": "v1-marker-accepted",
+      "input": "/home/bolo/evidence/to-spec-grilling-and-chinese-ids/issue-04/run1/files/marker/v1-marker-accepted/PRODUCT.md",
+      "input_sha256": "83ea9b9ed2ec10d5f4db6b65b31918cb3ab7e7abb583ef987147cbf7c49b1a5c",
+      "baseline": {
+        "exit": 0,
+        "stdout": "check-ac: 通过 - 1 个场景, 1 个 AC",
+        "stderr": ""
+      },
+      "target": {
+        "exit": 0,
+        "stdout": "check-ac: 通过 - 1 个场景, 1 个 AC",
+        "stderr": ""
+      }
+    }
+  ],
+  "bad_input": [
+    {
+      "case": "variant-keyword",
+      "expected_exit": 1,
+      "exit": 1,
+      "nonzero": true,
+      "error_matches": true,
+      "stdout": "{\"success\": false, \"error\": \"[关键字白名单] 行 27 (背景): 步骤关键字为 '假设', 只允许 假定/当/那么/而且/但是; 官方同义变体 (假如/假设/并且/同时) 已禁用 (D005)\\n[关键字白名单] 行 31 (场景 '阅读内容'): 步骤关键字为 '假设', 只允许 假定/当/那么/而且/但是; 官方同义变体 (假如/假设/并且/同时) 已禁用 (D005)\"}",
+      "stderr": "",
+      "output_sha256_before": "3cedbf54a112b02b569b16c5b8c656c34d2eb6d95dcd60560e308c72567e806c",
+      "output_sha256_after": "3cedbf54a112b02b569b16c5b8c656c34d2eb6d95dcd60560e308c72567e806c",
+      "output_bytes_unchanged": true,
+      "output_dir_entries": [
+        "PRODUCT.md"
+      ]
+    },
+    {
+      "case": "synonym-keyword",
+      "expected_exit": 1,
+      "exit": 1,
+      "nonzero": true,
+      "error_matches": true,
+      "stdout": "{\"success\": false, \"error\": \"[关键字白名单] 行 33 (场景 '阅读内容'): 步骤关键字为 '并且', 只允许 假定/当/那么/而且/但是; 官方同义变体 (假如/假设/并且/同时) 已禁用 (D005)\"}",
+      "stderr": "",
+      "output_sha256_before": "3cedbf54a112b02b569b16c5b8c656c34d2eb6d95dcd60560e308c72567e806c",
+      "output_sha256_after": "3cedbf54a112b02b569b16c5b8c656c34d2eb6d95dcd60560e308c72567e806c",
+      "output_bytes_unchanged": true,
+      "output_dir_entries": [
+        "PRODUCT.md"
+      ]
+    },
+    {
+      "case": "missing-feature-line",
+      "expected_exit": 1,
+      "exit": 1,
+      "nonzero": true,
+      "error_matches": true,
+      "stdout": "{\"success\": false, \"error\": \"[解析] gherkin 块解析失败 (行号为文件行号):\\nParser errors:\\n(25:1): expected: #TagLine, #FeatureLine, #Comment, #Empty, got '背景:'\\n(26:1): expected: #TagLine, #FeatureLine, #Comment, #Empty, got '假定 读者已打开当前文档'\\n(29:1): expected: #TagLine, #FeatureLine, #Comment, #Empty, got '场景: 阅读内容'\\n(30:1): expected: #TagLine, #FeatureLine, #Comment, #Empty, got '假定 文档包含 1 条验收标准'\\n(31:1): expected: #TagLine, #FeatureLine, #Comment, #Empty, got '当 读者查看验收标准'\\n(32:1): expected: #TagLine, #FeatureLine, #Comment, #Empty, got '那么 读者看到已确认的原文'\\n(33:0): unexpected end of file, expected: #TagLine, #FeatureLine, #Comment, #Empty\"}",
+      "stderr": "",
+      "output_sha256_before": "3cedbf54a112b02b569b16c5b8c656c34d2eb6d95dcd60560e308c72567e806c",
+      "output_sha256_after": "3cedbf54a112b02b569b16c5b8c656c34d2eb6d95dcd60560e308c72567e806c",
+      "output_bytes_unchanged": true,
+      "output_dir_entries": [
+        "PRODUCT.md"
+      ]
+    },
+    {
+      "case": "feature-level-tag",
+      "expected_exit": 1,
+      "exit": 1,
+      "nonzero": true,
+      "error_matches": true,
+      "stdout": "{\"success\": false, \"error\": \"[tag-position] 行 24 (功能级): 标签 @G-001 只允许出现在场景/场景大纲行 (功能级/例子块级标签会继承, 破坏每场景恰好一个 @AC 的语义)\"}",
+      "stderr": "",
+      "output_sha256_before": "3cedbf54a112b02b569b16c5b8c656c34d2eb6d95dcd60560e308c72567e806c",
+      "output_sha256_after": "3cedbf54a112b02b569b16c5b8c656c34d2eb6d95dcd60560e308c72567e806c",
+      "output_bytes_unchanged": true,
+      "output_dir_entries": [
+        "PRODUCT.md"
+      ]
+    },
+    {
+      "case": "draft-with-marker",
+      "expected_exit": 2,
+      "exit": 2,
+      "nonzero": true,
+      "error_matches": true,
+      "stdout": "{\"success\": false, \"error\": \"草稿不携带确认标记, 由转正脚本在确认后添加\"}",
+      "stderr": "",
+      "output_sha256_before": "3cedbf54a112b02b569b16c5b8c656c34d2eb6d95dcd60560e308c72567e806c",
+      "output_sha256_after": "3cedbf54a112b02b569b16c5b8c656c34d2eb6d95dcd60560e308c72567e806c",
+      "output_bytes_unchanged": true,
+      "output_dir_entries": [
+        "PRODUCT.md"
+      ]
+    },
+    {
+      "case": "prose-outside-fence",
+      "expected_exit": 2,
+      "exit": 2,
+      "nonzero": true,
+      "error_matches": true,
+      "stdout": "{\"success\": false, \"error\": \"草稿只能包含一个完整的 gherkin 代码块及首尾空白\"}",
+      "stderr": "",
+      "output_sha256_before": "3cedbf54a112b02b569b16c5b8c656c34d2eb6d95dcd60560e308c72567e806c",
+      "output_sha256_after": "3cedbf54a112b02b569b16c5b8c656c34d2eb6d95dcd60560e308c72567e806c",
+      "output_bytes_unchanged": true,
+      "output_dir_entries": [
+        "PRODUCT.md"
+      ]
+    },
+    {
+      "case": "unknown-goal",
+      "expected_exit": 1,
+      "exit": 1,
+      "nonzero": true,
+      "error_matches": true,
+      "stdout": "{\"success\": false, \"error\": \"[编号对账] 行 29 (场景 '阅读内容'): @G-999 在 `## 目标` 节不存在 (对账来源: 该节的 `- 目标N:` 列表项)\"}",
+      "stderr": "",
+      "output_sha256_before": "3cedbf54a112b02b569b16c5b8c656c34d2eb6d95dcd60560e308c72567e806c",
+      "output_sha256_after": "3cedbf54a112b02b569b16c5b8c656c34d2eb6d95dcd60560e308c72567e806c",
+      "output_bytes_unchanged": true,
+      "output_dir_entries": [
+        "PRODUCT.md"
+      ]
+    },
+    {
+      "case": "unknown-rule",
+      "expected_exit": 1,
+      "exit": 1,
+      "nonzero": true,
+      "error_matches": true,
+      "stdout": "{\"success\": false, \"error\": \"[编号对账] 行 29 (场景 '阅读内容'): @BR-999 在 `## 业务规则` 节不存在 (对账来源: 该节的 `- 规则N:` 列表项)\"}",
+      "stderr": "",
+      "output_sha256_before": "3cedbf54a112b02b569b16c5b8c656c34d2eb6d95dcd60560e308c72567e806c",
+      "output_sha256_after": "3cedbf54a112b02b569b16c5b8c656c34d2eb6d95dcd60560e308c72567e806c",
+      "output_bytes_unchanged": true,
+      "output_dir_entries": [
+        "PRODUCT.md"
+      ]
+    },
+    {
+      "case": "audit-rule",
+      "expected_exit": 1,
+      "exit": 1,
+      "nonzero": true,
+      "error_matches": true,
+      "stdout": "{\"success\": false, \"error\": \"[编号对账] 行 29 (场景 '阅读内容'): @BR-002 指向 (审计) 条目, 审计式断言禁止进 Gherkin, 由覆盖矩阵承接\"}",
+      "stderr": "",
+      "output_sha256_before": "3cedbf54a112b02b569b16c5b8c656c34d2eb6d95dcd60560e308c72567e806c",
+      "output_sha256_after": "3cedbf54a112b02b569b16c5b8c656c34d2eb6d95dcd60560e308c72567e806c",
+      "output_bytes_unchanged": true,
+      "output_dir_entries": [
+        "PRODUCT.md"
+      ]
+    },
+    {
+      "case": "two-ac-one-scenario",
+      "expected_exit": 1,
+      "exit": 1,
+      "nonzero": true,
+      "error_matches": true,
+      "stdout": "{\"success\": false, \"error\": \"[@AC 唯一性] 行 30 (场景 '阅读内容'): @AC 标签数为 2 (['@AC-001', '@AC-002']), 每场景必须恰好一个 @AC-NNN\"}",
+      "stderr": "",
+      "output_sha256_before": "3cedbf54a112b02b569b16c5b8c656c34d2eb6d95dcd60560e308c72567e806c",
+      "output_sha256_after": "3cedbf54a112b02b569b16c5b8c656c34d2eb6d95dcd60560e308c72567e806c",
+      "output_bytes_unchanged": true,
+      "output_dir_entries": [
+        "PRODUCT.md"
+      ]
+    },
+    {
+      "case": "duplicate-goal-entry",
+      "expected_exit": 2,
+      "exit": 2,
+      "nonzero": true,
+      "error_matches": true,
+      "stdout": "{\"success\": false, \"error\": \"`目标` 节的 目标1 重复, 无法确定唯一条目\"}",
+      "stderr": "",
+      "output_sha256_before": "3cedbf54a112b02b569b16c5b8c656c34d2eb6d95dcd60560e308c72567e806c",
+      "output_sha256_after": "3cedbf54a112b02b569b16c5b8c656c34d2eb6d95dcd60560e308c72567e806c",
+      "output_bytes_unchanged": true,
+      "output_dir_entries": [
+        "PRODUCT.md"
+      ]
+    }
+  ]
+}

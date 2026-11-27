@@ -1,0 +1,26 @@
+check-ac valid: 0 / 1 个场景, 1 个 AC
+check-ac missing-goal: 1 / 不存在
+check-ac audit-rule: 1 / 指向 (审计) 条目
+check-ac duplicate-goal: 2 / 目标1 重复
+check-ac keyword: 1 / 关键字白名单
+check-ac multiple-ac: 1 / @AC 标签数为 2
+check-ac free-tag: 1 / 非法标签 @smoke
+check-ac marker: 2 / 草稿不携带确认标记
+preview: 0 / 2 张展开卡片, 节点原文和草稿一致, 原文件链接, 无确认控件, 两输入未变
+promote removed-option: 2 / 原正式稿未变
+promote bad-input: 1 / 原正式稿未变
+check-tech 基线和候选一致: required: 0, 4 节, True
+check-tech 基线和候选一致: conditional: 0, 7 节, True
+check-tech 基线和候选一致: missing-1: 1, 缺少必备节 `## 模块划分`, True
+check-tech 基线和候选一致: missing-2: 1, 缺少必备节 `## 模块接口`, True
+check-tech 基线和候选一致: missing-3: 1, 缺少必备节 `## 接缝与依赖`, True
+check-tech 基线和候选一致: missing-4: 1, 缺少必备节 `## 决策引用`, True
+check-tech 基线和候选一致: typo-1: 1, 非法节名 '模块划分误', True
+check-tech 基线和候选一致: typo-2: 1, 非法节名 '模块接口误', True
+check-tech 基线和候选一致: typo-3: 1, 非法节名 '接缝与依赖误', True
+check-tech 基线和候选一致: typo-4: 1, 非法节名 '安全策略误', True
+check-tech 基线和候选一致: typo-5: 1, 非法节名 '非功能要求误', True
+check-tech 基线和候选一致: typo-6: 1, 非法节名 '关键流程误', True
+check-tech 基线和候选一致: typo-7: 1, 非法节名 '决策引用误', True
+check-tech 基线和候选一致: order: 1, 节顺序与模板不一致, True
+技术草稿通过后 cp/cmp/正式机检: 均 0

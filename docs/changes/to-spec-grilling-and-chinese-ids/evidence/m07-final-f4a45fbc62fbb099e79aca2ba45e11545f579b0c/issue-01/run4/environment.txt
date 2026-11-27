@@ -1,0 +1,7 @@
+2026-11-27T04:39:19+00:00
+/home/bolo/evidence/to-spec-grilling-and-chinese-ids/issue-01/run4
+Linux x86_64
+## issue/01
+fd26618792633cf5b2ed5e9ba50c0c5f26193f74
+775b5a24cc06bea1ea719d78079e1e832ae2459a
+uv 0.13.1 (x86_64-unknown-linux-gnu)

@@ -1,0 +1,15 @@
+{"ns": 6303929124924447, "event": "start", "pid": 118458, "controller": 118447}
+{"ns": 6303929193019183, "event": "read-return", "file": "output", "path": "/home/bolo/evidence/to-spec-grilling-and-chinese-ids/issue-01/run5/files/trace/base/PRODUCT.md", "bytes": 20}
+{"ns": 6303929193079815, "event": "close-return", "file": "output", "path": "/home/bolo/evidence/to-spec-grilling-and-chinese-ids/issue-01/run5/files/trace/base/PRODUCT.md"}
+{"ns": 6303929193171056, "event": "read-return", "file": "base", "path": "/home/bolo/evidence/to-spec-grilling-and-chinese-ids/issue-01/run5/files/trace/base/PRODUCT.base.md", "bytes": 484}
+{"ns": 6303929193202045, "event": "close-return", "file": "base", "path": "/home/bolo/evidence/to-spec-grilling-and-chinese-ids/issue-01/run5/files/trace/base/PRODUCT.base.md"}
+{"ns": 6303929193382585, "event": "cli-paused", "at": "close-return", "file": "/home/bolo/evidence/to-spec-grilling-and-chinese-ids/issue-01/run5/files/trace/base/PRODUCT.base.md", "pid": 118458}
+{"ns": 6303929194704454, "event": "external-cp-exited", "argv": ["cp", "--", "/home/bolo/evidence/to-spec-grilling-and-chinese-ids/issue-01/run5/files/trace/base/external-intended.bin", "/home/bolo/evidence/to-spec-grilling-and-chinese-ids/issue-01/run5/files/trace/base/PRODUCT.base.md"], "code": 0, "bytes": 484}
+{"ns": 6303929194764116, "event": "cli-about-to-resume", "pid": 118458}
+{"ns": 6303929194869606, "event": "read-return", "file": "draft", "path": "/home/bolo/evidence/to-spec-grilling-and-chinese-ids/issue-01/run5/files/trace/base/acceptance.md", "bytes": 312}
+{"ns": 6303929194903252, "event": "close-return", "file": "draft", "path": "/home/bolo/evidence/to-spec-grilling-and-chinese-ids/issue-01/run5/files/trace/base/acceptance.md"}
+{"ns": 6303929196410661, "event": "read-return", "file": "base", "path": "/home/bolo/evidence/to-spec-grilling-and-chinese-ids/issue-01/run5/files/trace/base/PRODUCT.base.md", "bytes": 484}
+{"ns": 6303929196442456, "event": "close-return", "file": "base", "path": "/home/bolo/evidence/to-spec-grilling-and-chinese-ids/issue-01/run5/files/trace/base/PRODUCT.base.md"}
+{"ns": 6303929196527092, "event": "read-return", "file": "draft", "path": "/home/bolo/evidence/to-spec-grilling-and-chinese-ids/issue-01/run5/files/trace/base/acceptance.md", "bytes": 312}
+{"ns": 6303929196557058, "event": "close-return", "file": "draft", "path": "/home/bolo/evidence/to-spec-grilling-and-chinese-ids/issue-01/run5/files/trace/base/acceptance.md"}
+{"ns": 6303929201890193, "event": "exit", "code": 2}

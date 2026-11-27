@@ -13,6 +13,7 @@
 - 差异与旧编号范围核对按验证方案使用基线 `182ff1846d0ed310b7f4ed308366d36f6e74b412` 到最终目标提交. 评审起点仍由 `drive-execution` 在派工前核实并填写.
 
 ## 执行记录
+- milestone-07 收尾: 影响方向第四轮终局核对完成 (记录 f4a45fb), 四轮返工全部收敛, F1 经用户授权由 ISSUE-08 修复闭环; 开放项 R1/R2/R5/R9/R10 与 G 类证据缺口归属已记录; 全量 uv run pytest 未验证 (容器无 Podman, 交调用方); 最终证据归档 evidence/m07-final-f4a45fbc62fbb099e79aca2ba45e11545f579b0c/ 绑定最终提交; RUN-REPORT.md 见产物根. 停止点: 等待 milestone-12 用户亲自审改实际 skill.
 - milestone-07 评审门槛判定: 旧行为影响方向实做. 依据: 三份 issue 验证契约均声明行为变更, 实际差异触碰公开 CLI 契约 (ac-draft.py 移除 --review 与 promote 契约改动), skill 流程条文及跨文件调用说明 (navigate/ACCEPTANCE-GUIDE/README), 属共享接口与跨模块路径. 首轮无 IMPACT-REVIEW.md, 由未参与实现的独立审核者新建. 评审起点 9e8dd1dfe92b3b446c88c2cb8fce33cb0c67a77a, 集成提交 1bc15f612c10aa6e68e33587a01cd2de1ede2fe4 (证据归档 7dea2143e00dcda8c9385a5881f36ba017648088).
 - milestone-07 派工前登记: 仓库外专用证据根绝对路径 `/home/bolo/evidence/to-spec-grilling-and-chinese-ids` (决策41); 实施前安装目录只读摘要已取得并留存于该证据根. 实施按轮追加记录.
 - milestone-07 实施前安装目录摘要补记 (m07-rw-06): 取得时间 `2026-11-27 04:15:45 UTC`, 命令 `find ~/.agents/skills -type f | sort | xargs sha256sum`, 调度方取得, 231 文件 (清单 231 行), 存于仓库外证据根 `pre-impl-snapshot/skills-manifest.sha256` (归档副本 `evidence/m07-1bc15f612c10aa6e68e33587a01cd2de1ede2fe4/pre-impl-snapshot/skills-manifest.sha256`). 该时点无单独时间戳文件, 以仓库外原件 mtime 与首条产品提交 (`70ae157` 04:30:38Z, `b260081` 04:31:55Z) 的先后作旁证, 该时段未独立观察.

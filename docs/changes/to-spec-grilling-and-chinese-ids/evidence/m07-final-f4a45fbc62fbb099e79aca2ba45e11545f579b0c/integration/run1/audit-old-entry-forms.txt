@@ -1,0 +1,35 @@
+workflow/use-sandbox-worktree/scripts/image-prep.py:303:# F012: ssh 非交互 shell 的 PATH 须含 ~/.local/bin (herdr remote 把 binary
+workflow/use-sandbox-worktree/scripts/image-prep.py:348:    # F013 兜底: install 步骤多以 root 跑且 HOME 可能指 bolo, 收尾统一归还
+workflow/use-sandbox-worktree/scripts/image-prep.py:802:    # D039 匹配谓词: 项目层候选的 base-digest 必须 == 当前 display 层 digest
+workflow/codebase-map/scripts/codemap_analyze.py:554:                                        #   BR-024 测试目录默认不扫)
+workflow/use-sandbox-worktree/scripts/swt.py:77:# D005: 新容器全局 git 身份在 birth 键级注入 (合并进既有 ~/.gitconfig, 不覆盖整份);
+workflow/use-sandbox-worktree/scripts/swt.py:82:# D003: 每个容器预留 6 个 web 端口 8800-8805 (8800 present / 8801 navigate / 8802-8805 预留),
+workflow/use-sandbox-worktree/scripts/swt.py:101:# D013: 容器内不再设 ~/AGENTS.md; 本容器事实小抄挂 ~/docs/.
+workflow/use-sandbox-worktree/scripts/swt.py:1852:# D004: web 端口 env 注入失败保持软失败, 交付包显式打此行 (不静默丢失, 走信箱兜底)
+workflow/use-sandbox-worktree/scripts/swt.py:2524:# D005) → 新 env 变量烘入 → runtime 登记. terminate 时注销 session (AC-008).
+workflow/use-sandbox-worktree/scripts/swt.py:2603:        # D005: 容器 session id = <容器名>-<8hex随机> (一次性, 防同名容器错投)
+workflow/use-sandbox-worktree/scripts/swt.py:2619:            # D013: 容器内地址恒 host.containers.internal + 探测端口
+workflow/use-sandbox-worktree/scripts/swt.py:3248:        # D010/UD-03: 用户确认的局域网地址即持久化 (host 级), 之后读取优先用已确认值;
+workflow/use-sandbox-worktree/scripts/swt.py:3342:    # D003: 一母体同一时刻只有一个活跃容器 — 同母体已有活跃容器 (异名) 时拒绝
+workflow/use-sandbox-worktree/scripts/swt.py:3629:        # D004: web 端口 env 真进容器才算注入成功; 否则交付包显式打降级行
+workflow/use-sandbox-worktree/scripts/swt.py:5250:            # D005 错误模式 + 评审 A: 枚举后消失只记条目错误不拖垮全表,
+workflow/use-sandbox-worktree/scripts/swt.py:5431:        # BR-004: ssh 面整体缺席不静默; noVNC 直连不依赖 22 端口.
+workflow/use-sandbox-worktree/scripts/swt.py:5445:        # BR-004 遗留补全: 显示状态未知 (记录缺 display 字段或值未识别) 不静默
+workflow/use-sandbox-worktree/scripts/swt.py:5452:        # BR-004: web 入口缺席不静默 (镜像未带 web 服务或旧容器, D003)
+workflow/use-sandbox-worktree/scripts/swt.py:5479:            # D011/BR-004 诚实 reason: runtime 记录缺失/不可解析时启动脚本
+workflow/use-sandbox-worktree/scripts/swt.py:5499:        # BR-004: host-display 状态未知 (记录缺字段/值未识别, 或记录缺失/损坏)
+workflow/use-sandbox-worktree/scripts/swt.py:5506:        # BR-004: 私钥路径是记录派生字段, 缺席不静默 (密码入口不受影响)
+general/present/scripts/web_server.py:449:# D005: 重建时原端口被占, 49152-65534 随机换端口的上限尝试次数
+general/present/scripts/web_server.py:758:            # D007/U-008 (R1): 顶层路径 -> 各挂载目录顶层条目并集 listing
+general/present/scripts/web_server.py:783:                # D007/U-008 (R1): 子目录路径返回该目录自身 listing (非并集);
+general/present/scripts/web_server.py:924:        # D002: 复用判定前先校验 server.json 属主; 非本人 -> instance_conflict,
+general/present/scripts/web_server.py:947:            # D006: bind 一致 -> 真复用: 经控制端点幂等挂载 root,
+general/mailbox/scripts/mailbox.py:98:# D010 容器 session 形态: <容器名>-<8hex> (birth 用 token_hex(4), 小写).
+general/mailbox/scripts/mailbox.py:601:            # D006: exec 过指令集白名单, 不在集合降级 request 走收件侧权限流程
+general/mailbox/scripts/mailbox.py:1908:            # D022: 幂等保证 session 在场 (持锁): 活着复用原密钥, 否则新建.
+general/mailbox/scripts/mailbox.py:2175:# D014 拉窗门禁 (设备侧脚本内, 平移自旧 pi 扩展 gatePullWindow)
+general/mailbox/scripts/mailbox.py:2434:# D014 呈现降噪: 回执信紧凑单行措辞 (裸脚本取信, codex/kimi/终端)
+general/mailbox/scripts/mailbox.py:2468:    # D003 回执自动化: 先自动回执上一条, LLM 无感
+general/mailbox/scripts/mailbox.py:2564:            # D003/D009: 租约重投的已见信, 自动回执不呈现给 LLM, 继续等下一封
+general/mailbox/scripts/mailbox.py:2570:            # D014 呈现降噪: 回执信自动 ack 不呈现给 LLM, 紧凑单行,
+general/mailbox/scripts/mailbox.py:2579:            # D014 拉窗门禁: skipped 信立即回执, 不呈现给 LLM, 继续 poll

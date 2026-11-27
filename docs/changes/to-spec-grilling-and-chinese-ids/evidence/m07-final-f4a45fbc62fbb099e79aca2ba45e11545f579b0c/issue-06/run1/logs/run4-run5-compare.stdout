@@ -1,0 +1,27 @@
+# run4 与 run5 日志对照 (证据根 issue-01)
+shared_names=252
+only_run5=12
+only_run4=0
+differing_shared=71
+identical_shared=181
+# 差异按后缀:
+     62 cmd differ
+      4 jsonl differ
+      5 stdout differ
+# .exit/.stderr 差异数: 0
+# files 目录差异:
+Only in run5/files/ac/valid/review: 2026-11-27-acceptance-aa02634d9d0a407793f561734b7e27d5.html
+Only in run4/files/ac/valid/review: 2026-11-27-acceptance-c73a54e0cbae47a2a9971e2746a64aaf.html
+# run5 独有日志:
+final-check-skill.cmd
+final-check-skill.exit
+final-check-skill.stderr
+final-check-skill.stdout
+final-pytest.cmd
+final-pytest.exit
+final-pytest.stderr
+final-pytest.stdout
+trace.cmd
+trace.exit
+trace.stderr
+trace.stdout

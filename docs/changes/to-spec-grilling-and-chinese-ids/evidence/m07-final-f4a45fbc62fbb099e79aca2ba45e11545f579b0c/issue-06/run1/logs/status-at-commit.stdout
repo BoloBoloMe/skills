@@ -1,0 +1,13 @@
+--- 1874ede..HEAD stat:
+ .../changes/to-spec-grilling-and-chinese-ids/EXECUTION.md |  1 +
+ .../issues/ISSUE-01-tospec-flow-and-cli.md                | 12 ++++++------
+ .../issues/ISSUE-02-verify-change-method-flow.md          | 15 +++++++++------
+ .../issues/ISSUE-03-navigate-readme-alignment.md          | 11 ++++++-----
+ .../issues/ISSUE-06-records-backfill.md                   |  9 +++++++--
+ 5 files changed, 29 insertions(+), 19 deletions(-)
+--- name-only:
+docs/changes/to-spec-grilling-and-chinese-ids/EXECUTION.md
+docs/changes/to-spec-grilling-and-chinese-ids/issues/ISSUE-01-tospec-flow-and-cli.md
+docs/changes/to-spec-grilling-and-chinese-ids/issues/ISSUE-02-verify-change-method-flow.md
+docs/changes/to-spec-grilling-and-chinese-ids/issues/ISSUE-03-navigate-readme-alignment.md
+docs/changes/to-spec-grilling-and-chinese-ids/issues/ISSUE-06-records-backfill.md

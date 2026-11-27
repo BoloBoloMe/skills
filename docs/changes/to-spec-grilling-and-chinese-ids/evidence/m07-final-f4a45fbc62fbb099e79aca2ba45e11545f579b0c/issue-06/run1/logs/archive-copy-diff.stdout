@@ -1,0 +1,8 @@
+# 全树比较 (含主仓库未跟踪的 run tmp 缓存目录):
+Only in /home/bolo/Workspace/improve/docs/changes/to-spec-grilling-and-chinese-ids/evidence/m07-1bc15f612c10aa6e68e33587a01cd2de1ede2fe4/issue-01/run1: tmp
+Only in /home/bolo/Workspace/improve/docs/changes/to-spec-grilling-and-chinese-ids/evidence/m07-1bc15f612c10aa6e68e33587a01cd2de1ede2fe4/issue-01/run2: tmp
+Only in /home/bolo/Workspace/improve/docs/changes/to-spec-grilling-and-chinese-ids/evidence/m07-1bc15f612c10aa6e68e33587a01cd2de1ede2fe4/issue-01/run3: tmp
+Only in /home/bolo/Workspace/improve/docs/changes/to-spec-grilling-and-chinese-ids/evidence/m07-1bc15f612c10aa6e68e33587a01cd2de1ede2fe4/issue-01/run4: tmp
+Only in /home/bolo/Workspace/improve/docs/changes/to-spec-grilling-and-chinese-ids/evidence/m07-1bc15f612c10aa6e68e33587a01cd2de1ede2fe4/issue-01/run5: tmp
+# 排除 tmp 缓存后:
+一致 (exit 0)

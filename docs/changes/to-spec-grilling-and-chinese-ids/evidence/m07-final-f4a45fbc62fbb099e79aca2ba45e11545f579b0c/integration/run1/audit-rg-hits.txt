@@ -1,0 +1,755 @@
+workflow/blast-radius/reference/PROVENANCE.md:37:| frontmatter `description` 英文触发词清单 ("Use for 'blast radius of X'...", 上游第 3 行) | frontmatter `description` 单行中文摘要, 触发词清单不搬 (本地第 3 行); `disable-model-invocation: true` 上游第 4 行与本地第 4 行逐字相同 | 只改描述措辞; 调用方式没有改变 | 按 DECISIONS D022 把 description 写成一行人类摘要. 不记为调用模式改变: 上游原文第 4 行原本就是用户调用, 本地照抄该行 |
+workflow/blast-radius/reference/PROVENANCE.md:39:| 引言段 "Companion to `how` and `why`" | 无 companion 指针; 历史定位命令内联到第 1 节 (读变更并定位历史) | 去掉两个上游 sibling 指针, 规则不丢 | 按 DECISIONS D021 自包含, 不留悬空调用 |
+workflow/blast-radius/reference/PROVENANCE.md:41:| Step 1 "Use `why` step 2 to pull the PR and commits" | 第 1 节 (读变更并定位历史) 的 5 条 `git log`/`git show`/`git blame` 命令, 再加托管入口读 PR 正文 | 上游指针变成本地可直接执行的命令 | 按 D021 自足; 取不到 PR 材料时写明来源限制 |
+workflow/blast-radius/reference/PROVENANCE.md:46:| Step 6 "run it as an `arena`" 与上游模型指派, Frame/Fan out/Cross-judge/Pick/Graft/Verify 产物流程 | 第 7 节 (大或宽变更用多模型同题调查) 与 `reference/multimodel.md`, 用 `use-herdr` 与 `llm-select` 承接 | 不搬上游产物流程与模型指派表; 合并规则本地写 (一致取最高证据级别, 分歧并存) | 按 D021 只借"不同模型同题加合并答案" |
+workflow/blast-radius/reference/PROVENANCE.md:47:| 结尾 "Write it through `unslop`" | 第 8 节 (交接) 按 `reference/report-style-zh.md` 整理中文报告 | 上游英文文风清单不是等价替换 | 按 D021 改写成中文报告规则, 只保留诚实, 去冗, 分事实/推断/未证实 |
+workflow/blast-radius/reference/PROVENANCE.md:50:| 上游无角色句 | 引言: 自己调查并运行是使用者角色; 组织产品验收的会话不借调用本技能亲自验收, 须派实际验收子会话 | 新增角色边界 | 按 DECISIONS D025 |
+workflow/blast-radius/reference/PROVENANCE.md:52:| 上游无放行句 | 第 8 节 (交接): 只交接材料, 不自动合并, 不创建 PR | 新增交付边界 | 按 DECISIONS D024 |
+workflow/to-spec/TEMPLATES.md:30:- 独立于变更也成立的领域规则, 供场景以 @BR-NNN 标签引用.
+workflow/to-spec/GHERKIN.md:33:@AC-001 @normal @G-001
+workflow/to-spec/GHERKIN.md:39:@AC-002 @edge @G-001 @BR-002
+workflow/to-spec/GHERKIN.md:53:关键字只认上表写法. 官方 zh-CN 集里的同义词与非官方写法都由 `check-ac.py` 的白名单拒绝, 报错后按上表改写; `规则:` 与英文关键字同样只由该白名单拦截. 业务规则归属只靠 `@BR-NNN` 标签表达.
+workflow/to-spec/GHERKIN.md:61:| `@AC-NNN` | 场景所属验收标准 | 每场景恰好一个; 同一 AC 的状态分支场景共用同一标签 |
+workflow/to-spec/GHERKIN.md:62:| `@G-NNN` `@BR-NNN` | 覆盖关系 (目标/业务规则) | 每场景至少一个; AC 的覆盖关系取其全部场景标签的并集 |
+workflow/to-spec/GHERKIN.md:65:`@G-NNN`/`@BR-NNN` 引用的编号必须在 PRODUCT.md 的 `目标`/`业务规则` 节真实存在, 且 `@BR-NNN` 只能引用领域规则条目, 不得指向标 `(审计)` 的审计式断言; 两条均由机检对账.
+workflow/to-spec/GHERKIN.md:67:正文条目的写法是汉字加无前导零数字, 与标签只差前导零: `@G-001` 对应正文条目 `目标1`, `@BR-002` 对应 `规则2`, 机检去掉前导零后按数字对账. 标签必须保持拉丁三位写法, 不跟着正文改成中文.
+workflow/to-spec/GHERKIN.md:69:1 AC = 1..N 场景: 同一 AC 下的状态分支场景共用同一 `@AC-NNN`; 场景大纲计为一个场景. 按盘问确认的判定组织场景. 不在落笔时擅自拆分验收判定; 发现缺判定按主流程补问.
+workflow/to-spec/GHERKIN.md:75:@AC-001 @AC-002 @例子 @smoke
+workflow/to-spec/GHERKIN.md:81:- 同时挂 `@AC-001 @AC-002`: 违反每场景恰好一个 AC 标签; 若确属两条 AC 的行为, 应拆成两个场景, 各归其 AC.
+workflow/to-spec/GHERKIN.md:115:6. 编号对账: 目标/业务规则编号不重复, 场景引用的 @G-NNN/@BR-NNN 在对应节真实存在, 且 @BR 不指向 (审计) 条目.
+workflow/to-spec/tests/test_ac_reading.py:26:@AC-001 @edge @G-001 @BR-001
+workflow/to-spec/tests/test_ac_reading.py:123:        self.assertEqual(["AC-001"], [node["attrs"]["data-ac"]
+workflow/to-spec/tests/test_ac_reading.py:136:            self.assertEqual("AC-001", card["attrs"]["data-ac"])
+workflow/to-spec/tests/test_ac_reading.py:178:        extra = """@AC-001 @failure @G-001
+workflow/to-spec/tests/test_ac_reading.py:185:        self.assertEqual(["AC-001", "AC-001"], [node["attrs"]["data-ac"]
+workflow/to-spec/tests/test_ac_reading.py:241:        parsed = self.preview(DRAFT.replace("@AC-001", comment + "\n@AC-001"))
+workflow/to-spec/tests/test_ac_reading.py:285:        self.assertEqual(["AC-001 / 阅读卡片 1"], parsed.texts("case-meta"))
+workflow/to-spec/tests/test_ac_reading.py:318:        self.assertEqual(["AC-001", "AC-002", "AC-002"],
+workflow/use-sandbox-worktree/scripts/env_docs.py:8:# 生成标记: birth 收尾验收 (D018) 用它判断挂载物确实是脚本生成.
+workflow/use-sandbox-worktree/scripts/env_docs.py:10:# 生成文档集合固定为四份 (D012).
+workflow/use-sandbox-worktree/scripts/env_docs.py:15:# default_models 整键缺席时, 三个 agent 的模型均按缺席文案渲染 (D012).
+workflow/use-sandbox-worktree/scripts/env_docs.py:68:        "docs/changes/workflow-stack-review/milestone-14/DECISIONS.md 的 D011).",
+workflow/use-sandbox-worktree/image/Containerfile:2:# 真实三层镜像 (base/display/项目层) 由 image-prep.py 生成与构建 (D039).
+workflow/to-spec/check-ac.py:5:"""PRODUCT.md 验收标准机检脚本 (D011/D012).
+workflow/to-spec/check-ac.py:14:2. 标签封闭集与 @AC 唯一性 (D003/D007): 只允许 @AC-NNN / @G-NNN /
+workflow/to-spec/check-ac.py:15:   @BR-NNN / @normal / @failure / @edge; 每场景 (含场景大纲) 恰好一个 @AC-NNN.
+workflow/to-spec/check-ac.py:16:3. 覆盖完整性 (D003): 每个出现过的 @AC-NNN 至少挂在一个场景上; 每场景至少一个
+workflow/to-spec/check-ac.py:17:   覆盖标签 (@G-NNN / @BR-NNN).
+workflow/to-spec/check-ac.py:18:4. 关键字子集白名单 (D005/D008): 禁 规则: (Rule); 禁官方同义变体
+workflow/to-spec/check-ac.py:25:6. 编号对账: 目标/业务规则编号不得重复; 场景引用的 @G-NNN/@BR-NNN 必须在
+workflow/to-spec/check-ac.py:27:   正文条目写作 目标1/规则1 (汉字 + 无前导零数字), 标签写作 @G-001/@BR-001,
+workflow/to-spec/check-ac.py:60:# 拉丁三位 (`@G-001` / `@BR-001`), 靠 tag_entry_key 去掉前导零后对账.
+workflow/to-spec/check-ac.py:105:    """归一化对账键: `@G-001` -> `目标1`, `@BR-002` -> `规则2`."""
+workflow/to-spec/check-ac.py:205:                f"非法标签 {name} (封闭集: @AC-NNN/@G-NNN/@BR-NNN/"
+workflow/to-spec/check-ac.py:233:            "官方同义变体 (假如/假设/剧本/剧本大纲/并且/同时) 已禁用 (D005)",
+workflow/to-spec/check-ac.py:242:                "官方同义变体 (假如/假设/并且/同时) 已禁用 (D005)",
+workflow/to-spec/check-ac.py:283:                    "禁用 `规则:` (Rule) 关键字 (D008), 业务规则归属仅靠 @BR-NNN 标签表达",
+workflow/to-spec/check-ac.py:304:                        "每场景必须恰好一个 @AC-NNN",
+workflow/to-spec/check-ac.py:314:                        "缺少覆盖标签, 每场景至少一个 @G-NNN/@BR-NNN",
+workflow/to-spec/tests/test_ac_draft.py:58:@AC-001 @normal @G-001 @BR-001
+workflow/to-spec/tests/test_ac_draft.py:143:            "未知目标": DRAFT.replace("@G-001", "@G-999"),
+workflow/to-spec/tests/test_ac_draft.py:144:            "未知规则": DRAFT.replace("@BR-001", "@BR-999"),
+workflow/to-spec/tests/test_ac_draft.py:145:            "审计规则": DRAFT.replace("@BR-001", "@BR-002"),
+workflow/to-spec/tests/test_ac_draft.py:146:            "多AC": DRAFT.replace("@AC-001", "@AC-001 @AC-002"),
+workflow/to-spec/tests/test_ac_draft.py:147:            "无AC": DRAFT.replace("@AC-001 ", ""),
+workflow/to-spec/tests/test_ac_draft.py:148:            "无覆盖": DRAFT.replace("@G-001 @BR-001", ""),
+workflow/to-spec/tests/test_ac_draft.py:152:            "功能标签": DRAFT.replace("功能:", "@G-001\n功能:"),
+workflow/to-spec/tests/test_ac_draft.py:178:        extra = """@AC-001 @edge @G-001
+workflow/to-spec/tests/test_ac_draft.py:233:        self.draft.write_text(DRAFT.replace("@G-001", "@G-999"), encoding="utf-8")
+workflow/to-spec/tests/test_ac_draft.py:275:        self.draft.write_bytes(DRAFT.replace("@G-001", "@G-999").encode())
+workflow/to-spec/tests/test_ac_draft.py:291:        self.base.write_text(BASE.replace("待确认, 此处暂不写入正式用例.", MARKER + "\n" + DRAFT.replace("AC-001", "AC-999")), encoding="utf-8")
+workflow/to-spec/tests/test_ac_draft.py:293:        self.assertNotIn(b"AC-999", self.output.read_bytes())
+workflow/to-spec/tests/test_ac_draft.py:294:        self.assertEqual(1, self.output.read_bytes().count(b"AC-001"))
+workflow/to-spec/tests/test_ac_draft.py:297:        self.draft.write_text(DRAFT.replace("@AC-001", "## 这是一条 Gherkin 注释, 不是 Markdown 节\n@AC-001"), encoding="utf-8")
+workflow/use-sandbox-worktree/headed-browser/swt-headed-browser.sh:2:# swt-headed-browser.sh — 容器内 headed chromium 启动脚本母本 (M08 D003).
+workflow/use-sandbox-worktree/headed-browser/swt-headed-browser.sh:7:# preflight (D007(1)/UD-11): WAYLAND_DISPLAY 与 XDG_RUNTIME_DIR 在场, 且
+workflow/use-sandbox-worktree/headed-browser/swt-headed-browser.sh:21:# 音频 (D002/UD-08): 设备侧 -R 建立的 pulse socket 在场才导出; 宿主直通模式
+workflow/use-sandbox-worktree/scripts/swt-display.py:2:"""swt-display: 容器显示栈通道检查 (原 M09 login-wall verify 迁家, ISSUE-04 → D041).
+workflow/use-sandbox-worktree/scripts/swt-display.py:350:    """wayland 本机直通探测 (D051): 以 bolo 身份 connect 容器内中继 socket."""
+workflow/use-sandbox-worktree/scripts/swt-display.py:374:    # (0) wayland 本机直通探测 (D051): 未挂直通的容器记 SKIP (不影响退出码);
+workflow/use-sandbox-worktree/scripts/swt-display.py:456:    # root 属主 (F013 同类, 运行期版); chromium 缓存也装在 bolo home
+workflow/benchmark-checklist/reference/PROVENANCE.md:37:| frontmatter `description` 英文触发句 ("Use when you run a benchmark or report a speedup...", 上游第 3 行) | frontmatter `description` 单行中文摘要, 写适用场景 (报告性能数字前) 与判据 (测量是否公平, 结论是否站得住), 不列举核查项 (本地第 3 行); `disable-model-invocation: true` 上游第 4 行与本地第 4 行逐字相同 | 只改描述措辞; 调用方式没有改变 | 按 DECISIONS D022 把 description 写成一行人类摘要. 不记为调用模式改变: 上游原文第 4 行原本就是用户调用, 本地照抄该行. 2026-11 复核: 原描述列举四项核查内容, 属冗余枚举, 改为场景加判据 |
+workflow/benchmark-checklist/reference/PROVENANCE.md:48:| `## Report` 四条 (判定先行, 数字带单位/次数/极差/限制因素, 无法下结论条件, PR 只一个主数字 per the **Opening a PR** playbook) | `## 判定` 与 `## 对外报告` | 上游 playbook 指针改为自足规则: 主数字带单位与前后对照加证据链接, 完整次数/极差/失败数/限制因素留在链接材料, 内部证据不缩减 | 按 DECISIONS D021 自足, 不指向上游 playbook |
+workflow/benchmark-checklist/reference/PROVENANCE.md:49:| `## Other perf material` (Perf issue 与 Hillclimb playbook 两个指针) | reference/measurement-branches.md 的 `## 固定基线` | 改成自足步骤: 规划前先审基线方法, 固定脚本前必须有错误数与工作量输出, 缺就补并重跑, 只能改产品源码才做得到时报缺口 | 按 D021 保留检查接入要求, 不搬两套优化流程 |
+workflow/benchmark-checklist/reference/PROVENANCE.md:52:| 上游无交付边界 | `## 对外报告` 末段: 本清单只产出草稿与判定, 提交/推送/开 PR/合并由使用者做 | 新增交付边界 | 按 DECISIONS D024 |
+workflow/use-sandbox-worktree/scripts/image-prep.py:2:"""M07 image preparation (ISSUE-03), M10 三层化 (D039).
+workflow/use-sandbox-worktree/scripts/image-prep.py:4:Three-layer image flow per D014/D015/D017/D024/D039:
+workflow/use-sandbox-worktree/scripts/image-prep.py:8:  match         : candidate match per D017 (contents predicates + parent-digest
+workflow/use-sandbox-worktree/scripts/image-prep.py:42:# 门禁类扩展留 host 名单 (D043 白名单心智): extensions/ 下新扩展默认随
+workflow/use-sandbox-worktree/scripts/image-prep.py:43:# ~/.pi/agent 进容器, 只有此处显式点名的留 host (D014 精神: 容器内硬
+workflow/use-sandbox-worktree/scripts/image-prep.py:68:# display 层缺省需求清单 (仓库内, D039)
+workflow/use-sandbox-worktree/scripts/image-prep.py:73:# base 层实测清单 (D014: OS + pi CLI + skill 库全量 + fd/rg; uv 供容器内 uv sync)
+workflow/use-sandbox-worktree/scripts/image-prep.py:76:# base 层需求清单 (D014)
+workflow/use-sandbox-worktree/scripts/image-prep.py:116:    """条目 = 名称[谓词] [install="cmd"] [probe="cmd"] (D015 + 最小接缝补钉)."""
+workflow/use-sandbox-worktree/scripts/image-prep.py:199:    """date-seq 分配, 锁内查重即建目录占位 (D015/D024)."""
+workflow/use-sandbox-worktree/scripts/image-prep.py:223:    """slug 复用 use-worktree slug.py; 冲突加短 hash; base/display 保留 (D024/D039)."""
+workflow/use-sandbox-worktree/scripts/image-prep.py:256:# base 层: OS + pi CLI + skill 库全量 + fd/rg 等 bin (D014)
+workflow/use-sandbox-worktree/scripts/image-prep.py:257:# 门禁类扩展留 host 不进容器 (D014); ~/AGENTS.md 与 ~/docs 为 host 环境文档不注入 (D023)
+workflow/use-sandbox-worktree/scripts/image-prep.py:279:# bolo 用户 + sshd host keys (home 与 host 字面相同, D018 字面复刻)
+workflow/use-sandbox-worktree/scripts/image-prep.py:303:# F012: ssh 非交互 shell 的 PATH 须含 ~/.local/bin (herdr remote 把 binary
+workflow/use-sandbox-worktree/scripts/image-prep.py:306:# M08 D004/UD-03: 同一 SetEnv 行合并 XDG_RUNTIME_DIR (固定常量 1001, 与
+workflow/use-sandbox-worktree/scripts/image-prep.py:313:# auth.json/sessions 不进镜像 (D018); AGENTS.md 不进镜像 (P1-6 母本制, birth 只读挂载);
+workflow/use-sandbox-worktree/scripts/image-prep.py:314:# 门禁类扩展留 host (D043 stage 过滤)
+workflow/use-sandbox-worktree/scripts/image-prep.py:325:# 宿主端口不钉, 诞生时 -p <容器端口> 动态分配 (D003)
+workflow/use-sandbox-worktree/scripts/image-prep.py:328:# M08 D004: entrypoint 先以 bolo 属主 0700 建 XDG 运行时目录与 swt 信箱
+workflow/use-sandbox-worktree/scripts/image-prep.py:348:    # F013 兜底: install 步骤多以 root 跑且 HOME 可能指 bolo, 收尾统一归还
+workflow/use-sandbox-worktree/scripts/image-prep.py:463:    → (digest, build-id, image_id). D039 匹配谓词: display 层自身必须
+workflow/use-sandbox-worktree/scripts/image-prep.py:497:                "请先 build-display 重建 (D039)"
+workflow/use-sandbox-worktree/scripts/image-prep.py:499:        raise EnvError(f"NO-DISPLAY {display_ref}: 请先 build-display (D039)")
+workflow/use-sandbox-worktree/scripts/image-prep.py:544:        "# contents.md — 构建后实测版本清单 (D015)",
+workflow/use-sandbox-worktree/scripts/image-prep.py:660:    """display/项目层共用构建 (D039): FROM parent@digest + install 指令按序,
+workflow/use-sandbox-worktree/scripts/image-prep.py:729:    """display 层构建 (D039): FROM 当前 base, 内容缺省 requirements-browser.md.
+workflow/use-sandbox-worktree/scripts/image-prep.py:802:    # D039 匹配谓词: 项目层候选的 base-digest 必须 == 当前 display 层 digest
+workflow/navigate/tests/test_stdlib_only_and_no_external_refs.py:1:"""ISSUE-07 TS-001 / TC-102: BR-006 依赖审计 (静态检查).
+workflow/navigate/tests/test_web_server_endpoints.py:1:"""web_server.py HTTP 端点测试 (ISSUE-04: TC-016, TC-015, 占位页)."""
+workflow/navigate/tests/test_web_server_endpoints.py:14:    """TC-008 扩展 (ISSUE-04): GET / 与 /index.html 返回 200 text/html 占位页."""
+workflow/navigate/tests/test_web_server_endpoints.py:31:    """TC-016 (AC-016): /etc/passwd 被拒不返回内容; 不存在 .json 得错误响应."""
+workflow/navigate/tests/test_web_server_endpoints.py:51:    """TC-015 (AC-015 数据侧): 不存在路径返回确定形态的结构化错误."""
+workflow/navigate/tests/visual/README.md:32:| demo/poc 类型展示 (TC-006) | 图例含 `演示 demo` 与 `实验 PoC` 两项, 画布标注两者都出现, 元数据/配色/地貌两类型互不同 |
+workflow/navigate/tests/test_roadmap_cli.py:1:"""roadmap.py CLI 读写骨架测试 (ISSUE-01: TC-001, TC-005, TC-006, TC-007, TC-101).
+workflow/navigate/tests/test_roadmap_cli.py:41:    """TC-001: 合法写入可经 query 读回, stdout 单行 JSON, 退出码正确 (AC-001)."""
+workflow/navigate/tests/test_roadmap_cli.py:61:    """TC-005: notes 长度 2 时 notes.2 追加成功, notes.5 越界报错且文件不变 (AC-005)."""
+workflow/navigate/tests/test_roadmap_cli.py:80:    """TC-006: delete 后文件消失, 再 query 报文件不存在 (AC-006)."""
+workflow/navigate/tests/test_roadmap_cli.py:94:    """TC-007: query 不存在路径报错且指明路径 (AC-007)."""
+workflow/navigate/tests/test_roadmap_cli.py:104:    """TC-101: save/query/delete 一轮后目录内无 .md 与临时文件残留 (BR-007)."""
+workflow/use-sandbox-worktree/pi-extension/index.ts:2: * /list-sandbox pi 扩展 — 纯连接器 (swt-list-sandbox M2, D004/BR-010)
+workflow/use-sandbox-worktree/pi-extension/index.ts:5: * 按 pi 模式分路降级 (D010). 业务零实现 — 一切 podman/runtime/组装
+workflow/use-sandbox-worktree/pi-extension/index.ts:8: * 命令 (D009): /list-sandbox 无参数.
+workflow/use-sandbox-worktree/pi-extension/index.ts:10: *           (固定概要 + 分区导航 + 按键提示, 只给人看, 不进 LLM 上下文, BR-007)
+workflow/use-sandbox-worktree/pi-extension/index.ts:32:/** skill 目录 (D001): 扩展与脚本同版本演进. 兼容 jiti (提供 __dirname)
+workflow/use-sandbox-worktree/pi-extension/index.ts:42:/** LIST schema v1 (D005, 生产侧为 swt.py list 末行). 扩展只读消费,
+workflow/use-sandbox-worktree/pi-extension/index.ts:86:/** 模式分路计划 (D010): 该模式的可用通道 + 提示/降级文案.
+workflow/use-sandbox-worktree/pi-extension/index.ts:108:/** 裸数据命令提示 (D010 文案, <skill> 为 skillDir 占位). */
+workflow/use-sandbox-worktree/pi-extension/index.ts:111:/** 生命周期标注 (AC-001/AC-004: retired 标注 仅可终结). */
+workflow/use-sandbox-worktree/pi-extension/index.ts:118:/** 记录轴标注 (AC-005). */
+workflow/use-sandbox-worktree/pi-extension/index.ts:125:/** 解析 swt.py list 的 stdout: 末行 `LIST ` 前缀单行 json (D005).
+workflow/use-sandbox-worktree/pi-extension/index.ts:145: * 分支摘要 (M2/AC-001 交互面). 空清单产出空数组. */
+workflow/use-sandbox-worktree/pi-extension/index.ts:157:/** 模式分路 (D010): tui -> select+custom(+notify 降级); rpc -> notify 摘要;
+workflow/use-sandbox-worktree/pi-extension/index.ts:215:/** BR-010 唯一子进程: `uv run python <skillDir>/scripts/swt.py list`,
+workflow/use-sandbox-worktree/pi-extension/index.ts:257:/** 按所在模式通道降级提示 (D010): tui/rpc 走 notify, print/json 走
+workflow/use-sandbox-worktree/pi-extension/index.ts:270:// (BR-010); 长命令折行保留全文, CJK 按显示宽, 小终端逐级降级.
+workflow/use-sandbox-worktree/pi-extension/index.ts:998:/** 长行折行 (review spec-2/AC-002): 超宽行按显示宽拆为多行, 续行缩进
+workflow/use-sandbox-worktree/pi-extension/index.ts:1022:/** tui 模式: 全屏 overlay 展示选中容器的访问入口 (D009; 只给人看,
+workflow/use-sandbox-worktree/pi-extension/index.ts:1023: * 不进 LLM 上下文, BR-007). 固定概要 + 分区导航, 六区切换与滚动,
+workflow/navigate/tests/test_roadmap_validation.py:1:"""roadmap.py 守门校验测试 (ISSUE-02: TC-002, TC-003, TC-004, TC-104, TC-105).
+workflow/navigate/tests/test_roadmap_validation.py:3:m04 新增枚举用例: TC-002 demo 可写入, TC-003 prototype 被拒且文件逐字节不变,
+workflow/navigate/tests/test_roadmap_validation.py:4:TC-005 poc 可写入; 各用例 docstring 以 "TC-xxx (m04 AC-xxx)" 括注消歧, 编号语义与本文件既有 TC-xxx 不同.
+workflow/navigate/tests/test_roadmap_validation.py:33:    """一份合法 ROADMAP.json 文档 (D005 schema)."""
+workflow/navigate/tests/test_roadmap_validation.py:66:    """TC-002: 非法枚举被拒, 错误列合法值, 文件不变 (AC-002)."""
+workflow/navigate/tests/test_roadmap_validation.py:79:    """TC-003: 新增里程碑缺必填被拒, 错误列缺失字段名, 文件不变 (AC-003)."""
+workflow/navigate/tests/test_roadmap_validation.py:117:    """TC-003 变体: 合法新增里程碑填充 status/blocked_by 默认值 (BR-004)."""
+workflow/navigate/tests/test_roadmap_validation.py:138:    """TC-004: 非法阻塞引用被拒且文件不变 (AC-004)."""
+workflow/navigate/tests/test_roadmap_validation.py:157:    """TC-104: 未知顶层字段拒绝写入 (D006-d)."""
+workflow/navigate/tests/test_roadmap_validation.py:168:    """TC-105: 局部合法 (blocked_by 引用存在) 但整文档非法 (中间节点新建
+workflow/navigate/tests/test_roadmap_validation.py:169:    里程碑缺必填) -> 兜底校验不落盘, 文件保持原状 (D007)."""
+workflow/navigate/tests/test_roadmap_validation.py:190:    """TC-002 (m04 AC-002): demo 成为合法类型, 写入后可读回."""
+workflow/navigate/tests/test_roadmap_validation.py:199:    """TC-003 (m04 AC-003): prototype 被拒且不留别名, 文件逐字节不变,
+workflow/navigate/tests/test_roadmap_validation.py:213:    """TC-005 (m04 AC-005): poc 成为合法类型, 写入后可读回."""
+workflow/navigate/tests/test_web_server_lifecycle.py:1:"""web_server.py 生命周期测试 (ISSUE-03: TC-008, TC-009, TC-010 + milestone-17 R1-R4, R7).
+workflow/navigate/tests/test_web_server_lifecycle.py:3:milestone-17 起测试与生产不再在真实 39271 上互斥: 除 TC-010 (保留的真实
+workflow/navigate/tests/test_web_server_lifecycle.py:32:    """TC-008 (AC-008): start 就绪返回可访问 URL -> status 报存活 -> stop 清理."""
+workflow/navigate/tests/test_web_server_lifecycle.py:75:    """TC-009 (AC-009): 重复 start 复用既有进程, 同 pid/端口, 无第二实例."""
+workflow/navigate/tests/test_web_server_lifecycle.py:96:    """TC-010 (AC-010): 真实默认端口 39271 被占 -> 自动换端口, status 一致, 服务可用.
+workflow/navigate/scripts/roadmap.py:1:"""navigate roadmap 守门脚本: ROADMAP.json 的唯一读写入口 (D002).
+workflow/navigate/scripts/roadmap.py:6:                                    失败按裸字符串存 (D003)
+workflow/navigate/scripts/roadmap.py:14:不变量: save 全程 fcntl 锁覆盖 读-改-写, 落盘经临时文件 rename 原子替换 (D007).
+workflow/navigate/scripts/roadmap.py:16:里程碑 id 形如 milestone-01 非纯数字, 不按下标解析 (D004).
+workflow/navigate/scripts/roadmap.py:40:# 新增里程碑用户必填字段 (BR-004); 其余成员字段由默认值补齐
+workflow/navigate/scripts/roadmap.py:70:    """文件不存在时 save 自动初始化的顶层结构 (D005)."""
+workflow/navigate/scripts/roadmap.py:92:    """content 先按 JSON 解析, 失败按裸字符串存 (D003)."""
+workflow/navigate/scripts/roadmap.py:100:# Lock + atomic write (D007)
+workflow/navigate/scripts/roadmap.py:126:# Path resolution (D004)
+workflow/navigate/scripts/roadmap.py:197:# Validation (D006 快速通道: 字段级, 写前; D007 兜底: 整文档, 写后内存复核)
+workflow/navigate/scripts/roadmap.py:249:    blocked_by [], artifacts [], close_summary null (BR-004)."""
+workflow/navigate/scripts/roadmap.py:352:    """整文档完整 schema 校验 (D007 兜底闸门), 返回错误信息列表."""
+workflow/codebase-map/tools/build-zh.sh:2:# CodeCharta 前端汉化构建流水线 (milestone-21, 依据 m13 D013-D016/D021/D023/D024/D030)
+workflow/codebase-map/tools/build-zh.sh:9:# 步骤: 克隆钉死 tag (换 tag 整体替换缓存, D030) -> npm ci -> 先还原再三通道替换 (幂等, D013)
+workflow/codebase-map/tools/build-zh.sh:10:#       -> npm run build -> 渲染冒烟 (D014, 失败即构建失败) -> 汇报未使用词条与未命中统计.
+workflow/codebase-map/tools/build-zh.sh:39:    echo "缓存不存在或 tag 变更, 整体替换 $SRC (D030: 不叠加)"
+workflow/codebase-map/tools/build-zh.sh:76:echo "== 6/6 渲染冒烟 (D014) =="
+workflow/codebase-map/scripts/codebase-map.py:4:子命令 (m13 D009, BR-013): build / serve / stop 三子命令各管一件事, 不合并.
+workflow/codebase-map/scripts/codebase-map.py:11:  前置检查 (顺序固定, 命中即停并报错退出, m13 D003 / BR-021 不降级):
+workflow/codebase-map/scripts/codebase-map.py:27:  交付文案, 不落盘 (ISSUE-05 接线, m25 D017); 未传时按顺序取已确认地址
+workflow/codebase-map/scripts/codebase-map.py:31:  codemap_service 的交付输出层组装, 调用会话只原样转述 (BR-037).
+workflow/codebase-map/scripts/codebase-map.py:32:  serve/stop 不做网络动作 (BR-027), 容器内不作 build 式拒绝.
+workflow/codebase-map/scripts/codebase-map.py:36:  port/last_port/last_url, m25 D018); 没有实例时幂等成功. 输出
+workflow/codebase-map/scripts/codebase-map.py:44:约束: 只 import python 标准库加同目录共享模块 (BR-033, m25 D012); 对
+workflow/codebase-map/scripts/codebase-map.py:149:        help="用户确认过的局域网地址, 只作用于本次调用, 不落盘 (m25 D017).")
+workflow/navigate/tests/visual/render_checks.py:221:        # TC-006: demo/poc 两种类型各有图例与画布标注, 元数据/配色/地貌两两不同
+workflow/codebase-map/tools/stage.py:2:"""把构建产物与数据副本铺进服务根 (D023/D024), m21 只做铺设, 不起服务 (v1 服务属 milestone-26).
+workflow/codebase-map/tools/stage.py:6:      把最近一次构建的前端产物复制到服务根 (index.html 落在服务根顶层, 数据副本同目录, F014).
+workflow/codebase-map/tools/stage.py:8:      复制一份 cc.json 到服务根, 键名 <库名>-<8 位路径哈希>.cc.json (D023), 打印可书签 URL 的
+workflow/codebase-map/tools/stage.py:78:    print("页面地址: ?file=%s (与前端产物同目录, 满足 F014 同源同目录)" % key)
+workflow/navigate/scripts/web_server.py:49:DEFAULT_PORT = 39271  # D010: 避开 mailbox 端口区间 (38416-38437)
+workflow/navigate/scripts/web_server.py:50:BIND = "0.0.0.0"  # D009: 网段可读为已接受取舍
+workflow/navigate/scripts/web_server.py:435:        .json 后缀检查在任何文件读取之前 (D009: 挡任意文件探测);
+workflow/codebase-map/scripts/codemap_common.py:6:各抄一份漂移 (m25 D005/D019, m13 D023/D017).
+workflow/codebase-map/scripts/codemap_common.py:10:约束: 只 import python 标准库 (m25 D012, BR-033); 只在宿主使用, 容器内
+workflow/codebase-map/scripts/codemap_common.py:11:不做降级分析 (m13 D003), 本模块不触碰 podman 与网络.
+workflow/codebase-map/scripts/codemap_common.py:23:# 版本与校验常量 (m25 TECHNICAL.md "版本常量"; m25 D013/D016)
+workflow/codebase-map/scripts/codemap_common.py:26:# 分析端镜像 tag: 纯数字版本号, 不信镜像内 ccsh --version 自报 (m25 D013)
+workflow/codebase-map/scripts/codemap_common.py:28:# 单架构清单 digest: 硬校验阻断项 (linux/amd64 实际内容, m25 D013)
+workflow/codebase-map/scripts/codemap_common.py:32:# 多架构清单 digest: 只记录进 cache/cache.json, 不阻断 (m25 D016)
+workflow/codebase-map/scripts/codemap_common.py:36:# 官方前端静态包: 取官方现成产物, 不自建前端 (NG-001)
+workflow/codebase-map/scripts/codemap_common.py:45:# 数据键 (m25 D005, m13 D023; BR-011/BR-032)
+workflow/codebase-map/scripts/codemap_common.py:61:    不变式 (m25 D005): 同一 realpath 恒得同一键 (软链进同一目录必须同键,
+workflow/codebase-map/scripts/codemap_common.py:99:# 已确认局域网地址与候选探测 (m25 D011/D017, m14 D011; BR-019/BR-020)
+workflow/codebase-map/scripts/codemap_common.py:109:# address_source 取值: 标明本次交付地址取自哪个来源 (m25 D017)
+workflow/codebase-map/scripts/codemap_common.py:115:    测试用临时 HOME 隔离, 不新增配置源, m14 D011)."""
+workflow/codebase-map/scripts/codemap_common.py:126:    """读已确认局域网地址; 无文件或内容为空返回 None (无值, 不猜测, m14 D011)."""
+workflow/codebase-map/scripts/codemap_common.py:138:    """枚举非隧道网卡的全局 IPv4 字面量作候选地址 (只候选, 不自动交付, m25 D011).
+workflow/codebase-map/scripts/codemap_common.py:165:    """交付地址解析 (m25 D011/D017, m14 D011): 单一入口, 只读不落盘.
+workflow/codebase-map/scripts/codemap_common.py:172:    明确不采 SSH_CONNECTION, 主机名, localhost, 服务自报地址 (m25 D011);
+workflow/codebase-map/scripts/codemap_common.py:187:                "不用回环地址, 主机名或文件路径顶替 (BR-019/BR-020)."
+workflow/codebase-map/scripts/codemap_common.py:195:# 排除集合与 glob -> ccsh 正则 (m25 D019, m13 D017; BR-015)
+workflow/codebase-map/scripts/codemap_common.py:213:    这里取同一份数据, 两处口径不得各写一套 (BR-015).
+workflow/codebase-map/scripts/codemap_common.py:225:    """单个 glob -> ccsh -e 正则: 元字符逐字转义, 不把 glob 原样当正则 (m25 D019)."""
+workflow/codebase-map/scripts/codemap_common.py:261:    地址缺口 (m25 D017, AC-008): serve 成功但缺已确认地址时, 交付被阻断而
+workflow/codebase-map/scripts/codemap_common.py:277:        # E-4 (REWORK-03, AC-001): build stats 里的三句分母说明在人类可读形态
+workflow/codebase-map/tools/smoke.py:2:"""CodeCharta 汉化产物渲染冒烟 (D014): 临时静态服务 + 无头浏览器截图 + 关键元素断言.
+workflow/codebase-map/tools/smoke.py:184:    # 2. 依赖视图 (hash 路由, F011)
+workflow/codebase-map/tests/test_runtime_dir.py:1:"""TC-01-02: 运行时目录解析 (CODEMAP_RUNTIME_DIR 覆盖, 默认 ~/.agents/codebase-map,
+workflow/codebase-map/tests/test_excludes_and_regex.py:1:"""TC-01-03: 默认排除集, --exclude 追加, glob -> ccsh -e 正则转义, 单一数据源
+workflow/codebase-map/tests/test_excludes_and_regex.py:2:(BR-015, m25 D019, m13 D017).
+workflow/codebase-map/tests/test_excludes_and_regex.py:17:    """默认排除集与 BR-015 逐字一致, 顺序稳定 (顺序进 ccsh 参数与统计归因)."""
+workflow/codebase-map/tests/test_excludes_and_regex.py:33:    """元字符逐字转义: * ? + . 等都不再是正则元字符 (m25 D019)."""
+workflow/codebase-map/tests/test_excludes_and_regex.py:48:    在前用户项在后 -- 分析侧与扫描侧都从这里取同一份 (BR-015)."""
+workflow/codebase-map/scripts/codemap_service.py:13:网络面 (BR-027): serve/stop 不做任何出网动作, 不调 podman; 唯二的网络
+workflow/codebase-map/scripts/codemap_service.py:21:状态与换端口 (m25 D018): stop 只把 pid 置空并写 stopped_at, 保留
+workflow/codebase-map/scripts/codemap_service.py:27:--address 的值按 D017 永不写入 state.json, 也不回写任何记录文件. 交付
+workflow/codebase-map/scripts/codemap_service.py:30:交付输出层 (ISSUE-05, m25 D002/D006/D017/D020): run_serve 在启动/复用
+workflow/codebase-map/scripts/codemap_service.py:76:ENV_PORT = "CODEMAP_PORT"  # 首选端口覆盖, 只供隔离测试, 不构成换端口入口 (BR-004)
+workflow/codebase-map/scripts/codemap_service.py:247:# 数据键交集判定 (m25 D020, BR-030)
+workflow/codebase-map/scripts/codemap_service.py:264:    两类文案 (m25 D020): 清单与磁盘都空 = 还没 build 过; 清单有条目但副本
+workflow/codebase-map/scripts/codemap_service.py:267:    一致 (BR-030 前置不只在启动时约束); 复用分支复查不通过时只报错返回,
+workflow/codebase-map/scripts/codemap_service.py:446:    # last_url 留痕 (m25 D018, D017): record 来源写交付 URL (换端口报真实旧
+workflow/codebase-map/scripts/codemap_service.py:474:        # 换端口 (m25 D018): 必须写明旧地址已失效; previous_url 优先取留痕的
+workflow/codebase-map/scripts/codemap_service.py:476:        # 该字段, 只保留失效文案. 不报回环地址 (BR-019).
+workflow/codebase-map/scripts/codemap_service.py:528:        # 端口决策: --port 实参, 否则 state.last_port, 否则首选端口 (m25 D018)
+workflow/codebase-map/scripts/codemap_service.py:581:        # E-1 (REWORK-03, BR-030/D020): 复用分支同样复查清单与磁盘副本的交集,
+workflow/codebase-map/scripts/codemap_service.py:606:    """keys = state.data_keys 与 serve-root 实际 .cc.json 的交集 (m25 D020, BR-030).
+workflow/codebase-map/scripts/codemap_service.py:609:    磁盘有而清单没有的 (手工放入) 不收编, 只作未登记清单返回 (BR-036 不删).
+workflow/codebase-map/scripts/codemap_service.py:610:    with_details=False 时按 AC-008 地址缺口形态只给键名, 不给 built_at/bytes.
+workflow/codebase-map/scripts/codemap_service.py:636:    """第 4 类说明逐库片段 (E-3, REWORK-03; BR-025, m25 D004).
+workflow/codebase-map/scripts/codemap_service.py:660:    """四类交付说明 (m25 D006, BR-023/BR-024/BR-025); 数字取自 serve-root 实际副本.
+workflow/codebase-map/scripts/codemap_service.py:663:    不写第二份); 懒加载且只调纯函数, 不触 podman 与网络 (BR-027).
+workflow/codebase-map/scripts/codemap_service.py:691:    """在 serve 成功结果上追加交付输出 (m25 D002/D006/D017/D020, AC-008).
+workflow/codebase-map/scripts/codemap_service.py:746:    供启动路径写 last_url 留痕与拼 previous_url (m25 D018); 解析本身不持锁,
+workflow/codebase-map/scripts/codemap_service.py:841:# HTTP 面: 只读静态服务 serve_root (BR-029, m13 D023)
+workflow/codebase-map/tests/test_cli_output_shape.py:1:"""TC-01-06: CLI 输出形状与可诊断性 (m25 TECHNICAL.md CLI "输出形状", 非功能要求
+workflow/codebase-map/tests/test_cli_output_shape.py:6:环境感知 (m25 D016 验证分工): 容器内失败码是 container_not_supported. ISSUE-02
+workflow/codebase-map/tests/test_cli_output_shape.py:89:    """AC-007 场景大纲 (没有 podman): 真实 CLI 报错里必须出现"本机没有 podman",
+workflow/codebase-map/tests/test_cli_output_shape.py:132:        f"AC-007 要求的说法缺失: {obj['error']['message']!r}")
+workflow/codebase-map/tests/test_cli_output_shape.py:137:    """BR-013 三子命令注册推进: ISSUE-01 时 serve/stop 未注册 (invalid choice);
+workflow/codebase-map/i18n/zh.txt:269:TF-IDF is unavailable: the loaded file has no TF-IDF scores.	TF-IDF 不可用: 加载的文件没有 TF-IDF 分数.
+workflow/codebase-map/tests/test_version_constants.py:1:"""TC-01-04: 版本常量与规格给定值逐字一致 (m25 TECHNICAL.md "版本常量";
+workflow/codebase-map/tests/test_version_constants.py:2:m25 D013/D016).
+workflow/codebase-map/tests/test_container_rejection.py:1:"""TC-007 (AC-007 主用例): 沙箱容器内 build 被拒, 不降级, 不产出数据.
+workflow/codebase-map/tests/test_container_rejection.py:3:场景 (PRODUCT @AC-007 @failure @G-001 @BR-021 "在沙箱容器里调用被拒绝"):
+workflow/codebase-map/tests/test_container_rejection.py:7:验证分工 (m25 D016): 本用例是容器内场景, 宿主上跳过; 宿主侧构造
+workflow/codebase-map/tests/test_container_rejection.py:25:    reason="容器内场景用例: 仅在 /run/.containerenv 存在的沙箱内运行 (m25 D016 验证分工)",
+workflow/codebase-map/tests/test_container_rejection.py:28:    """TC-007: 真实入口 build --json 报 container_not_supported, 退出码非 0, 零产出."""
+workflow/codebase-map/tests/test_stdlib_only.py:1:"""TC-01-05: 静态守卫 -- workflow/codebase-map/scripts/*.py 只 import 标准库
+workflow/codebase-map/tests/test_stdlib_only.py:2:(BR-033, m25 D012/D014).
+workflow/codebase-map/tests/test_skill_docs.py:1:"""ISSUE-06 SKILL.md 与元数据文本契约: TC-009, TC-06-01, TC-06-02.
+workflow/codebase-map/tests/test_skill_docs.py:19:# TC-06-01 断言的 serve 输出交付说明与版本口径关键短语 (E-3 后为四类说明)
+workflow/codebase-map/tests/test_skill_docs.py:119:    """TC-009: 三子命令职责, 调用式, 不合并与 stop 语义 (AC-009 主用例)."""
+workflow/codebase-map/tests/test_skill_docs.py:137:    """TC-009 附加: 参数面与默认值说明."""
+workflow/codebase-map/tests/test_skill_docs.py:147:    """TC-06-01: 交付纪律与四类说明原样转述 (E-3 后第 4 类为 unparsed_note)."""
+workflow/codebase-map/tests/test_skill_docs.py:174:    """TC-06-01: 清理入口与不自动删除."""
+workflow/codebase-map/tests/test_skill_docs.py:183:    """TC-06-01: 删运行时目录的复原步骤."""
+workflow/codebase-map/tests/test_skill_docs.py:192:    """TC-06-01: 版本口径 (镜像 tag/digest 核对, 前端 vis-2.9.1 英文原版)."""
+workflow/codebase-map/tests/test_skill_docs.py:201:    """TC-06-01 附加: 文档失败出口清单里列出的错误码全部在代码错误码全集内.
+workflow/codebase-map/tests/test_skill_docs.py:239:    """TC-06-02: frontmatter name 等于目录名, disable-model-invocation 为 true."""
+workflow/codebase-map/tests/test_skill_docs.py:248:    """TC-06-02: agents/openai.yaml 逐字等于两行最小配置."""
+workflow/codebase-map/tests/test_skill_docs.py:255:    """TC-06-02: README 技能表行指向本 skill 且反映 v1 描述."""
+workflow/codebase-map/tests/test_http_surface.py:1:"""TC-04-09: HTTP 面只读静态服务 (BR-029, m13 D023, m14 D007).
+workflow/codebase-map/tests/test_http_surface.py:23:    """TC-04-09: 越界防护与只读边界."""
+workflow/codebase-map/tests/codemap_service_helpers.py:30:# 不落真实局域网地址 (m25 D010)
+workflow/codebase-map/tests/codemap_stub_helpers.py:1:"""codebase-map 测试共享工具: 本地 stub podman 与伪官方前端产物 (TC-02 系列).
+workflow/codebase-map/tests/codemap_stub_helpers.py:7:tmp_path 并只通过 PATH 注入子进程环境, 不入仓库 (BR-031); 它只证明参数
+workflow/codebase-map/tests/codemap_stub_helpers.py:280:    的 isCyclic/isPointingUpwards (m25 D001/TECHNICAL, m23 PROBE 6.4).
+workflow/codebase-map/tests/test_data_key.py:1:"""TC-01-01: 数据键命名与清洗 (BR-011/BR-032, m25 D005; PRODUCT AC-005 键场景).
+workflow/codebase-map/tests/test_data_key.py:26:    """AC-005: 'Demo App' -> 'Demo-App-<8 位十六进制>.cc.json', 空格换成 -."""
+workflow/codebase-map/tests/test_delivery_output.py:1:"""ISSUE-05 交付输出与地址解析用例: AC-008 三场景, keys 交集, delivery_notes,
+workflow/codebase-map/tests/test_delivery_output.py:4:覆盖: TC-008 (AC-008 主用例), TC-05-01 (缺地址阻塞), TC-05-02 (确认后
+workflow/codebase-map/tests/test_delivery_output.py:5:--address 重新交付), TC-05-03 (keys 交集口径), TC-05-04 (delivery_notes
+workflow/codebase-map/tests/test_delivery_output.py:6:与换端口报告), TC-05-05 (交付一致性), TC-05-06/07/08 (E-3: 有未解析
+workflow/codebase-map/tests/test_delivery_output.py:10:(不新增配置源, m14 D011; EXECUTION 文件接缝口径), 运行时目录 CODEMAP_RUNTIME_DIR
+workflow/codebase-map/tests/test_delivery_output.py:13:不落真实局域网地址 (m25 D010).
+workflow/codebase-map/tests/test_delivery_output.py:15:BR-027 (serve/stop 不做网络动作) 按任务书走人工核验, 不写自动化用例.
+workflow/codebase-map/tests/test_delivery_output.py:76:    """URL 形状 (AC-002/BR-019): 局域网地址 + 实际端口, 无回环/主机名/路径."""
+workflow/codebase-map/tests/test_delivery_output.py:82:    """TC-008 (AC-008 主用例): 临时 HOME 里有已确认地址 + 两份数据副本时,
+workflow/codebase-map/tests/test_delivery_output.py:113:    # 交付说明四类齐全 (AC-006 交付侧; E-3 补第 4 类, 本用例登记的是老数据形态)
+workflow/codebase-map/tests/test_delivery_output.py:120:    """TC-05-01 (AC-008 缺地址): 临时 HOME 里没有 lan-address 且不传 --address,
+workflow/codebase-map/tests/test_delivery_output.py:154:    """TC-05-02 (AC-008 确认后): 缺地址阻塞后, 用户确认候选地址, 重跑
+workflow/codebase-map/tests/test_delivery_output.py:182:    """TC-05-03: keys 交集口径: 记录与磁盘都有的键进 keys; 记录有磁盘缺的键
+workflow/codebase-map/tests/test_delivery_output.py:209:    """TC-05-04: delivery_notes 三类说明齐全且 denominator_note 里的文件数等于
+workflow/codebase-map/tests/test_delivery_output.py:254:    取该留痕, 不含 127.0.0.1/localhost (BR-019 不给回环地址), 输出写明旧地址
+workflow/codebase-map/tests/test_delivery_output.py:255:    已失效 (m25 D018 真实旧地址)."""
+workflow/codebase-map/tests/test_delivery_output.py:334:    """TC-05-05 (交付一致性): url 端口 == state.json.port == 实际监听端口;
+workflow/codebase-map/tests/test_serve_lifecycle.py:4:覆盖: TC-003 (AC-003 主用例), TC-04-01 (并发单例), TC-04-02 (端口被占),
+workflow/codebase-map/tests/test_serve_lifecycle.py:5:TC-04-03 (显式换端口), TC-04-04 (换端口后沿用), TC-04-05 (存活实例换端口
+workflow/codebase-map/tests/test_serve_lifecycle.py:6:报 instance_running), TC-04-11 (常驻性短时验证), E-1 (存活复用分支交集
+workflow/codebase-map/tests/test_serve_lifecycle.py:48:    """TC-003: 起服务后再次 serve 复用, 两次 port 相同, 第二次 reused=true,
+workflow/codebase-map/tests/test_serve_lifecycle.py:68:    """TC-04-01: 两进程同时对同一运行时目录 serve, 结束时 state.json 只有一个
+workflow/codebase-map/tests/test_serve_lifecycle.py:90:    """TC-04-02: 一次性 socket 占住目标端口且无生效实例, serve 返回 port_in_use,
+workflow/codebase-map/tests/test_serve_lifecycle.py:116:    """TC-04-03: 起服务 -> stop -> serve --port <新端口>: 新端口 GET / 200,
+workflow/codebase-map/tests/test_serve_lifecycle.py:145:    """TC-04-04 (承 TC-04-03 场景自建): 曾用 serve --port 起过并已 stop, 之后不带
+workflow/codebase-map/tests/test_serve_lifecycle.py:165:    """TC-04-05: 存活实例上用 --port 指定别的端口: instance_running, 存活实例
+workflow/codebase-map/tests/test_serve_lifecycle.py:183:    """TC-04-11: 常驻性短时验证, serve 成功后隔真实等待 (>= 2 秒) 并跨另一次
+workflow/codebase-map/tests/test_service_state_and_stop.py:3:覆盖: TC-004 (AC-004 主用例: state.json 字段齐全与权限), TC-04-06 (残留
+workflow/codebase-map/tests/test_service_state_and_stop.py:4:记录判死重起), TC-04-07 (两种不一致都 state_mismatch), TC-04-08 (stop 语义
+workflow/codebase-map/tests/test_service_state_and_stop.py:5:与重复 stop), TC-04-10 (两类 no_data_keys).
+workflow/codebase-map/tests/test_service_state_and_stop.py:40:    """TC-004 的逐字段核对 (TECHNICAL "state.json 字段")."""
+workflow/codebase-map/tests/test_service_state_and_stop.py:60:    """TC-004: 首次 serve 成功后 state.json 字段齐全 (逐字段核对), 文件 0600,
+workflow/codebase-map/tests/test_service_state_and_stop.py:77:    """TC-04-06: 手工把 state.json 的 pid 改成不存在的值, serve 说明旧实例已死
+workflow/codebase-map/tests/test_service_state_and_stop.py:95:    """TC-04-07: 两种不一致各一次, 都返回 state_mismatch, 退出码非 0, 不接管
+workflow/codebase-map/tests/test_service_state_and_stop.py:134:    """TC-04-08: stop 后 GET / 失败, state.json pid 为 null 且 stopped_at 有值,
+workflow/codebase-map/tests/test_service_state_and_stop.py:154:    assert after["last_url"] == before["last_url"], "端口留痕应保留 (m25 D018)"
+workflow/codebase-map/tests/test_service_state_and_stop.py:164:    """TC-04-10: 两类 no_data_keys: 清单与磁盘都空 -> 还没 build; 清单有条目但
+workflow/codebase-map/tests/test_analyze_pipeline.py:1:"""ISSUE-02 用例: build 的首次初始化与三步分析流水线 (TC-02-01..TC-02-09).
+workflow/codebase-map/tests/test_analyze_pipeline.py:5:  记录完整 argv 供断言 (BR-017 的观察点), stub 产物不是"分析可用"证据, 真实
+workflow/codebase-map/tests/test_analyze_pipeline.py:11:  常量为伪产物真实哈希, 生产路径没有任何旁路; 需要校验失败的用例 (TC-02-07)
+workflow/codebase-map/tests/test_analyze_pipeline.py:44:    """造一个带少量源码的目标库 (TC-02-05 的完整性比对用)."""
+workflow/codebase-map/tests/test_analyze_pipeline.py:74:    """目标库全量文件名 -> 内容 sha256 (TC-02-05)."""
+workflow/codebase-map/tests/test_analyze_pipeline.py:99:# TC-02-01 (BR-017 观察点): 三次 podman run 的隔离参数
+workflow/codebase-map/tests/test_analyze_pipeline.py:135:# TC-02-02: 三步 ccsh 参数, 排除正则, 中间产物与覆盖
+workflow/codebase-map/tests/test_analyze_pipeline.py:156:    # -e 逐条出现且与同一份排除数据一致 (BR-015/D019), 用户 glob 逐字转义
+workflow/codebase-map/tests/test_analyze_pipeline.py:193:# TC-02-03: 本地镜像与前端产物齐备时不进初始化 (BR-027/BR-028)
+workflow/codebase-map/tests/test_analyze_pipeline.py:228:# TC-02-04: 同库重跑覆盖同一路径, 不留历史版本
+workflow/codebase-map/tests/test_analyze_pipeline.py:258:# TC-02-05: 跑完整 build (stub) 后目标库只多 .codebase-map/cc.json (BR-031)
+workflow/codebase-map/tests/test_analyze_pipeline.py:285:# TC-02-06: digest 口径 (m25 D013/D016)
+workflow/codebase-map/tests/test_analyze_pipeline.py:321:# TC-02-07: 预置伪前端产物 sha256 与常量不符 -> frontend_hash_mismatch 且停下
+workflow/codebase-map/tests/test_analyze_pipeline.py:348:# TC-02-08: 版本升级整体替换 serve-root, 不叠加旧产物
+workflow/codebase-map/tests/test_analyze_pipeline.py:395:# TC-02-09: 本地无镜像时 pull, performed=true 且 notice 说明慢操作
+workflow/codebase-map/scripts/codemap_analyze.py:9:  门禁 (写副本之前判定, m25 D001 / m13 D029 / m24 U001):
+workflow/codebase-map/scripts/codemap_analyze.py:14:  统计 (门禁失败也完整输出, BR-024/BR-025, 口径归因非功能要求):
+workflow/codebase-map/scripts/codemap_analyze.py:16:      口径桶; 分母不硬凑相等, 只要求差值逐类归因可对账 (m25 D019).
+workflow/codebase-map/scripts/codemap_analyze.py:17:    - stats.notes 固定三句分母说明 (E-4, REWORK-03, AC-001/BR-024), 措辞与
+workflow/codebase-map/scripts/codemap_analyze.py:19:  产出与副本 (m13 D010/D023, BR-010/BR-012, BR-036):
+workflow/codebase-map/scripts/codemap_analyze.py:26:  首次初始化 (仅缺失时, m25 D009 / m13 D030):
+workflow/codebase-map/scripts/codemap_analyze.py:28:      digest (m25 D013/D016, 阻断项); 多架构清单 digest 只记录进
+workflow/codebase-map/scripts/codemap_analyze.py:40:    端口 (BR-017). 中间产物留 cache/work/ 供复查, 下次运行先清空再覆盖.
+workflow/codebase-map/scripts/codemap_analyze.py:44:失败出口 (不降级, m13 D003 / BR-021, 一律停下不拿旧产物冒充):
+workflow/codebase-map/scripts/codemap_analyze.py:49:  gate_failed            门禁不通过 (依赖边为 0 或文件层号种数 < 3, m25 D001)
+workflow/codebase-map/scripts/codemap_analyze.py:52:网络面 (BR-027): 只有初始化的 pull 与前端下载出网; serve/stop 不做网络
+workflow/codebase-map/scripts/codemap_analyze.py:56:约束: 只 import python 标准库加同目录共享模块 (BR-033, m25 D012); 对
+workflow/codebase-map/scripts/codemap_analyze.py:112:# 纯函数: digest 口径 (m25 D013/D016; TC-02-06)
+workflow/codebase-map/scripts/codemap_analyze.py:124:    阻断只看单架构; 多架构只记录不阻断 (m25 D013/D016), 不信镜像内自报版本号.
+workflow/codebase-map/scripts/codemap_analyze.py:214:    冒充当前版本 (m25 D009). 期望值恒用 codemap_common 的
+workflow/codebase-map/scripts/codemap_analyze.py:267:    版本升级不留旧版本文件 (m13 D030); 其它库的数据副本是 BR-036 的保护对象,
+workflow/codebase-map/scripts/codemap_analyze.py:286:    对不上视为旧版本残留, 整体重做解包与同步 (m13 D030 整体替换).
+workflow/codebase-map/scripts/codemap_analyze.py:344:    """固定隔离参数 (BR-017): --rm/--network=none/--userns=keep-id, 源码 :ro,
+workflow/codebase-map/scripts/codemap_analyze.py:364:    # 官方管道损坏的替代 (m24 F002 / m23 6.3): 先各自出文件再 merge, metrics 在前 deps 在后
+workflow/codebase-map/scripts/codemap_analyze.py:410:    """清空 cache/work/ 再分析: 下次运行覆盖, 不留历史版本文件 (m13 D030 同取向)."""
+workflow/codebase-map/scripts/codemap_analyze.py:420:# 产出: merge 产物逐字节写目标库 (BR-031: 除它之外不改目标库)
+workflow/codebase-map/scripts/codemap_analyze.py:425:# 门禁 (写副本之前判定; m25 D001, m13 D029, m24 U001)
+workflow/codebase-map/scripts/codemap_analyze.py:434:    写), 两种都认, 只读不改 (NG-006). 其余结构一律视为空, 交给门禁判 0.
+workflow/codebase-map/scripts/codemap_analyze.py:453:    只读 merge 产物, 不改任何字段 (NG-006).
+workflow/codebase-map/scripts/codemap_analyze.py:480:    通过条件 edges > 0 且 level_kinds >= 3 (m25 D001, m13 D029 保留项).
+workflow/codebase-map/scripts/codemap_analyze.py:508:    stats.files_in_tree 同口径 (m25 D006 分母口径; NG-006 只读不改).
+workflow/codebase-map/scripts/codemap_analyze.py:518:# 统计与分母归因 (BR-024/BR-025, m25 D019, m23 PROBE 6.4/F003)
+workflow/codebase-map/scripts/codemap_analyze.py:526:ZERO_DECL_REASON = "零声明"  # 解析了但无可分析声明, 整体不入依赖树 (m23 F003)
+workflow/codebase-map/scripts/codemap_analyze.py:528:# AC-001/BR-024 的三句分母说明 (E-4, REWORK-03): JSON 形态固定放进
+workflow/codebase-map/scripts/codemap_analyze.py:542:    统计等式 (TC-03-04 固定): 每份磁盘文件按以下先后次序归入且只归入一项 --
+workflow/codebase-map/scripts/codemap_analyze.py:547:                                        #   含本次写出的原件; AC-001 二次执行不扫数据目录)
+workflow/codebase-map/scripts/codemap_analyze.py:552:                                        #   m25 D019)
+workflow/codebase-map/scripts/codemap_analyze.py:554:                                        #   BR-024 测试目录默认不扫)
+workflow/codebase-map/scripts/codemap_analyze.py:558:                                        #   名字规则); 单列不与 custom 混 (m25 D019)
+workflow/codebase-map/scripts/codemap_analyze.py:560:                                        #   但不在依赖树 (零声明, m23 F003)
+workflow/codebase-map/scripts/codemap_analyze.py:562:    归因四类口径 (BR-024): 测试目录/构建目录/自定义排除按类计数 (excluded.*),
+workflow/codebase-map/scripts/codemap_analyze.py:578:    # 排除口径同一份数据 (cmc.collect_excludes), 与喂给 ccsh 的正则同源 (BR-015)
+workflow/codebase-map/scripts/codemap_analyze.py:639:        # E-4 (REWORK-03, AC-001): 固定三句分母说明, 门禁失败也照常输出
+workflow/codebase-map/scripts/codemap_analyze.py:646:# 副本分发与 state.json (BR-010/BR-012/BR-036, m13 D023, m25 D020)
+workflow/codebase-map/scripts/codemap_analyze.py:653:    副本与 index.html 同目录 (BR-012, 前端 <base href="./"> 约束); rename
+workflow/codebase-map/scripts/codemap_analyze.py:654:    保证页面不会读到半个文件. 不删任何其它库的副本 (BR-036).
+workflow/codebase-map/scripts/codemap_analyze.py:668:    其它库的条目原样保留 (BR-036), 同键重跑覆盖同一条目 (m13 D020).
+workflow/codebase-map/scripts/codemap_analyze.py:791:            # m25 D001: 数据照写目标库供复查, 不复制进 serve-root, 退出码非 0;
+workflow/codebase-map/scripts/codemap_analyze.py:796:                "门禁不交付 (m13 D029): 在目标库补出依赖边与分层后重跑 build; "
+workflow/codebase-map/tests/test_gate_stats_and_copies.py:2:(TC-005, TC-006, TC-03-01..TC-03-05); E-3/E-4 (REWORK-03) 的 data_keys.stats
+workflow/codebase-map/tests/test_gate_stats_and_copies.py:9:  映射承接, 该形状已由 TC-01-06 固定.
+workflow/codebase-map/tests/test_gate_stats_and_copies.py:13:- 文件接缝: 官方前端 web.zip 伪产物 + 预置 sha256 期望值 (先例 TC-02).
+workflow/codebase-map/tests/test_gate_stats_and_copies.py:93:    运行时目录, 直调 codemap_analyze.run_build (内部接缝, 先例 TC-02)."""
+workflow/codebase-map/tests/test_gate_stats_and_copies.py:127:# TC-005 (AC-005 主用例): 原件在库, 副本进 serve-root, 键与登记
+workflow/codebase-map/tests/test_gate_stats_and_copies.py:140:    # 键: 清洗后库名 + 8 位路径哈希 (BR-011/BR-032, m25 D005)
+workflow/codebase-map/tests/test_gate_stats_and_copies.py:146:    # 原件: 目标库 .codebase-map/cc.json (BR-010)
+workflow/codebase-map/tests/test_gate_stats_and_copies.py:151:    # 副本: serve-root/<key>, 与 index.html 同目录, 内容与原件一致 (BR-012)
+workflow/codebase-map/tests/test_gate_stats_and_copies.py:183:# TC-006 (AC-006 主用例): 两条门禁退化场景
+workflow/codebase-map/tests/test_gate_stats_and_copies.py:202:    # 原件照写供复查 (m25 D001)
+workflow/codebase-map/tests/test_gate_stats_and_copies.py:253:# TC-03-01: 同库重跑, 同键覆盖, data_keys 无重复
+workflow/codebase-map/tests/test_gate_stats_and_copies.py:274:    assert result2["key"] == key, "同库重跑键不变 (m13 D020)"
+workflow/codebase-map/tests/test_gate_stats_and_copies.py:291:# TC-03-02: 同名不同路径的两个库, 键不同, 互不覆盖
+workflow/codebase-map/tests/test_gate_stats_and_copies.py:304:    assert key_a != key_b, "同名不同库靠路径哈希区分 (BR-011)"
+workflow/codebase-map/tests/test_gate_stats_and_copies.py:320:# TC-03-03: build 新库不动其它库副本 (BR-036, m25 D003)
+workflow/codebase-map/tests/test_gate_stats_and_copies.py:348:# TC-03-04 (BR-024, 口径归因): 统计等式与逐类归因
+workflow/codebase-map/tests/test_gate_stats_and_copies.py:391:# TC-03-05 (BR-025): 扩展名维度只汇总不支持的扩展名
+workflow/codebase-map/tests/test_gate_stats_and_copies.py:418:# E-4 (REWORK-03, AC-001): build 输出补三句分母说明
+workflow/codebase-map/tests/test_gate_stats_and_copies.py:427:    容器内 CLI 前置检查拦下真实 build (m25 D016 验证分工), 人类形态在本树
+workflow/codebase-map/tests/test_gate_stats_and_copies.py:429:    assert_stats_complete 随 TC-006 两用例覆盖.
+general/access-web/browse/browser_agent/_structure.py:3:D014: 通过 page.evaluate() 执行 JS 从 DOM 提取 role/name/children,
+general/access-web/browse/browser_agent/session.py:3:D001/D002/D005/D009: 脱离式 Chromium + CDP 共享; 仅保留 session 模式.
+workflow/codebase-map/i18n/zh-ts.txt:45:codeCharta/features/domainBar/components/wordSizingModeControl/wordSizingModeControl.component.ts	TF-IDF (relative importance) — not available: the loaded file has no TF-IDF scores	TF-IDF (相对重要性) — 不可用: 加载的文件没有 TF-IDF 分数
+workflow/codebase-map/i18n/zh-ts.txt:46:codeCharta/features/domainBar/components/wordSizingModeControl/wordSizingModeControl.component.ts	TF-IDF (relative importance) — sizes words by how distinctive they are, not by raw count	TF-IDF (相对重要性) — 按单词的区分度而非出现次数决定大小
+workflow/codebase-map/i18n/zh-ts.txt:257:codeCharta/renderer/wordCloud/util/wordCloudTooltip.ts	TF-IDF: ⟦0⟧	TF-IDF 值: ⟦0⟧
+general/access-web/browse/browser_agent/_locator.py:3:D010: accessible name → 文本内容 → CSS selector
+general/mailbox/pi-extension/index.ts:2: * mailbox pi 扩展 — 纯连接器 (D004/BR-007)
+general/mailbox/pi-extension/index.ts:4: * 三命令 (D006):
+general/mailbox/pi-extension/index.ts:6: *   /mail-listen start|stop|status   取信守护 (D007/D008)
+general/mailbox/pi-extension/index.ts:8: * 一工具 (D022): mailbox_listen(action=start|stop|status) — 查询/重试/手动停止取信,
+general/mailbox/pi-extension/index.ts:11: * 每会话独立信箱 (D022):
+general/mailbox/pi-extension/index.ts:27: * 纯连接器边界: 本文件不实现任何信箱协议 (BR-007), 一切能力经子进程
+general/mailbox/pi-extension/index.ts:40:/** 每会话信箱目录根 (D022). */
+general/mailbox/pi-extension/index.ts:42:/** 旧版全局单文件监听标记 (D008); 仅作本会话迁移视图读取. */
+general/mailbox/pi-extension/index.ts:46:/** 守护最近回执的保留条数 (D014: 汇入 /mail 与 widget). */
+general/mailbox/pi-extension/index.ts:56:/** listen.json 标记 (D022/D008). */
+general/mailbox/pi-extension/index.ts:72:	/** 已注入来信, 等 agent_settled 后再取下一封 (D007 时序). */
+general/mailbox/pi-extension/index.ts:108:/** 本会话三个文件路径 (D022): config/cli-state/listen 标记. */
+general/mailbox/pi-extension/index.ts:152:/** 读本会话监听标记 (D022): 优先本会话独立文件; 缺席时把旧版全局文件里
+general/mailbox/pi-extension/index.ts:193:/** 清本会话监听标记 (D022): 只碰本会话文件, 他人标记永不触碰. */
+general/mailbox/pi-extension/index.ts:369:	/** 取信时序 (D007/D014): 子进程阻塞到有信才退出; stdout 逐行分流 —
+general/mailbox/pi-extension/index.ts:388:				// D014: 回执流式即时汇总 (脚本取完回执会继续阻塞等下一封,
+general/mailbox/pi-extension/index.ts:432:				pollOnce(ctx); // 只有回执 (D014): 不注入, 继续取下一封
+general/mailbox/pi-extension/index.ts:436:			daemon.waitingSettled = true; // settled 后再取 (D007 回执时序)
+general/mailbox/pi-extension/index.ts:440:				// agent 忙时 followUp 排队等当前处理完 (AC-002)
+general/mailbox/pi-extension/index.ts:477:			// D022: 无稳定会话身份则拒绝绑定 (禁止用 cwd 等近似物发明)
+general/mailbox/pi-extension/index.ts:480:				message: "无法确定当前 pi 会话身份, 拒绝启动取信守护 (D022)",
+general/mailbox/pi-extension/index.ts:545:	/** stop: 停守护 + 清本会话标记 (唯一清除点, D022: 只清自己 session 的
+general/mailbox/pi-extension/index.ts:605:		// D007: 上一封已处理完 (回执时序 = 处理后), 取下一封
+general/mailbox/pi-extension/index.ts:702:	// ── 工具 (D022): agent 交付前自开本会话取信守护 ────────────────
+general/access-web/browse/tests/test_extraction.py:111:    """嵌套深度不超过 4 层 (D014)."""
+general/present/tests/test_web_server_content.py:1:"""web_server.py 内容访问测试 (ISSUE-06, TC-016..TC-021).
+general/present/tests/test_web_server_content.py:22:    """TC-016: 两挂载目录, 文件只在后挂载目录 -> GET 返回该文件 (AC-005)."""
+general/present/tests/test_web_server_content.py:52:    """TC-017: 两挂载目录含同名文件 -> 返回先挂载那份 (D008 静默遮蔽, AC-005)."""
+general/present/tests/test_web_server_content.py:82:    """TC-018: 两目录顶层有同名与异名条目 -> GET / 返回并集且去重 (D007/D008)."""
+general/present/tests/test_web_server_content.py:119:    """TC-019: 含 ../ 的逃逸路径 -> 404, 不暴露挂载目录外内容 (D022)."""
+general/present/tests/test_web_server_content.py:154:    """TC-020: 命中文件是指向挂载目录外的 symlink -> 404 (D022)."""
+general/present/tests/test_web_server_content.py:183:    """TC-021: 挂载目录内存有子目录 -> GET 目录路径返回该目录自身 listing (D007/BR-004)."""
+general/present/tests/test_web_server_content.py:304:    与 / 同义, 走各挂载目录条目并集 listing 分支 (D007/D008).
+general/present/tests/test_skill_contract.py:57:        """TC-002: 只有一条交付流程 (D001), 旧的本地浏览器分支与 REMOTE.md 已删除."""
+general/present/tests/test_skill_contract.py:75:        """D002: 不再强制 __PRESENTATION_STATE__, 也未新增状态回传通道."""
+general/present/tests/test_skill_contract.py:84:        """D011: 地址来源顺序, 缺口出口与容器映射都写进唯一流程."""
+general/present/tests/test_skill_contract.py:98:        """BR-001/BR-009/BR-017/BR-018: 端口纪律, 共享 stop, 风险说明与命名规则."""
+general/present/tests/test_web_server_fixed_port.py:5:旧状态文件) 维持 D005 换端口行为.
+general/present/tests/test_web_server_fixed_port.py:104:        # 原端口被无关进程占位 (TC-007 同款占位者模式)
+general/present/tests/test_web_server_fixed_port.py:168:    """切片2 (回归): 非锁定实例维持 D005 换端口行为.
+general/present/tests/test_web_server_fixed_port.py:300:    """TC-002 可自动化部分 (D001/D002): 钉端口形态下多页复用单实例 —
+general/present/tests/test_web_server_fixed_port.py:330:        # 两页经同一端口均可访问 (D002: 共用 present 服务和端口)
+general/present/tests/test_web_server_cli.py:1:"""web_server.py CLI 骨架与参数校验测试 (ISSUE-01, TC-001..TC-004)."""
+general/present/tests/test_web_server_cli.py:93:    """TC-001: 缺 port/root/bind 任一 -> invalid_args, exit 1, 无子进程残留."""
+general/present/tests/test_web_server_cli.py:120:    """TC-002: root 不存在 -> invalid_args, 不启动."""
+general/present/tests/test_web_server_cli.py:134:    """TC-003: 未知命令 -> success=false, exit 1."""
+general/present/tests/test_web_server_cli.py:144:    """TC-004: 模拟非 POSIX 平台 -> not_supported."""
+general/present/tests/test_web_server_cli.py:182:    """TC-001/TC-01-01..05: 交付地址单一解析入口 (D011).
+general/present/tests/test_web_server_control_plane.py:1:"""web_server.py 控制面安全测试 (ISSUE-07, TC-022/TC-023).
+general/present/tests/test_web_server_control_plane.py:4:/__control__/* 全命名空间仅 loopback 来源放行; 静态内容面不受来源限制 (D001).
+general/present/tests/test_web_server_control_plane.py:35:    """TC-022/TC-023 公共: skip 探测 + 裸 HTTP 请求助手 + 0.0.0.0 启动."""
+general/present/tests/test_web_server_control_plane.py:65:    """TC-022: bind 0.0.0.0, 经本机 LAN IP 请求 /__control__/* 一律拒绝 (AC-004, BR-006)."""
+general/present/tests/test_web_server_control_plane.py:181:    """TC-023: bind 0.0.0.0, 经本机 LAN IP 请求静态内容/顶层 listing 正常 (D001 兑现)."""
+general/present/tests/test_web_server_control_plane.py:213:    不被守卫拒绝; bind 0.0.0.0/127.0.0.1 行为不变 (TC-022 不回归).
+general/present/scripts/web_server.py:10:交付地址解析 (D011): 宿主 --lan-host > 已确认地址文件 > 候选 (待用户确认);
+general/present/scripts/web_server.py:58:# Delivery address constants (D011)
+general/present/scripts/web_server.py:112:    --lan-host 是本次展示明确指定的局域网地址 (D011), 只属本次调用上下文.
+general/present/scripts/web_server.py:186:    """容器识别 (D011): /run/.containerenv 存在即容器场景."""
+general/present/scripts/web_server.py:208:    """枚举非隧道网卡的全局 IPv4 作候选地址 (D011, 仅候选不自动交付)."""
+general/present/scripts/web_server.py:239:    """交付地址解析 (D011): 单一入口, 返回解析结果 dict.
+general/present/scripts/web_server.py:449:# D005: 重建时原端口被占, 49152-65534 随机换端口的上限尝试次数
+general/present/scripts/web_server.py:536:    expected_pid (R1): ping 携带 pid 指纹 (D020), 只认本子进程的就绪信号;
+general/present/scripts/web_server.py:641:        """D020/ISSUE-07: 控制面仅 loopback 来源放行.
+general/present/scripts/web_server.py:666:        保留 bind 具体 IP (AC-001) 时 CLI 就绪 ping/探活/add-dir 可用.
+general/present/scripts/web_server.py:667:        bind 0.0.0.0/127.0.0.1 行为不变 (TC-022 不回归): 源不可能为 0.0.0.0,
+general/present/scripts/web_server.py:686:        # 控制面优先; /__control__/ 全命名空间仅本机来源 (D020/U-009)
+general/present/scripts/web_server.py:710:            # /__control__/ 全命名空间仅本机来源 (D020/U-009)
+general/present/scripts/web_server.py:758:            # D007/U-008 (R1): 顶层路径 -> 各挂载目录顶层条目并集 listing
+general/present/scripts/web_server.py:759:            # (D008: 去重, 先挂载者优先, 无遮蔽提示);
+general/present/scripts/web_server.py:783:                # D007/U-008 (R1): 子目录路径返回该目录自身 listing (非并集);
+general/present/scripts/web_server.py:805:        """目录 listing; 多目录时为条目并集 (D007/D008):
+general/present/scripts/web_server.py:924:        # D002: 复用判定前先校验 server.json 属主; 非本人 -> instance_conflict,
+general/present/scripts/web_server.py:925:        # 不复用不挂载 (异 uid 场景自动化不覆盖, 见 TC-029 人工验证).
+general/present/scripts/web_server.py:947:            # D006: bind 一致 -> 真复用: 经控制端点幂等挂载 root,
+general/present/scripts/web_server.py:1038:    url/lan_ip 由同一次地址解析按记录的实际监听端口实时算出 (D011),
+general/present/scripts/web_server.py:1058:    重试 ≤10 次 (D005). 成功时子进程已写新 server.json, 读回并返回
+general/present/scripts/web_server.py:1125:    """D005 重建入口: 锁内重探活后按原 roots 保序重建.
+general/present/scripts/web_server.py:1127:    锁策略 (D023): 仅重建路径持锁 — 探活只读无共享可变状态, 存活路径
+general/present/scripts/web_server.py:1178:    """Check server alive status; 死则重建 (D005).
+general/present/scripts/web_server.py:1201:    D006/D020: 不经 HTTP; ping 指纹比对 + `ps` 命令行校验, 不匹配报错不杀;
+general/present/scripts/web_server.py:1269:    """Mount a directory via control endpoint (D006/D020).
+general/present/scripts/web_server.py:1271:    校验目录 (D012) -> 读 server.json 探活 -> POST /__control__/add-dir -> 返回 roots.
+workflow/use-sandbox-worktree/scripts/swt.py:77:# D005: 新容器全局 git 身份在 birth 键级注入 (合并进既有 ~/.gitconfig, 不覆盖整份);
+workflow/use-sandbox-worktree/scripts/swt.py:82:# D003: 每个容器预留 6 个 web 端口 8800-8805 (8800 present / 8801 navigate / 8802-8805 预留),
+workflow/use-sandbox-worktree/scripts/swt.py:88:    """D003: 容器端口 8800+index 的 STATE 记录键; index 0 沿用既有 `web-port`."""
+workflow/use-sandbox-worktree/scripts/swt.py:101:# D013: 容器内不再设 ~/AGENTS.md; 本容器事实小抄挂 ~/docs/.
+workflow/use-sandbox-worktree/scripts/swt.py:104:# ISSUE-03 D018 birth 验收: 3 份提示词 + 4 份小抄的容器内路径. 顺序与挂载表一致.
+workflow/use-sandbox-worktree/scripts/swt.py:109:# M08 D003 启动脚本母本制: 母本在 <skill>/headed-browser/, birth 解析 chromium
+workflow/use-sandbox-worktree/scripts/swt.py:110:# 精确路径 (F006) 生成实例留档 runtime/<identity>/ 后只读单文件挂载进容器固定路径.
+workflow/use-sandbox-worktree/scripts/swt.py:718:    """已确认局域网地址持久文件 (D010/UD-03): host 级, 放 records_root 根级."""
+workflow/use-sandbox-worktree/scripts/swt.py:737:    """list 的局域网地址组 (D007, 勿改 lan_ip 原函数): lan-address 已确认值
+workflow/use-sandbox-worktree/scripts/swt.py:740:    已确认值也须过 BR-006 过滤: 资格 = 出现在当前枚举的某个非隧道全局网卡上;
+workflow/use-sandbox-worktree/scripts/swt.py:742:    返回 (groups, 被跳过的已确认值) 由调用方打 reason 行 (BR-004)."""
+workflow/use-sandbox-worktree/scripts/swt.py:780:    """D010/UD-03: 无已确认地址且未给 --lan-ip → lan-address 待决 (DECIDE + exit 1).
+workflow/use-sandbox-worktree/scripts/swt.py:783:    (明确标注未确认, F006: 猜测不冒充可达), 不落确认值, 不作交付用址."""
+workflow/use-sandbox-worktree/scripts/swt.py:840:    """D003: 同母体已有活跃容器 → 返回拒绝原因 (含旧容器名与 terminate 指引), 否则 None.
+workflow/use-sandbox-worktree/scripts/swt.py:842:    别的母体容器不影响本检查. 不追溯处置既有容器 (D009), 只拒绝本次新建.
+workflow/use-sandbox-worktree/scripts/swt.py:1217:    """拼装块归一: 非空块尾随换行归一为单个, 空专属段消失 (D006 不写占位)."""
+workflow/use-sandbox-worktree/scripts/swt.py:1231:    """ISSUE-03 D013/D019: 读五份母本, 按 BR-001 拼装三份提示词 (PUBLIC + ENV +
+workflow/use-sandbox-worktree/scripts/swt.py:1266:    """ISSUE-03 D018: birth 收尾进容器读 3 份提示词与 4 份小抄, 全部非空且含
+workflow/use-sandbox-worktree/scripts/swt.py:1280:    """ISSUE-03 F004: create 前可知事实 → env_docs facts. create 后才知的事实
+workflow/use-sandbox-worktree/scripts/swt.py:1314:    """M08 F006/UD-06: throwaway 容器解析 playwright chromium 精确字面路径.
+workflow/use-sandbox-worktree/scripts/swt.py:1332:    """M08 D003: 母本 + chromium 精确路径 → 实例脚本落 runtime/<identity>/
+workflow/use-sandbox-worktree/scripts/swt.py:1568:    """容器 8800-8805 (web 段, D003) 的宿主映射端口; 一次全量 `podman port` 读取,
+workflow/use-sandbox-worktree/scripts/swt.py:1569:    无映射的键为 None (D009 前旧容器无 web 发布)."""
+workflow/use-sandbox-worktree/scripts/swt.py:1601:WAYLAND_CONTAINER_DIR = "/run/swt-wayland"  # 宿主机 wayland socket 直挂目录 (D051)
+workflow/use-sandbox-worktree/scripts/swt.py:1605:    """宿主机 wayland socket 路径 (D051 本机直通); 缺席返回 None."""
+workflow/use-sandbox-worktree/scripts/swt.py:1616:    """chmod 0777 宿主机 wayland socket (D051 权限解法): rootless uid_map 下直挂
+workflow/use-sandbox-worktree/scripts/swt.py:1628:    """wayland 直通实测 (D051): 以 bolo 身份 unix connect 直挂 socket, 验证整条
+workflow/use-sandbox-worktree/scripts/swt.py:1647:    """birth/resume 共用的本机直通重保 + 实测 (D051). 失败降级回退 noVNC, 不阻断
+workflow/use-sandbox-worktree/scripts/swt.py:1690:    bolo 属主 — 与 D046 注入同模式,
+workflow/use-sandbox-worktree/scripts/swt.py:1705:    """auth.json 启动后注入 (D046, 替代 D044 只读挂载): rootless uid_map 下 host bolo
+workflow/use-sandbox-worktree/scripts/swt.py:1707:    (F014). 改经 stdin 注入 + chown bolo: 不烤镜像层, 物理上不可能写回 host,
+workflow/use-sandbox-worktree/scripts/swt.py:1837:    """web 双 URL 交付行 (D003/D007/UD-04): birth/resume/status 同源组装.
+workflow/use-sandbox-worktree/scripts/swt.py:1838:    仅当容器有 web-port 才产行; 本机 URL 照打, 局域网只用已确认值 (D010/UD-03),
+workflow/use-sandbox-worktree/scripts/swt.py:1852:# D004: web 端口 env 注入失败保持软失败, 交付包显式打此行 (不静默丢失, 走信箱兜底)
+workflow/use-sandbox-worktree/scripts/swt.py:1871:    """窗口直飞底层命令模板 (M08 D001(a), 打印与 list 两用): 局域网段为
+workflow/use-sandbox-worktree/scripts/swt.py:1872:    {lan} 占位由调用方代换 (D007 逐网卡代换), $(id -u) 留给设备 shell 展开
+workflow/use-sandbox-worktree/scripts/swt.py:1883:    """窗口直飞交付行 (M08 ISSUE-07, D001(a) 底层零件命令模板, UD-09 -R 远端路径
+workflow/use-sandbox-worktree/scripts/swt.py:1916:    """status 的 web 交付 (UD-04/D003): 每个带 web-port 的容器在 STATE 之外附
+workflow/use-sandbox-worktree/scripts/swt.py:1941:    """固定交付项 (每次 birth/resume 交付齐发, 禁止遗漏, D039/决策 8):
+workflow/use-sandbox-worktree/scripts/swt.py:1943:    + herdr remote 双命令 + web 双 URL (仅 web-port 容器, D003/D007)
+workflow/use-sandbox-worktree/scripts/swt.py:2523:# birth 信箱接线 (D005/D013): 探测本机信箱 → 注册容器 session (<容器名>-<8hex>,
+workflow/use-sandbox-worktree/scripts/swt.py:2524:# D005) → 新 env 变量烘入 → runtime 登记. terminate 时注销 session (AC-008).
+workflow/use-sandbox-worktree/scripts/swt.py:2525:# mailbox-standalone ISSUE-02 (D002): 接线改经 mailbox skill 机器子命令
+workflow/use-sandbox-worktree/scripts/swt.py:2539:MAILBOX_ENV_URL = "SWT_MAILBOX_URL"           # 容器契约 env 名不可改 (BR-005)
+workflow/use-sandbox-worktree/scripts/swt.py:2550:    """调 mailbox 机器子命令 (D002 契约): exit 0 → (stdout JSON dict, '');
+workflow/use-sandbox-worktree/scripts/swt.py:2583:    """ISSUE-02 (D002): birth 信箱接线经机器子命令: discover →
+workflow/use-sandbox-worktree/scripts/swt.py:2603:        # D005: 容器 session id = <容器名>-<8hex随机> (一次性, 防同名容器错投)
+workflow/use-sandbox-worktree/scripts/swt.py:2619:            # D013: 容器内地址恒 host.containers.internal + 探测端口
+workflow/use-sandbox-worktree/scripts/swt.py:2643:    """AC-008: 容器终结时经 revoke-session 子命令注销其信箱 session, 防同名
+workflow/use-sandbox-worktree/scripts/swt.py:2666:# ISSUE-08 (D011 G1/G2): 宿主信息烘容器 env — 容器内不再发信问 host.
+workflow/use-sandbox-worktree/scripts/swt.py:2667:# env 名只新增不改名 (BR-005): 端口条目沿用容器契约 SWT_ 前缀;
+workflow/use-sandbox-worktree/scripts/swt.py:2677:    """D003: 容器端口 8800+index 的宿主信息 env 名; index 0 沿用 SWT_HOST_WEB_PORT."""
+workflow/use-sandbox-worktree/scripts/swt.py:2691:    """ISSUE-08 (AC-027): 宿主端口映射 (ssh/web/vnc) 与显示直通状态烘进
+workflow/use-sandbox-worktree/scripts/swt.py:2695:    D010: lan_ip = 已确认局域网地址 (容器拼页面 URL 用), 缺席不烘, 容器改走信箱. """
+workflow/use-sandbox-worktree/scripts/swt.py:2729:    返回是否写入成功, 供调用方判 web 端口 env 是否真进容器 (D004 降级行)."""
+workflow/use-sandbox-worktree/scripts/swt.py:2895:    # 主机名 (D047): birth 经 DECIDE 确认后必带; 不设则 podman 拿容器 ID 充数
+workflow/use-sandbox-worktree/scripts/swt.py:2911:    # 本机 wayland 直通 (D051): 宿主机 socket 存在即恒挂 + 放宽属主权 (容器 bolo
+workflow/use-sandbox-worktree/scripts/swt.py:2926:    # agent 提示词与小抄挂载 (ISSUE-03 D013): 三份拼装提示词只读单文件挂载 (每容器
+workflow/use-sandbox-worktree/scripts/swt.py:2935:    # 启动脚本母本只读单文件挂载 (M08 D003): 实例由 birth 流程解析 chromium
+workflow/use-sandbox-worktree/scripts/swt.py:2954:    # web 服务端口段 (D001/D003): 与 22 同款宿主 0.0.0.0 动态分配, 直达局域网,
+workflow/use-sandbox-worktree/scripts/swt.py:3030:    """D005: 容器内键级写入全局 git 身份 (合并进既有 ~/.gitconfig, 不整份覆盖),
+workflow/use-sandbox-worktree/scripts/swt.py:3184:    """birth 尾部显示栈门禁 (D040/D041): 未内置 swt-vnc → absent 跳过;
+workflow/use-sandbox-worktree/scripts/swt.py:3203:    # 失败 → DECIDE (决策 3; 执行完成后的追加 DECIDE, D026 一次列全的例外)
+workflow/use-sandbox-worktree/scripts/swt.py:3248:        # D010/UD-03: 用户确认的局域网地址即持久化 (host 级), 之后读取优先用已确认值;
+workflow/use-sandbox-worktree/scripts/swt.py:3342:    # D003: 一母体同一时刻只有一个活跃容器 — 同母体已有活跃容器 (异名) 时拒绝
+workflow/use-sandbox-worktree/scripts/swt.py:3344:    # 不算冲突; 只拒绝本次新建, 不追溯处置既有容器 (D009). 放在显示门禁重入之后,
+workflow/use-sandbox-worktree/scripts/swt.py:3407:    # 主机名确认 (D047): 候选 = 容器名, host-llm 转述时可附推荐, 用户拍板后
+workflow/use-sandbox-worktree/scripts/swt.py:3421:    # 局域网地址确认 (D010/UD-03): 顶部已把 --lan-ip 写入持久文件, 带 flag 重跑
+workflow/use-sandbox-worktree/scripts/swt.py:3547:        # M08 D003: 解析 chromium 精确路径 (UD-06, 失败跳过不阻断) → 实例落档;
+workflow/use-sandbox-worktree/scripts/swt.py:3612:        # ISSUE-03 D018 (BR-009): 标 born 前校验三份提示词与四份小抄确实挂进容器.
+workflow/use-sandbox-worktree/scripts/swt.py:3618:        # ISSUE-08 (D011 G1/G2, AC-027): 宿主端口与显示直通状态烘进容器 env,
+workflow/use-sandbox-worktree/scripts/swt.py:3629:        # D004: web 端口 env 真进容器才算注入成功; 否则交付包显式打降级行
+workflow/use-sandbox-worktree/scripts/swt.py:3692:                                             help="确认宿主局域网地址 (D010), 持久化后交付优先用已确认值")
+workflow/use-sandbox-worktree/scripts/swt.py:4289:    # ISSUE-08 (AC-008): 容器终结即注销其信箱 session, 防同名新容器错投旧信;
+workflow/use-sandbox-worktree/scripts/swt.py:4473:    """resume 显示栈重拉 (D040, 与防火墙重注入同位置) + status 级秒级检查
+workflow/use-sandbox-worktree/scripts/swt.py:4474:    (D041). 失败降级: 更新 STATE 显示栈状态并汇报注明, 不阻断终端工作.
+workflow/use-sandbox-worktree/scripts/swt.py:4876:        # auth.json 重注入 (D046): 幂等, 顺带让换 key 在 resume 后生效
+workflow/use-sandbox-worktree/scripts/swt.py:5122:    """诊断子命令 (D041): 对容器跑显示栈全量通道检查 (独立模块).
+workflow/use-sandbox-worktree/scripts/swt.py:5164:    损坏文件不抛错 (D006): record-state 需区分 corrupt (文件在但不可解析)
+workflow/use-sandbox-worktree/scripts/swt.py:5191:    本调用的 stderr 摘要, D005)."""
+workflow/use-sandbox-worktree/scripts/swt.py:5214:    sandbox-worktree.repo label 的容器 (键存在匹配, 不限仓, D003/D013),
+workflow/use-sandbox-worktree/scripts/swt.py:5215:    端口经 `podman port` 现查 (F001), 输出人话进度行 + 末行 `LIST {...}`
+workflow/use-sandbox-worktree/scripts/swt.py:5216:    单行 json (schema v1, D005). 退出码仅 0/4. 只读纪律 (BR-009):
+workflow/use-sandbox-worktree/scripts/swt.py:5218:    生命周期/记录轴 (lifecycle/record-state) 由 runtime 记录合并得出 (D006),
+workflow/use-sandbox-worktree/scripts/swt.py:5220:    running 容器另附 lans[] 网卡组与 access-entries[] 访问入口行 (D007/D008):
+workflow/use-sandbox-worktree/scripts/swt.py:5222:    为逐项 reason 行 (D011); 非 running 只给状态行与恢复/清理提示 (BR-003)."""
+workflow/use-sandbox-worktree/scripts/swt.py:5250:            # D005 错误模式 + 评审 A: 枚举后消失只记条目错误不拖垮全表,
+workflow/use-sandbox-worktree/scripts/swt.py:5315:            # 记录缺失/损坏 (D011/AC-005): 照列不隐藏, 指引只有手工 podman rm,
+workflow/use-sandbox-worktree/scripts/swt.py:5317:            # 标签 (D006: 只写 本记录根无记录)
+workflow/use-sandbox-worktree/scripts/swt.py:5320:                # spec-P1 修复 (D011): 容器在跑时, 能从 podman 现查事实组装的入口
+workflow/use-sandbox-worktree/scripts/swt.py:5323:                # None, 由 list_access_entries 逐项打显式 reason 行 (BR-004,
+workflow/use-sandbox-worktree/scripts/swt.py:5337:                # 非 running (BR-003): 无可达入口, 入口不组装, 记录派生入口缺席
+workflow/use-sandbox-worktree/scripts/swt.py:5338:                # 由笼统 reason 行承担 (BR-004)
+workflow/use-sandbox-worktree/scripts/swt.py:5418:    D008 入口子集, AC-002/AC-003): 记录派生字段缺席时自动降级为 reason 行.
+workflow/use-sandbox-worktree/scripts/swt.py:5420:    候选组整块标 候选 (未确认可达) (D007/BR-005). 命令文本与
+workflow/use-sandbox-worktree/scripts/swt.py:5422:    reason 行, 不静默丢失 (F3/BR-004), 归因诚实: record_unusable=True
+workflow/use-sandbox-worktree/scripts/swt.py:5431:        # BR-004: ssh 面整体缺席不静默; noVNC 直连不依赖 22 端口.
+workflow/use-sandbox-worktree/scripts/swt.py:5445:        # BR-004 遗留补全: 显示状态未知 (记录缺 display 字段或值未识别) 不静默
+workflow/use-sandbox-worktree/scripts/swt.py:5452:        # BR-004: web 入口缺席不静默 (镜像未带 web 服务或旧容器, D003)
+workflow/use-sandbox-worktree/scripts/swt.py:5479:            # D011/BR-004 诚实 reason: runtime 记录缺失/不可解析时启动脚本
+workflow/use-sandbox-worktree/scripts/swt.py:5486:        # 不回显地址字面量: AC-003 要求该地址不出现在任何组/字段中 (含 reason 行)
+workflow/use-sandbox-worktree/scripts/swt.py:5499:        # BR-004: host-display 状态未知 (记录缺字段/值未识别, 或记录缺失/损坏)
+workflow/use-sandbox-worktree/scripts/swt.py:5506:        # BR-004: 私钥路径是记录派生字段, 缺席不静默 (密码入口不受影响)
+general/present/tests/test_web_server_lifecycle.py:1:"""web_server.py 生命周期冷启动测试 (ISSUE-02, TC-005/007/008/009)."""
+general/present/tests/test_web_server_lifecycle.py:88:        """在 49152-65534 内取一个当前可用端口 (BR-001 调用方选口范围)."""
+general/present/tests/test_web_server_lifecycle.py:123:    """TC-005: start 成功 -> JSON 字段/server.json/URL 可访问."""
+general/present/tests/test_web_server_lifecycle.py:139:        # TC-01-05: loopback bind 只给 localhost + loopback_bind 警告, 不是交付地址
+general/present/tests/test_web_server_lifecycle.py:169:    """TC-006: 实例存活且 bind 一致, 不同端口 start 新 root -> 复用+告警+新 root 可访问."""
+general/present/tests/test_web_server_lifecycle.py:234:    """TC-007: 端口被无关进程占用 -> port_in_use, 不换端口."""
+general/present/tests/test_web_server_lifecycle.py:258:    """TC-008: 实例存活时 status -> alive=true + 运行时信息."""
+general/present/tests/test_web_server_lifecycle.py:291:    """TC-009: 无 server.json -> status alive=false, 不重建."""
+general/present/tests/test_web_server_lifecycle.py:303:    """TC-010: 进程被杀 (server.json 残留) -> status 按原 roots 重建, 端口沿用, 内容可访问."""
+general/present/tests/test_web_server_lifecycle.py:378:    """TC-011: 进程已死且原端口被占 -> 换 49152-65534 端口重建, 报告新端口."""
+general/present/tests/test_web_server_lifecycle.py:407:        # 原端口被无关进程占位 (TC-007 同款占位者模式)
+general/present/tests/test_web_server_lifecycle.py:420:            # 新端口在 D005 规定范围内
+general/present/tests/test_web_server_lifecycle.py:450:    (D020), 且就绪后校验 server.json 的 pid/port, 不匹配按该候选失败处理,
+general/present/tests/test_web_server_lifecycle.py:469:        # 杀死真服务 (SIGKILL), server.json 残留 (TC-010 同款前置)
+general/present/tests/test_web_server_lifecycle.py:531:    """TC-012: 实例存活时 stop -> 进程终止, server.json 删除, 后续请求失败."""
+general/present/tests/test_web_server_lifecycle.py:625:    """TC-013: 实例存活时 add-dir 存在目录 -> 内容立即可访问; 再次 add-dir 同目录幂等."""
+general/present/tests/test_web_server_lifecycle.py:684:    """TC-014: 实例存活时 add-dir 不存在目录 -> 报错且挂载表不变."""
+general/present/tests/test_web_server_lifecycle.py:758:    """TC-015: 服务运行并有请求发生 -> server.log 存在且有记录."""
+general/present/tests/test_web_server_lifecycle.py:836:    """TC-025: 实例存活且 bind 不同 -> bind_conflict 报错, 不复用."""
+general/present/tests/test_web_server_lifecycle.py:861:        # 报错须提示先 stop 再起新实例 (D006)
+general/present/tests/test_web_server_lifecycle.py:877:    """TC-026: start 成功 -> server.json 与 server.log 权限 0600."""
+general/present/tests/test_web_server_lifecycle.py:930:    """TC-001: 宿主分支地址来源 (显式指定 > 已确认记录 > 缺口), 真实 CLI 入口.
+general/present/tests/test_web_server_lifecycle.py:1005:    """TC-01-03/04: 容器分支交付宿主地址加映射端口, 记录仍写监听端口."""
+general/present/tests/test_web_server_lifecycle.py:1070:    """TC-003: 复用存活实例后交付 URL 端口为实例实际端口, 清单含两目录无重复."""
+general/present/tests/test_web_server_lifecycle.py:1114:    """TC-004/TC-02-02: 重建换端口后记录, status, 交付 URL, 真实监听四处一致."""
+general/present/tests/test_web_server_lifecycle.py:1163:        """TC-02-02: 同一次展示的 start 与 status 给同一交付地址.
+general/mailbox/scripts/mailbox.py:6:(stdout JSON, 失败 exit 3, 供 swt 与 pi 扩展等外部脚本消费, D002);
+general/mailbox/scripts/mailbox.py:12:配置与运行时文件集中 ~/.agents/mailbox/ (mailbox-standalone D003):
+general/mailbox/scripts/mailbox.py:14:state.json / server.db; 旧路径首次运行自动迁移并提示 (AC-024).
+general/mailbox/scripts/mailbox.py:34:  MAILBOX_FLEET_KEY (舰队密钥路径, 缺省 ~/.agents/mailbox/fleet.key, D016) /
+general/mailbox/scripts/mailbox.py:75:LEASE_SECONDS = 1800.0      # 租约时长缺省 30min (D009)
+general/mailbox/scripts/mailbox.py:76:MAX_CONCURRENT_POLLS = 5    # 同 session 并发 poll 上限 (D016)
+general/mailbox/scripts/mailbox.py:78:PENDING_CAP = 100           # 滞留转发上限, 超限丢最老 (AC-013, env 可调)
+general/mailbox/scripts/mailbox.py:79:TTL_SECONDS = 86400.0       # 信件 TTL 缺省 24h (D012, env 可调)
+general/mailbox/scripts/mailbox.py:84:BEACON_PORT = 38437         # 自组网 UDP 信标端口 (D016, 同网段广播)
+general/mailbox/scripts/mailbox.py:88:MAX_BODY_BYTES = 1024 * 1024  # 单信正文上限 1MB (BR-006/AC-021)
+general/mailbox/scripts/mailbox.py:92:RECEIPT_FROM_PREFIX = "mailbox@"  # 回执信保留身份 (D013): from=mailbox@<hostname>
+general/mailbox/scripts/mailbox.py:94:                     "failed": "delivery-failed"}  # 回执确定性 id (D012)
+general/mailbox/scripts/mailbox.py:98:# D010 容器 session 形态: <容器名>-<8hex> (birth 用 token_hex(4), 小写).
+general/mailbox/scripts/mailbox.py:110:# send CLI 按 route 打人话 (AC-008 措辞; 枚举见 TECHNICAL 投信应答节)
+general/mailbox/scripts/mailbox.py:122:    """关键事件日志行 (D011 F1 最小版, AC-037): `[UTC 时间戳] 事件 k=v ...`
+general/mailbox/scripts/mailbox.py:182:    """回执信标记判定 (D012/D013): from 为保留身份 mailbox@<hostname>.
+general/mailbox/scripts/mailbox.py:213:    """通信端点统一身份 (D005)."""
+general/mailbox/scripts/mailbox.py:227:    """邻居信箱连接 (D007/D020): address = host:port, shared_key = 转发互认密钥.
+general/mailbox/scripts/mailbox.py:228:    name = 人读标识 (D011 B2, 可缺省): 同名再登记 upsert 覆盖地址不累积;
+general/mailbox/scripts/mailbox.py:239:    """滞留转发记录 (D011 B4): 信 + 目标邻居 + 重试账目, 供滞留管理查询."""
+general/mailbox/scripts/mailbox.py:251:    """信件 (D008 全内存)."""
+general/mailbox/scripts/mailbox.py:261:        self.downgraded = downgraded  # exec 指令集外 → 降级 request 标注 (D006)
+general/mailbox/scripts/mailbox.py:263:        self.expires_at = expires_at  # epoch; None = 缺省 ts+TTL (D012, 差
+general/mailbox/scripts/mailbox.py:286:    信件全内存 (D008); SQLite 只存凭证/配置 (sessions + whitelist, BR-009),
+general/mailbox/scripts/mailbox.py:296:        self.lease_seconds = lease_seconds  # 租约时长 (D009), serve 可经 env 覆盖
+general/mailbox/scripts/mailbox.py:297:        self.pending_cap = pending_cap      # 滞留上限 (AC-013), serve 可经 env 覆盖
+general/mailbox/scripts/mailbox.py:298:        self.ttl_seconds = ttl_seconds      # 信件 TTL (D012), serve 可经 env 覆盖
+general/mailbox/scripts/mailbox.py:307:        self.whitelist = set()  # exec 指令集规范形 (D006 内容级防线)
+general/mailbox/scripts/mailbox.py:308:        self.concurrent_polls = {}  # session_id -> 在等 poll 数 (D016)
+general/mailbox/scripts/mailbox.py:360:            # 回执保留命名空间 (D013): 注册 mailbox@ 前缀会使正常信被取信侧
+general/mailbox/scripts/mailbox.py:364:                " (回执信发件人身份, D013)")
+general/mailbox/scripts/mailbox.py:392:        """吊销 session (AC-008): 持久化 revoked 标记, 此后 poll/post 被拒.
+general/mailbox/scripts/mailbox.py:408:        """幂等保证 session 在场 (D022, admin ensure 口): 已存在且未吊销 →
+general/mailbox/scripts/mailbox.py:435:        """运行时加邻居 (D020): 内存生效 + SQLite 持久化 (B8, 重启仍在).
+general/mailbox/scripts/mailbox.py:436:        同名 upsert (D011 B2): name 命中已有邻居 → 覆盖地址与密钥不新增条目
+general/mailbox/scripts/mailbox.py:475:        """删邻居 (D011 B1): 内存与 DB 同删; 未知地址 → None (admin 层 404).
+general/mailbox/scripts/mailbox.py:490:        """改邻居 (D011 B1): 按 address 定位, 改地址/密钥/名字 (None = 不改;
+general/mailbox/scripts/mailbox.py:516:        """认证换址宣告 (D016/AC-033/034): 按邻居名定位, 旧链路密钥验签
+general/mailbox/scripts/mailbox.py:519:        MailboxError 并打 UTC 日志行 (AC-037 邻居换址行)."""
+general/mailbox/scripts/mailbox.py:575:        from 验签 (D013/AC-022): letter.from 必须等于签名 session, 不符拒收
+general/mailbox/scripts/mailbox.py:586:                f"{session_id!r} (D013)")
+general/mailbox/scripts/mailbox.py:594:        + exec 指令集校验 (D006: 任何信箱都过, 不在集合降级 request).
+general/mailbox/scripts/mailbox.py:601:            # D006: exec 过指令集白名单, 不在集合降级 request 走收件侧权限流程
+general/mailbox/scripts/mailbox.py:608:                letter.note = "指令集命中 → 收件侧直批 (D006)"
+general/mailbox/scripts/mailbox.py:611:                letter.note = "指令集外 → 降级 request, 走收件侧权限流程 (D006)"
+general/mailbox/scripts/mailbox.py:615:        """路由 (D007): 收件人在本机 → 排队, 返回 (letter, []);
+general/mailbox/scripts/mailbox.py:635:            self._spawn_receipt("delivered", letter)  # 送达回执 (D012): 进队列即发
+general/mailbox/scripts/mailbox.py:655:        """回执信内部注入 (D013): 服务端生成, 不走 post 验签, 经 _route 反向
+general/mailbox/scripts/mailbox.py:657:        {"receipt","letter_id"}, id 确定化 (D012). 发件人本机 → 直接排队;
+general/mailbox/scripts/mailbox.py:660:        (from == to, AC-018 两设备前提, 自寄回执只噪自己的队列) / 回执信自身
+general/mailbox/scripts/mailbox.py:661:        (mailbox@ 保留身份, 回执不递归, AC-020) / 同 id 回执已生成或已收
+general/mailbox/scripts/mailbox.py:662:        (确定性 id 幂等, AC-019 多节点去重的本端半边)."""
+general/mailbox/scripts/mailbox.py:666:            return  # 回执不递归 (D012/AC-020)
+general/mailbox/scripts/mailbox.py:679:            return  # 发件人无处可达: best-effort 丢弃 (D012)
+general/mailbox/scripts/mailbox.py:691:        """有效到期时刻: 显式 expires_at 优先, 缺省 ts+TTL (D012)."""
+general/mailbox/scripts/mailbox.py:697:        """TTL 清扫器 (D012): 到期信从队列与滞留中丢弃; 普通信丢弃时向发件人
+general/mailbox/scripts/mailbox.py:698:        注入失败回执 (确定性 id, AC-019), 回执信自身到期静默丢弃 (不递归).
+general/mailbox/scripts/mailbox.py:743:                      to=letter.to_session)  # AC-037 滞留/队列丢弃行
+general/mailbox/scripts/mailbox.py:747:        """邻居转发收信 (D007). neighbor_key 与邻居表比对认证, 匹配到的
+general/mailbox/scripts/mailbox.py:758:        """邻居不可达 → 内存暂存 (NG-009: 不持久化, 重启即清), 记录最后错误
+general/mailbox/scripts/mailbox.py:759:        与失败尝试次数 (D011 B4), 供 GET /admin/pending 查询; 预算耗尽入暂存
+general/mailbox/scripts/mailbox.py:768:        """滞留数量上限 (AC-013): 超限丢最老 (staged_at 最小者优先出列).
+general/mailbox/scripts/mailbox.py:774:                      to=oldest.letter.to_session, reason="cap")  # AC-037
+general/mailbox/scripts/mailbox.py:958:        取信前惰性收回过期租约 (D009 重投)."""
+general/mailbox/scripts/mailbox.py:1011:        self._spawn_receipt("read", letter)  # 已读回执 (D012): ack 成功即发
+general/mailbox/scripts/mailbox.py:1017:    事件日志 (D011 B4/F1). 不可达/超时/被拒一律 False, 由调用方暂存重试;
+general/mailbox/scripts/mailbox.py:1032:    """邻居转发失败日志行 (AC-037): 事件名与字段一处收口 (_flood 与
+general/mailbox/scripts/mailbox.py:1039:    """洪泛核心 (post/forward 应答与回执注入共用, D007): 预算内逐邻居投递,
+general/mailbox/scripts/mailbox.py:1040:    未确认进内存暂存 (D011 A4 异步洪泛 — 预算等待不持有锁, 调用方须在
+general/mailbox/scripts/mailbox.py:1075:# 自组网 (ISSUE-10, D016 无感自组网): 舰队密钥 / UDP 信标 / hello 互证握手 /
+general/mailbox/scripts/mailbox.py:1091:    """舰队密钥 (D016): env MAILBOX_FLEET_KEY 路径覆盖; 缺失/空 → None.
+general/mailbox/scripts/mailbox.py:1092:    无舰队密钥 = 不参与自组网: 不发信标, hello 一律拒 (NG-009 零确认入群
+general/mailbox/scripts/mailbox.py:1093:    不做, AC-032)."""
+general/mailbox/scripts/mailbox.py:1102:    """舰队密钥引导生成 (ISSUE-13/D020): 文件缺席且 MAILBOX_FLEET_KEY env
+general/mailbox/scripts/mailbox.py:1106:    密钥 = 自成单节点舰队: 信标照发, 异钥握手仍拒 (NG-009 不变)."""
+general/mailbox/scripts/mailbox.py:1115:        os.chmod(path.parent, 0o700)  # BR-009: 父目录私有
+general/mailbox/scripts/mailbox.py:1129:          f" 分发仅经 ssh, BR-009)", file=sys.stderr)
+general/mailbox/scripts/mailbox.py:1139:    """两两链路密钥 (D016): 舰队密钥 + 双方指纹确定性派生 (双向握手收敛
+general/mailbox/scripts/mailbox.py:1313:                "舰队密钥验证失败: 对端无法证明持有 fleet key (AC-032)")
+general/mailbox/scripts/mailbox.py:1355:        self.flood_budget_seconds = FLOOD_BUDGET_SECONDS  # 洪泛判定预算 (D011 A4)
+general/mailbox/scripts/mailbox.py:1367:        """内部注入回执的远端部分补投 (D012/D13): 取空 _spawned_routes 逐封
+general/mailbox/scripts/mailbox.py:1461:            # AC-016 正常用法), 无处投递, 静默放弃; 其他异常照常上抛,
+general/mailbox/scripts/mailbox.py:1512:        """AC-036: 本机会话队列深度. GET 查询参数 session/sig_ts/sig,
+general/mailbox/scripts/mailbox.py:1532:        """AC-028 (D011 G3): sessions 只读列表. GET 查询参数 session/sig_ts/sig,
+general/mailbox/scripts/mailbox.py:1550:            # 白名单字段序列化 (D011 G3/AC-028): 只回 id+last_poll,
+general/mailbox/scripts/mailbox.py:1660:        """POST /mailbox/hello (自组网握手, D016/AC-031/032): 舰队密钥 HMAC
+general/mailbox/scripts/mailbox.py:1666:                "本机未配置舰队密钥, 拒绝入群 (NG-009/AC-032)"})
+general/mailbox/scripts/mailbox.py:1676:        """POST /mailbox/address-update (邻居间换址宣告, D016/AC-033/034):
+general/mailbox/scripts/mailbox.py:1715:        # 回执反向走同一路由 (D012): 本信在本机排队生成的送达回执在此锁外补投
+general/mailbox/scripts/mailbox.py:1720:        """路由结果的非本机部分: 预算内逐邻居投递, 未确认进内存暂存 (D007),
+general/mailbox/scripts/mailbox.py:1721:        由 serve 重试线程后台补投 (D011 A4 异步洪泛 — 预算等待不持有
+general/mailbox/scripts/mailbox.py:1734:        # 单信正文 1MB 上限 (AC-021/BR-006): 超限拒收 413,
+general/mailbox/scripts/mailbox.py:1735:        # 错误消息同步钉死边界用途 — 信箱只传控制消息, 传文件走 git (D011 D3)
+general/mailbox/scripts/mailbox.py:1849:        # 已读回执远端部分锁外补投 (D012: 回执反向走同一路由)
+general/mailbox/scripts/mailbox.py:1908:            # D022: 幂等保证 session 在场 (持锁): 活着复用原密钥, 否则新建.
+general/mailbox/scripts/mailbox.py:1966:            # 密钥不出管理面 (BR-006 同口径): 创建时一次性下发, 列表永不回显
+general/mailbox/scripts/mailbox.py:1999:        """滞留信操作 (D011 B4): retry=True 立即补投, 否则丢弃; 未知 id 404."""
+general/mailbox/scripts/mailbox.py:2012:                      to=e.letter.to_session, reason="admin")  # AC-037
+general/mailbox/scripts/mailbox.py:2025:        """D011 B1: DELETE /admin/neighbors {address} — 内存与 DB 同删."""
+general/mailbox/scripts/mailbox.py:2044:        """D011 B1: PATCH /admin/neighbors {address, new_address?/shared_key?/name?}."""
+general/mailbox/scripts/mailbox.py:2082:    """配置文件落盘即 0600, 目录 0700 (密钥保护, D015)."""
+general/mailbox/scripts/mailbox.py:2089:    """session id → 目录安全名 (D022 每会话独立信箱). 规整 id 原样用,
+general/mailbox/scripts/mailbox.py:2098:    """本会话独立配置文件路径 (D022): --config 显式指定优先; 缺省
+general/mailbox/scripts/mailbox.py:2130:    """D012: 配置缺失时自动注册 <hostname>-host session 并写本机配置.
+general/mailbox/scripts/mailbox.py:2132:    (2026-09-21 工作站首启踩坑: 旧 schema 文件既挡 D012 又不被新代码读取)."""
+general/mailbox/scripts/mailbox.py:2165:# 取信 CLI (缺省动作, D002): 凭证探测 → 阻塞长轮询 → 输出正文+指引
+general/mailbox/scripts/mailbox.py:2175:# D014 拉窗门禁 (设备侧脚本内, 平移自旧 pi 扩展 gatePullWindow)
+general/mailbox/scripts/mailbox.py:2282:    """取信状态文件 (D009): --cli-state 参数 > MAILBOX_CLI_STATE env >
+general/mailbox/scripts/mailbox.py:2434:# D014 呈现降噪: 回执信紧凑单行措辞 (裸脚本取信, codex/kimi/终端)
+general/mailbox/scripts/mailbox.py:2461:    """timeout (AC-016): 到时无信退出码 0 并报无信; 缺省无限等待.
+general/mailbox/scripts/mailbox.py:2463:    cli_state (D009): per-listener 状态文件路径, 修多 listener pending_ack 竞态."""
+general/mailbox/scripts/mailbox.py:2468:    # D003 回执自动化: 先自动回执上一条, LLM 无感
+general/mailbox/scripts/mailbox.py:2479:    # AC-015: 首次连接失败立即明报再退避 (不静默); 明报行只打一次不刷屏
+general/mailbox/scripts/mailbox.py:2482:    fetched = 0  # --count 已取封数 (AC-016)
+general/mailbox/scripts/mailbox.py:2493:        回执失败则租约到期重投, 下轮循环/租约兜底, 不阻塞取信 (D003/D009/D014)."""
+general/mailbox/scripts/mailbox.py:2500:    # 故障自愈 (AC-003): 网络断/服务未就绪一律退避重试, 不 print 不 exit
+general/mailbox/scripts/mailbox.py:2502:        # AC-016: poll 超时按剩余时间收紧 — 服务端 hold 可长于 --timeout,
+general/mailbox/scripts/mailbox.py:2532:            # 再退避, 明报行只打一次不刷屏 (AC-015); 但 --timeout 收紧 poll
+general/mailbox/scripts/mailbox.py:2564:            # D003/D009: 租约重投的已见信, 自动回执不呈现给 LLM, 继续等下一封
+general/mailbox/scripts/mailbox.py:2570:            # D014 呈现降噪: 回执信自动 ack 不呈现给 LLM, 紧凑单行,
+general/mailbox/scripts/mailbox.py:2579:            # D014 拉窗门禁: skipped 信立即回执, 不呈现给 LLM, 继续 poll
+general/mailbox/scripts/mailbox.py:2588:            save_cli_state(state, cli_state)  # 过门即落限频时刻 (D014)
+general/mailbox/scripts/mailbox.py:2661:    # 回执分行 (AC-006): 目标 session 与信件 id 各占一行;
+general/mailbox/scripts/mailbox.py:2662:    # 空 to 时优先回打服务端实际解析出的目标 (AC-007)
+general/mailbox/scripts/mailbox.py:2666:    # 投递态按 route 打人话 (AC-008); 重复 id 幂等收下时回 note
+general/mailbox/scripts/mailbox.py:2677:# config CLI: 逐项修改配置; 非密钥走参数, 密钥走 stdin (BR-006)
+general/mailbox/scripts/mailbox.py:2697:                  "(BR-006), 请去掉值参数, 经 stdin 交互输入", file=sys.stderr)
+general/mailbox/scripts/mailbox.py:2711:    write_config_file(cfg, data)  # 落盘 0600 + 目录 0700 (D015)
+general/mailbox/scripts/mailbox.py:2716:# status CLI: 展示配置, 密钥只显前 8 位 (BR-006)
+general/mailbox/scripts/mailbox.py:2727:    """待取数 (AC-036): GET /mailbox/queued (session 签名);
+general/mailbox/scripts/mailbox.py:2757:    """邻居数 (D018): state.json 提供本地 admin 面凭证 (host 场景) 时经
+general/mailbox/scripts/mailbox.py:2781:    """status 重写 (AC-014/AC-017): 认 env 凭证 (env 优先, 配置文件兑底),
+general/mailbox/scripts/mailbox.py:2799:    # 无地址可探: 状态文件兑底 (AC-014 同机组件读文件先验活,
+general/mailbox/scripts/mailbox.py:2812:# 机器子命令 (mailbox-standalone ISSUE-02, D002): swt 等外部脚本的唯一
+general/mailbox/scripts/mailbox.py:2865:    抛 _MachineCommandError → exit 3; 超时 5s (D002)."""
+general/mailbox/scripts/mailbox.py:3030:    """join-fleet <老设备ssh地址> (AC-035/D016/BR-009): 新设备主动 ssh 到
+general/mailbox/scripts/mailbox.py:3032:    分发 (NG-009: 零确认入群不做, 无舰队密钥一律拒)."""
+general/mailbox/scripts/mailbox.py:3050:    os.chmod(path, 0o600)  # 入位即 0600 (BR-009, 不信任 umask)
+general/mailbox/scripts/mailbox.py:3057:    """邻居表 (D020): JSON list [{address, shared_key, name?}]; 缺失/畸形 → 空表.
+general/mailbox/scripts/mailbox.py:3058:    name 可缺省 (D011 B2 兼容旧表), 文件条目只作启动种子 (B8)."""
+general/mailbox/scripts/mailbox.py:3089:    # 邻居表 = SQLite 持久化 (admin 运行时加入/修改, B8) + JSON 文件 (D020 手工
+general/mailbox/scripts/mailbox.py:3117:    beacon = None  # 自组网信标 (ISSUE-10): 无舰队密钥不参与组网 (NG-009)
+general/mailbox/scripts/mailbox.py:3118:    bootstrap_fleet_key()  # ISSUE-13/D020: 无文件且无 env 才引导生成
+general/mailbox/scripts/mailbox.py:3145:            # TTL 清扫 (D012) + 在线状态跳变日志: 与滞留重试同线程, 队列/滞留
+general/mailbox/scripts/mailbox.py:3185:    """旧路径自动迁移 (mailbox-standalone AC-024): 首次运行把历史位置的文件
+general/mailbox/scripts/mailbox.py:3215:        os.chmod(new, 0o600)  # 入位即 0600 (BR-002, 不信任源权限, 沿用老先例)
+general/mailbox/scripts/mailbox.py:3222:    # 取信参数挂在顶层: 缺省动作 (无子命令) = 取信 (D001)
+general/mailbox/scripts/mailbox.py:3267:        "join-fleet", help="入群: 经 ssh 从老设备拉取舰队密钥 (AC-035)")
+general/mailbox/scripts/mailbox.py:3293:        cmd_fetch(args.timeout, args.count, args.cli_state)  # 缺省动作 = 取信 (D001)

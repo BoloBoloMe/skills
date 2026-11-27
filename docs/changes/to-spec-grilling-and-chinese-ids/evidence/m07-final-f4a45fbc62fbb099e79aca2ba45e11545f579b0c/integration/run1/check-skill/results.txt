@@ -1,0 +1,3 @@
+workflow/navigate/SKILL.md exit=0 stdout=workflow/navigate/SKILL.md: OK|
+workflow/to-spec/SKILL.md exit=0 stdout=workflow/to-spec/SKILL.md: OK|
+workflow/verify-change/SKILL.md exit=0 stdout=workflow/verify-change/SKILL.md: OK|

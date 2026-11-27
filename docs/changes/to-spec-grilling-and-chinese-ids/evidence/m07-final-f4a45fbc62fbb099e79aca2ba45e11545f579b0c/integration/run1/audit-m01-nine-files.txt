@@ -1,0 +1,9 @@
+workflow/decision-ledger/SKILL.md 中文编号行=3 旧D/F编号行=0
+workflow/to-execution/SKILL.md 中文编号行=1 旧D/F编号行=0
+workflow/to-execution/TEMPLATES.md 中文编号行=7 旧D/F编号行=0
+workflow/to-spec/TEMPLATES.md 中文编号行=10 旧D/F编号行=0
+workflow/to-spec/GHERKIN.md 中文编号行=1 旧D/F编号行=0
+workflow/to-spec/check-ac.py 中文编号行=3 旧D/F编号行=7
+workflow/to-spec/ac-draft.py 中文编号行=0 旧D/F编号行=0
+workflow/to-spec/tests/test_ac_draft.py 中文编号行=5 旧D/F编号行=0
+workflow/to-spec/tests/test_ac_reading.py 中文编号行=12 旧D/F编号行=0

@@ -1,0 +1,3 @@
+e6b7962d4815d00ec006cb7c839e6df74ad7d701
+e6b7962 docs: ISSUE-04: 填写执行结果与验收情况
+bbc038d feat: ISSUE-04: 补回 to-spec 五步完成标准, 统一固定 v1 文案, 新增坏输入转正回归

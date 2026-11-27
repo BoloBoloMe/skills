@@ -1,0 +1,10 @@
+============================= test session starts ==============================
+platform linux -- Python 3.11.2, pytest-9.1.1, pluggy-1.7.0
+rootdir: /home/bolo/Workspace/improve
+configfile: pytest.ini
+collected 40 items
+
+workflow/to-spec/tests/test_ac_draft.py ......................           [ 55%]
+workflow/to-spec/tests/test_ac_reading.py ..................             [100%]
+
+============================== 40 passed in 4.25s ==============================

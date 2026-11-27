@@ -1,0 +1,21 @@
+head=676311a71ef2edf4c81c35077f395c06642da502
+branch=issue/06
+status_porcelain_bytes=0
+# 工作树文件摘要:
+9d6ef1607b9dc37075243fd65651131341a8f5f73943274a02a353064963c3e7  docs/changes/to-spec-grilling-and-chinese-ids/issues/ISSUE-01-tospec-flow-and-cli.md
+6b1ca6a319454d524688bc7fa3fb581d4b1b15ff43473bb3c73d547f44378ab7  docs/changes/to-spec-grilling-and-chinese-ids/issues/ISSUE-02-verify-change-method-flow.md
+0adc8713b041ab3de29a1678da519d3bf509dc160c1497de1b5c5755f5d0720c  docs/changes/to-spec-grilling-and-chinese-ids/issues/ISSUE-03-navigate-readme-alignment.md
+ef6a32c11a1aefa374fd989a9e0f008f75e5210d3e235c0590363552fe0e9604  docs/changes/to-spec-grilling-and-chinese-ids/EXECUTION.md
+602cc95966d7eb9416c41883e461259d321d5ee4f182ab4228095f5ea166b506  docs/changes/to-spec-grilling-and-chinese-ids/issues/ISSUE-06-records-backfill.md
+# 提交内同路径摘要:
+9d6ef1607b9dc37075243fd65651131341a8f5f73943274a02a353064963c3e7  docs/changes/to-spec-grilling-and-chinese-ids/issues/ISSUE-01-tospec-flow-and-cli.md
+6b1ca6a319454d524688bc7fa3fb581d4b1b15ff43473bb3c73d547f44378ab7  docs/changes/to-spec-grilling-and-chinese-ids/issues/ISSUE-02-verify-change-method-flow.md
+0adc8713b041ab3de29a1678da519d3bf509dc160c1497de1b5c5755f5d0720c  docs/changes/to-spec-grilling-and-chinese-ids/issues/ISSUE-03-navigate-readme-alignment.md
+ef6a32c11a1aefa374fd989a9e0f008f75e5210d3e235c0590363552fe0e9604  docs/changes/to-spec-grilling-and-chinese-ids/EXECUTION.md
+602cc95966d7eb9416c41883e461259d321d5ee4f182ab4228095f5ea166b506  docs/changes/to-spec-grilling-and-chinese-ids/issues/ISSUE-06-records-backfill.md
+# 提交改动路径:
+docs/changes/to-spec-grilling-and-chinese-ids/EXECUTION.md
+docs/changes/to-spec-grilling-and-chinese-ids/issues/ISSUE-01-tospec-flow-and-cli.md
+docs/changes/to-spec-grilling-and-chinese-ids/issues/ISSUE-02-verify-change-method-flow.md
+docs/changes/to-spec-grilling-and-chinese-ids/issues/ISSUE-03-navigate-readme-alignment.md
+docs/changes/to-spec-grilling-and-chinese-ids/issues/ISSUE-06-records-backfill.md

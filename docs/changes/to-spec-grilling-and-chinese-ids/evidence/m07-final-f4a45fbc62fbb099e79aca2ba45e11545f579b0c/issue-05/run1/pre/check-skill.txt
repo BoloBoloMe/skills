@@ -1,0 +1,2 @@
+verify-change/SKILL.md: OK
+exit=0

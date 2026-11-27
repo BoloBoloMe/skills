@@ -1,0 +1,7 @@
+Traceback (most recent call last):
+  File "/home/bolo/evidence/to-spec-grilling-and-chinese-ids/issue-01/run2/trace.py", line 163, in <module>
+    run(case, interpreter)
+  File "/home/bolo/evidence/to-spec-grilling-and-chinese-ids/issue-01/run2/trace.py", line 83, in run
+    _, status = os.waitpid(pid, WAIT)
+                ^^^^^^^^^^^^^^^^^^^^^
+OSError: [Errno 22] Invalid argument

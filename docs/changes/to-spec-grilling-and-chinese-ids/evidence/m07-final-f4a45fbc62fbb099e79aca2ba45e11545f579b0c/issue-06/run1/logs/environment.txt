@@ -1,0 +1,7 @@
+captured_at=2026-11-27T05:15:16Z
+repo=/home/bolo/Workspace/improve.worktrees/ISSUE-06
+branch=issue/06
+head_before_commit=1874ede3695a7727271ee4b2e921e913607b2725
+uv=uv 0.13.1 (x86_64-unknown-linux-gnu)
+python=Python 3.11.2
+Linux x86_64

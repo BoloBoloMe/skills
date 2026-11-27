@@ -1,0 +1,4 @@
+docs/changes/to-spec-grilling-and-chinese-ids/evidence/m07-1bc15f612c10aa6e68e33587a01cd2de1ede2fe4/issue-02/check1/originals/SKILL.md exit=1 stderr=docs/changes/to-spec-grilling-and-chinese-ids/evidence/m07-1bc15f612c10aa6e68e33587a01cd2de1ede2fe4/issue-02/check1/originals/SKILL.md: name 与目录名不一致: verify-change != originals| stdout=
+workflow/navigate/SKILL.md exit=0 stderr= stdout=workflow/navigate/SKILL.md: OK|
+workflow/to-spec/SKILL.md exit=0 stderr= stdout=workflow/to-spec/SKILL.md: OK|
+workflow/verify-change/SKILL.md exit=0 stderr= stdout=workflow/verify-change/SKILL.md: OK|

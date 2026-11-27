@@ -1,0 +1,3 @@
+3e486d37d5caea2b5bc937bbd2c77474b50b97fb doc: milestone-07 返工四轮集成与执行记录
+b9cb2dbcee92e948f7d2725e275e607f1da7273b merge: issue/08
+1efb0f0a984add7de223645851ec4eb849f9e603 feat: ISSUE-08: VERIFICATION.md 第 3 步方案依据变化措辞改为只补问决定变化

@@ -1,0 +1,5 @@
+ .../issues/ISSUE-04-tospec-rework-h1h4r4.md        | 19 ++++++++---
+ workflow/to-spec/SKILL.md                          | 10 ++++++
+ workflow/to-spec/check-ac.py                       |  8 +++--
+ workflow/to-spec/tests/test_ac_draft.py            | 39 ++++++++++++++++++++++
+ 4 files changed, 69 insertions(+), 7 deletions(-)

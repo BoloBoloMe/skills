@@ -1,0 +1,22 @@
+# 已安装技能库 stderr 对比
+2026-11-27T05:05:08+00:00
+/home/bolo/.agents/skills/to-spec/SKILL.md:45:   uv run <skill 目录>/ac-draft.py promote <PRODUCT暂存稿> <验收草稿> <产物根目录>/PRODUCT.md --review <review_id>
+/home/bolo/.agents/skills/to-spec/SKILL.md:70:3. **冻结版本并展示.** 运行下列命令从暂存稿与草稿生成 HTML 阅读卡片及原文预览, 以 JSON 的 `success` 判断结果, 记录返回的 `review_id`, `draft` 与 `preview` 路径. 失败时按报错修正并回到主会话检查, 不由 LLM 另写阅读版替代.
+/home/bolo/.agents/skills/to-spec/SKILL.md:77:   展示后冻结这版草稿与暂存稿; 修改时生成新版并重新检查, 预览与确认. `review_id` 同时绑定两份输入的原始字节, 任一变化都不能沿用旧版确认.
+/home/bolo/.agents/skills/to-spec/SKILL.md:78:   完成标准: 预览生成成功, 已交付可读取的脚本预览及草稿原文件 (展示失败时按 present 的失败出口交付文件), chat 已明确待确认的 `review_id`.
+/home/bolo/.agents/skills/to-spec/SKILL.md:80:   完成标准: 我已明确采纳当前 `review_id` 对应版本, 两份输入自展示后未变.
+/home/bolo/.agents/skills/to-spec/ac-draft.py:9:promote <PRODUCT 暂存稿> <验收草稿> <PRODUCT.md> --review <审阅版本>
+/home/bolo/.agents/skills/to-spec/ac-draft.py:38:def review_id(base: bytes, draft: bytes) -> str:
+/home/bolo/.agents/skills/to-spec/ac-draft.py:254:    review = review_id(base_bytes, draft_bytes)
+/home/bolo/.agents/skills/to-spec/ac-draft.py:261:            "preview": str(output), "review_id": review}
+/home/bolo/.agents/skills/to-spec/ac-draft.py:299:    if review_id(base_bytes, draft_bytes) != review:
+/home/bolo/.agents/skills/to-spec/ac-draft.py:309:    return {"success": True, "command": "promote", "output": str(output), "review_id": review}
+/home/bolo/.agents/skills/to-spec/ac-draft.py:322:            command.add_argument("--review", required=True, help="我明确确认的预览所返回的 review_id")
+total 72
+-rw-rw-r-- 1 root root  6878 Nov 14 16:36 GHERKIN.md
+-rw-rw-r-- 1 root root 12086 Nov 24 13:48 SKILL.md
+-rw-rw-r-- 1 root root  3862 Nov 14 16:36 TEMPLATES.md
+-rw-rw-r-- 1 root root 16880 Nov 14 16:36 ac-draft.py
+drwxrwxr-x 2 root root  4096 Nov 14 16:36 agents
+-rw-rw-r-- 1 root root 17351 Oct 27 16:25 check-ac.py
+-rw-rw-r-- 1 root root  3123 Nov 14 16:36 check-tech.py

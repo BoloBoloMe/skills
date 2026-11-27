@@ -1,0 +1,18 @@
+# recipe (新版 SKILL 第3节命令清单实跑)
+2026-11-27T05:05:01+00:00
+$ check-ac.py PRODUCT.base.md --draft AC.md
+  exit 0 | ['check-ac (草稿): 通过 - 1 个场景, 1 个 AC']
+$ check-tech.py TECHNICAL.md
+  exit 0 | ['check-tech: 通过 - 6 节']
+$ ac-draft.py promote PRODUCT.base.md AC.md PRODUCT.md
+  exit 0 | ['{"success": true, "command": "promote", "output": "/tmp/m07-rev-imp/recipe-v4_c7kyl/prod/PRODUCT.md"}']
+$ cp -- TECHNICAL.md TECHNICAL.md
+  exit 0 | []
+$ cmp -- TECHNICAL.md TECHNICAL.md
+  exit 0 | []
+$ check-ac.py PRODUCT.md
+  exit 0 | ['check-ac: 通过 - 1 个场景, 1 个 AC']
+$ check-tech.py TECHNICAL.md
+  exit 0 | ['check-tech: 通过 - 6 节']
+RECIPE OK
+recipe exit=0

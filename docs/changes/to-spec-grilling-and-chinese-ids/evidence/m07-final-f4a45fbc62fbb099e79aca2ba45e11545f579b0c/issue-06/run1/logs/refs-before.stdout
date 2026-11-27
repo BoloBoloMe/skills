@@ -1,0 +1,292 @@
+OK ISSUE-01-tospec-flow-and-cli.md: ../EXECUTION.md -> docs/changes/to-spec-grilling-and-chinese-ids/EXECUTION.md
+OK ISSUE-01-tospec-flow-and-cli.md: PRODUCT.md -> docs/changes/to-spec-grilling-and-chinese-ids/PRODUCT.md
+OK ISSUE-01-tospec-flow-and-cli.md: TECHNICAL.md -> docs/changes/to-spec-grilling-and-chinese-ids/TECHNICAL.md
+OK ISSUE-01-tospec-flow-and-cli.md: VERIFICATION-PLAN.md -> docs/changes/to-spec-grilling-and-chinese-ids/VERIFICATION-PLAN.md
+OK ISSUE-01-tospec-flow-and-cli.md: DECISIONS.md -> docs/changes/to-spec-grilling-and-chinese-ids/DECISIONS.md
+OK ISSUE-01-tospec-flow-and-cli.md: workflow/to-spec/SKILL.md -> workflow/to-spec/SKILL.md
+OK ISSUE-01-tospec-flow-and-cli.md: workflow/to-spec/TEMPLATES.md -> workflow/to-spec/TEMPLATES.md
+OK ISSUE-01-tospec-flow-and-cli.md: workflow/to-spec/GHERKIN.md -> workflow/to-spec/GHERKIN.md
+OK ISSUE-01-tospec-flow-and-cli.md: workflow/to-spec/ac-draft.py -> workflow/to-spec/ac-draft.py
+OK ISSUE-01-tospec-flow-and-cli.md: workflow/to-spec/check-ac.py -> workflow/to-spec/check-ac.py
+OK ISSUE-01-tospec-flow-and-cli.md: workflow/to-spec/check-tech.py -> workflow/to-spec/check-tech.py
+OK ISSUE-01-tospec-flow-and-cli.md: workflow/to-spec/tests/ -> workflow/to-spec/tests
+OK ISSUE-01-tospec-flow-and-cli.md: roadmap/ROADMAP.json -> docs/changes/to-spec-grilling-and-chinese-ids/roadmap/ROADMAP.json
+OK ISSUE-01-tospec-flow-and-cli.md: REVIEW-milestone-01.md -> docs/changes/to-spec-grilling-and-chinese-ids/REVIEW-milestone-01.md
+UNRESOLVED ISSUE-01-tospec-flow-and-cli.md: review_id
+UNRESOLVED ISSUE-01-tospec-flow-and-cli.md: --review
+UNRESOLVED ISSUE-01-tospec-flow-and-cli.md: main
+UNRESOLVED ISSUE-01-tospec-flow-and-cli.md: workspace
+UNRESOLVED ISSUE-01-tospec-flow-and-cli.md: preview
+OK(证据/仓库内按名命中) ISSUE-01-tospec-flow-and-cli.md: promote -> .../promote/
+OK ISSUE-01-tospec-flow-and-cli.md: workflow/to-spec/tests/test_ac_draft.py -> workflow/to-spec/tests/test_ac_draft.py
+OK ISSUE-01-tospec-flow-and-cli.md: workflow/to-spec/tests/test_ac_reading.py -> workflow/to-spec/tests/test_ac_reading.py
+SKIP(命令/占位符) ISSUE-01-tospec-flow-and-cli.md: @AC
+OK ISSUE-01-tospec-flow-and-cli.md: general/grilling/SKILL.md -> general/grilling/SKILL.md
+OK ISSUE-01-tospec-flow-and-cli.md: general/handoff/SKILL.md -> general/handoff/SKILL.md
+OK ISSUE-01-tospec-flow-and-cli.md: general/opposing-viewpoint/SKILL.md -> general/opposing-viewpoint/SKILL.md
+SKIP(命令/占位符) ISSUE-01-tospec-flow-and-cli.md: uv run python workflow/to-spec/ac-draft.py preview <产品暂存稿> <验收草稿>
+UNRESOLVED ISSUE-01-tospec-flow-and-cli.md: success
+SKIP(命令/占位符) ISSUE-01-tospec-flow-and-cli.md: uv run python workflow/to-spec/ac-draft.py promote <产品暂存稿> <验收草稿> <隔离正式稿>
+SKIP(命令/占位符) ISSUE-01-tospec-flow-and-cli.md: <!-- confirmed-flow: v1 -->
+SKIP(命令/占位符) ISSUE-01-tospec-flow-and-cli.md: uv run python workflow/to-spec/check-ac.py ...
+UNRESOLVED ISSUE-01-tospec-flow-and-cli.md: 目标1
+UNRESOLVED ISSUE-01-tospec-flow-and-cli.md: 规则2
+SKIP(命令/占位符) ISSUE-01-tospec-flow-and-cli.md: @G-001
+SKIP(命令/占位符) ISSUE-01-tospec-flow-and-cli.md: @BR-002
+SKIP(命令/占位符) ISSUE-01-tospec-flow-and-cli.md: @G-099
+SKIP(命令/占位符) ISSUE-01-tospec-flow-and-cli.md: @BR-009
+UNRESOLVED ISSUE-01-tospec-flow-and-cli.md: 假如
+SKIP(命令/占位符) ISSUE-01-tospec-flow-and-cli.md: @AC-001
+SKIP(命令/占位符) ISSUE-01-tospec-flow-and-cli.md: @AC-002
+SKIP(命令/占位符) ISSUE-01-tospec-flow-and-cli.md: @smoke
+SKIP(命令/占位符) ISSUE-01-tospec-flow-and-cli.md: uv run python workflow/to-spec/check-tech.py <合成技术文件>
+UNRESOLVED ISSUE-01-tospec-flow-and-cli.md: 182ff1846d0ed310b7f4ed308366d36f6e74b412
+SKIP(命令/占位符) ISSUE-01-tospec-flow-and-cli.md: uv run pytest workflow/to-spec/tests
+OK(证据/仓库内按名命中) ISSUE-01-tospec-flow-and-cli.md: SKILL.md -> .../SKILL.md
+SKIP(命令/占位符) ISSUE-01-tospec-flow-and-cli.md: uv run python general/writing-for-llm/check_skill.py <路径>
+SKIP(命令/占位符) ISSUE-01-tospec-flow-and-cli.md: uv run pytest
+UNRESOLVED ISSUE-01-tospec-flow-and-cli.md: issue/01
+UNRESOLVED ISSUE-01-tospec-flow-and-cli.md: 775b5a2
+UNRESOLVED ISSUE-01-tospec-flow-and-cli.md: fd26618
+SKIP(命令/占位符) ISSUE-01-tospec-flow-and-cli.md: feat: ISSUE-01: 实施盘问确认与机械转正
+UNRESOLVED ISSUE-01-tospec-flow-and-cli.md: 8ce78be
+SKIP(命令/占位符) ISSUE-01-tospec-flow-and-cli.md: feat: ISSUE-01: 补回 GHERKIN 机检项的固定标记原文
+UNRESOLVED ISSUE-01-tospec-flow-and-cli.md: 3229525
+SKIP(命令/占位符) ISSUE-01-tospec-flow-and-cli.md: docs: ISSUE-01: 填写交付证据与验收标准
+OK ISSUE-01-tospec-flow-and-cli.md: run5/logs/final-pytest.* -> ../../home/bolo/evidence/to-spec-grilling-and-chinese-ids/issue-01/run5/logs/final-pytest.cmd
+OK(证据/仓库内按名命中) ISSUE-01-tospec-flow-and-cli.md: final-check-skill.* -> .../final-check-skill.*
+OK ISSUE-01-tospec-flow-and-cli.md: run5/final-commit.txt -> ../../home/bolo/evidence/to-spec-grilling-and-chinese-ids/issue-01/run5/final-commit.txt
+SKIP(命令/占位符) ISSUE-01-tospec-flow-and-cli.md: git diff 8ce78be 3229525
+OK(证据/仓库内按名命中) ISSUE-01-tospec-flow-and-cli.md: TEMPLATES.md -> .../TEMPLATES.md
+OK(证据/仓库内按名命中) ISSUE-01-tospec-flow-and-cli.md: GHERKIN.md -> .../GHERKIN.md
+OK(证据/仓库内按名命中) ISSUE-01-tospec-flow-and-cli.md: ac-draft.py -> .../ac-draft.py
+OK(证据/仓库内按名命中) ISSUE-01-tospec-flow-and-cli.md: check-ac.py -> .../check-ac.py
+OK(证据/仓库内按名命中) ISSUE-01-tospec-flow-and-cli.md: tests/test_ac_draft.py -> .../tests/test_ac_draft.py
+OK(证据/仓库内按名命中) ISSUE-01-tospec-flow-and-cli.md: tests/test_ac_reading.py -> .../tests/test_ac_reading.py
+UNRESOLVED ISSUE-01-tospec-flow-and-cli.md: workflow/grilling
+OK ISSUE-01-tospec-flow-and-cli.md: general/ -> general
+OK ISSUE-01-tospec-flow-and-cli.md: /home/bolo/evidence/to-spec-grilling-and-chinese-ids/issue-01/ -> ../../home/bolo/evidence/to-spec-grilling-and-chinese-ids/issue-01
+OK ISSUE-01-tospec-flow-and-cli.md: INDEX.md -> ../../home/bolo/evidence/to-spec-grilling-and-chinese-ids/issue-01/INDEX.md
+OK ISSUE-01-tospec-flow-and-cli.md: manifest.sha256 -> ../../home/bolo/evidence/to-spec-grilling-and-chinese-ids/issue-01/manifest.sha256
+OK ISSUE-01-tospec-flow-and-cli.md: run5/text-mapping.md -> ../../home/bolo/evidence/to-spec-grilling-and-chinese-ids/issue-01/run5/text-mapping.md
+OK ISSUE-01-tospec-flow-and-cli.md: run5/files/ -> ../../home/bolo/evidence/to-spec-grilling-and-chinese-ids/issue-01/run5/files
+OK(证据/仓库内按名命中) ISSUE-01-tospec-flow-and-cli.md: ac/ -> .../ac/
+OK(证据/仓库内按名命中) ISSUE-01-tospec-flow-and-cli.md: valid -> .../valid/
+OK(证据/仓库内按名命中) ISSUE-01-tospec-flow-and-cli.md: missing-goal -> .../missing-goal/
+OK(证据/仓库内按名命中) ISSUE-01-tospec-flow-and-cli.md: audit-rule -> .../audit-rule/
+OK(证据/仓库内按名命中) ISSUE-01-tospec-flow-and-cli.md: duplicate-goal -> .../duplicate-goal/
+OK(证据/仓库内按名命中) ISSUE-01-tospec-flow-and-cli.md: keyword -> .../keyword/
+OK(证据/仓库内按名命中) ISSUE-01-tospec-flow-and-cli.md: multiple-ac -> .../multiple-ac/
+OK(证据/仓库内按名命中) ISSUE-01-tospec-flow-and-cli.md: free-tag -> .../free-tag/
+OK(证据/仓库内按名命中) ISSUE-01-tospec-flow-and-cli.md: marker -> .../marker/
+OK(证据/仓库内按名命中) ISSUE-01-tospec-flow-and-cli.md: PRODUCT.base.md -> .../PRODUCT.base.md
+OK(证据/仓库内按名命中) ISSUE-01-tospec-flow-and-cli.md: review/acceptance.md -> .../review/acceptance.md
+OK(证据/仓库内按名命中) ISSUE-01-tospec-flow-and-cli.md: ac/valid/review/2026-11-27-acceptance-*.html -> .../ac/valid/review/2026-11-27-acceptance-*.html
+OK(证据/仓库内按名命中) ISSUE-01-tospec-flow-and-cli.md: page-nodes.json -> .../page-nodes.json
+OK(证据/仓库内按名命中) ISSUE-01-tospec-flow-and-cli.md: promote/ -> .../promote/
+OK(证据/仓库内按名命中) ISSUE-01-tospec-flow-and-cli.md: removed-option -> .../removed-option/
+OK(证据/仓库内按名命中) ISSUE-01-tospec-flow-and-cli.md: bad-input -> .../bad-input/
+OK(证据/仓库内按名命中) ISSUE-01-tospec-flow-and-cli.md: before.md -> .../before.md
+OK(证据/仓库内按名命中) ISSUE-01-tospec-flow-and-cli.md: tech/ -> .../tech/
+OK(证据/仓库内按名命中) ISSUE-01-tospec-flow-and-cli.md: required.md -> .../required.md
+OK(证据/仓库内按名命中) ISSUE-01-tospec-flow-and-cli.md: conditional.md -> .../conditional.md
+UNRESOLVED ISSUE-01-tospec-flow-and-cli.md: missing-N.md
+UNRESOLVED ISSUE-01-tospec-flow-and-cli.md: typo-N.md
+OK(证据/仓库内按名命中) ISSUE-01-tospec-flow-and-cli.md: order.md -> .../order.md
+OK(证据/仓库内按名命中) ISSUE-01-tospec-flow-and-cli.md: trace/ -> .../trace/
+OK(证据/仓库内按名命中) ISSUE-01-tospec-flow-and-cli.md: atomic -> .../atomic/
+OK(证据/仓库内按名命中) ISSUE-01-tospec-flow-and-cli.md: base -> .../base/
+OK(证据/仓库内按名命中) ISSUE-01-tospec-flow-and-cli.md: draft -> .../draft/
+OK(证据/仓库内按名命中) ISSUE-01-tospec-flow-and-cli.md: output -> .../output/
+OK(证据/仓库内按名命中) ISSUE-01-tospec-flow-and-cli.md: acceptance.md -> .../acceptance.md
+OK(证据/仓库内按名命中) ISSUE-01-tospec-flow-and-cli.md: original-output.md -> .../original-output.md
+OK(证据/仓库内按名命中) ISSUE-01-tospec-flow-and-cli.md: input-before.bin -> .../input-before.bin
+OK(证据/仓库内按名命中) ISSUE-01-tospec-flow-and-cli.md: external-intended.bin -> .../external-intended.bin
+OK(证据/仓库内按名命中) ISSUE-01-tospec-flow-and-cli.md: external-after.bin -> .../external-after.bin
+UNRESOLVED ISSUE-01-tospec-flow-and-cli.md: run5/logs/<name>.{cmd,stdout,stderr,exit}
+SKIP(命令/占位符) ISSUE-01-tospec-flow-and-cli.md: uv run --with gherkin-official python <脚本>
+SKIP(命令/占位符) ISSUE-01-tospec-flow-and-cli.md: uv run python
+OK(证据/仓库内按名命中) ISSUE-01-tospec-flow-and-cli.md: target-help-* -> .../target-help-*
+UNRESOLVED ISSUE-01-tospec-flow-and-cli.md: --help
+OK(证据/仓库内按名命中) ISSUE-01-tospec-flow-and-cli.md: target-cli-matrix.stdout -> .../target-cli-matrix.stdout
+SKIP(命令/占位符) ISSUE-01-tospec-flow-and-cli.md: success=true
+UNRESOLVED ISSUE-01-tospec-flow-and-cli.md: on*
+SKIP(命令/占位符) ISSUE-01-tospec-flow-and-cli.md: unrecognized arguments: --review
+OK ISSUE-01-tospec-flow-and-cli.md: /home/bolo/Workspace/improve -> ../../home/bolo/Workspace/improve
+OK(证据/仓库内按名命中) ISSUE-01-tospec-flow-and-cli.md: base-* -> .../base-*
+OK(证据/仓库内按名命中) ISSUE-01-tospec-flow-and-cli.md: target-* -> .../target-*
+OK(证据/仓库内按名命中) ISSUE-01-tospec-flow-and-cli.md: probe.py -> .../probe.py
+OK(证据/仓库内按名命中) ISSUE-01-tospec-flow-and-cli.md: base-tech-matrix.* -> .../base-tech-matrix.*
+UNRESOLVED ISSUE-01-tospec-flow-and-cli.md: cp
+UNRESOLVED ISSUE-01-tospec-flow-and-cli.md: cmp
+UNRESOLVED ISSUE-01-tospec-flow-and-cli.md: target-tech-{copy,compare,formal}
+OK ISSUE-01-tospec-flow-and-cli.md: run5/logs/trace-*.{cmd,events.jsonl,stdout,stderr,exit} -> ../../home/bolo/evidence/to-spec-grilling-and-chinese-ids/issue-01/run5/logs/trace-output.cmd
+SKIP(命令/占位符) ISSUE-01-tospec-flow-and-cli.md: uname -sm
+OK ISSUE-01-tospec-flow-and-cli.md: run5/environment.txt -> ../../home/bolo/evidence/to-spec-grilling-and-chinese-ids/issue-01/run5/environment.txt
+UNRESOLVED ISSUE-01-tospec-flow-and-cli.md: trace-atomic
+UNRESOLVED ISSUE-01-tospec-flow-and-cli.md: rename
+UNRESOLVED ISSUE-01-tospec-flow-and-cli.md: .tmp
+UNRESOLVED ISSUE-01-tospec-flow-and-cli.md: trace-base
+UNRESOLVED ISSUE-01-tospec-flow-and-cli.md: trace-draft
+UNRESOLVED ISSUE-01-tospec-flow-and-cli.md: trace-output
+OK ISSUE-01-tospec-flow-and-cli.md: run5/logs/final-pytest.{cmd,stdout,stderr,exit} -> ../../home/bolo/evidence/to-spec-grilling-and-chinese-ids/issue-01/run5/logs/final-pytest.cmd
+OK ISSUE-01-tospec-flow-and-cli.md: run5/logs/final-check-skill.* -> ../../home/bolo/evidence/to-spec-grilling-and-chinese-ids/issue-01/run5/logs/final-check-skill.stdout
+OK ISSUE-01-tospec-flow-and-cli.md: run5/logs/pytest.* -> ../../home/bolo/evidence/to-spec-grilling-and-chinese-ids/issue-01/run5/logs/pytest.stdout
+SKIP(命令/占位符) ISSUE-01-tospec-flow-and-cli.md: uv run --with gherkin-official pytest -p no:cacheprovider -v workflow/to-spec/tests
+OK ISSUE-01-tospec-flow-and-cli.md: run5/logs/pytest-collect.* -> ../../home/bolo/evidence/to-spec-grilling-and-chinese-ids/issue-01/run5/logs/pytest-collect.exit
+OK ISSUE-01-tospec-flow-and-cli.md: run5/logs/deps.* -> ../../home/bolo/evidence/to-spec-grilling-and-chinese-ids/issue-01/run5/logs/deps.stdout
+UNRESOLVED ISSUE-01-tospec-flow-and-cli.md: test_stale_review_*
+UNRESOLVED ISSUE-01-tospec-flow-and-cli.md: test_promote_requires_review_*
+UNRESOLVED ISSUE-01-tospec-flow-and-cli.md: unittest.mock.patch
+UNRESOLVED ISSUE-01-tospec-flow-and-cli.md: os.replace
+UNRESOLVED ISSUE-01-tospec-flow-and-cli.md: os.fsync
+UNRESOLVED ISSUE-01-tospec-flow-and-cli.md: validate_product
+OK(证据/仓库内按名命中) ISSUE-01-tospec-flow-and-cli.md: trace-* -> .../trace-*
+UNRESOLVED ISSUE-01-tospec-flow-and-cli.md: test_promote_rejects_removed_review_option
+UNRESOLVED ISSUE-01-tospec-flow-and-cli.md: test_promote_rejects_invalid_draft_without_altering_existing_output
+UNRESOLVED ISSUE-01-tospec-flow-and-cli.md: test_promote_refuses_directory_target_without_leaving_temporary_file
+OK ISSUE-01-tospec-flow-and-cli.md: run5/logs/check-skill.* -> ../../home/bolo/evidence/to-spec-grilling-and-chinese-ids/issue-01/run5/logs/check-skill.stdout
+SKIP(命令/占位符) ISSUE-01-tospec-flow-and-cli.md: uv run python general/writing-for-llm/check_skill.py workflow/to-spec/SKILL.md
+SKIP(命令/占位符) ISSUE-01-tospec-flow-and-cli.md: workflow/to-spec/SKILL.md: OK
+OK ISSUE-01-tospec-flow-and-cli.md: run5/logs/changed-files.* -> ../../home/bolo/evidence/to-spec-grilling-and-chinese-ids/issue-01/run5/logs/changed-files.exit
+OK ISSUE-01-tospec-flow-and-cli.md: run5/logs/capability-files.* -> ../../home/bolo/evidence/to-spec-grilling-and-chinese-ids/issue-01/run5/logs/capability-files.stdout
+SKIP(命令/占位符) ISSUE-01-tospec-flow-and-cli.md: git diff --exit-code
+OK ISSUE-01-tospec-flow-and-cli.md: run5/logs/scope-search.* -> ../../home/bolo/evidence/to-spec-grilling-and-chinese-ids/issue-01/run5/logs/scope-search.stdout
+OK ISSUE-01-tospec-flow-and-cli.md: run5/logs/diff-check.* -> ../../home/bolo/evidence/to-spec-grilling-and-chinese-ids/issue-01/run5/logs/diff-check.exit
+UNRESOLVED ISSUE-01-tospec-flow-and-cli.md: 182ff18
+OK ISSUE-01-tospec-flow-and-cli.md: workflow/ -> workflow
+OK(证据/仓库内按名命中) ISSUE-01-tospec-flow-and-cli.md: check_skill.py -> .../check_skill.py
+OK ISSUE-01-tospec-flow-and-cli.md: run5/logs/target-ac-* -> ../../home/bolo/evidence/to-spec-grilling-and-chinese-ids/issue-01/run5/logs/target-ac-keyword.cmd
+OK(证据/仓库内按名命中) ISSUE-01-tospec-flow-and-cli.md: text-mapping.md -> .../text-mapping.md
+OK(证据/仓库内按名命中) ISSUE-01-tospec-flow-and-cli.md: capability-files.* -> .../capability-files.*
+OK(证据/仓库内按名命中) ISSUE-01-tospec-flow-and-cli.md: scope-search.* -> .../scope-search.*
+OK(证据/仓库内按名命中) ISSUE-01-tospec-flow-and-cli.md: target-promote-removed-option.* -> .../target-promote-removed-option.*
+OK(证据/仓库内按名命中) ISSUE-01-tospec-flow-and-cli.md: trace-{atomic,base,draft,output}.* -> .../trace-atomic.*
+OK ISSUE-01-tospec-flow-and-cli.md: workflow/to-spec/tests -> workflow/to-spec/tests
+OK ISSUE-01-tospec-flow-and-cli.md: pytest.* -> pytest.ini
+OK(证据/仓库内按名命中) ISSUE-01-tospec-flow-and-cli.md: check-skill.* -> .../check-skill.*
+OK ISSUE-02-verify-change-method-flow.md: ../EXECUTION.md -> docs/changes/to-spec-grilling-and-chinese-ids/EXECUTION.md
+OK ISSUE-02-verify-change-method-flow.md: PRODUCT.md -> docs/changes/to-spec-grilling-and-chinese-ids/PRODUCT.md
+OK ISSUE-02-verify-change-method-flow.md: TECHNICAL.md -> docs/changes/to-spec-grilling-and-chinese-ids/TECHNICAL.md
+OK ISSUE-02-verify-change-method-flow.md: VERIFICATION-PLAN.md -> docs/changes/to-spec-grilling-and-chinese-ids/VERIFICATION-PLAN.md
+OK ISSUE-02-verify-change-method-flow.md: DECISIONS.md -> docs/changes/to-spec-grilling-and-chinese-ids/DECISIONS.md
+OK ISSUE-02-verify-change-method-flow.md: workflow/verify-change/ -> workflow/verify-change
+OK ISSUE-02-verify-change-method-flow.md: workflow/verify-change/SKILL.md -> workflow/verify-change/SKILL.md
+OK ISSUE-02-verify-change-method-flow.md: ../../../workflow/verification-contract/SKILL.md -> workflow/verification-contract/SKILL.md
+OK ISSUE-02-verify-change-method-flow.md: ../../../workflow/verification-contract/SAFETY.md -> workflow/verification-contract/SAFETY.md
+OK ISSUE-02-verify-change-method-flow.md: ../../../workflow/verification-contract/reference/tests.md -> workflow/verification-contract/reference/tests.md
+OK ISSUE-02-verify-change-method-flow.md: workflow/verification-contract/SKILL.md -> workflow/verification-contract/SKILL.md
+OK(证据/仓库内按名命中) ISSUE-02-verify-change-method-flow.md: SAFETY.md -> .../SAFETY.md
+OK(证据/仓库内按名命中) ISSUE-02-verify-change-method-flow.md: SKILL.md -> .../SKILL.md
+SKIP(命令/占位符) ISSUE-02-verify-change-method-flow.md: uv run python general/writing-for-llm/check_skill.py <路径>
+UNRESOLVED ISSUE-02-verify-change-method-flow.md: b260081db4461c58644a36189e1fd96f5b2a95c6
+OK ISSUE-02-verify-change-method-flow.md: /home/bolo/evidence/to-spec-grilling-and-chinese-ids/issue-02/run2/INDEX.md -> ../../home/bolo/evidence/to-spec-grilling-and-chinese-ids/issue-02/run2/INDEX.md
+OK ISSUE-02-verify-change-method-flow.md: run1/ -> ../../home/bolo/evidence/to-spec-grilling-and-chinese-ids/issue-01/run1
+OK ISSUE-02-verify-change-method-flow.md: workflow/verify-change/REVERIFY.md -> workflow/verify-change/REVERIFY.md
+SKIP(命令/占位符) ISSUE-02-verify-change-method-flow.md: uv run python general/writing-for-llm/check_skill.py workflow/verify-change/SKILL.md
+UNRESOLVED ISSUE-02-verify-change-method-flow.md: OK
+OK ISSUE-02-verify-change-method-flow.md: run2/ -> ../../home/bolo/evidence/to-spec-grilling-and-chinese-ids/issue-01/run2
+SKIP(命令/占位符) ISSUE-02-verify-change-method-flow.md: git diff --check
+OK ISSUE-02-verify-change-method-flow.md: workflow/navigate/reference/VERIFICATION.md -> workflow/navigate/reference/VERIFICATION.md
+OK ISSUE-03-navigate-readme-alignment.md: ../EXECUTION.md -> docs/changes/to-spec-grilling-and-chinese-ids/EXECUTION.md
+OK ISSUE-03-navigate-readme-alignment.md: PRODUCT.md -> docs/changes/to-spec-grilling-and-chinese-ids/PRODUCT.md
+OK ISSUE-03-navigate-readme-alignment.md: TECHNICAL.md -> docs/changes/to-spec-grilling-and-chinese-ids/TECHNICAL.md
+OK ISSUE-03-navigate-readme-alignment.md: VERIFICATION-PLAN.md -> docs/changes/to-spec-grilling-and-chinese-ids/VERIFICATION-PLAN.md
+OK ISSUE-03-navigate-readme-alignment.md: DECISIONS.md -> docs/changes/to-spec-grilling-and-chinese-ids/DECISIONS.md
+OK ISSUE-03-navigate-readme-alignment.md: workflow/navigate/SKILL.md -> workflow/navigate/SKILL.md
+OK ISSUE-03-navigate-readme-alignment.md: workflow/navigate/ACCEPTANCE-GUIDE.md -> workflow/navigate/ACCEPTANCE-GUIDE.md
+OK ISSUE-03-navigate-readme-alignment.md: README.md -> README.md
+OK ISSUE-03-navigate-readme-alignment.md: roadmap/ROADMAP.json -> docs/changes/to-spec-grilling-and-chinese-ids/roadmap/ROADMAP.json
+OK(证据/仓库内按名命中) ISSUE-03-navigate-readme-alignment.md: ACCEPTANCE-GUIDE.md -> .../ACCEPTANCE-GUIDE.md
+OK ISSUE-03-navigate-readme-alignment.md: EXECUTION.md -> docs/changes/to-spec-grilling-and-chinese-ids/EXECUTION.md
+OK(证据/仓库内按名命中) ISSUE-03-navigate-readme-alignment.md: SKILL.md -> .../SKILL.md
+SKIP(命令/占位符) ISSUE-03-navigate-readme-alignment.md: uv run python general/writing-for-llm/check_skill.py <路径>
+UNRESOLVED ISSUE-03-navigate-readme-alignment.md: issue/03
+SKIP(命令/占位符) ISSUE-03-navigate-readme-alignment.md: feat: ISSUE-03: 对齐领航与 README 调用说明
+OK ISSUE-03-navigate-readme-alignment.md: /home/bolo/evidence/to-spec-grilling-and-chinese-ids/issue-03/run1/INDEX -> ../../home/bolo/evidence/to-spec-grilling-and-chinese-ids/issue-03/run1/INDEX
+SKIP(命令/占位符) ISSUE-03-navigate-readme-alignment.md: workflow/navigate/SKILL.md:41-42,55-56,71,75
+SKIP(命令/占位符) ISSUE-03-navigate-readme-alignment.md: workflow/navigate/ACCEPTANCE-GUIDE.md:3,8,12-16
+SKIP(命令/占位符) ISSUE-03-navigate-readme-alignment.md: README.md:41,50-51,65-67
+SKIP(命令/占位符) ISSUE-03-navigate-readme-alignment.md: PRODUCT.md:262-266
+SKIP(命令/占位符) ISSUE-03-navigate-readme-alignment.md: VERIFICATION-PLAN.md:96
+SKIP(命令/占位符) ISSUE-03-navigate-readme-alignment.md: :41,55,73-79
+SKIP(命令/占位符) ISSUE-03-navigate-readme-alignment.md: :5-10,18-27
+SKIP(命令/占位符) ISSUE-03-navigate-readme-alignment.md: PRODUCT.md:268-272
+SKIP(命令/占位符) ISSUE-03-navigate-readme-alignment.md: VERIFICATION-PLAN.md:97
+SKIP(命令/占位符) ISSUE-03-navigate-readme-alignment.md: workflow/deliberate/SKILL.md:9-18
+SKIP(命令/占位符) ISSUE-03-navigate-readme-alignment.md: :40-41,52
+SKIP(命令/占位符) ISSUE-03-navigate-readme-alignment.md: workflow/to-execution/SKILL.md:15
+SKIP(命令/占位符) ISSUE-03-navigate-readme-alignment.md: README.md:45,65
+SKIP(命令/占位符) ISSUE-03-navigate-readme-alignment.md: PRODUCT.md:427-431
+SKIP(命令/占位符) ISSUE-03-navigate-readme-alignment.md: TECHNICAL.md:25-36,84
+SKIP(命令/占位符) ISSUE-03-navigate-readme-alignment.md: VERIFICATION-PLAN.md:124
+OK(证据/仓库内按名命中) ISSUE-03-navigate-readme-alignment.md: local-check.md -> .../local-check.md
+SKIP(命令/占位符) ISSUE-03-navigate-readme-alignment.md: uv run python general/writing-for-llm/check_skill.py workflow/navigate/SKILL.md
+OK(证据/仓库内按名命中) ISSUE-03-navigate-readme-alignment.md: check_skill.log -> .../check_skill.log
+OK(证据/仓库内按名命中) ISSUE-03-navigate-readme-alignment.md: check_skill.exit -> .../check_skill.exit
+SKIP(命令/占位符) ISSUE-03-navigate-readme-alignment.md: ../EXECUTION.md:36,46,75
+SKIP(命令/占位符) ISSUE-03-navigate-readme-alignment.md: ../EXECUTION.md#执行记录
+OK EXECUTION.md: PRODUCT.md -> docs/changes/to-spec-grilling-and-chinese-ids/PRODUCT.md
+UNRESOLVED EXECUTION.md: c8823e0edf27e86a05f81acf89e5fea6027db3524afd6c88512326cda3e239d5
+OK EXECUTION.md: TECHNICAL.md -> docs/changes/to-spec-grilling-and-chinese-ids/TECHNICAL.md
+UNRESOLVED EXECUTION.md: e825dd5799fb6fa725216e140a3a1bb240b868753bf6c850ccfc615f39340f1e
+OK EXECUTION.md: VERIFICATION-PLAN.md -> docs/changes/to-spec-grilling-and-chinese-ids/VERIFICATION-PLAN.md
+UNRESOLVED EXECUTION.md: 7c4c450f1bfdf630f133f20435b9000cd76ab76a06c5538b1fa4f9a15fc49583
+OK EXECUTION.md: DECISIONS.md -> docs/changes/to-spec-grilling-and-chinese-ids/DECISIONS.md
+OK EXECUTION.md: pre-impl-snapshot/skills-manifest.sha256 -> docs/changes/to-spec-grilling-and-chinese-ids/evidence/m07-1bc15f612c10aa6e68e33587a01cd2de1ede2fe4/pre-impl-snapshot/skills-manifest.sha256
+UNRESOLVED EXECUTION.md: 182ff1846d0ed310b7f4ed308366d36f6e74b412
+OK(证据/仓库内按名命中) EXECUTION.md: drive-execution -> .../drive-execution/
+OK EXECUTION.md: /home/bolo/evidence/to-spec-grilling-and-chinese-ids -> ../../home/bolo/evidence/to-spec-grilling-and-chinese-ids
+UNRESOLVED EXECUTION.md: 9eedb3a
+UNRESOLVED EXECUTION.md: f9bfe71
+UNRESOLVED EXECUTION.md: 1dfc38a
+UNRESOLVED EXECUTION.md: --no-ff
+UNRESOLVED EXECUTION.md: improve
+UNRESOLVED EXECUTION.md: 1e64e6c
+UNRESOLVED EXECUTION.md: fd26618
+UNRESOLVED EXECUTION.md: 8ce78be
+UNRESOLVED EXECUTION.md: 3229525
+UNRESOLVED EXECUTION.md: b260081
+UNRESOLVED EXECUTION.md: 34ae059
+UNRESOLVED EXECUTION.md: 70ae157
+SKIP(命令/占位符) EXECUTION.md: check_skill.py workflow/to-spec/SKILL.md
+SKIP(命令/占位符) EXECUTION.md: check_skill.py workflow/verify-change/SKILL.md
+SKIP(命令/占位符) EXECUTION.md: check_skill.py workflow/navigate/SKILL.md
+SKIP(命令/占位符) EXECUTION.md: uv run pytest
+SKIP(命令/占位符) EXECUTION.md: podman: command not found
+OK EXECUTION.md: integration/run1 -> docs/changes/to-spec-grilling-and-chinese-ids/evidence/m07-1bc15f612c10aa6e68e33587a01cd2de1ede2fe4/integration/run1
+SKIP(命令/占位符) EXECUTION.md: uv run --with gherkin-official pytest workflow/to-spec/tests
+OK(证据/仓库内按名命中) EXECUTION.md: SKILL.md -> .../SKILL.md
+OK(证据/仓库内按名命中) EXECUTION.md: check_skill.py -> .../check_skill.py
+OK EXECUTION.md: evidence/m07-1bc15f612c10aa6e68e33587a01cd2de1ede2fe4/ -> docs/changes/to-spec-grilling-and-chinese-ids/evidence/m07-1bc15f612c10aa6e68e33587a01cd2de1ede2fe4
+UNRESOLVED EXECUTION.md: 1bc15f6
+OK EXECUTION.md: workflow/to-spec/ -> workflow/to-spec
+OK(证据/仓库内按名命中) EXECUTION.md: check-ac.py -> .../check-ac.py
+OK(证据/仓库内按名命中) EXECUTION.md: check-tech.py -> .../check-tech.py
+OK(证据/仓库内按名命中) EXECUTION.md: ac-draft.py -> .../ac-draft.py
+OK EXECUTION.md: workflow/to-spec/tests/ -> workflow/to-spec/tests
+OK EXECUTION.md: workflow/verify-change/ -> workflow/verify-change
+OK EXECUTION.md: workflow/navigate/SKILL.md -> workflow/navigate/SKILL.md
+OK EXECUTION.md: workflow/navigate/ACCEPTANCE-GUIDE.md -> workflow/navigate/ACCEPTANCE-GUIDE.md
+OK EXECUTION.md: README.md -> README.md
+OK EXECUTION.md: workflow/decision-ledger/ -> workflow/decision-ledger
+OK EXECUTION.md: workflow/to-execution/ -> workflow/to-execution
+OK EXECUTION.md: general/ -> general
+OK EXECUTION.md: roadmap/ROADMAP.json -> docs/changes/to-spec-grilling-and-chinese-ids/roadmap/ROADMAP.json
+UNRESOLVED EXECUTION.md: review_id
+UNRESOLVED EXECUTION.md: --review
+SKIP(命令/占位符) EXECUTION.md: uv run pytest workflow/to-spec/tests
+SKIP(命令/占位符) EXECUTION.md: uv run python general/writing-for-llm/check_skill.py <路径>
+UNRESOLVED EXECUTION.md: --noconftest
+OK EXECUTION.md: workflow/to-spec/SKILL.md -> workflow/to-spec/SKILL.md
+OK EXECUTION.md: workflow/verify-change/SKILL.md -> workflow/verify-change/SKILL.md
+OK EXECUTION.md: workflow/ -> workflow
+OK EXECUTION.md: REVIEW-milestone-01.md -> docs/changes/to-spec-grilling-and-chinese-ids/REVIEW-milestone-01.md
+OK EXECUTION.md: ../../../workflow/verification-contract/reference/tests.md -> workflow/verification-contract/reference/tests.md
+OK EXECUTION.md: issues/ISSUE-01-tospec-flow-and-cli.md -> docs/changes/to-spec-grilling-and-chinese-ids/issues/ISSUE-01-tospec-flow-and-cli.md
+OK EXECUTION.md: issues/ISSUE-02-verify-change-method-flow.md -> docs/changes/to-spec-grilling-and-chinese-ids/issues/ISSUE-02-verify-change-method-flow.md
+OK EXECUTION.md: issues/ISSUE-03-navigate-readme-alignment.md -> docs/changes/to-spec-grilling-and-chinese-ids/issues/ISSUE-03-navigate-readme-alignment.md
+UNRESOLVED EXECUTION.md: ISSUE-01
+OK EXECUTION.md: workflow/to-spec/tests -> workflow/to-spec/tests
+OK EXECUTION.md: pytest.ini -> pytest.ini
+UNRESOLVED_COUNT 64

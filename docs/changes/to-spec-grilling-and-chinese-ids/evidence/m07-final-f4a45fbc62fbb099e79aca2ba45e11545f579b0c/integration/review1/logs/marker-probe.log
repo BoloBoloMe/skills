@@ -1,0 +1,6 @@
+2026-11-27T05:05:10+00:00
+promote exit 0 {"success": true, "command": "promote", "output": "/tmp/m07-rev-imp/marker-_rmt6nfq/P.md"}
+v1 check-ac exit 0 | check-ac: 通过 - 1 个场景, 1 个 AC
+v2 check-ac exit 0 | check-ac: 通过 - 1 个场景, 1 个 AC
+v9 check-ac exit 0 | check-ac: 通过 - 1 个场景, 1 个 AC
+exit=0

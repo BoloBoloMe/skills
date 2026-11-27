@@ -1,0 +1,10 @@
+============================= test session starts ==============================
+platform linux -- Python 3.11.2, pytest-9.1.1, pluggy-1.7.0 -- /home/bolo/.cache/uv/builds-v0/.tmpjZaiUp/bin/python
+rootdir: /home/bolo/Workspace/improve.worktrees/ISSUE-04
+configfile: pytest.ini
+collecting ... collected 22 items / 21 deselected / 1 selected
+
+workflow/to-spec/tests/test_ac_draft.py::AcDraftTests::test_promote_rejects_bad_format_and_bad_numbering_inputs_keeping_output 
+workflow/to-spec/tests/test_ac_draft.py::AcDraftTests::test_promote_rejects_bad_format_and_bad_numbering_inputs_keeping_output PASSED [100%]
+
+============= 1 passed, 21 deselected, 11 subtests passed in 0.57s =============

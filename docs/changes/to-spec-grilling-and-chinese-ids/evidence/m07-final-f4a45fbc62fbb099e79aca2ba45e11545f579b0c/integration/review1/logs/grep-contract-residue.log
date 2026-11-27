@@ -1,0 +1,23 @@
+# 契约残留搜索 (排除本变更文档)
+2026-11-27T05:05:08+00:00
+docs/changes/workflow-stack-review/roadmap/ROADMAP.json
+docs/changes/workflow-stack-review/milestone-22/CHECKS.md
+docs/changes/workflow-stack-review/milestone-25/EXECUTION.md
+docs/changes/workflow-stack-review/milestone-25/CHECKS.md
+docs/changes/verification-skills/DECISIONS.md
+docs/changes/verification-skills/evidence/ISSUE-10/setup-drills.sh
+docs/changes/verification-skills/evidence/ISSUE-04/setup-drills.sh
+docs/changes/verification-skills/evidence/ISSUE-02/setup-drills.sh
+docs/changes/verification-skills/evidence/ISSUE-02/README.md
+docs/changes/verification-skills/evidence/ISSUE-01/setup-drills.sh
+docs/changes/verification-skills/evidence/ISSUE-01/README.md
+docs/changes/verification-skills/evidence/ISSUE-03/setup-drills.sh
+docs/changes/verification-skills/evidence/ISSUE-03/setup-heavy-drills.sh
+docs/changes/verification-skills/evidence/ISSUE-03/setup-micro-drill.sh
+docs/changes/verification-skills/evidence/ISSUE-05/setup-drills.sh
+---
+workflow/to-spec/tests/test_ac_draft.py:217:        self.assertNotIn("review_id", first)
+workflow/to-spec/tests/test_ac_draft.py:267:        self.assertNotIn("--review", help_run.stdout)
+workflow/to-spec/tests/test_ac_draft.py:268:        run = self.cli(HELPER, "promote", self.base, self.draft, self.output, "--review", "unused")
+workflow/to-spec/tests/test_ac_draft.py:270:        self.assertIn("unrecognized arguments: --review", run.stderr)
+exit=0

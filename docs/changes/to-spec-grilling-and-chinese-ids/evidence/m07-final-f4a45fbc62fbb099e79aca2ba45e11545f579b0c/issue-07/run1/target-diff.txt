@@ -1,0 +1,42 @@
+diff --git a/README.md b/README.md
+index 80913b4..a83424d 100644
+--- a/README.md
++++ b/README.md
+@@ -62,6 +62,6 @@
+ | [`improve-codebase-architecture`](workflow/improve-codebase-architecture/SKILL.md) | 架构改进探索 | 发现架构摩擦, 并提出把浅模块深化的重构机会. |
+ | [`codebase-map`](workflow/codebase-map/SKILL.md) | 按需代码库可视化 | 代码库结构与依赖可视化: 分析+常驻服务 (build/serve/stop 三子命令), 只由用户手动调用. |
+ 
+-规格和验证方案分阶段确认. `to-spec` 的盘问在规格流程内完成, 不要求用户逐版审阅预写规格或成文 Gherkin; `deliberate` 仍可独立调用. 已有足够且已确认的权威输入后, 才调用 `verify-change` 的设计方式. 用户明确结束方案盘问即确认方案内容, 无需再通读并采纳整份成文方案.
++规格和验证方案分阶段确认. `to-spec` 的盘问在规格流程内完成, 不要求用户逐版审阅预写规格或成文 Gherkin; `deliberate` 仍可独立调用. 已有足够且已确认的权威输入后, 才调用 `verify-change` 的设计验证方案. 用户明确结束方案盘问即确认方案内容, 无需再通读并采纳整份成文方案.
+ 
+ 执行验证和复验前核实当前方案内容及引用来源仍适用. 如需更新, 只补问新增或改变的验证决定, 有依据的转述错误直接修正并独立复查. 内容修订递增方案版本并保留确认依据, 新一轮绑定目标提交及实际方案修订号. 规格确认, 方案确认, 代理检查与独立验证报告都不是验收; 正式验收由用户依据已确认判据和验证证据逐项决定.
+diff --git a/workflow/navigate/SKILL.md b/workflow/navigate/SKILL.md
+index 17ec417..3549b45 100644
+--- a/workflow/navigate/SKILL.md
++++ b/workflow/navigate/SKILL.md
+@@ -68,7 +68,7 @@ Milestone 详情只存在于 ROADMAP.json 的 `milestones` 下, 不再有独立
+ 
+ 典型依赖为 `spec -> verification-plan -> execution-plan -> implementation -> verification -> acceptance`. 辅助准备, 领域感知与风险调查通常随所属里程碑进行, 只有存在可独立关闭的结果时才单立节点.
+ 
+-执行验证与复验前核实当前方案内容及引用来源仍适用, 不只看编号或确认状态. 不再适用时先回到 `verify-change` 的设计方式更新方案: 只补问新增或改变的验证决定, 有依据的转述错误直接修正并由独立会话复查. 内容修订递增版本并保留确认依据, 新一轮验证绑定实际方案修订号和目标提交.
++执行验证与复验前核实当前方案内容及引用来源仍适用, 不只看编号或确认状态. 不再适用时先回到 `verify-change` 的设计验证方案更新方案: 只补问新增或改变的验证决定, 有依据的转述错误直接修正并由独立会话复查. 内容修订递增版本并保留确认依据, 新一轮验证绑定实际方案修订号和目标提交.
+ 
+ ## 验收终点
+ 
+diff --git a/workflow/verify-change/SKILL.md b/workflow/verify-change/SKILL.md
+index d585da3..b2f3919 100644
+--- a/workflow/verify-change/SKILL.md
++++ b/workflow/verify-change/SKILL.md
+@@ -44,7 +44,7 @@ disable-model-invocation: true
+ 
+ 主会话先复核发现. 误报说明驳回理由; 有依据的转述错误由主会话直接修文, 不重问原决定. 缺少或改变验证决定, 包括原先免问但核不出依据时, 只按设计验证方案补问并入账受影响的决定, 核对更新后的范围并取得明确闭环, 不重问已定决定. 需要新增或改变产品判据时先交回原权威输入维护或既有决策确认流程, 不在方案里改判据.
+ 
+-每次内容修订递增方案版本, 用现有来源引用和检查产物保留变更及确认依据. 仍由独立检查核对修订分类, 当前内容是否忠实于确认, 以及受影响内容与引用. 未变且未受影响部分说明适用理由后沿用旧结论; 有新证据要求或不能确定旧结论仍适用时扩大复查. 版本号, 确认状态或通知不证明内容已获确认. 当前版本可追溯确认及独立复查且无阻塞才交付, 不恢复逐版阅读和采纳整份方案.
++每次内容修订递增方案版本, 用现有来源引用和检查产物保留变更及确认依据, 不新增盘问专用记录格式. 仍由独立检查核对修订分类, 当前内容是否忠实于确认, 以及受影响内容与引用. 未变且未受影响部分说明适用理由后沿用旧结论; 有新证据要求或不能确定旧结论仍适用时扩大复查. 版本号, 确认状态或通知不证明内容已获确认. 当前版本可追溯确认及独立复查且无阻塞才交付, 不恢复逐版阅读和采纳整份方案.
+ 
+ ## 执行验证方案
+ 
+ README.md                       | 2 +-
+ workflow/navigate/SKILL.md      | 2 +-
+ workflow/verify-change/SKILL.md | 2 +-
+ 3 files changed, 3 insertions(+), 3 deletions(-)

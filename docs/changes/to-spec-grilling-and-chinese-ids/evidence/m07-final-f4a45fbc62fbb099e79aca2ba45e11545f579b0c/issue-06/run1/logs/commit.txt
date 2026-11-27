@@ -1,0 +1,15 @@
+676311a71ef2edf4c81c35077f395c06642da502
+676311a 2026-11-27T05:16:35+00:00 feat: ISSUE-06: 回填非作者核对与实施前摘要并修正标点
+--- show --stat:
+ .../changes/to-spec-grilling-and-chinese-ids/EXECUTION.md |  1 +
+ .../issues/ISSUE-01-tospec-flow-and-cli.md                | 12 ++++++------
+ .../issues/ISSUE-02-verify-change-method-flow.md          | 15 +++++++++------
+ .../issues/ISSUE-03-navigate-readme-alignment.md          | 11 ++++++-----
+ .../issues/ISSUE-06-records-backfill.md                   |  9 +++++++--
+ 5 files changed, 29 insertions(+), 19 deletions(-)
+--- name-status:
+M	docs/changes/to-spec-grilling-and-chinese-ids/EXECUTION.md
+M	docs/changes/to-spec-grilling-and-chinese-ids/issues/ISSUE-01-tospec-flow-and-cli.md
+M	docs/changes/to-spec-grilling-and-chinese-ids/issues/ISSUE-02-verify-change-method-flow.md
+M	docs/changes/to-spec-grilling-and-chinese-ids/issues/ISSUE-03-navigate-readme-alignment.md
+M	docs/changes/to-spec-grilling-and-chinese-ids/issues/ISSUE-06-records-backfill.md

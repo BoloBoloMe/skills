@@ -1,0 +1,4 @@
+Linux x86_64
+uv 0.13.1 (x86_64-unknown-linux-gnu)
+Python 3.11.2
+2026-11-27T05:12:13Z
