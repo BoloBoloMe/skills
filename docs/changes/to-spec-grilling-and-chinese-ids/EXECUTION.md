@@ -30,6 +30,7 @@
 - Q1/Q3 裁决: Q1 成立 (轻微) 已由 ISSUE-07 修复; Q3 属实但本变更依赖方案照办条款不构成冲突, 一般情形提醒已记录, 不修改已确认方案 v3.
 - 收敛核对发现: ISSUE-01 内 tech 清单改写超出 ISSUE-06 (a) 字面声明, 属同类引用更正, 无产品影响, 记录在案 (integration/review2/CONVERGENCE.md).
 - R5/R9/R10 维持开放, 归属: 跨文件措辞一致性与可移植性类事项, 交 milestone-12 用户审改时定夺 (R5 与 F1 同涉 workflow/navigate/reference/VERIFICATION.md); F1 仍待用户授权范围.
+- 返工轮四: ISSUE-08 完成 F1, workflow/navigate/reference/VERIFICATION.md:9 对齐 AC-041 补问语义 (用户 2026-11-27 授权该文件补进允许范围); 切片提交 1efb0f0, 集成 b9cb2dbcee92e948f7d2725e275e607f1da7273b 由合并执行者回填.
 
 ## 全局允许范围
 - `workflow/to-spec/` 中本次相关流程,模板,Gherkin 纪律,`check-ac.py`,`check-tech.py`,`ac-draft.py` 及 `workflow/to-spec/tests/`.
