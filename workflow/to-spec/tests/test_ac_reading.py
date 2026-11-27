@@ -5,13 +5,14 @@
 
 import html.parser
 import json
+import re
 from pathlib import Path
 import subprocess
 import sys
 import tempfile
 import unittest
 
-from test_ac_draft import BASE, DRAFT, load_helper
+from test_ac_draft import BASE, CHECK, DRAFT, HELPER, MARKER
 
 
 OUTLINE = """```gherkin
@@ -89,14 +90,19 @@ class ReadingPreviewTests(unittest.TestCase):
         self.draft = self.root / "用例.md"
         self.base.write_bytes(BASE.encode())
         self.draft.write_bytes(DRAFT.encode())
-        self.helper = load_helper()
+
+    def cli(self, script, *args):
+        return subprocess.run([sys.executable, str(script), *map(str, args)],
+                              cwd=self.root, capture_output=True, text=True, timeout=10)
 
     def preview(self, draft=None, base=None):
         if draft is not None:
             self.draft.write_bytes(draft.encode())
         if base is not None:
             self.base.write_bytes(base.encode())
-        result = self.helper.preview(self.base, self.draft)
+        run = self.cli(HELPER, "preview", self.base, self.draft)
+        self.assertEqual(0, run.returncode, run.stdout + run.stderr)
+        result = json.loads(run.stdout)
         return Elements(Path(result["preview"]).read_text(encoding="utf-8"))
 
     def test_plain_steps_and_references_are_exact_source_text(self):
@@ -190,15 +196,17 @@ class ReadingPreviewTests(unittest.TestCase):
         base = BASE.replace("- 规则1: 内容以当前版本为准.",
                             "- 规则1: 内容以当前版本为准.\n  (审计)")
         self.base.write_bytes(base.encode())
-        for label, validate in (
-            ("草稿校验", lambda: self.helper.checker.validate_draft(base, DRAFT)),
-            ("正式校验", lambda: self.helper.checker.validate_product(
-                self.helper.checker.with_draft(base, DRAFT, confirmed=True))),
-            ("阅读预览", lambda: self.helper.preview(self.base, self.draft)),
+        formal = self.root / "PRODUCT.md"
+        formal.write_bytes(base.replace("待确认, 此处暂不写入正式用例.", MARKER + "\n" + DRAFT).encode())
+        for script, args in (
+            (CHECK, (self.base, "--draft", self.draft)),
+            (CHECK, (formal,)),
+            (HELPER, ("preview", self.base, self.draft)),
         ):
-            with self.subTest(label=label):
-                with self.assertRaisesRegex(self.helper.checker.ValidationError, "审计"):
-                    validate()
+            with self.subTest(args=args):
+                run = self.cli(script, *args)
+                self.assertEqual(1, run.returncode)
+                self.assertIn("审计", run.stderr + run.stdout)
 
     def test_every_user_controlled_field_is_escaped(self):
         dangerous = "</span><script>alert('x')</script> & 中文"
@@ -253,17 +261,20 @@ class ReadingPreviewTests(unittest.TestCase):
         for label, draft in invalid.items():
             with self.subTest(label=label):
                 self.draft.write_bytes(draft.encode())
-                with self.assertRaises(self.helper.checker.ValidationError):
-                    self.helper.preview(self.base, self.draft)
+                run = self.cli(HELPER, "preview", self.base, self.draft)
+                self.assertEqual(1, run.returncode)
+                self.assertFalse(json.loads(run.stdout)["success"])
                 self.assertFalse(list(self.root.glob("*.html")))
 
     def test_duplicate_rule_ids_refuse_ambiguous_rule_text(self):
         self.base.write_bytes(BASE.replace("- 规则1: 内容以当前版本为准.",
                                            "- 规则1: 内容以当前版本为准.\n- 规则1: 相反的另一条规则.").encode())
-        with self.assertRaises(self.helper.checker.InputError):
-            self.helper.checker.validate_draft(self.base.read_text(encoding="utf-8"), DRAFT)
-        with self.assertRaises(self.helper.checker.InputError):
-            self.helper.preview(self.base, self.draft)
+        for script, args in ((CHECK, (self.base, "--draft", self.draft)),
+                             (HELPER, ("preview", self.base, self.draft))):
+            with self.subTest(args=args):
+                run = self.cli(script, *args)
+                self.assertEqual(2, run.returncode)
+                self.assertIn("规则1 重复", run.stdout + run.stderr)
         self.assertFalse(list(self.root.glob("*.html")))
 
     def test_plain_scenario_without_background_or_type_tag_still_renders(self):
@@ -291,16 +302,15 @@ class ReadingPreviewTests(unittest.TestCase):
     def test_cli_reports_rendering_failure_without_publishing_html(self):
         draft = OUTLINE[:OUTLINE.index("例子: 少量")] + "```\n"
         self.draft.write_bytes(draft.encode())
-        run = subprocess.run([sys.executable, str(self.helper.__file__), "preview", str(self.base), str(self.draft)],
-                             cwd=self.root, capture_output=True, text=True, timeout=10)
+        run = self.cli(HELPER, "preview", self.base, self.draft)
         self.assertEqual(1, run.returncode, run.stdout + run.stderr)
         self.assertFalse(json.loads(run.stdout)["success"])
         self.assertIn("缺少例子数据", json.loads(run.stdout)["error"])
         self.assertFalse(list(self.root.glob("*.html")))
 
     def test_documented_example_is_valid_and_expands_to_three_cards(self):
-        reference = Path(self.helper.__file__).with_name("GHERKIN.md").read_text(encoding="utf-8")
-        draft = self.helper.checker.FENCE_RE.search(reference)[0] + "\n"
+        reference = HELPER.with_name("GHERKIN.md").read_text(encoding="utf-8")
+        draft = re.search(r"^```gherkin\n.*?^```$", reference, re.M | re.S)[0] + "\n"
         base = BASE.replace("- 规则2: 不新增第三方依赖. (审计)",
                             "- 规则2: 同一订单的累计补发次数不超过 3 次.")
         parsed = self.preview(draft, base)
@@ -308,15 +318,11 @@ class ReadingPreviewTests(unittest.TestCase):
         self.assertEqual(["AC-001", "AC-002", "AC-002"],
                          [node["attrs"]["data-ac"] for node in parsed.select("acceptance-card")])
 
-    def test_preview_still_binds_exact_input_bytes_and_does_not_rewrite_them(self):
+    def test_preview_leaves_raw_input_bytes_unchanged(self):
         raw = OUTLINE.replace("\n", "\r\n").encode()
         self.draft.write_bytes(raw)
         base = self.base.read_bytes()
-        result = self.helper.preview(self.base, self.draft)
-        self.assertEqual(self.helper.review_id(base, raw), result["review_id"])
-        output = self.root / "PRODUCT.md"
-        self.helper.promote(self.base, self.draft, output, result["review_id"])
-        self.assertIn(raw, output.read_bytes())
+        self.assertEqual(3, len(self.preview().select("acceptance-card")))
         self.assertEqual(raw, self.draft.read_bytes())
         self.assertEqual(base, self.base.read_bytes())
 

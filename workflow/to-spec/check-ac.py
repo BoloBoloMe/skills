@@ -9,7 +9,7 @@
 
 确认标记 + 六项格式校验, 规则与同目录 SKILL.md / GHERKIN.md 对齐:
 0. 确认标记: `验收标准` 节必须含 `<!-- confirmed-flow: vN -->` (由 to-spec
-   验收标准确认流程写入), 正式模式缺失判为输入错误; 标记本身不证明实际确认.
+   转正流程写入固定 v1), 正式模式缺失判为输入错误; 标记本身不证明实际确认.
 1. 解析: gherkin-official parser 必须成功解析 gherkin 块.
 2. 标签封闭集与 @AC 唯一性 (D003/D007): 只允许 @AC-NNN / @G-NNN /
    @BR-NNN / @normal / @failure / @edge; 每场景 (含场景大纲) 恰好一个 @AC-NNN.
@@ -168,7 +168,7 @@ def extract_gherkin_block(markdown: str, *, require_marker: bool = True) -> tupl
     if require_marker and marker is None:
         raise InputError(
             f"`## 验收标准` 节缺少确认流程标记 `{CONFIRMATION_MARKER}` "
-            "(由 to-spec 验收标准确认流程写入)"
+            "(由 to-spec 转正流程写入)"
         )
     if marker is not None and marker.start() > m.start():
         raise InputError(
@@ -324,11 +324,11 @@ def walk(gdt: dict, v: Violations) -> tuple[int, int, list[tuple[str, str, str]]
 
 def with_draft(markdown: str, draft: str, *, confirmed: bool) -> str:
     """只替换验收正文, 草稿本身不经 strip/换行转换/重新序列化."""
+    if MARKER_RE.search(draft):
+        raise InputError("草稿不携带确认标记, 由转正脚本在确认后添加")
     match = FENCE_RE.search(draft)
     if match is None or draft[:match.start()].strip() or draft[match.end():].strip():
         raise InputError("草稿只能包含一个完整的 gherkin 代码块及首尾空白")
-    if MARKER_RE.search(draft):
-        raise InputError("草稿不携带确认标记, 由转正脚本在确认后添加")
     start, end = section_bounds(markdown, "验收标准")
     newline = "\r\n" if "\r\n" in markdown else "\n"
     body = newline
