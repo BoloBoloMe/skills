@@ -8,8 +8,10 @@
 草稿模式以 PRODUCT 暂存稿提供目标/业务规则, 只豁免确认标记, 不修改文件.
 
 确认标记 + 六项格式校验, 规则与同目录 SKILL.md / GHERKIN.md 对齐:
-0. 确认标记: `验收标准` 节必须含 `<!-- confirmed-flow: vN -->` (由 to-spec
-   转正流程写入固定 v1), 正式模式缺失判为输入错误; 标记本身不证明实际确认.
+0. 确认标记: `验收标准` 节必须在 Gherkin 块前含固定标记
+   `<!-- confirmed-flow: v1 -->` (由 to-spec 转正流程写入, 不随修文升版),
+   正式模式缺失判为输入错误; 机检按 `v数字` 匹配以兼容旧文件, 现行只写 v1;
+   标记本身不证明实际确认.
 1. 解析: gherkin-official parser 必须成功解析 gherkin 块.
 2. 标签封闭集与 @AC 唯一性 (D003/D007): 只允许 @AC-NNN / @G-NNN /
    @BR-NNN / @normal / @failure / @edge; 每场景 (含场景大纲) 恰好一个 @AC-NNN.
@@ -172,7 +174,7 @@ def extract_gherkin_block(markdown: str, *, require_marker: bool = True) -> tupl
         )
     if marker is not None and marker.start() > m.start():
         raise InputError(
-            "确认流程标记 `<!-- confirmed-flow: vN -->` 必须位于 gherkin 代码块之前"
+            f"确认流程标记 `{CONFIRMATION_MARKER}` 必须位于 gherkin 代码块之前"
         )
     if FENCE_RE.search(section, m.end()):
         raise InputError("`## 验收标准` 节应恰好一个 ```gherkin 块, 实际多于一个")
