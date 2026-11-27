@@ -8,11 +8,12 @@
 - 规格优先于决策账本. 不新增或改变决定. 当前草稿不修改正式规格或路线图.
 
 ## 评审起点
-- 首次派工前由 `drive-execution` 填入完整提交号与核实依据; 此前写"待填".
+- 评审起点: 9e8dd1dfe92b3b446c88c2cb8fce33cb0c67a77a. 核实依据: 该提交是 improve 分支当前顶端 (milestone-07 派工前最新提交; 前一提交 73f70636948ecfde2009a30d0b65ec1268700233 为 milestone-06 交付后状态); 本变更此前提交均为规格/方案/拆分文档, 其后无实施提交. 差异与旧编号范围审计基线 182ff1846d0ed310b7f4ed308366d36f6e74b412 不变.
+- 实施前摘要: 安装目录只读摘要已于派工前取得 (231 个文件的 SHA256 清单, 含 workflow/to-spec, workflow/verify-change, workflow/navigate 下 23 个相关文件), 存于证据根 `pre-impl-snapshot/skills-manifest.sha256`.
 - 差异与旧编号范围核对按验证方案使用基线 `182ff1846d0ed310b7f4ed308366d36f6e74b412` 到最终目标提交. 评审起点仍由 `drive-execution` 在派工前核实并填写.
 
 ## 执行记录
-- 待 milestone-07 按轮追加. 本文件当前是计划草稿, 没有实现或验证结果.
+- milestone-07 派工前登记: 仓库外专用证据根绝对路径 `/home/bolo/evidence/to-spec-grilling-and-chinese-ids` (决策41); 实施前安装目录只读摘要已取得并留存于该证据根. 实施按轮追加记录.
 
 ## 全局允许范围
 - `workflow/to-spec/` 中本次相关流程,模板,Gherkin 纪律,`check-ac.py`,`check-tech.py`,`ac-draft.py` 及 `workflow/to-spec/tests/`.
