@@ -340,6 +340,14 @@
 - 预计影响: 本变更路线图新增用户审改等待及审改后的集成/自测/评审, VERIFICATION-PLAN.md执行前置条件和目标版本绑定, 下游执行拆分
 - 需要调整: milestone-08不能仅凭原实施提交就领取, 须有用户明确改完通知及审改后可核对提交/检查依据. 若用户未改内容也须明确完成审阅, 不因无差异自动放行; 不将本变更的人工作业扩成所有verify-change调用都必须新增的通用产品规则
 
+### 决策43 milestone-12审改结论: 采纳代审报告全部建议
+- 状态: 当前有效
+- 约束性: 必须遵守
+- 内容: milestone-12 中用户亲自审改实际 skill: 手改提交 db40ad7 (to-spec/SKILL.md 删开场交付物说明, 删 "不整体调用 deliberate", 删 "须亲答" 括号清单). 其余内容用户未手改, 要求代理按 writing-for-llm 先代审; 代审报告 REVIEW-milestone-12.md 呈现后, 用户回复 "我采纳你的建议, 就按你的建议来改", 即审阅完成并采纳报告全部建议, 委托代理实施. 开放项口径: R5 采纳 (a), "已确认的 VERIFICATION-PLAN" 的判定只由 verify-change 设计方式完成标准定义一处, to-execution/drive-execution/navigate 写指针, 不再强调 "状态为已确认"; R9 采纳脚本化, 技术稿按字节复制并核对一致并入 ac-draft.py, SKILL.md 只写调用与结果; R10 采纳在 grilling 增 "跨会话续问" 一节作为盘问交接内容的唯一位置, to-spec 与 verify-change 改为指针. 其余不改语义的发现 (X1/X2/A2-A8/B1-B4/C1-C3/D1-D3/D5) 按报告建议修改, 含编号汉化遗漏 D1-D3. 理由: 用户以 writing-for-llm 为 skill 标准, 消除重复, 否定式沉积与汉化遗漏.
+- 依赖事实: 无
+- 预计影响: workflow/to-spec/{SKILL.md,GHERKIN.md,TEMPLATES.md,ac-draft.py,tests}, workflow/verify-change/{SKILL.md,REVERIFY.md}, workflow/navigate/{SKILL.md,ACCEPTANCE-GUIDE.md,reference/VERIFICATION.md}, workflow/to-execution/SKILL.md, workflow/drive-execution/SKILL.md, general/grilling/SKILL.md
+- 需要调整: 由 milestone-13 实施并按影响补自测/评审; 改动若触及 PRODUCT.md/TECHNICAL.md/VERIFICATION-PLAN.md 已确认内容 (如 R9 改变 to-spec 技术稿落正式方式, R10 改变交接契约位置, B1 拆分 verify-change 文件), 先维护对应权威输入并取得必要确认, 不为迎合改动降低标准. 本决定不是成品验收, 不授权跳过 milestone-08 独立验证.
+
 ## 事实
 
 ### 事实1 现转正脚本的 review_id 与确认标记机制
